@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { DonnyConversation, DonnyMessage } from '@/types/donny';
+import { parseNdjsonChunk } from '@/lib/ndjson';
 
 /**
  * Internal Donny (AIOS) chat — a dedicated donny_conversations thread with
@@ -15,6 +16,7 @@ export function useInternalDonny() {
   const queryClient = useQueryClient();
   const lastUserMessage = useRef<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [streaming, setStreaming] = useState<{ text: string; status: string } | null>(null);
 
   const { data: conversation } = useQuery({
     queryKey: ['aios', 'donny-conversation', user?.id],
@@ -90,14 +92,47 @@ export function useInternalDonny() {
         }
       );
 
-      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
         throw new Error(data?.error || data?.message || 'Donny could not generate a response');
       }
-      return data;
+
+      const contentType = response.headers.get('content-type') ?? '';
+      if (!contentType.includes('ndjson') || !response.body) {
+        // Fallback: older/non-streaming function deploy → behave as before.
+        return await response.json().catch(() => ({}));
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let acc = '';
+      setStreaming({ text: '', status: 'Thinking…' });
+      try {
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          const { events, rest } = parseNdjsonChunk(buffer, decoder.decode(value, { stream: true }));
+          buffer = rest;
+          for (const ev of events) {
+            if (ev.type === 'status') setStreaming((s) => ({ text: s?.text ?? acc, status: ev.label }));
+            else if (ev.type === 'text') { acc += ev.delta; setStreaming((s) => ({ text: acc, status: s?.status ?? '' })); }
+            else if (ev.type === 'done') return { success: true, content: ev.content, rich_card: ev.rich_card };
+            else if (ev.type === 'error') throw new Error(ev.message || 'Donny hit an error');
+            // heartbeat: ignore
+          }
+        }
+        // Stream closed without `done` → cut off (e.g. 400s wall-clock).
+        throw new Error("Donny's response was cut off — please try again.");
+      } finally {
+        // Best-effort: release the reader lock and close the body on all exits
+        // (normal done return, thrown error, or mutation cancellation).
+        reader.cancel().catch(() => {});
+      }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['aios', 'donny-messages', conversation?.id] });
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['aios', 'donny-messages', conversation?.id] });
+      setStreaming(null);
     },
     onError: (err) => {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -124,5 +159,6 @@ export function useInternalDonny() {
     retry,
     isThinking: sendMutation.isPending,
     error,
+    streaming,
   };
 }

@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { DonnyMessage } from '@/components/donny/DonnyMessage';
 import { DonnyDateDivider } from '@/components/donny/DonnyDateDivider';
 import { DonnyTypingIndicator } from '@/components/donny/DonnyTypingIndicator';
+import { DonnyAvatar } from '@/components/donny/DonnyAvatar';
 import { DonnyChatInput } from '@/components/donny/DonnyChatInput';
 import { startsNewDayGroup } from '@/components/donny/donnyTime';
 import { DonnyQuickChips } from '@/components/donny/DonnyQuickChips';
@@ -20,7 +21,7 @@ const STARTER_CHIPS = [
 ];
 
 const InternalDonny = () => {
-  const { messages, sendMessage, retry, isThinking, error } = useInternalDonny();
+  const { messages, sendMessage, retry, isThinking, error, streaming } = useInternalDonny();
   const scrollRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
@@ -28,7 +29,7 @@ const InternalDonny = () => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages.length, isThinking]);
+  }, [messages.length, isThinking, streaming?.text]);
 
   // A finished turn may have filed a correction proposal — refresh the inline
   // approval bar so it shows up without a manual reload.
@@ -92,7 +93,22 @@ const InternalDonny = () => {
               )}
             </div>
           ))}
-          {isThinking && <DonnyTypingIndicator />}
+          {isThinking && !streaming && <DonnyTypingIndicator />}
+          {streaming && (
+            <div className="flex gap-2 items-end">
+              <DonnyAvatar size="sm" state="thinking" aria-label="Donny" />
+              <div className="max-w-[80%]">
+                <div className="bg-dc-pink rounded-2xl rounded-bl-sm px-3.5 py-2.5">
+                  <p className="text-sm text-dc-text leading-relaxed whitespace-pre-wrap">
+                    {streaming.text || ' '}
+                  </p>
+                </div>
+                {streaming.status && (
+                  <p className="mt-1 pl-1 text-[10px] text-dc-teal/70">{streaming.status}</p>
+                )}
+              </div>
+            </div>
+          )}
           {error && !isThinking && (
             <div className="mx-2 rounded-lg border border-dc-pink-accent/40 bg-dc-pink-accent/10 px-3 py-2">
               <p className="text-xs text-dc-pink">{error}</p>
