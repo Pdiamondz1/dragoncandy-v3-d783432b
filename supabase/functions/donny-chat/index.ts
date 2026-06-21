@@ -2296,6 +2296,7 @@ serve(async (req) => {
     // Shared state between start() and cancel() — hoisted so cancel() can flip
     // the flag and stop the heartbeat when the client disconnects mid-stream.
     let streamClosed = false;
+    let cancelled = false;
     let heartbeatHandle: ReturnType<typeof setInterval> | undefined;
     const stream = new ReadableStream({
       async start(controller) {
@@ -2318,12 +2319,15 @@ serve(async (req) => {
         } finally {
           clearInterval(heartbeatHandle);
           streamClosed = true;
-          controller.close();
+          if (!cancelled) {
+            try { controller.close(); } catch { /* already closed/cancelled */ }
+          }
         }
       },
       cancel() {
         // Client disconnected — stop heartbeat and mark closed so start() teardown
         // (if still running) skips the enqueue after cancel.
+        cancelled = true;
         streamClosed = true;
         clearInterval(heartbeatHandle);
       },
