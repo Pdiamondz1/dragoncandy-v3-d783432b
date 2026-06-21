@@ -1,5 +1,20 @@
 # Wiki Log
 
+## [2026-06-21] ingest | Patch-Based Corrections (PRs #151/#152)
+Ingested the patch-based strategy-doc corrections session. Internal Donny now proposes a
+`strategy_doc` correction as small find/replace `edits` ({old_string,new_string,replace_all?})
+instead of regenerating the whole 5–50KB document; the `propose_correction` handler re-reads the
+current `internal_docs.content_md`, applies the edits server-side (new pure module
+`donny-chat/doc-edits.ts`), and POSTs the reconstructed FULL `proposed_value` — so ingest, the
+`aios_corrections` row, the drift-checked apply RPC, and `wiki-commit-pr` are unchanged, and "a
+human approves" holds. Shrinking Donny's OUTPUT cut the ~130s correction turn to seconds, ending
+the mobile streamed-`fetch` "Load failed"; this resolves the residual the [[Edge Function
+Streaming]] page predicted. Gotcha: backticks inside the backtick-delimited system-prompt template
+literal broke the Deno bundle (caught only at `supabase functions deploy`, not `npm run build`) —
+fixed in #152. Codex second review clean; 11 new unit tests; donny-chat deployed to prod.
+Pages created: [[Patch-Based Corrections]], [[Patch-Based Corrections Session]].
+Pages updated: [[Edge Function Streaming]], [[Wiki Index]].
+
 ## [2026-06-20] ingest | Donny Chat Input & Timestamps (PR #140)
 Ingested the Donny chat UX session. Shared `DonnyChatInput` single-line `<input>` → auto-growing
 `<textarea>` (Enter sends / Shift+Enter newline) so a long prompt stays readable instead of
