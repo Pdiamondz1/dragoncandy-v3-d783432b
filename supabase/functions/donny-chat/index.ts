@@ -9,6 +9,7 @@ import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
 import { parseSseLines, StreamAccumulator, toolStatusLabel } from "./stream-accumulator.ts";
 import { embedQuery, retrieveContext } from "../donny-orchestrator/rag.ts";
 import { reconstructHistory } from "./history.ts";
+import { applyEdits } from "./doc-edits.ts";
 import {
   GoogleWorkspaceError,
   assertDriveFileId,
@@ -496,7 +497,7 @@ const INTERNAL_TOOL_DEFINITIONS = [
   {
     name: "propose_correction",
     description:
-      "Propose a correction to internal data for FOUNDER APPROVAL — you do NOT apply it yourself. Use when the founder says the dashboard or a strategy doc is wrong and should be fixed. target_type 'dashboard_setting' (target_ref e.g. 'current_compute_tier_index', proposed_value the new value — e.g. 1 to set the Small compute tier as current) or 'strategy_doc' (target_ref the doc path, proposed_value the FULL corrected markdown). Always include a clear title and rationale_md citing exactly what is wrong. After calling, tell the user it is queued at /internal/corrections for their approval — NEVER claim it is already applied or that you edited anything.",
+      "Propose a correction to internal data for FOUNDER APPROVAL — you do NOT apply it yourself. Use when the founder says the dashboard or a strategy doc is wrong and should be fixed. target_type 'dashboard_setting' (target_ref e.g. 'current_compute_tier_index', proposed_value the new value — e.g. 1 to set the Small compute tier as current) or 'strategy_doc' (target_ref the doc path). For a strategy doc, PREFER `edits` — small find/replace blocks applied to the current document — over re-sending the whole file; use `proposed_value` (full markdown) only for a genuine top-to-bottom rewrite. Always include a clear title and rationale_md citing exactly what is wrong. After calling, tell the user it is queued at /internal/corrections for their approval — NEVER claim it is already applied or that you edited anything.",
     input_schema: {
       type: "object",
       properties: {
@@ -504,9 +505,22 @@ const INTERNAL_TOOL_DEFINITIONS = [
         target_ref: { type: "string", description: "Setting key (e.g. current_compute_tier_index) or strategy doc path" },
         title: { type: "string", description: "Short label for the correction" },
         rationale_md: { type: "string", description: "Why the current value is wrong, with evidence" },
-        proposed_value: { description: "New value: a number/string for a setting; the full corrected markdown for a doc" },
+        edits: {
+          type: "array",
+          description: "PREFERRED for strategy_doc: find/replace blocks applied to the current document, in order. Each old_string must be copied VERBATIM from the get_internal_doc content_md and be unique — include surrounding context if a phrase repeats, or set replace_all. Omit when sending a full proposed_value.",
+          items: {
+            type: "object",
+            properties: {
+              old_string: { type: "string", description: "Exact text to find (verbatim from content_md)" },
+              new_string: { type: "string", description: "Replacement text" },
+              replace_all: { type: "boolean", description: "Replace every occurrence (default false = must match exactly once)" },
+            },
+            required: ["old_string", "new_string"],
+          },
+        },
+        proposed_value: { description: "New value: a number/string for a dashboard_setting; for a strategy_doc, the FULL corrected markdown (only for a whole-document rewrite — otherwise use edits)" },
       },
-      required: ["target_type", "target_ref", "title", "rationale_md", "proposed_value"],
+      required: ["target_type", "target_ref", "title", "rationale_md"],
     },
   },
 ];
@@ -669,7 +683,7 @@ function buildInternalSystemPrompt(profile: Record<string, any>): SystemPromptPa
   1. CALL THE TOOL IN THIS TURN. Never reply "let me propose that", "I'll queue it", or "let me do that now" without the tool call — if you mention a fix, the propose_correction call must happen in the same turn. Do not narrate intent across turns.
   2. ONE CALL PER TARGET. If the founder points out more than one thing to fix (e.g. the dashboard tier AND a strategy doc), make a SEPARATE propose_correction call for EACH, all before you write your reply. Do not stop after the first.
   3. YOU NEVER APPLY OR APPROVE. The proposal only lands in a queue for the founder to approve. NEVER say a correction is "approved", "applied", "updated", "done", "live", or "changed". Say exactly: "I've queued this at /internal/corrections — approve it there to apply it." Only the founder, clicking Approve on that page, applies it.
-  4. ARGUMENTS: dashboard tier → target_type 'dashboard_setting', target_ref 'current_compute_tier_index', proposed_value the tier index (Micro=0, Small=1, Medium=2, Large=3, XL=4). Strategy doc → target_type 'strategy_doc', target_ref the doc path, proposed_value the FULL corrected markdown. For a strategy doc you MUST first call get_internal_doc (with no path to find the exact path, then with that path to get the complete content_md), edit that full text, and send the entire corrected document — never an excerpt or a diff. search_internal_knowledge only returns excerpts and cannot be used to build the proposed_value. Always include a clear rationale.
+  4. ARGUMENTS: dashboard tier → target_type 'dashboard_setting', target_ref 'current_compute_tier_index', proposed_value the tier index (Micro=0, Small=1, Medium=2, Large=3, XL=4). Strategy doc → target_type 'strategy_doc', target_ref the doc path. For a strategy doc you MUST first call get_internal_doc (with no path to find the exact path, then with that path to get the complete content_md). Then PREFER `edits`: small find/replace blocks where each old_string is copied VERBATIM from that content_md and is unique (include surrounding context if a phrase repeats, or set replace_all). Edits keep your output tiny and fast — use them for any localized change. Send a full `proposed_value` (the entire corrected document, never an excerpt) ONLY for a genuine top-to-bottom rewrite. search_internal_knowledge only returns excerpts and cannot be used to build edits or proposed_value. If the tool returns an edit error (old_string not found / not unique), fix that block from the content_md and call again in this same turn. Always include a clear rationale.
 - Combine tools when a question spans data and strategy (e.g. "are we on track?" = live stats + KPI targets from the strategy library).
 - Cite the numbers you used. Monetary values from tools are in cents unless labeled otherwise — convert to dollars when presenting.
 - Be direct and analytical, not promotional. Flag bad news plainly.
@@ -965,6 +979,31 @@ async function executeTool(
     // (the single service-role choke point) so the before-value is captured
     // server-side and the agent never writes the table directly.
     case "propose_correction": {
+      // Resolve the proposed value. For a strategy_doc, Donny PREFERS small find/replace
+      // `edits` — we re-read the current doc and apply them server-side to rebuild the full
+      // markdown, so Donny's output stays tiny (the ~130s turn driver) while ingest, the
+      // drift-checked apply RPC, and wiki-commit-pr keep receiving full content unchanged.
+      let proposedValue = args.proposed_value;
+      const edits = Array.isArray(args.edits) ? args.edits : null;
+      if (args.target_type === "strategy_doc" && edits && edits.length > 0) {
+        const { data: doc, error: docErr } = await internalCtx!.userClient
+          .from("internal_docs")
+          .select("content_md")
+          .eq("path", args.target_ref)
+          .maybeSingle();
+        if (docErr) return { result: { error: docErr.message } };
+        if (!doc) return { result: { error: `no internal doc at path '${args.target_ref}'` } };
+        const applied = applyEdits(doc.content_md as string, edits);
+        if ("error" in applied) return { result: { error: applied.error } };
+        proposedValue = applied.content;
+      }
+      if (args.target_type === "strategy_doc" && (proposedValue === undefined || proposedValue === null || proposedValue === "")) {
+        return { result: { error: "strategy_doc correction needs either `edits` or a full `proposed_value`." } };
+      }
+      if (args.target_type === "dashboard_setting" && (proposedValue === undefined || proposedValue === null)) {
+        return { result: { error: "dashboard_setting correction needs `proposed_value`." } };
+      }
+
       const resp = await fetch(`${SUPABASE_URL}/functions/v1/aios-report-ingest`, {
         method: "POST",
         headers: {
@@ -978,7 +1017,7 @@ async function executeTool(
             target_ref: args.target_ref,
             title: args.title,
             rationale_md: args.rationale_md,
-            proposed_value: args.proposed_value,
+            proposed_value: proposedValue,
             proposed_by: "donny",
             acting_user_id: userId,
           },
