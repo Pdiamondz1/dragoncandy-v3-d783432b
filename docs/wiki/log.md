@@ -554,3 +554,10 @@ callModel/runTurn that keeps the consumer JSON path unchanged. Client-cancel han
 (ReadableStream.cancel + guarded close — Codex P2). Also captured the earlier same-session
 tool-pairing replay fix (PR #146: history.ts enforceToolPairing). Codex-clean.
 Pages created: [[Edge Function Streaming]]. Pages updated: [[Donny Chat UX]], index.md.
+
+## [2026-06-21] lint | Wiki index orphans (verify-knowledge catch)
+verify-knowledge (the validator) flagged 3 analysis pages on main present on disk but not
+linked in index.md (index-incompleteness): 18-month-tech-engineering-donny-ai-1m-users,
+part-1-engineering-aios-operations, tech-infrastructure-cost-breakdown-updated — all from
+wiki-save-answer merges (that flow still doesn't update index.md). Added an index entry for
+each. No content changed. Pages updated: index.md.
