@@ -20,6 +20,9 @@ dragoncandy-pitch.pdf
 .env.local
 .env.*.local
 .env.audit
+# Knowledge-sync secret (npm run sync:internal / sync:wiki) — never commit the key
+.env.sync.local
+supabase/scripts/.env.sync.local
 
 # Editor directories and files
 .vscode/*
