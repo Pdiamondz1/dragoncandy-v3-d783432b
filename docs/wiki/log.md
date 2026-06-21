@@ -543,3 +543,14 @@ deduped finding on breach/watch only through aios-report-ingest (breach→critic
 all-green posts nothing; no auto-resolve). No schema (beyond seed INSERT), edge-fn, secret, or
 auth change; Donny never writes directly. Codex-clean.
 Pages created: [[AIOS Kill-switch Playbook + Loop-callable Playbooks Session]]. Pages updated: [[Founder Playbooks]], [[Self-Improving App]], [[North Star & KPI Scorecard]], index.md.
+
+## [2026-06-20] ingest | donny-chat keepalive streaming (PR #148)
+Ingested the donny-chat streaming session. Internal Donny 504'd on long Strategy-doc
+corrections at Supabase's **150s request idle timeout** (NOT the 400s Pro wall-clock) because
+the function was fully non-streaming. Fix: the internal surface now streams an NDJSON response
+(status/text/heartbeat/done/error) with an early first byte, via a pure unit-tested
+stream-accumulator (SSE parse + tool_use reconstruction + usage merge) and a unified
+callModel/runTurn that keeps the consumer JSON path unchanged. Client-cancel handled
+(ReadableStream.cancel + guarded close — Codex P2). Also captured the earlier same-session
+tool-pairing replay fix (PR #146: history.ts enforceToolPairing). Codex-clean.
+Pages created: [[Edge Function Streaming]]. Pages updated: [[Donny Chat UX]], index.md.

@@ -59,6 +59,18 @@ tool row) suppresses the divider. The helper `startsNewDayGroup(messages, index)
 back past tool rows before comparing dates. (This was the [[Codex Second Review]] P2 catch
 on PR #140.)
 
+## Internal streaming (PR #148)
+
+The **internal** AIOS surface streams its replies (the consumer surface still gets one
+JSON response). `useInternalDonny` reads an NDJSON stream from `donny-chat` and drives a
+**transient in-flight assistant bubble**: `status` events set a muted status line
+("Reading the strategy library…") and `text` events append live. On `done` it clears the
+transient bubble *after* the `donny_messages` query refetch resolves, so the persisted
+message replaces it without a flicker. The transient bubble uses brand tokens (no gray)
+and the same `DonnyAvatar` (with an `aria-label`). If the response isn't NDJSON the hook
+falls back to `response.json()` (version-skew safety). The why and the server side are in
+[[Edge Function Streaming]].
+
 ## Two different inputs in the consumer panel
 
 The consumer `DonnyDesktopPanel` **home/landing tray** has its own composer
@@ -72,4 +84,5 @@ components.
 - [[Donny AI]]
 - [[Design System]]
 - [[Donny Chat Input & Timestamps Session]]
+- [[Edge Function Streaming]]
 - [[Codex Second Review]]
