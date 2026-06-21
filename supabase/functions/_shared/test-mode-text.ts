@@ -19,3 +19,16 @@ export function testModeCustomText(
     ? { submit: { message: TEST_MODE_MESSAGE } }
     : undefined;
 }
+
+/**
+ * Force card-only payment methods in test mode to kill Stripe Link (which
+ * intercepts hosted checkout with the tester's real email + real saved cards
+ * that can't be charged in test mode). In live mode returns {} so automatic
+ * payment methods / Link still apply for conversion. Spread into
+ * stripe.checkout.sessions.create(...).
+ */
+export function testModePaymentMethodTypes(
+  stripeKey: string,
+): { payment_method_types: ['card'] } | Record<string, never> {
+  return isTestKey(stripeKey) ? { payment_method_types: ['card'] } : {};
+}
