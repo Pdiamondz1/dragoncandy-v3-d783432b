@@ -201,6 +201,15 @@ const handler = async (req: Request): Promise<Response> => {
     const invitationUrl =
       data.campaignUrl ||
       `${baseUrl}/dashboard/creator/campaigns/${data.campaignId ?? ''}?invited=true`;
+    // Guard id-interpolated links so a missing id degrades to the relevant list /
+    // dashboard page instead of routing to a literal "/undefined" (NotFound).
+    // (Concat form on the true-branch keeps these defs distinct from the raw
+    // `${baseUrl}/...${data.x}` strings the templates below use.)
+    const businessCampaignUrl = data.campaignId
+      ? `${baseUrl}/dashboard/business/campaigns/` + data.campaignId
+      : `${baseUrl}/dashboard/business/campaigns`;
+    const reviewLink = data.reviewUrl ? `${baseUrl}` + data.reviewUrl : `${baseUrl}/dashboard`;
+    const projectLink = data.projectId ? `${baseUrl}/projects/` + data.projectId : `${baseUrl}/dashboard`;
     const templates: Record<NotificationType, { subject: string; html: string }> = {
       new_application: {
         subject: `New Application for "${esc.campaignTitle}"`,
@@ -209,7 +218,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Great news! <strong>${esc.applicantName}</strong> has applied to your campaign <strong>"${esc.campaignTitle}"</strong>.</p>
           <p>Review their application and portfolio to see if they're a good fit for your project.</p>
           <p style="margin-top: 30px;">
-            <a href="${baseUrl}/dashboard/business/campaigns/${data.campaignId}" 
+            <a href="${businessCampaignUrl}" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               Review Application
             </a>
@@ -268,7 +277,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Your collaboration on <strong>"${esc.campaignTitle}"</strong> is now complete! 🎉</p>
           <p>We'd love to hear about your experience. Your feedback helps build trust in the DragonCandy community.</p>
           <p style="margin-top: 30px;">
-            <a href="${baseUrl}${data.reviewUrl}" 
+            <a href="${reviewLink}"
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               Leave a Review
             </a>
@@ -282,7 +291,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p>There's an update to the campaign <strong>"${esc.campaignTitle}"</strong>:</p>
           ${data.updateDetails ? `<div style="background: #F9FAFB; padding: 16px; border-radius: 8px; margin: 20px 0;">${esc.updateDetails}</div>` : ''}
           <p style="margin-top: 30px;">
-            <a href="${baseUrl}/dashboard/business/campaigns/${data.campaignId}" 
+            <a href="${businessCampaignUrl}" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               View Campaign
             </a>
@@ -337,7 +346,7 @@ const handler = async (req: Request): Promise<Response> => {
               </div>
 
               <p style="text-align: center; margin-top: 40px;">
-                <a href="${baseUrl}/dashboard/business/campaigns/${data.campaignId}" 
+                <a href="${businessCampaignUrl}" 
                    style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(139, 92, 246, 0.3);">
                   View Campaign & Applications
                 </a>
@@ -367,7 +376,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p><strong>${esc.brandName}</strong> has submitted a sponsorship proposal of <strong>$${data.sponsorshipAmount}</strong> for your campaign <strong>"${esc.campaignTitle}"</strong>!</p>
           ${data.message ? `<p>Their message:</p><blockquote style="border-left: 4px solid #8B5CF6; padding-left: 16px; margin: 20px 0; color: #374151;">${esc.message}</blockquote>` : ''}
           <p style="margin-top: 30px;">
-            <a href="${baseUrl}/dashboard/business/campaigns/${data.campaignId}"
+            <a href="${businessCampaignUrl}"
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               Review Proposal
             </a>
@@ -398,7 +407,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p>A creator application for campaign <strong>"${esc.campaignTitle}"</strong> has been approved by the ${esc.party}.</p>
           <p><strong>Your approval is now required</strong> to finalize the collaboration.</p>
           <p style="margin-top: 30px;">
-            <a href="${baseUrl}/dashboard/business/campaigns/${data.campaignId}" 
+            <a href="${businessCampaignUrl}" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               Review Application
             </a>
@@ -487,7 +496,7 @@ const handler = async (req: Request): Promise<Response> => {
               ${data.description ? `<div style="background: #F9FAFB; padding: 16px; border-radius: 8px; margin: 20px 0;"><p style="margin: 0; color: #6B7280; font-size: 14px; line-height: 1.6;">${esc.description}</p></div>` : ''}
               ${data.budget ? `<div style="background: #ECFDF5; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;"><p style="margin: 0; color: #065F46; font-weight: 600;">💰 Budget: $${data.budget}</p></div>` : ''}
               ${data.platforms && data.platforms.length > 0 ? `<div style="margin: 20px 0;"><p style="font-weight: 600; color: #374151; margin-bottom: 8px;">📱 Platforms:</p><p style="color: #6B7280; font-size: 14px;">${data.platforms.join(', ')}</p></div>` : ''}
-              <p style="text-align: center; margin-top: 40px;"><a href="${baseUrl}/dashboard/creator/marketplace" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">View Campaign & Apply</a></p>
+              <p style="text-align: center; margin-top: 40px;"><a href="${baseUrl}/dashboard/creator/campaigns" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">View Campaign & Apply</a></p>
             </div>
           </div>
         `,
@@ -503,7 +512,7 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="font-size: 16px; color: #374151;">Hi ${esc.rn},</p>
               <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${esc.uploaderName}</strong> has uploaded <strong>${data.fileCount} new ${data.fileCount === 1 ? 'file' : 'files'}</strong> to your campaign <strong>"${esc.campaignTitle}"</strong>.</p>
               <div style="background: #F0F9FF; border-left: 4px solid #0EA5E9; padding: 16px; margin: 24px 0; border-radius: 4px;"><p style="margin: 0; color: #075985; font-weight: 600;">✅ Ready for Review</p><p style="margin: 8px 0 0 0; color: #075985; font-size: 14px;">The creator has submitted their work. Please review and provide feedback.</p></div>
-              <p style="text-align: center; margin-top: 40px;"><a href="${data.collaborationId ? `${baseUrl}/projects/${data.collaborationId}` : `${baseUrl}/business/projects`}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">Review Files</a></p>
+              <p style="text-align: center; margin-top: 40px;"><a href="${data.collaborationId ? `${baseUrl}/projects/${data.collaborationId}` : `${baseUrl}/dashboard/business/campaigns`}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">Review Files</a></p>
             </div>
           </div>
         `,
@@ -519,7 +528,7 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="font-size: 16px; color: #374151;">Hi ${esc.rn},</p>
               <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${esc.uploaderName}</strong> has uploaded <strong>${data.fileCount} new ${data.fileCount === 1 ? 'file' : 'files'}</strong> for campaign <strong>"${esc.campaignTitle}"</strong>.</p>
               <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px; margin: 24px 0; border-radius: 4px;"><p style="margin: 0; color: #92400E; font-weight: 600;">📋 Reference Materials</p><p style="margin: 8px 0 0 0; color: #92400E; font-size: 14px;">New reference files are available to help with your content creation.</p></div>
-              <p style="text-align: center; margin-top: 40px;"><a href="${data.collaborationId ? `${baseUrl}/projects/${data.collaborationId}` : `${baseUrl}/creator/projects`}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">View Files</a></p>
+              <p style="text-align: center; margin-top: 40px;"><a href="${data.collaborationId ? `${baseUrl}/projects/${data.collaborationId}` : `${baseUrl}/dashboard/creator/projects`}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">View Files</a></p>
             </div>
           </div>
         `,
@@ -651,7 +660,7 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="font-size: 16px; color: #374151; line-height: 1.6;">You'll receive another notification when the creator submits their content for your review.</p>
 
               <p style="text-align: center; margin-top: 40px;">
-                <a href="${baseUrl}/projects/${data.projectId}" 
+                <a href="${projectLink}"
                    style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">
                   View Project
                 </a>
@@ -684,7 +693,7 @@ const handler = async (req: Request): Promise<Response> => {
           ${data.applicationStatus === 'accepted'
             ? `<p>Great news! The terms have been agreed upon. Please proceed with escrow payment to start the project.</p>
                <p style="margin-top: 30px;">
-                 <a href="${baseUrl}/dashboard/business/campaigns/${data.campaignId}" 
+                 <a href="${businessCampaignUrl}" 
                     style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
                    View Campaign & Pay Escrow
                  </a>
@@ -752,7 +761,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p><strong>${esc.senderName}</strong> has declined your invitation to <strong>"${esc.campaignTitle}"</strong>.</p>
           <p>You can invite other creators or wait for organic applications.</p>
           <p style="margin-top: 30px;">
-            <a href="${baseUrl}/dashboard/business/campaigns/${data.campaignId}"
+            <a href="${businessCampaignUrl}"
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               View Campaign
             </a>
