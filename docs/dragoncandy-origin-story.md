@@ -147,3 +147,57 @@ For homepage heroes, pitch cold-opens, footers, and swag. Lead pick first.
 
 **Three-word brand line (swag, footers, logo lockup):**
 > Just ask Donny.
+
+---
+
+## Three sides, one story
+
+DragonCandy began with a restaurant's problem, but the same wall shows up on
+every side of the marketplace — creators chasing paid work, brands chasing real
+audiences. These are the same origin story told through each audience's lens.
+Use the restaurant-led versions above as the master narrative; reach for these
+when the room is creators or brands. The throughline never changes: the work
+shouldn't be this hard, so Donny does it.
+
+### Creator-facing (~180 words)
+
+**DragonCandy: built for creators, too**
+
+When Joe Castello set out to fix how his Hoboken restaurants did social media,
+he kept running into the other half of the problem: great local creators were
+just as stuck. They could make scroll-stopping content all day — but finding
+paying clients, chasing briefs, negotiating rates, and getting paid on time was
+its own second job. The talent was never the bottleneck. The hustle around it
+was.
+
+So the platform Joe, Juwan, and Dame built solves both sides at once. On
+DragonCandy, creators don't pitch into the void — Donny, our AI super agent,
+matches them to the restaurants and brands that actually fit their style and
+audience, handles the briefs and scheduling, and makes sure the payment just
+shows up. Post organic content about a spot you love, and a restaurant can boost
+it in a tap — you get paid, they get reach.
+
+Less hustle, more creating. That's the bet: in the next era of content, the
+creators who win won't grind the hardest. They'll just let Donny line up the
+work — and get paid for what they do best.
+
+### Brand-facing (~180 words)
+
+**DragonCandy: how brands reach real audiences**
+
+The problem Joe Castello hit with his restaurants is the same one brands hit at
+scale: paying more than ever for social, and trusting it less. Polished ads get
+scrolled past. What actually moves people is authentic content from creators
+their audience already follows — but finding those creators, briefing them, and
+running it across markets is slow, manual, and impossible to measure cleanly.
+
+That's the gap DragonCandy was built to close. Donny, our AI super agent, reads
+what a campaign needs and matches it to the right local creators — by style,
+audience, and real performance, not guesswork. He generates the brief, schedules
+the posts across Instagram, TikTok, and YouTube, and turns the results into
+signal a brand can act on. Every campaign makes the next match smarter.
+
+For brands, that means authentic reach with the speed and accountability of
+performance marketing — one metro or twenty. In the next era of marketing, the
+brands that win won't buy the most attention. They'll ask Donny where it's real
+— and put their spend exactly there.
