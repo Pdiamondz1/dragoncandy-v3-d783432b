@@ -54,10 +54,16 @@ emerged — what could this become with AI? To find out, they brought in Damon
 The three traded ideas for weeks until the real shape appeared: not an agency,
 but a SaaS platform run by AI.
 
-A year later, that platform is alive. It connects restaurants, content
-creators, and brands — and it's powered by Donny, an AI super agent that
-generates campaigns, matches creators, schedules posts, and handles the
-marketing work owners used to dread.
+A year later, that platform is alive — and it turned out Joe's wall was
+everyone's. The same grind hammered both sides of his marketing: creators with
+real talent stuck doing a second job just to find paying work, and brands
+paying more than ever for social while trusting it less. So DragonCandy became
+one marketplace for all three, powered by Donny — an AI super agent that turns
+an idea into a campaign for restaurants, lines up fitting work and reliable pay
+for creators, and matches brands to the right creators by real audience and
+performance. He generates campaigns, matches creators, and schedules posts
+across every channel — handling the marketing work all three sides used to
+dread.
 
 Donny isn't a feature. He's the intelligence layer, and he's evolving fast. As
 AI advances, Donny is learning to live inside the daily rhythm of every
@@ -98,13 +104,19 @@ software that scaled with intelligence: a SaaS platform run, end to end, by AI.
 
 They called that intelligence Donny.
 
-A year later, DragonCandy is real. It's a marketplace connecting three sides of
-the same problem — restaurants and businesses, content creators, and brands —
-and Donny sits at the center of all of it. Donny generates campaigns from a
-single idea, matches restaurants with the right creators, schedules posts
-across Instagram, TikTok, and YouTube, and turns marketing work that once took
-days into something that takes minutes. He's not a chatbot bolted onto a
-dashboard; he's the engine the whole platform runs on.
+A year later, DragonCandy is real — and it turned out Joe's wall was everyone's.
+The same grind that drained restaurants was hammering both sides of their
+marketing: creators with the talent to make great content but stuck doing a
+second job just to find paying work and get paid on time, and brands paying more
+than ever for social while trusting it less. So DragonCandy became one
+marketplace for all three, with Donny at the center. For restaurants, he turns a
+single idea into a campaign and the creators to make it. For creators, he lines
+up work that fits their style and makes the payment just show up. For brands, he
+matches spend to the right local creators by real audience and performance, then
+runs it across every channel — and every campaign makes the next match smarter.
+Donny generates campaigns, matches creators, and schedules posts across
+Instagram, TikTok, and YouTube in minutes, not days. He's not a chatbot bolted
+onto a dashboard; he's the engine the whole platform runs on.
 
 And that's the part that matters most. Social-media marketing is being
 rewritten in real time by AI, and most tools are racing to add features.
