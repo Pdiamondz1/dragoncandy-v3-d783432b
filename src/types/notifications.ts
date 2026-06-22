@@ -100,7 +100,10 @@ export const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Partial<Record<NotificationType, s
   application_received: 'new_application',
   application_accepted: 'application_status',
   application_rejected: 'application_status',
-  campaign_invitation: 'campaign_invitation',
+  // campaign_invitation intentionally omitted: send-campaign-invitation owns the
+  // invitation email (business name + working link + Donny). create-notification
+  // only fires the in-app bell for it — no duplicate email. Keep in sync with
+  // supabase/functions/create-notification/index.ts.
   invitation_declined: 'campaign_invitation_declined',
   campaign_published: 'campaign_published',
   revision_requested: 'revision_requested',

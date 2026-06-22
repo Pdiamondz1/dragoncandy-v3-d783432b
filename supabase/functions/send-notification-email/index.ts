@@ -195,6 +195,12 @@ const handler = async (req: Request): Promise<Response> => {
       updateDetails: htmlEscape(data.updateDetails || ''),
       deliveryTime: htmlEscape(data.deliveryTime || ''),
     };
+    // Build the invitation deep-link here (not inline in the template) so we avoid
+    // nested backticks inside the backtick-delimited template.html string, and so no
+    // caller can ever produce href="undefined" — fall back to baseUrl + campaignId.
+    const invitationUrl =
+      data.campaignUrl ||
+      `${baseUrl}/dashboard/creator/campaigns/${data.campaignId ?? ''}?invited=true`;
     const templates: Record<NotificationType, { subject: string; html: string }> = {
       new_application: {
         subject: `New Application for "${esc.campaignTitle}"`,
@@ -733,7 +739,7 @@ const handler = async (req: Request): Promise<Response> => {
               ${data.invitationMessage ? '<p style="background: #f0fdfa; border-left: 3px solid #4DD9C0; padding: 12px; margin: 16px 0; font-style: italic;">' + esc.invitationMessage + '</p>' : ''}
               <p>Check out the campaign details and apply if you're interested:</p>
               <div style="text-align: center; margin: 24px 0;">
-                <a href="${data.campaignUrl}" style="background: #4DD9C0; color: white; padding: 12px 32px; border-radius: 24px; text-decoration: none; font-weight: bold;">View Campaign</a>
+                <a href="${invitationUrl}" style="background: #4DD9C0; color: white; padding: 12px 32px; border-radius: 24px; text-decoration: none; font-weight: bold;">View Campaign</a>
               </div>
             </div>
           </div>
