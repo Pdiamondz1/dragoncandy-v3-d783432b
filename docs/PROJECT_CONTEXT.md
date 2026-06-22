@@ -13,7 +13,7 @@ Content Creator, and Brand/Sponsor — through a hybrid marketplace model.
 
 **Co-founders**
 - Damon "Dame" Williams — co-founder, CPO
-- Joe Castelo — CRO, Sales & Partnerships
+- Joe Castelo — CEO, Sales & Partnerships
 - Juwan Robinson — Shareholder & Advisor
 
 **Core product logic**
