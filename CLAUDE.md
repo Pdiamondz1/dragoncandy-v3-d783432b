@@ -203,6 +203,17 @@ If the fast-forward aborts on "untracked working tree files would be overwritten
 untracked files aside first. Core files (`CLAUDE.md`, `docs/PROJECT_CONTEXT.md`, `docs/wiki/`) appearing
 stale in the local folder almost always means this refresh step was skipped — not that the change was lost.
 
+**Donny's RAG auto-syncs on this refresh.** A committed `post-merge` git hook (source:
+`scripts/hooks/post-merge`, installed into the common `.git/hooks/` on `npm install` via the
+`prepare` → `scripts/install-hooks.mjs` step) watches the refresh above: when the **main** checkout
+fast-forwards and `docs/` changed, it runs `npm run sync:internal` + `npm run sync:wiki` in the
+background (log: `.git/knowledge-sync.log`), so `/internal/strategy` + Donny's `donny_knowledge` RAG
+stay current with no manual sync. It self-guards to the main checkout (skips worktrees) and never
+blocks the merge. The hook reads the key via `supabase/scripts/with-env.mjs` (a `SUPABASE_SECRET_KEY`
+env var wins, else the **gitignored** `supabase/scripts/.env.sync.local`) — so the key file (or a
+`setx`'d var) must exist locally for the auto-sync to fire. To sync by hand from the main checkout:
+`npm run sync:internal` (strategy/internal) or `npm run sync:wiki` (consumer RAG).
+
 **Recurring worktree routines are skills — use them, don't re-derive:** `refresh-main` (the
 fast-forward above), `worktree-cleanup` (remove merged worktrees + branches, safety-gated),
 `codex-review` (the mandatory Codex second pass before a PR), `verify-prod` (post-deploy
