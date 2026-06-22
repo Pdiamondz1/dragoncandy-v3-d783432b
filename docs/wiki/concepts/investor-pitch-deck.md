@@ -11,7 +11,7 @@ tags: [fundraising, pitch-deck, cost-model, raise, donny, brands]
 DragonCandy's investor-facing fundraising assets: a brand-faithful pitch deck and the sourced cost
 model that backs its numbers. Target investors: VCs in tech / SaaS / AI / Marketing / Hospitality.
 First built 2026-06-17 (branch `worktree-DC-pitch-deck`, PR #111). Modeled on the narrative arc of
-the "The Station" template deck (CRO Joe Castelo's prior raise), in the AIOS Workspace Drive.
+the "The Station" template deck (CEO Joe Castelo's prior raise), in the AIOS Workspace Drive.
 
 ## The deck (`/pitch`)
 

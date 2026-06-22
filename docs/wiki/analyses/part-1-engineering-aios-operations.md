@@ -48,7 +48,7 @@ Per the strategy docs, marketing is **founder-led first, then systematically han
 
 **The Marketing & GTM Team:**
 
-- **Joe (Co-Founder/CRO)** — Day 0, always — leads all GTM, restaurant/brand relationships, partnership development, metro launches. $90–110K base
+- **Joe (Co-Founder/CEO)** — Day 0, always — leads all GTM, restaurant/brand relationships, partnership development, metro launches. $90–110K base
 - **Sales AE (under Joe)** — Month 4–6 — **gated: hired only after paid acquisition shows signal.** $80K base / $150–180K OTE. Carries restaurant + brand pipeline
 - **Marketing Agent (AI-assisted, not a person)** — AI drafts social content, SEO city landing pages, email campaigns. Human (Joe or a contractor) reviews and publishes. This replaces a 2–3 person content team
 - **Part-time Social Media Contractor** — optional at Month 3–6 once content volume demands it. $30–50K/yr. Manages posting, community engagement, DMs across Instagram/TikTok/X
