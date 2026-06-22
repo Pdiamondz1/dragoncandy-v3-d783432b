@@ -1,0 +1,44 @@
+#!/bin/sh
+# post-merge — auto-sync Donny's knowledge after the main checkout updates.
+#
+# This is the COMMITTED source of the hook. It is installed into the repo's git hooks
+# dir by scripts/install-hooks.mjs (run automatically on `npm install` via the
+# package.json "prepare" script). Edit THIS file, not the copy in .git/hooks.
+#
+# Fires on `git merge` / `git pull` (including fast-forward, e.g. the refresh-main step).
+# Removes the need to run `npm run sync:internal` / `npm run sync:wiki` by hand after a
+# knowledge change merges.
+#
+# Guards (all must pass, else it exits 0 and does nothing):
+#   1. MAIN checkout only — skip linked worktrees (their files may be pre-merge).
+#   2. docs/ actually changed in this merge.
+# The sync runs in the BACKGROUND and logs to .git/knowledge-sync.log, so the
+# merge/pull returns immediately and a sync failure never affects git.
+#
+# Key resolution is handled by supabase/scripts/with-env.mjs (env var wins, else the
+# gitignored supabase/scripts/.env.sync.local). URL defaults to prod.
+
+# 1. Only the main checkout: in a worktree, git-dir != git-common-dir.
+[ "$(git rev-parse --git-dir 2>/dev/null)" = "$(git rev-parse --git-common-dir 2>/dev/null)" ] || exit 0
+
+# Need ORIG_HEAD to know what the merge brought in; if absent, do nothing.
+git rev-parse --quiet --verify ORIG_HEAD >/dev/null 2>&1 || exit 0
+
+# 2. Only proceed if docs/ changed in this merge.
+git diff --name-only ORIG_HEAD HEAD -- docs/ | grep -q . || exit 0
+
+ROOT="$(git rev-parse --show-toplevel)"
+LOG="$ROOT/.git/knowledge-sync.log"
+
+echo "[post-merge] docs/ changed — syncing Donny knowledge in background (log: .git/knowledge-sync.log)"
+
+# Background + fully redirected so git does not wait on it. Idempotent; safe to re-run.
+(
+  cd "$ROOT" || exit 0
+  echo "===== $(date) post-merge knowledge sync =====" >> "$LOG"
+  npm run sync:internal >> "$LOG" 2>&1
+  npm run sync:wiki     >> "$LOG" 2>&1
+  echo "[post-merge] done." >> "$LOG"
+) >/dev/null 2>&1 &
+
+exit 0
