@@ -73,7 +73,7 @@ serve(async (req) => {
                 body: {
                   to: bp.email,
                   recipientName: bp.full_name,
-                  type: "new_sponsorship_opportunity",
+                  type: "new_campaign_for_brands",
                   data: { campaignTitle, campaignId },
                 },
               }),
@@ -103,7 +103,7 @@ serve(async (req) => {
               body: {
                 to: cp.email,
                 recipientName: cp.full_name,
-                type: "new_campaign_available",
+                type: "new_campaign_for_creators",
                 data: { campaignTitle, campaignId },
               },
             }),

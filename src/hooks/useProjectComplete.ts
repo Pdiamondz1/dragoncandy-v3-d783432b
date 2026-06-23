@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { useEmailNotifications } from './useEmailNotifications';
 import type { Database } from '@/integrations/supabase/types';
 
 type CollaborationRow = Database['public']['Tables']['campaign_collaborations']['Row'];
@@ -9,7 +8,6 @@ type CompletionResult = CollaborationRow & { payoutSuccess?: boolean; payoutAmou
 
 export const useProjectComplete = () => {
   const queryClient = useQueryClient();
-  const { sendNotification } = useEmailNotifications();
 
   const requestCompletion = useMutation({
     mutationFn: async ({ 
@@ -132,36 +130,48 @@ export const useProjectComplete = () => {
         const campaignData = collaboration.campaigns as { id: string; title: string; user_id: string };
 
         // Email to business owner (payer)
-        await sendNotification(
-          'project_completion',
-          '', // Will fetch from profile
-          '', // Will fetch from profile
-          {
-            recipientUserId: campaignData.user_id,
-            campaignTitle: campaignData.title,
-            projectId: collaborationId,
-            actionUrl: `${window.location.origin}/dashboard/business/campaigns/${campaignData.id}`,
-            amount: payoutSuccess ? payoutAmount : undefined,
-            paymentMethod: payoutSuccess ? payoutMethod : undefined,
-            isRecipient: false, // Business paid, not received
-          }
-        );
+        await supabase.functions.invoke('create-notification', {
+          body: {
+            recipientId: campaignData.user_id,
+            type: 'project_completed',
+            category: 'transactions',
+            title: 'Project completed',
+            body: `"${campaignData.title}" is complete`,
+            actionUrl: `/dashboard/business/campaigns/${campaignData.id}`,
+            icon: 'check',
+            data: { campaign_id: campaignData.id, collaboration_id: collaborationId },
+            emailData: {
+              campaignTitle: campaignData.title,
+              projectId: collaborationId,
+              actionUrl: `${window.location.origin}/dashboard/business/campaigns/${campaignData.id}`,
+              amount: payoutSuccess ? payoutAmount : undefined,
+              paymentMethod: payoutSuccess ? payoutMethod : undefined,
+              isRecipient: false,
+            },
+          },
+        }).catch((err: unknown) => console.error('Failed to send completion notification:', err));
 
         // Email to creator (payment recipient)
-        await sendNotification(
-          'project_completion',
-          '', // Will fetch from profile
-          creatorProfile?.creator_name ?? '',
-          {
-            recipientUserId: collaboration.creator_id,
-            campaignTitle: campaignData.title,
-            projectId: collaborationId,
-            actionUrl: `${window.location.origin}/dashboard/creator/projects?highlight=${collaborationId}`,
-            amount: payoutSuccess ? payoutAmount : undefined,
-            paymentMethod: payoutSuccess ? payoutMethod : undefined,
-            isRecipient: true, // Creator is the payment recipient
-          }
-        );
+        await supabase.functions.invoke('create-notification', {
+          body: {
+            recipientId: collaboration.creator_id,
+            type: 'project_completed',
+            category: 'transactions',
+            title: 'Project completed',
+            body: `"${campaignData.title}" is complete`,
+            actionUrl: `/dashboard/creator/projects?highlight=${collaborationId}`,
+            icon: 'check',
+            data: { campaign_id: campaignData.id, collaboration_id: collaborationId },
+            emailData: {
+              campaignTitle: campaignData.title,
+              projectId: collaborationId,
+              actionUrl: `${window.location.origin}/dashboard/creator/projects?highlight=${collaborationId}`,
+              amount: payoutSuccess ? payoutAmount : undefined,
+              paymentMethod: payoutSuccess ? payoutMethod : undefined,
+              isRecipient: true,
+            },
+          },
+        }).catch((err: unknown) => console.error('Failed to send completion notification:', err));
 
         // Return completed data with payout info for toast
         return { ...completedData, payoutSuccess, payoutAmount };
@@ -171,30 +181,44 @@ export const useProjectComplete = () => {
       const collabCampaign = collaboration.campaigns as { id: string; title: string; user_id: string };
       if (userRole === 'content_creator') {
         // Notify business owner
-        await sendNotification(
-          'completion_request',
-          '', // Will fetch from profile
-          '', // Will fetch from profile
-          {
-            recipientUserId: collabCampaign.user_id,
-            campaignTitle: collabCampaign.title,
-            requesterName: creatorProfile?.creator_name ?? '',
-            actionUrl: `${window.location.origin}/dashboard/business/campaigns/${collabCampaign.id}`
-          }
-        );
+        await supabase.functions.invoke('create-notification', {
+          body: {
+            recipientId: collabCampaign.user_id,
+            type: 'completion_request',
+            category: 'transactions',
+            title: 'Completion approval needed',
+            body: `Please approve completion of "${collabCampaign.title}"`,
+            actionUrl: `/dashboard/business/campaigns/${collabCampaign.id}`,
+            icon: 'check',
+            emailType: 'completion_request',
+            data: { campaign_id: collabCampaign.id, collaboration_id: collaborationId },
+            emailData: {
+              campaignTitle: collabCampaign.title,
+              requesterName: creatorProfile?.creator_name ?? '',
+              actionUrl: `${window.location.origin}/dashboard/business/campaigns/${collabCampaign.id}`,
+            },
+          },
+        }).catch((err: unknown) => console.error('Failed to send completion-request notification:', err));
       } else {
         // Notify creator
-        await sendNotification(
-          'completion_request',
-          '', // Will fetch from profile
-          creatorProfile?.creator_name ?? '',
-          {
-            recipientUserId: collaboration.creator_id,
-            campaignTitle: collabCampaign.title,
-            requesterName: 'Business Owner',
-            actionUrl: `${window.location.origin}/dashboard/creator/projects?highlight=${collaborationId}`
-          }
-        );
+        await supabase.functions.invoke('create-notification', {
+          body: {
+            recipientId: collaboration.creator_id,
+            type: 'completion_request',
+            category: 'transactions',
+            title: 'Completion approval needed',
+            body: `Please approve completion of "${collabCampaign.title}"`,
+            actionUrl: `/dashboard/creator/projects?highlight=${collaborationId}`,
+            icon: 'check',
+            emailType: 'completion_request',
+            data: { campaign_id: collabCampaign.id, collaboration_id: collaborationId },
+            emailData: {
+              campaignTitle: collabCampaign.title,
+              requesterName: 'Business Owner',
+              actionUrl: `${window.location.origin}/dashboard/creator/projects?highlight=${collaborationId}`,
+            },
+          },
+        }).catch((err: unknown) => console.error('Failed to send completion-request notification:', err));
       }
 
       return data;

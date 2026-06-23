@@ -2,14 +2,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 
 export type ApprovalAction = 'approved' | 'rejected';
 
 export const useJointApproval = () => {
   useAuth();
   const queryClient = useQueryClient();
-  const { sendNotification } = useEmailNotifications();
 
   const updateBrandApproval = useMutation({
     mutationFn: async ({
@@ -83,39 +81,45 @@ export const useJointApproval = () => {
 
         const finalStatus = application.final_approval_status;
 
-        // If final decision is made, notify creator
-        if (finalStatus === 'approved' || finalStatus === 'rejected') {
-          const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
-          const creatorProfile = await fetchRecipientEmail(application.creator_id);
-
-          if (creatorProfile?.email && application.campaign?.title) {
-            await sendNotification(
-              'application_status',
-              creatorProfile.email,
-              creatorProfile.full_name,
-              {
+        // Notify via create-notification (adds the bell + sends the email server-side;
+        // a frontend caller cannot email another user directly — the auth gate 403s it).
+        if ((finalStatus === 'approved' || finalStatus === 'rejected') && application.campaign?.title) {
+          await supabase.functions.invoke('create-notification', {
+            body: {
+              recipientId: application.creator_id,
+              type: finalStatus === 'approved' ? 'application_accepted' : 'application_rejected',
+              category: 'campaigns',
+              title: `Application ${finalStatus}`,
+              body: `Your application for "${application.campaign.title}" was ${finalStatus}`,
+              actionUrl: '/dashboard/creator/my-campaigns',
+              icon: 'campaign',
+              data: { campaign_id: application.campaign_id },
+              emailData: {
                 campaignTitle: application.campaign.title,
                 applicationStatus: finalStatus,
                 campaignId: application.campaign_id,
-              }
-            );
-          }
-        } else if (action === 'approved') {
-          const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
-          const restaurantProfile = await fetchRecipientEmail(application.campaign.user_id);
-
-          if (restaurantProfile?.email && application.campaign?.title) {
-            await sendNotification(
-              'approval_pending',
-              restaurantProfile.email,
-              restaurantProfile.full_name,
-              {
+              },
+            },
+          }).catch((err: unknown) => console.error('Failed to send application-status notification:', err));
+        } else if (action === 'approved' && application.campaign?.title) {
+          await supabase.functions.invoke('create-notification', {
+            body: {
+              recipientId: application.campaign.user_id,
+              type: 'approval_pending',
+              category: 'campaigns',
+              title: 'Approval needed',
+              body: `An application for "${application.campaign.title}" needs your approval`,
+              actionUrl: `/dashboard/business/campaigns/${application.campaign_id}`,
+              icon: 'campaign',
+              emailType: 'approval_pending',
+              data: { campaign_id: application.campaign_id },
+              emailData: {
                 campaignTitle: application.campaign.title,
                 party: 'brand sponsor',
                 campaignId: application.campaign_id,
-              }
-            );
-          }
+              },
+            },
+          }).catch((err: unknown) => console.error('Failed to send approval-pending notification:', err));
         }
 
       } catch (emailError) {
@@ -217,16 +221,23 @@ export const useJointApproval = () => {
           const creatorProfile = await fetchRecipientEmail(application.creator_id);
           
           if (creatorProfile?.email && application.campaign?.title) {
-            await sendNotification(
-              'application_status',
-              creatorProfile.email,
-              creatorProfile.full_name,
-              {
-                campaignTitle: application.campaign.title,
-                applicationStatus: finalStatus,
-                campaignId: application.campaign_id,
-              }
-            );
+            await supabase.functions.invoke('create-notification', {
+              body: {
+                recipientId: application.creator_id,
+                type: finalStatus === 'approved' ? 'application_accepted' : 'application_rejected',
+                category: 'campaigns',
+                title: `Application ${finalStatus}`,
+                body: `Your application for "${application.campaign.title}" was ${finalStatus}`,
+                actionUrl: '/dashboard/creator/my-campaigns',
+                icon: 'campaign',
+                data: { campaign_id: application.campaign_id },
+                emailData: {
+                  campaignTitle: application.campaign.title,
+                  applicationStatus: finalStatus,
+                  campaignId: application.campaign_id,
+                },
+              },
+            }).catch((err: unknown) => console.error('Failed to send application-status notification:', err));
           }
         } else if (action === 'approved') {
           // Restaurant approved, notify brand
@@ -246,17 +257,24 @@ export const useJointApproval = () => {
               const brandUser = await fetchRecipientEmail(brandProfile.user_id);
               
               if (brandUser?.email && application.campaign?.title) {
-                await sendNotification(
-                  'approval_pending',
-                  brandUser.email,
-                  brandUser.full_name,
-                  {
-                    campaignTitle: application.campaign.title,
-                    party: 'restaurant owner',
-                    campaignId: application.campaign_id,
-                  }
-
-                );
+                await supabase.functions.invoke('create-notification', {
+                  body: {
+                    recipientId: brandProfile.user_id,
+                    type: 'approval_pending',
+                    category: 'campaigns',
+                    title: 'Approval needed',
+                    body: `An application for "${application.campaign.title}" needs your approval`,
+                    actionUrl: `/dashboard/business/campaigns/${application.campaign_id}`,
+                    icon: 'campaign',
+                    emailType: 'approval_pending',
+                    data: { campaign_id: application.campaign_id },
+                    emailData: {
+                      campaignTitle: application.campaign.title,
+                      party: 'restaurant owner',
+                      campaignId: application.campaign_id,
+                    },
+                  },
+                }).catch((err: unknown) => console.error('Failed to send approval-pending notification:', err));
               }
             }
           }

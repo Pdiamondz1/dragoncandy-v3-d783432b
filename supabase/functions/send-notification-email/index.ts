@@ -39,7 +39,8 @@ type NotificationType =
   | 'dragonshare_boost_receipt'
   | 'dragonshare_declined'
   | 'campaign_cancelled'
-  | 'dispute_alert';
+  | 'dispute_alert'
+  | 'org_invite';
 
 interface NotificationEmailRequest {
   to?: string;
@@ -82,6 +83,10 @@ interface NotificationEmailRequest {
     campaignUrl?: string;
     disputeId?: string; // dispute_alert
     reason?: string;    // dispute_alert (amount is in cents)
+    orgName?: string;   // org_invite
+    role?: string;      // org_invite
+    orgId?: string;     // org_invite
+    inviteeId?: string; // org_invite
     // DragonShare (snake_case, as passed by dragonshare-notify)
     creator_name?: string;
     business_name?: string;
@@ -874,6 +879,19 @@ const handler = async (req: Request): Promise<Response> => {
             <a href="${baseUrl}/dashboard/creator/campaigns"
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               Browse Campaigns
+            </a>
+          </p>
+        `,
+      },
+      org_invite: {
+        subject: `You've been invited to join ${htmlEscape(data.orgName ?? 'a team')} on DragonCandy`,
+        html: `
+          <p>Hi there,</p>
+          <p>You've been invited to join <strong>${htmlEscape(data.orgName ?? 'a team')}</strong> as a <strong>${htmlEscape(data.role ?? 'member')}</strong> on DragonCandy.</p>
+          <p style="margin-top: 30px;">
+            <a href="${baseUrl}/invite/accept?org=${encodeURIComponent(data.orgId ?? '')}&user=${encodeURIComponent(data.inviteeId ?? '')}"
+               style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+              Accept Invitation
             </a>
           </p>
         `,
