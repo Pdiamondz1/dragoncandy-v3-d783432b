@@ -66,9 +66,11 @@ export function useFeedLike(item: LikeableItem | null) {
       // Send email notification for likes (not unlikes)
       if (newLikedState) {
         const likerName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Someone';
-        // Route through create-notification: it adds the in-app bell and sends the email
-        // server-side (a frontend caller cannot email another user directly — the
-        // send-notification-email auth gate 403s a cross-user recipient).
+        // Route through create-notification: a frontend caller cannot email another user
+        // directly (send-notification-email's auth gate 403s a cross-user recipient — the
+        // previous direct send never actually delivered). This always shows an in-app bell;
+        // the email is intentionally gated by the recipient's "content" notification
+        // preference (off by default) so likes don't spam inboxes.
         await supabase.functions.invoke('create-notification', {
           body: {
             recipientId: item.creatorId,

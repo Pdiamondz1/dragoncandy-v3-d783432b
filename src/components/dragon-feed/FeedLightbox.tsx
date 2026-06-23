@@ -97,8 +97,9 @@ export const FeedLightbox: React.FC<FeedLightboxProps> = ({
       // Send email notification for likes (not unlikes)
       if (newLikedState) {
         const likerName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Someone';
-        // create-notification adds the bell + sends the email server-side (a frontend
-        // caller cannot email another user — the auth gate 403s a cross-user recipient).
+        // create-notification: bell + server-side email (a frontend caller cannot email
+        // another user — the auth gate 403s a cross-user recipient). The like email is
+        // intentionally gated by the recipient's "content" preference (off by default).
         await supabase.functions.invoke('create-notification', {
           body: {
             recipientId: item?.creatorId,
