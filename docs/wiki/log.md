@@ -1,5 +1,20 @@
 # Wiki Log
 
+## [2026-06-23] ingest | Notification Email Audit (PR #161)
+Ingested the notification-email audit session. A creator's dead "View Campaign" button
+(`href="undefined"` — a duplicate `create-notification` invite email + the one template with no
+`baseUrl` fallback) cascaded into auditing every button in `send-notification-email`, then a
+caller-payload trace that surfaced the keystone finding: the function's **self-only auth gate
+403s any frontend caller emailing the counterparty**, silently dropping 9 transactional emails
+(likes, content-started, joint approvals, project + sponsorship completion). All 6 frontend flows
+rerouted through `create-notification` (service-key send + the in-app bell they lacked); 2
+broadcast type names fixed; 3 missing templates added (`campaign_cancelled`, `dispute_alert`,
+`org_invite`); buttons cross-checked against `src/App.tsx` + guarded against `/undefined`. Codex
+caught the like-email pref-gating (kept intentional) and an empty-greeting fallback. Distilled the
+durable rule into [[Notification Delivery]].
+Pages created: [[Notification Delivery]], [[Notification Email Audit Session]]
+Pages updated: index.md
+
 ## [2026-06-21] ingest | Patch-Based Corrections (PRs #151/#152)
 Ingested the patch-based strategy-doc corrections session. Internal Donny now proposes a
 `strategy_doc` correction as small find/replace `edits` ({old_string,new_string,replace_all?})
