@@ -28,6 +28,7 @@ const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Record<string, string> = {
   // create-notification still fires the in-app bell, just no duplicate email.
   invitation_declined: 'campaign_invitation_declined',
   campaign_published: 'campaign_published',
+  campaign_cancelled: 'campaign_cancelled',
   revision_requested: 'revision_requested',
   message_received: 'new_message',
   sponsorship_proposal: 'sponsorship_proposal',

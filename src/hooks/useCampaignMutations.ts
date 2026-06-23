@@ -219,46 +219,28 @@ export const useDeleteCampaign = () => {
         .eq('user_id', user!.id);
       if (error) throw error;
 
-      const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
-
-      // Notify applicant creators
-      if (applicantIds.length > 0) {
-        const promises = applicantIds.map(async (id) => {
-          const p = await fetchRecipientEmail(id);
-          if (!p?.email) return;
-          return supabase.functions.invoke('send-notification-email', {
-            body: {
-              to: p.email,
-              recipientName: p.full_name,
-              type: 'campaign_cancelled',
-              data: { campaignTitle, businessName },
-            },
-          });
-        });
-        await Promise.allSettled(promises);
-      }
-
-      // Notify invited creators
-      if (invitedCreatorIds.length > 0) {
-        const alreadyNotified = new Set(applicantIds);
-        const uniqueInvitedIds = invitedCreatorIds.filter((id) => !alreadyNotified.has(id));
-
-        if (uniqueInvitedIds.length > 0) {
-          const promises = uniqueInvitedIds.map(async (id) => {
-            const p = await fetchRecipientEmail(id);
-            if (!p?.email) return;
-            return supabase.functions.invoke('send-notification-email', {
-              body: {
-                to: p.email,
-                recipientName: p.full_name,
-                type: 'campaign_cancelled',
-                data: { campaignTitle, businessName },
-              },
-            });
-          });
-          await Promise.allSettled(promises);
-        }
-      }
+      // Notify affected creators (applicants + invited, deduped) via create-notification,
+      // which inserts the in-app bell and sends the email server-side (resolving the
+      // recipient's email with the service role — a frontend caller cannot email other
+      // users directly, send-notification-email's auth gate would 403 a cross-user `to`).
+      const recipientIds = [...new Set([...applicantIds, ...invitedCreatorIds])];
+      const notifyPromises = recipientIds.map((id) =>
+        supabase.functions.invoke('create-notification', {
+          body: {
+            recipientId: id,
+            type: 'campaign_cancelled',
+            category: 'campaigns',
+            title: 'Campaign Cancelled',
+            body: `${businessName} cancelled "${campaignTitle}"`,
+            actorId: user!.id,
+            actorName: businessName,
+            icon: 'campaign',
+            data: { campaign_id: campaignId },
+            emailData: { campaignTitle, businessName },
+          },
+        }).catch((err: unknown) => console.error('Failed to send cancellation notification:', err))
+      );
+      await Promise.allSettled(notifyPromises);
 
     },
     onSuccess: () => {

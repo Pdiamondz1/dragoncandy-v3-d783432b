@@ -7,6 +7,7 @@ export type NotificationType =
   | 'campaign_invitation'
   | 'invitation_declined'
   | 'campaign_published'
+  | 'campaign_cancelled'
   | 'revision_requested'
   | 'cgc_submission_received'
   | 'cgc_code_redeemed'
@@ -106,6 +107,7 @@ export const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Partial<Record<NotificationType, s
   // supabase/functions/create-notification/index.ts.
   invitation_declined: 'campaign_invitation_declined',
   campaign_published: 'campaign_published',
+  campaign_cancelled: 'campaign_cancelled',
   revision_requested: 'revision_requested',
   message_received: 'new_message',
   sponsorship_proposal: 'sponsorship_proposal',

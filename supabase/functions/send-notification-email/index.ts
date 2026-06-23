@@ -37,11 +37,14 @@ type NotificationType =
   | 'dragonshare_submission'
   | 'dragonshare_boost'
   | 'dragonshare_boost_receipt'
-  | 'dragonshare_declined';
+  | 'dragonshare_declined'
+  | 'campaign_cancelled'
+  | 'dispute_alert';
 
 interface NotificationEmailRequest {
   to?: string;
   recipientName?: string;
+  subject?: string; // optional subject override (e.g. dispute_alert with a dynamic amount)
   type: NotificationType;
   data: {
     campaignTitle?: string;
@@ -77,6 +80,8 @@ interface NotificationEmailRequest {
     isRecipient?: boolean; // true if recipient received payment, false if they paid
     invitationMessage?: string;
     campaignUrl?: string;
+    disputeId?: string; // dispute_alert
+    reason?: string;    // dispute_alert (amount is in cents)
     // DragonShare (snake_case, as passed by dragonshare-notify)
     creator_name?: string;
     business_name?: string;
@@ -116,7 +121,7 @@ const handler = async (req: Request): Promise<Response> => {
       callerEmail = userData.user.email ?? null;
     }
 
-    const { to, recipientName, type, data }: NotificationEmailRequest = await req.json();
+    const { to, recipientName, subject: subjectOverride, type, data }: NotificationEmailRequest = await req.json();
 
     // For non-service callers, prevent enumerating other users' emails:
     // they may only send to themselves (their own auth email).
@@ -859,6 +864,38 @@ const handler = async (req: Request): Promise<Response> => {
           </p>
         `,
       },
+      campaign_cancelled: {
+        subject: `A campaign you were part of was cancelled`,
+        html: `
+          <p>Hi ${esc.rn},</p>
+          <p>Unfortunately, <strong>${esc.businessName}</strong> has cancelled the campaign <strong>"${esc.campaignTitle}"</strong>.</p>
+          <p>We're sorry for the inconvenience — there are plenty more opportunities waiting for you in the marketplace.</p>
+          <p style="margin-top: 30px;">
+            <a href="${baseUrl}/dashboard/creator/campaigns"
+               style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+              Browse Campaigns
+            </a>
+          </p>
+        `,
+      },
+      dispute_alert: {
+        subject: `Payment Dispute Filed`,
+        html: `
+          <p>Hi there,</p>
+          <p>A payment dispute has been filed and needs review.</p>
+          <div style="background: #FEF2F2; border-left: 4px solid #EF4444; padding: 16px; margin: 24px 0; border-radius: 4px;">
+            <p style="margin: 0; color: #991B1B;"><strong>Dispute ID:</strong> ${htmlEscape(data.disputeId ?? 'unknown')}</p>
+            <p style="margin: 8px 0 0 0; color: #991B1B;"><strong>Amount:</strong> $${typeof data.amount === 'number' ? (data.amount / 100).toFixed(2) : '0.00'}</p>
+            <p style="margin: 8px 0 0 0; color: #991B1B;"><strong>Reason:</strong> ${htmlEscape(data.reason ?? 'not provided')}</p>
+          </div>
+          <p style="margin-top: 30px;">
+            <a href="https://dashboard.stripe.com/disputes"
+               style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+              Open in Stripe
+            </a>
+          </p>
+        `,
+      },
     };
 
     const template = templates[type];
@@ -909,7 +946,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: emailData, error } = await resend.emails.send({
       from: "DragonCandy <alerts@notify.dragoncandy.io>",
       to: resolvedTo,
-      subject: template.subject,
+      subject: subjectOverride || template.subject,
       html: emailHtml,
     });
 
