@@ -186,7 +186,9 @@ const handler = async (req: Request): Promise<Response> => {
     const rn = resolvedRecipientName;
     const esc = {
       rn: htmlEscape(rn),
-      recipientName: htmlEscape(recipientName || ''),
+      // Fall back to the server-resolved name so create-notification callers (which pass
+      // recipientUserId, not a top-level recipientName) still get a proper greeting.
+      recipientName: htmlEscape(recipientName || rn),
       applicantName: htmlEscape(data.applicantName || ''),
       campaignTitle: htmlEscape(data.campaignTitle || ''),
       senderName: htmlEscape(data.senderName || ''),
