@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { isTestKey } from "../_shared/stripe-mode.ts";
 
 const logStep = (step: string, details?: any) => {
   console.log(`[GET-STRIPE-DASHBOARD-LINK] ${step}`, details ? JSON.stringify(details) : '');
@@ -81,7 +82,8 @@ serve(async (req) => {
     }
 
     // Initialize Stripe
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY") || "";
+    const stripe = new Stripe(stripeKey, {
       apiVersion: "2025-08-27.basil",
     });
 
@@ -91,8 +93,12 @@ serve(async (req) => {
       const loginLink = await stripe.accounts.createLoginLink(stripeAccountId);
       loginUrl = loginLink.url;
     } catch (linkErr) {
-      // Custom accounts (used for test-mode sandbox payouts) have no Express dashboard.
-      logStep('createLoginLink unavailable (likely a Custom/test account)', { error: (linkErr as Error).message });
+      // Test-mode sandbox payout accounts are Custom accounts, which have no
+      // Express dashboard, so createLoginLink throws — degrade gracefully there.
+      // In live mode, a real failure must surface, so re-throw to the outer
+      // error path (preserves the prior 400 behavior).
+      if (!isTestKey(stripeKey)) throw linkErr;
+      logStep('createLoginLink unavailable (Custom/test account)', { error: (linkErr as Error).message });
       return new Response(
         JSON.stringify({ success: false, error: 'Dashboard link not available for test accounts.' }),
         { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 200 }
