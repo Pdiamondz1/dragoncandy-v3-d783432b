@@ -76,8 +76,13 @@ serve(async (req) => {
     }
 
     // TEST MODE: skip hosted onboarding entirely. Provision a fully-enabled
-    // sandbox Custom account so "Connect" is one tap. Live mode is unaffected.
-    if (isTestKey(stripeKey) && !accountId) {
+    // sandbox Custom account so "Connect" is one tap. We reach here only when the
+    // account is NOT already enabled (the charges/payouts check above returns
+    // early), so this also re-provisions an EXISTING but incomplete account
+    // (e.g. an old hosted-onboarding Express account left unverified) — that
+    // incomplete account can't be prefill-enabled (Express needs hosted ToS), so
+    // we replace it with a fresh enabled Custom account. Live mode is unaffected.
+    if (isTestKey(stripeKey)) {
       logStep("Test mode — creating instantly-enabled Custom account");
       const requestIp = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "127.0.0.1";
       const acct = await createTestModeEnabledAccount(stripe, {
