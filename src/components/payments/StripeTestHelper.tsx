@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ChevronDown, ChevronUp, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { isStripeTestMode } from '@/lib/stripeMode';
 
 interface StripeTestHelperProps {
   variant?: 'cards' | 'bank' | 'both';
@@ -18,8 +19,7 @@ const TEST_BANK = { routing: '110000000', account: '000123456789', ssn: '0000' }
 
 export function StripeTestHelper({ variant = 'both', className }: StripeTestHelperProps) {
   const [expanded, setExpanded] = useState(true);
-  const isTestMode = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_');
-  if (!isTestMode) return null;
+  if (!isStripeTestMode) return null;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text.replace(/\s/g, ''));
