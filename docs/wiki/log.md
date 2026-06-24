@@ -1,5 +1,14 @@
 # Wiki Log
 
+## [2026-06-24] lint | Fix 2 wiki-save-answer orphans
+The `verify-knowledge`/lint orphan check (run as the close-the-loop step of the prior
+knowledge-sync) caught 2 analysis pages on `main` missing from `index.md`:
+[[Competitive Advantage]] and [[Influencer/Creator Outreach]] — both Donny save-answer pages
+from PRs #164/#165. Added their index entries. Confirms the known gap: the `wiki-save-answer`
+flow adds a page + syncs RAG but does NOT update `index.md`, so its pages land as catalog
+orphans until a later knowledge-sync lint catches them.
+Pages updated: index.md
+
 ## [2026-06-24] ingest | Loop Memory shipped + Security-Advisor Triage (deferred)
 Ingested the 2026-06-24 session. Captured that the [[Loop Memory Protocol]] shipped (Phase 1,
 PR #161) — added a Status line + second source to that page. Recorded the #161 merge/deploy
