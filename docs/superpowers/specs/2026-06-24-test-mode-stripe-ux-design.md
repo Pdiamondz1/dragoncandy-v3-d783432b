@@ -95,6 +95,11 @@ auto-typing the card.
   request's `x-forwarded-for` header, falling back to `127.0.0.1` (any IP is
   accepted in test mode).
 - `business_type: 'individual'`.
+- The caller supplies `businessName` and `productDescription` so the sandbox
+  account mirrors the live `business_profile` for that role: creator passes
+  `creator_name` + "Content creation services via DragonCandy marketplace";
+  restaurant passes `business_name` + "Restaurant business receiving sponsorship
+  payments via DragonCandy marketplace".
 
 **`create-creator-connect-account` / `create-restaurant-connect-account`** —
 add a test-mode short-circuit:
@@ -160,7 +165,10 @@ other three (test card guidance on the Stripe payment page).
 - Sponsorship payment entry
 
 (These components already render nothing in live mode via their internal
-`pk_test_` check, so they're safe to mount unconditionally.)
+`pk_test_` check, so they're safe to mount unconditionally.) The planning step
+must pin the exact files for the subscription/pricing and sponsorship entry
+points (the boost surface is `BoostConfirmationSheet`); these are less
+mechanically obvious than the edge-fn list.
 
 ## Design units (for isolation + testability)
 
