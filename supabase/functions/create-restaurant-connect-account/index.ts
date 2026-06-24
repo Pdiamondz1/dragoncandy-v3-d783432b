@@ -114,8 +114,12 @@ serve(async (req) => {
       }
     }
 
-    // TEST MODE: instant enabled Custom account, no hosted onboarding.
-    if (isTestKey(stripeKey) && !accountId) {
+    // TEST MODE: instant enabled Custom account, no hosted onboarding. Reached
+    // only when not already enabled (the charges/payouts check above returns
+    // early), so this also re-provisions an EXISTING but incomplete account
+    // (old unverified Express account) by replacing it with a fresh enabled
+    // Custom account — Express can't be prefill-enabled. Live mode is unaffected.
+    if (isTestKey(stripeKey)) {
       logStep("Test mode — creating instantly-enabled Custom account");
       const requestIp = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "127.0.0.1";
       const acct = await createTestModeEnabledAccount(stripe, {
