@@ -115,3 +115,4 @@ ios/App/App/public/
 ios/.DS_Store
 ios/App/build/
 DerivedData/
+deno.lock
