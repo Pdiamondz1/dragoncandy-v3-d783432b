@@ -36,7 +36,7 @@ export const PLATFORM_ALIASES: Record<string, Platform> = {
 };
 
 /** contract Platform → the platform value Zernio expects on a create request. */
-const PLATFORM_TO_ZERNIO: Record<Platform, string> = {
+export const PLATFORM_TO_ZERNIO: Record<Platform, string> = {
   facebook: 'facebook',
   instagram: 'instagram',
   tiktok: 'tiktok',
