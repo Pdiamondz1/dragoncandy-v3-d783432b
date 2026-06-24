@@ -25,7 +25,7 @@ Fully staffed with real people, no AI agents filling seats.
 ### The Full Marketing Department — 8 People
 
 **1. VP of Marketing / Head of Growth**
-- Reports to Joe (CRO)
+- Reports to Joe (CEO)
 - Owns the entire marketing function, budget, and KPIs
 - Oversees all three metros, brand narrative, and performance
 - Hired: Month 1 — this is the most critical marketing hire

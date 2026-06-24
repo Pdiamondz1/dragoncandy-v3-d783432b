@@ -16,7 +16,7 @@ instructions. Auto-loaded by Claude Code via CLAUDE.md import.
 
 - DragonCandy is an AI-powered creator-restaurant marketplace HQ'd in
   Hoboken, NJ, connecting three roles: Restaurant, Creator, Brand
-- Co-founders: Damon "Dame" Williams (CPO), Joe Castelo (CRO),
+- Co-founders: Damon "Dame" Williams (CPO), Joe Castelo (CEO),
   Juwan Robinson (Advisor)
 - North star: "Less typing = more margin" — every primary flow under
   10 keystrokes by Month 6

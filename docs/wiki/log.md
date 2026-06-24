@@ -28,6 +28,18 @@ durable rule into [[Notification Delivery]].
 Pages created: [[Notification Delivery]], [[Notification Email Audit Session]]
 Pages updated: index.md
 
+## [2026-06-22] ingest | Origin Story & Knowledge-Sync Automation (PRs #154–#162)
+Ingested the session that authored the canonical DragonCandy origin story into the AIOS
+strategy library (one cohesive story with the three-sided restaurant/creator/brand vision
+woven in; founder canon fixes: Joe Castelo single-L = CEO who leads sales; CRO→CEO sweep
+across 7 docs) and built the knowledge-sync automation (npm run sync:internal/sync:wiki via
+with-env.mjs + gitignored .env.sync.local, an auto post-merge git hook, and a committed
+installer run on npm install). Gotchas captured: Windows pathToFileURL ESM import,
+verify-by-content (not counts) on internal_docs.content_md + donny_knowledge.content, and the
+key must reach the merge-triggering shell. No schema/RLS/edge-fn/secret change.
+Pages created: [[Origin Story & Knowledge-Sync Automation Session]], [[Knowledge-Sync Automation]].
+Pages updated: [[Self-Improving App]], index.md.
+
 ## [2026-06-21] ingest | Patch-Based Corrections (PRs #151/#152)
 Ingested the patch-based strategy-doc corrections session. Internal Donny now proposes a
 `strategy_doc` correction as small find/replace `edits` ({old_string,new_string,replace_all?})

@@ -199,7 +199,7 @@ core thesis turned into a budget line.
 
 ## 6. Sales
 
-One **Account Executive** under Joe (CRO). 2026 SaaS AE benchmark: **base ~$60–100K (median
+One **Account Executive** under Joe (CEO). 2026 SaaS AE benchmark: **base ~$60–100K (median
 $75–82K), OTE 1.8–2.2× base**, commission ~11.5% of ACV, base/variable ≈ 53/47
 ([Everstage](https://www.everstage.com/sales-compensation/saas-sales-compensation-benchmarks),
 [Founderpath](https://founderpath.com/salary-benchmarks/saas/account-executive)). Modeled:
@@ -229,7 +229,7 @@ enabling and hardening it is dev time already inside §5 (no incremental build l
 | Subscription | ~$800/mo avg | ~2× restaurant ARPU |
 | LTV:CAC | ~7:1 to 20:1 | far above the 3:1 target |
 
-**Motion (confirmed lean):** sales-led with a 2–3 month cycle, carried by **Joe (CRO) + the sales
+**Motion (confirmed lean):** sales-led with a 2–3 month cycle, carried by **Joe (CEO) + the sales
 AE** — *no new hire* in the runway; the Brand Partnerships Manager stays a Year-3 hire (staffing
 plan Hire #6). Brand revenue is therefore **upside that accelerates the path to the Y2 $2–4.5M
 plan, not a runway dependency.**

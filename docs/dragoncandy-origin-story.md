@@ -8,7 +8,7 @@ tags: strategy, narrative, origin-story, donny, investor
 
 # DragonCandy Origin Story
 
-Canonical origin narrative for DragonCandy — how it went from Joe Castello's
+Canonical origin narrative for DragonCandy — how it went from Joe Castelo's
 March 2025 frustration to the AI-driven platform it is today (June 21, 2026).
 Two cuts: a tight ~300-word version for deck slides, social, and founder notes,
 and a medium ~500-word version for an About page or investor memo. Keep the
@@ -16,7 +16,7 @@ facts and roles below intact when adapting.
 
 ## Facts & roles (canonical)
 
-- **Joe Castello** — CEO. Seasoned entrepreneur; ran a production company and
+- **Joe Castelo** — CEO. Seasoned entrepreneur; ran a production company and
   owns restaurants in Hoboken. The spark (March 2025).
 - **Juwan Robinson** — Shareholder & Advisor. Co-explored the original
   content-creator-agency idea with Joe.
@@ -38,7 +38,7 @@ facts and roles below intact when adapting.
 
 **DragonCandy: How It Started**
 
-Joe Castello has built things his whole life — a production company, and a
+Joe Castelo has built things his whole life — a production company, and a
 handful of restaurants in Hoboken. By March 2025, he kept hitting the same
 wall: keeping those restaurants alive on social media meant a relentless grind
 of finding content creators, managing posts, and paying premium rates for all
@@ -78,7 +78,7 @@ rest.
 
 **DragonCandy: How It Started**
 
-Joe Castello has spent his career building things — a production company, and a
+Joe Castelo has spent his career building things — a production company, and a
 handful of restaurants in Hoboken. By March 2025, running those restaurants had
 surfaced a problem he couldn't shake.
 

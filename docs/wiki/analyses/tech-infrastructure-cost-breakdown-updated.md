@@ -279,9 +279,9 @@ iOS Capacitor Phase 1 is already shipped. Incremental spend covers the Android w
 | App Administrator / DevOps | \~$162K | \~$211K | Mo 2–3 | Runs scaling, uptime, auto-improvement agent compute (contract first, then FTE) |
 | Security Engineer (0.4 FTE) | \~$193K | \~$77K cash | Mo 3 | Audits \+ ongoing review; fractional because security work is episodic |
 | Product Manager | \~$175K | \~$228K | Mo 6 | Dame covers product early; formalize as surface area grows (contract → FTE) |
-| Sales AE (under Joe, CRO) | \~$80K base | \~$104K base / $150–180K OTE | Mo 4–6 | Gated: hired only after founder-led selling \+ paid ads prove a repeatable message |
+| Sales AE (under Joe, CEO) | \~$80K base | \~$104K base / $150–180K OTE | Mo 4–6 | Gated: hired only after founder-led selling \+ paid ads prove a repeatable message |
 | Auto-Improvement Agents | compute | \~$1.5–3K/mo | Mo 0 | Bug-fix, maintenance, auto-scaling, security/perf scans — work of 4–6 devs, funded as AI compute, NOT headcount |
-| Founders — Dame (CPO) \+ Joe (CRO) | \~$90–110K ea | \~$120–140K ea | Mo 0 | Modest during runway per staffing plan Stage 2 |
+| Founders — Dame (CPO) \+ Joe (CEO) | \~$90–110K ea | \~$120–140K ea | Mo 0 | Modest during runway per staffing plan Stage 2 |
 | Bookkeeper | part-time | \~$20–30K/yr | Mo 0 | Part-time contract |
 
 ### **Staffing Summary (Option A — NYC Median)**
