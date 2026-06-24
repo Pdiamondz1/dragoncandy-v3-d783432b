@@ -7,6 +7,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PublicPageHeader } from '@/components/PublicPageHeader';
+import { TestModeBanner } from '@/components/payments/TestModeBanner';
+import { StripeTestHelper } from '@/components/payments/StripeTestHelper';
 
 const PricingPage = () => {
   const [searchParams] = useSearchParams();
@@ -70,6 +72,11 @@ const PricingPage = () => {
           Start free and scale as your content needs grow. Every plan includes
           access to Donny AI and our creator marketplace.
         </p>
+      </div>
+
+      <div className="mx-auto max-w-md px-4 space-y-3">
+        <TestModeBanner />
+        <StripeTestHelper variant="cards" />
       </div>
 
       {/* Tier grid */}

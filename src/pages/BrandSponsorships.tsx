@@ -18,6 +18,8 @@ import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { DCEmptyState } from '@/components/ui/dc-empty-state';
 import { format } from 'date-fns';
 import { PrerequisiteGate } from '@/components/PrerequisiteGate';
+import { TestModeBanner } from '@/components/payments/TestModeBanner';
+import { StripeTestHelper } from '@/components/payments/StripeTestHelper';
 
 const BrandSponsorships = () => {
   const { profile } = useAuth();
@@ -248,6 +250,11 @@ const BrandSponsorships = () => {
             </div>
           </div>
         </PageHeader>
+
+        <div className="px-4 mt-4 space-y-3">
+          <TestModeBanner />
+          <StripeTestHelper variant="cards" />
+        </div>
 
         <div className="p-4 space-y-4">
           <SponsorshipRatingPromptManager />

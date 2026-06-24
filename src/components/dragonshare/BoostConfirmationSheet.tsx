@@ -9,6 +9,7 @@ import { DRAGONSHARE_FEE_RATE } from '@/types/dragonshare';
 import type { DragonSharePostWithRelations, BoostTierLabel } from '@/types/dragonshare';
 import { useAmplificationPreview } from '@/hooks/useAmplificationPreview';
 import { resolveBoostOutcome } from './boostOutcome';
+import { TestModeBanner } from '@/components/payments/TestModeBanner';
 
 interface Props {
   open: boolean;
@@ -92,6 +93,7 @@ export function BoostConfirmationSheet({ open, onOpenChange, post, amountCents, 
         </SheetHeader>
 
         <div className="mt-6 space-y-4">
+          <TestModeBanner />
           <div className="text-center">
             <p className="text-2xl font-bold text-dc-text">${(amountCents / 100).toFixed(0)}</p>
             <p className="text-sm text-dc-text-muted">boost to {creatorName}</p>

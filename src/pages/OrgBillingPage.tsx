@@ -17,6 +17,8 @@ import { TIER_PRICES } from '@/lib/pricing/tier-features';
 import type { UserRole } from '@/types/user';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { TestModeBanner } from '@/components/payments/TestModeBanner';
+import { StripeTestHelper } from '@/components/payments/StripeTestHelper';
 
 const TIER_COLORS: Record<string, string> = {
   free: 'bg-gray-100 text-gray-700',
@@ -67,6 +69,8 @@ export default function OrgBillingPage() {
   return (
     <DashboardLayout userRole={userRole as UserRole}>
       <div className="mx-auto max-w-2xl space-y-6">
+        <TestModeBanner />
+        <StripeTestHelper variant="cards" />
         <PageHeader>
           <div className="flex items-center justify-between">
             <div>
