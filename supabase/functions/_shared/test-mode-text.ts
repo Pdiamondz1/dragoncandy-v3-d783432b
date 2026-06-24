@@ -1,9 +1,8 @@
 // supabase/functions/_shared/test-mode-text.ts
-import Stripe from "https://esm.sh/stripe@18.5.0";
+import type Stripe from "https://esm.sh/stripe@18.5.0";
+import { isTestKey } from "./stripe-mode.ts";
 
-export function isTestKey(stripeKey: string): boolean {
-  return stripeKey.startsWith("sk_test_");
-}
+export { isTestKey } from "./stripe-mode.ts";
 
 const TEST_MODE_MESSAGE =
   "Test mode — pay with card 4242 4242 4242 4242 (any future expiry, any CVC). " +
