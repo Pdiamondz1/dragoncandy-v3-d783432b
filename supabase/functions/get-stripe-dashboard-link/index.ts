@@ -86,19 +86,24 @@ serve(async (req) => {
     });
 
     // Create login link for the Express account
-    const loginLink = await stripe.accounts.createLoginLink(stripeAccountId);
+    let loginUrl: string;
+    try {
+      const loginLink = await stripe.accounts.createLoginLink(stripeAccountId);
+      loginUrl = loginLink.url;
+    } catch (linkErr) {
+      // Custom accounts (used for test-mode sandbox payouts) have no Express dashboard.
+      logStep('createLoginLink unavailable (likely a Custom/test account)', { error: (linkErr as Error).message });
+      return new Response(
+        JSON.stringify({ success: false, error: 'Dashboard link not available for test accounts.' }),
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 200 }
+      );
+    }
 
     logStep('Dashboard link created successfully');
 
     return new Response(
-      JSON.stringify({ 
-        url: loginLink.url,
-        success: true,
-      }),
-      {
-        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-        status: 200,
-      }
+      JSON.stringify({ url: loginUrl, success: true }),
+      { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 200 }
     );
   } catch (error) {
     logStep('Error creating dashboard link', { error: error.message });
