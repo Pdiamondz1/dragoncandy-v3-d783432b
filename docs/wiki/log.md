@@ -639,3 +639,15 @@ linked in index.md (index-incompleteness): 18-month-tech-engineering-donny-ai-1m
 part-1-engineering-aios-operations, tech-infrastructure-cost-breakdown-updated — all from
 wiki-save-answer merges (that flow still doesn't update index.md). Added an index entry for
 each. No content changed. Pages updated: index.md.
+
+## [2026-06-24] ingest | Test-Mode Stripe UX (PR #168)
+Ingested the test-mode Stripe UX session. Created [[Test-Mode Stripe UX]] (concept):
+one-tap test-mode payout bypass (auto-create a fully-enabled Custom connected account
+server-side, no hosted Express screens) + card-only checkout across all 4 Checkout-session
+creators, all gated on sk_test_/pk_test_ so live mode is byte-for-byte unchanged. Captured
+the gotchas: vitest can't load runtime https:// imports (type-only Stripe import + pure
+isTestKey extracted to stripe-mode.ts); MCP edge-fn deploy must preserve verify_jwt per
+function (list_edge_functions is ground truth, not config.toml) and name files by full repo
+path; the transient "Verification Pending" → "Connected" capability lag; dashboard-link
+degradation is test-mode-only (Codex P2). Live-verified the prefill flips payouts_enabled.
+Pages created: [[Test-Mode Stripe UX]]. Pages updated: [[Stripe Connect]], index.md.

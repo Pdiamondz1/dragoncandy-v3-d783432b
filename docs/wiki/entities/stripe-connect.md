@@ -36,6 +36,15 @@ the transfer + payout (80/20 split). The org's `stripe_customer_id` (on `organiz
 reused across escrow, sponsorship, and boost flows. On iOS this coexists with
 [[Payments Split by Surface]].
 
+## Test-Mode UX
+
+To keep pre-launch users from getting stuck in the sandbox, the [[Test-Mode Stripe UX]]
+work (PR #168) makes both surfaces instinctive **in test mode only** (live unchanged):
+payout onboarding is a one-tap bypass that auto-creates a fully-enabled **Custom**
+connected account server-side (no hosted Express screens), and all Checkout sessions are
+forced **card-only** (`payment_method_types:['card']`) so Link/Klarna/real-card temptations
+disappear.
+
 ## Database Tables
 
 - `payment_events` — payment lifecycle ledger
@@ -72,6 +81,7 @@ every payment call and webhook signature. The `stripe-webhook` function must hav
 - [[DragonDash]]
 - [[Campaign Lifecycle]]
 - [[Two-Path Boost Payment]]
+- [[Test-Mode Stripe UX]]
 - [[Payments Split by Surface]]
 - [[DragonShare]]
 - [[QA Staging Supabase (Plan B) Session]]
