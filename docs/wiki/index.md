@@ -97,9 +97,11 @@
 ## Analyses
 
 - [[18-Month Tech Engineering & Donny AI]](analyses/18-month-tech-engineering-donny-ai-1m-users.md) — Donny-captured analysis: 18-month tech engineering & Donny AI plan toward 1M users
+- [[Competitive Advantage]](analyses/the-honest-framing-first.md) — Donny-captured (2026-06-23): how DragonCandy wins vs Cirqle, Aspire, GRIN, Captiv8, CreatorIQ — competitor-by-competitor weaknesses and DragonCandy's edge
 - [[Content Engine Data Audit]](analyses/content-engine-data-audit.md) — what signal data exists in prod for the Donny content engine; context live, performance dark, Toast/social-cache tables missing from prod; foundation-first plan
 - [[DragonCandy Tech & Infrastructure Cost Breakdown]](analyses/here-s-the-exported-doc-dragoncandy-tech-infrastructure-cost-breakdown-nyc-media.md) — Donny-captured analysis: NYC-median tech & infrastructure cost breakdown for the capital raise
 - [[Human Marketing Team (Part 1)]](analyses/part-1-the-human-marketing-team.md) — Donny-captured analysis: the human marketing team (part 1)
+- [[Influencer/Creator Outreach]](analyses/influencer-creator-outreach-w-donny.md) — Donny-captured (2026-06-23): can Donny reach out to off-platform creators / build campaigns with them — what's reachable vs the hard platform walls to design around
 - [[North Star & KPI Scorecard]](analyses/north-star-kpi-scorecard.md) — Three-year targets + kill-switches operationalized and validated against 2025 SMB-SaaS benchmarks; flags churn-unit ambiguity and a mis-scoped rev/employee gate
 - [[PART 1 — Engineering & AIOS Operations]](analyses/part-1-engineering-aios-operations.md) — Donny-captured analysis: engineering & AIOS operations (part 1)
 - [[Platform API Registration Plan]](analyses/platform-api-registration-plan.md) — running checklist to swap Outstand for direct Meta/X/TikTok/YouTube + Toast access; per-platform requirements, lead times, Meta deep-dive; unblocks the dark Content Engine signal
