@@ -1,5 +1,18 @@
 # Wiki Log
 
+## [2026-06-23] update | Loop Memory Protocol
+Added the Loop Memory Protocol concept page — the contract for a co-located two-zone
+`MEMORY.md` (curated **Lessons** read before a run + append-only **Run Log** written after)
+that lets an orchestration loop self-improve across runs. The "Output" half of the source
+prompt is satisfied by *pointing at* each loop's existing artifact (wiki page, `log.md`,
+`result_summary_md`) rather than duplicating it; the validator verdict block's `missing[]`
+feeds the Run Log Failed/Remember zone. Phase 1 applies it to the `autoresearch` (pilot),
+`knowledge-sync`, `verify-knowledge`, and `wiki-ops` skills; Phase 2 (DB-backed memory for
+cloud routines via `aios_loop_memory` + `aios-report-ingest`) is designed but deferred.
+Pages created: [[Loop Memory Protocol]]
+Pages updated: index.md
+Note: cross-links [[Validator Skills]], [[Self-Improving App]], [[Founder Playbooks]].
+
 ## [2026-06-23] ingest | Notification Email Audit (PR #161)
 Ingested the notification-email audit session. A creator's dead "View Campaign" button
 (`href="undefined"` — a duplicate `create-notification` invite email + the one template with no
