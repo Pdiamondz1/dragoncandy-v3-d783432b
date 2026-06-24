@@ -57,7 +57,7 @@ In scope: the contract, the two pure mapping modules + tests, `resolve-provider`
 
 - [ ] **Step 0a: Confirm the worktree + branch.** Run: `git branch --show-current` → expect `feat/social-provider-seam-zernio`.
 - [ ] **Step 0b: Read the references.** Read `outstand-proxy/index.ts`, `reconcile.ts`, `reconcile.test.ts`, `useCrossPost.ts`, `useAccountMetrics.ts`, `usePostComments.ts`, `outstandUtils.ts` to internalize the exact payload/return shapes the contract must satisfy.
-- [ ] **Step 0c: Pull the Zernio endpoint shapes.** Read `docs.zernio.com` API reference + OpenAPI for: `GET /v1/connect/{platform}`, `GET/DELETE /v1/accounts`, `POST/GET/DELETE /v1/posts`, `/v1/analytics/*`, the Inbox/comments endpoints, `/v1/media`, and webhook event payloads. Record the exact request/response JSON next to each `zernio-map` function as a comment.
+- [ ] **Step 0c: Pull the Zernio endpoint shapes.** Read `docs.zernio.com` API reference + OpenAPI for: `GET /v1/connect/{platform}`, `GET/DELETE /v1/accounts`, `POST/GET/DELETE /v1/posts`, `/v1/analytics/*`, the Inbox/comments endpoints, `/v1/media`, and webhook event payloads. Record the exact request/response JSON next to each `zernio-map` function as a comment. **The illustrative fixtures in Task 2's example tests (`_id`, `platform:'twitter'`, `profilePicture`) are guesses — REPLACE them with the real captured JSON before trusting Task 2's tests**, or the mapper will pass against invented shapes and fail live.
 
 ---
 
@@ -126,7 +126,7 @@ describe('fromZernioAccount', () => {
 
 - [ ] **Step 2: Run, verify fail.** Run: `npx vitest run supabase/functions/social-proxy/adapters/zernio-map.test.ts`. Expected: FAIL (module not found).
 
-- [ ] **Step 3: Implement `zernio-map.ts`** — pure functions only; top comment mirrors `reconcile.ts` ("no Deno/Node/Supabase/I/O"). Include a `PLATFORM_ALIASES` map (`twitter→x`, etc.).
+- [ ] **Step 3: Implement `zernio-map.ts`** — pure functions only; top comment mirrors `reconcile.ts` ("no Deno/Node/Supabase/I/O"). Include a `PLATFORM_ALIASES` map (`twitter→x`, etc.). Define the account `status` rule explicitly: default `'active'` unless Zernio signals an error/expired/revoked state (don't hard-code `active`).
 
 - [ ] **Step 4: Run, verify pass.** Same command. Expected: PASS.
 
@@ -201,7 +201,7 @@ ALTER TABLE public.business_outstand_accounts
 COMMENT ON COLUMN public.business_outstand_accounts.provider IS
   'Social provider for this connection: outstand | zernio. Default outstand for legacy rows.';
 ```
-- [ ] **Step 2: Apply to the dev/staging DB** via the project's Supabase MCP/CLI `apply_migration` (per "deploy ordering" memory: migration BEFORE any code that depends on the column). Verify: `select provider, count(*) from business_outstand_accounts group by 1;` → all existing rows `outstand`.
+- [ ] **Step 2: Apply the migration** via the project's Supabase MCP/CLI `apply_migration` (per "deploy ordering" memory: migration BEFORE any code that depends on the column). Target **staging** (ref `mhffqrawgizhprbobcta`) for the build/round-trip smoke; applying to **prod** (ref `zocahiffooqdybdhguqv`) is a founder go-live step. Phase 1 is safe either way since `social-proxy` defaults to `outstand` when the column is absent/null, but the Task 7 round-trip smoke must hit a DB that has the column. Verify: `select provider, count(*) from business_outstand_accounts group by 1;` → all existing rows `outstand`.
 - [ ] **Step 3: Regenerate types** into `src/integrations/supabase/types.ts` (add `provider: string` to the `business_outstand_accounts` Row/Insert/Update). Run: `npm run typecheck` → PASS.
 - [ ] **Step 4: Commit.**
 ```bash
@@ -236,7 +236,7 @@ git commit -m "feat(social): add thin Zernio + Outstand IO adapters over the con
 - Create: `supabase/functions/social-proxy/index.ts`
 
 - [ ] **Step 1: Copy `outstand-proxy/index.ts` verbatim** into `social-proxy/index.ts` — keep the OPTIONS/CORS, JWT validation (`resolveTenant`), `business_outstand_accounts` tenant scoping (`listOwnedAccountIds`/`listOwnedPlatforms`), `enforceScope` default-deny, `filterListBody`, and `__internal/record-connection` (now also writing `provider`).
-- [ ] **Step 2: Add provider dispatch** — after `resolveTenant`, read the caller's `provider` (from the owned-account rows / request) → `resolveProviderId` → select `zernioAdapter` or `outstandAdapter`. Route the SDK-shaped paths through the chosen adapter's contract methods. For `provider='outstand'` the path is the existing forward (behavior-preserving).
+- [ ] **Step 2: Add provider dispatch** — after `resolveTenant`, determine the caller's `provider`. **Add `provider` to the `.select()` in `listOwnedAccountIds`/`listOwnedPlatforms`** (one extra column, no extra round-trip) so the rows already carry it. Dispatch rule for Phase 1: if all owned rows share one provider use it; if mixed or none, default `outstand` (via `resolveProviderId`). Then select `zernioAdapter` or `outstandAdapter` and route the SDK-shaped paths through the chosen adapter's contract methods. For `provider='outstand'` the path is the existing forward (behavior-preserving).
 - [ ] **Step 3: Local boot/parse sanity.** Run: `npm run build` (frontend unaffected, must stay green) then deploy via the project's edge-fn deploy path (Supabase MCP `deploy_edge_function` bundling ALL transitive `_shared` files, or `npx supabase functions deploy social-proxy`). **The deploy bundle is the real Deno parse check** (per the template-literal-backticks memory — order build → deploy, not build → merge). Expected: deploys, boots, returns 503 `zernio_not_configured` only when a Zernio call is attempted without the key.
 - [ ] **Step 4: Smoke the Outstand path** with a test JWT for an existing Outstand user against `social-proxy` (GET `/social-accounts`) → identical result to `outstand-proxy`. Confirms behavior preservation.
 - [ ] **Step 5: Commit.**
@@ -256,11 +256,11 @@ git commit -m "feat(social): add social-proxy gateway dispatching to provider ad
 
 - [ ] **Step 1: Implement `client.ts`** — a small fetch wrapper: `SUPABASE_URL + /functions/v1/social-proxy`, `Authorization: Bearer ${session.access_token}`, `x-org-unit-id` header (mirror `useOutstandConfig`). Methods `get/post/delete`.
 
-- [ ] **Step 2 (TDD): `cache-map.ts`** — write failing test for `accountAnalyticsToCacheRows(userId, account, analytics, period)` producing `social_analytics_cache` rows with `metric_type` in `followers|engagement_rate|reach|posts` and the existing `onConflict` key shape (lift from `useAccountMetrics.ts`). Run `npx vitest run src/integrations/social/hooks/cache-map.test.ts` → FAIL → implement → PASS.
+- [ ] **Step 2 (TDD): `cache-map.ts`** — write failing test for `accountAnalyticsToCacheRows(userId, account, analytics, period)` producing `social_analytics_cache` rows. **Use the EXACT live table contract from `useAccountMetrics.ts` (lines ~162-170), not guesses:** `metric_type` values are `followers | engagement | reach | posts` (NOT `engagement_rate`), the FK column is `outstand_account_id` (the opaque provider account id), and the upsert `onConflict` key is `user_id,outstand_account_id,metric_type,period_start,period_end`. Emitting `engagement_rate` would fail to conflict-match the existing `engagement` rows and silently break Phase 4's prior-period delta reads. Run `npx vitest run src/integrations/social/hooks/cache-map.test.ts` → FAIL → implement → PASS.
 
 - [ ] **Step 3: Implement `useSocialAccounts.ts`** — React Query hook returning `{ accounts: SocialAccount[], isLoading, error, refetch, disconnect }`, matching the consumed shape of the SDK's `useAccounts`. Query key `['social-accounts', userId, orgUnitId]`, `enabled: !!session`.
 
-- [ ] **Step 4: Implement `useSocialPost.ts`, `useSocialAnalytics.ts`, `useSocialComments.ts`** following the same pattern (mutation for post/reply; queries for analytics/comments using `cache-map` for analytics). Return shapes match what `useCrossPost` / `useAccountMetrics` / `usePostComments` consume today so later phases can swap imports 1:1.
+- [ ] **Step 4: Implement `useSocialPost.ts`, `useSocialAnalytics.ts`, `useSocialComments.ts`** following the same pattern (mutation for post/reply; queries for analytics/comments using `cache-map` for analytics). Return shapes match what `useCrossPost` / `useAccountMetrics` / `usePostComments` consume today so later phases can swap imports 1:1. **Note:** the contract `Comment` deliberately omits `postCaption` / `postPublishedAt` (those are post-context, not provider data). `useSocialComments` MUST reattach `postCaption` (first ~60 chars of the post's container content) and `postPublishedAt` from the post list it queries, so the shape matches `usePostComments`'s `Comment` exactly — otherwise the Phase 3 import swap is not 1:1.
 
 - [ ] **Step 5: Typecheck + targeted tests.** Run: `npm run typecheck` (PASS) and `npx vitest run src/integrations/social/hooks/cache-map.test.ts` (PASS). Note: full `npm run test` exits 1 from pre-existing Playwright e2e files — trust "Tests N passed, 0 failed" (per the vitest-preexisting-failures memory).
 
