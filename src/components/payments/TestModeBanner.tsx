@@ -1,12 +1,12 @@
 import { cn } from '@/lib/utils';
+import { isStripeTestMode } from '@/lib/stripeMode';
 
 interface TestModeBannerProps {
   className?: string;
 }
 
 export function TestModeBanner({ className }: TestModeBannerProps) {
-  const isTestMode = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_');
-  if (!isTestMode) return null;
+  if (!isStripeTestMode) return null;
 
   return (
     <div className={cn('rounded-xl border-2 border-orange-400 bg-orange-50 px-4 py-3 space-y-1', className)}>
