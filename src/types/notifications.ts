@@ -7,6 +7,7 @@ export type NotificationType =
   | 'campaign_invitation'
   | 'invitation_declined'
   | 'campaign_published'
+  | 'campaign_cancelled'
   | 'revision_requested'
   | 'cgc_submission_received'
   | 'cgc_code_redeemed'
@@ -20,6 +21,11 @@ export type NotificationType =
   | 'counter_offer_responded'
   | 'payment_received'
   | 'project_completed'
+  | 'completion_request'
+  | 'sponsorship_completed'
+  | 'sponsorship_completion_request'
+  | 'approval_pending'
+  | 'content_started'
   | 'content_liked'
   | 'content_approved'
   | 'file_uploaded'
@@ -100,9 +106,13 @@ export const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Partial<Record<NotificationType, s
   application_received: 'new_application',
   application_accepted: 'application_status',
   application_rejected: 'application_status',
-  campaign_invitation: 'campaign_invitation',
+  // campaign_invitation intentionally omitted: send-campaign-invitation owns the
+  // invitation email (business name + working link + Donny). create-notification
+  // only fires the in-app bell for it — no duplicate email. Keep in sync with
+  // supabase/functions/create-notification/index.ts.
   invitation_declined: 'campaign_invitation_declined',
   campaign_published: 'campaign_published',
+  campaign_cancelled: 'campaign_cancelled',
   revision_requested: 'revision_requested',
   message_received: 'new_message',
   sponsorship_proposal: 'sponsorship_proposal',

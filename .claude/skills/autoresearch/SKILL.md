@@ -20,6 +20,17 @@ This skill **orchestrates two existing skills** — do not reimplement them:
 
 Read `docs/wiki/index.md` before any run so you know what already exists ("compound, don't duplicate").
 
+## Loop memory
+
+This skill keeps a co-located **`MEMORY.md`** — two zones: curated **Lessons** (read first)
+and an append-only **Run Log**. Full contract: `docs/wiki/concepts/loop-memory-protocol.md`.
+
+- **At the start of every run:** read `MEMORY.md` and apply its **Lessons**.
+- **At the end of every run:** add a **Run Log** entry **at the top** (newest first) —
+  `Output:` a *pointer* to the artifact this run produced (e.g. the wiki page + `log.md`
+  line; never a duplicate), then `Happened / Worked / Failed / Remember`. Then promote
+  durable takeaways into **Lessons** and prune any Lessons this run superseded.
+
 ## Research domains
 
 Every finding is one of three domains — classify it, because it routes to a different wiki bucket:

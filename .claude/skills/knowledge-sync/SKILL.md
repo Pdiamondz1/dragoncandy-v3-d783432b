@@ -20,6 +20,17 @@ hook — it must be run by the agent. Related: [[wiki-ops]], [[autoresearch]].
 - After a PR merges, to sync the RAG against `main` (step 5).
 - Any time the AIOS files a "Knowledge layer behind main" finding.
 
+## Loop memory
+
+This skill keeps a co-located **`MEMORY.md`** — two zones: curated **Lessons** (read first)
+and an append-only **Run Log**. Full contract: `docs/wiki/concepts/loop-memory-protocol.md`.
+
+- **At the start of every run:** read `MEMORY.md` and apply its **Lessons**.
+- **At the end of every run:** add a **Run Log** entry **at the top** (newest first) —
+  `Output:` a *pointer* to the artifact this run produced (e.g. the wiki page + `log.md`
+  line; never a duplicate), then `Happened / Worked / Failed / Remember`. Then promote
+  durable takeaways into **Lessons** and prune any Lessons this run superseded.
+
 ## Steps
 
 1. **Scope the change.** Identify what shipped this session (the branch's commits / the PR).

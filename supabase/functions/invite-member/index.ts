@@ -110,8 +110,8 @@ serve(async (req) => {
         await supabase.functions.invoke("send-notification-email", {
           body: {
             to: email,
-            subject: `You've been invited to join ${orgName} on DragonCandy`,
-            html: `<p>You've been invited to join <strong>${orgName}</strong> as a <strong>${role}</strong>.</p><p><a href="https://dragoncandy.io/invite/accept?org=${org_id}&user=${existingProfile.id}">Accept Invitation</a></p>`,
+            type: "org_invite",
+            data: { orgName, role, orgId: org_id, inviteeId: existingProfile.id },
           },
         });
       } catch (emailErr) {

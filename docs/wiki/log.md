@@ -1,5 +1,33 @@
 # Wiki Log
 
+## [2026-06-23] update | Loop Memory Protocol
+Added the Loop Memory Protocol concept page — the contract for a co-located two-zone
+`MEMORY.md` (curated **Lessons** read before a run + append-only **Run Log** written after)
+that lets an orchestration loop self-improve across runs. The "Output" half of the source
+prompt is satisfied by *pointing at* each loop's existing artifact (wiki page, `log.md`,
+`result_summary_md`) rather than duplicating it; the validator verdict block's `missing[]`
+feeds the Run Log Failed/Remember zone. Phase 1 applies it to the `autoresearch` (pilot),
+`knowledge-sync`, `verify-knowledge`, and `wiki-ops` skills; Phase 2 (DB-backed memory for
+cloud routines via `aios_loop_memory` + `aios-report-ingest`) is designed but deferred.
+Pages created: [[Loop Memory Protocol]]
+Pages updated: index.md
+Note: cross-links [[Validator Skills]], [[Self-Improving App]], [[Founder Playbooks]].
+
+## [2026-06-23] ingest | Notification Email Audit (PR #161)
+Ingested the notification-email audit session. A creator's dead "View Campaign" button
+(`href="undefined"` — a duplicate `create-notification` invite email + the one template with no
+`baseUrl` fallback) cascaded into auditing every button in `send-notification-email`, then a
+caller-payload trace that surfaced the keystone finding: the function's **self-only auth gate
+403s any frontend caller emailing the counterparty**, silently dropping 9 transactional emails
+(likes, content-started, joint approvals, project + sponsorship completion). All 6 frontend flows
+rerouted through `create-notification` (service-key send + the in-app bell they lacked); 2
+broadcast type names fixed; 3 missing templates added (`campaign_cancelled`, `dispute_alert`,
+`org_invite`); buttons cross-checked against `src/App.tsx` + guarded against `/undefined`. Codex
+caught the like-email pref-gating (kept intentional) and an empty-greeting fallback. Distilled the
+durable rule into [[Notification Delivery]].
+Pages created: [[Notification Delivery]], [[Notification Email Audit Session]]
+Pages updated: index.md
+
 ## [2026-06-22] ingest | Origin Story & Knowledge-Sync Automation (PRs #154–#162)
 Ingested the session that authored the canonical DragonCandy origin story into the AIOS
 strategy library (one cohesive story with the three-sided restaurant/creator/brand vision

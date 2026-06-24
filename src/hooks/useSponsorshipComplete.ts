@@ -1,12 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { useEmailNotifications } from './useEmailNotifications';
 import { useAuth } from './useAuth';
 
 export const useSponsorshipComplete = () => {
   const queryClient = useQueryClient();
-  const { sendNotification } = useEmailNotifications();
   useAuth();
 
   const requestCompletion = useMutation({
@@ -94,34 +92,48 @@ export const useSponsorshipComplete = () => {
         const campaignData = Array.isArray(campaignsRaw) ? campaignsRaw[0] : campaignsRaw;
 
         // Send completion confirmation email to brand
-        await sendNotification(
-          'sponsorship_completed',
-          '',
-          brandProfile.business_name,
-          {
-            recipientUserId: brandProfile.user_id,
-            campaignTitle: campaignData.title,
-            brandName: brandProfile.business_name,
-            businessName: restaurantProfile.business_name,
-            sponsorshipId: sponsorshipId,
-            actionUrl: `${window.location.origin}/dashboard/brand/sponsorships?highlight=${sponsorshipId}`
-          }
-        );
+        await supabase.functions.invoke('create-notification', {
+          body: {
+            recipientId: brandProfile.user_id,
+            type: 'sponsorship_completed',
+            category: 'transactions',
+            title: 'Sponsorship completed',
+            body: `Sponsorship for "${campaignData.title}" is complete`,
+            actionUrl: `/dashboard/brand/sponsorships?highlight=${sponsorshipId}`,
+            icon: 'check',
+            emailType: 'sponsorship_completed',
+            data: { sponsorship_id: sponsorshipId },
+            emailData: {
+              campaignTitle: campaignData.title,
+              brandName: brandProfile.business_name,
+              businessName: restaurantProfile.business_name,
+              sponsorshipId,
+              actionUrl: `${window.location.origin}/dashboard/brand/sponsorships?highlight=${sponsorshipId}`,
+            },
+          },
+        }).catch((err: unknown) => console.error('Failed to send sponsorship-completed notification:', err));
 
         // Send completion confirmation email to business
-        await sendNotification(
-          'sponsorship_completed',
-          '',
-          restaurantProfile.business_name,
-          {
-            recipientUserId: restaurantProfile.user_id,
-            campaignTitle: campaignData.title,
-            brandName: brandProfile.business_name,
-            businessName: restaurantProfile.business_name,
-            sponsorshipId: sponsorshipId,
-            actionUrl: `${window.location.origin}/dashboard/business/campaigns/${campaignData.id}`
-          }
-        );
+        await supabase.functions.invoke('create-notification', {
+          body: {
+            recipientId: restaurantProfile.user_id,
+            type: 'sponsorship_completed',
+            category: 'transactions',
+            title: 'Sponsorship completed',
+            body: `Sponsorship for "${campaignData.title}" is complete`,
+            actionUrl: `/dashboard/business/campaigns/${campaignData.id}`,
+            icon: 'check',
+            emailType: 'sponsorship_completed',
+            data: { sponsorship_id: sponsorshipId, campaign_id: campaignData.id },
+            emailData: {
+              campaignTitle: campaignData.title,
+              brandName: brandProfile.business_name,
+              businessName: restaurantProfile.business_name,
+              sponsorshipId,
+              actionUrl: `${window.location.origin}/dashboard/business/campaigns/${campaignData.id}`,
+            },
+          },
+        }).catch((err: unknown) => console.error('Failed to send sponsorship-completed notification:', err));
 
         return completedData;
       }
@@ -132,36 +144,50 @@ export const useSponsorshipComplete = () => {
 
       if (userRole === 'brand') {
         // Notify business owner
-        await sendNotification(
-          'sponsorship_completion_request',
-          '',
-          restaurantProfile.business_name,
-          {
-            recipientUserId: restaurantProfile.user_id,
-            campaignTitle: campaignData.title,
-            brandName: brandProfile.business_name,
-            businessName: restaurantProfile.business_name,
-            requesterName: brandProfile.business_name,
-            sponsorshipId: sponsorshipId,
-            actionUrl: `${window.location.origin}/dashboard/business/campaigns/${campaignData.id}`
-          }
-        );
+        await supabase.functions.invoke('create-notification', {
+          body: {
+            recipientId: restaurantProfile.user_id,
+            type: 'sponsorship_completion_request',
+            category: 'transactions',
+            title: 'Sponsorship approval needed',
+            body: `Please approve sponsorship completion for "${campaignData.title}"`,
+            actionUrl: `/dashboard/business/campaigns/${campaignData.id}`,
+            icon: 'check',
+            emailType: 'sponsorship_completion_request',
+            data: { sponsorship_id: sponsorshipId, campaign_id: campaignData.id },
+            emailData: {
+              campaignTitle: campaignData.title,
+              brandName: brandProfile.business_name,
+              businessName: restaurantProfile.business_name,
+              requesterName: brandProfile.business_name,
+              sponsorshipId,
+              actionUrl: `${window.location.origin}/dashboard/business/campaigns/${campaignData.id}`,
+            },
+          },
+        }).catch((err: unknown) => console.error('Failed to send sponsorship-completion-request notification:', err));
       } else {
         // Notify brand
-        await sendNotification(
-          'sponsorship_completion_request',
-          '',
-          brandProfile.business_name,
-          {
-            recipientUserId: brandProfile.user_id,
-            campaignTitle: campaignData.title,
-            brandName: brandProfile.business_name,
-            businessName: restaurantProfile.business_name,
-            requesterName: restaurantProfile.business_name,
-            sponsorshipId: sponsorshipId,
-            actionUrl: `${window.location.origin}/dashboard/brand/sponsorships?highlight=${sponsorshipId}`
-          }
-        );
+        await supabase.functions.invoke('create-notification', {
+          body: {
+            recipientId: brandProfile.user_id,
+            type: 'sponsorship_completion_request',
+            category: 'transactions',
+            title: 'Sponsorship approval needed',
+            body: `Please approve sponsorship completion for "${campaignData.title}"`,
+            actionUrl: `/dashboard/brand/sponsorships?highlight=${sponsorshipId}`,
+            icon: 'check',
+            emailType: 'sponsorship_completion_request',
+            data: { sponsorship_id: sponsorshipId },
+            emailData: {
+              campaignTitle: campaignData.title,
+              brandName: brandProfile.business_name,
+              businessName: restaurantProfile.business_name,
+              requesterName: restaurantProfile.business_name,
+              sponsorshipId,
+              actionUrl: `${window.location.origin}/dashboard/brand/sponsorships?highlight=${sponsorshipId}`,
+            },
+          },
+        }).catch((err: unknown) => console.error('Failed to send sponsorship-completion-request notification:', err));
       }
 
       return data;

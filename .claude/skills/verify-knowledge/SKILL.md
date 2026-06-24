@@ -6,11 +6,27 @@ description: "Validator for the knowledge layer — judges whether the wiki, Don
 # Verify Knowledge (DragonCandy) — validator
 
 A **validator skill**: it READS the knowledge layer, JUDGES it against deterministic rules, and
-ends with a fenced JSON **verdict block** a loop (or a human) can branch on. It NEVER writes —
-no commits, no DB writes, no file edits. It is the *validate* half of the [[knowledge-sync]]
+ends with a fenced JSON **verdict block** a loop (or a human) can branch on. It NEVER writes to
+the state it judges — no commits, no DB writes, no wiki edits (its own `MEMORY.md` bookkeeping
+is the sole exception; see Loop memory). It is the *validate* half of the [[knowledge-sync]]
 loop; the *generate*/fix half belongs to that skill. See `docs/wiki/concepts/validator-skills.md`
 for the contract, and the scheduled, self-healing cloud twin
 `.claude/schedules/knowledge-freshness-agent.md` (same freshness rule).
+
+## Loop memory
+
+This skill keeps a co-located **`MEMORY.md`** — two zones: curated **Lessons** (read first)
+and an append-only **Run Log**. Full contract: `docs/wiki/concepts/loop-memory-protocol.md`.
+
+- **At the start of every run:** read `MEMORY.md` and apply its **Lessons** — but **only**
+  to sharpen your prose and `missing[]` remediation hints, or recall what to watch for.
+  Lessons MUST NOT change the deterministic `met` checks below (same state in, same verdict
+  out is this skill's whole point). Writing its own `MEMORY.md` is bookkeeping, not a write
+  to the state under test — it does not break the read-and-judge-only rule.
+- **At the end of every run:** add a **Run Log** entry **at the top** (newest first) —
+  `Output:` a *pointer* to the verdict block this run emitted (never a duplicate), then
+  `Happened / Worked / Failed / Remember`. Then promote durable (advisory) takeaways into
+  **Lessons** and prune any Lessons this run superseded.
 
 ## Checks (all deterministic — same state in, same verdict out)
 
@@ -64,7 +80,8 @@ LAST fenced block in the output:
 
 ## Rules
 
-- **Read-and-judge only — never write.** The fix (running the sync, editing the wiki) is the
-  caller's job ([[knowledge-sync]]), not this skill's.
+- **Read-and-judge only — never write the state under test.** The fix (running the sync,
+  editing the wiki) is the caller's job ([[knowledge-sync]]), not this skill's. The lone
+  exception is appending to its own `MEMORY.md` (bookkeeping — never alters a `met` check).
 - The verdict block MUST be the LAST fenced block in the output (the parser reads the last one).
 - Deterministic `met`: same repo + RAG state → same verdict. No prose judgment in a gating check.

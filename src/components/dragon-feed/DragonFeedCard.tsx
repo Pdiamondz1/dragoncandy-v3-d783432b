@@ -63,16 +63,24 @@ export const DragonFeedCard: React.FC<DragonFeedCardProps> = ({ media }) => {
 
       // Send email notification for likes (not unlikes)
       if (newLikedState) {
-        await supabase.functions.invoke('send-notification-email', {
+        const likerName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Someone';
+        // create-notification: bell + server-side email (a frontend caller cannot email
+        // another user — the auth gate 403s a cross-user recipient). The like email is
+        // intentionally gated by the recipient's "content" preference (off by default).
+        await supabase.functions.invoke('create-notification', {
           body: {
+            recipientId: media.creatorId,
             type: 'content_liked',
-            data: {
-              recipientUserId: media.creatorId,
-              likerName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Someone',
-              contentUrl: media.url,
-            }
+            category: 'content',
+            title: 'New like',
+            body: `${likerName} liked your content`,
+            actorId: user.id,
+            actorName: likerName,
+            icon: 'like',
+            data: { content_id: media.id },
+            emailData: { likerName, contentUrl: media.url },
           }
-        }).catch(err => console.error('Failed to send like notification email:', err));
+        }).catch(err => console.error('Failed to send like notification:', err));
       }
     } catch (error) {
       console.error('Failed to track like:', error);
