@@ -5,6 +5,7 @@ import { writePaymentEvent } from "../_shared/payment-events.ts";
 import { getOrgTakeRate } from "../_shared/platform-fee.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { testModeCustomText } from "../_shared/test-mode-text.ts";
+import { testModePaymentMethodTypes } from "../_shared/test-mode-payment-methods.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -105,6 +106,7 @@ serve(async (req) => {
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       custom_text: testModeCustomText(stripeKey),
+      payment_method_types: testModePaymentMethodTypes(stripeKey),
       line_items: [
         {
           price_data: {

@@ -6,6 +6,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { getOrCreateOrgCustomer } from "../_shared/stripe-customer.ts";
 import { fulfillBoost } from "../_shared/fulfill-boost.ts";
 import { testModeCustomText } from "../_shared/test-mode-text.ts";
+import { testModePaymentMethodTypes } from "../_shared/test-mode-payment-methods.ts";
 import { calculateDragonShareFee } from "../_shared/dragonshare-fee.ts";
 
 const logStep = (step: string, details?: unknown) => {
@@ -178,6 +179,7 @@ serve(async (req) => {
           boosting_org_id: membership.org_id,
         },
         custom_text: testModeCustomText(stripeKey),
+        payment_method_types: testModePaymentMethodTypes(stripeKey),
         success_url: `${origin}/dashboard/business/dragonshare?boost=success`,
         cancel_url: `${origin}/dashboard/business/dragonshare?boost=cancelled`,
       });

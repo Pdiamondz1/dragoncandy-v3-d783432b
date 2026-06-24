@@ -7,6 +7,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { resolvePayoutAmount } from "../_shared/pricing-utils.ts";
 import { getOrCreateOrgCustomer } from "../_shared/stripe-customer.ts";
 import { testModeCustomText } from "../_shared/test-mode-text.ts";
+import { testModePaymentMethodTypes } from "../_shared/test-mode-payment-methods.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -124,6 +125,7 @@ serve(async (req) => {
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       custom_text: testModeCustomText(stripeKey),
+      payment_method_types: testModePaymentMethodTypes(stripeKey),
       line_items: [
         {
           price_data: {

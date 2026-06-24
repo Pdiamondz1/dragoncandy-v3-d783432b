@@ -303,20 +303,22 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
         <div className="rounded-xl border border-green-200 bg-green-50 p-4 space-y-3">
           <p className="text-sm text-green-800">{config.connectedLabel}</p>
           <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              onClick={handleDashboard}
-              disabled={connecting}
-              variant="outline"
-              size="sm"
-              className="rounded-full"
-            >
-              {connecting ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <LayoutDashboard className="w-4 h-4 mr-2" />
-              )}
-              {connecting ? 'Opening...' : 'View Stripe Dashboard'}
-            </Button>
+            {!isTestMode && (
+              <Button
+                onClick={handleDashboard}
+                disabled={connecting}
+                variant="outline"
+                size="sm"
+                className="rounded-full"
+              >
+                {connecting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <LayoutDashboard className="w-4 h-4 mr-2" />
+                )}
+                {connecting ? 'Opening...' : 'View Stripe Dashboard'}
+              </Button>
+            )}
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
