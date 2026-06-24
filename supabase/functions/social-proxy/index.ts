@@ -137,6 +137,14 @@ async function handleRecordConnection(
   }
 
   // Refuse if any other tenant already owns this account_id.
+  // NOTE (Phase 5 follow-up): provider account ids are only opaque WITHIN a
+  // provider, so a correct multi-provider claim check + upsert conflict target
+  // would include `provider`. We deliberately keep the single-key form here
+  // because the unique constraint `(user_id, outstand_social_account_id)` is
+  // SHARED with the live outstand-proxy upsert — changing it now would break
+  // that function. Cross-provider id collision cannot occur until users hold
+  // both providers (Phase 5 cutover), where the constraint transition is done
+  // alongside retiring/updating outstand-proxy. See the migration + plan.
   const { data: existing } = await admin
     .from("business_outstand_accounts")
     .select("user_id")
@@ -220,6 +228,14 @@ interface OpDeps {
 // Post-level ownership pre-check: the caller may touch a post only if it shares
 // at least one social account with their owned set. Returns null on allow, a
 // Response on deny/error.
+//
+// NOTE (Phase 3 follow-up): the live outstand-proxy additionally falls back to
+// post-platform ownership and a donny_scheduled_posts lookup when a post's
+// /posts/{id} response omits social account ids. We intentionally omit those
+// Outstand-specific fallbacks here: this gateway is provider-agnostic and is
+// DARK in Phase 1 (no UI routes Outstand through social-proxy yet — the SDK
+// still calls outstand-proxy directly). The fallback is reinstated as part of
+// the Phase 3 UI swap, where the cross-provider ownership model is settled.
 async function requirePostOwnership(
   deps: OpDeps,
   providerPostId: string,

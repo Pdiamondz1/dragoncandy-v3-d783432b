@@ -289,6 +289,23 @@ git commit -m "feat(social): add headless social hooks over social-proxy (not ye
 - Set Supabase secrets `ZERNIO_API_KEY` (and `ZERNIO_WEBHOOK_SECRET` for Phase 3).
 - (Phase 3) register the Zernio webhook URL.
 
+## Codex-identified deferrals (latent, later-phase — documented in code)
+The Codex second review surfaced two correctness items that are real but **cannot
+manifest in Phase 1** (the seam is dark/additive) and are deferred to the phase where
+they bite, with explanatory comments at the code sites:
+- **Provider-scoped account identity (Phase 5).** A correct multi-provider claim check
+  + upsert conflict target would include `provider`. The conflict key
+  `(user_id, outstand_social_account_id)` is **shared with the live `outstand-proxy`**
+  upsert, so changing the unique constraint now would break that function. Cross-provider
+  id collision is impossible until users hold both providers (Phase 5 cutover), where the
+  constraint transition is done alongside updating/retiring `outstand-proxy`.
+  (`index.ts` `handleRecordConnection`.)
+- **Outstand post-ownership fallbacks (Phase 3).** The live `outstand-proxy` falls back to
+  post-platform + `donny_scheduled_posts` ownership when a post response omits account ids.
+  The agentic gateway omits these Outstand-specific fallbacks because it is provider-agnostic
+  and dark in Phase 1; they are reinstated in the Phase 3 UI swap. (`index.ts`
+  `requirePostOwnership`.)
+
 ## Notes / gotchas
 - Edge functions cannot import `src/` — the contract lives in two synced files; a drift is a maintenance risk, flagged by header comments on both.
 - Confirm exact Zernio request/response JSON in Step 0c before writing `zernio-map`; the marketing pages confirm the *capabilities* (connect, posts, analytics add-on, Inbox comments, webhooks) but not field names.
