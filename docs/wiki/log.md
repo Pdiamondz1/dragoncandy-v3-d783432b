@@ -1,5 +1,19 @@
 # Wiki Log
 
+## [2026-06-24] ingest | Loop Memory shipped + Security-Advisor Triage (deferred)
+Ingested the 2026-06-24 session. Captured that the [[Loop Memory Protocol]] shipped (Phase 1,
+PR #161) — added a Status line + second source to that page. Recorded the #161 merge/deploy
+(conflation with the notification PR, index/log merge-conflict resolved keep-both, edge-fn
+deploy via MCP since Lovable is frontend-only, and the verify-prod lazy-chunk blind spot where
+the landing `index-*.js` hash stays unchanged because the changes were in lazy route chunks).
+Created [[SECURITY DEFINER Advisor Triage]] — the reusable 3-signal triage method
+(frontend `.rpc()` / referenced in an RLS policy / returns `trigger`) and the **deliberate
+decision to defer** acting on the 149 prod security advisors pre-launch (43 keep-by-design /
+32 revoke-safe; no changes made). Refreshed `PROJECT_CONTEXT.md`.
+Pages created: [[Loop Memory & Security Triage Session]], [[SECURITY DEFINER Advisor Triage]]
+Pages updated: [[Loop Memory Protocol]], index.md
+Note: cross-links [[Self-Improving App]], [[Validator Skills]], [[Supabase]], [[QA CI/CD Gate]].
+
 ## [2026-06-23] update | Loop Memory Protocol
 Added the Loop Memory Protocol concept page — the contract for a co-located two-zone
 `MEMORY.md` (curated **Lessons** read before a run + append-only **Run Log** written after)

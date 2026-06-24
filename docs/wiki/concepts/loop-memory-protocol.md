@@ -2,11 +2,15 @@
 title: Loop Memory Protocol
 type: concept
 created: 2026-06-23
-updated: 2026-06-23
-sources: [2026-06-23-loop-memory-protocol-design.md]
+updated: 2026-06-24
+sources: [2026-06-23-loop-memory-protocol-design.md, 2026-06-24-loop-memory-and-security-triage.md]
 tags: [skills, loops, memory, aios, self-improvement]
 ---
 # Loop Memory Protocol
+
+**Status: Phase 1 shipped (PR #161, 2026-06-24)** — co-located `MEMORY.md` + a "Loop memory"
+block live in `autoresearch`, `knowledge-sync`, `verify-knowledge`, `wiki-ops`; this page is in
+Donny's RAG. Phase 2 (DB-backed memory for AIOS cloud routines) remains designed-but-deferred.
 
 A **loop memory** gives an orchestration loop a persistent, two-zone `MEMORY.md` it reads
 *before* a run and writes *after* — so the loop self-improves over time instead of the
