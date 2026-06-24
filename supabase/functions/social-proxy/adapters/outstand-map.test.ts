@@ -151,6 +151,20 @@ describe('fromOutstandPostResult', () => {
     expect(fromOutstandPostResult({ id: 'post-3' }).providerPostId).toBe('post-3');
   });
 
+  it('honors social_account_id / socialAccountId per-account id variants (ownership check depends on it)', () => {
+    const raw = {
+      post: { id: 'post-4' },
+      socialAccounts: [
+        { social_account_id: 'acc-snake', status: 'published' },
+        { socialAccountId: 'acc-camel', status: 'pending' },
+      ],
+    };
+    expect(fromOutstandPostResult(raw).perAccount).toEqual([
+      { accountId: 'acc-snake', status: 'published', error: null },
+      { accountId: 'acc-camel', status: 'pending', error: null },
+    ]);
+  });
+
   it('defaults providerPostId to empty string and perAccount to [] when absent', () => {
     const result = fromOutstandPostResult({});
     expect(result.providerPostId).toBe('');

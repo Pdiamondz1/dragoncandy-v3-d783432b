@@ -83,6 +83,8 @@ function toPerAccountStatus(raw: unknown): PostSocialAccount['status'] {
 
 interface OutstandPostAccountRaw {
   id?: string;
+  social_account_id?: string;
+  socialAccountId?: string;
   status?: string;
 }
 
@@ -90,8 +92,11 @@ function mapSocialAccounts(accounts: unknown): PostSocialAccount[] {
   if (!Array.isArray(accounts)) return [];
   return accounts.map((a) => {
     const raw = (isObject(a) ? a : {}) as OutstandPostAccountRaw;
+    // Outstand returns the per-account id under id | social_account_id |
+    // socialAccountId (see outstand-proxy/extractSocialAccountIds + reconcile).
+    // Ownership (isPostOwned) is checked against this value, so honor all three.
     return {
-      accountId: str(raw.id) ?? '',
+      accountId: str(raw.id) ?? str(raw.social_account_id) ?? str(raw.socialAccountId) ?? '',
       status: toPerAccountStatus(raw.status),
       error: null,
     };
