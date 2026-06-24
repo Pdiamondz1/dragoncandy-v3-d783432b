@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
 import { calculatePlatformFee, getOrgTakeRate } from "../_shared/platform-fee.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { verifyPayoutReady } from "../_shared/payout-ready.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -94,7 +95,16 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-    if (restaurantProfile?.stripe_account_id && restaurantProfile?.stripe_onboarding_complete) {
+    // "Trust true, verify false" so a stale cached flag doesn't wrongly hold the payout.
+    const { ready: restaurantPayoutReady, corrected: restaurantFlagWasStale } = await verifyPayoutReady(
+      stripe, restaurantProfile?.stripe_account_id, restaurantProfile?.stripe_onboarding_complete,
+    );
+    if (restaurantFlagWasStale) {
+      await supabaseClient.from('business_profiles')
+        .update({ stripe_onboarding_complete: true })
+        .eq('id', sponsorship.restaurant_id);
+    }
+    if (restaurantPayoutReady) {
       // Transfer funds to restaurant's connected account
       const transfer = await stripe.transfers.create({
         amount: Math.round(restaurantPayout * 100), // Convert to cents

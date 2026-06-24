@@ -2,6 +2,7 @@
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { calculateDragonShareFee } from "./dragonshare-fee.ts";
+import { verifyPayoutReady } from "./payout-ready.ts";
 
 interface FulfillBoostParams {
   boostId: string;
@@ -37,8 +38,21 @@ export async function fulfillBoost(
     .select("stripe_account_id, stripe_onboarding_complete")
     .eq("user_id", creatorId)
     .single();
-  if (creatorError || !creatorProfile?.stripe_account_id || !creatorProfile?.stripe_onboarding_complete) {
+  if (creatorError || !creatorProfile?.stripe_account_id) {
     throw new Error("Creator payout account not ready at fulfillment");
+  }
+  // "Trust true, verify false": the cached flag can be stale-false (account.updated
+  // webhook not delivering), which would wrongly block a real payout — re-check Stripe.
+  const { ready: creatorReady, corrected: creatorFlagWasStale } = await verifyPayoutReady(
+    stripe, creatorProfile.stripe_account_id, creatorProfile.stripe_onboarding_complete,
+  );
+  if (!creatorReady) {
+    throw new Error("Creator payout account not ready at fulfillment");
+  }
+  if (creatorFlagWasStale) {
+    await supabase.from("creator_profiles")
+      .update({ stripe_onboarding_complete: true })
+      .eq("user_id", creatorId);
   }
 
   const { creatorPayoutCents } = calculateDragonShareFee(amountCents);

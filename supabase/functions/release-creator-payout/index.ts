@@ -5,6 +5,7 @@ import { writePaymentEvent } from "../_shared/payment-events.ts";
 import { calculatePlatformFee, getOrgTakeRate } from "../_shared/platform-fee.ts";
 import { resolvePayoutAmount } from "../_shared/pricing-utils.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { verifyPayoutReady } from "../_shared/payout-ready.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -218,8 +219,17 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-    // Check if creator has completed Stripe onboarding
-    if (creatorProfile?.stripe_account_id && creatorProfile?.stripe_onboarding_complete) {
+    // Check if creator can receive payouts — "trust true, verify false" so a stale
+    // cached flag doesn't wrongly hold the payout in the wallet.
+    const { ready: creatorPayoutReady, corrected: creatorFlagWasStale } = await verifyPayoutReady(
+      stripe, creatorProfile?.stripe_account_id, creatorProfile?.stripe_onboarding_complete,
+    );
+    if (creatorFlagWasStale) {
+      await supabaseClient.from('creator_profiles')
+        .update({ stripe_onboarding_complete: true })
+        .eq('user_id', collaboration.creator_id);
+    }
+    if (creatorPayoutReady) {
       // Ledger: record intent BEFORE moving money
       try {
         await writePaymentEvent(supabaseClient, {

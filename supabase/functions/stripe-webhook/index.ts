@@ -372,20 +372,23 @@ serve(async (req) => {
         const account = event.data.object as Stripe.Account;
         const onboardingComplete = account.charges_enabled && account.payouts_enabled;
 
-        // Update creator profile if this account belongs to one
-        const { error: creatorError, count } = await supabase
-          .from("creator_profiles")
-          .update({ stripe_onboarding_complete: onboardingComplete })
-          .eq("stripe_account_id", account.id)
-          .select("id", { count: "exact", head: true });
-
-        if (!creatorError && (count ?? 0) === 0) {
-          // Not a creator — try business profile
-          await supabase
-            .from("business_profiles")
+        // Sync the cached flag across EVERY table that mirrors this account id:
+        // creator_profiles XOR business_profiles owns it, and org_units mirror a
+        // restaurant's account per location (the actual restaurant payout path).
+        // Updating all three by stripe_account_id is idempotent — a table with no
+        // matching row is a harmless no-op. (Previously org_units was never synced,
+        // which left restaurant-location flags stale.)
+        await Promise.all([
+          supabase.from("creator_profiles")
             .update({ stripe_onboarding_complete: onboardingComplete })
-            .eq("stripe_account_id", account.id);
-        }
+            .eq("stripe_account_id", account.id),
+          supabase.from("business_profiles")
+            .update({ stripe_onboarding_complete: onboardingComplete })
+            .eq("stripe_account_id", account.id),
+          supabase.from("org_units")
+            .update({ stripe_onboarding_complete: onboardingComplete })
+            .eq("stripe_account_id", account.id),
+        ]);
 
         // Now payout-ready → release any held pending_balance. Never fail the
         // webhook on a flush error (the onboarding-return poll is the backstop),
