@@ -322,7 +322,7 @@ No unit test (logic lives in the Task 2 helper, already tested); verified by dep
 
 - [ ] **Step 1: `boost-payment/index.ts`**
 
-Add import near the other `_shared` imports:
+This function already imports `testModeCustomText` and already sets `custom_text`; you are only adding the `testModePaymentMethodTypes` import + field here. Add the import near the other `_shared` imports:
 ```ts
 import { testModePaymentMethodTypes } from "../_shared/test-mode-payment-methods.ts";
 ```
@@ -477,7 +477,7 @@ git commit -m "feat(stripe): instant test-mode payout setup for restaurants (no 
 
 **File (modify):** `supabase/functions/get-stripe-dashboard-link/index.ts`
 
-`createLoginLink` only works for Express/Standard; it throws on Custom test accounts. Make that a clean message instead of a raw error.
+`createLoginLink` only works for Express/Standard; it throws on Custom test accounts. Make that a clean message instead of a raw error. Note: the function's existing outer `catch` still returns status 400 for other errors — leave that untouched. The new guarded branch intentionally returns **200 with `{ success: false }`** so the frontend (which treats non-2xx as `error` and only acts on `data?.url`) simply no-ops rather than surfacing a scary error toast. This is deliberate, not an inconsistency to "fix."
 
 - [ ] **Step 1: Guard the `createLoginLink` call**
 
