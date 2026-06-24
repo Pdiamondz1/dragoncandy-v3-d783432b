@@ -133,9 +133,15 @@ export function createZernioAdapter(deps: ZernioAdapterDeps): SocialProvider {
       return (Array.isArray(raw) ? raw : []).map((c) => fromZernioComment(c as Record<string, unknown>));
     },
 
-    async replyToComment(commentId: string, text: string, _ctx: TenantCtx): Promise<void> {
-      // FLAG: inbox reply endpoint unconfirmed.
-      await request('POST', `/inbox/comments/${commentId}/reply`, { text });
+    async replyToComment(
+      params: { commentId: string; text: string; postId?: string },
+      _ctx: TenantCtx,
+    ): Promise<void> {
+      // FLAG: inbox reply endpoint unconfirmed. Zernio's reply is comment-scoped
+      // (postId not needed).
+      await request('POST', `/inbox/comments/${params.commentId}/reply`, {
+        text: params.text,
+      });
     },
 
     async verifyWebhook(req: Request): Promise<NormalizedEvent | null> {

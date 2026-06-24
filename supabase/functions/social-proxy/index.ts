@@ -30,7 +30,7 @@ import type {
 } from "../_shared/social-contract.ts";
 import { createOutstandAdapter } from "./adapters/outstand.ts";
 import { createZernioAdapter } from "./adapters/zernio.ts";
-import { resolveProviderFromRows } from "./resolve-provider.ts";
+import { resolveProviderFromRows, resolveProviderId } from "./resolve-provider.ts";
 import { assertAccountsOwned, isPostOwned } from "./gateway-guards.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -183,11 +183,38 @@ async function recordDisconnect(
     .eq("outstand_social_account_id", accountId);
 }
 
+// Build the adapter for an explicit provider. Guards the chosen provider's key
+// (503 on missing). `accountPlatforms` is only consumed by the Zernio adapter.
+// Returns either the adapter or a 503 Response for the missing-key case.
+function buildAdapter(
+  providerId: ProviderId,
+  accountPlatforms: Record<string, Platform>,
+): SocialProvider | Response {
+  if (providerId === "zernio") {
+    const apiKey = Deno.env.get("ZERNIO_API_KEY");
+    if (!apiKey) return jsonResponse(503, { error: "zernio_not_configured" });
+    return createZernioAdapter({
+      apiKey,
+      baseUrl: Deno.env.get("ZERNIO_BASE_URL") ?? "https://api.zernio.com/v1",
+      accountPlatforms,
+      webhookSecret: Deno.env.get("ZERNIO_WEBHOOK_SECRET"),
+    });
+  }
+  const apiKey = Deno.env.get("OUTSTAND_API_KEY");
+  if (!apiKey) return jsonResponse(503, { error: "outstand_not_configured" });
+  return createOutstandAdapter({
+    apiKey,
+    baseUrl: Deno.env.get("OUTSTAND_BASE_URL") ?? "https://api.outstand.so/v1",
+    webhookSecret: Deno.env.get("OUTSTAND_WEBHOOK_SECRET"),
+  });
+}
+
 interface OpDeps {
   adapter: SocialProvider;
   ctx: TenantCtx;
   ownedIds: Set<string>;
   admin: SupabaseClient;
+  accountPlatforms: Record<string, Platform>;
 }
 
 // Post-level ownership pre-check: the caller may touch a post only if it shares
@@ -211,7 +238,7 @@ async function handleOp(
   args: Record<string, unknown>,
   deps: OpDeps,
 ): Promise<Response> {
-  const { adapter, ctx, ownedIds, admin } = deps;
+  const { adapter, ctx, ownedIds, admin, accountPlatforms } = deps;
 
   switch (op) {
     case "listAccounts": {
@@ -222,19 +249,34 @@ async function handleOp(
     }
 
     case "getConnectUrl": {
-      // No ownership: connecting a NEW account.
+      // No ownership: connecting a NEW account. A new user has no existing rows
+      // (so the row-resolved default is Outstand) — honor an explicit provider
+      // from the call args so the FIRST account can target the chosen provider.
       const platform = String(args?.platform ?? "") as Platform;
       const redirectUri = String(args?.redirectUri ?? "");
       if (!ALLOWED_PLATFORMS.has(platform)) {
         return jsonResponse(400, { error: "unsupported_platform", platform });
       }
       if (!redirectUri) return jsonResponse(400, { error: "missing_redirect_uri" });
-      const out = await adapter.getConnectUrl(platform, redirectUri, ctx);
+      const connectProvider = args?.provider
+        ? resolveProviderId(String(args.provider))
+        : ctx.provider;
+      const connectAdapter = connectProvider === ctx.provider
+        ? adapter
+        : buildAdapter(connectProvider, accountPlatforms);
+      if (connectAdapter instanceof Response) return connectAdapter;
+      const out = await connectAdapter.getConnectUrl(platform, redirectUri, ctx);
       return jsonResponse(200, { data: out });
     }
 
-    case "recordConnection":
-      return await handleRecordConnection(admin, ctx, ctx.provider, args);
+    case "recordConnection": {
+      // Stamp the row with the explicitly chosen provider (the account was
+      // connected THROUGH it), falling back to the row-resolved default.
+      const stampProvider = args?.provider
+        ? resolveProviderId(String(args.provider))
+        : ctx.provider;
+      return await handleRecordConnection(admin, ctx, stampProvider, args);
+    }
 
     case "disconnect": {
       const accountId = String(args?.accountId ?? "");
@@ -338,7 +380,10 @@ async function handleOp(
       // Comments belong to a post; require ownership of the parent post.
       const denied = await requirePostOwnership(deps, providerPostId);
       if (denied) return denied;
-      await adapter.replyToComment(commentId, String(args?.text ?? ""), ctx);
+      await adapter.replyToComment(
+        { commentId, text: String(args?.text ?? ""), postId: providerPostId },
+        ctx,
+      );
       return jsonResponse(200, { data: { success: true } });
     }
 
@@ -399,26 +444,11 @@ serve(async (req: Request) => {
   }
   const provider = resolveProviderFromRows(rows);
 
-  // Build the active adapter via the factory, guarding the chosen key.
-  let adapter: SocialProvider;
-  if (provider === "zernio") {
-    const apiKey = Deno.env.get("ZERNIO_API_KEY");
-    if (!apiKey) return jsonResponse(503, { error: "zernio_not_configured" });
-    adapter = createZernioAdapter({
-      apiKey,
-      baseUrl: Deno.env.get("ZERNIO_BASE_URL") ?? "https://api.zernio.com/v1",
-      accountPlatforms,
-      webhookSecret: Deno.env.get("ZERNIO_WEBHOOK_SECRET"),
-    });
-  } else {
-    const apiKey = Deno.env.get("OUTSTAND_API_KEY");
-    if (!apiKey) return jsonResponse(503, { error: "outstand_not_configured" });
-    adapter = createOutstandAdapter({
-      apiKey,
-      baseUrl: Deno.env.get("OUTSTAND_BASE_URL") ?? "https://api.outstand.so/v1",
-      webhookSecret: Deno.env.get("OUTSTAND_WEBHOOK_SECRET"),
-    });
-  }
+  // Build the active (row-resolved default) adapter via the factory, guarding
+  // the chosen key. The connect-flow ops may build a different adapter for an
+  // explicitly requested provider.
+  const adapter = buildAdapter(provider, accountPlatforms);
+  if (adapter instanceof Response) return adapter;
 
   const ctx: TenantCtx = {
     userId: tenant.userId,
@@ -428,7 +458,7 @@ serve(async (req: Request) => {
   };
 
   try {
-    return await handleOp(op, args, { adapter, ctx, ownedIds, admin });
+    return await handleOp(op, args, { adapter, ctx, ownedIds, admin, accountPlatforms });
   } catch (e) {
     // Log the full upstream detail server-side, but never echo the provider's raw
     // response body (or any key) back to the browser — return a generic error.

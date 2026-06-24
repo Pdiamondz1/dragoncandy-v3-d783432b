@@ -31,6 +31,28 @@ import {
   toOutstandCreatePost,
 } from './outstand-map.ts';
 
+// Outstand stores the filename verbatim and platforms (Facebook, Instagram,
+// etc.) fetch the media URL via Graph APIs. Spaces, parentheses, and other
+// unsafe characters in the URL break Graph's URL parser and produce
+// "Missing or invalid image file" errors. Coerce to [a-zA-Z0-9._-] before
+// the upload starts so the stored URL is always safe.
+function sanitizeFilename(name: string): string {
+  const lastDot = name.lastIndexOf('.');
+  let base = name;
+  let ext = '';
+  if (lastDot > 0 && lastDot < name.length - 1) {
+    base = name.slice(0, lastDot);
+    ext = name.slice(lastDot);
+  }
+  base = base
+    .replace(/[^a-zA-Z0-9._-]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  ext = ext.replace(/[^a-zA-Z0-9.]/g, '');
+  if (!base) base = 'file';
+  return `${base}${ext}`;
+}
+
 export interface OutstandAdapterDeps {
   apiKey: string;
   baseUrl: string; // defaults via the gateway to https://api.outstand.so/v1
@@ -89,7 +111,14 @@ export function createOutstandAdapter(deps: OutstandAdapterDeps): SocialProvider
     },
 
     async uploadMedia(file: MediaUploadInput, _ctx: TenantCtx): Promise<{ id: string; url: string }> {
-      const raw = (await request('POST', '/media/upload', file)) as Record<string, unknown>;
+      // Sanitize the filename before upload — Outstand stores it verbatim in the
+      // media URL and unsafe chars break Facebook/Instagram Graph publishing.
+      const body = {
+        filename: sanitizeFilename(file.filename),
+        contentType: file.contentType,
+        size: file.size,
+      };
+      const raw = (await request('POST', '/media/upload', body)) as Record<string, unknown>;
       const data = (raw?.data ?? raw) as Record<string, unknown>;
       return { id: String(data?.id ?? ''), url: String(data?.url ?? '') };
     },
@@ -125,12 +154,17 @@ export function createOutstandAdapter(deps: OutstandAdapterDeps): SocialProvider
       return (rows as unknown[]).map((c) => fromOutstandComment(c as Record<string, unknown>));
     },
 
-    async replyToComment(commentId: string, text: string, _ctx: TenantCtx): Promise<void> {
-      // FLAG: impedance mismatch. Outstand comments are per-POST
-      // (POST /posts/{postId}/comments) but the contract signature only carries
-      // commentId. Best-effort treats commentId as the postId; the real reply
-      // path needs a postId and is reconciled in Phase 3.
-      await request('POST', `/posts/${commentId}/comments`, { text });
+    async replyToComment(
+      params: { commentId: string; text: string; postId?: string },
+      _ctx: TenantCtx,
+    ): Promise<void> {
+      // Outstand's reply endpoint is post-scoped: POST /posts/{postId}/comments.
+      // The gateway requires providerPostId for this op (ownership), so postId is
+      // present; commentId is not part of the Outstand reply path.
+      if (!params.postId) {
+        throw new Error('Outstand replyToComment requires a postId');
+      }
+      await request('POST', `/posts/${params.postId}/comments`, { text: params.text });
     },
 
     async verifyWebhook(req: Request): Promise<NormalizedEvent | null> {

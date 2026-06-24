@@ -109,7 +109,10 @@ export interface SocialProvider {
   getAccountAnalytics(accountId: string, ctx: TenantCtx): Promise<AccountAnalytics>;
   // engagement
   listComments(providerPostId: string, ctx: TenantCtx): Promise<Comment[]>;
-  replyToComment(commentId: string, text: string, ctx: TenantCtx): Promise<void>;
+  replyToComment(
+    params: { commentId: string; text: string; postId?: string },
+    ctx: TenantCtx,
+  ): Promise<void>;
   // inbound
   verifyWebhook(req: Request): Promise<NormalizedEvent | null>;
 }
