@@ -430,9 +430,10 @@ serve(async (req: Request) => {
   try {
     return await handleOp(op, args, { adapter, ctx, ownedIds, admin });
   } catch (e) {
-    // Don't leak the provider key or internal stack; surface a short detail.
+    // Log the full upstream detail server-side, but never echo the provider's raw
+    // response body (or any key) back to the browser — return a generic error.
     const detail = e instanceof Error ? e.message : String(e);
     console.error("social-proxy: provider_error", op, detail);
-    return jsonResponse(502, { error: "provider_error", detail });
+    return jsonResponse(502, { error: "provider_error" });
   }
 });
