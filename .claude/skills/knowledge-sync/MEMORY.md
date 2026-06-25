@@ -15,8 +15,26 @@
   with a `content ilike` query on the changed pages.
 - **[scope] Branch off `origin/main`, not the just-merged worktree.** A merged feature branch
   is squash-diverged; author knowledge-sync docs on a fresh branch for a clean PR.
+- **[runlog-in-pr] Bundle this MEMORY.md Run Log entry INTO the docs PR commit**, not a
+  separate follow-up. Forgetting it (as on the #176 run) costs a whole extra PR cycle just to
+  persist one bookkeeping line.
+- **[rag-verify] `donny_knowledge` has no `source_id` column** — verify retrievability with
+  `content ilike '%<distinctive phrase>%'`, not a source/id filter (the query errors otherwise).
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-06-24] Stripe webhook revival + dual-secret (PRs #173/#174 → docs PR #176)
+- Output: PR #176 — `raw/sessions/2026-06-24-stripe-webhook-revival-dual-secret.md`, new
+  `concepts/stripe-webhook-delivery.md`, `entities/stripe-connect.md` (Webhook Delivery
+  section), `index.md` + `log.md` entries, PROJECT_CONTEXT active-workstream bullet.
+- Happened: authored on a fresh branch off origin/main (per [scope]); orphan check clean;
+  Codex-clean (docs-only); merged #176; ff'd main → post-merge hook synced RAG (wiki: +1
+  inserted/49 updated/errors=0; internal: +1/69 updated/errors=0). Confirmed retrievability via
+  `content ilike` — "Stripe Webhook Delivery" present (updated 03:27Z).
+- Worked: [scope] + [orphans] + [rag-sync] Lessons all held — no hand-sync, no orphans, clean PR.
+- Failed: forgot to bundle THIS run-log entry into #176 (this is a follow-up PR); first verify
+  query used a non-existent `source_id` column on `donny_knowledge`.
+- Remember: both failures → **promoted to Lessons** ([runlog-in-pr], [rag-verify]).
 
 ### [2026-06-24] Test-Mode Stripe UX session (PR #168 → docs PR #169)
 - Output: PR #169 — `raw/sessions/2026-06-24-test-mode-stripe-ux.md`, new `concepts/test-mode-stripe-ux.md`, `entities/stripe-connect.md` cross-link, `index.md` + `log.md` entries, PROJECT_CONTEXT active-workstream. [[verify-knowledge]] verdict: `done:true` (all 3 met, first pass).
