@@ -2,8 +2,8 @@
 title: Stripe Connect
 type: entity
 created: 2026-05-23
-updated: 2026-06-02
-sources: [docs/STRIPE_PRICES.md, docs/content-delivery-system-flows.md, docs/DATABASE_SCHEMA.md, raw/sessions/2026-06-02-205607-qa-staging-supabase-planb.md]
+updated: 2026-06-24
+sources: [docs/STRIPE_PRICES.md, docs/content-delivery-system-flows.md, docs/DATABASE_SCHEMA.md, raw/sessions/2026-06-02-205607-qa-staging-supabase-planb.md, raw/sessions/2026-06-24-stripe-webhook-revival-dual-secret.md]
 tags: [stripe, payments, escrow]
 ---
 
@@ -45,6 +45,22 @@ connected account server-side (no hosted Express screens), and all Checkout sess
 forced **card-only** (`payment_method_types:['card']`) so Link/Klarna/real-card temptations
 disappear.
 
+## Webhook Delivery & Payout Reliability
+
+The single `stripe-webhook` function ingests both platform and connected-account events —
+see [[Stripe Webhook Delivery]] for scopes, the dual-secret verification, and the operational
+rules. The prod webhook had **never delivered** (`stripe_webhook_events` was empty), which let
+`stripe_onboarding_complete` (a cache of Stripe's `charges_enabled && payouts_enabled`) go
+**stale-false** and wrongly block payouts.
+
+Two fixes (PRs #173/#174): a reactive **trust-true / verify-false** guard
+(`_shared/payout-ready.ts` `verifyPayoutReady`) at every payout gate (`boost-payment`,
+`fulfill-boost`, `release-creator/sponsorship-payout`) re-checks Stripe before a cached
+`false` blocks money; and **dual-secret verification** so the function accepts events from
+both the platform endpoint (`STRIPE_WEBHOOK_SECRET`) and a Connect endpoint
+(`STRIPE_CONNECT_WEBHOOK_SECRET`), unblocking real-time `account.updated` flag sync (now also
+synced to `org_units`, the restaurant-location payout path).
+
 ## Database Tables
 
 - `payment_events` — payment lifecycle ledger
@@ -75,6 +91,7 @@ every payment call and webhook signature. The `stripe-webhook` function must hav
 
 ## See Also
 
+- [[Stripe Webhook Delivery]] — endpoint scopes, dual-secret verification, operational rules
 - [[Stripe Payments Flow]] — visual money-movement diagrams across all surfaces
 - [[Pricing Architecture]]
 - [[Take-Rate Ladder]]

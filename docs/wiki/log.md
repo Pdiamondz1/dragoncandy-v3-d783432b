@@ -651,3 +651,15 @@ function (list_edge_functions is ground truth, not config.toml) and name files b
 path; the transient "Verification Pending" → "Connected" capability lag; dashboard-link
 degradation is test-mode-only (Codex P2). Live-verified the prefill flips payouts_enabled.
 Pages created: [[Test-Mode Stripe UX]]. Pages updated: [[Stripe Connect]], index.md.
+
+## [2026-06-24] ingest | Stripe Webhook Revival + Dual-Secret (PRs #173, #174)
+Ingested the stripe-webhook revival session. The prod Stripe webhook had never delivered
+(empty `stripe_webhook_events`) because `STRIPE_WEBHOOK_SECRET` was unset, which let
+`stripe_onboarding_complete` go stale-false and block payouts. Captured two fixes:
+trust-true/verify-false `verifyPayoutReady` at every payout gate (PR #173) + dual-secret
+platform/Connect verification (`webhookSigningSecrets`, PR #174) so the one function accepts
+events from both endpoint scopes (each has its own signing secret). Plus the operational
+rules: Snapshot-not-Thin payload, Vault≠Edge-Function-Secrets, a warm isolate holding stale
+env (redeploy forces the secret pickup), MCP byte-diff deploy verification, and the
+probe-based 500-vs-400 health signal. Deployed `stripe-webhook` v156 (MCP, verify_jwt=false).
+Pages created: [[Stripe Webhook Delivery]]. Pages updated: [[Stripe Connect]], index.md.

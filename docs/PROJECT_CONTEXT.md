@@ -405,6 +405,29 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   flips `payouts_enabled`, after a brief capability-processing lag). Codex second review clean.
   Concept: `docs/wiki/concepts/test-mode-stripe-ux.md`. Spec:
   `docs/superpowers/specs/2026-06-24-test-mode-stripe-ux-design.md`.
+- Stripe webhook revival + payout-flag reliability — **shipped + deployed (PRs #173, #174,
+  2026-06-24).** Root-caused why `stripe_onboarding_complete` went **stale-false and blocked
+  payouts**: the prod Stripe webhook had **never delivered a single event**
+  (`stripe_webhook_events` empty) because `STRIPE_WEBHOOK_SECRET` was unset, so the flag (a
+  cache of `charges_enabled && payouts_enabled`) only self-healed on page load. **(#173,
+  reactive)** `_shared/payout-ready.ts` `verifyPayoutReady` — *trust-true / verify-false*:
+  trusts a cached `true`, re-checks Stripe on a cached `false`/`null` before it blocks money;
+  applied at every payout gate (`boost-payment`, `fulfill-boost`, `release-creator/sponsorship-payout`);
+  + the `account.updated` handler now also syncs `org_units` (the restaurant-location payout
+  path, previously never synced). **(#174, real-time)** the handler processes both **platform**
+  ("Your account") and **Connect** ("Connected accounts") events, which in Stripe are
+  **separate endpoints with separate signing secrets** — so verification now tries both
+  `STRIPE_WEBHOOK_SECRET` and optional `STRIPE_CONNECT_WEBHOOK_SECRET` (pure vitest-tested
+  `_shared/webhook-secrets.ts`, first-match-wins, backward compatible). Codex-clean; deployed
+  `stripe-webhook` v156 via the Supabase MCP (verify_jwt=false, byte-diff-verified). **Founder
+  config (done):** created the two Stripe **test-mode** endpoints (platform + Connect
+  `account.updated`, both **Snapshot** payload) and set both edge secrets. Operational gotchas:
+  Stripe MCP can't manage webhook endpoints (Dashboard only); new Workbench routes test-sends
+  to the CLI; **Supabase Vault ≠ Edge Function Secrets**; a **warm isolate** held stale env
+  until a redeploy forced the secret pickup; **Thin payload is incompatible** (handler reads
+  the full snapshot `event.data.object`). Still deferred: the `release-sponsorship-payout`
+  deploy (low-urgency, no live traffic pre-revenue). Concept:
+  `docs/wiki/concepts/stripe-webhook-delivery.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
