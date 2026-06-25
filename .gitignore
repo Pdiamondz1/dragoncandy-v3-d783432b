@@ -74,6 +74,13 @@ bencium-claude-code-design-skill/
 claude-marketplace/
 skills/
 ui-ux-pro-max-skill/
+# ...but our first-party skill MEMORY.md files under .claude/ ARE version-controlled.
+# (SKILL.md files are already tracked; only the loop-memory files need un-ignoring.
+#  Narrowly re-include the dir traversal + MEMORY.md so other local/3rd-party skill
+#  files in these dirs stay ignored.)
+!.claude/skills/
+!.claude/skills/*/
+!.claude/skills/*/MEMORY.md
 
 # Superpowers brainstorm artifacts
 .superpowers/

@@ -52,6 +52,9 @@ export const useFileUploadNotification = () => {
         body: {
           recipientId,
           type: 'file_uploaded',
+          // The default map sends the creator-variant email; override so a restaurant
+          // upload (recipient = creator) gets the restaurant-variant wording.
+          emailType: uploaderRole === 'creator' ? 'file_uploaded_by_creator' : 'file_uploaded_by_restaurant',
           category: 'content',
           title: 'New File Upload',
           body: `${uploaderName} uploaded ${fileLabel} to "${title}"`,

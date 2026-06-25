@@ -6,7 +6,9 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { getOrCreateOrgCustomer } from "../_shared/stripe-customer.ts";
 import { fulfillBoost } from "../_shared/fulfill-boost.ts";
 import { testModeCustomText } from "../_shared/test-mode-text.ts";
+import { testModePaymentMethodTypes } from "../_shared/test-mode-payment-methods.ts";
 import { calculateDragonShareFee } from "../_shared/dragonshare-fee.ts";
+import { verifyPayoutReady } from "../_shared/payout-ready.ts";
 
 const logStep = (step: string, details?: unknown) => {
   console.log(`[BOOST-PAYMENT] ${step}${details ? " - " + JSON.stringify(details) : ""}`);
@@ -79,13 +81,21 @@ serve(async (req) => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customerId = await getOrCreateOrgCustomer(stripe, supabase, membership.org_id, userEmail);
 
-    // Creator payout readiness
+    // Creator payout readiness — "trust true, verify false" so a STALE cached flag
+    // (the account.updated webhook isn't delivering) doesn't wrongly park the boost.
     const { data: creatorProfile } = await supabase
       .from("creator_profiles")
       .select("stripe_account_id, stripe_onboarding_complete")
       .eq("user_id", post.creator_id)
       .single();
-    const creatorReady = !!creatorProfile?.stripe_account_id && !!creatorProfile?.stripe_onboarding_complete;
+    const { ready: creatorReady, corrected: creatorFlagWasStale } = await verifyPayoutReady(
+      stripe, creatorProfile?.stripe_account_id, creatorProfile?.stripe_onboarding_complete,
+    );
+    if (creatorFlagWasStale) {
+      await supabase.from("creator_profiles")
+        .update({ stripe_onboarding_complete: true })
+        .eq("user_id", post.creator_id);
+    }
 
     // Concurrent-pending guard — BEFORE create_boost.
     const { data: existingPending } = await supabase
@@ -178,6 +188,7 @@ serve(async (req) => {
           boosting_org_id: membership.org_id,
         },
         custom_text: testModeCustomText(stripeKey),
+        payment_method_types: testModePaymentMethodTypes(stripeKey),
         success_url: `${origin}/dashboard/business/dragonshare?boost=success`,
         cancel_url: `${origin}/dashboard/business/dragonshare?boost=cancelled`,
       });

@@ -2,6 +2,8 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { isTestKey } from "../_shared/stripe-mode.ts";
+import { createTestModeEnabledAccount } from "../_shared/test-mode-connect.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -71,6 +73,34 @@ serve(async (req) => {
           status: 200,
         });
       }
+    }
+
+    // TEST MODE: skip hosted onboarding entirely. Provision a fully-enabled
+    // sandbox Custom account so "Connect" is one tap. We reach here only when the
+    // account is NOT already enabled (the charges/payouts check above returns
+    // early), so this also re-provisions an EXISTING but incomplete account
+    // (e.g. an old hosted-onboarding Express account left unverified) — that
+    // incomplete account can't be prefill-enabled (Express needs hosted ToS), so
+    // we replace it with a fresh enabled Custom account. Live mode is unaffected.
+    if (isTestKey(stripeKey)) {
+      logStep("Test mode — creating instantly-enabled Custom account");
+      const requestIp = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "127.0.0.1";
+      const acct = await createTestModeEnabledAccount(stripe, {
+        email: user.email,
+        businessName: creatorProfile?.creator_name || undefined,
+        productDescription: "Content creation services via DragonCandy marketplace",
+        metadata: { user_id: user.id, platform: "dragoncandy" },
+        requestIp,
+      });
+      await supabaseClient
+        .from('creator_profiles')
+        .update({ stripe_account_id: acct.id, stripe_onboarding_complete: true })
+        .eq('user_id', user.id);
+      logStep("Test account enabled", { accountId: acct.id, charges: acct.charges_enabled, payouts: acct.payouts_enabled });
+      return new Response(JSON.stringify({ alreadyComplete: true, accountId: acct.id }), {
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+        status: 200,
+      });
     }
 
     // Check for a previously disconnected account

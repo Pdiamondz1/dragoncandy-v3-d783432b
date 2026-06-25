@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
 import { fulfillBoost } from "../_shared/fulfill-boost.ts";
 import { flushPendingBalance } from "../_shared/flush-pending-balance.ts";
+import { webhookSigningSecrets } from "../_shared/webhook-secrets.ts";
 
 const logStep = (step: string, details?: any) => {
   console.log(`[STRIPE-WEBHOOK] ${step}${details ? ' - ' + JSON.stringify(details) : ''}`);
@@ -38,9 +39,14 @@ serve(async (req) => {
     return new Response("Missing stripe-signature header", { status: 400 });
   }
 
-  const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
-  if (!webhookSecret) {
-    logStep("ERROR: STRIPE_WEBHOOK_SECRET not configured");
+  // Two Stripe endpoints (platform + Connect) point here, each with its own signing
+  // secret — verify against whichever one signed this event. See webhook-secrets.ts.
+  const signingSecrets = webhookSigningSecrets({
+    STRIPE_WEBHOOK_SECRET: Deno.env.get("STRIPE_WEBHOOK_SECRET"),
+    STRIPE_CONNECT_WEBHOOK_SECRET: Deno.env.get("STRIPE_CONNECT_WEBHOOK_SECRET"),
+  });
+  if (signingSecrets.length === 0) {
+    logStep("ERROR: no Stripe webhook signing secret configured");
     return new Response("Webhook secret not configured", { status: 500 });
   }
 
@@ -58,13 +64,23 @@ serve(async (req) => {
 
   // Read body as raw text for signature verification
   const body = await req.text();
-  let event: Stripe.Event;
+  let event: Stripe.Event | undefined;
+  let lastErr: unknown;
 
-  try {
-    event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
-  } catch (err) {
-    logStep("Webhook signature verification failed", { error: String(err) });
-    return new Response(`Webhook Error: ${String(err)}`, { status: 400 });
+  // Try each configured endpoint secret; the first that verifies wins. Platform events
+  // (the majority) match STRIPE_WEBHOOK_SECRET first; account.updated (Connect) matches
+  // STRIPE_CONNECT_WEBHOOK_SECRET on the second pass.
+  for (const secret of signingSecrets) {
+    try {
+      event = await stripe.webhooks.constructEventAsync(body, signature, secret);
+      break;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  if (!event) {
+    logStep("Webhook signature verification failed", { error: String(lastErr) });
+    return new Response(`Webhook Error: ${String(lastErr)}`, { status: 400 });
   }
 
   logStep("Event received", { type: event.type, id: event.id });
@@ -372,20 +388,23 @@ serve(async (req) => {
         const account = event.data.object as Stripe.Account;
         const onboardingComplete = account.charges_enabled && account.payouts_enabled;
 
-        // Update creator profile if this account belongs to one
-        const { error: creatorError, count } = await supabase
-          .from("creator_profiles")
-          .update({ stripe_onboarding_complete: onboardingComplete })
-          .eq("stripe_account_id", account.id)
-          .select("id", { count: "exact", head: true });
-
-        if (!creatorError && (count ?? 0) === 0) {
-          // Not a creator — try business profile
-          await supabase
-            .from("business_profiles")
+        // Sync the cached flag across EVERY table that mirrors this account id:
+        // creator_profiles XOR business_profiles owns it, and org_units mirror a
+        // restaurant's account per location (the actual restaurant payout path).
+        // Updating all three by stripe_account_id is idempotent — a table with no
+        // matching row is a harmless no-op. (Previously org_units was never synced,
+        // which left restaurant-location flags stale.)
+        await Promise.all([
+          supabase.from("creator_profiles")
             .update({ stripe_onboarding_complete: onboardingComplete })
-            .eq("stripe_account_id", account.id);
-        }
+            .eq("stripe_account_id", account.id),
+          supabase.from("business_profiles")
+            .update({ stripe_onboarding_complete: onboardingComplete })
+            .eq("stripe_account_id", account.id),
+          supabase.from("org_units")
+            .update({ stripe_onboarding_complete: onboardingComplete })
+            .eq("stripe_account_id", account.id),
+        ]);
 
         // Now payout-ready → release any held pending_balance. Never fail the
         // webhook on a flush error (the onboarding-return poll is the backstop),

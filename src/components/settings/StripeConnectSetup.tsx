@@ -9,6 +9,7 @@ import { useOrgUnits } from '@/hooks/useOrgData';
 import { toast } from 'sonner';
 import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 import { StripeTestHelper } from '@/components/payments/StripeTestHelper';
+import { isStripeTestMode } from '@/lib/stripeMode';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -76,7 +77,7 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
 
   const queryClient = useQueryClient();
   const config = ROLE_CONFIG[role];
-  const isTestMode = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_');
+  const isTestMode = isStripeTestMode;
 
   const checkStatus = useCallback(async () => {
     if (!user) return;
@@ -303,20 +304,22 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
         <div className="rounded-xl border border-green-200 bg-green-50 p-4 space-y-3">
           <p className="text-sm text-green-800">{config.connectedLabel}</p>
           <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              onClick={handleDashboard}
-              disabled={connecting}
-              variant="outline"
-              size="sm"
-              className="rounded-full"
-            >
-              {connecting ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <LayoutDashboard className="w-4 h-4 mr-2" />
-              )}
-              {connecting ? 'Opening...' : 'View Stripe Dashboard'}
-            </Button>
+            {!isTestMode && (
+              <Button
+                onClick={handleDashboard}
+                disabled={connecting}
+                variant="outline"
+                size="sm"
+                className="rounded-full"
+              >
+                {connecting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <LayoutDashboard className="w-4 h-4 mr-2" />
+                )}
+                {connecting ? 'Opening...' : 'View Stripe Dashboard'}
+              </Button>
+            )}
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button

@@ -2,6 +2,8 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { isTestKey } from "../_shared/stripe-mode.ts";
+import { createTestModeEnabledAccount } from "../_shared/test-mode-connect.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -110,6 +112,39 @@ serve(async (req) => {
           status: 200,
         });
       }
+    }
+
+    // TEST MODE: instant enabled Custom account, no hosted onboarding. Reached
+    // only when not already enabled (the charges/payouts check above returns
+    // early), so this also re-provisions an EXISTING but incomplete account
+    // (old unverified Express account) by replacing it with a fresh enabled
+    // Custom account — Express can't be prefill-enabled. Live mode is unaffected.
+    if (isTestKey(stripeKey)) {
+      logStep("Test mode — creating instantly-enabled Custom account");
+      const requestIp = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "127.0.0.1";
+      const acct = await createTestModeEnabledAccount(stripe, {
+        email: user.email,
+        businessName: businessProfile?.business_name || undefined,
+        productDescription: "Restaurant business receiving sponsorship payments via DragonCandy marketplace",
+        metadata: { user_id: user.id, platform: "dragoncandy", account_type: "restaurant", org_unit_id: org_unit_id ?? "" },
+        requestIp,
+      });
+      await supabaseClient
+        .from('business_profiles')
+        .update({ stripe_account_id: acct.id, stripe_onboarding_complete: true })
+        .eq('user_id', user.id)
+        .eq('account_type', 'restaurant');
+      if (org_unit_id) {
+        await supabaseClient
+          .from('org_units')
+          .update({ stripe_account_id: acct.id, stripe_onboarding_complete: true })
+          .eq('id', org_unit_id);
+      }
+      logStep("Test account enabled", { accountId: acct.id, charges: acct.charges_enabled, payouts: acct.payouts_enabled });
+      return new Response(JSON.stringify({ alreadyComplete: true, accountId: acct.id }), {
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+        status: 200,
+      });
     }
 
     // Check for a previously disconnected account

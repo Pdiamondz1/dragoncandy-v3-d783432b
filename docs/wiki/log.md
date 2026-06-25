@@ -1,5 +1,56 @@
 # Wiki Log
 
+## [2026-06-24] lint | Fix 2 wiki-save-answer orphans
+The `verify-knowledge`/lint orphan check (run as the close-the-loop step of the prior
+knowledge-sync) caught 2 analysis pages on `main` missing from `index.md`:
+[[Competitive Advantage]] and [[Influencer/Creator Outreach]] — both Donny save-answer pages
+from PRs #164/#165. Added their index entries. Confirms the known gap: the `wiki-save-answer`
+flow adds a page + syncs RAG but does NOT update `index.md`, so its pages land as catalog
+orphans until a later knowledge-sync lint catches them.
+Pages updated: index.md
+
+## [2026-06-24] ingest | Loop Memory shipped + Security-Advisor Triage (deferred)
+Ingested the 2026-06-24 session. Captured that the [[Loop Memory Protocol]] shipped (Phase 1,
+PR #161) — added a Status line + second source to that page. Recorded the #161 merge/deploy
+(conflation with the notification PR, index/log merge-conflict resolved keep-both, edge-fn
+deploy via MCP since Lovable is frontend-only, and the verify-prod lazy-chunk blind spot where
+the landing `index-*.js` hash stays unchanged because the changes were in lazy route chunks).
+Created [[SECURITY DEFINER Advisor Triage]] — the reusable 3-signal triage method
+(frontend `.rpc()` / referenced in an RLS policy / returns `trigger`) and the **deliberate
+decision to defer** acting on the 149 prod security advisors pre-launch (43 keep-by-design /
+32 revoke-safe; no changes made). Refreshed `PROJECT_CONTEXT.md`.
+Pages created: [[Loop Memory & Security Triage Session]], [[SECURITY DEFINER Advisor Triage]]
+Pages updated: [[Loop Memory Protocol]], index.md
+Note: cross-links [[Self-Improving App]], [[Validator Skills]], [[Supabase]], [[QA CI/CD Gate]].
+
+## [2026-06-23] update | Loop Memory Protocol
+Added the Loop Memory Protocol concept page — the contract for a co-located two-zone
+`MEMORY.md` (curated **Lessons** read before a run + append-only **Run Log** written after)
+that lets an orchestration loop self-improve across runs. The "Output" half of the source
+prompt is satisfied by *pointing at* each loop's existing artifact (wiki page, `log.md`,
+`result_summary_md`) rather than duplicating it; the validator verdict block's `missing[]`
+feeds the Run Log Failed/Remember zone. Phase 1 applies it to the `autoresearch` (pilot),
+`knowledge-sync`, `verify-knowledge`, and `wiki-ops` skills; Phase 2 (DB-backed memory for
+cloud routines via `aios_loop_memory` + `aios-report-ingest`) is designed but deferred.
+Pages created: [[Loop Memory Protocol]]
+Pages updated: index.md
+Note: cross-links [[Validator Skills]], [[Self-Improving App]], [[Founder Playbooks]].
+
+## [2026-06-23] ingest | Notification Email Audit (PR #161)
+Ingested the notification-email audit session. A creator's dead "View Campaign" button
+(`href="undefined"` — a duplicate `create-notification` invite email + the one template with no
+`baseUrl` fallback) cascaded into auditing every button in `send-notification-email`, then a
+caller-payload trace that surfaced the keystone finding: the function's **self-only auth gate
+403s any frontend caller emailing the counterparty**, silently dropping 9 transactional emails
+(likes, content-started, joint approvals, project + sponsorship completion). All 6 frontend flows
+rerouted through `create-notification` (service-key send + the in-app bell they lacked); 2
+broadcast type names fixed; 3 missing templates added (`campaign_cancelled`, `dispute_alert`,
+`org_invite`); buttons cross-checked against `src/App.tsx` + guarded against `/undefined`. Codex
+caught the like-email pref-gating (kept intentional) and an empty-greeting fallback. Distilled the
+durable rule into [[Notification Delivery]].
+Pages created: [[Notification Delivery]], [[Notification Email Audit Session]]
+Pages updated: index.md
+
 ## [2026-06-22] ingest | Origin Story & Knowledge-Sync Automation (PRs #154–#162)
 Ingested the session that authored the canonical DragonCandy origin story into the AIOS
 strategy library (one cohesive story with the three-sided restaurant/creator/brand vision
@@ -588,3 +639,15 @@ linked in index.md (index-incompleteness): 18-month-tech-engineering-donny-ai-1m
 part-1-engineering-aios-operations, tech-infrastructure-cost-breakdown-updated — all from
 wiki-save-answer merges (that flow still doesn't update index.md). Added an index entry for
 each. No content changed. Pages updated: index.md.
+
+## [2026-06-24] ingest | Test-Mode Stripe UX (PR #168)
+Ingested the test-mode Stripe UX session. Created [[Test-Mode Stripe UX]] (concept):
+one-tap test-mode payout bypass (auto-create a fully-enabled Custom connected account
+server-side, no hosted Express screens) + card-only checkout across all 4 Checkout-session
+creators, all gated on sk_test_/pk_test_ so live mode is byte-for-byte unchanged. Captured
+the gotchas: vitest can't load runtime https:// imports (type-only Stripe import + pure
+isTestKey extracted to stripe-mode.ts); MCP edge-fn deploy must preserve verify_jwt per
+function (list_edge_functions is ground truth, not config.toml) and name files by full repo
+path; the transient "Verification Pending" → "Connected" capability lag; dashboard-link
+degradation is test-mode-only (Codex P2). Live-verified the prefill flips payouts_enabled.
+Pages created: [[Test-Mode Stripe UX]]. Pages updated: [[Stripe Connect]], index.md.

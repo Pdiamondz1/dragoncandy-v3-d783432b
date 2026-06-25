@@ -65,16 +65,26 @@ export function useFeedLike(item: LikeableItem | null) {
 
       // Send email notification for likes (not unlikes)
       if (newLikedState) {
-        await supabase.functions.invoke('send-notification-email', {
+        const likerName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Someone';
+        // Route through create-notification: a frontend caller cannot email another user
+        // directly (send-notification-email's auth gate 403s a cross-user recipient — the
+        // previous direct send never actually delivered). This always shows an in-app bell;
+        // the email is intentionally gated by the recipient's "content" notification
+        // preference (off by default) so likes don't spam inboxes.
+        await supabase.functions.invoke('create-notification', {
           body: {
+            recipientId: item.creatorId,
             type: 'content_liked',
-            data: {
-              recipientUserId: item.creatorId,
-              likerName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Someone',
-              contentUrl: item.url,
-            }
+            category: 'content',
+            title: 'New like',
+            body: `${likerName} liked your content`,
+            actorId: user.id,
+            actorName: likerName,
+            icon: 'like',
+            data: { content_id: item.id },
+            emailData: { likerName, contentUrl: item.url },
           }
-        }).catch(err => console.error('Failed to send like notification email:', err));
+        }).catch(err => console.error('Failed to send like notification:', err));
       }
     } catch (error) {
       console.error('Failed to track like:', error);

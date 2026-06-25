@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 
 interface TimerData {
   contentStartedAt: string | null;
@@ -24,7 +23,6 @@ export const useDragonDashTimer = (collaborationId: string | null) => {
   const [timerData, setTimerData] = useState<TimerData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const { sendNotification } = useEmailNotifications();
 
   const formatTimeRemaining = (ms: number): string => {
     if (ms <= 0) return 'Expired';
@@ -190,14 +188,29 @@ export const useDragonDashTimer = (collaborationId: string | null) => {
       };
 
       const creatorRec = Array.isArray(collabData.creator) ? collabData.creator[0] : collabData.creator;
-      sendNotification('content_started', undefined, undefined, {
-        campaignTitle: campaignRec?.title,
-        campaignId: campaignRec?.id,
-        recipientUserId: campaignRec?.user_id,
-        creatorName: creatorRec?.full_name || 'A creator',
-        deliveryTime: deliveryLabels[deliveryType] || '72 hours',
-        projectId: collaborationId,
-      });
+      // Notify the business owner via create-notification (adds the bell + sends the
+      // email server-side; a frontend caller cannot email another user directly).
+      if (campaignRec?.user_id) {
+        await supabase.functions.invoke('create-notification', {
+          body: {
+            recipientId: campaignRec.user_id,
+            type: 'content_started',
+            category: 'campaigns',
+            title: 'Content creation started',
+            body: `${creatorRec?.full_name || 'A creator'} started working on "${campaignRec?.title ?? 'your campaign'}"`,
+            actionUrl: `/projects/${collaborationId}`,
+            icon: 'content',
+            emailType: 'content_started',
+            data: { campaign_id: campaignRec?.id, collaboration_id: collaborationId },
+            emailData: {
+              campaignTitle: campaignRec?.title,
+              creatorName: creatorRec?.full_name || 'A creator',
+              deliveryTime: deliveryLabels[deliveryType] || '72 hours',
+              projectId: collaborationId,
+            },
+          },
+        }).catch((err: unknown) => console.error('Failed to send content-started notification:', err));
+      }
 
       await fetchTimerData();
       return true;
@@ -210,7 +223,7 @@ export const useDragonDashTimer = (collaborationId: string | null) => {
       });
       return false;
     }
-  }, [collaborationId, toast, fetchTimerData, sendNotification]);
+  }, [collaborationId, toast, fetchTimerData]);
 
   // Fetch initial data
   useEffect(() => {

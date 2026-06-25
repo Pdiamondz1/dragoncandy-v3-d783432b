@@ -359,6 +359,52 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   tests; Codex second review clean; deployed to prod. Concept:
   `docs/wiki/concepts/patch-based-corrections.md`. Spec:
   `docs/superpowers/specs/2026-06-21-patch-based-corrections-design.md`.
+- DragonCandy AIOS — Loop Memory Protocol — **shipped (Phase 1, PR #161, 2026-06-24).** Each
+  loop-orchestration skill now keeps a co-located two-zone `MEMORY.md` — curated **Lessons**
+  (read at the start of a run and acted on) + an append-only **Run Log** (new entry at the top
+  each run) — so a loop self-improves across runs instead of the operator re-explaining the same
+  correction. The source prompt asked for "two files (Output + Memory) per run"; the **Output
+  half already exists** for every loop (wiki pages, `log.md`, `result_summary_md`), so the Run
+  Log's `Output:` line *points* at the existing artifact rather than duplicating it. One protocol
+  page (`docs/wiki/concepts/loop-memory-protocol.md`) is the single source of truth; an identical
+  "Loop memory" block + a seeded `MEMORY.md` live in `autoresearch` (pilot), `knowledge-sync`,
+  `verify-knowledge`, `wiki-ops`. Validator-backed loops reuse the `{done,checklist,missing}`
+  verdict block as the failure feed; `verify-knowledge`'s memory is advisory-only so it never
+  alters its deterministic `met` checks. A `.gitignore` gotcha was fixed along the way — the
+  broad `skills/` ignore pattern silently drops new first-party `.claude/skills/` files, so a
+  narrow negation re-includes only `MEMORY.md`. **Phase 2 (DB-backed memory for the AIOS cloud
+  scheduled routines via an `aios_loop_memory` table + `aios-report-ingest`) is designed but
+  deferred.** Spec: `docs/superpowers/specs/2026-06-23-loop-memory-protocol-design.md`.
+- DragonCandy AIOS — security-advisor triage — **triaged then DELIBERATELY DEFERRED
+  (2026-06-24, no changes made).** The prod Supabase security advisors (149 findings, surfaced
+  via Lovable's "Review security") were fully triaged read-only: 75 `SECURITY DEFINER` functions
+  classified by a 3-signal method (frontend `.rpc()` / referenced in an RLS policy / returns
+  `trigger`) into **43 keep-by-design** (frontend RPCs that self-authorize + RLS-helper functions
+  that must keep `EXECUTE`) vs **32 safe-to-revoke** (triggers + internal/cron/service-role/dead
+  helpers), plus 4 public-bucket-listing and 4 RLS-no-policy (INFO, already deny-all = correct).
+  Shelved pre-launch as too risky — tightening prod RLS/grants could silently break a working
+  flow, outweighing advisor noise that is mostly intentional design. Concept (method + decision):
+  `docs/wiki/concepts/security-definer-advisor-triage.md`.
+- Test-mode Stripe UX — **shipped + deployed (PR #168, 2026-06-24).** Made the two Stripe
+  surfaces new users hit instinctive **in test mode only**, with **live-mode behavior
+  byte-for-byte unchanged** (every branch gated on `sk_test_`/`pk_test_`, no-op in live).
+  **(A)** Payout onboarding full-bypass: `create-creator/restaurant-connect-account` skip
+  Stripe's hosted Express onboarding in test mode and auto-create a fully-enabled **Custom**
+  connected account server-side (`buildTestAccountParams` with Stripe's published test
+  verification triggers + `btok_us` + `tos_acceptance`), returning `{alreadyComplete:true}` →
+  "Connect" becomes one tap → Connected, zero Stripe screens. **(B)** Card-only checkout:
+  `testModePaymentMethodTypes` forces `payment_method_types:['card']` in test mode across all
+  4 Checkout-session creators (kills Klarna/Link/real-card), with the copyable 4242 test card
+  surfaced on the 4 payment-launch screens and the dashboard button hidden (Custom accounts
+  have no Express dashboard; `get-stripe-dashboard-link` also degrades gracefully, test-mode
+  only — Codex P2). All mode logic in 3 pure, vitest-tested `_shared` helpers (`stripe-mode.ts`
+  pure `isTestKey`, `test-mode-payment-methods.ts`, `test-mode-connect.ts`; they avoid runtime
+  `https://` imports so vitest can load them). No schema/secret/auth change. 7 edge fns
+  deployed via the Supabase MCP (preserve `verify_jwt` per fn — `list_edge_functions` is
+  ground truth, not `config.toml`); the one-tap payout bypass was **live-verified** (prefill
+  flips `payouts_enabled`, after a brief capability-processing lag). Codex second review clean.
+  Concept: `docs/wiki/concepts/test-mode-stripe-ux.md`. Spec:
+  `docs/superpowers/specs/2026-06-24-test-mode-stripe-ux-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
