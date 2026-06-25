@@ -627,6 +627,7 @@ export type Database = {
           outstand_social_account_id: string
           platform: string
           platform_handle: string | null
+          provider: string
           status: string
           updated_at: string
           user_id: string
@@ -641,6 +642,7 @@ export type Database = {
           outstand_social_account_id: string
           platform: string
           platform_handle?: string | null
+          provider?: string
           status?: string
           updated_at?: string
           user_id: string
@@ -655,6 +657,7 @@ export type Database = {
           outstand_social_account_id?: string
           platform?: string
           platform_handle?: string | null
+          provider?: string
           status?: string
           updated_at?: string
           user_id?: string
