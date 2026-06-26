@@ -428,6 +428,26 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   the full snapshot `event.data.object`). Still deferred: the `release-sponsorship-payout`
   deploy (low-urgency, no live traffic pre-revenue). Concept:
   `docs/wiki/concepts/stripe-webhook-delivery.md`.
+- DragonCandy AIOS — Stakeholder invites (internal-only accounts) — **built (branch
+  `feat/aios-stakeholder-invite`, 2026-06-26; founder go-live pending).** A reusable, admin-only
+  way to grant AIOS access by email without ever touching the consumer app. New admin-tier page
+  `/internal/stakeholders` (invite · list · revoke) over a single `manage-internal-users` edge fn
+  (`verify_jwt=false`, self-gated: `auth.getUser` + `user_roles` admin). **invite** uses
+  `admin.generateLink` (type `invite`; metadata `account_scope:'internal'`, redirect to the internal
+  host `/auth/update-password`) + a branded Resend set-password email; a never-accepted invitee is
+  re-sent a fresh `magiclink` link (first-email-failed / expired-link); an existing consumer user is
+  granted the role + a granted-access email. **Hard-block keystone:** a guard clause in the
+  `handle_new_user` trigger skips ALL consumer-profile creation when `account_scope='internal'`, so
+  an internal account has no `profiles`/`creator_profiles`/`business_profiles` row — never in Browse
+  Creators, never on a consumer dashboard (`AuthContext` already tolerates a null profile;
+  `DashboardRedirect` bounces it to `/auth`); AIOS access is purely `user_roles`. The guard sits on
+  top of the **current** trigger body (preserves the `DO UPDATE` refresh-on-resignup logic — a Codex
+  P2 catch). Per-invite tier selector (Admin default, Stakeholder = read-only) reuses the existing
+  two-tier `InternalRoute`. No new table/secret/RLS/OAuth/consumer-enum change; pure vitest-tested
+  `lib.ts` helpers (email/tier/status/email-HTML, 13 tests). Codex second review clean. Founder
+  go-live: allow-list `internal.dragoncandy.io/auth/update-password` in Supabase Auth redirect URLs,
+  deploy the edge fn (`verify_jwt=false`), then invite Adrian Vella as Admin. Spec:
+  `docs/superpowers/specs/2026-06-26-aios-stakeholder-invite-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
