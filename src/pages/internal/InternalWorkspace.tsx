@@ -5,6 +5,7 @@ import {
   useDisconnectGoogle,
 } from '@/hooks/internal/useGoogleWorkspace';
 import { ErrorCard } from '@/components/internal/stats';
+import { PageContainer, PageHeader } from '@/components/internal/layout';
 import { Spinner } from '@/components/ui/spinner';
 import { WorkspaceHub } from '@/components/internal/workspace/WorkspaceHub';
 
@@ -34,12 +35,12 @@ const InternalWorkspace = () => {
   if (!status.connected) {
     return (
       <div className="mx-auto w-full max-w-xl">
-        <h1 className="text-xl font-bold text-white lg:text-2xl">WORKSPACE</h1>
-        <p className="mt-1 text-sm text-white/60">
-          Connect Google to flow docs, sheets, slides, briefs, and metrics between AIOS and Drive.
-        </p>
+        <PageHeader
+          title="WORKSPACE"
+          subtitle="Connect Google to flow docs, sheets, slides, briefs, and metrics between AIOS and Drive."
+        />
 
-        <div className="mt-6 rounded-3xl border border-dc-teal/25 bg-white/[0.04] p-7 backdrop-blur-md">
+        <div className="rounded-3xl border border-dc-teal/25 bg-white/[0.04] p-7 backdrop-blur-md">
           {status.needs_reconnect && (
             <p className="mb-4 rounded-2xl border border-dc-pink-accent/40 bg-dc-pink-accent/10 px-4 py-2.5 text-xs text-dc-pink">
               Your Google connection expired or was revoked — re-link to continue.
@@ -91,27 +92,29 @@ const InternalWorkspace = () => {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-white lg:text-2xl">WORKSPACE</h1>
-          <p className="mt-1 text-sm text-white/60">
+    <PageContainer size="lg">
+      <PageHeader
+        title="WORKSPACE"
+        subtitle={
+          <>
             Connected as <span className="font-semibold text-white">{status.google_email}</span>
-          </p>
-        </div>
-        <button
-          type="button"
-          disabled={disconnect.isPending}
-          onClick={() => disconnect.mutate()}
-          className="flex items-center gap-1.5 rounded-full border border-dc-teal/30 px-4 py-1.5 text-sm font-semibold text-dc-pink transition-colors hover:bg-white/[0.06] disabled:opacity-50"
-        >
-          <Unplug className="h-3.5 w-3.5" />
-          {disconnect.isPending ? 'Disconnecting…' : 'Disconnect'}
-        </button>
-      </div>
+          </>
+        }
+        actions={
+          <button
+            type="button"
+            disabled={disconnect.isPending}
+            onClick={() => disconnect.mutate()}
+            className="flex items-center gap-1.5 rounded-full border border-dc-teal/30 px-4 py-1.5 text-sm font-semibold text-dc-pink transition-colors hover:bg-white/[0.06] disabled:opacity-50"
+          >
+            <Unplug className="h-3.5 w-3.5" />
+            {disconnect.isPending ? 'Disconnecting…' : 'Disconnect'}
+          </button>
+        }
+      />
 
       <WorkspaceHub />
-    </div>
+    </PageContainer>
   );
 };
 

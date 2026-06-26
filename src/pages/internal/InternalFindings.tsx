@@ -9,6 +9,7 @@ import {
 } from '@/hooks/internal/useFindings';
 import { ErrorCard } from '@/components/internal/stats';
 import { MarkdownProse } from '@/components/internal/MarkdownProse';
+import { PageContainer, PageHeader } from '@/components/internal/layout';
 import { Spinner } from '@/components/ui/spinner';
 
 const SEVERITY_STYLES: Record<string, string> = {
@@ -106,7 +107,7 @@ const FindingCard = ({ finding }: { finding: Finding }) => {
             {expanded ? 'Hide evidence' : 'Show evidence'}
           </button>
           {expanded && (
-            <pre className="mt-2 overflow-x-auto rounded-xl border border-white/10 bg-black/40 p-3 text-xs text-dc-teal">
+            <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-black/40 p-3 text-xs text-dc-teal">
               {JSON.stringify(finding.evidence, null, 2)}
             </pre>
           )}
@@ -138,14 +139,13 @@ const InternalFindings = () => {
   }
 
   return (
-    <div className="max-w-4xl">
-      <h1 className="text-xl font-bold text-white lg:text-2xl">FINDINGS</h1>
-      <p className="mt-1 text-sm text-white/60">
-        Bug & error discoveries filed by the weekly sweep agent (report-only). Triage here; fixes
-        ship through normal PRs.
-      </p>
+    <PageContainer size="md">
+      <PageHeader
+        title="FINDINGS"
+        subtitle="Bug & error discoveries filed by the weekly sweep agent (report-only). Triage here; fixes ship through normal PRs."
+      />
 
-      <div className="mt-4 flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1.5">
         {(['open', 'acknowledged', 'resolved', 'wontfix', 'all'] as const).map((s) => (
           <button
             key={s}
@@ -173,7 +173,7 @@ const InternalFindings = () => {
           filtered.map((f) => <FindingCard key={f.id} finding={f} />)
         )}
       </div>
-    </div>
+    </PageContainer>
   );
 };
 

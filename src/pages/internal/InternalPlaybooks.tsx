@@ -11,6 +11,7 @@ import {
   type ProposalTarget,
 } from '@/hooks/internal/usePlaybooks';
 import { ErrorCard } from '@/components/internal/stats';
+import { PageContainer, PageHeader } from '@/components/internal/layout';
 import { Spinner } from '@/components/ui/spinner';
 
 const PROPOSAL_LABELS: Record<ProposalTarget, string> = {
@@ -349,37 +350,39 @@ const InternalPlaybooks = () => {
     });
 
   return (
-    <div className="max-w-4xl">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-white lg:text-2xl">PLAYBOOKS</h1>
-          <p className="mt-1 text-sm text-white/60">
+    <PageContainer size="md">
+      <PageHeader
+        title="PLAYBOOKS"
+        subtitle={
+          <>
             Saved repeatable tasks Donny runs on demand — report-only, and any fix is just a
             proposal you approve at{' '}
             <Link to="/internal/corrections" className="text-dc-teal hover:underline">
               Corrections
             </Link>
             . Nothing auto-applies.
-          </p>
-        </div>
-        {!form && (
-          <button
-            type="button"
-            onClick={() => setForm({ ...EMPTY_FORM })}
-            className="flex items-center gap-1.5 rounded-full bg-dc-teal px-4 py-1.5 text-sm font-bold text-dc-dark transition-colors hover:bg-dc-teal/80"
-          >
-            <Plus className="h-4 w-4" /> New playbook
-          </button>
-        )}
-      </div>
+          </>
+        }
+        actions={
+          !form && (
+            <button
+              type="button"
+              onClick={() => setForm({ ...EMPTY_FORM })}
+              className="flex items-center gap-1.5 rounded-full bg-dc-teal px-4 py-1.5 text-sm font-bold text-dc-dark transition-colors hover:bg-dc-teal/80"
+            >
+              <Plus className="h-4 w-4" /> New playbook
+            </button>
+          )
+        }
+      />
 
       {form && (
-        <div className="mt-4">
+        <div className="mb-4">
           <PlaybookForm key={form.id ?? 'new'} initial={form} onClose={() => setForm(null)} />
         </div>
       )}
 
-      <div className="mt-4 space-y-3">
+      <div className="space-y-3">
         {playbooks.data.length === 0 ? (
           <div className="rounded-2xl border border-dc-teal/25 bg-white/[0.04] p-6 text-sm text-white/60 backdrop-blur-sm">
             No playbooks yet — create one, or promote a loop-candidate from{' '}
@@ -394,7 +397,7 @@ const InternalPlaybooks = () => {
           ))
         )}
       </div>
-    </div>
+    </PageContainer>
   );
 };
 

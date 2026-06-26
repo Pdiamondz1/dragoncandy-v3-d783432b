@@ -3,6 +3,7 @@ import { useRevenueStats } from '@/hooks/internal/useRevenueStats';
 import { useCostStats } from '@/hooks/internal/useCostStats';
 import { useInternalAccess } from '@/hooks/internal/useInternalAccess';
 import { StatCard, SectionHeading, ErrorCard } from '@/components/internal/stats';
+import { PageContainer, PageHeader } from '@/components/internal/layout';
 import { formatCents, formatUsd } from '@/lib/utils';
 import { Spinner } from '@/components/ui/spinner';
 
@@ -33,13 +34,15 @@ const InternalOverview = () => {
   const topModel = c ? topEntry(c.mtd_by_model) : undefined;
 
   return (
-    <div className="max-w-6xl">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-2xl font-bold text-white">DragonCandy AIOS</h1>
-        <p className="font-mono text-xs text-white/40">
-          Live as of {new Date(p.generated_at).toLocaleString()}
-        </p>
-      </div>
+    <PageContainer size="xl">
+      <PageHeader
+        title="DragonCandy AIOS"
+        actions={
+          <p className="font-mono text-xs text-white/40">
+            Live as of {new Date(p.generated_at).toLocaleString()}
+          </p>
+        }
+      />
 
       <SectionHeading>Users &amp; businesses</SectionHeading>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -139,7 +142,7 @@ const InternalOverview = () => {
           )}
         </>
       )}
-    </div>
+    </PageContainer>
   );
 };
 

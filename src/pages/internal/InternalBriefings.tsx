@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useBriefings, usePublishBriefing, type BriefingKpi } from '@/hooks/internal/useBriefings';
 import { useInternalAccess } from '@/hooks/internal/useInternalAccess';
 import { ErrorCard } from '@/components/internal/stats';
+import { PageContainer, PageHeader } from '@/components/internal/layout';
 import { ExportToDocButton } from '@/components/internal/ExportToDocButton';
 import { MarkdownProse } from '@/components/internal/MarkdownProse';
 import { Spinner } from '@/components/ui/spinner';
@@ -58,13 +59,14 @@ const InternalBriefings = () => {
   }
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6 lg:flex-row">
-      <aside className="lg:w-80 lg:shrink-0">
-        <h1 className="text-2xl font-bold text-white">Weekly briefings</h1>
-        <p className="mb-4 text-sm text-white/60">
-          Monday operating briefs — KPIs vs targets, scaling forecast, marketing recommendations.
-        </p>
-        <nav className="max-h-[60vh] overflow-y-auto rounded-2xl border border-dc-teal/25 bg-white/[0.04] backdrop-blur-sm">
+    <PageContainer size="xl">
+      <PageHeader
+        title="Weekly briefings"
+        subtitle="Monday operating briefs — KPIs vs targets, scaling forecast, marketing recommendations."
+      />
+      <div className="flex flex-col gap-6 lg:flex-row">
+        <aside className="lg:w-80 lg:shrink-0">
+          <nav className="max-h-64 overflow-y-auto rounded-2xl border border-dc-teal/25 bg-white/[0.04] backdrop-blur-sm lg:max-h-[60vh]">
           {list.map((b) => (
             <button
               key={b.id}
@@ -155,8 +157,9 @@ const InternalBriefings = () => {
             <MarkdownProse>{selected.body_md}</MarkdownProse>
           </div>
         )}
-      </article>
-    </div>
+        </article>
+      </div>
+    </PageContainer>
   );
 };
 
