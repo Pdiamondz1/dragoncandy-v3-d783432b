@@ -198,8 +198,9 @@ export const InternalLayout = () => {
         />
       </div>
 
-      {/* Mobile top bar (hamburger + logo + quick Donny) */}
-      <header className="relative z-20 flex items-center gap-3 border-b border-dc-teal/20 bg-dc-dark/80 px-4 py-3 backdrop-blur-md lg:hidden">
+      {/* Mobile top bar (hamburger + logo + quick Donny) — sticky so the menu
+          and Ask Donny stay reachable while the page scrolls. */}
+      <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-dc-teal/20 bg-dc-dark/80 px-4 py-3 backdrop-blur-md lg:hidden">
         <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
           <SheetTrigger asChild>
             <button
