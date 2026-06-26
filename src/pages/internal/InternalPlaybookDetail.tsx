@@ -9,6 +9,7 @@ import {
 } from '@/hooks/internal/usePlaybooks';
 import { PlaybookDoneChip } from '@/components/internal/PlaybookDoneChip';
 import { ErrorCard } from '@/components/internal/stats';
+import { PageContainer, PageHeader } from '@/components/internal/layout';
 import { MarkdownProse } from '@/components/internal/MarkdownProse';
 import { Spinner } from '@/components/ui/spinner';
 
@@ -99,33 +100,33 @@ const InternalPlaybookDetail = () => {
     });
 
   return (
-    <div className="max-w-3xl">
+    <PageContainer size="sm">
       <Link
         to="/internal/playbooks"
-        className="flex items-center gap-1 text-sm text-dc-teal hover:underline"
+        className="mb-3 flex items-center gap-1 text-sm text-dc-teal hover:underline"
       >
         <ArrowLeft className="h-3.5 w-3.5" /> Playbooks
       </Link>
 
-      <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-white lg:text-2xl">{pb.title}</h1>
-          <p className="mt-1 font-mono text-xs text-white/50">{pb.slug}</p>
-        </div>
-        {pb.status === 'active' && (
-          <button
-            type="button"
-            onClick={handleRun}
-            disabled={run.isPending}
-            className="flex items-center gap-1.5 rounded-full bg-dc-teal px-5 py-1.5 text-sm font-bold text-dc-dark transition-colors hover:bg-dc-teal/80 disabled:opacity-50"
-          >
-            <Play className="h-3.5 w-3.5" />
-            {run.isPending ? 'Running…' : 'Run now'}
-          </button>
-        )}
-      </div>
+      <PageHeader
+        title={pb.title}
+        subtitle={<span className="font-mono">{pb.slug}</span>}
+        actions={
+          pb.status === 'active' && (
+            <button
+              type="button"
+              onClick={handleRun}
+              disabled={run.isPending}
+              className="flex items-center gap-1.5 rounded-full bg-dc-teal px-5 py-1.5 text-sm font-bold text-dc-dark transition-colors hover:bg-dc-teal/80 disabled:opacity-50"
+            >
+              <Play className="h-3.5 w-3.5" />
+              {run.isPending ? 'Running…' : 'Run now'}
+            </button>
+          )
+        }
+      />
 
-      <div className="mt-4 space-y-3 rounded-2xl border border-dc-teal/25 bg-white/[0.04] p-4 backdrop-blur-sm">
+      <div className="space-y-3 rounded-2xl border border-dc-teal/25 bg-white/[0.04] p-4 backdrop-blur-sm">
         <DefinitionBlock label="Task" body={pb.task_md} />
         <DefinitionBlock label="Preferences & constraints" body={pb.preferences_md} />
         <DefinitionBlock label="Definition of done" body={pb.done_criteria_md} />
@@ -150,7 +151,7 @@ const InternalPlaybookDetail = () => {
           runs.data.map((r) => <RunCard key={r.id} run={r} />)
         )}
       </div>
-    </div>
+    </PageContainer>
   );
 };
 

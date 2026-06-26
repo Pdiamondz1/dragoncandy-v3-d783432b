@@ -10,6 +10,7 @@ import { DonnyQuickChips } from '@/components/donny/DonnyQuickChips';
 import { ExportToDocButton } from '@/components/internal/ExportToDocButton';
 import { SaveToKnowledgeButton } from '@/components/internal/SaveToKnowledgeButton';
 import { PendingCorrectionsBar } from '@/components/internal/PendingCorrectionsBar';
+import { PageContainer, PageHeader } from '@/components/internal/layout';
 import { useInternalDonny } from '@/hooks/internal/useInternalDonny';
 
 const STARTER_CHIPS = [
@@ -49,13 +50,13 @@ const InternalDonny = () => {
   };
 
   return (
-    <div className="mx-auto w-full max-w-3xl">
-      <h1 className="text-xl font-bold text-white lg:text-2xl">INTERNAL DONNY</h1>
-      <p className="mt-1 text-sm text-white/60">
-        Answers from live platform data and the internal strategy library. Admin-only.
-      </p>
+    <PageContainer size="sm">
+      <PageHeader
+        title="INTERNAL DONNY"
+        subtitle="Answers from live platform data and the internal strategy library. Admin-only."
+      />
 
-      <div className="mt-4 flex flex-col rounded-2xl border border-dc-teal/25 bg-white/[0.04] backdrop-blur-sm">
+      <div className="flex flex-col rounded-2xl border border-dc-teal/25 bg-white/[0.04] backdrop-blur-sm">
         <PendingCorrectionsBar />
         <div
           ref={scrollRef}
@@ -127,7 +128,7 @@ const InternalDonny = () => {
 
         <DonnyChatInput onSubmit={sendMessage} disabled={isThinking} />
       </div>
-    </div>
+    </PageContainer>
   );
 };
 

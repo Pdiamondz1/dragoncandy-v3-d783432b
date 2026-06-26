@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useInternalDocs, useInternalDoc } from '@/hooks/internal/useInternalDocs';
 import { ErrorCard } from '@/components/internal/stats';
+import { PageContainer, PageHeader } from '@/components/internal/layout';
 import { ExportToDocButton } from '@/components/internal/ExportToDocButton';
 import { MarkdownProse } from '@/components/internal/MarkdownProse';
 import { Spinner } from '@/components/ui/spinner';
@@ -40,19 +41,20 @@ const InternalStrategy = () => {
   }
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6 lg:flex-row">
-      <aside className="lg:w-80 lg:shrink-0">
-        <h1 className="text-2xl font-bold text-white">Strategy library</h1>
-        <p className="mb-4 text-sm text-white/60">
-          Playbooks, briefings, and wiki knowledge — synced from the repo.
-        </p>
-        <Input
-          placeholder="Filter by title or tag"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="mb-3"
-        />
-        <nav className="max-h-[60vh] overflow-y-auto rounded-2xl border border-dc-teal/25 bg-white/[0.04] backdrop-blur-sm">
+    <PageContainer size="xl">
+      <PageHeader
+        title="Strategy library"
+        subtitle="Playbooks, briefings, and wiki knowledge — synced from the repo."
+      />
+      <div className="flex flex-col gap-6 lg:flex-row">
+        <aside className="lg:w-80 lg:shrink-0">
+          <Input
+            placeholder="Filter by title or tag"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="mb-3"
+          />
+          <nav className="max-h-64 overflow-y-auto rounded-2xl border border-dc-teal/25 bg-white/[0.04] backdrop-blur-sm lg:max-h-[60vh]">
           {filtered.map((d) => (
             <button
               key={d.id}
@@ -97,8 +99,9 @@ const InternalStrategy = () => {
             <MarkdownProse>{doc.data.content_md}</MarkdownProse>
           </div>
         )}
-      </article>
-    </div>
+        </article>
+      </div>
+    </PageContainer>
   );
 };
 

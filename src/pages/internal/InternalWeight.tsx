@@ -11,6 +11,7 @@ import {
   GB,
 } from '@/lib/internal/weightThresholds';
 import { StatCard, SectionHeading, ErrorCard } from '@/components/internal/stats';
+import { PageContainer, PageHeader } from '@/components/internal/layout';
 import { Spinner } from '@/components/ui/spinner';
 
 const MB = 1024 * 1024;
@@ -57,12 +58,11 @@ const InternalWeight = () => {
   const topRows = Object.entries(latest.row_counts ?? {}).sort((a, b) => b[1] - a[1]);
 
   return (
-    <div className="max-w-6xl">
-      <h1 className="text-2xl font-bold text-white">App weight</h1>
-      <p className="mb-6 text-sm text-white/60">
-        Daily snapshots of database, storage, and data volume — and when it&apos;s time to scale
-        Supabase compute or disk.
-      </p>
+    <PageContainer size="xl">
+      <PageHeader
+        title="App weight"
+        subtitle="Daily snapshots of database, storage, and data volume — and when it's time to scale Supabase compute or disk."
+      />
 
       {alerts.length > 0 && (
         <div className="mb-6 space-y-3">
@@ -124,7 +124,7 @@ const InternalWeight = () => {
           <StatCard key={table} label={table} value={count.toLocaleString()} />
         ))}
       </div>
-    </div>
+    </PageContainer>
   );
 };
 

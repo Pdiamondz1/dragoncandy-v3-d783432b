@@ -13,6 +13,7 @@ import { useExportToDoc, useGoogleConnection } from '@/hooks/internal/useGoogleW
 import { commitErrorMessage, isCommittableWikiPath } from '@/lib/internal/wikiCommit';
 import { normalizeForCompare } from '@/lib/internal/normalizeForCompare';
 import { ErrorCard } from '@/components/internal/stats';
+import { PageContainer, PageHeader } from '@/components/internal/layout';
 import { MarkdownProse } from '@/components/internal/MarkdownProse';
 import { Spinner } from '@/components/ui/spinner';
 import { PendingKnowledgePanel } from '@/components/internal/PendingKnowledgePanel';
@@ -384,14 +385,13 @@ const InternalCorrections = () => {
   }
 
   return (
-    <div className="max-w-4xl">
-      <h1 className="text-xl font-bold text-white lg:text-2xl">CORRECTIONS</h1>
-      <p className="mt-1 text-sm text-white/60">
-        Fixes Donny proposes to dashboard settings and strategy docs. Donny never applies them — you
-        approve here, then the change takes effect.
-      </p>
+    <PageContainer size="md">
+      <PageHeader
+        title="CORRECTIONS"
+        subtitle="Fixes Donny proposes to dashboard settings and strategy docs. Donny never applies them — you approve here, then the change takes effect."
+      />
 
-      <div className="mt-4">
+      <div className="mb-4">
         <PendingKnowledgePanel />
       </div>
 
@@ -436,7 +436,7 @@ const InternalCorrections = () => {
           ))
         )}
       </div>
-    </div>
+    </PageContainer>
   );
 };
 

@@ -9,6 +9,7 @@ import {
   type InternalUser,
 } from '@/hooks/internal/useInternalUsers';
 import { ErrorCard } from '@/components/internal/stats';
+import { PageContainer, PageHeader } from '@/components/internal/layout';
 import { Spinner } from '@/components/ui/spinner';
 
 const TIER_LABELS: Record<InternalTier, string> = {
@@ -228,19 +229,18 @@ const InternalStakeholders = () => {
   const users = useInternalUsers();
 
   return (
-    <div className="max-w-4xl">
-      <div className="flex items-center gap-2">
-        <ShieldCheck className="h-5 w-5 text-dc-teal" />
-        <h1 className="text-xl font-bold text-white lg:text-2xl">STAKEHOLDERS</h1>
-      </div>
-      <p className="mt-1 text-sm text-white/60">
-        People with access to the AIOS. Invite stakeholders by email, see who has access, and revoke
-        it. These are internal-only accounts — they have no access to the consumer DragonCandy app.
-      </p>
+    <PageContainer size="md">
+      <PageHeader
+        title={
+          <span className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-dc-teal" />
+            STAKEHOLDERS
+          </span>
+        }
+        subtitle="People with access to the AIOS. Invite stakeholders by email, see who has access, and revoke it. These are internal-only accounts — they have no access to the consumer DragonCandy app."
+      />
 
-      <div className="mt-4">
-        <InviteForm />
-      </div>
+      <InviteForm />
 
       <h2 className="mb-3 mt-8 text-sm font-bold uppercase tracking-wider text-white/70">
         Current access
@@ -263,7 +263,7 @@ const InternalStakeholders = () => {
           ))}
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 };
 

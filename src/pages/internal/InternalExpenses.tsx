@@ -8,6 +8,7 @@ import {
 import { useRevenueStats } from '@/hooks/internal/useRevenueStats';
 import { useCostStats } from '@/hooks/internal/useCostStats';
 import { StatCard, SectionHeading, ErrorCard } from '@/components/internal/stats';
+import { PageContainer, PageHeader } from '@/components/internal/layout';
 import { formatCents, formatUsd } from '@/lib/utils';
 import { Spinner } from '@/components/ui/spinner';
 import { Input } from '@/components/ui/input';
@@ -80,11 +81,11 @@ const InternalExpenses = () => {
   };
 
   return (
-    <div className="max-w-4xl">
-      <h1 className="text-2xl font-bold text-white">Expenses &amp; burn</h1>
-      <p className="mb-6 text-sm text-white/60">
-        Recurring operating costs (founder-entered) against revenue and live AI spend.
-      </p>
+    <PageContainer size="md">
+      <PageHeader
+        title="Expenses & burn"
+        subtitle="Recurring operating costs (founder-entered) against revenue and live AI spend."
+      />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Monthly opex" value={formatCents(monthlyOpexCents)} sub="Active recurring lines" />
@@ -186,7 +187,7 @@ const InternalExpenses = () => {
           {addExpense.isPending ? 'Adding…' : 'Add expense'}
         </Button>
       </form>
-    </div>
+    </PageContainer>
   );
 };
 
