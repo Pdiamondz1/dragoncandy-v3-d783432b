@@ -2,7 +2,7 @@
 
 ## [2026-06-26] ingest | AIOS Stakeholder Invite backfill (PR #178)
 Backfilled the AIOS Stakeholder Invite feature (PR #178, shipped + deployed) into the wiki — it
-had merged without a wiki page, a gap the [[verify-knowledge]] wikilink/orphan check surfaced
+had merged without a wiki page, a gap the `verify-knowledge` wikilink/orphan check surfaced
 during the AIOS UI polish knowledge-sync (which had to drop a dangling `[[AIOS Stakeholder Invite]]`
 forward link). New concept `concepts/aios-stakeholder-invite.md`: the admin-only invite-by-email
 for **internal-only** AIOS accounts, the `handle_new_user` hard-block keystone (skip consumer
