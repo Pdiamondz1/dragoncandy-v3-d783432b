@@ -5,10 +5,13 @@
 
 ## Lessons (read FIRST every run; curated — rewrite/prune as they evolve)
 
-- **[orphans] Run the orphan check every run.** The `wiki-save-answer` flow adds `analyses/`
-  pages + syncs RAG but does NOT update `index.md`, so its pages land as catalog orphans
-  (caught 2: [[Competitive Advantage]], [[Influencer/Creator Outreach]]). Before finishing,
-  list `concepts|entities|analyses/*.md` not referenced in `index.md` and add any missing.
+- **[orphans] Run the orphan check every run — by PATH, not title.** The `wiki-save-answer`
+  flow adds `analyses/` pages + syncs RAG but does NOT update `index.md`, so its pages land as
+  catalog orphans (caught 2: [[Competitive Advantage]], [[Influencer/Creator Outreach]]). Before
+  finishing, list `concepts|entities|analyses/*.md` whose **file path** is not referenced in
+  `index.md` and add any missing. Match on the `(path/to/file.md)` link target, NOT the
+  frontmatter `title:` — Donny-captured pages use curated index display names that differ from
+  their raw long titles, so a title match throws false-positive "orphans".
 - **[rag-sync] Don't hand-sync after merge.** The committed post-merge git hook auto-runs
   `sync:wiki` + `sync:internal` on a **main** fast-forward that touched `docs/`. Verify via
   `.git/knowledge-sync.log` — `errors=0` is the authority (not counts); confirm retrievability
@@ -22,6 +25,25 @@
   `content ilike '%<distinctive phrase>%'`, not a source/id filter (the query errors otherwise).
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-06-26] Internal-only AIOS user FKs (PR #180 — docs bundled INTO the work PR)
+- Output: PR #180 — `raw/sessions/2026-06-26-internal-only-user-fks.md`, new
+  `concepts/internal-only-users.md`, updated `entities/google-workspace.md` +
+  `concepts/error-handling-patterns.md` (backend non-Error-throw caveat), `index.md` + `log.md`,
+  PROJECT_CONTEXT active-workstream bullet. Bundled into the **open work PR** (not a separate docs
+  PR) since #180 was still unmerged — [scope] is satisfied because that branch is already off
+  `origin/main`.
+- Happened: ran knowledge-sync **pre-merge** (work PR open). Docs committed onto the work branch;
+  RAG sync deferred to merge (the post-merge hook fires on the main fast-forward). Path-based
+  orphan check clean; new page linked. On merge, rebased onto an advanced main (4 PRs landed:
+  #179/#181/#182/#183) — index.md/log.md auto-merged; PROJECT_CONTEXT + this MEMORY conflicted
+  (both appended), resolved keep-both.
+- Worked: [scope] (fresh-off-main work branch) + [runlog-in-pr] (this entry in the docs commit) held.
+- Failed: the naive **title-based** orphan check threw 4 false positives — Donny-captured analyses
+  use curated `index.md` display names ≠ their frontmatter `title:`. The PATH-based check was clean.
+- Remember: orphan-check by file PATH not title → **promoted into [orphans] Lesson**. For a
+  pre-merge knowledge-sync run, the RAG-sync + [[verify-knowledge]] close-the-loop step is
+  inherently post-merge (don't hand-sync unmerged wiki content — the human-merge gate holds).
 
 ### [2026-06-26] AIOS Stakeholder Invite backfill (PR #178 → docs PR)
 - Output: this docs PR — `raw/sessions/2026-06-26-aios-stakeholder-invite.md`, new

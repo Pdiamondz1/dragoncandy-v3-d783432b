@@ -2,8 +2,8 @@
 title: Error Handling Patterns
 type: concept
 created: 2026-05-23
-updated: 2026-05-24
-sources: [.claude/handoffs/2026-05-04-232158-code-architecture-audit-remediation.md]
+updated: 2026-06-26
+sources: [.claude/handoffs/2026-05-04-232158-code-architecture-audit-remediation.md, raw/sessions/2026-06-26-internal-only-user-fks.md]
 tags: [error-handling, error-boundary, patterns]
 ---
 
@@ -30,8 +30,21 @@ the root ErrorBoundary in App.tsx catches everything.
 - `catch (e: unknown)` with `instanceof Error` narrowing (see
   [[TypeScript Patterns]])
 
+## Backend: non-Error throws (edge functions)
+
+`instanceof Error` narrowing has a sharp edge on the backend: a Supabase
+**`PostgrestError` is a plain object, not an `Error` instance.** A catch-all that
+does `err instanceof Error ? err.message : "internal error"` therefore collapses
+every DB error (and any other plain-object throw) to a meaningless `"internal
+error"` — erasing the real cause from both the response and the logs. This hid a
+foreign-key violation in `google-workspace-proxy` for weeks (see
+[[Internal-Only AIOS Users]]). Normalize non-`Error` throws instead: pull
+`message`+`code` off the object and log the full value (PR #180's pure
+`describeError` helper is the reference).
+
 ## See Also
 
+- [[Internal-Only AIOS Users]] (the PostgrestError-is-not-an-Error incident)
 - [[TypeScript Patterns]]
 - [[Supabase]]
 - [[DragonCandy Platform]]

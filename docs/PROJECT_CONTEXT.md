@@ -463,6 +463,23 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   phones (`max-h-64 lg:max-h-[60vh]`) with the title lifted to a full-width header, and Findings'
   evidence `<pre>` now wraps. Codex second review clean; 568 tests pass. Concept:
   `docs/wiki/concepts/aios-internal-shell.md`.
+- DragonCandy AIOS — internal-only user FK fix + diagnosable proxy errors — **shipped +
+  deployed (PR #180, 2026-06-26).** The first internal-only AIOS user (Adrian Vella,
+  `account_scope='internal'`, no `profiles` row — the stakeholder-invite keystone above) hit
+  **"Google connect failed — internal error"** and a silent Internal Donny failure. Root cause:
+  several AIOS-surface tables foreign-key `user_id → profiles(id)`, which assumes every internal
+  user is also a consumer user; the resulting FK violation surfaced as the opaque "internal error"
+  because a Supabase `PostgrestError` is a plain object, not an `Error`, and `google-workspace-proxy`'s
+  `instanceof Error ? … : "internal error"` catch erased it. **Fix (two commits, one incident):**
+  (1) repoint three caller-keyed AIOS FKs — `google_workspace_accounts`, `donny_conversations`,
+  `donny_tool_executions` — from `profiles(id)` to `auth.users(id)` (non-destructive: `profiles.id`
+  IS `auth.users.id`, 1:1, so every existing row already satisfies the new target; `ON DELETE
+  CASCADE` preserved; consumer-app tables deliberately left on `profiles(id)`); (2) a pure
+  vitest-tested `describeError` normalizer so non-`Error` throws surface their real `message`+`code`
+  instead of "internal error". Migration applied to prod via MCP; `google-workspace-proxy` deployed
+  **v20** (verify_jwt=false preserved, boot-checked). Codex-clean. The rule going forward: a NEW AIOS
+  feature writing a row keyed to the internal user must FK `auth.users(id)`, not `profiles(id)`.
+  Concept: `docs/wiki/concepts/internal-only-users.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase

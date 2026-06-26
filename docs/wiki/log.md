@@ -689,3 +689,17 @@ rules: Snapshot-not-Thin payload, Vault≠Edge-Function-Secrets, a warm isolate 
 env (redeploy forces the secret pickup), MCP byte-diff deploy verification, and the
 probe-based 500-vs-400 health signal. Deployed `stripe-webhook` v156 (MCP, verify_jwt=false).
 Pages created: [[Stripe Webhook Delivery]]. Pages updated: [[Stripe Connect]], index.md.
+
+## [2026-06-26] ingest | Internal-Only AIOS User FKs (PR #180)
+Ingested the internal-only-user FK session. Adrian — the first internal-only AIOS user
+(`account_scope='internal'`, PR #178, no `profiles` row) — hit "Google connect failed —
+internal error" and a silent Internal Donny failure. Root cause: AIOS-surface tables
+foreign-key `user_id → profiles(id)`, which assumes every internal user is a consumer user;
+the FK violation surfaced as the opaque "internal error" because a Supabase `PostgrestError`
+is not an `Error` instance and the proxy's `instanceof Error ? … : "internal error"` catch
+erased it. Captured two fixes: repoint 3 AIOS FKs (`google_workspace_accounts`,
+`donny_conversations`, `donny_tool_executions`) to `auth.users(id)` (non-destructive, 1:1
+with profiles.id; consumer tables left on profiles), and a pure `describeError` normalizer
++ `google-workspace-proxy` v20 deploy so future DB failures show their real message+code.
+Both applied to prod during the session. Pages created: [[Internal-Only AIOS Users]].
+Pages updated: [[Google Workspace]], [[Error Handling Patterns]], index.md.

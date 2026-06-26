@@ -2,8 +2,8 @@
 title: Google Workspace
 type: entity
 created: 2026-06-13
-updated: 2026-06-20
-sources: [raw/sessions/2026-06-13-weekly-sync.md, raw/sessions/2026-06-20-aios-workspace-knowledge-merge.md, docs/superpowers/specs/2026-06-11-google-workspace-connections-design.md, docs/superpowers/specs/2026-06-20-aios-workspace-knowledge-merge-design.md]
+updated: 2026-06-26
+sources: [raw/sessions/2026-06-13-weekly-sync.md, raw/sessions/2026-06-20-aios-workspace-knowledge-merge.md, raw/sessions/2026-06-26-internal-only-user-fks.md, docs/superpowers/specs/2026-06-11-google-workspace-connections-design.md, docs/superpowers/specs/2026-06-20-aios-workspace-knowledge-merge-design.md]
 tags: [aios, google, workspace, oauth, drive, connections]
 ---
 
@@ -141,6 +141,12 @@ service path. **Returns 503** until `GOOGLE_CHAT_PROJECT_NUMBER` secret is set.
 - **OAuth consent must be "In production"** — Testing mode expires refresh tokens in 7 days
   and blocks non-test-users.
 - **Google blocks embedding editors** — "Edit" always opens a new tab to `docs.google.com`.
+- **Internal-only users were blocked at connect (fixed, PR #180).** `google_workspace_accounts.user_id`
+  foreign-keyed `profiles(id)`, but [[Internal-Only AIOS Users]] have no `profiles` row, so the
+  `oauth_callback` upsert failed an FK violation that the proxy reported as the opaque "internal
+  error" (a Supabase `PostgrestError` is not an `Error` instance). Repointed the FK to
+  `auth.users(id)` and added a `describeError` normalizer so future DB failures surface their real
+  message+code. Deployed `google-workspace-proxy` v20.
 
 ## See Also
 
@@ -149,5 +155,6 @@ service path. **Returns 503** until `GOOGLE_CHAT_PROJECT_NUMBER` secret is set.
 - [[Self-Improving App]] (knowledge flow into Donny's RAG)
 - [[Supabase]] (proxy edge function, `google_workspace_accounts` table)
 - [[Outstand]] (same single-proxy pattern)
+- [[Internal-Only AIOS Users]] (why the connect failed for Adrian; the FK fix)
 - [[Google Workspace Connections Session]] (source)
 - [[AIOS Workspace Knowledge-Merge Session]] (source)
