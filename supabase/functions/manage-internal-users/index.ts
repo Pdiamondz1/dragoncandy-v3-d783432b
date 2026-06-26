@@ -107,16 +107,45 @@ async function handleInvite(req: Request, admin: Any, body: Any): Promise<Respon
       .select("role")
       .eq("user_id", existing.id);
     const roles = (roleRows ?? []).map((r: Any) => r.role as string);
-    if (roles.includes(tier)) {
+    const hadRole = roles.includes(tier);
+    // A user who has never signed in hasn't accepted their invite (first email
+    // failed, link expired, etc.) — they still need a working set-password link.
+    const accepted = !!existing.last_sign_in_at;
+    const name = fullName || (existing.user_metadata?.full_name as string | undefined) || "";
+
+    // Active account that already holds this tier — genuinely nothing to do.
+    if (hadRole && accepted) {
       return json(req, { status: "already_has_access", user_id: existing.id, tier });
     }
-    const { error: insErr } = await admin
-      .from("user_roles")
-      .insert({ user_id: existing.id, role: tier });
-    if (insErr && insErr.code !== UNIQUE_VIOLATION) {
-      return json(req, { error: "role_insert_failed", detail: insErr.message }, 500);
+
+    // Grant the role if missing (idempotent).
+    if (!hadRole) {
+      const { error: insErr } = await admin
+        .from("user_roles")
+        .insert({ user_id: existing.id, role: tier });
+      if (insErr && insErr.code !== UNIQUE_VIOLATION) {
+        return json(req, { error: "role_insert_failed", detail: insErr.message }, 500);
+      }
     }
-    const name = fullName || (existing.user_metadata?.full_name as string | undefined) || "";
+
+    // Never accepted → (re)send a fresh set-password link. The user already exists
+    // (account_scope:'internal' was set at creation, so no consumer profile), so
+    // type:'invite' would error — use a magiclink that lands on the same page.
+    if (!accepted) {
+      const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+        type: "magiclink",
+        email,
+        options: { redirectTo: `${INTERNAL_HOST_URL}/auth/update-password` },
+      });
+      const actionLink = (linkData?.properties?.action_link as string) ?? "";
+      if (linkErr || !actionLink) {
+        return json(req, { error: "invite_failed", detail: linkErr?.message ?? "no link returned" }, 500);
+      }
+      const emailSent = await sendEmail(email, INVITE_SUBJECT, buildInviteEmailHtml({ name, actionLink, tier }));
+      return json(req, { status: "invited", user_id: existing.id, tier, email_sent: emailSent });
+    }
+
+    // Accepted (has a password) but newly granted this tier.
     const emailSent = await sendEmail(email, GRANTED_SUBJECT, buildGrantedEmailHtml({ name, tier }));
     return json(req, { status: "granted", user_id: existing.id, tier, email_sent: emailSent });
   }
