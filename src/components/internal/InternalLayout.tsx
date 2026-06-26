@@ -25,6 +25,7 @@ const adminNav: NavItem[] = [
   { to: '/internal/findings', label: 'Findings' },
   { to: '/internal/corrections', label: 'Corrections' },
   { to: '/internal/playbooks', label: 'Playbooks' },
+  { to: '/internal/stakeholders', label: 'Stakeholders' },
   { to: '/internal/donny', label: 'Donny' },
 ];
 
