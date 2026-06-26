@@ -1,5 +1,19 @@
 # Wiki Log
 
+## [2026-06-26] ingest | AIOS Stakeholder Invite backfill (PR #178)
+Backfilled the AIOS Stakeholder Invite feature (PR #178, shipped + deployed) into the wiki — it
+had merged without a wiki page, a gap the [[verify-knowledge]] wikilink/orphan check surfaced
+during the AIOS UI polish knowledge-sync (which had to drop a dangling `[[AIOS Stakeholder Invite]]`
+forward link). New concept `concepts/aios-stakeholder-invite.md`: the admin-only invite-by-email
+for **internal-only** AIOS accounts, the `handle_new_user` hard-block keystone (skip consumer
+profiles when `account_scope='internal'`), the `manage-internal-users` choke point
+(invite/list/revoke, `verify_jwt=false`, last-admin guard), and the 2 Codex P2 catches (stale
+trigger body, never-accepted re-invite gap). Re-added the now-valid `[[AIOS Stakeholder Invite]]`
+cross-links to `[[AIOS Internal Shell]]`. PROJECT_CONTEXT already carried the #178 workstream
+bullet — no core-doc change needed.
+Pages created: concepts/aios-stakeholder-invite.md, raw/sessions/2026-06-26-aios-stakeholder-invite.md
+Pages updated: index.md (Concepts + Sources), concepts/aios-internal-shell.md (cross-links)
+
 ## [2026-06-26] ingest | AIOS Internal Dashboard UI Polish (PR #179)
 Ingested the 2026-06-26 AIOS UI polish session. The `/internal/*` shell was reworked from a
 single wrapping row of 11 nav pills into a grouped left sidebar (Monitor/Operate) on desktop

@@ -21,7 +21,8 @@ app (see [[Donny Chat UX]] for the shared-component light-vs-dark rule).
   **Operate** (Expenses · Findings · Corrections · Playbooks · Stakeholders) — driven by a
   `NAV_GROUPS` array; each link carries a lucide icon for scannability. The `admin`-flagged
   group is hidden for the read-only `stakeholder` tier (access is purely `user_roles` —
-  `admin` ⇒ everything, `stakeholder` ⇒ the Monitor group only).
+  `admin` ⇒ everything, `stakeholder` ⇒ the Monitor group only; provisioning is via
+  [[AIOS Stakeholder Invite]]).
 - **Mobile = sticky top bar + slide-in drawer.** A `lg:hidden` sticky header holds the
   logo, an always-visible "Ask Donny", and a hamburger that opens a shadcn `Sheet`
   (`side="left"`, `w-72`) rendering the *same* nav. The drawer closes on navigate via a
@@ -69,4 +70,6 @@ Shared `StatCard` / `SectionHeading` / `ErrorCard` continue to live in
 ## See Also
 - [[Donny Chat UX]] — the shared chat components and the light-vs-dark theme rule across the
   consumer + internal surfaces.
+- [[AIOS Stakeholder Invite]] — how the internal-only accounts and the admin/stakeholder tiers
+  that gate this nav are provisioned.
 - [[Google Workspace]] — the AIOS "Workspace" section reached from this shell.
