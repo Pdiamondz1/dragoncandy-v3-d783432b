@@ -448,6 +448,21 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   go-live: allow-list `internal.dragoncandy.io/auth/update-password` in Supabase Auth redirect URLs,
   deploy the edge fn (`verify_jwt=false`), then invite Adrian Vella as Admin. Spec:
   `docs/superpowers/specs/2026-06-26-aios-stakeholder-invite-design.md`.
+- DragonCandy AIOS — Internal dashboard UI polish — **shipped (PR #179, 2026-06-26).**
+  Presentational pass on the `/internal/*` surface (no schema/auth/data/RLS/gating change). The
+  shell (`InternalLayout`) moved from a single wrapping row of **11 nav pills** to a **persistent
+  left sidebar** on desktop, sections grouped under **Monitor** (Overview·Weight·Briefings·
+  Strategy·Workspace) and **Operate** (Expenses·Findings·Corrections·Playbooks·Stakeholders) with
+  per-link icons; the admin-only Operate group hides for the read-only `stakeholder` tier. Mobile
+  gets a sticky top bar + a hamburger **slide-in drawer** (shadcn `Sheet`) rendering the same
+  `NavBody`. **Donny is pinned** as an accent "Ask Donny" entry in the nav chrome (admin-gated),
+  always visible on both surfaces — deliberately **not** a floating FAB (honors the standing
+  no-floating-Donny-button rule). New shared `PageContainer`/`PageHeader` primitives
+  (`src/components/internal/layout.tsx`) replaced per-page hand-rolled headers + ad-hoc `max-w-*`
+  across all 12 internal pages. Mobile clutter fixes: Briefings/Strategy doc-list height capped on
+  phones (`max-h-64 lg:max-h-[60vh]`) with the title lifted to a full-width header, and Findings'
+  evidence `<pre>` now wraps. Codex second review clean; 568 tests pass. Concept:
+  `docs/wiki/concepts/aios-internal-shell.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase

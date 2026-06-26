@@ -23,6 +23,20 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-06-26] AIOS internal dashboard UI polish (PR #179 → docs PR pending)
+- Output: this docs PR — `raw/sessions/2026-06-26-aios-ui-polish.md`, new
+  `concepts/aios-internal-shell.md`, `index.md` (Concepts + Sources), `log.md` ingest entry,
+  PROJECT_CONTEXT active-workstream bullet, and THIS run-log entry (bundled per [runlog-in-pr]).
+- Happened: authored on a fresh branch off origin/main (per [scope]); orphan check clean
+  (the for-loop over concepts|entities|analyses found 0); dropped a dangling
+  `[[AIOS Stakeholder Invite]]` wikilink (PR #178 was shipped but never wiki-ingested — a
+  pre-existing gap, left out of scope). Code PR #179 already merged; this is the paired docs PR.
+- Worked: [scope] + [orphans] + [runlog-in-pr] Lessons all applied. New concept compounds on
+  [[Donny Chat UX]] (the light-vs-dark sibling) instead of a thin duplicate.
+- Failed: none yet (RAG sync + verify-knowledge happen after this PR merges + main ff).
+- Remember: **gap noticed** — PR #178 (AIOS Stakeholder Invite) shipped without a wiki page;
+  worth a backfill ingest in a future knowledge-sync (don't let merged AIOS features skip the wiki).
+
 ### [2026-06-24] Stripe webhook revival + dual-secret (PRs #173/#174 → docs PR #176)
 - Output: PR #176 — `raw/sessions/2026-06-24-stripe-webhook-revival-dual-secret.md`, new
   `concepts/stripe-webhook-delivery.md`, `entities/stripe-connect.md` (Webhook Delivery
