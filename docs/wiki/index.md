@@ -40,6 +40,7 @@
 - [[Realtime Edge Cases Session]](sources/realtime-edge-cases-session.md) — Race conditions, presence ghost state, keepalive, single-slot triggers (2026-05-06)
 - [[SEO Audit Session]](sources/seo-audit-session.md) — react-helmet-async, JSON-LD, sitemap, h1 hierarchy, a11y fixes (2026-05-05)
 - [[Stripe Prices]](sources/stripe-prices.md) — Definitive pricing reference, all test mode (2026-05-23)
+- [[AIOS UI Polish Session]](raw/sessions/2026-06-26-aios-ui-polish.md) — AIOS shell reworked from an 11-pill wrapping row to a grouped left sidebar (Monitor/Operate) + mobile hamburger drawer with a pinned "Ask Donny"; shared PageContainer/PageHeader primitives across all 12 internal pages; Briefings/Strategy mobile doc-list cap + Findings pre wrap; presentational only, Codex-clean; PR #179 (2026-06-26)
 
 ## Entities
 
@@ -57,6 +58,7 @@
 
 ## Concepts
 
+- [[AIOS Internal Shell]](concepts/aios-internal-shell.md) — How `/internal/*` is navigated + laid out: desktop left sidebar grouped Monitor/Operate, mobile hamburger drawer, pinned (non-floating) Ask Donny, shared PageContainer/PageHeader primitives, the dark ops-deck theme
 - [[Campaign Lifecycle]](concepts/campaign-lifecycle.md) — Draft through completion, applications, sponsorship
 - [[Content Delivery State Machine]](concepts/content-delivery-state-machine.md) — 9-status flow from pending through resolved
 - [[Content Engine]](concepts/content-engine.md) — Live-signal loop: brief → DragonShare action → performance; Phases A+B+C+D built (loop closed + surfaced to creators, verified prod)

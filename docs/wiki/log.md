@@ -1,5 +1,17 @@
 # Wiki Log
 
+## [2026-06-26] ingest | AIOS Internal Dashboard UI Polish (PR #179)
+Ingested the 2026-06-26 AIOS UI polish session. The `/internal/*` shell was reworked from a
+single wrapping row of 11 nav pills into a grouped left sidebar (Monitor/Operate) on desktop
++ a mobile hamburger drawer (shadcn Sheet), with a pinned — **not floating** — "Ask Donny"
+entry; new shared `PageContainer`/`PageHeader` primitives were adopted across all 12 internal
+pages; Briefings/Strategy got a mobile doc-list height cap and Findings' evidence `<pre>` now
+wraps. Presentational only (no schema/auth/data/RLS/gating change); Codex-clean; 568 tests
+pass. Captured the "pin Donny, don't float it" decision (consistent with the standing
+no-floating-FAB feedback).
+Pages created: concepts/aios-internal-shell.md, raw/sessions/2026-06-26-aios-ui-polish.md
+Pages updated: index.md (Concepts + Sources), PROJECT_CONTEXT.md (active workstream)
+
 ## [2026-06-24] lint | Fix 2 wiki-save-answer orphans
 The `verify-knowledge`/lint orphan check (run as the close-the-loop step of the prior
 knowledge-sync) caught 2 analysis pages on `main` missing from `index.md`:
