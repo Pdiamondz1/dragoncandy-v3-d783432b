@@ -23,6 +23,23 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-06-26] AIOS Stakeholder Invite backfill (PR #178 → docs PR)
+- Output: this docs PR — `raw/sessions/2026-06-26-aios-stakeholder-invite.md`, new
+  `concepts/aios-stakeholder-invite.md`, `index.md` (Concepts + Sources), `log.md` ingest entry,
+  cross-links re-added to `concepts/aios-internal-shell.md`, + THIS run-log entry. PROJECT_CONTEXT
+  already had the #178 workstream bullet → no core-doc change.
+- Happened: closed the gap flagged in the prior run's [Remember] — PR #178 had shipped without a
+  wiki page (the UI-polish run had to drop a dangling `[[AIOS Stakeholder Invite]]` forward link).
+  Authored on a fresh branch off origin/main (per [scope]); the new page makes that forward link
+  resolve, so I re-added the cross-links. Sourced entirely from the merged spec +
+  PROJECT_CONTEXT bullet + edge-fn code (no live session needed).
+- Worked: [scope] + [runlog-in-pr] applied; forward-link-then-backfill is a clean pattern — the
+  earlier dangling link became a TODO that this run discharged.
+- Failed: none.
+- Remember: a deliberately-dropped dangling wikilink is a backlog item — when you later author the
+  target page, re-add the cross-link from the page that wanted it (closes the loop on the forward
+  link). (advisory)
+
 ### [2026-06-26] AIOS internal dashboard UI polish (PR #179 → docs PR pending)
 - Output: this docs PR — `raw/sessions/2026-06-26-aios-ui-polish.md`, new
   `concepts/aios-internal-shell.md`, `index.md` (Concepts + Sources), `log.md` ingest entry,
