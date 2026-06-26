@@ -147,3 +147,9 @@ verify_jwt = false
 # so the gateway must skip JWT verification; the function self-gates via isAuthorizedIngest.
 [functions.expire-social-hooks]
 verify_jwt = false
+
+# Browser-invoked from /internal/stakeholders; does its own admin check (auth.getUser
+# + user_roles role 'admin'), so the gateway JWT check must be off or it would reject
+# the unauthenticated CORS preflight. Same posture as wiki-commit-pr.
+[functions.manage-internal-users]
+verify_jwt = false
