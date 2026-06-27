@@ -240,16 +240,18 @@ async function executeReadTool(
     }
     case "get_reactivation_targets": {
       const nowIso = new Date().toISOString();
-      const [campaignsRes, allCampaignsRes, restaurantsRes, creatorsRes, appsRes, postsRes, boostsRes] = await Promise.all([
+      // "Launched" = a campaign that actually went live (excludes draft/cancelled).
+      const LAUNCHED_STATUSES = ["published", "active", "completed"];
+      const [campaignsRes, launchedRes, restaurantsRes, creatorsRes, appsRes, postsRes, boostsRes] = await Promise.all([
         admin.from("campaigns").select("id,title,user_id,created_at,updated_at,status").in("status", ["published", "active"]),
-        admin.from("campaigns").select("user_id"), // ALL statuses — for the lapsed-restaurant "never launched" anti-join
+        admin.from("campaigns").select("user_id,org_id").in("status", LAUNCHED_STATUSES),
         admin.from("business_profiles").select("user_id,business_name,instagram_url,website_url,created_at").eq("account_type", "restaurant"),
         admin.from("creator_profiles").select("user_id,creator_name,instagram_url,tiktok_url,youtube_url,created_at,skills"),
         admin.from("campaign_applications").select("creator_id,created_at"),
         admin.from("dragonshare_posts").select("creator_id,created_at"),
-        admin.from("dragonshare_boosts").select("boosting_user_id"),
+        admin.from("dragonshare_boosts").select("boosting_user_id,boosting_org_id"),
       ]);
-      for (const r of [campaignsRes, allCampaignsRes, restaurantsRes, creatorsRes, appsRes, postsRes, boostsRes]) if (r.error) throw r.error;
+      for (const r of [campaignsRes, launchedRes, restaurantsRes, creatorsRes, appsRes, postsRes, boostsRes]) if (r.error) throw r.error;
 
       const campaigns = campaignsRes.data ?? [];
       const campaignIds = campaigns.map((c) => c.id);
@@ -281,6 +283,31 @@ async function executeReadTool(
         if (!lastActivityByUserId[uid] || at > lastActivityByUserId[uid]) lastActivityByUserId[uid] = at;
       }
 
+      // Resolve "launched"/"boosted" to the restaurant OWNER, covering team/org accounts:
+      // a launch or boost made under an org counts for every member of that org.
+      const launchedUserIds = new Set<string>();
+      const launchedOrgIds = new Set<string>();
+      for (const c of launchedRes.data ?? []) {
+        if (c.user_id) launchedUserIds.add(c.user_id);
+        if (c.org_id) launchedOrgIds.add(c.org_id);
+      }
+      const boostedUserIds = new Set<string>();
+      const boostedOrgIds = new Set<string>();
+      for (const b of boostsRes.data ?? []) {
+        if (b.boosting_user_id) boostedUserIds.add(b.boosting_user_id);
+        if (b.boosting_org_id) boostedOrgIds.add(b.boosting_org_id);
+      }
+      const engagedOrgIds = [...new Set([...launchedOrgIds, ...boostedOrgIds])];
+      if (engagedOrgIds.length) {
+        const membersRes = await admin.from("org_members").select("org_id,user_id").in("org_id", engagedOrgIds);
+        if (membersRes.error) throw membersRes.error;
+        for (const m of membersRes.data ?? []) {
+          if (!m.user_id) continue;
+          if (launchedOrgIds.has(m.org_id)) launchedUserIds.add(m.user_id);
+          if (boostedOrgIds.has(m.org_id)) boostedUserIds.add(m.user_id);
+        }
+      }
+
       return buildReactivationTargets({
         nowIso,
         campaigns,
@@ -290,8 +317,8 @@ async function executeReadTool(
         creators,
         lastActivityByUserId,
         restaurants: restaurantsRes.data ?? [],
-        campaignOwnerIds: (allCampaignsRes.data ?? []).map((c) => c.user_id),
-        boosterIds: (boostsRes.data ?? []).map((b) => b.boosting_user_id).filter(Boolean),
+        campaignOwnerIds: [...launchedUserIds],
+        boosterIds: [...boostedUserIds],
       });
     }
     default:
