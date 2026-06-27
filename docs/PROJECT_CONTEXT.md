@@ -480,6 +480,19 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   **v20** (verify_jwt=false preserved, boot-checked). Codex-clean. The rule going forward: a NEW AIOS
   feature writing a row keyed to the internal user must FK `auth.users(id)`, not `profiles(id)`.
   Concept: `docs/wiki/concepts/internal-only-users.md`.
+- DragonCandy AIOS — Internal Donny "Profile not found" (read side) — **shipped + deployed
+  (PR #185, 2026-06-27).** Read-side sequel to PR #180: `donny-chat/index.ts` loaded the caller's
+  `profiles` row with `.single()` + `throw "Profile not found"`, so **Internal Donny** failed
+  entirely for internal-only users (Adrian, using it for strategy/brainstorming). Fix: a pure
+  vitest-tested `donny-chat/profile.ts` `resolveDonnyProfile()` — real profile returned (internal
+  admins with one keep it), consumer + none still throws, internal-only + none synthesizes a minimal
+  profile (greeting name from `auth.users`); call site `.single()`→`.maybeSingle()`. Consumer Donny
+  unchanged. **Supabase CLI access added** this session (founder PAT → `supabase login --token`) and
+  used to deploy `donny-chat` **v134** (`functions deploy --no-verify-jwt`) — the function is 172KB
+  across deps, too large for a safe MCP re-paste, so CLI (auto-bundles from disk) is the deploy path.
+  Codex-clean; boot-checked. The rule going forward also covers caller-profile **reads**: use
+  `.maybeSingle()` + synthesize on the internal surface, never `.single()` + throw.
+  Concept: `docs/wiki/concepts/internal-only-users.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase

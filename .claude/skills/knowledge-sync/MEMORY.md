@@ -26,6 +26,22 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-06-27] Internal Donny profile-read fix (PR #185 → paired docs PR)
+- Output: docs PR off origin/main — `raw/sessions/2026-06-27-internal-donny-profile-read.md`,
+  extended `concepts/internal-only-users.md` ("The profile-read trap" section + read-side rule),
+  `index.md` (Sources), `log.md` ingest entry, PROJECT_CONTEXT active-workstream bullet, + THIS
+  run-log entry.
+- Happened: PR #185 (code) already merged WITHOUT docs, so this is the paired docs PR authored on
+  a fresh branch off origin/main (per [scope]). No new concept page (compounded the existing
+  internal-only-users page per "compound, don't duplicate"). Path-based orphan check clean.
+  RAG sync + verify-knowledge run after this docs PR merges (post-merge hook on the docs/ ff).
+- Worked: [scope] + [runlog-in-pr] + [orphans]-by-path all applied. Compounding onto the PR #180
+  concept page (read-side as a sequel section) kept the knowledge in one coherent place.
+- Failed: none.
+- Remember: when a code PR ships without its docs (e.g. the deploy/merge happened first), the
+  knowledge-sync becomes a *paired docs PR* off origin/main — same [scope] rule, just decoupled
+  in time from the code PR. (advisory)
+
 ### [2026-06-26] Internal-only AIOS user FKs (PR #180 — docs bundled INTO the work PR)
 - Output: PR #180 — `raw/sessions/2026-06-26-internal-only-user-fks.md`, new
   `concepts/internal-only-users.md`, updated `entities/google-workspace.md` +

@@ -2,8 +2,8 @@
 title: Internal-Only AIOS Users
 type: concept
 created: 2026-06-26
-updated: 2026-06-26
-sources: [raw/sessions/2026-06-26-internal-only-user-fks.md, docs/superpowers/specs/2026-06-26-aios-stakeholder-invite-design.md]
+updated: 2026-06-27
+sources: [raw/sessions/2026-06-26-internal-only-user-fks.md, raw/sessions/2026-06-27-internal-donny-profile-read.md, docs/superpowers/specs/2026-06-26-aios-stakeholder-invite-design.md]
 tags: [aios, auth, identity, supabase, foreign-keys, internal]
 ---
 
@@ -54,7 +54,42 @@ Watch-out: repointing a FK away from `profiles` also removes that FK as a PostgR
 relationship — verify no `.select('…, profiles(…)')` embed rode it before changing it (none
 did for these three).
 
-## Why the failure was opaque (a backend error-handling lesson)
+## The profile-read trap (the read side)
+
+FKs are only half of it. **Code that READS the caller's `profiles` row must also tolerate
+its absence for internal-only users.** PR #180 fixed the *writes*; PR #185 fixed the first
+*read*: `donny-chat/index.ts` loaded the caller's profile with `.single()` and
+`throw "Profile not found"` on zero rows, right after auth and before any tool ran — so
+**Internal Donny** failed entirely for Adrian (the only occurrence of that string
+codebase-wide; v133 logged `POST 500`s at his exact attempt times).
+
+### The fix: tolerate-or-synthesize, gated on surface
+
+A pure, unit-tested `donny-chat/profile.ts` `resolveDonnyProfile({ profile, internalMode,
+userId, fallbackName })`:
+- real profile exists → return it (consumer **and** internal admins who also have a profile,
+  e.g. Joe/Dame, keep theirs);
+- **consumer** caller + no profile → still `throw "Profile not found"` (a genuine error there);
+- **internal-only** caller + no profile → synthesize a minimal profile
+  (`role:null`, `full_name` resolved from `auth.users` metadata/email so Donny greets by
+  name instead of "a founder").
+
+The call site switches `.single()` → `.maybeSingle()`. Everything downstream on the internal
+path already tolerated a profile-less user — internal mode uses `INTERNAL_TOOL_DEFINITIONS`
+(never reads `profile.role`), the consumer `userContext` block is skipped, and
+`buildInternalSystemPrompt` reads only `profile.full_name`. So this one guard unblocked the
+whole surface.
+
+> **Rule of thumb (read side):** a `.from('profiles')…single()` keyed to the caller in any
+> internal/AIOS code path is a latent block — use `.maybeSingle()` and synthesize/skip for
+> internal users. The same invariant covers both FK targets *and* caller-profile reads.
+
+`donny-chat` is the core Donny brain (172KB across deps) — too large for a safe MCP
+`deploy_edge_function` re-paste, so its deploys go through the **Supabase CLI**
+(`functions deploy`, auto-bundles from disk; `--no-verify-jwt` to preserve `verify_jwt=false`).
+See [[Donny AI]].
+
+## Why the (FK) failure was opaque (a backend error-handling lesson)
 
 The FK violation presented as a meaningless `"internal error"`, not the real DB message,
 because **a Supabase `PostgrestError` is a plain object, not an `Error` instance.**
@@ -73,12 +108,14 @@ plain-object throw) — normalize them. See [[Error Handling Patterns]].
   rather than back-filling a fake profile row, which would re-pollute the consumer surfaces
   the design deliberately keeps them out of.
 - Caller-keyed AIOS tables FK `auth.users(id)`; consumer tables stay on `profiles(id)`.
+- Caller-profile **reads** on the internal surface must tolerate a missing row
+  (`.maybeSingle()` + synthesize), never `.single()` + throw (PR #185).
 - Backend catch-alls must normalize non-`Error` throws, never `instanceof Error ? … :
   "internal error"`.
 
 ## See Also
 
 - [[Google Workspace]] (where the symptom surfaced — the connect flow)
-- [[Donny AI]] (Internal Donny chat hit the same FK)
+- [[Donny AI]] (Internal Donny hit both the FK write AND the profile read; deployed via CLI)
 - [[Supabase]] (`auth.users` vs `profiles`, RLS, edge functions)
 - [[Error Handling Patterns]] (the PostgrestError-is-not-an-Error lesson)
