@@ -59,14 +59,16 @@ export function computeStalledCampaigns(input: {
     if (daysBetween(cam.created_at, nowIso) < STALLED_MIN_DAYS) continue;
     const collabs = byCampaign.get(cam.id) ?? [];
     if (collabs.some((c) => c.status === "completed")) continue;
+    // Only an 'active' collaboration means a creator is mid-work; 'cancelled' rows don't count
+    // (else we'd nudge a creator whose collaboration was already cancelled).
+    const activeCollab = collabs.find((c) => c.status === "active");
     const biz = businessByUserId[cam.user_id] ?? null;
     let creator: RawCreator | null = null;
     let blocker: string;
-    if (collabs.length === 0) {
+    if (!activeCollab) {
       blocker = "No creator engaged yet — nudge the business to refresh or invite creators.";
     } else {
-      const live = collabs[0];
-      creator = live.creator_id ? creatorByUserId[live.creator_id] ?? null : null;
+      creator = activeCollab.creator_id ? creatorByUserId[activeCollab.creator_id] ?? null : null;
       blocker = "Collaboration started but content not delivered — nudge business + creator to finish.";
     }
     out.push({

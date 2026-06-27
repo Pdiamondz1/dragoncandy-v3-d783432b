@@ -44,6 +44,17 @@ describe("computeStalledCampaigns", () => {
     expect(out[0].creator_handle).toEqual({ channel: "tiktok", handle: "miatt" });
   });
 
+  it("treats a cancelled-only collaboration as no creator engaged", () => {
+    const out = computeStalledCampaigns({
+      campaigns: [{ id: "c1", title: "Cancelled", user_id: "u-biz", created_at: ago(30), updated_at: ago(30) }],
+      collaborations: [{ campaign_id: "c1", creator_id: "u-crt", status: "cancelled", content_status: null, updated_at: ago(10), completed_at: null }],
+      businessByUserId: biz, creatorByUserId: crt, nowIso: NOW,
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0].blocker).toMatch(/no creator/i);
+    expect(out[0].creator_name).toBeNull();
+  });
+
   it("excludes campaigns with a completed collaboration and those <14d old", () => {
     const completed = computeStalledCampaigns({
       campaigns: [{ id: "c1", title: "X", user_id: "u-biz", created_at: ago(30), updated_at: ago(30) }],
