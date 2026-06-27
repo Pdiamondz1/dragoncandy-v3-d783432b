@@ -58,20 +58,13 @@ describe("computeStalledCampaigns", () => {
     expect(fresh).toHaveLength(0);
   });
 
-  it("uses updated_at (not created_at) so a freshly-published old draft is not stalled", () => {
+  it("stays stalled by campaign age even after a recent edit (updated_at is not used)", () => {
     const out = computeStalledCampaigns({
-      campaigns: [{ id: "c1", title: "Old draft", user_id: "u-biz", created_at: ago(40), updated_at: ago(3) }],
+      campaigns: [{ id: "c1", title: "Stuck but edited", user_id: "u-biz", created_at: ago(40), updated_at: ago(1) }],
       collaborations: [], businessByUserId: biz, creatorByUserId: crt, nowIso: NOW,
     });
-    expect(out).toHaveLength(0);
-  });
-
-  it("reports days_stalled measured from updated_at", () => {
-    const out = computeStalledCampaigns({
-      campaigns: [{ id: "c1", title: "Stuck", user_id: "u-biz", created_at: ago(40), updated_at: ago(18) }],
-      collaborations: [], businessByUserId: biz, creatorByUserId: crt, nowIso: NOW,
-    });
-    expect(out[0].days_stalled).toBe(18);
+    expect(out).toHaveLength(1);
+    expect(out[0].days_stalled).toBe(40);
   });
 });
 

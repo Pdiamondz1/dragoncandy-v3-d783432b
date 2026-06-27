@@ -52,10 +52,11 @@ export function computeStalledCampaigns(input: {
   }
   const out: StalledTarget[] = [];
   for (const cam of campaigns) {
-    // Measure staleness from the last update (publish/activation), not draft creation —
-    // else a long-draft campaign just published would read as instantly stalled.
-    const sinceIso = cam.updated_at ?? cam.created_at;
-    if (daysBetween(sinceIso, nowIso) < STALLED_MIN_DAYS) continue;
+    // Stalled by CAMPAIGN AGE (created_at). No publish_at column exists; created_at matches the
+    // tool contract ("published/active >14d") and — unlike updated_at — is NOT reset by routine
+    // edits, so an edited-but-stuck campaign is still surfaced. Report-only, so we err toward
+    // surfacing (a rare just-published-very-old-draft over-flag is harmless; the founder skips it).
+    if (daysBetween(cam.created_at, nowIso) < STALLED_MIN_DAYS) continue;
     const collabs = byCampaign.get(cam.id) ?? [];
     if (collabs.some((c) => c.status === "completed")) continue;
     const biz = businessByUserId[cam.user_id] ?? null;
@@ -71,7 +72,7 @@ export function computeStalledCampaigns(input: {
     out.push({
       campaign_id: cam.id,
       title: cam.title ?? "(untitled campaign)",
-      days_stalled: daysBetween(sinceIso, nowIso),
+      days_stalled: daysBetween(cam.created_at, nowIso),
       business_name: biz?.business_name ?? null,
       business_handle: biz ? pickHandle(biz) : null,
       creator_name: creator?.creator_name ?? null,

@@ -249,7 +249,7 @@ async function executeReadTool(
         admin.from("creator_profiles").select("user_id,creator_name,instagram_url,tiktok_url,youtube_url,created_at,skills"),
         admin.from("campaign_applications").select("creator_id,created_at"),
         admin.from("dragonshare_posts").select("creator_id,created_at"),
-        admin.from("dragonshare_boosts").select("boosting_user_id,boosting_org_id"),
+        admin.from("dragonshare_boosts").select("boosting_user_id,boosting_org_id").not("captured_at", "is", null), // only successful (captured) boosts count
       ]);
       for (const r of [campaignsRes, launchedRes, restaurantsRes, creatorsRes, appsRes, postsRes, boostsRes]) if (r.error) throw r.error;
 
