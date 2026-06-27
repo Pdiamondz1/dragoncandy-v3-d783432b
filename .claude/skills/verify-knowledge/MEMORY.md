@@ -9,10 +9,32 @@
 
 ## Lessons (read FIRST every run; curated — rewrite/prune as they evolve)
 
-_None yet — the first run seeds this. Promote durable takeaways here (e.g. recurring
-lint/freshness failure modes, clearer remediation phrasings) — advisory only._
+- **[freshness-proxy] When (b)'s raw `max(updated_at)` reads >24h stale but the sync just ran
+  clean AND `content ilike` finds this session's new text in `donny_knowledge`, (b) is met.**
+  `donny_knowledge.updated_at` is NOT reliably bumped on UPDATE (and a content-only re-embed of
+  an existing page won't move `max(updated_at)`), so a knowledge-sync that only *changed* pages
+  (no net-new page) can leave `RAG_LAST` pinned to an older insert date even though the RAG is
+  current. The rule's authority is the **sync exit code** + **direct content presence**, not the
+  timestamp — verify with `content ilike '%<distinctive new phrase>%'` and trust that. (Advisory:
+  this clarifies how to *read* check (b)'s signal; it doesn't loosen the >24h rule for a genuinely
+  un-synced RAG, which content-ilike would also reveal as absent.)
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-06-27] Internal Donny profile-read fix knowledge-sync (docs PR #186)
+- Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for PR #185.
+- Happened: (a) wiki lint — path-based orphan/index-completeness check clean (0 critical), no
+  contradictions (compounded the existing internal-only-users page, no new page); (b) RAG: raw
+  `RAG_LAST` 2026-06-26 12:49:59Z vs `LAST_WIKI_SYNC` 2026-06-27 16:50:01Z = ~28h gap, BUT the
+  post-merge hook synced wiki errors=0 and `content ilike` confirms the new text
+  ("profile-read trap", "resolveDonnyProfile") is in `donny_knowledge` → fresh (the sync was a
+  page-UPDATE not a net-new page, so `max(updated_at)` stayed pinned to the prior insert); (c)
+  concepts/internal-only-users.md in index.md + the `[2026-06-27] ingest` log.md entry.
+- Worked: content-ilike resolved the (b) timestamp ambiguity decisively — the new content's
+  presence is stronger proof than `max(updated_at)`.
+- Failed: none (validator). The raw timestamp check would have false-flagged (b) without the
+  content-presence cross-check.
+- Remember: the `updated_at`-not-bumped-on-update quirk → **promoted to a [freshness-proxy] Lesson**.
 
 ### [2026-06-26] AIOS Stakeholder Invite backfill (docs PR #183)
 - Output: emitted `done:true` (all 3 met) closing the backfill knowledge-sync loop for PR #178.
