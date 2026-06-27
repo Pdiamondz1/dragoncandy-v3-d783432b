@@ -690,6 +690,20 @@ env (redeploy forces the secret pickup), MCP byte-diff deploy verification, and 
 probe-based 500-vs-400 health signal. Deployed `stripe-webhook` v156 (MCP, verify_jwt=false).
 Pages created: [[Stripe Webhook Delivery]]. Pages updated: [[Stripe Connect]], index.md.
 
+## [2026-06-27] ingest | Internal Donny Profile-Read Fix (PR #185)
+Ingested the read-side sequel to PR #180. `donny-chat/index.ts` loaded the caller's
+`profiles` row with `.single()` + `throw "Profile not found"`, blocking **Internal Donny**
+entirely for internal-only users (no profiles row) — the *read* counterpart to PR #180's FK
+*write* fix. Captured the fix: a pure unit-tested `donny-chat/profile.ts` `resolveDonnyProfile()`
+(real profile → returned; consumer + none → still throws; internal-only + none → synthesized
+minimal profile, greeting name from `auth.users`), call site `.single()`→`.maybeSingle()`,
+consumer behavior unchanged. Plus the operational lesson: a 172KB function is too large for a
+safe MCP `deploy_edge_function` re-paste, so `donny-chat` deploys via the **Supabase CLI**
+(`functions deploy --no-verify-jwt`, auto-bundles from disk); CLI access was added this session
+(founder PAT → `supabase login --token`). Deployed **v134** (verify_jwt=false, boot-checked).
+Extended [[Internal-Only AIOS Users]] with "The profile-read trap" section + a read-side rule
+of thumb. Pages updated: [[Internal-Only AIOS Users]], index.md (Sources).
+
 ## [2026-06-26] ingest | Internal-Only AIOS User FKs (PR #180)
 Ingested the internal-only-user FK session. Adrian — the first internal-only AIOS user
 (`account_scope='internal'`, PR #178, no `profiles` row) — hit "Google connect failed —
