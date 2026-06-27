@@ -57,21 +57,41 @@ describe("computeStalledCampaigns", () => {
     });
     expect(fresh).toHaveLength(0);
   });
+
+  it("uses updated_at (not created_at) so a freshly-published old draft is not stalled", () => {
+    const out = computeStalledCampaigns({
+      campaigns: [{ id: "c1", title: "Old draft", user_id: "u-biz", created_at: ago(40), updated_at: ago(3) }],
+      collaborations: [], businessByUserId: biz, creatorByUserId: crt, nowIso: NOW,
+    });
+    expect(out).toHaveLength(0);
+  });
+
+  it("reports days_stalled measured from updated_at", () => {
+    const out = computeStalledCampaigns({
+      campaigns: [{ id: "c1", title: "Stuck", user_id: "u-biz", created_at: ago(40), updated_at: ago(18) }],
+      collaborations: [], businessByUserId: biz, creatorByUserId: crt, nowIso: NOW,
+    });
+    expect(out[0].days_stalled).toBe(18);
+  });
 });
 
 describe("computeDormantCreators", () => {
   const creators = [
-    { user_id: "a", creator_name: "Ana", instagram_url: "anaig", created_at: ago(60), skills: ["food"] },
-    { user_id: "b", creator_name: "Ben", created_at: ago(60) },
-    { user_id: "c", creator_name: "Cy", created_at: ago(3) },
+    { user_id: "a", creator_name: "Ana", instagram_url: "anaig", created_at: ago(60), skills: ["food"] }, // never active, old → dormant
+    { user_id: "b", creator_name: "Ben", created_at: ago(60) },   // active 2d ago → not dormant
+    { user_id: "c", creator_name: "Cy", created_at: ago(3) },     // never active, 3d old → too new
+    { user_id: "d", creator_name: "Dee", created_at: ago(10) },   // never active, 10d old → still < 21d, too new
+    { user_id: "e", creator_name: "Eve", created_at: ago(60) },   // active 25d ago → dormant
   ];
-  it("returns only stale, >7d-old creators with days_since_activity (null = never)", () => {
+  it("flags creators inactive >= 21d; a never-active creator only once the account itself is that old", () => {
     const out = computeDormantCreators({
-      creators, lastActivityByUserId: { b: ago(2) }, nowIso: NOW,
+      creators, lastActivityByUserId: { b: ago(2), e: ago(25) }, nowIso: NOW,
     });
-    expect(out.map((c) => c.creator_name)).toEqual(["Ana"]);
-    expect(out[0].days_since_activity).toBeNull();
-    expect(out[0].handle).toEqual({ channel: "instagram", handle: "anaig" });
+    expect(out.map((c) => c.creator_name).sort()).toEqual(["Ana", "Eve"]);
+    const ana = out.find((c) => c.creator_name === "Ana")!;
+    expect(ana.days_since_activity).toBeNull();
+    expect(ana.handle).toEqual({ channel: "instagram", handle: "anaig" });
+    expect(out.find((c) => c.creator_name === "Eve")!.days_since_activity).toBe(25);
   });
 });
 

@@ -52,7 +52,10 @@ export function computeStalledCampaigns(input: {
   }
   const out: StalledTarget[] = [];
   for (const cam of campaigns) {
-    if (daysBetween(cam.created_at, nowIso) < STALLED_MIN_DAYS) continue;
+    // Measure staleness from the last update (publish/activation), not draft creation —
+    // else a long-draft campaign just published would read as instantly stalled.
+    const sinceIso = cam.updated_at ?? cam.created_at;
+    if (daysBetween(sinceIso, nowIso) < STALLED_MIN_DAYS) continue;
     const collabs = byCampaign.get(cam.id) ?? [];
     if (collabs.some((c) => c.status === "completed")) continue;
     const biz = businessByUserId[cam.user_id] ?? null;
@@ -68,7 +71,7 @@ export function computeStalledCampaigns(input: {
     out.push({
       campaign_id: cam.id,
       title: cam.title ?? "(untitled campaign)",
-      days_stalled: daysBetween(cam.created_at, nowIso),
+      days_stalled: daysBetween(sinceIso, nowIso),
       business_name: biz?.business_name ?? null,
       business_handle: biz ? pickHandle(biz) : null,
       creator_name: creator?.creator_name ?? null,
@@ -85,10 +88,12 @@ export function computeDormantCreators(input: {
   const { creators, lastActivityByUserId, nowIso } = input;
   const out: DormantTarget[] = [];
   for (const c of creators) {
-    if (daysBetween(c.created_at, nowIso) < MIN_ACCOUNT_DAYS) continue;
     const last = lastActivityByUserId[c.user_id];
     const daysSince = last ? daysBetween(last, nowIso) : null;
-    if (daysSince !== null && daysSince < DORMANT_DAYS) continue;
+    // Inactivity clock: days since last activity, or account age if they never acted.
+    // A never-active creator counts as dormant only once the account is >= DORMANT_DAYS old.
+    const inactiveDays = daysSince ?? daysBetween(c.created_at, nowIso);
+    if (inactiveDays < DORMANT_DAYS) continue;
     out.push({
       creator_name: c.creator_name ?? "(unnamed creator)",
       handle: pickHandle(c),
