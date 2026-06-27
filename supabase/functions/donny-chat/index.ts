@@ -10,6 +10,7 @@ import { parseSseLines, StreamAccumulator, toolStatusLabel } from "./stream-accu
 import { embedQuery, retrieveContext } from "../donny-orchestrator/rag.ts";
 import { reconstructHistory } from "./history.ts";
 import { applyEdits } from "./doc-edits.ts";
+import { resolveDonnyProfile, type DonnyProfile } from "./profile.ts";
 import {
   GoogleWorkspaceError,
   assertDriveFileId,
@@ -1923,14 +1924,31 @@ serve(async (req) => {
         .neq("surface", "internal");
     }
 
-    // Load user profile
-    const { data: profile } = await supabaseAdmin
+    // Load user profile. Internal-only AIOS users (account_scope='internal') have NO
+    // consumer profiles row by design, so don't hard-fail them on the internal surface
+    // — synthesize a minimal profile (greeting name resolved from auth.users). Consumer
+    // callers still must have a real profile.
+    const { data: profileRow } = await supabaseAdmin
       .from("profiles")
       .select("id, role, full_name, email, avatar_url")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
 
-    if (!profile) throw new Error("Profile not found");
+    let internalFallbackName: string | null = null;
+    if (!profileRow && internalMode) {
+      const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
+      internalFallbackName =
+        (authUser?.user?.user_metadata?.full_name as string | undefined) ||
+        authUser?.user?.email ||
+        null;
+    }
+
+    const profile = resolveDonnyProfile({
+      profile: profileRow as DonnyProfile | null,
+      internalMode,
+      userId,
+      fallbackName: internalFallbackName,
+    });
 
     let allowedTools: typeof TOOL_DEFINITIONS;
     if (internalMode) {
