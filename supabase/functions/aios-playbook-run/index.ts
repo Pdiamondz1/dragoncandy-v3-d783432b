@@ -246,7 +246,7 @@ async function executeReadTool(
         admin.from("campaigns").select("id,title,user_id,created_at,updated_at,status").in("status", ["published", "active"]),
         admin.from("campaigns").select("user_id,org_id").in("status", LAUNCHED_STATUSES),
         admin.from("business_profiles").select("user_id,business_name,instagram_url,website_url,created_at").eq("account_type", "restaurant"),
-        admin.from("creator_profiles").select("user_id,creator_name,instagram_url,tiktok_url,youtube_url,created_at,skills"),
+        admin.from("creator_profiles").select("user_id,creator_name,instagram_url,tiktok_url,youtube_url,created_at,skills").eq("profile_visibility", "public"), // privacy: the service role bypasses RLS, so never surface non-public creator handles
         admin.from("campaign_applications").select("creator_id,created_at"),
         admin.from("dragonshare_posts").select("creator_id,created_at"),
         admin.from("dragonshare_boosts").select("boosting_user_id,boosting_org_id").not("captured_at", "is", null), // only successful (captured) boosts count
