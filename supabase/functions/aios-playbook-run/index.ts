@@ -24,6 +24,7 @@ import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-
 import { corsHeaders } from "../_shared/cors.ts";
 import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
+import { buildReactivationTargets } from "./reactivation.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -79,6 +80,12 @@ const READ_TOOL_DEFINITIONS = [
   {
     name: "get_latest_briefing",
     description: "The most recent weekly operating brief: title, week, KPI status list, full markdown body.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_reactivation_targets",
+    description:
+      "Reactivation outreach targets from live marketplace data: stalled_campaigns (published/active >14d with no completed collaboration), dormant_creators (no application/post in 21d), lapsed_restaurants (never launched a campaign or never boosted). Each segment returns {items, total}; items carry names + PUBLIC social handles only (NO emails), capped at 15. Use for the Dezzy weekly reactivation outreach playbook.",
     input_schema: { type: "object", properties: {} },
   },
 ];
@@ -182,6 +189,7 @@ async function executeReadTool(
   name: string,
   args: Json,
   userClient: SupabaseClient,
+  admin: SupabaseClient,
 ): Promise<Json> {
   switch (name) {
     case "get_internal_doc": {
@@ -229,6 +237,62 @@ async function executeReadTool(
         .maybeSingle();
       if (error) throw error;
       return data ?? { message: "No weekly briefings exist yet." };
+    }
+    case "get_reactivation_targets": {
+      const nowIso = new Date().toISOString();
+      const [campaignsRes, allCampaignsRes, restaurantsRes, creatorsRes, appsRes, postsRes, boostsRes] = await Promise.all([
+        admin.from("campaigns").select("id,title,user_id,created_at,updated_at,status").in("status", ["published", "active"]),
+        admin.from("campaigns").select("user_id"), // ALL statuses — for the lapsed-restaurant "never launched" anti-join
+        admin.from("business_profiles").select("user_id,business_name,instagram_url,website_url,created_at").eq("account_type", "restaurant"),
+        admin.from("creator_profiles").select("user_id,creator_name,instagram_url,tiktok_url,youtube_url,created_at,skills"),
+        admin.from("campaign_applications").select("creator_id,created_at"),
+        admin.from("dragonshare_posts").select("creator_id,created_at"),
+        admin.from("dragonshare_boosts").select("boosting_user_id"),
+      ]);
+      for (const r of [campaignsRes, allCampaignsRes, restaurantsRes, creatorsRes, appsRes, postsRes, boostsRes]) if (r.error) throw r.error;
+
+      const campaigns = campaignsRes.data ?? [];
+      const campaignIds = campaigns.map((c) => c.id);
+      const ownerIds = [...new Set(campaigns.map((c) => c.user_id))];
+
+      // Guarded: skip the query when the id list is empty (avoids an empty .in() and keeps types clean).
+      let collaborations: Json[] = [];
+      if (campaignIds.length) {
+        const collabRes = await admin.from("campaign_collaborations")
+          .select("campaign_id,creator_id,status,content_status,updated_at,completed_at").in("campaign_id", campaignIds);
+        if (collabRes.error) throw collabRes.error;
+        collaborations = collabRes.data ?? [];
+      }
+
+      let businesses: Json[] = [];
+      if (ownerIds.length) {
+        const bizRes = await admin.from("business_profiles")
+          .select("user_id,business_name,instagram_url,website_url").in("user_id", ownerIds);
+        if (bizRes.error) throw bizRes.error;
+        businesses = bizRes.data ?? [];
+      }
+
+      const creators = creatorsRes.data ?? [];
+      const lastActivityByUserId: Record<string, string> = {};
+      for (const row of [...(appsRes.data ?? []), ...(postsRes.data ?? [])]) {
+        const uid = (row as { creator_id?: string }).creator_id;
+        const at = (row as { created_at?: string }).created_at;
+        if (!uid || !at) continue;
+        if (!lastActivityByUserId[uid] || at > lastActivityByUserId[uid]) lastActivityByUserId[uid] = at;
+      }
+
+      return buildReactivationTargets({
+        nowIso,
+        campaigns,
+        collaborations,
+        businessByUserId: Object.fromEntries(businesses.map((b) => [b.user_id, b])),
+        creatorByUserId: Object.fromEntries(creators.map((c) => [c.user_id, c])),
+        creators,
+        lastActivityByUserId,
+        restaurants: restaurantsRes.data ?? [],
+        campaignOwnerIds: (allCampaignsRes.data ?? []).map((c) => c.user_id),
+        boosterIds: (boostsRes.data ?? []).map((b) => b.boosting_user_id).filter(Boolean),
+      });
     }
     default:
       throw new Error(`Unknown read tool: ${name}`);
@@ -374,7 +438,7 @@ serve(async (req) => {
               if (toolResult?.proposed && toolResult?.id) correctionIds.push(toolResult.id);
             }
           } else {
-            toolResult = await executeReadTool(tu.name, tu.input ?? {}, userClient);
+            toolResult = await executeReadTool(tu.name, tu.input ?? {}, userClient, admin);
           }
         } catch (err) {
           toolResult = { error: err instanceof Error ? err.message : "tool failed" };
