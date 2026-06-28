@@ -824,3 +824,14 @@ milestone event to read + no referral table; they reopen when the DRE award engi
 Dezzy domains now have a shipped slice or a documented gate. Compounded into
 [[Dezzy Agent (Playbook Suite)]] (Domain-6 section + refreshed status/Deferred). Pages updated:
 [[Dezzy Agent (Playbook Suite)]], index.md (Sources).
+
+## [2026-06-28] update | DRE Go-Live Runbook & Readiness Check
+Added a go-live runbook + readiness check to [[Dragon Rewards Engine (DRE)]] (read-only prod probe +
+engine-code read; no prod change). Findings: the DRE is fully deployed + cron-live (jobid 7, every 5
+min) and the silent backfill already ran (dragon_point_events=98, dragon_point_balances=24,
+dre_pending_events()=0). go_live_at=2099 gates ONLY the in-app bell, not awarding and not UI
+visibility — DragonPointsCard/DragonTierBadge render with no go_live/feature-flag gate in src/, so
+~24 users likely already see their points/tiers. "Go-live" = flip go_live_at to enable forward award
+notifications (effectively irreversible) — a founder business launch decision, not an engineering
+deploy. Runbook documents pre-flight, the admin-gated dre_config flip, verification, and limited
+rollback. Pages updated: [[Dragon Rewards Engine (DRE)]].

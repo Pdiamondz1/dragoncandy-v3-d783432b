@@ -2,8 +2,8 @@
 title: Dragon Rewards Engine (DRE)
 type: concept
 created: 2026-06-27
-updated: 2026-06-27
-sources: [2026-06-27-dre-engine-tiers-badges.md]
+updated: 2026-06-28
+sources: [2026-06-27-dre-engine-tiers-badges.md, 2026-06-28-dre-go-live-runbook.md]
 tags: [gamification, rewards, growth, edge-functions, rls, cron]
 ---
 # Dragon Rewards Engine (DRE)
@@ -94,6 +94,63 @@ forward bells.
   data, bypassing RLS) stay callable via `/rest/v1/rpc/…`. Static review (incl. Codex)
   reasons about standard Postgres `PUBLIC` semantics and misses this; run `get_advisors`
   (security) after any `SECURITY DEFINER` function DDL.
+
+## Go-Live Runbook & Readiness Check (2026-06-28)
+
+A read-only prod probe + engine-code read, prepared for the founder's launch decision.
+**This is a founder business decision, not an engineering deploy** — the engine is fully
+deployed and running; "go-live" only flips a config value.
+
+### Readiness snapshot (prod `zocahiffooqdybdhguqv`)
+- `dre-award-engine` deployed (v1, ACTIVE); cron **jobid 7 live** (`*/5 * * * *`).
+- **The silent backfill already ran:** `dragon_point_events` = **98 rows**,
+  `dragon_point_balances` = **24 users** (points + tiers computed), `dre_pending_events()`
+  = **0** (caught up). Idempotent + ledger-summed, so the cron self-heals each run.
+- `dre_config.go_live_at` = `2099-01-01T00:00:00Z` (the sentinel — unchanged).
+
+### What `go_live_at` actually gates (read before flipping)
+Awards are inserted **unconditionally** every run (`dre-award-engine` step 3). `go_live_at`
+is used at **only one place** — step 6, line ~94 — to suppress the in-app bell for awards
+whose `occurred_at` predates it. So:
+- **Points / tiers / badges are already computed AND already user-visible.**
+  `DragonPointsCard` (creator + business dashboards) and `DragonTierBadge` (public profiles)
+  render from `dragon_point_balances` / `public_dragon_tiers` with **no `go_live_at` or
+  feature-flag gate anywhere in `src/`** (`useDragonPoints` / `usePublicDragonTier`).
+- Flipping `go_live_at` does **not** reveal the program (already revealed) — it **only turns
+  on forward-going award notifications**.
+
+### ⚠️ Readiness flag — confirm intent
+The ~24 backfilled users can **already see** their Dragon Points + tier badge in the live
+app today, with no announcement. This is consistent with the documented v1 design (the
+tier-badge *display* shipped in v1; `go_live_at` gates only the bell — "the historical
+backfill is silent"). But if the intent was to keep the **whole program hidden** until
+announcement, note the **UI has no gate** — that would need to be added separately.
+Founder/DRE-team should confirm the silent-soft-launch-of-the-display is intended.
+
+### Flip = launch the announcement (what happens)
+Setting `go_live_at` to a real cutover (usually "now") means the next cron run fires one
+coalesced in-app bell (`type:'dragon_points_award'`, no email) per user for any award with
+`occurred_at >= go_live_at` — i.e. **forward activity only**. The 98 already-backfilled
+events stay silent (their `occurred_at` < cutover) — the intended "no retroactive spam".
+
+### Runbook (founder, when launching Dragon Rewards is a business "go")
+1. **Pre-flight (read-only):** `select count(*) from dre_pending_events();` ≈ 0 (caught up);
+   spot-check a few `dragon_point_balances` rows' `balance`/`tier` against the `dre_config`
+   `tier_thresholds`; decide the cutover timestamp (usually now).
+2. **Flip (admin-gated write — `dre_config` is `has_role('admin')`-write):**
+   `update dre_config set config_value = to_jsonb('<ISO-cutover>'::text), updated_at = now()
+   where config_key = 'go_live_at';`
+3. **Verify (within ~5 min, the cron cadence):** perform/seed one forward qualifying action,
+   then confirm a new `dragon_point_events` row AND a `dragon_points_award` notification for
+   that user landed.
+4. **Watch:** the cron is idempotent (anti-join + summed balances) — no manual re-runs.
+
+### Rollback — limited reversibility (know before flipping)
+Setting `go_live_at` back to a future date **stops future bells** but does **not** un-send
+already-fired notifications, un-award points, or hide the already-visible UI (balances are
+summed from the persistent ledger by design). **Treat the flip as a real, ~irreversible
+launch.** A true "unlaunch" would require gating the UI (none today) and clearing the ledger
+(destructive — not recommended).
 
 ## See Also
 
