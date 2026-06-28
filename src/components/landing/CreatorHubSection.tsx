@@ -2,6 +2,12 @@ import { Reveal } from "./Reveal";
 import { MediaSlot } from "./MediaSlot";
 import { VideoSlot } from "./VideoSlot";
 
+// Drop your Veo / Flow MP4 URL here — either a file in public/ (e.g. "/creator-reel.mp4")
+// or a public Supabase Storage / CDN URL. Empty = the branded placeholder shows.
+const CREATOR_REEL = "";
+// Optional still frame shown before the reel plays (a Nano Banana Pro 16:9 image or a video frame).
+const CREATOR_REEL_POSTER = "";
+
 const gallery = [
   { label: "On set", ratio: "square" as const },
   { label: "Behind the scenes", ratio: "square" as const },
@@ -31,7 +37,12 @@ export function CreatorHubSection() {
         </Reveal>
 
         <Reveal delay={0.1}>
-          <VideoSlot label="Creator showreel" className="mt-12" />
+          <VideoSlot
+            src={CREATOR_REEL || undefined}
+            poster={CREATOR_REEL_POSTER || undefined}
+            label="Creator showreel"
+            className="mt-12"
+          />
         </Reveal>
 
         <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
