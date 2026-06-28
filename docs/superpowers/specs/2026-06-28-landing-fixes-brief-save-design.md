@@ -44,8 +44,8 @@ The campaign builder already has a `?brief=` pre-fill (`useCampaignCreator.ts`):
 
 - **New isolated, unit-tested util** (e.g. `src/lib/pendingBrief.ts`):
   - `briefToText(brief): string` — a concise prompt summary from the brief's
-    `{campaign_name, campaign_description, target_audience, content_suggestions}` (ignores
-    the `source_quality` metadata #206 appends).
+    `{campaign_name, campaign_description, target_audience: string; content_suggestions: string[]}`
+    (the shape `BriefGeneratorPreview.tsx` stores; ignores the `source_quality` metadata #206 appends).
   - `consumePendingBrief(role): { redirectTo: string } | null` — reads + parses
     `localStorage['pendingBrief']`, **always clears it**, and returns a redirect target
     **only for a campaign-creating role**:
@@ -73,8 +73,11 @@ The campaign builder already has a `?brief=` pre-fill (`useCampaignCreator.ts`):
   - "Join as a Creator" → `/auth?mode=signup&role=creator`
   - "Get Started" → `/auth?mode=signup` (generic; user picks).
 - **`AuthPage.tsx`** reads the new `?role=` param: when it's `business`/`creator`/`brand`,
-  pre-select that role and jump straight to the `signup-form` step (skip `role-selection`).
-  Additive — no `role` param keeps today's role-picker behavior exactly.
+  **map the URL value to the profile enum** (`business→business_client`,
+  `creator→content_creator`, `brand→brand`), pre-select that role, and jump straight to the
+  `signup-form` step (skip `role-selection`). Additive — no `role` param keeps today's
+  role-picker behavior exactly. (Note: this URL "role" vocabulary differs from Part 1's
+  `consumePendingBrief(role)`, which takes the profile enum directly.)
 
 ### Part 3 — Navigation cleanup (repoint dead anchors)
 
@@ -125,4 +128,8 @@ The "less generic / one-of-a-kind" redesign and the design-tooling recommendatio
 - `?role=`-less `/auth?mode=signup` behaves exactly as today (additive param).
 - `pendingBrief` is **always cleared** once consumed (no stale carry-over on the next
   signup from the same browser).
+- Consumption is hooked **only at new-user onboarding completion**. A guest who saves a
+  brief then logs into an *existing* account (not a fresh signup) doesn't re-onboard, so
+  the entry harmlessly lingers in `localStorage` until the next new signup clears it — an
+  accepted corner (the CTA points new users at `?mode=signup`; no wrong campaign ever fires).
 - The redesign is untouched here.
