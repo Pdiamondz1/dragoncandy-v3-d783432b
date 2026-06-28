@@ -299,7 +299,10 @@ async function executeReadTool(
       }
       const engagedOrgIds = [...new Set([...launchedOrgIds, ...boostedOrgIds])];
       if (engagedOrgIds.length) {
-        const membersRes = await admin.from("org_members").select("org_id,user_id").in("org_id", engagedOrgIds);
+        // Only ACTIVE members inherit the org's launch/boost — an invited-but-not-joined or
+        // suspended member hasn't engaged, and miscounting them would wrongly drop their
+        // (genuinely lapsed) restaurant from outreach.
+        const membersRes = await admin.from("org_members").select("org_id,user_id").in("org_id", engagedOrgIds).eq("invitation_status", "active");
         if (membersRes.error) throw membersRes.error;
         for (const m of membersRes.data ?? []) {
           if (!m.user_id) continue;
