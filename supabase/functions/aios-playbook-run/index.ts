@@ -25,6 +25,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
 import { buildReactivationTargets } from "./reactivation.ts";
+import { buildRecentMilestones, MILESTONE_WINDOW_DAYS } from "./milestones.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -86,6 +87,12 @@ const READ_TOOL_DEFINITIONS = [
     name: "get_reactivation_targets",
     description:
       "Reactivation outreach targets from live marketplace data: stalled_campaigns (published/active >14d with no completed collaboration), dormant_creators (no application/post in 21d), lapsed_restaurants (never launched a campaign or never boosted). Each segment returns {items, total}; items carry names + PUBLIC social handles only (NO emails), capped at 15. Use for the Dezzy weekly reactivation outreach playbook.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_recent_milestones",
+    description:
+      "Recent celebration-worthy DC Rewards milestones (firsts + campaign milestones) from the last 30 days, for the Dezzy milestone-celebration playbook. Returns {generated_at, milestones:{items,total}}; each item = {name, role, handle (PUBLIC social handle only, may be null — NO emails, NO points), milestone (friendly label), event_type, occurred_at, tier_label (current DC Rewards tier, may be null)}. PUBLIC-profile achievers only; capped at 15.",
     input_schema: { type: "object", properties: {} },
   },
 ];
@@ -322,6 +329,50 @@ async function executeReadTool(
         restaurants: restaurantsRes.data ?? [],
         campaignOwnerIds: [...launchedUserIds],
         boosterIds: [...boostedUserIds],
+      });
+    }
+    case "get_recent_milestones": {
+      // Service-role `admin` client: dragon_point_events/_balances are own-row RLS (auth.uid()=user_id),
+      // so the caller's userClient would return nothing. admin bypasses RLS → the profile_visibility
+      // ='public' filter below is the privacy guard (mirrors get_reactivation_targets).
+      const nowIso = new Date().toISOString();
+      const sinceIso = new Date(Date.now() - MILESTONE_WINDOW_DAYS * 86_400_000).toISOString();
+      const eventsRes = await admin
+        .from("dragon_point_events")
+        .select("user_id,event_type,occurred_at")
+        .or("event_type.ilike.%first%,event_type.ilike.%milestone%")
+        .gte("occurred_at", sinceIso)
+        .order("occurred_at", { ascending: false })
+        .limit(60); // buffer; shaped + capped to 15 after the public-profile join
+      if (eventsRes.error) throw eventsRes.error;
+      const milestoneEvents = eventsRes.data ?? [];
+      const milestoneUserIds = [...new Set(milestoneEvents.map((e) => e.user_id))];
+
+      let mCreators: Json[] = [];
+      let mBusinesses: Json[] = [];
+      let mBalances: Json[] = [];
+      if (milestoneUserIds.length) {
+        const [cRes, bRes, balRes] = await Promise.all([
+          admin.from("creator_profiles")
+            .select("user_id,creator_name,instagram_url,tiktok_url,youtube_url,website_url")
+            .in("user_id", milestoneUserIds).eq("profile_visibility", "public"), // privacy: public handles only
+          admin.from("business_profiles")
+            .select("user_id,business_name,instagram_url,website_url")
+            .in("user_id", milestoneUserIds).eq("profile_visibility", "public"), // privacy: public handles only
+          admin.from("dragon_point_balances").select("user_id,tier").in("user_id", milestoneUserIds),
+        ]);
+        for (const r of [cRes, bRes, balRes]) if (r.error) throw r.error;
+        mCreators = cRes.data ?? [];
+        mBusinesses = bRes.data ?? [];
+        mBalances = balRes.data ?? [];
+      }
+
+      return buildRecentMilestones({
+        nowIso,
+        events: milestoneEvents,
+        creators: mCreators,
+        businesses: mBusinesses,
+        balances: mBalances,
       });
     }
     default:
