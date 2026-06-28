@@ -26,6 +26,20 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-06-28] Dezzy milestone-celebration playbook — Domain 6 core (branch feat/dezzy-milestone-celebrations)
+- Output: bundled INTO the work PR — `raw/sessions/2026-06-28-dezzy-milestone-celebrations.md`, extended
+  `concepts/dezzy-agent-playbook-suite.md` (Domain 6 section un-gated + status + Deferred + frontmatter
+  sources), `index.md` (Sources), `log.md` ingest entry, PROJECT_CONTEXT workstream bullet, + THIS entry.
+- Happened: compounded onto the existing suite hub page (no new thin page — a new domain slice of an
+  existing concept). The DRE going live (this session's earlier work + PR #205/#196) un-gated the
+  milestone core, so the knowledge update also *flipped a documented gate to shipped*.
+- Worked: [scope] + [runlog-in-pr] + compound-onto-hub; recording the privacy/role-prefix/false-recency
+  decisions as durable concept knowledge, and updating the suite status so the wiki reflects "#6 core live".
+- Failed: none. (Live agentic playbook run is founder-verification — needs admin auth — so the wiki notes
+  it as pending, same as the other dezzy playbooks.)
+- Remember: when a session ships work that un-gates a previously-documented gate, the knowledge-sync must
+  EDIT the gate language (gated→shipped), not just append — else the wiki contradicts reality. (advisory)
+
 ### [2026-06-28] Anonymous brief generator repair + Layered-v1 hardening (branch fix/anonymous-brief-generator)
 - Output: bundled INTO the work PR — `raw/sessions/2026-06-28-anonymous-brief-generator-fix.md`, new
   `concepts/anonymous-brief-generator.md` (See-Also [[Landing Lead Capture]]), `index.md` (Concepts +

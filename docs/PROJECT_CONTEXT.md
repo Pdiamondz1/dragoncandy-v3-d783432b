@@ -704,6 +704,29 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `docs/wiki/concepts/anonymous-brief-generator.md`. Spec:
   `docs/superpowers/specs/2026-06-28-anonymous-brief-generator-fix-design.md`.
 
+- DragonCandy AIOS — Dezzy AI milestone-celebration playbook (Domain 6 amplification core) — **built +
+  deployed (branch `feat/dezzy-milestone-celebrations`, 2026-06-28; live founder run pending).** The final
+  Dezzy domain's core, **un-gated** now that the DRE award engine is live and `dragon_point_events` is
+  populated. When a creator/business hits a celebration-worthy DC Rewards milestone, Dezzy drafts a
+  **#DragonDashed** celebratory social post for the founder to review + post. Report-only. Mirrors the
+  sister `dezzy-outreach` (`get_reactivation_targets`) pattern: a **7th** read tool **`get_recent_milestones`**
+  on `aios-playbook-run` (service-role `admin` client — own-row RLS on the DRE tables; `event_type ilike
+  first/milestone`, last 30d, capped 15; `profile_visibility='public'` join; **resolved by the event_type
+  role prefix** so a dual-profile user's `business.*` milestone isn't shaped as a creator; **PUBLIC handles
+  only, no emails/points**; tier returned as the display **`tier_label`** via a `tierLabel` map mirroring
+  `src/lib/dragonTiers.ts`, null when absent) + a report-only **`dezzy-milestone-celebrations`** seed
+  playbook (current **DC Rewards / DC Points / Rising→Icon** naming, **false-recency warning** for
+  `updated_at`-sourced events). Pure `milestones.ts` + 12 vitest cases. Spec passed an independent
+  spec-review (2 rounds); **Codex-clean after 1 P1** (migration timestamp collided with `leads_capture` →
+  renamed to `20260628150000`) **+ 2 P2s** (`business.first_campaign` is a *completion* not a launch;
+  role-prefix resolution). `aios-playbook-run` deployed via CLI (`verify_jwt=false` preserved); seed applied
+  to prod; **data-layer verified** (12 recent milestones, all public, 0 leak, 7 event types). `donny-campaign-
+  generate` and other fns untouched. **All six Dezzy domains now have a shipped slice; #6's core is live.**
+  Deferred: standalone DC-tier-up celebrations (no tier-change event), scheduled auto-run, one-tap post,
+  run-history dedup; remaining #6 levers (case studies, referrals, boost-content) stay gated on missing data
+  sources. Concept: `docs/wiki/concepts/dezzy-agent-playbook-suite.md`. Spec:
+  `docs/superpowers/specs/2026-06-28-dezzy-milestone-celebrations-design.md`.
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).

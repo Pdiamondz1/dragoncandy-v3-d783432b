@@ -899,3 +899,17 @@ gentle preview note. Spec passed independent review (6 fixes) before build; Code
 (trailing-dot FQDN SSRF bypass; malformed-IPv6 → failed inet insert → cap-accounting bypass), both
 fixed. Deployed via CLI (verify_jwt=true preserved) + live-verified on prod. Pages created:
 [[Anonymous Brief Generator]] (+ See-Also [[Landing Lead Capture]]).
+
+## [2026-06-28] ingest | Dezzy milestone-celebration playbook (Domain 6 amplification core)
+Un-gated now that the DRE award engine is live + dragon_point_events is populated. Added a 7th
+read tool get_recent_milestones to aios-playbook-run (mirrors get_reactivation_targets): service-role
+admin client (own-row RLS on the DRE tables), event_type ilike first/milestone, 30d window, capped 15,
+profile_visibility='public' join, resolved BY EVENT_TYPE ROLE PREFIX (not creator-first, so a
+dual-profile user's business milestone isn't misattributed), tier returned as the display label
+(tierLabel mirrors src/lib/dragonTiers.ts). Plus a report-only dezzy-milestone-celebrations seed
+playbook drafting #DragonDashed celebratory posts (current DC Rewards / DC Points / Rising→Icon naming)
+with a false-recency warning for updated_at-sourced events. Codex caught + fixed 1 P1 (migration
+timestamp collision with leads_capture) + 2 P2s (business.first_campaign is a COMPLETION not a launch;
+role-prefix resolution). Deployed + data-layer-verified on prod (12 recent milestones, all public, 0
+leak). All six Dezzy domains now have a shipped slice; #6's core is live. Pages updated:
+[[Dezzy Agent (Playbook Suite)]] (Domain 6 section + status + Deferred).
