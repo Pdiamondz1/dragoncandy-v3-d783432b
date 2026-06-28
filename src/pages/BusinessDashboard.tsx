@@ -15,6 +15,7 @@ import { NeedsAttentionSection } from '@/components/dashboard/NeedsAttentionSect
 import { RecentActivitySection } from '@/components/dashboard/RecentActivitySection';
 import { useBusinessActiveCampaigns } from '@/hooks/useBusinessActiveCampaigns';
 import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTile';
+import { DragonPointsCard } from '@/components/dragonshare/DragonPointsCard';
 import { DragonShareActivityCard } from '@/components/dragonshare/DragonShareActivityCard';
 import { useOrgBoostStats } from '@/hooks/useDragonShare';
 import { useOrg } from '@/hooks/useOrgData';
@@ -171,7 +172,8 @@ const BusinessDashboard = () => {
             {/* Quiet stats + DragonShare tile */}
             <section className="space-y-4 lg:space-y-0 lg:flex lg:items-center lg:justify-between lg:gap-8">
               <StatsRow stats={businessStats} isLoading={campaignsLoading} />
-              <div className="lg:w-72 lg:shrink-0">
+              <div className="lg:w-72 lg:shrink-0 space-y-3">
+                <DragonPointsCard />
                 <DragonShareStatTile
                   label="DragonShare boosts"
                   totalCents={dsBoosts?.totalCents ?? 0}

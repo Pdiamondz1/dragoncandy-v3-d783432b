@@ -28,6 +28,7 @@ import { StatsRow, type StatItem } from '@/components/dashboard/StatsRow';
 import { NeedsAttentionSection } from '@/components/dashboard/NeedsAttentionSection';
 import { RecentActivitySection } from '@/components/dashboard/RecentActivitySection';
 import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTile';
+import { DragonPointsCard } from '@/components/dragonshare/DragonPointsCard';
 import { DragonShareActivityCard } from '@/components/dragonshare/DragonShareActivityCard';
 import { SocialMediaManagerTile } from '@/components/dashboard/SocialMediaManagerTile';
 import { useCreatorDragonShareEarnings } from '@/hooks/useDragonShare';
@@ -203,7 +204,8 @@ const CreatorDashboard = () => {
               <div data-tour="profile-completion">
                 <StatsRow stats={creatorStats} isLoading={statsLoading} />
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                <DragonPointsCard />
                 <div data-tour="dragonshare-nav">
                   <DragonShareStatTile
                     label="DragonShare earnings"

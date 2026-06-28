@@ -18,6 +18,8 @@ import { VerifiedSocialStats } from '@/components/outstand/VerifiedSocialStats';
 import { useVerifiedStatus } from '@/hooks/outstand/useVerifiedStatus';
 import { PublicPageHeader } from '@/components/PublicPageHeader';
 import { VideoThumbnail } from '@/components/shared/VideoThumbnail';
+import { usePublicDragonTier } from '@/hooks/useDragonPoints';
+import { DragonTierBadge } from '@/components/badges/DragonTierBadge';
 
 interface CreatorProfile {
   id: string;
@@ -85,6 +87,7 @@ const PublicCreatorProfile = () => {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>();
   const { isVerified } = useVerifiedStatus(profile?.user_id);
+  const { data: dragonTier } = usePublicDragonTier(profile?.user_id);
 
   useEffect(() => {
     if (profile?.avatar_url) {
@@ -329,6 +332,7 @@ const PublicCreatorProfile = () => {
             {profile.creator_name}
             {isVerified && <VerifiedBadge className="ml-1" />}
           </h1>
+          <div className="mt-0.5"><DragonTierBadge tier={dragonTier} /></div>
           <div className="flex items-center gap-1 text-sm text-dc-pink-accent">
             <Star className="h-3.5 w-3.5 fill-dc-pink-accent" />
             <span className="font-medium">
