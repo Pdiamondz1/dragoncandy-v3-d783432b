@@ -767,3 +767,18 @@ tool to read aios_playbook_runs → pure seed (no aios-playbook-run edit, no new
 now covers Domains 1, 2, 3, 5; only 4 (Press & Events) and 6 (Amplification/DRE) remain.
 Compounded into [[Dezzy Agent (Playbook Suite)]] (capstone section + refreshed Deferred). Pages
 updated: [[Dezzy Agent (Playbook Suite)]], index.md (Sources).
+
+## [2026-06-27] ingest | Dezzy Press & Events scout (Domain 4)
+Ingested the Dezzy press-events session — Domain 4 of the suite, and the FIRST Dezzy domain that
+ships as a scheduled CLOUD routine rather than a Founder Playbook. Reason: the aios-playbook-run
+runner has no web access, and press/event discovery needs the open web — so it lives on the cloud
+routine rail (which has WebSearch), modeled on Loop Scout. `dezzy-press-events-agent` runs monthly,
+web-scans press/podcast/publication/conference opportunities (grounded in PROJECT_CONTEXT + the
+strategy library), and files the top ~10 as deduped [press]/[event]-tagged aios_findings via
+aios-report-ingest for founder triage at /internal/findings. Zero-infra (reuses the findings rail —
+no new table/UI/edge-fn/migration); report-only (only write = the findings POST). Disciplines:
+URL-required (no verifiable URL → don't file), $0-budget-aware, severity-as-priority but never
+critical, and re-scan skips acknowledged/wontfix/resolved. Codex caught + fixed a P2 (a
+self-contradictory high-severity rule). Dezzy now covers Domains 1, 2, 3, 4, 5; only #6
+(Amplification/DRE) remains. Compounded into [[Dezzy Agent (Playbook Suite)]] (Domain 4 section +
+refreshed status/Deferred). Pages updated: [[Dezzy Agent (Playbook Suite)]], index.md (Sources).

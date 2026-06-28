@@ -564,6 +564,24 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `docs/superpowers/specs/2026-06-27-dezzy-weekly-brief-design.md`. Concept:
   `docs/wiki/concepts/dezzy-agent-playbook-suite.md`.
 
+- DragonCandy AIOS — Dezzy AI Press & Events scout (Domain 4) — **built (branch
+  `feat/aios-dezzy-press-events`, 2026-06-27; founder go-live = create the routine via `/schedule`).** The
+  **first Dezzy domain that ships as a scheduled cloud routine, not a Founder Playbook** — because the
+  `aios-playbook-run` runner has **no web access** and press/event discovery needs the open web, it lives on
+  the cloud-routine rail (which has WebSearch), modeled on Loop Scout. `dezzy-press-events-agent`
+  (`.claude/schedules/dezzy-press-events-agent.md`) runs **monthly**, web-scans press / podcast /
+  publication / conference opportunities (grounded in PROJECT_CONTEXT + the strategy library), and files the
+  top ~10 as deduped **`[press]`/`[event]`-tagged `aios_findings`** (`source=dezzy-press-events`) via
+  `aios-report-ingest` for founder triage at `/internal/findings`. **Zero-infra** — reuses the findings rail
+  (no new table/UI/edge-fn/secret/migration); report-only (only write = the findings POST). Disciplines:
+  **URL-required** (no verifiable source URL → don't file — the web-research non-fabrication backstop),
+  **$0-budget-aware** (free plays first, paid costs labelled), `severity` as priority but **never
+  `critical`** (reserved for real bugs), and re-scan skips `acknowledged`/`wontfix`/`resolved` so a
+  decided/annual opportunity doesn't reopen. spec-reviewer Approved; Codex caught + fixed a P2 (a
+  self-contradictory `high`-severity rule). Dezzy now covers Domains 1, 2, 3, 4, 5; only #6
+  (Amplification/DRE) remains. Spec: `docs/superpowers/specs/2026-06-27-dezzy-press-events-design.md`.
+  Concept: `docs/wiki/concepts/dezzy-agent-playbook-suite.md`.
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).

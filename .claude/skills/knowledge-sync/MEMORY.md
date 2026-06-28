@@ -26,6 +26,23 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-06-27] Dezzy press & events — Domain 4 (branch feat/aios-dezzy-press-events)
+- Output: bundled INTO the work PR — `raw/sessions/2026-06-27-dezzy-press-events.md`, extended
+  `concepts/dezzy-agent-playbook-suite.md` (new Domain-4 section + refreshed status/Deferred + frontmatter
+  sources), `index.md` (Sources), `log.md` ingest entry, PROJECT_CONTEXT bullet, + THIS run-log entry.
+- Happened: pre-merge run on a fresh branch off origin/main (per [scope]). First Dezzy domain on the
+  **cloud-routine** rail (not a playbook). Compounded into the suite hub page [[Dezzy Agent (Playbook
+  Suite)]] (no new concept page → only a Sources index line). The Deferred line predicted "#4 needs a cloud
+  routine" → this slice fulfilled it, so I moved #4 from Deferred to a shipped Domain-4 section. RAG sync +
+  verify-knowledge deferred to post-merge.
+- Worked: [scope] + [runlog-in-pr] + compound-onto-hub. Codex P3 ("knowledge-sync scope undone") was just
+  the mid-flight branch state — doing the knowledge-sync here resolves it (re-run Codex after).
+- Failed: none. Carried forward the stranded #195 verify-knowledge entry (post-merge runs strand — same as
+  #194).
+- Remember: when a prior session's Deferred list *predicted* the next slice's shape, the next knowledge-sync
+  should move that item from Deferred → shipped (close the prediction), not leave a stale "remaining" line.
+  (advisory)
+
 ### [2026-06-27] Dezzy weekly brief — Domain 5 capstone (branch feat/aios-dezzy-weekly-brief)
 - Output: bundled INTO the work PR — `raw/sessions/2026-06-27-dezzy-weekly-brief.md`, extended
   `concepts/dezzy-agent-playbook-suite.md` (capstone section + refreshed Deferred + See Also), `index.md`
