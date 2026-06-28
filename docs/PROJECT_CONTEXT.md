@@ -557,6 +557,62 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `docs/wiki/concepts/dragon-rewards-engine.md`. Spec:
   `docs/superpowers/specs/2026-06-27-dre-engine-tiers-badges-design.md`.
 
+- DragonCandy AIOS — Dezzy AI content-production playbooks (Domains 1 + 2) — **built (branch
+  `feat/aios-dezzy-content-playbooks`, 2026-06-27; seed applied to prod, live founder run
+  pending).** Dezzy (the renamed "Dame AI" growth-agent spec, PR #190) is realized **not as a new
+  agent runtime but as a branded suite of AIOS Founder Playbooks** on the existing rails
+  (`aios-playbook-run`, `/internal/playbooks`, `aios-report-ingest`, `/schedule`). This slice —
+  the **content half**, sibling to the parallel `DC-Dezzy-AI` worktree's `dezzy-outreach`
+  (Domain 3) — seeds two **report-only** playbooks: **`dezzy-content-calendar`** (drafts the
+  week's 5 company social posts on a fixed Mon–Fri rotation) and **`dezzy-website-updates`**
+  (drafts changelog/landing/announcement copy for the 1–2 most launch-worthy recently shipped
+  user-facing features). Both DRAFT only — the founder reviews/publishes (the "a human acts"
+  invariant); voice is set via `preferences_md` ("Dezzy") while the engine identity stays
+  "Donny". **Pure seed migration** (`20260627170000_aios_dezzy_content_playbooks_seed.sql`) — no
+  new read tool, **no edit to `aios-playbook-run/index.ts`** (the file the sibling edits → zero
+  merge conflict), no new table/RLS/secret/UI; grounded entirely in the six existing aggregate
+  read tools (`get_latest_briefing` + `get_platform_stats` + `get_internal_doc`). Non-fabrication
+  enforced by a traceability `done_criteria` + marked placeholders (`[CREATOR / @handle]`,
+  `[RESTAURANT]`, `[STAT — verify]`) since the aggregate tools return no row-level data and the
+  runner has no web access. Spec:
+  `docs/superpowers/specs/2026-06-27-dezzy-content-playbooks-design.md`. Concept:
+  `docs/wiki/concepts/dezzy-content-playbooks.md`.
+
+- DragonCandy AIOS — Dezzy AI Weekly Operating Brief (Domain 5) — **built (branch
+  `feat/aios-dezzy-weekly-brief`, 2026-06-27; seed applied to prod, live founder run pending).** The
+  Monday **capstone** of the Dezzy playbook suite: a report-only, **admin-only** `dezzy-weekly-brief`
+  Founder Playbook (action console — one-line summary; platform numbers with status-or-"no KPI basis";
+  what worked/didn't; top 3 specific actions; a **Dezzy-queue checklist** pointing to the detail
+  playbooks; system health). Deliberately a **separate** playbook, not an extension of the stakeholder
+  weekly brief (`weekly-brief-agent` → `aios_briefings` → `/internal/briefings`) — so founder-internal
+  candor/directives stay off the publishable surface; it **reconciles** to that brief's KPIs via
+  `get_latest_briefing`. **Orchestrate-not-embed**: it *points to* `dezzy-outreach` /
+  `dezzy-content-calendar` / `dezzy-website-updates` rather than embedding their runs (no tool reads
+  `aios_playbook_runs`, so it needs none) → **pure seed migration**
+  (`20260627180000_aios_dezzy_weekly_brief_seed.sql`), no edit to `aios-playbook-run`, no new table/UI.
+  Dezzy now covers Domains 1, 2, 3, 5; only #4 (Press & Events — needs a web-research cloud routine) and
+  #6 (Amplification/DRE) remain. Codex-clean; spec-reviewer Approved. Spec:
+  `docs/superpowers/specs/2026-06-27-dezzy-weekly-brief-design.md`. Concept:
+  `docs/wiki/concepts/dezzy-agent-playbook-suite.md`.
+
+- DragonCandy AIOS — Dezzy AI Press & Events scout (Domain 4) — **built (branch
+  `feat/aios-dezzy-press-events`, 2026-06-27; founder go-live = create the routine via `/schedule`).** The
+  **first Dezzy domain that ships as a scheduled cloud routine, not a Founder Playbook** — because the
+  `aios-playbook-run` runner has **no web access** and press/event discovery needs the open web, it lives on
+  the cloud-routine rail (which has WebSearch), modeled on Loop Scout. `dezzy-press-events-agent`
+  (`.claude/schedules/dezzy-press-events-agent.md`) runs **monthly**, web-scans press / podcast /
+  publication / conference opportunities (grounded in PROJECT_CONTEXT + the strategy library), and files the
+  top ~10 as deduped **`[press]`/`[event]`-tagged `aios_findings`** (`source=dezzy-press-events`) via
+  `aios-report-ingest` for founder triage at `/internal/findings`. **Zero-infra** — reuses the findings rail
+  (no new table/UI/edge-fn/secret/migration); report-only (only write = the findings POST). Disciplines:
+  **URL-required** (no verifiable source URL → don't file — the web-research non-fabrication backstop),
+  **$0-budget-aware** (free plays first, paid costs labelled), `severity` as priority but **never
+  `critical`** (reserved for real bugs), and re-scan skips `acknowledged`/`wontfix`/`resolved` so a
+  decided/annual opportunity doesn't reopen. spec-reviewer Approved; Codex caught + fixed a P2 (a
+  self-contradictory `high`-severity rule). Dezzy now covers Domains 1, 2, 3, 4, 5; only #6
+  (Amplification/DRE) remains. Spec: `docs/superpowers/specs/2026-06-27-dezzy-press-events-design.md`.
+  Concept: `docs/wiki/concepts/dezzy-agent-playbook-suite.md`.
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).

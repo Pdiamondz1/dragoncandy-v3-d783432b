@@ -3,7 +3,7 @@ title: Dezzy Agent (Playbook Suite)
 type: concept
 created: 2026-06-27
 updated: 2026-06-27
-sources: [docs/superpowers/specs/2026-06-27-dezzy-outreach-v1-design.md, docs/superpowers/plans/2026-06-27-dezzy-outreach-v1.md, 2026-06-27-dezzy-outreach-v1.md]
+sources: [docs/superpowers/specs/2026-06-27-dezzy-outreach-v1-design.md, docs/superpowers/plans/2026-06-27-dezzy-outreach-v1.md, 2026-06-27-dezzy-outreach-v1.md, docs/superpowers/specs/2026-06-27-dezzy-weekly-brief-design.md, 2026-06-27-dezzy-weekly-brief.md, docs/superpowers/specs/2026-06-27-dezzy-press-events-design.md, 2026-06-27-dezzy-press-events.md]
 tags: [aios, donny, dezzy, automation, internal, growth, architecture]
 ---
 
@@ -93,15 +93,54 @@ Dezzy proactively flagged obvious test/dev accounts and two data edge cases (a c
 **Dezzy = playbook suite** pattern: a real growth-agent capability shipped with one read
 tool + one seed row, zero new infrastructure.
 
+## The rest of the suite (shipped 2026-06-27)
+
+Three more report-only playbooks landed the same week, all on the same rails (no new runtime, no new UI):
+
+- **Domains 1 + 2 — content production** (PR #194): `dezzy-content-calendar` (5 company social posts/wk,
+  Mon–Fri rotation) and `dezzy-website-updates` (changelog / landing / announcement drafts for shipped
+  features). Detail: [[Dezzy Content Playbooks]]. Unlike the Outreach Machine these need **no new read
+  tool** — they ground in `get_latest_briefing` + `get_platform_stats` + `get_internal_doc`, so they are
+  **pure seeds** (no `aios-playbook-run` edit). Row-level/external data they can't source is required as a
+  marked placeholder (`[CREATOR / @handle]`, `[RESTAURANT]`, `[STAT — verify]`), never invented.
+
+- **Domain 5 — the Monday capstone** (`dezzy-weekly-brief`): an **admin-only** action console — one-line
+  summary, platform numbers (status *or* "no KPI basis"), what worked/didn't, top 3 actions, a **Dezzy-queue
+  checklist that points to the other playbooks**, and system health. Two decisions define it: (1) it is a
+  *separate* playbook, **not** an extension of the stakeholder weekly brief (`weekly-brief-agent` →
+  `aios_briefings` → `/internal/briefings`), so founder-internal candor + directives stay off the
+  publishable surface — it merely **reconciles** to that brief's KPIs via `get_latest_briefing`; (2)
+  **orchestrate, not embed** — it *points to* the detail playbooks rather than reproducing their runs (no
+  tool reads `aios_playbook_runs`, and this way it needs none → pure seed). Compose-mode (a
+  `get_latest_playbook_run` tool) is the documented v2.
+
+- **Domain 4 — Press & Events** (a **cloud routine**, not a playbook): `dezzy-press-events-agent`
+  (`.claude/schedules/dezzy-press-events-agent.md`). Because the `aios-playbook-run` runner has **no web
+  access**, this domain ships on the *scheduled cloud routine* rail (which has WebSearch), modeled on
+  [[Self-Improving App]]'s Loop Scout. Monthly, it web-scans for press / podcast / publication / conference
+  opportunities (grounded in PROJECT_CONTEXT + the strategy library) and files the top ~10 as deduped
+  `[press]`/`[event]`-tagged `aios_findings` (`source=dezzy-press-events`,
+  `fingerprint=dezzy-opportunity:<slug>`) the founder triages at `/internal/findings`. **Zero-infra** —
+  reuses the findings rail, no new table/UI/edge-fn. Disciplines: **URL-required** (no verifiable URL → not
+  filed — the web-research non-fabrication backstop), **$0-budget-aware** (free plays first, paid costs
+  labelled), `severity` as priority but **never `critical`**, and re-scan skips `acknowledged`/`wontfix`/
+  `resolved` so a decided/annual opportunity doesn't reopen.
+
+**Suite status:** Domains **1, 2, 3, 5** ship as playbooks and **#4 (Press & Events)** ships as a cloud
+routine; only **#6 (Amplification/DRE)** remains.
+
 ## Deferred
 
 One-tap / auto-send (in-app + email → a new table + `/internal/outreach` UI + send fn),
-scheduled weekly *push* (v1 is on-demand pull), cold outreach / prospect sourcing, the
-runner's "Dezzy" identity re-skin, and the other five Dezzy domains (Website, Social, Press,
-Monday Brief, Amplification).
+scheduled weekly *push* for the playbooks (v1 is on-demand pull), cold outreach / prospect sourcing, the
+runner's "Dezzy" identity re-skin, **weekly-brief compose-mode** (embedding the detail runs via a
+`get_latest_playbook_run` tool), a first-class **`dezzy_opportunities` table + deadline-sorted calendar UI**
+(Press & Events v2, if volume warrants), and the last domain — **#6 Amplification** (depends on the separate
+DRE).
 
 ## See Also
 
+- [[Dezzy Content Playbooks]]
 - [[The Core Idea: Two Agents, One Company]]
 - [[Founder Playbooks]]
 - [[Donny AI]]

@@ -763,3 +763,47 @@ with profiles.id; consumer tables left on profiles), and a pure `describeError` 
 + `google-workspace-proxy` v20 deploy so future DB failures show their real message+code.
 Both applied to prod during the session. Pages created: [[Internal-Only AIOS Users]].
 Pages updated: [[Google Workspace]], [[Error Handling Patterns]], index.md.
+
+## [2026-06-27] ingest | Dezzy Content Playbooks (Domains 1 + 2)
+Ingested the Dezzy content-playbooks session. Built the content half of Dezzy AI (the
+"Dame AI"/Dezzy growth-agent spec) as two report-only AIOS Founder Playbooks seeded into
+`aios_playbooks` — `dezzy-content-calendar` (5 company social posts/wk, Mon–Fri rotation) and
+`dezzy-website-updates` (changelog/landing/announcement drafts for shipped features). Key
+reframe: **Dezzy is a branded suite of [[Founder Playbooks]] + scheduled routines, not a new
+agent runtime** — so the slice is a pure seed migration (no new read tool, no edit to
+`aios-playbook-run`, no new table, no UI), grounded entirely in the six existing aggregate read
+tools. Deliberately does not touch `aios-playbook-run/index.ts` (the file the sibling
+`DC-Dezzy-AI` worktree edits for `dezzy-outreach`) → zero merge conflict. Non-fabrication is
+enforced via `preferences_md` + a traceability `done_criteria` and marked placeholders
+(`[CREATOR / @handle]`, `[RESTAURANT]`, `[STAT — verify]`). Seed applied to prod; live "Run now"
+is a founder-gated step. Pages created: [[Dezzy Content Playbooks]]. Pages updated: index.md
+(Concepts + Sources).
+
+## [2026-06-27] ingest | Dezzy Weekly Operating Brief (Domain 5)
+Ingested the Dezzy weekly-brief session — the Domain 5 capstone of the Dezzy suite. Seeded a
+fourth report-only Founder Playbook, `dezzy-weekly-brief`: an admin-only Monday action console
+(one-line summary, platform numbers, what worked/didn't, top 3 actions, a Dezzy-queue checklist,
+system health). Two decisions: it is a SEPARATE admin-only playbook (not an extension of the
+stakeholder weekly brief weekly-brief-agent → aios_briefings → /internal/briefings), so
+founder-internal candor/directives stay off the publishable surface — it reconciles to that
+brief's KPIs via get_latest_briefing; and it ORCHESTRATES (points to dezzy-outreach /
+dezzy-content-calendar / dezzy-website-updates) rather than embedding their runs, so it needs no
+tool to read aios_playbook_runs → pure seed (no aios-playbook-run edit, no new table/UI). Dezzy
+now covers Domains 1, 2, 3, 5; only 4 (Press & Events) and 6 (Amplification/DRE) remain.
+Compounded into [[Dezzy Agent (Playbook Suite)]] (capstone section + refreshed Deferred). Pages
+updated: [[Dezzy Agent (Playbook Suite)]], index.md (Sources).
+
+## [2026-06-27] ingest | Dezzy Press & Events scout (Domain 4)
+Ingested the Dezzy press-events session — Domain 4 of the suite, and the FIRST Dezzy domain that
+ships as a scheduled CLOUD routine rather than a Founder Playbook. Reason: the aios-playbook-run
+runner has no web access, and press/event discovery needs the open web — so it lives on the cloud
+routine rail (which has WebSearch), modeled on Loop Scout. `dezzy-press-events-agent` runs monthly,
+web-scans press/podcast/publication/conference opportunities (grounded in PROJECT_CONTEXT + the
+strategy library), and files the top ~10 as deduped [press]/[event]-tagged aios_findings via
+aios-report-ingest for founder triage at /internal/findings. Zero-infra (reuses the findings rail —
+no new table/UI/edge-fn/migration); report-only (only write = the findings POST). Disciplines:
+URL-required (no verifiable URL → don't file), $0-budget-aware, severity-as-priority but never
+critical, and re-scan skips acknowledged/wontfix/resolved. Codex caught + fixed a P2 (a
+self-contradictory high-severity rule). Dezzy now covers Domains 1, 2, 3, 4, 5; only #6
+(Amplification/DRE) remains. Compounded into [[Dezzy Agent (Playbook Suite)]] (Domain 4 section +
+refreshed status/Deferred). Pages updated: [[Dezzy Agent (Playbook Suite)]], index.md (Sources).

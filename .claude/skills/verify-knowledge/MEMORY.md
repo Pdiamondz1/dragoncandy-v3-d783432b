@@ -21,6 +21,34 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-06-27] Dezzy weekly brief knowledge-sync (PR #195) — (re-added; was stranded on the weekly-brief branch)
+- Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for PR #195.
+- Happened: (a) wiki lint — path-based orphan check clean (0; no new page, compounded the capstone into
+  [[Dezzy Agent (Playbook Suite)]]), no contradictions; (b) sync errors=0 (sync:wiki updated=59/inserted=0 —
+  UPDATE-only, no net-new page → raw `RAG_LAST` stayed pinned at 01:35Z), but `content ilike '%dezzy-weekly-brief%'`
+  = 2 rows + "Monday capstone / orchestrate, not embed" = 2 rows confirm the extended page is in the RAG →
+  [freshness-proxy] applies, (b) met; LAST_WIKI_SYNC 03:03Z − RAG_LAST is <24h regardless; (c) raw session in
+  index.md Sources + the `[2026-06-27] ingest` log.md entry, suite page already cataloged.
+- Worked: [freshness-proxy] resolved (b) decisively on an update-only sync — content-presence over timestamp.
+- Failed: none (validator). The entry was committed post-squash-merge on the weekly-brief branch so it never
+  reached main → re-added here (same strand-then-carry-forward as #194).
+- Remember: re-confirms [freshness-proxy] + the post-merge-strand carry-forward pattern. (advisory)
+
+### [2026-06-27] Dezzy content playbooks knowledge-sync (PR #194) — (re-added; was stranded on the content branch)
+- Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for PR #194.
+- Happened: (a) wiki lint — path-based orphan/index-completeness check clean (0 orphans across
+  concepts+entities+analyses), no contradictions (new page compounds [[Founder Playbooks]] + cross-links
+  the sibling's [[Dezzy Agent (Playbook Suite)]]); (b) RAG_LAST 2026-06-28T01:35:37Z > LAST_WIKI_SYNC
+  2026-06-28T01:34:52Z, post-merge hook synced wiki errors=0 / +1 inserted = dezzy-content-playbooks.md,
+  `content ilike '%Dezzy Content Playbooks%'` = 2 rows (138 total); (c) concepts/dezzy-content-playbooks.md
+  in index.md + the `[2026-06-27] ingest` log.md entry.
+- Worked: the two-worktree merge conflict (sibling dezzy-outreach PR #193 landed first) resolved keep-both
+  on index.md/MEMORY.md before the validator ran → first-pass green; post-merge hook made (b) green.
+- Failed: none (validator). The entry itself was committed post-squash-merge on the content branch so it
+  never reached main → re-added here.
+- Remember: the verify-knowledge run is inherently post-merge, so its run-log entry can strand on a
+  just-merged branch — carry it forward in the NEXT session's docs PR (done here). (advisory)
+
 ### [2026-06-27] Internal Donny profile-read fix knowledge-sync (docs PR #186)
 - Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for PR #185.
 - Happened: (a) wiki lint — path-based orphan/index-completeness check clean (0 critical), no

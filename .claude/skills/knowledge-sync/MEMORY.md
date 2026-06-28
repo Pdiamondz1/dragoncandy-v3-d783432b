@@ -44,6 +44,59 @@
   DRE analysis), the new concept page slots cleanly with the parent as its See-Also — no forward-link
   to defer. (advisory)
 
+### [2026-06-27] Dezzy press & events — Domain 4 (branch feat/aios-dezzy-press-events)
+- Output: bundled INTO the work PR — `raw/sessions/2026-06-27-dezzy-press-events.md`, extended
+  `concepts/dezzy-agent-playbook-suite.md` (new Domain-4 section + refreshed status/Deferred + frontmatter
+  sources), `index.md` (Sources), `log.md` ingest entry, PROJECT_CONTEXT bullet, + THIS run-log entry.
+- Happened: pre-merge run on a fresh branch off origin/main (per [scope]). First Dezzy domain on the
+  **cloud-routine** rail (not a playbook). Compounded into the suite hub page [[Dezzy Agent (Playbook
+  Suite)]] (no new concept page → only a Sources index line). The Deferred line predicted "#4 needs a cloud
+  routine" → this slice fulfilled it, so I moved #4 from Deferred to a shipped Domain-4 section. RAG sync +
+  verify-knowledge deferred to post-merge.
+- Worked: [scope] + [runlog-in-pr] + compound-onto-hub. Codex P3 ("knowledge-sync scope undone") was just
+  the mid-flight branch state — doing the knowledge-sync here resolves it (re-run Codex after).
+- Failed: none. Carried forward the stranded #195 verify-knowledge entry (post-merge runs strand — same as
+  #194).
+- Remember: when a prior session's Deferred list *predicted* the next slice's shape, the next knowledge-sync
+  should move that item from Deferred → shipped (close the prediction), not leave a stale "remaining" line.
+  (advisory)
+
+### [2026-06-27] Dezzy weekly brief — Domain 5 capstone (branch feat/aios-dezzy-weekly-brief)
+- Output: bundled INTO the work PR — `raw/sessions/2026-06-27-dezzy-weekly-brief.md`, extended
+  `concepts/dezzy-agent-playbook-suite.md` (capstone section + refreshed Deferred + See Also), `index.md`
+  (Sources), `log.md` ingest entry, PROJECT_CONTEXT active-workstream bullet, + THIS run-log entry.
+- Happened: pre-merge run on a fresh branch off origin/main (per [scope]). **Compounded, didn't duplicate** —
+  the weekly-brief capstone belongs in the suite-overview page [[Dezzy Agent (Playbook Suite)]] (the sibling's
+  page), not a thin new page; extended it + refreshed its now-stale "Deferred" (3 of 6 domains shipped). No
+  new concept page → no new index Concepts entry, only a Sources line. RAG sync + verify-knowledge deferred
+  to post-merge.
+- Worked: [scope] + [runlog-in-pr] + compound-don't-duplicate. Editing the sibling worktree's already-merged
+  suite page (now on main) was clean — no conflict (its branch is merged, I'm off main).
+- Failed: none. Note — the verify-knowledge MEMORY.md #194 entry was stranded (committed post-squash-merge on
+  the content branch, never reached main); re-added it in this PR to un-strand it.
+- Remember: a capstone/overview update is a *compound onto the hub page* job, not a new page — keeps the suite
+  narrative in one place and avoids index orphans. (advisory)
+
+### [2026-06-27] Dezzy content playbooks (Domains 1+2, branch feat/aios-dezzy-content-playbooks)
+- Output: bundled INTO the work PR — `raw/sessions/2026-06-27-dezzy-content-playbooks.md`, new
+  `concepts/dezzy-content-playbooks.md` (compounds on [[Founder Playbooks]]), `index.md`
+  (Concepts + Sources), `log.md` ingest entry, PROJECT_CONTEXT active-workstream bullet, + THIS
+  run-log entry.
+- Happened: pre-merge run (work branch open, off the fresh DC-Dezzy-AI-2 worktree ≈ origin/main).
+  Built two report-only seed playbooks; no new concept duplication (new page is a distinct
+  product-framing concept, cross-linked to the existing engine page [[Founder Playbooks]]).
+  Path-based orphan check: my new page is in index.md. RAG sync + verify-knowledge deferred to
+  post-merge (per [scope]/[rag-sync] — don't hand-sync unmerged wiki content).
+- Worked: [scope] + [runlog-in-pr] + [orphans]-by-path applied. Coordinated non-overlap with the
+  sibling DC-Dezzy-AI worktree: distinct slugs/migration/spec filenames and a NEW concept page
+  rather than editing the shared `analyses/dragoncandy-dame-ai-...spec.md` (which the sibling's
+  knowledge-sync owns).
+- Failed: none. Noted a pre-existing orphan — `analyses/dragoncandy-dame-ai-...spec.md` (imported
+  PR #190) is NOT in index.md; left for the sibling worktree that actively edits it (its territory).
+- Remember: when two worktrees ship sibling slices of one spec, partition the knowledge layer —
+  each owns distinct page filenames; only ONE owns the shared analysis page + its index entry; both
+  appending index.md/log.md is fine (resolvable at merge). (advisory)
+
 ### [2026-06-27] Dezzy Outreach v1 (docs bundled INTO the open work branch)
 - Output: this work branch (`worktree-DC-Dezzy-AI`) — `raw/sessions/2026-06-27-dezzy-outreach-v1.md`,
   new `concepts/dezzy-agent-playbook-suite.md`, updated `analyses/the-core-idea-two-agents-one-company.md`
