@@ -26,6 +26,21 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-06-28] DRE rewards rename → "Creator standing" (branch feat/dre-rename-creator-standing)
+- Output: bundled INTO the work PR — `raw/sessions/2026-06-28-dre-rename-creator-standing.md`, a "Display
+  naming" note added to `concepts/dragon-rewards-engine.md` (+ frontmatter sources), `index.md` (Sources),
+  `log.md` update entry, PROJECT_CONTEXT bullet, + THIS run-log entry.
+- Happened: founder-feedback-driven display rename (Dragon Points→Reputation; Egg/Scout/Knight/Master/Legend
+  → Rising/Established/Pro/Elite/Icon; emojis dropped). Keys/tables/flag unchanged. Compounded the rename
+  note onto the existing DRE concept page (no new page). Also redeployed the dre-award-engine notification
+  copy (v2, MCP faithful-rebundle + boot-check 401 — the live every-5-min cron, so I rebundled the exact
+  4 deployed files with only the 2 strings changed rather than hand-listing deps).
+- Worked: [scope] + [runlog-in-pr] + compound-onto-hub; the "display-only, keys unchanged" framing kept the
+  concept page accurate without rewriting every DP/tier mention.
+- Failed: none. Carried forward the stranded #200 verify-knowledge entry.
+- Remember: for a live edge-fn copy change, `get_edge_function` → swap the string → redeploy the SAME file
+  set is the low-risk path (no hand-guessed _shared bundle); boot-check via the 401 auth gate. (advisory)
+
 ### [2026-06-28] Landing redesign + public lead capture (branch feat/landing-luxe-redesign)
 - Output: bundled INTO the work PR — `raw/sessions/2026-06-28-landing-redesign-lead-capture.md`, new
   `concepts/landing-lead-capture.md`, `index.md` (Concepts + Sources), `log.md` ingest entry, PROJECT_CONTEXT

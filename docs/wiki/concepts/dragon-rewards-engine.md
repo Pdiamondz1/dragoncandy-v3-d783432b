@@ -3,7 +3,7 @@ title: Dragon Rewards Engine (DRE)
 type: concept
 created: 2026-06-27
 updated: 2026-06-28
-sources: [2026-06-27-dre-engine-tiers-badges.md, 2026-06-28-dre-go-live-runbook.md]
+sources: [2026-06-27-dre-engine-tiers-badges.md, 2026-06-28-dre-go-live-runbook.md, 2026-06-28-dre-rename-creator-standing.md]
 tags: [gamification, rewards, growth, edge-functions, rls, cron]
 ---
 # Dragon Rewards Engine (DRE)
@@ -55,6 +55,14 @@ Everything tunable lives in `dre_config` (JSONB): `point_values` (keyed `<role>.
 `dre-rules.ts` reads config; the engine just orchestrates.
 
 ## Tiers
+
+> **Display naming — "Creator standing" (2026-06-28).** The user-facing labels were renamed to read
+> mature for an older/professional audience: the currency **"Dragon Points" → "Reputation" (Rep)**, and the
+> tier ladder **Egg→Rising · Scout→Established · Knight→Pro · Master→Elite · Legend→Icon** (fantasy emojis
+> dropped). This is **display-only** (`src/lib/dragonTiers.ts` labels + `DragonPointsCard`/`DragonTierBadge`
+> copy + the `dre-award-engine` award-notification copy); the **keys** (`egg/scout/knight/master/legend`),
+> the `dragon_point_*` tables/columns, the `dragon_points_award` notification type, and the `DP` internal
+> term are **unchanged** (no migration). The keys below refer to the internal identifiers.
 
 5 tiers (Egg → Scout → Knight → Master → Legend). A tier requires **both** a DP threshold
 **and** a verified activity milestone (campaigns completed, + creator avg rating) — points
