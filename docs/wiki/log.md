@@ -807,3 +807,20 @@ critical, and re-scan skips acknowledged/wontfix/resolved. Codex caught + fixed 
 self-contradictory high-severity rule). Dezzy now covers Domains 1, 2, 3, 4, 5; only #6
 (Amplification/DRE) remains. Compounded into [[Dezzy Agent (Playbook Suite)]] (Domain 4 section +
 refreshed status/Deferred). Pages updated: [[Dezzy Agent (Playbook Suite)]], index.md (Sources).
+
+## [2026-06-28] ingest | Dezzy Weekly SEO Article (Domain 6 SEO slice)
+Ingested the Dezzy SEO-article session — the SEO/organic-discovery slice of Domain 6, and the FIFTH
+Dezzy playbook. `dezzy-seo-articles` drafts one publish-ready SEO article per run targeting a
+high-intent search term for $0 organic acquisition (founder publishes to the blog); grounded keyword
+selection via get_platform_stats (which side to grow, with the "creators before restaurants" GTM rule
+overriding raw counts) + get_internal_doc. Pure seed (no new tool/edit/table/UI). Disciplines: E-E-A-T
+"genuinely useful, not keyword-stuffed" with no fabricated proof points (DragonCandy has no published
+case studies yet), and no fabrication — any stat/feature/page-path traces to a tool or is a
+[CONFIRM PATH]/placeholder (links founder-confirmed, no invented URLs). Key finding: the rest of
+Domain 6 (milestone-celebration core, case studies, referral thank-yous, boost-performing-content) is
+GATED — a read-only prod probe found dragon_point_events / dragon_point_balances /
+dragonshare_engagement empty (PR #196 applied the DRE schema but held the award-engine cron) + no
+milestone event to read + no referral table; they reopen when the DRE award engine goes live. All six
+Dezzy domains now have a shipped slice or a documented gate. Compounded into
+[[Dezzy Agent (Playbook Suite)]] (Domain-6 section + refreshed status/Deferred). Pages updated:
+[[Dezzy Agent (Playbook Suite)]], index.md (Sources).

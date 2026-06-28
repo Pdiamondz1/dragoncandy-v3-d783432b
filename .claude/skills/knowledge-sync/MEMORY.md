@@ -26,6 +26,21 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-06-28] Dezzy SEO articles — Domain 6 SEO slice (branch feat/aios-dezzy-seo-articles)
+- Output: bundled INTO the work PR — `raw/sessions/2026-06-28-dezzy-seo-articles.md`, extended
+  `concepts/dezzy-agent-playbook-suite.md` (Domain-6 section + refreshed status/Deferred + frontmatter
+  sources), `index.md` (Sources), `log.md` ingest entry, PROJECT_CONTEXT bullet, + THIS run-log entry.
+- Happened: pre-merge run off origin/main (per [scope]). Compounded into the suite hub page (no new concept
+  page → Sources index line only). The session's headline was a **read-only prod probe** that found Domain 6
+  mostly GATED (empty DRE ledger + no referral table) — captured that honestly in the page so the wiki
+  records *why* only the SEO slice shipped. RAG sync + verify-knowledge deferred to post-merge.
+- Worked: [scope] + [runlog-in-pr] + compound-onto-hub; the gated-scope finding belongs in the durable
+  knowledge layer, not just the spec.
+- Failed: none. Carried forward the stranded #197 verify-knowledge entry (post-merge runs strand — same as
+  #194/#195).
+- Remember: when an exploration's main output is "most of this is gated, here's why", that finding is
+  knowledge — record the gate + its reopen-condition in the concept page, not only the spec. (advisory)
+
 ### [2026-06-27] Dragon Rewards Engine v1 (docs bundled INTO the work branch)
 - Output: this work branch (`worktree-DC-DRE-AI`) — `raw/sessions/2026-06-27-dre-engine-tiers-badges.md`,
   new `concepts/dragon-rewards-engine.md`, `index.md` (Concepts + Sources), `log.md` ingest entry,
