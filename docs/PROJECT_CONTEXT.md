@@ -582,6 +582,25 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   (Amplification/DRE) remains. Spec: `docs/superpowers/specs/2026-06-27-dezzy-press-events-design.md`.
   Concept: `docs/wiki/concepts/dezzy-agent-playbook-suite.md`.
 
+- DragonCandy AIOS — Dezzy AI SEO articles (Domain 6, SEO/organic-discovery slice) — **built (branch
+  `feat/aios-dezzy-seo-articles`, 2026-06-28; seed applied to prod, live founder run pending).** The one
+  Domain-6 amplification lever feasible pre-DRE: a report-only `dezzy-seo-articles` Founder Playbook that
+  drafts **one publish-ready SEO article per run** targeting a high-intent search term for **$0 organic
+  acquisition** (founder reviews + publishes to the blog). Grounded keyword pick via `get_platform_stats`
+  (which marketplace side to grow — with the **"creators onboarded before restaurants" GTM rule overriding
+  raw under-supplied counts**) + `get_internal_doc` (positioning). **Pure seed migration**
+  (`20260628120000_…`) — no new tool, no `aios-playbook-run` edit, no table/UI. Disciplines: E-E-A-T
+  "genuinely useful, not keyword-stuffed" (no fabricated proof points — DragonCandy has no published case
+  studies yet), and no fabrication — any stat/feature/page-path traces to a tool or is a `[CONFIRM PATH]`/
+  placeholder (links founder-confirmed, no invented URLs). **The rest of Domain 6 is GATED** — a read-only
+  prod probe found `dragon_point_events` / `dragon_point_balances` / `dragonshare_engagement` **empty**
+  (PR #196 applied the DRE schema but held the award-engine cron) + no milestone/tier-change event + no
+  referral table, so the milestone-celebration core, case studies, referral thank-yous, and
+  boost-performing-content reopen only when the DRE award engine is live. spec-reviewer Approved; Codex-clean.
+  **With this, all six Dezzy domains have a shipped slice or a documented gate.** Spec:
+  `docs/superpowers/specs/2026-06-28-dezzy-seo-articles-design.md`. Concept:
+  `docs/wiki/concepts/dezzy-agent-playbook-suite.md`.
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).

@@ -21,6 +21,16 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-06-27] Dezzy press & events knowledge-sync (PR #197) — (re-added; was stranded on the press-events branch)
+- Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for PR #197.
+- Happened: (a) 0 orphans; the suite page marks Domain 4 shipped (resolved the Codex P3 contradiction where
+  the doc still called #4 deferred); (b) sync errors=0 (sync:wiki updated=59/inserted=0 — UPDATE-only,
+  extended the suite page) and `content ilike '%dezzy-press-events%'` = 2 + Domain-4 cloud-routine text = 2 →
+  [freshness-proxy], (b) met; (c) raw session in index.md Sources + the `[2026-06-27] ingest` log.md entry.
+- Worked: re-running Codex AFTER the knowledge-sync commit turned the P3 clean.
+- Failed: none (validator). Committed post-squash-merge on the press-events branch → re-added here.
+- Remember: do the knowledge-sync before the FINAL Codex pass so the branch is self-consistent. (advisory)
+
 ### [2026-06-27] Dezzy weekly brief knowledge-sync (PR #195) — (re-added; was stranded on the weekly-brief branch)
 - Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for PR #195.
 - Happened: (a) wiki lint — path-based orphan check clean (0; no new page, compounded the capstone into
