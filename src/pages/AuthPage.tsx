@@ -7,6 +7,7 @@ import { AuthForm } from "@/components/auth/AuthForm";
 import { AuthModeToggle } from "@/components/auth/AuthModeToggle";
 import { RoleSelection } from "@/components/auth/RoleSelection";
 import { toast } from 'sonner';
+import { BRAND_ROLE_ENABLED } from "@/lib/featureConfig";
 import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.webp';
 
 type SignupStep = "role-selection" | "signup-form";
@@ -21,10 +22,23 @@ const ALLOWED_REDIRECT_ORIGINS = new Set([
 const AuthPage = () => {
   const [searchParams] = useSearchParams();
   const initialMode = searchParams.get('mode') === 'login' ? 'login' : 'signup';
+  // Pre-select role from the landing "Join as a Business/Creator" CTAs (?role=).
+  // Map the URL value to the profile enum; ignore on login or unknown values.
+  const initialRole = ((): "business_client" | "content_creator" | "brand" | null => {
+    if (initialMode === 'login') return null;
+    const map: Record<string, "business_client" | "content_creator" | "brand"> = {
+      business: 'business_client',
+      creator: 'content_creator',
+    };
+    if (BRAND_ROLE_ENABLED) map.brand = 'brand'; // brand signup stays behind the flag
+    const r = searchParams.get('role');
+    // own-property check only — reject inherited names like ?role=constructor
+    return r && Object.prototype.hasOwnProperty.call(map, r) ? map[r] : null;
+  })();
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [error, setError] = useState<string | null>(null);
-  const [signupStep, setSignupStep] = useState<SignupStep>("role-selection");
-  const [selectedRole, setSelectedRole] = useState<"business_client" | "content_creator" | "brand" | null>(null);
+  const [signupStep, setSignupStep] = useState<SignupStep>(initialRole ? "signup-form" : "role-selection");
+  const [selectedRole, setSelectedRole] = useState<"business_client" | "content_creator" | "brand" | null>(initialRole);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [_needsVerification, setNeedsVerification] = useState(false);
 
