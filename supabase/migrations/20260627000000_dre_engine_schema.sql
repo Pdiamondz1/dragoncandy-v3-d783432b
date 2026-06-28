@@ -243,9 +243,11 @@ as $$
   where pr.id = any(p_user_ids);
 $$;
 
--- Service-role only (the engine). Revoke the default PUBLIC execute.
-revoke execute on function public.dre_pending_events() from public;
-revoke execute on function public.dre_user_aggregates(uuid[]) from public;
+-- Service-role only (the engine). Supabase grants EXECUTE to anon/authenticated via
+-- DEFAULT PRIVILEGES, so `from public` alone is NOT enough — revoke from anon and
+-- authenticated explicitly (these SECURITY DEFINER RPCs return cross-user data).
+revoke execute on function public.dre_pending_events() from public, anon, authenticated;
+revoke execute on function public.dre_user_aggregates(uuid[]) from public, anon, authenticated;
 grant execute on function public.dre_pending_events() to service_role;
 grant execute on function public.dre_user_aggregates(uuid[]) to service_role;
 

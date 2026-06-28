@@ -87,6 +87,13 @@ forward bells.
 - `campaign_launched` uses `status <> 'draft'` (ever-left-draft), not `= 'published'`
   (`campaign_status` progresses past `published`). Creator-completion `occurred_at` uses
   `COALESCE(completed_at, updated_at)`; the `campaigns` table has no `completed_at`.
+- **Supabase default-privilege gotcha (caught by the live advisor on prod apply):**
+  Supabase grants `EXECUTE` to `anon`/`authenticated` via `ALTER DEFAULT PRIVILEGES`, so
+  `revoke … from public` does NOT lock down a `SECURITY DEFINER` function — you must
+  `revoke … from anon, authenticated` explicitly, or those RPCs (which return cross-user
+  data, bypassing RLS) stay callable via `/rest/v1/rpc/…`. Static review (incl. Codex)
+  reasons about standard Postgres `PUBLIC` semantics and misses this; run `get_advisors`
+  (security) after any `SECURITY DEFINER` function DDL.
 
 ## See Also
 
