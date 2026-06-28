@@ -7,6 +7,7 @@ import { AuthForm } from "@/components/auth/AuthForm";
 import { AuthModeToggle } from "@/components/auth/AuthModeToggle";
 import { RoleSelection } from "@/components/auth/RoleSelection";
 import { toast } from 'sonner';
+import { BRAND_ROLE_ENABLED } from "@/lib/featureConfig";
 import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.webp';
 
 type SignupStep = "role-selection" | "signup-form";
@@ -25,9 +26,13 @@ const AuthPage = () => {
   // Map the URL value to the profile enum; ignore on login or unknown values.
   const initialRole = ((): "business_client" | "content_creator" | "brand" | null => {
     if (initialMode === 'login') return null;
-    const map = { business: 'business_client', creator: 'content_creator', brand: 'brand' } as const;
+    const map: Record<string, "business_client" | "content_creator" | "brand"> = {
+      business: 'business_client',
+      creator: 'content_creator',
+    };
+    if (BRAND_ROLE_ENABLED) map.brand = 'brand'; // brand signup stays behind the flag
     const r = searchParams.get('role');
-    return r && r in map ? map[r as keyof typeof map] : null;
+    return r ? (map[r] ?? null) : null;
   })();
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [error, setError] = useState<string | null>(null);

@@ -12,13 +12,18 @@ interface StoredBrief {
   campaign_description?: string;
   target_audience?: string;
   content_suggestions?: string[];
+  // Alternate shape BriefGeneratorPreview also accepts (title/description fallbacks).
+  title?: string;
+  description?: string;
 }
 
 /** Concise prompt summary fed to the campaign builder's ?brief= pre-fill. */
 export function briefToText(brief: StoredBrief): string {
   const parts: string[] = [];
-  if (brief.campaign_name) parts.push(brief.campaign_name);
-  if (brief.campaign_description) parts.push(brief.campaign_description);
+  const name = brief.campaign_name || brief.title;
+  const desc = brief.campaign_description || brief.description;
+  if (name) parts.push(name);
+  if (desc) parts.push(desc);
   if (brief.target_audience) parts.push(`Target audience: ${brief.target_audience}`);
   const ideas = (brief.content_suggestions ?? []).filter(Boolean);
   if (ideas.length) parts.push(`Content ideas: ${ideas.join('; ')}`);

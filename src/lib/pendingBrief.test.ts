@@ -21,6 +21,11 @@ describe('briefToText', () => {
     expect(briefToText({ campaign_name: 'X' })).toBe('X');
     expect(briefToText({})).toBe('');
   });
+  it('falls back to title/description when campaign_* absent', () => {
+    const t = briefToText({ title: 'Alt Name', description: 'Alt desc.' });
+    expect(t).toContain('Alt Name');
+    expect(t).toContain('Alt desc');
+  });
 });
 
 describe('consumePendingBrief', () => {
