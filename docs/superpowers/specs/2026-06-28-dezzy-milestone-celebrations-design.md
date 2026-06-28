@@ -34,7 +34,11 @@ five_star/rate_creator.)
 A tool on `aios-playbook-run/index.ts`, mirroring `get_reactivation_targets`'s privacy + structure
 (bounded DB fetches in `index.ts`; pure row-shaping in a new `milestones.ts` with a `milestones.test.ts`).
 
-**`index.ts` case (bounded fetches):**
+**`index.ts` case (bounded fetches):** All reads use the service-role **`admin`** client (the 4th
+param of `executeReadTool`, as `get_reactivation_targets` does) — `dragon_point_events` and
+`dragon_point_balances` are **own-row RLS** (`auth.uid() = user_id`), so reading via the caller's
+`userClient` would return only the admin's own rows (≈ nothing). The `admin` client bypasses RLS,
+which is exactly why the `profile_visibility='public'` filter below is mandatory.
 - `dragon_point_events` `.select("user_id,event_type,occurred_at")`
   `.or("event_type.ilike.%first%,event_type.ilike.%milestone%")` `.gte("occurred_at", since)` (30-day
   window) `.order("occurred_at", desc)` `.limit(60)` (buffer; capped to 15 after shaping).
@@ -47,18 +51,24 @@ A tool on `aios-playbook-run/index.ts`, mirroring `get_reactivation_targets`'s p
 **`milestones.ts` (pure, vitest-tested):** reuses `pickHandle` + `Handle` from `reactivation.ts`.
 - `friendlyMilestone(event_type)` → a human label (a small map for the common events; fallback =
   humanize the suffix).
+- `tierLabel(key)` → the **current display label** via a `TIER_LABELS` map that **mirrors
+  `src/lib/dragonTiers.ts`** (egg→Rising, scout→Established, knight→Pro, master→Elite, legend→Icon).
+  The tool returns the **label**, never the raw key — so the post never says "Knight" while the app
+  shows "Pro". (Edge fns can't import the frontend module, so this is a deliberate mirror with a
+  `// keep in sync with src/lib/dragonTiers.ts` comment; the alternative — returning the key + a prose
+  mapping in `preferences_md` — is the drift trap that just bit the rename.)
 - `buildRecentMilestones({nowIso, events, creators, businesses, balances})`:
   - Resolve each event's `user_id` to a **public** creator (first) or business profile. **If neither
     is public → SKIP the event** (the keystone privacy filter: the events table contains all users;
     we only ever surface public-profile achievers).
-  - Emit `{ name, role, handle (public only, may be null), milestone, event_type, occurred_at, tier
-    (key, context) }`.
+  - Emit `{ name, role, handle (public only, may be null), milestone, event_type, occurred_at,
+    tier_label (current display label, context only) }`.
   - Cap to **15** (`{ items, total }`); newest-first preserved from the query order.
 - **No emails, no points/balance numbers** ever leave the tool.
 
 **Tool description** (for the model): "Recent celebration-worthy DRE milestones (firsts +
 campaign milestones) from the last 30 days: names + PUBLIC social handles only (NO emails, NO points),
-each with the achiever's current DC tier as context, capped at 15. Use for the Dezzy milestone-
+each with the achiever's current DC Rewards tier label as context, capped at 15. Use for the Dezzy milestone-
 celebration playbook." `input_schema: { type:"object", properties:{} }`.
 
 **Re-celebration guard:** the 30-day window + founder-reviews-each-run. No run-history dedup (same
@@ -73,14 +83,20 @@ Report-only (`allowed_proposals='[]'`); engine identity stays "Donny", voice "De
   milestone, draft ONE ready-to-post celebratory post: a finished caption (≤ ~50 words, celebratory,
   authentic), suggested platform(s), a hashtag set including **#DragonDashed**, a one-line visual brief,
   and the public **@handle** to tag. Lead with the strongest milestones (a completed first campaign /
-  `milestone_campaigns_N`) over weak ones (first_social). Note each milestone's `occurred_at` so the
-  founder can skip stale backfilled ones. If the tool returns no milestones this window, say so and stop.
+  `milestone_campaigns_N`) over weak ones (first_social). Note each milestone's `occurred_at`. **False-
+  recency warning:** some DRE "first" events derive `occurred_at` from `updated_at`, which a routine
+  profile/campaign edit resets — specifically `creator.first_social`, `business.first_campaign`, and
+  `business.milestone_campaigns_*`. One of these can show a *recent-looking* `occurred_at` for a
+  months-old milestone, so flag any such draft "verify this is genuinely recent before posting" rather
+  than asserting it just happened. If the tool returns no milestones this window, say so and stop.
 - **preferences_md:** Write as **Dezzy**, DragonCandy's growth agent (voice only). Celebratory, warm,
-  authentic — never corporate. Honor the brand: teal+pink, **"#DragonDashed"** is the verb, the rewards
-  program is **"DC Rewards"** and its currency **"DC Points"** (current naming as of 2026-06-28 — update
-  if the labels change). **Never fabricate** a milestone, name, handle, or number the tool didn't return;
-  only public handles exist (don't invent a handle for a null one — celebrate without the tag). One
-  clear CTA per post. Output as separated post blocks, not a table.
+  authentic — never corporate. Honor the brand: teal+pink, **"#DragonDashed"** is the verb. Use the
+  **current** rewards naming (as of 2026-06-28): the program is **"DC Rewards"**, the currency is
+  **"DC Points"**, and the tiers are **Rising → Established → Pro → Elite → Icon** (use the
+  `tier_label` the tool returns; never the raw key, never a retired name like "Knight" or "Reputation").
+  **Never fabricate** a milestone, name, handle, or number the tool didn't return; only public handles
+  exist (don't invent a handle for a null one — celebrate without the tag). One clear CTA per post.
+  Output as separated post blocks, not a table.
 - **done_criteria_md:** Every milestone the tool returned has a draft post block (caption + platform +
   hashtags + visual brief + handle-or-noted-absent), OR the report explicitly states "no celebration-
   worthy milestones in the last 30 days"; no fabricated milestones/names/handles; ends with the JSON
