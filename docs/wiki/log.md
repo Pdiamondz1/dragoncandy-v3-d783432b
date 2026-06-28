@@ -753,3 +753,17 @@ enforced via `preferences_md` + a traceability `done_criteria` and marked placeh
 (`[CREATOR / @handle]`, `[RESTAURANT]`, `[STAT — verify]`). Seed applied to prod; live "Run now"
 is a founder-gated step. Pages created: [[Dezzy Content Playbooks]]. Pages updated: index.md
 (Concepts + Sources).
+
+## [2026-06-27] ingest | Dezzy Weekly Operating Brief (Domain 5)
+Ingested the Dezzy weekly-brief session — the Domain 5 capstone of the Dezzy suite. Seeded a
+fourth report-only Founder Playbook, `dezzy-weekly-brief`: an admin-only Monday action console
+(one-line summary, platform numbers, what worked/didn't, top 3 actions, a Dezzy-queue checklist,
+system health). Two decisions: it is a SEPARATE admin-only playbook (not an extension of the
+stakeholder weekly brief weekly-brief-agent → aios_briefings → /internal/briefings), so
+founder-internal candor/directives stay off the publishable surface — it reconciles to that
+brief's KPIs via get_latest_briefing; and it ORCHESTRATES (points to dezzy-outreach /
+dezzy-content-calendar / dezzy-website-updates) rather than embedding their runs, so it needs no
+tool to read aios_playbook_runs → pure seed (no aios-playbook-run edit, no new table/UI). Dezzy
+now covers Domains 1, 2, 3, 5; only 4 (Press & Events) and 6 (Amplification/DRE) remain.
+Compounded into [[Dezzy Agent (Playbook Suite)]] (capstone section + refreshed Deferred). Pages
+updated: [[Dezzy Agent (Playbook Suite)]], index.md (Sources).

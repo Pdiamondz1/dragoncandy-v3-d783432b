@@ -547,6 +547,23 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `docs/superpowers/specs/2026-06-27-dezzy-content-playbooks-design.md`. Concept:
   `docs/wiki/concepts/dezzy-content-playbooks.md`.
 
+- DragonCandy AIOS — Dezzy AI Weekly Operating Brief (Domain 5) — **built (branch
+  `feat/aios-dezzy-weekly-brief`, 2026-06-27; seed applied to prod, live founder run pending).** The
+  Monday **capstone** of the Dezzy playbook suite: a report-only, **admin-only** `dezzy-weekly-brief`
+  Founder Playbook (action console — one-line summary; platform numbers with status-or-"no KPI basis";
+  what worked/didn't; top 3 specific actions; a **Dezzy-queue checklist** pointing to the detail
+  playbooks; system health). Deliberately a **separate** playbook, not an extension of the stakeholder
+  weekly brief (`weekly-brief-agent` → `aios_briefings` → `/internal/briefings`) — so founder-internal
+  candor/directives stay off the publishable surface; it **reconciles** to that brief's KPIs via
+  `get_latest_briefing`. **Orchestrate-not-embed**: it *points to* `dezzy-outreach` /
+  `dezzy-content-calendar` / `dezzy-website-updates` rather than embedding their runs (no tool reads
+  `aios_playbook_runs`, so it needs none) → **pure seed migration**
+  (`20260627180000_aios_dezzy_weekly_brief_seed.sql`), no edit to `aios-playbook-run`, no new table/UI.
+  Dezzy now covers Domains 1, 2, 3, 5; only #4 (Press & Events — needs a web-research cloud routine) and
+  #6 (Amplification/DRE) remain. Codex-clean; spec-reviewer Approved. Spec:
+  `docs/superpowers/specs/2026-06-27-dezzy-weekly-brief-design.md`. Concept:
+  `docs/wiki/concepts/dezzy-agent-playbook-suite.md`.
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).

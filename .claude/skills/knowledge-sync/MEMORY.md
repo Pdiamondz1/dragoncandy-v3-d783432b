@@ -26,6 +26,22 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-06-27] Dezzy weekly brief — Domain 5 capstone (branch feat/aios-dezzy-weekly-brief)
+- Output: bundled INTO the work PR — `raw/sessions/2026-06-27-dezzy-weekly-brief.md`, extended
+  `concepts/dezzy-agent-playbook-suite.md` (capstone section + refreshed Deferred + See Also), `index.md`
+  (Sources), `log.md` ingest entry, PROJECT_CONTEXT active-workstream bullet, + THIS run-log entry.
+- Happened: pre-merge run on a fresh branch off origin/main (per [scope]). **Compounded, didn't duplicate** —
+  the weekly-brief capstone belongs in the suite-overview page [[Dezzy Agent (Playbook Suite)]] (the sibling's
+  page), not a thin new page; extended it + refreshed its now-stale "Deferred" (3 of 6 domains shipped). No
+  new concept page → no new index Concepts entry, only a Sources line. RAG sync + verify-knowledge deferred
+  to post-merge.
+- Worked: [scope] + [runlog-in-pr] + compound-don't-duplicate. Editing the sibling worktree's already-merged
+  suite page (now on main) was clean — no conflict (its branch is merged, I'm off main).
+- Failed: none. Note — the verify-knowledge MEMORY.md #194 entry was stranded (committed post-squash-merge on
+  the content branch, never reached main); re-added it in this PR to un-strand it.
+- Remember: a capstone/overview update is a *compound onto the hub page* job, not a new page — keeps the suite
+  narrative in one place and avoids index orphans. (advisory)
+
 ### [2026-06-27] Dezzy content playbooks (Domains 1+2, branch feat/aios-dezzy-content-playbooks)
 - Output: bundled INTO the work PR — `raw/sessions/2026-06-27-dezzy-content-playbooks.md`, new
   `concepts/dezzy-content-playbooks.md` (compounds on [[Founder Playbooks]]), `index.md`
