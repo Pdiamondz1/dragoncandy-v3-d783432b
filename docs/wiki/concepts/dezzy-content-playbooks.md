@@ -85,6 +85,7 @@ playbook, since the runner has no web access); one-tap send/publish.
 
 ## See Also
 
+- [[Dezzy Agent (Playbook Suite)]] — the parent framing; this page is its content half (the sibling Outreach Machine is Domain 3)
 - [[Founder Playbooks]]
 - [[Donny AI]]
 - [[AIOS]]
