@@ -27,8 +27,13 @@ function usePrefersReducedMotion(): boolean {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     const update = () => setReduce(mq.matches);
     update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
+    // Modern API, with a fallback to the deprecated addListener for older Safari/iOS WebKit.
+    if (typeof mq.addEventListener === "function") {
+      mq.addEventListener("change", update);
+      return () => mq.removeEventListener("change", update);
+    }
+    mq.addListener(update);
+    return () => mq.removeListener(update);
   }, []);
   return reduce;
 }
