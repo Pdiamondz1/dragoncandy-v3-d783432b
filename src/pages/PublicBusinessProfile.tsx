@@ -11,6 +11,8 @@ import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 import { SEO } from '@/components/SEO';
 import { PublicPageHeader } from '@/components/PublicPageHeader';
 import { useResolvedLogoUrl, resolveProfileAssetUrl } from '@/hooks/useSignedUrl';
+import { usePublicDragonTier } from '@/hooks/useDragonPoints';
+import { DragonTierBadge } from '@/components/badges/DragonTierBadge';
 
 interface BusinessProfile {
   id: string;
@@ -47,6 +49,7 @@ const PublicBusinessProfile = () => {
   const [notFound, setNotFound] = useState(false);
   const reviewsRef = useRef<HTMLDivElement>(null);
   const resolvedLogoUrl = useResolvedLogoUrl(profile?.logo_url);
+  const { data: dragonTier } = usePublicDragonTier(profile?.user_id);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -194,6 +197,7 @@ const PublicBusinessProfile = () => {
           <h1 className="text-lg font-bold text-gray-900 truncate">
             {profile.business_name}
           </h1>
+          <div className="mt-0.5"><DragonTierBadge tier={dragonTier} /></div>
           {(profile.total_reviews ?? 0) > 0 ? (
             <InlineRating
               averageRating={profile.average_rating}

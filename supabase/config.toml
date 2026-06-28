@@ -153,3 +153,6 @@ verify_jwt = false
 # the unauthenticated CORS preflight. Same posture as wiki-commit-pr.
 [functions.manage-internal-users]
 verify_jwt = false
+
+[functions.dre-award-engine]
+verify_jwt = false

@@ -114,6 +114,22 @@
 | `dragonshare_payouts` | Creator payouts from DragonShare boosts |
 | `dragonshare_posts` | Creator-submitted content posts. `post_url`/`platform` nullable (direct uploads). `content_file_path` for uploaded content. `flagged_at`/`flagged_by` for report mechanism. Default status: `verified` (trust-then-flag model) |
 
+## Dragon Rewards (DRE)
+
+Dragon Rewards Engine v1 — see `docs/wiki/concepts/dragon-rewards-engine.md`. All `user_id` FK
+`profiles(id)` (consumer feature). Written only by the service-role `dre-award-engine` edge fn;
+clients read their own rows (`auth.uid() = user_id`).
+
+| Table | Purpose |
+|-|-|
+| `dre_config` | Admin-tunable JSONB config — `point_values`, `tier_thresholds`, `go_live_at` (retune without a deploy). Authenticated-read, `has_role('admin')`-write |
+| `dragon_point_events` | Append-only Dragon Points ledger. `UNIQUE (user_id, event_type, source_id)` = idempotency key. `multiplier_applied` reserved (always `1.0` in v1) for Phase-3 boosts |
+| `dragon_point_balances` | Materialized cache, recomputed from the ledger (sum). Holds `balance`, `tier`, `last_activity_at`; `streak_*`/`total_redeemed` reserved for Phases 3/5 |
+
+> RPCs (SECURITY DEFINER, `service_role`-only): `dre_pending_events()` (anti-join — source rows
+> lacking a ledger row) and `dre_user_aggregates(uuid[])` (balance + completed-campaign count +
+> avg rating for tier resolution).
+
 ## Payments & Revenue
 
 | Table | Purpose |
@@ -165,3 +181,4 @@
 | `public_creator_profiles` | Public-facing creator profile data |
 | `public_organizations` | Public-facing organization data |
 | `safe_profiles` | Sanitized profile view (no sensitive fields) |
+| `public_dragon_tiers` | Public Dragon-tier exposure — `user_id, tier` ONLY (never `balance`), granted to anon; lets the tier badge render on public profiles under the own-row `dragon_point_balances` RLS |

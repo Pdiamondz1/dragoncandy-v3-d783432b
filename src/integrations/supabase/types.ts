@@ -2996,6 +2996,39 @@ export type Database = {
         }
         Relationships: []
       }
+      dragon_point_balances: {
+        Row: {
+          balance: number
+          last_activity_at: string | null
+          streak_days: number
+          streak_last_updated: string | null
+          tier: string
+          total_earned: number
+          total_redeemed: number
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          last_activity_at?: string | null
+          streak_days?: number
+          streak_last_updated?: string | null
+          tier?: string
+          total_earned?: number
+          total_redeemed?: number
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          last_activity_at?: string | null
+          streak_days?: number
+          streak_last_updated?: string | null
+          tier?: string
+          total_earned?: number
+          total_redeemed?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       dragonshare_boosts: {
         Row: {
           amount_cents: number
@@ -5717,6 +5750,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      public_dragon_tiers: {
+        Row: {
+          tier: string | null
+          user_id: string | null
+        }
+        Relationships: []
       }
       public_business_profiles: {
         Row: {
