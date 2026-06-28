@@ -22,13 +22,29 @@ export function isHoneypotTripped(body: Record<string, unknown> | null | undefin
   return typeof hp === "string" && hp.trim().length > 0;
 }
 
-/** Valid Postgres `inet` literal? (IPv4 dotted-quad 0-255, or a loose IPv6.) */
+/** Strict-enough IPv6: rejects malformed values (e.g. a bare ":") that would error as inet. */
+function isValidIPv6(ip: string): boolean {
+  if (!ip.includes(":") || ip.length > 45) return false;
+  const parts = ip.split("::");
+  if (parts.length > 2) return false; // at most one "::"
+  const hasCompression = parts.length === 2;
+  const groups = ip.split(":").filter((g) => g !== "");
+  if (groups.length > 8) return false;
+  if (groups.length === 0) return hasCompression; // "::" (unspecified) only
+  if (!hasCompression && ip.split(":").length !== 8) return false; // uncompressed = exactly 8 groups
+  return groups.every((g) => /^[0-9a-fA-F]{1,4}$/.test(g));
+}
+
+/**
+ * Valid Postgres `inet` literal? (IPv4 dotted-quad 0-255, or a structurally-valid IPv6.)
+ * Must reject malformed values: a bad value that slips through would make the per-IP query
+ * and the success insert throw, leaving no row — which bypasses BOTH the per-IP and the
+ * global-cap accounting. Reject → caller uses null IP → the row still saves → cap holds.
+ */
 export function isValidInet(ip: string): boolean {
   const v4 = ip.split(".");
   if (v4.length === 4 && v4.every((p) => /^\d{1,3}$/.test(p) && Number(p) <= 255)) return true;
-  // Loose IPv6: hex groups + colons, nothing else, plausible length.
-  if (ip.includes(":") && /^[0-9a-fA-F:]+$/.test(ip) && ip.length <= 45) return true;
-  return false;
+  return isValidIPv6(ip);
 }
 
 /**
@@ -91,6 +107,7 @@ export function isBlockedTarget(raw: string): boolean {
 
   let host = u.hostname.toLowerCase();
   if (host.startsWith("[") && host.endsWith("]")) host = host.slice(1, -1); // IPv6 brackets
+  while (host.endsWith(".")) host = host.slice(0, -1); // FQDN trailing dot(s): "localhost." → "localhost"
 
   if (host.length === 0) return true;
 

@@ -32,8 +32,15 @@ describe('isValidInet', () => {
     expect(isValidInet('not-an-ip')).toBe(false);
     expect(isValidInet('')).toBe(false);
   });
-  it('accepts loose IPv6', () => {
+  it('accepts valid IPv6', () => {
     expect(isValidInet('2001:db8::1')).toBe(true);
+    expect(isValidInet('::')).toBe(true);
+  });
+  it('rejects malformed IPv6 that would error as inet (cap-bypass guard)', () => {
+    expect(isValidInet(':')).toBe(false);
+    expect(isValidInet('gggg::1')).toBe(false);
+    expect(isValidInet('1:2:3')).toBe(false); // uncompressed but not 8 groups
+    expect(isValidInet('1:2:3:4:5:6:7:8:9')).toBe(false); // too many groups
   });
 });
 
@@ -49,6 +56,9 @@ describe('extractClientIp', () => {
   it('returns null when nothing parses to a valid inet', () => {
     expect(extractClientIp(make({ 'x-forwarded-for': 'garbage' }))).toBeNull();
     expect(extractClientIp(make({}))).toBeNull();
+  });
+  it('returns null for a spoofed malformed IPv6 (cap-bypass guard)', () => {
+    expect(extractClientIp(make({ 'cf-connecting-ip': ':' }))).toBeNull();
   });
 });
 
@@ -88,6 +98,11 @@ describe('isBlockedTarget (SSRF guard)', () => {
     expect(isBlockedTarget('http://localhost/')).toBe(true);
     expect(isBlockedTarget('http://metadata.google.internal/')).toBe(true);
     expect(isBlockedTarget('http://db.internal/')).toBe(true);
+  });
+  it('blocks FQDN trailing-dot evasions', () => {
+    expect(isBlockedTarget('http://localhost./')).toBe(true);
+    expect(isBlockedTarget('http://metadata.google.internal./')).toBe(true);
+    expect(isBlockedTarget('http://2130706433./')).toBe(true); // numeric + trailing dot
   });
   it('blocks an unparseable URL', () => {
     expect(isBlockedTarget('not a url')).toBe(true);
