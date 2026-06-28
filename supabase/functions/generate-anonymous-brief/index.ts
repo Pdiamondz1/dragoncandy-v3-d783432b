@@ -47,11 +47,19 @@ function ipv4IsBlocked(ip: string): boolean {
 
 function ipv6IsBlocked(ip: string): boolean {
   const h = ip.toLowerCase().replace(/^\[|\]$/g, '');
-  if (h === '::1' || h === '::') return true;                 // loopback / unspecified
-  if (h.startsWith('fe80') || h.startsWith('fc') || h.startsWith('fd')) return true; // link-local / ULA
-  const mapped = h.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/);     // IPv4-mapped
-  if (mapped) return ipv4IsBlocked(mapped[1]);
-  return false;
+  if (h === '::1' || h === '::') return true;        // loopback / unspecified
+  if (/^fe[89ab]/.test(h)) return true;              // link-local fe80::/10
+  if (/^f[cd]/.test(h)) return true;                 // unique-local fc00::/7
+  // IPv4-mapped, dotted (::ffff:127.0.0.1) OR hex (::ffff:7f00:1) — both = 127.0.0.1
+  const dotted = h.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
+  if (dotted) return ipv4IsBlocked(dotted[1]);
+  const hex = h.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (hex) {
+    const hi = parseInt(hex[1], 16);
+    const lo = parseInt(hex[2], 16);
+    return ipv4IsBlocked(`${(hi >> 8) & 255}.${hi & 255}.${(lo >> 8) & 255}.${lo & 255}`);
+  }
+  return false; // other IPv6 (public) allowed
 }
 
 function ipIsBlocked(ip: string): boolean {
