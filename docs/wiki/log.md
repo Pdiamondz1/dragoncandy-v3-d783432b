@@ -835,3 +835,14 @@ visibility — DragonPointsCard/DragonTierBadge render with no go_live/feature-f
 notifications (effectively irreversible) — a founder business launch decision, not an engineering
 deploy. Runbook documents pre-flight, the admin-gated dre_config flip, verification, and limited
 rollback. Pages updated: [[Dragon Rewards Engine (DRE)]].
+
+## [2026-06-28] update | Dragon Rewards UI Launch Gate
+Gated the consumer Dragon Rewards display behind the DRAGON_REWARDS_ENABLED feature flag (seeded OFF),
+fixing the accidental pre-launch exposure where ~24 real users already saw points/tiers (go_live_at gates
+only the bell, not the UI). DragonPointsCard (dashboards) + DragonTierBadge (public profiles + inside the
+card) now render null until the flag is on. Chose a feature flag over go_live_at because dre_config is
+authenticated-read but the public profile routes are anon-accessible — go_live_at would hide anon badges
+post-launch; feature_flags has a public read + fail-safe-off useFeatureFlag. New useDragonRewardsEnabled()
+wrapper; jsdom gate test; seed migration applied to prod. Launch is now TWO switches (flag→UI, go_live_at→
+bell) — the DRE go-live runbook was updated accordingly (a Codex P2 catch). Engine/ledger/awarding
+unchanged; fully reversible. Pages updated: [[Dragon Rewards Engine (DRE)]] (runbook), index.md (Sources).

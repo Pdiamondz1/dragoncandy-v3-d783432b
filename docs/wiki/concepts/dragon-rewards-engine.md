@@ -112,20 +112,22 @@ deployed and running; "go-live" only flips a config value.
 Awards are inserted **unconditionally** every run (`dre-award-engine` step 3). `go_live_at`
 is used at **only one place** — step 6, line ~94 — to suppress the in-app bell for awards
 whose `occurred_at` predates it. So:
-- **Points / tiers / badges are already computed AND already user-visible.**
-  `DragonPointsCard` (creator + business dashboards) and `DragonTierBadge` (public profiles)
-  render from `dragon_point_balances` / `public_dragon_tiers` with **no `go_live_at` or
-  feature-flag gate anywhere in `src/`** (`useDragonPoints` / `usePublicDragonTier`).
-- Flipping `go_live_at` does **not** reveal the program (already revealed) — it **only turns
-  on forward-going award notifications**.
+- **Points / tiers / badges are already computed.** They are *displayed* by `DragonPointsCard`
+  (dashboards) + `DragonTierBadge` (public profiles), now **gated behind the
+  `DRAGON_REWARDS_ENABLED` feature flag** (added 2026-06-28, seeded **OFF**) — so the display is
+  **hidden until you flip that flag** (it was ungated at the readiness probe; see the ⚠️ note).
+  The ledger keeps accruing regardless.
+- Flipping `go_live_at` does **not** reveal the UI (the **flag** does) — it **only turns on
+  forward-going award notifications**. So go-live is **two switches** (see Runbook).
 
-### ⚠️ Readiness flag — confirm intent
-The ~24 backfilled users can **already see** their Dragon Points + tier badge in the live
-app today, with no announcement. This is consistent with the documented v1 design (the
-tier-badge *display* shipped in v1; `go_live_at` gates only the bell — "the historical
-backfill is silent"). But if the intent was to keep the **whole program hidden** until
-announcement, note the **UI has no gate** — that would need to be added separately.
-Founder/DRE-team should confirm the silent-soft-launch-of-the-display is intended.
+### ⚠️ Readiness flag — resolved by the UI gate
+The readiness probe found the ~24 backfilled users could **already see** their Dragon Points +
+tier badge with no announcement, because `go_live_at` gates only the bell and the UI had **no
+gate**. **This is now fixed:** the display is gated behind **`DRAGON_REWARDS_ENABLED`** (seeded
+**OFF**), so the points/tiers UI is hidden for everyone — authenticated *and* anonymous
+(`feature_flags` has a public read; `dre_config` does not, which is why the flag, not
+`go_live_at`, gates the UI) — until you launch. Spec:
+`docs/superpowers/specs/2026-06-28-dre-ui-launch-gate-design.md`.
 
 ### Flip = launch the announcement (what happens)
 Setting `go_live_at` to a real cutover (usually "now") means the next cron run fires one
@@ -133,24 +135,30 @@ coalesced in-app bell (`type:'dragon_points_award'`, no email) per user for any 
 `occurred_at >= go_live_at` — i.e. **forward activity only**. The 98 already-backfilled
 events stay silent (their `occurred_at` < cutover) — the intended "no retroactive spam".
 
-### Runbook (founder, when launching Dragon Rewards is a business "go")
+### Runbook (founder, when launching Dragon Rewards is a business "go") — TWO switches
 1. **Pre-flight (read-only):** `select count(*) from dre_pending_events();` ≈ 0 (caught up);
    spot-check a few `dragon_point_balances` rows' `balance`/`tier` against the `dre_config`
    `tier_thresholds`; decide the cutover timestamp (usually now).
-2. **Flip (admin-gated write — `dre_config` is `has_role('admin')`-write):**
+2. **Reveal the UI (feature flag — no deploy, anon-safe):**
+   `update feature_flags set is_enabled = true, updated_at = now() where name = 'DRAGON_REWARDS_ENABLED';`
+   → `DragonPointsCard` + `DragonTierBadge` appear.
+3. **Enable the bell (`dre_config`, admin-gated write):**
    `update dre_config set config_value = to_jsonb('<ISO-cutover>'::text), updated_at = now()
-   where config_key = 'go_live_at';`
-3. **Verify (within ~5 min, the cron cadence):** perform/seed one forward qualifying action,
-   then confirm a new `dragon_point_events` row AND a `dragon_points_award` notification for
-   that user landed.
-4. **Watch:** the cron is idempotent (anti-join + summed balances) — no manual re-runs.
+   where config_key = 'go_live_at';` → forward awards notify.
+   (Either order is safe; do both as one coordinated launch — one switch without the other =
+   a partial launch: flag-only = visible but silent; go_live-only = notified but UI hidden.)
+4. **Verify (within ~5 min, the cron cadence):** perform/seed one forward qualifying action,
+   then confirm a new `dragon_point_events` row AND a `dragon_points_award` notification landed,
+   and the UI now shows for a backfilled user.
+5. **Watch:** the cron is idempotent (anti-join + summed balances) — no manual re-runs.
 
-### Rollback — limited reversibility (know before flipping)
-Setting `go_live_at` back to a future date **stops future bells** but does **not** un-send
-already-fired notifications, un-award points, or hide the already-visible UI (balances are
-summed from the persistent ledger by design). **Treat the flip as a real, ~irreversible
-launch.** A true "unlaunch" would require gating the UI (none today) and clearing the ledger
-(destructive — not recommended).
+### Rollback — partial (know before flipping)
+- **UI: fully reversible** — set `DRAGON_REWARDS_ENABLED` back to `false` and the display hides
+  again immediately (the gate added 2026-06-28).
+- **Bells: not reversible** — setting `go_live_at` back to a future date **stops future** bells
+  but does NOT un-send already-fired notifications or un-award points (balances are summed from
+  the persistent ledger by design). So treat the **bell** flip as effectively irreversible; the
+  UI flag is safe to toggle.
 
 ## See Also
 

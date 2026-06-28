@@ -21,6 +21,16 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-06-28] Dezzy SEO articles knowledge-sync (PR #198) — (re-added; was stranded on the seo branch)
+- Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for PR #198.
+- Happened: (a) 0 orphans; suite page marks the Domain-6 SEO slice shipped + the rest gated, no
+  contradictions; (b) sync errors=0 (sync:wiki updated=60/inserted=0 — UPDATE-only; +1 page vs prior = the
+  DRE concept page from #196) and `content ilike '%dezzy-seo-articles%'` = 2 + SEO-slice text = 2 →
+  [freshness-proxy], (b) met; (c) raw session in index.md Sources + the `[2026-06-28] ingest` log.md entry.
+- Worked: hit the DRE PR #196 merge mid-flight → one MEMORY.md conflict resolved keep-both before CI/merge.
+- Failed: none (validator). Committed post-squash-merge on the seo branch → re-added here.
+- Remember: re-confirms two-worktree keep-both + [freshness-proxy] + post-merge-strand carry-forward. (advisory)
+
 ### [2026-06-27] Dezzy press & events knowledge-sync (PR #197) — (re-added; was stranded on the press-events branch)
 - Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for PR #197.
 - Happened: (a) 0 orphans; the suite page marks Domain 4 shipped (resolved the Codex P3 contradiction where
