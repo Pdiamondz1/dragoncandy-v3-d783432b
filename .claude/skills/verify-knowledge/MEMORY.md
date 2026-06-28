@@ -21,6 +21,16 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-06-28] Dragon Rewards UI launch gate knowledge-sync (PR #200) — (re-added; was stranded on the gate branch)
+- Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for PR #200.
+- Happened: (a) 0 orphans; the DRE concept runbook updated to the two-switch launch (⚠️ marked resolved),
+  no contradiction; (b) sync errors=0 (UPDATE-only) + `content ilike '%DRAGON_REWARDS_ENABLED%'` = 2 +
+  two-switch runbook = 2 → [freshness-proxy], flag confirmed is_enabled=false; (c) raw session in index.md
+  Sources + the `[2026-06-28] update` log.md entry.
+- Worked: updating the runbook in the same PR cleared the Codex P2.
+- Failed: none (validator). Committed post-squash-merge on the gate branch → re-added here.
+- Remember: re-confirms the post-merge-strand carry-forward + do-knowledge-sync-before-final-Codex patterns. (advisory)
+
 ### [2026-06-28] Dezzy SEO articles knowledge-sync (PR #198) — (re-added; was stranded on the seo branch)
 - Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for PR #198.
 - Happened: (a) 0 orphans; suite page marks the Domain-6 SEO slice shipped + the rest gated, no

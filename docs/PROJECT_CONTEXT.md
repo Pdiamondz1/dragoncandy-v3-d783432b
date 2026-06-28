@@ -672,6 +672,18 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   go-live: drop Nano Banana Pro assets into the slots, set the `LEADS_NOTIFY_EMAIL` edge secret,
   optionally flip `DRAGON_REWARDS_ENABLED`. Concept: `docs/wiki/concepts/landing-lead-capture.md`.
 
+- DragonCandy / DRE — rewards rename to "Creator standing" — **shipped (branch
+  `feat/dre-rename-creator-standing`, 2026-06-28).** Founder feedback after enabling Dragon Rewards: the
+  fantasy tier names + "Dragon Points" read corny for the older/professional audience. Renamed the
+  **user-facing labels only**: currency **Dragon Points → Reputation (Rep)**; tiers **Egg→Rising ·
+  Scout→Established · Knight→Pro · Master→Elite · Legend→Icon**; fantasy emojis dropped (clean colored
+  pill). **Display-only** (`dragonTiers.ts` labels + `DragonPointsCard`/`DragonTierBadge` copy +
+  `dre-award-engine` notification copy) — the tier **keys** (`egg/scout/…`), `dragon_point_*` tables, the
+  `dragon_points_award` type, the `DRAGON_REWARDS_ENABLED` flag, and internal DP/DRE names are **unchanged
+  (no migration)**. `dre-award-engine` redeployed v2 (verify_jwt preserved, boot-checked); tests 7/7,
+  Codex-clean. The milestone-celebration playbook inherits these names. Concept:
+  `docs/wiki/concepts/dragon-rewards-engine.md` (Display naming note).
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).
