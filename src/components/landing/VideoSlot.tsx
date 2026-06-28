@@ -38,6 +38,7 @@ export function VideoSlot({
             muted
             loop
             playsInline
+            controls
             poster={poster}
             preload="metadata"
             className="h-full w-full object-cover"
