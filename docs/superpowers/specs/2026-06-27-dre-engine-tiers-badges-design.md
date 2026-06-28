@@ -107,6 +107,11 @@ reward notification.
 - `dragon_point_events`, `dragon_point_balances`: `FOR SELECT TO authenticated USING
   (auth.uid() = user_id)`. **No** client INSERT/UPDATE/DELETE policy — writes happen
   only via the service-role engine (which bypasses RLS).
+- **`public_dragon_tiers` view** (`SELECT user_id, tier FROM dragon_point_balances`,
+  granted to `anon, authenticated`) — exposes **only the tier**, never `balance`, so the
+  tier badge can render on public profiles (where the viewer is anon or a different user
+  and the own-row policy would otherwise hide it). Mirrors the existing `public_*`
+  profile-view pattern; `balance` stays private to the owner via the table policy above.
 - `dre_config`: `FOR SELECT TO authenticated USING (true)`; write policies gated by
   `public.has_role(auth.uid(), 'admin')`.
 
