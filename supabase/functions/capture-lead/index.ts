@@ -87,6 +87,24 @@ const handler = async (req: Request): Promise<Response> => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+  // Abuse throttle: cap submissions per client IP in a short window. The honeypot only
+  // stops bots that fill the hidden field; this stops a script that POSTs valid payloads
+  // repeatedly (DB + inbox spam). Fail-open so a throttle hiccup never drops a real lead.
+  const clientIp = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
+  const RATE_LIMIT = 5;
+  const windowStart = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  if (clientIp !== "unknown") {
+    const { count, error: rlError } = await supabase
+      .from("leads")
+      .select("id", { count: "exact", head: true })
+      .eq("metadata->>ip", clientIp)
+      .gte("created_at", windowStart);
+    if (!rlError && (count ?? 0) >= RATE_LIMIT) {
+      console.warn("capture-lead: rate limited", clientIp);
+      return json(req, 429, { error: "Too many requests. Please try again in a few minutes." });
+    }
+  }
+
   const { data, error } = await supabase
     .from("leads")
     .insert({
@@ -97,7 +115,7 @@ const handler = async (req: Request): Promise<Response> => {
       audience,
       message,
       source,
-      metadata: { user_agent: req.headers.get("user-agent") ?? null },
+      metadata: { user_agent: req.headers.get("user-agent") ?? null, ip: clientIp },
     })
     .select("id")
     .single();

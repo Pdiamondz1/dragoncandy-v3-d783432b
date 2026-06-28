@@ -21,8 +21,10 @@ export const BottomCTA = () => {
                 <span className="font-script text-gradient font-normal">effortless?</span>
               </h2>
               <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/65 lg:text-lg">
-                Join DragonCandy and put your content on autopilot — for any business,
-                brand, or creator.
+                Join DragonCandy and put your content on autopilot —{" "}
+                {BRAND_ROLE_ENABLED
+                  ? "for any business, brand, or creator."
+                  : "for any business or creator."}
               </p>
 
               <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row sm:flex-wrap">

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { BRAND_ROLE_ENABLED } from "@/lib/featureConfig";
 import { Reveal } from "./Reveal";
 import { useSubmitLead, type LeadAudience } from "@/hooks/useSubmitLead";
 
@@ -187,7 +188,9 @@ export function LeadCaptureSection() {
                       className="h-12 w-full rounded-xl border border-white/15 bg-white/5 px-4 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dc-teal"
                     >
                       <option value="business" className="bg-dc-dark">Local business</option>
-                      <option value="brand" className="bg-dc-dark">Brand / sponsor</option>
+                      {BRAND_ROLE_ENABLED && (
+                        <option value="brand" className="bg-dc-dark">Brand / sponsor</option>
+                      )}
                       <option value="creator" className="bg-dc-dark">Creator</option>
                       <option value="other" className="bg-dc-dark">Something else</option>
                     </select>
