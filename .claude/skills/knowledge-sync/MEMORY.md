@@ -26,6 +26,21 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-06-28] DRE go-live runbook + readiness check (branch docs/dre-go-live-runbook)
+- Output: `raw/sessions/2026-06-28-dre-go-live-runbook.md`, a new "Go-Live Runbook & Readiness Check" section
+  compounded onto `concepts/dragon-rewards-engine.md` (+ frontmatter updated/sources), `index.md` (Sources),
+  `log.md` update entry, + THIS run-log entry.
+- Happened: a **read-only investigation** (no prod change) turned into durable knowledge. The headline was an
+  operational finding, not a feature: the DRE is fully deployed + cron-live and the silent backfill already
+  ran (98 events / 24 balances), and `go_live_at` gates only the bell — the points/tiers UI is already
+  visible (no frontend gate). Recorded the gate semantics + the founder-launch runbook on the DRE concept
+  page (compound-onto-hub, the DRE team's page is on main + stable). RAG sync post-merge.
+- Worked: compounding an *operational runbook + readiness finding* onto the existing concept page kept it
+  discoverable + RAG-retrievable, rather than a stray doc.
+- Failed: none.
+- Remember: a read-only "is X ready / what does turning it on do" investigation IS knowledge — capture the
+  finding + the runbook in the concept page, and flag founder-decision/irreversibility explicitly. (advisory)
+
 ### [2026-06-28] Dezzy SEO articles — Domain 6 SEO slice (branch feat/aios-dezzy-seo-articles)
 - Output: bundled INTO the work PR — `raw/sessions/2026-06-28-dezzy-seo-articles.md`, extended
   `concepts/dezzy-agent-playbook-suite.md` (Domain-6 section + refreshed status/Deferred + frontmatter
