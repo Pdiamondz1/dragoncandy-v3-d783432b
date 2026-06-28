@@ -298,7 +298,7 @@ Replace the button `<div className="mt-10 flex flex-col gap-3 ...">…</div>` bl
 ```
 (Note: when `BRAND_ROLE_ENABLED` is on, the "For Brands" button is restyled to an outline so it doesn't clash with the now-pink "Join as a Business". Brand role is currently hidden, so this is dormant.)
 
-- [ ] **Step 2: BottomCTA** — same treatment. Change `const signup = () => navigate("/auth?mode=signup");` to the `signupAs` helper above, and update the button row identically (Get Started → `signupAs()`, add pink "Join as a Business" → `signupAs('business')` above "Join as a Creator" → `signupAs('creator')`, gated For Brands → `signupAs('brand')` outline). Keep BottomCTA's existing button classes (same as the hero).
+- [ ] **Step 2: BottomCTA** — same treatment. Change `const signup = () => navigate("/auth?mode=signup");` to the `signupAs` helper above, then in the existing button row: point Get Started → `signupAs()`, insert a pink "Join as a Business" → `signupAs('business')` **above** "Join as a Creator" → `signupAs('creator')`, and gate For Brands → `signupAs('brand')` (outline). **Keep BottomCTA's existing wrapper `<div>` as-is** (it has `justify-center` and no `animate-*` classes — do NOT copy the hero's wrapper) and keep the existing per-button classes (they already match the hero's). Only swap the `onClick` handlers and add the two buttons.
 
 - [ ] **Step 3: Build + commit**
 
@@ -330,14 +330,28 @@ const navLinks = [
   { label: "Contact", target: "contact" },
 ];
 ```
-(`For Brands` is still filtered out when `BRAND_ROLE_ENABLED` is off via the existing `visibleNavLinks`; repointing — rather than dropping — keeps it working if the flag is ever enabled, with no dead anchor either way.)
 
-- [ ] **Step 3: Build + commit**
+- [ ] **Step 3: Fix the `visibleNavLinks` filter (REQUIRED — it currently matches on the old target)**
 
-Run: `npm run build` → PASS.
+The existing filter hides "For Brands" by `target === "for-brands"`, which no longer exists after the repoint — so without this change "For Brands" would render for everyone. Change the filter to match by **label**:
+
+```tsx
+const visibleNavLinks = BRAND_ROLE_ENABLED
+  ? navLinks
+  : navLinks.filter((l) => l.label !== "For Brands");
+```
+(Keeps "For Brands" hidden while the brand role is off, repointed to a real section if it's ever enabled — no dead anchor either way.)
+
+- [ ] **Step 4: Key the nav maps by label (REQUIRED — "For Business" and "For Brands" now share `target: "audiences"`)**
+
+In BOTH the desktop map (`Header.tsx` ~line 54) and the mobile map (~line 93), change `key={link.target}` → `key={link.label}` to avoid a duplicate-key React warning.
+
+- [ ] **Step 5: Build + commit**
+
+Run: `npm run build` → PASS. (Sanity-check the rendered nav: with `BRAND_ROLE_ENABLED` off, "For Brands" must NOT appear; no duplicate-key console warning.)
 ```bash
 git add src/components/landing/Header.tsx
-git commit -m "fix(landing): repoint dead header nav anchors to real section IDs"
+git commit -m "fix(landing): repoint dead header nav anchors + fix For-Brands gating/keys"
 ```
 
 ---
