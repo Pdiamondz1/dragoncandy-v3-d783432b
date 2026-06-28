@@ -213,19 +213,19 @@ export function BriefGeneratorPreview() {
       <div className="flex items-center gap-2">
         <Sparkles className="w-5 h-5 text-dc-teal" />
         <p className="text-lg font-bold text-white">
-          Generate a free campaign brief in 60 seconds.
+          Generate a free draft campaign brief in 60 seconds.
         </p>
       </div>
 
       <p className="text-sm text-white/50">
-        Paste your website or social link. No sign-up required.
+        Paste your website or social link — works best with your homepage or menu. No sign-up required.
       </p>
 
       <div className="relative">
         <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
         <Input
           type="url"
-          placeholder="Paste your website URL"
+          placeholder="Paste your homepage or menu URL"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           className="pl-10 border-white/15 bg-white/5 text-white placeholder:text-white/40"

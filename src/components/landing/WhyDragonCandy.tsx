@@ -6,8 +6,8 @@ const rows = [
   {
     icon: Sparkles,
     eyebrow: "AI does the work",
-    title: "The brief writes itself.",
-    body: "Paste a link and Donny turns your brand into a ready-to-run campaign — audience, angles, and posting cadence — in seconds. No briefs, no back-and-forth.",
+    title: "A first draft in seconds.",
+    body: "Paste a link and Donny drafts a campaign — audience, angles, and posting cadence — in seconds. Review, tweak, and launch. Works best from your site or menu page.",
     label: "Donny AI brief",
   },
   {
