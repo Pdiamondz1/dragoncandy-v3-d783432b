@@ -25,25 +25,10 @@
       @font-face{font-family:'Pacifico';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/pacifico-latin-400.woff2) format('woff2')}
       body{margin:0;font-family:'Outfit',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
       #root{width:100%;min-height:100vh}
-      .bg-white{background-color:#fff}
-      .text-dc-teal{color:#4DD9C0}
-      .font-extrabold{font-weight:800}
-      .text-center{text-align:center}
-      .flex{display:flex}
-      .items-center{align-items:center}
-      .justify-between{justify-content:space-between}
-      .py-4{padding-top:1rem;padding-bottom:1rem}
-      .h-auto{height:auto}
+      /* Minimal dark splash for the prerendered shell below — intentionally content-free
+         (just the brand mark on the app's dark bg) so it can never go stale after a redesign. */
       .animate-fade-in{animation:fadeIn .4s ease-out}
       @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-      .sh-wrap{max-width:28rem;margin:0 auto;padding:0 1rem}
-      .sh-h1{font-size:1.5rem;font-weight:800;text-transform:uppercase;letter-spacing:.025em;color:#4DD9C0;text-align:center;margin:0 0 1.25rem;line-height:1.25}
-      .sh-hero{text-align:center;padding:2rem 0;background:linear-gradient(to bottom,#fff,#f9fafb)}
-      .sh-p{font-size:1rem;color:#6b7280;text-align:center;margin:1rem auto 2rem;line-height:1.625;max-width:24rem}
-      .sh-btns{display:flex;flex-direction:column;gap:.75rem;max-width:24rem;margin:0 auto}
-      .sh-btn{display:block;height:3rem;border-radius:9999px;font-weight:700;font-size:1rem;line-height:3rem;text-align:center;text-decoration:none}
-      @media(min-width:768px){.sh-wrap{max-width:42rem;padding:0 2rem}.sh-h1{font-size:2.25rem}}
-      @media(min-width:1024px){.sh-wrap{max-width:64rem;padding:0 3rem}.sh-h1{font-size:3.75rem}.sh-hero{padding:6rem 0}}
     </style>
     <!-- Primary -->
     <title>DragonCandy - AI-Powered Marketplace for Restaurants & Creators</title>
@@ -84,7 +69,10 @@
   </head>
 
   <body>
-    <div id="root"><div style="min-height:100vh;background:#fff;overflow-x:hidden"><div class="sh-wrap"><header class="flex items-center justify-between py-4"><img src="/logo.webp" alt="DragonCandy" width="140" height="47" fetchpriority="high" style="width:100px;height:auto"></header><div class="sh-hero"><h1 class="sh-h1">Social Media Content for Restaurants — Powered by AI</h1><p class="sh-p">DragonCandy connects restaurants and cafes with vetted content creators. Get mouth-watering food photos and reels in hours, not weeks.</p><div class="sh-btns"><a href="/auth?mode=signup" class="sh-btn" style="background:#4DD9C0;color:#1a1a2e">I'm a Restaurant — Get Started</a><a href="/auth?mode=signup" class="sh-btn" style="background:#fff;color:#EC4899;border:1px solid #e5e7eb;font-weight:600">I'm a Creator — Join the Marketplace</a></div></div></div></div></div>
+    <!-- Prerendered splash: brand mark on the app's dark bg (#1A1A2A = dc-dark). Content-free
+         on purpose so the real landing fades in over an identical background (no flash) and the
+         shell can never show a stale old design again. -->
+    <div id="root"><div style="min-height:100vh;background:#1A1A2A;display:flex;align-items:center;justify-content:center;overflow-x:hidden"><img src="/logo.webp" alt="DragonCandy" width="140" height="47" fetchpriority="high" class="animate-fade-in" style="width:132px;height:auto"></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
