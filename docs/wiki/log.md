@@ -1,5 +1,30 @@
 # Wiki Log
 
+## [2026-06-27] ingest | Dragon Rewards Engine v1 (Engine + Tiers + Badges)
+Ingested the DRE v1 build session — the first sub-project decomposed from the 6-phase parent
+spec [[DragonCandy — Dragon Rewards Engine (DRE) Full System Spec]] (PR #191). v1 ships the
+**configurable Dragon Points ledger + an idempotent award engine + the 5-tier system + tier
+badges** (≈ parent Phases 1–2). The award engine is a **consumer of events the platform already
+emits** ([[DragonShare]] posts/boosts, campaign completions/launches, profile completion,
+ratings) via a **cron-invoked edge function** (`dre-award-engine`, every 5 min) — NOT a DB
+trigger (the trigger→pg_net→edge-fn path is dead in prod), mirroring `expire-social-hooks`. It's
+an **idempotent anti-join**: `dre_pending_events()` returns source rows lacking a ledger row on
+the `(user_id,event_type,source_id)` unique key; balances are recomputed from the ledger (never
+incremented) so re-runs self-heal. **Config-driven** (`dre_config` JSONB — point values, tier
+thresholds, `go_live_at`) so retuning needs no deploy. Tiers require **DP AND a verified
+milestone** (points alone never unlock). Notifications are **in-app-only/forward-only/coalesced**
+via [[Notification Delivery]] (`type:'dragon_points_award'`, no email map); a far-future
+`go_live_at` sentinel keeps the historical backfill silent until the founder sets the cutover.
+A `public_dragon_tiers` view exposes tier-only (never balance) so the badge renders on public
+profiles under the own-row balance RLS. Spec + plan each passed their reviewer loop (which caught
+the `campaign_launched` `status<>'draft'` bug + the `completed_at` sourcing); whole-branch review
+fixed 1 Important (null `occurred_at` batch-abort) + 2 Minor; **Codex second review clean**. Build
+✓, typecheck ✓, 11/11 unit tests ✓. Founder go-live (migrations/Vault/deploy/cron/`go_live_at`)
+is pending.
+Pages created: concepts/dragon-rewards-engine.md, raw/sessions/2026-06-27-dre-engine-tiers-badges.md
+Pages updated: index.md (Concepts + Sources), PROJECT_CONTEXT.md (active workstream),
+DATABASE_SCHEMA.md (Dragon Rewards tables + view)
+
 ## [2026-06-27] ingest | Dezzy Outreach v1 (the company-facing growth agent's first domain)
 Ingested the Dezzy AI — Outreach Machine v1 session. **Dezzy** is DragonCandy's company-facing
 growth agent (counterpart to user-facing Donny), proposed in

@@ -525,6 +525,37 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   scheduled weekly push (v1 is on-demand pull), cold outreach, the "Dezzy" engine-identity re-skin,
   and the other five Dezzy domains. Concept: `docs/wiki/concepts/dezzy-agent-playbook-suite.md`.
   Spec: `docs/superpowers/specs/2026-06-27-dezzy-outreach-v1-design.md`.
+- Dragon Rewards Engine (DRE) — Engine + Tiers + Badges (v1) — **built (branch
+  `worktree-DC-DRE-AI`, 2026-06-27; founder go-live pending).** First sub-project decomposed from
+  the 6-phase parent spec (`docs/wiki/analyses/dragoncandy-dragon-rewards-engine-dre-full-system-spec.md`,
+  PR #191): a configurable **Dragon Points** ledger + an idempotent award engine + the 5-tier
+  system + tier badges (≈ parent Phases 1–2). Scoped first **deliberately** because pre-revenue
+  the parent's later phases spend real cash on projected activity — v1 is backend-heavy, **zero
+  cash exposure**, fully reversible, ledger-first. The award engine **consumes events the platform
+  already emits** (DragonShare posts/boosts, campaign completions/launches, profile completion,
+  ratings) via a **cron edge function** (`dre-award-engine`, every 5 min) — NOT a DB trigger (the
+  trigger→pg_net→edge-fn path is dead in prod), mirroring `expire-social-hooks` (Vault URL/bearer
+  + `isAuthorizedIngest` + `verify_jwt=false`). **Idempotent anti-join:** `dre_pending_events()`
+  returns source rows lacking a ledger row on the `(user_id,event_type,source_id)` unique key;
+  balances are **recomputed from the ledger** (never incremented) so re-runs self-heal. **Config-
+  driven** (`dre_config` JSONB: point values, tier thresholds, `go_live_at`) so retuning needs no
+  deploy. Tiers require **DP AND a verified milestone** (`legend` is DP-only, the cap).
+  Notifications are **in-app-only/forward-only/coalesced** via `create-notification`
+  (`type:'dragon_points_award'`, no email map); a far-future `go_live_at` sentinel keeps the
+  historical **backfill silent** until the founder sets the real cutover. A `public_dragon_tiers`
+  view exposes **tier-only** (never balance) so the badge renders on public profiles under the
+  own-row balance RLS. FK target is `profiles.id` (consumer feature). New tables
+  `dre_config`/`dragon_point_events`/`dragon_point_balances` (+ reserved `multiplier_applied`/
+  `streak_*`/`total_redeemed` columns for Phases 3/5) + two service-role RPCs; new edge fn
+  `dre-award-engine` + a Vault-driven pg_cron. Spec+plan each passed their reviewer loop (caught
+  the `campaign_launched` progressing-status bug + `completed_at` sourcing); whole-branch review
+  fixed 1 Important (null `occurred_at` batch-abort) + 2 Minor; **Codex second review clean**.
+  Founder go-live: apply both migrations, set Vault `dre_award_engine_url`, deploy the edge fn,
+  set the real `go_live_at`, confirm the cron; then merge → Lovable deploys the frontend.
+  Deferred to later phases: referrals + share-card/UTM viral loop, daily-boost multipliers,
+  streaks, redemption + leaderboards, brand-role triggers, the no-code admin config UI. Concept:
+  `docs/wiki/concepts/dragon-rewards-engine.md`. Spec:
+  `docs/superpowers/specs/2026-06-27-dre-engine-tiers-badges-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase

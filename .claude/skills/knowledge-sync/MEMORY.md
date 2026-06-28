@@ -26,6 +26,24 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-06-27] Dragon Rewards Engine v1 (docs bundled INTO the work branch)
+- Output: this work branch (`worktree-DC-DRE-AI`) — `raw/sessions/2026-06-27-dre-engine-tiers-badges.md`,
+  new `concepts/dragon-rewards-engine.md`, `index.md` (Concepts + Sources), `log.md` ingest entry,
+  PROJECT_CONTEXT active-workstream bullet, DATABASE_SCHEMA Dragon Rewards section + `public_dragon_tiers`
+  view row, + THIS run-log entry.
+- Happened: ran knowledge-sync **pre-merge** on the open work branch (off origin/main per [scope] —
+  rebased onto origin/main earlier so the parent DRE spec analysis, imported by PR #191, was present
+  to See-Also). Bundled all docs INTO the work PR alongside the code per [runlog-in-pr]. RAG sync +
+  verify-knowledge are post-merge (post-merge hook on the docs/ ff).
+- Worked: [scope] + [runlog-in-pr] applied. PATH-based [orphans] check clean (new page is cataloged;
+  the parent spec analysis was already in index.md from PR #191). Compounded the new concept onto the
+  parent [[DragonCandy — Dragon Rewards Engine (DRE) Full System Spec]] + [[DragonShare]] +
+  [[Notification Delivery]] rather than duplicating.
+- Failed: none.
+- Remember: when a brand-new feature decomposes from an already-ingested parent spec (here PR #191's
+  DRE analysis), the new concept page slots cleanly with the parent as its See-Also — no forward-link
+  to defer. (advisory)
+
 ### [2026-06-27] Dezzy Outreach v1 (docs bundled INTO the open work branch)
 - Output: this work branch (`worktree-DC-Dezzy-AI`) — `raw/sessions/2026-06-27-dezzy-outreach-v1.md`,
   new `concepts/dezzy-agent-playbook-suite.md`, updated `analyses/the-core-idea-two-agents-one-company.md`
