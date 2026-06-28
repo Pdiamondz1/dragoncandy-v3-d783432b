@@ -26,33 +26,87 @@ function json(req: Request, status: number, body: unknown): Response {
   });
 }
 
-// SSRF guard: block non-http(s) and private/internal hosts.
-function isBlockedUrl(parsed: URL): boolean {
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return true;
-  const h = parsed.hostname.toLowerCase();
-  if (
-    h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '0.0.0.0' ||
-    h === '169.254.169.254' || h === 'metadata.google.internal'
-  ) return true;
-  const parts = h.split('.').map(Number);
-  if (parts.length === 4 && parts.every((p) => !isNaN(p))) {
-    if (
-      parts[0] === 10 ||
-      (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
-      (parts[0] === 192 && parts[1] === 168)
-    ) return true;
-  }
+// ---- SSRF guard ------------------------------------------------------------
+// This endpoint fetches an attacker-supplied URL server-side, so the blocklist
+// must cover the full private/loopback/link-local IP ranges (v4 + v6), every
+// redirect hop, AND the IPs a hostname actually resolves to.
+function ipv4IsBlocked(ip: string): boolean {
+  const p = ip.split('.').map(Number);
+  if (p.length !== 4 || p.some((n) => isNaN(n) || n < 0 || n > 255)) return false;
+  const [a, b] = p;
+  return (
+    a === 0 ||                                  // 0.0.0.0/8 "this host"
+    a === 127 ||                                // loopback /8 (covers 127.0.0.2)
+    a === 10 ||                                 // private /8
+    (a === 172 && b >= 16 && b <= 31) ||        // private /12
+    (a === 192 && b === 168) ||                 // private /16
+    (a === 169 && b === 254) ||                 // link-local /16 (cloud metadata)
+    (a === 100 && b >= 64 && b <= 127)          // CGNAT /10
+  );
+}
+
+function ipv6IsBlocked(ip: string): boolean {
+  const h = ip.toLowerCase().replace(/^\[|\]$/g, '');
+  if (h === '::1' || h === '::') return true;                 // loopback / unspecified
+  if (h.startsWith('fe80') || h.startsWith('fc') || h.startsWith('fd')) return true; // link-local / ULA
+  const mapped = h.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/);     // IPv4-mapped
+  if (mapped) return ipv4IsBlocked(mapped[1]);
   return false;
 }
 
-// Follow redirects MANUALLY, re-applying the SSRF blocklist to every hop. A public
-// URL that passes the initial check can still 30x-redirect to an internal host
-// (cloud metadata at 169.254.169.254, or an RFC1918 address), and redirect:'follow'
-// would chase it — so we validate each Location before requesting it.
+function ipIsBlocked(ip: string): boolean {
+  return ip.includes(':') ? ipv6IsBlocked(ip) : ipv4IsBlocked(ip);
+}
+
+function looksLikeIp(host: string): boolean {
+  return /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(':');
+}
+
+// Synchronous fast-reject (protocol, well-known internal names, literal IPs).
+function isBlockedUrl(parsed: URL): boolean {
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return true;
+  const h = parsed.hostname.toLowerCase();
+  if (h === 'localhost' || h === 'metadata.google.internal' || h.endsWith('.internal') || h.endsWith('.local')) {
+    return true;
+  }
+  if (looksLikeIp(h)) return ipIsBlocked(h);
+  return false;
+}
+
+// Authoritative per-hop check: fast-reject + resolve the hostname and reject if
+// ANY resolved address is internal. Best-effort on DNS — if Deno.resolveDns is
+// unavailable in the runtime it falls back to the literal/name checks (never
+// breaks the fetch). Note: a determined DNS-rebinding attacker could still race
+// resolve-vs-connect (fetch doesn't expose IP pinning); the range blocklist +
+// resolve check + per-hop redirect validation is the proportionate defense here.
+async function assertHostAllowed(parsed: URL): Promise<void> {
+  if (isBlockedUrl(parsed)) throw new Error('blocked host');
+  const h = parsed.hostname.toLowerCase();
+  if (looksLikeIp(h)) return; // already range-checked in isBlockedUrl
+  try {
+    const [a, aaaa] = await Promise.allSettled([
+      Deno.resolveDns(h, 'A'),
+      Deno.resolveDns(h, 'AAAA'),
+    ]);
+    const ips = [
+      ...(a.status === 'fulfilled' ? a.value : []),
+      ...(aaaa.status === 'fulfilled' ? aaaa.value : []),
+    ];
+    for (const ip of ips) {
+      if (ipIsBlocked(ip)) throw new Error('resolves to blocked address');
+    }
+  } catch (e) {
+    if (e instanceof Error && /blocked/.test(e.message)) throw e;
+    // resolveDns unsupported/failed → keep the literal + name guards above.
+  }
+}
+
+// Follow redirects MANUALLY, re-validating every hop (a public URL that passes
+// the first check can still 30x-redirect to an internal host).
 async function safeFetch(initialUrl: string, maxRedirects = 4): Promise<Response> {
   let current = initialUrl;
   for (let hop = 0; hop <= maxRedirects; hop++) {
-    if (isBlockedUrl(new URL(current))) throw new Error('blocked host');
+    await assertHostAllowed(new URL(current));
     const res = await fetch(current, {
       headers: { 'User-Agent': 'DragonCandy-Bot/1.0' },
       redirect: 'manual',
