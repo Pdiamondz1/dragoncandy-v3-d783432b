@@ -647,6 +647,30 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   Codex-clean (it caught + I fixed a stale-runbook P2). Spec:
   `docs/superpowers/specs/2026-06-28-dre-ui-launch-gate-design.md`. Concept (runbook):
   `docs/wiki/concepts/dragon-rewards-engine.md`.
+- Public landing page — Dark-Luxe redesign + lead capture — **built + backend deployed
+  (branch `feat/landing-luxe-redesign`, 2026-06-28).** `/frontend-design` rebuilt the public
+  landing (`src/pages/LandingPage.tsx` + `src/components/landing/*`) into a **Dark Luxe Editorial**
+  experience: a **scoped `.dark` wrapper** (`bg-dc-dark`) redefines the dark CSS vars for the
+  landing subtree only — `next-themes` writes only to `<html>`, so it never leaks into the
+  authenticated app (Radix-portal + literal-class caveats handled; `SlideShell` precedent); a
+  `Reveal` scroll primitive (LazyMotion `strict` → `m.div`+`whileInView`, reduced-motion-safe);
+  and `MediaSlot`/`VideoSlot` branded **placeholder slots** the founder fills with **Nano Banana
+  Pro** via one `src`/`poster` prop. Sections: cinematic hero → Why (de-boxed rows) → Donny/AI
+  tech story → HowItWorks → three lanes (Business / Brands-gated `BRAND_ROLE_ENABLED` / Creators)
+  → Stories → flag-gated Dragon Rewards (`DRAGON_REWARDS_ENABLED`, **action-based** copy, no
+  fabricated signup bonus) → Creator-Hub video+gallery → Contact → CTA → dark footer. Copy
+  broadened **"restaurant" → "business"** (kept "creator"); retired FeatureCard/FeatureSection/
+  BrandSection. **Public lead capture (ledger-first):** a **closed-anon-DML** `public.leads`
+  table (internal-team RLS via `is_internal_user()`, **no anon INSERT/SELECT** — it holds contact
+  PII), a `capture-lead` edge fn (`verify_jwt=false`) that validates → **service-role inserts** →
+  Resend-notifies, guarded by a honeypot + a **fail-open per-IP throttle** (5/10 min, fail-open so
+  a hiccup never drops a real lead); `useSubmitLead` hook + `LeadCaptureSection` form. Migration
+  applied + edge fn deployed to prod (MCP, then re-deployed from disk via the newly-installed
+  **Supabase CLI**); curl-verified (valid `200{id}` / honeypot no-row / bad-email `400` / preflight
+  / throttle `5×200→429`); `get_advisors` adds no new advisor for `leads`. **Codex second review
+  clean** after 2 P2s (brand-gate the lead form + CTA copy; add the server-side throttle). Founder
+  go-live: drop Nano Banana Pro assets into the slots, set the `LEADS_NOTIFY_EMAIL` edge secret,
+  optionally flip `DRAGON_REWARDS_ENABLED`. Concept: `docs/wiki/concepts/landing-lead-capture.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase

@@ -1,62 +1,72 @@
-
+import { useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 import { Header } from "@/components/landing/Header";
 import { HeroSection } from "@/components/landing/HeroSection";
-const BriefGeneratorPreview = lazy(() => import("@/components/landing/BriefGeneratorPreview").then(m => ({ default: m.BriefGeneratorPreview })));
+import { WhyDragonCandy } from "@/components/landing/WhyDragonCandy";
+import { DonnySection } from "@/components/landing/DonnySection";
 import { HowItWorks } from "@/components/landing/HowItWorks";
-import { FeatureSection } from "@/components/landing/FeatureSection";
-import { BrandSection } from "@/components/landing/BrandSection";
+import { AudienceLanes } from "@/components/landing/AudienceLanes";
+import { StoriesSection } from "@/components/landing/StoriesSection";
+import { DragonRewardsSection } from "@/components/landing/DragonRewardsSection";
+import { CreatorHubSection } from "@/components/landing/CreatorHubSection";
+import { LeadCaptureSection } from "@/components/landing/LeadCaptureSection";
 import { BottomCTA } from "@/components/landing/BottomCTA";
-import { BRAND_ROLE_ENABLED } from '@/lib/featureConfig';
 import { useAuth } from "@/hooks/useAuth";
-import { Link, useNavigate } from "react-router-dom";
-import { lazy, Suspense, useEffect } from "react";
+
 export default function LandingPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!loading && user) {
-      navigate('/dashboard', { replace: true });
+      navigate("/dashboard", { replace: true });
     }
   }, [user, loading, navigate]);
 
   return (
-    <div className="min-h-screen bg-white relative overflow-x-hidden">
+    // Dark theme is scoped to this subtree only — `.dark` redefines the dark CSS
+    // variables for everything inside, and `bg-dc-dark` pins the brand charcoal.
+    // It never leaks into the authenticated app (next-themes writes only to <html>).
+    <div className="dark min-h-screen overflow-x-hidden bg-dc-dark text-white">
       <SEO
-        title="DragonCandy - AI-Powered Marketplace for Brands & Creators"
-        description="DragonCandy connects restaurants, brands, and content creators for short-form social media campaigns. Powered by Donny AI."
+        title="DragonCandy — AI-Powered Content for Businesses & Creators"
+        description="DragonCandy connects local businesses, brands, and creators for short-form social media campaigns. Powered by Donny AI."
         path="/landing"
       />
-      <div className="relative z-10 max-w-md md:max-w-2xl lg:max-w-5xl xl:max-w-6xl mx-auto px-4 md:px-8 lg:px-12">
-        <Header />
 
-        <section className="py-6 md:py-10 lg:py-12">
-          <HeroSection />
-          <Suspense fallback={null}><BriefGeneratorPreview /></Suspense>
-          <HowItWorks />
-          <FeatureSection />
-          {BRAND_ROLE_ENABLED && <BrandSection />}
-          <BottomCTA />
-        </section>
+      <Header />
 
-        <footer className="border-t border-dc-teal/15 py-8 mt-4">
-          <div className="flex flex-col items-center gap-3 text-sm">
-            <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-              <Link to="/privacy" className="text-dc-text-muted hover:text-dc-teal transition-colors">
-                Privacy Policy
-              </Link>
-              <Link to="/terms" className="text-dc-text-muted hover:text-dc-teal transition-colors">
-                Terms of Service
-              </Link>
-              <Link to="/help" className="text-dc-text-muted hover:text-dc-teal transition-colors">
-                Help Center
-              </Link>
-            </nav>
-            <p className="text-xs text-dc-text-muted">© 2026 DragonCandy. All rights reserved.</p>
-          </div>
-        </footer>
-      </div>
+      <main>
+        <HeroSection />
+        <WhyDragonCandy />
+        <DonnySection />
+        <HowItWorks />
+        <AudienceLanes />
+        <StoriesSection />
+        <DragonRewardsSection />
+        <CreatorHubSection />
+        <LeadCaptureSection />
+        <BottomCTA />
+      </main>
+
+      <footer className="border-t border-white/10 py-10">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-5 text-sm sm:px-8 lg:px-12">
+          <img src="/logo.webp" alt="DragonCandy" className="h-6 w-auto opacity-90" />
+          <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+            <Link to="/privacy" className="text-white/50 transition-colors hover:text-dc-teal">
+              Privacy Policy
+            </Link>
+            <Link to="/terms" className="text-white/50 transition-colors hover:text-dc-teal">
+              Terms of Service
+            </Link>
+            <Link to="/help" className="text-white/50 transition-colors hover:text-dc-teal">
+              Help Center
+            </Link>
+          </nav>
+          <p className="text-xs text-white/35">© 2026 DragonCandy. All rights reserved.</p>
+        </div>
+      </footer>
     </div>
   );
 }

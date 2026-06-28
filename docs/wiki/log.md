@@ -846,3 +846,20 @@ post-launch; feature_flags has a public read + fail-safe-off useFeatureFlag. New
 wrapper; jsdom gate test; seed migration applied to prod. Launch is now TWO switches (flag→UI, go_live_at→
 bell) — the DRE go-live runbook was updated accordingly (a Codex P2 catch). Engine/ledger/awarding
 unchanged; fully reversible. Pages updated: [[Dragon Rewards Engine (DRE)]] (runbook), index.md (Sources).
+
+## [2026-06-28] ingest | Landing Redesign & Public Lead Capture
+Ingested the 2026-06-28 landing redesign + lead-capture session (branch feat/landing-luxe-redesign, off
+origin/main). `/frontend-design` rebuilt the public landing into a Dark Luxe Editorial experience and added a
+first public lead-capture pipeline. New concept page concepts/landing-lead-capture.md captures two reusable
+patterns: (1) a SCOPED dark theme — a `.dark` wrapper + bg-dc-dark redefines the dark CSS vars for the landing
+subtree only (next-themes writes only to <html>, so no leak into the app), with the Radix-portal-escapes-.dark
+and literal-classes-don't-respond caveats; plus the Reveal scroll primitive and MediaSlot/VideoSlot branded
+placeholder slots (Nano Banana Pro-ready). (2) a CLOSED-ANON-DML lead pipeline — public.leads has internal-only
+RLS and NO anon INSERT/SELECT policy (PII), the capture-lead edge fn (verify_jwt=false) inserts as service role
++ Resend-notifies, guarded by a honeypot and a fail-open per-IP throttle (5/10min). Copy broadened
+restaurant→business (kept creator); rewards section flag-gated (DRAGON_REWARDS_ENABLED, action-based copy, no
+fabricated bonus). Backend deployed to prod (MCP + re-deployed from disk via the newly-installed Supabase CLI)
+and curl-verified (valid/honeypot/bad-email/preflight/throttle); no new security advisor for leads. Codex-clean
+after 2 P2s (brand-gate the form/CTA; add the throttle). RAG sync + verify-knowledge are post-merge (post-merge
+hook on the docs/ ff). Pages created: concepts/landing-lead-capture.md. Pages updated: index.md (Concepts +
+Sources). Core docs: PROJECT_CONTEXT.md (active workstream), DATABASE_SCHEMA.md (leads table).
