@@ -526,6 +526,27 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   and the other five Dezzy domains. Concept: `docs/wiki/concepts/dezzy-agent-playbook-suite.md`.
   Spec: `docs/superpowers/specs/2026-06-27-dezzy-outreach-v1-design.md`.
 
+- DragonCandy AIOS — Dezzy AI content-production playbooks (Domains 1 + 2) — **built (branch
+  `feat/aios-dezzy-content-playbooks`, 2026-06-27; seed applied to prod, live founder run
+  pending).** Dezzy (the renamed "Dame AI" growth-agent spec, PR #190) is realized **not as a new
+  agent runtime but as a branded suite of AIOS Founder Playbooks** on the existing rails
+  (`aios-playbook-run`, `/internal/playbooks`, `aios-report-ingest`, `/schedule`). This slice —
+  the **content half**, sibling to the parallel `DC-Dezzy-AI` worktree's `dezzy-outreach`
+  (Domain 3) — seeds two **report-only** playbooks: **`dezzy-content-calendar`** (drafts the
+  week's 5 company social posts on a fixed Mon–Fri rotation) and **`dezzy-website-updates`**
+  (drafts changelog/landing/announcement copy for the 1–2 most launch-worthy recently shipped
+  user-facing features). Both DRAFT only — the founder reviews/publishes (the "a human acts"
+  invariant); voice is set via `preferences_md` ("Dezzy") while the engine identity stays
+  "Donny". **Pure seed migration** (`20260627170000_aios_dezzy_content_playbooks_seed.sql`) — no
+  new read tool, **no edit to `aios-playbook-run/index.ts`** (the file the sibling edits → zero
+  merge conflict), no new table/RLS/secret/UI; grounded entirely in the six existing aggregate
+  read tools (`get_latest_briefing` + `get_platform_stats` + `get_internal_doc`). Non-fabrication
+  enforced by a traceability `done_criteria` + marked placeholders (`[CREATOR / @handle]`,
+  `[RESTAURANT]`, `[STAT — verify]`) since the aggregate tools return no row-level data and the
+  runner has no web access. Spec:
+  `docs/superpowers/specs/2026-06-27-dezzy-content-playbooks-design.md`. Concept:
+  `docs/wiki/concepts/dezzy-content-playbooks.md`.
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).

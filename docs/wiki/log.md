@@ -738,3 +738,18 @@ with profiles.id; consumer tables left on profiles), and a pure `describeError` 
 + `google-workspace-proxy` v20 deploy so future DB failures show their real message+code.
 Both applied to prod during the session. Pages created: [[Internal-Only AIOS Users]].
 Pages updated: [[Google Workspace]], [[Error Handling Patterns]], index.md.
+
+## [2026-06-27] ingest | Dezzy Content Playbooks (Domains 1 + 2)
+Ingested the Dezzy content-playbooks session. Built the content half of Dezzy AI (the
+"Dame AI"/Dezzy growth-agent spec) as two report-only AIOS Founder Playbooks seeded into
+`aios_playbooks` — `dezzy-content-calendar` (5 company social posts/wk, Mon–Fri rotation) and
+`dezzy-website-updates` (changelog/landing/announcement drafts for shipped features). Key
+reframe: **Dezzy is a branded suite of [[Founder Playbooks]] + scheduled routines, not a new
+agent runtime** — so the slice is a pure seed migration (no new read tool, no edit to
+`aios-playbook-run`, no new table, no UI), grounded entirely in the six existing aggregate read
+tools. Deliberately does not touch `aios-playbook-run/index.ts` (the file the sibling
+`DC-Dezzy-AI` worktree edits for `dezzy-outreach`) → zero merge conflict. Non-fabrication is
+enforced via `preferences_md` + a traceability `done_criteria` and marked placeholders
+(`[CREATOR / @handle]`, `[RESTAURANT]`, `[STAT — verify]`). Seed applied to prod; live "Run now"
+is a founder-gated step. Pages created: [[Dezzy Content Playbooks]]. Pages updated: index.md
+(Concepts + Sources).
