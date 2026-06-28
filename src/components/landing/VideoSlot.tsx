@@ -14,8 +14,16 @@ interface VideoSlotProps {
 
 /** Local prefers-reduced-motion — keeps the landing free of Framer Motion. */
 function usePrefersReducedMotion(): boolean {
-  const [reduce, setReduce] = useState(false);
+  // Initialize synchronously so the very first render already honors the preference
+  // (otherwise ambient autoplay could fire for one frame before the effect runs).
+  const [reduce, setReduce] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
   useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     const update = () => setReduce(mq.matches);
     update();
@@ -61,7 +69,10 @@ export function VideoSlot({
       { rootMargin: "100px 0px" },
     );
     io.observe(wrap);
-    return () => io.disconnect();
+    return () => {
+      io.disconnect();
+      video.pause(); // stop ambient playback if autoplay is revoked (e.g. reduced-motion flips on)
+    };
   }, [src, ambient]);
 
   return (
