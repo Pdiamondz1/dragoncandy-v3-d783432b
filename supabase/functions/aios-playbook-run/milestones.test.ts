@@ -108,6 +108,39 @@ describe('buildRecentMilestones', () => {
     expect(r.milestones.items[0].handle).toBeNull();
   });
 
+  it('resolves by event_type role prefix when a user has BOTH profiles (no misattribution)', () => {
+    const dualUser = 'u-dual';
+    const r = buildRecentMilestones({
+      nowIso,
+      events: [
+        { user_id: dualUser, event_type: 'business.first_campaign', occurred_at: nowIso },
+        { user_id: dualUser, event_type: 'creator.first_boost', occurred_at: nowIso },
+      ],
+      creators: [{ user_id: dualUser, creator_name: 'Dual Creator', instagram_url: 'https://ig/creator', tiktok_url: null, youtube_url: null, website_url: null }],
+      businesses: [{ user_id: dualUser, business_name: 'Dual Biz', instagram_url: null, website_url: 'https://dualbiz.com' }],
+      balances: [],
+    });
+    const biz = r.milestones.items.find((i) => i.event_type === 'business.first_campaign')!;
+    const cre = r.milestones.items.find((i) => i.event_type === 'creator.first_boost')!;
+    expect(biz.role).toBe('business');
+    expect(biz.name).toBe('Dual Biz');
+    expect(biz.handle).toEqual({ channel: 'website', handle: 'https://dualbiz.com' });
+    expect(cre.role).toBe('creator');
+    expect(cre.name).toBe('Dual Creator');
+  });
+
+  it('PRIVACY: a business.* event is skipped when only the creator profile is public (no identity borrow)', () => {
+    const r = buildRecentMilestones({
+      nowIso,
+      events: [{ user_id: 'u-x', event_type: 'business.first_campaign', occurred_at: nowIso }],
+      creators: [{ user_id: 'u-x', creator_name: 'Public Creator', instagram_url: 'https://ig/x', tiktok_url: null, youtube_url: null, website_url: null }],
+      businesses: [], // business profile not public → must NOT surface under the creator identity
+      balances: [],
+    });
+    expect(r.milestones.total).toBe(0);
+    expect(JSON.stringify(r)).not.toContain('Public Creator');
+  });
+
   it('caps items at MILESTONE_CAP but reports the true total', () => {
     const creators = Array.from({ length: 20 }, (_, i) => ({
       user_id: `u-${i}`, creator_name: `C${i}`, instagram_url: `https://ig/${i}`, tiktok_url: null, youtube_url: null, website_url: null,

@@ -81,27 +81,32 @@ export function buildRecentMilestones(input: {
 
   const items: MilestoneItem[] = [];
   for (const e of input.events) {
-    // Privacy keystone: only PUBLIC-profile achievers. The profile maps already contain ONLY
-    // profile_visibility='public' rows (filtered in index.ts via the service-role client), so a
-    // non-public user is absent here → skipped, and never has a name/handle/tier surfaced.
-    const c = creatorById.get(e.user_id);
-    const b = businessById.get(e.user_id);
-    let name: string;
-    let role: "creator" | "business";
-    let handle: Handle | null;
-    if (c) {
-      name = c.creator_name ?? "(unnamed creator)";
-      role = "creator";
-      handle = pickHandle(c);
-    } else if (b) {
-      name = b.business_name ?? "(unnamed business)";
-      role = "business";
-      handle = pickHandle(b);
+    // Resolve the profile by the event_type ROLE PREFIX (creator.* / business.*), NOT creator-first:
+    // a user can have BOTH a creator and a business profile, and a business.* milestone must use the
+    // business identity (and vice-versa). Privacy keystone: the maps contain ONLY
+    // profile_visibility='public' rows (filtered in index.ts), so if the RELEVANT role's public
+    // profile is absent we SKIP — we never surface a non-public achiever, and never borrow the other
+    // role's identity for a milestone that isn't theirs.
+    let role: "creator" | "business" | null = null;
+    let name: string | null = null;
+    let handle: Handle | null = null;
+    if (e.event_type.startsWith("business.")) {
+      const b = businessById.get(e.user_id);
+      if (b) { role = "business"; name = b.business_name ?? "(unnamed business)"; handle = pickHandle(b); }
+    } else if (e.event_type.startsWith("creator.")) {
+      const c = creatorById.get(e.user_id);
+      if (c) { role = "creator"; name = c.creator_name ?? "(unnamed creator)"; handle = pickHandle(c); }
     } else {
-      continue;
+      // Unknown/unprefixed event (defensive — the query only matches creator./business. events):
+      // prefer a public creator, then a public business.
+      const c = creatorById.get(e.user_id);
+      const b = businessById.get(e.user_id);
+      if (c) { role = "creator"; name = c.creator_name ?? "(unnamed creator)"; handle = pickHandle(c); }
+      else if (b) { role = "business"; name = b.business_name ?? "(unnamed business)"; handle = pickHandle(b); }
     }
+    if (!role) continue;
     items.push({
-      name,
+      name: name as string,
       role,
       handle,
       milestone: friendlyMilestone(e.event_type),
