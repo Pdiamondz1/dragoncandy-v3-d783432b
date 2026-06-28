@@ -11,15 +11,15 @@ const scrollToSection = (id: string) => {
 
 const navLinks = [
   { label: "How It Works", target: "how-it-works" },
-  { label: "For Business", target: "for-business" },
-  { label: "For Brands", target: "for-brands" },
-  { label: "For Creators", target: "for-creators" },
+  { label: "For Business", target: "audiences" },
+  { label: "For Brands", target: "audiences" },
+  { label: "For Creators", target: "creator-hub" },
   { label: "Contact", target: "contact" },
 ];
 
 const visibleNavLinks = BRAND_ROLE_ENABLED
   ? navLinks
-  : navLinks.filter((l) => l.target !== "for-brands");
+  : navLinks.filter((l) => l.label !== "For Brands");
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -51,7 +51,7 @@ export const Header: React.FC = () => {
         <nav aria-label="Primary" className="hidden items-center gap-7 md:flex">
           {visibleNavLinks.map((link) => (
             <button
-              key={link.target}
+              key={link.label}
               onClick={() => scrollToSection(link.target)}
               className="cursor-pointer border-none bg-transparent text-sm font-medium text-white/65 transition-colors duration-200 hover:text-dc-teal"
             >
@@ -90,7 +90,7 @@ export const Header: React.FC = () => {
               <div className="flex flex-col gap-2">
                 {visibleNavLinks.map((link) => (
                   <button
-                    key={link.target}
+                    key={link.label}
                     onClick={() => handleNavClick(link.target)}
                     className="w-full cursor-pointer rounded-full border-none bg-transparent px-4 py-2.5 text-left font-medium text-white/75 transition-colors hover:bg-white/5 hover:text-dc-teal"
                   >
