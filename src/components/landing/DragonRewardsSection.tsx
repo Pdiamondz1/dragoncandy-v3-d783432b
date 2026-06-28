@@ -31,15 +31,15 @@ export function DragonRewardsSection() {
               <div className="mb-4 flex items-center gap-3">
                 <span className="h-2 w-2 rounded-full bg-dc-pink-accent" />
                 <span className="text-xs font-bold uppercase tracking-[0.3em] text-dc-pink-accent">
-                  Creator Standing
+                  DC Rewards
                 </span>
               </div>
               <h2 className="max-w-2xl text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
                 Every move earns{" "}
-                <span className="font-script text-gradient font-normal">Reputation.</span>
+                <span className="font-script text-gradient font-normal">DC Points.</span>
               </h2>
               <p className="mt-5 max-w-xl text-base leading-relaxed text-white/65 lg:text-lg">
-                Complete your profile, post content, and finish campaigns to earn Reputation
+                Complete your profile, post content, and finish campaigns to earn DC Points
                 and climb five tiers — from Rising to Icon.
               </p>
 
