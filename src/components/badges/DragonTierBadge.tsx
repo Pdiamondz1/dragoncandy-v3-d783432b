@@ -19,7 +19,7 @@ export const DragonTierBadge: React.FC<DragonTierBadgeProps> = ({ tier, size = '
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full font-semibold ${meta.colorClasses} ${sizeClasses} ${className}`}
-      title={`${meta.label} — Reputation tier`}
+      title={`${meta.label} — DC Rewards tier`}
     >
       {meta.emoji && <span aria-hidden>{meta.emoji}</span>}
       {meta.label}
