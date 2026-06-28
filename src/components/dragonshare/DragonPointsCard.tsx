@@ -1,9 +1,13 @@
 import { Gem } from 'lucide-react';
-import { useDragonPoints } from '@/hooks/useDragonPoints';
+import { useDragonPoints, useDragonRewardsEnabled } from '@/hooks/useDragonPoints';
 import { DragonTierBadge } from '@/components/badges/DragonTierBadge';
 
 export function DragonPointsCard() {
+  // Launch gate: the Dragon Rewards display stays hidden until the founder enables the
+  // DRAGON_REWARDS_ENABLED flag (fail-safe-off). Points keep accruing in the ledger regardless.
+  const enabled = useDragonRewardsEnabled();
   const { data, isLoading } = useDragonPoints();
+  if (!enabled) return null;
   return (
     <div className="rounded-2xl border border-dc-pink/40 bg-dc-pink/10 p-4">
       <div className="flex items-center gap-2 mb-1">

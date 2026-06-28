@@ -26,6 +26,20 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-06-28] Dragon Rewards UI launch gate (branch feat/dre-ui-launch-gate)
+- Output: bundled INTO the work PR — `raw/sessions/2026-06-28-dre-ui-launch-gate.md`, updated the runbook on
+  `concepts/dragon-rewards-engine.md` (two-switch launch + reversible-UI rollback + ⚠️→resolved),
+  `index.md` (Sources), `log.md` update entry, PROJECT_CONTEXT bullet, + THIS run-log entry.
+- Happened: first code slice of the session (not a seed/doc) — a frontend gate fix. Compounded the runbook
+  change onto the existing DRE concept page (no new concept page). The knowledge change *resolved* a Codex
+  P2 (the seeded-OFF flag made the old runbook a partial-launch trap) — did the runbook update before the
+  final Codex re-run (the "knowledge-sync before final Codex" lesson, now reflexive).
+- Worked: [scope] + [runlog-in-pr]; updating the hub page's runbook in the SAME PR that introduced the flag
+  kept doc + behavior consistent (no stale-runbook window).
+- Failed: none. Carried forward the stranded #198 verify-knowledge entry.
+- Remember: when a code change adds a NEW launch switch, the operational runbook is part of the change's
+  blast radius — update it in the same PR or Codex (rightly) flags the doc as a partial-launch hazard. (advisory)
+
 ### [2026-06-28] DRE go-live runbook + readiness check (branch docs/dre-go-live-runbook)
 - Output: `raw/sessions/2026-06-28-dre-go-live-runbook.md`, a new "Go-Live Runbook & Readiness Check" section
   compounded onto `concepts/dragon-rewards-engine.md` (+ frontmatter updated/sources), `index.md` (Sources),

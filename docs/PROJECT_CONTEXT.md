@@ -632,6 +632,22 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `docs/superpowers/specs/2026-06-28-dezzy-seo-articles-design.md`. Concept:
   `docs/wiki/concepts/dezzy-agent-playbook-suite.md`.
 
+- DragonCandy AIOS / DRE — Dragon Rewards UI launch gate — **shipped (branch
+  `feat/dre-ui-launch-gate`, 2026-06-28; seed applied to prod, flag OFF).** A readiness check for the
+  Dezzy amplification core surfaced that the DRE (deployed + cron-live) had **silently backfilled ~24 real
+  users' points/tiers**, and the consumer UI rendered them with **no launch gate** — `go_live_at` (the DRE
+  sentinel) gates only the notification bell, not the display. Fix: gate `DragonPointsCard` (dashboards) +
+  `DragonTierBadge` (public profiles) behind a new **`DRAGON_REWARDS_ENABLED`** feature flag (seeded OFF,
+  fail-safe-off) via a `useDragonRewardsEnabled()` wrapper over the existing `useFeatureFlag`. Chose a
+  feature flag over `go_live_at` because `dre_config` is **authenticated-read** but the public-profile
+  routes are **anon-accessible** — a `go_live_at` UI gate would hide badges from logged-out visitors
+  post-launch, whereas `feature_flags` has a public read. Launch is now **two switches** (flag → UI;
+  `go_live_at` → bell), documented together in the DRE go-live runbook; engine/ledger/awarding unchanged;
+  fully reversible. Frontend + a seed row only (no DRE schema/RLS/edge-fn change). spec-reviewer Approved;
+  Codex-clean (it caught + I fixed a stale-runbook P2). Spec:
+  `docs/superpowers/specs/2026-06-28-dre-ui-launch-gate-design.md`. Concept (runbook):
+  `docs/wiki/concepts/dragon-rewards-engine.md`.
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).
