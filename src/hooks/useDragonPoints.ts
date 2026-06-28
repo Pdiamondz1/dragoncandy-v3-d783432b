@@ -1,8 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 
 export interface DragonPoints { balance: number; tier: string; }
+
+/** Launch gate for the consumer Dragon Rewards display (DragonPointsCard + DragonTierBadge).
+ *  Single source of the flag name. Fail-safe-off via useFeatureFlag (hidden until explicitly
+ *  enabled), and anon-readable so public-profile tier badges work for logged-out visitors —
+ *  unlike dre_config.go_live_at (authenticated-read only), which gates only the bell. */
+export function useDragonRewardsEnabled(): boolean {
+  return useFeatureFlag('DRAGON_REWARDS_ENABLED');
+}
 
 /** Current user's own balance + tier (own-row RLS). */
 export function useDragonPoints() {
