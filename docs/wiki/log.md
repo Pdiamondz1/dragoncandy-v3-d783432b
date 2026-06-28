@@ -1,5 +1,14 @@
 # Wiki Log
 
+## [2026-06-28] update | Landing fixes — brief-save + Business CTAs + nav
+Fixed the landing "Save this brief — sign up free" trust bug — `pendingBrief` was written to
+localStorage but never read, so a guest's brief was silently discarded after signup — via a tested
+`src/lib/pendingBrief.ts` consumed at `OnboardingWizard` completion (business/brand → campaign builder
+pre-filled through the existing `?brief=`; creator → key cleared). Also added a "Join as a Business" CTA
+(hero + bottom) with a flag-gated `?role=` pre-select on `AuthPage`, and repointed 3 dead header nav
+anchors to real section IDs. Updated [[Anonymous Brief Generator]] with a post-signup section. Branch
+`feat/landing-fixes-brief-save`; the subjective "less generic" redesign is a separate next effort.
+
 ## [2026-06-27] ingest | Dragon Rewards Engine v1 (Engine + Tiers + Badges)
 Ingested the DRE v1 build session — the first sub-project decomposed from the 6-phase parent
 spec [[DragonCandy — Dragon Rewards Engine (DRE) Full System Spec]] (PR #191). v1 ships the

@@ -3,7 +3,7 @@ title: Anonymous Brief Generator
 type: concept
 created: 2026-06-28
 updated: 2026-06-28
-sources: [2026-06-28-anonymous-brief-generator-fix.md]
+sources: [2026-06-28-anonymous-brief-generator-fix.md, 2026-06-28-landing-fixes-brief-save.md]
 tags: [landing, edge-functions, ssrf, abuse-prevention, ai-cost, donny]
 ---
 # Anonymous Brief Generator
@@ -55,6 +55,29 @@ not data. Sibling of the [[Landing Lead Capture]] pipeline (the other hardened a
 - **Cap accounting depends on the row insert.** A value that isn't a valid `inet` would make the insert
   throw and leave no row, bypassing the cap — which is why `isValidInet` must be strict (a bare `:`
   previously slipped through). Bad IP → `null` → row still saves → cap holds.
+
+## Post-signup: honoring the saved brief
+
+The teaser is signup-gated — "Save this brief — sign up free" stashes the brief in
+`localStorage['pendingBrief']` (`BriefGeneratorPreview`). For a period that promise was **hollow**: the
+key was written and never read, so a guest's brief was silently discarded after signup (a trust bug
+fixed 2026-06-28). The read half now lives in a small tested util `src/lib/pendingBrief.ts`:
+
+- `briefToText(brief)` — a concise prompt summary (with `title`/`description` fallbacks for the alternate
+  brief shape `BriefGeneratorPreview` accepts).
+- `consumePendingBrief(role)` — reads + **always clears** the key, returning a campaign-builder redirect
+  (`/dashboard/{business|brand}/campaigns/create?brief=<summary>`) only for a campaign-creating role
+  (`content_creator` has no builder → cleared, no redirect; malformed JSON → cleared, null).
+- Hooked at **onboarding completion** (`OnboardingWizard`): the new business/brand user is dropped
+  straight into the campaign builder, pre-filled via its **existing `?brief=` mechanism**
+  (`useCampaignCreator`), instead of the bare dashboard. Promise honored. (Re-generation via `?brief=` is
+  intentional — the authenticated builder produces the *full* campaign, an upgrade from the teaser.)
+
+The same landing pass added a **"Join as a Business"** CTA (hero + bottom CTA) that pre-selects the role
+via a `?role=` hint on `AuthPage` — **own-property-checked and gated behind `BRAND_ROLE_ENABLED`** so the
+hidden brand signup stays hidden and `?role=constructor` can't slip an inherited prototype value through —
+and repointed three **dead header nav anchors** (`for-business`/`for-brands`/`for-creators`) to real
+section IDs (`audiences`/`creator-hub`). See `2026-06-28-landing-fixes-brief-save.md`.
 
 ## See Also
 

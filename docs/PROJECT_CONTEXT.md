@@ -726,6 +726,24 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   run-history dedup; remaining #6 levers (case studies, referrals, boost-content) stay gated on missing data
   sources. Concept: `docs/wiki/concepts/dezzy-agent-playbook-suite.md`. Spec:
   `docs/superpowers/specs/2026-06-28-dezzy-milestone-celebrations-design.md`.
+- Landing page — brief-save + Business CTAs + nav — **built (branch
+  `feat/landing-fixes-brief-save`, 2026-06-28).** Three founder-flagged fixes, pure frontend (no
+  schema/edge/secret). **(1) Brief-save trust bug (keystone):** the landing teaser wrote a guest's
+  brief to `localStorage['pendingBrief']` on "Save this brief — sign up free" but **never read it
+  back** — the brief was silently discarded after signup (a hollow promise; the read half was *designed*
+  in the 2026-04-27 donny-rag-pricing-ux spec but never built). Fixed with a tested
+  `src/lib/pendingBrief.ts` (`briefToText`/`consumePendingBrief`) hooked at `OnboardingWizard`
+  completion: a new business/brand user is dropped straight into the campaign builder **pre-filled via
+  its existing `?brief=` mechanism**; a creator (no builder) just has the key cleared; the key is always
+  cleared. Founder decision: "drop them into building it" (vs a silent draft). **(2)** a "Join as a
+  Business" CTA above "Join as a Creator" (hero + bottom CTA) with a **flag-gated, own-property-checked
+  `?role=` pre-select** on `AuthPage` (so the hidden brand signup stays hidden and `?role=constructor`
+  can't slip through). **(3)** repointed 3 **dead header nav anchors**
+  (`for-business`/`for-brands`/`for-creators` → `audiences`/`creator-hub`). Codex-clean after 2 fix
+  rounds (nav-filter gating + map keys, brief `title`/`description` fallback, prototype-pollution guard).
+  The subjective **"less generic" redesign is a deliberately separate next effort.** Concept:
+  `docs/wiki/concepts/anonymous-brief-generator.md` (post-signup section). Spec:
+  `docs/superpowers/specs/2026-06-28-landing-fixes-brief-save-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
