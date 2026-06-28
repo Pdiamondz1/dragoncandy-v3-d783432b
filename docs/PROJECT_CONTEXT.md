@@ -744,6 +744,24 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   The subjective **"less generic" redesign is a deliberately separate next effort.** Concept:
   `docs/wiki/concepts/anonymous-brief-generator.md` (post-signup section). Spec:
   `docs/superpowers/specs/2026-06-28-landing-fixes-brief-save-design.md`.
+- Landing page — old-design flash fix + performance pass — **shipped (branch
+  `fix/landing-flash-and-perf`, 2026-06-28).** Two founder-reported symptoms, pure frontend (no
+  schema/edge/secret). **(1) Old-design flash:** an *old* white landing ("Social Media Content for
+  Restaurants") painted for ~1s before the dark one on every load — root-caused to a **stale
+  prerendered "instant-LCP" shell** hardcoded in `index.html` (added for LCP, never updated after the
+  dark redesign), **not** a service-worker/CDN-cache bug (none exist; assets hashed; index.html is
+  `max-age=0`). Replaced with a **content-free dark splash** (logo on `#1A1A2A`) that fades into the
+  real landing over an identical bg and can never go stale again. **(2) Mobile/Lovable WebKit crash**
+  ("A problem repeatedly occurred"): a landing **performance pass** — code-split the route (DARK
+  Suspense fallback so the loading state never flashes white; entry bundle ~328→290kB), rewrote
+  `Reveal` to ONE shared `IntersectionObserver` + CSS (dropping ~20 per-element Framer-Motion
+  `whileInView` observers + the animation engine), made empty placeholder `blur-3xl` blobs static +
+  gated infinite `float`/`shimmer` behind `prefers-reduced-motion`, and in-view-gated `VideoSlot`
+  ambient autoplay (`preload=none`). Codex-clean after 2 P2s (synchronous reduced-motion init; legacy
+  `matchMedia.addListener` fallback for older iOS WebKit — the very browser that crashes). Honest
+  scope: Lovable's *editor* crash + slow deploys are partly their platform; this removes the stale
+  shell + cuts renderer load but can't fix Lovable's infra. The "less generic" redesign is a separate
+  effort. Concept: `docs/wiki/concepts/landing-shell-and-performance.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
