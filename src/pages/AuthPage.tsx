@@ -32,7 +32,8 @@ const AuthPage = () => {
     };
     if (BRAND_ROLE_ENABLED) map.brand = 'brand'; // brand signup stays behind the flag
     const r = searchParams.get('role');
-    return r ? (map[r] ?? null) : null;
+    // own-property check only — reject inherited names like ?role=constructor
+    return r && Object.prototype.hasOwnProperty.call(map, r) ? map[r] : null;
   })();
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [error, setError] = useState<string | null>(null);
