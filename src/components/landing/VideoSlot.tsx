@@ -1,5 +1,5 @@
 import { Play } from "lucide-react";
-import { useReducedMotion } from "@/lib/motion";
+import { useEffect, useRef, useState } from "react";
 
 interface VideoSlotProps {
   /** Final video URL (mp4/hls). Drop in to replace the placeholder. */
@@ -12,12 +12,25 @@ interface VideoSlotProps {
   className?: string;
 }
 
+/** Local prefers-reduced-motion — keeps the landing free of Framer Motion. */
+function usePrefersReducedMotion(): boolean {
+  const [reduce, setReduce] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduce(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return reduce;
+}
+
 /**
- * A branded 16:9 video slot. With `src` it plays as an ambient hero reel — autoplay,
- * muted, looped, inline (the premium "creator hub" feel). Under prefers-reduced-motion
- * (or `autoplay={false}`) it falls back to a click-to-play player showing the poster.
- * Without `src` it shows an on-brand placeholder so the section looks finished before
- * the real reel is dropped in.
+ * A branded 16:9 video slot. With `src` it plays as an ambient reel — muted, looped, inline,
+ * and (the hardening) only **when scrolled into view**: a reel can't autoplay or even load its
+ * data while it's far below the fold (`preload="none"` + an IntersectionObserver gate), so a
+ * future reel can't spike memory on load. Under prefers-reduced-motion (or `autoplay={false}`)
+ * it's a plain click-to-play player. Without `src` it shows an on-brand placeholder.
  */
 export function VideoSlot({
   src,
@@ -26,39 +39,49 @@ export function VideoSlot({
   autoplay = true,
   className = "",
 }: VideoSlotProps) {
-  const reduce = useReducedMotion();
+  const reduce = usePrefersReducedMotion();
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const ambient = autoplay && !reduce;
 
+  // Arm ambient playback only while the slot is on screen; pause when it leaves.
+  useEffect(() => {
+    if (!src || !ambient) return;
+    const wrap = wrapRef.current;
+    const video = videoRef.current;
+    if (!wrap || !video || typeof IntersectionObserver === "undefined") {
+      video?.play().catch(() => {});
+      return;
+    }
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) video.play().catch(() => {});
+        else video.pause();
+      },
+      { rootMargin: "100px 0px" },
+    );
+    io.observe(wrap);
+    return () => io.disconnect();
+  }, [src, ambient]);
+
   return (
-    <div className={`relative aspect-video overflow-hidden rounded-3xl ${className}`}>
+    <div ref={wrapRef} className={`relative aspect-video overflow-hidden rounded-3xl ${className}`}>
       {src ? (
-        ambient ? (
-          <video
-            autoPlay
-            muted
-            loop
-            playsInline
-            controls
-            poster={poster}
-            preload="metadata"
-            className="h-full w-full object-cover"
-          >
-            <source src={src} />
-          </video>
-        ) : (
-          // Reduced motion / opt-out: don't autoplay — let the visitor start it.
-          <video
-            controls
-            preload="none"
-            poster={poster}
-            className="h-full w-full object-cover"
-          >
-            <source src={src} />
-          </video>
-        )
+        <video
+          ref={videoRef}
+          muted={ambient}
+          loop={ambient}
+          playsInline
+          controls
+          poster={poster}
+          preload="none"
+          className="h-full w-full object-cover"
+        >
+          <source src={src} />
+        </video>
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br from-dc-teal/25 via-dc-dark to-dc-pink-accent/25 ring-1 ring-inset ring-white/10">
-          <div className="pointer-events-none absolute -right-20 -top-16 h-56 w-56 rounded-full bg-dc-teal/25 blur-3xl animate-float" />
+          <div className="pointer-events-none absolute -right-20 -top-16 h-56 w-56 rounded-full bg-dc-teal/25 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-20 -left-16 h-56 w-56 rounded-full bg-dc-pink-accent/20 blur-3xl" />
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
             <span className="flex h-16 w-16 items-center justify-center rounded-full bg-dc-teal text-dc-dark shadow-glow-teal">
