@@ -44,6 +44,7 @@
 - [[Stripe Prices]](sources/stripe-prices.md) — Definitive pricing reference, all test mode (2026-05-23)
 - [[AIOS UI Polish Session]](raw/sessions/2026-06-26-aios-ui-polish.md) — AIOS shell reworked from an 11-pill wrapping row to a grouped left sidebar (Monitor/Operate) + mobile hamburger drawer with a pinned "Ask Donny"; shared PageContainer/PageHeader primitives across all 12 internal pages; Briefings/Strategy mobile doc-list cap + Findings pre wrap; presentational only, Codex-clean; PR #179 (2026-06-26)
 - [[AIOS Stakeholder Invite Session]](raw/sessions/2026-06-26-aios-stakeholder-invite.md) — backfill ingest of PR #178: admin-only invite-by-email for internal-only AIOS accounts; handle_new_user guard hard-blocks consumer profiles for account_scope='internal'; manage-internal-users edge fn (invite/list/revoke); 2 Codex P2 catches (stale trigger body, never-accepted re-invite); shipped + deployed (2026-06-26)
+- [[Dezzy Outreach v1 Session]](raw/sessions/2026-06-27-dezzy-outreach-v1.md) — Dezzy AI (company-facing growth agent) domain #3 the Outreach Machine, v1: report-only/draft-only dezzy-outreach Founder Playbook + get_reactivation_targets read tool (3 segments: stalled campaigns / dormant creators / lapsed restaurants; public-handles-only, org-aware, captured-boosts); 2 Codex P2 fixes (business-handle privacy parity, active-org-members); deployed + ran twice on prod (done=true, no PII leak) (2026-06-27)
 
 ## Entities
 
@@ -68,6 +69,7 @@
 - [[Content Engine]](concepts/content-engine.md) — Live-signal loop: brief → DragonShare action → performance; Phases A+B+C+D built (loop closed + surfaced to creators, verified prod)
 - [[Data Flywheel]](concepts/data-flywheel.md) — Primary competitive moat via accumulated match data
 - [[Deep-Link Param Query Race]](concepts/deep-link-param-query-race.md) — Capture deep-link URL params at mount; URL-cleanup tears down queries mid-flight
+- [[Dezzy Agent (Playbook Suite)]](concepts/dezzy-agent-playbook-suite.md) — DragonCandy's company-facing growth agent (counterpart to user-facing Donny); the keystone decision that Dezzy is NOT a new runtime but a branded suite of Founder Playbooks on existing AIOS rails; v1 = the Outreach Machine (dezzy-outreach playbook + get_reactivation_targets read tool, report-only/draft-only)
 - [[Donny Chat UX]](concepts/donny-chat-ux.md) — Shared chat components on two opposite-theme surfaces (light consumer / dark internal); the light-vs-dark rule (time inside bubbles, teal divider chip), expanding-textarea input, hidden-tool-row day-grouping, tray-vs-chat input split
 - [[Edge Function Streaming]](concepts/edge-function-streaming.md) — Keepalive NDJSON streaming to beat Supabase's 150s request idle timeout (Pro = 400s wall-clock); early first byte, pure SSE accumulator, unified callModel/runTurn, client-cancel handling, graceful version skew
 - [[Error Handling Patterns]](concepts/error-handling-patterns.md) — ErrorBoundary levels, QueryClient throwOnError, async patterns
@@ -110,6 +112,8 @@
 - [[18-Month Tech Engineering & Donny AI]](analyses/18-month-tech-engineering-donny-ai-1m-users.md) — Donny-captured analysis: 18-month tech engineering & Donny AI plan toward 1M users
 - [[Competitive Advantage]](analyses/the-honest-framing-first.md) — Donny-captured (2026-06-23): how DragonCandy wins vs Cirqle, Aspire, GRIN, Captiv8, CreatorIQ — competitor-by-competitor weaknesses and DragonCandy's edge
 - [[Content Engine Data Audit]](analyses/content-engine-data-audit.md) — what signal data exists in prod for the Donny content engine; context live, performance dark, Toast/social-cache tables missing from prod; foundation-first plan
+- [[DragonCandy — Dame AI: The Business Growth Agent System Spec]](analyses/dragoncandy-dame-ai-the-business-growth-agent-system-spec.md) — Workspace-imported (2026-06-27): the full system spec for the company-facing growth agent (named "Dame", since renamed Dezzy) — the source doc behind [[Dezzy Agent (Playbook Suite)]]
+- [[DragonCandy — Dragon Rewards Engine (DRE) Full System Spec]](analyses/dragoncandy-dragon-rewards-engine-dre-full-system-spec.md) — Workspace-imported (2026-06-27): the full system spec for the Dragon Rewards Engine (DRE)
 - [[DragonCandy Tech & Infrastructure Cost Breakdown]](analyses/here-s-the-exported-doc-dragoncandy-tech-infrastructure-cost-breakdown-nyc-media.md) — Donny-captured analysis: NYC-median tech & infrastructure cost breakdown for the capital raise
 - [[Human Marketing Team (Part 1)]](analyses/part-1-the-human-marketing-team.md) — Donny-captured analysis: the human marketing team (part 1)
 - [[Influencer/Creator Outreach]](analyses/influencer-creator-outreach-w-donny.md) — Donny-captured (2026-06-23): can Donny reach out to off-platform creators / build campaigns with them — what's reachable vs the hard platform walls to design around
@@ -117,3 +121,5 @@
 - [[PART 1 — Engineering & AIOS Operations]](analyses/part-1-engineering-aios-operations.md) — Donny-captured analysis: engineering & AIOS operations (part 1)
 - [[Platform API Registration Plan]](analyses/platform-api-registration-plan.md) — running checklist to swap Outstand for direct Meta/X/TikTok/YouTube + Toast access; per-platform requirements, lead times, Meta deep-dive; unblocks the dark Content Engine signal
 - [[Tech & Infrastructure Cost Breakdown (Updated)]](analyses/tech-infrastructure-cost-breakdown-updated.md) — Donny-captured analysis: updated tech & infrastructure cost breakdown for the capital raise
+- [[The Core Idea: Two Agents, One Company]](analyses/the-core-idea-two-agents-one-company.md) — Donny-captured (2026-06-27): Donny serves users, Dezzy (renamed from "Dame") serves the company; Dezzy's six growth domains + the economy-of-scale loop; domain #3 (Outreach Machine) shipped as v1 — see [[Dezzy Agent (Playbook Suite)]]
+- [[What We Built]](analyses/what-we-built.md) — Donny-captured (2026-06-27): a configurable, projected-activity-based rewards/boost mechanic to drive engagement and grow the app automatically (Dragon Rewards Engine context)

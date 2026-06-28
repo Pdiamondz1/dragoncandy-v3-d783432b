@@ -26,6 +26,26 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-06-27] Dezzy Outreach v1 (docs bundled INTO the open work branch)
+- Output: this work branch (`worktree-DC-Dezzy-AI`) — `raw/sessions/2026-06-27-dezzy-outreach-v1.md`,
+  new `concepts/dezzy-agent-playbook-suite.md`, updated `analyses/the-core-idea-two-agents-one-company.md`
+  (Dame→Dezzy rename note + domain-#3-shipped + See Also), `index.md` (Concepts + Sources + **Analyses
+  orphan fix**), `log.md` ingest entry, PROJECT_CONTEXT active-workstream bullet, + THIS run-log entry.
+- Happened: ran knowledge-sync **pre-merge** on the still-open Dezzy work branch (per the PR #180
+  precedent — the branch is off origin/main so [scope] is satisfied). The branch was 4 behind
+  origin/main and the core-idea analysis lived only on origin/main, so I **rebased onto origin/main
+  first** (the 8 commits touch only edge-fn/migration/spec/plan — disjoint from the 4 origin commits'
+  donny-chat/wiki files → clean rebase) so the core-idea doc was present to update in-PR. RAG sync +
+  verify-knowledge are post-merge (post-merge hook on the docs/ ff).
+- Worked: [scope] + [runlog-in-pr] applied. The PATH-based [orphans] check caught the core-idea
+  analysis itself as an `index.md` orphan (added by PR #189's `wiki-save-answer`, never cataloged) —
+  fixed it in the same pass. Compounded onto [[Founder Playbooks]] (Dezzy = a *use* of that rail) rather
+  than duplicating it.
+- Failed: none.
+- Remember: when the branch is behind origin/main and the doc you must update lives only on main,
+  **rebase onto origin/main first** (clean when the code commits are file-disjoint) so knowledge-sync
+  is complete in one PR — beats deferring the core-doc edit to post-merge. (advisory)
+
 ### [2026-06-27] Internal Donny profile-read fix (PR #185 → paired docs PR)
 - Output: docs PR off origin/main — `raw/sessions/2026-06-27-internal-donny-profile-read.md`,
   extended `concepts/internal-only-users.md` ("The profile-read trap" section + read-side rule),
