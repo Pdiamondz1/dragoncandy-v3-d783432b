@@ -156,3 +156,9 @@ verify_jwt = false
 
 [functions.dre-award-engine]
 verify_jwt = false
+
+# Public lead capture from the marketing/landing page — a logged-out visitor submits
+# the contact form, so the gateway JWT check must be off. The function validates,
+# inserts with the service-role key (private leads table), and notifies via Resend.
+[functions.capture-lead]
+verify_jwt = false

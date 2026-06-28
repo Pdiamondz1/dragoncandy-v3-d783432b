@@ -1,27 +1,25 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
-import { BRAND_ROLE_ENABLED } from '@/lib/featureConfig';
-import { Button } from "@/components/ui/button";
+import { BRAND_ROLE_ENABLED } from "@/lib/featureConfig";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const scrollToSection = (id: string) => {
   const el = document.getElementById(id);
-  if (el) {
-    el.scrollIntoView({ behavior: "smooth" });
-  }
+  if (el) el.scrollIntoView({ behavior: "smooth" });
 };
 
 const navLinks = [
   { label: "How It Works", target: "how-it-works" },
-  { label: "For Restaurants", target: "features" },
-  { label: "For Brands", target: "brands" },
-  { label: "For Creators", target: "cta" },
+  { label: "For Business", target: "for-business" },
+  { label: "For Brands", target: "for-brands" },
+  { label: "For Creators", target: "for-creators" },
+  { label: "Contact", target: "contact" },
 ];
 
 const visibleNavLinks = BRAND_ROLE_ENABLED
   ? navLinks
-  : navLinks.filter((l) => l.target !== 'brands');
+  : navLinks.filter((l) => l.target !== "for-brands");
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -29,7 +27,6 @@ export const Header: React.FC = () => {
 
   const handleNavClick = (sectionId: string) => {
     setSheetOpen(false);
-    // Wait for sheet close animation before scrolling
     setTimeout(() => scrollToSection(sectionId), 350);
   };
 
@@ -39,82 +36,84 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="flex items-center justify-between py-4 bg-white animate-fade-in">
-      <img
-        src="/logo.webp"
-        alt="DragonCandy"
-        width={140}
-        height={47}
-        fetchPriority="high"
-        className="w-[100px] md:w-[120px] lg:w-[140px] h-auto cursor-pointer transition-transform duration-200 hover:scale-105"
-        onClick={() => navigate('/')}
-      />
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-dc-dark/80 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5 sm:px-8 lg:px-12">
+        <img
+          src="/logo.webp"
+          alt="DragonCandy"
+          width={140}
+          height={47}
+          className="h-auto w-[104px] cursor-pointer transition-transform duration-200 hover:scale-105 lg:w-[132px]"
+          onClick={() => navigate("/")}
+        />
 
-      {/* Desktop nav links — hidden on mobile */}
-      <nav aria-label="Primary" className="hidden md:flex items-center gap-8">
-        {visibleNavLinks.map((link) => (
-          <button
-            key={link.target}
-            onClick={() => scrollToSection(link.target)}
-            className="text-sm font-medium text-dc-text-muted hover:text-dc-teal transition-colors duration-200 bg-transparent border-none cursor-pointer"
-          >
-            {link.label}
-          </button>
-        ))}
-        <Button
-          variant="ghost"
-          className="rounded-full text-dc-text-muted hover:text-dc-teal font-medium"
-          onClick={() => navigate('/auth?mode=login')}
-        >
-          Login
-        </Button>
-        <Button
-          className="rounded-full bg-dc-teal-btn text-white font-semibold px-6 hover:bg-dc-teal-btn-hover hover:shadow-glow-teal transition-all duration-300"
-          onClick={() => navigate('/auth?mode=signup')}
-        >
-          Get Started
-        </Button>
-      </nav>
-
-      {/* Mobile hamburger */}
-      <div className="md:hidden">
-        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-          <SheetTrigger asChild>
+        {/* Desktop nav */}
+        <nav aria-label="Primary" className="hidden items-center gap-7 md:flex">
+          {visibleNavLinks.map((link) => (
             <button
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-              aria-label="Toggle menu"
+              key={link.target}
+              onClick={() => scrollToSection(link.target)}
+              className="cursor-pointer border-none bg-transparent text-sm font-medium text-white/65 transition-colors duration-200 hover:text-dc-teal"
             >
-              <Menu className="h-6 w-6 text-gray-600" />
+              {link.label}
             </button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-64 pt-8">
-            <div className="flex flex-col gap-3">
-              {visibleNavLinks.map((link) => (
+          ))}
+          <button
+            onClick={() => navigate("/auth?mode=login")}
+            className="cursor-pointer border-none bg-transparent text-sm font-medium text-white/65 transition-colors duration-200 hover:text-dc-teal"
+          >
+            Login
+          </button>
+          <button
+            onClick={() => navigate("/auth?mode=signup")}
+            className="rounded-full bg-dc-teal px-6 py-2.5 text-sm font-bold text-dc-dark transition-all duration-300 hover:bg-dc-teal-dark hover:shadow-glow-teal"
+          >
+            Get Started
+          </button>
+        </nav>
+
+        {/* Mobile hamburger */}
+        <div className="md:hidden">
+          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+            <SheetTrigger asChild>
+              <button
+                className="rounded-full p-2 text-white/80 transition-colors hover:bg-white/10"
+                aria-label="Toggle menu"
+              >
+                <Menu className="h-6 w-6" />
+              </button>
+            </SheetTrigger>
+            <SheetContent
+              side="right"
+              className="w-64 border-white/10 bg-dc-dark pt-10 text-white"
+            >
+              <div className="flex flex-col gap-2">
+                {visibleNavLinks.map((link) => (
+                  <button
+                    key={link.target}
+                    onClick={() => handleNavClick(link.target)}
+                    className="w-full cursor-pointer rounded-full border-none bg-transparent px-4 py-2.5 text-left font-medium text-white/75 transition-colors hover:bg-white/5 hover:text-dc-teal"
+                  >
+                    {link.label}
+                  </button>
+                ))}
+                <hr className="my-2 border-white/10" />
                 <button
-                  key={link.target}
-                  onClick={() => handleNavClick(link.target)}
-                  className="w-full text-left px-4 py-2 rounded-full text-dc-text-muted hover:text-dc-teal font-medium bg-transparent border-none cursor-pointer"
+                  onClick={() => handleNavigate("/auth?mode=login")}
+                  className="w-full cursor-pointer rounded-full border-none bg-transparent px-4 py-2.5 text-left font-medium text-white/75 transition-colors hover:bg-white/5 hover:text-dc-teal"
                 >
-                  {link.label}
+                  Login
                 </button>
-              ))}
-              <hr className="border-gray-200 my-1" />
-              <Button
-                variant="ghost"
-                className="w-full justify-start rounded-full text-dc-text-muted hover:text-dc-teal"
-                onClick={() => handleNavigate('/auth?mode=login')}
-              >
-                Login
-              </Button>
-              <Button
-                className="w-full rounded-full bg-dc-teal-btn text-white font-bold hover:bg-dc-teal-btn-hover"
-                onClick={() => handleNavigate('/auth?mode=signup')}
-              >
-                Get Started
-              </Button>
-            </div>
-          </SheetContent>
-        </Sheet>
+                <button
+                  onClick={() => handleNavigate("/auth?mode=signup")}
+                  className="mt-1 w-full rounded-full bg-dc-teal px-4 py-3 font-bold text-dc-dark transition-colors hover:bg-dc-teal-dark"
+                >
+                  Get Started
+                </button>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </header>
   );

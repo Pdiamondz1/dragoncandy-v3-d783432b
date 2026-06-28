@@ -1,46 +1,57 @@
-import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import { BRAND_ROLE_ENABLED } from '@/lib/featureConfig';
+import { BRAND_ROLE_ENABLED } from "@/lib/featureConfig";
+import { Reveal } from "./Reveal";
 
 export const BottomCTA = () => {
   const navigate = useNavigate();
+  const signup = () => navigate("/auth?mode=signup");
 
   return (
-    <div id="cta" className="text-center mt-12 md:mt-20 lg:mt-28 mb-12 lg:mb-20 bg-gradient-to-br from-white via-white to-dc-teal/5 rounded-3xl p-6 md:p-10 lg:p-16 shadow-card-elevated border border-dc-teal/20 hover:shadow-glow-teal hover:border-dc-teal/40 transition-all duration-500">
-      <h2 className="text-2xl md:text-3xl lg:text-5xl font-bold text-dc-text mb-4 md:mb-6 tracking-tight">
-        Ready to Get Started?
-      </h2>
-      <p className="text-base md:text-lg lg:text-xl text-dc-text-muted mb-8 md:mb-12 max-w-xl mx-auto leading-relaxed">
-        {BRAND_ROLE_ENABLED
-          ? "Whether you're a restaurant, a brand, or a creator — DragonCandy has you covered."
-          : "Whether you're a restaurant or a creator — DragonCandy has you covered."}
-      </p>
-      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-        <Button
-          className="w-full sm:w-auto sm:px-8 rounded-full bg-dc-teal text-dc-text font-bold py-3 text-base lg:text-lg hover:bg-dc-teal-dark hover:shadow-glow-teal transition-all duration-300 group"
-          onClick={() => navigate('/auth?mode=signup')}
-        >
-          I'm a Restaurant — Get Started
-          <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-        </Button>
-        {BRAND_ROLE_ENABLED && (
-          <Button
-            className="w-full sm:w-auto sm:px-8 rounded-full bg-dc-pink-accent-btn text-white font-bold py-3 text-base lg:text-lg hover:bg-dc-pink-accent-btn-hover hover:shadow-lg transition-all duration-300 group"
-            onClick={() => navigate('/auth?mode=signup')}
-          >
-            I'm a Brand/Sponsor — Launch Campaigns
-            <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-          </Button>
-        )}
-        <Button
-          variant="outline"
-          className="w-full sm:w-auto sm:px-8 rounded-full bg-white text-dc-pink-accent-btn font-semibold py-3 text-base lg:text-lg border border-gray-200 hover:border-dc-teal hover:text-dc-teal transition-all duration-300"
-          onClick={() => navigate('/auth?mode=signup')}
-        >
-          I'm a Creator — Join the Marketplace
-        </Button>
+    <section id="cta" className="py-20 lg:py-28">
+      <div className="mx-auto max-w-6xl px-5 sm:px-8 lg:px-12">
+        <Reveal>
+          <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-dc-teal/12 via-white/[0.04] to-dc-pink-accent/12 px-6 py-16 text-center lg:px-16 lg:py-24">
+            <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-dc-teal/20 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-dc-pink-accent/15 blur-3xl" />
+
+            <div className="relative">
+              <h2 className="mx-auto max-w-2xl text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-6xl">
+                Ready to make content{" "}
+                <span className="font-script text-gradient font-normal">effortless?</span>
+              </h2>
+              <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/65 lg:text-lg">
+                Join DragonCandy and put your content on autopilot — for any business,
+                brand, or creator.
+              </p>
+
+              <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row sm:flex-wrap">
+                <button
+                  onClick={signup}
+                  className="group inline-flex h-14 items-center justify-center gap-2 rounded-full bg-dc-teal px-8 text-base font-bold text-dc-dark transition-all duration-300 hover:bg-dc-teal-dark hover:shadow-glow-teal"
+                >
+                  Get Started
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </button>
+                <button
+                  onClick={signup}
+                  className="inline-flex h-14 items-center justify-center rounded-full border border-white/20 bg-white/5 px-8 text-base font-semibold text-white backdrop-blur transition-all duration-300 hover:border-dc-teal hover:text-dc-teal"
+                >
+                  Join as a Creator
+                </button>
+                {BRAND_ROLE_ENABLED && (
+                  <button
+                    onClick={signup}
+                    className="inline-flex h-14 items-center justify-center rounded-full bg-dc-pink-accent-btn px-8 text-base font-semibold text-white transition-all duration-300 hover:bg-dc-pink-accent-btn-hover"
+                  >
+                    For Brands
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </Reveal>
       </div>
-    </div>
+    </section>
   );
 };
