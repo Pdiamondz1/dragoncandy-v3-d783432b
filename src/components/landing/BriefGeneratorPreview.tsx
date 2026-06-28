@@ -13,6 +13,7 @@ interface GeneratedBrief {
   content_suggestions?: string[];
   title?: string;
   description?: string;
+  source_quality?: { readable: boolean; chars: number };
   [key: string]: unknown;
 }
 
@@ -34,6 +35,7 @@ export function BriefGeneratorPreview() {
   const navigate = useNavigate();
 
   const [url, setUrl] = useState('');
+  const [honeypot, setHoneypot] = useState(''); // bot decoy — humans never fill this
   const [isGenerating, setIsGenerating] = useState(false);
   const [progressIndex, setProgressIndex] = useState(-1);
   const [brief, setBrief] = useState<GeneratedBrief | null>(null);
@@ -67,16 +69,21 @@ export function BriefGeneratorPreview() {
     try {
       const { data, error } = await supabase.functions.invoke(
         'generate-anonymous-brief',
-        { body: { url: trimmed } },
+        { body: { url: trimmed, subject_hp: honeypot } },
       );
 
       if (error) throw error;
 
-      if (data?.error === 'rate_limited') {
-        setRateLimited(true);
-        toast.info('One free brief per day', {
-          description: 'Sign up for unlimited briefs.',
-        });
+      // Every handled outcome arrives as HTTP 200 with an `error` discriminator.
+      if (data?.error) {
+        if (data.error === 'rate_limited' || data.error === 'capacity') {
+          setRateLimited(true);
+        } else {
+          // fetch_failed | generation_failed
+          toast.error("Couldn't generate from that link", {
+            description: 'Try your homepage or menu URL.',
+          });
+        }
         return;
       }
 
@@ -91,7 +98,7 @@ export function BriefGeneratorPreview() {
       setIsGenerating(false);
       setProgressIndex(-1);
     }
-  }, [url, runProgressAnimation]);
+  }, [url, honeypot, runProgressAnimation]);
 
   const handleSaveAndSignUp = useCallback(() => {
     if (brief) {
@@ -178,6 +185,12 @@ export function BriefGeneratorPreview() {
               </ul>
             </div>
           )}
+
+          {brief.source_quality?.readable === false && (
+            <p className="text-xs text-dc-yellow/90">
+              We couldn't pull much from that page — try your homepage or menu URL for a sharper draft.
+            </p>
+          )}
         </div>
 
         <Button className={CTA} onClick={handleSaveAndSignUp}>
@@ -234,6 +247,19 @@ export function BriefGeneratorPreview() {
           }}
         />
       </div>
+
+      {/* Honeypot: invisible to humans, tempting to bots. Off-screen (not display:none,
+          which some bots skip). A filled value short-circuits to a benign no-op server-side. */}
+      <input
+        type="text"
+        name="subject_hp"
+        value={honeypot}
+        onChange={(e) => setHoneypot(e.target.value)}
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        className="absolute left-[-9999px] top-[-9999px] h-0 w-0 opacity-0"
+      />
 
       <Button className={CTA} disabled={!url.trim()} onClick={handleGenerate}>
         Generate brief — free

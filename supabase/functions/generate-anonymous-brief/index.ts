@@ -1,123 +1,181 @@
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { corsHeaders } from "../_shared/cors.ts";
+import { corsHeaders } from '../_shared/cors.ts';
+import { anthropicFetch } from '../_shared/anthropic-fetch.ts';
+import {
+  isHoneypotTripped,
+  extractClientIp,
+  isBlockedTarget,
+  extractContent,
+  computeSourceQuality,
+  parseBrief,
+  type GeneratedBrief,
+} from './lib.ts';
+
+// Self-contained anonymous brief generator. Does NOT delegate to the user-gated
+// donny-campaign-generate (that 401s a service-role caller). Layered-v1 abuse hardening:
+// honeypot, hardened SSRF guard, global daily cap (best-effort), best-effort per-IP cap.
+// Every HANDLED outcome returns HTTP 200 with an `error` discriminator, because
+// supabase.functions.invoke exposes the body only on 2xx.
+
+const GLOBAL_DAILY_CAP = 150;
+const MODEL = 'claude-haiku-4-5-20251001'; // hardcoded cheap tier — NOT getModelConfig (defaults to Sonnet)
+const MAX_TOKENS = 768;
+const FETCH_TIMEOUT_MS = 8000;
+const MAX_REDIRECT_HOPS = 2;
+
+function json(req: Request, status: number, body: unknown) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+  });
+}
+
+/** Fetch with manual, re-validated redirects (an allowed URL can 302 to an internal one). */
+async function fetchGuarded(startUrl: string): Promise<string | null> {
+  let current = startUrl;
+  for (let hop = 0; hop <= MAX_REDIRECT_HOPS; hop++) {
+    if (isBlockedTarget(current)) return null;
+    const res = await fetch(current, {
+      headers: { 'User-Agent': 'DragonCandy-Bot/1.0' },
+      redirect: 'manual',
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (res.status >= 300 && res.status < 400) {
+      const loc = res.headers.get('location');
+      if (!loc) return null;
+      current = new URL(loc, current).toString(); // resolve relative redirects
+      continue;
+    }
+    if (!res.ok) return null;
+    return await res.text();
+  }
+  return null; // too many redirects
+}
+
+async function generateBrief(
+  apiKey: string,
+  url: string,
+  extracted: { title: string; description: string; bodyText: string },
+): Promise<GeneratedBrief> {
+  const system =
+    `You are Donny, DragonCandy's AI campaign assistant. From a business's website content, ` +
+    `draft a STARTING social-media campaign brief the owner will review and refine. ` +
+    `Respond with raw JSON ONLY — no markdown fences, no prose. Exact shape:\n` +
+    `{"campaign_name":"<catchy short name>","campaign_description":"<2-3 sentences: what to post and the angle>",` +
+    `"target_audience":"<who this reaches>","content_suggestions":["<idea 1>","<idea 2>","<idea 3>"]}`;
+  const userContent =
+    `Business URL: ${url}\nTitle: ${extracted.title}\nMeta description: ${extracted.description}\n` +
+    `Page content: ${extracted.bodyText}`;
+
+  const res = await anthropicFetch(
+    'https://api.anthropic.com/v1/messages',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: MAX_TOKENS,
+        temperature: 0.7,
+        system,
+        messages: [{ role: 'user', content: userContent }],
+      }),
+    },
+    1,
+  );
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Anthropic ${res.status}: ${err.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  return parseBrief(data.content?.[0]?.text ?? '{}');
+}
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders(req) });
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(req) });
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')!;
+    const supabase = createClient(supabaseUrl, serviceKey);
 
-    const { url } = await req.json();
-    if (!url || typeof url !== 'string') {
-      return new Response(
-        JSON.stringify({ error: 'A valid URL is required' }),
-        { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
-      );
-    }
+    const body = await req.json().catch(() => ({} as Record<string, unknown>));
 
-    // SSRF protection: block private/internal URLs
-    try {
-      const parsed = new URL(url);
-      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new Error('blocked');
-      const h = parsed.hostname.toLowerCase();
-      if (h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '0.0.0.0' ||
-          h === '169.254.169.254' || h === 'metadata.google.internal') throw new Error('blocked');
-      const parts = h.split('.').map(Number);
-      if (parts.length === 4 && parts.every(p => !isNaN(p))) {
-        if (parts[0] === 10 || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
-            (parts[0] === 192 && parts[1] === 168)) throw new Error('blocked');
-      }
-    } catch {
-      return new Response(
-        JSON.stringify({ error: 'URL is not allowed' }),
-        { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
-      );
-    }
+    // 1. Honeypot — benign no-op (no fetch, no model call, no row).
+    if (isHoneypotTripped(body)) return json(req, 200, { error: 'rate_limited' });
 
-    // Extract client IP from x-forwarded-for (first IP, trimmed)
-    const forwarded = req.headers.get('x-forwarded-for') ?? '';
-    const clientIp = forwarded.split(',')[0].trim() || '0.0.0.0';
+    // 2. URL validation + hardened SSRF guard (before any spend).
+    const url = typeof body.url === 'string' ? body.url.trim() : '';
+    if (!url) return json(req, 400, { error: 'A valid URL is required' });
+    if (isBlockedTarget(url)) return json(req, 400, { error: 'URL is not allowed' });
 
-    // Rate-limit: one free brief per IP per day
     const todayStart = new Date();
     todayStart.setUTCHours(0, 0, 0, 0);
 
-    const { count, error: countError } = await supabase
+    // 3. Global daily cap (best-effort; fail-closed on count error).
+    const { count, error: capErr } = await supabase
       .from('campaign_brief_generations')
       .select('id', { count: 'exact', head: true })
-      .eq('ip_address', clientIp)
       .is('user_id', null)
       .gte('generated_at', todayStart.toISOString());
+    if (capErr) {
+      console.error('Global-cap count failed (fail-closed):', capErr);
+      return json(req, 200, { error: 'capacity' });
+    }
+    if ((count ?? 0) >= GLOBAL_DAILY_CAP) return json(req, 200, { error: 'capacity' });
 
-    if (countError) {
-      console.error('Rate-limit check failed:', countError);
-      return new Response(
-        JSON.stringify({ error: 'Internal server error' }),
-        { status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
-      );
+    // 4. Per-IP cap (best-effort; skipped entirely when no valid client IP).
+    const clientIp = extractClientIp((n) => req.headers.get(n));
+    if (clientIp) {
+      const { count: ipCount, error: ipErr } = await supabase
+        .from('campaign_brief_generations')
+        .select('id', { count: 'exact', head: true })
+        .eq('ip_address', clientIp)
+        .is('user_id', null)
+        .gte('generated_at', todayStart.toISOString());
+      if (!ipErr && (ipCount ?? 0) >= 1) return json(req, 200, { error: 'rate_limited' });
     }
 
-    if ((count ?? 0) > 0) {
-      return new Response(
-        JSON.stringify({ error: 'rate_limited', message: 'One free brief per day' }),
-        { status: 429, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
-      );
+    // 5. Fetch + extract (manual, re-validated redirects).
+    let html: string | null = null;
+    try {
+      html = await fetchGuarded(url);
+    } catch (e) {
+      console.warn('Fetch failed:', (e as Error).message);
+    }
+    if (html === null) return json(req, 200, { error: 'fetch_failed' });
+
+    const extracted = extractContent(html);
+    const sourceQuality = computeSourceQuality(extracted.bodyText, true);
+
+    // 6. Generate (Haiku). Parse failure → graceful generation_failed.
+    let brief: GeneratedBrief;
+    try {
+      brief = await generateBrief(anthropicKey, url, extracted);
+    } catch (e) {
+      console.error('Generation failed:', (e as Error).message);
+      return json(req, 200, { error: 'generation_failed' });
     }
 
-    // Call donny-campaign-generate server-to-server
-    const generateResponse = await fetch(
-      `${supabaseUrl}/functions/v1/donny-campaign-generate`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseServiceKey}`,
-        },
-        body: JSON.stringify({ url }),
-      },
-    );
+    // 7. Save the anonymous record only on success (non-blocking).
+    const { error: insErr } = await supabase.from('campaign_brief_generations').insert({
+      user_id: null,
+      org_id: null,
+      source_url: url,
+      brief_jsonb: brief,
+      ip_address: clientIp,
+    });
+    if (insErr) console.error('Failed to save anonymous brief (non-blocking):', insErr);
 
-    if (!generateResponse.ok) {
-      const errBody = await generateResponse.text();
-      console.error('donny-campaign-generate error:', generateResponse.status, errBody);
-      return new Response(
-        JSON.stringify({ error: 'Internal server error' }),
-        { status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
-      );
-    }
-
-    const briefData = await generateResponse.json();
-
-    // Save generation record with null user_id/org_id (anonymous)
-    const { error: insertError } = await supabase
-      .from('campaign_brief_generations')
-      .insert({
-        user_id: null,
-        org_id: null,
-        source_url: url,
-        brief_jsonb: briefData,
-        ip_address: clientIp,
-      });
-
-    if (insertError) {
-      console.error('Failed to save anonymous brief generation:', insertError);
-      // Non-blocking: still return the brief even if the record fails to save
-    }
-
-    return new Response(
-      JSON.stringify(briefData),
-      { status: 200, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
-    );
+    return json(req, 200, { ...brief, source_quality: sourceQuality });
   } catch (err) {
     console.error('generate-anonymous-brief error:', err);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
-    );
+    return json(req, 500, { error: 'Internal server error' });
   }
 });
