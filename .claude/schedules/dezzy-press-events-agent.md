@@ -58,8 +58,8 @@ AIOS_INGEST_SECRET missing or invalid in environment Dame_git_claude."
      founder can defer. Surfacing a paid option is fine; just label its cost.
 
 5. **RANK + CAP.** Keep the top ~10 by fit × urgency. Assign `severity` as **priority**:
-   - `high` = strong fit AND deadline ≤ ~8 weeks (flag high-priority opportunities ≥8 weeks out
-     so there's time to prepare);
+   - `high` = strong fit AND deadline within the next ~8 weeks (act-now urgency — surfacing it now
+     gives the founder roughly the 8-week lead time the spec wants to prepare before the deadline);
    - `medium` = good fit, longer lead;
    - `low` = speculative / long-lead.
    `severity` MUST be one of `critical|high|medium|low` (ingest rejects anything else). NEVER use

@@ -87,7 +87,8 @@ POST `aios-report-ingest` `{"type":"findings","payload":{"findings":[...]}}` wit
 - `source: "dezzy-press-events"`; `fingerprint: "dezzy-opportunity:<kebab-slug>"` (stable across monthly
   re-scans → occurrences bump, no duplicates).
 - `severity` = **priority** (the existing enum, reused as urgency, like loop-scout):
-  **`high`** = strong fit AND deadline ≤ ~8 weeks (the spec's "flag high-priority events 8 weeks out");
+  **`high`** = strong fit AND deadline within the next ~8 weeks (act-now urgency — surfacing it now delivers
+  the spec's ~8-week prepare-ahead lead time);
   **`medium`** = good fit, longer lead; **`low`** = speculative / long-lead.
 
 ### 3.4 Two disciplines
