@@ -1,5 +1,26 @@
 # Wiki Log
 
+## [2026-06-27] ingest | Dezzy Outreach v1 (the company-facing growth agent's first domain)
+Ingested the Dezzy AI — Outreach Machine v1 session. **Dezzy** is DragonCandy's company-facing
+growth agent (counterpart to user-facing Donny), proposed in
+`analyses/the-core-idea-two-agents-one-company.md` (the founder renamed the doc's "Dame" →
+"Dezzy"). The keystone decision captured: **Dezzy is NOT a new agent runtime — it is a branded
+suite of [[Founder Playbooks]]** on the existing AIOS rails. v1 ships **domain #3, the Outreach
+Machine**: a report-only/draft-only `dezzy-outreach` Founder Playbook + one new admin-gated read
+tool `get_reactivation_targets` (3 segments — stalled campaigns / dormant creators / lapsed
+restaurants; public-handles-only/no-emails, org-aware, captured-boosts-only). The runner drafts a
+ready-to-paste reactivation message per target in the **Dezzy voice**; it **sends nothing** (the
+founder copy-sends). Two Codex P2 fixes this session: business-handle privacy parity (the creator
+public-visibility filter was missing on both `business_profiles` queries) and active-org-members
+(`invitation_status='active'`). Deployed `aios-playbook-run` v7→v8 via MCP (verify_jwt=false
+preserved); ran twice on prod — `done_check.done=true`, counts 4/11/9 matching live SQL, regex-
+confirmed no email/PII leak. Also closed a pre-existing `index.md` **orphan**: the core-idea
+analysis (added by PR #189's wiki-save-answer) was never cataloged.
+Pages created: concepts/dezzy-agent-playbook-suite.md, raw/sessions/2026-06-27-dezzy-outreach-v1.md
+Pages updated: index.md (Concepts + Sources + Analyses [orphan fix]),
+analyses/the-core-idea-two-agents-one-company.md (Dame→Dezzy rename note, domain #3 shipped, See Also),
+PROJECT_CONTEXT.md (active workstream)
+
 ## [2026-06-26] ingest | AIOS Stakeholder Invite backfill (PR #178)
 Backfilled the AIOS Stakeholder Invite feature (PR #178, shipped + deployed) into the wiki — it
 had merged without a wiki page, a gap the `verify-knowledge` wikilink/orphan check surfaced

@@ -24,6 +24,7 @@ import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-
 import { corsHeaders } from "../_shared/cors.ts";
 import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
+import { buildReactivationTargets } from "./reactivation.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -79,6 +80,12 @@ const READ_TOOL_DEFINITIONS = [
   {
     name: "get_latest_briefing",
     description: "The most recent weekly operating brief: title, week, KPI status list, full markdown body.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_reactivation_targets",
+    description:
+      "Reactivation outreach targets from live marketplace data: stalled_campaigns (published/active >14d with no completed collaboration), dormant_creators (no application/post in 21d), lapsed_restaurants (never launched a campaign or never boosted). Each segment returns {items, total}; items carry names + PUBLIC social handles only (NO emails), capped at 15. Use for the Dezzy weekly reactivation outreach playbook.",
     input_schema: { type: "object", properties: {} },
   },
 ];
@@ -182,6 +189,7 @@ async function executeReadTool(
   name: string,
   args: Json,
   userClient: SupabaseClient,
+  admin: SupabaseClient,
 ): Promise<Json> {
   switch (name) {
     case "get_internal_doc": {
@@ -229,6 +237,92 @@ async function executeReadTool(
         .maybeSingle();
       if (error) throw error;
       return data ?? { message: "No weekly briefings exist yet." };
+    }
+    case "get_reactivation_targets": {
+      const nowIso = new Date().toISOString();
+      // "Launched" = a campaign that actually went live (excludes draft/cancelled).
+      const LAUNCHED_STATUSES = ["published", "active", "completed"];
+      const [campaignsRes, launchedRes, restaurantsRes, creatorsRes, appsRes, postsRes, boostsRes] = await Promise.all([
+        admin.from("campaigns").select("id,title,user_id,created_at,updated_at,status").in("status", ["published", "active"]),
+        admin.from("campaigns").select("user_id,org_id").in("status", LAUNCHED_STATUSES),
+        admin.from("business_profiles").select("user_id,business_name,instagram_url,website_url,created_at").eq("account_type", "restaurant").eq("profile_visibility", "public"), // privacy: service role bypasses RLS, so never surface non-public restaurant handles (mirrors the creator filter)
+        admin.from("creator_profiles").select("user_id,creator_name,instagram_url,tiktok_url,youtube_url,created_at,skills").eq("profile_visibility", "public"), // privacy: the service role bypasses RLS, so never surface non-public creator handles
+        admin.from("campaign_applications").select("creator_id,created_at"),
+        admin.from("dragonshare_posts").select("creator_id,created_at"),
+        admin.from("dragonshare_boosts").select("boosting_user_id,boosting_org_id").not("captured_at", "is", null), // only successful (captured) boosts count
+      ]);
+      for (const r of [campaignsRes, launchedRes, restaurantsRes, creatorsRes, appsRes, postsRes, boostsRes]) if (r.error) throw r.error;
+
+      const campaigns = campaignsRes.data ?? [];
+      const campaignIds = campaigns.map((c) => c.id);
+      const ownerIds = [...new Set(campaigns.map((c) => c.user_id))];
+
+      // Guarded: skip the query when the id list is empty (avoids an empty .in() and keeps types clean).
+      let collaborations: Json[] = [];
+      if (campaignIds.length) {
+        const collabRes = await admin.from("campaign_collaborations")
+          .select("campaign_id,creator_id,status,content_status,updated_at,completed_at").in("campaign_id", campaignIds);
+        if (collabRes.error) throw collabRes.error;
+        collaborations = collabRes.data ?? [];
+      }
+
+      let businesses: Json[] = [];
+      if (ownerIds.length) {
+        const bizRes = await admin.from("business_profiles")
+          .select("user_id,business_name,instagram_url,website_url").in("user_id", ownerIds).eq("profile_visibility", "public"); // privacy: same public-only filter for stalled-campaign owners
+        if (bizRes.error) throw bizRes.error;
+        businesses = bizRes.data ?? [];
+      }
+
+      const creators = creatorsRes.data ?? [];
+      const lastActivityByUserId: Record<string, string> = {};
+      for (const row of [...(appsRes.data ?? []), ...(postsRes.data ?? [])]) {
+        const uid = (row as { creator_id?: string }).creator_id;
+        const at = (row as { created_at?: string }).created_at;
+        if (!uid || !at) continue;
+        if (!lastActivityByUserId[uid] || at > lastActivityByUserId[uid]) lastActivityByUserId[uid] = at;
+      }
+
+      // Resolve "launched"/"boosted" to the restaurant OWNER, covering team/org accounts:
+      // a launch or boost made under an org counts for every member of that org.
+      const launchedUserIds = new Set<string>();
+      const launchedOrgIds = new Set<string>();
+      for (const c of launchedRes.data ?? []) {
+        if (c.user_id) launchedUserIds.add(c.user_id);
+        if (c.org_id) launchedOrgIds.add(c.org_id);
+      }
+      const boostedUserIds = new Set<string>();
+      const boostedOrgIds = new Set<string>();
+      for (const b of boostsRes.data ?? []) {
+        if (b.boosting_user_id) boostedUserIds.add(b.boosting_user_id);
+        if (b.boosting_org_id) boostedOrgIds.add(b.boosting_org_id);
+      }
+      const engagedOrgIds = [...new Set([...launchedOrgIds, ...boostedOrgIds])];
+      if (engagedOrgIds.length) {
+        // Only ACTIVE members inherit the org's launch/boost — an invited-but-not-joined or
+        // suspended member hasn't engaged, and miscounting them would wrongly drop their
+        // (genuinely lapsed) restaurant from outreach.
+        const membersRes = await admin.from("org_members").select("org_id,user_id").in("org_id", engagedOrgIds).eq("invitation_status", "active");
+        if (membersRes.error) throw membersRes.error;
+        for (const m of membersRes.data ?? []) {
+          if (!m.user_id) continue;
+          if (launchedOrgIds.has(m.org_id)) launchedUserIds.add(m.user_id);
+          if (boostedOrgIds.has(m.org_id)) boostedUserIds.add(m.user_id);
+        }
+      }
+
+      return buildReactivationTargets({
+        nowIso,
+        campaigns,
+        collaborations,
+        businessByUserId: Object.fromEntries(businesses.map((b) => [b.user_id, b])),
+        creatorByUserId: Object.fromEntries(creators.map((c) => [c.user_id, c])),
+        creators,
+        lastActivityByUserId,
+        restaurants: restaurantsRes.data ?? [],
+        campaignOwnerIds: [...launchedUserIds],
+        boosterIds: [...boostedUserIds],
+      });
     }
     default:
       throw new Error(`Unknown read tool: ${name}`);
@@ -374,7 +468,7 @@ serve(async (req) => {
               if (toolResult?.proposed && toolResult?.id) correctionIds.push(toolResult.id);
             }
           } else {
-            toolResult = await executeReadTool(tu.name, tu.input ?? {}, userClient);
+            toolResult = await executeReadTool(tu.name, tu.input ?? {}, userClient, admin);
           }
         } catch (err) {
           toolResult = { error: err instanceof Error ? err.message : "tool failed" };
