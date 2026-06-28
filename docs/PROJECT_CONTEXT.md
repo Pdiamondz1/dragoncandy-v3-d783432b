@@ -493,6 +493,38 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   Codex-clean; boot-checked. The rule going forward also covers caller-profile **reads**: use
   `.maybeSingle()` + synthesize on the internal surface, never `.single()` + throw.
   Concept: `docs/wiki/concepts/internal-only-users.md`.
+- DragonCandy AIOS — Dezzy AI (company-facing growth agent) — Outreach Machine v1 — **built +
+  deployed (branch `worktree-DC-Dezzy-AI`, 2026-06-27).** **Dezzy** is the company-facing growth
+  agent (counterpart to user-facing Donny), proposed in
+  `docs/wiki/analyses/the-core-idea-two-agents-one-company.md` (the founder renamed the doc's
+  "Dame" → "Dezzy"). **Keystone decision: Dezzy is NOT a new agent runtime — it is a branded suite
+  of AIOS Founder Playbooks** on the rails already shipped (`aios-playbook-run`,
+  `aios-report-ingest`, `/internal/corrections`, `/internal/playbooks`). v1 ships **domain #3, the
+  Outreach Machine**: a report-only/draft-only `dezzy-outreach` Founder Playbook + ONE new
+  admin-gated read tool `get_reactivation_targets` on `aios-playbook-run` (backed by its existing
+  service-role `admin` client — no migration/RPC/RLS change). The tool returns three segments —
+  **stalled campaigns** (published/active >14d by `created_at`, no completed collaboration;
+  active-collab → "finish" blocker else "no creator"), **dormant creators** (public, no
+  application/post in 21d), **lapsed restaurants** (public, >7d, never launched a
+  published/active/completed campaign or never **captured**-boosted, **org-aware** via active
+  members) — each `{items,total}` capped at 15, carrying **names + PUBLIC social handles only, never
+  emails**. All segment/handle/cap logic lives in a pure vitest-tested `reactivation.ts` (9 cases);
+  `index.ts` does bounded `.select()`s and delegates. The playbook drafts a ready-to-paste message
+  per target in the **Dezzy voice** (≤60 words, one CTA); v1 **sends nothing** — the founder
+  copy-sends from `/internal/playbooks/dezzy-outreach` (no new UI/table/schedule). Invariant held:
+  the agent proposes/reports, a human acts. Codex second review clean after **2 P2 fix rounds this
+  session** — business-handle privacy parity (the `profile_visibility='public'` filter, shipped for
+  creators as a P1, was missing on both `business_profiles` queries) and active-org-members
+  (`invitation_status='active'`, else an invited/suspended member miscounts as engaged and wrongly
+  drops their lapsed restaurant). Deployed `aios-playbook-run` v7→v8 via the Supabase MCP
+  (full-path file naming so `../_shared/*`+`./reactivation.ts` resolve; `verify_jwt=false`
+  preserved; boot-checked) and the seed migration applied via MCP; **ran twice on prod** —
+  `done_check.done=true`, segment counts 4/11/9 matching live SQL, regex-confirmed no email/PII leak,
+  and Dezzy auto-flagged obvious test accounts + 2 data edge cases. **No new table/RPC/RLS/secret/
+  OAuth scope/UI/send-path/schedule/`donny-chat` change.** Deferred to v1.5+: one-tap/auto-send,
+  scheduled weekly push (v1 is on-demand pull), cold outreach, the "Dezzy" engine-identity re-skin,
+  and the other five Dezzy domains. Concept: `docs/wiki/concepts/dezzy-agent-playbook-suite.md`.
+  Spec: `docs/superpowers/specs/2026-06-27-dezzy-outreach-v1-design.md`.
 
 - DragonCandy AIOS — Dezzy AI content-production playbooks (Domains 1 + 2) — **built (branch
   `feat/aios-dezzy-content-playbooks`, 2026-06-27; seed applied to prod, live founder run
