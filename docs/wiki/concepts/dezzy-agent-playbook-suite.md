@@ -2,8 +2,8 @@
 title: Dezzy Agent (Playbook Suite)
 type: concept
 created: 2026-06-27
-updated: 2026-06-27
-sources: [docs/superpowers/specs/2026-06-27-dezzy-outreach-v1-design.md, docs/superpowers/plans/2026-06-27-dezzy-outreach-v1.md, 2026-06-27-dezzy-outreach-v1.md, docs/superpowers/specs/2026-06-27-dezzy-weekly-brief-design.md, 2026-06-27-dezzy-weekly-brief.md, docs/superpowers/specs/2026-06-27-dezzy-press-events-design.md, 2026-06-27-dezzy-press-events.md, docs/superpowers/specs/2026-06-28-dezzy-seo-articles-design.md, 2026-06-28-dezzy-seo-articles.md]
+updated: 2026-06-28
+sources: [docs/superpowers/specs/2026-06-27-dezzy-outreach-v1-design.md, docs/superpowers/plans/2026-06-27-dezzy-outreach-v1.md, 2026-06-27-dezzy-outreach-v1.md, docs/superpowers/specs/2026-06-27-dezzy-weekly-brief-design.md, 2026-06-27-dezzy-weekly-brief.md, docs/superpowers/specs/2026-06-27-dezzy-press-events-design.md, 2026-06-27-dezzy-press-events.md, docs/superpowers/specs/2026-06-28-dezzy-seo-articles-design.md, 2026-06-28-dezzy-seo-articles.md, docs/superpowers/specs/2026-06-28-dezzy-milestone-celebrations-design.md, 2026-06-28-dezzy-milestone-celebrations.md]
 tags: [aios, donny, dezzy, automation, internal, growth, architecture]
 ---
 
@@ -132,16 +132,23 @@ Three more report-only playbooks landed the same week, all on the same rails (no
   side to grow, with the **"creators before restaurants" GTM rule overriding raw counts**) + `get_internal_doc`.
   Pure seed. Discipline: E-E-A-T "genuinely useful, not keyword-stuffed", and **no fabrication** — any
   DragonCandy stat/feature/page-path traces to a tool or is a `[CONFIRM PATH]`/placeholder (links are
-  founder-confirmed; no invented URLs). **The rest of Domain 6 is GATED** — a read-only prod probe found
-  `dragon_point_events` / `dragon_point_balances` / `dragonshare_engagement` **empty** (PR #196 applied the
-  DRE schema but held the award-engine cron) and there's no milestone/tier-change event to read, plus **no
-  referral table** — so the milestone-celebration core, restaurant case studies, referral thank-yous, and
-  boost-performing-content can't be built as live loops yet (the "don't build a recommender against a dark
-  signal" discipline). They reopen when the DRE award engine is live + emits milestone events.
+  founder-confirmed; no invented URLs).
+- **Domain 6 — Amplification (milestone-celebration core)**: **SHIPPED 2026-06-28**, now un-gated because
+  the DRE award engine is live and the `dragon_point_events` ledger is populated. A **`get_recent_milestones`**
+  read tool (the **7th** on `aios-playbook-run`, mirroring `get_reactivation_targets`): firsts + campaign
+  milestones from the last 30 days, **PUBLIC handles only** (no emails/points), resolved **by the event_type
+  role prefix** (`creator.`/`business.` — never creator-first, so a dual-profile user's business milestone
+  isn't misattributed), skipping any achiever whose relevant-role profile isn't public, capped 15. Plus a
+  report-only **`dezzy-milestone-celebrations`** playbook that drafts a #DragonDashed celebratory post per
+  milestone (current **DC Rewards / DC Points / Rising→Icon** naming via a `tierLabel` map mirroring
+  `dragonTiers.ts`), with a **false-recency warning** for `updated_at`-sourced events. Founder reviews + posts.
+  **Still gated** (no data source yet): restaurant case studies, referral thank-yous, boost-performing-content
+  (no referral table; `dragonshare_engagement` still empty).
 
-**Suite status:** Domains **1, 2, 3, 5** ship as playbooks, **#4 (Press & Events)** ships as a cloud routine,
-and **#6 (Amplification)** ships its SEO slice (the milestone economy-of-scale core stays gated on the DRE
-going live). All six domains now have a shipped slice or a clear gate.
+**Suite status:** Domains **1, 2, 3, 5** ship as playbooks, **#4 (Press & Events)** as a cloud routine,
+and **#6 (Amplification)** ships its SEO slice **+ the milestone-celebration core** (the remaining #6 levers —
+case studies / referrals / boost-content — stay gated on data sources that don't exist yet). All six domains
+have a shipped slice; #6's core is now live.
 
 ## Deferred
 
@@ -149,10 +156,11 @@ One-tap / auto-send (in-app + email → a new table + `/internal/outreach` UI + 
 scheduled weekly *push* for the playbooks (v1 is on-demand pull), cold outreach / prospect sourcing, the
 runner's "Dezzy" identity re-skin, **weekly-brief compose-mode** (embedding the detail runs via a
 `get_latest_playbook_run` tool), a first-class **`dezzy_opportunities` table + deadline-sorted calendar UI**
-(Press & Events v2, if volume warrants), and the **gated #6 Amplification core** — milestone-celebration
-posts, restaurant case studies, referral thank-yous, boost-performing-content (all blocked on an empty DRE
-ledger / engagement table / missing referral system; reopen when the DRE award engine is live + emits
-milestone events).
+(Press & Events v2, if volume warrants), and the **remaining #6 Amplification levers** — restaurant case
+studies, referral thank-yous, boost-performing-content (still blocked on a missing referral table + an empty
+`dragonshare_engagement`; reopen when those signals exist). *(The milestone-celebration core shipped
+2026-06-28 once the DRE award engine went live.)* Standalone DC-tier-up celebrations are also deferred (no
+tier-change event to anchor recency).
 
 ## See Also
 
