@@ -21,10 +21,18 @@ const ALLOWED_REDIRECT_ORIGINS = new Set([
 const AuthPage = () => {
   const [searchParams] = useSearchParams();
   const initialMode = searchParams.get('mode') === 'login' ? 'login' : 'signup';
+  // Pre-select role from the landing "Join as a Business/Creator" CTAs (?role=).
+  // Map the URL value to the profile enum; ignore on login or unknown values.
+  const initialRole = ((): "business_client" | "content_creator" | "brand" | null => {
+    if (initialMode === 'login') return null;
+    const map = { business: 'business_client', creator: 'content_creator', brand: 'brand' } as const;
+    const r = searchParams.get('role');
+    return r && r in map ? map[r as keyof typeof map] : null;
+  })();
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [error, setError] = useState<string | null>(null);
-  const [signupStep, setSignupStep] = useState<SignupStep>("role-selection");
-  const [selectedRole, setSelectedRole] = useState<"business_client" | "content_creator" | "brand" | null>(null);
+  const [signupStep, setSignupStep] = useState<SignupStep>(initialRole ? "signup-form" : "role-selection");
+  const [selectedRole, setSelectedRole] = useState<"business_client" | "content_creator" | "brand" | null>(initialRole);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [_needsVerification, setNeedsVerification] = useState(false);
 
