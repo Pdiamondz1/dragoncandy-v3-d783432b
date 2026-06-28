@@ -25,9 +25,9 @@ describe('Dragon Rewards UI launch gate', () => {
   it('DragonPointsCard renders points + tier when the flag is ON', () => {
     mockEnabled.mockReturnValue(true);
     render(<DragonPointsCard />);
-    expect(screen.getByText('Dragon Points')).toBeInTheDocument();
+    expect(screen.getByText('Reputation')).toBeInTheDocument();
     expect(screen.getByText('1,234')).toBeInTheDocument();
-    expect(screen.getByTitle(/Dragon Rewards tier/i)).toBeInTheDocument();
+    expect(screen.getByTitle(/Reputation tier/i)).toBeInTheDocument();
   });
 
   it('DragonTierBadge renders nothing when the flag is OFF (covers anon public profiles)', () => {
@@ -39,6 +39,6 @@ describe('Dragon Rewards UI launch gate', () => {
   it('DragonTierBadge renders the tier when the flag is ON', () => {
     mockEnabled.mockReturnValue(true);
     render(<DragonTierBadge tier="scout" />);
-    expect(screen.getByTitle(/Dragon Rewards tier/i)).toBeInTheDocument();
+    expect(screen.getByTitle(/Reputation tier/i)).toBeInTheDocument();
   });
 });

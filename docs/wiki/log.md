@@ -863,3 +863,14 @@ and curl-verified (valid/honeypot/bad-email/preflight/throttle); no new security
 after 2 P2s (brand-gate the form/CTA; add the throttle). RAG sync + verify-knowledge are post-merge (post-merge
 hook on the docs/ ff). Pages created: concepts/landing-lead-capture.md. Pages updated: index.md (Concepts +
 Sources). Core docs: PROJECT_CONTEXT.md (active workstream), DATABASE_SCHEMA.md (leads table).
+
+## [2026-06-28] update | DRE rewards rename → "Creator standing"
+Founder feedback: the fantasy tier names + "Dragon Points" read corny for the older/professional
+audience. Renamed the USER-FACING labels only: currency Dragon Points → Reputation (Rep); tiers
+Egg→Rising / Scout→Established / Knight→Pro / Master→Elite / Legend→Icon; fantasy emojis dropped (clean
+colored pill). Display-only — the tier keys (egg/scout/…), dragon_point_* tables, dragon_points_award
+type, DRAGON_REWARDS_ENABLED flag, and internal DP/DRE names are unchanged (no migration). Touched
+dragonTiers.ts labels, DragonPointsCard/DragonTierBadge copy, the gate test, and the dre-award-engine
+award-notification copy (redeployed v2, verify_jwt preserved, boot-checked 401). Tests 7/7, build green,
+Codex-clean. The milestone-celebration playbook (next) inherits these names. Pages updated:
+[[Dragon Rewards Engine (DRE)]] (Display naming note).
