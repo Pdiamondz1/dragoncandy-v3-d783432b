@@ -13,7 +13,7 @@ const MILESTONE_LABELS: Record<string, string> = {
   "creator.first_post_bonus": "Submitted their first post",
   "creator.first_application": "Sent their first application",
   "creator.first_social": "Connected their first social account",
-  "business.first_campaign": "Launched their first campaign",
+  "business.first_campaign": "Completed their first campaign", // DRE emits this on status='completed' (creation = first_campaign_created)
   "business.first_campaign_created": "Created their first campaign",
   "business.first_boost_bonus": "Gave their first boost",
   "business.first_social": "Connected their first social account",

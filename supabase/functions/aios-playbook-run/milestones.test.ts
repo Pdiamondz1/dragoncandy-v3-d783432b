@@ -5,6 +5,9 @@ describe('friendlyMilestone', () => {
   it('maps known events', () => {
     expect(friendlyMilestone('creator.first_campaign')).toBe('Completed their first campaign');
     expect(friendlyMilestone('business.first_social')).toBe('Connected their first social account');
+    // business.first_campaign is a COMPLETION event in the DRE (creation = first_campaign_created)
+    expect(friendlyMilestone('business.first_campaign')).toBe('Completed their first campaign');
+    expect(friendlyMilestone('business.first_campaign_created')).toBe('Created their first campaign');
   });
   it('handles milestone_campaigns_N', () => {
     expect(friendlyMilestone('creator.milestone_campaigns_3')).toBe('Reached 3 completed campaigns');
