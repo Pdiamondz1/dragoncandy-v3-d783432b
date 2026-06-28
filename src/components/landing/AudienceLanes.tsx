@@ -21,7 +21,7 @@ const businessLane: Lane = {
   title: "Any local business",
   bullets: [
     "Restaurants, cafés, shops & services",
-    "AI campaigns built from your website",
+    "AI campaign drafts from your website",
     "Same-day content with DragonDash",
   ],
   cta: "Get Started",

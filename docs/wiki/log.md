@@ -874,3 +874,15 @@ dragonTiers.ts labels, DragonPointsCard/DragonTierBadge copy, the gate test, and
 award-notification copy (redeployed v2, verify_jwt preserved, boot-checked 401). Tests 7/7, build green,
 Codex-clean. The milestone-celebration playbook (next) inherits these names. Pages updated:
 [[Dragon Rewards Engine (DRE)]] (Display naming note).
+
+## [2026-06-28] update | Landing copy — rewards rename consistency + honest paste-URL framing
+Two landing-copy fixes. (1) Rename tail: the redesign's flag-gated DragonRewardsSection (now live since
+rewards were enabled) still had corny "Dragon Rewards / Dragon Points / Dragon Egg→Legend" prose while its
+tier-ladder badges auto-rendered the new labels — updated the eyebrow ("Creator Standing"), heading
+("Reputation"), and body ("from Rising to Icon"), + conditional-emoji render. (2) Founder-flagged
+false-advertising: the paste-a-URL claims overpromised accuracy ("complete"/"ready-to-run" campaign "built
+from your website"). Reframed honestly across HowItWorks / WhyDragonCandy / AudienceLanes /
+BriefGeneratorPreview as a fast FIRST DRAFT you review+tweak, "works best from your homepage or menu" (input
+guidance set at the point of entry, incl. the preview placeholder). Feature/value intact; the overpromise
+removed. Deferred follow-up: a tiny preview guardrail that gently flags a clearly-irrelevant/empty page
+result. Copy-only; no logic/backend change.

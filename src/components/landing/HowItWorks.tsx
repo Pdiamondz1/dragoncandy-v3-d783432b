@@ -6,7 +6,7 @@ const steps = [
     number: "01",
     title: "Paste your link",
     description:
-      "Drop your website or socials. Donny reads your brand and writes a complete campaign brief in seconds.",
+      "Drop your website or socials. Donny drafts a starting campaign brief in seconds — you tweak it, then go.",
   },
   {
     number: "02",
