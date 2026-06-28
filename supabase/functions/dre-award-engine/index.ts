@@ -43,7 +43,9 @@ serve(async (req) => {
         source_id: p.source_id as string,
         occurred_at: p.occurred_at as string,
       }))
-      .filter((r) => r.points_awarded > 0);
+      // occurred_at is NOT NULL in the ledger; drop any row whose source timestamp
+      // resolved null so one bad row can't abort the whole batch insert.
+      .filter((r) => r.points_awarded > 0 && r.occurred_at);
     if (rows.length === 0) return json(req, 200, { ok: true, awarded: 0, users_updated: 0 });
 
     // 3. Idempotent insert; with ignoreDuplicates, .select() returns only NEW rows
@@ -57,8 +59,9 @@ serve(async (req) => {
     if (affected.length === 0) return json(req, 200, { ok: true, awarded: 0, users_updated: 0 });
 
     // 4. Prior tiers (to flag tier-ups in the bell)
-    const { data: prior } = await supabase
+    const { data: prior, error: priorErr } = await supabase
       .from('dragon_point_balances').select('user_id, tier').in('user_id', affected);
+    if (priorErr) console.warn('dre-award-engine: prior-tier fetch failed:', priorErr.message);
     const priorTier = new Map((prior ?? []).map((b) => [b.user_id, b.tier]));
 
     // 5. Recompute balance + tier
@@ -91,7 +94,7 @@ serve(async (req) => {
         .filter((r) => r.user_id === uid && new Date(r.occurred_at).getTime() >= goLiveAt)
         .reduce((s, r) => s + (r.points_awarded ?? 0), 0);
       if (sum <= 0) continue;
-      const tieredUp = priorTier.get(uid) !== newTier.get(uid);
+      const tieredUp = (priorTier.get(uid) ?? 'egg') !== newTier.get(uid);
       await fetch(`${SUPABASE_URL}/functions/v1/create-notification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
