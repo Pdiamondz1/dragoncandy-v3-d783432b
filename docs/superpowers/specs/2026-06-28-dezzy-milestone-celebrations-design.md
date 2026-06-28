@@ -56,7 +56,10 @@ which is exactly why the `profile_visibility='public'` filter below is mandatory
   The tool returns the **label**, never the raw key — so the post never says "Knight" while the app
   shows "Pro". (Edge fns can't import the frontend module, so this is a deliberate mirror with a
   `// keep in sync with src/lib/dragonTiers.ts` comment; the alternative — returning the key + a prose
-  mapping in `preferences_md` — is the drift trap that just bit the rename.)
+  mapping in `preferences_md` — is the drift trap that just bit the rename.) **No-balance handling:**
+  if a user has no `dragon_point_balances` row, return `tier_label: null` (omit it) — do NOT default to
+  the `egg`/"Rising" floor the way `getDragonTier` does, since that would assert a tier the user hasn't
+  reached in a public post.
 - `buildRecentMilestones({nowIso, events, creators, businesses, balances})`:
   - Resolve each event's `user_id` to a **public** creator (first) or business profile. **If neither
     is public → SKIP the event** (the keystone privacy filter: the events table contains all users;
@@ -84,11 +87,15 @@ Report-only (`allowed_proposals='[]'`); engine identity stays "Donny", voice "De
   authentic), suggested platform(s), a hashtag set including **#DragonDashed**, a one-line visual brief,
   and the public **@handle** to tag. Lead with the strongest milestones (a completed first campaign /
   `milestone_campaigns_N`) over weak ones (first_social). Note each milestone's `occurred_at`. **False-
-  recency warning:** some DRE "first" events derive `occurred_at` from `updated_at`, which a routine
-  profile/campaign edit resets — specifically `creator.first_social`, `business.first_campaign`, and
-  `business.milestone_campaigns_*`. One of these can show a *recent-looking* `occurred_at` for a
-  months-old milestone, so flag any such draft "verify this is genuinely recent before posting" rather
-  than asserting it just happened. If the tool returns no milestones this window, say so and stop.
+  recency warning:** some DRE "first"/"milestone" events derive `occurred_at` from `updated_at`, which a
+  routine profile/campaign edit resets, so a months-old milestone can show a *recent-looking*
+  `occurred_at`. Two classes: **pure `updated_at`** (always suspect) — `creator.first_social`,
+  `business.first_campaign`, `business.milestone_campaigns_*`; and **`coalesce(completed_at, updated_at)`**
+  (false-recent only when `completed_at` is null, e.g. older/backfilled completions) —
+  `creator.first_campaign`, `creator.milestone_campaigns_*`. The latter two are exactly the flagship
+  "lead with" celebrations, so they especially must be flagged. For any draft on these event types, add
+  "verify this is genuinely recent before posting" rather than asserting it just happened. If the tool
+  returns no milestones this window, say so and stop.
 - **preferences_md:** Write as **Dezzy**, DragonCandy's growth agent (voice only). Celebratory, warm,
   authentic — never corporate. Honor the brand: teal+pink, **"#DragonDashed"** is the verb. Use the
   **current** rewards naming (as of 2026-06-28): the program is **"DC Rewards"**, the currency is
