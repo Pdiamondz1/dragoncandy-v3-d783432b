@@ -45,12 +45,32 @@ function isBlockedUrl(parsed: URL): boolean {
   return false;
 }
 
+// Follow redirects MANUALLY, re-applying the SSRF blocklist to every hop. A public
+// URL that passes the initial check can still 30x-redirect to an internal host
+// (cloud metadata at 169.254.169.254, or an RFC1918 address), and redirect:'follow'
+// would chase it — so we validate each Location before requesting it.
+async function safeFetch(initialUrl: string, maxRedirects = 4): Promise<Response> {
+  let current = initialUrl;
+  for (let hop = 0; hop <= maxRedirects; hop++) {
+    if (isBlockedUrl(new URL(current))) throw new Error('blocked host');
+    const res = await fetch(current, {
+      headers: { 'User-Agent': 'DragonCandy-Bot/1.0' },
+      redirect: 'manual',
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.status >= 300 && res.status < 400) {
+      const loc = res.headers.get('location');
+      if (!loc) return res;
+      current = new URL(loc, current).toString(); // resolve relative redirects
+      continue;
+    }
+    return res;
+  }
+  throw new Error('too many redirects');
+}
+
 async function fetchPageText(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: { 'User-Agent': 'DragonCandy-Bot/1.0' },
-    redirect: 'follow',
-    signal: AbortSignal.timeout(8000),
-  });
+  const res = await safeFetch(url);
   if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
   const html = await res.text();
   const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() ?? '';
