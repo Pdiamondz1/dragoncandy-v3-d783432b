@@ -26,6 +26,23 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-06-28] Anonymous brief generator repair + Layered-v1 hardening (branch fix/anonymous-brief-generator)
+- Output: bundled INTO the work PR — `raw/sessions/2026-06-28-anonymous-brief-generator-fix.md`, new
+  `concepts/anonymous-brief-generator.md` (See-Also [[Landing Lead Capture]]), `index.md` (Concepts +
+  Sources), `log.md` ingest entry, PROJECT_CONTEXT workstream bullet, + THIS run-log entry.
+- Happened: a "tiny guardrail" task uncovered the whole free-brief feature was 500ing in prod; became a
+  full repair. Followed the brainstorming gate end-to-end (design → AskUserQuestion forks → spec →
+  independent spec-review (6 fixes → Approved) → build → Codex (2 P1s) → deploy + live curl-verify).
+  New concept page (distinct enough from the lead-capture endpoint to stand alone; cross-linked).
+- Worked: [scope] (off origin/main) + [runlog-in-pr] + the spec-review-before-build gate caught the
+  wrong "trusted IP" idea + the Sonnet-default model trap BEFORE any code. Capturing the durable traps
+  (service-role≠user-auth; getModelConfig→Sonnet; functions.invoke 2xx-only; bad-inet cap bypass) as a
+  concept page, not just a session log.
+- Failed: none. (Thin-page readable=false path is unit-tested but not live-curled — the IP got
+  rate-limited after the valid test; acceptable, the unit test + code cover it.)
+- Remember: an investigation that uncovers a bigger prod bug should STOP and re-scope through the design
+  gate, not graft onto the original small task. (advisory)
+
 ### [2026-06-28] DRE rewards rename → "Creator standing" (branch feat/dre-rename-creator-standing)
 - Output: bundled INTO the work PR — `raw/sessions/2026-06-28-dre-rename-creator-standing.md`, a "Display
   naming" note added to `concepts/dragon-rewards-engine.md` (+ frontmatter sources), `index.md` (Sources),

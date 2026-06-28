@@ -684,6 +684,26 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   Codex-clean. The milestone-celebration playbook inherits these names. Concept:
   `docs/wiki/concepts/dragon-rewards-engine.md` (Display naming note).
 
+- Public landing — anonymous brief generator repair + abuse hardening — **shipped + deployed
+  (branch `fix/anonymous-brief-generator`, 2026-06-28).** The landing's free "paste a URL → campaign
+  brief" teaser (`BriefGeneratorPreview` in `DonnySection`) was **500'ing on every call in prod** —
+  `generate-anonymous-brief` delegated to the **user-gated** `donny-campaign-generate` with the
+  **service-role key**, which 401s (it auths only a user JWT / Donny OAuth). Rewrote
+  `generate-anonymous-brief` **self-contained**: own fetch+extract + a single **hardcoded-Haiku** call
+  (`claude-haiku-4-5-20251001`/768 — NOT `getModelConfig`, which has no routing entry → silently
+  Sonnet/4096), an **HTTP-200 error-discriminator contract** (`rate_limited|capacity|fetch_failed|
+  generation_failed` — `functions.invoke` exposes the body only on 2xx, so the old 429 path was dead),
+  **Layered-v1 abuse hardening** (global daily cap 150 as the real cost ceiling + best-effort per-IP +
+  honeypot + hardened SSRF guard: http(s)-only, numeric/hex host encodings, IPv4/IPv6 private ranges,
+  trailing-dot FQDNs, manual re-validated redirects), and a **thin-page `source_quality` signal** →
+  the preview shows a gentle "try your homepage/menu" note (runtime half of the PR #204 honest-copy
+  fix). `donny-campaign-generate` untouched. Pure `lib.ts` helpers + 28 vitest cases; spec passed an
+  independent review (6 fixes) before build; **Codex caught 2 P1s** (trailing-dot SSRF bypass;
+  malformed-IPv6 → failed `inet` insert → cap-accounting bypass), both fixed. Deployed via Supabase CLI
+  (`verify_jwt=true` preserved) + live-verified on prod. Concept:
+  `docs/wiki/concepts/anonymous-brief-generator.md`. Spec:
+  `docs/superpowers/specs/2026-06-28-anonymous-brief-generator-fix-design.md`.
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).
