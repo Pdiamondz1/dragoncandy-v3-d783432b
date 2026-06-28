@@ -152,6 +152,12 @@ clients read their own rows (`auth.uid() = user_id`).
 |-|-|
 | `account_deletion_requests` | User account deletion requests (GDPR) |
 
+## Marketing & Leads
+
+| Table | Purpose |
+|-|-|
+| `leads` | Public landing-page lead capture (the "Contact" form). **Private** — internal-team read/update RLS via `is_internal_user()`, and **no anon/authenticated INSERT or SELECT policy** (holds contact PII). Rows are inserted by the `capture-lead` edge function with the service-role key (bypasses RLS); the edge fn enforces a honeypot + a fail-open per-IP throttle and Resend-notifies the team. `audience` ∈ business/brand/creator/other; `status` new→contacted→qualified→…; `metadata jsonb` (user_agent, ip). |
+
 ## Social & Outstand Integration
 
 | Table | Purpose |

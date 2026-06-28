@@ -26,6 +26,21 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-06-28] Landing redesign + public lead capture (branch feat/landing-luxe-redesign)
+- Output: bundled INTO the work PR — `raw/sessions/2026-06-28-landing-redesign-lead-capture.md`, new
+  `concepts/landing-lead-capture.md`, `index.md` (Concepts + Sources), `log.md` ingest entry, PROJECT_CONTEXT
+  active-workstream bullet, DATABASE_SCHEMA new "Marketing & Leads" section (`leads`), + THIS run-log entry.
+- Happened: first **consumer-facing** landing redesign captured (recent runs were all AIOS/Dezzy). Extracted
+  TWO reusable patterns into ONE concept page (scoped-`.dark` theme + closed-anon-DML lead pipeline) rather
+  than two thin pages. Pre-merge off origin/main (per [scope]); RAG sync + verify-knowledge are post-merge
+  (hook on the docs/ ff). PATH-based [orphans] check: new page cataloged in index.md.
+- Worked: [scope] + [runlog-in-pr] + [orphans]-by-path. Capturing the scoped-dark technique (reusable beyond
+  this page) + the lead-table RLS posture as durable concept knowledge, not just a session log.
+- Failed: none. (Mobile not screenshot-verifiable — the Chrome extension can't shrink the viewport below
+  ~1280px; deferred to verify-prod's both-viewport check.)
+- Remember: a big *frontend* redesign still yields reusable *backend/architecture* knowledge (scoped dark
+  theme + closed-anon-DML public-form pipeline) — capture the patterns, not "we restyled the landing". (advisory)
+
 ### [2026-06-28] Dragon Rewards UI launch gate (branch feat/dre-ui-launch-gate)
 - Output: bundled INTO the work PR — `raw/sessions/2026-06-28-dre-ui-launch-gate.md`, updated the runbook on
   `concepts/dragon-rewards-engine.md` (two-switch launch + reversible-UI rollback + ⚠️→resolved),
