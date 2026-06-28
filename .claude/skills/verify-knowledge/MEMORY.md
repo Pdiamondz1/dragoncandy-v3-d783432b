@@ -21,6 +21,19 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-06-27] Dezzy weekly brief knowledge-sync (PR #195) — (re-added; was stranded on the weekly-brief branch)
+- Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for PR #195.
+- Happened: (a) wiki lint — path-based orphan check clean (0; no new page, compounded the capstone into
+  [[Dezzy Agent (Playbook Suite)]]), no contradictions; (b) sync errors=0 (sync:wiki updated=59/inserted=0 —
+  UPDATE-only, no net-new page → raw `RAG_LAST` stayed pinned at 01:35Z), but `content ilike '%dezzy-weekly-brief%'`
+  = 2 rows + "Monday capstone / orchestrate, not embed" = 2 rows confirm the extended page is in the RAG →
+  [freshness-proxy] applies, (b) met; LAST_WIKI_SYNC 03:03Z − RAG_LAST is <24h regardless; (c) raw session in
+  index.md Sources + the `[2026-06-27] ingest` log.md entry, suite page already cataloged.
+- Worked: [freshness-proxy] resolved (b) decisively on an update-only sync — content-presence over timestamp.
+- Failed: none (validator). The entry was committed post-squash-merge on the weekly-brief branch so it never
+  reached main → re-added here (same strand-then-carry-forward as #194).
+- Remember: re-confirms [freshness-proxy] + the post-merge-strand carry-forward pattern. (advisory)
+
 ### [2026-06-27] Dezzy content playbooks knowledge-sync (PR #194) — (re-added; was stranded on the content branch)
 - Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for PR #194.
 - Happened: (a) wiki lint — path-based orphan/index-completeness check clean (0 orphans across
