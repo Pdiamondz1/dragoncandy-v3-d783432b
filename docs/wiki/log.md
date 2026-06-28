@@ -1,5 +1,17 @@
 # Wiki Log
 
+## [2026-06-28] update | Landing: kill old-design flash + lighten it (crash/perf)
+Root-caused the "old white landing flashes then the dark one loads" bug to a **stale prerendered
+shell** hardcoded in `index.html` (instant-LCP shell never updated after the redesign) — not a
+service worker / CDN cache. Replaced it with a content-free dark splash (logo on `#1A1A2A`) that
+can't go stale. Then a landing **performance pass** to cut the mobile/Lovable "A problem repeatedly
+occurred" WebKit crash: code-split the route (dark Suspense fallback), rewrote `Reveal` to ONE shared
+IntersectionObserver + CSS (dropping ~20 per-element Framer-Motion observers + the animation engine),
+made placeholder `blur-3xl` blobs static + gated infinite `float`/`shimmer` behind reduced-motion, and
+in-view-gated `VideoSlot` autoplay (`preload=none`). New concept [[Landing Prerendered Shell &
+Performance]]. Codex-clean after 2 P2s (synchronous reduced-motion init; legacy `matchMedia.addListener`
+fallback for older iOS WebKit). Branch `fix/landing-flash-and-perf`.
+
 ## [2026-06-28] update | Landing fixes — brief-save + Business CTAs + nav
 Fixed the landing "Save this brief — sign up free" trust bug — `pendingBrief` was written to
 localStorage but never read, so a guest's brief was silently discarded after signup — via a tested

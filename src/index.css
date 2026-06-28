@@ -218,20 +218,46 @@
     animation: fadeInUp 0.5s ease-out 0.3s both;
   }
 
-  /* Subtle float for hero elements */
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
+  /* Subtle float for hero accents — gated on prefers-reduced-motion so constrained /
+     accessibility devices skip the continuous large-blur compositing. */
+  @media (prefers-reduced-motion: no-preference) {
+    .animate-float {
+      animation: float 6s ease-in-out infinite;
+    }
   }
 
-  /* Shimmer loading effect */
+  /* Shimmer loading effect (animation gated on prefers-reduced-motion) */
   .animate-shimmer {
     background: linear-gradient(90deg, transparent 0%, rgba(77, 217, 192, 0.08) 50%, transparent 100%);
     background-size: 200% 100%;
-    animation: shimmer 2s infinite;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .animate-shimmer {
+      animation: shimmer 2s infinite;
+    }
   }
 
   .animate-marquee {
     will-change: transform;
+  }
+
+  /* Scroll-reveal primitive (Reveal.tsx): a single shared IntersectionObserver adds
+     .reveal-in once the element scrolls into view. Pure CSS — no per-element JS animation. */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+  }
+  .reveal-in {
+    opacity: 1;
+    transform: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
   }
 }
 

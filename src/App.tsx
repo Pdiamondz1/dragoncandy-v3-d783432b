@@ -36,7 +36,7 @@ import { UpdateBanner } from "@/components/UpdateBanner";
 import { PageTransition } from "@/components/PageTransition";
 import type { UserRole } from "@/types/user";
 
-import LandingPage from "./pages/LandingPage";
+const LandingPage = lazy(() => import("./pages/LandingPage"));
 const PitchDeck = lazy(() => import("./pitch/PitchDeck"));
 const ProfileSetup = lazy(() => import("./pages/ProfileSetup"));
 const BusinessDashboard = lazy(() => import("./pages/BusinessDashboard"));
@@ -170,9 +170,11 @@ function AnimatedRoutes() {
     <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Spinner /></div>}>
       <PageTransition locationKey={location.pathname}>
         <Routes location={location}>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/home" element={<LandingPage />} />
-          <Route path="/landing" element={<LandingPage />} />
+          {/* Landing is lazy (kept out of the initial bundle); its fallback is dark so it
+              stays seamless with the index.html dark splash — never a white flash. */}
+          <Route path="/" element={<Suspense fallback={<div className="min-h-screen bg-dc-dark" />}><LandingPage /></Suspense>} />
+          <Route path="/home" element={<Suspense fallback={<div className="min-h-screen bg-dc-dark" />}><LandingPage /></Suspense>} />
+          <Route path="/landing" element={<Suspense fallback={<div className="min-h-screen bg-dc-dark" />}><LandingPage /></Suspense>} />
           {/* Internal host gets the founders-only login (no signup surface) */}
           <Route path="/auth" element={isInternalHost() ? <InternalAuth /> : <AuthPage />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
