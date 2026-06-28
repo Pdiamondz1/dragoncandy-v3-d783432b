@@ -886,3 +886,16 @@ BriefGeneratorPreview as a fast FIRST DRAFT you review+tweak, "works best from y
 guidance set at the point of entry, incl. the preview placeholder). Feature/value intact; the overpromise
 removed. Deferred follow-up: a tiny preview guardrail that gently flags a clearly-irrelevant/empty page
 result. Copy-only; no logic/backend change.
+
+## [2026-06-28] ingest | Anonymous brief generator repair + Layered-v1 hardening
+The landing's free "paste a URL → brief" teaser (BriefGeneratorPreview / generate-anonymous-brief) was
+500ing on every prod call: it delegated to the user-gated donny-campaign-generate with the service-role
+key, which 401s (auths only a user JWT / Donny OAuth). Rewrote generate-anonymous-brief self-contained
+(own fetch+extract + a hardcoded-Haiku call — NOT getModelConfig, which defaults to Sonnet), with an
+HTTP-200 error-discriminator contract (functions.invoke exposes the body only on 2xx, so the old 429
+rate_limited path was dead), Layered-v1 abuse hardening (global daily cap as the real cost ceiling +
+best-effort per-IP + honeypot + hardened SSRF guard) and a thin-page source_quality signal feeding a
+gentle preview note. Spec passed independent review (6 fixes) before build; Codex caught 2 P1s
+(trailing-dot FQDN SSRF bypass; malformed-IPv6 → failed inet insert → cap-accounting bypass), both
+fixed. Deployed via CLI (verify_jwt=true preserved) + live-verified on prod. Pages created:
+[[Anonymous Brief Generator]] (+ See-Also [[Landing Lead Capture]]).
