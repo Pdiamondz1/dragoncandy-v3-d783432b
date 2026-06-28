@@ -1,4 +1,5 @@
 import { Play } from "lucide-react";
+import { useReducedMotion } from "@/lib/motion";
 
 interface VideoSlotProps {
   /** Final video URL (mp4/hls). Drop in to replace the placeholder. */
@@ -6,26 +7,55 @@ interface VideoSlotProps {
   poster?: string;
   /** Label shown on the placeholder (no src). */
   label?: string;
+  /** Ambient autoplay/muted/loop (default). Set false for a click-to-play player. */
+  autoplay?: boolean;
   className?: string;
 }
 
 /**
- * A branded 16:9 video slot. With `src` it renders a native <video>; without one it
- * shows an on-brand placeholder with a keyboard-reachable play affordance, so the
- * creator-hub showreel looks finished before the real reel is dropped in.
+ * A branded 16:9 video slot. With `src` it plays as an ambient hero reel — autoplay,
+ * muted, looped, inline (the premium "creator hub" feel). Under prefers-reduced-motion
+ * (or `autoplay={false}`) it falls back to a click-to-play player showing the poster.
+ * Without `src` it shows an on-brand placeholder so the section looks finished before
+ * the real reel is dropped in.
  */
-export function VideoSlot({ src, poster, label = "Showreel", className = "" }: VideoSlotProps) {
+export function VideoSlot({
+  src,
+  poster,
+  label = "Showreel",
+  autoplay = true,
+  className = "",
+}: VideoSlotProps) {
+  const reduce = useReducedMotion();
+  const ambient = autoplay && !reduce;
+
   return (
     <div className={`relative aspect-video overflow-hidden rounded-3xl ${className}`}>
       {src ? (
-        <video
-          controls
-          preload="none"
-          poster={poster}
-          className="h-full w-full object-cover"
-        >
-          <source src={src} />
-        </video>
+        ambient ? (
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            controls
+            poster={poster}
+            preload="metadata"
+            className="h-full w-full object-cover"
+          >
+            <source src={src} />
+          </video>
+        ) : (
+          // Reduced motion / opt-out: don't autoplay — let the visitor start it.
+          <video
+            controls
+            preload="none"
+            poster={poster}
+            className="h-full w-full object-cover"
+          >
+            <source src={src} />
+          </video>
+        )
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br from-dc-teal/25 via-dc-dark to-dc-pink-accent/25 ring-1 ring-inset ring-white/10">
           <div className="pointer-events-none absolute -right-20 -top-16 h-56 w-56 rounded-full bg-dc-teal/25 blur-3xl animate-float" />
