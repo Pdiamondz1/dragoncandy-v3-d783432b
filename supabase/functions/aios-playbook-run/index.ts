@@ -245,7 +245,7 @@ async function executeReadTool(
       const [campaignsRes, launchedRes, restaurantsRes, creatorsRes, appsRes, postsRes, boostsRes] = await Promise.all([
         admin.from("campaigns").select("id,title,user_id,created_at,updated_at,status").in("status", ["published", "active"]),
         admin.from("campaigns").select("user_id,org_id").in("status", LAUNCHED_STATUSES),
-        admin.from("business_profiles").select("user_id,business_name,instagram_url,website_url,created_at").eq("account_type", "restaurant"),
+        admin.from("business_profiles").select("user_id,business_name,instagram_url,website_url,created_at").eq("account_type", "restaurant").eq("profile_visibility", "public"), // privacy: service role bypasses RLS, so never surface non-public restaurant handles (mirrors the creator filter)
         admin.from("creator_profiles").select("user_id,creator_name,instagram_url,tiktok_url,youtube_url,created_at,skills").eq("profile_visibility", "public"), // privacy: the service role bypasses RLS, so never surface non-public creator handles
         admin.from("campaign_applications").select("creator_id,created_at"),
         admin.from("dragonshare_posts").select("creator_id,created_at"),
@@ -269,7 +269,7 @@ async function executeReadTool(
       let businesses: Json[] = [];
       if (ownerIds.length) {
         const bizRes = await admin.from("business_profiles")
-          .select("user_id,business_name,instagram_url,website_url").in("user_id", ownerIds);
+          .select("user_id,business_name,instagram_url,website_url").in("user_id", ownerIds).eq("profile_visibility", "public"); // privacy: same public-only filter for stalled-campaign owners
         if (bizRes.error) throw bizRes.error;
         businesses = bizRes.data ?? [];
       }
