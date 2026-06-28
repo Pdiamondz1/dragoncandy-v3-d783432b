@@ -26,7 +26,26 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
-### [2026-06-27] Internal Donny profile-read fix (PR #185 → paired docs PR)
+### [2026-06-27] Dezzy content playbooks (Domains 1+2, branch feat/aios-dezzy-content-playbooks)
+- Output: bundled INTO the work PR — `raw/sessions/2026-06-27-dezzy-content-playbooks.md`, new
+  `concepts/dezzy-content-playbooks.md` (compounds on [[Founder Playbooks]]), `index.md`
+  (Concepts + Sources), `log.md` ingest entry, PROJECT_CONTEXT active-workstream bullet, + THIS
+  run-log entry.
+- Happened: pre-merge run (work branch open, off the fresh DC-Dezzy-AI-2 worktree ≈ origin/main).
+  Built two report-only seed playbooks; no new concept duplication (new page is a distinct
+  product-framing concept, cross-linked to the existing engine page [[Founder Playbooks]]).
+  Path-based orphan check: my new page is in index.md. RAG sync + verify-knowledge deferred to
+  post-merge (per [scope]/[rag-sync] — don't hand-sync unmerged wiki content).
+- Worked: [scope] + [runlog-in-pr] + [orphans]-by-path applied. Coordinated non-overlap with the
+  sibling DC-Dezzy-AI worktree: distinct slugs/migration/spec filenames and a NEW concept page
+  rather than editing the shared `analyses/dragoncandy-dame-ai-...spec.md` (which the sibling's
+  knowledge-sync owns).
+- Failed: none. Noted a pre-existing orphan — `analyses/dragoncandy-dame-ai-...spec.md` (imported
+  PR #190) is NOT in index.md; left for the sibling worktree that actively edits it (its territory).
+- Remember: when two worktrees ship sibling slices of one spec, partition the knowledge layer —
+  each owns distinct page filenames; only ONE owns the shared analysis page + its index entry; both
+  appending index.md/log.md is fine (resolvable at merge). (advisory)
+
 - Output: docs PR off origin/main — `raw/sessions/2026-06-27-internal-donny-profile-read.md`,
   extended `concepts/internal-only-users.md` ("The profile-read trap" section + read-side rule),
   `index.md` (Sources), `log.md` ingest entry, PROJECT_CONTEXT active-workstream bullet, + THIS
