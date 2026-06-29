@@ -2,9 +2,11 @@ import { Reveal } from "./Reveal";
 import { MediaSlot } from "./MediaSlot";
 import { VideoSlot } from "./VideoSlot";
 
-// Drop your Veo / Flow MP4 URL here — either a file in public/ (e.g. "/creator-reel.mp4")
-// or a public Supabase Storage / CDN URL. Empty = the branded placeholder shows.
-const CREATOR_REEL = "";
+// Creator showreel — a Veo 3.1 (Google Flow) "Crave" reel: a chef plating a luxurious
+// dessert, teal-and-magenta cinematic lighting. Hosted in the public Supabase `landing`
+// bucket (16:9, ~2MB, H.264). Swap this URL to change the reel; empty = branded placeholder.
+const CREATOR_REEL =
+  "https://zocahiffooqdybdhguqv.supabase.co/storage/v1/object/public/landing/creator-reel-crave.mp4";
 // Optional still frame shown before the reel plays (a Nano Banana Pro 16:9 image or a video frame).
 const CREATOR_REEL_POSTER = "";
 
