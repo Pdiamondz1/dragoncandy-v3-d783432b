@@ -842,6 +842,7 @@ async function executeTool(
         const { data, error } = await client
           .from("internal_docs")
           .select("path, title")
+          .is("archived_at", null)
           .order("title");
         if (error) throw error;
         return { result: { docs: data ?? [], count: (data ?? []).length } };
@@ -851,6 +852,7 @@ async function executeTool(
         .from("internal_docs")
         .select("path, title, content_md")
         .eq("path", args.path)
+        .is("archived_at", null)
         .maybeSingle();
       if (error) throw error;
       if (!data) return { result: { error: `no internal doc at path '${args.path}'` } };

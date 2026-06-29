@@ -934,3 +934,20 @@ timestamp collision with leads_capture) + 2 P2s (business.first_campaign is a CO
 role-prefix resolution). Deployed + data-layer-verified on prod (12 recent milestones, all public, 0
 leak). All six Dezzy domains now have a shipped slice; #6's core is live. Pages updated:
 [[Dezzy Agent (Playbook Suite)]] (Domain 6 section + status + Deferred).
+
+## [2026-06-29] ingest | DC AIOS Strategy Library Management (audit + safe archive + core-file protection)
+Built strategy-library management for the AIOS: the `internal_docs` library (a projection of git docs
+feeding Internal Donny's RAG + Dezzy) gained a reversible **archive**, **Core-File protection**, and a
+**monthly audit**. Migration `20260629120000_…`: `is_core` + archive triple, a seed + `BEFORE INSERT`
+trigger (`search_path=''`), service-role detection RPCs (`dedup_candidate_pairs` cosine via pgvector
+`<=>` + `internal_doc_exact_dupes` via `source_hash`), and admin-gated `internal_doc_archive`
+(core-guarded; deletes the RAG row) / `internal_doc_unarchive`. The keystone: `donny-knowledge-sync` is
+now **archive-aware** (skips the RAG write for an archived doc, self-heals stray rows) so a re-sync
+never resurrects an archived doc, and it computes `source_hash`. Archived docs are hidden from both
+`get_internal_doc` readers; `/internal/strategy` gained an admin Archive/Un-archive UI + Core badge; a
+monthly `strategy-library-audit-agent` files dupe/conflict/orphan/bloat findings to `/internal/findings`
+(report-only). Full prod rollout + keystone smoke passed (advisors clean, 84/84 `source_hash` backfilled,
+archive→re-sync→not-resurrected→un-archive→restored). Pages created: [[Strategy Library Management]]
+(concept) + the raw session source. Pages updated: index.md (Concepts + Sources), DATABASE_SCHEMA
+(`internal_docs` note), PROJECT_CONTEXT (workstream bullet). Founder go-live: create the monthly
+`/schedule` routine.

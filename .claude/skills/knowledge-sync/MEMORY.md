@@ -26,6 +26,25 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-06-29] DC AIOS Strategy Library Management (branch feat/aios-strategy-library-management)
+- Output: bundled INTO the work PR — `raw/sessions/2026-06-29-strategy-library-management.md`, new
+  `concepts/strategy-library-management.md`, `index.md` (Concepts + Sources), `log.md` ingest entry,
+  DATABASE_SCHEMA (`internal_docs` note) + PROJECT_CONTEXT workstream bullet (refreshed in Task 7), + THIS entry.
+- Happened: knowledge-sync run on a **full-rollout** session (not a paired docs PR) — pre-merge on a
+  fresh branch off origin/main (per [scope]). The feature itself made `donny-knowledge-sync` archive-aware,
+  and the keystone smoke ran `sync:internal` twice on prod (which synced the *existing* 84 docs + backfilled
+  `source_hash`); the NEW concept page is on the branch and syncs to the RAG **post-merge** via the hook
+  (per [rag-sync] — don't hand-sync unmerged wiki content). PATH-based [orphans] check: new page cataloged.
+- Worked: [scope] + [runlog-in-pr] + [orphans]-by-path. New concept page compounds onto [[AIOS Internal Shell]]
+  / [[Founder Playbooks]] / [[Self-Improving App]] rather than duplicating. Captured the durable traps
+  (trigger `search_path` advisor; is_core-survives-resync rests on the SET-clause omission not the trigger;
+  full-sync-doubles-as-source_hash-backfill; service-role-RPC grant pattern) as concept knowledge.
+- Failed: none. (verify-knowledge close-the-loop RAG check is inherently post-merge for a pre-merge run.)
+- Remember: **before writing any wikilink, grep `index.md` for the EXACT bracketed display name** — concept
+  slugs ≠ guessed titles ("AIOS Internal **Shell**" not "Dashboard"; "**Knowledge-Sync Automation**" not
+  "knowledge-sync"; "Patch-Based Corrections" not "Donny Gated Corrections"). Saved 4 broken-link lint hits
+  this run. (advisory)
+
 ### [2026-06-28] Dezzy milestone-celebration playbook — Domain 6 core (branch feat/dezzy-milestone-celebrations)
 - Output: bundled INTO the work PR — `raw/sessions/2026-06-28-dezzy-milestone-celebrations.md`, extended
   `concepts/dezzy-agent-playbook-suite.md` (Domain 6 section un-gated + status + Deferred + frontmatter
