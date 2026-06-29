@@ -90,12 +90,14 @@ const InternalStrategy = () => {
 
       <div className="mb-4 inline-flex rounded-full border border-dc-teal/25 bg-white/[0.04] p-1 text-sm">
         <button
+          aria-pressed={!showArchived}
           onClick={() => switchMode(false)}
           className={`rounded-full px-4 py-1.5 transition-colors ${!showArchived ? 'bg-dc-teal/20 font-semibold text-dc-teal' : 'text-white/70 hover:text-white'}`}
         >
           Active
         </button>
         <button
+          aria-pressed={showArchived}
           onClick={() => switchMode(true)}
           className={`rounded-full px-4 py-1.5 transition-colors ${showArchived ? 'bg-dc-teal/20 font-semibold text-dc-teal' : 'text-white/70 hover:text-white'}`}
         >
@@ -200,7 +202,13 @@ const InternalStrategy = () => {
         </div>
       )}
 
-      <AlertDialog open={archiveOpen} onOpenChange={setArchiveOpen}>
+      <AlertDialog
+        open={archiveOpen}
+        onOpenChange={(open) => {
+          setArchiveOpen(open);
+          if (!open) setReason(''); // clear on any dismiss (Esc / overlay / Cancel)
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Archive this document?</AlertDialogTitle>
@@ -215,7 +223,7 @@ const InternalStrategy = () => {
             onChange={(e) => setReason(e.target.value)}
           />
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setReason('')}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={onArchive} disabled={archiveDoc.isPending}>
               {archiveDoc.isPending ? 'Archiving…' : 'Archive'}
             </AlertDialogAction>
