@@ -762,6 +762,26 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   scope: Lovable's *editor* crash + slow deploys are partly their platform; this removes the stale
   shell + cuts renderer load but can't fix Lovable's infra. The "less generic" redesign is a separate
   effort. Concept: `docs/wiki/concepts/landing-shell-and-performance.md`.
+- DragonCandy AIOS — Strategy-library management (audit + safe archive + core-file protection) —
+  **built (branch `feat/aios-strategy-library-management`, 2026-06-29; migration apply + edge-fn
+  deploys + routine go-live founder-gated).** The strategy library (`internal_docs`, surfaced at
+  `/internal/strategy`) is a projection of git docs that feeds Internal Donny's RAG (`donny_knowledge`)
+  + Dezzy, and it had **no audit, dedup, or delete** — and three traps made naive deletion unsafe (the
+  sync is insert/update-only so a DB delete silently re-syncs; removing the git file orphans the DB
+  rows; no similarity logic existed). Added: an **`is_core`** Core-File protection flag (seeded on the
+  ~21 top-level `docs/*.md`; a `BEFORE INSERT` trigger keeps future top-level docs protected) + a
+  reversible **soft-archive** (`archived_at`/`archived_by`/`archive_reason`); two **service-role**
+  detection RPCs (`dedup_candidate_pairs` cosine over the existing pgvector embeddings +
+  `internal_doc_exact_dupes` via the now-populated `source_hash`) and two **admin-gated** archive RPCs
+  (`internal_doc_archive` refuses a core doc + removes the `donny_knowledge` row; `internal_doc_unarchive`);
+  an **archive-aware** `donny-knowledge-sync` so a re-sync never resurrects an archived doc (the
+  keystone); archived docs hidden from Donny + Dezzy `get_internal_doc`; an admin Archive/Un-archive UI
+  on `/internal/strategy` (Core docs show a protected badge); and a **monthly** `strategy-library-audit-agent`
+  cloud routine filing dupe/conflict/orphan/bloat findings to `/internal/findings` (report-only — the
+  founder archives). Invariants held: Core Files can never be archived (enforced in the RPC body),
+  archive is reversible, the audit only reports. Founder go-live: apply the migration, deploy the 3 edge
+  fns (`donny-knowledge-sync`, `aios-playbook-run`, `donny-chat`), create the routine via `/schedule`.
+  Spec: `docs/superpowers/specs/2026-06-29-aios-strategy-library-management-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase

@@ -104,6 +104,18 @@
 | `donny_oauth_tokens` | OAuth access/refresh tokens |
 | `donny_scheduled_posts` | Cross-platform posting schedule (auto cross-scheduling). Per-platform caption/media/hashtags, `scheduled_at`, status lifecycle, and `ai_suggested_time`/`ai_reasoning` for Donny-proposed slots. |
 
+> **Strategy library (`internal_docs`)** — the AIOS strategy/wiki docs surfaced at `/internal/strategy`;
+> a projection of git files synced by `donny-knowledge-sync` and the source of Donny's internal RAG
+> (`donny_knowledge`, scope `internal`) + Dezzy's `get_internal_doc`. Columns: `path` (unique key),
+> `title`, `content_md`, `tags`, `source_hash` (sha256 of `content_md`, for exact-dup detection), plus
+> **`is_core`** (Core-File protection — seeded true on non-`docs/wiki/%` paths; a `BEFORE INSERT`
+> trigger keeps future top-level docs protected) and the reversible-archive triple `archived_at` /
+> `archived_by` / `archive_reason`. Internal-only `SELECT` RLS; all mutations via SECURITY DEFINER
+> RPCs: `internal_doc_archive(path,reason)` / `internal_doc_unarchive(path)` (admin-gated — archive
+> refuses a core doc + deletes the `donny_knowledge` row, and the archive-aware sync keeps it out of
+> the RAG) and `dedup_candidate_pairs(threshold)` / `internal_doc_exact_dupes()` (service-role,
+> audit-only, consumed by the monthly `strategy-library-audit-agent`).
+
 ## DragonShare
 
 | Table | Purpose |
