@@ -119,9 +119,11 @@ done" validator primitive).
 
 **Pre-work — verify the join key (blocking).** Before relying on `metadata->>'path'`, confirm in prod
 (`execute_sql`) that for internal-scoped `donny_knowledge` rows `metadata->>'path'` is populated and
-equals the corresponding `internal_docs.path`. If it is **not** reliably populated, the fallback is to
-match on `metadata->>'source_id'` (the sync's actual upsert key) — adjust Pieces 2 & 3 accordingly.
-This key is load-bearing for both dedup pairing and archive cleanup.
+equals the corresponding `internal_docs.path` (the sync sets `metadata.path = <repo file path>`, so it
+should be). If it is **not** populated, do **not** swap to `metadata->>'source_id'` (a `wiki:<slug>`
+string, not a doc path — it can't match the archive RPC's `p_path`); instead first patch
+`sync-internal-docs.mjs` to include `path` in each page's metadata and re-sync. This key is
+load-bearing for both dedup pairing and archive cleanup.
 
 **RPCs** (same migration), both `SECURITY DEFINER` + in-body admin gate (`has_role(auth.uid(),'admin')`)
 + `revoke … from public, anon; grant execute … to authenticated` (browser-called from the admin UI
@@ -165,8 +167,10 @@ branch:
 `src/pages/internal/InternalStrategy.tsx` + a new `src/hooks/internal/useArchiveDoc.ts`
 (`useArchiveDoc` + `useUnarchiveDoc` mutations calling the RPCs; on success invalidate
 `['aios','internal-docs']` and `['aios','internal-doc']`). Existing dark "ops-deck" theme +
-`PageContainer`/`PageHeader` primitives; the route is already `tier="admin"`, and controls additionally
-check `useInternalAccess().isAdmin`.
+`PageContainer`/`PageHeader` primitives. **`/internal/strategy` is mounted at the default
+`tier="stakeholder"`** (read-only stakeholders can view it), so the mutating affordances (Archive /
+Un-archive) are gated on `useInternalAccess().isAdmin` in the component — the server-side RPC admin
+gate is the real enforcement; this just hides controls a stakeholder can't use.
 
 - Core docs render a **"Core"** badge; the Archive button is **absent/disabled** on them.
 - Non-core docs get an **Archive** button (confirmation dialog with an optional reason). Use a shadcn

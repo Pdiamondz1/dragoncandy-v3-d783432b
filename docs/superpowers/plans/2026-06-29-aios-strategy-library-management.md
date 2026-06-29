@@ -390,8 +390,6 @@ Replace the whole `for (let i = 0; i < pages.length; i++) { … }` block (curren
   }
 ```
 
-> If Task 0 chose `metadata->>'source_id'` as the join key, change the self-heal `delete` filter here accordingly (it already filters on `metadata->>source_id`, so usually no change).
-
 - [ ] **Step 7: Widen the `results` action union + report `skipped`**
 
 At the `results` declaration (was line 99), add `"skipped-archived"`:
