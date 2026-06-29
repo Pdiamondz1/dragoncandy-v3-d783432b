@@ -41,7 +41,7 @@ Expected: `with_path_key` ≈ `internal_rows`, and `joinable_to_docs` ≈ `inter
 
 - [ ] **Step 2: Decide the join key**
 
-If `with_path_key` ≈ `internal_rows` → use `metadata->>'path'` everywhere (the plan's default). If it is **not** populated, switch every `metadata->>'path'` in Task 1's `dedup_candidate_pairs` and Task 1's `internal_doc_archive` (and Task 2's self-heal delete) to the fallback `metadata->>'source_id'`, and re-run this probe with `'source_id'`. Record the chosen key in the migration's header comment. **No commit** (read-only probe).
+If `with_path_key` ≈ `internal_rows` → use `metadata->>'path'` everywhere (the plan's default; `sync-internal-docs.mjs` sets `metadata.path = <repo file path>`, so this is the expected outcome). If it is **not** populated, do **not** swap to `metadata->>'source_id'` — that is a `wiki:<slug>` string, not a doc path, so it can't match the archive RPC's `p_path` argument. Instead, first patch `sync-internal-docs.mjs` to include `path` in each page's `metadata` and re-sync, then re-run this probe. Record the confirmed key in the migration's header comment. **No commit** (read-only probe).
 
 ---
 
@@ -472,7 +472,7 @@ cd "C:/GIT/dragoncandy-v3-d783432b/.claude/worktrees/DC-2" && git add supabase/f
 
 - [ ] **Step 1: Add columns to the `internal_docs` type (types.ts, ~line 4028)**
 
-In `internal_docs.Row` add (keep alphabetical to match the generator):
+In `internal_docs.Row` add (member order doesn't affect typecheck; alphabetical just matches the generator's style):
 
 ```ts
           archive_reason: string | null
@@ -513,7 +513,7 @@ Add the same keys to `internal_docs.Insert` and `internal_docs.Update` as option
 - [ ] **Step 3: Update `useInternalDocs.ts`** (full new file)
 
 ```ts
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface InternalDocSummary {
@@ -640,7 +640,9 @@ cd "C:/GIT/dragoncandy-v3-d783432b/.claude/worktrees/DC-2" && git add src/integr
 **Files:**
 - Modify: `src/pages/internal/InternalStrategy.tsx`
 
-The route is already `tier="admin"`. Add: an Active/Archived toggle; a "Core" badge on protected docs; an Archive button (AlertDialog + optional reason) on non-core active docs; an Un-archive button on archived docs.
+**Note:** `/internal/strategy` is mounted under the **default `tier="stakeholder"`** `InternalRoute` (App.tsx) — read-only stakeholders can view it. So the mutating affordances (Archive / Un-archive) must be **gated on `useInternalAccess().isAdmin`** in the component (the server-side RPC admin gate is the real enforcement; this just hides controls a stakeholder can't use). The read-only "Core" badge and the Active/Archived view toggle are fine for everyone.
+
+Add: an Active/Archived toggle; a "Core" badge on protected docs; an **admin-only** Archive button (AlertDialog + optional reason) on non-core active docs; an **admin-only** Un-archive button on archived docs.
 
 - [ ] **Step 1: Replace `InternalStrategy.tsx` with the archive-aware version**
 
@@ -649,6 +651,7 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useInternalDocs, useInternalDoc } from '@/hooks/internal/useInternalDocs';
 import { useArchiveDoc, useUnarchiveDoc } from '@/hooks/internal/useArchiveDoc';
+import { useInternalAccess } from '@/hooks/internal/useInternalAccess';
 import { ErrorCard } from '@/components/internal/stats';
 import { PageContainer, PageHeader } from '@/components/internal/layout';
 import { ExportToDocButton } from '@/components/internal/ExportToDocButton';
@@ -673,6 +676,7 @@ const InternalStrategy = () => {
   const [reason, setReason] = useState('');
   const archiveDoc = useArchiveDoc();
   const unarchiveDoc = useUnarchiveDoc();
+  const { isAdmin } = useInternalAccess();
 
   const filtered = useMemo(() => {
     const list = docs.data ?? [];
@@ -810,7 +814,7 @@ const InternalStrategy = () => {
                       <span className="rounded-full bg-dc-pink/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-dc-pink">
                         Core · protected
                       </span>
-                    ) : doc.data.archived_at ? (
+                    ) : isAdmin && doc.data.archived_at ? (
                       <Button
                         variant="outline"
                         size="sm"
@@ -819,7 +823,7 @@ const InternalStrategy = () => {
                       >
                         {unarchiveDoc.isPending ? 'Un-archiving…' : 'Un-archive'}
                       </Button>
-                    ) : (
+                    ) : isAdmin ? (
                       <Button
                         variant="outline"
                         size="sm"
@@ -828,7 +832,7 @@ const InternalStrategy = () => {
                       >
                         Archive
                       </Button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
                 {doc.data.archived_at && (
@@ -932,8 +936,13 @@ https://zocahiffooqdybdhguqv.supabase.co/rest/v1 (headers `apikey` + `Authorizat
 2. EXACT DUPLICATES: POST `/rpc/internal_doc_exact_dupes` (no body). Each row is a `source_hash`
    with the colliding `paths` and `n`.
 
-3. STALENESS + BLOAT: GET `/internal_docs?select=path,title,is_core,updated_at,archived_at&archived_at=is.null`.
-   - STALE: a NON-core doc (`is_core=false`) whose `updated_at` is older than ~6 months.
+3. ORPHANS + BLOAT: GET `/internal_docs?select=path,title,is_core,updated_at,archived_at&archived_at=is.null`.
+   - ORPHAN (the real staleness signal): the sync re-stamps `updated_at` on EVERY run (its upsert
+     always fires the `BEFORE UPDATE` trigger), so a fresh `updated_at` ≈ "last synced", not "last
+     edited". Therefore a NON-core doc (`is_core=false`) whose `updated_at` is older than ~2 months
+     almost certainly **stopped being synced** — its source file was removed from the repo but the DB
+     row lingers (the sync never deletes). Flag it as a probable orphan to archive. (Do not flag core
+     docs — they are intentionally long-lived.)
    - BLOAT: report the total non-archived doc count and flag growth if it is materially higher than
      the last run (read prior `strategy-bloat:library` finding occurrences/evidence to compare).
 
