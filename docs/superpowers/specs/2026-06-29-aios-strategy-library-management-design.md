@@ -74,12 +74,15 @@ One migration `supabase/migrations/20260629120000_internal_docs_archive_audit.sq
 - **Seed (existing rows):** `UPDATE public.internal_docs SET is_core = true WHERE path NOT LIKE
   'docs/wiki/%';`
 - **`is_core` for future rows — `BEFORE INSERT` trigger** `internal_docs_set_is_core`:
-  `NEW.is_core := (NEW.path NOT LIKE 'docs/wiki/%')`. It fires **only on INSERT**, so a newly-added
-  top-level `docs/*.md` is born `is_core=true` automatically (closing the "new core file inserts as
-  archivable" gap), while an UPDATE (the re-sync upsert hitting a path conflict) **never touches**
-  `is_core` — so a wiki page an admin later promotes to `is_core=true` survives re-sync. The sync
-  upsert payload therefore must **not** include `is_core` (the trigger owns it on insert; UPDATE leaves
-  it alone). Seed + trigger together cover every row, present and future.
+  `NEW.is_core := (NEW.path NOT LIKE 'docs/wiki/%')`, so a newly-added top-level `docs/*.md` is born
+  `is_core=true` automatically (closing the "new core file inserts as archivable" gap). **Promotion
+  survives re-sync because the upsert's `DO UPDATE SET` clause must omit `is_core`** — *not* because the
+  trigger "skips" UPDATE. (Nuance: in `INSERT … ON CONFLICT DO UPDATE`, a `BEFORE INSERT` trigger still
+  fires on the proposed tuple; its `is_core` write is simply discarded when the conflict resolves to
+  UPDATE and the `SET` clause leaves `is_core` alone.) The Supabase JS `.upsert()` only writes payload
+  columns, so omitting `is_core` from the payload is sufficient — **but a hand-written SQL sync must
+  likewise never `SET is_core = EXCLUDED.is_core`**, or it would clobber a manual wiki-page promotion.
+  Seed + trigger together cover every row, present and future.
 - **Index:** partial index `… (path) WHERE archived_at IS NULL` is optional (corpus is ~80 rows; skip
   unless trivially cheap). No RLS change — the existing internal-only `SELECT` policy stays; all
   mutations go through `SECURITY DEFINER` RPCs below.
@@ -141,9 +144,11 @@ branch:
    set, skip the `donny_knowledge` insert/update. (Read `archived_at` in the same upsert via
    `.upsert(...).select('archived_at')`, or a small follow-up select.)
 2. **`source_hash`:** compute `sha256(content_md)` (hex) and include it in the `internal_docs` upsert
-   payload, so exact-dup detection has data. (Deno `crypto.subtle.digest`.) **Do not** add `is_core` to
-   the payload — the Piece 1 `BEFORE INSERT` trigger owns it (so re-sync UPDATEs never clobber a manual
-   promotion).
+   payload, so exact-dup detection has data. (Deno `crypto.subtle.digest`.) **The upsert must carry
+   only its content columns (`path`, `title`, `content_md`, `tags`, `source_hash`) — never `is_core`
+   nor any `archived_*` column.** Omitting them preserves a manual `is_core` promotion *and* the
+   archive stamp across re-sync (the keystone read-back of `archived_at` relies on the upsert not
+   overwriting it). Same caution for a hand-written SQL `DO UPDATE SET`.
 
 ## Piece 4 — hide archived docs from all readers
 
@@ -211,7 +216,8 @@ routine via `/schedule`.
 1. `npm run build` + `npm run typecheck` + `npm run test` (worktree cwd) green.
 2. **Verify the join key** in prod (`execute_sql`) per Piece 3 pre-work *before* finalizing the RPCs.
 3. Apply the migration to prod (Supabase MCP `apply_migration`) → `get_advisors(security)` clean for
-   the new `SECURITY DEFINER` functions (anon/public revoked).
+   the new `SECURITY DEFINER` functions (detection RPCs: public/anon/authenticated revoked, service_role
+   granted; archive RPCs: public/anon revoked, authenticated granted).
 4. Confirm seed: `SELECT count(*) FROM internal_docs WHERE is_core` ≈ 21; every `docs/wiki/%` row is
    non-core.
 5. Deploy `donny-knowledge-sync` via Supabase CLI (`--no-verify-jwt` preserved; bundles `../_shared/*`).
