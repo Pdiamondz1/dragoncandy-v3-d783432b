@@ -201,12 +201,14 @@ async function executeReadTool(
   switch (name) {
     case "get_internal_doc": {
       if (!args.path || typeof args.path !== "string") {
-        const { data, error } = await userClient.from("internal_docs").select("path, title").order("title");
+        const { data, error } = await userClient.from("internal_docs")
+          .select("path, title").is("archived_at", null).order("title");
         if (error) throw error;
         return { docs: data ?? [], count: (data ?? []).length };
       }
       const { data, error } = await userClient
-        .from("internal_docs").select("path, title, content_md").eq("path", args.path).maybeSingle();
+        .from("internal_docs").select("path, title, content_md")
+        .eq("path", args.path).is("archived_at", null).maybeSingle();
       if (error) throw error;
       return data ?? { error: `no internal doc at path '${args.path}'` };
     }
