@@ -132,12 +132,16 @@ serve(async (req) => {
           .select("archived_at")
           .maybeSingle();
         if (docErr) {
+          // Fail-open: on an upsert error we leave `archived = false` and let the
+          // RAG write proceed (prior behavior). If this doc was archived, a stray
+          // RAG row may briefly reappear — self-healed on the next successful sync.
           results.push({ source_id: `${page.source_id} (internal_docs)`, action: "error", error: docErr.message });
         } else {
           archived = !!docRow?.archived_at;
         }
       } else {
         // No full_content: still honor an existing archive flag for this path.
+        // Same fail-open as above — a select error yields archived=false.
         const { data: docRow } = await supabase
           .from("internal_docs").select("archived_at").eq("path", docPath).maybeSingle();
         archived = !!docRow?.archived_at;
