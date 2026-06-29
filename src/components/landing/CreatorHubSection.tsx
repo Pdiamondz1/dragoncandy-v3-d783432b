@@ -1,21 +1,16 @@
 import { Reveal } from "./Reveal";
-import { MediaSlot } from "./MediaSlot";
 import { VideoSlot } from "./VideoSlot";
 
-// Creator showreel — a Veo 3.1 (Google Flow) "Crave" reel: a chef plating a luxurious
-// dessert, teal-and-magenta cinematic lighting. Hosted in the public Supabase `landing`
-// bucket (16:9, ~2MB, H.264). Swap this URL to change the reel; empty = branded placeholder.
-const CREATOR_REEL =
-  "https://zocahiffooqdybdhguqv.supabase.co/storage/v1/object/public/landing/creator-reel-crave.mp4";
-// Optional still frame shown before the reel plays (a Nano Banana Pro 16:9 image or a video frame).
-const CREATOR_REEL_POSTER = "";
-
-const gallery = [
-  { label: "On set", ratio: "square" as const },
-  { label: "Behind the scenes", ratio: "square" as const },
-  { label: "Community", ratio: "square" as const },
-  { label: "Your work", ratio: "square" as const },
-];
+// Creator showreels — Veo 3.1 (Google Flow) reels in the public Supabase `landing` bucket
+// (16:9, H.264, fast-start). Swap a URL to change a reel; empty = branded placeholder.
+const BUCKET = "https://zocahiffooqdybdhguqv.supabase.co/storage/v1/object/public/landing";
+// "Crave" — a chef plating a luxurious dessert, teal-and-magenta lighting. Autoplays (ambient).
+const REEL_CRAVE = `${BUCKET}/creator-reel-crave.mp4`;
+const REEL_CRAVE_POSTER = `${BUCKET}/poster-crave.jpg`;
+// "The Craft" — a creator filming a dish on a gimbal. Click-to-play, so only one reel
+// autoplays per section (keeps the landing light on mobile).
+const REEL_CRAFT = `${BUCKET}/creator-reel-craft.mp4`;
+const REEL_CRAFT_POSTER = `${BUCKET}/poster-craft.jpg`;
 
 export function CreatorHubSection() {
   return (
@@ -38,21 +33,18 @@ export function CreatorHubSection() {
           </p>
         </Reveal>
 
-        <Reveal delay={0.1}>
-          <VideoSlot
-            src={CREATOR_REEL || undefined}
-            poster={CREATOR_REEL_POSTER || undefined}
-            label="Creator showreel"
-            className="mt-12"
-          />
-        </Reveal>
-
-        <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {gallery.map((item, i) => (
-            <Reveal key={item.label} delay={i * 0.06}>
-              <MediaSlot ratio={item.ratio} alt={`Creator hub — ${item.label}`} label={item.label} />
-            </Reveal>
-          ))}
+        <div className="mt-12 grid gap-4 lg:grid-cols-2">
+          <Reveal>
+            <VideoSlot src={REEL_CRAVE} poster={REEL_CRAVE_POSTER} label="Creator showreel" />
+          </Reveal>
+          <Reveal delay={0.1}>
+            <VideoSlot
+              src={REEL_CRAFT}
+              poster={REEL_CRAFT_POSTER}
+              label="On the shoot"
+              autoplay={false}
+            />
+          </Reveal>
         </div>
       </div>
     </section>
