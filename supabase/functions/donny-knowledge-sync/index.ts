@@ -22,6 +22,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { logEmbeddingCost } from "../_shared/cost-ledger.ts";
 import { isAuthorizedIngest } from "../_shared/ingest-auth.ts";
+import { sha256Hex } from "./hash.ts";
 
 const EMBED_MODEL = "text-embedding-3-small";
 const SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000000"; // system sync, no end user
@@ -96,9 +97,62 @@ serve(async (req) => {
   );
 
   // 2. Idempotent upsert per page, keyed on metadata.source_id.
-  const results: { source_id: string; action: "inserted" | "updated" | "error"; error?: string }[] = [];
+  const results: { source_id: string; action: "inserted" | "updated" | "error" | "skipped-archived"; error?: string }[] = [];
   for (let i = 0; i < pages.length; i++) {
     const page = pages[i];
+
+    // Internal pages feed the strategy viewer (internal_docs) AND carry the
+    // archive flag that gates the RAG write below.
+    let archived = false;
+    if (page.scope === "internal") {
+      const meta = page.metadata ?? {};
+      const docPath = typeof meta.path === "string" && meta.path ? meta.path : page.source_id;
+
+      if (page.full_content) {
+        const tagsRaw = meta.tags;
+        const tags = Array.isArray(tagsRaw)
+          ? tagsRaw.map(String)
+          : typeof tagsRaw === "string" && tagsRaw
+            ? tagsRaw.split(",").map((t: string) => t.trim()).filter(Boolean)
+            : [];
+        // Upsert ONLY content columns — never is_core or archived_* (the trigger
+        // owns is_core; omission preserves a manual promotion + the archive stamp).
+        const { data: docRow, error: docErr } = await supabase
+          .from("internal_docs")
+          .upsert(
+            {
+              path: docPath,
+              title: typeof meta.title === "string" && meta.title ? meta.title : page.source_id,
+              content_md: page.full_content,
+              tags,
+              source_hash: await sha256Hex(page.full_content),
+            },
+            { onConflict: "path" },
+          )
+          .select("archived_at")
+          .maybeSingle();
+        if (docErr) {
+          results.push({ source_id: `${page.source_id} (internal_docs)`, action: "error", error: docErr.message });
+        } else {
+          archived = !!docRow?.archived_at;
+        }
+      } else {
+        // No full_content: still honor an existing archive flag for this path.
+        const { data: docRow } = await supabase
+          .from("internal_docs").select("archived_at").eq("path", docPath).maybeSingle();
+        archived = !!docRow?.archived_at;
+      }
+    }
+
+    // KEYSTONE: archived internal docs stay OUT of the RAG. Self-heal any stray
+    // row, then skip the embed/upsert so re-sync never resurrects the doc.
+    if (archived) {
+      await supabase.from("donny_knowledge").delete()
+        .eq("source_type", "wiki").eq("metadata->>source_id", page.source_id);
+      results.push({ source_id: page.source_id, action: "skipped-archived" });
+      continue;
+    }
+
     const row = {
       content: page.content,
       embedding: embeddings[i],
@@ -134,30 +188,6 @@ serve(async (req) => {
           : { source_id: page.source_id, action: "inserted" },
       );
     }
-
-    // Internal pages also feed the strategy viewer with full markdown.
-    if (page.scope === "internal" && page.full_content) {
-      const meta = page.metadata ?? {};
-      const docPath = typeof meta.path === "string" && meta.path ? meta.path : page.source_id;
-      const tagsRaw = meta.tags;
-      const tags = Array.isArray(tagsRaw)
-        ? tagsRaw.map(String)
-        : typeof tagsRaw === "string" && tagsRaw
-          ? tagsRaw.split(",").map((t: string) => t.trim()).filter(Boolean)
-          : [];
-      const { error: docErr } = await supabase.from("internal_docs").upsert(
-        {
-          path: docPath,
-          title: typeof meta.title === "string" && meta.title ? meta.title : page.source_id,
-          content_md: page.full_content,
-          tags,
-        },
-        { onConflict: "path" },
-      );
-      if (docErr) {
-        results.push({ source_id: `${page.source_id} (internal_docs)`, action: "error", error: docErr.message });
-      }
-    }
   }
 
   // 3. Best-effort cost logging (~chars/4 token estimate). Never blocks the sync.
@@ -171,6 +201,7 @@ serve(async (req) => {
 
   const inserted = results.filter((r) => r.action === "inserted").length;
   const updated = results.filter((r) => r.action === "updated").length;
+  const skipped = results.filter((r) => r.action === "skipped-archived").length;
   const errors = results.filter((r) => r.action === "error").length;
-  return json({ synced: inserted + updated, inserted, updated, errors, results });
+  return json({ synced: inserted + updated, inserted, updated, skipped, errors, results });
 });
