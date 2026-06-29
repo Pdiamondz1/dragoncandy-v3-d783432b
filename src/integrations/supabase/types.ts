@@ -4027,9 +4027,13 @@ export type Database = {
       }
       internal_docs: {
         Row: {
+          archive_reason: string | null
+          archived_at: string | null
+          archived_by: string | null
           content_md: string
           created_at: string
           id: string
+          is_core: boolean
           path: string
           source_hash: string | null
           tags: string[]
@@ -4037,9 +4041,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archive_reason?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           content_md: string
           created_at?: string
           id?: string
+          is_core?: boolean
           path: string
           source_hash?: string | null
           tags?: string[]
@@ -4047,9 +4055,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archive_reason?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           content_md?: string
           created_at?: string
           id?: string
+          is_core?: boolean
           path?: string
           source_hash?: string | null
           tags?: string[]
@@ -6100,6 +6112,28 @@ export type Database = {
       aios_corrections_apply: {
         Args: { p_id: string; p_decision: string }
         Returns: Json
+      }
+      internal_doc_archive: {
+        Args: { p_path: string; p_reason?: string }
+        Returns: Json
+      }
+      internal_doc_unarchive: {
+        Args: { p_path: string }
+        Returns: Json
+      }
+      dedup_candidate_pairs: {
+        Args: { p_threshold?: number }
+        Returns: {
+          path_a: string
+          title_a: string
+          path_b: string
+          title_b: string
+          similarity: number
+        }[]
+      }
+      internal_doc_exact_dupes: {
+        Args: Record<PropertyKey, never>
+        Returns: { source_hash: string; paths: string[]; n: number }[]
       }
       aios_cost_stats: { Args: never; Returns: Json }
       aios_platform_stats: { Args: never; Returns: Json }
