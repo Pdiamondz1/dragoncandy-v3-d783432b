@@ -71,33 +71,43 @@ One migration `supabase/migrations/20260629120000_internal_docs_archive_audit.sq
 - **Columns** on `internal_docs`: `is_core boolean NOT NULL DEFAULT false`, `archived_at timestamptz`,
   `archived_by uuid REFERENCES auth.users(id)`, `archive_reason text`. (`source_hash` already exists —
   no add; Piece 3 starts populating it.)
-- **Seed:** `UPDATE public.internal_docs SET is_core = true WHERE path NOT LIKE 'docs/wiki/%';`
+- **Seed (existing rows):** `UPDATE public.internal_docs SET is_core = true WHERE path NOT LIKE
+  'docs/wiki/%';`
+- **`is_core` for future rows — `BEFORE INSERT` trigger** `internal_docs_set_is_core`:
+  `NEW.is_core := (NEW.path NOT LIKE 'docs/wiki/%')`. It fires **only on INSERT**, so a newly-added
+  top-level `docs/*.md` is born `is_core=true` automatically (closing the "new core file inserts as
+  archivable" gap), while an UPDATE (the re-sync upsert hitting a path conflict) **never touches**
+  `is_core` — so a wiki page an admin later promotes to `is_core=true` survives re-sync. The sync
+  upsert payload therefore must **not** include `is_core` (the trigger owns it on insert; UPDATE leaves
+  it alone). Seed + trigger together cover every row, present and future.
 - **Index:** partial index `… (path) WHERE archived_at IS NULL` is optional (corpus is ~80 rows; skip
   unless trivially cheap). No RLS change — the existing internal-only `SELECT` policy stays; all
   mutations go through `SECURITY DEFINER` RPCs below.
 
-## Piece 2 — detection RPC `dedup_candidate_pairs(threshold)`
+## Piece 2 — detection RPCs `dedup_candidate_pairs` + `internal_doc_exact_dupes`
 
-In the same migration. `SECURITY DEFINER`, `SET search_path = public`, **admin-gated in body**
-(`if not has_role(auth.uid(),'admin') then raise exception 'forbidden: admin only'`). `revoke all …
-from public, anon; grant execute … to authenticated;` (the anon-revoke footgun — Supabase grants
-EXECUTE to anon/authenticated by default).
+Two functions in the same migration, both `SECURITY DEFINER`, `SET search_path = public`, and
+**service-role-only** — they are consumed **only** by the Piece 6 audit routine (a service-role caller
+via `AIOS_INGEST_SECRET`), never by the browser, so they mirror the established `dre_pending_events()`
+pattern exactly: `revoke all on function … from public, anon, authenticated; grant execute on function
+… to service_role;`. **No in-body `has_role(auth.uid(),'admin')` gate** — service_role has a null
+`auth.uid()`, so an admin check would reject the routine; the `service_role`-only EXECUTE grant *is*
+the gate. (Contrast the Piece 3 archive RPCs, which are browser-called and therefore correctly
+admin-gated. Earlier draft gated `dedup_candidate_pairs` to admin — that was wrong; it would block its
+own and only caller.)
 
-Returns near-duplicate + exact-duplicate signal over the **internal** corpus:
-
-- **Near-dupes (cosine):** self-join `donny_knowledge a JOIN donny_knowledge b` where
-  `a.scope='internal' AND b.scope='internal' AND a.id < b.id` and
-  `(1 - (a.embedding <=> b.embedding)) >= threshold`. Join each side to `internal_docs` on the
-  verified key (Piece 3 — `metadata->>'path' = internal_docs.path`) to return
-  `(path_a, title_a, path_b, title_b, similarity)`, excluding rows where either doc is archived
-  (`archived_at IS NOT NULL`). `<=>` is pgvector cosine distance. ~80 internal rows → the pairwise
-  scan is trivial.
-- **Exact dupes:** a second result class (or companion function `internal_doc_exact_dupes()`) grouping
-  `internal_docs` by `source_hash` `HAVING count(*) > 1` (non-null hash, non-archived) → returns the
-  colliding path groups.
-- Signature: `dedup_candidate_pairs(p_threshold double precision DEFAULT 0.9) RETURNS TABLE(path_a
-  text, title_a text, path_b text, title_b text, similarity double precision)`. Default threshold
-  tuned during verification (Piece 6 sanity check).
+- **`dedup_candidate_pairs(p_threshold double precision DEFAULT 0.9) RETURNS TABLE(path_a text, title_a
+  text, path_b text, title_b text, similarity double precision)`** — near-dupes via cosine: self-join
+  `donny_knowledge a JOIN donny_knowledge b` where `a.scope='internal' AND b.scope='internal' AND
+  a.id < b.id` and `(1 - (a.embedding <=> b.embedding)) >= p_threshold`. Join each side to
+  `internal_docs` on the verified key (Piece 3 — `metadata->>'path' = internal_docs.path`), excluding
+  archived docs (`archived_at IS NOT NULL`), returning the tuple above. `<=>` is pgvector cosine
+  distance. ~80 internal rows → the pairwise scan is trivial. Default threshold tuned during
+  verification (Piece 6).
+- **`internal_doc_exact_dupes() RETURNS TABLE(source_hash text, paths text[], n integer)`** — exact
+  collisions: group non-archived `internal_docs` by `source_hash` (non-null) `HAVING count(*) > 1`,
+  returning each colliding hash with its `array_agg(path)` and count. A named companion (its group
+  shape differs from the near-dupe tuple) keeps both return types clean.
 
 This is the deterministic engine — the audit routine never does fuzzy math itself (the "a rule judges
 done" validator primitive).
@@ -110,7 +120,9 @@ equals the corresponding `internal_docs.path`. If it is **not** reliably populat
 match on `metadata->>'source_id'` (the sync's actual upsert key) — adjust Pieces 2 & 3 accordingly.
 This key is load-bearing for both dedup pairing and archive cleanup.
 
-**RPCs** (same migration), both `SECURITY DEFINER` + in-body admin gate + anon-revoke:
+**RPCs** (same migration), both `SECURITY DEFINER` + in-body admin gate (`has_role(auth.uid(),'admin')`)
++ `revoke … from public, anon; grant execute … to authenticated` (browser-called from the admin UI
+session, so admin-gated — unlike the Piece 2 service-role detection RPCs):
 
 - `internal_doc_archive(p_path text, p_reason text) RETURNS jsonb`:
   `SELECT … FROM internal_docs WHERE path = p_path FOR UPDATE`; not found → raise; `is_core` → `RAISE
@@ -129,7 +141,9 @@ branch:
    set, skip the `donny_knowledge` insert/update. (Read `archived_at` in the same upsert via
    `.upsert(...).select('archived_at')`, or a small follow-up select.)
 2. **`source_hash`:** compute `sha256(content_md)` (hex) and include it in the `internal_docs` upsert
-   payload, so exact-dup detection has data. (Deno `crypto.subtle.digest`.)
+   payload, so exact-dup detection has data. (Deno `crypto.subtle.digest`.) **Do not** add `is_core` to
+   the payload — the Piece 1 `BEFORE INSERT` trigger owns it (so re-sync UPDATEs never clobber a manual
+   promotion).
 
 ## Piece 4 — hide archived docs from all readers
 
@@ -161,7 +175,7 @@ check `useInternalAccess().isAdmin`.
 `bug-sweep-agent.md`. **Monthly** cron. Auth via `AIOS_INGEST_SECRET` (bearer + PostgREST apikey).
 Report-only — the only write is the findings POST.
 
-Steps: (1) call `dedup_candidate_pairs` (+ the exact-dupe class) via `/rest/v1/rpc/...`; (2) read
+Steps: (1) call `dedup_candidate_pairs` and `internal_doc_exact_dupes` via `/rest/v1/rpc/...`; (2) read
 `internal_docs` (non-archived) for **staleness** (`updated_at` older than N months — exclude core docs
 that are intentionally long-lived) and **library size/count** trend; (3) for each near-dup/exact pair,
 read both docs' content and **judge contradiction vs benign overlap**; (4) file deduped findings via
@@ -181,7 +195,8 @@ routine via `/schedule`.
 ## Files
 
 - **New:** `supabase/migrations/20260629120000_internal_docs_archive_audit.sql` (columns + seed +
-  `dedup_candidate_pairs` + exact-dupe + `internal_doc_archive`/`_unarchive`);
+  `is_core` `BEFORE INSERT` trigger + service-role `dedup_candidate_pairs` + service-role
+  `internal_doc_exact_dupes` + admin-gated `internal_doc_archive`/`_unarchive`);
   `.claude/schedules/strategy-library-audit-agent.md`; `src/hooks/internal/useArchiveDoc.ts`.
   (Add a pure helper + vitest only if any fingerprint/shaping logic lands in TS — the routine is a
   prompt, so likely none.)
@@ -217,7 +232,9 @@ routine via `/schedule`.
 ## Invariants / safety
 
 - **Core Files can never be archived or purged** — enforced in the RPC body (`is_core` guard), not just
-  the UI.
+  the UI. `is_core` is seeded on existing rows and set by a `BEFORE INSERT` trigger on future ones, so
+  the "every non-`docs/wiki/%` path is core" rule holds for new files too; UPDATE never clobbers it, so
+  a later manual wiki-page promotion sticks.
 - **Archive is reversible**; the doc's markdown stays current for un-archive; nothing touches git.
 - **Detection is deterministic** (cosine + exact hash in SQL); contradiction judgment is the routine's,
   but it only *files findings* — **the founder decides and acts**. Report-only: the audit never writes
