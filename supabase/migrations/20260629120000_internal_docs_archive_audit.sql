@@ -21,6 +21,7 @@ update public.internal_docs set is_core = true where path not like 'docs/wiki/%'
 create or replace function public.internal_docs_set_is_core()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   new.is_core := (new.path not like 'docs/wiki/%');
