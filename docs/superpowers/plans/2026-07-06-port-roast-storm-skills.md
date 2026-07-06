@@ -82,9 +82,9 @@ cd "C:/GIT/dragoncandy-v3-d783432b/.claude/worktrees/DC-2" \
 **Files:**
 - Modify: `.claude/skills/roast/SKILL.md`
 
-Make exactly these five edits against the copied file. Keep everything else (the brief intake, the 5
-council personas + their prompts, the Judge/verdict block) **unchanged** — including Step 5's
-storm-research chain *logic*, except for repointing its one `outputs/vetting/` path (edit 4 below).
+Make the four content edits below (Steps 1–4), then verify + commit (Step 5). Keep everything else (the
+brief intake, the 5 council personas + their prompts, the Judge/verdict block) **unchanged** — including
+Step 5's storm-research chain *logic*, except for repointing its one `outputs/vetting/` path (edit 4).
 
 - [ ] **Step 1: Trim the "Web-availability note" (remove the `web-researcher`/`SUBAGENTS` sentences)**
 
