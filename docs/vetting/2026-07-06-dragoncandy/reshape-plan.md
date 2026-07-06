@@ -53,9 +53,14 @@ product; the marketplace, Donny, and the data flywheel are the engine room, neve
    live inside DragonDash so leaving is operational surgery.
 4. **Metric: views → covers/redemptions.** Every campaign ships with a trackable code and a *covers*
    report — never a views dashboard. This is what stops churn (retention = the entire LTV).
-5. **Creator trust: AI-picked → owner-approved + reliability-guaranteed.** Donny *shortlists*; the owner
-   sees each creator's last 5 videos + local following and approves before a dime moves. Guarantee the
-   creator shows up and delivers usable footage on deadline. Fulfillment reliability is half the product.
+5. **Creator access: no gate-keeping — browse-and-pick, AI-match optional.** *(Updated per founder review,
+   Joe Castelo, 2026-07-06 — see "Founder corrections" below.)* Let businesses **browse the full local
+   creator roster** and pick who they want; that openness is a trust-builder, not a leak. AI-match (Donny)
+   is an **optional shortcut** ("suggest one for me"), never a gate — DragonCandy must not hide creators
+   from businesses. This is fully consistent with "done-for-you" (like a wedding planner who lets you pick
+   the photographer from a vetted list, then handles everything else). Keep the reliability guarantee:
+   whoever's picked shows up and delivers usable footage on deadline — fulfillment reliability is half the
+   product.
 6. **GTM: "launch when stable" → sell by hand NOW, one metro.** Stop treating launch as blocked on
    platform polish (the "building to avoid selling" tell). Hand-sign Hoboken restaurants + creators block
    by block. Creators-first stays right (supply-first sequencing is empirically validated), but recruit
@@ -63,6 +68,25 @@ product; the marketplace, Donny, and the data flywheel are the engine room, neve
 7. **Revenue: four streams on one SMB → flat fee now, brand-side later.** The defensible early money is
    the single managed-service fee. The brand/sponsorship dollars (the genuinely large outcome) come
    **after** a metro's audience + proven retention — don't lead with them, don't bank them in Y1.
+8. **Product truth: REAL on-location footage is the core; AI-generated content is optional.** *(Founder
+   correction, Joe Castelo.)* The heart of DragonCandy is a real creator filming the restaurant's *actual*
+   food, kitchen, and vibe. AI-generated clips are an **opt-in add-on**, not the product. This is a
+   *strength*, not a weakness: a robot can't film your real dining room — so "authentic footage of your
+   real place, with proof it drove covers" is exactly what the cheap AI-content wave can't copy. (Trade-off
+   to hold honestly: real on-site footage costs more to produce than an AI clip, so the flat price must
+   cover a real creator's time — price accordingly.)
+
+## Founder corrections (Joe Castelo review, 2026-07-06)
+
+Two corrections from Joe — both adopted, both make the strategy stronger:
+
+- **Don't gate-keep creators.** The original Shift #5 ("AI shortlists → owner approves") was too narrow.
+  Businesses should be able to **browse every creator freely** and pick; AI-match is an *option*, not the
+  only path. Openness/transparency is a trust and control feature — folded into Shift #5.
+- **Real footage is the core; AI content is optional.** DragonCandy is real creators + real on-location
+  footage — the authentic thing AI can't fake. This turns the earlier "AI-UGC will commoditize you" fear
+  into a **moat**: real footage of the actual restaurant is the differentiated, defensible slice — added
+  as Shift #8 and reflected in the risk below.
 
 ## Do this first — the 48-hour test
 
@@ -88,9 +112,12 @@ every campaign — the flywheel *does* compound later, it's just not what you se
 
 This reshape turns DragonCandy from a *software* company into a *services + measurement* company — a
 different muscle than the (impressive) software already built. The failure mode isn't the strategy;
-it's building more product while the winner is out hand-signing restaurants. And a clock: if
-AI-generated UGC gets "good enough" for a restaurant reel before metro creator density is built, the
-supply side thins. Build like that clock is running.
+it's building more product while the winner is out hand-signing restaurants. On the AI-content wave:
+because DragonCandy's core is **real, on-location footage of the actual restaurant** (Shift #8), it is
+differentiated *against* commodity AI clips rather than replaced by them — the residual risk is market
+*price confusion* (buyers seeing $0.60 AI videos and questioning your price), which the covers-proof and
+authenticity answer. Build like the clock is running, but know real footage is your defense, not your
+exposure.
 
 ## Bottom line
 

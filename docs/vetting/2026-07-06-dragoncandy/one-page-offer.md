@@ -26,18 +26,20 @@ Diners.
 
 **$399/month. That's it.**
 
-- **4 creator videos a month**, filmed at your restaurant by vetted local creators
+- **4 real creator videos a month** — a local creator films your *actual* food and space (real footage,
+  not stock or AI)
 - **Posted for you** across Instagram, TikTok & YouTube (we handle captions, scheduling, hashtags)
 - **A monthly Covers Report** — a unique promo code on every post, tracked to real redemptions
-- **You approve every creator** before they set foot in your door — see their last 5 videos + local
-  following first
-- **No setup fee. No per-video charge. No surprise "AI" fees. Cancel anytime.**
+- **Browse and pick your own creators** — see everyone's videos + local following and choose who films
+  for you. Prefer a shortcut? Tap "suggest one for me." We never hide creators or pick for you.
+- **No setup fee. No per-video charge. No surprise fees. Cancel anytime.** *(Optional AI-generated add-on
+  clips available if you ever want them — but real footage is the whole point.)*
 
 ### How it works (about 15 minutes of your time a month)
 
 1. **15-minute kickoff** — tell us your vibe, your hero dishes, your slow nights.
-2. **We shortlist local creators** — you tap approve on the ones you like.
-3. **They film, we post** — you do nothing.
+2. **Browse local creators and pick** the ones you like — or tap "suggest one for me."
+3. **They film your real food, we post** — you do nothing.
 4. **You get your Covers Report** — see what actually drove redemptions, and we tune next month around
    what worked.
 
