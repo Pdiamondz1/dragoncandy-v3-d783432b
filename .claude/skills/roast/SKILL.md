@@ -110,9 +110,9 @@ After you deliver the verdict in chat, ALSO save it so the idea is vetted on the
    **Evidence briefing:** ./<slug>-briefing.html
    ```
 3. Index it in `docs/vetting/index.md` (relative to the project root; create it if absent with a
-   `# Idea Vetting Log` heading + a table header `| date | idea | verdict | link |`): add one row — date ·
-   idea · verdict · link to `roast-verdict.md` (and the briefing if present). This is a **standalone
-   vetting log** — do NOT touch `docs/wiki/`.
+   `# Idea Vetting Log` heading + the table header `| date | idea | verdict | link |` and its separator
+   row `| --- | --- | --- | --- |`): add one row — date · idea · verdict · link to `roast-verdict.md`
+   (and the briefing if present). This is a **standalone vetting log** — do NOT touch `docs/wiki/`.
 
 ## Step 5: Offer the deep, citation-verified briefing (optional)
 

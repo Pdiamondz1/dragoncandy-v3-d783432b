@@ -132,9 +132,9 @@ After you deliver the verdict in chat, ALSO save it so the idea is vetted on the
    **Evidence briefing:** ./<slug>-briefing.html
    ```
 3. Index it in `docs/vetting/index.md` (relative to the project root; create it if absent with a
-   `# Idea Vetting Log` heading + a table header `| date | idea | verdict | link |`): add one row — date ·
-   idea · verdict · link to `roast-verdict.md` (and the briefing if present). This is a **standalone
-   vetting log** — do NOT touch `docs/wiki/`.
+   `# Idea Vetting Log` heading + the table header `| date | idea | verdict | link |` and its separator
+   row `| --- | --- | --- | --- |`): add one row — date · idea · verdict · link to `roast-verdict.md`
+   (and the briefing if present). This is a **standalone vetting log** — do NOT touch `docs/wiki/`.
 ````
 (This drops HMA's `wiki/vetting.md`, the `wiki/index.md` cross-link, and the `outputs/change-log.md`
 append — the whole old item 4.)
@@ -203,9 +203,9 @@ In `## Output`:
 - Item 3 ("Index it in the KB"): replace it entirely with EXACTLY:
   ````markdown
   3. **Index it.** Add a row to `docs/vetting/index.md` (relative to the project root; create it if absent
-     with a `# Idea Vetting Log` heading + `| date | idea | verdict | link |` header): idea · date · verdict
-     (if it came from a roast, else `—`) · link to this briefing. **Standalone vetting log — do NOT touch
-     `docs/wiki/`.**
+     with a `# Idea Vetting Log` heading + the `| date | idea | verdict | link |` header and its separator
+     row `| --- | --- | --- | --- |`): date · idea · verdict (if it came from a roast, else `—`) · link to
+     this briefing. **Standalone vetting log — do NOT touch `docs/wiki/`.**
   ````
 - Item 4 ("Log it." / `outputs/change-log.md` append): **delete it entirely**, and renumber the remaining
   item (the chat-summary item) accordingly.

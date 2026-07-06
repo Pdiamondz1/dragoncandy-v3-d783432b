@@ -103,9 +103,9 @@ This is what separates Storm Research from a normal report. Run it before delive
 1. Final deliverable: `docs/vetting/<YYYY-MM-DD>-{topic-slug}/{topic-slug}-briefing.html` (the v2, post-verification version).
 2. Best-effort open it for the user with the platform's default opener (macOS `open <path>`, Linux `xdg-open <path>`, Windows `start "" <path>` / PowerShell `Start-Process <path>`). Never block on it; if it fails or the OS is unclear, just give the path.
 3. **Index it.** Add a row to `docs/vetting/index.md` (relative to the project root; create it if absent
-   with a `# Idea Vetting Log` heading + `| date | idea | verdict | link |` header): idea · date ·
-   verdict (if it came from a roast, else `—`) · link to this briefing. **Standalone vetting log — do
-   NOT touch `docs/wiki/`.**
+   with a `# Idea Vetting Log` heading + the `| date | idea | verdict | link |` header and its separator
+   row `| --- | --- | --- | --- |`): date · idea · verdict (if it came from a roast, else `—`) · link to
+   this briefing. **Standalone vetting log — do NOT touch `docs/wiki/`.**
 4. In chat, give: the file path, the verification tally (`N/N checked, X fabricated, Y corrected, Z demoted`), the one universal finding, the frontier question, and the claim safety summary (what is safe to assert vs avoid). Keep it tight.
 
 ## Notes & guardrails
