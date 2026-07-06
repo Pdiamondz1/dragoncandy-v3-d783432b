@@ -37,7 +37,7 @@ Do not invent studies, numbers, or URLs to work around missing web access. No we
 
 ## Phase 1: Five expert lenses (parallel agents)
 
-Spawn **five `general-purpose` agents in a single message** so they run concurrently. *(Each lens — and the Phase 4b citation verifiers — may instead be dispatched as the `web-researcher` agent: Sonnet + web-restricted tools in place of `general-purpose`, keeping the exact lens/verifier prompt and its "Return EXACTLY…" output contract below. See `docs/SUBAGENTS.md`.)* Each gets the SAME topic framing plus its own lens. Use these exact prompts, substituting `{TOPIC}` and a one-line `{TOPIC_FRAME}` (your Phase 0 interpretation):
+Spawn **five `general-purpose` agents in a single message** so they run concurrently. Each gets the SAME topic framing plus its own lens. Use these exact prompts, substituting `{TOPIC}` and a one-line `{TOPIC_FRAME}` (your Phase 0 interpretation):
 
 **1. THE PRACTITIONER** — `You are THE PRACTITIONER for: {TOPIC} ({TOPIC_FRAME}). You work with this daily. Do real web research (prioritize recent sources, case studies, practitioner threads, operator data). Surface the GAP between what hands-on operators know and what academics/pundits miss, and the practical realities (workflow friction, what actually works, where it breaks) that get ignored. Return EXACTLY: 1) CORE POSITION in 2 sentences. 2) STRONGEST EVIDENCE, 3-5 bullets each with a concrete data point/case/named source + URL. 3) THE ONE THING only a practitioner would say. Cite real sources with URLs. Under 400 words.`
 
@@ -75,7 +75,11 @@ This map is not a separate deliverable. It is the raw material for the report's 
    - **Claim safety guide** — assert / caveat / avoid, populated after Phase 4 verification.
    - **Frontier question** — the one question that would change everything.
    - **References** — every citation with a verification-status tag (set in Phase 4).
-3. Write to `outputs/vetting/<YYYY-MM-DD>-{topic-slug}/{topic-slug}-briefing.html` (use today's date; create the dated folder if needed). If `roast` commissioned this briefing, write into the **same** `outputs/vetting/<YYYY-MM-DD>-{topic-slug}/` folder it already created. Same-day reruns suffix the folder `-2`, `-3`, …
+3. Resolve the **project root** (`git rev-parse --show-toplevel`, else the current directory). Write to
+   `docs/vetting/<YYYY-MM-DD>-{topic-slug}/{topic-slug}-briefing.html` (today's date; create the dated
+   folder if needed). If `roast` commissioned this briefing, write into the **same**
+   `docs/vetting/<YYYY-MM-DD>-{topic-slug}/` folder it already created. Same-day reruns suffix the folder
+   `-2`, `-3`, …
 
 ## Phase 4: Adversarial peer review + verification (do not skip)
 
@@ -96,12 +100,13 @@ This is what separates Storm Research from a normal report. Run it before delive
 
 ## Output
 
-1. Final deliverable: `outputs/vetting/<YYYY-MM-DD>-{topic-slug}/{topic-slug}-briefing.html` (the v2, post-verification version).
+1. Final deliverable: `docs/vetting/<YYYY-MM-DD>-{topic-slug}/{topic-slug}-briefing.html` (the v2, post-verification version).
 2. Best-effort open it for the user with the platform's default opener (macOS `open <path>`, Linux `xdg-open <path>`, Windows `start "" <path>` / PowerShell `Start-Process <path>`). Never block on it; if it fails or the OS is unclear, just give the path.
-3. **Index it in the KB.** Update `wiki/vetting.md` (create it with the wiki RAG frontmatter if absent) with a row for this idea: idea · date · verdict (if it came from a roast, else `—`) · a link to this briefing. The first time you create `wiki/vetting.md`, cross-link it in `wiki/index.md` (pinned under "By area" + a "Recent additions" line). This is normal wiki maintenance — no sign-off.
-4. **Log it.** Append one line to `outputs/change-log.md` (newest at top):
-   `- <YYYY-MM-DD> — storm-research — wrote briefing outputs/vetting/<YYYY-MM-DD>-{topic-slug}/{topic-slug}-briefing.html — auto`
-5. In chat, give: the file path, the verification tally (`N/N checked, X fabricated, Y corrected, Z demoted`), the one universal finding, the frontier question, and the claim safety summary (what is safe to assert vs avoid). Keep it tight.
+3. **Index it.** Add a row to `docs/vetting/index.md` (relative to the project root; create it if absent
+   with a `# Idea Vetting Log` heading + `| date | idea | verdict | link |` header): idea · date ·
+   verdict (if it came from a roast, else `—`) · link to this briefing. **Standalone vetting log — do
+   NOT touch `docs/wiki/`.**
+4. In chat, give: the file path, the verification tally (`N/N checked, X fabricated, Y corrected, Z demoted`), the one universal finding, the frontier question, and the claim safety summary (what is safe to assert vs avoid). Keep it tight.
 
 ## Notes & guardrails
 
@@ -112,13 +117,3 @@ This is what separates Storm Research from a normal report. Run it before delive
 - **Target the reader, not a default person.** The actionable insight and claim safety guide speak to the role identified in Phase 0. Keep them generic if no role is given.
 - **Cost.** This spawns ~9-11 agents per run. That is expected. Do not fan out wider than five lenses or one verifier per citation cluster.
 - **Design.** Clean white and professional (Montserrat / Roboto Mono, blue accent). Keep the template CSS verbatim. Do not swap in a different visual style.
-
-## Autonomous invocation (driven by `autopilot`)
-
-When invoked by `autopilot` rather than a human, run the STORM pipeline on the vetted idea (from
-`wiki/charter.md` + the roast verdict) without an interview. You are **web-gated as always** — if web is
-unavailable, **skip with a note** ("research skipped — offline") rather than fabricating; `autopilot`
-proceeds on the roast verdict alone. Your lenses and citation verifiers may run as the `web-researcher`
-agent (Sonnet + web-restricted), keeping each lens's prompt/output contract. Report the briefing path (or
-the skip) to `autopilot` for its decision ledger. This note is additive — your attended behavior above is
-unchanged; `autopilot` is user-initiated and never part of the unattended `maintenance-loop`.
