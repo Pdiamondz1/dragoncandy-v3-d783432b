@@ -47,7 +47,6 @@ Each council member must return: a one-line stance, their 3-5 sharpest points, t
 **Web-availability note.** The Researcher relies on web search. If web access is unavailable,
 instruct the Researcher to reason from general knowledge instead and flag that its evidence is
 unverified — the council still runs and the Judge still delivers a verdict (Tier 0, no web, no keys).
-When web IS available, the Researcher may be dispatched as the `web-researcher` agent (Sonnet + web-restricted tools) instead of `general-purpose` — keep the Researcher persona prompt and its output contract exactly as above. See `docs/SUBAGENTS.md`.
 
 ## Step 3: The Judge delivers the verdict
 
@@ -82,17 +81,18 @@ Then list the five council scores in one line: `Contrarian X/10 · Expansionist 
 
 After you deliver the verdict in chat, ALSO save it so the idea is vetted on the record.
 
-1. Derive a kebab-case `<slug>` from the idea. The run folder is
-   `outputs/vetting/<YYYY-MM-DD>-<slug>/` (today's date). If that folder already exists from an
-   earlier run today, suffix it `-2`, `-3`, … Use the **real folder name** everywhere you
-   reference it below (provenance rule).
-2. Write `outputs/vetting/<YYYY-MM-DD>-<slug>/roast-verdict.md`:
+1. Resolve the **project root**: `git rev-parse --show-toplevel` if inside a git repo, else the current
+   directory. All paths below are relative to it. Derive a kebab-case `<slug>` from the idea. The run
+   folder is `docs/vetting/<YYYY-MM-DD>-<slug>/` (today's date). If that folder already exists from an
+   earlier run today, suffix it `-2`, `-3`, … Use the **real folder name** everywhere below (provenance
+   rule). Create the folder if absent.
+2. Write `docs/vetting/<YYYY-MM-DD>-<slug>/roast-verdict.md`:
 
    ```markdown
    ---
    title: Roast Verdict — <idea, short>
-   source_id: outputs/vetting/<YYYY-MM-DD>-<slug>/roast-verdict.md
-   path: outputs/vetting/<YYYY-MM-DD>-<slug>/roast-verdict.md
+   source_id: docs/vetting/<YYYY-MM-DD>-<slug>/roast-verdict.md
+   path: docs/vetting/<YYYY-MM-DD>-<slug>/roast-verdict.md
    tags: [vetting, roast, verdict]
    updated: <YYYY-MM-DD>
    ---
@@ -109,12 +109,10 @@ After you deliver the verdict in chat, ALSO save it so the idea is vetted on the
    <if a storm-research briefing was produced, link it:>
    **Evidence briefing:** ./<slug>-briefing.html
    ```
-3. Index it in `wiki/vetting.md` (create it with the wiki RAG frontmatter if absent): one row —
-   idea · date · verdict · link to `roast-verdict.md` (and the briefing if present). The first time
-   you create the page, cross-link it in `wiki/index.md` (pinned under "By area" + a "Recent
-   additions" line). Normal wiki maintenance — no sign-off.
-4. Append one line to `outputs/change-log.md` (newest at top):
-   `- <YYYY-MM-DD> — roast — wrote roast verdict outputs/vetting/<YYYY-MM-DD>-<slug>/roast-verdict.md — auto`
+3. Index it in `docs/vetting/index.md` (relative to the project root; create it if absent with a
+   `# Idea Vetting Log` heading + a table header `| date | idea | verdict | link |`): add one row — date ·
+   idea · verdict · link to `roast-verdict.md` (and the briefing if present). This is a **standalone
+   vetting log** — do NOT touch `docs/wiki/`.
 
 ## Step 5: Offer the deep, citation-verified briefing (optional)
 
@@ -125,7 +123,7 @@ A roast is a fast reasoning pass. For an evidence-backed second layer, offer to 
 > lenses with primary-source fact-checking — takes a few minutes and needs web access."
 
 - **On yes, and web access is available:** run the `storm-research` skill on the idea, telling it to
-  write into the **same** `outputs/vetting/<YYYY-MM-DD>-<slug>/` folder (`<slug>-briefing.html`).
+  write into the **same** `docs/vetting/<YYYY-MM-DD>-<slug>/` folder (`<slug>-briefing.html`).
   When it returns, fold its key findings and contradictions into the verdict: append a short **"What
   the briefing changed"** note to the chat verdict and to `roast-verdict.md`, adjusting
   GO/RESHAPE/KILL if the evidence warrants, and add the **Evidence briefing** link.
@@ -138,13 +136,3 @@ A roast is a fast reasoning pass. For an evidence-backed second layer, offer to 
 - The Judge must make an actual call. "It depends" is not a verdict. Pick GO, RESHAPE, or KILL and own it.
 - The cheapest 48-hour test is the most important output. It's how the user finds out if they're right without building the whole thing.
 - Keep the final verdict skimmable. The council does the depth; the Judge does the decision.
-
-## Autonomous invocation (driven by `autopilot`)
-
-When invoked by `autopilot` rather than a human, build the brief from `wiki/charter.md` (skip your
-≤4-question intake batch) and skip the storm-research offer (autopilot runs research as its own step).
-Convene the council and return the GO/RESHAPE/KILL verdict exactly as normal — but **hand the KILL/RESHAPE
-decision to `autopilot`** rather than prompting, and record the verdict for its decision ledger. The
-Researcher persona may run as the `web-researcher` agent (Sonnet + web-restricted), keeping its persona
-prompt/output contract. This note is additive — your attended behavior above is unchanged; `autopilot` is
-user-initiated and never part of the unattended `maintenance-loop`.
