@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Storm Research: AI Creator Marketplaces for Local Restaurant Content</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --blue: #2563eb; --blue-dark: #1e3a8a; --ink: #16203a; --muted: #5b6677; --line: #e4e9f2;
+    --bg-soft: #f6f8fc; --green: #15803d; --green-bg: #e9f6ee; --amber: #b45309; --amber-bg: #fdf3e7;
+    --slate: #475569; --slate-bg: #eef1f6; --red: #b91c1c; --red-bg: #fdecec;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Roboto', system-ui, sans-serif; color: var(--ink); background: #eef1f6; line-height: 1.62; font-weight: 400; -webkit-font-smoothing: antialiased; }
+  .page { max-width: 900px; margin: 0 auto; background: #fff; padding: 64px 72px 80px; box-shadow: 0 1px 40px rgba(22,32,58,0.08); }
+  .eyebrow { font-family: 'Roboto Mono', monospace; font-size: 12px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--blue); margin-bottom: 14px; }
+  h1 { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 40px; line-height: 1.12; letter-spacing: -0.02em; color: var(--ink); margin-bottom: 18px; }
+  .lede { font-size: 17px; color: var(--muted); max-width: 640px; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 26px; padding-top: 22px; border-top: 2px solid var(--line); font-family: 'Roboto Mono', monospace; font-size: 12px; color: var(--muted); }
+  .meta-row b { color: var(--ink); font-weight: 600; }
+  .verify-banner { margin-top: 22px; background: var(--green-bg); border: 1px solid #bfe3cc; border-radius: 8px; padding: 13px 18px; font-size: 13px; color: #14532d; display: flex; gap: 10px; align-items: baseline; }
+  .verify-banner b { font-weight: 700; }
+  .verify-banner .tag { font-family: 'Roboto Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; background: var(--green); color: #fff; padding: 3px 8px; border-radius: 4px; flex-shrink: 0; }
+  .howto { margin-top: 18px; border: 1px solid var(--line); border-radius: 8px; padding: 18px 22px; background: var(--bg-soft); }
+  .howto h4 { font-family: 'Roboto Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .howto ul { list-style: none; }
+  .howto li { font-size: 13.5px; color: #2b3950; margin-bottom: 7px; padding-left: 16px; position: relative; }
+  .howto li::before { content: "›"; position: absolute; left: 0; color: var(--blue); font-weight: 700; }
+  .section { margin-top: 56px; }
+  .section-num { font-family: 'Roboto Mono', monospace; font-size: 13px; font-weight: 600; color: var(--blue); letter-spacing: 0.05em; }
+  h2 { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 25px; letter-spacing: -0.01em; color: var(--ink); margin: 6px 0 18px; line-height: 1.2; }
+  h2 .bar { display: inline-block; width: 38px; height: 4px; background: var(--blue); border-radius: 2px; vertical-align: middle; margin-right: 14px; }
+  p { margin-bottom: 14px; }
+  p.body-lg { font-size: 16.5px; }
+  .ceo { background: var(--bg-soft); border-left: 5px solid var(--blue); padding: 26px 30px; border-radius: 4px; font-size: 16.5px; }
+  .ceo strong { font-weight: 700; color: var(--blue-dark); }
+  .finding { border: 1px solid var(--line); border-radius: 10px; padding: 24px 26px; margin-bottom: 18px; position: relative; }
+  .finding-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 12px; }
+  .finding-title { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 18px; line-height: 1.3; color: var(--ink); flex: 1; }
+  .finding-rank { font-family: 'Roboto Mono', monospace; font-weight: 600; font-size: 13px; color: #fff; background: var(--ink); width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .finding p { font-size: 15px; color: #283449; margin-bottom: 14px; }
+  .rel-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .rel { display: inline-flex; align-items: center; gap: 9px; font-family: 'Roboto Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 12px; border-radius: 20px; }
+  .rel.high { background: #e7f0fe; color: var(--blue); }
+  .rel.medhigh { background: var(--green-bg); color: var(--green); }
+  .rel.medium { background: var(--amber-bg); color: var(--amber); }
+  .rel.low { background: var(--red-bg); color: var(--red); }
+  .score { font-family: 'Roboto Mono', monospace; font-size: 13px; font-weight: 600; color: var(--ink); }
+  .score b { font-size: 17px; }
+  .score span { color: var(--muted); font-weight: 400; }
+  .chips { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+  .chip-row { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; font-size: 13.5px; }
+  .chip-label { font-family: 'Roboto Mono', monospace; font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; white-space: nowrap; }
+  .chip-label.sup { background: var(--green-bg); color: var(--green); }
+  .chip-label.chal { background: var(--red-bg); color: var(--red); }
+  .chip-label.fix { background: var(--amber-bg); color: var(--amber); }
+  .chip-row span.who { color: #2b3950; }
+  .chip-row span.who b { font-weight: 600; }
+  .contested { border: 1px dashed var(--amber); background: #fffaf2; border-radius: 10px; padding: 22px 26px; margin-bottom: 18px; }
+  .contested .tag { font-family: 'Roboto Mono', monospace; font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--amber); }
+  .contested h4 { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 16px; color: var(--ink); margin: 6px 0 10px; }
+  .contested p { font-size: 14px; color: #4a3a22; margin-bottom: 0; }
+  .connection { background: linear-gradient(135deg, #16203a 0%, #1e3a8a 100%); color: #eaf0fb; border-radius: 12px; padding: 34px 38px; }
+  .connection h2 { color: #fff; }
+  .connection h2 .bar { background: #6ea8ff; }
+  .connection .section-num { color: #9ec1ff; }
+  .connection p { color: #d3def3; font-size: 16px; }
+  .connection .punch { font-family: 'Montserrat', sans-serif; font-weight: 600; font-size: 18px; color: #fff; line-height: 1.4; margin-top: 18px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,0.18); }
+  .assume { border: 1px solid var(--line); border-left: 5px solid var(--amber); border-radius: 6px; padding: 24px 28px; background: #fffdf9; }
+  .assume h3 { font-family: 'Montserrat', sans-serif; font-size: 17px; font-weight: 700; color: var(--ink); margin-bottom: 10px; }
+  .assume p { font-size: 15px; color: #3a3320; }
+  .assume p:last-child { margin-bottom: 0; }
+  .action-item { display: flex; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+  .action-item:last-child { border-bottom: none; }
+  .action-mark { font-family: 'Roboto Mono', monospace; font-weight: 600; font-size: 13px; color: var(--blue); flex-shrink: 0; width: 34px; }
+  .action-item .do { font-weight: 600; color: var(--ink); }
+  .action-item p { font-size: 14.5px; margin-bottom: 0; color: #2b3950; }
+  .frontier { border: 2px dashed var(--blue); border-radius: 12px; padding: 30px 34px; background: var(--bg-soft); }
+  .frontier .q { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 22px; line-height: 1.32; color: var(--blue-dark); margin-bottom: 16px; }
+  .frontier p { font-size: 15px; color: #2b3950; }
+  .oncam { margin-top: 18px; }
+  .oncam-col { border-radius: 10px; padding: 20px 24px; margin-bottom: 14px; }
+  .oncam-col.safe { background: var(--green-bg); border: 1px solid #bfe3cc; }
+  .oncam-col.caveat { background: var(--amber-bg); border: 1px solid #f0d9b5; }
+  .oncam-col.avoid { background: var(--red-bg); border: 1px solid #f3c9c9; }
+  .oncam-col h4 { font-family: 'Roboto Mono', monospace; font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 12px; }
+  .oncam-col.safe h4 { color: var(--green); }
+  .oncam-col.caveat h4 { color: var(--amber); }
+  .oncam-col.avoid h4 { color: var(--red); }
+  .oncam-col ul { list-style: none; }
+  .oncam-col li { font-size: 14px; color: #233; margin-bottom: 8px; padding-left: 16px; position: relative; line-height: 1.5; }
+  .oncam-col li::before { content: "•"; position: absolute; left: 0; font-weight: 700; }
+  .oncam-col.safe li::before { color: var(--green); }
+  .oncam-col.caveat li::before { color: var(--amber); }
+  .oncam-col.avoid li::before { color: var(--red); }
+  .refs { margin-top: 56px; padding-top: 26px; border-top: 2px solid var(--line); }
+  .refs h3 { font-family: 'Roboto Mono', monospace; font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+  .refs ul { list-style: none; }
+  .refs li { font-size: 12.5px; color: var(--muted); margin-bottom: 11px; padding-left: 16px; position: relative; line-height: 1.5; }
+  .refs li::before { content: "›"; position: absolute; left: 0; color: var(--blue); font-weight: 700; }
+  .refs a { color: #34507e; text-decoration: none; }
+  .refs a:hover { text-decoration: underline; }
+  .refs .vstat { font-family: 'Roboto Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; margin-right: 6px; }
+  .vstat.ok { background: var(--green-bg); color: var(--green); }
+  .vstat.part { background: var(--amber-bg); color: var(--amber); }
+  .vstat.weak { background: var(--red-bg); color: var(--red); }
+  .footer { margin-top: 40px; font-family: 'Roboto Mono', monospace; font-size: 11px; color: #9aa6b8; text-align: center; }
+  @media (max-width: 640px) { .page { padding: 40px 24px 56px; } h1 { font-size: 30px; } }
+  @media print { body { background: #fff; } .page { box-shadow: none; max-width: 100%; padding: 0; } .connection, .oncam-col { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="eyebrow">Storm Research &middot; v2 (verified)</div>
+    <h1>AI Creator Marketplaces for Local Restaurant Content</h1>
+    <p class="lede">Is a done-for-you AI + creator marketplace for local restaurants a durable, profitable business? A five-lens synthesis — practitioner, academic, skeptic, economist, historian — with every load-bearing claim checked against its primary source. Case in view: DragonCandy.</p>
+    <div class="meta-row">
+      <span><b>Date</b> &nbsp;2026-07-06</span>
+      <span><b>Method</b> &nbsp;5 author-built expert lenses + contradiction map</span>
+      <span><b>Audience</b> &nbsp;Founder / operator (DragonCandy)</span>
+    </div>
+    <div class="verify-banner">
+      <span class="tag">Verified</span>
+      <span>11 load-bearing citation clusters independently checked against primary sources on 2026-07-06. <b>Result: 0 fabricated, 4 corrected, 4 demoted.</b> Confidence scores reflect post-verification evidence quality.</span>
+    </div>
+    <div class="howto">
+      <h4>How to read this</h4>
+      <ul>
+        <li><b>The panel was author-constructed.</b> All five lenses share one framing, so where they agree, treat it as a strong hypothesis, not independent proof.</li>
+        <li><b>Confidence is scored 1-10</b> on evidence quality: peer-reviewed causal work &gt; official policy/financial data &gt; single commissioned survey &gt; analogy &gt; preprint.</li>
+        <li><b>Measured fact and interpretation are flagged separately.</b> A high score means the data is solid, not that the strategic reading is certain.</li>
+      </ul>
+    </div>
+  </header>
+
+  <!-- ============ 01 CEO SUMMARY ============ -->
+  <section class="section">
+    <div class="section-num">01</div>
+    <h2><span class="bar"></span>The 60-Second Summary</h2>
+    <div class="ceo">
+      <p style="margin-bottom:0;">The settled fact: restaurants and local SMBs <em>do</em> pay recurring for social content, in exactly this price band ($149–899/mo sits dead-center of a $500–5,000/mo market), so the wedge is fundable, not a new behavior to invent. The contested interpretation: whether creator content reliably moves <em>covers</em> — the peer-reviewed evidence says restaurant-type categories are the <em>weakest</em> fit for word-of-mouth (You et al. 2015: publicly-consumed, high-trialability, hyper-competitive products show the lowest sales elasticity), and no causal study links influencer content to actual restaurant revenue. The tension the whole business hinges on: the bull case is a data/matching flywheel moat — but three independent lenses show the matching layer is precisely what commoditizes (UGC prices fell ~44% in a year) and what platforms absorb (YouTube shut FameBit's self-serve marketplace in 2020; the winners — ChowNow, Toast — became embedded infrastructure the restaurant can't rip out). <strong>Demand is real; the current framing (AI marketplace, four stacked fees, "60-second software," views-as-proof) is the framing that historically dies — the durable version sells one measurable outcome (covers) as embedded infrastructure, and treats the AI as a cost lever, not the moat.</strong></p>
+    </div>
+  </section>
+
+  <!-- ============ 02 KEY FINDINGS ============ -->
+  <section class="section">
+    <div class="section-num">02</div>
+    <h2><span class="bar"></span>Five Key Findings, Ranked by Reliability</h2>
+
+    <div class="finding">
+      <div class="finding-head">
+        <div class="finding-title">Restaurants are the worst-fit category for word-of-mouth marketing — the effect is real but modest, and unproven for actual covers</div>
+        <div class="finding-rank">1</div>
+      </div>
+      <div class="rel-row">
+        <div class="rel high">Reliability: High</div>
+        <div class="score"><b>9</b><span>/10</span></div>
+      </div>
+      <p>The most rigorous evidence — a peer-reviewed meta-analysis of 51 studies (You, Vadakkepatt &amp; Joshi, <em>Journal of Marketing</em> 2015) — pegs eWOM sales elasticity at volume <b>.236</b> / valence <b>.417</b>, and finds it is <em>highest</em> for privately-consumed, low-trialability products in less-competitive industries. Restaurants are the opposite on all three. Separately, <b>no causal (RCT/geo-experiment) study linking influencer content to real restaurant revenue could be identified</b> — a genuine literature gap; the viral wins (Keith Lee) are statistical outliers, not the mean.</p>
+      <div class="chips">
+        <div class="chip-row"><span class="chip-label sup">Supported by</span><span class="who"><b>Academic</b> — You et al. 2015 (JM), exact figures verified</span></div>
+        <div class="chip-row"><span class="chip-label chal">Challenged by</span><span class="who"><b>Practitioner</b> — instrumented cases (staff-UGC: +217% leads) show content <em>can</em> work when measured</span></div>
+      </div>
+    </div>
+
+    <div class="finding">
+      <div class="finding-head">
+        <div class="finding-title">The matching / marketplace / AI layer is not a durable moat — it commoditizes, and platforms absorb it</div>
+        <div class="finding-rank">2</div>
+      </div>
+      <div class="rel-row">
+        <div class="rel medhigh">Reliability: Med-High</div>
+        <div class="score"><b>8</b><span>/10</span></div>
+      </div>
+      <p>Documented company outcomes: YouTube bought FameBit (2016) and <b>shut its self-serve creator marketplace in July 2020</b>, keeping only in-house matchmaking — the platform ate the marketplace. Groupon collapsed from a ~$13B IPO (2011) to <b>~$1.1B by year-end 2020</b> (<b>corrected</b> from an earlier "under $500M by 2020," which was only a brief March-2020 trough); LivingSocial (peak ~$6B) was sold to Groupon for <b>$0</b> (2016). Meanwhile UGC prices fell ~44% YoY as creator supply surged — a take-rate on a deflating asset. Fiverr, the best-run gig marketplace, monetizes the <em>creator/gig</em> (27.6% take) yet averages only $302/buyer/yr with buyers down 10%.</p>
+      <div class="chips">
+        <div class="chip-row"><span class="chip-label sup">Supported by</span><span class="who"><b>Historian, Skeptic, Economist</b> (+ the roast Logician)</span></div>
+        <div class="chip-row"><span class="chip-label chal">Challenged by</span><span class="who"><b>Expansionist</b> — argues the proprietary local-performance dataset is the exception; the other lenses say that dataset trains the model that removes the human layer</span></div>
+        <div class="chip-row"><span class="chip-label fix">Corrected</span><span class="who">Groupon 2020 cap ~$1.1B (not &lt;$500M); FameBit rebrand was mid-June, self-serve shutdown July 31 2020</span></div>
+      </div>
+    </div>
+
+    <div class="finding">
+      <div class="finding-head">
+        <div class="finding-title">Demand and willingness-to-pay are real and correctly priced</div>
+        <div class="finding-rank">3</div>
+      </div>
+      <div class="rel-row">
+        <div class="rel medhigh">Reliability: Med-High</div>
+        <div class="score"><b>7</b><span>/10</span></div>
+      </div>
+      <p>Restaurants spend ~$3,300–6,700/mo on all marketing (3–6% of revenue), and restaurant social-media services already sell at $99–$5,000/mo — DragonCandy's $149–899 ladder sits inside proven behavior, not a new category. The overall influencer market is large and growing, but the headline <b>$32.55B / 33% CAGR figure is an Influencer-Marketing-Hub projection</b> (a vendor in the space) — real, but self-interested and skewed to brand/DTC spend, not $200 local boosts.</p>
+      <div class="chips">
+        <div class="chip-row"><span class="chip-label sup">Supported by</span><span class="who"><b>Practitioner, Economist</b> (+ the roast Researcher)</span></div>
+        <div class="chip-row"><span class="chip-label chal">Challenged by</span><span class="who">No one on demand; the challenge is capturing it profitably, not whether it exists</span></div>
+      </div>
+    </div>
+
+    <div class="finding">
+      <div class="finding-head">
+        <div class="finding-title">Retention — not acquisition — is the whole game, and SMB-restaurant retention is structurally brutal</div>
+        <div class="finding-rank">4</div>
+      </div>
+      <div class="rel-row">
+        <div class="rel medium">Reliability: Medium</div>
+        <div class="score"><b>7</b><span>/10</span></div>
+      </div>
+      <p>SMB SaaS churns ~3–7%/month with the loss heavily front-loaded (~43% of churn in the first 90 days), and ~26% of new restaurants close or change ownership within a year — so you re-acquire part of your base annually <em>on top of</em> SaaS churn. Y1 math ($300–600K = ~85–165 accounts) is achievable in count but gated entirely on renewal. <b>Caveat: the churn percentages are industry benchmarks, not peer-reviewed</b> — directionally reliable, exact magnitudes not.</p>
+      <div class="chips">
+        <div class="chip-row"><span class="chip-label sup">Supported by</span><span class="who"><b>Practitioner, Skeptic, Economist, Academic</b> (churn as the structural constraint)</span></div>
+        <div class="chip-row"><span class="chip-label chal">Challenged by</span><span class="who">No one — the disagreement is only on how to fix it (felt ROI), not that it is the binding constraint</span></div>
+      </div>
+    </div>
+
+    <div class="finding">
+      <div class="finding-head">
+        <div class="finding-title">The durable position is embedded, outcome-proven infrastructure — the "system of record," not the brokerage</div>
+        <div class="finding-rank">5</div>
+      </div>
+      <div class="rel-row">
+        <div class="rel medium">Reliability: Medium (strategic reading)</div>
+        <div class="score"><b>6</b><span>/10</span></div>
+      </div>
+      <p>The counter-pattern that survived: ChowNow beat delivery-era pressure by becoming <b>flat-fee vertical SaaS with 0% commission on direct orders and the restaurant owning 100% of its data</b> (<b>corrected</b> — an earlier "~10% blended take-rate" is not a ChowNow figure; its published model is flat subscription + payment processing). The lesson across every cycle: the winner is whoever becomes the operating system the SMB can't rip out. For DragonCandy that means owning the restaurant's posting pipeline, its diner data, and — decisively — the <em>attribution</em> (covers, via POS/Toast match-back), which is the one thing nobody has cracked.</p>
+      <div class="chips">
+        <div class="chip-row"><span class="chip-label sup">Supported by</span><span class="who"><b>Historian, Practitioner, Economist</b> (subscription + creator-supply monetization = the defensible money)</span></div>
+        <div class="chip-row"><span class="chip-label chal">Challenged by</span><span class="who">This is an analogy-based strategic reading, not measured fact — hence the capped score</span></div>
+        <div class="chip-row"><span class="chip-label fix">Corrected</span><span class="who">ChowNow is flat-fee SaaS w/ 0% direct-order commission (not a ~10% take)</span></div>
+      </div>
+    </div>
+
+    <div class="contested">
+      <div class="tag">Contested signal &middot; monitor, do not assert &middot; confidence 3/10</div>
+      <h4>"Follower count / reach barely predicts outcomes"</h4>
+      <p>A lens claimed the 2024 JAMS meta-analysis (Pan, Blut, Ghiassaleh &amp; Lee; 1,531 effect sizes / 251 papers) shows follower metrics have near-zero effect on sales. Verification <b>corrected</b> this: the paper finds follower <em>characteristics</em> (social identity) have among the <em>strongest</em> effects on attitudes and engagement; only raw follower <em>count</em> is weak, and mainly for transactional/purchase-intent outcomes. Do not state "followers don't matter" — state "buying raw reach is a weak lever; content and creator-fit dominate."</p>
+    </div>
+  </section>
+
+  <!-- ============ 03 HIDDEN CONNECTION ============ -->
+  <section class="section">
+    <div class="connection">
+      <div class="section-num">03</div>
+      <h2><span class="bar"></span>The Hidden Connection</h2>
+      <p>Two findings look contradictory: the Practitioner shows content genuinely works (a staff-UGC push drove 217% more leads at 45% lower cost), while the Academic shows restaurants are the <em>worst</em> category for word-of-mouth and there's no causal proof it moves covers.</p>
+      <p>They reconcile once you see what's actually being sold. Content <em>can</em> work in specific, instrumented cases — but its average effect on restaurant covers is weak and, critically, <em>unmeasured</em>. So the value the restaurant will renew for cannot be the video itself (deflating, commoditizing, sometimes ineffective). It has to be the <em>proof</em> that the video filled seats — the attribution layer the literature says is genuinely hard and nobody has built for local restaurants.</p>
+      <p class="punch">The product isn't the reel — it's the receipt. Whoever owns POS-grade "this content drove N covers" owns the category, because it's the one asset that doesn't commoditize and the only thing that stops SMB churn. (Strategic reading — supported by analogy + the retention data, not a measured outcome.)</p>
+    </div>
+  </section>
+
+  <!-- ============ 03b KEY ASSUMPTION / MISSING 6TH LENS ============ -->
+  <section class="section">
+    <div class="assume">
+      <h3>The assumption this briefing rests on (and the missing 6th lens)</h3>
+      <p>All five lenses analyzed the <em>market and model</em> and froze the <em>operator</em>. The missing 6th lens is the <strong>Execution lens</strong>: the durable version here is a field-sales + local-supply-density + fulfillment-operations business — a services muscle, not the sophisticated-software muscle this team has demonstrated. A capable software builder can lose this game by building product while the winner is out hand-signing restaurants and creators block by block. Also unexamined: the brand-side revenue the bull case leans on (local co-op / CPG dollars) — richer per logo, but unproven as reachable at single-metro scale.</p>
+      <p>The one omission that could invert the findings: if AI-generated UGC reaches "good enough" for a restaurant reel before a metro's human-creator density is built, the supply side — and the whole marketplace premise — evaporates. Build as if that clock is running.</p>
+    </div>
+  </section>
+
+  <!-- ============ 04 ACTIONABLE INSIGHT ============ -->
+  <section class="section">
+    <div class="section-num">04</div>
+    <h2><span class="bar"></span>What To Actually Do Differently</h2>
+    <p class="body-lg" style="color:var(--muted);">For the DragonCandy founder — specific moves, in order, each tied to a finding above.</p>
+    <div class="action-item">
+      <div class="action-mark">01</div>
+      <div><span class="do">Run the 48-hour cash test before touching the product.</span><p>One Hoboken restaurant, one flat fee, 3 creator videos this week, a trackable promo/QR code — measure redemptions, not views. If no owner pays for a tracked-covers outcome, the market hasn't validated the thing you're building (Findings 1, 4).</p></div>
+    </div>
+    <div class="action-item">
+      <div class="action-mark">02</div>
+      <div><span class="do">Collapse four fees into ONE flat price tied to ONE measured outcome.</span><p>Subscription + take-rate + AI overage + rush surcharge reads as "agency" to a 6%-margin owner and adds billing-friction churn. The Economist's read: four streams is a confession no single one clears CAC. Give one number for one outcome (Findings 3, 4).</p></div>
+    </div>
+    <div class="action-item">
+      <div class="action-mark">03</div>
+      <div><span class="do">Make the attribution layer (POS/Toast match-back) the core product, not a feature.</span><p>Measuring restaurant content ROI is the unsolved problem (Finding 1's literature gap). Solve it and it becomes the moat that doesn't commoditize — the receipt that stops churn (Finding 5, Hidden Connection).</p></div>
+    </div>
+    <div class="action-item">
+      <div class="action-mark">04</div>
+      <div><span class="do">Reposition as embedded managed infrastructure, not a marketplace.</span><p>Own the posting pipeline + diner data (the ChowNow pattern: flat-fee SaaS, restaurant owns its data). The brokerage layer always gets eaten by the platform (Findings 2, 5).</p></div>
+    </div>
+    <div class="action-item">
+      <div class="action-mark">05</div>
+      <div><span class="do">Win ONE metro's supply side, prove resubscription, then replicate.</span><p>Supply-first, sequential-domain entry is the empirically-validated marketplace path (Ott et al.). Retention in one metro is the only proof that de-risks the next (Finding 4).</p></div>
+    </div>
+    <div class="action-item">
+      <div class="action-mark">06</div>
+      <div><span class="do">Treat "Donny"/AI as an internal cost-and-speed lever — not the pitch or the moat.</span><p>AI brief + match + schedule is 2026 table stakes and is commoditizing your own supply. Use it to cut fulfillment cost; don't sell it as the differentiator (Finding 2).</p></div>
+    </div>
+  </section>
+
+  <!-- ============ 04b CLAIM SAFETY GUIDE ============ -->
+  <section class="section">
+    <div class="section-num">04b</div>
+    <h2><span class="bar"></span>What's Safe to Assert</h2>
+    <div class="oncam">
+      <div class="oncam-col safe">
+        <h4>✓ Safe — verified against primary source</h4>
+        <ul>
+          <li>eWOM sales elasticity ≈ volume .236 / valence .417, and restaurants sit on the low-elasticity side of all three moderators (You et al. 2015, JM).</li>
+          <li>Fiverr FY2024: 27.6% take rate, $391.5M revenue, $302/buyer/yr, active buyers −10% YoY (official results).</li>
+          <li>YouTube shut FameBit's self-serve marketplace July 31, 2020; LivingSocial was acquired by Groupon for $0 (2016).</li>
+          <li>Restaurants spend ~3–6% of revenue (~$3.3–6.7K/mo) on marketing; $149–899/mo sits inside existing behavior.</li>
+        </ul>
+      </div>
+      <div class="oncam-col caveat">
+        <h4>⚠ Say with a caveat (attribute the source)</h4>
+        <ul>
+          <li>UGC price −44% YoY and creators +93% — Collabstr's own marketplace data (self-reported, one platform).</li>
+          <li>Billo ≈ $11.8M ARR / $35.3M valuation — GetLatka <em>estimates</em>, bootstrapped; not company-disclosed.</li>
+          <li>Groupon fell from ~$13B (2011 IPO) to ~$1.1B (year-end 2020) — not "under $500M by 2020" (that was a brief COVID-trough).</li>
+          <li>SMB SaaS churn ~3–7%/mo, ~43% in first 90 days — industry benchmarks, not peer-reviewed.</li>
+        </ul>
+      </div>
+      <div class="oncam-col avoid">
+        <h4>✕ Don't assert</h4>
+        <ul>
+          <li>"$32.55B / 33% CAGR influencer market" as an independent fact — it's an Influencer-Marketing-Hub (vendor) projection.</li>
+          <li>"Follower/reach doesn't affect outcomes" — overstated; follower <em>characteristics</em> matter for engagement (JAMS 2024).</li>
+          <li>"There is no evidence content drives restaurant revenue" — say "no causal study identified" (a gap, not a proven negative).</li>
+          <li>"ChowNow takes ~10%" — false; it's flat-fee SaaS with 0% commission on direct orders. Billo "$3.42M raised" — unverified (GetLatka lists $0).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 05 FRONTIER QUESTION ============ -->
+  <section class="section">
+    <div class="section-num">05</div>
+    <h2><span class="bar"></span>The Frontier Question</h2>
+    <div class="frontier">
+      <div class="q">Can creator content be shown — at POS-grade rigor — to repeatably drive measurable restaurant covers (not views, not intent), at a cost the owner will pay for every month?</div>
+      <p>It's the hinge of the entire business. The peer-reviewed literature has a genuine gap here (no causal restaurant-revenue study identified), and it's exactly what the skeptical buyer demands ("views aren't covers"). No lens could answer it because the data doesn't exist yet — which is the opportunity: the company that builds that measurement doesn't just win a feature, it manufactures the one moat that neither AI nor the platforms can commoditize, and it solves retention in the same stroke. Answer this in one metro and DragonCandy has a business; leave it unanswered and it's the Groupon/FameBit pattern with better tooling.</p>
+    </div>
+  </section>
+
+  <!-- ============ REFERENCES ============ -->
+  <div class="refs">
+    <h3>Evidence base &middot; verification status</h3>
+    <ul>
+      <li><span class="vstat ok">Confirmed</span> You, Vadakkepatt &amp; Joshi (2015), "A Meta-Analysis of Electronic Word-of-Mouth Elasticity," <em>Journal of Marketing</em> 79(2):19–39 — volume .236 / valence .417; 51 studies; moderators verified verbatim. <a href="https://journals.sagepub.com/doi/10.1509/jm.14.0169">journals.sagepub.com</a></li>
+      <li><span class="vstat part">Corrected</span> Pan, Blut, Ghiassaleh &amp; Lee (2024), "Influencer marketing effectiveness: A meta-analytic review," <em>J. Academy of Marketing Science</em> 53(1):52–78 — 1,531 effect sizes / 251 papers; the "follower count ≈ 0 to sales" reading is wrong (follower <em>characteristics</em> are strong for engagement). <a href="https://link.springer.com/article/10.1007/s11747-024-01052-7">link.springer.com</a></li>
+      <li><span class="vstat ok">Confirmed</span> Fiverr FY2024 results (SEC 6-K) — revenue $391.5M, take rate 27.6%, active buyers 3.6M (−10% YoY), spend/buyer $302. <a href="https://www.globenewswire.com/news-release/2025/02/19/3028448/0/en/Fiverr-Announces-Fourth-Quarter-and-Full-Year-2024-Results.html">globenewswire.com</a></li>
+      <li><span class="vstat weak">Demoted</span> Billo ≈ $11.8M ARR / $35.3M valuation — GetLatka algorithmic estimate, bootstrapped ($0 raised per GetLatka); "$3.42M raised" unverified. <a href="https://getlatka.com/companies/billo.app">getlatka.com</a></li>
+      <li><span class="vstat part">Corrected</span> Collabstr 2025 Influencer Marketing Report — UGC price −44.37% YoY, UGC creators +~93% YoY; self-reported single-marketplace data. <a href="https://collabstr.com/blog/ugc-trends-platforms-explained">collabstr.com</a></li>
+      <li><span class="vstat weak">Demoted</span> Influencer Marketing Hub Benchmark Report 2025 — $32.55B / ~33% CAGR; vendor-authored projection (COI), republished by Statista. <a href="https://influencermarketinghub.com/influencer-marketing-benchmark-report/">influencermarketinghub.com</a></li>
+      <li><span class="vstat part">Corrected</span> Groupon — rejected ~$6B Google offer (2010), ~$13B IPO (2011), ~$1.1B market cap year-end 2020 (not &lt;$500M; that was a brief 2020 trough). <a href="https://companiesmarketcap.com/groupon/marketcap/">companiesmarketcap.com</a></li>
+      <li><span class="vstat ok">Confirmed</span> LivingSocial (peak ~$6B, 2011) acquired by Groupon for $0, 2016 (Washington Post). <a href="https://en.wikipedia.org/wiki/LivingSocial">en.wikipedia.org</a></li>
+      <li><span class="vstat ok">Confirmed</span> Google/YouTube acquired FameBit (Oct 2016, ~$36M); self-serve marketplace shut down July 31, 2020 (rebranded YouTube BrandConnect). <a href="https://techcrunch.com/2020/06/16/youtubes-famebit-rebrands-as-youtube-brandconnect-shuts-down-its-self-service-program/">techcrunch.com</a></li>
+      <li><span class="vstat part">Corrected</span> ChowNow — flat-fee SaaS with 0% commission on direct orders, restaurant owns its data ("~10% blended take-rate" is not a ChowNow figure). <a href="https://get.chownow.com/pricing/">get.chownow.com</a></li>
+      <li><span class="vstat weak">Benchmark</span> SMB SaaS churn ~3–7%/mo, ~43% of losses in first 90 days; ~26% of new restaurants close/change ownership within a year — industry/benchmark sources, not peer-reviewed. <a href="https://focus-digital.co/average-churn-rate-by-industry-saas/">focus-digital.co</a></li>
+    </ul>
+  </div>
+
+  <div class="footer">Storm Research v2 &middot; 11/11 citation clusters independently verified against primary sources, 2026-07-06 &middot; 0 fabricated, 4 corrected, 4 demoted &middot; Reliability = evidence quality, not author confidence</div>
+
+</div>
+</body>
+</html>
