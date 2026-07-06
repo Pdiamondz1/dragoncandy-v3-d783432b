@@ -782,6 +782,16 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   archive is reversible, the audit only reports. Founder go-live: apply the migration, deploy the 3 edge
   fns (`donny-knowledge-sync`, `aios-playbook-run`, `donny-chat`), create the routine via `/schedule`.
   Spec: `docs/superpowers/specs/2026-06-29-aios-strategy-library-management-design.md`.
+- Dev tooling — ported the `roast` (5-persona idea council → GO/RESHAPE/KILL verdict) and
+  `storm-research` (5-lens STORM briefing → verified HTML report) skills from
+  `hma_project_foundation` (branch `feat/port-roast-storm-skills`, 2026-07-06). Installed
+  **global-primary** (`~/.claude/skills/`, usable in any project) with a byte-identical committed
+  repo copy; persistence is project-agnostic (`<project-root>/docs/vetting/`, resolved via
+  `git rev-parse`). Brains copied verbatim; only the persistence plumbing + HMA-only refs
+  (`autopilot`/`web-researcher`/`charter`) changed. Standing rule going forward: new generic skills
+  default to the global scope, written project-agnostically. Phase 2 (an internal/AIOS Donny +
+  Founder-Playbooks port) is deferred. Spec:
+  `docs/superpowers/specs/2026-07-06-port-roast-storm-skills-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
