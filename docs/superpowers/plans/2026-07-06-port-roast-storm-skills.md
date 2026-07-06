@@ -82,15 +82,16 @@ cd "C:/GIT/dragoncandy-v3-d783432b/.claude/worktrees/DC-2" \
 **Files:**
 - Modify: `.claude/skills/roast/SKILL.md`
 
-Make exactly these four edits against the copied file. Keep everything else (the brief intake, the 5
-council personas + their prompts, the Judge/verdict block, Step 5's storm-research chain) **unchanged**.
+Make exactly these five edits against the copied file. Keep everything else (the brief intake, the 5
+council personas + their prompts, the Judge/verdict block) **unchanged** — including Step 5's
+storm-research chain *logic*, except for repointing its one `outputs/vetting/` path (edit 4 below).
 
 - [ ] **Step 1: Trim the "Web-availability note" (remove the `web-researcher`/`SUBAGENTS` sentences)**
 
 Find the paragraph beginning `**Web-availability note.**` (end of Step 2). Delete its last two sentences
 (the ones starting "When web IS available, the Researcher may be dispatched as the `web-researcher` agent…"
 through "See `docs/SUBAGENTS.md`."). The paragraph should end at:
-`…the council still runs and the Judge still delivers a verdict.`
+`…the council still runs and the Judge still delivers a verdict (Tier 0, no web, no keys).`
 
 - [ ] **Step 2: Replace "## Step 4: Persist the verdict" with the project-relative version**
 
@@ -142,7 +143,15 @@ append — the whole old item 4.)
 
 Remove that entire final section (DragonCandy has no `autopilot`, `wiki/charter.md`, or `web-researcher`).
 
-- [ ] **Step 4: Verify no HMA references remain, then commit**
+- [ ] **Step 4: Repoint the roast→storm-research chain path (inside Step 5)**
+
+`## Step 5` (offer the deep briefing) contains a second HMA path: the "On yes, and web access is available"
+bullet tells `storm-research` to write into the **same** `outputs/vetting/<YYYY-MM-DD>-<slug>/` folder.
+Repoint just that path — `outputs/vetting/<YYYY-MM-DD>-<slug>/` → `docs/vetting/<YYYY-MM-DD>-<slug>/`.
+Leave the rest of Step 5's chain logic (the offer wording, the web-access check, the "What the briefing
+changed" fold-in + the Evidence-briefing link) unchanged.
+
+- [ ] **Step 5: Verify no HMA references remain, then commit**
 
 ```bash
 cd "C:/GIT/dragoncandy-v3-d783432b/.claude/worktrees/DC-2" \

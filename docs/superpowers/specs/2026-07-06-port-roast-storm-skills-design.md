@@ -46,8 +46,10 @@ and rewires only the plumbing.**
 - **storm-research:** the 5 lens prompts + "Return EXACTLY…" output contract, the contradiction map,
   Phase 3 synthesis, Phase 4 adversarial peer-review + per-citation verification, and
   **`report-template.html` byte-for-byte** (keep the CSS verbatim).
-- The **roast → storm-research chain** (roast Step 5 offers the deep briefing). Web tools are available
-  in this CLI, so both run.
+- The **roast → storm-research chain** (roast Step 5 offers the deep briefing) — kept, but its one
+  `outputs/vetting/` hand-off path is repointed to `docs/vetting/` along with the rest of the persistence
+  (roast has **two** HMA paths — the Step 4 persist block and this Step 5 chain path). Web tools are
+  available in this CLI, so both run.
 
 ### Adapted — persistence repointed to a project-relative home (works in any project)
 Because the skills run **global** (in any project) as well as in DragonCandy, persistence resolves
