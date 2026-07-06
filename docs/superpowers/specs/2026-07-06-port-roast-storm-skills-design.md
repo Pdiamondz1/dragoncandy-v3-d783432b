@@ -56,8 +56,9 @@ Replace HMA's `outputs/vetting/` + `wiki/vetting.md` + `outputs/change-log.md` w
   strict wiki schema and its RAG sync. (No `wiki/index.md` cross-link step.)
 - **Change log:** **dropped** — DragonCandy uses git log; the per-run `outputs/change-log.md` append is
   removed.
-- Keep each artifact's frontmatter (`title`/`source_id`/`path`/`tags`/`updated`) but repoint
-  `source_id`/`path` to the `docs/vetting/…` location.
+- Keep `roast-verdict.md`'s YAML frontmatter (`title`/`source_id`/`path`/`tags`/`updated`) but repoint
+  `source_id`/`path` to the `docs/vetting/…` location. (The storm briefing is a standalone **HTML** file
+  with no YAML frontmatter — nothing to repoint there beyond its output path.)
 
 ### Adapted — HMA-only references stripped (self-consistency)
 DragonCandy has no `autopilot` skill, no `wiki/charter.md`, no `web-researcher` agent, no
@@ -68,19 +69,23 @@ DragonCandy has no `autopilot` skill, no `wiki/charter.md`, no `web-researcher` 
 - `roast`'s `wiki/charter.md` brief-source (only used by autopilot).
 Keep the web-availability pre-flights (roast degrades; storm-research hard-stops) unchanged.
 
-### Gotcha — the `.gitignore` footgun (blocking)
-DragonCandy's `.gitignore` ignores `.claude/skills/` and re-includes **only** `SKILL.md` + `*/MEMORY.md`.
-So `storm-research/report-template.html` (a load-bearing supporting file) would be **silently dropped
-from git**, breaking the skill for anyone who clones. **Fix:** add a narrow negation
-`!.claude/skills/storm-research/report-template.html` (mirroring the existing `MEMORY.md` re-include
-pattern — NOT `git add -f`). Verify with `git check-ignore -v` before committing. `roast` is a single
-`SKILL.md` (already tracked by the existing re-include), so no negation needed for it.
+### `.gitignore` — verified NOT an issue (no change needed)
+An earlier read suggested DragonCandy's `.gitignore` re-includes **only** `SKILL.md` + `*/MEMORY.md` under
+the ignored `.claude/skills/`, which would silently drop `storm-research/report-template.html`. **Verified
+empirically false in the current repo:** the existing re-includes `!.claude/skills/` + `!.claude/skills/*/`
+(lines 81–82) already make **every** file directly under a new `.claude/skills/<name>/` folder trackable.
+`git check-ignore -v .claude/skills/storm-research/report-template.html` returns nothing (exit 1), and a
+`git add --dry-run` on a new skill dir stages **both** `SKILL.md` and `report-template.html`. So **no
+`.gitignore` change is needed** — the footgun was the *pre-fix* state (before lines 81–82 existed;
+line 83's explicit `*/MEMORY.md` is now redundant belt-and-suspenders). Phase 1 is therefore purely
+additive skill files, touching no shared config.
 
 ### Files (Phase 1)
 - **Create:** `.claude/skills/roast/SKILL.md` (ported + persistence/refs adapted);
   `.claude/skills/storm-research/SKILL.md` (ported + adapted) + `.claude/skills/storm-research/report-template.html`
-  (verbatim copy); `docs/vetting/.gitkeep` (or the index is created on first run) — keep the tree minimal.
-- **Modify:** `.gitignore` (add the `report-template.html` negation).
+  (verbatim copy). `docs/vetting/` is **created by the skills on first run** (not pre-created) — nothing to
+  add there now.
+- **No shared-config change** — no `.gitignore` edit (verified above), no migration, no edge function.
 - No `MEMORY.md` for either (they are on-demand, not loop skills — matches the source).
 
 ## Phase 2 — internal/AIOS Donny + Founder Playbooks (deferred; design sketch)
@@ -104,8 +109,11 @@ Phase 2 is **not** built in this branch; the sketch exists so Phase 1's dev skil
 eventual Donny surface in mind.
 
 ## Build / verify (Phase 1)
-1. Copy `report-template.html` verbatim; confirm `git check-ignore -v .claude/skills/storm-research/report-template.html`
-   returns **nothing** after the `.gitignore` negation (i.e. it is tracked), and `git status` shows it staged.
+1. Copy `report-template.html` verbatim; confirm it is trackable with **no** `.gitignore` change —
+   `git add --dry-run .claude/skills/storm-research/` stages both `SKILL.md` and `report-template.html`
+   (and `git status` shows the new skill dirs as `??`, not ignored). storm-research's own SKILL.md
+   self-description ("depends only on… plus `report-template.html` in this same folder… drop the folder
+   into any `.claude/skills/`") stays **true verbatim** in DragonCandy — leave that line unedited.
 2. Both `SKILL.md` files: confirm the persistence steps point to `docs/vetting/…`, the change-log/charter/
    autopilot/web-researcher references are gone, and the core council/STORM prompts are unchanged from source.
 3. Smoke `roast`: `/roast <a throwaway idea>` → a GO/RESHAPE/KILL verdict in chat + `docs/vetting/<date>-<slug>/roast-verdict.md`
