@@ -91,9 +91,10 @@ additive skill files, touching no shared config.
 ### Skill scope — global (primary) + committed repo copy (identical)
 Standing preference: **new skills default to the global user scope** so they work in every project. These
 two are generic, so:
-- **Global (primary):** `~/.claude/skills/roast/` + `~/.claude/skills/storm-research/` (incl. the template)
-  — usable in every project on this machine. Installed by a copy step; lives outside any git repo (not
-  versioned/team-shared).
+- **Global (primary *availability* scope):** `~/.claude/skills/roast/` + `~/.claude/skills/storm-research/`
+  (incl. the template) — usable in every project on this machine. Installed by a copy step; lives outside
+  any git repo (not versioned/team-shared). ("Primary" = default availability; the repo copy below is the
+  editing/versioning source of truth — two different axes.)
 - **DragonCandy repo copy (committed, per the founder's "both"):** `<repo>/.claude/skills/…` — a
   **byte-identical** copy, versioned + reviewed in the PR + team-shared. The repo copy is the **source of
   truth**; the global copy is the install. (Because they're project-agnostic, the two need no differences.)
@@ -111,6 +112,8 @@ two are generic, so:
   — a copy step at the end of implementation, outside git.
 - **No shared-config change** — no `.gitignore` edit (verified above), no migration, no edge function.
 - No `MEMORY.md` for either (on-demand, not loop skills — matches the source).
+- **Smoke output is NOT committed** — the `docs/vetting/…` artifacts the verify smokes generate surface as
+  untracked test output; the PR commits only the skill files (+ the global install is outside git anyway).
 
 ## Phase 2 — internal/AIOS Donny + Founder Playbooks (deferred; design sketch)
 
