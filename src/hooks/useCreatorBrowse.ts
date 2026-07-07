@@ -100,9 +100,9 @@ export const useCreatorBrowse = () => {
     const q = rawQuery.trim();
     if (q.length < 3) {
       setFilters(prev =>
-        prev.location.status === 'idle'
+        prev.location.center === null && prev.location.status === 'idle'
           ? prev
-          : { ...prev, location: { ...prev.location, status: 'idle' } },
+          : { ...prev, location: { ...prev.location, center: null, status: 'idle' } },
       );
       return;
     }
