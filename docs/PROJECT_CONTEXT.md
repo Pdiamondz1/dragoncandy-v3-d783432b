@@ -792,6 +792,33 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   default to the global scope, written project-agnostically. Phase 2 (an internal/AIOS Donny +
   Founder-Playbooks port) is deferred. Spec:
   `docs/superpowers/specs/2026-07-06-port-roast-storm-skills-design.md`.
+- DragonCandy AIOS — Agent-loop audit (3 gaps) — **built + shipped (2026-07-07).** A YouTube
+  agent-loop explainer prompted an audit of the AIOS against the "reason→act→observe, verification-first"
+  framework; the platform already implements it (Loop Scout / [[Validator Skills]] / Founder Playbooks /
+  Loop Memory), and the audit surfaced three real gaps, each built + two-model-reviewed (Opus + Codex).
+  **(1) `make-validator` meta-skill (PR #217)** — the deferred *automate-last* step of the validator-skills
+  work: authors/retrofits validators to the one `{done,checklist,missing}` verdict contract; dogfooded by
+  retrofitting `verify-prod`/`verify-db-schema` (which Loop Scout *counted* as validators but emitted only
+  prose). Skills+docs only; Codex-clean after 6 P2 rounds. **(2) `/internal/loops` mission control
+  (PR #218)** — read-only admin surface over all ~15 loops; since there is **no central run-log**, each
+  loop's health is inferred from its output (findings-by-`source` / playbook `done_check` / latest
+  briefing), honestly labeled "last output ≠ last run"; pure unit-tested model + cap-safe per-entity
+  queries; Codex-clean after 4 accuracy P2s (stale-`running` reaping; `last_seen_at`/`updated_at` not
+  `created_at` for re-filed/upserted rows). **(3) Spend source-of-truth (PR #220, deployed + proven live)**
+  — made `donny_cost_ledger` a complete/alerting/visible record of **runtime** AI spend so the
+  ≤15%-of-revenue kill-switch finally governs the right number. **Keystone reframe:** the ~$225/mo AI bill
+  is mostly founder Claude Code **dev** usage (opex, invisible to any app table, uncontrollable by
+  degrading Donny) — the cap must govern *runtime serving cost* (the ledger). **Root cause (Slice A):**
+  user-less runtime calls never logged because of **two** silent constraints — `user_id` NOT NULL + FK to
+  `auth.users` (the cron sync's all-zeros placeholder) **and** a `tier` CHECK allowing only `T0–T3` (so
+  `tier='embedding'` failed too); fix = `user_id` nullable + widen the CHECK + a `normalizeUserId` coercion
+  + `generate-anonymous-brief` now logs on a billed 200 before parsing. Slice B: `ai-cost-vs-cap` playbook
+  emits a `green/watch/breach` verdict `playbook-runner-agent` files a report-only finding on. Slice C: a
+  live `/internal` "Runtime vs cap" card (replaces the stale dead-cron alert). All 3 DDLs applied to prod;
+  both edge fns deployed (`verify_jwt` preserved) + **live-verified** (first-ever embedding rows landed:
+  `user_id null`, `tier='embedding'`). Founder go-live remaining: `/schedule` the runner. Concept:
+  `docs/wiki/concepts/aios-runtime-spend-source-of-truth.md`. Spec:
+  `docs/superpowers/specs/2026-07-07-aios-spend-source-of-truth-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
