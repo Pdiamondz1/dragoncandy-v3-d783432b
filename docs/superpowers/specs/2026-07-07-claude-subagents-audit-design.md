@@ -122,7 +122,11 @@ rule as the deliberate contrast.)
 - `tools:` — **read-only least privilege:** `Read, Grep, Glob` plus the Supabase MCP **read** tools
   it needs for ground-truth (`list_edge_functions`, `get_edge_function`). **Explicitly excluded:**
   `Write`, `Edit`, `apply_migration`, `deploy_edge_function`, and any mutation/deploy tool — a
-  reviewer must never change or ship code.
+  reviewer must never change or ship code. The Supabase MCP reads are ground-truth *enhancers*, not
+  hard dependencies: the body must instruct the reviewer to **degrade gracefully to file-based
+  review** (reading `supabase/functions/<fn>/` + `_shared/` + `config.toml` with a caveat that
+  config.toml is not authoritative for live `verify_jwt`) when the MCP server is not configured in
+  its context, so a missing MCP config never makes the reviewer unusable.
 - `model: sonnet` — a capable specialist tier (edge-fn review needs real judgment over auth/bundle
   subtleties, but not the orchestrator model). One-line tunable; the spec notes it can be raised if
   the reviewer misses subtle bugs in practice.
@@ -184,6 +188,9 @@ Match the Skills-audit contract exactly:
 - **Delivery:** through the `aios-report-ingest` choke point if `AIOS_INGEST_SECRET` is present in
   session env; otherwise the documented fallback — a direct service-role `execute_sql` INSERT into
   `aios_findings` replicating the exact column contract (dollar-quoted bodies to avoid escaping).
+  During planning, **snapshot the actual columns the Skills-audit findings used** (query one existing
+  `source='skills-audit'` row) and confirm `aios-report-ingest` accepts the `fingerprint` upsert key,
+  so the fallback INSERT is byte-correct rather than reconstructed from memory.
 - One finding per proposed custom subagent (from §5) + one summarizing the "zero custom agents"
   structural gap. Each is a future brainstorm→spec→plan sub-project; filing them is not committing
   to build them.
@@ -208,6 +215,12 @@ The subagent is a markdown definition, so "tests" are:
   scope makes mutation impossible, but confirm behavior).
 - **`npm run build` + `npm run typecheck`** still pass (no product code changes; guards the push
   hook). No unit tests — there is no product code in this change.
+
+**Caveat (state explicitly in the plan):** the dry-run only exercises *manual* dispatch. The
+`description:` field drives *auto-invocation*, which is inherently non-deterministic and **not**
+test-verifiable — a passing dry-run is not proof the orchestrator will auto-delegate. Quality of the
+description is the only lever; treat auto-invocation as best-effort, with the `careful`/finishing-branch
+integration lines (§6) as the deterministic backstop that ensures the reviewer is actually invoked.
 
 ## 11. Workflow & Out of Scope
 
