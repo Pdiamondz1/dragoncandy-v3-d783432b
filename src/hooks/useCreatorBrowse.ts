@@ -58,6 +58,10 @@ export interface CreatorFilters {
 
 export const useCreatorBrowse = (accountType: 'restaurant' | 'brand' = 'restaurant') => {
   const { user } = useAuth();
+  const defaultLocation: LocationFilter =
+    accountType === 'brand'
+      ? { ...DEFAULT_LOCATION_FILTER, radiusMiles: null } // brand: control available, no auto-hide
+      : DEFAULT_LOCATION_FILTER; // restaurant: near-me + 25mi (approved default)
   const [filters, setFilters] = React.useState<CreatorFilters>({
     searchTerm: '',
     skills: [],
@@ -66,7 +70,7 @@ export const useCreatorBrowse = (accountType: 'restaurant' | 'brand' = 'restaura
     platforms: [],
     availability: '',
     experienceLevel: '',
-    location: DEFAULT_LOCATION_FILTER,
+    location: defaultLocation,
   });
 
   const [sortBy, setSortBy] = React.useState<SortOption>('relevance');
@@ -164,7 +168,7 @@ export const useCreatorBrowse = (accountType: 'restaurant' | 'brand' = 'restaura
       platforms: [],
       availability: '',
       experienceLevel: '',
-      location: { ...DEFAULT_LOCATION_FILTER, center: businessCenter },
+      location: { ...defaultLocation, center: businessCenter },
     });
     setSortBy('relevance');
     setContentTypeFilter([]);
