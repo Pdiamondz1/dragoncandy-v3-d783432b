@@ -13,7 +13,21 @@
 **Note on TDD:** this change contains **no product code**, so there is no red-green-refactor. "Tests" here are verification steps: YAML frontmatter parses, a read-only dry-run dispatch returns a sensible verdict without mutating anything, and `npm run build` + `npm run typecheck` still pass (push-hook guard). Each task ends in a commit.
 
 **Pinned DB contract (verified against prod 2026-07-07):**
-`aios_findings` columns = `id, severity(NOT NULL), title(NOT NULL), summary_md(NOT NULL), evidence(jsonb NOT NULL default '{}'), source(NOT NULL), status(NOT NULL default 'open'), fingerprint(nullable), occurrences(default 1), last_seen_at, created_at, updated_at`. Skills-audit rows use `title='[skills-audit] <name>'`, `fingerprint='skills-audit:<slug>'`, `evidence` jsonb `{effort,target,category,related_skill?,criteria_failed?,see?}`. The fallback INSERT sets `severity, title, summary_md, evidence, source, fingerprint` (status/occurrences/timestamps default).
+`aios_findings` columns = `id, severity(NOT NULL), title(NOT NULL), summary_md(NOT NULL), evidence(jsonb NOT NULL default '{}'), source(NOT NULL), status(NOT NULL default 'open'), fingerprint(nullable), occurrences(default 1), last_seen_at, created_at, updated_at`. Skills-audit rows use `title='[skills-audit] <name>'`, `fingerprint='skills-audit:<slug>'`, `evidence` jsonb `{effort,target,category,related_skill?,criteria_failed?,see?}`. The Task-5 INSERT sets `source, severity, status, fingerprint, title, summary_md, evidence` — `status` IS set explicitly per-row (the shipped `edge-function-reviewer` row is `resolved`; the rest `open`); `occurrences`/timestamps default.
+
+---
+
+### Task 0: Confirm the working branch (safety)
+
+- [ ] **Step 1: Ensure you are on `feat/claude-subagents-audit`, not `main`.** All Task-1..4 commits
+  must land on the feature branch. (This branch was already created off `origin/main` at plan time; an
+  implementer following only the numbered tasks must confirm it before the first commit.)
+
+```bash
+git branch --show-current
+```
+Expected: `feat/claude-subagents-audit`. If it prints `main`, run
+`git checkout -b feat/claude-subagents-audit origin/main` first.
 
 ---
 
