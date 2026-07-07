@@ -1,5 +1,20 @@
 # Wiki Log
 
+## [2026-07-07] ingest | Find Creators "near me" location/radius search
+Ingested the location-search build session. The restaurant [[Find Creators]] page got a prominent
+location + radius control: default **near me** off the restaurant's saved `business_profiles` location
+(0 keystrokes), a city/ZIP "Another area" override, radius chips (10/25/50/100/Any), "Nearest first"
+sort, "· N mi away" on cards, and a "Widen to Any location" empty-state nudge. All **client-side** over
+the existing geo stack (haversine + Google geocoding + static US-city table), **no schema change**. The
+buried Advanced-Filter Zip/City/Country inputs were **consolidated** into the one control and **county
+was dropped**. New concept [[Creator Location Search]]. Founder calls during Codex review: put the
+control on the hidden **brand** page too (role-neutral copy + role-aware center + brands default to no
+active radius so nothing is silently hidden), and prefer **ZIP-precise geocoding** over the static
+city-centroid (geocoded wins; freeform-`location` fallback for legacy profiles). **Codex-clean after six
+rounds** — each caught a real effect-sync-staleness or edge-case bug (stale center on reset/mode paths,
+brand-default auto-hide, ZIP precision, legacy-`location` placement). Frontend-only; branch
+`feat/find-creators-location-search`.
+
 ## [2026-07-07] analysis | Claude Subagents audit
 Applied the "How to Build Claude Subagents Better Than 99% of People" video's subagents playbook to DragonCandy audit-first. Factual anchor: zero custom `.claude/agents/`. Produced `analyses/claude-subagents-audit.md` (7-dimension rubric + current-usage assessment + ranked custom-subagent backlog), filed `subagents-audit` findings at `/internal/findings`, and shipped the #1 quick win: the read-only `edge-function-reviewer` subagent wired into the `careful` deploy checklist.
 

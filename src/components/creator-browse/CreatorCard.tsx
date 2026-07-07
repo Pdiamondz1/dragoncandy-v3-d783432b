@@ -159,8 +159,15 @@ export const CreatorCard: React.FC<CreatorCardProps> = React.memo(({ creator }) 
           </div>
 
           {/* Location */}
-          {locationStr && (
-            <p className="text-xs text-gray-500 mb-1.5 truncate">📍 {locationStr}</p>
+          {(locationStr || creator.distanceMiles != null) && (
+            <p className="text-xs text-gray-500 mb-1.5 truncate">
+              📍 {locationStr}
+              {creator.distanceMiles != null && (
+                <span className="text-teal-600 font-medium">
+                  {locationStr ? ' · ' : ''}{creator.distanceMiles} mi away
+                </span>
+              )}
+            </p>
           )}
 
           {/* Skill Tags */}
