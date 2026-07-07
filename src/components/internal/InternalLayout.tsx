@@ -13,6 +13,7 @@ import {
   LogOut,
   Menu,
   Receipt,
+  Repeat,
   Sparkles,
   Users,
 } from 'lucide-react';
@@ -59,6 +60,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/internal/findings', label: 'Findings', icon: Bug },
       { to: '/internal/corrections', label: 'Corrections', icon: ClipboardCheck },
       { to: '/internal/playbooks', label: 'Playbooks', icon: ListChecks },
+      { to: '/internal/loops', label: 'Loops', icon: Repeat },
       { to: '/internal/stakeholders', label: 'Stakeholders', icon: Users },
     ],
   },
