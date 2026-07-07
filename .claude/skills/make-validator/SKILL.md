@@ -63,7 +63,10 @@ fenced block in the output (the parser reads the last one):
    point of a validator; a check whose `met` depends on prose judgment is not a gating check.
    - **Gating vs. advisory (the load-bearing distinction).** Only a deterministic rule may flip
      `met`. Anything subjective ("do the docs read well", "is the layout clean") is **advisory**:
-     add it to `missing[]` as a note but **do not** let it change a `met`. (This is the lesson
+     surface it in the **prose** summary and **do not** let it change a `met`. Advisory notes
+     **never** go in `missing[]` — that array is strictly the fix-step input for `met:false`
+     checks and must be empty when `done:true` (a `done:true` verdict carrying "missing" work is
+     ambiguous, and loops only read `missing[]` on `done:false`). (This is the lesson
      `verify-knowledge` encodes — gating only on the deterministic set keeps `met` reproducible
      and stops the validator tripping on judgment calls or intentional forward-links.)
 

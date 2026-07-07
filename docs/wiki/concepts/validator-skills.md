@@ -30,7 +30,10 @@ code**:
 - `done` (boolean) — the verdict; `true` only when every check passed.
 - `checklist` — one `{criterion, met}` per check.
 - `missing` — remediation hints for the failed checks. **This is what the loop's fix step
-  consumes.** Empty when `done:true`.
+  consumes.** Empty when `done:true`. Advisory or subjective observations do **not** belong here —
+  surface those in the prose summary; `missing[]` is strictly the fix-step input for `met:false`
+  checks (a `done:true` verdict carrying "missing" work is ambiguous, and loops only read
+  `missing[]` on `done:false`).
 
 The parser (`supabase/functions/aios-playbook-run/index.ts` → `parseDoneCheck`) reads the LAST
 fenced JSON block that has a boolean `done`, so the verdict block MUST be last in the output.
