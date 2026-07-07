@@ -100,7 +100,10 @@ const BrandCreators: React.FC = () => {
     setSortBy,
     contentTypeFilter,
     setContentTypeFilter,
-  } = useCreatorBrowse();
+    location,
+    updateLocation,
+    hasBusinessLocation,
+  } = useCreatorBrowse('brand');
 
   const { shortlist, isShortlisted, addToShortlist, removeFromShortlist } = useBrandShortlist();
   const bulkInvite = useBulkInvite();
@@ -215,9 +218,6 @@ const BrandCreators: React.FC = () => {
   // Count active advanced filters
   const activeFilterCount = [
     filters.skills.length > 0,
-    filters.city,
-    filters.country,
-    filters.postal_code,
     filters.platforms.length > 0,
     filters.availability,
     filters.experienceLevel,
@@ -304,6 +304,9 @@ const BrandCreators: React.FC = () => {
                 onOpenFilters={() => setIsFiltersOpen(true)}
                 onOpenMap={() => setIsMapOpen(true)}
                 activeFilterCount={activeFilterCount}
+                location={location}
+                onLocationChange={updateLocation}
+                hasBusinessLocation={hasBusinessLocation}
               />
 
               {/* Verified metric filters */}

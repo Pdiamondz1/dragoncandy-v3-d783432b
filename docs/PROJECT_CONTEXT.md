@@ -820,6 +820,27 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `docs/wiki/concepts/aios-runtime-spend-source-of-truth.md`. Spec:
   `docs/superpowers/specs/2026-07-07-aios-spend-source-of-truth-design.md`.
 
+- Find Creators — "near me" location/radius search — **built (branch
+  `feat/find-creators-location-search`, 2026-07-07; frontend-only, no schema change).** The restaurant
+  Find Creators page (`CreatorBrowse.tsx`) gained a prominent **location + radius control**: default
+  **near me** off the restaurant's own saved `business_profiles` location (0 keystrokes), a city/ZIP
+  "Another area" override, radius chips (10/25/50/100/Any), **Nearest-first** sort, "· N mi away" on
+  cards, and a **"Widen to Any location"** empty-state nudge. All **client-side** over the existing geo
+  stack (haversine + Google geocoding + static US-city table + the creator map) — **no migration**. The
+  buried Advanced-Filter **Zip/City/Country** inputs were **consolidated** into the one control and
+  **County was dropped** (redundant with radius). New pure `creatorLocationFilter.ts` (14 tests) +
+  `useBusinessLocationCenter` hook + `CreatorLocationControl` (desktop Popover / mobile Sheet). Two
+  founder calls made during the Codex pass: **(1)** wire the control onto the hidden brand `BrandCreators`
+  page too (the header is shared) with **role-neutral copy** + a **role-aware center** and **brands
+  default to no active radius** so nothing is silently hidden; **(2)** prefer **ZIP-precise geocoding**
+  over the static city-centroid (geocoded wins in `resolveCreatorCoords`, freeform-`location` fallback for
+  legacy profiles). Built brainstorm→spec(reviewed)→plan(reviewed)→subagent-driven execution (6 tasks,
+  two-stage review each) → whole-branch review → **Codex-clean after six rounds** (each caught a real
+  effect-sync-staleness or edge-case bug: stale center on Clear-All-Filters / mode-switch / short-query,
+  brand-default auto-hide, ZIP precision, legacy-`location` placement). Concept:
+  `docs/wiki/concepts/creator-location-search.md`. Spec:
+  `docs/superpowers/specs/2026-07-07-find-creators-location-search-design.md`.
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).
