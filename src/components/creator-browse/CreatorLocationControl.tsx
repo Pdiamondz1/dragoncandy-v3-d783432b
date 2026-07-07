@@ -38,7 +38,7 @@ const Body: React.FC<CreatorLocationControlProps> = ({ location, onChange, hasBu
         onClick={() => onChange({ mode: 'near_me', rawQuery: '', status: 'idle' })}
         className={`${chipBase} ${location.mode === 'near_me' ? chipOn : chipOff} ${!hasBusinessLocation ? 'opacity-40 cursor-not-allowed' : ''}`}
       >
-        Near my restaurant
+        Near me
       </button>
       <button
         type="button"
@@ -52,7 +52,7 @@ const Body: React.FC<CreatorLocationControlProps> = ({ location, onChange, hasBu
 
     {!hasBusinessLocation && location.mode === 'near_me' && (
       <p className="text-xs text-gray-500">
-        Add your address in Business Settings to use “near me,” or search another area below.
+        Add your location in Business Settings to use “near me,” or search another area below.
       </p>
     )}
 

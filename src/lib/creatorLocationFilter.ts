@@ -39,15 +39,14 @@ export function detectQueryKind(raw: string): 'zip' | 'city' {
   return /^\d{5}(-\d{4})?$/.test(raw.trim()) ? 'zip' : 'city';
 }
 
-/** Static US-city coords first (instant, free); otherwise the Google-geocoded map; else null. */
+/** Precise geocoded (ZIP-based) coords first; otherwise the static US-city fallback; else null. */
 export function resolveCreatorCoords(
   creator: { id: string; city?: string; country?: string },
   geocodedById: Map<string, LatLng>,
 ): LatLng | null {
-  const staticCoords =
-    creator.city && creator.country ? lookupCityCoords(creator.city, creator.country) : null;
-  if (staticCoords) return staticCoords;
-  return geocodedById.get(creator.id) ?? null;
+  const geocoded = geocodedById.get(creator.id);
+  if (geocoded) return geocoded;
+  return creator.city && creator.country ? lookupCityCoords(creator.city, creator.country) : null;
 }
 
 export interface WithDistance {

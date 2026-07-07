@@ -23,7 +23,7 @@ const CreatorBrowseInner: React.FC = () => {
     updateLocation,
     locationUnplaceableCount,
     hasBusinessLocation,
-  } = useCreatorBrowse();
+  } = useCreatorBrowse('restaurant');
 
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);

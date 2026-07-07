@@ -30,22 +30,19 @@ describe('detectQueryKind', () => {
 });
 
 describe('resolveCreatorCoords', () => {
-  test('prefers static city coords over the geocoded map', () => {
+  test('prefers the geocoded (precise) result over the static city fallback', () => {
+    const geocoded = new Map([['c1', LA]]);
+    const coords = resolveCreatorCoords({ id: 'c1', city: 'New York', country: 'US' }, geocoded);
+    expect(coords).toEqual(LA); // geocoded wins even though New York is in the static table
+  });
+  test('falls back to static city coords when there is no geocoded entry', () => {
     const nyStatic = lookupCityCoords('New York', 'US');
     expect(nyStatic).not.toBeNull(); // guard: table must contain New York
-    const geocoded = new Map([['c1', LA]]);
-    const coords = resolveCreatorCoords(
-      { id: 'c1', city: 'New York', country: 'US' },
-      geocoded,
-    );
+    const coords = resolveCreatorCoords({ id: 'c1', city: 'New York', country: 'US' }, new Map());
     expect(coords).toEqual(nyStatic);
   });
-  test('falls back to the geocoded map when no static match', () => {
-    const geocoded = new Map([['c1', LA]]);
-    const coords = resolveCreatorCoords({ id: 'c1', city: 'Nowheresville', country: 'US' }, geocoded);
-    expect(coords).toEqual(LA);
-  });
-  test('returns null when neither static nor geocoded coords exist', () => {
+  test('returns null when neither geocoded nor static coords exist', () => {
+    expect(resolveCreatorCoords({ id: 'c1', city: 'Nowheresville', country: 'US' }, new Map())).toBeNull();
     expect(resolveCreatorCoords({ id: 'c1' }, new Map())).toBeNull();
   });
 });

@@ -56,7 +56,7 @@ export interface CreatorFilters {
   location: LocationFilter;
 }
 
-export const useCreatorBrowse = () => {
+export const useCreatorBrowse = (accountType: 'restaurant' | 'brand' = 'restaurant') => {
   const { user } = useAuth();
   const [filters, setFilters] = React.useState<CreatorFilters>({
     searchTerm: '',
@@ -82,7 +82,7 @@ export const useCreatorBrowse = () => {
     return () => clearTimeout(timer);
   }, [filters]);
 
-  const { center: businessCenter } = useBusinessLocationCenter();
+  const { center: businessCenter } = useBusinessLocationCenter(accountType);
 
   // Keep the near-me center synced from the business profile.
   React.useEffect(() => {
@@ -175,7 +175,7 @@ export const useCreatorBrowse = () => {
   const creatorsNeedingGeocode = useMemo(() => {
     if (!activeCenter) return [];
     return creators
-      .filter(c => !(c.city && c.country && lookupCityCoords(c.city, c.country)))
+      .filter(c => c.postal_code || !(c.city && c.country && lookupCityCoords(c.city, c.country)))
       .map(c => ({ id: c.id, postal_code: c.postal_code, city: c.city, country: c.country }));
   }, [creators, activeCenter]);
 
