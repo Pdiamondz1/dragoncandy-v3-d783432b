@@ -166,8 +166,65 @@ designed **Loop Memory Protocol Phase 2** (`aios_loop_memory`), which gives play
 
 ## Ranked backlog
 
-<!-- Task 4 -->
+Sorted by value×effort (effort **S/M/L**). **Tier 1 = quick wins**; Tier 2 = the real
+category-filling sub-projects; Tier 3 = deeper/strategic. Only the **#1 quick win** ships in this
+cycle; every other item is a future brainstorm→spec→plan sub-project.
+
+### Tier 1 — quick wins (S)
+1. **`careful` on-demand safety skill** ⭐ **#1 — shipped this cycle.** *Dev / cross-cutting.* The
+   missing on-demand safety gate for dangerous ops (edge-fn deploy prod-overwrite,
+   `git reset --hard` / `push --force`, DROP/RENAME migrations, Stripe live keys, direct prod-table
+   writes). Value **high** (prevents the documented prod-overwrite class of mistake), effort **S**
+   (one markdown skill codifying existing memory).
+2. **`codex-review` run-memory.** *Dev.* Add a `MEMORY.md` capturing recurring Codex finding-classes
+   in this codebase → pre-empt repeats. Value **med**, effort **S**. The clearest single skill-fix.
+3. **Playbook gotchas pass.** *Donny.* Bring the 3 terse seed playbooks (`weekly-kpi-variance`,
+   `scaling-capacity-check`, `ai-cost-vs-cap`) up to the Dezzy playbooks' non-fabrication/failure
+   discipline. Value **med**, effort **S**.
+4. **`wiki-ops` Gotchas header.** *Dev.* Promote its "Rules" block to an explicit `## Gotchas`.
+   Value **low**, effort **S**.
+
+### Tier 2 — category-filling sub-projects (M)
+5. **Code-scaffolding skill.** *Dev — Missing category.* `new-edge-function` first (the
+   `_shared`/cors/auth/`verify_jwt`/deploy pattern), then `new-React-Query-hook` +
+   `new-page+route-guard`. Value **high** (80 edge fns / 206 hooks = high repetition), effort **M**.
+6. **Library/API-reference skill.** *Dev — Missing category.* DragonCandy's own gotchas for
+   Supabase-JS v2, React Query key/`enabled` conventions, edge-fn `_shared` contracts, Outstand SDK,
+   Stripe Connect — *project-specific gotchas only* (not what Claude already knows). Value **high**,
+   effort **M**.
+7. **Edge-fn deploy skill.** *Dev — CI-CD/Infra gap.* Codify MCP-vs-CLI, `verify_jwt` per fn,
+   bundle-all-`_shared`, boot-check (currently only in memory). Value **med-high**, effort **S-M**.
+   Sibling of #1 — `careful` *gates* the deploy, this documents *how*.
+8. **Runbooks skill(s).** *Dev — Missing category.* Symptom→diagnosis for prod edge-fn 401/500,
+   Stripe webhook not delivering, RAG stale, opaque "internal error". Value **med-high**, effort **M**.
+
+### Tier 3 — deeper / strategic
+9. **Loop Memory Protocol Phase 2 (`aios_loop_memory`).** *Donny.* Give playbooks run-memory
+   (criterion 6) — already designed/deferred. Value **med**, effort **M**.
+10. **Live-telemetry analysis skill.** *Dev — Data-fetching partial.* Pull
+    `content_performance` / `analytics_events` / Supabase logs into analysis. Value **med**, effort
+    **M** (overlaps the deferred Content-Engine recommender).
+11. **RAG section-level chunking.** *Donny.* Embed wiki pages by section, not whole-page, for sharper
+    retrieval as pages grow. Value **med**, effort **M**.
+12. **Playbook skill-folder format.** *Donny — strategic.* Folder = task+resources+gotchas+memory;
+    closes Gotchas/ProgDisc/Memory at once. Value **med**, effort **L**.
+13. **Conversational playbook selection** (`list_playbooks`/`run_playbook`). *Donny.* Deferred; needs
+    good AI-discovery descriptions (redeploys `donny-chat`). Value **med**, effort **M**.
+14. **`worktree-cleanup` safety-check helper script.** *Dev.* Value **low-med**, effort **M**.
+15. **Narrow `autoresearch` to research-only.** *Dev.* Move `sync-donny` into `knowledge-sync` so it
+    fits one category. Value **low**, effort **S-M**.
+
+**Filed as findings** (Task of the audit): Tiers 1–2 as individual `skills-audit` findings at
+`/internal/findings`; Tier 3 as one summary finding pointing here. The #1 quick win's finding is
+marked `resolved` because it shipped in this cycle.
 
 ## See Also
 
-<!-- Task 4 -->
+- [[Loop Memory Protocol]] — the run-memory pattern several backlog items extend (Donny Phase 2,
+  `codex-review` memory).
+- [[Validator Skills]] — the verdict-block contract that makes `verify-*` skills loop-closeable.
+- [[Founder Playbooks]] and [[Dezzy Agent (Playbook Suite)]] — the Donny business-process surface
+  audited above.
+- [[Self-Improving App]] — the autoresearch/Loop-Scout backdrop this audit's backlog feeds.
+- Framework sources: the [Claude Skills talk](https://www.youtube.com/watch?v=3UWxMPUko1k) and
+  [Anthropic's lessons post](https://claude.com/blog/lessons-from-building-claude-code-how-we-use-skills).

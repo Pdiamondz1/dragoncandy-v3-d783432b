@@ -1,5 +1,16 @@
 # Wiki Log
 
+## [2026-07-07] analysis | Claude Skills framework audit
+Applied Anthropic's 9-category Claude Skills playbook (the "How employees use Claude Skills" talk +
+the lessons post) to DragonCandy's two skill surfaces. Scored the 9 dev `.claude/skills/` skills and
+Donny (10 Founder Playbooks / 38 `donny-chat` tools / the `donny_knowledge` RAG) against a 7-criterion
+rubric, built a 9-category coverage matrix, and produced a value×effort-ranked backlog. Verdict: the
+dev library is genuinely strong (exemplary gotchas + progressive disclosure); the real gaps are whole
+**missing categories** (Library/API-reference, Code-scaffolding, Runbooks) and no on-demand safety
+skill — plus `codex-review` lacking run-memory, and Donny playbooks not consuming run history. Shipped
+the `careful` safety skill as the #1 quick win; filed the rest as `skills-audit` findings.
+Pages created: [[Claude Skills Framework Audit]]
+
 ## [2026-06-28] update | Landing: kill old-design flash + lighten it (crash/perf)
 Root-caused the "old white landing flashes then the dark one loads" bug to a **stale prerendered
 shell** hardcoded in `index.html` (instant-LCP shell never updated after the redesign) — not a
