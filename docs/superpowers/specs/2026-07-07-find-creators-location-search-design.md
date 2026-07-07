@@ -50,9 +50,10 @@ zip/city on the bar, no radius)** — cheapest but doesn't deliver "near me" (mi
   `CreatorProfile` type is at `:7-32`.
 - **Header** (`src/components/creator-browse/CreatorBrowseHeader.tsx`): search input `:76-85`,
   content-type pills `:87-112`, plus Sort dropdown, Filters button, Map button.
-- **Advanced Filters** (`src/components/creator-browse/AdvancedCreatorFilters.tsx`): Zip/Postal
-  `:133-153` (auto-fills city/country via `geocodingService.lookupPostalCode`), City `:156-169`,
-  Country `:172-185`, then Skills/Platforms/Availability/Rate/Experience.
+- **Advanced Filters** (`src/components/creator-search/AdvancedCreatorFilters.tsx` — note the
+  `creator-search/` dir, not `creator-browse/`): Zip/Postal `:132-153` (auto-fills city/country via
+  `geocodingService.lookupPostalCode`), City `:155-169`, Country `:171-185`, then
+  Skills/Platforms/Availability/Rate/Experience.
 - **Page** (`src/pages/CreatorBrowse.tsx`): `activeFilterCount` (`:28-37`) counts
   `filters.city / filters.country / filters.postal_code`; passes `mapFilters={debouncedFilters}`.
 - **Creator location columns:** `creator_profiles` has `city`, `country`, `postal_code`, `location`
@@ -98,8 +99,11 @@ classes, desktop = `lg:` (Sheet on mobile, Popover on desktop). Verify both view
   then Google), label = `business_name`. Cached (React Query + geocoding cache).
 - If `city` **and** `postal_code` are both empty → center `null` → control shows **"Set your area."**
 
-**Custom center** — geocode the debounced typed zip/city via `geocodingService.lookupPostalCode` (zip)
-or `geocodeLocation` (city).
+**Custom center** — geocode the debounced typed zip/city via
+`geocodingService.geocodeLocation(rawQuery)` for **both** kinds (it returns `{ lat, lng, address }`).
+Do **not** wire the center off `lookupPostalCode`, which returns only `{ city, country }` (no
+coordinates); `detectQueryKind` is used for the input hint/label, and `lookupPostalCode` may still be
+used to derive a friendly city label, but the center coordinates always come from `geocodeLocation`.
 
 **Creator coords** — reuse `useCreatorGeocoding` / `lookupCityCoords` to place each creator, then
 `haversineDistance(center, creator)`.
@@ -136,6 +140,12 @@ location. Update:
 - **International** → `geocodeLocation` handles non-US; static table is US-only (falls through to
   Google).
 - **Debounce** the custom-location input (mirror the existing `debouncedFilters` pattern).
+- **Sparse near-me results (accepted default + nudge).** By design a restaurant with a saved location
+  lands filtered to 25 mi with `activeFilterCount: 0` (near-me is the baseline, not a "filter"). Pre-launch
+  (~30 creators) that can yield a near-empty default list. Accept the default, but when an active radius
+  returns **0** creators, show a one-tap **"Widen to Any location"** (and/or step the radius up) nudge in
+  the empty state so users are never stuck. Also render a subtle "within {radius} of {center}" affordance
+  so it's clear the list is geographically scoped.
 
 ## 8. Testing
 
@@ -164,12 +174,15 @@ location. Update:
 
 **Modify**
 - `src/hooks/useCreatorBrowse.ts` — `location` filter model, distance annotation, radius filter,
-  nearest sort; remove old zip/city/country branch.
-- `src/components/creator-browse/CreatorBrowseHeader.tsx` — mount the control; add "Nearest first" to Sort.
+  nearest sort; remove old zip/city/country branch; add `'nearest'` to the `SortOption` type.
+- `src/components/creator-browse/CreatorBrowseHeader.tsx` — mount the control; add `'nearest'`
+  ("Nearest first") to `SORT_OPTIONS`.
 - `src/pages/CreatorBrowse.tsx` — `activeFilterCount` for the location model.
-- `src/components/creator-browse/AdvancedCreatorFilters.tsx` — remove Zip/City/Country inputs.
+- `src/components/creator-search/AdvancedCreatorFilters.tsx` — remove Zip/City/Country inputs
+  (note the `creator-search/` dir).
 - `src/components/creator-browse/CreatorMapView.tsx` (+ its geocoding consumer) — center on the new model.
-- The creator card component in `src/components/creator-browse/` — add "· X mi away".
+- `src/components/creator-browse/CreatorCard.tsx` — add "· X mi away" next to the existing
+  `📍 {locationStr}` line (~`:162-164`).
 
 **Reuse unchanged:** `src/lib/geocoding.ts`, `src/lib/geoUtils.ts`, `src/lib/usCityCoords.ts`,
 `src/hooks/useCreatorGeocoding.ts`.
