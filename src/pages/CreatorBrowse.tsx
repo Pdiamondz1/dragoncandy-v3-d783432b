@@ -19,6 +19,9 @@ const CreatorBrowseInner: React.FC = () => {
     setSortBy,
     contentTypeFilter,
     setContentTypeFilter,
+    location,
+    updateLocation,
+    hasBusinessLocation,
   } = useCreatorBrowse();
 
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -52,6 +55,9 @@ const CreatorBrowseInner: React.FC = () => {
               onOpenFilters={() => setIsFiltersOpen(true)}
               onOpenMap={() => setIsMapOpen(true)}
               activeFilterCount={activeFilterCount}
+              location={location}
+              onLocationChange={updateLocation}
+              hasBusinessLocation={hasBusinessLocation}
             />
           </div>
         </PageHeader>
