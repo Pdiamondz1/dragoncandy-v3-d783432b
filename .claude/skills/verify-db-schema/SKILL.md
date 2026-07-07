@@ -83,9 +83,10 @@ block in the output. See `docs/wiki/concepts/validator-skills.md`.
 - **Advisors clean** — `get_advisors` (security + performance) has no unresolved flag on the
   touched tables/functions (each remaining flag noted with a reason counts as resolved).
 
-**Advisory only (note in `missing[]`, never flip `met`):** whether the change is the *right* fix
-is a judgment call — surface it as advisory, don't gate on it. A check that can't run (can't reach
-the project) is **BLOCKED**: `met:false` + a `missing[]` note, not a silent pass.
+**Advisory only (surface in the prose summary, never flip `met` and never in `missing[]`):**
+whether the change is the *right* fix is a judgment call — report it as advisory, don't gate on it.
+A check that can't run (can't reach the project) is **BLOCKED**: `met:false` + a `missing[]` note,
+not a silent pass.
 
 ```json
 {"done": false,
