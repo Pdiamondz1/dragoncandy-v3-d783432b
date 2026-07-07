@@ -100,9 +100,6 @@ const BrandCreators: React.FC = () => {
     setSortBy,
     contentTypeFilter,
     setContentTypeFilter,
-    location,
-    updateLocation,
-    hasBusinessLocation,
   } = useCreatorBrowse();
 
   const { shortlist, isShortlisted, addToShortlist, removeFromShortlist } = useBrandShortlist();
@@ -307,9 +304,6 @@ const BrandCreators: React.FC = () => {
                 onOpenFilters={() => setIsFiltersOpen(true)}
                 onOpenMap={() => setIsMapOpen(true)}
                 activeFilterCount={activeFilterCount}
-                location={location}
-                onLocationChange={updateLocation}
-                hasBusinessLocation={hasBusinessLocation}
               />
 
               {/* Verified metric filters */}

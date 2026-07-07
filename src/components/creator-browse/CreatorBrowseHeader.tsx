@@ -29,9 +29,9 @@ interface CreatorBrowseHeaderProps {
   onOpenFilters: () => void;
   onOpenMap: () => void;
   activeFilterCount: number;
-  location: LocationFilter;
-  onLocationChange: (patch: Partial<LocationFilter>) => void;
-  hasBusinessLocation: boolean;
+  location?: LocationFilter;
+  onLocationChange?: (patch: Partial<LocationFilter>) => void;
+  hasBusinessLocation?: boolean;
 }
 
 export const CreatorBrowseHeader: React.FC<CreatorBrowseHeaderProps> = ({
@@ -93,12 +93,14 @@ export const CreatorBrowseHeader: React.FC<CreatorBrowseHeaderProps> = ({
         />
       </div>
 
-      {/* Location + Radius */}
-      <CreatorLocationControl
-        location={location}
-        onChange={onLocationChange}
-        hasBusinessLocation={hasBusinessLocation}
-      />
+      {/* Location + Radius (restaurant surface only) */}
+      {location && onLocationChange && (
+        <CreatorLocationControl
+          location={location}
+          onChange={onLocationChange}
+          hasBusinessLocation={!!hasBusinessLocation}
+        />
+      )}
 
       {/* Content-Type Pills */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide md:overflow-x-visible md:flex-wrap">
