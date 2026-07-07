@@ -185,12 +185,13 @@ bundling/verify_jwt confirmation. Intermediate file-reading noise stays in the s
 
 **`careful` integration.** The `careful` safety skill's edge-fn deploy checklist carries one added
 line: dispatch `edge-function-reviewer` before the deploy step. `careful` remains the human
-stop-and-confirm gate; the subagent is the automated deep review that precedes it. The
-`finishing-a-development-branch` skill similarly notes the subagent in its pre-deploy step. This
-combination is the **deterministic backstop** — since auto-invocation via `description:` is
-best-effort and not test-verifiable (a dry-run passing does not prove the orchestrator will
-auto-delegate in every session), the explicit integration lines in `careful` and the finishing
-checklist ensure the reviewer is actually invoked before high-stakes deploys.
+stop-and-confirm gate; the subagent is the automated deep review that precedes it. This single line
+is the **deterministic backstop** — since auto-invocation via `description:` is best-effort and not
+test-verifiable (a dry-run passing does not prove the orchestrator will auto-delegate in every
+session), the explicit `careful` line ensures the reviewer is actually invoked before high-stakes
+deploys. (The design also weighed adding a line to `finishing-a-development-branch`, but that is a
+superpowers *plugin* skill — unversioned and overwritten on plugin update — so the integration lives
+only in the repo-owned `careful` skill; no finishing-branch change was made.)
 
 **Model.** Sonnet — capable specialist tier. Edge-fn review requires real judgment over auth and
 bundle subtleties, but the orchestrator model is not needed. One-line tunable in frontmatter if
