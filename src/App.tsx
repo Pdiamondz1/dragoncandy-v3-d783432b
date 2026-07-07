@@ -109,6 +109,7 @@ const InternalFindings = lazy(() => import("./pages/internal/InternalFindings"))
 const InternalCorrections = lazy(() => import("./pages/internal/InternalCorrections"));
 const InternalPlaybooks = lazy(() => import("./pages/internal/InternalPlaybooks"));
 const InternalPlaybookDetail = lazy(() => import("./pages/internal/InternalPlaybookDetail"));
+const InternalLoops = lazy(() => import("./pages/internal/InternalLoops"));
 const InternalStakeholders = lazy(() => import("./pages/internal/InternalStakeholders"));
 const InternalAuth = lazy(() => import("./pages/internal/InternalAuth"));
 const InternalWorkspace = lazy(() => import("./pages/internal/InternalWorkspace"));
@@ -347,6 +348,7 @@ function AnimatedRoutes() {
             <Route path="corrections" element={<InternalRoute tier="admin"><InternalCorrections /></InternalRoute>} />
             <Route path="playbooks" element={<InternalRoute tier="admin"><InternalPlaybooks /></InternalRoute>} />
             <Route path="playbooks/:slug" element={<InternalRoute tier="admin"><InternalPlaybookDetail /></InternalRoute>} />
+            <Route path="loops" element={<InternalRoute tier="admin"><InternalLoops /></InternalRoute>} />
             <Route path="stakeholders" element={<InternalRoute tier="admin"><InternalStakeholders /></InternalRoute>} />
           </Route>
 
