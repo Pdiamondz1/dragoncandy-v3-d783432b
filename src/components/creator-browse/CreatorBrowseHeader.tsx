@@ -73,6 +73,11 @@ export const CreatorBrowseHeader: React.FC<CreatorBrowseHeaderProps> = ({
 
   const currentSortLabel = SORT_OPTIONS.find(o => o.value === sortBy)?.label ?? 'Relevance';
 
+  // "Nearest first" only makes sense where the location control is wired (restaurant surface).
+  const sortOptions = location
+    ? SORT_OPTIONS
+    : SORT_OPTIONS.filter(o => o.value !== 'nearest');
+
   return (
     <div className="space-y-4">
       {/* Title */}
@@ -143,7 +148,7 @@ export const CreatorBrowseHeader: React.FC<CreatorBrowseHeaderProps> = ({
             </button>
             {isSortOpen && (
               <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 py-1 min-w-[180px]">
-                {SORT_OPTIONS.map((option) => (
+                {sortOptions.map((option) => (
                   <button
                     key={option.value}
                     onClick={() => {

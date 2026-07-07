@@ -20,7 +20,7 @@ const chipOff = 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50';
 function buttonLabel(location: LocationFilter, hasBusinessLocation: boolean): string {
   const radius = location.radiusMiles != null ? ` · ${location.radiusMiles} mi` : ' · Any';
   if (location.mode === 'custom') {
-    return `${location.center?.label ?? location.rawQuery ?? 'Another area'}${radius}`;
+    return `${location.center?.label || location.rawQuery || 'Another area'}${radius}`;
   }
   // near_me
   if (!hasBusinessLocation || !location.center) return 'Set your area';
