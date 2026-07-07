@@ -34,6 +34,7 @@ const Body: React.FC<CreatorLocationControlProps> = ({ location, onChange, hasBu
       <button
         type="button"
         disabled={!hasBusinessLocation}
+        aria-pressed={location.mode === 'near_me'}
         onClick={() => onChange({ mode: 'near_me', rawQuery: '', status: 'idle' })}
         className={`${chipBase} ${location.mode === 'near_me' ? chipOn : chipOff} ${!hasBusinessLocation ? 'opacity-40 cursor-not-allowed' : ''}`}
       >
@@ -41,7 +42,8 @@ const Body: React.FC<CreatorLocationControlProps> = ({ location, onChange, hasBu
       </button>
       <button
         type="button"
-        onClick={() => onChange({ mode: 'custom' })}
+        aria-pressed={location.mode === 'custom'}
+        onClick={() => onChange({ mode: 'custom', center: null, status: 'idle' })}
         className={`${chipBase} ${location.mode === 'custom' ? chipOn : chipOff}`}
       >
         Another area
@@ -79,6 +81,7 @@ const Body: React.FC<CreatorLocationControlProps> = ({ location, onChange, hasBu
           <button
             key={r}
             type="button"
+            aria-pressed={location.radiusMiles === r}
             onClick={() => onChange({ radiusMiles: r })}
             className={`${chipBase} ${location.radiusMiles === r ? chipOn : chipOff}`}
           >
@@ -87,6 +90,7 @@ const Body: React.FC<CreatorLocationControlProps> = ({ location, onChange, hasBu
         ))}
         <button
           type="button"
+          aria-pressed={location.radiusMiles == null}
           onClick={() => onChange({ radiusMiles: null })}
           className={`${chipBase} ${location.radiusMiles == null ? chipOn : chipOff}`}
         >

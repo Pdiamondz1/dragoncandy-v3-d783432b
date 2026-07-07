@@ -121,6 +121,7 @@ export const useCreatorBrowse = () => {
     }, 500);
 
     return () => { cancelled = true; clearTimeout(timer); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.location.mode, filters.location.rawQuery]);
 
   const { data: creators = [], isLoading, error } = useQuery({

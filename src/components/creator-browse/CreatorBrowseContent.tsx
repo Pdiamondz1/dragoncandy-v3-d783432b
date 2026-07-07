@@ -84,7 +84,7 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
           )}
           <button
             onClick={onResetFilters}
-            className="px-6 py-2.5 bg-dc-teal text-dc-text rounded-full font-semibold text-sm hover:bg-teal-500 transition-colors"
+            className="px-6 py-2.5 bg-white text-dc-teal border-2 border-dc-teal rounded-full font-semibold text-sm hover:bg-teal-50 transition-colors"
           >
             Clear All Filters
           </button>
@@ -93,7 +93,7 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
         <>
           {locationUnplaceableCount ? (
             <p className="text-xs text-gray-400 mb-2">
-              {locationUnplaceableCount} creator{locationUnplaceableCount !== 1 ? 's' : ''} couldn’t be placed on the map.
+              {locationUnplaceableCount} creator{locationUnplaceableCount !== 1 ? 's' : ''} couldn’t be placed by distance.
             </p>
           ) : null}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -122,7 +122,6 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
               filters={filters}
               onFilterChange={onFilterChange}
               onResetFilters={onResetFilters}
-
             />
           </div>
         </SheetContent>
