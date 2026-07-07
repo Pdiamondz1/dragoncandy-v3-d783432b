@@ -2,6 +2,8 @@ import React from 'react';
 import { Search, SlidersHorizontal, MapPin } from 'lucide-react';
 import type { SortOption } from '@/hooks/useCreatorBrowse';
 import { SKILL_OPTIONS } from '@/lib/skillUtils';
+import { CreatorLocationControl } from './CreatorLocationControl';
+import type { LocationFilter } from '@/lib/creatorLocationFilter';
 
 const CONTENT_TYPES = SKILL_OPTIONS
   .filter(s => s.value !== 'other' && s.value !== 'influencer_marketing' && s.value !== 'illustration')
@@ -9,6 +11,7 @@ const CONTENT_TYPES = SKILL_OPTIONS
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'relevance', label: 'Relevance' },
+  { value: 'nearest', label: 'Nearest first' },
   { value: 'top-rated', label: 'Top Rated' },
   { value: 'price-low', label: 'Price: Low to High' },
   { value: 'price-high', label: 'Price: High to Low' },
@@ -26,6 +29,9 @@ interface CreatorBrowseHeaderProps {
   onOpenFilters: () => void;
   onOpenMap: () => void;
   activeFilterCount: number;
+  location?: LocationFilter;
+  onLocationChange?: (patch: Partial<LocationFilter>) => void;
+  hasBusinessLocation?: boolean;
 }
 
 export const CreatorBrowseHeader: React.FC<CreatorBrowseHeaderProps> = ({
@@ -39,6 +45,9 @@ export const CreatorBrowseHeader: React.FC<CreatorBrowseHeaderProps> = ({
   onOpenFilters,
   onOpenMap,
   activeFilterCount,
+  location,
+  onLocationChange,
+  hasBusinessLocation,
 }) => {
   const [isSortOpen, setIsSortOpen] = React.useState(false);
   const sortRef = React.useRef<HTMLDivElement>(null);
@@ -64,6 +73,11 @@ export const CreatorBrowseHeader: React.FC<CreatorBrowseHeaderProps> = ({
 
   const currentSortLabel = SORT_OPTIONS.find(o => o.value === sortBy)?.label ?? 'Relevance';
 
+  // "Nearest first" only makes sense where the location control is wired (restaurant surface).
+  const sortOptions = location
+    ? SORT_OPTIONS
+    : SORT_OPTIONS.filter(o => o.value !== 'nearest');
+
   return (
     <div className="space-y-4">
       {/* Title */}
@@ -83,6 +97,15 @@ export const CreatorBrowseHeader: React.FC<CreatorBrowseHeaderProps> = ({
           className="w-full pl-11 pr-4 py-2.5 bg-gray-100 rounded-full text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:bg-white transition-colors"
         />
       </div>
+
+      {/* Location + Radius (restaurant surface only) */}
+      {location && onLocationChange && (
+        <CreatorLocationControl
+          location={location}
+          onChange={onLocationChange}
+          hasBusinessLocation={!!hasBusinessLocation}
+        />
+      )}
 
       {/* Content-Type Pills */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide md:overflow-x-visible md:flex-wrap">
@@ -125,7 +148,7 @@ export const CreatorBrowseHeader: React.FC<CreatorBrowseHeaderProps> = ({
             </button>
             {isSortOpen && (
               <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 py-1 min-w-[180px]">
-                {SORT_OPTIONS.map((option) => (
+                {sortOptions.map((option) => (
                   <button
                     key={option.value}
                     onClick={() => {

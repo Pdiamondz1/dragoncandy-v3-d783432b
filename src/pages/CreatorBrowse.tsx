@@ -19,7 +19,11 @@ const CreatorBrowseInner: React.FC = () => {
     setSortBy,
     contentTypeFilter,
     setContentTypeFilter,
-  } = useCreatorBrowse();
+    location,
+    updateLocation,
+    locationUnplaceableCount,
+    hasBusinessLocation,
+  } = useCreatorBrowse('restaurant');
 
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
@@ -27,9 +31,6 @@ const CreatorBrowseInner: React.FC = () => {
   // Count active advanced filters (excluding search and content-type pills)
   const activeFilterCount = [
     filters.skills.length > 0,
-    filters.city,
-    filters.country,
-    filters.postal_code,
     filters.platforms.length > 0,
     filters.availability,
     filters.experienceLevel,
@@ -52,6 +53,9 @@ const CreatorBrowseInner: React.FC = () => {
               onOpenFilters={() => setIsFiltersOpen(true)}
               onOpenMap={() => setIsMapOpen(true)}
               activeFilterCount={activeFilterCount}
+              location={location}
+              onLocationChange={updateLocation}
+              hasBusinessLocation={hasBusinessLocation}
             />
           </div>
         </PageHeader>
@@ -68,6 +72,9 @@ const CreatorBrowseInner: React.FC = () => {
             onFiltersOpenChange={setIsFiltersOpen}
             isMapOpen={isMapOpen}
             onMapOpenChange={setIsMapOpen}
+            locationUnplaceableCount={locationUnplaceableCount}
+            isLocationFiltered={location.center != null && location.radiusMiles != null}
+            onWidenLocation={() => updateLocation({ radiusMiles: null })}
           />
         </div>
       </div>
