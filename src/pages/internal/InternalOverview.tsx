@@ -34,9 +34,11 @@ const InternalOverview = () => {
   const topFunction = c ? topEntry(c.mtd_by_function) : undefined;
   const topModel = c ? topEntry(c.mtd_by_model) : undefined;
   // Live cap vs the ledger's MTD runtime spend. Revenue basis is DragonShare's MTD
-  // platform fee (DragonCandy's earned revenue); pre-revenue this is ~$0 so the $250 floor applies.
-  const mtdRevenueUsd = r ? r.dragonshare_mtd.platform_fee_cents / 100 : 0;
-  const cap = c ? aiCapStatus(c.mtd_spend_usd, mtdRevenueUsd) : undefined;
+  // platform fee (DragonCandy's earned revenue); pre-revenue this is ~$0 so the $250 floor
+  // applies. Requires BOTH cost and revenue: without revenue the 15%-of-revenue basis is
+  // unknown, so we withhold the cap rather than show a misleading floor-only status.
+  const cap =
+    c && r ? aiCapStatus(c.mtd_spend_usd, r.dragonshare_mtd.platform_fee_cents / 100) : undefined;
 
   return (
     <PageContainer size="xl">
@@ -134,7 +136,7 @@ const InternalOverview = () => {
                 sub={
                   cap
                     ? `${formatUsd(c.mtd_spend_usd)} of ${formatUsd(cap.capUsd)} cap (${cap.basis}) · ${cap.status}`
-                    : undefined
+                    : 'revenue unavailable — cap needs it'
                 }
                 accent={cap && cap.status !== 'green' ? 'pink' : 'teal'}
               />

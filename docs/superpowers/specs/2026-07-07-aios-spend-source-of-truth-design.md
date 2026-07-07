@@ -1,7 +1,8 @@
 # AIOS Spend Source-of-Truth — design (2026-07-07)
 
-**Status:** Slices A + B **built** (migrations + seed applied to prod; edge-fn deploys + the
-`/schedule` go-live are founder-gated). Slice C (optional `/internal` card) deferred.
+**Status:** Slices A + B + C **built** (migrations + seed applied to prod; the `/internal`
+Overview card ships with the frontend). Founder-gated go-live remains: the 2 edge-fn deploys
++ `/schedule` the `ai-cost-vs-cap` runner.
 **Gap 3 of a 3-gap AIOS agent-loop audit** prompted by the "Agent Loops Clearly Explained" video.
 Siblings shipped this session: `make-validator` (PR #217), `/internal/loops` (PR #218).
 
