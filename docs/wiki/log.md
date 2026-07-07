@@ -13,6 +13,35 @@ schema/RLS/edge-fn/secret/app-code, no prod risk. Gap 1 of a 3-gap AIOS agent-lo
 the "Agent Loops Clearly Explained" video); gaps 2 (`/internal/loops` observability) + 3 (spend
 source-of-truth) sequenced next. Source [[make-validator skill]]. Branch `feat/make-validator-skill`.
 
+## [2026-07-07] ingest | Find Creators "near me" location/radius search
+Ingested the location-search build session. The restaurant [[Find Creators]] page got a prominent
+location + radius control: default **near me** off the restaurant's saved `business_profiles` location
+(0 keystrokes), a city/ZIP "Another area" override, radius chips (10/25/50/100/Any), "Nearest first"
+sort, "· N mi away" on cards, and a "Widen to Any location" empty-state nudge. All **client-side** over
+the existing geo stack (haversine + Google geocoding + static US-city table), **no schema change**. The
+buried Advanced-Filter Zip/City/Country inputs were **consolidated** into the one control and **county
+was dropped**. New concept [[Creator Location Search]]. Founder calls during Codex review: put the
+control on the hidden **brand** page too (role-neutral copy + role-aware center + brands default to no
+active radius so nothing is silently hidden), and prefer **ZIP-precise geocoding** over the static
+city-centroid (geocoded wins; freeform-`location` fallback for legacy profiles). **Codex-clean after six
+rounds** — each caught a real effect-sync-staleness or edge-case bug (stale center on reset/mode paths,
+brand-default auto-hide, ZIP precision, legacy-`location` placement). Frontend-only; branch
+`feat/find-creators-location-search`.
+
+## [2026-07-07] analysis | Claude Subagents audit
+Applied the "How to Build Claude Subagents Better Than 99% of People" video's subagents playbook to DragonCandy audit-first. Factual anchor: zero custom `.claude/agents/`. Produced `analyses/claude-subagents-audit.md` (7-dimension rubric + current-usage assessment + ranked custom-subagent backlog), filed `subagents-audit` findings at `/internal/findings`, and shipped the #1 quick win: the read-only `edge-function-reviewer` subagent wired into the `careful` deploy checklist.
+
+## [2026-07-07] analysis | Claude Skills framework audit
+Applied Anthropic's 9-category Claude Skills playbook (the "How employees use Claude Skills" talk +
+the lessons post) to DragonCandy's two skill surfaces. Scored the 9 dev `.claude/skills/` skills and
+Donny (10 Founder Playbooks / 38 `donny-chat` tools / the `donny_knowledge` RAG) against a 7-criterion
+rubric, built a 9-category coverage matrix, and produced a value×effort-ranked backlog. Verdict: the
+dev library is genuinely strong (exemplary gotchas + progressive disclosure); the real gaps are whole
+**missing categories** (Library/API-reference, Code-scaffolding, Runbooks) and no on-demand safety
+skill — plus `codex-review` lacking run-memory, and Donny playbooks not consuming run history. Shipped
+the `careful` safety skill as the #1 quick win; filed the rest as `skills-audit` findings.
+Pages created: [[Claude Skills Framework Audit]]
+
 ## [2026-06-28] update | Landing: kill old-design flash + lighten it (crash/perf)
 Root-caused the "old white landing flashes then the dark one loads" bug to a **stale prerendered
 shell** hardcoded in `index.html` (instant-LCP shell never updated after the redesign) — not a

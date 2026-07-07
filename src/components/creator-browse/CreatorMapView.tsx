@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { MapPin, Loader2, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCreatorGeocoding } from '@/hooks/useCreatorGeocoding';
-import { geocodingService } from '@/lib/geocoding';
 import type { CreatorFilters } from '@/hooks/useCreatorBrowse';
 import { formatSkillLabel } from '@/lib/skillUtils';
 import {
@@ -64,52 +63,33 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
 
   useEffect(() => {
     if (!map) return;
-    
-    // Debounce map updates to prevent lag during typing
-    const timeoutId = setTimeout(async () => {
-      const f = {
-        postal_code: filters.postal_code?.trim() || '',
-        city: filters.city?.trim() || '',
-        country: filters.country?.trim() || ''
-      };
-      
-      const hasLocation = !!(f.postal_code || f.city || f.country);
-      // Guard against very short inputs
-      if (f.postal_code && f.postal_code.length < 3) return;
-      if (f.city && f.city.length < 3) return;
-      
-      // Helper to fit all markers
-      const fitAllMarkers = (points: Array<{lat: number; lng: number}>) => {
+    const timeoutId = setTimeout(() => {
+      const center = filters.location.center;
+      const fitAllMarkers = (points: Array<{ lat: number; lng: number }>) => {
         if (points.length === 0) return;
         const bounds = new google.maps.LatLngBounds();
         points.forEach(p => bounds.extend(p));
         map.fitBounds(bounds);
-        
         google.maps.event.addListenerOnce(map, 'idle', () => {
           const currentZoom = map.getZoom() ?? 12;
           const clampedZoom = Math.min(currentZoom, 12);
-          const center = map.getCenter()?.toJSON() ?? DEFAULT_MAP_CENTER;
-          setMapCenter(center);
+          const c = map.getCenter()?.toJSON() ?? DEFAULT_MAP_CENTER;
+          setMapCenter(c);
           setMapZoom(clampedZoom);
           if (currentZoom > 12) map.setZoom(12);
         });
       };
-      
-      // If location filters are active, geocode and center
-      if (hasLocation) {
-        const result = await geocodingService.geocodeLocation(f.postal_code, f.city, f.country);
-        
-        if (result) {
-          const zoom = f.postal_code ? 12 : f.city ? 10 : 5;
-          map.setCenter(result);
-          map.setZoom(zoom);
-          setMapCenter(result);
-          setMapZoom(zoom);
-          return;
-        }
+
+      if (center) {
+        const radius = filters.location.radiusMiles;
+        const zoom = radius == null ? 9 : radius <= 10 ? 12 : radius <= 25 ? 11 : radius <= 50 ? 10 : 9;
+        map.setCenter({ lat: center.lat, lng: center.lng });
+        map.setZoom(zoom);
+        setMapCenter({ lat: center.lat, lng: center.lng });
+        setMapZoom(zoom);
+        return;
       }
-      
-      // Otherwise fit all geocoded creators
+
       if (geocodedCreators.length > 0) {
         fitAllMarkers(geocodedCreators.map(c => ({ lat: c.lat, lng: c.lng })));
       } else {
@@ -118,8 +98,7 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
         setMapCenter(DEFAULT_MAP_CENTER);
         setMapZoom(DEFAULT_MAP_ZOOM);
       }
-    }, 300); // 300ms debounce
-    
+    }, 300);
     return () => clearTimeout(timeoutId);
   }, [filters, map, geocodedCreators]);
 

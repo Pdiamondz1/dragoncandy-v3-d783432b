@@ -3,6 +3,17 @@ import React, { useMemo, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useBusinessLocationCenter } from '@/hooks/useBusinessLocationCenter';
+import { useCreatorGeocoding } from '@/hooks/useCreatorGeocoding';
+import { lookupCityCoords } from '@/lib/geoUtils';
+import { geocodingService } from '@/lib/geocoding';
+import {
+  DEFAULT_LOCATION_FILTER,
+  filterByRadius,
+  sortNearest,
+  type LocationFilter,
+  type LatLng,
+} from '@/lib/creatorLocationFilter';
 
 export interface CreatorProfile {
   id: string;
@@ -29,37 +40,37 @@ export interface CreatorProfile {
   average_rating?: number;
   profile_slug?: string;
   total_reviews?: number;
+  distanceMiles?: number; // annotated client-side by the location filter
 }
 
-export type SortOption = 'relevance' | 'top-rated' | 'price-low' | 'price-high' | 'most-reviewed';
+export type SortOption = 'relevance' | 'nearest' | 'top-rated' | 'price-low' | 'price-high' | 'most-reviewed';
 
 export interface CreatorFilters {
   searchTerm: string;
   skills: string[];
-  city: string;
-  country: string;
-  postal_code: string;
   minRate: number;
   maxRate: number;
   platforms: string[];
   availability: string;
   experienceLevel: string;
-  _isLocationAutoFilled?: boolean; // Internal flag to track if city/country came from postal auto-fill
+  location: LocationFilter;
 }
 
-export const useCreatorBrowse = () => {
+export const useCreatorBrowse = (accountType: 'restaurant' | 'brand' = 'restaurant') => {
   const { user } = useAuth();
+  const defaultLocation: LocationFilter =
+    accountType === 'brand'
+      ? { ...DEFAULT_LOCATION_FILTER, radiusMiles: null } // brand: control available, no auto-hide
+      : DEFAULT_LOCATION_FILTER; // restaurant: near-me + 25mi (approved default)
   const [filters, setFilters] = React.useState<CreatorFilters>({
     searchTerm: '',
     skills: [],
-    city: '',
-    country: '',
-    postal_code: '',
     minRate: 0,
     maxRate: 500,
     platforms: [],
     availability: '',
     experienceLevel: '',
+    location: defaultLocation,
   });
 
   const [sortBy, setSortBy] = React.useState<SortOption>('relevance');
@@ -74,6 +85,48 @@ export const useCreatorBrowse = () => {
 
     return () => clearTimeout(timer);
   }, [filters]);
+
+  const { center: businessCenter } = useBusinessLocationCenter(accountType);
+
+  // Keep the near-me center synced from the business profile.
+  React.useEffect(() => {
+    setFilters(prev => {
+      if (prev.location.mode !== 'near_me') return prev;
+      if (prev.location.center === businessCenter) return prev;
+      return { ...prev, location: { ...prev.location, center: businessCenter } };
+    });
+  }, [businessCenter, filters.location.mode]);
+
+  // Resolve a typed city/zip into a center (debounced) when in custom mode.
+  React.useEffect(() => {
+    const { mode, rawQuery } = filters.location;
+    if (mode !== 'custom') return;
+    const q = rawQuery.trim();
+    if (q.length < 3) {
+      setFilters(prev =>
+        prev.location.center === null && prev.location.status === 'idle'
+          ? prev
+          : { ...prev, location: { ...prev.location, center: null, status: 'idle' } },
+      );
+      return;
+    }
+
+    let cancelled = false;
+    setFilters(prev => ({ ...prev, location: { ...prev.location, status: 'resolving' } }));
+    const timer = setTimeout(async () => {
+      const result = await geocodingService.geocodeLocation(q);
+      if (cancelled) return;
+      setFilters(prev => {
+        if (prev.location.mode !== 'custom') return prev;
+        return result
+          ? { ...prev, location: { ...prev.location, center: { lat: result.lat, lng: result.lng, label: q }, status: 'idle' } }
+          : { ...prev, location: { ...prev.location, center: null, status: 'failed' } };
+      });
+    }, 500);
+
+    return () => { cancelled = true; clearTimeout(timer); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.location.mode, filters.location.rawQuery]);
 
   const { data: creators = [], isLoading, error } = useQuery({
     queryKey: ['available-creators'],
@@ -94,29 +147,56 @@ export const useCreatorBrowse = () => {
     enabled: !!user,
   });
 
-  const handleFilterChange = useCallback((key: keyof CreatorFilters, value: string | string[] | boolean | number) => {
+  const handleFilterChange = useCallback((key: keyof CreatorFilters, value: string | string[] | number) => {
     setFilters(prev => ({ ...prev, [key]: value }));
+  }, []);
+
+  const updateLocation = useCallback((patch: Partial<LocationFilter>) => {
+    setFilters(prev => ({ ...prev, location: { ...prev.location, ...patch } }));
+    // When the user actively sets/changes location, default the sort to Nearest (reversible).
+    if (patch.mode === 'custom' || patch.radiusMiles !== undefined) {
+      setSortBy(prev => (prev === 'relevance' ? 'nearest' : prev));
+    }
   }, []);
 
   const resetFilters = () => {
     setFilters({
       searchTerm: '',
       skills: [],
-      city: '',
-      country: '',
-      postal_code: '',
       minRate: 0,
       maxRate: 500,
       platforms: [],
       availability: '',
       experienceLevel: '',
-      _isLocationAutoFilled: false,
+      location: { ...defaultLocation, center: businessCenter },
     });
     setSortBy('relevance');
     setContentTypeFilter([]);
   };
 
-  const filteredCreators = useMemo(() => {
+  const activeCenter: LatLng | null = filters.location.center;
+
+  const creatorsNeedingGeocode = useMemo(() => {
+    if (!activeCenter) return [];
+    return creators
+      .filter(c => c.postal_code || c.location || !(c.city && c.country && lookupCityCoords(c.city, c.country)))
+      .map(c => ({
+        id: c.id,
+        // structured ZIP when present; else fall back to the legacy freeform location string
+        postal_code: c.postal_code || (!c.city && !c.country ? c.location : undefined),
+        city: c.city,
+        country: c.country,
+      }));
+  }, [creators, activeCenter]);
+
+  const { geocodedCreators } = useCreatorGeocoding(creatorsNeedingGeocode);
+
+  const geocodedById = useMemo(
+    () => new Map(geocodedCreators.map(g => [g.id, { lat: g.lat, lng: g.lng }])),
+    [geocodedCreators],
+  );
+
+  const { filteredCreators, locationUnplaceableCount } = useMemo(() => {
     let result = creators.filter(creator => {
     const matchesSearch =
       (creator.creator_name || '').toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
@@ -129,38 +209,6 @@ export const useCreatorBrowse = () => {
     // Content-type pill filter (separate from advanced skills filter)
     const matchesContentType = contentTypeFilter.length === 0 ||
       creator.skills?.some(skill => contentTypeFilter.includes(skill));
-
-    // Location filters - structured with legacy fallback
-    // Smart filtering: If postal code search with auto-filled city/country, only use postal code
-    const isPostalCodeSearch = !!debouncedFilters.postal_code && filters._isLocationAutoFilled;
-
-    const matchesPostalCode = !debouncedFilters.postal_code || (() => {
-      const filterPostal = debouncedFilters.postal_code.toLowerCase().trim();
-      const creatorPostal = (creator.postal_code || '').toLowerCase().trim();
-
-      if (creatorPostal && creatorPostal.startsWith(filterPostal)) return true;
-      if (!creatorPostal && creator.location?.toLowerCase().includes(filterPostal)) return true;
-      return false;
-    })();
-
-    // If it's a postal code search with auto-filled location, skip city/country filtering
-    const matchesCity = isPostalCodeSearch ? true : (!debouncedFilters.city || (() => {
-      const filterCity = debouncedFilters.city.toLowerCase().trim();
-      const creatorCity = (creator.city || '').toLowerCase().trim();
-
-      if (creatorCity && creatorCity.includes(filterCity)) return true;
-      if (!creatorCity && creator.location?.toLowerCase().includes(filterCity)) return true;
-      return false;
-    })());
-
-    const matchesCountry = isPostalCodeSearch ? true : (!debouncedFilters.country || (() => {
-      const filterCountry = debouncedFilters.country.toLowerCase().trim();
-      const creatorCountry = (creator.country || '').toLowerCase().trim();
-
-      if (creatorCountry && creatorCountry.includes(filterCountry)) return true;
-      if (!creatorCountry && creator.location?.toLowerCase().includes(filterCountry)) return true;
-      return false;
-    })());
 
     const matchesRate = (() => {
       const rate = creator.base_rate_per_hour || 0;
@@ -184,12 +232,27 @@ export const useCreatorBrowse = () => {
 
     const matchesExperience = !filters.experienceLevel || filters.experienceLevel === "any";
 
-      return matchesSearch && matchesSkills && matchesContentType && matchesPostalCode && matchesCity &&
-             matchesCountry && matchesRate && matchesPlatforms && matchesAvailability && matchesExperience;
+      return matchesSearch && matchesSkills && matchesContentType &&
+             matchesRate && matchesPlatforms && matchesAvailability && matchesExperience;
     });
 
+    // Location radius filter
+    let unplaceable = 0;
+    if (activeCenter) {
+      const { list, unplaceableCount } = filterByRadius(
+        result,
+        activeCenter,
+        filters.location.radiusMiles,
+        geocodedById,
+      );
+      result = list;
+      unplaceable = unplaceableCount;
+    }
+
     // Sort
-    if (sortBy !== 'relevance') {
+    if (sortBy === 'nearest') {
+      result = sortNearest(result);
+    } else if (sortBy !== 'relevance') {
       result = [...result].sort((a, b) => {
         switch (sortBy) {
           case 'top-rated':
@@ -206,8 +269,8 @@ export const useCreatorBrowse = () => {
       });
     }
 
-    return result;
-  }, [creators, filters, debouncedFilters, sortBy, contentTypeFilter]);
+    return { filteredCreators: result, locationUnplaceableCount: unplaceable };
+  }, [creators, filters, sortBy, contentTypeFilter, activeCenter, geocodedById]);
 
   return {
     creators,
@@ -222,5 +285,9 @@ export const useCreatorBrowse = () => {
     setSortBy,
     contentTypeFilter,
     setContentTypeFilter,
+    location: filters.location,
+    updateLocation,
+    locationUnplaceableCount,
+    hasBusinessLocation: businessCenter != null,
   };
 };
