@@ -58,7 +58,7 @@ async function generateBrief(
   apiKey: string,
   url: string,
   extracted: { title: string; description: string; bodyText: string },
-): Promise<{ brief: GeneratedBrief; usage: { input_tokens: number; output_tokens: number } }> {
+): Promise<{ text: string; usage: { input_tokens: number; output_tokens: number } }> {
   const system =
     `You are Donny, DragonCandy's AI campaign assistant. From a business's website content, ` +
     `draft a STARTING social-media campaign brief the owner will review and refine. ` +
@@ -94,8 +94,10 @@ async function generateBrief(
     throw new Error(`Anthropic ${res.status}: ${err.slice(0, 200)}`);
   }
   const data = await res.json();
+  // Return the raw model text + usage; parsing happens at the call site AFTER cost is
+  // logged, so a billed 200 with unparseable JSON still records its spend.
   return {
-    brief: parseBrief(data.content?.[0]?.text ?? '{}'),
+    text: data.content?.[0]?.text ?? '{}',
     usage: {
       input_tokens: data.usage?.input_tokens ?? 0,
       output_tokens: data.usage?.output_tokens ?? 0,
@@ -161,19 +163,21 @@ serve(async (req) => {
     const extracted = extractContent(html);
     const sourceQuality = computeSourceQuality(extracted.bodyText, true);
 
-    // 6. Generate (Haiku). Parse failure → graceful generation_failed.
-    let brief: GeneratedBrief;
+    // 6. Call the model (Haiku). A non-200 / network error → generation_failed (no billed
+    //    response, so no spend to log).
+    let text: string;
     let usage = { input_tokens: 0, output_tokens: 0 };
     try {
       const gen = await generateBrief(anthropicKey, url, extracted);
-      brief = gen.brief;
+      text = gen.text;
       usage = gen.usage;
     } catch (e) {
       console.error('Generation failed:', (e as Error).message);
       return json(req, 200, { error: 'generation_failed' });
     }
 
-    // Log runtime AI spend (anonymous → no user; best-effort, never blocks the response).
+    // Log runtime AI spend as soon as we have a billed 200 — BEFORE parsing, since a 200 with
+    // unparseable JSON still cost money (anonymous → no user; best-effort, never blocks).
     await logCost(supabase, {
       userId: null,
       edgeFunction: 'generate-anonymous-brief',
@@ -182,6 +186,15 @@ serve(async (req) => {
       inputTokens: usage.input_tokens,
       outputTokens: usage.output_tokens,
     });
+
+    // Parse (a 200 with bad JSON → graceful generation_failed; the spend is already logged).
+    let brief: GeneratedBrief;
+    try {
+      brief = parseBrief(text);
+    } catch (e) {
+      console.error('Brief parse failed:', (e as Error).message);
+      return json(req, 200, { error: 'generation_failed' });
+    }
 
     // 7. Save the anonymous record only on success (non-blocking).
     const { error: insErr } = await supabase.from('campaign_brief_generations').insert({
