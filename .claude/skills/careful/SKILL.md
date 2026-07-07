@@ -29,6 +29,7 @@ Any of these dangerous ops:
 ## Pre-flight checklists (progressive disclosure — read the one that applies)
 
 **Edge-function deploy**
+- **Dispatch the `edge-function-reviewer` subagent** on the target function first — it reads the fn + its `_shared/*` deps in an isolated context and returns a PASS/ISSUES verdict against these hazards. Resolve every ISSUE before deploying.
 - Re-fetch `origin/main` and check for a collision (the founder's Lovable AI may have shipped the same file) — [[project_concurrent_lovable_pr_collisions]].
 - Confirm `verify_jwt` per function via `list_edge_functions` (config.toml is not ground truth) — [[project_mcp_edge_function_bundling]].
 - Bundle ALL transitive `_shared/*`; a failed bundle keeps the OLD version. Boot-check via a guard response after.
