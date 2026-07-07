@@ -26,6 +26,27 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-07] AIOS Agent-Loop Audit — 3 gaps, consolidated (branch feat/aios-spend-source-of-truth)
+- Output: bundled INTO PR #220 — `raw/sessions/2026-07-07-aios-agent-loop-audit.md`, new
+  `concepts/aios-runtime-spend-source-of-truth.md`, `index.md` (Concepts + Sources), `log.md` ingest
+  entry, PROJECT_CONTEXT active-workstream bullet, DATABASE_SCHEMA `donny_cost_ledger` row, + THIS entry.
+- Happened: a **multi-branch** session (3 PRs) captured as ONE consolidated knowledge-sync on the gap-3
+  branch per the founder's ask. **Territory partition (the sibling-worktree lesson):** gap 1's knowledge
+  (make-validator) already shipped on #217 (it edited `validator-skills.md` there) — did NOT re-touch it
+  here to avoid a merge conflict; referenced it instead. Wrote ONE strong new concept for gap 3 (the
+  meatiest/most-reusable) + folded gaps 1–2 into the session source (compound, don't spawn thin pages).
+- Worked: [wikilinks]-exact-display-name (grepped index.md first: Validator Skills / Founder Playbooks /
+  Self-Improving App / Loop Memory Protocol all confirmed before linking). [orphans]-by-path: both new
+  files cataloged in index.md. [runlog-in-pr]. The reframe (runtime vs dev spend) + the two-constraint
+  ledger gotcha are captured as durable concept knowledge, not just a session log.
+- Failed: none. RAG sync + [[verify-knowledge]] close-the-loop are inherently **post-merge** for this
+  pre-merge run (don't hand-sync unmerged wiki content — the human-merge gate holds; the post-merge hook
+  fires on the main ff). Earlier this session ran `sync:wiki` as a *go-live probe* (synced main's 67
+  pages + proved the embedding fix) — that is NOT this branch's new pages.
+- Remember: for a **multi-branch** session, partition the knowledge layer — the branch that already
+  captured its concept owns it; the consolidated sync writes only the *uncaptured* gaps + one session
+  source that narrates the whole arc, referencing (not re-editing) the already-captured pages. (advisory)
+
 ### [2026-06-29] DC AIOS Strategy Library Management (branch feat/aios-strategy-library-management)
 - Output: bundled INTO the work PR — `raw/sessions/2026-06-29-strategy-library-management.md`, new
   `concepts/strategy-library-management.md`, `index.md` (Concepts + Sources), `log.md` ingest entry,

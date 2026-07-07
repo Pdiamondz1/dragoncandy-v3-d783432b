@@ -103,6 +103,7 @@
 | `donny_oauth_codes` | OAuth authorization codes |
 | `donny_oauth_tokens` | OAuth access/refresh tokens |
 | `donny_scheduled_posts` | Cross-platform posting schedule (auto cross-scheduling). Per-platform caption/media/hashtags, `scheduled_at`, status lifecycle, and `ai_suggested_time`/`ai_reasoning` for Donny-proposed slots. |
+| `donny_cost_ledger` | Per-call **runtime** AI-spend ledger (Donny/Dezzy generation + RAG embeddings) — the source of truth for the ≤15%-of-revenue AI kill-switch (NOT the total Anthropic/OpenAI invoice, which is mostly founder dev spend/opex). Written only by `_shared/cost-ledger.ts`. `user_id` is **nullable** (system/anonymous calls log `NULL`; the FK to `auth.users` is kept); `tier` ∈ `T0`–`T3` or `'embedding'`. Summed MTD by the `aios_cost_stats()` RPC (see `docs/wiki/concepts/aios-runtime-spend-source-of-truth.md`). |
 
 > **Strategy library (`internal_docs`)** — the AIOS strategy/wiki docs surfaced at `/internal/strategy`;
 > a projection of git files synced by `donny-knowledge-sync` and the source of Donny's internal RAG

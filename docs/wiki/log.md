@@ -1,5 +1,15 @@
 # Wiki Log
 
+## [2026-07-07] ingest | AIOS Agent-Loop Audit (3 gaps)
+Captured the 3-gap AIOS agent-loop audit (prompted by a YouTube agent-loop video). New source
+[[AIOS Agent-Loop Audit]] + new concept [[AIOS Runtime Spend Source-of-Truth]] (the runtime-vs-dev
+spend reframe + the two-constraint `donny_cost_ledger` gotcha — the `auth.users` FK AND the `tier`
+CHECK both blocked user-less/embedding inserts). Gaps: make-validator meta-skill (#217, knowledge
+captured on that branch via [[Validator Skills]]); `/internal/loops` mission control (#218); spend
+source-of-truth A+B+C (#220 — deployed + proven live, first-ever embedding rows landed). Refreshed
+PROJECT_CONTEXT (Active Workstreams) + DATABASE_SCHEMA (`donny_cost_ledger` nullable user_id + tier
+'embedding'). Compounded onto [[Founder Playbooks]] / [[Self-Improving App]] rather than duplicating.
+
 ## [2026-07-07] update | make-validator skill (validator authoring meta-skill)
 Built the deferred *automate-last* step of the [[Validator Skills]] work: a project-scoped
 `make-validator` meta-skill (`.claude/skills/make-validator/`) that authors or retrofits validators

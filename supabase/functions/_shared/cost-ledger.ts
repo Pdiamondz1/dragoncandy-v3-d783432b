@@ -15,8 +15,17 @@ const MODEL_COSTS: Record<string, { input: number; output: number }> = {
   "text-embedding-3-small": { input: 0.00000002, output: 0 },
 };
 
+// A user-less runtime AI call (cron RAG-embedding sync, anonymous landing brief) has
+// no real end user. Passing the all-zeros placeholder or an empty string used to fail
+// the donny_cost_ledger FK to auth.users; normalize those to NULL so the row logs
+// (user_id is nullable as of the 20260707120000 migration).
+const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
+function normalizeUserId(userId: string | null | undefined): string | null {
+  return !userId || userId === ZERO_UUID ? null : userId;
+}
+
 export interface CostLogEntry {
-  userId: string;
+  userId: string | null;
   edgeFunction: string;
   model: string;
   tier: ModelTier;
@@ -34,7 +43,7 @@ export async function logCost(
     entry.inputTokens * rates.input + entry.outputTokens * rates.output;
 
   const { error } = await supabaseAdmin.from("donny_cost_ledger").insert({
-    user_id: entry.userId,
+    user_id: normalizeUserId(entry.userId),
     edge_function: entry.edgeFunction,
     model: entry.model,
     tier: entry.tier,
@@ -50,7 +59,7 @@ export async function logCost(
 }
 
 export interface EmbeddingCostEntry {
-  userId: string;
+  userId: string | null;
   edgeFunction: string;
   model: string;
   inputTokens: number;
@@ -68,7 +77,7 @@ export async function logEmbeddingCost(
   const estimatedCost = entry.inputTokens * rates.input;
 
   const { error } = await supabaseAdmin.from("donny_cost_ledger").insert({
-    user_id: entry.userId,
+    user_id: normalizeUserId(entry.userId),
     edge_function: entry.edgeFunction,
     model: entry.model,
     tier: "embedding",

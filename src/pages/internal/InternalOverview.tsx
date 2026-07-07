@@ -5,6 +5,7 @@ import { useInternalAccess } from '@/hooks/internal/useInternalAccess';
 import { StatCard, SectionHeading, ErrorCard } from '@/components/internal/stats';
 import { PageContainer, PageHeader } from '@/components/internal/layout';
 import { formatCents, formatUsd } from '@/lib/utils';
+import { aiCapStatus } from '@/lib/aiCostCap';
 import { Spinner } from '@/components/ui/spinner';
 
 const InternalOverview = () => {
@@ -32,6 +33,12 @@ const InternalOverview = () => {
   const verifiedPosts = p.dragonshare.posts_by_status['verified'] ?? 0;
   const topFunction = c ? topEntry(c.mtd_by_function) : undefined;
   const topModel = c ? topEntry(c.mtd_by_model) : undefined;
+  // Live cap vs the ledger's MTD runtime spend. Revenue basis is DragonShare's MTD
+  // platform fee (DragonCandy's earned revenue); pre-revenue this is ~$0 so the $250 floor
+  // applies. Requires BOTH cost and revenue: without revenue the 15%-of-revenue basis is
+  // unknown, so we withhold the cap rather than show a misleading floor-only status.
+  const cap =
+    c && r ? aiCapStatus(c.mtd_spend_usd, r.dragonshare_mtd.platform_fee_cents / 100) : undefined;
 
   return (
     <PageContainer size="xl">
@@ -114,11 +121,25 @@ const InternalOverview = () => {
       {isAdmin && (
         <>
           <SectionHeading>AI spend (admin)</SectionHeading>
+          <p className="-mt-1 mb-3 text-xs text-white/45">
+            Runtime serving cost (<span className="font-mono">donny_cost_ledger</span>) — excludes
+            founder dev / Claude Code usage, which is opex.
+          </p>
           {cost.isError || !c ? (
             <ErrorCard message="Cost stats failed to load." />
           ) : (
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               <StatCard label="MTD AI spend" value={formatUsd(c.mtd_spend_usd)} />
+              <StatCard
+                label="Runtime vs cap"
+                value={cap ? `${Math.round(cap.ratio * 100)}%` : '—'}
+                sub={
+                  cap
+                    ? `${formatUsd(c.mtd_spend_usd)} of ${formatUsd(cap.capUsd)} cap (${cap.basis}) · ${cap.status}`
+                    : 'revenue unavailable — cap needs it'
+                }
+                accent={cap && cap.status !== 'green' ? 'pink' : 'teal'}
+              />
               <StatCard
                 label="Top function"
                 value={topFunction?.[0] ?? '—'}
@@ -128,15 +149,6 @@ const InternalOverview = () => {
                 label="Top model"
                 value={topModel?.[0] ?? '—'}
                 sub={topModel ? formatUsd(topModel[1]) : undefined}
-              />
-              <StatCard
-                label="Cost alert"
-                value={c.latest_alert?.alert_level ?? 'none'}
-                sub={
-                  c.latest_alert
-                    ? `${Math.round(c.latest_alert.ratio * 100)}% of ${formatUsd(c.latest_alert.cap_usd)} cap`
-                    : 'No alerts logged'
-                }
               />
             </div>
           )}
