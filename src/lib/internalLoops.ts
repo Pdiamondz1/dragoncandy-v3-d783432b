@@ -117,7 +117,15 @@ export interface RoutineStatus {
   health: RoutineHealth;
 }
 
-export type PlaybookHealth = 'ok' | 'attention' | 'error' | 'running' | 'never';
+export type PlaybookHealth = 'ok' | 'attention' | 'error' | 'stale' | 'running' | 'never';
+
+/**
+ * A `running` playbook_run older than this is a dead run the runner hasn't reaped
+ * yet (it inserts `running`, then a crash leaves the row). Mirrors the runner's
+ * own STALE_RUN_MS (15 min, safely above the ~400s edge-fn wall-clock) so mission
+ * control doesn't report a dead run as live.
+ */
+export const STALE_RUN_MS = 15 * 60 * 1000;
 
 export interface PlaybookStatus {
   slug: string;
@@ -154,13 +162,20 @@ export function routineHealth(
   return 'quiet';
 }
 
-/** Health of a playbook from its latest run's status + done-check verdict. */
+/**
+ * Health of a playbook from its latest run's status + done-check verdict.
+ * `runAgeMs` is the age of that run since it started — a `running` run past
+ * STALE_RUN_MS is a dead/reaped run, not a live one.
+ */
 export function playbookHealth(
   lastRunStatus: string | null,
   done: boolean | null,
+  runAgeMs: number | null,
 ): PlaybookHealth {
   if (!lastRunStatus) return 'never';
-  if (lastRunStatus === 'running') return 'running';
+  if (lastRunStatus === 'running') {
+    return runAgeMs != null && runAgeMs > STALE_RUN_MS ? 'stale' : 'running';
+  }
   if (lastRunStatus === 'failed') return 'error';
   // completed — the done-check verdict decides ok vs. needs-attention.
   if (done === false) return 'attention';
@@ -185,7 +200,7 @@ export function relativeTime(iso: string | null, now: Date): string {
 }
 
 export interface ComposeInput {
-  findings: { source: string; created_at: string }[];
+  findings: { source: string; created_at: string; last_seen_at: string | null }[];
   playbooks: { id: string; slug: string; title: string; status: string }[];
   runs: {
     playbook_id: string;
@@ -197,13 +212,19 @@ export interface ComposeInput {
   latestBriefingAt: string | null;
 }
 
-/** The newest `created_at` among findings with a given source (input pre-sorted-desc-safe). */
+/**
+ * The newest output time among findings with a given source. Uses `last_seen_at`
+ * (the ingest bumps it on every re-file of a fingerprint but leaves `created_at`
+ * at the original insert), falling back to `created_at` — so a routine that keeps
+ * re-filing the same fingerprint reads as active, not quiet.
+ */
 function latestFindingAt(findings: ComposeInput['findings'], source: string): string | null {
   let latest: string | null = null;
   for (const f of findings) {
     if (f.source !== source) continue;
-    if (!latest || new Date(f.created_at).getTime() > new Date(latest).getTime()) {
-      latest = f.created_at;
+    const t = f.last_seen_at ?? f.created_at;
+    if (!latest || new Date(t).getTime() > new Date(latest).getTime()) {
+      latest = t;
     }
   }
   return latest;
@@ -244,6 +265,7 @@ export function composeLoops(input: ComposeInput, now: Date): LoopsData {
     const run = latestRun(input.runs, p.id);
     const runCount = input.runs.filter((r) => r.playbook_id === p.id).length;
     const done = run?.done_check?.done ?? null;
+    const runAgeMs = run ? now.getTime() - new Date(run.started_at).getTime() : null;
     return {
       slug: p.slug,
       title: p.title,
@@ -252,7 +274,7 @@ export function composeLoops(input: ComposeInput, now: Date): LoopsData {
       lastRunStatus: run?.status ?? null,
       done,
       runCount,
-      health: playbookHealth(run?.status ?? null, done),
+      health: playbookHealth(run?.status ?? null, done, runAgeMs),
     };
   });
 

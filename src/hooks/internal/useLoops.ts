@@ -15,7 +15,7 @@ export function useLoops() {
       const [findingsRes, playbooksRes, runsRes, briefingRes] = await Promise.all([
         supabase
           .from('aios_findings')
-          .select('source, created_at')
+          .select('source, created_at, last_seen_at')
           .order('created_at', { ascending: false }),
         supabase
           .from('aios_playbooks')
@@ -45,7 +45,11 @@ export function useLoops() {
       }
 
       const input: ComposeInput = {
-        findings: (findingsRes.data ?? []) as { source: string; created_at: string }[],
+        findings: (findingsRes.data ?? []) as {
+          source: string;
+          created_at: string;
+          last_seen_at: string | null;
+        }[],
         playbooks: (playbooksRes.data ?? []) as {
           id: string;
           slug: string;

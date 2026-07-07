@@ -30,16 +30,19 @@ describe('routineHealth', () => {
 
 describe('playbookHealth', () => {
   it('is "never" with no run', () => {
-    expect(playbookHealth(null, null)).toBe('never');
+    expect(playbookHealth(null, null, null)).toBe('never');
   });
-  it('maps running / failed directly', () => {
-    expect(playbookHealth('running', null)).toBe('running');
-    expect(playbookHealth('failed', null)).toBe('error');
+  it('is "running" only while fresh, "stale" once past STALE_RUN_MS', () => {
+    expect(playbookHealth('running', null, 60_000)).toBe('running'); // 1 min
+    expect(playbookHealth('running', null, 20 * 60_000)).toBe('stale'); // 20 min > 15
+  });
+  it('maps failed directly', () => {
+    expect(playbookHealth('failed', null, null)).toBe('error');
   });
   it('uses the done-check verdict on a completed run', () => {
-    expect(playbookHealth('completed', true)).toBe('ok');
-    expect(playbookHealth('completed', false)).toBe('attention');
-    expect(playbookHealth('completed', null)).toBe('ok'); // no verdict block → neutral pass
+    expect(playbookHealth('completed', true, null)).toBe('ok');
+    expect(playbookHealth('completed', false, null)).toBe('attention');
+    expect(playbookHealth('completed', null, null)).toBe('ok'); // no verdict block → neutral pass
   });
 });
 
@@ -61,18 +64,22 @@ describe('relativeTime', () => {
 describe('composeLoops', () => {
   const base: ComposeInput = {
     findings: [
-      { source: 'bug-sweep-agent', created_at: iso('2026-07-06T07:00:00Z') },
-      { source: 'bug-sweep-agent', created_at: iso('2026-07-01T07:00:00Z') },
-      { source: 'loop-scout', created_at: iso('2026-07-01T08:00:00Z') },
+      { source: 'bug-sweep-agent', created_at: iso('2026-07-06T07:00:00Z'), last_seen_at: iso('2026-07-06T07:00:00Z') },
+      { source: 'bug-sweep-agent', created_at: iso('2026-07-01T07:00:00Z'), last_seen_at: iso('2026-07-01T07:00:00Z') },
+      // re-filed fingerprint: old created_at, fresh last_seen_at (the ingest bumps last_seen_at only)
+      { source: 'loop-scout', created_at: iso('2026-06-01T08:00:00Z'), last_seen_at: iso('2026-07-07T08:00:00Z') },
     ],
     playbooks: [
       { id: 'p1', slug: 'dezzy-outreach', title: 'Dezzy — Outreach', status: 'active' },
       { id: 'p2', slug: 'never-run', title: 'Never Run', status: 'active' },
       { id: 'p3', slug: 'archived-one', title: 'Archived', status: 'archived' },
+      { id: 'p4', slug: 'stuck-run', title: 'Stuck', status: 'active' },
     ],
     runs: [
       { playbook_id: 'p1', status: 'completed', done_check: { done: true }, started_at: iso('2026-06-28T00:00:00Z'), finished_at: iso('2026-06-28T00:05:00Z') },
       { playbook_id: 'p1', status: 'completed', done_check: { done: false }, started_at: iso('2026-06-20T00:00:00Z'), finished_at: iso('2026-06-20T00:05:00Z') },
+      // a `running` row started 60 min before NOW → past STALE_RUN_MS, must read as stale
+      { playbook_id: 'p4', status: 'running', done_check: null, started_at: iso('2026-07-07T11:00:00Z'), finished_at: null },
     ],
     latestBriefingAt: iso('2026-07-06T07:04:00Z'),
   };
@@ -83,6 +90,9 @@ describe('composeLoops', () => {
     const bug = routines.find((r) => r.key === 'bug-sweep-agent')!;
     expect(bug.lastOutputAt).toBe(iso('2026-07-06T07:00:00Z')); // newest of the two
     expect(bug.health).toBe('ok');
+    const scout = routines.find((r) => r.key === 'loop-scout-agent')!;
+    expect(scout.lastOutputAt).toBe(iso('2026-07-07T08:00:00Z')); // last_seen_at wins over old created_at
+    expect(scout.health).toBe('ok');
     const weekly = routines.find((r) => r.key === 'weekly-brief-agent')!;
     expect(weekly.lastOutputAt).toBe(iso('2026-07-06T07:04:00Z')); // from briefings, not findings
     const strat = routines.find((r) => r.key === 'strategy-library-audit-agent')!;
@@ -102,6 +112,9 @@ describe('composeLoops', () => {
     expect(p2.health).toBe('never');
     const p3 = playbooks.find((p) => p.slug === 'archived-one')!;
     expect(p3.archived).toBe(true);
+    const p4 = playbooks.find((p) => p.slug === 'stuck-run')!;
+    expect(p4.lastRunStatus).toBe('running');
+    expect(p4.health).toBe('stale'); // running >15min before NOW → reaped, not live
   });
 
   it('always returns the static skill loops', () => {

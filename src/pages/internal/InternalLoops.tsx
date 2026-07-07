@@ -23,6 +23,7 @@ const PLAYBOOK_CHIP: Record<PlaybookHealth, { label: string; cls: string }> = {
   ok: { label: 'Done ✓', cls: 'border-dc-teal/40 bg-dc-teal/15 text-dc-teal' },
   attention: { label: 'Needs attention', cls: 'border-dc-yellow/40 bg-dc-yellow/15 text-dc-yellow' },
   error: { label: 'Failed', cls: 'border-dc-pink-accent/50 bg-dc-pink-accent/15 text-dc-pink' },
+  stale: { label: 'Timed out', cls: 'border-dc-yellow/40 bg-dc-yellow/15 text-dc-yellow' },
   running: { label: 'Running…', cls: 'border-dc-teal/40 bg-dc-teal/10 text-dc-teal' },
   never: { label: 'Never run', cls: 'border-white/15 bg-white/[0.06] text-white/50' },
 };
@@ -120,7 +121,7 @@ export default function InternalLoops() {
   const routinesSilent = routines.filter((r) => r.health === 'none').length;
   const playbooksRun = playbooks.filter((p) => p.health !== 'never').length;
   const playbooksAttention = playbooks.filter(
-    (p) => p.health === 'attention' || p.health === 'error',
+    (p) => p.health === 'attention' || p.health === 'error' || p.health === 'stale',
   ).length;
 
   return (
