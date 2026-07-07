@@ -58,8 +58,9 @@ The block MUST be the LAST fenced block in the output. See `docs/wiki/concepts/v
 
 **Deterministic gates (these flip `met`):**
 - **Deploy live** — the bundle hash changed from the baseline (step 2 returned `DEPLOY_LIVE`).
-- **Intended code present** — the new bundle contains the strings the change added/removed
-  (step 3), so this is *this* deploy and not an unrelated build that merely bumped the hash.
+- **Intended code present** — the new bundle **contains** the strings the change *added* and
+  **no longer contains** the strings it *removed* (step 3), so this is *this* deploy and not an
+  unrelated build that merely bumped the hash.
 - **App mounted** — `#root` has children on each viewport.
 - **Console errors = 0** — `window.__errs` empty on **both** desktop and mobile (step 4).
 
