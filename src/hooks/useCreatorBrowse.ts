@@ -142,7 +142,7 @@ export const useCreatorBrowse = () => {
     enabled: !!user,
   });
 
-  const handleFilterChange = useCallback((key: keyof CreatorFilters, value: string | string[] | boolean | number) => {
+  const handleFilterChange = useCallback((key: keyof CreatorFilters, value: string | string[] | number) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   }, []);
 
@@ -259,7 +259,7 @@ export const useCreatorBrowse = () => {
     }
 
     return { filteredCreators: result, locationUnplaceableCount: unplaceable };
-  }, [creators, filters, debouncedFilters, sortBy, contentTypeFilter, activeCenter, filters.location.radiusMiles, geocodedById]);
+  }, [creators, filters, sortBy, contentTypeFilter, activeCenter, geocodedById]);
 
   return {
     creators,

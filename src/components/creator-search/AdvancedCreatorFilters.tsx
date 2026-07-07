@@ -27,7 +27,7 @@ interface CreatorFilters {
 
 interface AdvancedCreatorFiltersProps {
   filters: CreatorFilters;
-  onFilterChange: (key: keyof CreatorFilters, value: string | string[] | boolean | number) => void;
+  onFilterChange: (key: keyof CreatorFilters, value: string | string[] | number) => void;
   onResetFilters: () => void;
 }
 
