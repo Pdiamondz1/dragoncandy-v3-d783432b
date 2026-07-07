@@ -55,8 +55,9 @@ and an append-only **Run Log**. Full contract: `docs/wiki/concepts/loop-memory-p
    `docs/wiki/{concepts,entities,analyses}/`, confirm it is listed in `docs/wiki/index.md` AND
    has a matching `docs/wiki/log.md` entry. `met` = every session page is in index + log.
    The *substantive* "do the core docs reflect the work" judgment is NOT gated (it's prose, not
-   a rule) — if a core doc looks stale, add an **advisory** line to `missing[]` but do NOT flip
-   `met` on it.
+   a rule) — if a core doc looks stale, note it as an **advisory** line in the prose summary but
+   do NOT flip `met` on it, and do NOT put it in `missing[]` (that array is strictly the fix-step
+   input for `met:false` checks and must be empty when `done:true`).
 
 ## Output — human prose, then the verdict block
 
