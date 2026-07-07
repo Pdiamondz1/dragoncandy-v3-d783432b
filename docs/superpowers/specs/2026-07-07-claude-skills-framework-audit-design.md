@@ -116,6 +116,10 @@ Score Donny's three skill-analogs against the same §3 rubric, adapted:
 - **Donny RAG** (`donny_knowledge`) ≈ **progressive-disclosure reference.** Chunking/retrieval
   quality; is the wiki→RAG sync scope right (concepts/entities/analyses only)?
 
+For each surface, criteria that structurally cannot apply are marked **N/A**, not `fail` — e.g.
+"bundled scripts" and "memory across runs" against Donny RAG (a knowledge store, not an executable),
+so a non-applicable criterion is never scored as a gap.
+
 Plus one **strategic recommendation** (not a build in this cycle): should Donny's playbooks adopt the
 video's explicit *skill-folder* format (folder = task + resources + gotchas + memory) rather than a
 single `aios_playbooks` row? Recorded as a backlog item with a value/effort estimate, not decided
@@ -137,7 +141,9 @@ Quick wins = high value × S effort. The top quick win is built in Phase 2 (§9)
 
 `docs/wiki/analyses/claude-skills-framework-audit.md`, following `docs/KNOWLEDGE_WIKI.md` conventions:
 - Frontmatter: `title`, `type: analysis`, `created: 2026-07-07`, `updated`, `sources:
-  [the video URL + the Anthropic blog]`, `tags: [skills, claude-code, aios, donny, audit]`.
+  [https://www.youtube.com/watch?v=3UWxMPUko1k,
+  https://claude.com/blog/lessons-from-building-claude-code-how-we-use-skills]`,
+  `tags: [skills, claude-code, aios, donny, audit]`.
 - Body: §1 framework recap → §3 rubric → Phase 1a scorecard + coverage matrix → Phase 1b Donny
   scorecard + strategic note → the ranked backlog → `## See Also` with `[[wikilinks]]` to
   [[Loop Memory Protocol]], [[AIOS Founder Playbooks]], [[Self-Improving App]], and the relevant
@@ -156,7 +162,8 @@ table write when the secret is available), mirroring the Loop Scout contract:
   `Authorization: Bearer $AIOS_INGEST_SECRET`, body
   `{"type":"findings","payload":{"findings":[{severity,title,summary_md,evidence,source,fingerprint}]}}`.
 - `source: "skills-audit"`; `title: "[skills-audit] <item name>"`; `fingerprint:
-  "skills-gap:<kebab-slug>"` (stable → monthly-safe dedupe/occurrence-bump if ever re-run).
+  "skills-audit:<kebab-slug>"` (prefix matches `source`/`title`; stable → dedupe/occurrence-bump
+  if ever re-run).
 - `severity` = build priority (`high` = top quick wins / high-value, `medium`, `low`).
 - `summary_md`: markdown bullets (no pipe tables) — the value rationale + build recommendation.
 - `evidence` (JSON): `{target, category, criteria_failed:[...], effort, related_skill?}`.
