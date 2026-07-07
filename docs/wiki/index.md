@@ -130,6 +130,8 @@
 ## Analyses
 
 - [[18-Month Tech Engineering & Donny AI]](analyses/18-month-tech-engineering-donny-ai-1m-users.md) — Donny-captured analysis: 18-month tech engineering & Donny AI plan toward 1M users
+- [[Claude Skills Framework Audit]](analyses/claude-skills-framework-audit.md) — Anthropic's 9-category Skills playbook applied to DragonCandy's dev `.claude/skills/` library + Donny (playbooks/tools/RAG); a rubric scorecard, coverage matrix, and a value×effort-ranked backlog; the library is strong (gaps are whole missing categories, not weak skills); ships the `careful` safety skill as the #1 quick win
+- [[Claude Subagents Audit]](analyses/claude-subagents-audit.md) — the "how to build Claude Code subagents" video applied to DragonCandy audit-first; 7-dimension rubric + current-usage assessment (zero custom `.claude/agents/`) + a ranked custom-subagent backlog; ships the read-only `edge-function-reviewer` subagent as the #1 quick win.
 - [[Competitive Advantage]](analyses/the-honest-framing-first.md) — Donny-captured (2026-06-23): how DragonCandy wins vs Cirqle, Aspire, GRIN, Captiv8, CreatorIQ — competitor-by-competitor weaknesses and DragonCandy's edge
 - [[Content Engine Data Audit]](analyses/content-engine-data-audit.md) — what signal data exists in prod for the Donny content engine; context live, performance dark, Toast/social-cache tables missing from prod; foundation-first plan
 - [[DragonCandy — Dame AI: The Business Growth Agent System Spec]](analyses/dragoncandy-dame-ai-the-business-growth-agent-system-spec.md) — Workspace-imported (2026-06-27): the full system spec for the company-facing growth agent (named "Dame", since renamed Dezzy) — the source doc behind [[Dezzy Agent (Playbook Suite)]]

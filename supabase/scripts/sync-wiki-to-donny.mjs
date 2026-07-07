@@ -36,7 +36,7 @@ const EXCLUDE = new Set([
   "error-handling-patterns", "content-delivery-state-machine", "boost-payment-two-path",
   "payments-split-by-surface", "data-flywheel", "musks-algorithm", "north-star-kpi-scorecard",
   "supabase", "capacitor-native-shell", "file-management", "organizations", "stripe-connect",
-  "content-engine-data-audit",
+  "content-engine-data-audit", "claude-skills-framework-audit", "claude-subagents-audit",
 ]);
 
 if (!URL || !KEY) {
