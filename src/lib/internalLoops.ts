@@ -200,8 +200,10 @@ export function relativeTime(iso: string | null, now: Date): string {
 }
 
 export interface ComposeInput {
+  /** Latest finding per source (the hook fetches one row per source, cap-safe). */
   findings: { source: string; created_at: string; last_seen_at: string | null }[];
   playbooks: { id: string; slug: string; title: string; status: string }[];
+  /** Latest run per playbook (the hook fetches one row per playbook, cap-safe). */
   runs: {
     playbook_id: string;
     status: string;
@@ -209,6 +211,8 @@ export interface ComposeInput {
     started_at: string;
     finished_at: string | null;
   }[];
+  /** Exact total run count per playbook id (from a head+count query, not row length). */
+  runCountByPlaybook: Record<string, number>;
   latestBriefingAt: string | null;
 }
 
@@ -263,7 +267,7 @@ export function composeLoops(input: ComposeInput, now: Date): LoopsData {
 
   const playbooks: PlaybookStatus[] = input.playbooks.map((p) => {
     const run = latestRun(input.runs, p.id);
-    const runCount = input.runs.filter((r) => r.playbook_id === p.id).length;
+    const runCount = input.runCountByPlaybook[p.id] ?? 0;
     const done = run?.done_check?.done ?? null;
     const runAgeMs = run ? now.getTime() - new Date(run.started_at).getTime() : null;
     return {

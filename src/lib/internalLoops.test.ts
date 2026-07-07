@@ -81,6 +81,7 @@ describe('composeLoops', () => {
       // a `running` row started 60 min before NOW → past STALE_RUN_MS, must read as stale
       { playbook_id: 'p4', status: 'running', done_check: null, started_at: iso('2026-07-07T11:00:00Z'), finished_at: null },
     ],
+    runCountByPlaybook: { p1: 2, p4: 1 },
     latestBriefingAt: iso('2026-07-06T07:04:00Z'),
   };
 
