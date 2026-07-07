@@ -98,14 +98,21 @@ export const useCreatorBrowse = () => {
       if (prev.location.center === businessCenter) return prev;
       return { ...prev, location: { ...prev.location, center: businessCenter } };
     });
-  }, [businessCenter]);
+  }, [businessCenter, filters.location.mode]);
 
   // Resolve a typed city/zip into a center (debounced) when in custom mode.
   React.useEffect(() => {
     const { mode, rawQuery } = filters.location;
     if (mode !== 'custom') return;
     const q = rawQuery.trim();
-    if (q.length < 3) return;
+    if (q.length < 3) {
+      setFilters(prev =>
+        prev.location.status === 'idle'
+          ? prev
+          : { ...prev, location: { ...prev.location, status: 'idle' } },
+      );
+      return;
+    }
 
     let cancelled = false;
     setFilters(prev => ({ ...prev, location: { ...prev.location, status: 'resolving' } }));
