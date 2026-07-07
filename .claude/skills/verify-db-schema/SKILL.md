@@ -80,6 +80,10 @@ block in the output. See `docs/wiki/concepts/validator-skills.md`.
 - **RLS allows the actual actor** — the policy was read and permits the real caller (`anon` vs
   `auth.uid`), not assumed.
 - **Frontend↔schema field names match** — the mismatch list is empty.
+- **Deploy ordering & grants** — for a change that adds a **new column or SECURITY DEFINER
+  function**: the prod migration is applied **before** the dependent edge-fn/frontend, and
+  `EXECUTE` is revoked from `anon` on each new definer (advisors 0028/0029). N/A → met when the
+  change adds neither.
 - **Advisors clean** — `get_advisors` (security + performance) has no unresolved flag on the
   touched tables/functions (each remaining flag noted with a reason counts as resolved).
 
@@ -93,6 +97,7 @@ not a silent pass.
  "checklist": [{"criterion": "all read/written columns exist in prod", "met": true},
                {"criterion": "RLS permits the actual actor (anon vs auth.uid)", "met": true},
                {"criterion": "frontend↔schema field-name mismatches = 0", "met": false},
+               {"criterion": "deploy ordering + anon EXECUTE revoked (new column/definer, else N/A)", "met": true},
                {"criterion": "get_advisors clean (or each flag justified)", "met": true}],
  "missing": ["frontend selects `social_handle` but prod column is `social_handles` — rename the select or add the column via the deploy-ordering rule"]}
 ```
