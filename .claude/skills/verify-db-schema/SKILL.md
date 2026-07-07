@@ -66,3 +66,34 @@ not migration files — files are intent, prod is reality. See
   before — verify the environment you actually deploy to.
 - This is a verification gate, not a migration tool. If a column is missing,
   follow the deploy-ordering rule to add it; don't paper over it in the frontend.
+
+## Verdict block (validator contract)
+
+This skill is also a **validator**: after the human report, end with exactly one fenced JSON
+block — the same `{done, checklist, missing}` shape `aios-playbook-run`'s `parseDoneCheck` reads —
+so a Supabase change can be gated by a machine-readable verdict. The block MUST be the LAST fenced
+block in the output. See `docs/wiki/concepts/validator-skills.md`.
+
+**Deterministic gates (these flip `met`):**
+- **Columns exist in prod** — every field the change reads/writes is confirmed present in the prod
+  project (not merely in a migration file).
+- **RLS allows the actual actor** — the policy was read and permits the real caller (`anon` vs
+  `auth.uid`), not assumed.
+- **Frontend↔schema field names match** — the mismatch list is empty.
+- **Advisors clean** — `get_advisors` (security + performance) has no unresolved flag on the
+  touched tables/functions (each remaining flag noted with a reason counts as resolved).
+
+**Advisory only (note in `missing[]`, never flip `met`):** whether the change is the *right* fix
+is a judgment call — surface it as advisory, don't gate on it. A check that can't run (can't reach
+the project) is **BLOCKED**: `met:false` + a `missing[]` note, not a silent pass.
+
+```json
+{"done": false,
+ "checklist": [{"criterion": "all read/written columns exist in prod", "met": true},
+               {"criterion": "RLS permits the actual actor (anon vs auth.uid)", "met": true},
+               {"criterion": "frontend↔schema field-name mismatches = 0", "met": false},
+               {"criterion": "get_advisors clean (or each flag justified)", "met": true}],
+ "missing": ["frontend selects `social_handle` but prod column is `social_handles` — rename the select or add the column via the deploy-ordering rule"]}
+```
+
+`done` = true only when every gate is met.

@@ -1,5 +1,18 @@
 # Wiki Log
 
+## [2026-07-07] update | make-validator skill (validator authoring meta-skill)
+Built the deferred *automate-last* step of the [[Validator Skills]] work: a project-scoped
+`make-validator` meta-skill (`.claude/skills/make-validator/`) that authors or retrofits validators
+to the one verdict contract (`{done,checklist,missing}`). Two modes — NEW (scaffold `verify-<slug>`)
+and RETROFIT (append the block to an existing judge skill). Dogfooded the retrofit path on
+`verify-prod` and `verify-db-schema`: both were *counted* as validators by Loop Scout but emitted
+only a prose `## Done` section — each now appends the machine-readable block (gating checks explicit,
+subjective parts advisory), purely additively. Updated [[Validator Skills]] (authoring section +
+retrofit note + Loop Memory cross-link) and seeded the skill's `MEMORY.md`. Skills + docs only — no
+schema/RLS/edge-fn/secret/app-code, no prod risk. Gap 1 of a 3-gap AIOS agent-loop audit (prompted by
+the "Agent Loops Clearly Explained" video); gaps 2 (`/internal/loops` observability) + 3 (spend
+source-of-truth) sequenced next. Source [[make-validator skill]]. Branch `feat/make-validator-skill`.
+
 ## [2026-06-28] update | Landing: kill old-design flash + lighten it (crash/perf)
 Root-caused the "old white landing flashes then the dark one loads" bug to a **stale prerendered
 shell** hardcoded in `index.html` (instant-LCP shell never updated after the redesign) — not a

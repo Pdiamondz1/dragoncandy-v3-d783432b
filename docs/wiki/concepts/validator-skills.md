@@ -2,8 +2,8 @@
 title: Validator Skills
 type: concept
 created: 2026-06-20
-updated: 2026-06-20
-sources: [2026-06-20-validator-skills-loops-design.md]
+updated: 2026-07-07
+sources: [2026-06-20-validator-skills-loops-design.md, 2026-07-07-make-validator-skill.md]
 tags: [skills, loops, validators, aios, verification]
 ---
 # Validator Skills
@@ -45,6 +45,21 @@ A validator skill:
 
 Retrofitting an existing judge skill into a validator is therefore **additive and
 backward-compatible**: append the verdict block; change nothing a human currently reads.
+`verify-prod` and `verify-db-schema` were retrofitted this way (2026-07-07) — they had a prose
+`## Done` section that Loop Scout already counted as a validator, but emitted no machine-readable
+block; each now appends the contract with the gating checks explicit and the subjective parts
+(visual/layout, "is this the right fix") kept advisory.
+
+## Authoring & retrofitting validators — the `make-validator` skill
+
+Don't hand-roll a validator from memory — use the **`make-validator`** meta-skill
+(`.claude/skills/make-validator/`). It has two modes: **NEW** (scaffold a fresh `verify-<slug>`)
+and **RETROFIT** (append the block to an existing judge skill). It encodes the rules that are easy
+to get wrong: the verdict block must be the LAST fenced block; only a deterministic rule may flip
+`met` (subjective judgment is advisory → `missing[]`); naming the dir `verify-<slug>` IS the Loop
+Scout integration; and a validator never writes the state it judges. It ends with a self-check so a
+validator-authoring run can't ship an unvalidated validator. When Loop Scout files a candidate
+"blocked on: author a verify-* validator first", `make-validator` is the tool that unblocks it.
 
 ## Loops
 
@@ -62,5 +77,7 @@ condition #2 when a matching `verify-*` validator skill exists.
 - [[Self-Improving App]] — the 4-Condition Test, knowledge-freshness self-heal, and the Loop
   Scout routine that ranks loop candidates
 - [[Founder Playbooks]] — origin of the `done_check` verdict shape
-- Skills/routines (not wiki pages): the `knowledge-sync` and `verify-knowledge` skills, and the
-  `.claude/schedules/loop-scout-agent.md` routine
+- [[Loop Memory Protocol]] — the optional co-located `MEMORY.md` a validator may keep (advisory-only)
+- Skills/routines (not wiki pages): the `make-validator` authoring meta-skill; the `knowledge-sync`
+  and `verify-knowledge` skills; the retrofitted `verify-prod` / `verify-db-schema` validators; and
+  the `.claude/schedules/loop-scout-agent.md` routine

@@ -48,3 +48,29 @@ verification use the built-in `/verify`; use this for the real prod deploy.)
 - Admin-only surfaces (e.g. `/internal/*`) need an internal account; if unavailable, verify the
   public/app surface and note what couldn't be checked.
 - `browser-use doctor` may crash on a Windows cp1252 encoding quirk; set the UTF-8 env vars and use the commands directly.
+
+## Verdict block (validator contract)
+
+This skill is also a **validator**: after the human report (step 5), end with exactly one fenced
+JSON block — the same `{done, checklist, missing}` shape `aios-playbook-run`'s `parseDoneCheck`
+reads — so the deploy-verify step can **close a loop** (`deploy → verify-prod → fix → re-verify`).
+The block MUST be the LAST fenced block in the output. See `docs/wiki/concepts/validator-skills.md`.
+
+**Deterministic gates (these flip `met`):**
+- **Deploy live** — the bundle hash changed from the baseline (step 2 returned `DEPLOY_LIVE`).
+- **App mounted** — `#root` has children on each viewport.
+- **Console errors = 0** — `window.__errs` empty on **both** desktop and mobile (step 4).
+
+**Advisory only (note in `missing[]`, never flip `met`):** visual/layout breakage and screenshot
+judgment are subjective — surface them as advisory lines, don't gate on them. A viewport that
+can't be reached is **BLOCKED**: `met:false` + a `missing[]` note, not a silent pass.
+
+```json
+{"done": false,
+ "checklist": [{"criterion": "new bundle deployed (hash changed)", "met": true},
+               {"criterion": "#root mounted (desktop + mobile)", "met": true},
+               {"criterion": "console errors = 0 (desktop + mobile)", "met": false}],
+ "missing": ["mobile console: 1 error `useX is not a function` at index-abc.js — investigate before trusting the deploy"]}
+```
+
+`done` = true only when every gate is met (deploy live, app mounted, zero console errors on both viewports).
