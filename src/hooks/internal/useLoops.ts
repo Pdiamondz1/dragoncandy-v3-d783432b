@@ -40,7 +40,13 @@ export function useLoops() {
               .limit(1),
           ),
         ),
-        supabase.from('aios_briefings').select('created_at').order('created_at', { ascending: false }).limit(1),
+        // updated_at, not created_at: the ingest upserts one row per week_start, so a
+        // daily refresh bumps updated_at while created_at stays at the original insert.
+        supabase
+          .from('aios_briefings')
+          .select('created_at, updated_at')
+          .order('updated_at', { ascending: false })
+          .limit(1),
         supabase.from('aios_playbooks').select('id, slug, title, status').order('slug', { ascending: true }),
       ]);
 
@@ -70,7 +76,8 @@ export function useLoops() {
         runCountByPlaybook: Object.fromEntries(
           playbookRows.map((p, i) => [p.id, runResults[i].count ?? 0]),
         ),
-        latestBriefingAt: briefingRes.data?.[0]?.created_at ?? null,
+        latestBriefingAt:
+          briefingRes.data?.[0]?.updated_at ?? briefingRes.data?.[0]?.created_at ?? null,
       };
 
       return composeLoops(input, new Date());
