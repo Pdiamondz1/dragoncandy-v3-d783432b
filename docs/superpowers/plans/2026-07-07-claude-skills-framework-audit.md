@@ -15,6 +15,7 @@
 ## Pre-flight (read before starting)
 
 - **Worktree/branch:** all work is on branch `feat/claude-skills-audit` in the DC-3 worktree. The shell cwd may resolve to the MAIN checkout — **always `cd` to `C:/GIT/dragoncandy-v3-d783432b/.claude/worktrees/DC-3` first**, and write with the explicit worktree path. Verify with `git branch --show-current` → `feat/claude-skills-audit` ([[project_shell_cwd_is_main_checkout]]).
+- **Shell/tooling:** the shell snippets below are bash (`head`, `grep`, `curl`, `&&`) — run them through the **Bash tool** (Git Bash), not PowerShell. Prefer the dedicated **Grep** tool over `grep` for the Task 3 tool-name sweep and the **Read** tool over `head`/`cat`. Supabase reads/writes go through the Supabase MCP tools.
 - **The rubric (7 criteria)** — score each skill/surface **pass / partial / fail** with a one-line reason. `N/A` where a criterion structurally cannot apply (never `fail`):
   1. Single category (fits exactly one of the 9)
   2. Gotchas (failure-point-driven, not happy-path)
@@ -181,9 +182,9 @@ git commit -m "docs(wiki): skills-audit ranked backlog + index/log"
 
 **Files:** none (network write to prod AIOS).
 
-- [ ] **Step 1: Confirm the `aios_findings` shape**
+- [ ] **Step 1: Confirm the `aios_findings` shape AND the ingest body**
 
-Run `list_tables` (Supabase MCP) filtered to `aios_findings`; note the real columns (expected: `severity, title, summary_md, evidence jsonb, source, fingerprint, status, occurrences, created_at`). This governs both the ingest payload and the fallback insert.
+Run `list_tables` (Supabase MCP) filtered to `aios_findings`; note the real columns (expected: `severity, title, summary_md, evidence jsonb, source, fingerprint, status, occurrences, created_at`). This governs the fallback insert. **Also** read `supabase/functions/aios-report-ingest/index.ts` (the handler normalizes the POST body, so the table shape alone doesn't guarantee the request shape) — or confirm the body against the already-read `.claude/schedules/loop-scout-agent.md` caller — so the Step-2 payload matches what the function actually parses, not just the Loop Scout convention.
 
 - [ ] **Step 2: File via the choke point (preferred)**
 
@@ -354,15 +355,26 @@ Invoke the `codex-review` skill: `codex review --base main --title "skills audit
 
 **Files:** none (handoff + knowledge sync).
 
-- [ ] **Step 1: Knowledge-sync note**
+- [ ] **Step 1: Close the quick-win's own finding**
+
+The `careful` skill shipped in Task 6, but its `skills-audit` finding from Task 5 is still `open`. Mark just that one row `resolved` so the founder's triage queue reflects it was already built this cycle:
+
+```sql
+update aios_findings set status = 'resolved'
+where source = 'skills-audit' and fingerprint = 'skills-audit:careful-safety-skill';
+```
+
+(Use the actual fingerprint slug you filed for the quick win; leave all other `skills-audit` findings `open` for triage.)
+
+- [ ] **Step 2: Knowledge-sync note**
 
 The wiki page is an `analyses/` page → RAG-eligible. On merge to main, the post-merge hook / `knowledge-sync` syncs it into `donny_knowledge` ([[project_knowledge_sync_automation]]). No manual RAG push needed pre-merge; note it in the PR body.
 
-- [ ] **Step 2: Invoke `superpowers:finishing-a-development-branch`**
+- [ ] **Step 3: Invoke `superpowers:finishing-a-development-branch`**
 
 Present the merge/PR options. Open a PR from `feat/claude-skills-audit` → `main` with a body summarizing: the audit deliverables (wiki page + N findings), the shipped `careful` skill, and the deferred backlog (future sub-projects). Include the 🤖 Generated-with footer.
 
-- [ ] **Step 3: Report to the user**
+- [ ] **Step 4: Report to the user**
 
 Summarize: coverage-matrix gaps found, backlog size + top 3 items, findings filed count, the quick win shipped, and the ranked list of future sub-projects.
 
