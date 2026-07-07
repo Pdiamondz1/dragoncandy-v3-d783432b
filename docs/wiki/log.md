@@ -1,5 +1,8 @@
 # Wiki Log
 
+## [2026-07-07] analysis | Claude Subagents audit
+Applied the "How to Build Claude Subagents Better Than 99% of People" video's subagents playbook to DragonCandy audit-first. Factual anchor: zero custom `.claude/agents/`. Produced `analyses/claude-subagents-audit.md` (7-dimension rubric + current-usage assessment + ranked custom-subagent backlog), filed `subagents-audit` findings at `/internal/findings`, and shipped the #1 quick win: the read-only `edge-function-reviewer` subagent wired into the `careful` deploy checklist.
+
 ## [2026-07-07] analysis | Claude Skills framework audit
 Applied Anthropic's 9-category Claude Skills playbook (the "How employees use Claude Skills" talk +
 the lessons post) to DragonCandy's two skill surfaces. Scored the 9 dev `.claude/skills/` skills and
