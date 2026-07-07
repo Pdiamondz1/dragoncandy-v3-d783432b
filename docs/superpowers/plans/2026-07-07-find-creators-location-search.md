@@ -751,6 +751,7 @@ In `src/pages/CreatorBrowse.tsx`, pull the new values from the hook (`:10-22`):
     hasBusinessLocation,
     locationUnplaceableCount,
 ```
+(`locationUnplaceableCount` is destructured here but not consumed until Task 6 Step 5 — harmless: Tasks 4–5 only run `npm run build` (Vite/esbuild doesn't type-check), so the interim unused local won't error.)
 and pass to `<CreatorBrowseHeader .../>` (`:44-55`):
 ```tsx
             location={location}
@@ -830,7 +831,7 @@ In `src/components/creator-search/AdvancedCreatorFilters.tsx`:
 - Delete the postal auto-fill machinery: the `isLookingUp`/`lastLookedUpPostalRef`/`userEditedCityRef` state (`:45-47`), both `useEffect`s (`:50-94`), and the `geocodingService` import (`:18`) and `Loader2` if now unused.
 - Delete the entire **Location** block from the JSX (`:125-186`, the `<div className="space-y-6">`'s first child through its closing `</div>` before `<Separator />`), plus that first `<Separator />` (`:188`).
 - Remove `city`, `country`, `postal_code`, `_isLocationAutoFilled` from the local `CreatorFilters` interface (`:20-32`).
-- Remove now-unused imports (`MapPin`, `Loader2`, `Input` if no longer referenced — check the file after deletion).
+- Remove now-unused imports. Deleting the state + both effects makes `useState`, `useEffect`, `useRef` (`:2`) unused as well as `MapPin`, `Loader2`, and `Input` — strip all of them (`noUnusedLocals`/`noUnusedParameters` will fail typecheck otherwise). Keep `React` (still used by `React.FC`) and any import a remaining field uses (`Label`, `Badge`, `Select*`, `Slider`, `Separator`, `Button`, `X`, `DollarSign`, `Star`, `SKILL_OPTIONS`). Verify against the file after deletion.
 
 - [ ] **Step 2: Remove legacy fields + matchers from useCreatorBrowse**
 
