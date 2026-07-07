@@ -91,7 +91,7 @@ export const CreatorBrowseHeader: React.FC<CreatorBrowseHeaderProps> = ({
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
         <input
           type="text"
-          placeholder="Search creators by name or skill…"
+          placeholder="Search by name, skill, or location…"
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
           className="w-full pl-11 pr-4 py-2.5 bg-gray-100 rounded-full text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:bg-white transition-colors"

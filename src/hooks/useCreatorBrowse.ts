@@ -198,10 +198,18 @@ export const useCreatorBrowse = (accountType: 'restaurant' | 'brand' = 'restaura
 
   const { filteredCreators, locationUnplaceableCount } = useMemo(() => {
     let result = creators.filter(creator => {
+    const term = filters.searchTerm.toLowerCase().trim();
     const matchesSearch =
-      (creator.creator_name || '').toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-      creator.bio?.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-      creator.skills?.some(skill => skill.toLowerCase().includes(filters.searchTerm.toLowerCase()));
+      !term ||
+      (creator.creator_name || '').toLowerCase().includes(term) ||
+      (creator.bio || '').toLowerCase().includes(term) ||
+      creator.skills?.some(skill => skill.toLowerCase().includes(term)) ||
+      // Location text: let a typed city / ZIP / country find creators there,
+      // matching the natural instinct to search a place in the search bar.
+      (creator.city || '').toLowerCase().includes(term) ||
+      (creator.postal_code || '').toLowerCase().includes(term) ||
+      (creator.country || '').toLowerCase().includes(term) ||
+      (creator.location || '').toLowerCase().includes(term);
 
     const matchesSkills = filters.skills.length === 0 ||
       creator.skills?.some(skill => filters.skills.includes(skill));
