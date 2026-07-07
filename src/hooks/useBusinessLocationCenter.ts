@@ -30,8 +30,8 @@ export const useBusinessLocationCenter = (accountType: 'restaurant' | 'brand' = 
       }
       if (!data) return null;
 
-      const { city, postal_code, country, business_name } = data;
-      if (!city && !postal_code) return null; // nothing to geocode
+      const { city, postal_code, country, business_name, location } = data;
+      if (!city && !postal_code && !location) return null; // nothing to geocode
 
       let coords: { lat: number; lng: number } | null = null;
       if (postal_code) {
@@ -50,6 +50,9 @@ export const useBusinessLocationCenter = (accountType: 'restaurant' | 'brand' = 
           city ?? undefined,
           country ?? undefined,
         );
+      }
+      if (!coords && location) {
+        coords = await geocodingService.geocodeLocation(location);
       }
       if (!coords) return null;
 

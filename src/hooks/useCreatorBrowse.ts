@@ -179,8 +179,14 @@ export const useCreatorBrowse = (accountType: 'restaurant' | 'brand' = 'restaura
   const creatorsNeedingGeocode = useMemo(() => {
     if (!activeCenter) return [];
     return creators
-      .filter(c => c.postal_code || !(c.city && c.country && lookupCityCoords(c.city, c.country)))
-      .map(c => ({ id: c.id, postal_code: c.postal_code, city: c.city, country: c.country }));
+      .filter(c => c.postal_code || c.location || !(c.city && c.country && lookupCityCoords(c.city, c.country)))
+      .map(c => ({
+        id: c.id,
+        // structured ZIP when present; else fall back to the legacy freeform location string
+        postal_code: c.postal_code || (!c.city && !c.country ? c.location : undefined),
+        city: c.city,
+        country: c.country,
+      }));
   }, [creators, activeCenter]);
 
   const { geocodedCreators } = useCreatorGeocoding(creatorsNeedingGeocode);
