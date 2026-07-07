@@ -164,7 +164,7 @@ export const useCreatorBrowse = (accountType: 'restaurant' | 'brand' = 'restaura
       platforms: [],
       availability: '',
       experienceLevel: '',
-      location: DEFAULT_LOCATION_FILTER,
+      location: { ...DEFAULT_LOCATION_FILTER, center: businessCenter },
     });
     setSortBy('relevance');
     setContentTypeFilter([]);
