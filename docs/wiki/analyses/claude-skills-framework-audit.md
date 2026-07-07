@@ -117,7 +117,52 @@ prod-overwrite incident ([[project_concurrent_lovable_pr_collisions]]) and many 
 
 ## Donny audit
 
-<!-- Task 3 -->
+Donny is not a Claude-Code skill library, but it has three surfaces that map onto the framework.
+Scored against the same rubric (`N/A` where a criterion structurally can't apply to a runtime agent).
+
+**Surface 1 — Founder Playbooks** (`aios_playbooks`; `/internal/playbooks`; `aios-playbook-run`) ≈
+*business-process skills.* Live inventory: **10 playbooks, all active** — 3 seed
+(`weekly-kpi-variance`, `scaling-capacity-check`, `ai-cost-vs-cap`), `kill-switch-watch`, and the
+6-domain Dezzy suite (`dezzy-outreach`, `-content-calendar`, `-website-updates`, `-weekly-brief`,
+`-seo-articles`, `-milestone-celebrations`). **All 10 declare `allowed_proposals = []`** — every
+playbook is currently *report-only*; the `propose_correction` → `/internal/corrections` write path
+exists but no playbook uses it yet (the "a human approves" invariant holds trivially today).
+- Cat `✓` (each is one task; the Dezzy split is well-decomposed) · Gotchas `~` (uneven — the Dezzy
+  playbooks encode real disciplines like non-fabrication placeholders and false-recency warnings;
+  the 3 terse seeds barely do) · ProgDisc `~` (a playbook is a **flat DB row** — task+preferences+
+  done-criteria — with no signpost-to-detail) · Desc `–` (playbooks are selected by **pinned slug**,
+  not description-matching, so AI-discovery descriptions don't yet apply; the deferred
+  `list_playbooks`/`run_playbook` conversational tools would change that) · Scripts `✓` (they compose
+  the runner's read tools) · **Memory `~`** (`aios_playbook_runs` logs every run, but playbooks do
+  **not read prior runs** to self-improve — Loop Memory Protocol Phase 2 / `aios_loop_memory` is
+  deferred) · Non-redundant `✓`.
+
+**Surface 2 — Donny's tool set** (**38 tools** in `donny-chat`: 26 consumer + 12 internal/AIOS) ≈
+*bundled scripts.*
+- Cat `✓` (each tool single-purpose) · Gotchas `✓` (descriptions encode **failure-prevention
+  boundaries** — `prepare_payment` "does NOT execute the payment", `compose_email_link` "you NEVER
+  send email") · ProgDisc `–` (atomic function defs) · Desc `✓` (strong AI-selection discipline —
+  most say "Use when…"; the `search_internal_knowledge` vs `get_internal_doc` pair is **explicitly
+  disambiguated** in-description to prevent a wrong-tool straddle) · Scripts `✓` (the tools *are* the
+  executables) · Memory `–` (atomic; `donny_tool_executions` logs calls) · Non-redundant `✓`.
+  **Strongest surface** — this is what the video would call a well-built tool layer.
+
+**Surface 3 — Donny RAG** (`donny_knowledge`, loaded by `sync-wiki-to-donny.mjs`) ≈
+*progressive-disclosure reference.*
+- Cat `✓` (single purpose: retrieval) · Gotchas `–` · **ProgDisc `~`** (each wiki page is embedded
+  as **one whole-page vector** — retrieval returns whole pages, not sections; fine for short pages,
+  coarse for a 2,000-word analysis; section-level chunking would sharpen retrieval) · Desc `–` (an
+  optional `SYNC_CURATE` exclude-set keeps internal/eng pages out of the end-user store — a good
+  curation control) · Scripts `–` · Memory `–` · Non-redundant `✓`.
+
+**Strategic note (recorded, not decided here):** should playbooks adopt the video's explicit
+*skill-folder* format (a folder = task + resources + **co-located gotchas** + **per-playbook
+memory**) instead of a flat `aios_playbooks` row? It would close the Gotchas/ProgDisc/Memory gaps
+above in one move and make the deferred conversational playbook-selection cleaner — but it's an
+**L-effort** architecture change (schema + `aios-playbook-run` + `/internal/playbooks` UI), so it
+belongs in the backlog as a sub-project, not this cycle. The cheaper interim win is the already-
+designed **Loop Memory Protocol Phase 2** (`aios_loop_memory`), which gives playbooks run-memory
+(criterion 6) without the full refactor.
 
 ## Ranked backlog
 
