@@ -21,6 +21,7 @@ const CreatorBrowseInner: React.FC = () => {
     setContentTypeFilter,
     location,
     updateLocation,
+    locationUnplaceableCount,
     hasBusinessLocation,
   } = useCreatorBrowse();
 
@@ -30,9 +31,6 @@ const CreatorBrowseInner: React.FC = () => {
   // Count active advanced filters (excluding search and content-type pills)
   const activeFilterCount = [
     filters.skills.length > 0,
-    filters.city,
-    filters.country,
-    filters.postal_code,
     filters.platforms.length > 0,
     filters.availability,
     filters.experienceLevel,
@@ -74,6 +72,9 @@ const CreatorBrowseInner: React.FC = () => {
             onFiltersOpenChange={setIsFiltersOpen}
             isMapOpen={isMapOpen}
             onMapOpenChange={setIsMapOpen}
+            locationUnplaceableCount={locationUnplaceableCount}
+            isLocationFiltered={location.center != null && location.radiusMiles != null}
+            onWidenLocation={() => updateLocation({ radiusMiles: null })}
           />
         </div>
       </div>

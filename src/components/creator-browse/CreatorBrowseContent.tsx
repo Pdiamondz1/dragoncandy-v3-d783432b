@@ -21,6 +21,9 @@ interface CreatorBrowseContentProps {
   onFiltersOpenChange: (open: boolean) => void;
   isMapOpen: boolean;
   onMapOpenChange: (open: boolean) => void;
+  locationUnplaceableCount?: number;
+  onWidenLocation?: () => void;
+  isLocationFiltered?: boolean;
 }
 
 export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
@@ -35,6 +38,9 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
   onFiltersOpenChange,
   isMapOpen,
   onMapOpenChange,
+  locationUnplaceableCount,
+  onWidenLocation,
+  isLocationFiltered,
 }) => {
   const { visible: visibleCreators, hasMore, showing, total, loadMore } = usePagedList(filteredCreators, 12);
 
@@ -68,6 +74,14 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
           <p className="text-gray-500 text-sm text-center mb-5 max-w-xs">
             Try expanding your search or adjusting filters to see more creators.
           </p>
+          {isLocationFiltered && onWidenLocation && (
+            <button
+              onClick={onWidenLocation}
+              className="mb-3 px-6 py-2.5 bg-dc-teal text-dc-text rounded-full font-semibold text-sm hover:bg-teal-500 transition-colors"
+            >
+              Widen to Any location
+            </button>
+          )}
           <button
             onClick={onResetFilters}
             className="px-6 py-2.5 bg-dc-teal text-dc-text rounded-full font-semibold text-sm hover:bg-teal-500 transition-colors"
@@ -77,6 +91,11 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
         </div>
       ) : (
         <>
+          {locationUnplaceableCount ? (
+            <p className="text-xs text-gray-400 mb-2">
+              {locationUnplaceableCount} creator{locationUnplaceableCount !== 1 ? 's' : ''} couldn’t be placed on the map.
+            </p>
+          ) : null}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {visibleCreators.map((creator) => (
               <CreatorCard key={creator.id} creator={creator} />

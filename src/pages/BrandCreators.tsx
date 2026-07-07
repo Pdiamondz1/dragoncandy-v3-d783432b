@@ -215,9 +215,6 @@ const BrandCreators: React.FC = () => {
   // Count active advanced filters
   const activeFilterCount = [
     filters.skills.length > 0,
-    filters.city,
-    filters.country,
-    filters.postal_code,
     filters.platforms.length > 0,
     filters.availability,
     filters.experienceLevel,

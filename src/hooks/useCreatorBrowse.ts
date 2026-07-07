@@ -48,16 +48,12 @@ export type SortOption = 'relevance' | 'nearest' | 'top-rated' | 'price-low' | '
 export interface CreatorFilters {
   searchTerm: string;
   skills: string[];
-  city: string;
-  country: string;
-  postal_code: string;
   minRate: number;
   maxRate: number;
   platforms: string[];
   availability: string;
   experienceLevel: string;
   location: LocationFilter;
-  _isLocationAutoFilled?: boolean; // Internal flag to track if city/country came from postal auto-fill
 }
 
 export const useCreatorBrowse = () => {
@@ -65,9 +61,6 @@ export const useCreatorBrowse = () => {
   const [filters, setFilters] = React.useState<CreatorFilters>({
     searchTerm: '',
     skills: [],
-    city: '',
-    country: '',
-    postal_code: '',
     minRate: 0,
     maxRate: 500,
     platforms: [],
@@ -165,16 +158,12 @@ export const useCreatorBrowse = () => {
     setFilters({
       searchTerm: '',
       skills: [],
-      city: '',
-      country: '',
-      postal_code: '',
       minRate: 0,
       maxRate: 500,
       platforms: [],
       availability: '',
       experienceLevel: '',
       location: DEFAULT_LOCATION_FILTER,
-      _isLocationAutoFilled: false,
     });
     setSortBy('relevance');
     setContentTypeFilter([]);
@@ -210,38 +199,6 @@ export const useCreatorBrowse = () => {
     const matchesContentType = contentTypeFilter.length === 0 ||
       creator.skills?.some(skill => contentTypeFilter.includes(skill));
 
-    // Location filters - structured with legacy fallback
-    // Smart filtering: If postal code search with auto-filled city/country, only use postal code
-    const isPostalCodeSearch = !!debouncedFilters.postal_code && filters._isLocationAutoFilled;
-
-    const matchesPostalCode = !debouncedFilters.postal_code || (() => {
-      const filterPostal = debouncedFilters.postal_code.toLowerCase().trim();
-      const creatorPostal = (creator.postal_code || '').toLowerCase().trim();
-
-      if (creatorPostal && creatorPostal.startsWith(filterPostal)) return true;
-      if (!creatorPostal && creator.location?.toLowerCase().includes(filterPostal)) return true;
-      return false;
-    })();
-
-    // If it's a postal code search with auto-filled location, skip city/country filtering
-    const matchesCity = isPostalCodeSearch ? true : (!debouncedFilters.city || (() => {
-      const filterCity = debouncedFilters.city.toLowerCase().trim();
-      const creatorCity = (creator.city || '').toLowerCase().trim();
-
-      if (creatorCity && creatorCity.includes(filterCity)) return true;
-      if (!creatorCity && creator.location?.toLowerCase().includes(filterCity)) return true;
-      return false;
-    })());
-
-    const matchesCountry = isPostalCodeSearch ? true : (!debouncedFilters.country || (() => {
-      const filterCountry = debouncedFilters.country.toLowerCase().trim();
-      const creatorCountry = (creator.country || '').toLowerCase().trim();
-
-      if (creatorCountry && creatorCountry.includes(filterCountry)) return true;
-      if (!creatorCountry && creator.location?.toLowerCase().includes(filterCountry)) return true;
-      return false;
-    })());
-
     const matchesRate = (() => {
       const rate = creator.base_rate_per_hour || 0;
       return rate >= filters.minRate && rate <= filters.maxRate;
@@ -264,8 +221,8 @@ export const useCreatorBrowse = () => {
 
     const matchesExperience = !filters.experienceLevel || filters.experienceLevel === "any";
 
-      return matchesSearch && matchesSkills && matchesContentType && matchesPostalCode && matchesCity &&
-             matchesCountry && matchesRate && matchesPlatforms && matchesAvailability && matchesExperience;
+      return matchesSearch && matchesSkills && matchesContentType &&
+             matchesRate && matchesPlatforms && matchesAvailability && matchesExperience;
     });
 
     // Location radius filter
