@@ -52,7 +52,16 @@ fenced block in the output (the parser reads the last one):
 
 1. **Name it `verify-<slug>`** (kebab-case). The `verify-` prefix is load-bearing: Loop Scout
    discovers validators by globbing `.claude/skills/verify-*`, so a correctly-named directory IS
-   the entire integration — no registry, no wiring. Create `.claude/skills/verify-<slug>/SKILL.md`.
+   the entire integration — no registry, no wiring. Create `.claude/skills/verify-<slug>/SKILL.md`
+   with the **required YAML frontmatter** — a directory without loadable frontmatter satisfies
+   Loop Scout's glob but the skill system can't invoke it:
+   ```yaml
+   ---
+   name: verify-<slug>          # MUST match the directory name, or the skill won't load
+   description: "Validator for <state> — judges <checks> and ends with the {done,checklist,missing}
+     verdict block a loop can branch on. Use when asked to 'verify <x>', 'is <x> current/correct'."
+   ---
+   ```
 
 2. **State the target and the actor.** One or two sentences: what state does it judge, and does
    any check need prod/DB/web access (note it — an unreachable check is a BLOCKED result, step 6,
@@ -96,6 +105,8 @@ fenced block in the output (the parser reads the last one):
 Run this checklist against the validator you just produced:
 
 - [ ] Directory is `.claude/skills/verify-<slug>/` (kebab, `verify-` prefix) so Loop Scout finds it.
+- [ ] `SKILL.md` has YAML frontmatter with `name: verify-<slug>` **matching the directory** — without
+      it the skill system can't load/invoke the validator (the dir alone only satisfies Loop Scout's glob).
 - [ ] Frontmatter `description` includes trigger phrases (`'verify <x>'`, `'is <x> current/correct'`).
 - [ ] Every gating check is a **deterministic rule**; every subjective judgment is marked **advisory**.
 - [ ] The output ends with **exactly one** fenced JSON block and it is the **LAST** fenced block.
