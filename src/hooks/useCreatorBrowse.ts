@@ -3,6 +3,17 @@ import React, { useMemo, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useBusinessLocationCenter } from '@/hooks/useBusinessLocationCenter';
+import { useCreatorGeocoding } from '@/hooks/useCreatorGeocoding';
+import { lookupCityCoords } from '@/lib/geoUtils';
+import { geocodingService } from '@/lib/geocoding';
+import {
+  DEFAULT_LOCATION_FILTER,
+  filterByRadius,
+  sortNearest,
+  type LocationFilter,
+  type LatLng,
+} from '@/lib/creatorLocationFilter';
 
 export interface CreatorProfile {
   id: string;
@@ -29,9 +40,10 @@ export interface CreatorProfile {
   average_rating?: number;
   profile_slug?: string;
   total_reviews?: number;
+  distanceMiles?: number; // annotated client-side by the location filter
 }
 
-export type SortOption = 'relevance' | 'top-rated' | 'price-low' | 'price-high' | 'most-reviewed';
+export type SortOption = 'relevance' | 'nearest' | 'top-rated' | 'price-low' | 'price-high' | 'most-reviewed';
 
 export interface CreatorFilters {
   searchTerm: string;
@@ -44,6 +56,7 @@ export interface CreatorFilters {
   platforms: string[];
   availability: string;
   experienceLevel: string;
+  location: LocationFilter;
   _isLocationAutoFilled?: boolean; // Internal flag to track if city/country came from postal auto-fill
 }
 
@@ -60,6 +73,7 @@ export const useCreatorBrowse = () => {
     platforms: [],
     availability: '',
     experienceLevel: '',
+    location: DEFAULT_LOCATION_FILTER,
   });
 
   const [sortBy, setSortBy] = React.useState<SortOption>('relevance');
@@ -74,6 +88,40 @@ export const useCreatorBrowse = () => {
 
     return () => clearTimeout(timer);
   }, [filters]);
+
+  const { center: businessCenter } = useBusinessLocationCenter();
+
+  // Keep the near-me center synced from the business profile.
+  React.useEffect(() => {
+    setFilters(prev => {
+      if (prev.location.mode !== 'near_me') return prev;
+      if (prev.location.center === businessCenter) return prev;
+      return { ...prev, location: { ...prev.location, center: businessCenter } };
+    });
+  }, [businessCenter]);
+
+  // Resolve a typed city/zip into a center (debounced) when in custom mode.
+  React.useEffect(() => {
+    const { mode, rawQuery } = filters.location;
+    if (mode !== 'custom') return;
+    const q = rawQuery.trim();
+    if (q.length < 3) return;
+
+    let cancelled = false;
+    setFilters(prev => ({ ...prev, location: { ...prev.location, status: 'resolving' } }));
+    const timer = setTimeout(async () => {
+      const result = await geocodingService.geocodeLocation(q);
+      if (cancelled) return;
+      setFilters(prev => {
+        if (prev.location.mode !== 'custom') return prev;
+        return result
+          ? { ...prev, location: { ...prev.location, center: { lat: result.lat, lng: result.lng, label: q }, status: 'idle' } }
+          : { ...prev, location: { ...prev.location, center: null, status: 'failed' } };
+      });
+    }, 500);
+
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [filters.location.mode, filters.location.rawQuery]);
 
   const { data: creators = [], isLoading, error } = useQuery({
     queryKey: ['available-creators'],
@@ -98,6 +146,14 @@ export const useCreatorBrowse = () => {
     setFilters(prev => ({ ...prev, [key]: value }));
   }, []);
 
+  const updateLocation = useCallback((patch: Partial<LocationFilter>) => {
+    setFilters(prev => ({ ...prev, location: { ...prev.location, ...patch } }));
+    // When the user actively sets/changes location, default the sort to Nearest (reversible).
+    if (patch.mode === 'custom' || patch.radiusMiles !== undefined) {
+      setSortBy(prev => (prev === 'relevance' ? 'nearest' : prev));
+    }
+  }, []);
+
   const resetFilters = () => {
     setFilters({
       searchTerm: '',
@@ -110,13 +166,30 @@ export const useCreatorBrowse = () => {
       platforms: [],
       availability: '',
       experienceLevel: '',
+      location: DEFAULT_LOCATION_FILTER,
       _isLocationAutoFilled: false,
     });
     setSortBy('relevance');
     setContentTypeFilter([]);
   };
 
-  const filteredCreators = useMemo(() => {
+  const activeCenter: LatLng | null = filters.location.center;
+
+  const creatorsNeedingGeocode = useMemo(() => {
+    if (!activeCenter) return [];
+    return creators
+      .filter(c => !(c.city && c.country && lookupCityCoords(c.city, c.country)))
+      .map(c => ({ id: c.id, postal_code: c.postal_code, city: c.city, country: c.country }));
+  }, [creators, activeCenter]);
+
+  const { geocodedCreators } = useCreatorGeocoding(creatorsNeedingGeocode);
+
+  const geocodedById = useMemo(
+    () => new Map(geocodedCreators.map(g => [g.id, { lat: g.lat, lng: g.lng }])),
+    [geocodedCreators],
+  );
+
+  const { filteredCreators, locationUnplaceableCount } = useMemo(() => {
     let result = creators.filter(creator => {
     const matchesSearch =
       (creator.creator_name || '').toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
@@ -188,8 +261,23 @@ export const useCreatorBrowse = () => {
              matchesCountry && matchesRate && matchesPlatforms && matchesAvailability && matchesExperience;
     });
 
+    // Location radius filter
+    let unplaceable = 0;
+    if (activeCenter) {
+      const { list, unplaceableCount } = filterByRadius(
+        result,
+        activeCenter,
+        filters.location.radiusMiles,
+        geocodedById,
+      );
+      result = list;
+      unplaceable = unplaceableCount;
+    }
+
     // Sort
-    if (sortBy !== 'relevance') {
+    if (sortBy === 'nearest') {
+      result = sortNearest(result);
+    } else if (sortBy !== 'relevance') {
       result = [...result].sort((a, b) => {
         switch (sortBy) {
           case 'top-rated':
@@ -206,8 +294,8 @@ export const useCreatorBrowse = () => {
       });
     }
 
-    return result;
-  }, [creators, filters, debouncedFilters, sortBy, contentTypeFilter]);
+    return { filteredCreators: result, locationUnplaceableCount: unplaceable };
+  }, [creators, filters, debouncedFilters, sortBy, contentTypeFilter, activeCenter, filters.location.radiusMiles, geocodedById]);
 
   return {
     creators,
@@ -222,5 +310,9 @@ export const useCreatorBrowse = () => {
     setSortBy,
     contentTypeFilter,
     setContentTypeFilter,
+    location: filters.location,
+    updateLocation,
+    locationUnplaceableCount,
+    hasBusinessLocation: businessCenter != null,
   };
 };
