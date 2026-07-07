@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { anthropicFetch } from '../_shared/anthropic-fetch.ts';
+import { logCost } from '../_shared/cost-ledger.ts';
 import {
   isHoneypotTripped,
   extractClientIp,
@@ -57,7 +58,7 @@ async function generateBrief(
   apiKey: string,
   url: string,
   extracted: { title: string; description: string; bodyText: string },
-): Promise<GeneratedBrief> {
+): Promise<{ brief: GeneratedBrief; usage: { input_tokens: number; output_tokens: number } }> {
   const system =
     `You are Donny, DragonCandy's AI campaign assistant. From a business's website content, ` +
     `draft a STARTING social-media campaign brief the owner will review and refine. ` +
@@ -93,7 +94,13 @@ async function generateBrief(
     throw new Error(`Anthropic ${res.status}: ${err.slice(0, 200)}`);
   }
   const data = await res.json();
-  return parseBrief(data.content?.[0]?.text ?? '{}');
+  return {
+    brief: parseBrief(data.content?.[0]?.text ?? '{}'),
+    usage: {
+      input_tokens: data.usage?.input_tokens ?? 0,
+      output_tokens: data.usage?.output_tokens ?? 0,
+    },
+  };
 }
 
 serve(async (req) => {
@@ -156,12 +163,25 @@ serve(async (req) => {
 
     // 6. Generate (Haiku). Parse failure → graceful generation_failed.
     let brief: GeneratedBrief;
+    let usage = { input_tokens: 0, output_tokens: 0 };
     try {
-      brief = await generateBrief(anthropicKey, url, extracted);
+      const gen = await generateBrief(anthropicKey, url, extracted);
+      brief = gen.brief;
+      usage = gen.usage;
     } catch (e) {
       console.error('Generation failed:', (e as Error).message);
       return json(req, 200, { error: 'generation_failed' });
     }
+
+    // Log runtime AI spend (anonymous → no user; best-effort, never blocks the response).
+    await logCost(supabase, {
+      userId: null,
+      edgeFunction: 'generate-anonymous-brief',
+      model: MODEL,
+      tier: 'T1',
+      inputTokens: usage.input_tokens,
+      outputTokens: usage.output_tokens,
+    });
 
     // 7. Save the anonymous record only on success (non-blocking).
     const { error: insErr } = await supabase.from('campaign_brief_generations').insert({
