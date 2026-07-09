@@ -113,6 +113,11 @@ export function useCampaignCreator() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [brandFields, setBrandFields] = useState<BrandFields | null>(null);
 
+  // Group ("crew") target: null = public marketplace; a crew id = a free, private
+  // group campaign (only active members see it, no payment). Kept separate from
+  // EditableCampaign so the paid/public path stays byte-for-byte unchanged.
+  const [groupId, setGroupId] = useState<string | null>(null);
+
   // Inspiration refs (from InspirationStrip on DropScreen)
   const [inspirationRefs, setInspirationRefs] = useState<InspirationRef[]>([]);
 
@@ -415,6 +420,21 @@ export function useCampaignCreator() {
         },
       };
 
+      // Group campaign: force free, single-winner, private terms. Setting group_id
+      // routes the campaign through the private-visibility RLS chokepoint; free
+      // terms (fixed_price 0 / no fee) remove the Stripe apply-time gate. The
+      // public/paid path (group_id null) is completely untouched.
+      if (groupId) {
+        insertPayload.group_id = groupId;
+        insertPayload.fixed_price = 0;
+        insertPayload.pricing_type = 'fixed';
+        insertPayload.delivery_fee = 0;
+        insertPayload.creator_count = 1; // defensive single-winner (enforce_single_slot_campaign)
+        const analysis = insertPayload.ai_analysis as Record<string, unknown>;
+        analysis.creator_count = 1;
+        analysis.delivery_fee = 0;
+      }
+
       const { data, error } = await supabase
         .from('campaigns')
         .insert(insertPayload as unknown as Database['public']['Tables']['campaigns']['Insert'])
@@ -424,10 +444,43 @@ export function useCampaignCreator() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       clearDraftFromStorage();
       toast.success('Campaign launched!');
+
+      // Notify active crew members that a new group campaign was posted. Routed
+      // through the create-notification choke point (bell + email + Donny); never
+      // send-notification-email directly. Fire-and-forget, never blocks the launch.
+      if (groupId && user) {
+        try {
+          const { data: members } = await supabase
+            .from('creator_group_members')
+            .select('creator_id')
+            .eq('group_id', groupId)
+            .eq('status', 'active');
+          const actorName = profile?.business_name ?? 'A business';
+          for (const member of members ?? []) {
+            supabase.functions.invoke('create-notification', {
+              body: {
+                recipientId: member.creator_id,
+                type: 'group_campaign_posted',
+                category: 'campaigns',
+                title: 'New crew campaign',
+                body: `${actorName} posted a new campaign`,
+                actionUrl: '/dashboard/creator/campaigns?crews=1',
+                actorId: user.id,
+                actorName,
+                icon: 'campaign',
+                data: { campaign_id: data.id, group_id: groupId },
+              },
+            }).catch((err: unknown) => console.error('Failed to send crew campaign notification:', err));
+          }
+        } catch (err) {
+          console.error('Failed to prepare crew campaign notifications:', err);
+        }
+      }
+
       if (userRole === 'brand') {
         navigate(`/dashboard/brand/campaigns/${data.id}`);
       } else {
@@ -517,6 +570,8 @@ export function useCampaignCreator() {
     isLaunching: launchMutation.isPending,
     inspirationRefs,
     setInspirationRefs,
+    groupId,
+    setGroupId,
     submitInput,
     selectIdea,
     regenerateIdeas,

@@ -6,6 +6,7 @@ import { RegenerateButton } from './RegenerateButton';
 import { CampaignEditor } from './CampaignEditor';
 import { LaunchButton } from './LaunchButton';
 import { ExtractionFeed } from './ExtractionFeed';
+import { GroupTargetSelect } from '@/components/campaigns/GroupTargetSelect';
 
 interface LaunchpadScreenProps {
   ideas: CampaignIdea[];
@@ -17,6 +18,9 @@ interface LaunchpadScreenProps {
   extractionMessages: string[];
   isAuthenticated: boolean;
   isLaunching: boolean;
+  /** Crew target for a private free group campaign; null = public marketplace. */
+  groupTarget: string | null;
+  onGroupTargetChange: (groupId: string | null) => void;
   onSelectIdea: (id: string) => void;
   onRegenerate: () => void;
   updateField: <K extends keyof EditableCampaign>(field: K, value: EditableCampaign[K]) => void;
@@ -29,6 +33,7 @@ interface LaunchpadScreenProps {
 export function LaunchpadScreen({
   ideas, selectedIdeaId, editedCampaign, brandFields, userRole,
   isExtracting, extractionMessages, isAuthenticated, isLaunching,
+  groupTarget, onGroupTargetChange,
   onSelectIdea, onRegenerate, updateField, updateBrandField,
   onLaunch, onSaveDraft, onAuthRequired,
 }: LaunchpadScreenProps) {
@@ -59,11 +64,15 @@ export function LaunchpadScreen({
       </div>
       {editedCampaign && selectedIdea && (
         <>
+          {userRole === 'business_client' && (
+            <GroupTargetSelect value={groupTarget} onChange={onGroupTargetChange} />
+          )}
           <CampaignEditor
             campaign={editedCampaign}
             originalIdea={selectedIdea}
             brandFields={brandFields}
             userRole={userRole}
+            isGroupTarget={groupTarget != null}
             updateField={updateField}
             updateBrandField={updateBrandField}
           />
