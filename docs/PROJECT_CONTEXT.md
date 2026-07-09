@@ -840,6 +840,31 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   brand-default auto-hide, ZIP precision, legacy-`location` placement). Concept:
   `docs/wiki/concepts/creator-location-search.md`. Spec:
   `docs/superpowers/specs/2026-07-07-find-creators-location-search-design.md`.
+- Creator Groups + Private Group Campaigns — **built (branch
+  `feat/creator-groups-private-campaigns`, 2026-07-09; schema live on prod, frontend deploys on
+  merge).** A business builds a standing private **group ("crew")** of creators (owner = business
+  user, mirrors `brand_shortlists`; invite→accept opt-in lifecycle) and posts a campaign scoped to a
+  crew that **only active members see and one-tap apply to with no payment**. "No transaction" is real
+  because crew campaigns are **free** (`fixed_price=0`), which removes the only remaining apply-time
+  gate (the Stripe `ReadinessGate` fires only when `fixed_price>0`). Private visibility rides the
+  existing `campaigns` SELECT chokepoint (`published AND (group_id IS NULL OR
+  is_active_group_member(...))` + owner + collaborator, via SECURITY-DEFINER helpers mirroring
+  `has_collaboration_on_campaign`); **both** apply gates (`apply_to_campaign` RPC + the
+  `can_create_application` RLS `WITH CHECK`) tightened to member **AND** `status='published'`;
+  cross-owner targeting blocked by the `enforce_campaign_group_ownership` trigger; escrow uncoupled
+  for free crews (accept activates without escrow; payout/upload/pay-escrow all guarded on
+  `group_id`). **Profit engine protected** — paid work still flows through the unchanged
+  escrow/take-rate marketplace; crews are the ambassador/organic-collab lane; paid group campaigns are
+  a documented Phase-3 data-flip (every seam already branches on `fixed_price=0`). New tables
+  `creator_groups` + `creator_group_members` + `campaigns.group_id` + 4 definer functions + 1 trigger;
+  no edge-function change. Built brainstorm→spec(reviewed)→plan(reviewed)→subagent-driven execution;
+  **Codex second review ran 10 rounds** — every real finding fixed (auth-ownership trigger, the
+  prod-only-in-JSONB `creator_count`, the escrow-gated upload, multiple accept→escrow-checkout paths,
+  status-gating on visibility/apply, draft crew overrides, honest email copy) with **2 verified false
+  positives pushed back** (a "newer" migration that was older; a legacy policy already dropped); final
+  clean pass pending the Codex rate-limit reset. Concept:
+  `docs/wiki/concepts/creator-groups.md`. Spec:
+  `docs/superpowers/specs/2026-07-09-creator-groups-private-campaigns-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase

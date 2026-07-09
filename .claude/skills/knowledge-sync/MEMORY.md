@@ -26,6 +26,29 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-09] Creator Groups + Private Group Campaigns (branch feat/creator-groups-private-campaigns)
+- Output: bundled INTO the work branch — `raw/sessions/2026-07-09-creator-groups.md`, new
+  `concepts/creator-groups.md`, `index.md` (Concepts + Sources), `log.md` ingest entry,
+  DATABASE_SCHEMA (new "Creator Groups (Crews)" section + `campaigns.group_id` + functions),
+  PROJECT_CONTEXT active-workstream bullet, + THIS entry. (RAG sync + [[verify-knowledge]] are
+  post-merge — the human-merge gate holds; the post-merge hook fires on the main ff.)
+- Happened: pre-merge run on a fresh branch off origin/main (per [scope]). Big feature (26 commits,
+  Phase 1 roster + Phase 2 private group campaigns), so wrote ONE strong new concept
+  ([[Creator Groups (Crews)]]) + one session source that narrates the whole arc incl. the 10-round
+  Codex hardening. [wikilinks]-exact: grepped index.md first — [[Campaign Lifecycle]] +
+  [[Notification Delivery]] confirmed; [[RLS Policy Model]] did NOT exist so re-pointed to the real
+  [[SECURITY DEFINER Advisor Triage]] page rather than leave a dangling link. [orphans]-by-path: new
+  concept + session both cataloged in index.md.
+- Worked: [scope] + [runlog-in-pr] + [orphans]-by-path + the wikilink-verify-before-linking habit
+  (caught the non-existent RLS page). The most reusable durable knowledge captured as concept, not
+  just log: the "verify columns vs prod not migration files" trap (`creator_count` is JSONB-only),
+  the two-apply-gates rule, the escrow-gates-hide-everywhere lesson, and the definer grant asymmetry.
+- Failed: none. (Codex hit its usage limit before the final clean pass — a Codex-infra limit, not a
+  knowledge-sync issue; unrelated to this skill.)
+- Remember: when a concept references a pattern that "feels like" it should have a wiki page but
+  doesn't (e.g. an "RLS policy model"), grep index.md and link the closest REAL page instead of
+  minting a dangling `[[wikilink]]` — a broken catalog link reads worse than a slightly-off name. (advisory)
+
 ### [2026-07-07] AIOS Agent-Loop Audit — 3 gaps, consolidated (branch feat/aios-spend-source-of-truth)
 - Output: bundled INTO PR #220 — `raw/sessions/2026-07-07-aios-agent-loop-audit.md`, new
   `concepts/aios-runtime-spend-source-of-truth.md`, `index.md` (Concepts + Sources), `log.md` ingest
