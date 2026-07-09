@@ -66,6 +66,8 @@ const OutstandManager = lazy(() => import("./pages/OutstandManager"));
 const OutstandOAuthCallbackPage = lazy(() => import("./pages/OutstandOAuthCallbackPage"));
 const CreatorEarnings = lazy(() => import("./pages/CreatorEarnings"));
 const CreatorBrowse = lazy(() => import("./pages/CreatorBrowse"));
+const CreatorGroupsPage = lazy(() => import("./pages/CreatorGroupsPage"));
+const CreatorGroupDetailPage = lazy(() => import("./pages/CreatorGroupDetailPage"));
 const BusinessDragonFeed = lazy(() => import("./pages/BusinessDragonFeed"));
 const CreatorDragonFeed = lazy(() => import("./pages/CreatorDragonFeed"));
 const BusinessActivity = lazy(() => import("./pages/BusinessActivity"));
@@ -231,6 +233,8 @@ function AnimatedRoutes() {
 
           {/* Business Browse / Feed / Activity Routes */}
           <Route path="/dashboard/business/creators" element={<ProtectedRoute><BusinessRoute><CreatorBrowse /></BusinessRoute></ProtectedRoute>} />
+          <Route path="/dashboard/business/groups" element={<ProtectedRoute><BusinessRoute><CreatorGroupsPage /></BusinessRoute></ProtectedRoute>} />
+          <Route path="/dashboard/business/groups/:id" element={<ProtectedRoute><BusinessRoute><CreatorGroupDetailPage /></BusinessRoute></ProtectedRoute>} />
           <Route path="/dashboard/business/dragon-feed" element={<ProtectedRoute><BusinessRoute><BusinessDragonFeed /></BusinessRoute></ProtectedRoute>} />
           <Route path="/dashboard/business/activity" element={<ProtectedRoute><BusinessRoute><BusinessActivity /></BusinessRoute></ProtectedRoute>} />
           <Route path="/dashboard/business/sponsorships" element={<Navigate to="/dashboard/business/campaigns" replace />} />
