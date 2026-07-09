@@ -2,17 +2,20 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import type { Database } from '@/integrations/supabase/types';
+
+type PendingInviteRow =
+  Database['public']['Functions']['get_creator_pending_group_invitations']['Returns'][number];
 
 /**
  * A pending crew ("creator group") invitation for the current creator.
  *
  * RLS note: while a creator is only `invited` (not yet `active`), the
- * `creator_groups` row is NOT readable — `cg_member_select` requires
- * `is_active_group_member(...)`. So the embedded `creator_groups` read below
- * returns null (name AND owner_id), and the owner's business name is therefore
- * unavailable too. The card falls back to "A crew" for v1. Once the creator
- * accepts (→ active) the group row becomes readable, which is how we recover
- * `owner_id` to notify the owner in `accept`'s onSuccess.
+ * `creator_groups` row is NOT directly readable — `cg_member_select` requires
+ * `is_active_group_member(...)`. So we read pending invitations (with the crew
+ * name + inviting business) through the SECURITY DEFINER RPC
+ * `get_creator_pending_group_invitations()`, which is gated on
+ * `creator_id = auth.uid()` (a caller only ever sees their own pending invites).
  */
 export interface CreatorGroupInvitation {
   id: string;
@@ -21,13 +24,6 @@ export interface CreatorGroupInvitation {
   _group_name: string | null;
   _business_name: string | null;
   _owner_avatar_url: string | null;
-}
-
-interface RawGroupInvitationRow {
-  id: string;
-  group_id: string;
-  invited_at: string;
-  creator_groups: { id: string; name: string; owner_id: string } | null;
 }
 
 export function useCreatorGroupInvitations() {
@@ -39,12 +35,7 @@ export function useCreatorGroupInvitations() {
     queryFn: async (): Promise<CreatorGroupInvitation[]> => {
       if (!user) return [];
 
-      const { data, error } = await supabase
-        .from('creator_group_members')
-        .select('id, group_id, invited_at, creator_groups:group_id ( id, name, owner_id )')
-        .eq('creator_id', user.id)
-        .eq('status', 'invited')
-        .order('invited_at', { ascending: false });
+      const { data, error } = await supabase.rpc('get_creator_pending_group_invitations');
 
       if (error) {
         console.error('Error fetching creator group invitations:', error);
@@ -52,41 +43,14 @@ export function useCreatorGroupInvitations() {
       }
       if (!data || data.length === 0) return [];
 
-      // supabase-js can infer a to-many shape for the embed; this is a
-      // to-one FK (group_id → creator_groups.id), so normalize explicitly.
-      const rows = data as unknown as RawGroupInvitationRow[];
-
-      // owner_id is only present once the group row is readable (active member).
-      const ownerIds = [
-        ...new Set(rows.map((r) => r.creator_groups?.owner_id).filter(Boolean)),
-      ] as string[];
-
-      let businessMap = new Map<string, string>();
-      let avatarMap = new Map<string, string | null>();
-      if (ownerIds.length > 0) {
-        const [bpResult, profileResult] = await Promise.all([
-          supabase.from('business_profiles').select('user_id, business_name').in('user_id', ownerIds),
-          supabase.from('profiles').select('id, avatar_url').in('id', ownerIds),
-        ]);
-        if (bpResult.data) {
-          businessMap = new Map(bpResult.data.map((b) => [b.user_id, b.business_name]));
-        }
-        if (profileResult.data) {
-          avatarMap = new Map(profileResult.data.map((p) => [p.id, p.avatar_url]));
-        }
-      }
-
-      return rows.map((r) => {
-        const ownerId = r.creator_groups?.owner_id ?? '';
-        return {
-          id: r.id,
-          group_id: r.group_id,
-          invited_at: r.invited_at,
-          _group_name: r.creator_groups?.name ?? null,
-          _business_name: businessMap.get(ownerId) ?? null,
-          _owner_avatar_url: avatarMap.get(ownerId) ?? null,
-        };
-      });
+      return (data as PendingInviteRow[]).map((r) => ({
+        id: r.id,
+        group_id: r.group_id,
+        invited_at: r.invited_at,
+        _group_name: r.group_name ?? null,
+        _business_name: r.business_name ?? null,
+        _owner_avatar_url: r.owner_avatar_url ?? null,
+      }));
     },
     enabled: !!user,
     staleTime: 60_000,

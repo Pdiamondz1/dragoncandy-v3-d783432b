@@ -6542,6 +6542,18 @@ export type Database = {
           platform_handle: string
         }[]
       }
+      get_creator_pending_group_invitations: {
+        Args: never
+        Returns: {
+          business_name: string
+          group_id: string
+          group_name: string
+          id: string
+          invited_at: string
+          owner_avatar_url: string
+          owner_id: string
+        }[]
+      }
       get_dashboard_summary: { Args: { p_user_id: string }; Returns: Json }
       get_org_connected_platforms: {
         Args: { p_org_id: string }
