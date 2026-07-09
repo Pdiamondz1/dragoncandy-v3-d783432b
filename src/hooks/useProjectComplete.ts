@@ -107,7 +107,10 @@ export const useProjectComplete = () => {
           .eq('id', completedData.campaign_id)
           .single();
 
-        if (campaignEscrow?.escrow_status !== 'released') {
+        // Free group campaigns carry escrow_status='none' and have no escrow/payout.
+        // Deny-list: skip the payout invoke only for the free case; every paid escrow
+        // state (pending/held/releasing/refunded) still invokes exactly as before.
+        if (campaignEscrow?.escrow_status !== 'released' && campaignEscrow?.escrow_status !== 'none') {
           try {
             const { data: payoutResult, error: payoutError } = await supabase.functions
               .invoke('release-creator-payout', {
