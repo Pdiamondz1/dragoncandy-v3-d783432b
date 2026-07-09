@@ -35,6 +35,7 @@ export interface CollaborationDetails {
     pricing_type: string | null;
     user_id: string;
     escrow_status: string | null;
+    group_id: string | null;
     ai_analysis: Record<string, unknown> | null;
   };
   creator_profile: {
@@ -92,6 +93,7 @@ export function useCollaboration(collaborationId: string) {
             pricing_type,
             user_id,
             escrow_status,
+            group_id,
             ai_analysis
           )
         `)
