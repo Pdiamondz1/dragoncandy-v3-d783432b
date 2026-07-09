@@ -375,7 +375,14 @@ export function useCampaignCreator() {
       if (!editedCampaign) throw new Error('No campaign to launch');
       if (!user) throw new Error('Must be authenticated to launch');
 
-      const validated = launchValidationSchema.parse(editedCampaign);
+      // Free crew campaigns are exempt from the $50 marketplace minimum (they carry
+      // fixed_price 0, forced below). Satisfy the schema's min-price rule with a
+      // sentinel so the OTHER field validations (title, deadline, deliverables) still
+      // run for group campaigns; the real price is overridden to 0 in the group block.
+      const validationInput = groupId
+        ? { ...editedCampaign, fixed_price: Math.max(editedCampaign.fixed_price ?? 0, 50) }
+        : editedCampaign;
+      const validated = launchValidationSchema.parse(validationInput);
 
       const insertPayload: Record<string, unknown> = {
         user_id: user.id,

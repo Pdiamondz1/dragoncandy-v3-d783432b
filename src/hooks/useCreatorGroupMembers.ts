@@ -67,22 +67,51 @@ export function useCreatorGroupMembers(groupId: string) {
 
   const inviteCreators = useMutation({
     mutationFn: async (creatorIds: string[]) => {
-      const rows = creatorIds.map((creatorId) => ({
-        group_id: groupId,
-        creator_id: creatorId,
-        status: 'invited',
-        invited_by: user!.id,
-      }));
-
-      // Idempotent: re-inviting an existing member is a no-op.
-      const { data, error } = await supabase
+      // Look up which of these creators already have a membership row so we can
+      // treat each correctly: brand-new -> insert 'invited'; previously
+      // 'removed'/'declined' -> reactivate to 'invited' (the picker allows
+      // re-selecting them, so a plain ignoreDuplicates upsert would silently
+      // no-op and never re-notify); already 'active'/'invited' -> skip.
+      const { data: existing, error: existingError } = await supabase
         .from('creator_group_members')
-        .upsert(rows, { onConflict: 'group_id,creator_id', ignoreDuplicates: true })
-        .select('creator_id');
+        .select('creator_id, status')
+        .eq('group_id', groupId)
+        .in('creator_id', creatorIds);
 
-      if (error) throw error;
+      if (existingError) throw existingError;
 
-      const invitedIds = (data ?? []).map((r) => r.creator_id);
+      const statusByCreator = new Map((existing ?? []).map((r) => [r.creator_id, r.status]));
+      const toInsert = creatorIds.filter((id) => !statusByCreator.has(id));
+      const toReactivate = creatorIds.filter((id) => {
+        const s = statusByCreator.get(id);
+        return s === 'removed' || s === 'declined';
+      });
+
+      if (toInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from('creator_group_members')
+          .insert(
+            toInsert.map((creatorId) => ({
+              group_id: groupId,
+              creator_id: creatorId,
+              status: 'invited',
+              invited_by: user!.id,
+            })),
+          );
+        if (insertError) throw insertError;
+      }
+
+      if (toReactivate.length > 0) {
+        const { error: reactivateError } = await supabase
+          .from('creator_group_members')
+          .update({ status: 'invited', invited_by: user!.id, invited_at: new Date().toISOString(), responded_at: null })
+          .eq('group_id', groupId)
+          .in('creator_id', toReactivate);
+        if (reactivateError) throw reactivateError;
+      }
+
+      // Notify everyone freshly invited or re-invited.
+      const invitedIds = [...toInsert, ...toReactivate];
       return invitedIds;
     },
     onSuccess: async (invitedIds) => {
