@@ -436,8 +436,10 @@ export function useCampaignCreator() {
         insertPayload.fixed_price = 0;
         insertPayload.pricing_type = 'fixed';
         insertPayload.delivery_fee = 0;
-        insertPayload.creator_count = 1; // defensive single-winner (enforce_single_slot_campaign)
         const analysis = insertPayload.ai_analysis as Record<string, unknown>;
+        // Defensive single-winner: enforce_single_slot_campaign reads
+        // (ai_analysis->>'creator_count'), so set it in the JSONB — there is no
+        // top-level campaigns.creator_count column in prod.
         analysis.creator_count = 1;
         analysis.delivery_fee = 0;
       }
