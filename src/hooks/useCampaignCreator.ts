@@ -510,7 +510,7 @@ export function useCampaignCreator() {
   const saveDraft = useCallback(async () => {
     if (!editedCampaign) return;
     if (user) {
-      const { error } = await supabase.from('campaigns').insert({
+      const draftPayload: Record<string, unknown> = {
         user_id: user.id,
         title: editedCampaign.title,
         description: editedCampaign.description,
@@ -542,7 +542,21 @@ export function useCampaignCreator() {
           tier_reasoning: editedCampaign.tier_reasoning,
           delivery_fee: resolveTierFee(editedCampaign.delivery_type),
         },
-      });
+      };
+      // Crew draft: preserve private/free targeting so a saved crew draft stays a free
+      // private campaign (mirrors the launch overrides) rather than reverting to a paid
+      // public draft.
+      if (groupId) {
+        draftPayload.group_id = groupId;
+        draftPayload.fixed_price = 0;
+        draftPayload.delivery_fee = 0;
+        const analysis = draftPayload.ai_analysis as Record<string, unknown>;
+        analysis.creator_count = 1;
+        analysis.delivery_fee = 0;
+      }
+      const { error } = await supabase
+        .from('campaigns')
+        .insert(draftPayload as unknown as Database['public']['Tables']['campaigns']['Insert']);
       if (error) throw error;
       toast.success('Draft saved');
     } else {
@@ -559,7 +573,7 @@ export function useCampaignCreator() {
       });
       toast.success('Draft saved locally');
     }
-  }, [editedCampaign, user, businessContext, draftId, selectedIdeaId, campaignIdeas, brandFields, userRole]);
+  }, [editedCampaign, user, businessContext, draftId, selectedIdeaId, campaignIdeas, brandFields, userRole, groupId]);
 
   return {
     screen,
