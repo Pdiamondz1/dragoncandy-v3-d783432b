@@ -46,7 +46,11 @@ export const usePublicCampaigns = (userId?: string) => {
       let query = supabase
         .from('campaigns')
         .select('id, user_id, title, description, goals, deliverables, platforms, budget_min, budget_max, deadline, status, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, escrow_status, escrow_payment_intent_id, ai_analysis, ai_preview_status, created_at, updated_at')
-        .eq('status', 'published');
+        .eq('status', 'published')
+        // Never surface private group ("crew") campaigns in the public marketplace
+        // (and transitively Donny Picks, which ranks over this array). This is one of
+        // the five leak vectors — see the group-campaigns design doc.
+        .is('group_id', null);
 
       // Only add the not.in filter if there are campaigns to exclude
       const excludeFilter = buildExcludedIdsFilter(uniqueAssignedIds);
