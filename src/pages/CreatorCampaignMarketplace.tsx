@@ -89,6 +89,13 @@ const CreatorCampaignMarketplace = () => {
   // Deep-link: /dashboard/creator/campaigns?crews=1 opens the Crews tab
   // (kept in sync with the crew-invite notification actionUrl).
   const [activeTab, setActiveTab] = useState<Tab>(searchParams.get('crews') ? 'crews' : 'all');
+  // Also honor the deep-link when the param arrives while the page is already
+  // mounted (React Router updates search params without remounting).
+  useEffect(() => {
+    if (searchParams.get('crews')) {
+      setActiveTab('crews');
+    }
+  }, [searchParams]);
   const [detailCampaign, setDetailCampaign] = useState<PublicCampaign | null>(null);
   const [detailReadOnly, setDetailReadOnly] = useState(false);
 
