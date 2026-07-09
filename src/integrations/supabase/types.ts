@@ -1633,6 +1633,7 @@ export type Database = {
           estimated_creation_minutes: number | null
           fixed_price: number | null
           goals: string | null
+          group_id: string | null
           id: string
           open_for_sponsorship: boolean | null
           org_id: string | null
@@ -1671,6 +1672,7 @@ export type Database = {
           estimated_creation_minutes?: number | null
           fixed_price?: number | null
           goals?: string | null
+          group_id?: string | null
           id?: string
           open_for_sponsorship?: boolean | null
           org_id?: string | null
@@ -1709,6 +1711,7 @@ export type Database = {
           estimated_creation_minutes?: number | null
           fixed_price?: number | null
           goals?: string | null
+          group_id?: string | null
           id?: string
           open_for_sponsorship?: boolean | null
           org_id?: string | null
@@ -1730,6 +1733,13 @@ export type Database = {
             columns: ["duplicated_from"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "creator_groups"
             referencedColumns: ["id"]
           },
           {
