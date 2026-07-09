@@ -384,6 +384,8 @@ Add a nav entry to the business dashboard/menu pointing at `/dashboard/business/
 
 - [ ] **Step 2: Surface it.** In `CreatorCampaignMarketplace.tsx`, extend the `Tab` union (L28) to add `'crews'`, add a tab entry (near L172) labeled "Crews" with a badge = pending group-invitation count, and render (near L408) a `crews` panel: pending `GroupInviteCard`s at top. (The group-campaign *feed* is added in Phase 2 into this same panel.)
 
+- [ ] **Step 2b: Honor the deep-link.** `buildGroupInviteNotification` (Task 4) sets `actionUrl` to `/dashboard/creator/campaigns?crews=1`, so make the page read that query param on mount and set the initial `activeTab` to `'crews'` when `crews=1` is present (use the existing `useSearchParams`/`location.search` pattern already in this file for `?invited=true`, if present). This ensures the bell notification lands the creator on the Crews tab. Keep the param and the tab id in sync.
+
 - [ ] **Step 3: Build.** `npm run build && npm run typecheck` → clean.
 
 - [ ] **Step 4: Commit.** `git commit -am "feat(groups): creator Crews tab + accept/decline invites"`
@@ -434,8 +436,10 @@ CREATE POLICY "Users can view accessible campaigns" ON public.campaigns FOR SELE
 );
 
 -- Apply gate: public branch gets group_id IS NULL; add an active-member branch for group campaigns.
+-- (Pin search_path here too — the original 20260520010000 omitted it; adding it clears a likely
+--  pre-existing function_search_path_mutable advisor while the fn is open.)
 CREATE OR REPLACE FUNCTION public.can_create_application(p_campaign_id uuid, p_creator_id uuid)
-RETURNS boolean LANGUAGE sql SECURITY DEFINER STABLE AS $$
+RETURNS boolean LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
   SELECT (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = p_creator_id AND role = 'content_creator')
     AND (
@@ -492,7 +496,7 @@ $$;
   END IF;
 ```
 
-- [ ] **Step 2:** `CREATE OR REPLACE enforce_active_campaign_limit` (copy `20260507000002` verbatim) excluding group campaigns from both the guard and the count:
+- [ ] **Step 2:** `CREATE OR REPLACE enforce_active_campaign_limit` (copy the body from `20260507000002` verbatim) excluding group campaigns from both the guard and the count:
 
 ```sql
   IF NEW.status = 'published' AND NEW.group_id IS NULL AND (OLD.status IS DISTINCT FROM 'published') THEN
@@ -506,7 +510,15 @@ $$;
     ...
 ```
 
-> Do NOT change the `REVOKE EXECUTE ... FROM anon, authenticated` on `enforce_active_campaign_limit` (it's a trigger fn, from `20260507170005`); re-assert it after the replace to be safe.
+> **CRITICAL — preserve the pinned `search_path`.** The body lives in `20260507000002` (which has NO
+> `SET search_path`), but the search_path was pinned *later* in `20260507102621` via a separate
+> `ALTER FUNCTION`. `CREATE OR REPLACE` resets every property not restated, so a verbatim copy would
+> DROP `search_path` and reintroduce a `function_search_path_mutable` advisor on this SECURITY DEFINER
+> fn — contradicting Task 18's advisor check. **Add `SET search_path = public` to the
+> `CREATE OR REPLACE FUNCTION public.enforce_active_campaign_limit() ...` header** (or append
+> `ALTER FUNCTION public.enforce_active_campaign_limit() SET search_path = public;` in this migration).
+> Also re-assert `REVOKE EXECUTE ON FUNCTION public.enforce_active_campaign_limit() FROM anon, authenticated;`
+> (from `20260507170005`) to be safe — `CREATE OR REPLACE` preserves grants, but restating is cheap.
 
 - [ ] **Step 3: Commit.** `git commit -am "feat(groups): free group campaigns reach active w/o escrow; excluded from limit"`
 
