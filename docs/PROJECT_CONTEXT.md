@@ -840,6 +840,28 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   brand-default auto-hide, ZIP precision, legacy-`location` placement). Concept:
   `docs/wiki/concepts/creator-location-search.md`. Spec:
   `docs/superpowers/specs/2026-07-07-find-creators-location-search-design.md`.
+- Dev tooling — Claude capability-framework audits (Skills + Subagents) — **shipped (PRs #216,
+  #219, 2026-07-07).** Applied external best-practice playbooks to DragonCandy's Claude Code
+  capability layer **audit-first** — each ending in a value×effort-ranked `/internal/findings`
+  backlog + a durable wiki analysis, and each shipping exactly one quick win. **Skills audit
+  (PR #216):** scored the 9 dev `.claude/skills/` + Donny (playbooks / tools / RAG) against
+  Anthropic's 9-category Skills playbook (`docs/wiki/analyses/claude-skills-framework-audit.md`;
+  9 findings `source='skills-audit'`) → shipped the on-demand **`careful`** safety skill (gate
+  before an edge-fn deploy / `reset --hard` / DROP-RENAME / Stripe-live / direct prod write).
+  **Subagents audit (PR #219):** factual anchor = **zero custom `.claude/agents/`**, so heavy
+  reviews (edge-fn, RLS) ran inline and polluted the main context; scored candidates against a
+  7-dimension rubric (`docs/wiki/analyses/claude-subagents-audit.md`; 5 findings
+  `source='subagents-audit'`) → shipped the **project-scoped, read-only `edge-function-reviewer`
+  subagent** (reads a fn + its `_shared/*` deps in an isolated context, returns a `PASS | ISSUES`
+  verdict against our documented deploy hazards — `verify_jwt` drift, `_shared` bundling incl. the
+  template-literal-backtick Deno break, service-role-vs-user-auth, CORS, deploy ordering — wired
+  into `careful` as the deterministic backstop; now a registered Agent type, **use before any
+  edge-fn deploy**). Both audits are docs / skill / subagent only — no schema, RLS, edge-fn, or
+  secret change; both Codex-clean. Deferred subagent backlog (each a future sub-project):
+  `rls-migration-reviewer` (overlaps the `verify-db-schema` skill), `dragoncandy-explorer`, and a
+  `verify-prod` runner. Specs:
+  `docs/superpowers/specs/2026-07-07-claude-skills-framework-audit-design.md`,
+  `docs/superpowers/specs/2026-07-07-claude-subagents-audit-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
