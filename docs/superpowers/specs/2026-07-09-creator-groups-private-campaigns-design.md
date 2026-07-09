@@ -177,17 +177,31 @@ p_creator_id` check, add a guard — if the target campaign is group-scoped, req
 (or a pending `campaign_invitations` row) else `RAISE EXCEPTION`. Public/paid path (`group_id IS NULL`)
 skips the block entirely.
 
+> Note: the "or pending `campaign_invitations` row" branch in both apply gates is intentionally **dead
+> for v1 group campaigns** — §7 creates no invitation rows for group campaigns, so a group creator only
+> ever reaches a group campaign via active membership. The branch is kept only so the gates stay
+> consistent with the public/invite contract and so a future feature (individually inviting a
+> non-member to a group campaign) needs no gate change. The `campaigns` SELECT policy deliberately has
+> **no** invitation branch (members-only), which is correct: for v1 there is no invited-but-not-member
+> creator who could see a group campaign.
+
 ## 6. Unwinding the escrow coupling (paid path stays byte-for-byte unchanged)
 
 - **Reach ACTIVE collaboration without escrow** — in `accept_application_with_collaboration`, the
   campaign→`active` flip is gated on `escrow_status = 'held'`. Add one **additive** OR:
   `OR (v_campaign.group_id IS NOT NULL AND COALESCE(v_campaign.fixed_price,0) = 0)`. The collaboration
   INSERT + sibling auto-decline already run regardless of escrow.
-- **Complete without payout** — tighten `useProjectComplete` to invoke `release-creator-payout` only
-  when `escrow_status ∈ {'held','releasing'}`. **`release-creator-payout/index.ts` stays 100%
-  unchanged** — it remains the money-safety hard gate and is simply never called for free campaigns.
-  This is the clean seam: paid = `fixed_price>0` + escrow held → existing path; free = `group_id` +
-  `fixed_price=0` → no escrow, no payout. A future paid group campaign just sets `fixed_price>0`.
+- **Complete without payout** — `useProjectComplete` currently invokes `release-creator-payout` when
+  `escrow_status !== 'released'` (the full domain is `none|pending|held|releasing|refunded|released`).
+  Make the **minimal deny-list** change: add a single exclusion of the free case —
+  `escrow_status !== 'released' && escrow_status !== 'none'`. This drops **only** the free
+  (`escrow_status='none'`) call and preserves the paid path's payout-invocation for **every** paid
+  escrow state (`pending/held/releasing/refunded`) exactly as today. Do **NOT** switch to an allow-list
+  like `∈ {'held','releasing'}` — that would silently also stop firing for `pending`/`refunded` and thus
+  change paid-path behavior. **`release-creator-payout/index.ts` stays 100% unchanged** — it remains the
+  money-safety hard gate and is simply never called for free campaigns. The clean seam: paid =
+  `fixed_price>0` + escrow → existing path; free = `group_id` + `fixed_price=0` (`escrow_status='none'`)
+  → no escrow, no payout. A future paid group campaign just sets `fixed_price>0`.
 - **Active-campaign-limit trigger** — exclude group campaigns (`AND group_id IS NULL` in both the
   guard and the running COUNT) so a standing crew is reusable across many campaigns without consuming
   the paid-marketplace quota. (Recommended; alternative is to count them.)
@@ -208,15 +222,19 @@ skips the block entirely.
   populated by `useCreatorGroups`.
 - `src/hooks/useCampaignCreator.ts` + `src/pages/CampaignCreator.tsx` (edit) — add `group_id` to the
   editable campaign; when set, add `group_id` to the insert and force free terms (`fixed_price:0`,
-  `pricing_type:'fixed'`, `delivery_fee:0`), keep `status:'published'`; on launch notify active members
-  (`group_campaign_posted`). No `campaign_invitations` rows (membership already grants apply rights).
+  `pricing_type:'fixed'`, `delivery_fee:0`, **`creator_count:1`** for defensive single-winner —
+  `enforce_single_slot_campaign` only enforces auto-decline when `creator_count <= 1`), keep
+  `status:'published'`; on launch notify active members (`group_campaign_posted`). No
+  `campaign_invitations` rows (membership already grants apply rights).
 
 **Creator — accept/decline + feed**
 - `src/hooks/useCreatorGroupInvitations.ts` (new) — pending memberships (join `creator_groups` for
   name/owner); `accept`/`decline` → `respond_to_group_invitation` + notify owner.
   `src/components/groups/GroupInviteCard.tsx` (new) — reuse the Invitations-tab card styling.
 - `src/hooks/useGroupCampaigns.ts` (new) — `.not('group_id','is',null).eq('status','published')` (RLS
-  restricts rows to the member's crews); enrich like `usePublicCampaigns`.
+  restricts rows to the member's crews); enrich like `usePublicCampaigns`. **Add `group_id` to this
+  hook's `.select(...)` list** (and any UI that keys on crew membership) — `usePublicCampaigns` filters
+  on `group_id` but does not select it, so the column must be added explicitly where it's read.
 - `src/pages/CreatorCampaignMarketplace.tsx` (edit) — add a **"My Crews"** tab (mirror the Invitations
   tab) rendering group campaigns via existing `CampaignSwipeCard` + `CampaignDetailModal` +
   `OneTapApplySheet`.
@@ -289,6 +307,8 @@ creator side.
    `status='active'`, no escrow/payout invoked; complete the project → no `release-creator-payout` call,
    no error.
 5. **Paid flow untouched:** run one normal public paid campaign apply → accept → escrow → payout;
-   confirm byte-for-byte unchanged.
+   confirm unchanged. Note the only paid-path edit is the §6 deny-list guard in `useProjectComplete`,
+   which still invokes `release-creator-payout` for every paid escrow state (`pending/held/releasing/
+   refunded`) — only the free `escrow_status='none'` call is dropped.
 6. **Build/tests:** `npm run build`, `npm run typecheck`, targeted vitest for any new pure helpers;
    Codex second review + `edge-function-reviewer` (if any edge fn touched) before PR.
