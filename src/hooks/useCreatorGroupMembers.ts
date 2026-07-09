@@ -144,7 +144,7 @@ export function useCreatorGroupMembers(groupId: string) {
         title: invitedIds.length > 0 ? 'Creators invited' : 'No new invites',
         description:
           invitedIds.length > 0
-            ? 'The creators will be notified via email and in-app message.'
+            ? 'The creators will get an in-app notification to join your crew.'
             : 'Those creators are already in this crew.',
       });
     },
