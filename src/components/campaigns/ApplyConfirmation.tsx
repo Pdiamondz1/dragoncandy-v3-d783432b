@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 
 interface ApplyConfirmationProps {
@@ -11,7 +12,12 @@ export function ApplyConfirmation({ open, onClose, businessName }: ApplyConfirma
 
   if (!open) return null;
 
-  return (
+  // Portal to <body> so the full-screen `fixed inset-0` overlay is positioned
+  // relative to the viewport. Rendered in place, it sits inside the Framer-Motion
+  // PageTransition wrapper whose `transform` becomes the containing block for
+  // `position: fixed` — which sized this overlay to the full (scrolled) page and
+  // left the centered confirmation off-screen (user had to scroll up to see it).
+  return createPortal(
     <div className="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
       {/* Checkmark animation */}
       <div className="w-20 h-20 rounded-full bg-dc-teal flex items-center justify-center mb-6 animate-in zoom-in duration-500">
@@ -69,6 +75,7 @@ export function ApplyConfirmation({ open, onClose, businessName }: ApplyConfirma
           stroke-dashoffset: 24;
         }
       `}</style>
-    </div>
+    </div>,
+    document.body,
   );
 }
