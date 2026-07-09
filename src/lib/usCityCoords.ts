@@ -516,4 +516,9 @@ export const US_CITY_COORDS: Record<string, CityCoords> = {
 
   // Wyoming
   "casper": { lat: 42.8501, lng: -106.3252 },
+
+  // ── DragonCandy market / creator cities not in the population-ranked set ──
+  "hoboken": { lat: 40.7439, lng: -74.0324 }, // HQ city
+  "palm beach": { lat: 26.7056, lng: -80.0364 }, // distinct from West Palm Beach
+  "bolinas": { lat: 37.9091, lng: -122.6864 },
 };

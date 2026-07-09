@@ -9,7 +9,8 @@ import { lookupCityCoords } from '@/lib/geoUtils';
 import { geocodingService } from '@/lib/geocoding';
 import {
   DEFAULT_LOCATION_FILTER,
-  filterByRadius,
+  filterByRadiusWithSearch,
+  matchesLocationText,
   sortNearest,
   type LocationFilter,
   type LatLng,
@@ -206,10 +207,7 @@ export const useCreatorBrowse = (accountType: 'restaurant' | 'brand' = 'restaura
       creator.skills?.some(skill => skill.toLowerCase().includes(term)) ||
       // Location text: let a typed city / ZIP / country find creators there,
       // matching the natural instinct to search a place in the search bar.
-      (creator.city || '').toLowerCase().includes(term) ||
-      (creator.postal_code || '').toLowerCase().includes(term) ||
-      (creator.country || '').toLowerCase().includes(term) ||
-      (creator.location || '').toLowerCase().includes(term);
+      matchesLocationText(creator, filters.searchTerm);
 
     const matchesSkills = filters.skills.length === 0 ||
       creator.skills?.some(skill => filters.skills.includes(skill));
@@ -244,13 +242,16 @@ export const useCreatorBrowse = (accountType: 'restaurant' | 'brand' = 'restaura
              matchesRate && matchesPlatforms && matchesAvailability && matchesExperience;
     });
 
-    // Location radius filter
+    // Location radius filter, search-aware: a creator matched by the *place* they're in escapes
+    // the near-me distance filter (the user searched that location), while name / skill matches
+    // stay within the radius so the local-creator default holds. Distances annotated for Nearest.
     let unplaceable = 0;
     if (activeCenter) {
-      const { list, unplaceableCount } = filterByRadius(
+      const { list, unplaceableCount } = filterByRadiusWithSearch(
         result,
         activeCenter,
         filters.location.radiusMiles,
+        filters.searchTerm,
         geocodedById,
       );
       result = list;
