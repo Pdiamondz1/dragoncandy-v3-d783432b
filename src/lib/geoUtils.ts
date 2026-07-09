@@ -27,7 +27,9 @@ const US_COUNTRY_VARIANTS = new Set([
 ]);
 
 function normalizeCountry(country: string): string {
-  return country.toLowerCase().trim().replace(/\./g, '');
+  // Strip periods and the ISO 3166 English short-name suffix "(the)"
+  // (e.g. Google/ISO returns "United States of America (the)").
+  return country.toLowerCase().replace(/\./g, '').replace(/\(the\)/g, '').replace(/\s+/g, ' ').trim();
 }
 
 function isUSCountry(country: string): boolean {

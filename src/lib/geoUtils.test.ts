@@ -46,6 +46,18 @@ describe('lookupCityCoords', () => {
     }
   });
 
+  test('handles the ISO short-name country variant "United States of America (the)"', () => {
+    // Google/ISO can return this exact string; a creator in prod carries it.
+    expect(lookupCityCoords('New York', 'United States of America (the)')).not.toBeNull();
+  });
+
+  test('includes Hoboken, NJ (DragonCandy HQ city) in the static fallback', () => {
+    const result = lookupCityCoords('Hoboken', 'United States');
+    expect(result).not.toBeNull();
+    expect(result!.lat).toBeCloseTo(40.744, 1);
+    expect(result!.lng).toBeCloseTo(-74.032, 1);
+  });
+
   test('returns null for non-US country', () => {
     expect(lookupCityCoords('London', 'UK')).toBeNull();
     expect(lookupCityCoords('Toronto', 'Canada')).toBeNull();
