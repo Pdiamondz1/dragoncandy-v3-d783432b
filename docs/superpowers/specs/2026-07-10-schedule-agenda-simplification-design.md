@@ -77,7 +77,8 @@ Pure helpers (no React):
 - Adapters (each pure, own file, own tests):
   - `outstandPostToAgendaItem(post: Post): AgendaItem` — uses existing `getCaption`, `getUniqueNetworks`, `scheduledAt ?? publishedAt`, `isScheduled` status.
   - `deadlineToAgendaItem(d: CampaignDeadline): AgendaItem`.
-  - `scheduledPostToAgendaItem(p: ScheduledPost): AgendaItem` — for the review panel (`content_type`, `platform`, `caption`, `scheduled_at`, `status`).
+
+  (The review panel keeps its own `PostCard` list and does **not** use these adapters — see Unit 6.)
 
 **Boundary:** given raw items, it returns grouped days. No I/O, no dates-from-`Date.now()` inside pure fns except a passed-in `today`/`from` for testability.
 
@@ -121,7 +122,7 @@ A button showing the current month; on click opens a compact month picker — **
 
 `src/components/schedule/ScheduleReviewScreen.tsx`
 
-- **Populated:** map `posts` (`ScheduledPost[]`) via `scheduledPostToAgendaItem` → `groupByDay(from = earliest post day)` → `<AgendaView header="none" showScheduleButton={false}>`. Each row's `onClick` opens the existing edit affordance (`setEditingPostId`). **Remove `ScheduleTimeline`** from this screen (the overlapping-dot component). `ScheduleStatsRow` may stay (post/cross-post/spread counts).
+- **Populated:** the screen already renders `posts` as a clean vertical list of `PostCard`s (each shows its date + Edit Caption / Change Date buttons). **Keep the `PostCard` list as-is** and **remove only `ScheduleTimeline`** — the overlapping-dot component that is the actual mobile bug. `ScheduleStatsRow` stays (post/cross-post/spread counts). Do **not** swap `PostCard` for `AgendaView` here: that would discard the per-card edit affordances. (The Agenda work is for the *calendar* surface; the review panel just needs the broken timeline removed and its states fixed.)
 - **Header:** show `posts.length` posts (not "deliverables"); show the "✦ Donny Optimized" badge **only when `posts.length > 0`**.
 - **Empty state (keystone):** instead of the dead-end, render a friendly block: icon + "No posts scheduled yet" + one-line explanation of what happens next + a **single primary action**. Exact copy/action to be finalized in the plan, but the rule is: *never a lone disabled button*. The sticky "Confirm & Schedule All Posts" footer is only shown when there is something to confirm.
 - The right-side `Sheet` container is retained (full-width on mobile already); no bottom-sheet conversion needed for v1.
@@ -140,12 +141,12 @@ Content Calendar surface
   campaignDeadlines ────────────┼─→ adapters → AgendaItem[] → groupByDay → AgendaView
   sponsorshipEvents ────────────┘
 
-Review panel surface
-  useScheduledPosts(campaignId, planGroupId) → ScheduledPost[]
-     → scheduledPostToAgendaItem → groupByDay(from=firstPostDay) → AgendaView
+Review panel surface (unchanged data path)
+  useScheduledPosts(campaignId, planGroupId) → ScheduledPost[] → PostCard list
+     (ScheduleTimeline removed; empty state + header fixed)
 ```
 
-Two different data sources converge on the same presentational component through the normalized `AgendaItem`. No shared fetching; each surface owns its query (unchanged).
+The calendar surface feeds the shared `AgendaView` through the normalized `AgendaItem`; the review panel keeps its existing `PostCard` list. No shared fetching; each surface owns its query (unchanged).
 
 ## 6. Behavior details
 
