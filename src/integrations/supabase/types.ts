@@ -987,6 +987,7 @@ export type Database = {
           content_deadline: string | null
           content_started_at: string | null
           content_status: string | null
+          content_submitted_at: string | null
           contract_details: Json | null
           created_at: string
           creator_completion_status: string | null
@@ -1012,6 +1013,7 @@ export type Database = {
           content_deadline?: string | null
           content_started_at?: string | null
           content_status?: string | null
+          content_submitted_at?: string | null
           contract_details?: Json | null
           created_at?: string
           creator_completion_status?: string | null
@@ -1037,6 +1039,7 @@ export type Database = {
           content_deadline?: string | null
           content_started_at?: string | null
           content_status?: string | null
+          content_submitted_at?: string | null
           contract_details?: Json | null
           created_at?: string
           creator_completion_status?: string | null
