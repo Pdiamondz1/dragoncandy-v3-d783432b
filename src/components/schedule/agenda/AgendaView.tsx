@@ -71,7 +71,7 @@ export function AgendaView({
             <button
               type="button"
               onClick={onTodayClick}
-              className="text-xs font-bold text-dc-teal border border-dc-teal bg-dc-teal/5 rounded-full px-4 py-2"
+              className="text-xs font-bold text-dc-teal border border-dc-teal bg-dc-teal/5 rounded-full px-4 py-2 min-h-[44px] inline-flex items-center justify-center"
             >
               Today
             </button>
@@ -80,7 +80,7 @@ export function AgendaView({
             <button
               type="button"
               onClick={onScheduleClick}
-              className="flex items-center gap-1 bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white rounded-full px-4 py-2 text-xs font-bold transition-colors"
+              className="flex items-center gap-1 justify-center bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white rounded-full px-4 py-2 text-xs font-bold transition-colors min-h-[44px]"
             >
               <Plus className="w-4 h-4" /> Schedule
             </button>

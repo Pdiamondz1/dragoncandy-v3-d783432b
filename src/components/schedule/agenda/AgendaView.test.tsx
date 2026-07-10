@@ -31,14 +31,36 @@ describe('AgendaView', () => {
     );
     // Note: the day header (relativeDayLabel) and the "Today" jump button both
     // render the literal text "Today" when `today`/`anchorDate` fall on the same
-    // day as the item, so a plain getByText('Today') is ambiguous here — assert
-    // presence via getAllByText instead. See task-3-report.md for details.
-    expect(screen.getAllByText('Today').length).toBeGreaterThan(0);
+    // day as the item, so a plain getByText('Today') is ambiguous here. There are
+    // exactly two: the day-group header + the Today button — assert both exist.
+    // See task-3-report.md for details.
+    expect(screen.getAllByText('Today')).toHaveLength(2);
     expect(screen.getByText('Café Symphony')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /schedule/i }));
     expect(onSchedule).toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: /^today$/i }));
     expect(onToday).toHaveBeenCalled();
+  });
+
+  it('renders a deadline row with the campaign-deadline label and title', () => {
+    const deadlineDays: AgendaDay[] = [
+      {
+        dateKey: '2026-6-13',
+        date: new Date(2026, 6, 13),
+        items: [
+          { id: 'd1', date: new Date(2026, 6, 13).toISOString(), kind: 'deadline', title: 'Café Symphony' },
+        ],
+      },
+    ];
+    render(
+      <AgendaView
+        days={deadlineDays}
+        today={new Date(2026, 6, 10)}
+        anchorDate={new Date(2026, 6, 10)}
+      />,
+    );
+    expect(screen.getByText(/campaign deadline/i)).toBeInTheDocument();
+    expect(screen.getByText('Café Symphony')).toBeInTheDocument();
   });
 
   it('shows the empty state when there are no days', () => {
