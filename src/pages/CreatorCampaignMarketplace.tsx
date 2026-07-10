@@ -67,6 +67,9 @@ const CreatorCampaignMarketplace = () => {
   const queryClient = useQueryClient();
   const { data: campaigns = [], isLoading, error } = usePublicCampaigns(user?.id);
   const { data: groupCampaigns = [], isLoading: isGroupLoading } = useGroupCampaigns(user?.id);
+  // Hide crew campaigns the creator has already applied to (mirrors the "All" tab's
+  // !user_applied filter) so re-opening one can't hit a duplicate-application error.
+  const availableGroupCampaigns = groupCampaigns.filter((c) => !c.user_applied);
 
   const { campaigns: geoCampaigns } = useGeoDistance(campaigns);
 
@@ -522,13 +525,13 @@ const CreatorCampaignMarketplace = () => {
                 <div className="text-center py-8">
                   <p className="text-gray-500 text-sm">Loading crew campaigns…</p>
                 </div>
-              ) : groupCampaigns.length === 0 ? (
+              ) : availableGroupCampaigns.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-gray-500 text-sm">No crew campaigns yet.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {groupCampaigns.map((campaign) => (
+                  {availableGroupCampaigns.map((campaign) => (
                     <Card
                       key={campaign.id}
                       className="hover:shadow-lg transition-shadow cursor-pointer border-2 border-dc-teal/40 hover:border-dc-teal"
