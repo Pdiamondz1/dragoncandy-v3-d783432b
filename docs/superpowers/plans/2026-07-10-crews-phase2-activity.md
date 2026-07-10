@@ -62,17 +62,29 @@
 - [ ] **Step 2:** Write the confirmed overlap table into this plan file (edit the table below) and reconcile any cell that differs from spec §5. If an event's standard notice already covers the ADDS recipient+email, the ADD is "row only".
 - [ ] **Step 3:** Commit the plan edit (`docs: verified crew-activity de-dup overlap table`). No source code yet.
 
-**Confirmed overlap (fill in Step 2):**
-| event | standard sends (recipient / type / email today) | recordCrewActivity ADDS |
-|---|---|---|
-| campaign_posted | members / `group_campaign_posted` / no | reuse v1 bell + add email mapping; row |
-| application_received | owner / `application_received` / (verify) | email owner (if not already); row |
-| hired | hired creator / `campaign_hired` / (verify) | email hired creator; row |
-| content_submitted | (verify) | (derive) |
-| content_approved | (verify) | row only |
-| revision_requested | (verify) | row only |
-| completed | owner+creator / `project_completed` / (verify) | email owner; row |
-| paid | (verify — may be folded into completed) | email creator; row |
+**Confirmed overlap (VERIFIED against current code — Task 0 complete):**
+| event | standard sends (recipient / type / category / email today) | call site | recordCrewActivity ADDS |
+|---|---|---|---|
+| campaign_posted | active members / `group_campaign_posted` / campaigns / **NO email** (type unmapped → `resolvedEmailType` undefined, so no email despite campaigns default) | `useCampaignCreator.ts` (crew launch, v1) | **row** (bell already sent by v1) + **NEW email mapping** `group_campaign_posted`→crew template (Task 8). Pure map returns `[]`. |
+| application_received | owner / `application_received` / campaigns / **YES** (`new_application`, campaigns email=true) | `useCreateApplication.ts` onSuccess | **row only** (owner already belled+emailed) |
+| hired | hired creator / **`application_accepted`** / campaigns / **YES** (`application_status`, campaigns email=true) | `useManageApplication.ts` accept path | **row only** (creator already belled+emailed) |
+| content_submitted | **NOBODY** — Submit-for-Review only updates `content_status='submitted'`, fires **no** `create-notification` | `SubmitForReviewButton.tsx` | **GAP → fire ONE new payload to OWNER** (recipientId=owner_id, category `content`). The single event where the pure map returns a payload. |
+| content_approved | hired creator / `content_approved` / content / mapped but category `content` email=**false** default → no email unless opted-in | `ContentReviewSection.tsx` `approveContent` | **row only** (creator already belled) |
+| revision_requested | hired creator / `revision_requested` / content / mapped but category `content` email=**false** default → no email unless opted-in | `ContentReviewSection.tsx` `requestRevision` | **row only** (creator already belled) |
+| completed | owner **AND** creator / `project_completed` / transactions / **YES both** (`project_completion`, transactions email=true) | `useProjectComplete.ts` both-approved branch | **row only** (both already belled+emailed) |
+| paid | **NO distinct notice** — amount folded into `project_completed` emailData; for crews the payout is **skipped entirely** | `useProjectComplete.ts` payout branch / `release-creator-payout` | **row only** (creator already belled+emailed via `completed`). Amount **always null for crews**. |
+
+**Reconciliations / contradictions with spec §5 + plan assumptions (downstream tasks MUST use these):**
+1. **`hired` type is `application_accepted`, NOT `campaign_hired`** (plan §5 + Task 5 mislabel). The accept path (`useManageApplication.ts`) fires a `create-notification` bell of type **`application_accepted`** (category `campaigns`, already email-mapped → `application_status`) to the hired creator; `campaign_hired` is only a separate **`donny_nudges`** row (not a bell/email). So `hired` is already belled+emailed → **ADDS = row only** (no "email hired creator" needed).
+2. **`content_submitted` has NO owner notification today** (contradicts the §5 "row only" default). `SubmitForReviewButton` only writes `content_status='submitted'`. Related-but-distinct: `useFileUploadNotification` fires a `file_uploaded` bell to the owner at *upload* time (category `content`, email off by default), and the mutual-complete path (`useProjectComplete`, creator marks complete) fires `completion_request` — but neither is the discrete Submit-for-Review event. **This is the one real gap → the pure map fires a payload to the owner** (Task 3). It is also NOT written to `payment_events` (confirmed: no `content_submitted` rows in prod; `PaymentsPage.tsx`/`PaymentSummaryCards.tsx` derive pending-review from `content_status`, not events).
+3. **`completed` already emails BOTH parties** (not just "email owner" as §5 assumed). `project_completed` is email-mapped + category `transactions` (email=true), fired to owner AND creator in `useProjectComplete.ts`. **ADDS = row only.**
+4. **`paid` — no distinct notification + NO `payment_events` row for crews.** No separate `paid` bell exists; the amount is folded into `project_completed`'s emailData. Critically, `useProjectComplete.ts` (line ~114) **skips `release-creator-payout` when `campaign.group_id` is set** (crews are free), so for a crew campaign `payoutSuccess` is never true, `payoutAmount` stays 0, and **no `payment_events` row is ever written**. Consequences for Task 2/5: (a) the RPC's amount lookup finds nothing for crews → `v_amount` is NULL → `jsonb_strip_nulls` drops it (the `paid` feed line just omits the amount — do NOT fabricate); (b) if Task 5 gates `paid` on `payoutSuccess`, it **never fires for a crew campaign** — wire it on the crew-completion path (or accept `paid` is effectively a no-op / $0 line for free crews). **ADDS = row only** (creator already belled+emailed via `completed`).
+5. **`campaign_posted` is NOT email-mapped today** (confirmed): `group_campaign_posted` is absent from `NOTIFICATION_TYPE_TO_EMAIL_TYPE`, so `resolvedEmailType` is undefined and no email sends even though category `campaigns` defaults email=true. The one genuinely-new email mapping in Task 8.
+
+**Confirmed schema facts for the RPC (Task 2):**
+- `profiles.full_name` — **exists** (`text`). ✓ (actor-name source)
+- `creator_profiles.creator_name` — **exists** (`text`). ✓ (participant creator-name source)
+- **`payment_events` amount column is `amount_cents` (integer, CENTS) — there is NO `amount` column.** The plan's RPC `SELECT amount INTO v_amount ...` is wrong: use **`amount_cents`** and divide by 100 for dollars. Also its filter `event_type ILIKE '%payout%'` is wrong — the real payout rows are `payment_released` / `transfer_created` / `payment_release_initiated` / `payout_pending_wallet` (`payment_released`/`transfer_created` do NOT contain "payout"). MOOT for v1 since crews write no `payment_events` row at all (contradiction #4) — `v_amount` will be NULL for every crew `paid`; only fix the column/filter if a future paid-crew path exists.
 
 ---
 
