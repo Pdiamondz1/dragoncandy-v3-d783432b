@@ -34,6 +34,12 @@ const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Record<string, string> = {
   // no shared/standard type is remapped. Keep in sync with
   // src/types/notifications.ts.
   group_campaign_posted: 'new_crew_campaign',
+  // Crew-specific (Crews Phase 2): the ONE lifecycle gap — when a crew creator submits
+  // content for review, no owner notification fired before. Emitted only by the crew
+  // recordCrewActivity wrapper (not used by any other flow). The payload pins category
+  // `campaigns` (email on by default, opt-out-able) so the owner gets this high-signal email.
+  // Keep in sync with src/types/notifications.ts.
+  content_submitted: 'crew_content_submitted',
   revision_requested: 'revision_requested',
   message_received: 'new_message',
   sponsorship_proposal: 'sponsorship_proposal',

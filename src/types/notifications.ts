@@ -9,6 +9,7 @@ export type NotificationType =
   | 'campaign_published'
   | 'campaign_cancelled'
   | 'group_campaign_posted'
+  | 'content_submitted'
   | 'revision_requested'
   | 'cgc_submission_received'
   | 'cgc_code_redeemed'
@@ -119,6 +120,13 @@ export const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Partial<Record<NotificationType, s
   // no shared/standard type is remapped. Keep in sync with
   // supabase/functions/create-notification/index.ts.
   group_campaign_posted: 'new_crew_campaign',
+  // Crew-specific (Crews Phase 2): the ONE lifecycle gap — when a crew creator submits
+  // content for review, no owner notification fired before. Emitted only by the crew
+  // recordCrewActivity wrapper (not used by any other flow), so mapping it adds email for
+  // CREW content submissions only. The payload pins category `campaigns` (email on by
+  // default, opt-out-able) so the owner actually gets this high-signal email — category
+  // `content` would default it off. Keep in sync with create-notification/index.ts.
+  content_submitted: 'crew_content_submitted',
   revision_requested: 'revision_requested',
   message_received: 'new_message',
   sponsorship_proposal: 'sponsorship_proposal',

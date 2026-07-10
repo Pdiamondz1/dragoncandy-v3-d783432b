@@ -53,6 +53,8 @@ export interface NotificationPayload {
   actorId?: string;
   icon?: string;
   data?: Record<string, unknown>;
+  /** Extra fields merged into the email template payload (create-notification). */
+  emailData?: Record<string, unknown>;
 }
 
 /**
@@ -63,11 +65,15 @@ export function crewActivityNotifications(facts: CrewActivityFacts): Notificatio
   switch (facts.event_type) {
     case 'content_submitted':
       // The one real gap: no owner notification fires today on Submit-for-Review.
+      // Category `campaigns` (not `content`) so the high-signal owner email actually
+      // sends by default — `content` defaults email off. Sibling pipeline events
+      // (application_received / hired) live in `campaigns` too. Opt-out-able via the
+      // owner's campaigns-email preference. `crew_content_submitted` template.
       return [
         {
           recipientId: facts.owner_id,
           type: 'content_submitted',
-          category: 'content',
+          category: 'campaigns',
           title: 'New content submitted',
           body: `${facts.creator_name ?? 'A creator'} submitted content for "${
             facts.campaign_title ?? 'a campaign'
@@ -75,6 +81,10 @@ export function crewActivityNotifications(facts: CrewActivityFacts): Notificatio
           actionUrl: `/dashboard/business/campaigns/${facts.campaign_id}`,
           icon: 'content',
           data: { campaign_id: facts.campaign_id },
+          emailData: {
+            creatorName: facts.creator_name ?? 'A creator',
+            campaignTitle: facts.campaign_title ?? 'your campaign',
+          },
         },
       ];
 

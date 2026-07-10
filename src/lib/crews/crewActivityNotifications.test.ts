@@ -40,12 +40,29 @@ describe('crewActivityNotifications', () => {
       expect(payloads[0]).toEqual({
         recipientId: 'owner-1',
         type: 'content_submitted',
-        category: 'content',
+        // `campaigns` (not `content`) so the high-signal owner email sends by default.
+        category: 'campaigns',
         title: 'New content submitted',
         body: 'Ava Reels submitted content for "Taco Tuesday Blitz"',
         actionUrl: '/dashboard/business/campaigns/camp-1',
         icon: 'content',
         data: { campaign_id: 'camp-1' },
+        emailData: { creatorName: 'Ava Reels', campaignTitle: 'Taco Tuesday Blitz' },
+      });
+    });
+
+    it('emails default on: category is campaigns (content would default off)', () => {
+      const payloads = crewActivityNotifications(facts({ event_type: 'content_submitted' }));
+      expect(payloads[0].category).toBe('campaigns');
+    });
+
+    it('carries emailData for the template, falling back when names are null', () => {
+      const payloads = crewActivityNotifications(
+        facts({ event_type: 'content_submitted', creator_name: null, campaign_title: null }),
+      );
+      expect(payloads[0].emailData).toEqual({
+        creatorName: 'A creator',
+        campaignTitle: 'your campaign',
       });
     });
 

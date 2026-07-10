@@ -21,6 +21,7 @@ type NotificationType =
   | 'new_campaign_for_brands'
   | 'new_campaign_for_creators'
   | 'new_crew_campaign'
+  | 'crew_content_submitted'
   | 'file_uploaded_by_creator'
   | 'file_uploaded_by_restaurant'
   | 'completion_request'
@@ -94,6 +95,7 @@ interface NotificationEmailRequest {
     payout_dollars?: number | string;
     content_type?: string;
     post_id?: string;
+    campaign_id?: string; // crew_content_submitted action URL
   };
 }
 
@@ -535,6 +537,32 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="margin: 8px 0 0 0; color: #065F46; font-size: 14px;">Crew campaigns are shared with your crew before anyone else. Take a look and apply while the spots are open.</p>
               </div>
               <p style="text-align: center; margin-top: 40px;"><a href="${baseUrl}/dashboard/creator/campaigns?crews=1" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">View Crew Campaigns</a></p>
+            </div>
+          </div>
+        `,
+      },
+      // Crew-specific (Crews Phase 2): a crew creator submitted content for review — the ONE
+      // owner-notification gap this feature closes. The create-notification caller passes
+      // creatorName + campaignTitle (→ esc.creatorName / esc.campaignTitle) and campaign_id in
+      // data. Category is pinned `campaigns` on the caller so this high-signal email sends by
+      // default. String concat (not nested backticks) for the conditional URL — Deno-bundle safe.
+      crew_content_submitted: {
+        subject: `📥 ${esc.creatorName || 'A creator'} submitted content for "${esc.campaignTitle}"`,
+        html: `
+          <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">📥 Content Submitted!</h1>
+            </div>
+            <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
+              <p style="font-size: 16px; color: #374151;">Hi ${esc.rn},</p>
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;">
+                <strong>${esc.creatorName || 'A creator'}</strong> in your crew just submitted content for <strong>"${esc.campaignTitle}"</strong> and it's ready for your review.
+              </p>
+              <div style="background: #F0F9FF; border-left: 4px solid #0EA5E9; padding: 16px; margin: 24px 0; border-radius: 4px;">
+                <p style="margin: 0; color: #075985; font-weight: 600;">✅ Ready for Review</p>
+                <p style="margin: 8px 0 0 0; color: #075985; font-size: 14px;">Review the deliverables and approve or request changes to keep the collab moving.</p>
+              </div>
+              <p style="text-align: center; margin-top: 40px;"><a href="${data.campaign_id ? baseUrl + '/dashboard/business/campaigns/' + data.campaign_id : baseUrl + '/dashboard/business/campaigns'}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">Review Content</a></p>
             </div>
           </div>
         `,
