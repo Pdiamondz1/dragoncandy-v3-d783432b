@@ -26,6 +26,28 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-10] Schedule agenda-first simplification (branch worktree-DC-20)
+- Output: bundled INTO the work PR — `raw/sessions/2026-07-10-schedule-agenda-simplification.md`, new
+  `concepts/schedule-agenda-view.md`, `index.md` (Concepts + Sources), `log.md` ingest entry,
+  PROJECT_CONTEXT active-workstream bullet, + THIS run-log entry. No DATABASE_SCHEMA/DESIGN_SYSTEM/CLAUDE.md
+  change (frontend-only; no schema/token/workflow change).
+- Happened: first **consumer frontend UX** capture in a while (recent runs were AIOS/Dezzy). A big
+  *frontend* feature still yielded a reusable *architecture* pattern → captured the pattern (a pure
+  normalized `AgendaItem` model that lets ONE presentational view serve two unrelated data sources +
+  two host pages, with `variant` as a *behavioral* mobile/desktop switch), not "we redid the calendar".
+  Pre-merge on the work branch (off origin/main per [scope]); RAG sync + verify-knowledge are post-merge.
+- Worked: [scope] + [runlog-in-pr] + [orphans]-by-path (new concept cataloged in index.md). Grepped
+  index.md for exact wikilink display names before linking ([[Outstand]], [[Donny AI]], [[Campaign
+  Delivery, Scheduling & Notifications Session]] all confirmed). Compounded onto existing [[Outstand]]/
+  [[Donny AI]] entities rather than a thin duplicate.
+- Failed: none. (verify-knowledge close-the-loop RAG check is inherently post-merge for this pre-merge run.)
+- Remember: two reviews caught two different *plan-authored* bugs — the Opus whole-branch review found a
+  hardcoded `variant="desktop"` (my plan's "only widens max-width" comment was wrong; it actually routes
+  Sheet-vs-Popover), and Codex found the agenda dropped an existing data source (sponsorship events the old
+  DayStrip rendered). Lesson: when a redesign REPLACES a component (DayStrip→AgendaView), enumerate every
+  data source the old component consumed and confirm each survives — a "simplification" silently drops
+  inputs. (advisory)
+
 ### [2026-07-07] AIOS Agent-Loop Audit — 3 gaps, consolidated (branch feat/aios-spend-source-of-truth)
 - Output: bundled INTO PR #220 — `raw/sessions/2026-07-07-aios-agent-loop-audit.md`, new
   `concepts/aios-runtime-spend-source-of-truth.md`, `index.md` (Concepts + Sources), `log.md` ingest

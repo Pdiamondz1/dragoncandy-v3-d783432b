@@ -1003,3 +1003,21 @@ archive→re-sync→not-resurrected→un-archive→restored). Pages created: [[S
 (concept) + the raw session source. Pages updated: index.md (Concepts + Sources), DATABASE_SCHEMA
 (`internal_docs` note), PROJECT_CONTEXT (workstream bullet). Founder go-live: create the monthly
 `/schedule` routine.
+
+## [2026-07-10] ingest | Schedule / Calendar Agenda-First Simplification
+Founder feedback ("schedule calendar not easy to navigate in mobile… need the simplest UX workflow")
+→ made scheduling **agenda-first**. Mobile + desktop now default to one scrolling day-by-day list of
+upcoming posts — one "＋ Schedule" button, an always-visible "Today", and a tap-the-month "jump to
+date" picker (bottom Sheet on mobile, Popover on desktop via `useIsMobile`). Design reframe: *simplest =
+the default path, not deleting options* — so the desktop Week/Month/Day grids (drag-to-reschedule
+intact) were kept as an **optional toggle**, and the Month grid gained readable post chips instead of
+dots. A pure, unit-tested `AgendaItem` model + adapters normalize two data sources ([[Outstand]] `Post`
++ campaign deadlines + sponsorships) into one `AgendaView`. Also fixed the standalone `/calendar`
+"＋ Schedule" **silent no-op** (now navigates to the composer) and the campaign review panel's dead-end
+(the screenshot: dropped the overlapping timeline, honest conditional header, actionable empty state).
+8 TDD tasks (subagent-driven), per-task + whole-branch Opus reviews (44px touch targets, responsive
+`variant`, Month-legend gating) and **Codex-clean after one P2** (sponsorship events were dropped from
+the agenda → mobile parity restored by reusing `SponsorshipMarkerDetail`). Frontend-only — no schema /
+edge / data change. Pages created: [[Schedule Agenda View]] (concept) + the raw session source. Pages
+updated: index.md (Concepts + Sources), PROJECT_CONTEXT (workstream bullet). RAG sync + verify-knowledge
+run post-merge (the post-merge hook fires on the `main` fast-forward).

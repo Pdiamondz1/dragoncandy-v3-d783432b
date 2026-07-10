@@ -841,6 +841,29 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `docs/wiki/concepts/creator-location-search.md`. Spec:
   `docs/superpowers/specs/2026-07-07-find-creators-location-search-design.md`.
 
+- Schedule / Calendar — agenda-first simplification (mobile + desktop) — **built (branch
+  `worktree-DC-20`, 2026-07-10; frontend-only, no schema/edge change).** Founder feedback ("schedule
+  calendar not easy to navigate in mobile… need the simplest UX workflow") → made scheduling
+  **agenda-first**: mobile + desktop default to one scrolling day-by-day list of upcoming posts with a
+  single "＋ Schedule" button, an always-visible "Today", and a tap-the-month "jump to date" picker
+  (**bottom Sheet on mobile, Popover on desktop** via `useIsMobile`). Design reframe: *simplest = the
+  default path, not deleting options* — the desktop Week/Month/Day grids (drag-to-reschedule intact)
+  were kept as an **optional toggle**, and the Month grid gained readable post chips instead of
+  anonymous dots. A pure, unit-tested `AgendaItem` model + adapters
+  (`src/components/schedule/agenda/`) normalize two data sources (Outstand `Post` + campaign deadlines
+  + sponsorships) into one presentational `AgendaView`, consumed by `CalendarTab` (used by both the
+  `/calendar` page and the `OutstandManager` social tab). Also fixed the standalone `/calendar`
+  "＋ Schedule" **silent no-op** (now navigates to the composer `?tab=compose`) and the campaign
+  **Schedule Review panel** dead-end (the founder's screenshot: dropped the overlapping `ScheduleTimeline`,
+  honest conditional header, actionable empty state instead of a lone disabled button). Built
+  brainstorm→spec→plan→subagent-driven execution (8 TDD tasks, per-task review) → whole-branch Opus
+  review (fixed 44px touch targets, a hardcoded-`variant` mobile-Sheet bug, and a Month-legend↔chip
+  mismatch) → **Codex second review clean after one P2** (the agenda had dropped sponsorship events →
+  mobile parity restored by reusing `SponsorshipMarkerDetail`). 23 co-located tests; deleted the now-dead
+  `ScheduleTimeline.tsx`. Manual both-viewport `verify-prod` pending post-deploy. Concept:
+  `docs/wiki/concepts/schedule-agenda-view.md`. Spec:
+  `docs/superpowers/specs/2026-07-10-schedule-agenda-simplification-design.md`.
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).
