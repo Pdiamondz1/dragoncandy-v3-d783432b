@@ -193,7 +193,7 @@ const BrandDiscoverCampaigns = () => {
       <Sheet open={showSponsorDialog} onOpenChange={setShowSponsorDialog}>
         <SheetContent
           side="bottom"
-          className="h-[90vh] overflow-y-auto rounded-t-2xl px-4 pt-2 pb-8 md:max-w-2xl md:mx-auto"
+          className="h-[90svh] overflow-y-auto rounded-t-2xl px-4 pt-2 pb-[max(2rem,env(safe-area-inset-bottom))] md:max-w-2xl md:mx-auto"
         >
           <SheetHeader className="mb-4">
             <div className="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3" />

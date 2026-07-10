@@ -46,7 +46,7 @@ export const ReplySheet: React.FC<ReplySheetProps> = ({ comment, open, onOpenCha
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl max-h-[80vh]">
+      <SheetContent side="bottom" className="rounded-t-2xl max-h-[80svh] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <SheetHeader>
           <SheetTitle className="text-sm">Reply to {comment?.authorName}</SheetTitle>
         </SheetHeader>

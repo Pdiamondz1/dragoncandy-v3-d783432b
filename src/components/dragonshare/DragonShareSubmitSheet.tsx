@@ -41,7 +41,7 @@ export function DragonShareSubmitSheet({ open, onOpenChange, preselectedOrg, sou
     <Sheet open={open} onOpenChange={(v) => { if (!v) setTypeaheadOpen(false); onOpenChange(v); }}>
       <SheetContent
         side="bottom"
-        className="h-[85vh] rounded-t-3xl overflow-y-auto lg:max-w-lg lg:mx-auto lg:rounded-3xl lg:bottom-6 lg:h-auto lg:max-h-[80vh] lg:shadow-2xl lg:border lg:border-dc-teal/15"
+        className="h-[85svh] rounded-t-3xl overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:max-w-lg lg:mx-auto lg:rounded-3xl lg:bottom-6 lg:h-auto lg:max-h-[80vh] lg:shadow-2xl lg:border lg:border-dc-teal/15"
         onPointerDownOutside={(e) => { if (typeaheadOpen) e.preventDefault(); }}
         onInteractOutside={(e) => { if (typeaheadOpen) e.preventDefault(); }}
       >

@@ -190,7 +190,7 @@ export function OneTapApplySheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl px-5 pt-6 pb-8 max-h-[70vh] overflow-y-auto sm:!left-1/2 sm:!right-auto sm:!-translate-x-1/2 sm:!max-w-lg sm:bottom-4 sm:rounded-2xl">
+      <SheetContent side="bottom" className="rounded-t-2xl px-5 pt-6 pb-[max(2rem,env(safe-area-inset-bottom))] max-h-[70svh] overflow-y-auto sm:!left-1/2 sm:!right-auto sm:!-translate-x-1/2 sm:!max-w-lg sm:bottom-4 sm:rounded-2xl">
         <input
           ref={fileInputRef}
           type="file"

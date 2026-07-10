@@ -140,7 +140,7 @@ export const ShortlistDrawer: React.FC<ShortlistDrawerProps> = ({
 
       {/* Full drawer */}
       <Sheet open={isOpen} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="rounded-t-2xl max-h-[70vh] overflow-y-auto md:max-w-md md:ml-auto">
+        <SheetContent side="bottom" className="rounded-t-2xl max-h-[70svh] overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))] md:max-w-md md:ml-auto">
           <SheetHeader>
             <SheetTitle className="text-left">
               Shortlist ({count})

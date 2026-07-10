@@ -86,7 +86,7 @@ export function InviteToCampaignModal({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] flex flex-col px-0 pb-0">
+      <SheetContent side="bottom" className="rounded-t-3xl max-h-[85svh] flex flex-col px-0 pb-0">
         <SheetHeader className="px-5 pt-2 pb-3 border-b border-gray-100">
           <SheetTitle className="text-base font-bold text-dc-text">
             Invite {creatorName} to a Campaign
@@ -184,7 +184,7 @@ export function InviteToCampaignModal({
         </div>
 
         {/* Send button */}
-        <div className="px-5 pt-3 pb-6 border-t border-gray-100 mt-2">
+        <div className="px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] border-t border-gray-100 mt-2">
           <Button
             onClick={handleSend}
             disabled={!selectedCampaignId || inviteCreator.isPending}

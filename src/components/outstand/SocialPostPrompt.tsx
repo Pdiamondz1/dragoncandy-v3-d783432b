@@ -614,49 +614,55 @@ function SocialPostPromptInner({
               <p className="text-xs text-red-700 mt-1">{crossPost.error?.message}</p>
             </div>
           )}
-
-          <div className="space-y-2">
-            <button
-              type="button"
-              onClick={handleScheduleForBestTime}
-              disabled={schedulingState === 'scheduling' || selectedAccountIds.length === 0}
-              className="w-full flex items-center justify-center gap-2 bg-dc-teal text-white text-sm font-bold py-3.5 rounded-full hover:bg-teal-500 transition-colors disabled:opacity-50"
-            >
-              <CalendarDays className="h-4 w-4" />
-              {schedulingState === 'scheduling' ? 'Scheduling...' : 'Schedule for Best Time'}
-              {suggestedTime && schedulingState !== 'scheduling' && (
-                <span className="text-xs font-normal opacity-80">
-                  ({formatSuggestedTime(suggestedTime)})
-                </span>
-              )}
-            </button>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={handlePostNow}
-                disabled={crossPost.isPending || selectedAccountIds.length === 0}
-                className="flex items-center justify-center gap-1.5 bg-white text-gray-700 text-sm font-semibold py-3 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
-              >
-                <Send className="h-3.5 w-3.5" />
-                Post Now
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsEditing(!isEditing)}
-                className="flex items-center justify-center gap-1.5 bg-white text-dc-pink-accent text-sm font-semibold py-3 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors"
-              >
-                <Edit3 className="h-3.5 w-3.5" />
-                {isEditing ? 'Done' : 'Edit Caption'}
-              </button>
-            </div>
-          </div>
         </>
       )}
     </div>
   );
 
   const content = confirmedContent ?? multiReviewContent ?? composingContent;
+
+  // Pinned action footer — only in the composing state with connected accounts.
+  // Kept out of the scrollable region so the buttons stay visible and clear the
+  // mobile browser toolbar / iOS home indicator (see the SheetContent safe-area padding).
+  const showActionButtons = !confirmedContent && !multiReviewContent && connectedCount > 0;
+  const actionButtons = showActionButtons ? (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={handleScheduleForBestTime}
+        disabled={schedulingState === 'scheduling' || selectedAccountIds.length === 0}
+        className="w-full flex items-center justify-center gap-2 bg-dc-teal text-white text-sm font-bold py-3.5 rounded-full hover:bg-teal-500 transition-colors disabled:opacity-50"
+      >
+        <CalendarDays className="h-4 w-4" />
+        {schedulingState === 'scheduling' ? 'Scheduling...' : 'Schedule for Best Time'}
+        {suggestedTime && schedulingState !== 'scheduling' && (
+          <span className="text-xs font-normal opacity-80">
+            ({formatSuggestedTime(suggestedTime)})
+          </span>
+        )}
+      </button>
+
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={handlePostNow}
+          disabled={crossPost.isPending || selectedAccountIds.length === 0}
+          className="flex items-center justify-center gap-1.5 bg-white text-gray-700 text-sm font-semibold py-3 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
+        >
+          <Send className="h-3.5 w-3.5" />
+          Post Now
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsEditing(!isEditing)}
+          className="flex items-center justify-center gap-1.5 bg-white text-dc-pink-accent text-sm font-semibold py-3 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors"
+        >
+          <Edit3 className="h-3.5 w-3.5" />
+          {isEditing ? 'Done' : 'Edit Caption'}
+        </button>
+      </div>
+    </div>
+  ) : null;
 
   const dialogTitle = schedulingState === 'confirmed'
     ? confirmedPosts.length > 1 ? 'Posts Scheduled' : 'Post Scheduled'
@@ -667,13 +673,16 @@ function SocialPostPromptInner({
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="rounded-t-2xl pb-8 max-h-[85vh] flex flex-col">
+        <SheetContent side="bottom" className="rounded-t-2xl pb-[max(1.5rem,env(safe-area-inset-bottom))] max-h-[85svh] flex flex-col">
           <SheetHeader className="shrink-0">
             <SheetTitle className="text-sm font-bold text-gray-900">
               {dialogTitle}
             </SheetTitle>
           </SheetHeader>
           <div className="mt-4 overflow-y-auto flex-1 min-h-0">{content}</div>
+          {actionButtons && (
+            <div className="shrink-0 pt-3 mt-2 border-t border-gray-100">{actionButtons}</div>
+          )}
         </SheetContent>
       </Sheet>
     );
@@ -688,6 +697,9 @@ function SocialPostPromptInner({
           </DialogTitle>
         </DialogHeader>
         <div className="overflow-y-auto flex-1 min-h-0">{content}</div>
+        {actionButtons && (
+          <div className="shrink-0 pt-3 mt-2 border-t border-gray-100">{actionButtons}</div>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -85,7 +85,7 @@ export function BoostConfirmationSheet({ open, onOpenChange, post, amountCents, 
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-3xl">
+      <SheetContent side="bottom" className="rounded-t-3xl pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <SheetHeader>
           <SheetTitle className="text-dc-text">
             Boost This Post

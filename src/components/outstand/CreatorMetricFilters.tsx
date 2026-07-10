@@ -158,7 +158,7 @@ export const CreatorMetricFilters: React.FC<CreatorMetricFiltersProps> = ({ filt
               )}
             </Button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="rounded-t-2xl pb-8">
+          <SheetContent side="bottom" className="rounded-t-2xl pb-[max(2rem,env(safe-area-inset-bottom))]">
             <SheetHeader>
               <SheetTitle>Filter by Verified Metrics</SheetTitle>
             </SheetHeader>
