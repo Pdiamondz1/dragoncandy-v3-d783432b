@@ -177,7 +177,6 @@ BEGIN
        THEN RAISE EXCEPTION 'unauthorized'; END IF;
     v_visibility := 'business'; v_participant := v_uid;
   ELSIF p_event_type IN ('hired','content_approved','revision_requested','completed') THEN
-    IF v_campaign.user_id <> v_uid THEN RAISE EXCEPTION 'unauthorized'; END IF;   -- owner only
     v_visibility := 'business';
     -- Participant from the EXPLICIT collaboration (validated to belong to this campaign).
     -- v1 single-winner fallback: if null, use the sole collaboration; RAISE if ambiguous (>1).
@@ -192,6 +191,14 @@ BEGIN
       -- ambiguity — the caller must pass p_collaboration_id).
       SELECT creator_id INTO STRICT v_participant FROM campaign_collaborations
         WHERE campaign_id = p_campaign_id;
+    END IF;
+    -- Authz (Codex fix): 'completed' is MUTUAL — either the business owner OR the participant
+    -- creator can finalize (useProjectComplete fires under whoever wins the approval race).
+    -- hired/content_approved/revision_requested stay owner-only.
+    IF p_event_type = 'completed' THEN
+      IF v_uid <> v_campaign.user_id AND v_uid <> v_participant THEN RAISE EXCEPTION 'unauthorized'; END IF;
+    ELSE
+      IF v_uid <> v_campaign.user_id THEN RAISE EXCEPTION 'unauthorized'; END IF;
     END IF;
   ELSE
     RAISE EXCEPTION 'unknown event_type %', p_event_type;
