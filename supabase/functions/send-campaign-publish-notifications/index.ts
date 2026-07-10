@@ -23,12 +23,23 @@ serve(async (req) => {
       );
     }
 
-    // Fetch campaign for sponsorship flag
+    // Fetch campaign for sponsorship flag + group scope
     const { data: campaign } = await supabase
       .from("campaigns")
-      .select("open_for_sponsorship")
+      .select("open_for_sponsorship, group_id")
       .eq("id", campaignId)
       .single();
+
+    // Private crew campaigns (group_id set) must NEVER be broadcast to the whole creator /
+    // brand base — that would leak the private campaign's title + id to non-members. Crew
+    // members are notified separately (group_campaign_posted) at post time. Authoritative
+    // server-side guard (the frontend also skips the invoke).
+    if (campaign?.group_id) {
+      return new Response(
+        JSON.stringify({ skipped: "group_campaign" }),
+        { status: 200, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
+      );
+    }
 
     const notifications: Promise<unknown>[] = [];
 

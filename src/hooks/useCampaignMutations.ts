@@ -44,7 +44,7 @@ export const useCreateCampaign = () => {
           user_id: user!.id,
           org_unit_id: campaignData.org_unit_id ?? activeOrgUnit?.id ?? null,
         } as unknown as Database['public']['Tables']['campaigns']['Insert'])
-        .select('id, title, description, status, open_for_sponsorship, budget_min, budget_max, platforms, user_id')
+        .select('id, title, description, status, open_for_sponsorship, budget_min, budget_max, platforms, user_id, group_id')
         .single();
 
       if (error) {
@@ -57,8 +57,10 @@ export const useCreateCampaign = () => {
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       
-      // Batched publish notifications via single edge function call
-      if (data.status === 'published') {
+      // Batched publish notifications via single edge function call.
+      // NEVER broadcast a private crew campaign (group_id set) to the whole creator/brand
+      // base — that would leak the private campaign's title+id to non-members.
+      if (data.status === 'published' && !data.group_id) {
         try {
           await supabase.functions.invoke('send-campaign-publish-notifications', {
             body: { campaignId: data.id, campaignTitle: data.title, userId: user!.id },
@@ -99,7 +101,7 @@ export const useUpdateCampaign = () => {
         .update(updates as unknown as Database['public']['Tables']['campaigns']['Update'])
         .eq('id', id)
         .eq('user_id', user!.id)
-        .select('id, title, description, status, open_for_sponsorship, budget_min, budget_max, platforms, user_id')
+        .select('id, title, description, status, open_for_sponsorship, budget_min, budget_max, platforms, user_id, group_id')
         .single();
 
       if (error) {
@@ -112,8 +114,9 @@ export const useUpdateCampaign = () => {
     onSuccess: async (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       
-      // Batched publish notifications via single edge function call
-      if (variables.updates.status === 'published' && data.status === 'published') {
+      // Batched publish notifications via single edge function call.
+      // NEVER broadcast a private crew campaign (group_id set) to the whole creator/brand base.
+      if (variables.updates.status === 'published' && data.status === 'published' && !data.group_id) {
         try {
           await supabase.functions.invoke('send-campaign-publish-notifications', {
             body: { campaignId: data.id, campaignTitle: data.title, userId: user!.id },

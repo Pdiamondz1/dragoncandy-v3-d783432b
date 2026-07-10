@@ -18,6 +18,8 @@ interface CampaignEditorProps {
   originalIdea: CampaignIdea;
   brandFields: BrandFields | null;
   userRole: 'business_client' | 'brand' | null;
+  /** True when posting to a crew: the campaign is a free collab, so the price is waived. */
+  isGroupTarget?: boolean;
   updateField: <K extends keyof EditableCampaign>(field: K, value: EditableCampaign[K]) => void;
   updateBrandField: <K extends keyof BrandFields>(field: K, value: BrandFields[K]) => void;
 }
@@ -34,7 +36,7 @@ const PERSONA_OPTIONS = [
 ];
 
 export function CampaignEditor({
-  campaign, originalIdea, brandFields, userRole, updateField, updateBrandField,
+  campaign, originalIdea, brandFields, userRole, isGroupTarget = false, updateField, updateBrandField,
 }: CampaignEditorProps) {
   const currentTier = mapDeliveryType(campaign.delivery_type);
   const tierConfig = currentTier ? TIER_LIMITS[currentTier] : TIER_LIMITS.standard;
@@ -79,30 +81,41 @@ export function CampaignEditor({
 
       {/* Compensation & Terms */}
       <EditorSection title="Compensation & Terms" id="section-compensation">
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">Campaign Price</label>
-          <div className="relative max-w-xs">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dc-teal font-bold">$</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={campaign.fixed_price || ''}
-              onChange={(e) => {
-                const clean = sanitizeNumericInput(e.target.value);
-                updateField('fixed_price', Number(clean) || 0);
-              }}
-              className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-lg font-semibold outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
-            />
+        {isGroupTarget ? (
+          <div className="rounded-xl border border-teal-200 bg-teal-50 p-3">
+            <p className="text-sm font-semibold text-teal-800">Free collab — no payment</p>
+            <p className="text-xs text-teal-700 mt-0.5">
+              Crew campaigns are free. Your crew applies with one tap, no Stripe setup.
+            </p>
           </div>
-        </div>
-        <CostBreakdown
-          deliverableCount={campaign.deliverables.length}
-          budgetTotal={campaign.fixed_price + tierConfig.fee}
-          baseCostPerDeliverable={campaign.deliverables.length > 0 ? campaign.fixed_price / campaign.deliverables.length : 0}
-          premiumAmount={tierConfig.fee}
-          deliveryType={tierConfig.label}
-        />
+        ) : (
+          <>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Campaign Price</label>
+              <div className="relative max-w-xs">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dc-teal font-bold">$</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={campaign.fixed_price || ''}
+                  onChange={(e) => {
+                    const clean = sanitizeNumericInput(e.target.value);
+                    updateField('fixed_price', Number(clean) || 0);
+                  }}
+                  className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-lg font-semibold outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
+                />
+              </div>
+            </div>
+            <CostBreakdown
+              deliverableCount={campaign.deliverables.length}
+              budgetTotal={campaign.fixed_price + tierConfig.fee}
+              baseCostPerDeliverable={campaign.deliverables.length > 0 ? campaign.fixed_price / campaign.deliverables.length : 0}
+              premiumAmount={tierConfig.fee}
+              deliveryType={tierConfig.label}
+            />
+          </>
+        )}
       </EditorSection>
 
       {/* Logistics & Targeting */}

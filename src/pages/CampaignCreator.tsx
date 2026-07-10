@@ -22,7 +22,7 @@ export default function CampaignCreator() {
     screen, isExtracting, extractionMessages, campaignIdeas, selectedIdeaId,
     editedCampaign, brandFields, userRole, isAuthenticated, isLaunching,
     submitInput, selectIdea, regenerateIdeas, updateField, updateBrandField,
-    launchCampaign, saveDraft, setInspirationRefs,
+    launchCampaign, saveDraft, setInspirationRefs, groupId, setGroupId,
   } = useCampaignCreator();
 
   const handleInspirationChange = (refs: InspirationRef[]) => {
@@ -95,6 +95,8 @@ export default function CampaignCreator() {
     extractionMessages,
     isAuthenticated,
     isLaunching,
+    groupTarget: groupId,
+    onGroupTargetChange: setGroupId,
     onSelectIdea: selectIdea,
     onRegenerate: regenerateIdeas,
     updateField,

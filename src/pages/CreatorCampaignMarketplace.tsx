@@ -1,7 +1,7 @@
 // src/pages/CreatorCampaignMarketplace.tsx
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { usePublicCampaigns, PublicCampaign } from '@/hooks/usePublicCampaigns';
@@ -10,6 +10,7 @@ import { CampaignSwipeCard } from '@/components/campaigns/CampaignSwipeCard';
 import { CampaignDetailModal } from '@/components/campaigns/CampaignDetailModal';
 import { MarketplaceLoadingState } from '@/components/campaigns/MarketplaceLoadingState';
 import { MarketplaceErrorState } from '@/components/campaigns/MarketplaceErrorState';
+import { useGroupCampaigns } from '@/hooks/useGroupCampaigns';
 import { useCampaignFilters } from '@/hooks/useCampaignFilters';
 import { useGeoDistance } from '@/hooks/useGeoDistance';
 import { useDonnyMatches } from '@/hooks/useDonnyMatches';
@@ -18,14 +19,16 @@ import { DonnyPicksRow } from '@/components/campaigns/DonnyPicksRow';
 import { MapPin, Target } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { formatBudget } from '@/lib/campaignUtils';
+import { formatBudget, formatCampaignPrice } from '@/lib/campaignUtils';
 import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 import { useSkippedCampaignIds, useSkipCampaign, useRestoreCampaign } from '@/hooks/useCampaignSkips';
 import { useCreatorPendingInvitations, useDeclineInvitation } from '@/hooks/useCampaignInvitations';
+import { useCreatorGroupInvitations } from '@/hooks/useCreatorGroupInvitations';
+import { GroupInviteCard } from '@/components/groups/GroupInviteCard';
 import { UndoToast } from '@/components/campaigns/UndoToast';
 
 
-type Tab = 'all' | 'donny' | 'invitations';
+type Tab = 'all' | 'donny' | 'invitations' | 'crews';
 
 interface PendingInvitation {
   id: string;
@@ -49,14 +52,24 @@ interface PendingInvitation {
 const CreatorCampaignMarketplace = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { data: pendingInvitations = [] } = useCreatorPendingInvitations();
   const declineInvitation = useDeclineInvitation();
+  const {
+    invitations: crewInvitations,
+    accept: acceptCrew,
+    decline: declineCrew,
+  } = useCreatorGroupInvitations();
   const { completeMission } = useFirstRunMissions();
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { completeMission('view_campaigns'); }, []);
   const queryClient = useQueryClient();
   const { data: campaigns = [], isLoading, error } = usePublicCampaigns(user?.id);
+  const { data: groupCampaigns = [], isLoading: isGroupLoading } = useGroupCampaigns(user?.id);
+  // Hide crew campaigns the creator has already applied to (mirrors the "All" tab's
+  // !user_applied filter) so re-opening one can't hit a duplicate-application error.
+  const availableGroupCampaigns = groupCampaigns.filter((c) => !c.user_applied);
 
   const { campaigns: geoCampaigns } = useGeoDistance(campaigns);
 
@@ -76,7 +89,16 @@ const CreatorCampaignMarketplace = () => {
 
   const donnyPicks = useDonnyMatches(filteredBySearch);
 
-  const [activeTab, setActiveTab] = useState<Tab>('all');
+  // Deep-link: /dashboard/creator/campaigns?crews=1 opens the Crews tab
+  // (kept in sync with the crew-invite notification actionUrl).
+  const [activeTab, setActiveTab] = useState<Tab>(searchParams.get('crews') ? 'crews' : 'all');
+  // Also honor the deep-link when the param arrives while the page is already
+  // mounted (React Router updates search params without remounting).
+  useEffect(() => {
+    if (searchParams.get('crews')) {
+      setActiveTab('crews');
+    }
+  }, [searchParams]);
   const [detailCampaign, setDetailCampaign] = useState<PublicCampaign | null>(null);
   const [detailReadOnly, setDetailReadOnly] = useState(false);
 
@@ -163,6 +185,7 @@ const CreatorCampaignMarketplace = () => {
     }
     setDetailCampaign(null);
     queryClient.invalidateQueries({ queryKey: ['public-campaigns'] });
+    queryClient.invalidateQueries({ queryKey: ['group-campaigns'] });
     queryClient.invalidateQueries({ queryKey: ['creator-applications'] });
   };
 
@@ -170,6 +193,7 @@ const CreatorCampaignMarketplace = () => {
     { id: 'all', label: 'All Campaigns' },
     { id: 'donny', label: 'Donny Picks' },
     { id: 'invitations', label: 'Invitations', badge: pendingInvitations?.length ?? 0 },
+    { id: 'crews', label: 'Crews', badge: crewInvitations.length },
   ];
 
   return (
@@ -464,6 +488,88 @@ const CreatorCampaignMarketplace = () => {
                 );
               })
             )}
+          </div>
+        )}
+
+        {activeTab === 'crews' && (
+          <div className="space-y-3 px-4 md:px-0 py-4">
+            {crewInvitations.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-900 font-semibold text-lg">No crew invitations right now.</p>
+                <p className="text-gray-500 text-sm mt-1">
+                  When a business invites you to a crew, it'll appear here.
+                </p>
+              </div>
+            ) : (
+              crewInvitations.map((inv) => {
+                const isPending =
+                  (acceptCrew.isPending && acceptCrew.variables === inv.group_id) ||
+                  (declineCrew.isPending && declineCrew.variables === inv.group_id);
+                return (
+                  <GroupInviteCard
+                    key={inv.id}
+                    invitation={inv}
+                    onAccept={() => acceptCrew.mutate(inv.group_id)}
+                    onDecline={() => declineCrew.mutate(inv.group_id)}
+                    isPending={isPending}
+                  />
+                );
+              })
+            )}
+            {/* Group campaign feed — free, private crew collabs (RLS-scoped to this
+                creator's crews). Reuses CampaignDetailModal + CampaignApplyForm via
+                handleViewDetail, exactly like the "All" tab. */}
+            <div className="pt-2">
+              <h3 className="text-sm font-bold text-gray-900 mb-3 px-1">Crew campaigns</h3>
+              {isGroupLoading ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 text-sm">Loading crew campaigns…</p>
+                </div>
+              ) : availableGroupCampaigns.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 text-sm">No crew campaigns yet.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {availableGroupCampaigns.map((campaign) => (
+                    <Card
+                      key={campaign.id}
+                      className="hover:shadow-lg transition-shadow cursor-pointer border-2 border-dc-teal/40 hover:border-dc-teal"
+                      onClick={() => handleViewDetail(campaign)}
+                    >
+                      <CardContent className="p-5 space-y-3">
+                        {campaign.crew_name && (
+                          <span className="inline-flex items-center gap-1 bg-teal-50 text-teal-700 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-teal-200">
+                            {campaign.crew_name}
+                          </span>
+                        )}
+                        <h3 className="font-bold text-gray-900 text-base leading-tight line-clamp-2">
+                          {campaign.title}
+                        </h3>
+                        {campaign.description && (
+                          <p className="text-sm text-gray-500 line-clamp-2">{campaign.description}</p>
+                        )}
+                        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                          <span className="text-sm text-dc-teal font-semibold">{formatCampaignPrice(campaign)}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewDetail(campaign);
+                            }}
+                            className="rounded-full bg-dc-teal-btn text-white text-xs font-bold px-4 py-1.5 hover:bg-dc-teal-btn-hover transition-colors"
+                          >
+                            View
+                          </button>
+                        </div>
+                        {campaign.business_profile?.business_name && (
+                          <p className="text-xs text-gray-500">by {campaign.business_profile.business_name}</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       account_deletion_requests: {
@@ -124,7 +99,29 @@ export type Database = {
           updated_at?: string
           week_start?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "aios_briefings_gdoc_owner_user_id_fkey"
+            columns: ["gdoc_owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aios_briefings_gdoc_owner_user_id_fkey"
+            columns: ["gdoc_owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aios_briefings_gdoc_owner_user_id_fkey"
+            columns: ["gdoc_owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       aios_corrections: {
         Row: {
@@ -357,6 +354,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      aios_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string | null
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value?: string | null
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string | null
+        }
+        Relationships: []
       }
       analytics_events: {
         Row: {
@@ -627,7 +642,6 @@ export type Database = {
           outstand_social_account_id: string
           platform: string
           platform_handle: string | null
-          provider: string
           status: string
           updated_at: string
           user_id: string
@@ -642,7 +656,6 @@ export type Database = {
           outstand_social_account_id: string
           platform: string
           platform_handle?: string | null
-          provider?: string
           status?: string
           updated_at?: string
           user_id: string
@@ -657,7 +670,6 @@ export type Database = {
           outstand_social_account_id?: string
           platform?: string
           platform_handle?: string | null
-          provider?: string
           status?: string
           updated_at?: string
           user_id?: string
@@ -1621,6 +1633,7 @@ export type Database = {
           estimated_creation_minutes: number | null
           fixed_price: number | null
           goals: string | null
+          group_id: string | null
           id: string
           open_for_sponsorship: boolean | null
           org_id: string | null
@@ -1659,6 +1672,7 @@ export type Database = {
           estimated_creation_minutes?: number | null
           fixed_price?: number | null
           goals?: string | null
+          group_id?: string | null
           id?: string
           open_for_sponsorship?: boolean | null
           org_id?: string | null
@@ -1697,6 +1711,7 @@ export type Database = {
           estimated_creation_minutes?: number | null
           fixed_price?: number | null
           goals?: string | null
+          group_id?: string | null
           id?: string
           open_for_sponsorship?: boolean | null
           org_id?: string | null
@@ -1718,6 +1733,13 @@ export type Database = {
             columns: ["duplicated_from"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "creator_groups"
             referencedColumns: ["id"]
           },
           {
@@ -2040,6 +2062,141 @@ export type Database = {
             foreignKeyName: "creator_automation_preferences_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creator_group_members: {
+        Row: {
+          created_at: string
+          creator_id: string
+          group_id: string
+          id: string
+          invited_at: string
+          invited_by: string | null
+          responded_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          group_id: string
+          id?: string
+          invited_at?: string
+          invited_by?: string | null
+          responded_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          group_id?: string
+          id?: string
+          invited_at?: string
+          invited_by?: string | null
+          responded_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_group_members_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_group_members_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_group_members_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "creator_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_group_members_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_group_members_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_group_members_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creator_groups: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_groups_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_groups_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_groups_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
             referencedRelation: "safe_profiles"
             referencedColumns: ["id"]
           },
@@ -2436,29 +2593,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "donny_conversations_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "message_participant_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "donny_conversations_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "donny_conversations_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "safe_profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       donny_cost_ledger: {
         Row: {
@@ -2471,7 +2606,7 @@ export type Database = {
           model: string
           output_tokens: number
           tier: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -2483,7 +2618,7 @@ export type Database = {
           model: string
           output_tokens?: number
           tier: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -2495,7 +2630,7 @@ export type Database = {
           model?: string
           output_tokens?: number
           tier?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -2943,27 +3078,6 @@ export type Database = {
             referencedRelation: "donny_messages"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "donny_tool_executions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "message_participant_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "donny_tool_executions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "donny_tool_executions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "safe_profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       donny_usage: {
@@ -3027,7 +3141,84 @@ export type Database = {
           total_redeemed?: number
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "dragon_point_balances_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dragon_point_balances_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dragon_point_balances_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dragon_point_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          multiplier_applied: number
+          occurred_at: string
+          points_awarded: number
+          source_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          multiplier_applied?: number
+          occurred_at: string
+          points_awarded: number
+          source_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          multiplier_applied?: number
+          occurred_at?: string
+          points_awarded?: number
+          source_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dragon_point_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dragon_point_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dragon_point_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dragonshare_boosts: {
         Row: {
@@ -3413,6 +3604,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      dre_config: {
+        Row: {
+          config_key: string
+          config_value: Json
+          id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          config_key: string
+          config_value: Json
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          config_key?: string
+          config_value?: Json
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       email_verification_tokens: {
         Row: {
@@ -3936,29 +4151,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "google_workspace_accounts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "message_participant_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "google_workspace_accounts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "google_workspace_accounts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "safe_profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       help_article_feedback: {
         Row: {
@@ -4067,6 +4260,54 @@ export type Database = {
           tags?: string[]
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      leads: {
+        Row: {
+          audience: string
+          company: string | null
+          created_at: string
+          email: string
+          id: string
+          message: string | null
+          metadata: Json
+          name: string
+          phone: string | null
+          source: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          audience?: string
+          company?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          message?: string | null
+          metadata?: Json
+          name: string
+          phone?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          audience?: string
+          company?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string | null
+          metadata?: Json
+          name?: string
+          phone?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -5763,13 +6004,6 @@ export type Database = {
           },
         ]
       }
-      public_dragon_tiers: {
-        Row: {
-          tier: string | null
-          user_id: string | null
-        }
-        Relationships: []
-      }
       public_business_profiles: {
         Row: {
           account_type: string | null
@@ -6007,6 +6241,43 @@ export type Database = {
         }
         Relationships: []
       }
+      public_dragon_tiers: {
+        Row: {
+          tier: string | null
+          user_id: string | null
+        }
+        Insert: {
+          tier?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          tier?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dragon_point_balances_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dragon_point_balances_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dragon_point_balances_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       public_organizations: {
         Row: {
           created_at: string | null
@@ -6110,32 +6381,11 @@ export type Database = {
         Returns: Json
       }
       aios_corrections_apply: {
-        Args: { p_id: string; p_decision: string }
+        Args: { p_decision: string; p_id: string }
         Returns: Json
-      }
-      internal_doc_archive: {
-        Args: { p_path: string; p_reason?: string }
-        Returns: Json
-      }
-      internal_doc_unarchive: {
-        Args: { p_path: string }
-        Returns: Json
-      }
-      dedup_candidate_pairs: {
-        Args: { p_threshold?: number }
-        Returns: {
-          path_a: string
-          title_a: string
-          path_b: string
-          title_b: string
-          similarity: number
-        }[]
-      }
-      internal_doc_exact_dupes: {
-        Args: Record<PropertyKey, never>
-        Returns: { source_hash: string; paths: string[]; n: number }[]
       }
       aios_cost_stats: { Args: never; Returns: Json }
+      aios_metrics_snapshot: { Args: never; Returns: Json }
       aios_platform_stats: { Args: never; Returns: Json }
       aios_revenue_stats: { Args: never; Returns: Json }
       apply_to_campaign:
@@ -6168,6 +6418,7 @@ export type Database = {
         Returns: boolean
       }
       capture_platform_weight: { Args: never; Returns: undefined }
+      chat_resolve_admin: { Args: { p_email: string }; Returns: string }
       check_prerequisite_status: { Args: { p_user_id: string }; Returns: Json }
       cleanup_expired_verification_tokens: { Args: never; Returns: undefined }
       create_boost: {
@@ -6208,9 +6459,40 @@ export type Database = {
         Args: { p_post_id: string }
         Returns: undefined
       }
+      dedup_candidate_pairs: {
+        Args: { p_threshold?: number }
+        Returns: {
+          path_a: string
+          path_b: string
+          similarity: number
+          title_a: string
+          title_b: string
+        }[]
+      }
       delete_promotion_cascade: {
         Args: { p_promotion_id: string }
         Returns: undefined
+      }
+      dre_pending_events: {
+        Args: never
+        Returns: {
+          event_type: string
+          occurred_at: string
+          role: string
+          source_id: string
+          user_id: string
+        }[]
+      }
+      dre_user_aggregates: {
+        Args: { p_user_ids: string[] }
+        Returns: {
+          avg_rating: number
+          balance: number
+          campaigns_completed: number
+          last_activity_at: string
+          role: string
+          user_id: string
+        }[]
       }
       flag_dragonshare_post: { Args: { p_post_id: string }; Returns: undefined }
       force_gdpr_erasure: { Args: { p_user_id: string }; Returns: undefined }
@@ -6268,6 +6550,18 @@ export type Database = {
         Returns: {
           platform: string
           platform_handle: string
+        }[]
+      }
+      get_creator_pending_group_invitations: {
+        Args: never
+        Returns: {
+          business_name: string
+          group_id: string
+          group_name: string
+          id: string
+          invited_at: string
+          owner_avatar_url: string
+          owner_id: string
         }[]
       }
       get_dashboard_summary: { Args: { p_user_id: string }; Returns: Json }
@@ -6368,9 +6662,30 @@ export type Database = {
         }
         Returns: undefined
       }
+      internal_doc_archive: {
+        Args: { p_path: string; p_reason?: string }
+        Returns: Json
+      }
+      internal_doc_exact_dupes: {
+        Args: never
+        Returns: {
+          n: number
+          paths: string[]
+          source_hash: string
+        }[]
+      }
+      internal_doc_unarchive: { Args: { p_path: string }; Returns: Json }
+      is_active_group_member: {
+        Args: { p_creator_id: string; p_group_id: string }
+        Returns: boolean
+      }
       is_blocked: { Args: { user_a: string; user_b: string }; Returns: boolean }
       is_conversation_participant: {
         Args: { conversation_uuid: string; user_uuid: string }
+        Returns: boolean
+      }
+      is_creator_group_owner: {
+        Args: { p_group_id: string; p_user_id: string }
         Returns: boolean
       }
       is_internal_user: { Args: never; Returns: boolean }
@@ -6396,6 +6711,7 @@ export type Database = {
           similarity: number
         }[]
       }
+      purge_stale_analytics_events: { Args: never; Returns: undefined }
       recompute_profile_rating: { Args: { p_user: string }; Returns: undefined }
       report_user: {
         Args: {
@@ -6414,6 +6730,10 @@ export type Database = {
           name: string
           org_type: string
         }[]
+      }
+      respond_to_group_invitation: {
+        Args: { p_accept: boolean; p_group_id: string }
+        Returns: undefined
       }
       restore_org: { Args: { p_org_id: string }; Returns: undefined }
       search_restaurants: {
@@ -6616,9 +6936,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       app_role: ["admin", "moderator", "stakeholder"],

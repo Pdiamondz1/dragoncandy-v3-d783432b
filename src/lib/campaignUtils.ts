@@ -104,6 +104,23 @@ export function formatBudget(campaign: {
 }
 
 /**
+ * Formats a campaign's price label, accounting for free group ("crew") campaigns.
+ * A group campaign (`group_id` set) is always a free collab — `formatBudget` would
+ * otherwise render "Budget TBD" for its `fixed_price = 0`. Public campaigns never
+ * carry `group_id`, so they fall through to the normal budget formatting unchanged.
+ */
+export function formatCampaignPrice(campaign: {
+  group_id?: string | null;
+  pricing_type?: string | null;
+  fixed_price?: number | null;
+  budget_min?: number | null;
+  budget_max?: number | null;
+}): string {
+  if (campaign.group_id != null) return 'Free collab';
+  return formatBudget(campaign);
+}
+
+/**
  * Resolves cover image URL using the 4-step fallback chain:
  * 1. First reference_image from campaign_media
  * 2. AI preview image (if ai_preview_status = 'ready')

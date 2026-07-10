@@ -20,7 +20,7 @@ import { BRAND_ROLE_ENABLED } from '@/lib/featureConfig';
 
 interface ApplicationsListFixedProps {
   campaignId: string;
-  campaign?: { user_id: string; open_for_sponsorship?: boolean | null; fixed_price?: number | null; budget_max?: number | null; delivery_fee?: number | null; delivery_type?: string | null; escrow_status?: string | null };
+  campaign?: { user_id: string; open_for_sponsorship?: boolean | null; fixed_price?: number | null; budget_max?: number | null; delivery_fee?: number | null; delivery_type?: string | null; escrow_status?: string | null; group_id?: string | null };
 }
 
 export const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ campaignId, campaign }) => {
@@ -54,6 +54,8 @@ export const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ ca
   const isSponsored = (BRAND_ROLE_ENABLED && campaign?.open_for_sponsorship && hasActiveSponsor) || false;
 
   const campaignBudget = campaign?.fixed_price ?? campaign?.budget_max ?? undefined;
+  // Free crew campaigns (group_id set) have no escrow — never open a paid checkout on accept.
+  const isGroupCampaign = !!campaign?.group_id;
 
   if (isLoading) {
     return (
@@ -100,7 +102,7 @@ export const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ ca
       });
       setShowProfileModal(false);
       setSelectedApplication(null);
-      initiateCheckout(campaignId);
+      if (!isGroupCampaign) initiateCheckout(campaignId);
     }
   };
 
@@ -252,7 +254,7 @@ export const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ ca
                   campaignDeliveryType={campaign?.delivery_type}
                   campaignEscrowStatus={campaign?.escrow_status}
                   onViewProfile={() => handleViewProfile(application)}
-                  onPayEscrow={() => initiateCheckout(campaignId)}
+                  onPayEscrow={isGroupCampaign ? undefined : () => initiateCheckout(campaignId)}
                   isPayingEscrow={isPayingEscrow}
                 />
               ))}
