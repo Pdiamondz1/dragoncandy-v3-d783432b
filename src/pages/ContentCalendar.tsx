@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import type { Post } from '@outstand-so/ui';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { DragonCandyOutstandProvider, useOutstandConfig } from '@/integrations/outstand/Provider';
@@ -20,7 +20,9 @@ const ContentCalendarInner: React.FC = () => {
   const role = (profile?.role ?? 'content_creator') as UserRole;
   const { apiKey, baseUrl } = useOutstandConfig();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const dateParam = searchParams.get('date');
+  const roleSeg = role === 'business_client' ? 'business' : role === 'brand' ? 'brand' : 'creator';
 
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -81,6 +83,7 @@ const ContentCalendarInner: React.FC = () => {
             campaignDeadlines={deadlines ?? []}
             initialDate={initialDate}
             onPostClick={handlePostClick}
+            onSchedule={() => navigate(`/dashboard/${roleSeg}/social?tab=compose`)}
           />
         </div>
       </div>

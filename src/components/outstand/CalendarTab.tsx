@@ -4,18 +4,22 @@ import type { Post } from '@outstand-so/ui';
 import { useOutstandApi } from '@outstand-so/ui';
 import { useOutstandConfig } from '@/integrations/outstand/Provider';
 import { useQueryClient } from '@tanstack/react-query';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { DayGrid } from './calendar/DayGrid';
 import { WeekGrid } from './calendar/WeekGrid';
 import { MonthGrid } from './calendar/MonthGrid';
-import { DayStrip } from './calendar/DayStrip';
 import { isScheduled } from '@/lib/outstandUtils';
+import { postsForDay, isSameDay } from './calendar/calendarUtils';
 import { toast } from 'sonner';
 import { type SponsorshipEvent } from '@/components/outstand/SponsorshipMarker';
 import { DonnyWeeklyPlanner } from './DonnyWeeklyPlanner';
 import { RescheduleConfirmDialog } from './RescheduleConfirmDialog';
+import { AgendaView } from '@/components/schedule/agenda/AgendaView';
+import { groupByDay, startOfDay, type AgendaItem } from '@/components/schedule/agenda/agendaModel';
+import { outstandPostToAgendaItem, deadlineToAgendaItem, sponsorshipToAgendaItem } from '@/components/schedule/agenda/agendaAdapters';
 
-type CalendarView = 'day' | 'week' | 'month';
+type CalendarView = 'agenda' | 'day' | 'week' | 'month';
 
 export interface CampaignDeadline {
   id: string;
@@ -42,14 +46,16 @@ interface CalendarTabProps {
   sponsorshipEvents?: SponsorshipEvent[];
   initialDate?: Date;
   onPostClick?: (post: Post) => void;
+  onSchedule?: () => void;
 }
 
-export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onChanged, onSwitchTab, campaignDeadlines = [], sponsorshipEvents = [], initialDate, onPostClick }) => {
+export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onChanged, onSwitchTab, campaignDeadlines = [], sponsorshipEvents = [], initialDate, onPostClick, onSchedule }) => {
   const { apiKey, baseUrl } = useOutstandConfig();
   const api = useOutstandApi({ apiKey, baseUrl });
   const qc = useQueryClient();
+  const isMobile = useIsMobile();
 
-  const [view, setView] = useState<CalendarView>('week');
+  const [view, setView] = useState<CalendarView>('agenda');
   const [currentDate, setCurrentDate] = useState(() => initialDate ?? new Date());
   const [selectedDay, setSelectedDay] = useState(() => initialDate ?? new Date());
   const [platformFilter, setPlatformFilter] = useState<string>('all');
@@ -99,7 +105,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
     const today = new Date();
     setCurrentDate(today);
     setSelectedDay(today);
-    setView('day');
+    setView('agenda');
   }, []);
 
   const handleDayClick = useCallback((day: Date) => {
@@ -159,6 +165,32 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
     }
   }, [onPostClick]);
 
+  const agendaItems = useMemo<AgendaItem[]>(() => {
+    const postItems = filteredPosts
+      .map((p) => {
+        const item = outstandPostToAgendaItem(p);
+        if (item) item.onClick = () => handlePostClick(p);
+        return item;
+      })
+      .filter((x): x is AgendaItem => x !== null);
+    const deadlineItems = campaignDeadlines.map(deadlineToAgendaItem);
+    const sponsorshipItems = sponsorshipEvents.map(sponsorshipToAgendaItem);
+    return [...postItems, ...deadlineItems, ...sponsorshipItems];
+  }, [filteredPosts, campaignDeadlines, sponsorshipEvents, handlePostClick]);
+
+  const agendaDays = useMemo(
+    () => groupByDay(agendaItems, { from: startOfDay(currentDate) }),
+    [agendaItems, currentDate],
+  );
+
+  const hasContentOn = useCallback(
+    (day: Date) =>
+      postsForDay(filteredPosts, day).length > 0 ||
+      campaignDeadlines.some((d) => isSameDay(d.deadline, day)) ||
+      sponsorshipEvents.some((s) => isSameDay(s.date, day)),
+    [filteredPosts, campaignDeadlines, sponsorshipEvents],
+  );
+
   const headerLabel = view === 'day'
     ? currentDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
     : view === 'week'
@@ -182,26 +214,35 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
     <div>
       {/* Navigation header */}
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            aria-label={view === 'day' ? 'Previous day' : view === 'week' ? 'Previous week' : 'Previous month'}
-            onClick={() => (view === 'day' ? navigateDay(-1) : view === 'week' ? navigateWeek(-1) : navigateMonth(-1))}
-            className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50"
-          >
-            <ChevronLeft className="h-4 w-4 text-gray-600" />
-          </button>
-          <span className="text-sm font-bold text-gray-900 min-w-[160px] text-center">{headerLabel}</span>
-          <button
-            type="button"
-            aria-label={view === 'day' ? 'Next day' : view === 'week' ? 'Next week' : 'Next month'}
-            onClick={() => (view === 'day' ? navigateDay(1) : view === 'week' ? navigateWeek(1) : navigateMonth(1))}
-            className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50"
-          >
-            <ChevronRight className="h-4 w-4 text-gray-600" />
-          </button>
-        </div>
+        {view !== 'agenda' ? (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-label={view === 'day' ? 'Previous day' : view === 'week' ? 'Previous week' : 'Previous month'}
+              onClick={() => (view === 'day' ? navigateDay(-1) : view === 'week' ? navigateWeek(-1) : navigateMonth(-1))}
+              className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50"
+            >
+              <ChevronLeft className="h-4 w-4 text-gray-600" />
+            </button>
+            <span className="text-sm font-bold text-gray-900 min-w-[160px] text-center">{headerLabel}</span>
+            <button
+              type="button"
+              aria-label={view === 'day' ? 'Next day' : view === 'week' ? 'Next week' : 'Next month'}
+              onClick={() => (view === 'day' ? navigateDay(1) : view === 'week' ? navigateWeek(1) : navigateMonth(1))}
+              className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50"
+            >
+              <ChevronRight className="h-4 w-4 text-gray-600" />
+            </button>
+          </div>
+        ) : <div />}
         <div className="hidden md:flex gap-1">
+          <button
+            type="button"
+            onClick={() => setView('agenda')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${view === 'agenda' ? 'bg-dc-teal text-white' : 'bg-gray-100 text-gray-600'}`}
+          >
+            Agenda
+          </button>
           <button
             type="button"
             onClick={() => setView('day')}
@@ -249,8 +290,24 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
         ))}
       </div>
 
-      {/* Desktop views */}
-      {view === 'day' ? (
+      {/* Agenda (default) / Desktop grid views */}
+      {view === 'agenda' ? (
+        <AgendaView
+          days={agendaDays}
+          today={new Date()}
+          anchorDate={currentDate}
+          onJumpToDate={(d) => { setCurrentDate(d); setSelectedDay(d); }}
+          onTodayClick={goToToday}
+          onScheduleClick={onSchedule ?? (() => onSwitchTab?.('compose'))}
+          hasContentOn={hasContentOn}
+          variant={isMobile ? 'mobile' : 'desktop'}
+          emptyState={
+            <div className="text-center py-14">
+              <p className="text-sm text-dc-text-muted mb-3">Nothing scheduled yet.</p>
+            </div>
+          }
+        />
+      ) : view === 'day' ? (
         <DayGrid
           posts={filteredPosts}
           day={selectedDay}
@@ -279,25 +336,15 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
         />
       )}
 
-      {/* Mobile view */}
-      <DayStrip
-        posts={filteredPosts}
-        weekStart={currentDate}
-        selectedDay={selectedDay}
-        onDaySelect={setSelectedDay}
-        onPostClick={handlePostClick}
-        onScheduleClick={() => onSwitchTab?.('compose')}
-        campaignDeadlines={campaignDeadlines}
-        sponsorshipEvents={sponsorshipEvents}
-      />
-
-      {/* Legend (desktop only) */}
-      <div className="hidden md:flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 text-[10px] text-gray-400">
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-dc-teal" /> Scheduled</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-amber-400" /> Published</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-red-400" /> Failed</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-pink-400" /> Deadline</span>
-      </div>
+      {/* Legend (desktop only, Week/Day grids only) */}
+      {(view === 'week' || view === 'day') && (
+        <div className="hidden md:flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 text-[10px] text-gray-400">
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-dc-teal" /> Scheduled</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-amber-400" /> Published</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-red-400" /> Failed</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-pink-400" /> Deadline</span>
+        </div>
+      )}
 
       <DonnyWeeklyPlanner />
 

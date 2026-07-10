@@ -1,9 +1,22 @@
 import React, { useMemo } from 'react';
 import type { Post } from '@outstand-so/ui';
 import { isSameDay, postsForDay } from './calendarUtils';
-import { isScheduled } from '@/lib/outstandUtils';
 import type { CampaignDeadline } from '@/components/outstand/CalendarTab';
 import { SponsorshipMarkerDot, type SponsorshipEvent } from '@/components/outstand/SponsorshipMarker';
+import { getCaption, getUniqueNetworks } from '@/components/outstand/postUtils';
+
+const CHIP_TINT: Record<string, string> = {
+  instagram: 'bg-dc-teal/15 text-dc-teal',
+  tiktok: 'bg-dc-pink/15 text-dc-pink-accent',
+};
+function chipTint(network?: string): string {
+  return (network && CHIP_TINT[network]) || 'bg-dc-teal/15 text-dc-teal';
+}
+function shortTime(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? '' : d.toLocaleTimeString(undefined, { hour: 'numeric' });
+}
 
 function getMonthGridDates(year: number, month: number): (Date | null)[][] {
   const firstDay = new Date(year, month, 1);
@@ -59,8 +72,6 @@ export const MonthGrid: React.FC<MonthGridProps> = ({ posts, year, month, onDayC
             }
             const dayPostsList = postsForDay(posts, day);
             const isToday = isSameDay(day, today);
-            const scheduled = dayPostsList.filter(isScheduled).length;
-            const published = dayPostsList.length - scheduled;
             const deadlinesOnDay = campaignDeadlines.filter((d) => isSameDay(d.deadline, day));
             const sponsorshipsOnDay = sponsorshipEvents.filter((s) => isSameDay(s.date, day));
 
@@ -69,16 +80,34 @@ export const MonthGrid: React.FC<MonthGridProps> = ({ posts, year, month, onDayC
                 key={di}
                 type="button"
                 onClick={() => onDayClick(day)}
-                className={`h-14 border-b border-r border-gray-50 last:border-r-0 flex flex-col items-center justify-start pt-1 hover:bg-gray-50 transition-colors ${isToday ? 'bg-teal-50/50' : ''}`}
+                className={`md:min-h-[92px] h-14 border-b border-r border-gray-50 last:border-r-0 flex flex-col items-center justify-start pt-1 hover:bg-gray-50 transition-colors ${isToday ? 'bg-teal-50/50' : ''}`}
               >
                 <span className={`text-xs font-bold ${isToday ? 'text-dc-teal' : 'text-gray-700'}`}>
                   {day.getDate()}
                 </span>
-                {(dayPostsList.length > 0 || deadlinesOnDay.length > 0 || sponsorshipsOnDay.length > 0) && (
-                  <div className="flex gap-0.5 mt-1 flex-wrap justify-center">
-                    {scheduled > 0 && <span className="w-1.5 h-1.5 rounded-full bg-dc-teal" />}
-                    {published > 0 && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
-                    {deadlinesOnDay.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-pink-400" />}
+                {(dayPostsList.length > 0 || deadlinesOnDay.length > 0) && (
+                  <div className="w-full px-1 mt-0.5 space-y-0.5">
+                    {dayPostsList.slice(0, 2).map((p) => (
+                      <div
+                        key={p.id}
+                        className={`text-[8px] leading-tight font-semibold rounded px-1 py-0.5 truncate ${chipTint(getUniqueNetworks(p)[0])}`}
+                        title={getCaption(p)}
+                      >
+                        {[shortTime(p.scheduledAt ?? p.publishedAt), getCaption(p) || 'Post'].filter(Boolean).join(' · ')}
+                      </div>
+                    ))}
+                    {dayPostsList.length > 2 && (
+                      <div className="text-[8px] text-gray-400 font-semibold">+{dayPostsList.length - 2} more</div>
+                    )}
+                    {deadlinesOnDay.length > 0 && (
+                      <div className="text-[8px] font-semibold rounded px-1 py-0.5 truncate bg-dc-pink/10 text-dc-pink-accent">
+                        ⚑ {deadlinesOnDay[0].title}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {sponsorshipsOnDay.length > 0 && (
+                  <div className="flex gap-0.5 mt-0.5 flex-wrap justify-center">
                     {sponsorshipsOnDay.map((s) => (
                       <SponsorshipMarkerDot key={s.id} type={s.type} />
                     ))}
