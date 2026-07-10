@@ -15,6 +15,7 @@ DECLARE
   v_creator_name text;
   v_row_id uuid;
 BEGIN
+  IF v_uid IS NULL THEN RAISE EXCEPTION 'unauthenticated'; END IF;   -- null-safe owner check below
   SELECT id, user_id, group_id, title INTO v_campaign
     FROM campaigns WHERE id = p_campaign_id;
   IF NOT FOUND OR v_campaign.group_id IS NULL THEN
