@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { mapDeliveryTierToDb } from '@/lib/campaignUtils';
 import { donnyGenerateResponseSchema, launchValidationSchema } from '@/lib/campaignCreatorValidation';
 import { saveDraftToStorage, loadDraftFromStorage, clearDraftFromStorage, generateDraftId } from '@/lib/campaignCreatorDraft';
+import { recordCrewActivity } from '@/lib/crews/recordCrewActivity';
 import type {
   BusinessContext,
   CampaignIdea,
@@ -488,6 +489,9 @@ export function useCampaignCreator() {
         } catch (err) {
           console.error('Failed to prepare crew campaign notifications:', err);
         }
+
+        // Crew activity for the launch (companion to group_campaign_posted above).
+        void recordCrewActivity(data.id, 'campaign_posted');
       }
 
       if (userRole === 'brand') {

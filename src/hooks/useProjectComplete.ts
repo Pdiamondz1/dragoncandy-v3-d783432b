@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { recordCrewActivity } from '@/lib/crews/recordCrewActivity';
 import type { Database } from '@/integrations/supabase/types';
 
 type CollaborationRow = Database['public']['Tables']['campaign_collaborations']['Row'];
@@ -176,6 +177,10 @@ export const useProjectComplete = () => {
             },
           },
         }).catch((err: unknown) => console.error('Failed to send completion notification:', err));
+
+        // Crew activity — this caller won the completion race. Crews are FREE, so
+        // there is NO `paid` event. Inert for non-crew campaigns via the RPC no-op.
+        void recordCrewActivity(completedData.campaign_id, 'completed', collaborationId);
 
         // Return completed data with payout info for toast
         return { ...completedData, payoutSuccess, payoutAmount };
