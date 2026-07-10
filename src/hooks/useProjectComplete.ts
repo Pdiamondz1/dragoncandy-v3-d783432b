@@ -57,7 +57,7 @@ export const useProjectComplete = () => {
           ...(userRole === 'content_creator' && { content_status: 'submitted' })
         })
         .eq('id', collaborationId)
-        .select('id, application_id, business_completion_status, campaign_id, completed_at, content_deadline, content_started_at, content_status, contract_details, created_at, creator_completion_status, creator_id, deliverables_status, dispute_outcome, dispute_reason, milestones, review_extended, review_status, revision_count, revision_feedback, status, submitted_at, updated_at')
+        .select('id, application_id, business_completion_status, campaign_id, completed_at, content_deadline, content_started_at, content_status, content_submitted_at, contract_details, created_at, creator_completion_status, creator_id, deliverables_status, dispute_outcome, dispute_reason, milestones, review_extended, review_status, revision_count, revision_feedback, status, submitted_at, updated_at')
         .single();
 
       if (error) throw error;
@@ -81,7 +81,7 @@ export const useProjectComplete = () => {
           })
           .eq('id', collaborationId)
           .neq('status', 'completed')
-          .select('id, application_id, business_completion_status, campaign_id, completed_at, content_deadline, content_started_at, content_status, contract_details, created_at, creator_completion_status, creator_id, deliverables_status, dispute_outcome, dispute_reason, milestones, review_extended, review_status, revision_count, revision_feedback, status, submitted_at, updated_at');
+          .select('id, application_id, business_completion_status, campaign_id, completed_at, content_deadline, content_started_at, content_status, content_submitted_at, contract_details, created_at, creator_completion_status, creator_id, deliverables_status, dispute_outcome, dispute_reason, milestones, review_extended, review_status, revision_count, revision_feedback, status, submitted_at, updated_at');
 
         if (completeError) throw completeError;
 
@@ -89,7 +89,7 @@ export const useProjectComplete = () => {
         if (!completedRows || completedRows.length === 0) {
           const { data: canonical } = await supabase
             .from('campaign_collaborations')
-            .select('id, application_id, business_completion_status, campaign_id, completed_at, content_deadline, content_started_at, content_status, contract_details, created_at, creator_completion_status, creator_id, deliverables_status, dispute_outcome, dispute_reason, milestones, review_extended, review_status, revision_count, revision_feedback, status, submitted_at, updated_at')
+            .select('id, application_id, business_completion_status, campaign_id, completed_at, content_deadline, content_started_at, content_status, content_submitted_at, contract_details, created_at, creator_completion_status, creator_id, deliverables_status, dispute_outcome, dispute_reason, milestones, review_extended, review_status, revision_count, revision_feedback, status, submitted_at, updated_at')
             .eq('id', collaborationId)
             .maybeSingle();
           return { ...(canonical as CollaborationRow), payoutSuccess: false, payoutAmount: 0 };
