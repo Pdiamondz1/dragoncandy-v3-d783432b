@@ -36,6 +36,8 @@ export interface Campaign {
   id: string;
   user_id: string;
   org_unit_id?: string | null;
+  /** Non-null → private group ("crew") campaign, free collab. Public campaigns are group_id IS NULL. */
+  group_id?: string | null;
   title: string;
   description?: string;
   goals?: string;
@@ -99,7 +101,7 @@ export const useCampaignsList = (filterByOwnership: boolean = true, orgUnitId?: 
           id, user_id, org_unit_id, title, description, goals, deliverables, platforms,
           budget_min, budget_max, deadline, status, style, tone, open_for_sponsorship,
           delivery_type, delivery_fee, pricing_type, fixed_price, escrow_status,
-          escrow_payment_intent_id, ai_analysis, ai_preview_status, created_at, updated_at,
+          escrow_payment_intent_id, group_id, ai_analysis, ai_preview_status, created_at, updated_at,
           campaign_collaborations (
             id, status, content_status, creator_id,
             business_completion_status, creator_completion_status
@@ -192,7 +194,7 @@ export const useCampaignById = (id: string) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('campaigns')
-        .select('id, user_id, org_unit_id, title, description, goals, deliverables, campaign_deliverables, platforms, budget_min, budget_max, deadline, status, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, escrow_status, escrow_payment_intent_id, ai_analysis, ai_preview_status, posting_schedule_status, created_at, updated_at')
+        .select('id, user_id, org_unit_id, title, description, goals, deliverables, campaign_deliverables, platforms, budget_min, budget_max, deadline, status, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, escrow_status, escrow_payment_intent_id, group_id, ai_analysis, ai_preview_status, posting_schedule_status, created_at, updated_at')
         .eq('id', id)
         .single();
 

@@ -103,11 +103,15 @@ export const useProjectComplete = () => {
 
         const { data: campaignEscrow } = await supabase
           .from('campaigns')
-          .select('escrow_status')
+          .select('escrow_status, group_id')
           .eq('id', completedData.campaign_id)
           .single();
 
-        if (campaignEscrow?.escrow_status !== 'released') {
+        // Free crew campaigns (group_id set) have no escrow/payout — skip the invoke for
+        // those only. Every non-crew campaign keeps its exact prior behavior (attempt
+        // payout unless already released; release-creator-payout itself no-ops on a
+        // non-'held' escrow), so legacy/manual escrow_status='none' rows are unaffected.
+        if (!campaignEscrow?.group_id && campaignEscrow?.escrow_status !== 'released') {
           try {
             const { data: payoutResult, error: payoutError } = await supabase.functions
               .invoke('release-creator-payout', {

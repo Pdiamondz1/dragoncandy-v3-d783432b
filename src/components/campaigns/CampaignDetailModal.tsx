@@ -10,7 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSignedUrl } from '@/hooks/useSignedUrl';
 import { DeliveryBadge } from './DeliveryBadge';
 import { CampaignApplyForm } from './CampaignApplyForm';
-import { mapDeliveryType, getRelativeTime, formatBudget, getTierConfig } from '@/lib/campaignUtils';
+import { mapDeliveryType, getRelativeTime, formatCampaignPrice, getTierConfig } from '@/lib/campaignUtils';
 import { Badge } from '@/components/ui/badge';
 
 interface CampaignDetailModalProps {
@@ -37,6 +37,8 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
   const rolePrefix = profile?.role === 'brand' ? '/dashboard/brand' : profile?.role === 'business_client' ? '/dashboard/business' : '/dashboard/creator';
   const deliveryTier = mapDeliveryType(campaign.delivery_type);
   const tierConfig = getTierConfig(deliveryTier);
+  // Private crew campaigns are free collabs — no counter-offer, no Stripe.
+  const isGroupCampaign = campaign.group_id != null;
   const businessName = campaign.business_profile?.business_name ?? 'Unknown Business';
   const rawLogoUrl = campaign.business_profile?.logo_url;
   const isHttpLogo = rawLogoUrl?.startsWith('http');
@@ -130,7 +132,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
               {/* Metrics pills */}
               <div className="flex gap-2 mt-3 flex-wrap">
                 <span className="bg-teal-50 text-teal-700 text-xs px-2.5 py-1 rounded-full border border-teal-200 font-semibold">
-                  💰 {formatBudget(campaign)}
+                  💰 {formatCampaignPrice(campaign)}
                 </span>
                 {(deliverables.length > 0 || fallbackDeliverables.length > 0) && (
                   <span className="bg-gray-100 text-gray-600 text-xs px-2.5 py-1 rounded-full border border-gray-200">
@@ -398,15 +400,19 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
 
             {/* Budget */}
             <div className="px-4 py-4 border-b border-gray-100">
-              <h3 className="text-sm font-bold text-gray-900 mb-2">Budget</h3>
-              <div className="text-2xl font-bold text-dc-teal">{formatBudget(campaign)}</div>
+              <h3 className="text-sm font-bold text-gray-900 mb-2">{isGroupCampaign ? 'Collab' : 'Budget'}</h3>
+              <div className="text-2xl font-bold text-dc-teal">{formatCampaignPrice(campaign)}</div>
               <div className="text-xs text-gray-500 mt-1">
-                {(campaign.pricing_type === 'fixed' || campaign.fixed_price != null)
-                  ? 'Fixed price'
-                  : 'Proposed budget · You can counter-offer when applying'
+                {isGroupCampaign
+                  ? 'Free crew collab — no payment'
+                  : (campaign.pricing_type === 'fixed' || campaign.fixed_price != null)
+                    ? 'Fixed price'
+                    : 'Proposed budget · You can counter-offer when applying'
                 }
               </div>
-              <div className="text-xs text-gray-500 mt-0.5">Payment via Stripe upon approval</div>
+              {!isGroupCampaign && (
+                <div className="text-xs text-gray-500 mt-0.5">Payment via Stripe upon approval</div>
+              )}
             </div>
 
             {/* About the Business */}

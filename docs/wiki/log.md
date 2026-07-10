@@ -1004,6 +1004,26 @@ archive→re-sync→not-resurrected→un-archive→restored). Pages created: [[S
 (`internal_docs` note), PROJECT_CONTEXT (workstream bullet). Founder go-live: create the monthly
 `/schedule` routine.
 
+## [2026-07-09] ingest | Creator Groups + Private Group Campaigns
+Ingested the Creator Groups ("crews") + private group campaigns build (branch
+`feat/creator-groups-private-campaigns`, 26 commits; schema live on prod, frontend deploys on
+merge). A business builds a standing private roster of creators (owner = business user, invite→accept
+lifecycle) and posts a campaign scoped to a crew that only active members see and one-tap apply to
+with no payment (free `fixed_price=0` removes the Stripe readiness gate). Private visibility rides
+the existing `campaigns` SELECT chokepoint (`published AND (group_id IS NULL OR is_active_group_member)`);
+both apply gates (`apply_to_campaign` RPC + `can_create_application`) tightened to member+published;
+cross-owner targeting blocked by the `enforce_campaign_group_ownership` trigger; escrow uncoupled for
+free crews with every checkout entry point guarded — paid/public path byte-unchanged. Durable gotchas:
+verify columns against prod not migration files (`creator_count` exists only in `ai_analysis` JSONB,
+not as a column — writing it top-level 500s the insert), `group_id` must be in every campaign
+`.select()` the accept/escrow flow reads, `saveDraft` needs the crew overrides, `create-notification`
+emails only mapped types, grant asymmetry on the definer helpers (`is_active_group_member` stays
+anon-executable, the rest revoked). Pages created: [[Creator Groups (Crews)]] (concept) + the raw
+session source. Pages updated: index.md (Concepts + Sources), DATABASE_SCHEMA (new tables + `group_id`
++ functions), PROJECT_CONTEXT (workstream bullet). Codex ran 10 rounds (all real findings fixed, 2
+false positives pushed back); final clean pass pending the Codex rate-limit reset. RAG sync is
+post-merge (post-merge hook on the main ff).
+
 ## [2026-07-10] ingest | Schedule / Calendar Agenda-First Simplification
 Founder feedback ("schedule calendar not easy to navigate in mobile… need the simplest UX workflow")
 → made scheduling **agenda-first**. Mobile + desktop now default to one scrolling day-by-day list of

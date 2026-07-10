@@ -113,6 +113,11 @@ export function useCampaignCreator() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [brandFields, setBrandFields] = useState<BrandFields | null>(null);
 
+  // Group ("crew") target: null = public marketplace; a crew id = a free, private
+  // group campaign (only active members see it, no payment). Kept separate from
+  // EditableCampaign so the paid/public path stays byte-for-byte unchanged.
+  const [groupId, setGroupId] = useState<string | null>(null);
+
   // Inspiration refs (from InspirationStrip on DropScreen)
   const [inspirationRefs, setInspirationRefs] = useState<InspirationRef[]>([]);
 
@@ -370,7 +375,14 @@ export function useCampaignCreator() {
       if (!editedCampaign) throw new Error('No campaign to launch');
       if (!user) throw new Error('Must be authenticated to launch');
 
-      const validated = launchValidationSchema.parse(editedCampaign);
+      // Free crew campaigns are exempt from the $50 marketplace minimum (they carry
+      // fixed_price 0, forced below). Satisfy the schema's min-price rule with a
+      // sentinel so the OTHER field validations (title, deadline, deliverables) still
+      // run for group campaigns; the real price is overridden to 0 in the group block.
+      const validationInput = groupId
+        ? { ...editedCampaign, fixed_price: Math.max(editedCampaign.fixed_price ?? 0, 50) }
+        : editedCampaign;
+      const validated = launchValidationSchema.parse(validationInput);
 
       const insertPayload: Record<string, unknown> = {
         user_id: user.id,
@@ -415,6 +427,23 @@ export function useCampaignCreator() {
         },
       };
 
+      // Group campaign: force free, single-winner, private terms. Setting group_id
+      // routes the campaign through the private-visibility RLS chokepoint; free
+      // terms (fixed_price 0 / no fee) remove the Stripe apply-time gate. The
+      // public/paid path (group_id null) is completely untouched.
+      if (groupId) {
+        insertPayload.group_id = groupId;
+        insertPayload.fixed_price = 0;
+        insertPayload.pricing_type = 'fixed';
+        insertPayload.delivery_fee = 0;
+        const analysis = insertPayload.ai_analysis as Record<string, unknown>;
+        // Defensive single-winner: enforce_single_slot_campaign reads
+        // (ai_analysis->>'creator_count'), so set it in the JSONB — there is no
+        // top-level campaigns.creator_count column in prod.
+        analysis.creator_count = 1;
+        analysis.delivery_fee = 0;
+      }
+
       const { data, error } = await supabase
         .from('campaigns')
         .insert(insertPayload as unknown as Database['public']['Tables']['campaigns']['Insert'])
@@ -424,10 +453,43 @@ export function useCampaignCreator() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       clearDraftFromStorage();
       toast.success('Campaign launched!');
+
+      // Notify active crew members that a new group campaign was posted. Routed
+      // through the create-notification choke point (bell + email + Donny); never
+      // send-notification-email directly. Fire-and-forget, never blocks the launch.
+      if (groupId && user) {
+        try {
+          const { data: members } = await supabase
+            .from('creator_group_members')
+            .select('creator_id')
+            .eq('group_id', groupId)
+            .eq('status', 'active');
+          const actorName = profile?.business_name ?? 'A business';
+          for (const member of members ?? []) {
+            supabase.functions.invoke('create-notification', {
+              body: {
+                recipientId: member.creator_id,
+                type: 'group_campaign_posted',
+                category: 'campaigns',
+                title: 'New crew campaign',
+                body: `${actorName} posted a new campaign`,
+                actionUrl: '/dashboard/creator/campaigns?crews=1',
+                actorId: user.id,
+                actorName,
+                icon: 'campaign',
+                data: { campaign_id: data.id, group_id: groupId },
+              },
+            }).catch((err: unknown) => console.error('Failed to send crew campaign notification:', err));
+          }
+        } catch (err) {
+          console.error('Failed to prepare crew campaign notifications:', err);
+        }
+      }
+
       if (userRole === 'brand') {
         navigate(`/dashboard/brand/campaigns/${data.id}`);
       } else {
@@ -448,7 +510,7 @@ export function useCampaignCreator() {
   const saveDraft = useCallback(async () => {
     if (!editedCampaign) return;
     if (user) {
-      const { error } = await supabase.from('campaigns').insert({
+      const draftPayload: Record<string, unknown> = {
         user_id: user.id,
         title: editedCampaign.title,
         description: editedCampaign.description,
@@ -480,7 +542,21 @@ export function useCampaignCreator() {
           tier_reasoning: editedCampaign.tier_reasoning,
           delivery_fee: resolveTierFee(editedCampaign.delivery_type),
         },
-      });
+      };
+      // Crew draft: preserve private/free targeting so a saved crew draft stays a free
+      // private campaign (mirrors the launch overrides) rather than reverting to a paid
+      // public draft.
+      if (groupId) {
+        draftPayload.group_id = groupId;
+        draftPayload.fixed_price = 0;
+        draftPayload.delivery_fee = 0;
+        const analysis = draftPayload.ai_analysis as Record<string, unknown>;
+        analysis.creator_count = 1;
+        analysis.delivery_fee = 0;
+      }
+      const { error } = await supabase
+        .from('campaigns')
+        .insert(draftPayload as unknown as Database['public']['Tables']['campaigns']['Insert']);
       if (error) throw error;
       toast.success('Draft saved');
     } else {
@@ -497,7 +573,7 @@ export function useCampaignCreator() {
       });
       toast.success('Draft saved locally');
     }
-  }, [editedCampaign, user, businessContext, draftId, selectedIdeaId, campaignIdeas, brandFields, userRole]);
+  }, [editedCampaign, user, businessContext, draftId, selectedIdeaId, campaignIdeas, brandFields, userRole, groupId]);
 
   return {
     screen,
@@ -517,6 +593,8 @@ export function useCampaignCreator() {
     isLaunching: launchMutation.isPending,
     inspirationRefs,
     setInspirationRefs,
+    groupId,
+    setGroupId,
     submitInput,
     selectIdea,
     regenerateIdeas,

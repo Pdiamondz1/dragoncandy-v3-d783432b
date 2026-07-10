@@ -147,7 +147,7 @@ export function ActivePhaseView({ campaign, enrichedDetail, collaborationId }: A
                         status={status}
                         uploadedFile={matchingFile ? { file_name: matchingFile.original_filename, file_size_bytes: matchingFile.file_size } : null}
                         feedback={collaboration.revision_feedback?.[d.id] ?? null}
-                        disabled={collaboration.campaign?.escrow_status !== 'held'}
+                        disabled={collaboration.campaign?.escrow_status !== 'held' && !collaboration.campaign?.group_id}
                         onUpload={() => setActiveDeliverableUpload({
                           id: d.id,
                           label: `${d.platform ?? ''} ${d.content_type}`.trim(),

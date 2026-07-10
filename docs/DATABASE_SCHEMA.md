@@ -33,6 +33,42 @@
 | `campaign_sponsorships` | Sponsorship arrangements within campaigns |
 | `application_counter_offers` | Negotiation counter-offers on applications |
 
+## Creator Groups (Crews)
+
+A business's standing private roster of creators; a campaign scoped to a crew is visible only to its
+active members, who one-tap apply with no payment (free `fixed_price=0`). See
+`docs/wiki/concepts/creator-groups.md`. All `user_id`/`owner_id`/`creator_id` reference `profiles(id)`
+(consumer feature). Crews are anchored on the **business user** (`owner_id = auth.uid()`), mirroring
+`brand_shortlists`.
+
+| Table | Purpose |
+|-|-|
+| `creator_groups` | A crew: `owner_id` (business user), `name`, `description`. Owner-manage RLS + active-member SELECT |
+| `creator_group_members` | Membership with invite→accept lifecycle `status ∈ invited/active/declined/removed` (mirrors `org_members.invitation_status`), `invited_by`, `UNIQUE(group_id, creator_id)`. Owner manages; creator reads/updates own rows (accept/decline only via RPC) |
+
+> **`campaigns.group_id`** — `uuid REFERENCES creator_groups(id) ON DELETE RESTRICT` (RESTRICT, never
+> SET NULL — SET NULL would flip a private campaign public). Non-null ⇒ a private crew campaign; every
+> public path is gated on `group_id IS NULL`, so existing rows (all NULL) are byte-unchanged.
+>
+> **Functions (SECURITY DEFINER, `search_path=public`, mirror `has_collaboration_on_campaign`):**
+> `is_active_group_member(group_id, creator_id)` — **stays anon-executable** (used in the
+> anon-reachable `campaigns` SELECT policy); `is_creator_group_owner(group_id, user_id)`,
+> `respond_to_group_invitation(group_id, accept)` (creator-only accept/decline), and
+> `get_creator_pending_group_invitations()` (an invited creator reads their own pending invites WITH
+> crew+business name; gated on `creator_id = auth.uid()`) — all **revoked from anon**. Trigger
+> `enforce_campaign_group_ownership` (`BEFORE INSERT OR UPDATE OF group_id`) forbids targeting a crew
+> the campaign owner doesn't own. Single-winner uses the existing `enforce_single_slot_campaign`, which
+> reads `(ai_analysis->>'creator_count')` — there is **no top-level `campaigns.creator_count` column**.
+>
+> **More DB-enforced crew invariants:** `campaigns_group_free` CHECK (`group_id IS NULL OR
+> COALESCE(fixed_price,0)=0` — crew campaigns are always free); `reject_group_campaign_invitation`
+> (`BEFORE INSERT` on `campaign_invitations` — no invite for a crew campaign; members-only);
+> `forbid_application_campaign_change` (`BEFORE UPDATE` on `campaign_applications` — `campaign_id` can't
+> change, closing a raw-UPDATE injection); `cgm_owner_insert`/`cgm_owner_update` RLS restrict owner
+> writes to `invited`/`removed` (activation is creator-only via `respond_to_group_invitation`). The
+> generic `send-campaign-publish-notifications` edge fn early-returns for group campaigns (a private
+> crew campaign is never broadcast platform-wide).
+
 ## Payments & Promotions
 
 | Table | Purpose |

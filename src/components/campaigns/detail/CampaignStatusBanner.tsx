@@ -60,6 +60,7 @@ interface CampaignStatusBannerProps {
     budget_max?: number | null;
     delivery_fee?: number | null;
     delivery_type?: string | null;
+    group_id?: string | null;
   };
   phase: CampaignPhase;
   currentStep: ProjectStep | null;
@@ -93,6 +94,7 @@ function deriveBannerState(
   applicationCount: number,
   step: ProjectStep | null,
   hasAcceptedCreator?: boolean,
+  isGroupCampaign?: boolean,
 ): BannerState {
   if (phase === 'cancelled') return 'cancelled';
   if (phase === 'completed') return 'completed';
@@ -101,7 +103,8 @@ function deriveBannerState(
   }
   // pre_hire
   if (status === 'draft') return 'draft';
-  if (hasAcceptedCreator && escrowStatus !== 'held' && escrowStatus !== 'released') return 'payment_pending_project';
+  // Free crew campaigns have no escrow — never show the pay-escrow state for them.
+  if (hasAcceptedCreator && escrowStatus !== 'held' && escrowStatus !== 'released' && !isGroupCampaign) return 'payment_pending_project';
   if (escrowStatus === 'pending') return 'payment_pending';
   if (applicationCount > 0) return 'pending_review';
   return 'published';
@@ -173,7 +176,7 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
     );
   }
 
-  const state = deriveBannerState(phase, campaign.status, campaign.escrow_status, applicationCount, currentStep, hasAcceptedCreator);
+  const state = deriveBannerState(phase, campaign.status, campaign.escrow_status, applicationCount, currentStep, hasAcceptedCreator, !!campaign.group_id);
 
   const canDelete = (phase === 'pre_hire' || phase === 'cancelled') && campaign.escrow_status !== 'held';
   const canEdit = phase === 'pre_hire';

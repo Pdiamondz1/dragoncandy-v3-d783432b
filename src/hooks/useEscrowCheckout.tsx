@@ -10,6 +10,16 @@ export function useEscrowCheckout() {
   const queryClient = useQueryClient();
 
   const initiateCheckout = useCallback(async (campaignId: string) => {
+    // Central safety net: free crew campaigns (group_id set) have no escrow. Some callers
+    // (e.g. the proposals page) don't pass the campaign object, so guard here for every
+    // surface — never open a paid checkout for a group campaign.
+    const { data: campaignRow } = await supabase
+      .from('campaigns')
+      .select('group_id')
+      .eq('id', campaignId)
+      .maybeSingle();
+    if (campaignRow?.group_id) return;
+
     setIsPayingEscrow(true);
     try {
       const { data: verifyData } = await supabase.functions.invoke('verify-campaign-escrow', {

@@ -4,6 +4,9 @@ import {
   resolveCreatorCoords,
   filterByRadius,
   sortNearest,
+  matchesLocationText,
+  isPlaceQueryMatch,
+  filterByRadiusWithSearch,
 } from './creatorLocationFilter';
 import { lookupCityCoords } from './geoUtils';
 
@@ -83,6 +86,81 @@ describe('filterByRadius', () => {
     expect(list).toHaveLength(3);
     expect(list.every(c => c.distanceMiles === undefined)).toBe(true);
     expect(unplaceableCount).toBe(0);
+  });
+});
+
+describe('matchesLocationText', () => {
+  test('matches on city, postal_code, country, or freeform location (case-insensitive)', () => {
+    expect(matchesLocationText({ city: 'Miami' }, 'miami')).toBe(true);
+    expect(matchesLocationText({ postal_code: '07030' }, '07030')).toBe(true);
+    expect(matchesLocationText({ country: 'United States' }, 'united')).toBe(true);
+    expect(matchesLocationText({ location: 'Hoboken, United States' }, 'HOBOKEN')).toBe(true);
+  });
+  test('a non-location term and an empty term are not location matches', () => {
+    expect(matchesLocationText({ city: 'Boston', location: 'Boston, US' }, 'photographer')).toBe(false);
+    expect(matchesLocationText({ city: 'Boston' }, '   ')).toBe(false);
+    expect(matchesLocationText({}, 'miami')).toBe(false);
+  });
+});
+
+describe('isPlaceQueryMatch (strict radius-escape predicate)', () => {
+  test('whole-word city match escapes; a substring inside a city name does not', () => {
+    expect(isPlaceQueryMatch({ city: 'Miami' }, 'miami')).toBe(true);
+    expect(isPlaceQueryMatch({ city: 'Jersey City' }, 'jersey city')).toBe(true);
+    expect(isPlaceQueryMatch({ city: 'Hartford' }, 'art')).toBe(false); // "art" ⊂ Hartford, not a word
+  });
+  test('a ZIP query matches the creator postal_code prefix', () => {
+    expect(isPlaceQueryMatch({ postal_code: '07030-4406' }, '07030')).toBe(true);
+    expect(isPlaceQueryMatch({ postal_code: '10001' }, '07030')).toBe(false);
+  });
+  test('short or broad terms never escape (guards the near-me default)', () => {
+    expect(isPlaceQueryMatch({ city: 'Anywhere', postal_code: '90210' }, 'us')).toBe(false); // too short
+    expect(isPlaceQueryMatch({ city: 'Anywhere' }, '')).toBe(false);
+    expect(isPlaceQueryMatch({ city: 'Anywhere' }, 'photographer')).toBe(false);
+  });
+});
+
+describe('filterByRadiusWithSearch (search-aware distance)', () => {
+  // Both "far" creators are placed at LA (~2450mi from NYC); "near" is at NYC.
+  const near = { id: 'near', city: 'Nowhere', country: 'US', location: 'Nowhere' };
+  const farBoston = { id: 'farBoston', city: 'Boston', country: 'US', location: 'Boston, US' };
+  const farMiami = { id: 'farMiami', city: 'Miami', country: 'US', location: 'Miami, US' };
+  const creators = [near, farBoston, farMiami];
+  const geocoded = new Map([['near', NYC], ['farBoston', LA], ['farMiami', LA]]);
+
+  test('a location search keeps the matched place even when far, but not other far creators', () => {
+    const { list } = filterByRadiusWithSearch(creators, NYC, 25, 'miami', geocoded);
+    expect(list.map(c => c.id).sort()).toEqual(['farMiami', 'near']); // farBoston stays gated out
+  });
+  test('a name/skill search (no location match) keeps only creators within the radius', () => {
+    const { list, unplaceableCount } = filterByRadiusWithSearch(creators, NYC, 25, 'photographer', geocoded);
+    expect(list.map(c => c.id)).toEqual(['near']);
+    expect(unplaceableCount).toBe(0);
+  });
+  test('no search term behaves like the plain radius filter', () => {
+    const { list } = filterByRadiusWithSearch(creators, NYC, 25, '', geocoded);
+    expect(list.map(c => c.id)).toEqual(['near']);
+  });
+  test('null radius ("Any") keeps everyone regardless of search', () => {
+    const { list } = filterByRadiusWithSearch(creators, NYC, null, 'photographer', geocoded);
+    expect(list.map(c => c.id).sort()).toEqual(['farBoston', 'farMiami', 'near']);
+  });
+  test('a broad country substring ("us") does NOT escape the radius', () => {
+    // every creator's country is 'US' — a 2-char query must not disable near-me
+    const { list } = filterByRadiusWithSearch(creators, NYC, 25, 'us', geocoded);
+    expect(list.map(c => c.id)).toEqual(['near']);
+  });
+  test('a substring inside a city name ("art" ⊂ Hartford) does NOT escape', () => {
+    const hartford = { id: 'hartford', city: 'Hartford', country: 'US', location: 'Hartford, US' };
+    const geo = new Map([...geocoded, ['hartford', LA] as [string, typeof LA]]);
+    const { list } = filterByRadiusWithSearch([near, hartford], NYC, 25, 'art', geo);
+    expect(list.map(c => c.id)).toEqual(['near']); // hartford is far and "art" is not a place match
+  });
+  test('counts unplaceable non-location matches (so the "couldn’t place" note is accurate)', () => {
+    const withLost = [...creators, { id: 'lost' }]; // no coords, no location text
+    const { list, unplaceableCount } = filterByRadiusWithSearch(withLost, NYC, 25, '', geocoded);
+    expect(list.map(c => c.id)).toEqual(['near']);
+    expect(unplaceableCount).toBe(1);
   });
 });
 

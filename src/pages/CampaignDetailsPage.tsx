@@ -204,7 +204,8 @@ const CampaignDetailsPage: React.FC = () => {
   }, []);
 
   const handlePayEscrow = () => {
-    if (campaign) initiateCheckout(campaign.id);
+    // Free crew campaigns (group_id set) have no escrow — never open a paid checkout.
+    if (campaign && !campaign.group_id) initiateCheckout(campaign.id);
   };
 
   const handleDelete = () => {
