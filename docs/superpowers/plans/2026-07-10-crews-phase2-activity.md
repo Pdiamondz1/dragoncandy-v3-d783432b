@@ -121,8 +121,16 @@ CREATE POLICY crew_activity_creator_select ON public.crew_activity
 **Files:** Create `supabase/migrations/<ts>_record_crew_activity_rpc.sql`
 
 - [ ] **Step 1: Write the RPC.** It takes ONLY `(p_campaign_id, p_event_type)`; re-derives everything; enforces the per-event authorization matrix; inserts; RETURNS the facts the frontend needs to fan out.
+> **Participant keying (plan-review fix):** owner-emitted events (`hired`/`completed`/`paid`/…) concern
+> a *specific* creator. Crew v1 campaigns are **single-winner** (Task 0 confirms 1 collaboration per crew
+> campaign — `creator_count=1` + accept auto-declines siblings), so today "the campaign's collaboration"
+> is unambiguous. But to be robust + Phase-3-ready (multi-creator crews are a deferred feature), the RPC
+> takes an explicit `p_collaboration_id` for these events and validates it belongs to the campaign —
+> NEVER "most recent collaboration" (which would mis-attribute and leak one creator's event to another).
+
 ```sql
-CREATE OR REPLACE FUNCTION public.record_crew_activity(p_campaign_id uuid, p_event_type text)
+CREATE OR REPLACE FUNCTION public.record_crew_activity(
+  p_campaign_id uuid, p_event_type text, p_collaboration_id uuid DEFAULT NULL)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_campaign record;
@@ -134,7 +142,7 @@ DECLARE
   v_creator_name text;
   v_row_id uuid;
 BEGIN
-  SELECT id, user_id, group_id, title, fixed_price INTO v_campaign
+  SELECT id, user_id, group_id, title INTO v_campaign
     FROM campaigns WHERE id = p_campaign_id;
   IF NOT FOUND OR v_campaign.group_id IS NULL THEN
     RETURN NULL;                       -- no-op off the crew path
@@ -157,8 +165,16 @@ BEGIN
   ELSIF p_event_type IN ('hired','content_approved','revision_requested','completed','paid') THEN
     IF v_campaign.user_id <> v_uid THEN RAISE EXCEPTION 'unauthorized'; END IF;   -- owner only
     v_visibility := 'business';
-    SELECT creator_id INTO v_participant FROM campaign_collaborations
-      WHERE campaign_id = p_campaign_id ORDER BY created_at DESC LIMIT 1;
+    -- Participant from the EXPLICIT collaboration (validated to belong to this campaign).
+    -- v1 single-winner fallback: if null, use the sole collaboration; RAISE if ambiguous (>1).
+    IF p_collaboration_id IS NOT NULL THEN
+      SELECT creator_id INTO v_participant FROM campaign_collaborations
+        WHERE id = p_collaboration_id AND campaign_id = p_campaign_id;
+      IF v_participant IS NULL THEN RAISE EXCEPTION 'collaboration not on campaign'; END IF;
+    ELSE
+      SELECT creator_id INTO v_participant FROM campaign_collaborations
+        WHERE campaign_id = p_campaign_id;   -- errors if >1 row (too many rows) — correct: forbid ambiguity
+    END IF;
   ELSE
     RAISE EXCEPTION 'unknown event_type %', p_event_type;
   END IF;
@@ -191,8 +207,8 @@ BEGIN
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION public.record_crew_activity(uuid, text) FROM public, anon;
-GRANT  EXECUTE ON FUNCTION public.record_crew_activity(uuid, text) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.record_crew_activity(uuid, text, uuid) FROM public, anon;
+GRANT  EXECUTE ON FUNCTION public.record_crew_activity(uuid, text, uuid) TO authenticated;
 ```
 > The RPC bodies (`payment_events` amount column, `campaign_collaborations` shape) must be reconciled against the real schema during Task 0/2 — the above is the contract, adjust field names to match.
 - [ ] **Step 2:** Sanity-check. Do NOT apply yet.
@@ -204,11 +220,26 @@ GRANT  EXECUTE ON FUNCTION public.record_crew_activity(uuid, text) TO authentica
 
 **Files:** Create `src/lib/crews/crewActivityNotifications.ts` + `.test.ts`
 
-The RPC returns *facts*; this pure module maps `(event_type, facts)` → the `create-notification` payloads to fire (the §5 "ADDS" column, per the Task-0-verified overlap). Keeping it pure makes the fan-out unit-testable and encodes the de-dup as a static decision.
+The RPC returns *facts*; this pure module maps `(event_type, facts)` → the `create-notification` payloads to fire — **but ONLY the genuinely-new ones** (recipients the standard lifecycle does NOT already bell). This is the de-dup, as a static decision.
 
-- [ ] **Step 1: Write failing tests** — assert the ADDS per event from the Task-0 table. E.g. `hired` → `[{recipientId: participant_id, type:'campaign_hired', category:'campaigns', email:true}]`; `content_approved` → `[]` (row only); `campaign_posted` → `[]` (v1 bell already sent; email handled by the mapping, not a new payload); and that no payload ever targets a non-owner/non-participant recipient (no cross-creator leak).
+**LINCHPIN CONSTRAINT (do not violate):** `create-notification` **always inserts a bell** and only
+*conditionally* emails — there is **no email-only mode**. Therefore:
+- To add an **email** to a recipient the standard path already bells, you map that recipient's
+  **existing standard notification type** to email in Task 8 (`NOTIFICATION_TYPE_TO_EMAIL_TYPE`).
+  You **never** fire a second `create-notification` for it (that would double-bell).
+- The pure map fires a payload ONLY for a recipient/event the standard path does NOT already notify.
+
+**Consequence (verified in Task 0):** the standard high-signal emails are already mapped
+(`application_received`→`new_application`, accept→`application_accepted`, `project_completed`), so for
+`application_received` / `hired` / `completed` / `paid` the owner + participant are already belled+emailed
+→ the pure map returns **`[]` (row only)**. The map fires a payload only where Task 0 finds a real gap
+(e.g. `content_submitted` to the owner IF the standard path doesn't already notify them). The only
+genuinely-new **email** mapping is the crew-specific `group_campaign_posted` (Task 8) — a mapping, not a
+map payload. So in v1 the pure map is mostly `[]`; recordCrewActivity's main job is **writing the row**.
+
+- [ ] **Step 1: Write failing tests** using the Task-0-verified overlap: `hired`/`completed`/`paid`/`application_received` → **`[]`** (already belled by the standard path); `content_submitted` → the Task-0 result (`[{recipientId: owner_id, type, category:'content'}]` if the owner isn't already notified, else `[]`); `campaign_posted` → `[]` (v1 bell already sent; email via the Task-8 mapping). Assert **no payload ever targets a recipient other than owner_id or participant_id** (no cross-creator leak) and **no payload duplicates a recipient the standard path already bells**.
 - [ ] **Step 2:** Run → FAIL.
-- [ ] **Step 3: Implement** `crewActivityNotifications(facts): NotificationPayload[]` — a switch over `event_type` returning the exact ADDS list (recipientId ∈ {owner_id, participant_id}, type/category/emailData per §5+§8). Pure, no I/O.
+- [ ] **Step 3: Implement** `crewActivityNotifications(facts): NotificationPayload[]` — a switch over `event_type` returning only the genuinely-new payloads per the Task-0 table. Pure, no I/O.
 - [ ] **Step 4:** Run → PASS.
 - [ ] **Step 5:** Commit.
 
@@ -218,8 +249,8 @@ The RPC returns *facts*; this pure module maps `(event_type, facts)` → the `cr
 
 **Files:** Create `src/lib/crews/recordCrewActivity.ts`
 
-- [ ] **Step 1: Implement** `recordCrewActivity(campaignId: string, eventType: CrewEventType): Promise<void>`:
-  - `const { data: facts } = await supabase.rpc('record_crew_activity', { p_campaign_id, p_event_type });`
+- [ ] **Step 1: Implement** `recordCrewActivity(campaignId: string, eventType: CrewEventType, collaborationId?: string): Promise<void>`:
+  - `const { data: facts } = await supabase.rpc('record_crew_activity', { p_campaign_id: campaignId, p_event_type: eventType, p_collaboration_id: collaborationId ?? null });`
   - if `!facts` → return (non-crew campaign, RPC no-op'd).
   - `for (const p of crewActivityNotifications(facts)) supabase.functions.invoke('create-notification', { body: p }).catch(console.error);`
   - Fire-and-forget; never throw into the caller (best-effort fan-out, per spec R1). Invalidate `['crew-activity']`/`['my-crew-activity']` query keys.
@@ -233,11 +264,11 @@ The RPC returns *facts*; this pure module maps `(event_type, facts)` → the `cr
 **Files (Modify):** `useCreateApplication.ts`, `useManageApplication.ts`, `useProjectComplete.ts`, the content submit/approve/revision hook (Task 0), `useCampaignCreator.ts`.
 
 - [ ] For each site, after the existing success/notification logic, add one call gated only by the RPC's own `group_id` no-op:
-  - `useCreateApplication` onSuccess → `recordCrewActivity(campaignId, 'application_received')`.
-  - `useManageApplication` accept path → `recordCrewActivity(campaignId, 'hired')`.
-  - content submit → `'content_submitted'`; approve → `'content_approved'`; revision → `'revision_requested'`.
-  - `useProjectComplete` completion → `'completed'`; payout-success branch → `'paid'`.
-  - `useCampaignCreator` crew launch (already fires `group_campaign_posted`) → `recordCrewActivity(campaignId, 'campaign_posted')` (writes the row; the pure map returns no new bell).
+  - `useCreateApplication` onSuccess → `recordCrewActivity(campaignId, 'application_received')` (participant = caller; no collab id).
+  - `useManageApplication` accept path → `recordCrewActivity(campaignId, 'hired', collaborationId)` — pass the just-created collaboration id (owner-emitted participant event).
+  - content submit → `recordCrewActivity(campaignId, 'content_submitted')` (participant = caller); approve → `('content_approved', collaborationId)`; revision → `('revision_requested', collaborationId)` (owner-emitted → pass collab id).
+  - `useProjectComplete` completion → `('completed', collaborationId)`; payout-success branch → `('paid', collaborationId)` (it already has `collaborationId`).
+  - `useCampaignCreator` crew launch (already fires `group_campaign_posted`) → `recordCrewActivity(campaignId, 'campaign_posted')` (writes the row; the pure map returns no new bell — email via the Task-8 mapping).
 - [ ] Build + typecheck clean. Commit (can be one commit or per-site).
 
 ---
@@ -267,8 +298,20 @@ The RPC returns *facts*; this pure module maps `(event_type, facts)` → the `cr
 
 **Files (Modify):** `src/types/notifications.ts`, `supabase/functions/create-notification/index.ts`, `supabase/functions/send-notification-email/index.ts`
 
-- [ ] Add the high-signal crew types to `NOTIFICATION_TYPE_TO_EMAIL_TYPE` (both the edge fn and the mirrored `src/types/notifications.ts`) mapping to crew email templates (or the closest existing template). Only the §5 email-flagged events (`campaign_posted`, `application_received`→owner, `hired`→creator, `content_submitted`→owner, `completed`→owner, `paid`→creator). Category per §8.
-- [ ] Add the crew email template(s) to `send-notification-email` (subject/body per event; reuse the closest existing template shape). Keep additive; watch the template-literal-backtick Deno-bundle hazard.
+Per Task 0, the standard high-signal types (`new_application`, `application_accepted`, `project_completed`)
+are **already email-mapped**, so `application_received`/`hired`/`completed`/`paid` need **no new mapping**
+(their emails already fire). The scope here is minimal:
+
+- [ ] **The one genuinely-new mapping:** map the crew-specific **`group_campaign_posted`** type to a
+  crew email template in `NOTIFICATION_TYPE_TO_EMAIL_TYPE` (both `create-notification/index.ts` and the
+  mirrored `src/types/notifications.ts`). This changes **crew behavior only** (the type is crew-specific),
+  so it's safe. Category `campaigns`.
+- [ ] **Any Task-0 gap only:** if Task 0 found a genuine missing email (e.g. the owner's content-submit
+  type isn't mapped and the §5 table wants it), map that specific type too. **Do NOT globally remap a
+  SHARED standard type** (e.g. `project_completed`) just for crews — it's already emailed, and remapping
+  would change non-crew behavior (explicit non-goal).
+- [ ] Add the `group_campaign_posted` email template to `send-notification-email` (subject/body; reuse
+  the closest existing template shape). Additive; watch the template-literal-backtick Deno-bundle hazard.
 - [ ] Build clean. Commit. (Deploy in Task 9.)
 
 ---
@@ -277,8 +320,8 @@ The RPC returns *facts*; this pure module maps `(event_type, facts)` → the `cr
 
 - [ ] **Apply** Task 1 + Task 2 migrations to prod via MCP (table → RPC). Run `get_advisors(security)` — confirm the RPC is not anon-executable, `search_path` set, `crew_activity` RLS present + no anon leak. Regenerate `src/integrations/supabase/types.ts`; fix any narrow local types from Task 4.
 - [ ] **Deploy** `create-notification` + `send-notification-email` (run `edge-function-reviewer` first; preserve each `verify_jwt`; MCP `list_edge_functions` is ground truth).
-- [ ] **Forge test (SQL, rolled back):** as a non-owner member, `record_crew_activity(<crew campaign>, 'paid')` must RAISE `unauthorized`; as owner it succeeds. As the applicant, `'application_received'` succeeds; as a different member it RAISEs. Confirm no `crew_activity` row persists after rollback.
-- [ ] **Two-creator crew test (spec §11.2):** owner posts a crew campaign → both members get `campaign_posted` (bell + email) + see it; A applies → owner sees `application_received` (feed + bell/email), **B sees nothing**; hire A → A gets `hired`, B doesn't; A submits → owner sees `content_submitted`, B doesn't; complete + pay → owner + A see `completed`/`paid`, B doesn't.
+- [ ] **Forge test (SQL, rolled back):** (a) a non-owner member calling `record_crew_activity(<crew campaign>, 'paid', …)` must RAISE `unauthorized`; owner succeeds. (b) the applicant calling `'application_received'` succeeds; a different member RAISEs. (c) a non-participant member calling `'content_submitted'` RAISEs; the participant succeeds. (d) owner calling `'completed'` with a `p_collaboration_id` for a *different* campaign RAISEs `collaboration not on campaign`. Confirm no `crew_activity` row persists after rollback.
+- [ ] **Two-creator crew test (spec §11.2):** crew campaigns are **single-winner**, so only ONE member is hired. Owner posts a crew campaign → both members A,B get `campaign_posted` (bell + email) + see it; A applies → owner sees `application_received` (feed + bell/email), **B sees nothing**; hire A → A gets `hired`, B doesn't; A submits → owner sees `content_submitted`, B doesn't; complete + pay → owner + A see `completed`/`paid`, **B sees none of A's activity anywhere** (feed, bell, RLS). (Multi-hire is structurally impossible in v1; the explicit `p_collaboration_id` keying is the Phase-3 safeguard.)
 - [ ] **Non-crew regression:** a normal public/paid campaign apply→accept→complete writes **zero** `crew_activity` rows and behaves unchanged.
 
 ---
@@ -300,4 +343,12 @@ The RPC returns *facts*; this pure module maps `(event_type, facts)` → the `cr
 - **Forge-proofing lives in the RPC** (per-event authz + server-derived metadata) — the frontend never sends `visibility`/`participant`/`amount`. Don't move that logic client-side.
 - **Privacy test is mandatory** (two-creator crew) — a creator must never see another creator's application/content/rate/earnings via the feed, RLS, or metadata.
 - **Concurrent Lovable/founder PRs:** re-fetch origin/main + check collisions on the touched hooks (`useProjectComplete`, `useManageApplication`, `useCampaignCreator`, `CreatorCampaignMarketplace`) and the two edge fns before deploy/merge.
+- **Idempotency:** `crew_activity` has no unique key, so an `onSuccess` retry/double-fire can write a
+  duplicate row (visibility gates exposure to owner+self, so low severity). v1 accepts duplicates as a
+  known gap; optionally add a partial unique index on `(campaign_id, event_type, participant_id)` for the
+  once-per-participant events (`hired`/`completed`/`paid`) if duplicates show up in testing.
+- **`paid` amount source:** the plan reads the amount from `payment_events` — Task 0 must confirm a payout
+  row actually lands there (`useProjectComplete` folds the amount into `project_completed`'s emailData,
+  which is NOT a `payment_events` row). If no such row exists, `v_amount` is null and `jsonb_strip_nulls`
+  drops it (acceptable — the `paid` feed line just omits the amount); do not fabricate it client-side.
 - **Deferred (NOT now):** crew chat; org-team fan-out (other `org_members`); digest email; realtime feed; reactions/read-receipts; global all-crews activity page.
