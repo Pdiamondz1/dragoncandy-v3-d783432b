@@ -61,25 +61,36 @@ but retention-pruned and a per-recipient notice list is the wrong shape for the 
 pipeline; (b) **derive from source tables** (applications/collaborations/payments) — a messy
 multi-table union, and content submit/approve/revision are `content_status` transitions, not discrete
 rows. The dedicated log is clean, durable, paginatable, and role-filterable, and the single choke point
-guarantees the feed and the notifications can never drift (mirrors the platform's `create-notification`
-/ `aios-report-ingest` choke-point discipline).
+keeps the feed and the notifications consistent — one code path emits both (mirrors the platform's
+`create-notification` / `aios-report-ingest` choke-point discipline). Caveat: because the choke point
+runs client-side at the lifecycle sites (§4a), a client that dies mid-flow can leave the standard
+notice sent but no `crew_activity` row — a **missing feed row, not a correctness bug** (see R1/R2); it
+is not a hard transactional guarantee.
 
-### 4a. `recordCrewActivity` choke point
+### 4a. The choke point — a forge-proof RPC + a thin frontend wrapper
 
-A shared helper — **one code path** every crew event flows through. Given a lifecycle event
-`{ group_id, campaign_id, actor_id, event_type, participant_id?, metadata? }`:
-1. No-op if the campaign is not a crew campaign (`group_id IS NULL`) — so instrumentation is inert on
-   the public/paid path.
-2. Insert one `crew_activity` row (with the computed `visibility`).
-3. Fan out `create-notification` to the audience per §5, with email on for the high-signal subset.
+Every crew event flows through **one path**, split for security:
 
-Implementation seam: a pure `_shared`-style module for the audience/visibility/summary logic (unit
-tested), plus the DB insert + notification invokes. It runs from the **frontend** at the existing
-lifecycle sites (where `create-notification` is already called) — one `recordCrewActivity(...)` call
-added per site — because those sites already have the campaign + actor context and already fire
-notifications. (Payout, which fires from the `release-creator-payout` edge fn, is the one server-side
-site; v1 records the `paid` activity from `useProjectComplete`'s post-payout success path to stay
-frontend-only and avoid an edge-fn change there.)
+- **`record_crew_activity(p_campaign_id, p_event_type)`** — a SECURITY DEFINER Postgres RPC (see §6)
+  that does the **authoritative, forge-proof half**: no-op if `group_id IS NULL`; per-event-type
+  authorization on `auth.uid()`; server-derives `visibility` / `participant_id` / `metadata` from
+  trusted rows; **inserts the `crew_activity` row**; and RETURNS the computed **audience descriptor**
+  (recipient user_ids + which are high-signal-email + the notification body fields).
+- **`recordCrewActivity(campaignId, eventType)`** — a thin frontend wrapper called at each lifecycle
+  site. It calls the RPC, then fires `create-notification` per the returned audience (the §5 "ADDS"
+  column). The row is authoritative; the fan-out is best-effort (a dropped notification is a
+  missing-notice, not a data-integrity or security issue — the standard-path notices still fire).
+
+Why this split: the **write** (row + metadata + amounts) must be un-forgeable, so it lives in the RPC
+where `auth.uid()` and DB truth are enforced; the **fan-out** reuses the existing client-callable
+`create-notification` choke point, so **no new edge function** is needed (only the §8 email-mapping
+change). The audience/visibility rules also live as a **pure, unit-tested module** whose logic the RPC
+and the tests share (the RPC is the enforcement point; the module documents/derives the mapping).
+
+Instrumentation: add one `recordCrewActivity(campaignId, eventType)` call at each existing lifecycle
+site (apply / accept / content submit / approve / revision / complete), gated implicitly by the RPC's
+`group_id` no-op. Payout fires from the `release-creator-payout` edge fn (server-side); v1 records the
+`paid` event from `useProjectComplete`'s post-payout success branch to stay frontend-only (R2).
 
 ## 5. Data model & fan-out
 
@@ -99,37 +110,77 @@ created_at    timestamptz default now()
 ```
 Indexes: `(group_id, created_at desc)`, `(participant_id)`.
 
-### Fan-out rules (asymmetric)
-| event | crew_activity.visibility | bell recipients | email (high-signal) |
-|---|---|---|---|
-| `campaign_posted` | crew | all active members | ✔ members |
-| `application_received` | business | owner | ✔ owner |
-| `hired` | business | owner + the hired creator | ✔ hired creator |
-| `content_submitted` | business | owner | ✔ owner |
-| `content_approved` | business | owner + creator | — |
-| `revision_requested` | business | owner + creator | — |
-| `completed` | business | owner + creator | ✔ owner |
-| `paid` | business | owner + creator | ✔ creator |
+### Fan-out rules (asymmetric) + de-dup delta
 
-Creators never receive another creator's `application_received` / `content_submitted` etc. — a
-`business`-visibility event notifies the **owner**, and additionally the **participant** creator for
-their *own* hired/approved/revision/completed/paid events. (Several of these owner/participant bells
-already fire today via the standard lifecycle; `recordCrewActivity` de-dupes by not re-sending a notice
-the standard path already sent — v1 keeps it simple: the standard per-collaboration notices remain, and
-`recordCrewActivity` adds the crew_activity row + only the *new* recipients/emails not already covered.
-See Risk R3.)
+Two facts must be reconciled per event: (a) what the **standard lifecycle already notifies today**, and
+(b) what `recordCrewActivity` must **add** (the crew_activity row is *always* written; only *new*
+recipients/emails are sent). The de-dup is a **static, per-event decision baked into the pure audience
+module** (unit-tested) — NOT a runtime `push_notifications` lookup. The table below is authoritative;
+the "Adds" column is exactly what `recordCrewActivity` emits.
+
+| event | crew_activity.visibility | participant_id | Standard path already sends | **recordCrewActivity ADDS** |
+|---|---|---|---|---|
+| `campaign_posted` | crew | — | v1 `group_campaign_posted` bell → active members | **Nothing new** — REUSE the v1 `group_campaign_posted` notice (add its email mapping in §8 + write the row). No second bell. |
+| `application_received` | business | applicant | owner bell (via `useCreateApplication`) | row + **email to owner** (upgrade the existing owner bell to email); applicant sees it via own-row RLS (no new bell) |
+| `hired` | business | hired creator | owner + creator bells (standard accept) | row + **email to hired creator** |
+| `content_submitted` | business | creator | owner bell (content submit) | row + **email to owner** |
+| `content_approved` | business | creator | owner + creator bells | row only |
+| `revision_requested` | business | creator | owner + creator bells | row only |
+| `completed` | business | creator | owner + creator bells (`project_completed`) | row + **email to owner** |
+| `paid` | business | creator | creator bell (payout) | row + **email to creator** |
+
+Creators never receive another creator's event — a `business`-visibility event's *added* recipients are
+only the **owner** and/or the **participant** (their own event). "email to owner/creator" means: ensure
+the high-signal email fires for that recipient (wire the type in §8), reusing the existing bell if one
+already fired rather than sending a duplicate bell. **The plan's first step is to verify this overlap
+table against the actual current `create-notification` call sites** and correct any cell before coding.
 
 ## 6. RLS & privacy
 
-- `crew_activity` RLS SELECT:
-  - **owner** sees all rows for crews they own: `is_creator_group_owner(group_id, auth.uid())`.
-  - **creator** sees rows where `visibility='crew' AND is_active_group_member(group_id, auth.uid())`
-    OR `participant_id = auth.uid()`.
-  - No INSERT/UPDATE/DELETE policy for clients — rows are written only by the `recordCrewActivity`
-    path (service-role or a SECURITY DEFINER RPC gated on ownership/membership + `group_id IS NOT NULL`
-    + actor legitimacy). This keeps the activity log tamper-proof from the client.
-- `metadata` carries only what the audience is allowed to see (e.g. the creator's *public* display name;
-  amounts only on `business`-visibility events the owner/participant may see). No cross-creator rate leak.
+### SELECT
+`crew_activity` has **SELECT-only** RLS for clients (no client INSERT/UPDATE/DELETE policy at all):
+- **owner:** `is_creator_group_owner(group_id, auth.uid())` — all rows for crews they own.
+- **creator:** `(visibility = 'crew' AND is_active_group_member(group_id, auth.uid())) OR (participant_id = auth.uid())`.
+  **Parenthesize exactly as shown** — `(crew AND member) OR participant` — so a creator keeps sight of
+  their own `business`-visibility rows (`hired`/`paid`/…) via the `participant_id` branch. (Do NOT write
+  `crew AND (member OR participant)`.)
+
+### Write path — forge-proof by construction
+Writes go through **one SECURITY DEFINER RPC** `record_crew_activity(p_campaign_id uuid, p_event_type text)`.
+The client passes **only** the campaign + event type — never `visibility`, `participant_id`, `metadata`,
+or amounts. The RPC:
+1. Loads the campaign; **returns silently if `group_id IS NULL`** (no-op off the crew path).
+2. Enforces a **per-event-type authorization matrix** on `auth.uid()` (who may legitimately emit each
+   event — reject otherwise):
+
+   | event_type | who may emit (`auth.uid()` must be…) |
+   |---|---|
+   | `campaign_posted` | the crew **owner** (`is_creator_group_owner`) |
+   | `application_received` | the **applicant** (an active member who just applied — verified against `campaign_applications`) |
+   | `content_submitted` | the **participant creator** (has the active collaboration) |
+   | `hired` / `content_approved` / `revision_requested` / `completed` | the crew **owner** |
+   | `paid` | the crew **owner** (the party who triggers/confirms payout) |
+
+3. **Re-derives everything server-side** from trusted rows: `visibility` (per §5), `participant_id`
+   (the actual `campaign_applications`/`campaign_collaborations.creator_id`), and `metadata` (campaign
+   title, the participant's *public* display name, and amounts **only** by reading `payment_events`/
+   the collaboration — never a client-supplied number). The RPC persists only this **whitelisted**,
+   server-built metadata — arbitrary client jsonb is impossible.
+4. Inserts the row and **RETURNS the computed audience descriptor** (recipient user_ids + high-signal
+   email flags + body fields). The RPC does **not** call the edge fn itself (Postgres → edge-fn
+   invocation is unavailable/dead here); the thin frontend wrapper (§4a) fires `create-notification`
+   per the returned audience. The row write + authz + metadata are the forge-proof part; the fan-out is
+   best-effort.
+
+So a crew member cannot forge a fake `paid`/`hired` row, a bogus amount, or another creator's event —
+the RPC rejects the event_type they're not authorized to emit and never trusts client-supplied fields.
+(`revoke execute from anon`; grant `authenticated`. Any purely server-side emitter — e.g. a future
+edge-fn payout hook — uses the service-role client and bypasses the RPC's `auth.uid()` gate.)
+
+### Metadata privacy
+`metadata` carries only audience-safe fields (public display name; amounts only on `business`-visibility
+rows the owner/participant may see). Combined with the SELECT RLS, no creator ever sees another
+creator's rate/content/earnings.
 
 ## 7. Feed surfaces (reuse existing pages)
 
@@ -146,9 +197,17 @@ See Risk R3.)
 Wire the high-signal crew event types into `NOTIFICATION_TYPE_TO_EMAIL_TYPE` (in `create-notification`
 + the mirrored `src/types/notifications.ts`) → a small set of crew email templates in
 `send-notification-email` (or reuse the closest existing templates). Respects each user's
-`notification_preferences` category toggle. **This is the one part that requires an edge-fn deploy**
-(`create-notification` + `send-notification-email`) — everything else is DB + frontend. Run
-`edge-function-reviewer` before deploy; preserve each fn's `verify_jwt`.
+`notification_preferences` category toggle.
+
+**Category per crew type** (reuse the existing category set — no new `crew` category, YAGNI): the
+`notification_preferences` category gates the email, so pin each type: `campaign_posted` /
+`application_received` / `hired` → **`campaigns`**; `content_submitted` → **`content`**;
+`completed` / `paid` → **`transactions`**. (These match the categories the standard lifecycle already
+uses for the same events, so a user's existing toggles apply consistently.)
+
+**This is the one part that requires an edge-fn deploy** (`create-notification` + `send-notification-email`)
+— everything else is DB + frontend. Run `edge-function-reviewer` before deploy; preserve each fn's
+`verify_jwt`.
 
 ## 9. Scope / YAGNI
 
