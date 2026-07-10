@@ -850,21 +850,46 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   existing `campaigns` SELECT chokepoint (`published AND (group_id IS NULL OR
   is_active_group_member(...))` + owner + collaborator, via SECURITY-DEFINER helpers mirroring
   `has_collaboration_on_campaign`); **both** apply gates (`apply_to_campaign` RPC + the
-  `can_create_application` RLS `WITH CHECK`) tightened to member **AND** `status='published'`;
-  cross-owner targeting blocked by the `enforce_campaign_group_ownership` trigger; escrow uncoupled
-  for free crews (accept activates without escrow; payout/upload/pay-escrow all guarded on
-  `group_id`). **Profit engine protected** — paid work still flows through the unchanged
-  escrow/take-rate marketplace; crews are the ambassador/organic-collab lane; paid group campaigns are
-  a documented Phase-3 data-flip (every seam already branches on `fixed_price=0`). New tables
-  `creator_groups` + `creator_group_members` + `campaigns.group_id` + 4 definer functions + 1 trigger;
-  no edge-function change. Built brainstorm→spec(reviewed)→plan(reviewed)→subagent-driven execution;
-  **Codex second review ran 10 rounds** — every real finding fixed (auth-ownership trigger, the
-  prod-only-in-JSONB `creator_count`, the escrow-gated upload, multiple accept→escrow-checkout paths,
-  status-gating on visibility/apply, draft crew overrides, honest email copy) with **2 verified false
-  positives pushed back** (a "newer" migration that was older; a legacy policy already dropped); final
-  clean pass pending the Codex rate-limit reset. Concept:
-  `docs/wiki/concepts/creator-groups.md`. Spec:
+  `can_create_application` RLS `WITH CHECK`) are member-**AND**-`status='published'`-only (no
+  invitation bypass — crews are members-only). **DB-enforced guardrails:** `enforce_campaign_group_ownership`
+  (no cross-owner targeting), `campaigns_group_free` CHECK (crew campaigns are always free),
+  `reject_group_campaign_invitation` (no stray invites), `forbid_application_campaign_change` (no raw
+  campaign_id repoint), and split `cgm_owner_*` RLS (a member becomes `active` only via the creator's
+  `respond_to_group_invitation` — consent can't be forced). Escrow uncoupled for free crews (accept
+  activates without escrow; payout/upload/pay-escrow all guarded on `group_id`); the generic
+  `send-campaign-publish-notifications` edge fn early-returns for crew campaigns (never broadcast a
+  private campaign platform-wide). **Profit engine protected** — paid work still flows through the
+  unchanged escrow/take-rate marketplace; crews are the ambassador/organic-collab lane; paid group
+  campaigns are a documented Phase-3 data-flip. New tables `creator_groups` + `creator_group_members` +
+  `campaigns.group_id` + 5 definer functions + 4 triggers + 1 CHECK; one 1-line edge-fn guard deployed
+  (v41, verify_jwt preserved). Built brainstorm→spec(reviewed)→plan(reviewed)→subagent-driven execution;
+  **Codex second review ran 14 rounds** (every real finding fixed, 2 verified false positives pushed
+  back) **plus an independent adversarial review** that caught 3 generic-surface gaps the group-specific
+  work missed — a P1 publish-notification privacy leak + 2 P2s — all fixed + re-verified CLOSED. Final
+  Codex clean pass pending the rate-limit reset. Concept: `docs/wiki/concepts/creator-groups.md`. Spec:
   `docs/superpowers/specs/2026-07-09-creator-groups-private-campaigns-design.md`.
+- Dev tooling — Claude capability-framework audits (Skills + Subagents) — **shipped (PRs #216,
+  #219, 2026-07-07).** Applied external best-practice playbooks to DragonCandy's Claude Code
+  capability layer **audit-first** — each ending in a value×effort-ranked `/internal/findings`
+  backlog + a durable wiki analysis, and each shipping exactly one quick win. **Skills audit
+  (PR #216):** scored the 9 dev `.claude/skills/` + Donny (playbooks / tools / RAG) against
+  Anthropic's 9-category Skills playbook (`docs/wiki/analyses/claude-skills-framework-audit.md`;
+  9 findings `source='skills-audit'`) → shipped the on-demand **`careful`** safety skill (gate
+  before an edge-fn deploy / `reset --hard` / DROP-RENAME / Stripe-live / direct prod write).
+  **Subagents audit (PR #219):** factual anchor = **zero custom `.claude/agents/`**, so heavy
+  reviews (edge-fn, RLS) ran inline and polluted the main context; scored candidates against a
+  7-dimension rubric (`docs/wiki/analyses/claude-subagents-audit.md`; 5 findings
+  `source='subagents-audit'`) → shipped the **project-scoped, read-only `edge-function-reviewer`
+  subagent** (reads a fn + its `_shared/*` deps in an isolated context, returns a `PASS | ISSUES`
+  verdict against our documented deploy hazards — `verify_jwt` drift, `_shared` bundling incl. the
+  template-literal-backtick Deno break, service-role-vs-user-auth, CORS, deploy ordering — wired
+  into `careful` as the deterministic backstop; now a registered Agent type, **use before any
+  edge-fn deploy**). Both audits are docs / skill / subagent only — no schema, RLS, edge-fn, or
+  secret change; both Codex-clean. Deferred subagent backlog (each a future sub-project):
+  `rls-migration-reviewer` (overlaps the `verify-db-schema` skill), `dragoncandy-explorer`, and a
+  `verify-prod` runner. Specs:
+  `docs/superpowers/specs/2026-07-07-claude-skills-framework-audit-design.md`,
+  `docs/superpowers/specs/2026-07-07-claude-subagents-audit-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase

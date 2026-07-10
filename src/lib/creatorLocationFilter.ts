@@ -92,6 +92,83 @@ export function filterByRadius<T extends { id: string; city?: string; country?: 
   return { list, unplaceableCount };
 }
 
+/**
+ * Loose "found by searching a place" test — a substring hit on city / ZIP / country / freeform
+ * location. Used to SURFACE creators in the search results (parallel to name/skill matching); it is
+ * intentionally broad. Distance gating for these is decided separately by `isPlaceQueryMatch`.
+ */
+export function matchesLocationText(
+  creator: { city?: string; postal_code?: string; country?: string; location?: string },
+  searchTerm: string,
+): boolean {
+  const t = searchTerm.trim().toLowerCase();
+  if (!t) return false;
+  return (
+    (creator.city || '').toLowerCase().includes(t) ||
+    (creator.postal_code || '').toLowerCase().includes(t) ||
+    (creator.country || '').toLowerCase().includes(t) ||
+    (creator.location || '').toLowerCase().includes(t)
+  );
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Strict "did the user search THIS creator's specific place?" — the predicate that lets a creator
+ * ESCAPE the near-me radius. Deliberately narrower than `matchesLocationText`: a whole-word match on
+ * the structured `city`, or a real ZIP matching `postal_code`, min length 3. This prevents a broad
+ * substring — "us" (⊂ every "US" country), "art" (⊂ "Hartford") — from silently disabling the
+ * distance filter on what was really a name/skill search. Country and freeform location are excluded
+ * because they embed the country name (every US creator's location contains "United States").
+ */
+export function isPlaceQueryMatch(
+  creator: { city?: string; postal_code?: string },
+  searchTerm: string,
+): boolean {
+  const t = searchTerm.trim().toLowerCase();
+  if (t.length < 3) return false; // too short to be a specific place (e.g. "us")
+  if (detectQueryKind(t) === 'zip') {
+    return (creator.postal_code || '').startsWith(t.slice(0, 5));
+  }
+  const city = (creator.city || '').toLowerCase();
+  return city ? new RegExp(`\\b${escapeRegExp(t)}\\b`).test(city) : false;
+}
+
+/**
+ * The near-me distance filter, with a search-aware escape. A creator matched by a specific place
+ * query (`isPlaceQueryMatch` — whole-word city or ZIP) is kept regardless of distance — the user
+ * explicitly searched that location — while name / skill / bio matches (and broad substrings) stay
+ * within the radius so the local-creator default holds. Distances are annotated for the Nearest sort
+ * either way; under "Any" (null) nobody is dropped.
+ */
+export function filterByRadiusWithSearch<
+  T extends { id: string; city?: string; country?: string; postal_code?: string; location?: string },
+>(
+  creators: T[],
+  center: LatLng | null,
+  radiusMiles: number | null,
+  searchTerm: string,
+  geocodedById: Map<string, LatLng>,
+): { list: (T & WithDistance)[]; unplaceableCount: number } {
+  // Annotate distances without dropping anyone, then decide inclusion per creator.
+  const annotated = filterByRadius(creators, center, null, geocodedById).list;
+  if (!center || radiusMiles == null) {
+    return { list: annotated, unplaceableCount: 0 };
+  }
+  let unplaceableCount = 0;
+  const list = annotated.filter(creator => {
+    if (isPlaceQueryMatch(creator, searchTerm)) return true; // searched this specific place → show it
+    if (creator.distanceMiles === undefined) {
+      unplaceableCount++;
+      return false;
+    }
+    return creator.distanceMiles <= radiusMiles;
+  });
+  return { list, unplaceableCount };
+}
+
 /** Ascending by distance; creators without a distance sort last. Non-mutating. */
 export function sortNearest<T extends WithDistance>(list: T[]): T[] {
   return [...list].sort((a, b) => (a.distanceMiles ?? Infinity) - (b.distanceMiles ?? Infinity));
