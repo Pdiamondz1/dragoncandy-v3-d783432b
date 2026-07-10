@@ -867,7 +867,33 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   back) **plus an independent adversarial review** that caught 3 generic-surface gaps the group-specific
   work missed — a P1 publish-notification privacy leak + 2 P2s — all fixed + re-verified CLOSED. Final
   Codex clean pass pending the rate-limit reset. Concept: `docs/wiki/concepts/creator-groups.md`. Spec:
-  `docs/superpowers/specs/2026-07-09-creator-groups-private-campaigns-design.md`.
+  `docs/superpowers/specs/2026-07-09-creator-groups-private-campaigns-design.md`. (v1 merged as PR #226.)
+- Crews Phase 2 — Crew Activity & Team Notifications — **built (branch `feat/crews-phase2-activity`,
+  2026-07-10; schema + edge fns live on prod, frontend deploys on merge).** Turns crews into a
+  **team engagement layer**: a private per-crew **activity feed** + role-aware **notification fan-out**
+  over the campaign lifecycle. New `crew_activity` event log written ONLY through a **forge-proof**
+  SECURITY DEFINER RPC `record_crew_activity(campaign, event, collaboration?)` — a per-event authz
+  matrix on `auth.uid()`, server-derived participant/visibility/metadata, no-op off the crew path.
+  **Asymmetric RLS** (the privacy keystone, independently proven): owner sees the whole feed; a creator
+  sees crew-wide announcements + **only their own** business-visibility rows (creator B never sees
+  creator A's application/hire/content events). **Notification de-dup:** since `create-notification`
+  always bells, the pure map fires exactly ONE genuinely-new payload — `content_submitted → owner`
+  (nobody was notified before when a crew creator submits for review); every other event is row-only.
+  That email sends by default (pinned to category **`campaigns`**, not `content`) via a new
+  `crew_content_submitted` template. **Idempotency converged over a 10-round Codex loop** into three
+  server-side layers: a **cycle anchor** `campaign_collaborations.content_submitted_at` (stamped by a
+  narrow trigger only on the transition into `submitted` — the table's `handle_updated_at` is a verified
+  no-op, so client `updated_at` is untrustworthy) that allows resubmit-after-revision but drops replays;
+  **one-shot** dedup for campaign_posted/application_received/hired/completed; and a
+  `pg_advisory_xact_lock` making each check-and-insert **atomic** (no concurrent double-email).
+  `completed` is state-gated on `status='completed'` (blocks a premature forge). Two feed surfaces
+  (business crew-detail + creator marketplace strip) + 6 best-effort instrumented lifecycle sites. 11
+  additive migrations (crew_activity table + RPC evolution + the content_submitted_at column/trigger),
+  all applied to prod; `create-notification` (v33, **verify_jwt=true** preserved) + `send-notification-email`
+  (v240, verify_jwt=false) redeployed. Built subagent-driven; **Codex second review clean after 10 rounds**
+  + an **independent adversarial review** (privacy invariant proven, ship-ready). Concept:
+  `docs/wiki/concepts/creator-groups.md` (Phase 2 section). Spec:
+  `docs/superpowers/specs/2026-07-10-crews-phase2-activity-design.md`.
 - Dev tooling — Claude capability-framework audits (Skills + Subagents) — **shipped (PRs #216,
   #219, 2026-07-07).** Applied external best-practice playbooks to DragonCandy's Claude Code
   capability layer **audit-first** — each ending in a value×effort-ranked `/internal/findings`

@@ -1023,3 +1023,23 @@ session source. Pages updated: index.md (Concepts + Sources), DATABASE_SCHEMA (n
 + functions), PROJECT_CONTEXT (workstream bullet). Codex ran 10 rounds (all real findings fixed, 2
 false positives pushed back); final clean pass pending the Codex rate-limit reset. RAG sync is
 post-merge (post-merge hook on the main ff).
+
+## [2026-07-10] update | Crews Phase 2 — Crew Activity & Team Notifications
+Extended [[Creator Groups (Crews)]] with the Phase 2 team-engagement layer (branch
+`feat/crews-phase2-activity`). New `crew_activity` event log written only through the forge-proof
+SECURITY DEFINER `record_crew_activity` RPC (per-event authz matrix, server-derived metadata),
+with asymmetric RLS (owner sees all; creator sees crew announcements + only their own
+business-visibility rows — creator B never sees creator A's events; independently proven). One
+genuinely-new notification (`content_submitted → owner`, category `campaigns` so the email sends by
+default, `crew_content_submitted` template); every other event is row-only to avoid double-belling.
+Idempotency converged over a 10-round Codex loop into three server-side layers: a cycle anchor
+`campaign_collaborations.content_submitted_at` (trigger stamps only on the transition into `submitted`;
+the table's `handle_updated_at` is a no-op so client `updated_at` is untrustworthy — allows
+resubmit-after-revision, drops replays), one-shot dedup for campaign_posted/application_received/hired/
+completed, and a `pg_advisory_xact_lock` making check-and-insert atomic. `completed` is state-gated on
+`status='completed'`. Durable gotchas: `create-notification` is verify_jwt=TRUE on prod (redeploy
+without `--no-verify-jwt`); category `content` defaults email off (use `campaigns` for high-signal);
+`handle_updated_at` is a no-op. Pages updated: [[Creator Groups (Crews)]] (Phase 2 section),
+DATABASE_SCHEMA (`crew_activity` + RPC + `content_submitted_at`), PROJECT_CONTEXT (Phase 2 workstream
+bullet) + raw session source. Codex clean after 10 rounds + independent adversarial review (ship-ready).
+RAG sync is post-merge (post-merge hook on the main ff).
