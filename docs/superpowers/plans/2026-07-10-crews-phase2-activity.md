@@ -172,8 +172,12 @@ BEGIN
         WHERE id = p_collaboration_id AND campaign_id = p_campaign_id;
       IF v_participant IS NULL THEN RAISE EXCEPTION 'collaboration not on campaign'; END IF;
     ELSE
-      SELECT creator_id INTO v_participant FROM campaign_collaborations
-        WHERE campaign_id = p_campaign_id;   -- errors if >1 row (too many rows) — correct: forbid ambiguity
+      -- STRICT is required to actually raise on ambiguity: plain SELECT INTO silently takes the first
+      -- (unordered) row; INTO STRICT raises NO_DATA_FOUND (0) / TOO_MANY_ROWS (>1). v1 single-winner
+      -- guarantees exactly one row, so this succeeds; a Phase-3 multi-hire correctly RAISEs (forbid
+      -- ambiguity — the caller must pass p_collaboration_id).
+      SELECT creator_id INTO STRICT v_participant FROM campaign_collaborations
+        WHERE campaign_id = p_campaign_id;
     END IF;
   ELSE
     RAISE EXCEPTION 'unknown event_type %', p_event_type;
