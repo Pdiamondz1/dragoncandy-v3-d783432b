@@ -196,7 +196,7 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
   };
 
   const content = (
-    <div className="space-y-4 overflow-y-auto max-h-[70vh]">
+    <div className="space-y-4 overflow-y-auto max-h-[70svh]">
       {/* Hero media preview */}
       {displayUrl && (
         <div className="w-full aspect-square rounded-xl overflow-hidden bg-gray-100 max-w-[200px] mx-auto lg:max-w-[240px]">
@@ -402,7 +402,7 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="rounded-t-2xl pb-8">
+        <SheetContent side="bottom" className="rounded-t-2xl pb-[max(2rem,env(safe-area-inset-bottom))]">
           <SheetHeader className="pb-3">
             <SheetTitle className="text-sm font-bold text-gray-900">Manage Post</SheetTitle>
           </SheetHeader>

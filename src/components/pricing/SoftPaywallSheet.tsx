@@ -48,7 +48,7 @@ export function SoftPaywallSheet({ featureKey, open, onClose }: SoftPaywallSheet
 
   return (
     <Sheet open={open} onOpenChange={handleDismiss}>
-      <SheetContent side="bottom" className="rounded-t-2xl">
+      <SheetContent side="bottom" className="rounded-t-2xl pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <SheetHeader>
           <SheetTitle>{feature?.label} is part of {requiredTier}</SheetTitle>
         </SheetHeader>

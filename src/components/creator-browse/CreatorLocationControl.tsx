@@ -121,7 +121,7 @@ export const CreatorLocationControl: React.FC<CreatorLocationControlProps> = (pr
     return (
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>{trigger}</SheetTrigger>
-        <SheetContent side="bottom" className="rounded-t-2xl">
+        <SheetContent side="bottom" className="rounded-t-2xl pb-[max(1.5rem,env(safe-area-inset-bottom))]">
           <SheetHeader>
             <SheetTitle>Location</SheetTitle>
           </SheetHeader>

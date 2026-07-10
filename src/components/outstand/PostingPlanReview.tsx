@@ -471,7 +471,7 @@ function PostingPlanReviewInner({
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] flex flex-col p-4">
+        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85svh] flex flex-col p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <SheetHeader className="pb-2 flex-shrink-0">
             <SheetTitle className="text-sm font-bold text-dc-text">Donny's Posting Plan</SheetTitle>
           </SheetHeader>

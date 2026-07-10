@@ -215,7 +215,7 @@ function SponsorshipAmplificationPromptInner({
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="rounded-t-2xl pb-8">
+        <SheetContent side="bottom" className="rounded-t-2xl pb-[max(2rem,env(safe-area-inset-bottom))]">
           <SheetHeader>
             <SheetTitle className="text-sm font-bold text-gray-900">Amplify Sponsored Content</SheetTitle>
           </SheetHeader>

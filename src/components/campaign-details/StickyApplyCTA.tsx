@@ -22,7 +22,7 @@ export function StickyApplyCTA({
   const canReapply = hasApplied && applicationStatus === 'rejected';
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-t border-gray-200 px-5 py-3 pb-6">
+    <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-t border-gray-200 px-5 py-3 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <div className="md:max-w-2xl md:mx-auto">
         {canApply && (
           <button
