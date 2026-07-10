@@ -519,7 +519,7 @@ const handler = async (req: Request): Promise<Response> => {
       // (business name / campaign title do NOT flow through), so the copy stays
       // generic and relies only on the server-resolved recipient name (esc.rn).
       new_crew_campaign: {
-        subject: `🐉 New campaign for your crew`,
+        subject: `🐉 ${esc.businessName || 'A business'} posted a new crew campaign`,
         html: `
           <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
@@ -528,7 +528,7 @@ const handler = async (req: Request): Promise<Response> => {
             <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
               <p style="font-size: 16px; color: #374151;">Hi ${esc.rn},</p>
               <p style="font-size: 16px; color: #374151; line-height: 1.6;">
-                A business in one of your crews just posted a new campaign — and your crew gets first look.
+                ${esc.businessName || 'A business'} in one of your crews just posted a new campaign${esc.campaignTitle ? ' — "' + esc.campaignTitle + '"' : ''}, and your crew gets first look.
               </p>
               <div style="background: #ECFDF5; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;">
                 <p style="margin: 0; color: #065F46; font-weight: 600;">✨ You're on the shortlist</p>

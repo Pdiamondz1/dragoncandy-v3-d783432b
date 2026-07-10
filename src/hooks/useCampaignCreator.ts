@@ -483,6 +483,7 @@ export function useCampaignCreator() {
                 actorName,
                 icon: 'campaign',
                 data: { campaign_id: data.id, group_id: groupId },
+                emailData: { campaignTitle: editedCampaign?.title ?? 'a new campaign', businessName: actorName },
               },
             }).catch((err: unknown) => console.error('Failed to send crew campaign notification:', err));
           }
