@@ -59,6 +59,15 @@ active members, who one-tap apply with no payment (free `fixed_price=0`). See
 > `enforce_campaign_group_ownership` (`BEFORE INSERT OR UPDATE OF group_id`) forbids targeting a crew
 > the campaign owner doesn't own. Single-winner uses the existing `enforce_single_slot_campaign`, which
 > reads `(ai_analysis->>'creator_count')` — there is **no top-level `campaigns.creator_count` column**.
+>
+> **More DB-enforced crew invariants:** `campaigns_group_free` CHECK (`group_id IS NULL OR
+> COALESCE(fixed_price,0)=0` — crew campaigns are always free); `reject_group_campaign_invitation`
+> (`BEFORE INSERT` on `campaign_invitations` — no invite for a crew campaign; members-only);
+> `forbid_application_campaign_change` (`BEFORE UPDATE` on `campaign_applications` — `campaign_id` can't
+> change, closing a raw-UPDATE injection); `cgm_owner_insert`/`cgm_owner_update` RLS restrict owner
+> writes to `invited`/`removed` (activation is creator-only via `respond_to_group_invitation`). The
+> generic `send-campaign-publish-notifications` edge fn early-returns for group campaigns (a private
+> crew campaign is never broadcast platform-wide).
 
 ## Payments & Promotions
 

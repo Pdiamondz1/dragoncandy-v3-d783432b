@@ -69,6 +69,28 @@ only for `escrow_status='none'`, and **every escrow-checkout entry point is guar
 no-op in `initiateCheckout`, plus UI-level hides). Paid group campaigns are a documented Phase-3
 data-flip (set `fixed_price>0`), not a rewrite — every seam already branches on `fixed_price=0`.
 
+## Backend guardrails (DB-enforced invariants)
+
+Review (Codex 14 rounds + an independent adversarial pass) hardened the invariants at the DB, not
+just the UI — because a crew campaign also flows through *generic* campaign surfaces:
+
+- `enforce_campaign_group_ownership` (trigger, `BEFORE INSERT OR UPDATE OF group_id`) — a campaign's
+  `group_id` must reference a crew owned by `campaigns.user_id` (no cross-owner targeting).
+- `campaigns_group_free` (CHECK) — `group_id IS NULL OR COALESCE(fixed_price,0)=0` (a crew campaign
+  is always free; can't become a stuck "paid-looking" private campaign).
+- `reject_group_campaign_invitation` (trigger, `BEFORE INSERT` on `campaign_invitations`) — no regular
+  campaign-invite may be created for a crew campaign (crew is members-only; fires for service-role too).
+- `forbid_application_campaign_change` (trigger, `BEFORE UPDATE` on `campaign_applications`) — an
+  application's `campaign_id` can't be changed (closes a raw-UPDATE injection onto a crew campaign that
+  bypassed the members-only INSERT gate; the UPDATE policy had `WITH CHECK = NULL`).
+- `cgm_owner_insert`/`cgm_owner_update` (RLS) — owner writes are restricted to `status='invited'`
+  (insert) / `invited|removed` (update); a member becomes `active` ONLY via `respond_to_group_invitation`
+  (consent can't be forced).
+- **Publish-notification leak:** `send-campaign-publish-notifications` (the generic "announce to the
+  whole creator/brand base" edge fn) is group-blind by default — it now early-returns for group
+  campaigns, and `useCampaignMutations` skips the invoke when `group_id` is set. Without this, publishing
+  a crew campaign via the draft→edit→publish path emailed every creator its title+id.
+
 ## Known Issues / gotchas
 
 - **Verify columns against prod, not migration files.** `campaigns.creator_count` is in a migration
