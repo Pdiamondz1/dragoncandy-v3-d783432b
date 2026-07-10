@@ -46,9 +46,10 @@ interface CalendarTabProps {
   sponsorshipEvents?: SponsorshipEvent[];
   initialDate?: Date;
   onPostClick?: (post: Post) => void;
+  onSchedule?: () => void;
 }
 
-export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onChanged, onSwitchTab, campaignDeadlines = [], sponsorshipEvents = [], initialDate, onPostClick }) => {
+export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onChanged, onSwitchTab, campaignDeadlines = [], sponsorshipEvents = [], initialDate, onPostClick, onSchedule }) => {
   const { apiKey, baseUrl } = useOutstandConfig();
   const api = useOutstandApi({ apiKey, baseUrl });
   const qc = useQueryClient();
@@ -295,7 +296,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
           anchorDate={currentDate}
           onJumpToDate={(d) => { setCurrentDate(d); setSelectedDay(d); }}
           onTodayClick={goToToday}
-          onScheduleClick={() => onSwitchTab?.('compose')}
+          onScheduleClick={onSchedule ?? (() => onSwitchTab?.('compose'))}
           hasContentOn={hasContentOn}
           variant={isMobile ? 'mobile' : 'desktop'}
           emptyState={
