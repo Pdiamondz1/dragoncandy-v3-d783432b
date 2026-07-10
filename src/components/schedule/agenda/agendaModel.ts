@@ -1,4 +1,6 @@
-export type AgendaItemKind = 'post' | 'deadline';
+import type { SponsorshipEvent } from '@/components/outstand/SponsorshipMarker';
+
+export type AgendaItemKind = 'post' | 'deadline' | 'sponsorship';
 
 export interface AgendaItem {
   id: string;
@@ -9,6 +11,7 @@ export interface AgendaItem {
   contentType?: string;
   status?: string;
   onClick?: () => void;
+  sponsorship?: SponsorshipEvent;
 }
 
 export interface AgendaDay {

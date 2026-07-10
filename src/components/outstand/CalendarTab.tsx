@@ -17,7 +17,7 @@ import { DonnyWeeklyPlanner } from './DonnyWeeklyPlanner';
 import { RescheduleConfirmDialog } from './RescheduleConfirmDialog';
 import { AgendaView } from '@/components/schedule/agenda/AgendaView';
 import { groupByDay, startOfDay, type AgendaItem } from '@/components/schedule/agenda/agendaModel';
-import { outstandPostToAgendaItem, deadlineToAgendaItem } from '@/components/schedule/agenda/agendaAdapters';
+import { outstandPostToAgendaItem, deadlineToAgendaItem, sponsorshipToAgendaItem } from '@/components/schedule/agenda/agendaAdapters';
 
 type CalendarView = 'agenda' | 'day' | 'week' | 'month';
 
@@ -174,8 +174,9 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
       })
       .filter((x): x is AgendaItem => x !== null);
     const deadlineItems = campaignDeadlines.map(deadlineToAgendaItem);
-    return [...postItems, ...deadlineItems];
-  }, [filteredPosts, campaignDeadlines, handlePostClick]);
+    const sponsorshipItems = sponsorshipEvents.map(sponsorshipToAgendaItem);
+    return [...postItems, ...deadlineItems, ...sponsorshipItems];
+  }, [filteredPosts, campaignDeadlines, sponsorshipEvents, handlePostClick]);
 
   const agendaDays = useMemo(
     () => groupByDay(agendaItems, { from: startOfDay(currentDate) }),
@@ -185,8 +186,9 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
   const hasContentOn = useCallback(
     (day: Date) =>
       postsForDay(filteredPosts, day).length > 0 ||
-      campaignDeadlines.some((d) => isSameDay(d.deadline, day)),
-    [filteredPosts, campaignDeadlines],
+      campaignDeadlines.some((d) => isSameDay(d.deadline, day)) ||
+      sponsorshipEvents.some((s) => isSameDay(s.date, day)),
+    [filteredPosts, campaignDeadlines, sponsorshipEvents],
   );
 
   const headerLabel = view === 'day'

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Post } from '@outstand-so/ui';
-import { outstandPostToAgendaItem, deadlineToAgendaItem } from './agendaAdapters';
+import { outstandPostToAgendaItem, deadlineToAgendaItem, sponsorshipToAgendaItem } from './agendaAdapters';
 
 const makePost = (over: Partial<Post> = {}): Post =>
   ({
@@ -44,5 +44,15 @@ describe('deadlineToAgendaItem', () => {
     expect(item.kind).toBe('deadline');
     expect(item.title).toBe('Café Symphony');
     expect(item.id).toBe('deadline-d1');
+  });
+});
+
+describe('sponsorshipToAgendaItem', () => {
+  it('maps a sponsorship event', () => {
+    const item = sponsorshipToAgendaItem({ id: 's1', date: new Date(2026, 6, 12), title: 'Nike Amplify', type: 'amplification' });
+    expect(item.kind).toBe('sponsorship');
+    expect(item.id).toBe('sponsorship-s1');
+    expect(item.title).toBe('Nike Amplify');
+    expect(item.sponsorship?.type).toBe('amplification');
   });
 });

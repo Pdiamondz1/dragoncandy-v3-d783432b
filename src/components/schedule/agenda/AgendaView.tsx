@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AgendaDay, AgendaItem, relativeDayLabel, contentTypeEmoji } from './agendaModel';
 import { MonthJumpControl } from './MonthJumpControl';
+import { SponsorshipMarkerDetail } from '@/components/outstand/SponsorshipMarker';
 
 export interface AgendaViewProps {
   days: AgendaDay[];
@@ -30,6 +31,9 @@ function AgendaItemRow({ item }: { item: AgendaItem }) {
         <p className="text-sm font-semibold text-dc-text truncate">{item.title}</p>
       </div>
     );
+  }
+  if (item.kind === 'sponsorship' && item.sponsorship) {
+    return <SponsorshipMarkerDetail event={item.sponsorship} />;
   }
   const time = formatTime(item.date);
   const platform = item.platform ? item.platform.charAt(0).toUpperCase() + item.platform.slice(1) : '';

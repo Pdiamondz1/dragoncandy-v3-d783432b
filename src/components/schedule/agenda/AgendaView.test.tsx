@@ -63,6 +63,15 @@ describe('AgendaView', () => {
     expect(screen.getByText('Café Symphony')).toBeInTheDocument();
   });
 
+  it('renders a sponsorship row', () => {
+    const sDays = [{
+      dateKey: '2026-6-12', date: new Date(2026, 6, 12),
+      items: [{ id: 'sponsorship-s1', date: new Date(2026, 6, 12).toISOString(), kind: 'sponsorship' as const, title: 'Nike Amplify', sponsorship: { id: 's1', date: new Date(2026, 6, 12), title: 'Nike Amplify', type: 'amplification' as const } }],
+    }];
+    render(<AgendaView days={sDays} today={new Date(2026, 6, 10)} anchorDate={new Date(2026, 6, 10)} />);
+    expect(screen.getByText('Nike Amplify')).toBeInTheDocument();
+  });
+
   it('shows the empty state when there are no days', () => {
     render(
       <AgendaView
