@@ -4,6 +4,7 @@ import type { Post } from '@outstand-so/ui';
 import { useOutstandApi } from '@outstand-so/ui';
 import { useOutstandConfig } from '@/integrations/outstand/Provider';
 import { useQueryClient } from '@tanstack/react-query';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { DayGrid } from './calendar/DayGrid';
 import { WeekGrid } from './calendar/WeekGrid';
@@ -51,6 +52,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
   const { apiKey, baseUrl } = useOutstandConfig();
   const api = useOutstandApi({ apiKey, baseUrl });
   const qc = useQueryClient();
+  const isMobile = useIsMobile();
 
   const [view, setView] = useState<CalendarView>('agenda');
   const [currentDate, setCurrentDate] = useState(() => initialDate ?? new Date());
@@ -295,7 +297,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
           onTodayClick={goToToday}
           onScheduleClick={() => onSwitchTab?.('compose')}
           hasContentOn={hasContentOn}
-          variant="desktop"
+          variant={isMobile ? 'mobile' : 'desktop'}
           emptyState={
             <div className="text-center py-14">
               <p className="text-sm text-dc-text-muted mb-3">Nothing scheduled yet.</p>
