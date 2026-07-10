@@ -35,7 +35,7 @@
 | `src/lib/crews/recordCrewActivity.ts` | Create | Thin wrapper: call RPC → payloads via the pure map → fire `create-notification` |
 | `src/hooks/useCreateApplication.ts` | Modify | +`recordCrewActivity(campaignId,'application_received')` on success |
 | `src/hooks/useManageApplication.ts` | Modify | +`'hired'` on accept |
-| `src/hooks/useProjectComplete.ts` | Modify | +`'completed'` on completion, +`'paid'` on payout-success |
+| `src/hooks/useProjectComplete.ts` | Modify | +`'completed'` on completion (no `paid` — free crews) |
 | `<content submit/approve/revision hook>` | Modify | +`'content_submitted'`/`'content_approved'`/`'revision_requested'` (site located in Task 0) |
 | `src/hooks/useCampaignCreator.ts` | Modify | +`'campaign_posted'` on crew launch (reuse existing group_campaign_posted bell — see Task 0/§5) |
 | `src/hooks/useCrewActivity.ts` | Create | Business: crew activity for a groupId (paginated) |
@@ -102,7 +102,9 @@ CREATE TABLE public.crew_activity (
   participant_id uuid REFERENCES public.profiles(id),
   event_type text NOT NULL CHECK (event_type IN
     ('campaign_posted','application_received','hired','content_submitted',
-     'content_approved','revision_requested','completed','paid')),
+     'content_approved','revision_requested','completed')),
+  -- NOTE (Task 0): 'paid' is DROPPED — crew campaigns are free (no escrow/payout), so no
+  -- payment event ever occurs. It returns only with Phase-3 paid crews.
   visibility text NOT NULL CHECK (visibility IN ('business','crew')),
   metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now()
@@ -149,7 +151,6 @@ DECLARE
   v_uid uuid := auth.uid();
   v_participant uuid;
   v_visibility text;
-  v_amount numeric;
   v_actor_name text;
   v_creator_name text;
   v_row_id uuid;
@@ -174,7 +175,7 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM campaign_collaborations WHERE campaign_id = p_campaign_id AND creator_id = v_uid)
        THEN RAISE EXCEPTION 'unauthorized'; END IF;
     v_visibility := 'business'; v_participant := v_uid;
-  ELSIF p_event_type IN ('hired','content_approved','revision_requested','completed','paid') THEN
+  ELSIF p_event_type IN ('hired','content_approved','revision_requested','completed') THEN
     IF v_campaign.user_id <> v_uid THEN RAISE EXCEPTION 'unauthorized'; END IF;   -- owner only
     v_visibility := 'business';
     -- Participant from the EXPLICIT collaboration (validated to belong to this campaign).
@@ -201,25 +202,20 @@ BEGIN
     SELECT COALESCE(cp.creator_name, p.full_name) INTO v_creator_name
       FROM profiles p LEFT JOIN creator_profiles cp ON cp.user_id = p.id WHERE p.id = v_participant;
   END IF;
-  IF p_event_type = 'paid' THEN
-    SELECT amount INTO v_amount FROM payment_events
-      WHERE campaign_id = p_campaign_id AND event_type ILIKE '%payout%'
-      ORDER BY created_at DESC LIMIT 1;   -- adjust column/type per payment_events (Task 0)
-  END IF;
+  -- (No amount: crew campaigns are free — 'paid' is not an event. See Task 0.)
 
   INSERT INTO crew_activity (group_id, campaign_id, actor_id, participant_id, event_type, visibility, metadata)
   VALUES (v_campaign.group_id, p_campaign_id, v_uid, v_participant, p_event_type, v_visibility,
           jsonb_strip_nulls(jsonb_build_object(
             'campaign_title', v_campaign.title,
-            'creator_name', v_creator_name,
-            'amount', v_amount)))
+            'creator_name', v_creator_name)))
   RETURNING id INTO v_row_id;
 
   RETURN jsonb_build_object(
     'id', v_row_id, 'group_id', v_campaign.group_id, 'owner_id', v_campaign.user_id,
     'participant_id', v_participant, 'event_type', p_event_type,
     'campaign_id', p_campaign_id, 'campaign_title', v_campaign.title,
-    'creator_name', v_creator_name, 'amount', v_amount);
+    'creator_name', v_creator_name);
 END;
 $$;
 
@@ -247,13 +243,14 @@ The RPC returns *facts*; this pure module maps `(event_type, facts)` → the `cr
 
 **Consequence (verified in Task 0):** the standard high-signal emails are already mapped
 (`application_received`→`new_application`, accept→`application_accepted`, `project_completed`), so for
-`application_received` / `hired` / `completed` / `paid` the owner + participant are already belled+emailed
-→ the pure map returns **`[]` (row only)**. The map fires a payload only where Task 0 finds a real gap
-(e.g. `content_submitted` to the owner IF the standard path doesn't already notify them). The only
+`application_received` / `hired` / `completed` the owner + participant are already belled+emailed
+→ the pure map returns **`[]` (row only)**. Task 0 confirmed exactly one gap: **`content_submitted` →
+the owner is NOT notified today**, so the pure map fires one payload to `owner_id` (category `content`,
+email off by default). (`paid` is dropped — free crews have no payment.) The only
 genuinely-new **email** mapping is the crew-specific `group_campaign_posted` (Task 8) — a mapping, not a
 map payload. So in v1 the pure map is mostly `[]`; recordCrewActivity's main job is **writing the row**.
 
-- [ ] **Step 1: Write failing tests** using the Task-0-verified overlap: `hired`/`completed`/`paid`/`application_received` → **`[]`** (already belled by the standard path); `content_submitted` → the Task-0 result (`[{recipientId: owner_id, type, category:'content'}]` if the owner isn't already notified, else `[]`); `campaign_posted` → `[]` (v1 bell already sent; email via the Task-8 mapping). Assert **no payload ever targets a recipient other than owner_id or participant_id** (no cross-creator leak) and **no payload duplicates a recipient the standard path already bells**.
+- [ ] **Step 1: Write failing tests** using the Task-0-verified overlap: `hired`/`completed`/`application_received` → **`[]`** (already belled by the standard path); **`content_submitted` → `[{recipientId: owner_id, type:'content_submitted', category:'content'}]`** (Task 0 confirmed the owner is NOT notified today — the one real gap); `campaign_posted` → `[]` (v1 bell already sent; email via the Task-8 mapping). No `paid` (dropped — crews are free). Assert **no payload ever targets a recipient other than owner_id or participant_id** (no cross-creator leak) and **no payload duplicates a recipient the standard path already bells**.
 - [ ] **Step 2:** Run → FAIL.
 - [ ] **Step 3: Implement** `crewActivityNotifications(facts): NotificationPayload[]` — a switch over `event_type` returning only the genuinely-new payloads per the Task-0 table. Pure, no I/O.
 - [ ] **Step 4:** Run → PASS.
@@ -282,8 +279,8 @@ map payload. So in v1 the pure map is mostly `[]`; recordCrewActivity's main job
 - [ ] For each site, after the existing success/notification logic, add one call gated only by the RPC's own `group_id` no-op:
   - `useCreateApplication` onSuccess → `recordCrewActivity(campaignId, 'application_received')` (participant = caller; no collab id).
   - `useManageApplication` accept path → `recordCrewActivity(campaignId, 'hired', collaborationId)` — pass the just-created collaboration id (owner-emitted participant event).
-  - content submit → `recordCrewActivity(campaignId, 'content_submitted')` (participant = caller); approve → `('content_approved', collaborationId)`; revision → `('revision_requested', collaborationId)` (owner-emitted → pass collab id).
-  - `useProjectComplete` completion → `('completed', collaborationId)`; payout-success branch → `('paid', collaborationId)` (it already has `collaborationId`).
+  - **`src/components/campaigns/SubmitForReviewButton.tsx`** (Task-0-located site) submit → `recordCrewActivity(campaignId, 'content_submitted')` (participant = caller). **`src/components/campaigns/ContentReviewSection.tsx`** approve → `('content_approved', collaborationId)`; revision → `('revision_requested', collaborationId)` (owner-emitted → pass collab id).
+  - `useProjectComplete` completion → `('completed', collaborationId)`. **No `paid`** (dropped — free crews have no payout; `useProjectComplete` skips `release-creator-payout` for crews).
   - `useCampaignCreator` crew launch (already fires `group_campaign_posted`) → `recordCrewActivity(campaignId, 'campaign_posted')` (writes the row; the pure map returns no new bell — email via the Task-8 mapping).
 - [ ] Build + typecheck clean. Commit (can be one commit or per-site).
 
@@ -303,7 +300,7 @@ map payload. So in v1 the pure map is mostly `[]`; recordCrewActivity's main job
 
 **Files:** Create `src/components/groups/CrewActivityFeed.tsx`; Modify `CreatorGroupDetailPage.tsx`, `CreatorCampaignMarketplace.tsx`
 
-- [ ] **CrewActivityFeed** — renders a list of activity rows: an icon per `event_type`, a one-line summary built from `metadata` (`{creator_name} was hired for {campaign_title}`, `New content submitted for {campaign_title}`, `{campaign_title} paid`, etc.), relative time, and a link to the campaign/proposals. Loading/empty/error. Pure presentational (takes `items`).
+- [ ] **CrewActivityFeed** — renders a list of activity rows: an icon per `event_type`, a one-line summary built from `metadata` (`{creator_name} was hired for {campaign_title}`, `New content submitted for {campaign_title}`, `{campaign_title} completed`, etc.), relative time, and a link to the campaign/proposals. Loading/empty/error. Pure presentational (takes `items`).
 - [ ] **Business — `CreatorGroupDetailPage`:** add an "Activity" tab/section using `useCrewActivity(id)` → `CrewActivityFeed`.
 - [ ] **Creator — `CreatorCampaignMarketplace` Crews tab:** add a compact activity strip using `useMyCrewActivity()` → `CrewActivityFeed` (condensed), above the crew campaigns.
 - [ ] Build/typecheck clean; `dc-*` tokens, both viewports. Commit.
@@ -336,8 +333,8 @@ are **already email-mapped**, so `application_received`/`hired`/`completed`/`pai
 
 - [ ] **Apply** Task 1 + Task 2 migrations to prod via MCP (table → RPC). Run `get_advisors(security)` — confirm the RPC is not anon-executable, `search_path` set, `crew_activity` RLS present + no anon leak. Regenerate `src/integrations/supabase/types.ts`; fix any narrow local types from Task 4.
 - [ ] **Deploy** `create-notification` + `send-notification-email` (run `edge-function-reviewer` first; preserve each `verify_jwt`; MCP `list_edge_functions` is ground truth).
-- [ ] **Forge test (SQL, rolled back):** (a) a non-owner member calling `record_crew_activity(<crew campaign>, 'paid', …)` must RAISE `unauthorized`; owner succeeds. (b) the applicant calling `'application_received'` succeeds; a different member RAISEs. (c) a non-participant member calling `'content_submitted'` RAISEs; the participant succeeds. (d) owner calling `'completed'` with a `p_collaboration_id` for a *different* campaign RAISEs `collaboration not on campaign`. Confirm no `crew_activity` row persists after rollback.
-- [ ] **Two-creator crew test (spec §11.2):** crew campaigns are **single-winner**, so only ONE member is hired. Owner posts a crew campaign → both members A,B get `campaign_posted` (bell + email) + see it; A applies → owner sees `application_received` (feed + bell/email), **B sees nothing**; hire A → A gets `hired`, B doesn't; A submits → owner sees `content_submitted`, B doesn't; complete + pay → owner + A see `completed`/`paid`, **B sees none of A's activity anywhere** (feed, bell, RLS). (Multi-hire is structurally impossible in v1; the explicit `p_collaboration_id` keying is the Phase-3 safeguard.)
+- [ ] **Forge test (SQL, rolled back):** (a) a non-owner member calling `record_crew_activity(<crew campaign>, 'completed', …)` must RAISE `unauthorized`; owner succeeds. (b) the applicant calling `'application_received'` succeeds; a different member RAISEs. (c) a non-participant member calling `'content_submitted'` RAISEs; the participant succeeds. (d) owner calling `'completed'` with a `p_collaboration_id` for a *different* campaign RAISEs `collaboration not on campaign`. Confirm no `crew_activity` row persists after rollback.
+- [ ] **Two-creator crew test (spec §11.2):** crew campaigns are **single-winner**, so only ONE member is hired. Owner posts a crew campaign → both members A,B get `campaign_posted` (bell + email) + see it; A applies → owner sees `application_received` (feed + bell/email), **B sees nothing**; hire A → A gets `hired`, B doesn't; A submits → owner sees `content_submitted` (feed + bell), B doesn't; complete → owner + A see `completed`, **B sees none of A's activity anywhere** (feed, bell, RLS). (Multi-hire is structurally impossible in v1; the explicit `p_collaboration_id` keying is the Phase-3 safeguard.)
 - [ ] **Non-crew regression:** a normal public/paid campaign apply→accept→complete writes **zero** `crew_activity` rows and behaves unchanged.
 
 ---
@@ -362,9 +359,8 @@ are **already email-mapped**, so `application_received`/`hired`/`completed`/`pai
 - **Idempotency:** `crew_activity` has no unique key, so an `onSuccess` retry/double-fire can write a
   duplicate row (visibility gates exposure to owner+self, so low severity). v1 accepts duplicates as a
   known gap; optionally add a partial unique index on `(campaign_id, event_type, participant_id)` for the
-  once-per-participant events (`hired`/`completed`/`paid`) if duplicates show up in testing.
-- **`paid` amount source:** the plan reads the amount from `payment_events` — Task 0 must confirm a payout
-  row actually lands there (`useProjectComplete` folds the amount into `project_completed`'s emailData,
-  which is NOT a `payment_events` row). If no such row exists, `v_amount` is null and `jsonb_strip_nulls`
-  drops it (acceptable — the `paid` feed line just omits the amount); do not fabricate it client-side.
-- **Deferred (NOT now):** crew chat; org-team fan-out (other `org_members`); digest email; realtime feed; reactions/read-receipts; global all-crews activity page.
+  once-per-participant events (`hired`/`completed`) if duplicates show up in testing.
+- **`paid` dropped (Task 0):** crew campaigns are free (`campaigns_group_free` CHECK, no escrow/payout),
+  so no payment event ever occurs — `paid` is not a crew event. The "transactions" slice of the
+  notification vision applies only to Phase-3 *paid* crews. No `payment_events` read anywhere.
+- **Deferred (NOT now):** paid-crew events (Phase 3); crew chat; org-team fan-out (other `org_members`); digest email; realtime feed; reactions/read-receipts; global all-crews activity page.
