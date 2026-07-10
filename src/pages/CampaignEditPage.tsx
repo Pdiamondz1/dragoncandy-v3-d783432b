@@ -334,23 +334,30 @@ const CampaignEditPage: React.FC = () => {
           {/* ── Section 3: Compensation & Terms ──────────────────────────── */}
           <EditorSection title="Compensation & Terms" defaultOpen>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Campaign Price</label>
-              <div className="relative max-w-xs">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dc-teal font-bold">$</span>
-                <input
-                  type="number"
-                  value={formData.fixed_price}
-                  onChange={(e) => handleInputChange('fixed_price', e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-lg font-semibold outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
-                  min={50}
-                  step={25}
-                />
+            {campaign?.group_id ? (
+              <div className="rounded-xl bg-teal-50 border border-teal-200 px-3 py-2 max-w-xs">
+                <p className="text-sm font-semibold text-dc-teal">Free crew collab</p>
+                <p className="text-xs text-dc-text-muted">Only this crew sees it — no payment.</p>
               </div>
-              {parseFloat(formData.fixed_price) > 0 && parseFloat(formData.fixed_price) < 50 && (
-                <p className="text-sm text-red-500">Minimum campaign price is $50</p>
-              )}
-            </div>
+            ) : (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Campaign Price</label>
+                <div className="relative max-w-xs">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dc-teal font-bold">$</span>
+                  <input
+                    type="number"
+                    value={formData.fixed_price}
+                    onChange={(e) => handleInputChange('fixed_price', e.target.value)}
+                    className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-lg font-semibold outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
+                    min={50}
+                    step={25}
+                  />
+                </div>
+                {parseFloat(formData.fixed_price) > 0 && parseFloat(formData.fixed_price) < 50 && (
+                  <p className="text-sm text-red-500">Minimum campaign price is $50</p>
+                )}
+              </div>
+            )}
 
             <CostBreakdown
               deliverableCount={deliverableCount}

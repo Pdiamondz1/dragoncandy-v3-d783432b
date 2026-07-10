@@ -183,6 +183,15 @@ export const useCampaignEditForm = (campaign: Campaign | undefined) => {
         },
       };
 
+      // A private crew campaign (group_id set) must stay free — the campaigns_group_free
+      // CHECK rejects a group row with fixed_price > 0, so force the free/single-winner
+      // terms regardless of the (hidden) price field when editing/publishing a crew campaign.
+      if (campaign.group_id) {
+        updates.fixed_price = 0;
+        updates.delivery_fee = 0;
+        (updates.ai_analysis as Record<string, unknown>).creator_count = 1;
+      }
+
       await updateCampaign.mutateAsync({ id: campaign.id, updates: updates as Partial<CreateCampaignData> });
 
       if (structuredDeliverables.length > 0) {
