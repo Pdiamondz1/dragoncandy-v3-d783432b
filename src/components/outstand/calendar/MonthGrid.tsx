@@ -85,25 +85,27 @@ export const MonthGrid: React.FC<MonthGridProps> = ({ posts, year, month, onDayC
                 <span className={`text-xs font-bold ${isToday ? 'text-dc-teal' : 'text-gray-700'}`}>
                   {day.getDate()}
                 </span>
-                <div className="w-full px-1 mt-0.5 space-y-0.5">
-                  {dayPostsList.slice(0, 2).map((p) => (
-                    <div
-                      key={p.id}
-                      className={`text-[8px] leading-tight font-semibold rounded px-1 py-0.5 truncate ${chipTint(getUniqueNetworks(p)[0])}`}
-                      title={getCaption(p)}
-                    >
-                      {[shortTime(p.scheduledAt ?? p.publishedAt), getCaption(p) || 'Post'].filter(Boolean).join(' · ')}
-                    </div>
-                  ))}
-                  {dayPostsList.length > 2 && (
-                    <div className="text-[8px] text-gray-400 font-semibold">+{dayPostsList.length - 2} more</div>
-                  )}
-                  {deadlinesOnDay.length > 0 && (
-                    <div className="text-[8px] font-semibold rounded px-1 py-0.5 truncate bg-dc-pink/10 text-dc-pink-accent">
-                      ⚑ {deadlinesOnDay[0].title}
-                    </div>
-                  )}
-                </div>
+                {(dayPostsList.length > 0 || deadlinesOnDay.length > 0) && (
+                  <div className="w-full px-1 mt-0.5 space-y-0.5">
+                    {dayPostsList.slice(0, 2).map((p) => (
+                      <div
+                        key={p.id}
+                        className={`text-[8px] leading-tight font-semibold rounded px-1 py-0.5 truncate ${chipTint(getUniqueNetworks(p)[0])}`}
+                        title={getCaption(p)}
+                      >
+                        {[shortTime(p.scheduledAt ?? p.publishedAt), getCaption(p) || 'Post'].filter(Boolean).join(' · ')}
+                      </div>
+                    ))}
+                    {dayPostsList.length > 2 && (
+                      <div className="text-[8px] text-gray-400 font-semibold">+{dayPostsList.length - 2} more</div>
+                    )}
+                    {deadlinesOnDay.length > 0 && (
+                      <div className="text-[8px] font-semibold rounded px-1 py-0.5 truncate bg-dc-pink/10 text-dc-pink-accent">
+                        ⚑ {deadlinesOnDay[0].title}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {sponsorshipsOnDay.length > 0 && (
                   <div className="flex gap-0.5 mt-0.5 flex-wrap justify-center">
                     {sponsorshipsOnDay.map((s) => (
