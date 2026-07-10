@@ -20,6 +20,7 @@ type NotificationType =
   | 'content_liked'
   | 'new_campaign_for_brands'
   | 'new_campaign_for_creators'
+  | 'new_crew_campaign'
   | 'file_uploaded_by_creator'
   | 'file_uploaded_by_restaurant'
   | 'completion_request'
@@ -509,6 +510,31 @@ const handler = async (req: Request): Promise<Response> => {
               ${data.budget ? `<div style="background: #ECFDF5; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;"><p style="margin: 0; color: #065F46; font-weight: 600;">💰 Budget: $${data.budget}</p></div>` : ''}
               ${data.platforms && data.platforms.length > 0 ? `<div style="margin: 20px 0;"><p style="font-weight: 600; color: #374151; margin-bottom: 8px;">📱 Platforms:</p><p style="color: #6B7280; font-size: 14px;">${data.platforms.join(', ')}</p></div>` : ''}
               <p style="text-align: center; margin-top: 40px;"><a href="${baseUrl}/dashboard/creator/campaigns" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">View Campaign & Apply</a></p>
+            </div>
+          </div>
+        `,
+      },
+      // Crew-specific: a business posted a new campaign to a creator's crew. The
+      // create-notification caller carries only { campaign_id, group_id } in data
+      // (business name / campaign title do NOT flow through), so the copy stays
+      // generic and relies only on the server-resolved recipient name (esc.rn).
+      new_crew_campaign: {
+        subject: `🐉 New campaign for your crew`,
+        html: `
+          <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">🐉 New Crew Campaign!</h1>
+            </div>
+            <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
+              <p style="font-size: 16px; color: #374151;">Hi ${esc.rn},</p>
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;">
+                A business in one of your crews just posted a new campaign — and your crew gets first look.
+              </p>
+              <div style="background: #ECFDF5; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;">
+                <p style="margin: 0; color: #065F46; font-weight: 600;">✨ You're on the shortlist</p>
+                <p style="margin: 8px 0 0 0; color: #065F46; font-size: 14px;">Crew campaigns are shared with your crew before anyone else. Take a look and apply while the spots are open.</p>
+              </div>
+              <p style="text-align: center; margin-top: 40px;"><a href="${baseUrl}/dashboard/creator/campaigns?crews=1" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">View Crew Campaigns</a></p>
             </div>
           </div>
         `,

@@ -8,6 +8,7 @@ export type NotificationType =
   | 'invitation_declined'
   | 'campaign_published'
   | 'campaign_cancelled'
+  | 'group_campaign_posted'
   | 'revision_requested'
   | 'cgc_submission_received'
   | 'cgc_code_redeemed'
@@ -113,6 +114,11 @@ export const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Partial<Record<NotificationType, s
   invitation_declined: 'campaign_invitation_declined',
   campaign_published: 'campaign_published',
   campaign_cancelled: 'campaign_cancelled',
+  // Crew-specific (Crews v1 fires this bell-only to active crew members when a
+  // crew campaign is posted). Mapping it adds email for CREW campaigns only —
+  // no shared/standard type is remapped. Keep in sync with
+  // supabase/functions/create-notification/index.ts.
+  group_campaign_posted: 'new_crew_campaign',
   revision_requested: 'revision_requested',
   message_received: 'new_message',
   sponsorship_proposal: 'sponsorship_proposal',
