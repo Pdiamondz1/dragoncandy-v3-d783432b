@@ -19,11 +19,15 @@ export default function CampaignCreator() {
   const isMobile = useIsMobile();
   const { completeMission } = useFirstRunMissions();
   const {
-    screen, isExtracting, extractionMessages, campaignIdeas, selectedIdeaId,
+    screen, inputMode, inputValue, isExtracting, extractionMessages, campaignIdeas, selectedIdeaId,
     editedCampaign, brandFields, userRole, isAuthenticated, isLaunching,
     submitInput, selectIdea, regenerateIdeas, updateField, updateBrandField,
     launchCampaign, saveDraft, setInspirationRefs, groupId, setGroupId,
   } = useCampaignCreator();
+
+  // Text-mode briefs (the Donny-chat handoff) bypass the input box; seed it so
+  // the brief is visible while generating and retryable if the run fails.
+  const briefPrefill = inputMode === 'text' && inputValue ? inputValue : undefined;
 
   const handleInspirationChange = (refs: InspirationRef[]) => {
     setInspirationRefs(refs);
@@ -62,6 +66,7 @@ export default function CampaignCreator() {
               onSubmit={submitInput}
               isExtracting={isExtracting}
               extractionMessages={extractionMessages}
+              prefillValue={briefPrefill}
               onInspirationChange={handleInspirationChange}
               onInspirationScrolled={handleInspirationScrolled}
             />
@@ -77,6 +82,7 @@ export default function CampaignCreator() {
             onSubmit={submitInput}
             isExtracting={isExtracting}
             extractionMessages={extractionMessages}
+            prefillValue={briefPrefill}
             onInspirationChange={handleInspirationChange}
             onInspirationScrolled={handleInspirationScrolled}
           />

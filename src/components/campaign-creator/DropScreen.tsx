@@ -11,18 +11,21 @@ interface DropScreenProps {
   onSubmit: (value: string, mode: 'url' | 'photo' | 'text') => void;
   isExtracting: boolean;
   extractionMessages: string[];
+  /** Seeds the input when generation was started without typing (e.g. the
+   * Donny-chat `?brief=` handoff) so a failed run is retryable in one tap. */
+  prefillValue?: string;
   onInspirationChange?: (refs: InspirationRef[]) => void;
   onInspirationScrolled?: () => void;
 }
 
-export function DropScreen({ onSubmit, isExtracting, extractionMessages, onInspirationChange, onInspirationScrolled }: DropScreenProps) {
+export function DropScreen({ onSubmit, isExtracting, extractionMessages, prefillValue, onInspirationChange, onInspirationScrolled }: DropScreenProps) {
   const [externalValue, setExternalValue] = useState<string | undefined>(undefined);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] px-4">
       <DonnyGreeting isExtracting={isExtracting} />
       <div className="w-full max-w-md">
-        <SmartInput onSubmit={onSubmit} isExtracting={isExtracting} externalValue={externalValue} />
+        <SmartInput onSubmit={onSubmit} isExtracting={isExtracting} externalValue={externalValue ?? prefillValue} />
         <SamplePromptCarousel onSelect={setExternalValue} disabled={isExtracting} />
         <ExtractionFeed messages={extractionMessages} isExtracting={isExtracting} />
         <TemplateStrip />

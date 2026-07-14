@@ -65,6 +65,20 @@ function ideaToEditableCampaign(idea: CampaignIdea): EditableCampaign {
   };
 }
 
+/**
+ * Human-readable detail for a failed generation. A supabase-js
+ * `FunctionsFetchError` means the fetch itself died before a response —
+ * mobile browsers drop long requests when the tab is backgrounded — so the
+ * raw "Failed to send a request to the Edge Function" is misleading jargon.
+ */
+export function describeGenerationError(err: unknown): string {
+  const e = err as { name?: string; message?: string; context?: { error?: string } };
+  if (e?.name === 'FunctionsFetchError') {
+    return 'The connection dropped mid-generation — tap Generate to try again.';
+  }
+  return e?.context?.error ?? e?.message ?? 'Unknown error';
+}
+
 function detectUrlType(url: string): BusinessContext['source_type'] {
   if (url.includes('google.com/maps') || url.includes('goo.gl') || url.includes('business.google')) return 'google_business';
   if (url.includes('instagram.com')) return 'instagram';
@@ -273,9 +287,7 @@ export function useCampaignCreator() {
 
       setScreen('launchpad');
     } catch (err: unknown) {
-      const detail = (err as { context?: { error?: string } })?.context?.error
-        ?? (err as Error)?.message
-        ?? 'Unknown error';
+      const detail = describeGenerationError(err);
       console.error('Campaign extraction error:', detail, err);
       if (mode === 'url' && !manualText) {
         addMessage("I couldn't read that link. Try adding a description too — like what you serve or want to promote.");

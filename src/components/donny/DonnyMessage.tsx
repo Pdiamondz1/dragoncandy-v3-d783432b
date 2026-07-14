@@ -6,6 +6,7 @@ import { DonnyRichCard } from './DonnyRichCard';
 import { formatBubbleTime } from './donnyTime';
 import { parseAndDispatchDeepLink } from '@/features/donny/deepLinks';
 import { safeUrl } from '@/lib/safeUrl';
+import { useDonnyContext } from '@/contexts/DonnyProvider';
 import type { DonnyMessage as DonnyMessageType, DonnyAvatarState } from '@/types/donny';
 
 interface DonnyMessageProps {
@@ -16,6 +17,7 @@ interface DonnyMessageProps {
 
 export function DonnyMessage({ message, avatarState = 'idle', isLatestAssistant = false }: DonnyMessageProps) {
   const navigate = useNavigate();
+  const { close } = useDonnyContext();
   const [dismissedActions, setDismissedActions] = useState(false);
 
   if (message.role === 'tool') return null; // Tool messages are internal, not rendered
@@ -100,6 +102,10 @@ export function DonnyMessage({ message, avatarState = 'idle', isLatestAssistant 
                 type="button"
                 onClick={() => {
                   if (action.action === 'navigate' && action.url) {
+                    // On mobile the chat sheet is a fullscreen overlay — close it
+                    // so the destination page is actually visible. The desktop
+                    // panel is docked beside the content, so it stays open.
+                    if (window.matchMedia('(max-width: 767px)').matches) close();
                     navigate(action.url);
                   } else if (action.action === 'dismiss') {
                     setDismissedActions(true);
