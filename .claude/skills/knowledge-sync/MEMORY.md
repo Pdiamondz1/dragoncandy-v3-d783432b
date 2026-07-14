@@ -23,6 +23,10 @@
   persist one bookkeeping line.
 - **[rag-verify] `donny_knowledge` has no `source_id` column** — verify retrievability with
   `content ilike '%<distinctive phrase>%'`, not a source/id filter (the query errors otherwise).
+  Pick a phrase that can't straddle a markdown line-wrap (a short hyphenated/code token like
+  `fixed-probe` or `82dvh`, not a multi-word sentence) — wrapped prose false-negatives the check.
+  Also `inserted=0` in the sync log does NOT mean a new page was missed (upsert counting) — trust
+  the ilike probe, not the counters.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
