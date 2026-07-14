@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SmartInput } from './SmartInput';
 import { DonnyGreeting } from './DonnyGreeting';
 import { ExtractionFeed } from './ExtractionFeed';
@@ -20,6 +20,13 @@ interface DropScreenProps {
 
 export function DropScreen({ onSubmit, isExtracting, extractionMessages, prefillValue, onInspirationChange, onInspirationScrolled }: DropScreenProps) {
   const [externalValue, setExternalValue] = useState<string | undefined>(undefined);
+
+  // Last writer wins: a new Donny brief supersedes a previously selected
+  // carousel prompt (and vice versa via setExternalValue), so a failed
+  // handoff never retries stale carousel text.
+  useEffect(() => {
+    if (prefillValue !== undefined) setExternalValue(undefined);
+  }, [prefillValue]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] px-4">
