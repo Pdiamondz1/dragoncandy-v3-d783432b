@@ -136,7 +136,7 @@ export const InviteCreatorsSheet: React.FC<InviteCreatorsSheetProps> = ({
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent
         side="bottom"
-        className="flex max-h-[82vh] flex-col rounded-t-2xl p-0 md:ml-auto md:max-w-md"
+        className="flex max-h-[82dvh] flex-col rounded-t-2xl p-0 md:ml-auto md:max-w-md"
       >
         <SheetHeader className="border-b border-dc-teal/15 px-5 pb-4 pt-5">
           <SheetTitle className="text-left text-dc-text">Invite creators</SheetTitle>
@@ -220,8 +220,10 @@ export const InviteCreatorsSheet: React.FC<InviteCreatorsSheetProps> = ({
           )}
         </div>
 
-        {/* Sticky confirm footer with a selected-avatar peek stack */}
-        <div className="border-t border-dc-teal/15 bg-dc-card px-5 py-4">
+        {/* Sticky confirm footer with a selected-avatar peek stack.
+            pb includes the safe-area inset so the confirm button clears the iOS
+            home indicator / Safari toolbar zone (env() is 0 on desktop). */}
+        <div className="border-t border-dc-teal/15 bg-dc-card px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <div className="flex items-center gap-3">
             <div className="flex -space-x-2">
               {selectedList.slice(0, 4).map((c) => {

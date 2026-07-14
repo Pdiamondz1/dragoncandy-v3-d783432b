@@ -891,6 +891,22 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `docs/superpowers/specs/2026-07-07-claude-skills-framework-audit-design.md`,
   `docs/superpowers/specs/2026-07-07-claude-subagents-audit-design.md`.
 
+- Mobile screen-fit — fixed-position un-trap + crew invite sheet iOS fit — **built (branch
+  `worktree-DC-mobile-screenfit`, 2026-07-14; frontend-only).** Two founder iPhone reports, one
+  root-cause class. **(1) Donny/bottom nav unreachable on most pages:** `PageTransition`'s
+  `motion.div` animated `y: 6→0`, and framer-motion **stalls at `initial` on first load**
+  (LazyMotion async features) leaving `translateY(6px)` inline forever — a transform ancestor is
+  the **containing block** for every `position:fixed` descendant, so `MobileBottomNav` +
+  `DonnyMobileSheet` anchored to page-content bottom, not the viewport (the PR #224 trap,
+  verified live with a fixed-probe on prod). Fix: the route transition is **opacity-only by
+  contract** (never add x/y/scale), un-trapping all ~14 hand-rolled fixed components at once;
+  `ensureVisible`'s keyframe dropped `transform` too. Plus `useScrollDirection` now reports 'up'
+  within 80px of the container bottom so the hide-on-scroll nav reveals where users park.
+  **(2) Crew "Invite creators" sheet footer clipped behind the iOS toolbar:** the app document
+  never scrolls → Safari toolbars never collapse → `82vh` (large-viewport unit) exceeded the
+  visible height; now `82dvh` + `env(safe-area-inset-bottom)` footer padding. Codex-clean;
+  6 scroll-direction tests. Founder verifies on-device post-deploy. Concept:
+  `docs/wiki/concepts/mobile-viewport-fixed-positioning.md`.
 - Schedule / Calendar — agenda-first simplification (mobile + desktop) — **built (branch
   `worktree-DC-20`, 2026-07-10; frontend-only, no schema/edge change).** Founder feedback ("schedule
   calendar not easy to navigate in mobile… need the simplest UX workflow") → made scheduling
