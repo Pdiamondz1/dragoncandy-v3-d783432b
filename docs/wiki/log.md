@@ -1,5 +1,15 @@
 # Wiki Log
 
+## [2026-07-14] ingest | Donny mobile quick-action navigate fix
+Founder-reported "Donny chat prompts not clickable" root-caused as two stacked defects, neither a
+pointer bug: navigate quick-actions changed the route BEHIND the fullscreen mobile chat sheet
+(fixed — the sheet closes first on mobile; desktop's docked panel unchanged), and the `?brief=`
+handoff's ~1-min non-streaming `donny-campaign-generate` fetch dropped on mobile ("Failed to send a
+request to the Edge Function") while `donny_cost_ledger` proved the server finished. New source
+[[Donny Mobile Quick-Action Navigate Session]]; compounded the overlay-must-close-before-navigate
+rule into [[Donny Chat UX]]. Deferred: streaming/keepalive for `donny-campaign-generate` (the
+[[Edge Function Streaming]] pattern).
+
 ## [2026-07-07] ingest | AIOS Agent-Loop Audit (3 gaps)
 Captured the 3-gap AIOS agent-loop audit (prompted by a YouTube agent-loop video). New source
 [[AIOS Agent-Loop Audit]] + new concept [[AIOS Runtime Spend Source-of-Truth]] (the runtime-vs-dev

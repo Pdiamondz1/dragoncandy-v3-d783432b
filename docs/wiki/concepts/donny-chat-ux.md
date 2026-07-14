@@ -2,8 +2,8 @@
 title: Donny Chat UX
 type: concept
 created: 2026-06-20
-updated: 2026-06-20
-sources: [raw/sessions/2026-06-20-donny-chat-input-timestamps.md]
+updated: 2026-07-14
+sources: [raw/sessions/2026-06-20-donny-chat-input-timestamps.md, raw/sessions/2026-07-14-donny-mobile-quick-action-navigate.md]
 tags: [donny, chat, ux, frontend, design-system, shared-components]
 ---
 
@@ -70,6 +70,19 @@ message replaces it without a flicker. The transient bubble uses brand tokens (n
 and the same `DonnyAvatar` (with an `aria-label`). If the response isn't NDJSON the hook
 falls back to `response.json()` (version-skew safety). The why and the server side are in
 [[Edge Function Streaming]].
+
+## Mobile sheet must close before in-app navigation
+
+On mobile the chat is a **fullscreen** overlay (`DonnyMobileSheet`, `fixed inset-0
+z-[61]`); on desktop it's a **docked** 420px side panel. A `navigate` quick-action in
+`DonnyMessage` therefore **closes the Donny overlay first on mobile**
+(`max-width: 767px`, matching the sheet's `md:hidden` breakpoint) — otherwise the route
+changes *behind* the sheet and the button reads as dead (the founder's "prompts are not
+clickable" report, 2026-07-14). Desktop keeps the panel open, since navigation is
+visible beside it. General rule: **any fullscreen overlay must close/collapse before an
+in-app `navigate()`** — overlays, not pointer events, have repeatedly been the real
+cause of "button doesn't work" reports (see also the transform/portal gotcha on
+`ApplyConfirmation`, PR #224).
 
 ## Two different inputs in the consumer panel
 
