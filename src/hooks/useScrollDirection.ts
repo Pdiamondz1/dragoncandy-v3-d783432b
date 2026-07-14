@@ -3,6 +3,10 @@ import { useState, useEffect, useRef } from 'react';
 type ScrollDirection = 'up' | 'down';
 
 const THRESHOLD = 10;
+/* Within this many px of the container bottom, always report 'up' — otherwise the
+   bottom nav (Donny's only mobile entry point) stays hidden when the user parks at
+   the end of a page, since the last scroll gesture there is always 'down'. */
+const BOTTOM_REVEAL_PX = 80;
 
 export function useScrollDirection(elementId = 'main-content'): ScrollDirection {
   const [direction, setDirection] = useState<ScrollDirection>('up');
@@ -23,7 +27,13 @@ export function useScrollDirection(elementId = 'main-content'): ScrollDirection 
         const currentScrollTop = el.scrollTop;
         const diff = currentScrollTop - prevScrollTop.current;
 
-        if (diff > THRESHOLD) {
+        const atBottom =
+          el.scrollHeight > el.clientHeight &&
+          currentScrollTop + el.clientHeight >= el.scrollHeight - BOTTOM_REVEAL_PX;
+
+        if (atBottom) {
+          setDirection('up');
+        } else if (diff > THRESHOLD) {
           setDirection('down');
         } else if (diff < -THRESHOLD) {
           setDirection('up');
