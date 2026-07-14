@@ -45,8 +45,12 @@ When the tab wakes, the next poll finds the finished row.
 ### What does NOT change
 
 - The **sync path** (no `async` flag) is byte-identical — old frontend bundles during
-  the deploy-skew window, donny-chat's `generate_campaign` tool, and the legacy
-  Chrome-extension format all keep working.
+  the deploy-skew window, donny-chat's `generate_campaign` tool (unchanged; note its
+  service-role bearer plausibly matches neither auth branch today — pre-existing,
+  out of scope), and the legacy Chrome-extension format.
+- **Async is session-JWT-only.** An OAuth-authenticated caller
+  (`validateDonnyToken` path) has no `auth.uid()` and could never poll the row, so
+  `async: true` from an OAuth caller falls through to the sync path.
 - The generation pipeline, prompts, model routing, cost ledger, and usage increments
   are unchanged (they move inside the background task on the async path only).
 - `verify_jwt = false` (config.toml; confirm against prod `list_edge_functions` at
@@ -78,24 +82,46 @@ create policy "Users read own generation jobs"
 
 - FK → `profiles(id)`: consumer feature (Donny OAuth users are consumer users with
   profiles). The `auth.users` FK rule is AIOS/internal-only tables.
-- Retention: on each async start the function deletes the caller's jobs older than
-  7 days (poor-man's cleanup — no new cron; rows are small).
+- `request` is a **debugging/support artifact** (what did the user ask for when a job
+  failed) — nothing consumes it at runtime; no resume feature.
+- `updated_at` has **no trigger**; the service-role writer sets it explicitly on every
+  UPDATE (this project's `handle_updated_at` triggers are known-unreliable).
+- Retention: after each async run the function deletes the caller's jobs older than
+  7 days — **fire-and-forget** (a delete failure never blocks anything). Partial by
+  design: dormant users' rows persist until their next async start.
 
 ### Edge function changes (`donny-campaign-generate/index.ts`, new-format branch only)
 
 - `if (body.async === true && isNewFormat)`: insert row → `EdgeRuntime.waitUntil(run())`
   → respond `{ job_id }`. If `EdgeRuntime.waitUntil` is unavailable (old runtime), fall
   back to firing the promise unawaited and log a warning.
-- The background `run()` wraps the existing new-format pipeline verbatim; progress
-  strings: `Reading your link…` (URL fetch), `Analyzing your business…`,
-  `Generating campaign ideas…`. Errors write a truncated safe message.
-- Rate-limit and validation failures happen **before** job creation and return the
-  same responses as today.
+- The background `run()` wraps the existing new-format pipeline verbatim (extracted
+  into a shared `runNewFormatGeneration` used by both paths); progress strings:
+  `Reading your link…` (URL fetch), `Generating campaign ideas…`. Errors write a
+  truncated safe message. The task is **fully self-catching** — `scheduleBackground`
+  also attaches a final `.catch`, so an unhandled rejection inside `waitUntil` is
+  impossible.
+- **Stuck-`processing` failure mode:** if the isolate dies mid-task (deploy, crash —
+  `waitUntil` does not survive those), the row stays `processing` forever. The
+  client's 3-minute poll timeout is the recovery path, and the 7-day cleanup removes
+  the row later. The Pro-plan 400s wall clock still bounds the background task —
+  ample for a ~60s generation. The no-`waitUntil` fallback (unawaited promise) is
+  best-effort only and degrades to this same recovery path.
+- Rate-limiting happens **before** job creation (unchanged position). Validation
+  splits: a request with no `source_url`/`photo_url`/`manual_text` at all gets the
+  same sync 400 before any job is created; the narrow "URL fetch succeeded but
+  extracted nothing and there was no other input" edge becomes a job `error` —
+  an accepted minor behavior change on the async path only.
 
-### Client changes (`useCampaignCreator.submitInput`)
+### Client changes (`useCampaignCreator`)
 
-- Send `async: true`. If the response contains `job_id` → poll. If it contains
-  `business_context` (old fn version — skew window) → use it directly as today.
+- A shared `generateViaAsyncJob(request, onProgress)` helper is used by **both**
+  `submitInput` and `regenerateIdeas` (regeneration is the same 40–60s call with the
+  same mobile-drop exposure). It sends `async: true`; a `job_id` response → poll; a
+  full-payload response (old fn version — skew window) → used directly as today.
+- While here: `describeGenerationError` also maps a 429 `FunctionsHttpError` to the
+  friendly rate-limit copy — `functions.invoke` exposes bodies only on 2xx, so the
+  old `data?.error === 'rate_limited'` branch could never fire on a real 429.
 - New pure, unit-tested `src/lib/campaignGenerationJob.ts`:
   `pollCampaignJob(fetchRow, {intervalMs, timeoutMs, onProgress})` — injectable fetch
   + timers, resilient to per-poll errors, resolves the terminal row or throws

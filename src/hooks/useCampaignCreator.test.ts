@@ -27,4 +27,30 @@ describe('describeGenerationError', () => {
     expect(describeGenerationError(undefined)).toBe('Unknown error');
     expect(describeGenerationError('weird')).toBe('Unknown error');
   });
+
+  it('maps a 429 FunctionsHttpError to rate-limit copy (invoke hides non-2xx bodies)', () => {
+    const err = Object.assign(new Error('Edge Function returned a non-2xx status code'), {
+      name: 'FunctionsHttpError',
+      context: { status: 429 },
+    });
+    expect(describeGenerationError(err)).toBe(
+      "You're generating too fast — give it a minute, then try again.",
+    );
+  });
+
+  it('maps an async-job timeout to patient retry copy', () => {
+    const err = Object.assign(new Error('Campaign generation timed out'), {
+      name: 'CampaignJobTimeoutError',
+    });
+    expect(describeGenerationError(err)).toBe(
+      'This is taking longer than usual — try again in a minute.',
+    );
+  });
+
+  it('passes through the server message from a failed job', () => {
+    const err = Object.assign(new Error('Anthropic 529: overloaded'), {
+      name: 'CampaignJobFailedError',
+    });
+    expect(describeGenerationError(err)).toBe('Anthropic 529: overloaded');
+  });
 });

@@ -12,6 +12,31 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
 
+/** New-format input error that maps to a 400 on the sync path. */
+class ValidationError extends Error {}
+
+/**
+ * Schedule work to continue after the response is sent. Supabase's edge
+ * runtime exposes EdgeRuntime.waitUntil for background tasks; if it's ever
+ * absent, fall back to an unawaited promise (best effort) and log it.
+ */
+function scheduleBackground(task: Promise<unknown>): void {
+  // The task must never surface an unhandled rejection — if it dies without
+  // writing a terminal status, the row stays 'processing' and the client's
+  // poll timeout is the recovery path.
+  const safe = task.catch((err) => console.error("[campaign-generate] background task crashed:", err));
+  const runtime = (globalThis as {
+    EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void };
+  }).EdgeRuntime;
+  if (runtime?.waitUntil) {
+    runtime.waitUntil(safe);
+  } else {
+    // Unreliable by design — the isolate may terminate right after the
+    // response. Degrades to the stuck-'processing' + client-timeout path.
+    console.warn("[campaign-generate] EdgeRuntime.waitUntil unavailable — background task may not complete");
+  }
+}
+
 interface FetchedContent {
   title: string;
   description: string;
@@ -225,6 +250,86 @@ Generate 3 diverse campaign ideas based on this business.`;
   };
 }
 
+interface NewFormatBody {
+  source_url?: string;
+  source_type: string;
+  photo_url?: string;
+  manual_text?: string;
+  role?: string | null;
+  inspiration_refs?: Array<{ content_label: string; creator_name: string; media_type: string; media_url: string }>;
+  connected_platforms?: Array<{ platform: string; platform_handle: string | null }>;
+}
+
+/**
+ * The new-format ("Donny-First") generation pipeline, shared verbatim by the
+ * sync response path and the async job path. `onPhase` reports progress on the
+ * async path and is a no-op on the sync path.
+ */
+async function runNewFormatGeneration(
+  // deno-lint-ignore no-explicit-any
+  supabaseAdmin: any,
+  userId: string,
+  body: NewFormatBody,
+  onPhase?: (progress: string) => Promise<void> | void,
+): Promise<Record<string, unknown>> {
+  const { source_url, source_type, photo_url, manual_text, role, inspiration_refs, connected_platforms } = body;
+
+  const contentParts: string[] = [];
+  let urlExtracted = false;
+
+  if (source_url) {
+    await onPhase?.("Reading your link…");
+    try {
+      const extracted = await fetchAndExtract(source_url);
+      if (extracted.title || extracted.description || extracted.bodyText) {
+        contentParts.push(`Title: ${extracted.title}\nDescription: ${extracted.description}\nContent: ${extracted.bodyText}`);
+        urlExtracted = true;
+      }
+    } catch {
+      contentParts.push(`Source URL (could not read): ${source_url}`);
+    }
+  }
+
+  if (source_type === 'photo' && photo_url) {
+    contentParts.push(`[Photo uploaded: ${photo_url}]`);
+  }
+
+  if (manual_text) {
+    contentParts.push(manual_text);
+  }
+
+  const pageContent = contentParts.join('\n\n');
+
+  if (!pageContent.trim()) {
+    throw new ValidationError("Please provide a link, photo, or description");
+  }
+
+  let inspirationContext = '';
+  if (inspiration_refs?.length) {
+    const lines = inspiration_refs.map(
+      (ref) => `- ${ref.content_label} by @${ref.creator_name} (${ref.media_type}): ${ref.media_url}`
+    );
+    inspirationContext = `\n\nStyle references the user selected:\n${lines.join('\n')}\n\nGenerate campaign ideas that match these content styles and formats.`;
+  }
+
+  await onPhase?.("Generating campaign ideas…");
+  const usageStage = await getUserUsageStage(supabaseAdmin, userId);
+  const modelConfig = getModelConfig("donny-campaign-generate", usageStage);
+  const { result: ideasResponse, usage } = await generateCampaignIdeas(pageContent + inspirationContext, source_type, role ?? null, modelConfig, connected_platforms);
+
+  await logCost(supabaseAdmin, {
+    userId,
+    edgeFunction: "donny-campaign-generate",
+    model: modelConfig.model,
+    tier: modelConfig.tier,
+    inputTokens: usage.input_tokens,
+    outputTokens: usage.output_tokens,
+  });
+  await incrementUsage(supabaseAdmin, userId, modelConfig.actionCost);
+
+  return { ...ideasResponse, _meta: { url_extracted: urlExtracted } };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders(req) });
@@ -246,9 +351,11 @@ serve(async (req) => {
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     let userId: string;
+    let authViaSessionJwt = false;
     const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
     if (user && !authError) {
       userId = user.id;
+      authViaSessionJwt = true;
     } else {
       const oauthResult = await validateDonnyToken(req);
       if (!oauthResult) {
@@ -281,66 +388,84 @@ serve(async (req) => {
     const isNewFormat = 'source_type' in body;
 
     if (isNewFormat) {
-      const { source_url, source_type, photo_url, manual_text, role, inspiration_refs, connected_platforms } = body;
+      const newBody = body as NewFormatBody & { async?: boolean };
 
-      const contentParts: string[] = [];
-      let urlExtracted = false;
-
-      if (source_url) {
-        try {
-          const extracted = await fetchAndExtract(source_url);
-          if (extracted.title || extracted.description || extracted.bodyText) {
-            contentParts.push(`Title: ${extracted.title}\nDescription: ${extracted.description}\nContent: ${extracted.bodyText}`);
-            urlExtracted = true;
-          }
-        } catch {
-          contentParts.push(`Source URL (could not read): ${source_url}`);
+      // Async job path: create the row, keep working after the response, and
+      // return the job id immediately. The client polls its own row, which
+      // survives mobile connection drops / tab backgrounding (the old single
+      // ~60s fetch did not — see spec 2026-07-14-campaign-generate-async-jobs).
+      // Session-JWT callers only: an OAuth caller has no auth.uid() and could
+      // never read the job row, so it falls through to the sync path.
+      if (newBody.async === true && authViaSessionJwt) {
+        // Cheap pre-validation so an obviously empty request never creates a job.
+        if (!newBody.source_url && !(newBody.source_type === 'photo' && newBody.photo_url) && !newBody.manual_text) {
+          return new Response(
+            JSON.stringify({ success: false, error: "Please provide a link, photo, or description" }),
+            { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
+          );
         }
+
+        const { async: _async, ...requestForRow } = newBody;
+        const { data: job, error: jobError } = await supabaseAdmin
+          .from("campaign_generation_jobs")
+          .insert({ user_id: userId, status: "processing", progress: "Starting…", request: requestForRow })
+          .select("id")
+          .single();
+        if (jobError || !job) {
+          console.error("[campaign-generate] job insert failed:", jobError);
+          throw new Error("Could not start generation job");
+        }
+        const jobId = job.id as string;
+
+        const updateJob = (fields: Record<string, unknown>) =>
+          supabaseAdmin
+            .from("campaign_generation_jobs")
+            .update({ ...fields, updated_at: new Date().toISOString() })
+            .eq("id", jobId);
+
+        scheduleBackground((async () => {
+          try {
+            const payload = await runNewFormatGeneration(supabaseAdmin, userId, requestForRow, async (progress) => {
+              await updateJob({ progress });
+            });
+            const { error: doneError } = await updateJob({ status: "done", result: payload, progress: null });
+            if (doneError) console.error("[campaign-generate] job done-write failed:", doneError);
+          } catch (err) {
+            const message = String((err as Error)?.message ?? err).slice(0, 500);
+            console.error(`[campaign-generate] job ${jobId} failed:`, message);
+            const { error: errWrite } = await updateJob({ status: "error", error: message });
+            if (errWrite) console.error("[campaign-generate] job error-write failed:", errWrite);
+          }
+          // Best-effort retention: clear this user's stale jobs (>7 days).
+          try {
+            await supabaseAdmin
+              .from("campaign_generation_jobs")
+              .delete()
+              .eq("user_id", userId)
+              .lt("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+          } catch { /* non-blocking */ }
+        })());
+
+        return new Response(JSON.stringify({ job_id: jobId }), {
+          headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+        });
       }
 
-      if (source_type === 'photo' && photo_url) {
-        contentParts.push(`[Photo uploaded: ${photo_url}]`);
+      // Sync path — behavior unchanged for existing callers.
+      try {
+        const payload = await runNewFormatGeneration(supabaseAdmin, userId, newBody);
+        return new Response(JSON.stringify(payload), {
+          headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+        });
+      } catch (err) {
+        if (err instanceof ValidationError) {
+          return new Response(
+            JSON.stringify({ success: false, error: err.message }),
+            { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
+          );
+        }
+        throw err;
       }
-
-      if (manual_text) {
-        contentParts.push(manual_text);
-      }
-
-      const pageContent = contentParts.join('\n\n');
-
-      if (!pageContent.trim()) {
-        return new Response(
-          JSON.stringify({ success: false, error: "Please provide a link, photo, or description" }),
-          { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
-        );
-      }
-
-      let inspirationContext = '';
-      if (inspiration_refs?.length) {
-        const lines = inspiration_refs.map(
-          (ref: { content_label: string; creator_name: string; media_type: string; media_url: string }) =>
-            `- ${ref.content_label} by @${ref.creator_name} (${ref.media_type}): ${ref.media_url}`
-        );
-        inspirationContext = `\n\nStyle references the user selected:\n${lines.join('\n')}\n\nGenerate campaign ideas that match these content styles and formats.`;
-      }
-
-      const usageStage = await getUserUsageStage(supabaseAdmin, userId);
-      const modelConfig = getModelConfig("donny-campaign-generate", usageStage);
-      const { result: ideasResponse, usage } = await generateCampaignIdeas(pageContent + inspirationContext, source_type, role, modelConfig, connected_platforms);
-
-      await logCost(supabaseAdmin, {
-        userId,
-        edgeFunction: "donny-campaign-generate",
-        model: modelConfig.model,
-        tier: modelConfig.tier,
-        inputTokens: usage.input_tokens,
-        outputTokens: usage.output_tokens,
-      });
-      await incrementUsage(supabaseAdmin, userId, modelConfig.actionCost);
-
-      return new Response(JSON.stringify({ ...ideasResponse, _meta: { url_extracted: urlExtracted } }), {
-        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-      });
     }
 
     // Legacy format — existing callers continue unchanged below

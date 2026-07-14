@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { mapDeliveryTierToDb } from '@/lib/campaignUtils';
 import { donnyGenerateResponseSchema, launchValidationSchema } from '@/lib/campaignCreatorValidation';
+import { pollCampaignJob, type CampaignJobRow } from '@/lib/campaignGenerationJob';
 import { saveDraftToStorage, loadDraftFromStorage, clearDraftFromStorage, generateDraftId } from '@/lib/campaignCreatorDraft';
 import type {
   BusinessContext,
@@ -72,11 +73,55 @@ function ideaToEditableCampaign(idea: CampaignIdea): EditableCampaign {
  * raw "Failed to send a request to the Edge Function" is misleading jargon.
  */
 export function describeGenerationError(err: unknown): string {
-  const e = err as { name?: string; message?: string; context?: { error?: string } };
+  const e = err as { name?: string; message?: string; context?: { error?: string; status?: number } };
   if (e?.name === 'FunctionsFetchError') {
     return 'The connection dropped mid-generation — tap Generate to try again.';
   }
+  // functions.invoke exposes the body only on 2xx, so the 429 rate-limit JSON
+  // never reaches the caller — map it here instead of showing generic copy.
+  if (e?.name === 'FunctionsHttpError' && e?.context?.status === 429) {
+    return "You're generating too fast — give it a minute, then try again.";
+  }
+  if (e?.name === 'CampaignJobTimeoutError') {
+    return 'This is taking longer than usual — try again in a minute.';
+  }
+  if (e?.name === 'CampaignJobFailedError') {
+    return e.message ?? 'Generation failed';
+  }
   return e?.context?.error ?? e?.message ?? 'Unknown error';
+}
+
+/**
+ * Runs a generation through the async-job flow: the edge function returns a
+ * `job_id` immediately and finishes server-side; we poll our own
+ * campaign_generation_jobs row, which survives connection drops and mobile
+ * tab backgrounding. If the deployed function predates async jobs (skew
+ * window) it returns the full payload synchronously — passed through as-is.
+ */
+async function generateViaAsyncJob(
+  request: DonnyGenerateRequest,
+  onProgress: (message: string) => void,
+): Promise<unknown> {
+  const { data, error } = await supabase.functions.invoke('donny-campaign-generate', {
+    body: { ...request, async: true },
+  });
+  if (error) throw error;
+
+  const jobId = (data as { job_id?: string } | null)?.job_id;
+  if (!jobId) return data;
+
+  return pollCampaignJob(
+    async () => {
+      const { data: row, error: rowError } = await supabase
+        .from('campaign_generation_jobs')
+        .select('status, progress, result, error')
+        .eq('id', jobId)
+        .maybeSingle();
+      if (rowError) throw rowError;
+      return row as CampaignJobRow | null;
+    },
+    { onProgress },
+  );
 }
 
 function detectUrlType(url: string): BusinessContext['source_type'] {
@@ -252,14 +297,11 @@ export function useCampaignCreator() {
       if (mode === 'photo') request.photo_url = value;
       if (manualText) request.manual_text = manualText;
 
-      const { data, error } = await supabase.functions.invoke('donny-campaign-generate', {
-        body: request,
-      });
+      const data = await generateViaAsyncJob(request, addMessage);
 
-      if (error) throw error;
-
-      if (data?.error === 'rate_limited') {
-        const mins = Math.ceil((data.retry_after ?? 60) / 60);
+      if ((data as { error?: string } | null)?.error === 'rate_limited') {
+        const retryAfter = (data as { retry_after?: number }).retry_after ?? 60;
+        const mins = Math.ceil(retryAfter / 60);
         addMessage(`You're generating too fast — try again in ${mins} minute${mins > 1 ? 's' : ''}.`);
         toast.error(`Rate limited — try again in ${mins} min`);
         return;
@@ -348,16 +390,16 @@ export function useCampaignCreator() {
         role: userRole,
       };
 
-      const { data, error } = await supabase.functions.invoke('donny-campaign-generate', {
-        body: request,
-      });
+      const data = await generateViaAsyncJob(
+        request,
+        (msg) => setExtractionMessages((prev) => [...prev, msg]),
+      );
 
-      if (error) throw error;
       const parsed = donnyGenerateResponseSchema.parse(data);
       setCampaignIdeas(parsed.campaign_ideas as CampaignIdea[]);
       setExtractionMessages(["Here are 3 new ideas!"]);
     } catch (err) {
-      toast.error('Failed to regenerate', { description: String(err) });
+      toast.error('Failed to regenerate', { description: describeGenerationError(err) });
     } finally {
       setIsExtracting(false);
     }
