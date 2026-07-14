@@ -1,5 +1,13 @@
 # Wiki Log
 
+## [2026-07-14] ingest | Campaign generation async jobs (mobile-drop-proof)
+Captured the async-jobs build (PR #232, follow-up to #230). New source
+[[Campaign Generate Async Jobs Session]]; compounded a "when streaming isn't enough" section
+into [[Edge Function Streaming]] — the three-way decision rule (shorten output / stream /
+job+poll) with the job+poll pattern's guardrails (session-JWT-only async, self-catching
+background task, client poll timeout as recovery, waitUntil ≠ isolate-shutdown-proof).
+Surfaced + documented the pre-existing donny-chat generate_campaign service-role 401.
+
 ## [2026-07-14] ingest | Mobile screen-fit — fixed-position trap + iOS sheet fit
 Captured the mobile screen-fit session (two founder iPhone screenshots). New source
 [[Mobile Screenfit Session]] + new concept [[Mobile Viewport & Fixed Positioning]]: the
