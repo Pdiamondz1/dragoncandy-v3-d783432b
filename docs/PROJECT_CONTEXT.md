@@ -929,6 +929,25 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `ScheduleTimeline.tsx`. Manual both-viewport `verify-prod` pending post-deploy. Concept:
   `docs/wiki/concepts/schedule-agenda-view.md`. Spec:
   `docs/superpowers/specs/2026-07-10-schedule-agenda-simplification-design.md`.
+- Donny chat → campaign builder reliability (mobile) — **shipped (PRs #230, #232,
+  2026-07-14).** Founder-reported "Donny prompts not clickable" root-caused as two stacked
+  defects, neither a pointer bug. **(#230)** navigate quick-actions changed the route BEHIND
+  the fullscreen mobile chat sheet — the sheet now closes before navigating (<768px only;
+  desktop docked panel unchanged), the failed `?brief=` generation got human retry copy, and
+  the brief seeds the builder input for one-tap retry. **(#232, the durable transport)**
+  `donny-campaign-generate` gained an **async job + own-row polling** path: `async:true`
+  (session-JWT callers only) returns `{job_id}` in <1s, the unchanged pipeline finishes via
+  `EdgeRuntime.waitUntil` into a new `campaign_generation_jobs` table (own-row SELECT RLS,
+  service-role writes, 7-day hot-path cleanup), and the client polls its own row
+  (blip-tolerant, 2.5s × 3 min) — survives the proven failure (mobile tab backgrounding
+  killed the ~60s fetch while `donny_cost_ledger` showed the server finishing; streaming was
+  rejected on the PR #151 evidence). `regenerateIdeas` shares the same path; sync path +
+  legacy callers byte-identical; skew-safe both directions. Migration + edge fn v105
+  deployed via the careful gate (founder-confirmed); spec-reviewer 10 findings folded in;
+  edge-function-reviewer + Codex clean. Surfaced (not fixed): donny-chat's
+  `generate_campaign` tool 401s pre-existing (service-role bearer matches neither auth
+  branch). Concept: `docs/wiki/concepts/edge-function-streaming.md` (job+poll section).
+  Spec: `docs/superpowers/specs/2026-07-14-campaign-generate-async-jobs-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase

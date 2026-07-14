@@ -2,9 +2,9 @@
 title: Edge Function Streaming
 type: concept
 created: 2026-06-20
-updated: 2026-06-20
-sources: [raw/sessions/2026-06-20-donny-chat-keepalive-streaming.md]
-tags: [edge-functions, supabase, streaming, donny, anthropic, performance]
+updated: 2026-07-14
+sources: [raw/sessions/2026-06-20-donny-chat-keepalive-streaming.md, raw/sessions/2026-07-14-campaign-generate-async-jobs.md]
+tags: [edge-functions, supabase, streaming, donny, anthropic, performance, async-jobs]
 ---
 
 # Edge Function Streaming
@@ -96,6 +96,24 @@ streamed-`fetch` "Load failed" on long turns). Also: `ReadableStream.cancel()` s
 the heartbeat, but Deno doesn't abort in-flight `await`s, so `runTurn` may still finish
 server-side after a client disconnect (work persists correctly); an `AbortController`
 thread-through is the deferred fix.
+
+## When streaming isn't enough: async job + own-row polling (2026-07-14)
+
+Streaming keeps the **server** side alive (idle timeout) but a streamed fetch still
+dies when a **mobile tab backgrounds** (the PR #151 "Load failed" lesson). When the
+output can't be shortened either, use the third pattern —
+**async job + own-row polling**, first applied to `donny-campaign-generate` (PR #232):
+the fn returns `{job_id}` in <1s, runs the unchanged pipeline in
+`EdgeRuntime.waitUntil` writing progress/result/error to a `campaign_generation_jobs`
+row (service-role writes, `auth.uid()=user_id` SELECT RLS), and the client polls its
+own row (2.5s × 3 min, poll errors are blips). Survives connection drops, tab
+backgrounding, even reloads. Choosing between the three: **shorten the output** if you
+can (patch-based corrections), **stream** if the client stays foregrounded (internal
+Donny on desktop), **job+poll** if the client can vanish mid-call (consumer mobile).
+Gotchas: async must be gated to session-JWT callers (an OAuth caller can't poll);
+the background task must be fully self-catching (a dead isolate leaves `processing` —
+the client poll timeout is the recovery); `EdgeRuntime.waitUntil` does not survive
+isolate shutdown and the 400s wall-clock still applies.
 
 ## See Also
 
