@@ -1,5 +1,12 @@
 # Wiki Log
 
+## [2026-07-14] update | Mobile bottom nav: hide-on-scroll deleted (always visible)
+Founder follow-up to the screen-fit session (screen recording): the nav/Donny hiding on
+scroll-down was itself the problem, not just the missing bottom reveal. Deleted the
+hide-on-scroll behavior + `useScrollDirection` (hook + tests, zero other consumers);
+[[Mobile Viewport & Fixed Positioning]] §3 rewritten (was "80px bottom-reveal floor", now
+"the bottom nav never hides"). PROJECT_CONTEXT workstream bullet amended.
+
 ## [2026-07-14] ingest | Campaign generation async jobs (mobile-drop-proof)
 Captured the async-jobs build (PR #232, follow-up to #230). New source
 [[Campaign Generate Async Jobs Session]]; compounded a "when streaming isn't enough" section

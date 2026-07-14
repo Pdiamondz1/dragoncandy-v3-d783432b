@@ -900,8 +900,9 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `DonnyMobileSheet` anchored to page-content bottom, not the viewport (the PR #224 trap,
   verified live with a fixed-probe on prod). Fix: the route transition is **opacity-only by
   contract** (never add x/y/scale), un-trapping all ~14 hand-rolled fixed components at once;
-  `ensureVisible`'s keyframe dropped `transform` too. Plus `useScrollDirection` now reports 'up'
-  within 80px of the container bottom so the hide-on-scroll nav reveals where users park.
+  `ensureVisible`'s keyframe dropped `transform` too. A same-day founder follow-up (screen
+  recording) then **deleted the hide-on-scroll behavior entirely** — the bottom nav is always
+  visible (`useScrollDirection` removed; an 80px bottom-reveal floor shipped briefly in between).
   **(2) Crew "Invite creators" sheet footer clipped behind the iOS toolbar:** the app document
   never scrolls → Safari toolbars never collapse → `82vh` (large-viewport unit) exceeded the
   visible height; now `82dvh` + `env(safe-area-inset-bottom)` footer padding. Codex-clean;
