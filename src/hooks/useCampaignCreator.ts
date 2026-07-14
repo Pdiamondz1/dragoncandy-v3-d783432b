@@ -297,15 +297,9 @@ export function useCampaignCreator() {
       if (mode === 'photo') request.photo_url = value;
       if (manualText) request.manual_text = manualText;
 
+      // A 429 rate-limit makes functions.invoke throw (bodies are only exposed
+      // on 2xx), so it surfaces via describeGenerationError's 429 mapping.
       const data = await generateViaAsyncJob(request, addMessage);
-
-      if ((data as { error?: string } | null)?.error === 'rate_limited') {
-        const retryAfter = (data as { retry_after?: number }).retry_after ?? 60;
-        const mins = Math.ceil(retryAfter / 60);
-        addMessage(`You're generating too fast — try again in ${mins} minute${mins > 1 ? 's' : ''}.`);
-        toast.error(`Rate limited — try again in ${mins} min`);
-        return;
-      }
 
       const parsed = donnyGenerateResponseSchema.parse(data);
       setBusinessContext(parsed.business_context as BusinessContext);
