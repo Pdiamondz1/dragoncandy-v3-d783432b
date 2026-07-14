@@ -58,13 +58,15 @@ toolbar-expanded state is permanent, not transient:
 Applied to the [[Creator Groups (Crews)]] "Invite creators" sheet (`82dvh` + safe-area
 footer). `DonnyMobileSheet` already used `dvh`.
 
-## 3. Hide-on-scroll navs need a bottom floor
+## 3. The bottom nav never hides
 
-`useScrollDirection` hides the bottom nav while scrolling down. At the end of a page the
-last gesture is always 'down', so the nav — Donny's only mobile entry point — stayed
-hidden exactly where users park. It now reports 'up' within 80px of the scroll-container
-bottom (gated on `scrollHeight > clientHeight`; in jsdom all heights are 0 and the gate
-keeps tests honest).
+The nav originally hid on scroll-down (`useScrollDirection`), which stranded users — at
+the end of a page the last gesture is always 'down', so the nav (Donny's only mobile
+entry point) was gone exactly where users park. PR #231 first added an 80px bottom-reveal
+floor; the founder then decided (2026-07-14, same day) the hide behavior itself was the
+problem: **the nav is now always visible** and `useScrollDirection` was deleted outright.
+If a future feature wants hide-on-scroll chrome, that's a founder-level UX decision —
+don't reintroduce it for screen-space reasons alone.
 
 ## Key Decisions
 

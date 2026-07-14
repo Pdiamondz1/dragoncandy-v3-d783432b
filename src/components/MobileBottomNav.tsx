@@ -4,7 +4,6 @@ import type { UserRole } from '@/types/user';
 import { getBottomNav } from '@/lib/navConfig';
 import { DonnyNavButton } from './donny/DonnyNavButton';
 import { DonnyMobileSheet } from './donny/DonnyMobileSheet';
-import { useScrollDirection } from '@/hooks/useScrollDirection';
 import { useTotalUnreadCount } from '@/hooks/useUnreadCounts';
 
 interface MobileBottomNavProps {
@@ -18,12 +17,13 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
   const isActive = (href: string) =>
     location.pathname === href || location.pathname.startsWith(href + '/');
 
-  const scrollDirection = useScrollDirection();
   const unreadCount = useTotalUnreadCount();
 
   return (
     <>
-      <nav aria-label="Mobile bottom" className={`fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-gray-100 pb-[env(safe-area-inset-bottom)] transition-transform duration-300 ${scrollDirection === 'down' ? 'translate-y-full' : 'translate-y-0'}`}>
+      {/* Always visible — no hide-on-scroll: the nav is Donny's only mobile entry point
+          (founder decision 2026-07-14; the old scroll-direction hide left users stranded). */}
+      <nav aria-label="Mobile bottom" className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-gray-100 pb-[env(safe-area-inset-bottom)]">
         <div className="flex items-end justify-around px-1 pt-1 pb-2">
           {items.map((item) => {
             const Icon = item.icon;
