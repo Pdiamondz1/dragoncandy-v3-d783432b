@@ -1,5 +1,16 @@
 # Wiki Log
 
+## [2026-07-14] ingest | Mobile screen-fit — fixed-position trap + iOS sheet fit
+Captured the mobile screen-fit session (two founder iPhone screenshots). New source
+[[Mobile Screenfit Session]] + new concept [[Mobile Viewport & Fixed Positioning]]: the
+containing-block trap generalized (PageTransition's transform + framer's first-load stall at
+`initial` pinned every `position:fixed` descendant to page content — nav/Donny unreachable;
+wrapper is now opacity-only BY CONTRACT), iOS `dvh`-not-`vh` + `env(safe-area-inset-bottom)`
+for bottom-anchored UI (document never scrolls → toolbars never collapse), the
+hide-on-scroll nav's 80px bottom-reveal floor, and the fixed-probe diagnostic. Cross-linked
+[[Creator Groups (Crews)]] / [[Donny Chat UX]] / [[Landing Prerendered Shell & Performance]].
+Refreshed PROJECT_CONTEXT (workstream bullet) + DESIGN_SYSTEM (bottom-anchored mobile UI rule).
+
 ## [2026-07-14] ingest | Donny mobile quick-action navigate fix
 Founder-reported "Donny chat prompts not clickable" root-caused as two stacked defects, neither a
 pointer bug: navigate quick-actions changed the route BEHIND the fullscreen mobile chat sheet

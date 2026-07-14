@@ -26,7 +26,23 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
-### [2026-07-10] Schedule agenda-first simplification (branch worktree-DC-20)
+### [2026-07-14] Mobile screen-fit — fixed-position un-trap + invite sheet iOS fit (branch worktree-DC-mobile-screenfit)
+- Output: bundled INTO the work PR — `raw/sessions/2026-07-14-mobile-screenfit-fixed-position.md`, new
+  `concepts/mobile-viewport-fixed-positioning.md`, `index.md` (Concepts + Sources), `log.md` ingest entry,
+  PROJECT_CONTEXT workstream bullet, DESIGN_SYSTEM new bottom-anchored-mobile-UI rule, + THIS entry.
+- Happened: a founder bug-report session (two iPhone screenshots) whose durable knowledge is a *generalized
+  trap*, not a feature: the PR #224 fixed-overlay incident was one victim of a class (PageTransition's
+  transform + framer's first-load `initial` stall traps ALL fixed descendants) — this session deleted the
+  trap itself (opacity-only contract) and wrote the concept page the #224 memory never got. Pre-merge off
+  origin/main (per [scope]); RAG sync + verify-knowledge post-merge via the hook.
+- Worked: [scope] + [runlog-in-pr] + [orphans]-by-path + [wikilinks]-exact (grep caught "Landing
+  **Prerendered** Shell & Performance" ≠ my guessed name). Empirical fixed-probe evidence (prod before /
+  local after) went straight into the concept page as a reusable diagnostic.
+- Failed: none.
+- Remember: when a bug recurs from a known one-off memory (here #224's portal fix), the knowledge layer
+  owes a CONCEPT page for the class, not another incident note — and the fix should target the trap, not
+  add another victim-side patch. (advisory)
+
 - Output: bundled INTO the work PR — `raw/sessions/2026-07-10-schedule-agenda-simplification.md`, new
   `concepts/schedule-agenda-view.md`, `index.md` (Concepts + Sources), `log.md` ingest entry,
   PROJECT_CONTEXT active-workstream bullet, + THIS run-log entry. No DATABASE_SCHEMA/DESIGN_SYSTEM/CLAUDE.md
