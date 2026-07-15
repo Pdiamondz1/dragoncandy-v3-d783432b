@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
+import { recordCrewActivity } from '@/lib/crews/recordCrewActivity';
 
 export const useCreateApplication = () => {
   const { user } = useAuth();
@@ -166,6 +167,9 @@ export const useCreateApplication = () => {
       } catch (error) {
         console.error('Failed to prepare notification:', error);
       }
+
+      // Crew activity (inert for non-crew campaigns via the RPC's group_id no-op).
+      void recordCrewActivity(data.campaign_id, 'application_received');
 
       // Invitation sync is handled atomically by the apply_to_campaign RPC
     },

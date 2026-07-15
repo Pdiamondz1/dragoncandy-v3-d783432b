@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { recordCrewActivity } from '@/lib/crews/recordCrewActivity';
 import { useToast } from '@/hooks/use-toast';
 import { useFileUploads } from '@/hooks/useFileQuery';
 import { useDraftPosts } from '@/hooks/useDraftPosts';
@@ -127,6 +128,8 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
         },
       }).catch((err: unknown) => console.error('Failed to send notification:', err));
 
+      // Crew activity (inert for non-crew via the RPC no-op).
+      void recordCrewActivity(campaignId, 'content_approved', collaborationId);
 
       // Trigger social hook with one retry + visible failure toast
       let socialHookOk = false;
@@ -262,6 +265,9 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
           emailData: { campaignId, campaignTitle, creatorName, message: feedback },
         },
       }).catch((err: unknown) => console.error('Failed to send notification:', err));
+
+      // Crew activity (inert for non-crew via the RPC no-op).
+      void recordCrewActivity(campaignId, 'revision_requested', collaborationId);
     },
     onError: (err: Error) => {
       toast({ variant: 'destructive', title: 'Request Failed', description: err.message });

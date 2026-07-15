@@ -2,6 +2,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { recordCrewActivity } from '@/lib/crews/recordCrewActivity';
 
 export const useManageApplication = () => {
   const queryClient = useQueryClient();
@@ -120,6 +121,15 @@ export const useManageApplication = () => {
             }
 
           }
+
+          // Crew activity for the hire (inert for non-crew via the RPC no-op). The
+          // accept RPC created the collaboration; fetch its id for the activity row.
+          const { data: newCollab } = await supabase
+            .from('campaign_collaborations')
+            .select('id')
+            .eq('application_id', data.id)
+            .maybeSingle();
+          void recordCrewActivity(data.campaign_id, 'hired', newCollab?.id ?? undefined);
         } catch (collabError) {
           console.error('Failed to accept application atomically:', collabError);
         }

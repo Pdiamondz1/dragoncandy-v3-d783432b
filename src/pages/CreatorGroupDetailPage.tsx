@@ -16,7 +16,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { InviteCreatorsSheet } from '@/components/groups/InviteCreatorsSheet';
+import { CrewActivityFeed } from '@/components/groups/CrewActivityFeed';
 import { useCreatorGroups } from '@/hooks/useCreatorGroups';
+import { useCrewActivity } from '@/hooks/useCrewActivity';
 import {
   useCreatorGroupMembers,
   type CreatorGroupMember,
@@ -140,6 +142,12 @@ const CreatorGroupDetailInner: React.FC = () => {
     inviteCreators,
     removeMember,
   } = useCreatorGroupMembers(groupId);
+
+  const {
+    activity,
+    isLoading: activityLoading,
+    isError: activityError,
+  } = useCrewActivity(groupId);
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -342,6 +350,15 @@ const CreatorGroupDetailInner: React.FC = () => {
               )}
             </>
           )}
+
+          <section className="space-y-3">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-dc-text">Activity</h2>
+            <CrewActivityFeed
+              items={activity}
+              isLoading={activityLoading}
+              isError={activityError}
+            />
+          </section>
         </div>
       </div>
 

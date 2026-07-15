@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { recordCrewActivity } from '@/lib/crews/recordCrewActivity';
 import type { Database } from '@/integrations/supabase/types';
 
 type CollaborationRow = Database['public']['Tables']['campaign_collaborations']['Row'];
@@ -56,7 +57,7 @@ export const useProjectComplete = () => {
           ...(userRole === 'content_creator' && { content_status: 'submitted' })
         })
         .eq('id', collaborationId)
-        .select('id, application_id, business_completion_status, campaign_id, completed_at, content_deadline, content_started_at, content_status, contract_details, created_at, creator_completion_status, creator_id, deliverables_status, dispute_outcome, dispute_reason, milestones, review_extended, review_status, revision_count, revision_feedback, status, submitted_at, updated_at')
+        .select('id, application_id, business_completion_status, campaign_id, completed_at, content_deadline, content_started_at, content_status, content_submitted_at, contract_details, created_at, creator_completion_status, creator_id, deliverables_status, dispute_outcome, dispute_reason, milestones, review_extended, review_status, revision_count, revision_feedback, status, submitted_at, updated_at')
         .single();
 
       if (error) throw error;
@@ -80,7 +81,7 @@ export const useProjectComplete = () => {
           })
           .eq('id', collaborationId)
           .neq('status', 'completed')
-          .select('id, application_id, business_completion_status, campaign_id, completed_at, content_deadline, content_started_at, content_status, contract_details, created_at, creator_completion_status, creator_id, deliverables_status, dispute_outcome, dispute_reason, milestones, review_extended, review_status, revision_count, revision_feedback, status, submitted_at, updated_at');
+          .select('id, application_id, business_completion_status, campaign_id, completed_at, content_deadline, content_started_at, content_status, content_submitted_at, contract_details, created_at, creator_completion_status, creator_id, deliverables_status, dispute_outcome, dispute_reason, milestones, review_extended, review_status, revision_count, revision_feedback, status, submitted_at, updated_at');
 
         if (completeError) throw completeError;
 
@@ -88,7 +89,7 @@ export const useProjectComplete = () => {
         if (!completedRows || completedRows.length === 0) {
           const { data: canonical } = await supabase
             .from('campaign_collaborations')
-            .select('id, application_id, business_completion_status, campaign_id, completed_at, content_deadline, content_started_at, content_status, contract_details, created_at, creator_completion_status, creator_id, deliverables_status, dispute_outcome, dispute_reason, milestones, review_extended, review_status, revision_count, revision_feedback, status, submitted_at, updated_at')
+            .select('id, application_id, business_completion_status, campaign_id, completed_at, content_deadline, content_started_at, content_status, content_submitted_at, contract_details, created_at, creator_completion_status, creator_id, deliverables_status, dispute_outcome, dispute_reason, milestones, review_extended, review_status, revision_count, revision_feedback, status, submitted_at, updated_at')
             .eq('id', collaborationId)
             .maybeSingle();
           return { ...(canonical as CollaborationRow), payoutSuccess: false, payoutAmount: 0 };
@@ -176,6 +177,10 @@ export const useProjectComplete = () => {
             },
           },
         }).catch((err: unknown) => console.error('Failed to send completion notification:', err));
+
+        // Crew activity — this caller won the completion race. Crews are FREE, so
+        // there is NO `paid` event. Inert for non-crew campaigns via the RPC no-op.
+        void recordCrewActivity(completedData.campaign_id, 'completed', collaborationId);
 
         // Return completed data with payout info for toast
         return { ...completedData, payoutSuccess, payoutAmount };

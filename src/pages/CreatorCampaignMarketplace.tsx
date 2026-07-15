@@ -24,7 +24,9 @@ import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 import { useSkippedCampaignIds, useSkipCampaign, useRestoreCampaign } from '@/hooks/useCampaignSkips';
 import { useCreatorPendingInvitations, useDeclineInvitation } from '@/hooks/useCampaignInvitations';
 import { useCreatorGroupInvitations } from '@/hooks/useCreatorGroupInvitations';
+import { useMyCrewActivity } from '@/hooks/useMyCrewActivity';
 import { GroupInviteCard } from '@/components/groups/GroupInviteCard';
+import { CrewActivityFeed } from '@/components/groups/CrewActivityFeed';
 import { UndoToast } from '@/components/campaigns/UndoToast';
 
 
@@ -60,6 +62,11 @@ const CreatorCampaignMarketplace = () => {
     accept: acceptCrew,
     decline: declineCrew,
   } = useCreatorGroupInvitations();
+  const {
+    activity: myCrewActivity,
+    isLoading: crewActivityLoading,
+    isError: crewActivityError,
+  } = useMyCrewActivity();
   const { completeMission } = useFirstRunMissions();
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -569,6 +576,18 @@ const CreatorCampaignMarketplace = () => {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Compact cross-crew activity strip — RLS returns only the rows this
+                creator may see across all their crews. */}
+            <div className="pt-2">
+              <h3 className="text-sm font-bold text-gray-900 mb-3 px-1">Crew activity</h3>
+              <CrewActivityFeed
+                compact
+                items={myCrewActivity}
+                isLoading={crewActivityLoading}
+                isError={crewActivityError}
+              />
             </div>
           </div>
         )}
