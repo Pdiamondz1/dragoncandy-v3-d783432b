@@ -981,6 +981,18 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `docs/wiki/concepts/edge-function-streaming.md` (job+poll section). Spec:
   `docs/superpowers/specs/2026-07-14-campaign-generate-async-jobs-design.md`.
 
+- Prod hosting → Vercel cutover — **prepped (branch `worktree-lovable-slow`, 2026-07-15;
+  founder-run cutover).** Founder pain (iPhone recording): the lovable.dev editor itself
+  crashing mobile WebKit, publish crashes, tens-of-minutes deploys. Keystone finding: the
+  QA-gate Vercel project (`dragoncandy-v3-d783432b`, team `dragon-candy-s-projects`)
+  **already runs a Production deployment on every merge to `main`** — so cutover = verify
+  env-var scopes (Production=prod Supabase, Preview=staging; the hard gate) → attach
+  `dragoncandy.io`/`www`/`internal` → flip Cloudflare DNS (gray-cloud or Full-Strict).
+  Rollback = DNS only (Lovable stays published through a stability window). Lovable is
+  retained as an optional AI-edit surface via GitHub sync; edge functions / Auth / CSP /
+  QA gate untouched. Supersedes the 2026-06-02 "Lovable stays prod host" scoping decision.
+  Runbook: `docs/runbooks/vercel-prod-cutover.md`.
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).
@@ -1104,7 +1116,8 @@ Apply to every recommendation, every prompt, every PR:
 ## 10. Stack & Resources
 
 **Frontend**: React 18 / TypeScript (strict), Vite, Tailwind CSS, shadcn/ui,
-Framer Motion, Lovable.dev (hosting/preview), GitHub.
+Framer Motion, Vercel (prod hosting + per-PR staging previews), Lovable.dev (optional
+AI-edit surface via GitHub sync; no longer the host), GitHub.
 **Backend**: Supabase (70+ tables, 80 Deno Edge Functions, RLS, realtime),
 Stripe Connect (test mode).
 **AI**: Claude Sonnet 4 + Haiku for generation (cost routing via edge

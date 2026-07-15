@@ -7,7 +7,7 @@ description: "Fast-forward the local main checkout to origin/main after a PR mer
 
 Work happens in worktrees; the local `main` checkout at `C:\GIT\dragoncandy-v3-d783432b`
 does **not** auto-update, so its files drift behind `origin/main` (can be 100+ commits).
-Lovable deploys from GitHub `origin/main`, so prod stays current even when local main is
+Vercel deploys from GitHub `origin/main`, so prod stays current even when local main is
 stale — but the files you browse locally go wrong. Run this after every merge. See
 [[project_worktree_stale_main]].
 
