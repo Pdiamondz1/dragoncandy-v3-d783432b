@@ -1,5 +1,15 @@
 # Wiki Log
 
+## [2026-07-14] update | donny-chat generate_campaign credential fix
+The pre-existing 401 surfaced in [[Campaign Generate Async Jobs Session]] is fixed (PR #234):
+donny-chat's `generate_campaign` tool now forwards the CALLER's own credential (session JWT or
+Donny OAuth — the downstream fn re-derives the user from it, no impersonation path) instead of
+the service-role bearer that matched neither auth branch; evidence it never worked = zero
+`generate_campaign` rows in `donny_tool_executions`. OAuth callers lacking `campaigns:write`
+are no longer offered the tool (Codex P2). Deployed donny-chat v136 via CLI. Durable rule:
+a Donny tool delegating to a USER-gated edge fn must forward the user's credential, never the
+service key — the service-role-≠-user-auth class from [[Anonymous Brief Generator]].
+
 ## [2026-07-14] update | Mobile bottom nav: hide-on-scroll deleted (always visible)
 Founder follow-up to the screen-fit session (screen recording): the nav/Donny hiding on
 scroll-down was itself the problem, not just the missing bottom reveal. Deleted the

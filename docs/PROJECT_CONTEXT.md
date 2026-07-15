@@ -945,10 +945,15 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   rejected on the PR #151 evidence). `regenerateIdeas` shares the same path; sync path +
   legacy callers byte-identical; skew-safe both directions. Migration + edge fn v105
   deployed via the careful gate (founder-confirmed); spec-reviewer 10 findings folded in;
-  edge-function-reviewer + Codex clean. Surfaced (not fixed): donny-chat's
-  `generate_campaign` tool 401s pre-existing (service-role bearer matches neither auth
-  branch). Concept: `docs/wiki/concepts/edge-function-streaming.md` (job+poll section).
-  Spec: `docs/superpowers/specs/2026-07-14-campaign-generate-async-jobs-design.md`.
+  edge-function-reviewer + Codex clean. The surfaced pre-existing donny-chat
+  `generate_campaign` 401 (service-role bearer matched neither auth branch — the tool had
+  NEVER executed; `donny_tool_executions` had zero rows) was then **fixed in PR #234**:
+  `executeTool` forwards the caller's own credential (session JWT or Donny OAuth; the
+  downstream fn re-derives the user, no impersonation path), the no-credential Google Chat
+  path gets a clear tool error, and OAuth callers lacking `campaigns:write` aren't offered
+  the tool (Codex P2); donny-chat v136 deployed via CLI. Concept:
+  `docs/wiki/concepts/edge-function-streaming.md` (job+poll section). Spec:
+  `docs/superpowers/specs/2026-07-14-campaign-generate-async-jobs-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
