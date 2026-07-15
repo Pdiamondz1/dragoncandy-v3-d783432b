@@ -987,6 +987,7 @@ export type Database = {
           content_deadline: string | null
           content_started_at: string | null
           content_status: string | null
+          content_submitted_at: string | null
           contract_details: Json | null
           created_at: string
           creator_completion_status: string | null
@@ -1012,6 +1013,7 @@ export type Database = {
           content_deadline?: string | null
           content_started_at?: string | null
           content_status?: string | null
+          content_submitted_at?: string | null
           contract_details?: Json | null
           created_at?: string
           creator_completion_status?: string | null
@@ -1037,6 +1039,7 @@ export type Database = {
           content_deadline?: string | null
           content_started_at?: string | null
           content_status?: string | null
+          content_submitted_at?: string | null
           contract_details?: Json | null
           created_at?: string
           creator_completion_status?: string | null
@@ -1181,7 +1184,21 @@ export type Database = {
             foreignKeyName: "campaign_generation_jobs_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_generation_jobs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_generation_jobs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2377,6 +2394,99 @@ export type Database = {
           youtube_url?: string | null
         }
         Relationships: []
+      }
+      crew_activity: {
+        Row: {
+          actor_id: string | null
+          campaign_id: string
+          created_at: string
+          event_type: string
+          group_id: string
+          id: string
+          metadata: Json
+          participant_id: string | null
+          visibility: string
+        }
+        Insert: {
+          actor_id?: string | null
+          campaign_id: string
+          created_at?: string
+          event_type: string
+          group_id: string
+          id?: string
+          metadata?: Json
+          participant_id?: string | null
+          visibility: string
+        }
+        Update: {
+          actor_id?: string | null
+          campaign_id?: string
+          created_at?: string
+          event_type?: string
+          group_id?: string
+          id?: string
+          metadata?: Json
+          participant_id?: string | null
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crew_activity_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crew_activity_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crew_activity_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crew_activity_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crew_activity_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "creator_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crew_activity_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crew_activity_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crew_activity_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       delegated_posting_permissions: {
         Row: {
@@ -6757,6 +6867,14 @@ export type Database = {
       }
       purge_stale_analytics_events: { Args: never; Returns: undefined }
       recompute_profile_rating: { Args: { p_user: string }; Returns: undefined }
+      record_crew_activity: {
+        Args: {
+          p_campaign_id: string
+          p_collaboration_id?: string
+          p_event_type: string
+        }
+        Returns: Json
+      }
       report_user: {
         Args: {
           p_conversation_id?: string
