@@ -917,6 +917,70 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `docs/superpowers/specs/2026-07-07-claude-skills-framework-audit-design.md`,
   `docs/superpowers/specs/2026-07-07-claude-subagents-audit-design.md`.
 
+- Mobile screen-fit — fixed-position un-trap + crew invite sheet iOS fit — **built (branch
+  `worktree-DC-mobile-screenfit`, 2026-07-14; frontend-only).** Two founder iPhone reports, one
+  root-cause class. **(1) Donny/bottom nav unreachable on most pages:** `PageTransition`'s
+  `motion.div` animated `y: 6→0`, and framer-motion **stalls at `initial` on first load**
+  (LazyMotion async features) leaving `translateY(6px)` inline forever — a transform ancestor is
+  the **containing block** for every `position:fixed` descendant, so `MobileBottomNav` +
+  `DonnyMobileSheet` anchored to page-content bottom, not the viewport (the PR #224 trap,
+  verified live with a fixed-probe on prod). Fix: the route transition is **opacity-only by
+  contract** (never add x/y/scale), un-trapping all ~14 hand-rolled fixed components at once;
+  `ensureVisible`'s keyframe dropped `transform` too. A same-day founder follow-up (screen
+  recording) then **deleted the hide-on-scroll behavior entirely** — the bottom nav is always
+  visible (`useScrollDirection` removed; an 80px bottom-reveal floor shipped briefly in between).
+  **(2) Crew "Invite creators" sheet footer clipped behind the iOS toolbar:** the app document
+  never scrolls → Safari toolbars never collapse → `82vh` (large-viewport unit) exceeded the
+  visible height; now `82dvh` + `env(safe-area-inset-bottom)` footer padding. Codex-clean;
+  6 scroll-direction tests. Founder verifies on-device post-deploy. Concept:
+  `docs/wiki/concepts/mobile-viewport-fixed-positioning.md`.
+- Schedule / Calendar — agenda-first simplification (mobile + desktop) — **built (branch
+  `worktree-DC-20`, 2026-07-10; frontend-only, no schema/edge change).** Founder feedback ("schedule
+  calendar not easy to navigate in mobile… need the simplest UX workflow") → made scheduling
+  **agenda-first**: mobile + desktop default to one scrolling day-by-day list of upcoming posts with a
+  single "＋ Schedule" button, an always-visible "Today", and a tap-the-month "jump to date" picker
+  (**bottom Sheet on mobile, Popover on desktop** via `useIsMobile`). Design reframe: *simplest = the
+  default path, not deleting options* — the desktop Week/Month/Day grids (drag-to-reschedule intact)
+  were kept as an **optional toggle**, and the Month grid gained readable post chips instead of
+  anonymous dots. A pure, unit-tested `AgendaItem` model + adapters
+  (`src/components/schedule/agenda/`) normalize two data sources (Outstand `Post` + campaign deadlines
+  + sponsorships) into one presentational `AgendaView`, consumed by `CalendarTab` (used by both the
+  `/calendar` page and the `OutstandManager` social tab). Also fixed the standalone `/calendar`
+  "＋ Schedule" **silent no-op** (now navigates to the composer `?tab=compose`) and the campaign
+  **Schedule Review panel** dead-end (the founder's screenshot: dropped the overlapping `ScheduleTimeline`,
+  honest conditional header, actionable empty state instead of a lone disabled button). Built
+  brainstorm→spec→plan→subagent-driven execution (8 TDD tasks, per-task review) → whole-branch Opus
+  review (fixed 44px touch targets, a hardcoded-`variant` mobile-Sheet bug, and a Month-legend↔chip
+  mismatch) → **Codex second review clean after one P2** (the agenda had dropped sponsorship events →
+  mobile parity restored by reusing `SponsorshipMarkerDetail`). 23 co-located tests; deleted the now-dead
+  `ScheduleTimeline.tsx`. Manual both-viewport `verify-prod` pending post-deploy. Concept:
+  `docs/wiki/concepts/schedule-agenda-view.md`. Spec:
+  `docs/superpowers/specs/2026-07-10-schedule-agenda-simplification-design.md`.
+- Donny chat → campaign builder reliability (mobile) — **shipped (PRs #230, #232,
+  2026-07-14).** Founder-reported "Donny prompts not clickable" root-caused as two stacked
+  defects, neither a pointer bug. **(#230)** navigate quick-actions changed the route BEHIND
+  the fullscreen mobile chat sheet — the sheet now closes before navigating (<768px only;
+  desktop docked panel unchanged), the failed `?brief=` generation got human retry copy, and
+  the brief seeds the builder input for one-tap retry. **(#232, the durable transport)**
+  `donny-campaign-generate` gained an **async job + own-row polling** path: `async:true`
+  (session-JWT callers only) returns `{job_id}` in <1s, the unchanged pipeline finishes via
+  `EdgeRuntime.waitUntil` into a new `campaign_generation_jobs` table (own-row SELECT RLS,
+  service-role writes, 7-day hot-path cleanup), and the client polls its own row
+  (blip-tolerant, 2.5s × 3 min) — survives the proven failure (mobile tab backgrounding
+  killed the ~60s fetch while `donny_cost_ledger` showed the server finishing; streaming was
+  rejected on the PR #151 evidence). `regenerateIdeas` shares the same path; sync path +
+  legacy callers byte-identical; skew-safe both directions. Migration + edge fn v105
+  deployed via the careful gate (founder-confirmed); spec-reviewer 10 findings folded in;
+  edge-function-reviewer + Codex clean. The surfaced pre-existing donny-chat
+  `generate_campaign` 401 (service-role bearer matched neither auth branch — the tool had
+  NEVER executed; `donny_tool_executions` had zero rows) was then **fixed in PR #234**:
+  `executeTool` forwards the caller's own credential (session JWT or Donny OAuth; the
+  downstream fn re-derives the user, no impersonation path), the no-credential Google Chat
+  path gets a clear tool error, and OAuth callers lacking `campaigns:write` aren't offered
+  the tool (Codex P2); donny-chat v136 deployed via CLI. Concept:
+  `docs/wiki/concepts/edge-function-streaming.md` (job+poll section). Spec:
+  `docs/superpowers/specs/2026-07-14-campaign-generate-async-jobs-design.md`.
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).

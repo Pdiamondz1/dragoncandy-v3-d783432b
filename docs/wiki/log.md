@@ -1,5 +1,51 @@
 # Wiki Log
 
+## [2026-07-14] update | donny-chat generate_campaign credential fix
+The pre-existing 401 surfaced in [[Campaign Generate Async Jobs Session]] is fixed (PR #234):
+donny-chat's `generate_campaign` tool now forwards the CALLER's own credential (session JWT or
+Donny OAuth — the downstream fn re-derives the user from it, no impersonation path) instead of
+the service-role bearer that matched neither auth branch; evidence it never worked = zero
+`generate_campaign` rows in `donny_tool_executions`. OAuth callers lacking `campaigns:write`
+are no longer offered the tool (Codex P2). Deployed donny-chat v136 via CLI. Durable rule:
+a Donny tool delegating to a USER-gated edge fn must forward the user's credential, never the
+service key — the service-role-≠-user-auth class from [[Anonymous Brief Generator]].
+
+## [2026-07-14] update | Mobile bottom nav: hide-on-scroll deleted (always visible)
+Founder follow-up to the screen-fit session (screen recording): the nav/Donny hiding on
+scroll-down was itself the problem, not just the missing bottom reveal. Deleted the
+hide-on-scroll behavior + `useScrollDirection` (hook + tests, zero other consumers);
+[[Mobile Viewport & Fixed Positioning]] §3 rewritten (was "80px bottom-reveal floor", now
+"the bottom nav never hides"). PROJECT_CONTEXT workstream bullet amended.
+
+## [2026-07-14] ingest | Campaign generation async jobs (mobile-drop-proof)
+Captured the async-jobs build (PR #232, follow-up to #230). New source
+[[Campaign Generate Async Jobs Session]]; compounded a "when streaming isn't enough" section
+into [[Edge Function Streaming]] — the three-way decision rule (shorten output / stream /
+job+poll) with the job+poll pattern's guardrails (session-JWT-only async, self-catching
+background task, client poll timeout as recovery, waitUntil ≠ isolate-shutdown-proof).
+Surfaced + documented the pre-existing donny-chat generate_campaign service-role 401.
+
+## [2026-07-14] ingest | Mobile screen-fit — fixed-position trap + iOS sheet fit
+Captured the mobile screen-fit session (two founder iPhone screenshots). New source
+[[Mobile Screenfit Session]] + new concept [[Mobile Viewport & Fixed Positioning]]: the
+containing-block trap generalized (PageTransition's transform + framer's first-load stall at
+`initial` pinned every `position:fixed` descendant to page content — nav/Donny unreachable;
+wrapper is now opacity-only BY CONTRACT), iOS `dvh`-not-`vh` + `env(safe-area-inset-bottom)`
+for bottom-anchored UI (document never scrolls → toolbars never collapse), the
+hide-on-scroll nav's 80px bottom-reveal floor, and the fixed-probe diagnostic. Cross-linked
+[[Creator Groups (Crews)]] / [[Donny Chat UX]] / [[Landing Prerendered Shell & Performance]].
+Refreshed PROJECT_CONTEXT (workstream bullet) + DESIGN_SYSTEM (bottom-anchored mobile UI rule).
+
+## [2026-07-14] ingest | Donny mobile quick-action navigate fix
+Founder-reported "Donny chat prompts not clickable" root-caused as two stacked defects, neither a
+pointer bug: navigate quick-actions changed the route BEHIND the fullscreen mobile chat sheet
+(fixed — the sheet closes first on mobile; desktop's docked panel unchanged), and the `?brief=`
+handoff's ~1-min non-streaming `donny-campaign-generate` fetch dropped on mobile ("Failed to send a
+request to the Edge Function") while `donny_cost_ledger` proved the server finished. New source
+[[Donny Mobile Quick-Action Navigate Session]]; compounded the overlay-must-close-before-navigate
+rule into [[Donny Chat UX]]. Deferred: streaming/keepalive for `donny-campaign-generate` (the
+[[Edge Function Streaming]] pattern).
+
 ## [2026-07-07] ingest | AIOS Agent-Loop Audit (3 gaps)
 Captured the 3-gap AIOS agent-loop audit (prompted by a YouTube agent-loop video). New source
 [[AIOS Agent-Loop Audit]] + new concept [[AIOS Runtime Spend Source-of-Truth]] (the runtime-vs-dev
@@ -1043,3 +1089,21 @@ without `--no-verify-jwt`); category `content` defaults email off (use `campaign
 DATABASE_SCHEMA (`crew_activity` + RPC + `content_submitted_at`), PROJECT_CONTEXT (Phase 2 workstream
 bullet) + raw session source. Codex clean after 10 rounds + independent adversarial review (ship-ready).
 RAG sync is post-merge (post-merge hook on the main ff).
+
+## [2026-07-10] ingest | Schedule / Calendar Agenda-First Simplification
+Founder feedback ("schedule calendar not easy to navigate in mobile… need the simplest UX workflow")
+→ made scheduling **agenda-first**. Mobile + desktop now default to one scrolling day-by-day list of
+upcoming posts — one "＋ Schedule" button, an always-visible "Today", and a tap-the-month "jump to
+date" picker (bottom Sheet on mobile, Popover on desktop via `useIsMobile`). Design reframe: *simplest =
+the default path, not deleting options* — so the desktop Week/Month/Day grids (drag-to-reschedule
+intact) were kept as an **optional toggle**, and the Month grid gained readable post chips instead of
+dots. A pure, unit-tested `AgendaItem` model + adapters normalize two data sources ([[Outstand]] `Post`
++ campaign deadlines + sponsorships) into one `AgendaView`. Also fixed the standalone `/calendar`
+"＋ Schedule" **silent no-op** (now navigates to the composer) and the campaign review panel's dead-end
+(the screenshot: dropped the overlapping timeline, honest conditional header, actionable empty state).
+8 TDD tasks (subagent-driven), per-task + whole-branch Opus reviews (44px touch targets, responsive
+`variant`, Month-legend gating) and **Codex-clean after one P2** (sponsorship events were dropped from
+the agenda → mobile parity restored by reusing `SponsorshipMarkerDetail`). Frontend-only — no schema /
+edge / data change. Pages created: [[Schedule Agenda View]] (concept) + the raw session source. Pages
+updated: index.md (Concepts + Sources), PROJECT_CONTEXT (workstream bullet). RAG sync + verify-knowledge
+run post-merge (the post-merge hook fires on the `main` fast-forward).

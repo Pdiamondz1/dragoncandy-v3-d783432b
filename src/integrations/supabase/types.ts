@@ -1145,6 +1145,64 @@ export type Database = {
           },
         ]
       }
+      campaign_generation_jobs: {
+        Row: {
+          created_at: string
+          error: string | null
+          id: string
+          progress: string | null
+          request: Json
+          result: Json | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          progress?: string | null
+          request: Json
+          result?: Json | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          progress?: string | null
+          request?: Json
+          result?: Json | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_generation_jobs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_generation_jobs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_generation_jobs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_invitations: {
         Row: {
           campaign_id: string

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useScheduledPosts, ScheduledPost } from '@/hooks/useScheduledPosts';
-import { ScheduleTimeline } from './ScheduleTimeline';
 import { ScheduleStatsRow } from './ScheduleStatsRow';
 import { PostCard } from './PostCard';
 import { Calendar, Sparkles } from 'lucide-react';
@@ -52,15 +51,17 @@ export function ScheduleReviewScreen({
             <Calendar className="w-4 h-4 text-dc-teal shrink-0" />
             <span className="font-semibold text-dc-text text-sm leading-snug">{campaignTitle}</span>
           </div>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-xs text-dc-text-muted">
-              {posts.length} deliverable{posts.length !== 1 ? 's' : ''}
-            </span>
-            <span className="bg-dc-teal/10 text-dc-teal text-xs font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
-              <Sparkles className="w-3 h-3" />
-              Donny Optimized
-            </span>
-          </div>
+          {posts.length > 0 && (
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs text-dc-text-muted">
+                {posts.length} post{posts.length !== 1 ? 's' : ''}
+              </span>
+              <span className="bg-dc-teal/10 text-dc-teal text-xs font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                Donny Optimized
+              </span>
+            </div>
+          )}
         </div>
 
         {isLoading && (
@@ -70,8 +71,21 @@ export function ScheduleReviewScreen({
         )}
 
         {!isLoading && posts.length === 0 && (
-          <div className="flex items-center justify-center py-12 text-sm text-dc-text-muted">
-            No scheduled posts yet.
+          <div className="text-center py-12 px-4">
+            <div className="w-14 h-14 rounded-2xl bg-dc-teal/15 flex items-center justify-center mx-auto mb-3">
+              <Calendar className="w-7 h-7 text-dc-teal" />
+            </div>
+            <p className="font-bold text-dc-text">No posts scheduled yet</p>
+            <p className="text-sm text-dc-text-muted mt-1.5 max-w-xs mx-auto">
+              Once this campaign has deliverables, Donny builds a posting schedule you can review and confirm right here.
+            </p>
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="mt-5 bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white rounded-full px-6 py-3 text-sm font-bold transition-colors"
+            >
+              Back to campaign
+            </button>
           </div>
         )}
 
@@ -82,17 +96,6 @@ export function ScheduleReviewScreen({
               crossPostCount={posts.length * connectedPlatformCount}
               spreadDays={spreadDays}
             />
-
-            <div className="mt-4">
-              <ScheduleTimeline
-                entries={posts.map(p => ({
-                  date: p.scheduled_at,
-                  contentType: p.content_type,
-                  status: p.status,
-                }))}
-                spreadWindowDays={spreadDays}
-              />
-            </div>
 
             <div className="space-y-3 mt-4">
               {posts.map((post, i) => (
@@ -109,20 +112,22 @@ export function ScheduleReviewScreen({
           </>
         )}
 
-        {/* Sticky confirm footer — always rendered so it anchors at bottom */}
-        <div className="sticky bottom-0 bg-white pt-3 pb-4 border-t border-gray-100 mt-4">
-          <button
-            type="button"
-            disabled={confirmDisabled}
-            onClick={() => onConfirm?.()}
-            className="w-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-full py-3 font-bold text-sm transition-colors"
-          >
-            Confirm &amp; Schedule All Posts
-          </button>
-          <p className="text-xs text-center text-dc-text-muted mt-1.5">
-            Posts will be queued for publishing at the scheduled times
-          </p>
-        </div>
+        {/* Sticky confirm footer — only shown when there is something to confirm */}
+        {!isLoading && posts.length > 0 && (
+          <div className="sticky bottom-0 bg-white pt-3 pb-4 border-t border-gray-100 mt-4">
+            <button
+              type="button"
+              disabled={confirmDisabled}
+              onClick={() => onConfirm?.()}
+              className="w-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-full py-3 font-bold text-sm transition-colors"
+            >
+              Confirm &amp; Schedule All Posts
+            </button>
+            <p className="text-xs text-center text-dc-text-muted mt-1.5">
+              Posts will be queued for publishing at the scheduled times
+            </p>
+          </div>
+        )}
 
         {/* editingPostId is reserved for Task 12 wiring */}
         {editingPostId && null}

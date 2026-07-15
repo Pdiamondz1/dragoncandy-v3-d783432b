@@ -23,8 +23,50 @@
   persist one bookkeeping line.
 - **[rag-verify] `donny_knowledge` has no `source_id` column** — verify retrievability with
   `content ilike '%<distinctive phrase>%'`, not a source/id filter (the query errors otherwise).
+  Pick a phrase that can't straddle a markdown line-wrap (a short hyphenated/code token like
+  `fixed-probe` or `82dvh`, not a multi-word sentence) — wrapped prose false-negatives the check.
+  Also `inserted=0` in the sync log does NOT mean a new page was missed (upsert counting) — trust
+  the ilike probe, not the counters.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-07-14] Mobile screen-fit — fixed-position un-trap + invite sheet iOS fit (branch worktree-DC-mobile-screenfit)
+- Output: bundled INTO the work PR — `raw/sessions/2026-07-14-mobile-screenfit-fixed-position.md`, new
+  `concepts/mobile-viewport-fixed-positioning.md`, `index.md` (Concepts + Sources), `log.md` ingest entry,
+  PROJECT_CONTEXT workstream bullet, DESIGN_SYSTEM new bottom-anchored-mobile-UI rule, + THIS entry.
+- Happened: a founder bug-report session (two iPhone screenshots) whose durable knowledge is a *generalized
+  trap*, not a feature: the PR #224 fixed-overlay incident was one victim of a class (PageTransition's
+  transform + framer's first-load `initial` stall traps ALL fixed descendants) — this session deleted the
+  trap itself (opacity-only contract) and wrote the concept page the #224 memory never got. Pre-merge off
+  origin/main (per [scope]); RAG sync + verify-knowledge post-merge via the hook.
+- Worked: [scope] + [runlog-in-pr] + [orphans]-by-path + [wikilinks]-exact (grep caught "Landing
+  **Prerendered** Shell & Performance" ≠ my guessed name). Empirical fixed-probe evidence (prod before /
+  local after) went straight into the concept page as a reusable diagnostic.
+- Failed: none.
+- Remember: when a bug recurs from a known one-off memory (here #224's portal fix), the knowledge layer
+  owes a CONCEPT page for the class, not another incident note — and the fix should target the trap, not
+  add another victim-side patch. (advisory)
+
+- Output: bundled INTO the work PR — `raw/sessions/2026-07-10-schedule-agenda-simplification.md`, new
+  `concepts/schedule-agenda-view.md`, `index.md` (Concepts + Sources), `log.md` ingest entry,
+  PROJECT_CONTEXT active-workstream bullet, + THIS run-log entry. No DATABASE_SCHEMA/DESIGN_SYSTEM/CLAUDE.md
+  change (frontend-only; no schema/token/workflow change).
+- Happened: first **consumer frontend UX** capture in a while (recent runs were AIOS/Dezzy). A big
+  *frontend* feature still yielded a reusable *architecture* pattern → captured the pattern (a pure
+  normalized `AgendaItem` model that lets ONE presentational view serve two unrelated data sources +
+  two host pages, with `variant` as a *behavioral* mobile/desktop switch), not "we redid the calendar".
+  Pre-merge on the work branch (off origin/main per [scope]); RAG sync + verify-knowledge are post-merge.
+- Worked: [scope] + [runlog-in-pr] + [orphans]-by-path (new concept cataloged in index.md). Grepped
+  index.md for exact wikilink display names before linking ([[Outstand]], [[Donny AI]], [[Campaign
+  Delivery, Scheduling & Notifications Session]] all confirmed). Compounded onto existing [[Outstand]]/
+  [[Donny AI]] entities rather than a thin duplicate.
+- Failed: none. (verify-knowledge close-the-loop RAG check is inherently post-merge for this pre-merge run.)
+- Remember: two reviews caught two different *plan-authored* bugs — the Opus whole-branch review found a
+  hardcoded `variant="desktop"` (my plan's "only widens max-width" comment was wrong; it actually routes
+  Sheet-vs-Popover), and Codex found the agenda dropped an existing data source (sponsorship events the old
+  DayStrip rendered). Lesson: when a redesign REPLACES a component (DayStrip→AgendaView), enumerate every
+  data source the old component consumed and confirm each survives — a "simplification" silently drops
+  inputs. (advisory)
 
 ### [2026-07-09] Creator Groups + Private Group Campaigns (branch feat/creator-groups-private-campaigns)
 - Output: bundled INTO the work branch — `raw/sessions/2026-07-09-creator-groups.md`, new

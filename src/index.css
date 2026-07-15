@@ -264,7 +264,7 @@
 /* ── Keyframes ─────────────────────────────────────────────────────────────── */
 
 @keyframes ensureVisible {
-  to { opacity: 1; transform: none; }
+  to { opacity: 1; }
 }
 
 @keyframes fadeIn {
