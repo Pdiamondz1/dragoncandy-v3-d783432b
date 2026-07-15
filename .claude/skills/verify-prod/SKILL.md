@@ -5,8 +5,9 @@ description: "Verify a deploy on dragoncandy.io after pushing to main — poll f
 
 # Verify Prod (DragonCandy)
 
-DragonCandy-specific deploy verification. Lovable deploys from `origin/main` and takes
-tens of minutes; verify by polling the bundle hash, then check both viewports for render
+DragonCandy-specific deploy verification. Vercel deploys from `origin/main` and typically
+lands in ~1–3 minutes (was tens of minutes under Lovable hosting, pre-2026-07-15); verify
+by polling the bundle hash, then check both viewports for render
 + console errors. See [[project_verification_env_quirks]]. (For generic local-change
 verification use the built-in `/verify`; use this for the real prod deploy.)
 

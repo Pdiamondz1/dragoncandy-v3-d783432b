@@ -23,7 +23,7 @@ npm run preview      # Preview production build locally
 
 ## Tech Stack
 
-React 18 + TypeScript (strict), Vite, Tailwind CSS, shadcn/ui (Radix). Supabase backend (Postgres, Auth, Edge Functions, Realtime, Storage). Stripe Connect (test mode). React Query for server state. Framer Motion (lazy-loaded). Outstand.so for social media integration (Instagram, TikTok, YouTube). Google Maps (geocoding). Claude API (Anthropic) for AI features — backend-only via 80 Deno edge functions. Hosted on Lovable.dev → dragoncandy.io. Fonts: Outfit (sans), Pacifico (script).
+React 18 + TypeScript (strict), Vite, Tailwind CSS, shadcn/ui (Radix). Supabase backend (Postgres, Auth, Edge Functions, Realtime, Storage). Stripe Connect (test mode). React Query for server state. Framer Motion (lazy-loaded). Outstand.so for social media integration (Instagram, TikTok, YouTube). Google Maps (geocoding). Claude API (Anthropic) for AI features — backend-only via 80 Deno edge functions. Hosted on Vercel → dragoncandy.io (cut over from Lovable hosting 2026-07-15; Lovable remains an optional AI-edit surface via GitHub sync — see `docs/runbooks/vercel-prod-cutover.md`). Fonts: Outfit (sans), Pacifico (script).
 
 ## Coding Conventions
 
@@ -148,7 +148,7 @@ Claude's own reviews — the point is two independent models. (Distinct from
 ## Session Discipline
 
 * **Compact early** — run `/compact` proactively when context usage reaches ~55%. Don't wait for automatic compression; compress early to preserve working memory for the current task.
-* **Verify production after deploy** — after every push to main (auto-deployed via Lovable.dev), verify at dragoncandy.io: screenshot the affected pages, open Chrome DevTools, check for console errors. Test both desktop and mobile viewports. Test account credentials are stored in the project memory system.
+* **Verify production after deploy** — after every push to main (auto-deployed via Vercel, ~1–3 min), verify at dragoncandy.io: screenshot the affected pages, open Chrome DevTools, check for console errors. Test both desktop and mobile viewports. Test account credentials are stored in the project memory system.
 * **Desktop/Mobile viewport separation** — frontend changes must target the correct viewport. Changes meant for desktop use `lg:` / `xl:` prefixed Tailwind classes. Changes meant for mobile use base (unprefixed) classes. Never apply mobile-targeted changes to desktop or vice versa. Test both viewports after any UI change.
 
 ## Session Continuity
@@ -181,14 +181,14 @@ Never commit actual values. Reference `.env.local` locally.
 
 ## Deployment
 
-Push to `main` on GitHub → Lovable auto-deploys to dragoncandy.io. Test locally with `npm run dev` before pushing.
+Push to `main` on GitHub → Vercel auto-deploys to dragoncandy.io (~1–3 min; cut over from Lovable hosting 2026-07-15 — `docs/runbooks/vercel-prod-cutover.md`). Test locally with `npm run dev` before pushing. Vercel env-var scopes are load-bearing: **Production** scope = prod Supabase, **Preview** scope = staging Supabase (the QA-gate previews).
 
 ### Worktree workflow — refresh local main after every merge
 
 Work happens in **git worktrees** under `.claude/worktrees/` (30+ of them). A worktree is a
 **separate working directory** with its own branch; edits there reach `origin/main` only via PR
 merge. **The local `main` checkout (`C:\GIT\dragoncandy-v3-d783432b`) does NOT auto-update** — so the
-files you browse there go stale (they can drift 100+ commits behind `origin/main`). Lovable deploys
+files you browse there go stale (they can drift 100+ commits behind `origin/main`). Vercel deploys
 from **GitHub `origin/main`**, not the local checkout, so prod stays current even when local main is stale.
 
 **After merging any PR, refresh the local main checkout** so its files match reality:
