@@ -45,6 +45,7 @@ active members, who one-tap apply with no payment (free `fixed_price=0`). See
 |-|-|
 | `creator_groups` | A crew: `owner_id` (business user), `name`, `description`. Owner-manage RLS + active-member SELECT |
 | `creator_group_members` | Membership with invite→accept lifecycle `status ∈ invited/active/declined/removed` (mirrors `org_members.invitation_status`), `invited_by`, `UNIQUE(group_id, creator_id)`. Owner manages; creator reads/updates own rows (accept/decline only via RPC) |
+| `crew_activity` | **Phase 2** per-crew lifecycle event log (`group_id`, `campaign_id`, `actor_id`, `participant_id`, `event_type` ∈ 7 events, `visibility` ∈ `business`/`crew`, `metadata`). **SELECT-only for clients**; all writes via the `record_crew_activity` RPC. Asymmetric RLS: owner sees all (`is_creator_group_owner`); creator sees `(visibility='crew' AND is_active_group_member) OR participant_id = auth.uid()` |
 
 > **`campaigns.group_id`** — `uuid REFERENCES creator_groups(id) ON DELETE RESTRICT` (RESTRICT, never
 > SET NULL — SET NULL would flip a private campaign public). Non-null ⇒ a private crew campaign; every
@@ -68,6 +69,20 @@ active members, who one-tap apply with no payment (free `fixed_price=0`). See
 > writes to `invited`/`removed` (activation is creator-only via `respond_to_group_invitation`). The
 > generic `send-campaign-publish-notifications` edge fn early-returns for group campaigns (a private
 > crew campaign is never broadcast platform-wide).
+>
+> **Phase 2 — crew activity + team notifications.** `record_crew_activity(p_campaign_id, p_event_type,
+> p_collaboration_id?)` (SECURITY DEFINER, `search_path=public`, revoked from anon → `authenticated`)
+> is the **only** writer of `crew_activity`: a per-event authz matrix on `auth.uid()`, server-derived
+> `participant_id`/`visibility`/metadata, no-op (NULL) off the crew path. Idempotency is server-side —
+> a **cycle anchor** `campaign_collaborations.content_submitted_at` (nullable; stamped by trigger
+> `trg_set_content_submitted_at` **only on the transition into `content_status='submitted'`**, since the
+> table's `handle_updated_at` trigger is a no-op so client `updated_at` is untrustworthy) suppresses a
+> replayed `content_submitted` while allowing a resubmit-after-revision; **one-shot** dedup covers
+> `campaign_posted`/`application_received`/`hired`/`completed`; a `pg_advisory_xact_lock` on
+> `(campaign, event, participant)` makes each check-and-insert **atomic**. `completed` additionally
+> requires `status='completed'`. The one emailed event is `content_submitted → owner`, pinned to
+> category **`campaigns`** (so the high-signal email sends by default) via the `crew_content_submitted`
+> template. See [[Creator Groups (Crews)]].
 
 ## Payments & Promotions
 

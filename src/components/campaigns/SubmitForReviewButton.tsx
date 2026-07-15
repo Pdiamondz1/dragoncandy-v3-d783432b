@@ -4,6 +4,7 @@ import { Send, AlertCircle } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { recordCrewActivity } from '@/lib/crews/recordCrewActivity';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,6 +51,10 @@ export function SubmitForReviewButton({
       toast.success('Content submitted for review!');
       queryClient.invalidateQueries({ queryKey: ['collaboration', collaborationId] });
       queryClient.invalidateQueries({ queryKey: ['file-uploads', campaignId] });
+
+      // Crew activity — THE gap event: fires the owner "new content submitted"
+      // notification (nobody is notified today). Inert for non-crew campaigns.
+      void recordCrewActivity(campaignId, 'content_submitted');
     },
     onError: (err: Error) => toast.error(`Submit failed: ${err.message}`),
   });

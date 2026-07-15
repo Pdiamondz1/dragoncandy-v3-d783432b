@@ -10,6 +10,7 @@ import { mapDeliveryTierToDb } from '@/lib/campaignUtils';
 import { donnyGenerateResponseSchema, launchValidationSchema } from '@/lib/campaignCreatorValidation';
 import { pollCampaignJob, type CampaignJobRow } from '@/lib/campaignGenerationJob';
 import { saveDraftToStorage, loadDraftFromStorage, clearDraftFromStorage, generateDraftId } from '@/lib/campaignCreatorDraft';
+import { recordCrewActivity } from '@/lib/crews/recordCrewActivity';
 import type {
   BusinessContext,
   CampaignIdea,
@@ -530,12 +531,16 @@ export function useCampaignCreator() {
                 actorName,
                 icon: 'campaign',
                 data: { campaign_id: data.id, group_id: groupId },
+                emailData: { campaignTitle: editedCampaign?.title ?? 'a new campaign', businessName: actorName },
               },
             }).catch((err: unknown) => console.error('Failed to send crew campaign notification:', err));
           }
         } catch (err) {
           console.error('Failed to prepare crew campaign notifications:', err);
         }
+
+        // Crew activity for the launch (companion to group_campaign_posted above).
+        void recordCrewActivity(data.id, 'campaign_posted');
       }
 
       if (userRole === 'brand') {
