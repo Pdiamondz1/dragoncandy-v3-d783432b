@@ -809,7 +809,11 @@ async function executeTool(
   // (Google Chat) there is no session, so userClient is the service client and
   // serviceMode is true — the live-stats RPCs are auth.uid()-gated and degrade
   // gracefully there (see below); the RLS-based tools work via the service role.
-  internalCtx?: { userClient: any; serviceMode?: boolean }
+  internalCtx?: { userClient: any; serviceMode?: boolean },
+  // The caller's own Authorization header (session JWT or Donny OAuth token),
+  // for tools that delegate to USER-GATED edge functions. Absent on the
+  // trusted service path (no user credential exists to forward).
+  callerAuth?: string
 ): Promise<{ result: any }> {
   if (INTERNAL_TOOL_NAMES.has(toolName) && !internalCtx) {
     throw new Error("Internal tools are only available on the internal surface");
@@ -1471,10 +1475,17 @@ async function executeTool(
     }
 
     case "generate_campaign": {
+      // donny-campaign-generate is USER-gated (session JWT or Donny OAuth) —
+      // a service-role bearer matches neither branch and 401s, which is why
+      // this tool had never executed successfully. Forward the caller's own
+      // credential; both auth models it can carry are accepted downstream.
+      if (!callerAuth) {
+        throw new Error("Campaign generation needs a signed-in user session — it isn't available on this surface.");
+      }
       const response = await fetch(`${SUPABASE_URL}/functions/v1/donny-campaign-generate`, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Authorization": callerAuth,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -2200,7 +2211,10 @@ serve(async (req) => {
               requestContext,
               internalMode
                 ? { userClient: supabaseUser ?? supabaseAdmin, serviceMode: serviceActed }
-                : undefined
+                : undefined,
+              // Forward the caller's own credential to user-gated delegate fns;
+              // the trusted service bearer is NOT a user credential — omit it.
+              serviceActed ? undefined : authHeader
             );
             toolResult = execution.result;
           } catch (err: any) {
