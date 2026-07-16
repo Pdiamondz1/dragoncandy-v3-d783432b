@@ -20,6 +20,7 @@ export interface CreatorMatch {
   match_reasons: {
     reasons: string[];
     concerns: string[];
+    distance_miles?: number | null;
     score_breakdown?: ScoreBreakdown;
     weights?: Record<string, number>;
   };
@@ -80,6 +81,7 @@ export const useCampaignMatches = (campaignId: string) => {
           match_reasons: {
             reasons: Array.isArray(matchReasons.reasons) ? matchReasons.reasons : [],
             concerns: Array.isArray(matchReasons.concerns) ? matchReasons.concerns : [],
+            distance_miles: typeof matchReasons.distance_miles === 'number' ? matchReasons.distance_miles : null,
             score_breakdown: matchReasons.score_breakdown || undefined,
             weights: matchReasons.weights || undefined,
           },
