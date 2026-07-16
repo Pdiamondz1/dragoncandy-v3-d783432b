@@ -1,48 +1,59 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useUniqueCreatorPortfolio } from '@/hooks/useUniqueCreatorPortfolio';
-import { useFeedLocationFilter } from '@/hooks/useFeedLocationFilter';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { RADIUS_OPTIONS } from '@/lib/creatorLocationFilter';
+import { feedCreatorsFromMedia } from '@/lib/feedCreators';
+import { useFeedCreatorSearch } from '@/hooks/useFeedCreatorSearch';
 import { FeedTile } from './FeedTile';
 import { FeedPost } from './FeedPost';
 import { FeedViewer } from './FeedViewer';
+import { FeedCreatorList } from './FeedCreatorList';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Search, X, MapPin } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
-export const DragonFeedGrid: React.FC = () => {
+interface DragonFeedGridProps {
+  /** Business feed only — passed straight to FeedCreatorList's "Browse all creators →" link. */
+  browseAllHref?: string;
+}
+
+export const DragonFeedGrid: React.FC<DragonFeedGridProps> = ({ browseAllHref }) => {
   const { portfolioMedia, loading, error } = useUniqueCreatorPortfolio();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const isMobile = useIsMobile();
 
-  // Stage 1: name + type filter (existing behavior).
-  const nameTypeFiltered = useMemo(
-    () =>
-      portfolioMedia.filter((item) => {
-        const matchesSearch = item.creatorName.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesType = typeFilter === 'all' || item.type === typeFilter;
-        return matchesSearch && matchesType;
-      }),
-    [portfolioMedia, searchTerm, typeFilter],
+  // All control state is owned here; only the rendered tree branches on searchActive.
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [locationQuery, setLocationQuery] = useState('');
+  const [radiusMiles, setRadiusMiles] = useState<number | null>(25);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+
+  const feedCreators = useMemo(() => feedCreatorsFromMedia(portfolioMedia), [portfolioMedia]);
+  const search = useFeedCreatorSearch(feedCreators, searchTerm, locationQuery, radiusMiles);
+
+  const searchActive = searchTerm.trim() !== '' || locationQuery.trim() !== '';
+  const locationSet = locationQuery.trim() !== '';
+  const anyFilter = searchActive || typeFilter !== 'all';
+
+  // Leave browse mode → close any open lightbox so it can't re-pop when the search later clears.
+  useEffect(() => {
+    if (searchActive) setViewerIndex(null);
+  }, [searchActive]);
+
+  // Browse-mode media: type filter only (a location query would be searchActive, not browse).
+  const browseMedia = useMemo(
+    () => portfolioMedia.filter(item => typeFilter === 'all' || item.type === typeFilter),
+    [portfolioMedia, typeFilter],
   );
-
-  // Stage 2: zip-radius filter (new). `filteredMedia` is the final list the feed renders.
-  const { zip, setZip, radiusMiles, setRadiusMiles, filteredMedia, status, active } =
-    useFeedLocationFilter(nameTypeFiltered);
-
-  const zipActive = zip.trim().length > 0;
-  const anyFilter = searchTerm !== '' || typeFilter !== 'all' || zipActive;
 
   const clearFilters = () => {
     setSearchTerm('');
     setTypeFilter('all');
-    setZip('');
+    setLocationQuery('');
     setRadiusMiles(25);
+    setViewerIndex(null);
   };
 
   if (loading) {
@@ -75,6 +86,12 @@ export const DragonFeedGrid: React.FC = () => {
     );
   }
 
+  const countLine = searchActive
+    ? search.status === 'resolving'
+      ? 'Finding nearby creators…'
+      : `${search.results.length} ${search.results.length === 1 ? 'creator' : 'creators'} found`
+    : `${browseMedia.length} ${browseMedia.length === 1 ? 'item' : 'items'} found`;
+
   return (
     <div className="space-y-6">
       {/* Search and Filters */}
@@ -89,35 +106,35 @@ export const DragonFeedGrid: React.FC = () => {
               className="pl-10"
             />
           </div>
-          
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-full sm:w-32">
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="image">Images</SelectItem>
-              <SelectItem value="video">Videos</SelectItem>
-            </SelectContent>
-          </Select>
+
+          {!searchActive && (
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-full sm:w-32">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="image">Images</SelectItem>
+                <SelectItem value="video">Videos</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
 
           <div className="relative flex-1 sm:max-w-[180px]">
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              inputMode="numeric"
-              maxLength={10}
-              placeholder="Zip code"
-              value={zip}
-              onChange={(e) => setZip(e.target.value)}
+              placeholder="Zip or city"
+              value={locationQuery}
+              onChange={(e) => setLocationQuery(e.target.value)}
               className="pl-10"
-              aria-label="Search by zip code"
+              aria-label="Search creators by zip or city"
             />
           </div>
 
           <Select
             value={radiusMiles == null ? 'any' : String(radiusMiles)}
             onValueChange={(v) => setRadiusMiles(v === 'any' ? null : Number(v))}
-            disabled={!zipActive}
+            disabled={!locationSet}
           >
             <SelectTrigger className="w-full sm:w-28" aria-label="Search radius">
               <SelectValue />
@@ -138,52 +155,25 @@ export const DragonFeedGrid: React.FC = () => {
           )}
         </div>
 
-        {zipActive && status === 'failed' && (
-          <p className="text-sm text-dc-pink-accent">Couldn't find that zip — try another.</p>
-        )}
-
-        {/* Active Filters */}
-        {anyFilter && (
-          <div className="flex flex-wrap gap-2">
-            {searchTerm && (
-              <Badge variant="secondary" className="flex items-center gap-1">
-                Search: {searchTerm}
-                <button onClick={() => setSearchTerm('')} aria-label="Clear search" className="hover:opacity-70">
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-            {typeFilter !== 'all' && (
-              <Badge variant="secondary" className="flex items-center gap-1">
-                Type: {typeFilter}
-                <button onClick={() => setTypeFilter('all')} aria-label="Clear type filter" className="hover:opacity-70">
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-            {zipActive && (
-              <Badge variant="secondary" className="flex items-center gap-1">
-                Near {zip.trim()}{active ? ` · ${radiusMiles == null ? 'Any' : `${radiusMiles} mi`}` : ''}
-                <button onClick={() => setZip('')} aria-label="Clear zip filter" className="hover:opacity-70">
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-          </div>
+        {locationSet && search.status === 'failed' && (
+          <p className="text-sm text-dc-pink-accent">Couldn't find that location — try another.</p>
         )}
       </div>
 
       {/* Results Count */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {zipActive && status === 'resolving'
-            ? 'Finding nearby creators…'
-            : `${filteredMedia.length} ${filteredMedia.length === 1 ? 'item' : 'items'} found`}
-        </p>
+        <p className="text-sm text-muted-foreground">{countLine}</p>
       </div>
 
-      {/* Feed */}
-      {filteredMedia.length === 0 ? (
+      {/* Feed / Search results */}
+      {searchActive ? (
+        <FeedCreatorList
+          creators={search.results}
+          searchTerm={searchTerm}
+          locationActive={search.locationActive}
+          browseAllHref={browseAllHref}
+        />
+      ) : browseMedia.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">
@@ -191,29 +181,27 @@ export const DragonFeedGrid: React.FC = () => {
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-2">No content found</h3>
             <p className="text-muted-foreground text-center">
-              {active
-                ? 'No creators near that zip. Try a wider radius or "Any".'
-                : 'Try adjusting your search criteria or filters to find more content.'}
+              Try adjusting your filters to find more content.
             </p>
           </CardContent>
         </Card>
       ) : isMobile ? (
         <div className="space-y-4">
-          {filteredMedia.map((media, i) => (
+          {browseMedia.map((media, i) => (
             <FeedPost key={media.id} media={media} onOpen={() => setViewerIndex(i)} />
           ))}
         </div>
       ) : (
         <div className="-mx-4 grid grid-cols-3 gap-0.5 lg:mx-0 lg:grid-cols-4 lg:gap-1 xl:grid-cols-5">
-          {filteredMedia.map((media, i) => (
+          {browseMedia.map((media, i) => (
             <FeedTile key={media.id} media={media} onOpen={() => setViewerIndex(i)} />
           ))}
         </div>
       )}
 
-      {viewerIndex !== null && filteredMedia[viewerIndex] && (
+      {!searchActive && viewerIndex !== null && browseMedia[viewerIndex] && (
         <FeedViewer
-          items={filteredMedia}
+          items={browseMedia}
           index={viewerIndex}
           onIndexChange={setViewerIndex}
           onClose={() => setViewerIndex(null)}

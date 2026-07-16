@@ -3,8 +3,8 @@ title: Dragon Feed
 type: concept
 created: 2026-07-16
 updated: 2026-07-16
-sources: [2026-07-16-dragonfeed-mobile-feed-zip-search.md]
-tags: [frontend, feed, mobile, location, geocoding, discovery]
+sources: [2026-07-16-dragonfeed-mobile-feed-zip-search.md, 2026-07-16-dragonfeed-creator-search.md]
+tags: [frontend, feed, mobile, location, geocoding, discovery, search]
 ---
 # Dragon Feed
 
@@ -31,48 +31,67 @@ initializes synchronously from `window.innerWidth`, so there's no wrong-layout f
 the project's mobile/desktop separation rule (base classes = mobile, `lg:`/`xl:` = desktop) — see
 [[Mobile Viewport & Fixed Positioning]].
 
-## Zip-radius search (reusing the location stack)
+## Search: browse mode vs. Instagram-style creator search
 
-The feed's "search by zip" filters media to creators within a radius of a typed zip, **reusing the
-same geo stack** as [[Creator Location Search]] rather than inventing new matching code:
+The one search box drives **two modes**, chosen by `searchActive` (any name OR any location typed).
+`DragonFeedGrid` owns ALL control state (`searchTerm`, `typeFilter`, `locationQuery`, `radiusMiles`,
+`viewerIndex`) and calls every hook unconditionally at the top; only the *rendered tree* branches.
 
-- **`filterMediaByRadius(media, center, radiusMiles, geocodedById)`** (pure, in
-  `creatorLocationFilter.ts`) — the media-level extension of the creator-level `filterByRadius`. It
-  dedups media by `creatorId` into `{id, city, country}`, delegates to `filterByRadius`, then keeps
-  every media item whose creator survived. `!center` → passthrough (the feed **never silent-empties**
-  while a zip is unresolved).
-- **`useFeedLocationFilter(media)`** — a thin stateful wrapper: debounces the zip (~400ms), geocodes
-  it to a center via React Query (`geocodeLocation(zip)` → zip as `postal_code`, 24h cache), lazily
-  geocodes creators via `useCreatorGeocoding`, builds the `geocodedById` Map, and returns
-  `filteredMedia` + `{status, active}`. It runs AFTER the name/type filter in `DragonFeedGrid`
-  (`nameTypeFiltered` → `useFeedLocationFilter`), so the two same-named "filtered" values compose:
-  name+type first, zip last.
+- **Browse mode (empty search):** the media feed above (grid / `FeedPost` stack), type-filtered only.
+- **Search mode (name and/or location):** the media feed is replaced by a **vertical creator list**
+  (`FeedCreatorList` of `FeedCreatorRow`s) — avatar (teal ring) + bold-matched name + meta line
+  `location · ★rating (reviews) · N posts` + up to 3 teal-tinted skill chips; tap →
+  `/creator/{creatorSlug || creatorId}`. A "Browse all creators →" footer (business feed only, via the
+  `browseAllHref` prop) escapes to the full Browse Creators page.
 
-## Lazy-geocoding invariants (both were Codex second-review catches)
+**Name match is global** (any location — a business anywhere finds any creator); an optional **location
+query (ZIP or city, ≥3 chars)** geocodes to a center and narrows the *creator list* by radius
+(10/25/50/100/Any). This reuses the same geo stack as [[Creator Location Search]]:
 
-These are the reusable gotchas when driving distance filtering off an async geocode:
+- **`feedCreators.ts`** (pure, unit-tested) — `feedCreatorsFromMedia` groups the feed's media into
+  one `FeedCreator` per `creatorId` (with `postCount`); `highlightMatch` splits a name into
+  case-insensitive match segments for bolding; `filterCreatorsByRadius` remaps each `FeedCreator` to
+  `{id: creatorId, city, country}` and delegates to the tested `filterByRadius` (`!center` →
+  passthrough, never silent-empties).
+- **`useFeedCreatorSearch(creators, searchTerm, locationQuery, radiusMiles)`** — **CONTROLLED** (the
+  parent owns location/radius; no setters returned): global name filter → debounced (~400ms) zip/city
+  geocode via React Query → lazy `useCreatorGeocoding` → the pure filter. Returns
+  `{results, status, locationActive}`.
+
+> **A zip is a search *trigger*, not a media filter.** This is the pivot from the earlier
+> [[Dragon Feed Mobile & Zip Search Session|PR #242]] design, where a zip *narrowed the media grid*.
+> That path — `useFeedLocationFilter` + `filterMediaByRadius` (+ its tests) — is now **deleted as
+> superseded**. There is one geocoding consumer now, so no shared zip-state conflict.
+
+## Lazy-geocoding invariants (carried from PR #242, now at the creator level)
+
+Reusable gotchas when driving distance filtering off an async geocode (originally Codex catches in
+#242, preserved in `useFeedCreatorSearch`):
 
 1. **Don't filter while creator geocoding is in flight.** Center geocoding and creator geocoding are
-   two separate async steps. When the *center* resolves, `active` flips true — but `geocodedById` is
-   still empty until the *creator* batch lands, so a naive filter transiently drops valid nearby posts
-   and shows "no creators near that zip." Fix: **keep the media unfiltered (pass a `null` center) until
-   `geocodingLoading` completes**, and let `status` report `'resolving'` through that window so the UI
-   shows "Finding nearby creators…" instead of a false empty.
+   two separate async steps. When the *center* resolves, `hasCenter` flips true — but `geocodedById` is
+   still empty until the *creator* batch lands, so a naive filter transiently drops valid nearby
+   creators. Fix: **pass a `null` center to the pure filter until `geocodingLoading` completes**
+   (`hasCenter && !geocodingLoading ? center : null`), and report `status:'resolving'` so the UI shows
+   "Finding nearby creators…" instead of a false empty.
 2. **Skip creator geocoding entirely under the "Any" radius.** With `radiusMiles == null`,
-   `filterByRadius` keeps every creator regardless of coordinates — so geocoding is wasted billable
-   Google-quota work that only stalls the feed in a resolving state. Gate:
-   `creatorsToGeocode = active && radiusMiles != null ? uniqueCreators : []`.
+   `filterByRadius` keeps everyone regardless of coordinates — so geocoding is wasted billable
+   Google-quota work. Gate: `creatorsToGeocode = hasCenter && radiusMiles != null ? uniqueCreators : []`.
 
 Other reusable details: `useCreatorGeocoding` returns `{ geocodedCreators }` as an **array** (the
 caller builds the `Map` with `useMemo`, mirroring `useCreatorBrowse`); a creator with only a freeform
 `location` is still placeable because that string is passed as the geocode `postal_code`
-(`m.postalCode || (!m.city && !m.country ? m.location : undefined)`); and the feed's avatar must be
-resolved **once per creator** (a shared signed-URL promise) — resolving it inside the per-media-item
-map fires N identical signed-URL calls that the module cache can't dedupe (all start in the same tick).
+(`c.postalCode || (!c.city && !c.country ? c.location : undefined)`); the feed's avatar must be
+resolved **once per creator** (a shared signed-URL promise), not per media item; and the lightbox is
+closed on entering search (a `useEffect` on `searchActive`) so a stale `viewerIndex` can't re-pop it
+when the search later clears.
 
 ## Key Decisions
 
-- Mobile vertical feed only; zip search on both viewports; both feed pages; radius (not exact-zip) match.
+- Mobile vertical feed only; **search on both viewports**; both feed pages; radius (not exact-zip) match.
+- **Global by default, location narrows** — a business anywhere searches any creator; a ZIP or city is
+  an optional radius filter on the creator list.
+- A location query is a **search trigger** (creator list), superseding #242's zip-narrows-media-grid.
 - Frontend-only — no schema / RLS / edge-function / secret change; ships on merge → Vercel.
 
 ## Known Issues

@@ -14,6 +14,10 @@ export interface PortfolioMedia {
   postalCode?: string;
   country?: string;
   location?: string;
+  // Creator-card fields (for the Instagram-style creator search list):
+  skills?: string[];
+  averageRating?: number | null;
+  totalReviews?: number | null;
 }
 
 // Simple signed URL cache (1 hour TTL)
@@ -48,7 +52,7 @@ export const useUniqueCreatorPortfolio = () => {
         // Fetch creator profiles with portfolio URLs who allow DragonFeed display
         const { data: creators, error: fetchError } = await supabase
           .from('creator_profiles')
-          .select('id, user_id, creator_name, avatar_url, portfolio_urls, profile_slug, city, postal_code, country, location')
+          .select('id, user_id, creator_name, avatar_url, portfolio_urls, profile_slug, city, postal_code, country, location, skills, average_rating, total_reviews')
           .eq('is_completed', true)
           .eq('allow_portfolio_in_feed', true)
           .not('portfolio_urls', 'is', null)
@@ -95,6 +99,9 @@ export const useUniqueCreatorPortfolio = () => {
                 postalCode: creator.postal_code ?? undefined,
                 country: creator.country ?? undefined,
                 location: creator.location ?? undefined,
+                skills: Array.isArray(creator.skills) ? (creator.skills as string[]) : undefined,
+                averageRating: creator.average_rating ?? null,
+                totalReviews: creator.total_reviews ?? null,
               } as PortfolioMedia;
             });
         });

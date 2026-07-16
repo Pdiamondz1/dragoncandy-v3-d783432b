@@ -15,6 +15,20 @@ the service-role admin client bypasses RLS → the query must filter `profile_vi
 follow-up bullet + See-Also [[Donny AI]]), `index.md` (Sources + concept line), + this entry.
 Follow-up: campaign matcher (`match-creators`) needs the same `profile_visibility='public'` filter
 (separate PR). RAG sync + [[verify-knowledge]] are post-merge.
+## [2026-07-16] ingest | DragonFeed Instagram-style creator search
+Ingested [[DragonFeed Creator Search Session]] (branch `feat/dragonfeed-creator-search`,
+frontend-only). Second founder iteration on the shared Dragon Feed: the one search box now drives
+**two modes** — empty → the existing browse media feed; a creator **name and/or a location (ZIP or
+city, ≥3 chars)** → an **Instagram-style vertical creator list** (`FeedCreatorList`/`FeedCreatorRow`:
+avatar + bold-matched name + `location · ★rating (reviews) · N posts` + skill chips, tap → profile,
+"Browse all creators →" escape on the business feed). Name match is **global** (any location); a
+location query geocodes to a center and narrows the creator list by radius. New pure unit-tested
+`feedCreators.ts` (`feedCreatorsFromMedia`/`highlightMatch`/`filterCreatorsByRadius`, 12 tests) + a
+CONTROLLED `useFeedCreatorSearch` hook. Because a zip is now a **search trigger** (not "narrow the
+media grid"), PR #242's `useFeedLocationFilter` + `filterMediaByRadius` (+ tests) are **deleted as
+superseded**. Full suite 804/804; per-task + whole-branch reviews + **Codex second review clean**.
+Pages updated: [[Dragon Feed]] (concept — search section rewritten, supersession noted), index.md
+(Concepts entry + Sources), and the raw session source.
 
 ## [2026-07-16] ingest | Donny campaign-idea creativity (PR #243)
 Ingested [[Donny Campaign Creativity Session]]. Freed the over-constrained campaign prompt (the real

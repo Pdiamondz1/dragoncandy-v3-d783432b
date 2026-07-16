@@ -59,6 +59,28 @@
   the SAME page), not spawn a sibling page — keeps the "AI creator matching" story in one node and
   avoids a near-duplicate. (advisory — reinforces the existing "close the prediction" + compound-onto-hub
   Lessons)
+### [2026-07-16] DragonFeed Instagram-style creator search (branch feat/dragonfeed-creator-search)
+- Output: bundled INTO the work PR — `raw/sessions/2026-07-16-dragonfeed-creator-search.md`, **edited the
+  existing** `concepts/dragon-feed.md` (search section rewritten browse-vs-creator-list + supersession
+  note + lazy-geocoding invariants moved to the creator level + Key Decisions/frontmatter), `index.md`
+  (Dragon Feed Concepts entry rewritten + new Sources line), `log.md` ingest entry, PROJECT_CONTEXT new
+  active-workstream bullet, + THIS run-log entry. Frontend-only (no DATABASE_SCHEMA/DESIGN_SYSTEM/CLAUDE.md
+  change).
+- Happened: a SECOND iteration on a surface that ALREADY had a concept page (PR #242's dragon-feed.md), so
+  the durable knowledge is an **edit-in-place of the existing page**, not a new one — the old page still
+  described the now-DELETED `filterMediaByRadius`/`useFeedLocationFilter`, so leaving it would contradict
+  the code. Rewrote the search section to the two-mode model + a `>` supersession callout, and updated both
+  the index.md concept entry and the same-day PR #242 wiki artifacts it references. Pre-merge off
+  origin/main (per [scope]); RAG sync + [[verify-knowledge]] post-merge via the docs/ hook.
+- Worked: [scope] + [runlog-in-pr] + [orphans]-by-path (new raw session cataloged; the concept page was
+  already cataloged — edited its entry in place). [wikilinks]-exact: linked [[Creator Location Search]] +
+  [[Mobile Viewport & Fixed Positioning]] (confirmed in index.md) and the sibling [[Dragon Feed Mobile &
+  Zip Search Session]] source. Recorded the reusable pivot ("a zip is a search *trigger*, not a media
+  filter" → deletes a whole path) as durable concept knowledge, not just a log line.
+- Failed: none. (RAG-sync + verify-knowledge close-the-loop are inherently post-merge for this pre-merge run.)
+- Remember: when a later session SUPERSEDES code that an existing concept page documents, knowledge-sync must
+  **edit that page** (rewrite the stale section + a supersession note) — a compound-in-place, not a new
+  page and not an append — else the wiki keeps describing deleted code. (advisory)
 
 ### [2026-07-16] Donny campaign-idea creativity (PR #243 → paired docs PR)
 - Output: paired docs PR off origin/main — `raw/sessions/2026-07-16-donny-campaign-creativity.md`, new
