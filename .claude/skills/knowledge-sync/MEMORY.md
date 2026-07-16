@@ -30,6 +30,36 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-16] Donny chat `match_creators` fix — sibling of PR #241 (branch feat/donny-chat-matcher)
+- Output: bundled INTO the work PR — `raw/sessions/2026-07-16-donny-chat-matcher-fix.md`, **compounded**
+  `concepts/ai-creator-matching.md` (new "Donny chat sibling" section + flipped the known-limitations
+  follow-up bullet → shipped + added a service-role-privacy-parity bullet + See-Also [[Donny AI]] +
+  frontmatter sources), `index.md` (Sources + extended concept line), `log.md` ingest entry,
+  PROJECT_CONTEXT active-workstream bullet, + THIS entry. No DATABASE_SCHEMA/DESIGN_SYSTEM/CLAUDE.md
+  change (tool-only edge-fn change; no schema/token/workflow change).
+- Happened: **compounded, didn't duplicate** — the PR #241 concept page ([[AI Creator Matching]]) had
+  *predicted* this exact sibling under "Known limitations" ("Donny chat's separate `match_creators`
+  … out of scope here, a documented follow-up"), so this run **closed the prediction** by flipping that
+  bullet gated→shipped and adding the sibling section, rather than minting a thin new "Donny matcher"
+  page. Pre-merge on the work branch (rebased onto origin/main incl. #243/#245 per [scope]); RAG sync +
+  [[verify-knowledge]] are post-merge (hook on the docs/ ff).
+- Worked: [scope]-rebase + [runlog-in-pr] + [orphans]-by-path (new raw session cataloged in index.md;
+  no new concept page). [wikilinks]-exact: grepped index.md first — [[AI Creator Matching]],
+  [[Creator Location Search]], [[Notification Delivery]], [[Donny AI]] all confirmed before linking; the
+  Sources insert is alphabetical ("Donny Chat **Matcher**" between "Donny Chat **Input**" and "Donny
+  **Desktop**"). Captured the two durable rules as concept knowledge, not just a session log: (1) a
+  matcher that can return 0 over a non-empty pool must score soft + never exclude (two ANDed hard
+  `ilike` filters are the failure), and (2) a tool fetching with the **service role** bypasses RLS →
+  must re-assert `profile_visibility='public'` in the query (the Codex P1).
+- Failed: none. (verify-knowledge close-the-loop RAG check is inherently post-merge for this pre-merge
+  run.) Note: Codex oscillated on round 9 (objected to the `CANDIDATE_LIMIT` it demanded on round 7) —
+  a review-loop churn signal, not a knowledge issue; stopped the loop + escalated rather than churn.
+- Remember: when a prior concept page *predicted* a follow-up under "Known limitations", the next
+  knowledge-sync should **close that prediction in place** (flip gated→shipped + compound a section on
+  the SAME page), not spawn a sibling page — keeps the "AI creator matching" story in one node and
+  avoids a near-duplicate. (advisory — reinforces the existing "close the prediction" + compound-onto-hub
+  Lessons)
+
 ### [2026-07-16] Donny campaign-idea creativity (PR #243 → paired docs PR)
 - Output: paired docs PR off origin/main — `raw/sessions/2026-07-16-donny-campaign-creativity.md`, new
   `concepts/campaign-generation-creativity.md`, `index.md` (Concepts + Sources), `log.md` ingest entry,
