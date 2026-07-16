@@ -5,10 +5,8 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useResolvedAvatarUrl } from '@/hooks/useSignedUrl';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
   UserPlus,
-  Send,
   ChevronDown,
   ChevronUp,
   MapPin,
@@ -20,8 +18,6 @@ import {
   CheckCircle2,
   AlertCircle,
 } from 'lucide-react';
-import { ApplicationForm } from './ApplicationForm';
-import { useCampaign } from '@/hooks/useCampaigns';
 import { CreatorMatch, ScoreBreakdown } from '@/hooks/useCampaignMatches';
 import { WhyExpander } from '@/components/guidance/WhyExpander';
 import { formatSkillLabel } from '@/lib/skillUtils';
@@ -90,9 +86,7 @@ const ScoreBar: React.FC<{ label: string; score: number; icon: React.ElementType
 );
 
 export const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({ match, isInvited, onInvite }) => {
-  const [showApplicationForm, setShowApplicationForm] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
-  const { campaign } = useCampaign(match.campaign_id);
   const resolvedAvatarUrl = useResolvedAvatarUrl(match.creator_profile.avatar_url);
 
   const breakdown = match.match_reasons.score_breakdown;
@@ -234,40 +228,25 @@ export const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({ match, isInv
           </div>
         )}
 
-        {/* Action buttons */}
-        <div className="flex gap-2 pt-2 border-t dark:border-border">
-          {!isInvited && onInvite && (
-            <Button
-              onClick={() => onInvite(match.creator_id)}
-              variant="outline"
-              size="sm"
-              className="flex-1"
-            >
-              <UserPlus className="h-3.5 w-3.5 mr-1.5" />
-              Invite
+        {/* Action button (business invites the matched creator) */}
+        <div className="flex pt-2 border-t dark:border-border">
+          {isInvited ? (
+            <Button size="sm" variant="outline" className="flex-1 min-w-0" disabled>
+              <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+              Invited
             </Button>
-          )}
-
-          <Dialog open={showApplicationForm} onOpenChange={setShowApplicationForm}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="flex-1 bg-teal-600 hover:bg-teal-700 text-white" disabled={isInvited}>
-                <Send className="h-3.5 w-3.5 mr-1.5" />
-                {isInvited ? 'Invited' : 'Apply Now'}
+          ) : (
+            onInvite && (
+              <Button
+                onClick={() => onInvite(match.creator_id)}
+                size="sm"
+                className="flex-1 min-w-0 bg-teal-600 hover:bg-teal-700 text-white"
+              >
+                <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+                Invite
               </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Apply to Campaign</DialogTitle>
-              </DialogHeader>
-              {campaign && (
-                <ApplicationForm
-                  campaign={campaign}
-                  onSuccess={() => setShowApplicationForm(false)}
-                  onCancel={() => setShowApplicationForm(false)}
-                />
-              )}
-            </DialogContent>
-          </Dialog>
+            )
+          )}
         </div>
       </CardContent>
     </Card>
