@@ -176,7 +176,9 @@ export const DragonFeedGrid: React.FC = () => {
       {/* Results Count */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {filteredMedia.length} {filteredMedia.length === 1 ? 'item' : 'items'} found
+          {zipActive && status === 'resolving'
+            ? 'Finding nearby creators…'
+            : `${filteredMedia.length} ${filteredMedia.length === 1 ? 'item' : 'items'} found`}
         </p>
       </div>
 
@@ -187,15 +189,11 @@ export const DragonFeedGrid: React.FC = () => {
             <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">
               <Search className="h-6 w-6 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">
-              {zipActive && status === 'resolving' ? 'Finding nearby creators…' : 'No content found'}
-            </h3>
+            <h3 className="text-lg font-semibold text-foreground mb-2">No content found</h3>
             <p className="text-muted-foreground text-center">
-              {zipActive && status === 'resolving'
-                ? 'Locating creators near that zip…'
-                : active
-                  ? 'No creators near that zip. Try a wider radius or "Any".'
-                  : 'Try adjusting your search criteria or filters to find more content.'}
+              {active
+                ? 'No creators near that zip. Try a wider radius or "Any".'
+                : 'Try adjusting your search criteria or filters to find more content.'}
             </p>
           </CardContent>
         </Card>

@@ -85,8 +85,14 @@ export function useFeedLocationFilter(media: PortfolioMedia[]): FeedLocationFilt
   );
 
   const filteredMedia = useMemo(
-    () => filterMediaByRadius(media, active ? center ?? null : null, radiusMiles, geocodedById),
-    [media, active, center, radiusMiles, geocodedById],
+    () =>
+      filterMediaByRadius(
+        media,
+        active && !geocodingLoading ? center ?? null : null,
+        radiusMiles,
+        geocodedById,
+      ),
+    [media, active, geocodingLoading, center, radiusMiles, geocodedById],
   );
 
   const status: FeedLocationFilter['status'] = !isValidZip
