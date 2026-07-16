@@ -1092,7 +1092,8 @@ async function executeTool(
         .select("id, user_id, creator_name, avatar_url, bio, skills, location, city, country, postal_code, average_rating, total_reviews, profile_slug, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url")
         .eq("is_completed", true);
       if (args.min_rating) query = query.gte("average_rating", args.min_rating);
-      query = query.order("average_rating", { ascending: false, nullsFirst: false }).limit(100);
+      // No rating pre-order/cap: rankCreators scores the full completed pool by distance + niche +
+      // rating, so a nearby lower-rated creator isn't dropped before scoring (matches match-creators).
       const { data, error } = await query;
       if (error) throw error;
 
