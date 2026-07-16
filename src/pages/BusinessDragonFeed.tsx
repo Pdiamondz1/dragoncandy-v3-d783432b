@@ -14,7 +14,7 @@ const BusinessDragonFeed: React.FC = () => {
           </div>
         </PageHeader>
         <div className="p-4">
-          <DragonFeedGrid />
+          <DragonFeedGrid browseAllHref="/dashboard/business/creators" />
         </div>
       </div>
     </DashboardLayout>

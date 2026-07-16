@@ -1012,6 +1012,29 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   No schema / RLS / edge-fn / secret change; ships on merge → Vercel. Concept:
   `docs/wiki/concepts/dragon-feed.md`. Spec:
   `docs/superpowers/specs/2026-07-16-dragonfeed-mobile-feed-zip-search-design.md`.
+- DragonFeed — Instagram-style creator search — **built (branch `feat/dragonfeed-creator-search`,
+  2026-07-16; frontend-only).** Second founder iteration on the shared Dragon Feed, after PR #242. Two
+  asks: a business anywhere should search creators in **any location by default** (not biased to its own
+  area), and searching by name and/or zip should look like **Instagram's people search** — a vertical
+  creator list, not a filtered media grid. The one search box now drives **two modes** (chosen by
+  `searchActive = name OR location present`): empty → the existing browse media feed (grid/`FeedPost`,
+  unchanged); a creator **name and/or a location (ZIP or city, ≥3 chars)** → a vertical **creator list**
+  (`FeedCreatorList`/`FeedCreatorRow`: avatar + **bold-matched name** + `location · ★rating (reviews) ·
+  N posts` + up to 3 teal skill chips; tap → `/creator/{slug||id}`; a **"Browse all creators →"** footer
+  on the business feed via a `browseAllHref` prop). **Name match is global** (any location); an optional
+  location query geocodes to a center and **narrows the creator list by radius** (10/25/50/100/Any).
+  New pure unit-tested `feedCreators.ts` (`feedCreatorsFromMedia` groups media → one `FeedCreator`/creator
+  + `postCount`; `highlightMatch` name-match segments; `filterCreatorsByRadius` reuses the tested
+  `filterByRadius`; 12 tests) + a **controlled** `useFeedCreatorSearch` hook (parent owns
+  location/radius). `useUniqueCreatorPortfolio` now also carries `skills/averageRating/totalReviews`.
+  Because a **zip is now a search *trigger*** (not "narrow the media grid"), PR #242's
+  `useFeedLocationFilter` + the `filterMediaByRadius` helper (+ its tests) are **deleted as superseded** —
+  one geocoding consumer now, no shared zip-state conflict; the two #242 lazy-geocoding invariants carry
+  over to the creator level (don't filter mid-geocode → no false-empty; skip creator geocoding under
+  "Any"). Built subagent-driven (7 tasks, per-task spec+quality reviews) → whole-branch review ("Ready to
+  merge") → **Codex second review clean**; full suite **804/804**, typecheck/lint/build green. No schema /
+  RLS / edge-fn / secret change; ships on merge → Vercel. Concept: `docs/wiki/concepts/dragon-feed.md`.
+  Spec: `docs/superpowers/specs/2026-07-16-dragonfeed-creator-search-design.md`.
 - Donny desktop panel — fixed-overlay so pages stop squishing — **shipped (PR #236,
   2026-07-16).** On desktop, opening Donny compressed every page (Browse Creators cards
   crushed, names truncated). Root cause: `DonnyDesktopPanel` was a docked `flex-shrink-0`
