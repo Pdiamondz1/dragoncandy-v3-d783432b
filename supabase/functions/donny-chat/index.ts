@@ -1090,7 +1090,8 @@ async function executeTool(
       let query = supabaseAdmin
         .from("creator_profiles")
         .select("id, user_id, creator_name, avatar_url, bio, skills, location, city, country, postal_code, average_rating, total_reviews, profile_slug, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url")
-        .eq("is_completed", true);
+        .eq("is_completed", true)
+        .eq("profile_visibility", "public"); // don't surface private creators via the service role (RLS-bypass)
       if (args.min_rating) query = query.gte("average_rating", args.min_rating);
       // No rating pre-order/cap: rankCreators scores the full completed pool by distance + niche +
       // rating, so a nearby lower-rated creator isn't dropped before scoring (matches match-creators).
