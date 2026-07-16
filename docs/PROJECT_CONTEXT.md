@@ -1076,6 +1076,36 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `docs/wiki/concepts/campaign-generation-creativity.md`. Spec:
   `docs/superpowers/specs/2026-07-16-donny-campaign-creativity-design.md`.
 
+- Donny chat `match_creators` fix — location + skill (sibling of the campaign matcher) — **built
+  (branch `feat/donny-chat-matcher`, 2026-07-16; `donny-chat` deployed to prod, frontend n/a — a
+  tool-only change).** The same over-narrow-filter bug PR #241 fixed on the campaign card, now on
+  Donny's **conversational** `match_creators` tool. It applied **two hard `ilike` filters, ANDed** —
+  a *required* `niche` against `bio` only (ignoring `skills[]`) and `location` against the freeform
+  `location` field only (ignoring `city`/distance) — so "creators near Hoboken" returned 0 over a
+  non-empty pool. Rewritten to the campaign matcher's **fetch broad → score soft → rank → top 10**
+  philosophy in a new pure `supabase/functions/donny-chat/creator-discovery.ts` (imports only
+  `_shared/geo.ts`, so vitest-testable + Deno-bundleable; 25 tests): `scoreNiche` (whole-word
+  tokenized, `bio`+`skills[]`, `niche` now optional, **never 0-excludes**), `scoreCreatorLocation`
+  (haversine distance, soft, returns `distanceMiles`), `rankCreators` (**location 0.4 + niche 0.4 +
+  rating 0.2**, never drops), `resolveSearchCenter`/`resolvePlace` (center = arg else the caller's
+  `business_profiles` location; precedence state-qualified freeform > structured `resolveCoords` >
+  guarded assume-US so `"Vancouver, Canada"` isn't mapped onto a US city). Result shape preserved +
+  a `distance_miles` field; the top-10 cap is by design ("outside that the business can explore
+  creators" via browse). **Codex second review** ran an 8-fix loop — **P1: the service-role admin
+  client bypasses RLS, so the query must filter `.eq("profile_visibility","public")`** (private
+  creators were leaking) + 7 P2 location/rank/niche edge cases — then oscillated on round 9 (objected
+  to the very `CANDIDATE_LIMIT=500` it had asked for); I **stopped the loop** since the residual is
+  the documented out-of-scope server-side-distance scale path, not a defect. Opus whole-branch +
+  edge-function-reviewer clean; deployed from the worktree via CLI (`verify_jwt=false` preserved,
+  ~172KB with deps). **Follow-up (founder-approved, separate PR):** the campaign matcher
+  (`match-creators`) has the identical service-role private-creator exposure — add the
+  `profile_visibility='public'` filter + redeploy. Durable lesson: a matcher that can return an empty
+  set over a non-empty pool must **score soft and never exclude** (two ANDed hard `ilike` filters are
+  exactly that failure); and a tool fetching with the service role must re-assert
+  `profile_visibility='public'` in the query since RLS is bypassed. Concept:
+  `docs/wiki/concepts/ai-creator-matching.md` (Donny chat sibling section). Spec:
+  `docs/superpowers/specs/2026-07-16-donny-chat-matcher-fix-design.md`.
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).

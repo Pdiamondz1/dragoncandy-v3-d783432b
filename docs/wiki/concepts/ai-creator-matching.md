@@ -3,8 +3,8 @@ title: AI Creator Matching
 type: concept
 created: 2026-07-16
 updated: 2026-07-16
-sources: [2026-07-16-fix-ai-creator-matching-location.md]
-tags: [matching, campaigns, edge-functions, geo, geocoding, distance, gotcha]
+sources: [2026-07-16-fix-ai-creator-matching-location.md, 2026-07-16-donny-chat-matcher-fix.md]
+tags: [matching, campaigns, edge-functions, geo, geocoding, distance, donny, gotcha]
 ---
 # AI Creator Matching
 
@@ -68,17 +68,53 @@ Search]] geo stack — but ported into the edge function, because **edge functio
 the preliminary (pre-AI) score is normalized by `/ (1 - ai_quality/100)`. Keep that relationship when
 retuning weights.
 
+## The Donny chat sibling `match_creators` (fixed 2026-07-16, `feat/donny-chat-matcher`)
+
+Donny's **conversational** matcher (the `match_creators` tool in `donny-chat/index.ts`, the "find me
+creators near X" path) had the *same class of bug* on a different surface: **two hard `ilike`
+filters, ANDed** — `niche` (a *required* arg) against `bio` only (ignoring `skills[]`), and
+`location` against the freeform `location` field only (ignoring `city`/distance). Compounded, they
+returned 0 for "creators near Hoboken" over a non-empty pool.
+
+Fixed by mirroring the campaign matcher's **fetch broad → score soft → rank → top 10** philosophy,
+in a pure `supabase/functions/donny-chat/creator-discovery.ts` (imports only `_shared/geo.ts`, so
+Vitest-testable + Deno-bundleable):
+
+- `scoreNiche` — whole-word tokenized match of niche word(s) against `bio` **and** `skills[]`; no
+  niche → neutral 60, a miss → 40, **never 0-excludes**. `niche` moved from required → optional.
+- `scoreCreatorLocation` — center + resolved creator coords → `distanceToScore(haversine)`; else a
+  freeform substring match → 80; else neutral. Returns `{score, distanceMiles}`, never excludes.
+- `rankCreators` — **location 0.4 + niche 0.4 + rating 0.2**, sorted desc, never drops a creator;
+  the handler `.slice(0,10)` returns the top 10 (bounded by design — beyond that "the business can
+  explore creators" via the browse page).
+- `resolveSearchCenter` / internal `resolvePlace` — center = explicit arg (assume US) else the
+  caller's own `business_profiles` location; precedence **state-qualified freeform** (`"Portland,
+  ME"` beats bare `"Portland"`=OR) > structured `resolveCoords` > legacy `"City, ST"` assume-US,
+  **guarded** by `US_STATE_ABBRS`/`US_COUNTRY_QUALIFIERS` so `"Vancouver, Canada"` isn't mapped onto
+  a US city.
+
+**Privacy (Codex P1):** the tool fetches with the **service-role admin client, which bypasses
+RLS**, so the query MUST filter `.eq("is_completed", true).eq("profile_visibility", "public")` —
+otherwise private creators leak. The candidate fetch is bounded (`CANDIDATE_LIMIT=500`, `warn` on
+cap) with **no rating pre-order** (pre-ordering + slicing would drop nearby lower-rated creators
+before scoring). Deploy from the worktree via the CLI (`donny-chat` is `verify_jwt=false`, ~172KB
+with deps → CLI auto-bundles). The result shape is preserved + a `distance_miles` field.
+
 ## Known limitations
 
 - A creator with a US city but a **null country** falls to the soft floor (no assume-US heuristic —
   it risks mis-placing international creators); a data-quality gap, not an exclusion.
 - Skills scoring is still keyword-substring of creator `skills[]` against campaign free-text
   (soft, never zeroes) — a deeper skills rewrite is a documented future tune.
-- Donny chat's separate `match_creators` tool has the same over-narrow-filter class of bug (filters
-  skills against `bio`, location against the freeform field) — out of scope here, a documented
-  follow-up.
+- **Both matchers rank in-memory over a bounded pool** — there are no lat/lng columns, so distance
+  can't be filtered/sorted in SQL. Fine at current marketplace scale; **server-side lat/lng
+  distance is the shared eventual scale path** (documented, not built).
+- **Service-role privacy parity:** the campaign matcher (`match-creators`) still fetches
+  `creator_profiles` without the `profile_visibility='public'` filter the Donny-chat tool now
+  applies — same service-role RLS-bypass exposure, deferred to a quick follow-up PR.
 
 ## See Also
 - [[Creator Location Search]] (shared geo stack — the source-of-truth `src/lib` helpers)
 - [[Notification Delivery]] (the `notify_donny_nudge` trigger the write-bug lived in)
+- [[Donny AI]] (the conversational `match_creators` tool lives in the `donny-chat` edge fn)
 - Google Maps geocoding · the `verify-db-schema` dev skill (verify schema vs prod)

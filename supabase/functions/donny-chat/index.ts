@@ -11,6 +11,7 @@ import { embedQuery, retrieveContext } from "../donny-orchestrator/rag.ts";
 import { reconstructHistory } from "./history.ts";
 import { applyEdits } from "./doc-edits.ts";
 import { resolveDonnyProfile, type DonnyProfile } from "./profile.ts";
+import { resolveSearchCenter, rankCreators } from "./creator-discovery.ts";
 import {
   GoogleWorkspaceError,
   assertDriveFileId,
@@ -90,16 +91,16 @@ const TOOL_DEFINITIONS = [
   // --- Creator Discovery Tools ---
   {
     name: "match_creators",
-    description: "Find content creators matching specific criteria like niche, location, and minimum rating.",
+    description: "Find and rank content creators by proximity (real distance from a place or the business's own location), skill/niche fit, and rating. Returns the best-ranked creators (never empty when creators exist); each includes distance_miles when a location is known. All arguments are optional.",
     input_schema: {
       type: "object",
       properties: {
-        campaign_id: { type: "string", description: "Optional campaign UUID to match against" },
-        niche: { type: "string", description: "Content niche (food, fashion, tech, fitness, lifestyle)" },
-        location: { type: "string", description: "Geographic location filter" },
-        min_rating: { type: "number", description: "Minimum creator rating (0-5)" },
+        campaign_id: { type: "string", description: "Optional campaign UUID (currently informational only — matching is not campaign-scoped)" },
+        niche: { type: "string", description: "Optional content niche/topic (e.g. food, fashion, tech, fitness) — used as a soft ranking boost, not a hard filter" },
+        location: { type: "string", description: "Optional place to search near (e.g. a city). Defaults to the business's own saved location when omitted." },
+        min_rating: { type: "number", description: "Optional minimum creator rating (0-5)" },
       },
-      required: ["niche"],
+      required: [],
     },
   },
   {
@@ -1088,22 +1089,49 @@ async function executeTool(
     case "match_creators": {
       let query = supabaseAdmin
         .from("creator_profiles")
-        .select("id, user_id, creator_name, avatar_url, bio, skills, location, average_rating, total_reviews, profile_slug, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url")
+        .select("id, user_id, creator_name, avatar_url, bio, skills, location, city, country, postal_code, average_rating, total_reviews, profile_slug, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url")
         .eq("is_completed", true)
-        .limit(10);
-      if (args.niche) query = query.ilike("bio", `%${args.niche}%`);
-      if (args.location) query = query.ilike("location", `%${args.location}%`);
+        .eq("profile_visibility", "public"); // don't surface private creators via the service role (RLS-bypass)
       if (args.min_rating) query = query.gte("average_rating", args.min_rating);
-      query = query.order("average_rating", { ascending: false, nullsFirst: false });
+      // Distance can't be filtered in SQL (no lat/lng columns), so we rank in-memory over a
+      // deliberately bounded candidate pool. No rating pre-order (that would drop nearby lower-rated
+      // creators before scoring). At current marketplace scale this is the full set; beyond
+      // CANDIDATE_LIMIT, ranking is best-effort until server-side lat/lng distance lands.
+      const CANDIDATE_LIMIT = 500;
+      query = query.limit(CANDIDATE_LIMIT);
       const { data, error } = await query;
       if (error) throw error;
+      if ((data?.length ?? 0) >= CANDIDATE_LIMIT) {
+        console.warn(`match_creators: candidate pool hit CANDIDATE_LIMIT=${CANDIDATE_LIMIT}; ranking is best-effort until server-side distance lands.`);
+      }
+
+      // Resolve the search center: explicit location arg, else the caller's own business location.
+      let owner: { city: string | null; country: string | null; location: string | null } | null = null;
+      if (!args.location) {
+        const { data: bp, error: bpErr } = await supabaseAdmin
+          .from("business_profiles")
+          .select("city, country, location")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (bpErr) console.warn("match_creators: business_profiles lookup failed:", bpErr);
+        owner = bp ?? null;
+      }
+      const center = resolveSearchCenter(args.location ?? null, owner);
+
+      const ranked = rankCreators((data ?? []) as any[], {
+        center,
+        locationArg: args.location ?? null,
+        niche: args.niche ?? null,
+      }).slice(0, 10);
+
       return {
-        result: (data ?? []).map((c: any) => ({
+        result: ranked.map((c: any) => ({
           id: c.user_id,
           name: c.creator_name ?? "Unknown",
           avatar_url: c.avatar_url,
           profile_slug: c.profile_slug ?? null,
           location: c.location ?? null,
+          distance_miles: c.distanceMiles,
           platforms: [
             c.instagram_url && "instagram",
             c.tiktok_url && "tiktok",

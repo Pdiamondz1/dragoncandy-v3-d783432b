@@ -1,5 +1,21 @@
 # Wiki Log
 
+## [2026-07-16] ingest | Donny chat `match_creators` fix (feat/donny-chat-matcher)
+Ingested [[Donny Chat Matcher Fix Session]] — the sibling of PR #241's campaign-matcher fix, on
+Donny's conversational `match_creators` tool. Same over-narrow-filter class of bug (a *required*
+`niche` `ilike` on `bio` + a `location` `ilike` on the freeform field, ANDed → "Found 0" over a
+non-empty pool). Rewrote it to **fetch broad → score soft → rank → top 10**, in a new pure
+`supabase/functions/donny-chat/creator-discovery.ts` (imports only `_shared/geo.ts`; 25 vitest tests)
+— `scoreNiche` (whole-word, bio+skills, never 0-excludes), `scoreCreatorLocation` (haversine
+distance, soft), `rankCreators` (location 0.4 + niche 0.4 + rating 0.2), `resolveSearchCenter`/
+`resolvePlace` (state-qualified > structured > guarded assume-US). `niche` → optional. **Codex P1:**
+the service-role admin client bypasses RLS → the query must filter `profile_visibility='public'`.
+`donny-chat` deployed from the worktree via CLI (`verify_jwt=false`). Pages: updated
+`concepts/ai-creator-matching.md` (new "Donny chat sibling" section + flipped the known-limitations
+follow-up bullet + See-Also [[Donny AI]]), `index.md` (Sources + concept line), + this entry.
+Follow-up: campaign matcher (`match-creators`) needs the same `profile_visibility='public'` filter
+(separate PR). RAG sync + [[verify-knowledge]] are post-merge.
+
 ## [2026-07-16] ingest | Donny campaign-idea creativity (PR #243)
 Ingested [[Donny Campaign Creativity Session]]. Freed the over-constrained campaign prompt (the real
 fix — the cost auto-downgrade never fired; campaign gen always ran full Sonnet at 0.3% of budget)
