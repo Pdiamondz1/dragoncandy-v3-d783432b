@@ -52,6 +52,9 @@ describe('scoreNiche', () => {
   test('counts a 2-char niche (e.g. "ai") when present', () => {
     expect(scoreNiche('ai', mk({ bio: 'I build ai tools' }))).toBeGreaterThan(60);
   });
+  test('does NOT substring-false-match a short niche ("ai" not in "paid")', () => {
+    expect(scoreNiche('ai', mk({ bio: 'paid campaigns and email marketing' }))).toBe(40);
+  });
 });
 
 describe('scoreCreatorLocation', () => {
@@ -77,6 +80,14 @@ describe('scoreCreatorLocation', () => {
   });
   test('no center, no arg -> neutral 50', () => {
     expect(scoreCreatorLocation(null, null, mk({ city: 'Hoboken' }))).toEqual({ score: 50, distanceMiles: null });
+  });
+  test('state-qualified creator location beats the ambiguous bare city', () => {
+    const PORTLAND_ME = { lat: 43.6591, lng: -70.2568 };
+    const r = scoreCreatorLocation(PORTLAND_ME, null, mk({
+      city: 'Portland', country: 'United States', location: 'Portland, ME, United States',
+    }));
+    expect(r.score).toBe(100);          // resolves to Portland ME (~0 mi), not Portland OR (~2900 mi)
+    expect(r.distanceMiles!).toBeLessThan(5);
   });
 });
 

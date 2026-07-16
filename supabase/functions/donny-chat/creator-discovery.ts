@@ -44,13 +44,31 @@ export function scoreNiche(
   if (!niche || !niche.trim()) return 60;
   const words = niche.toLowerCase().split(/[\s,]+/).filter((w) => w.length >= 2);
   if (words.length === 0) return 60;
-  const haystack = [
-    (creator.bio ?? "").toLowerCase(),
-    (creator.skills ?? []).join(" ").toLowerCase().replace(/[_-]/g, " "),
-  ].join(" ");
-  const hits = words.filter((w) => haystack.includes(w)).length;
+  const hayTokens = new Set(
+    [
+      (creator.bio ?? "").toLowerCase(),
+      (creator.skills ?? []).join(" ").toLowerCase().replace(/[_-]/g, " "),
+    ]
+      .join(" ")
+      .split(/[^a-z0-9]+/)
+      .filter(Boolean),
+  );
+  const hits = words.filter((w) => hayTokens.has(w)).length;
   if (hits === 0) return 40;
   return Math.round(40 + (hits / words.length) * 60);
+}
+
+// Resolve a creator's coords, preferring a state-qualified freeform location ("Portland, ME, US")
+// over the bare city (an ambiguous "Portland" defaults to Portland OR in the static table).
+function resolveCreatorCoords(creator: { city: string | null; country: string | null; location: string | null }): Coords | null {
+  if (creator.location) {
+    const parts = creator.location.split(",").map((s) => s.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      const stateHit = lookupCityCoords(`${parts[0]} ${parts[1]}`, "US");
+      if (stateHit) return stateHit;
+    }
+  }
+  return resolveCoords(creator.city, creator.country, creator.location);
 }
 
 // Soft location score + distance. center+creatorCoords -> distanceToScore(haversine);
@@ -61,7 +79,7 @@ export function scoreCreatorLocation(
   creator: { city: string | null; country: string | null; location: string | null },
 ): { score: number; distanceMiles: number | null } {
   if (center) {
-    const coords = resolveCoords(creator.city, creator.country, creator.location);
+    const coords = resolveCreatorCoords(creator);
     if (coords) {
       const d = haversineDistance(center.lat, center.lng, coords.lat, coords.lng);
       return { score: distanceToScore(d), distanceMiles: d };
