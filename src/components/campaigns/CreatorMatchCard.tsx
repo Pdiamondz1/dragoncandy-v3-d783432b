@@ -122,6 +122,14 @@ export const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({ match, isInv
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
                     {match.creator_profile.location}
+                    {typeof match.match_reasons.distance_miles === 'number' && (
+                      <span className="text-teal-600 dark:text-teal-400">
+                        {' · '}
+                        {match.match_reasons.distance_miles < 1
+                          ? 'nearby'
+                          : `${match.match_reasons.distance_miles} mi away`}
+                      </span>
+                    )}
                   </span>
                 )}
                 {match.creator_profile.base_rate_per_hour && (

@@ -1007,6 +1007,32 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   both overlay, no reflow) + the prod bundle sentinel; Codex-clean. Concept:
   `docs/wiki/concepts/mobile-viewport-fixed-positioning.md` (§4).
 
+- AI creator matching fix — location + skill ("Found 0 potential creators") — **shipped (branch
+  `worktree-dc-issues-3`, 2026-07-16; migration + `match-creators` edge fn deployed to prod,
+  frontend deploys on merge).** A Hoboken restaurant's business "Find Perfect Creators" card
+  returned **"Found 0 potential creators"** over a non-empty pool (6 Hoboken creators existed). Root
+  cause was **not** matching logic but a **silently-swallowed `campaign_matches` INSERT** — three
+  prod defects: `match_score` was `numeric(3,2) CHECK 0..1` but the matcher writes 0–100 (overflow +
+  check violation); the shared `notify_donny_nudge` trigger's `campaign_matches` branch referenced a
+  non-existent `NEW.brand_id` (rolled back every insert); and `match-creators` selected a
+  non-existent `business_address`, so the owner location never loaded and geographic scoring was a
+  flat neutral for everyone. Insert errors were only `console.error`'d → the UI showed a clean
+  "success" toast with 0 results. Fix: one migration (widen `match_score` to `numeric(5,2)` / CHECK
+  0..100 + repair only that trigger branch, all others byte-preserved) + a rewrite of `match-creators`
+  geographic scoring to **real haversine distance** (nearest-first, soft — never excludes) reusing a
+  new **pure Deno `supabase/functions/_shared/geo.ts`** (a port of the tested `src/lib` geo helpers +
+  400-city table, since edge functions can't import from `src/`) + a weight rebalance (geographic
+  10→20, availability 10→5, ai_quality 25→20; the five non-AI weights must sum to `100 − ai_quality`)
+  + a "· N mi away" match-card label. Deployed under the careful gate (migration via MCP; smoke
+  insert proved writes unblocked; edge fn deployed from the worktree preserving `verify_jwt=true`; no
+  new security advisor). Built brainstorm→spec→plan→subagent-driven execution (per-task reviews) →
+  Opus whole-branch review ("Ready to merge", traced the exact Uncle Rocco data → all 6 Hoboken
+  creators + Jersey City score geographic 100) → **Codex second review clean**. Durable lesson: a
+  matcher returning an empty set over a non-empty pool is usually a **write-path** failure (column
+  constraints + AFTER-INSERT triggers), not scoring — verify column types vs **prod**, not the
+  migration file. Concept: `docs/wiki/concepts/ai-creator-matching.md`. Spec:
+  `docs/superpowers/specs/2026-07-16-fix-ai-creator-matching-location-design.md`.
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).
