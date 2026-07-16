@@ -77,7 +77,7 @@ export function useFeedLocationFilter(media: PortfolioMedia[]): FeedLocationFilt
 
   // Lazy: pass [] until a zip center is active, so useCreatorGeocoding (enabled: length > 0) idles.
   const creatorsToGeocode = active ? uniqueCreators : [];
-  const { geocodedCreators } = useCreatorGeocoding(creatorsToGeocode);
+  const { geocodedCreators, isLoading: geocodingLoading } = useCreatorGeocoding(creatorsToGeocode);
 
   const geocodedById = useMemo(
     () => new Map<string, LatLng>(geocodedCreators.map(g => [g.id, { lat: g.lat, lng: g.lng }])),
@@ -93,9 +93,11 @@ export function useFeedLocationFilter(media: PortfolioMedia[]): FeedLocationFilt
     ? 'idle'
     : centerLoading
       ? 'resolving'
-      : center
-        ? 'idle'
-        : 'failed';
+      : !center
+        ? 'failed'
+        : geocodingLoading
+          ? 'resolving'
+          : 'idle';
 
   return { zip, setZip, radiusMiles, setRadiusMiles, filteredMedia, status, active };
 }
