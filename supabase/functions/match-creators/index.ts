@@ -415,13 +415,17 @@ serve(async (req) => {
     let { data: creators, error: creatorsError } = await supabase
       .from('creator_profiles')
       .select('user_id, creator_name, bio, skills, location, city, country, base_rate_per_hour, min_project_budget, availability, response_time, max_projects_per_month, preferred_project_duration, years_of_experience, average_rating, total_reviews, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url')
-      .eq('is_completed', true);
+      // Service role bypasses RLS — never surface private creators (privacy parity with the
+      // donny-chat match_creators tool; the campaign card must not expose a non-public profile).
+      .eq('is_completed', true)
+      .eq('profile_visibility', 'public');
 
     if ((!creators || creators.length === 0) && !creatorsError) {
       console.log('No completed profiles found, falling back to all named creators');
       const fallback = await supabase
         .from('creator_profiles')
         .select('user_id, creator_name, bio, skills, location, city, country, base_rate_per_hour, min_project_budget, availability, response_time, max_projects_per_month, preferred_project_duration, years_of_experience, average_rating, total_reviews, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url')
+        .eq('profile_visibility', 'public')
         .not('creator_name', 'is', null)
         .neq('creator_name', '');
       creators = fallback.data;
