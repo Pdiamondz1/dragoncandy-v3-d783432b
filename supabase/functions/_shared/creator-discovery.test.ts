@@ -139,7 +139,7 @@ describe('isCreatorDiscoveryIntent', () => {
     expect(isCreatorDiscoveryIntent('find me creators near Hoboken')).toBe(true);
     expect(isCreatorDiscoveryIntent('show me top creators')).toBe(true);
     expect(isCreatorDiscoveryIntent('who are the best creators around me?')).toBe(true);
-    expect(isCreatorDiscoveryIntent('recommend some influencers for a food campaign')).toBe(true);
+    expect(isCreatorDiscoveryIntent('recommend some food influencers near me')).toBe(true);
     expect(isCreatorDiscoveryIntent('creators near me')).toBe(true);
     expect(isCreatorDiscoveryIntent('list creators in my area')).toBe(true);
     // discovery requests that happen to mention collaborate/reviews are still discovery
@@ -166,11 +166,14 @@ describe('isCreatorDiscoveryIntent', () => {
     expect(isCreatorDiscoveryIntent('creators are great for marketing')).toBe(false);
     expect(isCreatorDiscoveryIntent('tell me about creator payouts')).toBe(false);
   });
-  test('false for campaign-creation intent (prepare_campaign should win, not forced discovery)', () => {
+  test('false for ANY campaign mention — defer to prepare_campaign (create) or campaign_agent (existing)', () => {
+    // campaign creation → the builder flow should win, not a forced creator list
     expect(isCreatorDiscoveryIntent('start a campaign with creators near Hoboken')).toBe(false);
     expect(isCreatorDiscoveryIntent('create a new campaign and find creators')).toBe(false);
     expect(isCreatorDiscoveryIntent('launch a campaign targeting local creators')).toBe(false);
-    // but a discovery request that merely mentions a campaign (no creation verb) still forces
-    expect(isCreatorDiscoveryIntent('recommend creators for my food campaign')).toBe(true);
+    // campaign-specific matching (the existing "top creators for my campaigns" quick chip)
+    // should route to campaign_agent, not the generic discovery tool
+    expect(isCreatorDiscoveryIntent('Show me top creators for my campaigns')).toBe(false);
+    expect(isCreatorDiscoveryIntent('recommend creators for my food campaign')).toBe(false);
   });
 });
