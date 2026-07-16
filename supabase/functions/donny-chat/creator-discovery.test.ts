@@ -143,6 +143,9 @@ describe('isCreatorDiscoveryIntent', () => {
     expect(isCreatorDiscoveryIntent('recommend some influencers for a food campaign')).toBe(true);
     expect(isCreatorDiscoveryIntent('creators near me')).toBe(true);
     expect(isCreatorDiscoveryIntent('list creators in my area')).toBe(true);
+    // discovery requests that happen to mention collaborate/reviews are still discovery
+    expect(isCreatorDiscoveryIntent('find creators to collaborate with')).toBe(true);
+    expect(isCreatorDiscoveryIntent('show me creators with the best reviews')).toBe(true);
   });
   test('false when there is no creator/influencer noun', () => {
     expect(isCreatorDiscoveryIntent('how do I create a campaign?')).toBe(false);
