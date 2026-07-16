@@ -75,8 +75,10 @@ export function useFeedLocationFilter(media: PortfolioMedia[]): FeedLocationFilt
     return [...map.values()];
   }, [media]);
 
-  // Lazy: pass [] until a zip center is active, so useCreatorGeocoding (enabled: length > 0) idles.
-  const creatorsToGeocode = active ? uniqueCreators : [];
+  // Lazy: geocode creators only when a zip center is active AND a finite radius is set. Under "Any"
+  // (radiusMiles null) filterByRadius keeps every creator regardless of coords, so geocoding would
+  // be wasted Google-quota work that only stalls the feed. Pass [] to idle useCreatorGeocoding.
+  const creatorsToGeocode = active && radiusMiles != null ? uniqueCreators : [];
   const { geocodedCreators, isLoading: geocodingLoading } = useCreatorGeocoding(creatorsToGeocode);
 
   const geocodedById = useMemo(
