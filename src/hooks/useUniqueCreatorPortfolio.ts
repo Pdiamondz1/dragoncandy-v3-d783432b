@@ -68,18 +68,20 @@ export const useUniqueCreatorPortfolio = () => {
         const mediaPromises = creators.flatMap((creator) => {
           const urls = Array.isArray(creator.portfolio_urls) ? creator.portfolio_urls : [];
           const rawAvatar = typeof creator.avatar_url === 'string' ? creator.avatar_url : '';
+          // Resolve the avatar ONCE per creator (one shared promise → a single signed-URL
+          // call), then reuse it across all of that creator's media items.
+          const avatarUrlPromise: Promise<string | undefined> = rawAvatar
+            ? rawAvatar.startsWith('http')
+              ? Promise.resolve(rawAvatar)
+              : getSignedUrl(rawAvatar).then((u) => u ?? undefined)
+            : Promise.resolve(undefined);
           return urls
             .filter((url: unknown) => typeof url === 'string' && url.length > 0)
             .map(async (url: string) => {
               const isExternal = url.startsWith('http');
               const finalUrl = isExternal ? url : await getSignedUrl(url);
               if (!finalUrl) return null;
-              // Avatar: external http URL used directly; storage key signed (cached).
-              const avatarUrl = rawAvatar
-                ? rawAvatar.startsWith('http')
-                  ? rawAvatar
-                  : (await getSignedUrl(rawAvatar)) ?? undefined
-                : undefined;
+              const avatarUrl = await avatarUrlPromise;
               const isVideo = /\.(mp4|webm|mov|avi)$/i.test(url);
               return {
                 id: `${creator.id}-${url}`,
