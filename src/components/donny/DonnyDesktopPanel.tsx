@@ -21,7 +21,7 @@ export function DonnyDesktopPanel() {
   return (
     <div
       className={cn(
-        'hidden md:flex flex-col border-l border-gray-200 bg-white transition-all duration-200 flex-shrink-0',
+        'hidden md:flex flex-col fixed inset-y-0 right-0 z-40 shadow-2xl border-l border-gray-200 bg-white transition-all duration-200',
         stage === 'tray' && 'w-80',
         stage === 'chat' && 'w-[420px]'
       )}
