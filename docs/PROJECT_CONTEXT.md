@@ -993,6 +993,26 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   QA gate untouched. Supersedes the 2026-06-02 "Lovable stays prod host" scoping decision.
   Runbook: `docs/runbooks/vercel-prod-cutover.md`.
 
+- DragonFeed — mobile vertical feed + zip-radius search — **built (branch `worktree-dc-issues-2`,
+  2026-07-16, PR #242; frontend-only).** Two founder asks on the shared Dragon Feed (the creator-
+  content discovery surface; `DragonFeedGrid`, rendered by both the business `BusinessDragonFeed` and
+  creator `CreatorDragonFeed` pages). **(1) Mobile vertical feed:** on mobile (<768px) the 3-column
+  grid becomes a single-column Instagram-style `FeedPost` feed (creator header → full-width media → the
+  existing `FeedViewer` lightbox); **desktop keeps the exact `FeedTile` grid**, branched on
+  `useIsMobile()` — a JS branch (not a CSS `hidden`/`lg:block` toggle) so only ONE media tree mounts
+  rather than double-downloading every image/video. **(2) Zip+radius search** on both viewports (zip
+  input + radius select 10/25/50/100/Any, default 25) that filters the feed to creators within the
+  radius of a typed zip, **reusing the existing location/geocoding stack** (`creatorLocationFilter.ts`,
+  `geocoding.ts`, `useCreatorGeocoding`) via a new **pure media-level `filterMediaByRadius`** + a thin
+  `useFeedLocationFilter(media)` hook (debounce → geocode center → lazy creator geocoding → filter). Also
+  loaded `avatar_url` + location fields onto `PortfolioMedia` (fixing the lightbox's placeholder avatar
+  too; avatar signed once per creator). **Codex second review clean after two P2 lazy-geocoding fixes:**
+  keep the feed unfiltered until creator geocoding resolves (no transient false-empty / dropped nearby
+  posts), and skip creator geocoding entirely under the "Any" radius (no wasted Google-quota calls).
+  No schema / RLS / edge-fn / secret change; ships on merge → Vercel. Concept:
+  `docs/wiki/concepts/dragon-feed.md`. Spec:
+  `docs/superpowers/specs/2026-07-16-dragonfeed-mobile-feed-zip-search-design.md`.
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).

@@ -1,5 +1,18 @@
 # Wiki Log
 
+## [2026-07-16] ingest | DragonFeed mobile vertical feed + zip-radius search
+Ingested [[Dragon Feed Mobile & Zip Search Session]] (PR #242, frontend-only). Two founder asks on
+the shared Dragon Feed (`DragonFeedGrid`, used by both the business + creator feed pages): a mobile
+(<768px) single-column Instagram-style `FeedPost` feed (desktop `FeedTile` grid unchanged, branched on
+`useIsMobile()` — a JS branch so only one media tree mounts, not a CSS double-mount), and a zip+radius
+search that reuses the [[Creator Location Search]] geo stack via a new pure media-level
+`filterMediaByRadius` + a thin `useFeedLocationFilter` hook. Two Codex-caught P2 lazy-geocoding
+invariants captured as durable knowledge: keep the feed unfiltered until creator geocoding resolves
+(no transient false-empty), and skip creator geocoding entirely under the "Any" radius (no wasted
+Google quota). Pages created: [[Dragon Feed]] (concept) + the raw session source. Pages updated:
+index.md (Concepts + Sources), PROJECT_CONTEXT (workstream bullet). RAG sync + [[verify-knowledge]]
+run post-merge (the post-merge hook fires on the `main` fast-forward).
+
 ## [2026-07-14] update | donny-chat generate_campaign credential fix
 The pre-existing 401 surfaced in [[Campaign Generate Async Jobs Session]] is fixed (PR #234):
 donny-chat's `generate_campaign` tool now forwards the CALLER's own credential (session JWT or
