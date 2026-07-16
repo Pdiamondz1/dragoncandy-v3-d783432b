@@ -29,6 +29,28 @@ function stateQualifiedKey(place: string): string | null {
   return `${city} ${state}`;
 }
 
+// Resolve coords for a place given structured city/country and/or a freeform location string.
+// Precedence: state-qualified freeform ("Portland, ME") > structured city+country > bare-city-from-freeform.
+function resolvePlace(city: string | null, country: string | null, location: string | null): Coords | null {
+  // 1) state-qualified freeform location (most specific — beats an ambiguous bare city like "Portland").
+  if (location) {
+    const sq = stateQualifiedKey(location);
+    if (sq) {
+      const hit = lookupCityCoords(sq, "US");
+      if (hit) return hit;
+    }
+  }
+  // 2) structured city + country (and resolveCoords' own "City, Country" freeform parse).
+  const structured = resolveCoords(city, country, location);
+  if (structured) return structured;
+  // 3) legacy freeform "City, ST" — take the bare city (first comma part) and assume US.
+  if (location) {
+    const cityHit = lookupCityCoords(location.split(",")[0].trim(), "US");
+    if (cityHit) return cityHit;
+  }
+  return null;
+}
+
 export interface DiscoveryCreator {
   city: string | null;
   country: string | null;
@@ -44,18 +66,12 @@ export function resolveSearchCenter(
   owner: { city: string | null; country: string | null; location: string | null } | null,
 ): Coords | null {
   if (locationArg && locationArg.trim()) {
-    const sq = stateQualifiedKey(locationArg);
-    if (sq) {
-      const hit = lookupCityCoords(sq, "US");
-      if (hit) return hit;
-    }
-    const city = locationArg.split(",")[0].trim();
-    const cityHit = lookupCityCoords(city, "US");
-    if (cityHit) return cityHit;
+    const hit = resolvePlace(null, null, locationArg.trim());
+    if (hit) return hit;
   }
   if (owner) {
-    const c = resolveCoords(owner.city, owner.country, owner.location);
-    if (c) return c;
+    const hit = resolvePlace(owner.city, owner.country, owner.location);
+    if (hit) return hit;
   }
   return null;
 }
@@ -85,14 +101,7 @@ export function scoreNiche(
 // Resolve a creator's coords, preferring a state-qualified freeform location ("Portland, ME, US")
 // over the bare city (an ambiguous "Portland" defaults to Portland OR in the static table).
 function resolveCreatorCoords(creator: { city: string | null; country: string | null; location: string | null }): Coords | null {
-  if (creator.location) {
-    const sq = stateQualifiedKey(creator.location);
-    if (sq) {
-      const hit = lookupCityCoords(sq, "US");
-      if (hit) return hit;
-    }
-  }
-  return resolveCoords(creator.city, creator.country, creator.location);
+  return resolvePlace(creator.city, creator.country, creator.location);
 }
 
 // Soft location score + distance. center+creatorCoords -> distanceToScore(haversine);

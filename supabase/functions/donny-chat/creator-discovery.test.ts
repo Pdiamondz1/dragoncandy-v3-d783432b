@@ -38,6 +38,11 @@ describe('resolveSearchCenter', () => {
     expect(me).not.toBeNull();
     expect(me!.lat).toBeCloseTo(43.66, 1);
   });
+  test('legacy business default: freeform "Hoboken, NJ" with null city/country still resolves', () => {
+    const c = resolveSearchCenter(null, { city: null, country: null, location: 'Hoboken, NJ' });
+    expect(c).not.toBeNull();
+    expect(c!.lat).toBeCloseTo(40.744, 1);
+  });
 });
 
 describe('scoreNiche', () => {
@@ -99,6 +104,12 @@ describe('scoreCreatorLocation', () => {
     const r = scoreCreatorLocation(PORTLAND_ME, null, mk({
       city: 'Portland', country: 'United States', location: 'Portland, Maine, United States',
     }));
+    expect(r.score).toBe(100);
+    expect(r.distanceMiles!).toBeLessThan(5);
+  });
+  test('legacy creator freeform "Hoboken, NJ" (null city/country) is distance-scored', () => {
+    const HOBOKEN = { lat: 40.7439, lng: -74.0324 };
+    const r = scoreCreatorLocation(HOBOKEN, null, mk({ city: null, country: null, location: 'Hoboken, NJ' }));
     expect(r.score).toBe(100);
     expect(r.distanceMiles!).toBeLessThan(5);
   });
