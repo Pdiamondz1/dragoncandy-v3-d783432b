@@ -21,6 +21,24 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-16] Donny desktop fixed-overlay knowledge-sync validation (PRs #236/#237)
+- Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for the Donny desktop
+  fixed-overlay fix.
+- Happened: (a) wiki lint — path-based orphan/index-completeness check clean (0 across
+  concepts+entities+analyses), no contradictions (compounded a new §4 onto
+  [[Mobile Viewport & Fixed Positioning]], no new page); (b) raw `RAG_LAST` 2026-07-14T21:30:17Z <
+  `LAST_WIKI_SYNC` 2026-07-16T11:39:28Z (~2d) — the classic UPDATE-only `max(updated_at)`-not-bumped
+  case (compound-onto-existing-page, no net-new insert), BUT the post-merge hook synced wiki
+  errors=0/updated=71 and `content ilike '%shadow-2xl%'` = 2 rows + `%docked side-panel%` = 2 rows
+  confirm the new §4 text is in `donny_knowledge` → [freshness-proxy], (b) met; (c) the updated
+  concept is in index.md + the `[2026-07-16] ingest` log.md entry.
+- Worked: [freshness-proxy] resolved (b) decisively — `shadow-2xl` is unique to my §4 within the
+  synced wiki dirs (grep-confirmed), so a RAG hit is unambiguous proof despite the stale timestamp.
+- Failed: none (validator). Post-merge run → its entry rides a dedicated `chore/verify-knowledge-runlog-236`
+  PR (no work branch to bundle into), matching the existing `chore/verify-knowledge-runlog-NNN` pattern.
+- Remember: re-confirms [freshness-proxy] for an UPDATE-only (compound) sync — pick a token unique to
+  the *new* text (here `shadow-2xl`) so the content-ilike proof is unambiguous. (advisory)
+
 ### [2026-06-28] Dragon Rewards UI launch gate knowledge-sync (PR #200) — (re-added; was stranded on the gate branch)
 - Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for PR #200.
 - Happened: (a) 0 orphans; the DRE concept runbook updated to the two-switch launch (⚠️ marked resolved),
