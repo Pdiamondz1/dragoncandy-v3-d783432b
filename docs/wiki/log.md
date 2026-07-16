@@ -1,5 +1,19 @@
 # Wiki Log
 
+## [2026-07-16] update | Donny tool_choice forcing (fix/donny-surface-creators-in-chat)
+Ingested [[Donny Creator Tool-Forcing Session]] — the follow-on after a live E2E of PR #246 found
+Donny would **not call** its own `match_creators` tool (redirected + falsely denied having it,
+anchored by its prior-turn "I don't have that tool" history). Compounded onto
+`concepts/ai-creator-matching.md` (new "Donny wouldn't call the tool — prompt persuasion failed,
+tool_choice forcing works" subsection under the Donny sibling). Two escalating fixes: additive prompt
+Rules (necessary, not sufficient — history-anchoring beat the prompt) + **deterministic tool_choice
+forcing** (pure tested `isCreatorDiscoveryIntent` gates forcing `tool_choice:{type:'tool',
+name:'match_creators'}` on the first turn only, guarded so the forced tool is always in the payload).
+edge-function-reviewer PASS; Codex clean after 2 heuristic P2s; 29 tests; `donny-chat` deployed
+(`--no-verify-jwt`). Live E2E blocked by a session logout (founder to confirm). Durable lessons: you
+can't prompt a model out of an in-context stance; force intent-driven tools with tool_choice, don't
+persuade. Pages: raw session + concept subsection + index (Sources + concept line) + this entry.
+
 ## [2026-07-16] ingest | Donny chat `match_creators` fix (feat/donny-chat-matcher)
 Ingested [[Donny Chat Matcher Fix Session]] — the sibling of PR #241's campaign-matcher fix, on
 Donny's conversational `match_creators` tool. Same over-narrow-filter class of bug (a *required*

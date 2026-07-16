@@ -3,7 +3,7 @@ title: AI Creator Matching
 type: concept
 created: 2026-07-16
 updated: 2026-07-16
-sources: [2026-07-16-fix-ai-creator-matching-location.md, 2026-07-16-donny-chat-matcher-fix.md]
+sources: [2026-07-16-fix-ai-creator-matching-location.md, 2026-07-16-donny-chat-matcher-fix.md, 2026-07-16-donny-tool-choice-forcing.md]
 tags: [matching, campaigns, edge-functions, geo, geocoding, distance, donny, gotcha]
 ---
 # AI Creator Matching
@@ -99,6 +99,37 @@ otherwise private creators leak. The candidate fetch is bounded (`CANDIDATE_LIMI
 cap) with **no rating pre-order** (pre-ordering + slicing would drop nearby lower-rated creators
 before scoring). Deploy from the worktree via the CLI (`donny-chat` is `verify_jwt=false`, ~172KB
 with deps → CLI auto-bundles). The result shape is preserved + a `distance_miles` field.
+
+### Donny wouldn't call the tool — prompt persuasion failed, `tool_choice` forcing works
+
+A live check of the fix surfaced a second, deeper problem: **Donny (the LLM) refused to call
+`match_creators` at all** on the business dashboard. For "find me creators near Hoboken" / "show me
+top creators" it redirected to the Find Creators page or campaign creation, and when explicitly
+ordered to use the tool it **falsely claimed it didn't have it** — even though `match_creators` is
+in the `business_client`/`brand` payload (`TOOLS_BY_ROLE`, filtered into `allowedTools`) and its
+description is strong.
+
+Two escalating fixes (both shipped):
+1. **Prompt guidance (necessary, not sufficient).** Two additive `## Rules` lines tell Donny to call
+   `match_creators` for creator-discovery requests and not deny/redirect. On its own this **did not
+   change behavior** — replaying the conversation's own prior "I don't have that tool" turns
+   (last-50-message history) anchors the model (self-consistency) over the system prompt. **Durable
+   lesson: you cannot reliably prompt a model out of a stance it has already taken in-context.**
+2. **Deterministic `tool_choice` forcing (the real fix).** A pure, unit-tested
+   `isCreatorDiscoveryIntent(message)` (find/show/top/near + a `creators`/`influencers` noun,
+   excluding other creator-objects like applications/payments/invites) gates forcing
+   `tool_choice: {type:"tool", name:"match_creators"}` on the **first** model call only (never on
+   tool-result continuations → no infinite loop), guarded by `!internalMode &&
+   allowedTools.some(t=>t.name==="match_creators")` (so it's structurally impossible to force a tool
+   the role lacks). `tool_choice` is an **API-level constraint the model must obey**, so it works
+   regardless of prompt reluctance or poisoned history. The continuation runs `tool_choice` auto so
+   Donny presents the ranked results. Two Codex P2s tuned the intent heuristic (add `pay`/`paid` to
+   the exclusion; drop over-broad `collaborat`/`review` stems).
+
+**Pattern (reusable): when a tool must fire on a detected intent, don't rely on prompt persuasion —
+detect the intent deterministically and force it with `tool_choice`.** Same class as the PR #243
+"it was the prompt, not the model" finding, one level deeper (here even the right prompt loses to
+history-anchoring).
 
 ## Known limitations
 

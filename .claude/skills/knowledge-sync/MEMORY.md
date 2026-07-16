@@ -30,6 +30,32 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-16] Donny tool_choice forcing — sequel to the matcher fix (branch fix/donny-surface-creators-in-chat)
+- Output: bundled INTO the work PR — `raw/sessions/2026-07-16-donny-tool-choice-forcing.md`,
+  **compounded** `concepts/ai-creator-matching.md` (new "Donny wouldn't call the tool — prompt
+  persuasion failed, tool_choice forcing works" subsection + frontmatter sources), `index.md`
+  (Sources + extended concept line), `log.md` update entry, PROJECT_CONTEXT active-workstream bullet,
+  + THIS entry. No schema/DESIGN_SYSTEM/CLAUDE.md change (edge-fn behaviour only).
+- Happened: a **live E2E** of the prior matcher fix was the headline — it revealed the fix was
+  correct but *unreached* (Donny refused to call the tool + denied having it). So the durable
+  knowledge is a DEBUGGING/architecture lesson, compounded onto the SAME [[AI Creator Matching]]
+  concept (not a new page) since it's the next layer of the same subject. Pre-merge on the work
+  branch (off origin/main per [scope]); RAG sync + [[verify-knowledge]] post-merge (hook on the docs/
+  ff).
+- Worked: [scope] + [runlog-in-pr] + [orphans]-by-path (new raw session cataloged in index.md; no
+  new concept page — compounded). [wikilinks]-exact: [[AI Creator Matching]] confirmed. Captured the
+  two reusable lessons as concept knowledge, not just a session log: (1) you can't reliably prompt a
+  model out of an in-context stance (history-anchoring beats the system prompt), and (2) force
+  intent-driven tools with `tool_choice`, don't persuade.
+- Failed: the **live browser re-verification could not complete** — the app session logged out
+  mid-test (3-hr inactivity / token expiry → `/auth`) and credentials are off-limits, so the founder
+  must run the one-line check. Documented as pending in every layer rather than claimed as verified.
+  (Also: Codex took 2 rounds tuning the keyword heuristic — inherent fuzziness; landed after both.)
+- Remember: a **live E2E is part of "verify", and it can surface that a shipped-and-reviewed fix is
+  unreached** — when it does, the knowledge layer owes the *why it was unreached + the deterministic
+  fix* on the same concept page, and honestly records a blocked verification (logout) rather than
+  overclaiming. (advisory)
+
 ### [2026-07-16] Donny chat `match_creators` fix — sibling of PR #241 (branch feat/donny-chat-matcher)
 - Output: bundled INTO the work PR — `raw/sessions/2026-07-16-donny-chat-matcher-fix.md`, **compounded**
   `concepts/ai-creator-matching.md` (new "Donny chat sibling" section + flipped the known-limitations

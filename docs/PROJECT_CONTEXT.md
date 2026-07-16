@@ -1106,6 +1106,28 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `docs/wiki/concepts/ai-creator-matching.md` (Donny chat sibling section). Spec:
   `docs/superpowers/specs/2026-07-16-donny-chat-matcher-fix-design.md`.
 
+- Donny chat — force `match_creators` so Donny actually surfaces creators — **deployed (branch
+  `fix/donny-surface-creators-in-chat`, 2026-07-16; live E2E blocked by session logout, founder to
+  confirm).** A **live check** of the matcher fix above found the fix correct but **unreached**:
+  Donny (as a business user) would **not call `match_creators`** — it redirected to the Find Creators
+  page / campaign creation, and when explicitly ordered claimed it **didn't have the tool**, even
+  though the tool IS in the `business_client`/`brand` payload. Two escalating fixes: **(1)** additive
+  `buildSystemPrompt` Rules telling Donny to call the tool and not deny/redirect — **necessary but
+  insufficient** (deployed alone, behaviour didn't change: the conversation's own prior "I don't have
+  that tool" turns are replayed in history and the model self-anchors over the system prompt);
+  **(2)** the real fix — a pure, unit-tested `isCreatorDiscoveryIntent(message)` in
+  `donny-chat/creator-discovery.ts` gates forcing `tool_choice: {type:"tool", name:"match_creators"}`
+  on the **first** model call only (continuations run auto → no infinite loop), guarded by
+  `!internalMode && allowedTools.some(...match_creators)` so it's structurally impossible to force a
+  tool the role lacks. `tool_choice` is an API-level constraint the model must obey → works despite
+  prompt reluctance or poisoned history. `edge-function-reviewer` PASS; Codex clean after 2 heuristic
+  P2s (add `pay`/`paid` to the exclusion; drop over-broad `collaborat`/`review`); 29 unit tests;
+  `donny-chat` deployed from the worktree (`--no-verify-jwt`). **Durable lessons:** you can't reliably
+  prompt a model out of a stance it already took in-context; when a tool must fire on a detected
+  intent, force it with `tool_choice` rather than persuade (same class as PR #243 "it's the prompt,
+  not the model", one level deeper). Concept: `docs/wiki/concepts/ai-creator-matching.md` (Donny
+  wouldn't call the tool section).
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).
