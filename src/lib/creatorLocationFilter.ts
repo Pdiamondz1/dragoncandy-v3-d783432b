@@ -173,3 +173,31 @@ export function filterByRadiusWithSearch<
 export function sortNearest<T extends WithDistance>(list: T[]): T[] {
   return [...list].sort((a, b) => (a.distanceMiles ?? Infinity) - (b.distanceMiles ?? Infinity));
 }
+
+/**
+ * Filter a list of MEDIA items by whether each item's creator is within `radiusMiles` of
+ * `center`. Dedups creators (by `creatorId`), runs the tested per-creator `filterByRadius`, then
+ * keeps every media item belonging to a surviving creator. `!center` → passthrough (the feed
+ * never silent-empties while a zip is unresolved). NOTE: this internal dedup deliberately omits
+ * `postal_code` — `filterByRadius`/`resolveCreatorCoords` only read id/city/country; postal_code
+ * is consumed upstream by the geocoding pass that builds `geocodedById`.
+ */
+export function filterMediaByRadius<
+  M extends { creatorId: string; city?: string; country?: string },
+>(
+  media: M[],
+  center: LatLng | null,
+  radiusMiles: number | null,
+  geocodedById: Map<string, LatLng>,
+): M[] {
+  if (!center) return media;
+  const uniq = new Map<string, { id: string; city?: string; country?: string }>();
+  for (const m of media) {
+    if (!uniq.has(m.creatorId)) {
+      uniq.set(m.creatorId, { id: m.creatorId, city: m.city, country: m.country });
+    }
+  }
+  const { list } = filterByRadius([...uniq.values()], center, radiusMiles, geocodedById);
+  const survivors = new Set(list.map(c => c.id));
+  return media.filter(m => survivors.has(m.creatorId));
+}
