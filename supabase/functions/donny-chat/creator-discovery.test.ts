@@ -4,6 +4,7 @@ import {
   scoreNiche,
   scoreCreatorLocation,
   rankCreators,
+  isCreatorDiscoveryIntent,
 } from './creator-discovery';
 
 const HOBOKEN = { lat: 40.7439, lng: -74.0324 };
@@ -131,5 +132,34 @@ describe('rankCreators', () => {
     expect(out).toHaveLength(2);
     expect((out[0] as any).creator_name).toBe('Near');
     expect(out[0].distanceMiles).toBe(0);
+  });
+});
+
+describe('isCreatorDiscoveryIntent', () => {
+  test('true for find/show/top/near creator-discovery phrasings', () => {
+    expect(isCreatorDiscoveryIntent('find me creators near Hoboken')).toBe(true);
+    expect(isCreatorDiscoveryIntent('show me top creators')).toBe(true);
+    expect(isCreatorDiscoveryIntent('who are the best creators around me?')).toBe(true);
+    expect(isCreatorDiscoveryIntent('recommend some influencers for a food campaign')).toBe(true);
+    expect(isCreatorDiscoveryIntent('creators near me')).toBe(true);
+    expect(isCreatorDiscoveryIntent('list creators in my area')).toBe(true);
+  });
+  test('false when there is no creator/influencer noun', () => {
+    expect(isCreatorDiscoveryIntent('how do I create a campaign?')).toBe(false);
+    expect(isCreatorDiscoveryIntent('what is DragonDash?')).toBe(false);
+    expect(isCreatorDiscoveryIntent('')).toBe(false);
+    expect(isCreatorDiscoveryIntent(null)).toBe(false);
+    expect(isCreatorDiscoveryIntent(undefined)).toBe(false);
+  });
+  test('false when the message is about another creator-related object (no wrong-tool forcing)', () => {
+    expect(isCreatorDiscoveryIntent('find my creator applications')).toBe(false);
+    expect(isCreatorDiscoveryIntent('show me the creator who applied to my campaign')).toBe(false);
+    expect(isCreatorDiscoveryIntent('how do I pay a creator?')).toBe(false);
+    expect(isCreatorDiscoveryIntent('message the creator I hired')).toBe(false);
+    expect(isCreatorDiscoveryIntent('invite this creator to my campaign')).toBe(false);
+  });
+  test('false when a creator noun appears with no discovery verb or proximity cue', () => {
+    expect(isCreatorDiscoveryIntent('creators are great for marketing')).toBe(false);
+    expect(isCreatorDiscoveryIntent('tell me about creator payouts')).toBe(false);
   });
 });

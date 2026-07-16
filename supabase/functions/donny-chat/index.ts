@@ -11,7 +11,7 @@ import { embedQuery, retrieveContext } from "../donny-orchestrator/rag.ts";
 import { reconstructHistory } from "./history.ts";
 import { applyEdits } from "./doc-edits.ts";
 import { resolveDonnyProfile, type DonnyProfile } from "./profile.ts";
-import { resolveSearchCenter, rankCreators } from "./creator-discovery.ts";
+import { resolveSearchCenter, rankCreators, isCreatorDiscoveryIntent } from "./creator-discovery.ts";
 import {
   GoogleWorkspaceError,
   assertDriveFileId,
@@ -2132,7 +2132,7 @@ serve(async (req) => {
     // Returns { content, stop_reason, usage } in both modes.
     async function callModel(
       messages: any[],
-      opts: { stream: boolean; withTools: boolean; emit?: (ev: any) => void },
+      opts: { stream: boolean; withTools: boolean; emit?: (ev: any) => void; toolChoice?: any },
     ): Promise<{ content: any[]; stop_reason: string | null; usage: any }> {
       const body: Record<string, any> = {
         model: modelConfig.model,
@@ -2141,6 +2141,9 @@ serve(async (req) => {
         messages: withHistoryCacheBreakpoint(messages),
       };
       if (opts.withTools) body.tools = allowedTools;
+      // Force a specific tool on the FIRST turn only (never on tool-result
+      // continuations, or the model can never stop calling it).
+      if (opts.withTools && opts.toolChoice) body.tool_choice = opts.toolChoice;
       if (opts.stream) body.stream = true;
 
       const response = await anthropicFetch("https://api.anthropic.com/v1/messages", {
@@ -2187,7 +2190,19 @@ serve(async (req) => {
     // (internal/streaming), forwards status before each tool and the final text is
     // already streamed via callModel's emit. Returns { displayContent, richCard }.
     async function runTurn(emit?: (ev: any) => void): Promise<{ displayContent: string; richCard: any }> {
-      let result = await callModel(claudeMessages, { stream: !!emit, withTools: true, emit });
+      // Force the creator-matching tool on the FIRST turn when the user is clearly
+      // asking to find creators AND the tool is available. Prompt guidance alone
+      // doesn't work — the model routinely redirects to the Find Creators page and
+      // even denies having the tool (self-anchoring on prior turns). tool_choice is
+      // an API-level constraint the model must obey. Only the first call is forced;
+      // the tool-result continuation runs with tool_choice auto so it presents results.
+      const firstToolChoice =
+        !internalMode &&
+        isCreatorDiscoveryIntent(sanitizedMessage) &&
+        allowedTools.some((t) => t.name === "match_creators")
+          ? { type: "tool", name: "match_creators" }
+          : undefined;
+      let result = await callModel(claudeMessages, { stream: !!emit, withTools: true, emit, toolChoice: firstToolChoice });
       let totalTokens = (result.usage?.input_tokens ?? 0) + (result.usage?.output_tokens ?? 0);
       // Prompt-cache visibility (verify in prod via edge logs): on turn 2+ of a
       // conversation cache_read should be > 0 as the tools+stable-system prefix is

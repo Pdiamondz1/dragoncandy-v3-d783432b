@@ -143,6 +143,24 @@ export function scoreCreatorLocation(
   return { score: 50, distanceMiles: null };
 }
 
+// Does this user message ask to FIND/LIST/SEE creators (a match_creators intent)?
+// Used to force tool_choice so Donny actually calls the tool instead of redirecting.
+// Conservative: requires "creator(s)"/"influencer(s)" AND a discovery verb or proximity
+// cue, and excludes messages clearly about another creator-related object (applications,
+// payments, messages, invites, etc.) to avoid forcing the tool for the wrong intent.
+export function isCreatorDiscoveryIntent(message: string | null | undefined): boolean {
+  if (!message) return false;
+  const m = message.toLowerCase();
+  if (!/\b(creators?|influencers?)\b/.test(m)) return false;
+  // Not a discovery request when it's about a different creator-related object.
+  if (/\b(applicant|application|applied|apply|payment|payout|invoice|escrow|message|messaged|messaging|invite|invited|invitation|contract|collaborat|review|dispute|onboard)\w*/.test(m)) {
+    return false;
+  }
+  const discovery = /\b(find|show|get|list|see|match|matches|matching|discover|recommend|suggest|browse|search|searching|top|best|pick|picks)\b/.test(m);
+  const proximity = /\b(near|nearby|around|closest|local|by me|near me)\b/.test(m) || /\bin my area\b/.test(m);
+  return discovery || proximity;
+}
+
 // Combined rank (location 0.4 + niche 0.4 + rating 0.2), sorted desc; never drops a creator.
 export function rankCreators<T extends DiscoveryCreator>(
   creators: T[],
