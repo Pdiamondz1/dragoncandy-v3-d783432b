@@ -40,7 +40,7 @@ function ideaToEditableCampaign(idea: CampaignIdea): EditableCampaign {
   return {
     title: idea.title,
     description: idea.description,
-    tagline: idea.tagline ?? '',
+    tagline: (idea.tagline ?? '').slice(0, 120), // launchValidationSchema caps tagline at 120; the AI now emits one, so clamp defensively
     campaign_type: idea.campaign_type,
     platforms: [...idea.recommended_platforms],
     deliverables,

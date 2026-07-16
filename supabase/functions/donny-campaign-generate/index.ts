@@ -6,6 +6,7 @@ import { logCost } from "../_shared/cost-ledger.ts";
 import { getUserUsageStage, incrementUsage, checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
+import { buildDonnyFirstSystemPrompt, buildDonnyFirstUserPrompt, parseCampaignJson } from "./lib.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -102,124 +103,25 @@ async function generateCampaignIdeas(
   sourceType: string,
   role: string | null,
   modelConfig: ModelConfig,
-  connectedPlatforms?: Array<{ platform: string; platform_handle: string | null }>
+  connectedPlatforms?: Array<{ platform: string; platform_handle: string | null }>,
+  maxTokensOverride?: number,
 ): Promise<{
   result: { business_context: Record<string, unknown>; campaign_ideas: unknown[] };
   usage: { input_tokens: number; output_tokens: number };
 }> {
-  const hasConnectedPlatforms = connectedPlatforms && connectedPlatforms.length > 0;
-  const platformList = hasConnectedPlatforms
-    ? connectedPlatforms.map(p => p.platform).join(', ')
-    : null;
-
-  const platformConstraint = hasConnectedPlatforms
-    ? `\n\nCONNECTED SOCIAL MEDIA PLATFORMS: ${platformList}
-The business has ONLY these platforms connected. You MUST:
-- Set "recommended_platforms" to ONLY include connected platforms (no others)
-- Set each deliverable's "platform" to one of the connected platforms
-- Generate content_strategy posts ONLY for connected platforms
-- Adapt content types to what works best on the connected platforms
-Do NOT suggest content for platforms the business has not connected.`
-    : `\n\nNo social media platforms are currently connected. Generate campaigns with diverse platform suggestions, but set "content_strategy" to null.`;
-
-  const contentStrategySchema = hasConnectedPlatforms
-    ? `,
-      "content_strategy": {
-        "posts": [
-          {
-            "content_type": "<photo|video_reel|story|carousel|tiktok|youtube_short>",
-            "platform": "<connected platform>",
-            "purpose": "<hero_showcase|behind_scenes|teaser_hype|follow_up|testimonial|menu_highlight|ambient_vibe|event_coverage>",
-            "description": "<what this post accomplishes>",
-            "day_offset": <number, 0 = campaign start>
-          }
-        ],
-        "cadence": "<spread|burst|ramp>",
-        "duration_days": <number>,
-        "reasoning": "<one sentence explaining the posting cadence>"
-      }`
-    : `,
-      "content_strategy": null`;
-
-  const systemPrompt = `You are Donny, a creative AI assistant for DragonCandy — a marketplace connecting restaurants with content creators.
-
-Given information about a business, you will:
-1. Extract structured business context (name, location, cuisine, vibe, etc.)
-2. Generate exactly 3 DIVERSE campaign ideas. Each idea must be a DIFFERENT campaign type.
-3. For each campaign idea, generate a content_strategy that maps deliverables to a posting plan optimized for the business's connected platforms.
-
-Campaign types to choose from: ugc_content, launch_hype, ongoing_presence, event_promo, seasonal.
-Platforms: instagram, tiktok, facebook, youtube, google_business, multi_platform.
-Content types: photo, video_reel, story, carousel, tiktok, youtube_short.
-Aspect ratios: 9:16, 16:9, 1:1, 4:5.
-Delivery tiers: dragondash (rush, 1-3 hours), express (24-48 hours), standard (5-7 days).
-Strategy purposes: hero_showcase, behind_scenes, teaser_hype, follow_up, testimonial, menu_highlight, ambient_vibe, event_coverage.
-Cadence types: spread (even spacing), burst (clustered launch), ramp (building momentum).${platformConstraint}
-
-Respond ONLY with valid JSON matching this exact schema:
-{
-  "business_context": {
-    "source_url": "<url or empty string>",
-    "source_type": "<google_business|instagram|website|yelp|photo|manual>",
-    "business_name": "<name>",
-    "cuisine_type": "<type or null>",
-    "location": { "city": "<city>", "state": "<state or null>", "country": "<country>" },
-    "rating": <number or null>,
-    "review_count": <number or null>,
-    "price_range": "<$ or $$ or $$$ or $$$$ or null>",
-    "photos": [],
-    "vibe_tags": ["<tag1>", "<tag2>"],
-    "review_highlights": ["<highlight1>"],
-    "social_links": { "instagram": "<url or null>", "tiktok": "<url or null>", "website": "<url or null>" }
-  },
-  "campaign_ideas": [
-    {
-      "id": "<uuid>",
-      "emoji": "<single emoji>",
-      "title": "<short catchy title>",
-      "description": "<one sentence>",
-      "campaign_type": "<type>",
-      "recommended_platforms": ["<platform>"],
-      "deliverables": [
-        {
-          "description": "<what the creator makes>",
-          "content_type": "<type>",
-          "platform": "<platform>",
-          "aspect_ratio": "<ratio>",
-          "estimated_duration": <seconds or null>
-        }
-      ],
-      "price": <number>,
-      "timeline_days": <number>,
-      "tier": "<dragondash|express|standard>",
-      "tier_reasoning": "<one sentence why this tier>",
-      "style_direction": "<visual style guidance>",
-      "target_creator_persona": ["<persona>"],
-      "key_messages": ["<message>"],
-      "hashtags": ["<hashtag>"]${contentStrategySchema}
-    }
-  ]
-}`;
-
-  const userPrompt = `Source type: ${sourceType}
-Role: ${role || 'anonymous'}
-
-Business information:
-${pageContent}
-
-Generate 3 diverse campaign ideas based on this business.`;
+  const systemPrompt = buildDonnyFirstSystemPrompt(connectedPlatforms);
+  const userPrompt = buildDonnyFirstUserPrompt(pageContent, sourceType, role);
+  // Clamp any caller override into [512, modelConfig.maxTokens]; default to the full budget.
+  const maxTokens = Math.min(Math.max(maxTokensOverride ?? modelConfig.maxTokens, 512), modelConfig.maxTokens);
 
   const requestBody = {
     model: modelConfig.model,
-    max_tokens: modelConfig.maxTokens,
-    temperature: 0.8,
+    max_tokens: maxTokens,
     system: systemPrompt,
-    messages: [
-      { role: "user", content: userPrompt },
-    ],
+    messages: [{ role: "user", content: userPrompt }],
+    // NOTE: sampling params omitted — claude-opus-4-8 rejects them with a 400.
   };
-
-  console.log(`[campaign-generate] Calling Anthropic: model=${modelConfig.model}, max_tokens=${modelConfig.maxTokens}, prompt_len=${userPrompt.length}`);
+  console.log(`[campaign-generate] Calling Anthropic: model=${modelConfig.model}, max_tokens=${maxTokens}, prompt_len=${userPrompt.length}`);
 
   const response = await anthropicFetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -238,14 +140,10 @@ Generate 3 diverse campaign ideas based on this business.`;
   }
 
   const data = await response.json();
-  const rawContent = data.content?.[0]?.text ?? "{}";
-  const cleaned = rawContent
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/\s*```$/i, "")
-    .trim();
+  // With thinking off, content[0] is the text block; use find() defensively.
+  const rawContent: string = (data.content ?? []).find((b: { type?: string }) => b.type === "text")?.text ?? "{}";
   return {
-    result: JSON.parse(cleaned),
+    result: parseCampaignJson(rawContent) as { business_context: Record<string, unknown>; campaign_ideas: unknown[] },
     usage: { input_tokens: data.usage?.input_tokens ?? 0, output_tokens: data.usage?.output_tokens ?? 0 },
   };
 }
@@ -258,6 +156,7 @@ interface NewFormatBody {
   role?: string | null;
   inspiration_refs?: Array<{ content_label: string; creator_name: string; media_type: string; media_url: string }>;
   connected_platforms?: Array<{ platform: string; platform_handle: string | null }>;
+  max_tokens?: number;
 }
 
 /**
@@ -315,7 +214,7 @@ async function runNewFormatGeneration(
   await onPhase?.("Generating campaign ideas…");
   const usageStage = await getUserUsageStage(supabaseAdmin, userId);
   const modelConfig = getModelConfig("donny-campaign-generate", usageStage);
-  const { result: ideasResponse, usage } = await generateCampaignIdeas(pageContent + inspirationContext, source_type, role ?? null, modelConfig, connected_platforms);
+  const { result: ideasResponse, usage } = await generateCampaignIdeas(pageContent + inspirationContext, source_type, role ?? null, modelConfig, connected_platforms, body.max_tokens);
 
   await logCost(supabaseAdmin, {
     userId,
@@ -573,7 +472,7 @@ serve(async (req) => {
     // Call Anthropic Claude
     const legacyUsageStage = await getUserUsageStage(supabaseAdmin, userId);
     const legacyModelConfig = getModelConfig("donny-campaign-generate", legacyUsageStage);
-    const legacySystemPrompt = `You are an expert marketing strategist for DragonCandy, a platform connecting brands with social media content creators. Your job is to analyze brand content and generate a complete, compelling campaign draft.
+    const legacySystemPrompt = `You are Donny, a bold, creative campaign strategist for DragonCandy, a platform connecting local businesses with content creators. Generate a compelling, specific campaign draft — fresh, not generic.
 
 Respond with valid JSON only — no markdown fences, no additional text, just raw JSON. Use this exact structure:
 {
@@ -613,7 +512,6 @@ Respond with valid JSON only — no markdown fences, no additional text, just ra
       body: JSON.stringify({
         model: legacyModelConfig.model,
         max_tokens: legacyModelConfig.maxTokens,
-        temperature: 0.7,
         system: legacySystemPrompt,
         messages: [
           {
@@ -642,14 +540,9 @@ Respond with valid JSON only — no markdown fences, no additional text, just ra
     });
     await incrementUsage(supabaseAdmin, userId, legacyModelConfig.actionCost);
 
-    // Strip markdown fences if present
-    const cleaned = rawContent
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/\s*```$/i, "")
-      .trim();
-
-    const campaignData = JSON.parse(cleaned);
+    // Opus can prepend a preamble to the JSON — use the same robust extractor
+    // as the new-format path (this legacy path now shares the Opus routing).
+    const campaignData = parseCampaignJson(rawContent);
 
     return new Response(
       JSON.stringify({ success: true, data: campaignData }),

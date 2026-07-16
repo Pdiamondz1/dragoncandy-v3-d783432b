@@ -24,6 +24,16 @@ export function IdeaCard({ idea, isSelected, onSelect }: IdeaCardProps) {
         <h3 className="font-bold text-gray-900 truncate">{idea.title}</h3>
         <p className="text-sm text-gray-600 mt-1 line-clamp-2">{idea.description}</p>
       </div>
+      {idea.is_wildcard && (
+        <span className="inline-block mt-2 rounded-full bg-dc-pink/50 px-2 py-1 text-xs font-bold text-dc-pink-accent">
+          ✦ Wildcard
+        </span>
+      )}
+      {idea.creative_concept && (
+        <p className="mt-2 text-sm italic text-dc-text-muted line-clamp-3">
+          {idea.creative_concept}
+        </p>
+      )}
       <div className="flex flex-wrap gap-2 mt-3">
         <span className="bg-gray-100 rounded-full px-2 py-1 text-xs font-medium text-gray-700">
           ${idea.price ?? idea.budget_range?.max ?? 'TBD'}
