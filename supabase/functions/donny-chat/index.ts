@@ -76,7 +76,7 @@ const TOOL_DEFINITIONS = [
   },
   {
     name: "generate_campaign",
-    description: "Generate an AI-optimized campaign brief based on the user's goals and target audience.",
+    description: "Generate 3 diverse, AI-optimized campaign concepts (including one bold wildcard) from the user's goals and audience. Present all three concepts to the user, not just one.",
     input_schema: {
       type: "object",
       properties: {
@@ -1489,10 +1489,18 @@ async function executeTool(
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          brief: args.brief,
-          target_audience: args.target_audience,
-          budget_range: args.budget_range,
+          source_type: "manual",
+          manual_text: [
+            args.brief,
+            args.target_audience ? `Target audience: ${args.target_audience}` : "",
+            args.budget_range ? `Budget: ${args.budget_range}` : "",
+          ].filter(Boolean).join("\n"),
+          role: null,
           user_id: userId,
+          // Chat is a synchronous sub-fetch inside a streamed turn — bound the
+          // generation so it stays well under the 150s idle limit and can't
+          // truncate the 3-idea JSON. (server clamps to [512, 8192].)
+          max_tokens: 4096,
         }),
       });
       if (!response.ok) {

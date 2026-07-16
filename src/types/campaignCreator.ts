@@ -33,6 +33,8 @@ export interface CampaignIdea {
   title: string;
   description: string;
   tagline?: string;
+  creative_concept?: string;
+  is_wildcard?: boolean;
   campaign_type: CampaignType;
   recommended_platforms: Platform[];
   deliverables: IdeaDeliverable[];

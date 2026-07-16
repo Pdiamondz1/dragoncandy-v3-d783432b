@@ -35,6 +35,18 @@ const SONNET_EXTENDED: ModelConfig = {
   tier: "T3",
 };
 
+// Campaign generation — the profit flow — runs on the freed prompt + doubled
+// output (8192). Model is Sonnet for now; Opus 4.8 is the intended ceiling the
+// moment prod-key access to it is confirmed — flip `model` to "claude-opus-4-8"
+// (its cost-ledger rate is already in place) and redeploy. See
+// docs/superpowers/plans/2026-07-16-donny-campaign-creativity.md.
+const CAMPAIGN_PREMIUM: ModelConfig = {
+  model: "claude-sonnet-4-6",
+  maxTokens: 8192,
+  actionCost: 8,
+  tier: "T3", // reuse T3 — donny_cost_ledger CHECK allows only T0-T3+embedding
+};
+
 const NO_AI: ModelConfig = {
   model: "none",
   maxTokens: 0,
@@ -45,6 +57,7 @@ const NO_AI: ModelConfig = {
 interface FunctionRouting {
   config: ModelConfig;
   canDowngrade: boolean;
+  floor?: ModelConfig;
 }
 
 const FUNCTION_ROUTING: Record<string, FunctionRouting> = {
@@ -52,7 +65,7 @@ const FUNCTION_ROUTING: Record<string, FunctionRouting> = {
   "donny-schedule": { config: NO_AI, canDowngrade: false },
   "donny-creator-match": { config: HAIKU, canDowngrade: false },
   "donny-campaign-preview": { config: SONNET, canDowngrade: true },
-  "donny-campaign-generate": { config: SONNET, canDowngrade: false },
+  "donny-campaign-generate": { config: CAMPAIGN_PREMIUM, canDowngrade: false, floor: SONNET_EXTENDED },
   "donny-orchestrator": { config: SONNET, canDowngrade: false },
   "donny-chat": { config: SONNET_EXTENDED, canDowngrade: false },
   "social-caption": { config: HAIKU, canDowngrade: false },
@@ -70,7 +83,7 @@ export function getModelConfig(
 
   if (routing.config.tier === "T0") return NO_AI;
 
-  if (usageStage === "essential") return HAIKU;
+  if (usageStage === "essential") return routing.floor ?? HAIKU;
 
   if (usageStage === "conservation" && routing.canDowngrade) return HAIKU;
 
