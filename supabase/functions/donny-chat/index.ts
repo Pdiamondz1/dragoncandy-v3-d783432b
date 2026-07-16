@@ -1093,10 +1093,17 @@ async function executeTool(
         .eq("is_completed", true)
         .eq("profile_visibility", "public"); // don't surface private creators via the service role (RLS-bypass)
       if (args.min_rating) query = query.gte("average_rating", args.min_rating);
-      // No rating pre-order/cap: rankCreators scores the full completed pool by distance + niche +
-      // rating, so a nearby lower-rated creator isn't dropped before scoring (matches match-creators).
+      // Distance can't be filtered in SQL (no lat/lng columns), so we rank in-memory over a
+      // deliberately bounded candidate pool. No rating pre-order (that would drop nearby lower-rated
+      // creators before scoring). At current marketplace scale this is the full set; beyond
+      // CANDIDATE_LIMIT, ranking is best-effort until server-side lat/lng distance lands.
+      const CANDIDATE_LIMIT = 500;
+      query = query.limit(CANDIDATE_LIMIT);
       const { data, error } = await query;
       if (error) throw error;
+      if ((data?.length ?? 0) >= CANDIDATE_LIMIT) {
+        console.warn(`match_creators: candidate pool hit CANDIDATE_LIMIT=${CANDIDATE_LIMIT}; ranking is best-effort until server-side distance lands.`);
+      }
 
       // Resolve the search center: explicit location arg, else the caller's own business location.
       let owner: { city: string | null; country: string | null; location: string | null } | null = null;
