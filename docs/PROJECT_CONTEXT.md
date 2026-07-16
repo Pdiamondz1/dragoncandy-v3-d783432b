@@ -1052,6 +1052,30 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   migration file. Concept: `docs/wiki/concepts/ai-creator-matching.md`. Spec:
   `docs/superpowers/specs/2026-07-16-fix-ai-creator-matching-location-design.md`.
 
+- Donny campaign-idea creativity — **shipped (PR #243, 2026-07-16).** Business users reported Donny's
+  campaign ideas "got weaker since the guardrails." Prod-verified diagnosis: **it was the PROMPT, not
+  the model** — the cost auto-downgrade never fired (campaign gen always ran full Sonnet; MTD AI spend
+  0.3% of budget; all users `full_power`); the culprit was the 2026-05-26 "Content Strategist" prompt
+  over-constraint (hard MUST-only-connected-platforms block, closed enums, one-sentence caps). Freed the
+  prompt into a pure tested `donny-campaign-generate/lib.ts` (soft platform *preference*, a free-form
+  `creative_concept` + one bold `is_wildcard` per batch, relaxed caps, inert `content_strategy` block
+  removed, robust outermost-`{}` parser); wired both generate paths to it and **dropped `temperature`**;
+  unified Donny **chat** `generate_campaign` to the strong **3-concept** path (bounded `max_tokens`);
+  added a premium campaign tier @ **8192 tokens** with a Sonnet **`floor`** so the profit flow never
+  silently drops to Haiku@512 (`getModelConfig` essential branch → `routing.floor ?? HAIKU`);
+  crash-proofed the frontend (`recommended_platforms` resilience, tagline clamp) and surfaced the
+  Wildcard badge + big-idea line. Reviews: spec, whole-branch, edge-function-reviewer, Codex (1 P2:
+  legacy path robust parser). `donny-campaign-generate` v107 + `donny-chat` v137 deployed
+  (verify_jwt=false preserved). **Shipped on `claude-sonnet-4-6`@8192, not Opus 4.8** — Opus prod-key
+  access was unverifiable (headless auth / probe deploy / CLI / browser all gated); the freed prompt is
+  the fix regardless of model. **Opus is a one-line toggle:** `_shared/model-routing.ts`
+  `CAMPAIGN_PREMIUM.model` → `"claude-opus-4-8"` + redeploy (cost-ledger rate already in place; Opus
+  rejects `temperature` and runs thinking-off). Web access for fresh trends is a deferred follow-on
+  (runtime Donny has only SSRF-guarded URL fetch; open-ended `web_search` needs the token-only
+  cost-ledger extended for per-search fees). Concept:
+  `docs/wiki/concepts/campaign-generation-creativity.md`. Spec:
+  `docs/superpowers/specs/2026-07-16-donny-campaign-creativity-design.md`.
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).

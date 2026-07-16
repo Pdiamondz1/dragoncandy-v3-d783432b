@@ -1,5 +1,18 @@
 # Wiki Log
 
+## [2026-07-16] ingest | Donny campaign-idea creativity (PR #243)
+Ingested [[Donny Campaign Creativity Session]]. Freed the over-constrained campaign prompt (the real
+fix — the cost auto-downgrade never fired; campaign gen always ran full Sonnet at 0.3% of budget)
+into a pure testable `donny-campaign-generate/lib.ts`: soft platform preference, `creative_concept` +
+one wildcard, relaxed caps, `content_strategy` removed, robust outermost-`{}` parser. Chat
+`generate_campaign` unified to the 3-concept path (bounded `max_tokens`). Premium campaign tier @8192
+with a Sonnet `floor` so the profit flow never silently drops to Haiku@512 (`getModelConfig` essential
+→ `floor`). Frontend crash-proofed against the looser prompt. Shipped on Sonnet@8192 because Opus 4.8
+prod-key access was unverifiable (auth/probe/CLI/browser all gated) — Opus is a one-line
+`CAMPAIGN_PREMIUM.model` toggle (cost-ledger rate already in place). Pages created:
+[[Campaign Generation Creativity]] (concept) + the raw session source. Pages updated: index.md
+(Concepts + Sources).
+
 ## [2026-07-16] ingest | DragonFeed mobile vertical feed + zip-radius search
 Ingested [[Dragon Feed Mobile & Zip Search Session]] (PR #242, frontend-only). Two founder asks on
 the shared Dragon Feed (`DragonFeedGrid`, used by both the business + creator feed pages): a mobile
