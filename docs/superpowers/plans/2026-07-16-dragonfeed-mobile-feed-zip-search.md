@@ -596,7 +596,7 @@ In the controls `<div className="flex flex-col sm:flex-row gap-4">` block, after
           </Select>
 ```
 
-Then change the Clear button's guard from `{(searchTerm || typeFilter !== 'all') && (` to `{anyFilter && (` (so Clear also appears when only a zip is set).
+Then change the guard `{(searchTerm || typeFilter !== 'all') && (` to `{anyFilter && (` (so Clear also appears when only a zip is set). **Heads-up:** this exact string occurs **twice** in the file — the Clear-button guard AND the "Active Filters" guard (handled in Step 4). Do them both in one `replace_all` of `{(searchTerm || typeFilter !== 'all') && (` → `{anyFilter && (` rather than a unique-match edit (which will error on non-uniqueness).
 
 - [ ] **Step 4: Add the zip status hint + zip badge**
 
@@ -608,7 +608,7 @@ Immediately after the closing `</div>` of the controls row (before the "Active F
         )}
 ```
 
-Change the "Active Filters" outer guard from `{(searchTerm || typeFilter !== 'all') && (` to `{anyFilter && (`. Inside that badge list, after the `typeFilter` badge, add a zip badge:
+The "Active Filters" outer guard `{(searchTerm || typeFilter !== 'all') && (` → `{anyFilter && (` was already handled by the `replace_all` in Step 3 (both occurrences). Inside that badge list, after the `typeFilter` badge, add a zip badge:
 
 ```tsx
             {zipActive && (
