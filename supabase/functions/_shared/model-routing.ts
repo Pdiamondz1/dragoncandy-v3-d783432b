@@ -36,12 +36,12 @@ const SONNET_EXTENDED: ModelConfig = {
 };
 
 // Campaign generation — the profit flow — runs on the freed prompt + doubled
-// output (8192). Model is Sonnet for now; Opus 4.8 is the intended ceiling the
-// moment prod-key access to it is confirmed — flip `model` to "claude-opus-4-8"
-// (its cost-ledger rate is already in place) and redeploy. See
-// docs/superpowers/plans/2026-07-16-donny-campaign-creativity.md.
+// output (8192) on the Opus-class model (prod-key access confirmed via a live
+// generation 2026-07-16). To fall back to standard-priced Sonnet, flip `model`
+// to "claude-sonnet-4-6" (its cost-ledger rate is also in place) and redeploy.
+// See docs/superpowers/plans/2026-07-16-donny-campaign-creativity.md.
 const CAMPAIGN_PREMIUM: ModelConfig = {
-  model: "claude-sonnet-4-6",
+  model: "claude-opus-4-8",
   maxTokens: 8192,
   actionCost: 8,
   tier: "T3", // reuse T3 — donny_cost_ledger CHECK allows only T0-T3+embedding
