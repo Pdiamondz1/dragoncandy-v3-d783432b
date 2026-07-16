@@ -3,8 +3,8 @@ title: AI Creator Matching
 type: concept
 created: 2026-07-16
 updated: 2026-07-16
-sources: [2026-07-16-fix-ai-creator-matching-location.md, 2026-07-16-donny-chat-matcher-fix.md]
-tags: [matching, campaigns, edge-functions, geo, geocoding, distance, donny, gotcha]
+sources: [2026-07-16-fix-ai-creator-matching-location.md, 2026-07-16-donny-chat-matcher-fix.md, 2026-07-16-donny-orchestrator-find-creators.md]
+tags: [matching, campaigns, edge-functions, geo, geocoding, distance, donny, orchestrator, gotcha]
 ---
 # AI Creator Matching
 
@@ -100,6 +100,37 @@ cap) with **no rating pre-order** (pre-ordering + slicing would drop nearby lowe
 before scoring). Deploy from the worktree via the CLI (`donny-chat` is `verify_jwt=false`, ~172KB
 with deps → CLI auto-bundles). The result shape is preserved + a `distance_miles` field.
 
+## Which Donny? The consumer chat uses `donny-orchestrator`, NOT `donny-chat`
+
+**Critical wiring fact (learned the hard way, 2026-07-16):** the `match_creators` tool above lives in
+`donny-chat`, which serves **only the internal AIOS Donny** (`src/hooks/internal/useInternalDonny.ts`).
+The **consumer web + mobile Donny chat calls a *different* edge function — `donny-orchestrator`**
+(`src/hooks/useDonny.ts`). So the whole `donny-chat` `match_creators` fix + any prompt/tool_choice
+forcing on it never reached the surface a business user actually tests. **Durable rule: before
+fixing a chat behaviour, capture the network request (`read_network_requests`, urlPattern
+`functions/v1`) to confirm which edge function the surface calls — do not infer it from where the
+tool code happens to live.**
+
+`donny-orchestrator` is a **sub-agent router**: its tools are coarse agents (`campaign_agent`,
+`prepare_campaign`, `dragonshare_agent`, `billing_agent`, `guidance_agent`, `general_agent`) run
+**inline** as local TS modules (`agents/*.ts`, no second HTTP call); each returns `{context, suggested_actions}`
+that Claude turns into prose + nav-button pills. It had **no standalone "list creators near me" tool**
+(matching was scoped to `campaign_agent` for existing campaigns), so "find creators near Hoboken"
+honestly returned "I don't have that tool" and redirected.
+
+**The real fix (`feat/donny-orchestrator-find-creators`, live-verified returning real Hoboken creators
++ distances):** a new **`find_creators` sub-agent** (`agents/creators.ts`) — queries public + completed
+`creator_profiles`, resolves the center (explicit `location` arg or the caller's `business_profiles`
+location), ranks via the shared `rankCreators`, and returns a present-ready **text list + per-creator
+"View" nav buttons** (renders today, zero frontend change — the orchestrator emits text +
+`suggested_actions`, never `rich_card`). The scorer `creator-discovery.ts` was **relocated to
+`_shared/`** so both Donny surfaces share one tested module. Forcing: `tool_choice:{type:"tool",
+name:"find_creators"}` on the first `callClaude` when `isCreatorDiscoveryIntent(query)` — which
+**excludes any "campaign" mention** so campaign-creation defers to `prepare_campaign` and
+campaign-specific asks ("top creators for my campaigns") defer to `campaign_agent` (two Codex P2s).
+Deployed `donny-orchestrator` (v61, **`verify_jwt=true` → deploy WITHOUT `--no-verify-jwt`**). Rich
+avatar cards (making `donny_messages.rich_card` an array) are a documented Option-B fast-follow.
+
 ## Known limitations
 
 - A creator with a US city but a **null country** falls to the soft floor (no assume-US heuristic —
@@ -109,9 +140,10 @@ with deps → CLI auto-bundles). The result shape is preserved + a `distance_mil
 - **Both matchers rank in-memory over a bounded pool** — there are no lat/lng columns, so distance
   can't be filtered/sorted in SQL. Fine at current marketplace scale; **server-side lat/lng
   distance is the shared eventual scale path** (documented, not built).
-- **Service-role privacy parity:** the campaign matcher (`match-creators`) still fetches
-  `creator_profiles` without the `profile_visibility='public'` filter the Donny-chat tool now
-  applies — same service-role RLS-bypass exposure, deferred to a quick follow-up PR.
+- **Service-role privacy parity (shipped, #247):** the campaign matcher (`match-creators`) now also
+  filters `.eq("profile_visibility","public")` on both its fetches — parity with the Donny tools.
+  The new `find_creators` sub-agent applies the same filter. All three service-role creator fetches
+  are private-profile-safe.
 
 ## See Also
 - [[Creator Location Search]] (shared geo stack — the source-of-truth `src/lib` helpers)

@@ -1129,6 +1129,31 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `docs/wiki/concepts/ai-creator-matching.md` (Donny chat sibling section). Spec:
   `docs/superpowers/specs/2026-07-16-donny-chat-matcher-fix-design.md`.
 
+- Web Donny "find creators near me" — the fix belongs in `donny-orchestrator` — **shipped +
+  live-verified (branch `feat/donny-orchestrator-find-creators`, 2026-07-16; deployed v61).** A live
+  E2E of the Donny-chat matcher fix exposed that **the consumer web/mobile Donny chat calls a
+  *different* edge function than the fix touched**: `src/hooks/useDonny.ts` → **`donny-orchestrator`**
+  (sub-agent router); `useInternalDonny.ts` → `donny-chat` (internal AIOS Donny only). So the
+  `donny-chat` `match_creators` work (PR #246) + the prompt/tool_choice forcing (PR #249) never
+  reached the surface businesses test — Donny's "I don't have that tool" was **true** for the
+  orchestrator (it had no standalone creator-list tool; matching was scoped to `campaign_agent` for
+  existing campaigns). Found via a **network capture** — the durable rule: confirm WHICH edge fn a
+  surface calls before building, don't infer from where the tool code lives. Real fix (Option A):
+  relocate `creator-discovery.ts` → **`_shared/`** (one tested scorer for both Donnys), add a
+  **`find_creators` sub-agent** (`donny-orchestrator/agents/creators.ts`) — public+completed
+  `creator_profiles` query (service-role RLS bypass → `profile_visibility='public'`) → shared
+  `rankCreators` → a present-ready **text list + per-creator "View" nav buttons** (renders today, zero
+  frontend change), register it in `agentMap`, and **force `tool_choice:{type:"tool",name:"find_creators"}`
+  on the first `callClaude`** when `isCreatorDiscoveryIntent(query)` matches (excludes ANY "campaign"
+  mention so `prepare_campaign`/`campaign_agent` still win — two Codex P2s). `edge-function-reviewer`
+  PASS; Codex clean; 30 unit tests; deployed `donny-orchestrator` **v61** (`verify_jwt=true` → deploy
+  WITHOUT `--no-verify-jwt`). **LIVE-VERIFIED** as a Hoboken business: "find me creators near Hoboken"
+  → a ranked list (Ricky Ricardo · Charlie Smith · Elias Acevedo 2 mi away · …) with distances + View
+  buttons — the founder's original ask, resolved on the correct surface. **PR #249 (donny-chat forcing)
+  closed as wrong-function.** Deferred: rich avatar cards (Option B — `donny_messages.rich_card` →
+  array); server-side lat/lng distance (shared scale path). Concept:
+  `docs/wiki/concepts/ai-creator-matching.md` ("Which Donny?" section).
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).
