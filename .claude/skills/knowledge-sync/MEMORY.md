@@ -51,6 +51,54 @@
   durable knowledge is the *reuse pattern + its gotchas* (here: media-level `filterMediaByRadius` extending
   the creator-level `filterByRadius`, plus the two async-geocode invariants), captured on a concept page for
   that surface that cross-links the shared stack — not a restatement of the stack itself. (advisory)
+### [2026-07-16] AI creator matching fix — location + skill / "Found 0" (branch worktree-dc-issues-3)
+- Output: bundled INTO the work PR — `raw/sessions/2026-07-16-fix-ai-creator-matching-location.md`,
+  new `concepts/ai-creator-matching.md`, updated `concepts/creator-location-search.md` (See-Also +
+  geo-port note + frontmatter), `index.md` (Concepts + Sources), `log.md` ingest entry,
+  PROJECT_CONTEXT workstream bullet, + THIS run-log entry. No DATABASE_SCHEMA change (the
+  `campaign_matches.match_score` type change is column-level detail the high-level schema doc doesn't
+  track → captured in the concept page instead).
+- Happened: a founder BUG-report session (screenshot) whose headline is a DEBUGGING lesson, not a
+  feature — "Found 0 matches" was a silently-swallowed INSERT (score column type + a stale trigger's
+  `brand_id` + a dead `business_address` select), not a scoring bug. Wrote a NEW concept
+  ([[AI Creator Matching]]) because the matcher pipeline + write-bug + the Deno geo-port are a
+  distinct subject from the browse-page [[Creator Location Search]] (cross-linked both ways). Rebased
+  the work branch onto origin/main first (per [scope]; my 5 code files were file-disjoint from
+  origin's recent commits → clean rebase) so the docs edit the LATEST index/log/PROJECT_CONTEXT.
+  RAG sync + verify-knowledge are post-merge (hook on the docs/ ff).
+- Worked: [scope]-rebase-when-file-disjoint + [runlog-in-pr] + [orphans]-by-path (both new pages
+  cataloged in index.md). [wikilinks]-exact caught two would-be dangling links — grepped index.md and
+  found NO [[Verify DB Schema]] page and NO `entities/google-maps.md`, so I dropped both brackets
+  (plain text) rather than mint broken catalog links; kept the real [[Creator Location Search]] +
+  [[Notification Delivery]].
+- Failed: none. (verify-knowledge close-the-loop RAG check is inherently post-merge for a pre-merge run.)
+- Remember: a bug-report session's durable knowledge is the *class of bug*, captured as a concept —
+  here "an empty match set over a non-empty pool = a write-path failure (constraints + AFTER-INSERT
+  triggers), not scoring; verify column types vs prod, not the migration file." (advisory)
+
+### [2026-07-16] Donny desktop panel fixed-overlay (PR #236 → paired docs PR)
+- Output: paired docs PR off origin/main — `raw/sessions/2026-07-16-donny-desktop-overlay.md`,
+  compounded `concepts/mobile-viewport-fixed-positioning.md` (new §4 desktop docked-panel-overlay
+  rule + frontmatter sources/tags), `index.md` (Sources line), `log.md` ingest entry,
+  PROJECT_CONTEXT workstream bullet, DESIGN_SYSTEM new "desktop side-panels overlay" rule, + THIS entry.
+- Happened: code PR #236 (one-line className fix) merged first, so this is the **paired docs PR** off
+  a fresh branch off origin/main (per [scope]). **Compounded, didn't duplicate** — the desktop Donny
+  overlay is the *desktop counterpart* of the mobile fixed-positioning concept and RELIES on that page's
+  §1 PageTransition-opacity-only contract, so it belongs there as a new §4, not a thin new page. RAG sync
+  + verify-knowledge are post-merge (hook on the `main` ff).
+- Worked: [scope] + [runlog-in-pr] + [orphans]-by-path (new raw session cataloged in index.md; no new
+  concept page). [wikilinks]-exact: grepped index.md first — [[Mobile Viewport & Fixed Positioning]] +
+  [[Donny Chat UX]] confirmed before linking. Captured the reusable *design rule* (docked `flex-shrink-0`
+  sibling steals width from `flex-1` main → viewport-keyed grids crush → make it a `fixed` overlay) as a
+  DESIGN_SYSTEM bullet + concept §4, not "we moved the Donny panel".
+- Failed: none. (RAG sync + verify-knowledge close-the-loop are inherently post-merge for this pre-merge
+  docs PR.)
+- Remember: a **one-line CSS fix can still carry durable design-system knowledge** — a docked-panel-steals-
+  flex-width defect is a reusable rule, so it earns a DESIGN_SYSTEM bullet + a §-on-an-existing-concept, not
+  a skip. Also: during verify, do NOT type a test-account password into a login form (hard safety rule) —
+  verify the deploy via bundle sentinel + public render and have the user sign in for an authenticated shot;
+  and Vite content-hashes differ local↔Vercel, so grep the prod-served chunk name (read from the live
+  `index-*.js`), not the local build's name. (advisory)
 
 ### [2026-07-14] Mobile screen-fit — fixed-position un-trap + invite sheet iOS fit (branch worktree-DC-mobile-screenfit)
 - Output: bundled INTO the work PR — `raw/sessions/2026-07-14-mobile-screenfit-fixed-position.md`, new

@@ -2,15 +2,15 @@
 title: Mobile Viewport & Fixed Positioning
 type: concept
 created: 2026-07-14
-updated: 2026-07-14
-sources: [2026-07-14-mobile-screenfit-fixed-position.md]
-tags: [mobile, ios, css, viewport, fixed-position, framer-motion, page-transition]
+updated: 2026-07-16
+sources: [2026-07-14-mobile-screenfit-fixed-position.md, 2026-07-16-donny-desktop-overlay.md]
+tags: [mobile, ios, css, viewport, fixed-position, framer-motion, page-transition, desktop, flexbox, overscroll, portal]
 ---
 # Mobile Viewport & Fixed Positioning
 
 Rules for keeping bottom-anchored mobile UI (bottom nav, Donny's mobile sheet, sheet
-footers, sticky CTAs) actually on-screen. Two independent failure classes hit DragonCandy;
-both are now guarded by contract.
+footers, sticky CTAs) actually on-screen. Three independent failure classes hit DragonCandy;
+all are now guarded by contract (plus a desktop counterpart, §5).
 
 ## 1. The containing-block trap (the PR #224 / PR #230 class)
 
@@ -58,7 +58,34 @@ toolbar-expanded state is permanent, not transient:
 Applied to the [[Creator Groups (Crews)]] "Invite creators" sheet (`82dvh` + safe-area
 footer). `DonnyMobileSheet` already used `dvh`.
 
-## 3. The bottom nav never hides
+## 3. `position:fixed` inside an `overflow:auto` scroller (the PR #239 class)
+
+The authenticated app scrolls in an **inner** container, not the document: `AppShell` is
+`<div className="flex h-screen">` wrapping `<main className="flex-1 overflow-auto">`; the
+document/body never scrolls, that `<main>` does. `MobileBottomNav` renders its
+`position:fixed` `<nav>` (and the hand-rolled `DonnyMobileSheet`) *inside* that scroller
+(deep under `DashboardLayout` / `CampaignCreator`).
+
+Per spec, `overflow` does **not** establish a containing block for `fixed`, so at rest the
+nav sits correctly at the viewport bottom (this class is **not** the §1 transform trap —
+there is no transformed ancestor now). But **iOS Safari does not repaint a `position:fixed`
+descendant of an `overflow:auto` container stably during rubber-band / momentum overscroll**
+— overscrolling the top (or bouncing) briefly drags the "fixed" nav up with the scrolled
+content, exposing the shell background (white) below it, then snaps it back when the scroll
+settles. Founder-reported as "scroll up too hard → the bottom nav goes up and leaves
+whitespace underneath."
+
+**Contract / fix:** a `position:fixed` element that must stay viewport-anchored on mobile
+must not be a descendant of the inner scroller. `MobileBottomNav` `createPortal`s its output
+to `document.body` (PR #239) — as a `<body>` child it's outside `<main>`, viewport-anchored,
+and immune to the scroller's overscroll. Same remedy as the ApplyConfirmation portal (§1);
+context flows through the portal, so routing / Donny / unread counts are unaffected.
+
+**Not sufficient on iOS:** `overscroll-behavior: contain/none` on the scroller stops
+scroll-chaining / pull-to-refresh but does **not** reliably kill the elastic bounce that
+triggers the mis-paint — get the fixed element out of the scroller instead.
+
+## 4. The bottom nav never hides
 
 The nav originally hid on scroll-down (`useScrollDirection`), which stranded users — at
 the end of a page the last gesture is always 'down', so the nav (Donny's only mobile
@@ -68,6 +95,37 @@ problem: **the nav is now always visible** and `useScrollDirection` was deleted 
 If a future feature wants hide-on-scroll chrome, that's a founder-level UX decision —
 don't reintroduce it for screen-space reasons alone.
 
+## 5. Desktop: a docked side-panel must overlay, not steal flex width (PR #236)
+
+The desktop counterpart of the fixed-positioning story — same tool (`position: fixed`),
+opposite goal (here it *prevents* a layout defect). The Donny desktop panel
+(`DonnyDesktopPanel`) was a docked flex **sibling** of `<main className="flex-1">` inside
+`AppShell`'s `<div className="flex h-screen">`, with `flex-shrink-0` + a hard width (`w-80`
+tray / `w-[420px]` chat). Opening it subtracted 320–420px from the row, so `<main>` reflowed
+to `100% − panelWidth` and **every page inside squished**.
+
+It read as "squished" rather than "smaller" because pages use **viewport** breakpoints
+(`lg:grid-cols-3`, brand browse `lg:grid-cols-4`), not container queries — the *viewport*
+stays wide while the *container* shrinks, so the grid keeps its wide-screen column count at a
+too-narrow width and crushes each card (`CreatorCard`'s fixed `w-24` avatar + `truncate`
+makes it worse). No app page uses `@container` (only `landing/LeadCaptureSection.tsx` does),
+so this hits *every* authenticated page, not one.
+
+**Fix (one className):** make the panel `fixed inset-y-0 right-0 z-40 shadow-2xl` and drop
+`flex-shrink-0`. A fixed element leaves the flex flow, so `<main>` reclaims 100% width — the
+page never loses space, and Donny floats over the right edge instead. `AppShell` needed no
+change. `hidden md:flex` stays (desktop-only; mobile uses the separate `DonnyMobileSheet`
+overlay). This is safe *because* of the §1 contract: no transformed ancestor
+(`PageTransition` is opacity-only and is a sibling of the panel, not an ancestor), so `fixed`
+anchors to the viewport. z-index: `z-40` sits above content + the `sticky top-0 z-40` header
+(via DOM order) and below `z-50` dialogs.
+
+**Rule:** a docked desktop side-panel/drawer that should *coexist* with full-width page
+content must be a **fixed overlay**, never an in-flow `flex-shrink-0` sibling of a `flex-1`
+content column — otherwise it silently reflows every viewport-breakpoint-keyed page underneath
+it. (Converting every page grid to container queries is the far larger alternative that was
+rejected.)
+
 ## Key Decisions
 
 - **Delete the trap, don't patch victims:** removing the transform un-traps all ~14
@@ -75,6 +133,9 @@ don't reintroduce it for screen-space reasons alone.
   per-overlay defense-in-depth.
 - Reason from the framer **stall state**, not the at-rest ideal: "v12 clears transforms
   when the animation completes" is true and irrelevant when the animation never runs.
+- **Portal bottom-anchored mobile chrome to `<body>`:** it dodges *both* the transform trap
+  (§1) and the iOS fixed-inside-scroller overscroll mis-paint (§3) in one move — the nav is
+  viewport-anchored regardless of any transformed ancestor or scroll container.
 
 ## See Also
 

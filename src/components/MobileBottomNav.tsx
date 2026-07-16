@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
 import type { UserRole } from '@/types/user';
 import { getBottomNav } from '@/lib/navConfig';
@@ -19,7 +20,14 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
 
   const unreadCount = useTotalUnreadCount();
 
-  return (
+  // Portal to <body> so the `fixed` nav (and Donny's mobile sheet) sit OUTSIDE the app's
+  // inner scroll container (`<main className="overflow-auto">` in AppShell). Rendered in
+  // place, they are descendants of that scroller, and iOS Safari does not paint a
+  // `position:fixed` descendant of an `overflow:auto` container stably during rubber-band /
+  // momentum overscroll — scrolling up hard dragged the nav up mid-screen and exposed
+  // whitespace below. As a <body> child the nav anchors to the viewport and is immune to the
+  // inner scroll's overscroll. Same fix as ApplyConfirmation; context flows through the portal.
+  return createPortal(
     <>
       {/* Always visible — no hide-on-scroll: the nav is Donny's only mobile entry point
           (founder decision 2026-07-14; the old scroll-direction hide left users stranded). */}
@@ -65,7 +73,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
         </div>
       </nav>
       <DonnyMobileSheet />
-    </>
+    </>,
+    document.body,
   );
 };
 
