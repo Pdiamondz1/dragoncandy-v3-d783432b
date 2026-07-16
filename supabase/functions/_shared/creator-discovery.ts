@@ -158,6 +158,13 @@ export function isCreatorDiscoveryIntent(message: string | null | undefined): bo
   if (/\b(applicant|application|applied|apply|pay|paid|payment|payout|invoice|escrow|message|messaged|messaging|invite|invited|invitation|contract|dispute)\w*/.test(m)) {
     return false;
   }
+  // Defer to normal tool selection when the user is CREATING/STARTING a campaign
+  // (e.g. "start a campaign with creators near me") — the campaign-builder flow should
+  // win over a forced creator list. We only skip FORCING here; the model can still
+  // choose the discovery tool on its own.
+  if (/\bcampaigns?\b/.test(m) && /\b(create|creating|start|starting|launch|launching|set ?up|build|building|spin ?up|new)\b/.test(m)) {
+    return false;
+  }
   const discovery = /\b(find|show|get|list|see|match|matches|matching|discover|recommend|suggest|browse|search|searching|top|best|pick|picks)\b/.test(m);
   const proximity = /\b(near|nearby|around|closest|local|by me|near me)\b/.test(m) || /\bin my area\b/.test(m);
   return discovery || proximity;

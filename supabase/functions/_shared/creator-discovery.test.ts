@@ -166,4 +166,11 @@ describe('isCreatorDiscoveryIntent', () => {
     expect(isCreatorDiscoveryIntent('creators are great for marketing')).toBe(false);
     expect(isCreatorDiscoveryIntent('tell me about creator payouts')).toBe(false);
   });
+  test('false for campaign-creation intent (prepare_campaign should win, not forced discovery)', () => {
+    expect(isCreatorDiscoveryIntent('start a campaign with creators near Hoboken')).toBe(false);
+    expect(isCreatorDiscoveryIntent('create a new campaign and find creators')).toBe(false);
+    expect(isCreatorDiscoveryIntent('launch a campaign targeting local creators')).toBe(false);
+    // but a discovery request that merely mentions a campaign (no creation verb) still forces
+    expect(isCreatorDiscoveryIntent('recommend creators for my food campaign')).toBe(true);
+  });
 });
