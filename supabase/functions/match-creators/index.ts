@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 import { corsHeaders } from "../_shared/cors.ts";
+import { resolveCoords, scoreGeographicDistance } from "../_shared/geo.ts";
 
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 
@@ -16,9 +17,9 @@ const WEIGHTS = {
   platform_overlap: 20,   // Does creator cover the campaign's platforms?
   budget_fit: 15,         // Does creator's rate fit the campaign budget?
   skills_match: 20,       // Do creator skills align with campaign needs?
-  geographic: 10,         // Same city/country as campaign owner?
-  availability: 10,       // Creator available and responsive?
-  ai_quality: 25,         // AI-assessed content quality & style fit
+  geographic: 20,         // Distance from the business location (nearest first)
+  availability: 5,        // Creator available and responsive?
+  ai_quality: 20,         // AI-assessed content quality & style fit
 };
 
 // ── Deterministic scoring helpers ────────────────────────────────────────────
@@ -155,34 +156,6 @@ function scoreSkillsMatch(creator: CreatorProfile, campaign: Campaign): number {
   const ratio = matchCount / Math.max(creatorSkills.length, 1);
   // Scale: 0 matches = 30, all match = 100
   return Math.round(30 + ratio * 70);
-}
-
-function scoreGeographic(creator: CreatorProfile, campaignOwnerProfile: { city?: string; country?: string; location?: string } | null): number {
-  if (!campaignOwnerProfile) return 50;
-
-  const creatorCity = (creator.city || '').toLowerCase().trim();
-  const creatorCountry = (creator.country || '').toLowerCase().trim();
-  const creatorLocation = (creator.location || '').toLowerCase().trim();
-
-  const ownerCity = (campaignOwnerProfile.city || '').toLowerCase().trim();
-  const ownerCountry = (campaignOwnerProfile.country || '').toLowerCase().trim();
-  const ownerLocation = (campaignOwnerProfile.location || '').toLowerCase().trim();
-
-  // Same city
-  if (creatorCity && ownerCity && creatorCity === ownerCity) return 100;
-  // City mentioned in location string
-  if (creatorLocation && ownerCity && creatorLocation.includes(ownerCity)) return 90;
-  if (ownerLocation && creatorCity && ownerLocation.includes(creatorCity)) return 90;
-  // Same country
-  if (creatorCountry && ownerCountry && creatorCountry === ownerCountry) return 70;
-  // Location strings share a word
-  if (creatorLocation && ownerLocation) {
-    const creatorWords = creatorLocation.split(/[\s,]+/).filter(w => w.length > 2);
-    const ownerWords = ownerLocation.split(/[\s,]+/).filter(w => w.length > 2);
-    if (creatorWords.some(w => ownerWords.includes(w))) return 65;
-  }
-
-  return 40; // Different/unknown location
 }
 
 function scoreAvailability(creator: CreatorProfile): number {
@@ -412,18 +385,23 @@ serve(async (req) => {
       });
     }
 
-    // Fetch campaign owner profile for geographic scoring
+    // Fetch campaign owner profile for geographic (distance) scoring
     const { data: ownerProfile } = await supabase
       .from('business_profiles')
-      .select('city, country, business_address')
+      .select('city, country, location')
       .eq('user_id', campaign.user_id)
       .single();
 
     const ownerGeo = ownerProfile ? {
       city: ownerProfile.city || '',
       country: ownerProfile.country || '',
-      location: ownerProfile.business_address || '',
+      location: ownerProfile.location || '',
     } : null;
+
+    const ownerCenter = ownerGeo
+      ? resolveCoords(ownerGeo.city, ownerGeo.country, ownerGeo.location)
+      : null;
+    const ownerCountry = ownerGeo?.country || null;
 
     // Clear existing matches for this campaign
     await supabase
@@ -467,14 +445,22 @@ serve(async (req) => {
     }
 
     // Step 1: Compute deterministic scores for all creators
-    const deterministicScores = creators.map(creator => ({
-      creator,
-      platform: scorePlatformOverlap(creator as CreatorProfile, campaign as Campaign),
-      budget: scoreBudgetFit(creator as CreatorProfile, campaign as Campaign),
-      skills: scoreSkillsMatch(creator as CreatorProfile, campaign as Campaign),
-      geographic: scoreGeographic(creator as CreatorProfile, ownerGeo),
-      availability: scoreAvailability(creator as CreatorProfile),
-    }));
+    const deterministicScores = creators.map(creator => {
+      const geo = scoreGeographicDistance(ownerCenter, ownerCountry, {
+        city: creator.city,
+        country: creator.country,
+        location: creator.location,
+      });
+      return {
+        creator,
+        platform: scorePlatformOverlap(creator as CreatorProfile, campaign as Campaign),
+        budget: scoreBudgetFit(creator as CreatorProfile, campaign as Campaign),
+        skills: scoreSkillsMatch(creator as CreatorProfile, campaign as Campaign),
+        geographic: geo.score,
+        distanceMiles: geo.distanceMiles,
+        availability: scoreAvailability(creator as CreatorProfile),
+      };
+    });
 
     // Step 2: Pre-filter — only send top candidates to AI (saves tokens & time)
     // Compute a preliminary score without AI, keep top 20 (or all if fewer)
@@ -531,6 +517,7 @@ serve(async (req) => {
       const matchReasons = {
         reasons: aiResult?.reasons || ['Creator available for collaboration'],
         concerns: aiResult?.concerns || [],
+        distance_miles: candidate.distanceMiles,
         score_breakdown: breakdown,
         weights: WEIGHTS,
       };
