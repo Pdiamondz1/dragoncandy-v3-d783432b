@@ -4,6 +4,31 @@ import { resolveCoords, distanceToScore, haversineDistance, lookupCityCoords } f
 
 type Coords = { lat: number; lng: number };
 
+const US_STATE_ABBR: Record<string, string> = {
+  alabama: "al", alaska: "ak", arizona: "az", arkansas: "ar", california: "ca",
+  colorado: "co", connecticut: "ct", delaware: "de", florida: "fl", georgia: "ga",
+  hawaii: "hi", idaho: "id", illinois: "il", indiana: "in", iowa: "ia",
+  kansas: "ks", kentucky: "ky", louisiana: "la", maine: "me", maryland: "md",
+  massachusetts: "ma", michigan: "mi", minnesota: "mn", mississippi: "ms", missouri: "mo",
+  montana: "mt", nebraska: "ne", nevada: "nv", "new hampshire": "nh", "new jersey": "nj",
+  "new mexico": "nm", "new york": "ny", "north carolina": "nc", "north dakota": "nd", ohio: "oh",
+  oklahoma: "ok", oregon: "or", pennsylvania: "pa", "rhode island": "ri", "south carolina": "sc",
+  "south dakota": "sd", tennessee: "tn", texas: "tx", utah: "ut", vermont: "vt",
+  virginia: "va", washington: "wa", "west virginia": "wv", wisconsin: "wi", wyoming: "wy",
+  "district of columbia": "dc",
+};
+
+// Build a "city st" lookup key from a comma-qualified place ("Portland, ME" or "Portland, Maine"
+// -> "portland me"). Returns null when there is no comma qualifier to use.
+function stateQualifiedKey(place: string): string | null {
+  const parts = place.split(",").map((s) => s.trim()).filter(Boolean);
+  if (parts.length < 2) return null;
+  const city = parts[0].toLowerCase();
+  const rawState = parts[1].toLowerCase();
+  const state = US_STATE_ABBR[rawState] ?? rawState; // full name -> abbrev; else assume already an abbrev
+  return `${city} ${state}`;
+}
+
 export interface DiscoveryCreator {
   city: string | null;
   country: string | null;
@@ -19,13 +44,12 @@ export function resolveSearchCenter(
   owner: { city: string | null; country: string | null; location: string | null } | null,
 ): Coords | null {
   if (locationArg && locationArg.trim()) {
-    const trimmed = locationArg.trim();
-    // Geo table has state-qualified keys ("portland me" vs bare "portland"=Portland OR).
-    // Try the full "City ST" form first, then fall back to the city-only part.
-    const full = trimmed.replace(/,/g, " ").replace(/\s+/g, " ").trim();
-    const fullHit = lookupCityCoords(full, "US");
-    if (fullHit) return fullHit;
-    const city = trimmed.split(",")[0].trim();
+    const sq = stateQualifiedKey(locationArg);
+    if (sq) {
+      const hit = lookupCityCoords(sq, "US");
+      if (hit) return hit;
+    }
+    const city = locationArg.split(",")[0].trim();
     const cityHit = lookupCityCoords(city, "US");
     if (cityHit) return cityHit;
   }
@@ -62,10 +86,10 @@ export function scoreNiche(
 // over the bare city (an ambiguous "Portland" defaults to Portland OR in the static table).
 function resolveCreatorCoords(creator: { city: string | null; country: string | null; location: string | null }): Coords | null {
   if (creator.location) {
-    const parts = creator.location.split(",").map((s) => s.trim()).filter(Boolean);
-    if (parts.length >= 2) {
-      const stateHit = lookupCityCoords(`${parts[0]} ${parts[1]}`, "US");
-      if (stateHit) return stateHit;
+    const sq = stateQualifiedKey(creator.location);
+    if (sq) {
+      const hit = lookupCityCoords(sq, "US");
+      if (hit) return hit;
     }
   }
   return resolveCoords(creator.city, creator.country, creator.location);

@@ -33,6 +33,11 @@ describe('resolveSearchCenter', () => {
   test('plain city still resolves (no regression)', () => {
     expect(resolveSearchCenter('Hoboken', null)).not.toBeNull();
   });
+  test('resolves a full state NAME ("Portland, Maine") to Maine, not Portland OR', () => {
+    const me = resolveSearchCenter('Portland, Maine', null);
+    expect(me).not.toBeNull();
+    expect(me!.lat).toBeCloseTo(43.66, 1);
+  });
 });
 
 describe('scoreNiche', () => {
@@ -87,6 +92,14 @@ describe('scoreCreatorLocation', () => {
       city: 'Portland', country: 'United States', location: 'Portland, ME, United States',
     }));
     expect(r.score).toBe(100);          // resolves to Portland ME (~0 mi), not Portland OR (~2900 mi)
+    expect(r.distanceMiles!).toBeLessThan(5);
+  });
+  test('creator full-state-name location resolves correctly', () => {
+    const PORTLAND_ME = { lat: 43.6591, lng: -70.2568 };
+    const r = scoreCreatorLocation(PORTLAND_ME, null, mk({
+      city: 'Portland', country: 'United States', location: 'Portland, Maine, United States',
+    }));
+    expect(r.score).toBe(100);
     expect(r.distanceMiles!).toBeLessThan(5);
   });
 });
