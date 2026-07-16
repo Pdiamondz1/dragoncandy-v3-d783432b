@@ -30,6 +30,30 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-16] Donny desktop panel fixed-overlay (PR #236 → paired docs PR)
+- Output: paired docs PR off origin/main — `raw/sessions/2026-07-16-donny-desktop-overlay.md`,
+  compounded `concepts/mobile-viewport-fixed-positioning.md` (new §4 desktop docked-panel-overlay
+  rule + frontmatter sources/tags), `index.md` (Sources line), `log.md` ingest entry,
+  PROJECT_CONTEXT workstream bullet, DESIGN_SYSTEM new "desktop side-panels overlay" rule, + THIS entry.
+- Happened: code PR #236 (one-line className fix) merged first, so this is the **paired docs PR** off
+  a fresh branch off origin/main (per [scope]). **Compounded, didn't duplicate** — the desktop Donny
+  overlay is the *desktop counterpart* of the mobile fixed-positioning concept and RELIES on that page's
+  §1 PageTransition-opacity-only contract, so it belongs there as a new §4, not a thin new page. RAG sync
+  + verify-knowledge are post-merge (hook on the `main` ff).
+- Worked: [scope] + [runlog-in-pr] + [orphans]-by-path (new raw session cataloged in index.md; no new
+  concept page). [wikilinks]-exact: grepped index.md first — [[Mobile Viewport & Fixed Positioning]] +
+  [[Donny Chat UX]] confirmed before linking. Captured the reusable *design rule* (docked `flex-shrink-0`
+  sibling steals width from `flex-1` main → viewport-keyed grids crush → make it a `fixed` overlay) as a
+  DESIGN_SYSTEM bullet + concept §4, not "we moved the Donny panel".
+- Failed: none. (RAG sync + verify-knowledge close-the-loop are inherently post-merge for this pre-merge
+  docs PR.)
+- Remember: a **one-line CSS fix can still carry durable design-system knowledge** — a docked-panel-steals-
+  flex-width defect is a reusable rule, so it earns a DESIGN_SYSTEM bullet + a §-on-an-existing-concept, not
+  a skip. Also: during verify, do NOT type a test-account password into a login form (hard safety rule) —
+  verify the deploy via bundle sentinel + public render and have the user sign in for an authenticated shot;
+  and Vite content-hashes differ local↔Vercel, so grep the prod-served chunk name (read from the live
+  `index-*.js`), not the local build's name. (advisory)
+
 ### [2026-07-14] Mobile screen-fit — fixed-position un-trap + invite sheet iOS fit (branch worktree-DC-mobile-screenfit)
 - Output: bundled INTO the work PR — `raw/sessions/2026-07-14-mobile-screenfit-fixed-position.md`, new
   `concepts/mobile-viewport-fixed-positioning.md`, `index.md` (Concepts + Sources), `log.md` ingest entry,

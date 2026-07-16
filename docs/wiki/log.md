@@ -1107,3 +1107,16 @@ the agenda → mobile parity restored by reusing `SponsorshipMarkerDetail`). Fro
 edge / data change. Pages created: [[Schedule Agenda View]] (concept) + the raw session source. Pages
 updated: index.md (Concepts + Sources), PROJECT_CONTEXT (workstream bullet). RAG sync + verify-knowledge
 run post-merge (the post-merge hook fires on the `main` fast-forward).
+
+## [2026-07-16] ingest | Donny desktop panel fixed-overlay (PR #236)
+Captured the desktop Donny squish fix. Root cause: `DonnyDesktopPanel` was a docked
+`flex-shrink-0` sibling of `<main className="flex-1">` in `AppShell`, so opening it stole
+320–420px and every page — using viewport breakpoints, not container queries — reflowed
+narrower and crushed its cards. Fix: one className → `fixed inset-y-0 right-0 z-40 shadow-2xl`
+(drop `flex-shrink-0`), so `<main>` keeps full width and Donny overlays. Safe via the
+PageTransition opacity-only contract (§1) — no transformed ancestor. Verified on the staging
+preview (tray + chat overlay, no reflow) + prod bundle sentinel; Codex-clean. Pages created:
+new raw session source [[Donny Desktop Overlay Session]]. Pages updated:
+[[Mobile Viewport & Fixed Positioning]] (new §4 desktop docked-panel-overlay rule + frontmatter),
+index.md (Sources), PROJECT_CONTEXT (workstream bullet), DESIGN_SYSTEM (desktop overlay rule).
+RAG sync + verify-knowledge run post-merge (post-merge hook fires on the `main` fast-forward).

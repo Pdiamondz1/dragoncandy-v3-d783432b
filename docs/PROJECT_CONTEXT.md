@@ -993,6 +993,20 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   QA gate untouched. Supersedes the 2026-06-02 "Lovable stays prod host" scoping decision.
   Runbook: `docs/runbooks/vercel-prod-cutover.md`.
 
+- Donny desktop panel — fixed-overlay so pages stop squishing — **shipped (PR #236,
+  2026-07-16).** On desktop, opening Donny compressed every page (Browse Creators cards
+  crushed, names truncated). Root cause: `DonnyDesktopPanel` was a docked `flex-shrink-0`
+  sibling of `<main className="flex-1">` in `AppShell`, so opening it stole 320–420px and
+  `<main>` reflowed narrower; pages use **viewport** breakpoints (not container queries), so
+  the grids kept their wide-screen column counts at a too-narrow width and crushed cards. Fix
+  is one className — `fixed inset-y-0 right-0 z-40 shadow-2xl` (drop `flex-shrink-0`) — so the
+  panel leaves the flex flow, `<main>` keeps full width, and Donny floats over the right edge
+  instead. `AppShell` unchanged; mobile unaffected (`hidden md:flex`; mobile uses the separate
+  `DonnyMobileSheet`). Safe via the PageTransition **opacity-only** contract (no transformed
+  ancestor → `fixed` anchors to the viewport). Verified on the staging preview (tray + chat
+  both overlay, no reflow) + the prod bundle sentinel; Codex-clean. Concept:
+  `docs/wiki/concepts/mobile-viewport-fixed-positioning.md` (§4).
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).
