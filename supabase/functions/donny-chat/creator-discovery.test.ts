@@ -155,6 +155,8 @@ describe('isCreatorDiscoveryIntent', () => {
     expect(isCreatorDiscoveryIntent('find my creator applications')).toBe(false);
     expect(isCreatorDiscoveryIntent('show me the creator who applied to my campaign')).toBe(false);
     expect(isCreatorDiscoveryIntent('how do I pay a creator?')).toBe(false);
+    expect(isCreatorDiscoveryIntent('how do creators get paid?')).toBe(false);
+    expect(isCreatorDiscoveryIntent('when do creators get their payout?')).toBe(false);
     expect(isCreatorDiscoveryIntent('message the creator I hired')).toBe(false);
     expect(isCreatorDiscoveryIntent('invite this creator to my campaign')).toBe(false);
   });

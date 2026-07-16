@@ -153,7 +153,7 @@ export function isCreatorDiscoveryIntent(message: string | null | undefined): bo
   const m = message.toLowerCase();
   if (!/\b(creators?|influencers?)\b/.test(m)) return false;
   // Not a discovery request when it's about a different creator-related object.
-  if (/\b(applicant|application|applied|apply|payment|payout|invoice|escrow|message|messaged|messaging|invite|invited|invitation|contract|collaborat|review|dispute|onboard)\w*/.test(m)) {
+  if (/\b(applicant|application|applied|apply|pay|paid|payment|payout|invoice|escrow|message|messaged|messaging|invite|invited|invitation|contract|collaborat|review|dispute|onboard)\w*/.test(m)) {
     return false;
   }
   const discovery = /\b(find|show|get|list|see|match|matches|matching|discover|recommend|suggest|browse|search|searching|top|best|pick|picks)\b/.test(m);
