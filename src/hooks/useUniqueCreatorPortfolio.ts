@@ -8,6 +8,12 @@ export interface PortfolioMedia {
   creatorName: string;
   creatorSlug: string;
   creatorId: string;
+  // Location bundle (for the zip-radius filter) + avatar (for the IG header / lightbox):
+  avatarUrl?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
+  location?: string;
 }
 
 // Simple signed URL cache (1 hour TTL)
@@ -42,7 +48,7 @@ export const useUniqueCreatorPortfolio = () => {
         // Fetch creator profiles with portfolio URLs who allow DragonFeed display
         const { data: creators, error: fetchError } = await supabase
           .from('creator_profiles')
-          .select('id, user_id, creator_name, portfolio_urls, profile_slug')
+          .select('id, user_id, creator_name, avatar_url, portfolio_urls, profile_slug, city, postal_code, country, location')
           .eq('is_completed', true)
           .eq('allow_portfolio_in_feed', true)
           .not('portfolio_urls', 'is', null)
@@ -61,12 +67,19 @@ export const useUniqueCreatorPortfolio = () => {
         // Process portfolio URLs and create media items in parallel
         const mediaPromises = creators.flatMap((creator) => {
           const urls = Array.isArray(creator.portfolio_urls) ? creator.portfolio_urls : [];
+          const rawAvatar = typeof creator.avatar_url === 'string' ? creator.avatar_url : '';
           return urls
             .filter((url: unknown) => typeof url === 'string' && url.length > 0)
             .map(async (url: string) => {
               const isExternal = url.startsWith('http');
               const finalUrl = isExternal ? url : await getSignedUrl(url);
               if (!finalUrl) return null;
+              // Avatar: external http URL used directly; storage key signed (cached).
+              const avatarUrl = rawAvatar
+                ? rawAvatar.startsWith('http')
+                  ? rawAvatar
+                  : (await getSignedUrl(rawAvatar)) ?? undefined
+                : undefined;
               const isVideo = /\.(mp4|webm|mov|avi)$/i.test(url);
               return {
                 id: `${creator.id}-${url}`,
@@ -75,6 +88,11 @@ export const useUniqueCreatorPortfolio = () => {
                 creatorName: creator.creator_name || 'Creator',
                 creatorSlug: creator.profile_slug || '',
                 creatorId: creator.user_id || creator.id,
+                avatarUrl,
+                city: creator.city ?? undefined,
+                postalCode: creator.postal_code ?? undefined,
+                country: creator.country ?? undefined,
+                location: creator.location ?? undefined,
               } as PortfolioMedia;
             });
         });
