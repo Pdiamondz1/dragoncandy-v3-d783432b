@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import useEmblaCarousel from 'embla-carousel-react';
 import { Dialog, DialogPortal, DialogOverlay } from '@/components/ui/dialog';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Heart, MessageSquare, X, ChevronLeft, ChevronRight, User } from 'lucide-react';
 import { useFeedLike } from '@/hooks/useFeedLike';
 import { useMessageCreator } from '@/hooks/useMessageCreator';
@@ -167,6 +167,7 @@ export const FeedViewer: React.FC<FeedViewerProps> = ({ items, index, onIndexCha
                 className="flex min-w-0 flex-1 items-center gap-2 text-left"
               >
                 <Avatar className="h-8 w-8 ring-2 ring-teal-400">
+                  <AvatarImage src={activeItem.avatarUrl} alt={activeItem.creatorName} />
                   <AvatarFallback className="text-xs">
                     <User className="h-4 w-4" />
                   </AvatarFallback>

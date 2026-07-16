@@ -30,6 +30,27 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-16] DragonFeed mobile vertical feed + zip-radius search (branch worktree-dc-issues-2, PR #242)
+- Output: bundled INTO the work PR #242 — `raw/sessions/2026-07-16-dragonfeed-mobile-feed-zip-search.md`,
+  new `concepts/dragon-feed.md`, `index.md` (Concepts + Sources), `log.md` ingest entry, PROJECT_CONTEXT
+  active-workstream bullet, + THIS run-log entry. Frontend-only (no schema/DESIGN_SYSTEM/CLAUDE.md change).
+- Happened: a consumer-frontend feature that yields reusable *architecture* knowledge, so I wrote a NEW
+  concept for the Dragon Feed *surface* (none existed — only creator-groups/creator-location-search/
+  mobile-viewport were there) rather than a thin "we added a feature" note. Compounded by cross-linking
+  [[Creator Location Search]] (the geo stack this reuses) + [[Mobile Viewport & Fixed Positioning]] (the
+  mobile/desktop rule) rather than duplicating them. Pre-merge on the work branch (off origin/main per
+  [scope]); RAG sync + [[verify-knowledge]] are post-merge (the post-merge hook fires on the docs/ ff).
+- Worked: [scope] + [runlog-in-pr] + [orphans]-by-path (new concept + source both cataloged in index.md).
+  [wikilinks]-exact: grepped index.md for the bracketed display names before linking — confirmed
+  [[Creator Location Search]], [[Mobile Viewport & Fixed Positioning]], [[DragonShare]] all exist (no
+  dangling link). Captured the two Codex-caught lazy-geocoding invariants (don't filter mid-geocode; skip
+  geocoding under "Any") + the useIsMobile-JS-branch-not-CSS-double-mount decision as durable concept
+  knowledge, not just a session log.
+- Failed: none. (RAG-sync + verify-knowledge close-the-loop are inherently post-merge for this pre-merge run.)
+- Remember: when a big *frontend* feature reuses an existing backend/utility stack on a NEW surface, the
+  durable knowledge is the *reuse pattern + its gotchas* (here: media-level `filterMediaByRadius` extending
+  the creator-level `filterByRadius`, plus the two async-geocode invariants), captured on a concept page for
+  that surface that cross-links the shared stack — not a restatement of the stack itself. (advisory)
 ### [2026-07-16] AI creator matching fix — location + skill / "Found 0" (branch worktree-dc-issues-3)
 - Output: bundled INTO the work PR — `raw/sessions/2026-07-16-fix-ai-creator-matching-location.md`,
   new `concepts/ai-creator-matching.md`, updated `concepts/creator-location-search.md` (See-Also +

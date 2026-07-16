@@ -7,6 +7,7 @@ import {
   matchesLocationText,
   isPlaceQueryMatch,
   filterByRadiusWithSearch,
+  filterMediaByRadius,
 } from './creatorLocationFilter';
 import { lookupCityCoords } from './geoUtils';
 
@@ -177,5 +178,41 @@ describe('sortNearest', () => {
     const input = [{ id: 'a', distanceMiles: 5 }, { id: 'b', distanceMiles: 1 }];
     sortNearest(input);
     expect(input.map(c => c.id)).toEqual(['a', 'b']);
+  });
+});
+
+describe('filterMediaByRadius', () => {
+  // creators: A ≈ 1 mi from NYC (in range), B in LA (far). No structured city/country,
+  // so placement relies entirely on the precomputed geocodedById map.
+  const geo = new Map([
+    ['A', { lat: 40.72, lng: -74.0 }],
+    ['B', { lat: 34.0522, lng: -118.2437 }],
+  ]);
+  const mk = (id: string, creatorId: string) => ({ id, creatorId } as { id: string; creatorId: string });
+  const media = [mk('a1', 'A'), mk('a2', 'A'), mk('b1', 'B')];
+
+  test('no center → passthrough (never silent-empty)', () => {
+    expect(filterMediaByRadius(media, null, 25, geo)).toHaveLength(3);
+  });
+
+  test('finite radius keeps in-range creators, drops far ones', () => {
+    const out = filterMediaByRadius(media, NYC, 25, geo);
+    expect(out.map(m => m.id)).toEqual(['a1', 'a2']);
+  });
+
+  test('Any radius (null) with a center keeps all placeable media', () => {
+    expect(filterMediaByRadius(media, NYC, null, geo)).toHaveLength(3);
+  });
+
+  test('media from an unplaceable creator is dropped under a finite radius', () => {
+    const withGhost = [...media, mk('c1', 'C')]; // C not in geo, no city/country
+    const out = filterMediaByRadius(withGhost, NYC, 25, geo);
+    expect(out.map(m => m.id)).toEqual(['a1', 'a2']);
+  });
+
+  test('all media from one creator are kept or dropped together', () => {
+    const out = filterMediaByRadius(media, NYC, 25, geo);
+    expect(out.filter(m => m.creatorId === 'A')).toHaveLength(2);
+    expect(out.filter(m => m.creatorId === 'B')).toHaveLength(0);
   });
 });
