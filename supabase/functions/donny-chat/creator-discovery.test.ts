@@ -25,6 +25,14 @@ describe('resolveSearchCenter', () => {
     expect(resolveSearchCenter(null, null)).toBeNull();
     expect(resolveSearchCenter('Tinyville', null)).toBeNull();
   });
+  test('preserves a state qualifier — "Portland, ME" resolves to Maine, not Portland OR', () => {
+    const me = resolveSearchCenter('Portland, ME', null);
+    expect(me).not.toBeNull();
+    expect(me!.lat).toBeCloseTo(43.66, 1); // Portland, Maine (not 45.5 = Portland, OR)
+  });
+  test('plain city still resolves (no regression)', () => {
+    expect(resolveSearchCenter('Hoboken', null)).not.toBeNull();
+  });
 });
 
 describe('scoreNiche', () => {

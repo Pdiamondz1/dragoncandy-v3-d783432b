@@ -19,9 +19,15 @@ export function resolveSearchCenter(
   owner: { city: string | null; country: string | null; location: string | null } | null,
 ): Coords | null {
   if (locationArg && locationArg.trim()) {
-    const city = locationArg.split(",")[0].trim();
-    const c = lookupCityCoords(city, "US");
-    if (c) return c;
+    const trimmed = locationArg.trim();
+    // Geo table has state-qualified keys ("portland me" vs bare "portland"=Portland OR).
+    // Try the full "City ST" form first, then fall back to the city-only part.
+    const full = trimmed.replace(/,/g, " ").replace(/\s+/g, " ").trim();
+    const fullHit = lookupCityCoords(full, "US");
+    if (fullHit) return fullHit;
+    const city = trimmed.split(",")[0].trim();
+    const cityHit = lookupCityCoords(city, "US");
+    if (cityHit) return cityHit;
   }
   if (owner) {
     const c = resolveCoords(owner.city, owner.country, owner.location);
