@@ -61,17 +61,22 @@ This feature **reuses** that stack rather than inventing new matching code.
 ```
 DragonFeedGrid  (shared; both pages)
 ├─ useUniqueCreatorPortfolio()      → PortfolioMedia[]  (EXTENDED: +avatarUrl +location bundle)
-├─ name search + type filter        (existing, unchanged)
-├─ useFeedLocationFilter(media)     → applies zip-radius filter (NEW hook)
-│    ├─ geocodingService.geocodeLocation(zip)   → center LatLng (react-query, cached)
-│    ├─ useCreatorGeocoding(uniqueCreators)      → geocodedById  (lazy: only when zip active)
-│    └─ filterByRadius(...)                      → in-radius creatorId set → filtered media
+├─ nameTypeFiltered = name search + type filter        (existing, unchanged) applied to media FIRST
+├─ useFeedLocationFilter(nameTypeFiltered)  → { filteredMedia, ... }  (NEW hook; zip-radius only)
+│    ├─ geocodingService.geocodeLocation(debouncedZip)  → center LatLng (react-query, cached)
+│    ├─ useCreatorGeocoding(creatorsToGeocode)           → geocodedCreators[] → geocodedById Map (lazy)
+│    └─ filterMediaByRadius(...)                         → survivor creatorId set → zip-filtered media
 ├─ controls row: [Search creators…] [Zip] [radius ▾] [All Types ▾] [Clear]
-└─ render branch on useIsMobile()
+└─ render branch on useIsMobile()  (over the hook's returned filteredMedia)
      ├─ mobile (<768): <FeedPost/> stack (NEW)   — IG card, tap media → FeedViewer
      └─ desktop (≥768): <FeedTile/> grid (existing, unchanged)
-   → both feed the SAME filteredMedia into the SAME <FeedViewer/>
+   → both feed the SAME final list into the SAME <FeedViewer/>
 ```
+
+**Filter pipeline / naming:** the name-search + type filter run **first** on the raw media
+(`nameTypeFiltered`); that array is passed into `useFeedLocationFilter`, whose returned
+`filteredMedia` is the zip-radius-filtered *final* list the grid renders. So "filtered media"
+downstream (§5.4) = name + type + zip, even though the hook itself only adds the zip stage.
 
 Only one media tree mounts at a time (mobile *or* desktop), chosen by `useIsMobile()`.
 The rejected alternative — rendering both trees and toggling with CSS `hidden`/`lg:block` —
@@ -121,50 +126,82 @@ Notes:
 
 ### 5.2 Zip-radius filter — new `useFeedLocationFilter` (`src/hooks/useFeedLocationFilter.ts`)
 
-Owns the zip/radius state and returns the location-filtered media. Signature:
+Owns the zip/radius state and returns the location-filtered media. **The hook takes `media`**
+and does all geocoding/filtering at its top level (no hooks inside callbacks — see the Rules of
+Hooks note below). It returns the already-filtered `media`, not a filter closure.
 
 ```ts
 interface FeedLocationFilter {
   zip: string;
   setZip: (z: string) => void;
-  radiusMiles: number | null;              // null = "Any"
+  radiusMiles: number | null;              // null = "Any"; default 25
   setRadiusMiles: (r: number | null) => void;
-  filterByZip: (media: PortfolioMedia[]) => PortfolioMedia[];
+  filteredMedia: PortfolioMedia[];         // media after the zip-radius filter (passthrough when inactive)
   status: 'idle' | 'resolving' | 'failed'; // geocode status of the typed zip
   active: boolean;                         // a usable center is resolved
 }
-export function useFeedLocationFilter(): FeedLocationFilter
+export function useFeedLocationFilter(media: PortfolioMedia[]): FeedLocationFilter
 ```
 
-Behavior:
-1. `zip` state, updated by the input. A **debounced** value (~400ms) drives geocoding.
-2. Only treat the debounced value as a query when `detectQueryKind(zip) === 'zip'`
-   (5-digit or zip+4). Non-zip input → `status: 'idle'`, no filtering.
-3. Geocode the zip → center via react-query:
+**Rules-of-Hooks constraint (must hold):** `useCreatorGeocoding` internally calls
+`useQuery`/`useState`/`useEffect`, so it may be called **only at the hook's top level**, never
+inside a render callback. An earlier draft exposed a `filterByZip(media)` callback that called
+`useCreatorGeocoding` — that is a hard `react-hooks/rules-of-hooks` violation and is rejected.
+The correct shape mirrors `useCreatorBrowse` (see below).
+
+Internals, all at the hook top level:
+1. `zip`, `radiusMiles` (default `DEFAULT_LOCATION_FILTER.radiusMiles` = **25**) state.
+2. `debouncedZip` (~400ms) — small `useEffect`+timeout or an existing debounce hook.
+3. `isValidZip = detectQueryKind(debouncedZip) === 'zip'` (5-digit or zip+4).
+4. Geocode zip → center via react-query:
    `queryKey: ['feed-zip-center', debouncedZip]`,
    `queryFn: () => geocodingService.geocodeLocation(debouncedZip)`,
-   `enabled: isValidZip`, `staleTime: 24h`. `isLoading → 'resolving'`;
-   resolved-null → `'failed'`; resolved coords → center + `active: true`.
-4. `filterByZip(media)`:
-   - If no center (`!active`) → return `media` unchanged (never a silent empty).
-   - Derive **unique creators** from `media`: `{ id: creatorId, city, country, postal_code }`
-     (dedup by `creatorId`).
-   - `useCreatorGeocoding(uniqueCreators)` builds `geocodedById` — **lazy**: pass `[]` when no
-     zip is active so no Google calls fire until a zip is entered (the hook is already
-     `enabled: creators.length > 0`).
-   - `const { list } = filterByRadius(uniqueCreators, center, radiusMiles, geocodedById)` →
-     `Set<creatorId>` of survivors → `media.filter(m => set.has(m.creatorId))`.
-   - Creators placeable only via structured `city+country` fall back to `lookupCityCoords`
-     inside `filterByRadius`; creators with only freeform `location` are **unplaceable** and
-     excluded while a zip is active (matches existing CreatorBrowse behavior).
-5. `radiusMiles` default **25**; options `[10, 25, 50, 100]` + "Any" (`null`). Under "Any"
-   with a resolved center, `filterByRadius` keeps everyone placeable (no distance drop).
+   `enabled: isValidZip`, `staleTime: 24h`.
+   **Signature note:** `geocodeLocation(postal_code?, city?, country?)` — passing the zip as the
+   sole first argument correctly treats it as `postal_code`; do not "fix" it into another shape.
+   `isLoading → 'resolving'`; resolved-null → `'failed'`; resolved coords → `center`, `active: true`.
+5. `uniqueCreators = useMemo(...)` derived from `media`: dedup by `creatorId` into
+   `{ id: creatorId, city, country, postal_code }` — this pass **keeps** `postal_code` because
+   `useCreatorGeocoding` needs it. (This is deliberately a *separate* dedup from the one inside
+   `filterMediaByRadius`, which drops `postal_code` because `filterByRadius` never reads it.
+   Do not merge the two — the differing field sets are intentional, not duplication to simplify.)
+6. **Lazy geocoding:** `const creatorsToGeocode = active ? uniqueCreators : []`, then
+   `const { geocodedCreators } = useCreatorGeocoding(creatorsToGeocode)` at top level — the
+   hook's own `enabled: creators.length > 0` means **no Google calls fire until a zip resolves**.
+7. Build the map the caller must construct itself (the hook returns an **array**, not a Map),
+   mirroring `useCreatorBrowse.ts` (~L193-197):
+   `const geocodedById = useMemo(() => new Map(geocodedCreators.map(g => [g.id, { lat: g.lat, lng: g.lng }])), [geocodedCreators])`.
+8. `filteredMedia = useMemo(() => filterMediaByRadius(media, active ? center : null, radiusMiles, geocodedById), [media, active, center, radiusMiles, geocodedById])`.
 
-**Purity boundary for tests**: the media-filtering core (given `media`, `center`,
-`radiusMiles`, `geocodedById` → filtered `media`) is a **pure function**
-`filterMediaByRadius(media, center, radiusMiles, geocodedById)` exported from
-`creatorLocationFilter.ts` (or a small sibling), unit-tested directly. The hook is a thin
-stateful wrapper (debounce + react-query + `useCreatorGeocoding`) around it.
+Placement semantics: creators placeable only via structured `city+country` fall back to
+`lookupCityCoords` inside `filterByRadius`; creators with only freeform `location` are
+**unplaceable** and excluded while a zip is active (matches existing CreatorBrowse behavior).
+Under "Any" (`radiusMiles = null`) with a resolved center, `filterByRadius` keeps everyone
+placeable (no distance drop). Reuse `RADIUS_OPTIONS` (`[10, 25, 50, 100]`) from
+`creatorLocationFilter.ts` for the selector rather than re-declaring it.
+
+**Purity boundary for tests**: the media-filtering core is a **pure function**
+`filterMediaByRadius(media, center, radiusMiles, geocodedById)` added to
+`creatorLocationFilter.ts`, unit-tested directly. It derives unique creators from `media` and
+delegates to the existing `filterByRadius`:
+
+```ts
+export function filterMediaByRadius<
+  M extends { creatorId: string; city?: string; country?: string },
+>(media: M[], center: LatLng | null, radiusMiles: number | null,
+  geocodedById: Map<string, LatLng>): M[] {
+  if (!center) return media;                                   // passthrough — never silent-empty
+  const uniq = new Map<string, { id: string; city?: string; country?: string }>();
+  for (const m of media)
+    if (!uniq.has(m.creatorId)) uniq.set(m.creatorId, { id: m.creatorId, city: m.city, country: m.country });
+  const { list } = filterByRadius([...uniq.values()], center, radiusMiles, geocodedById);
+  const survivors = new Set(list.map(c => c.id));
+  return media.filter(m => survivors.has(m.creatorId));
+}
+```
+
+The hook is a thin stateful wrapper (debounce + react-query center + `useCreatorGeocoding` +
+the `geocodedById` `useMemo`) around this pure core.
 
 ### 5.3 Controls (`DragonFeedGrid`)
 
@@ -184,7 +221,9 @@ Add to the existing controls block:
 
 ### 5.4 Rendering — mobile `FeedPost` vs desktop `FeedTile`
 
-`DragonFeedGrid` computes `filteredMedia` (name + type + zip filters), then:
+`DragonFeedGrid` applies the name + type filter to the raw media (`nameTypeFiltered`), passes
+that into `useFeedLocationFilter(nameTypeFiltered)`, and renders the hook's returned
+`filteredMedia` (= name + type + zip). Then:
 
 ```tsx
 const isMobile = useIsMobile();
@@ -200,9 +239,9 @@ const isMobile = useIsMobile();
 )}
 ```
 
-Note: desktop keeps the exact existing grid classes (incl. the `grid-cols-3` base, which is
-now only reached on desktop widths <lg but ≥768 — the `sm`→`lg` band). `FeedTile` is
-**unchanged**.
+Note: desktop keeps the exact existing grid classes. The `grid-cols-3` base is now only
+reached on desktop widths in the **`md`→`lg` band (768–1023px)** — mobile (<768) never renders
+the grid because `useIsMobile` routes it to `FeedPost`. `FeedTile` is **unchanged**.
 
 **New `FeedPost.tsx`** (mobile IG card):
 - Container: `rounded-2xl` card, white bg, subtle border per design system (teal-adjacent, no
