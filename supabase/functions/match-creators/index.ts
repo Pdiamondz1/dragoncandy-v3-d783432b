@@ -386,11 +386,13 @@ serve(async (req) => {
     }
 
     // Fetch campaign owner profile for geographic (distance) scoring
-    const { data: ownerProfile } = await supabase
+    const { data: ownerProfile, error: ownerProfileError } = await supabase
       .from('business_profiles')
       .select('city, country, location')
       .eq('user_id', campaign.user_id)
-      .single();
+      .maybeSingle();
+
+    if (ownerProfileError) console.error('Error fetching owner business_profile for geo scoring:', ownerProfileError);
 
     const ownerGeo = ownerProfile ? {
       city: ownerProfile.city || '',
