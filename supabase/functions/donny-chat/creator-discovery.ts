@@ -18,6 +18,11 @@ const US_STATE_ABBR: Record<string, string> = {
   "district of columbia": "dc",
 };
 
+const US_STATE_ABBRS = new Set(Object.values(US_STATE_ABBR)); // {"al","ak",...}
+const US_COUNTRY_QUALIFIERS = new Set([
+  "us", "usa", "u.s.", "u.s.a.", "united states", "united states of america", "america",
+]);
+
 // Build a "city st" lookup key from a comma-qualified place ("Portland, ME" or "Portland, Maine"
 // -> "portland me"). Returns null when there is no comma qualifier to use.
 function stateQualifiedKey(place: string): string | null {
@@ -43,10 +48,21 @@ function resolvePlace(city: string | null, country: string | null, location: str
   // 2) structured city + country (and resolveCoords' own "City, Country" freeform parse).
   const structured = resolveCoords(city, country, location);
   if (structured) return structured;
-  // 3) legacy freeform "City, ST" — take the bare city (first comma part) and assume US.
+  // 3) legacy freeform "City, ST" — take the bare city (first comma part) and assume US, but ONLY
+  //    when the qualifier(s) indicate the US (or there is no qualifier). This avoids mapping a
+  //    non-US place like "Vancouver, Canada" onto a same-named US city.
   if (location) {
-    const cityHit = lookupCityCoords(location.split(",")[0].trim(), "US");
-    if (cityHit) return cityHit;
+    const parts = location.split(",").map((s) => s.trim()).filter(Boolean);
+    const quals = parts.slice(1).map((q) => q.toLowerCase());
+    const usIndicated =
+      quals.length === 0 ||
+      quals.some(
+        (q) => US_STATE_ABBR[q] !== undefined || US_STATE_ABBRS.has(q) || US_COUNTRY_QUALIFIERS.has(q),
+      );
+    if (usIndicated && parts.length > 0) {
+      const cityHit = lookupCityCoords(parts[0], "US");
+      if (cityHit) return cityHit;
+    }
   }
   return null;
 }

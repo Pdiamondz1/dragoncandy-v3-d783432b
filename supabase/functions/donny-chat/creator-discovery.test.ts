@@ -43,6 +43,14 @@ describe('resolveSearchCenter', () => {
     expect(c).not.toBeNull();
     expect(c!.lat).toBeCloseTo(40.744, 1);
   });
+  test('does NOT map a non-US place onto a same-named US city ("Vancouver, Canada")', () => {
+    expect(resolveSearchCenter('Vancouver, Canada', null)).toBeNull();
+  });
+  test('legacy "City, ST" (US state) still resolves via bare-city fallback', () => {
+    // "jersey city nj" is not a table key, so this exercises the guarded US bare-city fallback.
+    const c = resolveSearchCenter('Jersey City, NJ', null);
+    expect(c).not.toBeNull();
+  });
 });
 
 describe('scoreNiche', () => {
