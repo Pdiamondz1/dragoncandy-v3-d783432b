@@ -1099,11 +1099,12 @@ async function executeTool(
       // Resolve the search center: explicit location arg, else the caller's own business location.
       let owner: { city: string | null; country: string | null; location: string | null } | null = null;
       if (!args.location) {
-        const { data: bp } = await supabaseAdmin
+        const { data: bp, error: bpErr } = await supabaseAdmin
           .from("business_profiles")
           .select("city, country, location")
           .eq("user_id", userId)
           .maybeSingle();
+        if (bpErr) console.warn("match_creators: business_profiles lookup failed:", bpErr);
         owner = bp ?? null;
       }
       const center = resolveSearchCenter(args.location ?? null, owner);
