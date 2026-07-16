@@ -95,7 +95,7 @@ const TOOL_DEFINITIONS = [
     input_schema: {
       type: "object",
       properties: {
-        campaign_id: { type: "string", description: "Optional campaign UUID to match against" },
+        campaign_id: { type: "string", description: "Optional campaign UUID (currently informational only — matching is not campaign-scoped)" },
         niche: { type: "string", description: "Optional content niche/topic (e.g. food, fashion, tech, fitness) — used as a soft ranking boost, not a hard filter" },
         location: { type: "string", description: "Optional place to search near (e.g. a city). Defaults to the business's own saved location when omitted." },
         min_rating: { type: "number", description: "Optional minimum creator rating (0-5)" },

@@ -41,6 +41,9 @@ describe('scoreNiche', () => {
   test('soft miss -> 40, never excluded (0)', () => {
     expect(scoreNiche('food', mk({ bio: 'tech reviews', skills: ['copywriting'] }))).toBe(40);
   });
+  test('counts a 2-char niche (e.g. "ai") when present', () => {
+    expect(scoreNiche('ai', mk({ bio: 'I build ai tools' }))).toBeGreaterThan(60);
+  });
 });
 
 describe('scoreCreatorLocation', () => {

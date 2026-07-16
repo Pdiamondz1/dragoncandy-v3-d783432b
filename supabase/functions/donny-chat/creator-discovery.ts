@@ -36,7 +36,7 @@ export function scoreNiche(
   creator: { bio: string | null; skills: string[] | null },
 ): number {
   if (!niche || !niche.trim()) return 60;
-  const words = niche.toLowerCase().split(/[\s,]+/).filter((w) => w.length > 2);
+  const words = niche.toLowerCase().split(/[\s,]+/).filter((w) => w.length >= 2);
   if (words.length === 0) return 60;
   const haystack = [
     (creator.bio ?? "").toLowerCase(),
