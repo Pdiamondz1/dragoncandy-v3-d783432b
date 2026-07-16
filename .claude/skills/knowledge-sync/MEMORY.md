@@ -30,6 +30,31 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-16] AI creator matching fix — location + skill / "Found 0" (branch worktree-dc-issues-3)
+- Output: bundled INTO the work PR — `raw/sessions/2026-07-16-fix-ai-creator-matching-location.md`,
+  new `concepts/ai-creator-matching.md`, updated `concepts/creator-location-search.md` (See-Also +
+  geo-port note + frontmatter), `index.md` (Concepts + Sources), `log.md` ingest entry,
+  PROJECT_CONTEXT workstream bullet, + THIS run-log entry. No DATABASE_SCHEMA change (the
+  `campaign_matches.match_score` type change is column-level detail the high-level schema doc doesn't
+  track → captured in the concept page instead).
+- Happened: a founder BUG-report session (screenshot) whose headline is a DEBUGGING lesson, not a
+  feature — "Found 0 matches" was a silently-swallowed INSERT (score column type + a stale trigger's
+  `brand_id` + a dead `business_address` select), not a scoring bug. Wrote a NEW concept
+  ([[AI Creator Matching]]) because the matcher pipeline + write-bug + the Deno geo-port are a
+  distinct subject from the browse-page [[Creator Location Search]] (cross-linked both ways). Rebased
+  the work branch onto origin/main first (per [scope]; my 5 code files were file-disjoint from
+  origin's recent commits → clean rebase) so the docs edit the LATEST index/log/PROJECT_CONTEXT.
+  RAG sync + verify-knowledge are post-merge (hook on the docs/ ff).
+- Worked: [scope]-rebase-when-file-disjoint + [runlog-in-pr] + [orphans]-by-path (both new pages
+  cataloged in index.md). [wikilinks]-exact caught two would-be dangling links — grepped index.md and
+  found NO [[Verify DB Schema]] page and NO `entities/google-maps.md`, so I dropped both brackets
+  (plain text) rather than mint broken catalog links; kept the real [[Creator Location Search]] +
+  [[Notification Delivery]].
+- Failed: none. (verify-knowledge close-the-loop RAG check is inherently post-merge for a pre-merge run.)
+- Remember: a bug-report session's durable knowledge is the *class of bug*, captured as a concept —
+  here "an empty match set over a non-empty pool = a write-path failure (constraints + AFTER-INSERT
+  triggers), not scoring; verify column types vs prod, not the migration file." (advisory)
+
 ### [2026-07-16] Donny desktop panel fixed-overlay (PR #236 → paired docs PR)
 - Output: paired docs PR off origin/main — `raw/sessions/2026-07-16-donny-desktop-overlay.md`,
   compounded `concepts/mobile-viewport-fixed-positioning.md` (new §4 desktop docked-panel-overlay

@@ -1120,3 +1120,18 @@ new raw session source [[Donny Desktop Overlay Session]]. Pages updated:
 [[Mobile Viewport & Fixed Positioning]] (new §4 desktop docked-panel-overlay rule + frontmatter),
 index.md (Sources), PROJECT_CONTEXT (workstream bullet), DESIGN_SYSTEM (desktop overlay rule).
 RAG sync + verify-knowledge run post-merge (post-merge hook fires on the `main` fast-forward).
+
+## [2026-07-16] ingest | Fix AI creator matching (location + skill) — "Found 0 potential creators"
+A Hoboken restaurant's "Find Perfect Creators" returned "Found 0" over a non-empty pool; root cause
+was a silently-swallowed `campaign_matches` INSERT (three prod defects: `match_score` `numeric(3,2)`
+CHECK 0..1 vs the 0–100 scores written; the `notify_donny_nudge` `campaign_matches` branch
+referenced a non-existent `NEW.brand_id`; and `match-creators` selected a non-existent
+`business_address`), NOT a matching-logic bug. Fixed via migration (widen `match_score` to
+`numeric(5,2)` / CHECK 0..100 + repair only the trigger's `campaign_matches` branch) + distance-based
+geographic scoring in `match-creators` reusing a new pure Deno `_shared/geo.ts` (haversine + the
+400-city table ported from the tested `src/lib` helpers) + a weight rebalance + a "· N mi away" card
+label. Migration + edge fn deployed and verified on prod; frontend deploys on merge. Pages created:
+new raw session source [[AI Creator Matching Fix Session]], new concept [[AI Creator Matching]].
+Pages updated: [[Creator Location Search]] (See-Also + geo-port note + frontmatter), index.md
+(Concepts + Sources), PROJECT_CONTEXT (workstream bullet).
+RAG sync + verify-knowledge run post-merge (post-merge hook fires on the `main` fast-forward).

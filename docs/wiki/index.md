@@ -2,6 +2,7 @@
 
 ## Sources
 
+- [[AI Creator Matching Fix Session]](raw/sessions/2026-07-16-fix-ai-creator-matching-location.md) — Hoboken restaurant got "Found 0 potential creators" while 6 Hoboken creators existed; root cause was a silently-swallowed `campaign_matches` INSERT (`match_score` `numeric(3,2)` CHECK 0..1 vs 0–100 scores + a stale `notify_donny_nudge` `NEW.brand_id` branch + a dead `business_address` select), NOT a matching-logic bug; fixed + added distance-based geographic scoring (haversine, the `_shared/geo.ts` port of the tested `src/lib` geo helpers) + "· N mi away"; migration + edge fn deployed to prod, frontend on merge (2026-07-16)
 - [[Apple App Store Capacitor Phase 1 Session]](sources/apple-app-store-capacitor-phase1-session.md) — Capacitor iOS foundation: one codebase for web + iPhone, payments split by surface (2026-06-01)
 - [[Campaign Delivery, Scheduling & Notifications Session]](sources/campaign-delivery-scheduling-notifications-session.md) — Content-delivery stabilization, notification system, auto cross-scheduling, Donny strategist, revision sync (2026-06-01)
 - [[Code Architecture Audit Remediation]](sources/code-architecture-audit.md) — TypeScript strict mode, type safety, and codebase cleanup (2026-05-04)
@@ -85,6 +86,7 @@
 
 ## Concepts
 
+- [[AI Creator Matching]](concepts/ai-creator-matching.md) — The business "Find Perfect Creators" matcher: scoring pipeline + `campaign_matches` write path + the "Found 0 potential creators" root cause (a silently-swallowed INSERT — `match_score` `numeric(3,2)` vs 0–100 scores, a stale trigger's `NEW.brand_id`, and a dead `business_address` select — NOT a matching-logic bug) + distance-based geographic scoring ported into `_shared/geo.ts` (edge functions can't import from `src/`); soft scoring never excludes; weight-normalization invariant (non-AI sum = 100 − ai_quality) (2026-07-16)
 - [[AIOS Internal Shell]](concepts/aios-internal-shell.md) — How `/internal/*` is navigated + laid out: desktop left sidebar grouped Monitor/Operate, mobile hamburger drawer, pinned (non-floating) Ask Donny, shared PageContainer/PageHeader primitives, the dark ops-deck theme
 - [[AIOS Runtime Spend Source-of-Truth]](concepts/aios-runtime-spend-source-of-truth.md) — the ≤15%-of-revenue AI kill-switch should govern RUNTIME serving cost (donny_cost_ledger), NOT the invoice (mostly founder Claude Code dev/opex); the two-constraint ledger gotcha (auth.users FK + tier CHECK both blocked user-less/embedding inserts); alert loop (ai-cost-vs-cap → playbook-runner finding) + a live /internal "Runtime vs cap" card; PR #220 (2026-07-07)
 - [[AIOS Stakeholder Invite]](concepts/aios-stakeholder-invite.md) — Admin-only invite-by-email for internal-ONLY AIOS accounts (no consumer app); hard-block keystone = handle_new_user guard skips consumer profiles when account_scope='internal'; manage-internal-users edge fn (invite/list/revoke, verify_jwt=false, last-admin guard); access purely user_roles; PR #178

@@ -2,8 +2,8 @@
 title: Creator Location Search
 type: concept
 created: 2026-07-07
-updated: 2026-07-07
-sources: [2026-07-07-find-creators-location-search.md]
+updated: 2026-07-16
+sources: [2026-07-07-find-creators-location-search.md, 2026-07-16-fix-ai-creator-matching-location.md]
 tags: [find-creators, geocoding, radius, frontend, browse]
 ---
 # Creator Location Search
@@ -83,5 +83,8 @@ refreshed — so restore the value **directly in that path**, don't rely on the 
   filter correctly but may not appear as map pins.
 
 ## See Also
+- [[AI Creator Matching]] — the "Find Perfect Creators" matcher reuses this geo stack, **ported**
+  into `supabase/functions/_shared/geo.ts` (edge functions can't import from `src/`); the tested
+  `src/lib` helpers here remain the source of truth.
 - [[Find Creators]] · [[Deep-Link Param Query Race]] · [[Musk's Algorithm]] (deletes county + 3 buried fields)
 - [[Google Maps]] geocoding · [[Organizations]] (per-location centering is a future enhancement)
