@@ -1216,3 +1216,15 @@ naming, transparent scroll-aware header. Durable gotchas captured: Tailwind posi
 (`.relative` beats `.absolute`), size a tall logo by height, transparent-header scroll-fade.
 Pages updated: index.md (Sources + Concepts), PROJECT_CONTEXT (workstream bullet). RAG sync +
 verify-knowledge run post-merge (post-merge hook fires on the `main` fast-forward).
+
+## [2026-07-16] update | Donny first-open tray close-trap fix + branded redesign
+Compounded `concepts/donny-chat-ux.md` with a "Panel stages & the shared header" section:
+the consumer panel is a 3-stage machine (closed→tray→chat) whose tray and chat rendered two
+different headers — the tray had no ✕ and never wired `close`, so users were trapped on first
+open until they sent a message. Fix (PR #258): one shared teal `DonnyPanelHeader` for both
+stages (tray ⌃ expand + ✕; chat ⌄ minimize + ✕), `DonnyChatHeader` deleted; desktop
+click-outside (`useIsMobile`-gated, `[data-donny-launcher]`-excluded); inviting empty state +
+de-grayed brand chips; rebased onto main's fixed-overlay panel (#236). Live-verified on prod.
+Pages created: raw/sessions/2026-07-16-donny-tray-close-ux.md. Pages updated:
+concepts/donny-chat-ux.md, index.md (Sources), PROJECT_CONTEXT (workstream bullet). RAG sync +
+verify-knowledge run post-merge (post-merge hook fires on the `main` fast-forward).

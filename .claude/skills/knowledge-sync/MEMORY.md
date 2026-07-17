@@ -30,6 +30,31 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-16] Donny first-open tray close-trap fix + branded redesign (PR #258 → paired docs PR)
+- Output: paired docs PR off origin/main — `raw/sessions/2026-07-16-donny-tray-close-ux.md`, compounded
+  `concepts/donny-chat-ux.md` (new "Panel stages & the shared header" section + frontmatter sources +
+  See-Also [[Mobile Viewport & Fixed Positioning]] / [[Donny Tray Close UX Session]]), `index.md` (Sources),
+  `log.md` update entry, PROJECT_CONTEXT active-workstream bullet, + THIS entry. No
+  DATABASE_SCHEMA/DESIGN_SYSTEM/CLAUDE.md change (frontend-only; no schema/token/workflow change).
+- Happened: code PR #258 merged first (git push env-blocked → landed via gh REST blob→tree→commit→ref),
+  so this is the paired docs PR off a fresh branch off origin/main (per [scope]). **Compounded, didn't
+  duplicate** — a [[Donny Chat UX]] page already existed with a "Two different inputs" tray section, so the
+  first-open close-trap fix + shared-header unification belongs there as a new section, not a thin new page.
+  RAG sync + [[verify-knowledge]] are post-merge (post-merge hook on the docs/ ff).
+- Worked: [scope] + [runlog-in-pr] + compound-onto-existing-page. [wikilinks]-exact: grepped index.md first —
+  [[Design System]], [[Donny AI]], [[Mobile Viewport & Fixed Positioning]] confirmed before linking; the new
+  session source is cataloged in index.md Sources (path-based [orphans]). Captured the durable knowledge as
+  concept (the 3-stage machine + the *structural* one-shared-header fix + the useIsMobile-gate-because-CSS-hidden
+  click-outside gotcha + the rebase-onto-#236-fixed-overlay catch), not just "we added a close button".
+- Failed: none for knowledge-sync. (Mobile viewport couldn't be independently verified in verify-prod — the
+  browser-automation renderer captures at a fixed ~1568px and ignored the phone-width resize; recorded in the
+  session source + the verify-prod verdict as met:false + a manual-spot-check note, not a silent pass.)
+- Remember: verifying an **auth-gated frontend fix on prod** hits two known walls — (1) a code-split chunk
+  change leaves the entry `index-*.js` hash unchanged, so bundle-hash polling never fires → confirm deploy-live
+  via the **Vercel deployment `success` status on the merge commit** (+ the app's own "new version" banner); and
+  (2) can't type the test password → have the user sign in on the driven browser, then drive the checks.
+  (advisory — reinforces the [2026-07-16 desktop-overlay] Remember)
+
 ### [2026-07-16] Web Donny find_creators — right function this time (branch feat/donny-orchestrator-find-creators)
 - Output: bundled INTO the work PR — `raw/sessions/2026-07-16-donny-orchestrator-find-creators.md`,
   **compounded** `concepts/ai-creator-matching.md` (new "Which Donny? consumer uses donny-orchestrator,
