@@ -67,6 +67,8 @@ export const LANDING_PLAYLISTS: Partial<Record<LandingClipKey, LandingClip[]>> =
     { src: "/landing/hero-business-2.mp4", poster: "/landing/hero-business-2-poster.jpg" },
     { src: "/landing/hero-business-3.mp4", poster: "/landing/hero-business-3-poster.jpg" },
     { src: "/landing/hero-business-4.mp4", poster: "/landing/hero-business-4-poster.jpg" },
+    // Chef plating a dish while it's filmed — a still animated with a slow Ken Burns push-in.
+    { src: "/landing/hero-business-5.mp4", poster: "/landing/hero-business-5-poster.jpg" },
   ],
   "hero.creator": [
     { src: "/landing/hero-creator.mp4", poster: "/landing/hero-creator-poster.jpg" },
