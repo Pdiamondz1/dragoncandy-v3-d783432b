@@ -9,6 +9,7 @@ import { SUB_AGENT_TOOLS, mergeToolsWithMcp, detectSocialIntent, isSocialTool } 
 import { createOutstandMcpBridge, type OutstandMcpBridge } from "../_shared/outstand-mcp.ts";
 import type { OrchestratorInput, UserContext } from "./types.ts";
 import * as campaignAgent from "./agents/campaign.ts";
+import * as creatorsAgent from "./agents/creators.ts";
 import * as dragonshareAgent from "./agents/dragonshare.ts";
 import * as billingAgent from "./agents/billing.ts";
 import * as guidanceAgent from "./agents/guidance.ts";
@@ -16,6 +17,7 @@ import * as generalAgent from "./agents/general.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
 import { isKnownRoute } from "./routes.ts";
+import { isCreatorDiscoveryIntent } from "../_shared/creator-discovery.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -88,6 +90,7 @@ async function dispatchAgent(
     ) => Promise<{ context: string; suggested_actions?: Array<{ label: string; route: string }> }>
   > = {
     campaign_agent: campaignAgent.execute,
+    find_creators: creatorsAgent.execute,
     prepare_campaign: campaignAgent.prepareCampaign,
     dragonshare_agent: dragonshareAgent.execute,
     billing_agent: billingAgent.execute,
@@ -164,7 +167,8 @@ async function callClaude(
   systemParts: SystemPromptParts,
   messages: ClaudeMessage[],
   modelConfig: ModelConfig,
-  allTools: Array<Record<string, unknown>>
+  allTools: Array<Record<string, unknown>>,
+  toolChoice?: Record<string, unknown>
 ): Promise<ClaudeResponse> {
   // Two-block system: stable instructions carry the cache breakpoint (caches
   // tools + stable system together); the volatile block stays uncached.
@@ -175,6 +179,18 @@ async function callClaude(
     systemBlocks.push({ type: "text", text: systemParts.volatile });
   }
 
+  const requestBody: Record<string, unknown> = {
+    model: modelConfig.model,
+    max_tokens: modelConfig.maxTokens,
+    system: systemBlocks,
+    tools: allTools,
+    messages: withHistoryCacheBreakpoint(messages),
+  };
+  // Force a specific tool ONLY when asked (the first turn of a creator-discovery
+  // request). Never passed on tool-result continuations, or the model could be
+  // compelled to call the tool forever.
+  if (toolChoice) requestBody.tool_choice = toolChoice;
+
   const response = await anthropicFetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -182,13 +198,7 @@ async function callClaude(
       "anthropic-version": "2023-06-01",
       "content-type": "application/json",
     },
-    body: JSON.stringify({
-      model: modelConfig.model,
-      max_tokens: modelConfig.maxTokens,
-      system: systemBlocks,
-      tools: allTools,
-      messages: withHistoryCacheBreakpoint(messages),
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
@@ -394,7 +404,18 @@ serve(async (req) => {
     const allTools = mcpBridge ? mergeToolsWithMcp(mcpBridge.tools) : SUB_AGENT_TOOLS;
 
     // --- Tool use loop (max 3 iterations) ---
-    let claudeResult = await callClaude(systemParts, messages, modelConfig, allTools);
+    // Force the creator-discovery tool on the FIRST turn when the user clearly wants
+    // to find creators. Prompt guidance alone doesn't reliably trigger it — the model
+    // tends to redirect to the Find Creators page or a campaign. tool_choice is an
+    // API-level constraint the model must obey. Only when find_creators is actually in
+    // the tool list; the continuation calls in the loop run with tool_choice auto so
+    // Donny presents the ranked results.
+    const forceCreators =
+      isCreatorDiscoveryIntent(query) && allTools.some((t) => (t as { name?: string }).name === "find_creators")
+        ? { type: "tool", name: "find_creators" }
+        : undefined;
+
+    let claudeResult = await callClaude(systemParts, messages, modelConfig, allTools, forceCreators);
     // Prompt-cache visibility (verify in prod via edge logs): turn 2+ should read
     // the cached tools+stable-system prefix (cache_read > 0); turn 1 writes it.
     console.log(

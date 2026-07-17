@@ -231,6 +231,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
                     onClick={() => stage === 'closed' ? open() : close()}
                     className="relative hidden md:block"
                     aria-label="Open Donny"
+                    data-donny-launcher
                   >
                     <DonnyAvatar
                       size="md"

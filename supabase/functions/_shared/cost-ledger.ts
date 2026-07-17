@@ -92,3 +92,38 @@ export async function logEmbeddingCost(
     console.error("[cost-ledger] Failed to log embedding cost:", error.message);
   }
 }
+
+// Fixed per-call Tavily costs (USD). Basic search / single-URL extract ≈ 1 credit
+// each; ~$0.008/credit on paid tier. Tune if the plan changes.
+const WEB_TOOL_COSTS: Record<"web_search" | "web_extract", number> = {
+  web_search: 0.008,
+  web_extract: 0.008,
+};
+
+export interface WebToolCostEntry {
+  userId: string | null;
+  kind: "web_search" | "web_extract";
+}
+
+/**
+ * Logs one Donny web-tool call to donny_cost_ledger. Best-effort: never throws.
+ * The row doubles as the daily rate counter (tier IN web_search/web_extract).
+ */
+export async function logWebToolCost(
+  supabaseAdmin: SupabaseClient,
+  entry: WebToolCostEntry,
+): Promise<void> {
+  const { error } = await supabaseAdmin.from("donny_cost_ledger").insert({
+    user_id: normalizeUserId(entry.userId),
+    edge_function: "donny-chat",
+    model: "tavily",
+    tier: entry.kind,
+    input_tokens: 0,
+    output_tokens: 0,
+    estimated_cost_usd: WEB_TOOL_COSTS[entry.kind],
+    fallback: false,
+  });
+  if (error) {
+    console.error("[cost-ledger] Failed to log web-tool cost:", error.message);
+  }
+}

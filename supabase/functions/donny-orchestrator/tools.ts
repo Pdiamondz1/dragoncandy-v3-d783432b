@@ -17,6 +17,22 @@ export const SUB_AGENT_TOOLS = [
     },
   },
   {
+    name: "find_creators",
+    description:
+      "Use when the user wants to FIND, SEE, BROWSE, or GET creators near a place or near their own business — e.g. 'find creators near Hoboken', 'show me top creators', 'who's nearby', 'recommend creators'. Returns a ranked list of REAL creators by proximity (real distance), skill/niche, and rating. No campaign required. Do NOT use this for a specific campaign's applicants or hires (use campaign_agent) or to pay/message/invite a creator.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query: { type: "string", description: "The user's question" },
+        location: { type: "string", description: "Optional place to search near (e.g. a city). Defaults to the business's own saved location when omitted." },
+        niche: { type: "string", description: "Optional content niche/topic (food, fashion, fitness, etc.) — a soft ranking boost, not a hard filter." },
+        min_rating: { type: "number", description: "Optional minimum creator rating (0-5)." },
+        user_role: { type: "string", description: "User's role" },
+      },
+      required: ["query"],
+    },
+  },
+  {
     name: "prepare_campaign",
     description:
       "Use when the user wants to CREATE or START a new campaign. Distill a concise brief of what they want to promote and pass it as `brief`. This pre-loads the campaign builder so the user lands on a ready-to-review campaign instead of a blank form.",

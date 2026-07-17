@@ -11,10 +11,10 @@ const scrollToSection = (id: string) => {
 
 const navLinks = [
   { label: "How It Works", target: "how-it-works" },
-  { label: "For Business", target: "audiences" },
-  { label: "For Brands", target: "audiences" },
-  { label: "For Creators", target: "creator-hub" },
-  { label: "Contact", target: "contact" },
+  { label: "For Business", target: "pick-your-lane" },
+  { label: "For Brands", target: "pick-your-lane" },
+  { label: "For Creators", target: "pick-your-lane" },
+  { label: "Contact", target: "start-free" },
 ];
 
 const visibleNavLinks = BRAND_ROLE_ENABLED
@@ -24,6 +24,26 @@ const visibleNavLinks = BRAND_ROLE_ENABLED
 export const Header: React.FC = () => {
   const navigate = useNavigate();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    // The landing renders inside the app shell's scrolling `<main id="main-content">`
+    // (App.tsx: `flex h-screen` shell + inner `overflow-auto` main), so the WINDOW never
+    // scrolls — `window.scrollY` stays 0 and the header would never leave its transparent
+    // state, floating illegibly over bright sections. Key off the real scroll container,
+    // falling back to `window` if that shell id ever changes.
+    const scroller = document.getElementById("main-content");
+    const target: HTMLElement | Window = scroller ?? window;
+    const readScroll = () => (scroller ? scroller.scrollTop : window.scrollY);
+
+    const handleScroll = () => setScrolled(readScroll() > 16);
+    handleScroll();
+
+    target.addEventListener("scroll", handleScroll, { passive: true });
+    return () => target.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleNavClick = (sectionId: string) => {
     setSheetOpen(false);
@@ -36,14 +56,18 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-dc-dark/80 backdrop-blur-xl">
+    <header
+      className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
+        scrolled ? "bg-dc-dark/80 backdrop-blur-xl" : "bg-transparent"
+      }`}
+    >
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5 sm:px-8 lg:px-12">
         <img
           src="/logo.webp"
           alt="DragonCandy"
           width={140}
           height={47}
-          className="h-auto w-[104px] cursor-pointer transition-transform duration-200 hover:scale-105 lg:w-[132px]"
+          className="h-16 w-auto cursor-pointer transition-transform duration-200 hover:scale-105 drop-shadow-[0_3px_10px_rgba(0,0,0,0.35)] lg:h-20"
           onClick={() => navigate("/")}
         />
 
@@ -53,14 +77,14 @@ export const Header: React.FC = () => {
             <button
               key={link.label}
               onClick={() => scrollToSection(link.target)}
-              className="cursor-pointer border-none bg-transparent text-sm font-medium text-white/65 transition-colors duration-200 hover:text-dc-teal"
+              className="cursor-pointer border-none bg-transparent text-sm font-medium text-white/65 transition-colors duration-200 hover:text-dc-teal [text-shadow:0_1px_6px_rgba(0,0,0,0.4)]"
             >
               {link.label}
             </button>
           ))}
           <button
             onClick={() => navigate("/auth?mode=login")}
-            className="cursor-pointer border-none bg-transparent text-sm font-medium text-white/65 transition-colors duration-200 hover:text-dc-teal"
+            className="cursor-pointer border-none bg-transparent text-sm font-medium text-white/65 transition-colors duration-200 hover:text-dc-teal [text-shadow:0_1px_6px_rgba(0,0,0,0.4)]"
           >
             Login
           </button>

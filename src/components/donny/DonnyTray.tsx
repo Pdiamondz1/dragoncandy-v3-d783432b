@@ -1,4 +1,4 @@
-import { DonnyAvatar } from './DonnyAvatar';
+import { DonnyPanelHeader } from './DonnyPanelHeader';
 import { DonnyNudgeCard } from './DonnyNudgeCard';
 import { DonnyTrayInput } from './DonnyTrayInput';
 import { useDonnyContext } from '@/contexts/DonnyProvider';
@@ -20,6 +20,7 @@ export function DonnyTray({ variant = 'desktop' }: DonnyTrayProps) {
     dismissNudge,
     sendMessage,
     expand,
+    close,
   } = useDonnyContext();
 
   const pageSuggestions = getSuggestionsForPage(window.location.pathname);
@@ -37,15 +38,12 @@ export function DonnyTray({ variant = 'desktop' }: DonnyTrayProps) {
   };
 
   const header = (
-    <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
-      <DonnyAvatar size="sm" state={avatarState} />
-      <span className="font-bold text-sm text-gray-900">Donny</span>
-      {unreadCount > 0 && (
-        <span className="text-xs font-semibold text-dc-teal bg-teal-50 px-2 py-0.5 rounded-full">
-          {unreadCount} new
-        </span>
-      )}
-    </div>
+    <DonnyPanelHeader
+      avatarState={avatarState}
+      unreadCount={unreadCount}
+      onExpand={expand}
+      onClose={close}
+    />
   );
 
   const nudgeList = nudges.map((nudge) => (
@@ -57,15 +55,27 @@ export function DonnyTray({ variant = 'desktop' }: DonnyTrayProps) {
     />
   ));
 
+  // Warm, action-forward empty state — leads with what Donny can do instead of
+  // a flat "nothing here" message.
+  const emptyState = (
+    <div className="text-center px-4 py-8">
+      <div className="text-2xl mb-1">🎉</div>
+      <p className="text-sm font-semibold text-dc-text">You're all caught up!</p>
+      <p className="text-xs text-dc-text-muted mt-1">
+        Pick a quick action below, or ask me anything.
+      </p>
+    </div>
+  );
+
   const pageHelpSection = pageSuggestions.length > 0 && (
-    <div className="px-3 py-2 border-t border-gray-100">
-      <p className="text-[10px] text-gray-400 mb-1 uppercase tracking-wide">Help on this page</p>
+    <div className="px-3 py-2 border-t border-dc-teal/15">
+      <p className="text-[10px] text-dc-text-muted mb-1 uppercase tracking-wide">Help on this page</p>
       <div className="flex flex-wrap gap-1.5">
         {pageSuggestions.map((s) => (
           <button
             key={s.label}
             onClick={() => handleChipTap(s.question, true)}
-            className="whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium border bg-gray-50 border-gray-200 text-gray-600 transition-colors"
+            className="whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium border bg-white border-dc-teal/40 text-dc-teal-btn hover:bg-dc-teal/5 transition-colors"
           >
             {s.label}
           </button>
@@ -75,7 +85,8 @@ export function DonnyTray({ variant = 'desktop' }: DonnyTrayProps) {
   );
 
   const quickChipsSection = quickChips.length > 0 && (
-    <div className="px-3 py-2 border-t border-gray-100">
+    <div className="px-3 py-2 border-t border-dc-teal/15">
+      <p className="text-[10px] text-dc-text-muted mb-1 uppercase tracking-wide">Quick actions</p>
       <div className="flex flex-wrap gap-1.5">
         {quickChips.map((chip) => (
           <button
@@ -84,8 +95,8 @@ export function DonnyTray({ variant = 'desktop' }: DonnyTrayProps) {
             className={cn(
               'whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium border transition-colors',
               chip.variant === 'teal'
-                ? 'bg-teal-50 border-teal-300 text-teal-700'
-                : 'bg-pink-50 border-pink-300 text-pink-700'
+                ? 'bg-teal-50 border-teal-300 text-teal-700 hover:bg-teal-100'
+                : 'bg-pink-50 border-pink-300 text-pink-700 hover:bg-pink-100'
             )}
           >
             {chip.label}
@@ -108,9 +119,7 @@ export function DonnyTray({ variant = 'desktop' }: DonnyTrayProps) {
           {nudges.length > 0 ? (
             <div className="px-3 py-2 space-y-2">{nudgeList}</div>
           ) : (
-            <div className="text-center py-4 text-gray-400 text-sm">
-              All caught up! No new notifications.
-            </div>
+            emptyState
           )}
           {pageHelpSection}
           {quickChipsSection}
@@ -125,11 +134,7 @@ export function DonnyTray({ variant = 'desktop' }: DonnyTrayProps) {
 
       {/* Nudge cards */}
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
-        {nudges.length === 0 && (
-          <div className="text-center py-8 text-gray-400 text-sm">
-            All caught up! No new notifications.
-          </div>
-        )}
+        {nudges.length === 0 && emptyState}
         {nudgeList}
       </div>
 
