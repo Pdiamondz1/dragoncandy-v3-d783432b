@@ -1,5 +1,6 @@
 import { Play } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import { usePrefersReducedMotion } from "./usePrefersReducedMotion";
 
 interface VideoSlotProps {
   /** Final video URL (mp4/hls). Drop in to replace the placeholder. */
@@ -12,32 +13,6 @@ interface VideoSlotProps {
   /** Layout variant: "framed" (default, 16:9 aspect + controls) or "backdrop" (full-bleed, no controls). */
   variant?: "framed" | "backdrop";
   className?: string;
-}
-
-/** Local prefers-reduced-motion — keeps the landing free of Framer Motion. */
-function usePrefersReducedMotion(): boolean {
-  // Initialize synchronously so the very first render already honors the preference
-  // (otherwise ambient autoplay could fire for one frame before the effect runs).
-  const [reduce, setReduce] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-  );
-  useEffect(() => {
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => setReduce(mq.matches);
-    update();
-    // Modern API, with a fallback to the deprecated addListener for older Safari/iOS WebKit.
-    if (typeof mq.addEventListener === "function") {
-      mq.addEventListener("change", update);
-      return () => mq.removeEventListener("change", update);
-    }
-    mq.addListener(update);
-    return () => mq.removeListener(update);
-  }, []);
-  return reduce;
 }
 
 /**
