@@ -470,7 +470,11 @@ serve(async (req) => {
           };
           const dispatched = await dispatchAgent(toolName, enrichedInput, supabase, userContext);
           agentResult = dispatched.result;
-          if (dispatched.cards?.length) collectedCards = dispatched.cards;
+          // "Last find_creators wins" — reset even when it returns no cards (empty
+          // pool / error), so a later empty lookup can't leave STALE cards from an
+          // earlier one on the response (Codex P2). Gate on the tool name, not on
+          // card presence: other sub-agents (undefined cards) must not clear it.
+          if (toolName === "find_creators") collectedCards = dispatched.cards ?? [];
         }
 
         toolResultBlocks.push({
