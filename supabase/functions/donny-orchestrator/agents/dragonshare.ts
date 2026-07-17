@@ -12,6 +12,15 @@ function rowsOf<T>(res: QueryResult<T>): { rows: T[]; ok: boolean } {
   return { rows: res.data ?? [], ok: !res.error };
 }
 
+/** Deterministic response when a PRIMARY DragonShare fetch fails — so a transient
+ * error is never reported as "no DragonShare activity" (same invariant as the
+ * campaign agent; the Supabase client returns errors instead of throwing). */
+const DRAGONSHARE_FETCH_ERROR: SubAgentResult = {
+  context:
+    "Unable to load DragonShare data right now — this is a temporary fetch issue. Tell the user to try again in a moment.",
+  suggested_actions: [],
+};
+
 /**
  * DragonShare summary. Role-aware and matched to the ACTUAL schema:
  *   dragonshare_posts   → creator_id (submitter), target_org_id (restaurant it's about)
@@ -35,11 +44,7 @@ export async function execute(
       : await creatorDragonShare(supabase, userId, role);
   } catch (err) {
     console.error("[dragonshare_agent] error:", err);
-    return {
-      context:
-        "Unable to load DragonShare data right now — this is a temporary fetch issue. Tell the user to try again in a moment.",
-      suggested_actions: [],
-    };
+    return DRAGONSHARE_FETCH_ERROR;
   }
 }
 
@@ -69,6 +74,7 @@ async function ownerDragonShare(
       .order("created_at", { ascending: false })
       .limit(15)
   );
+  if (!postsRes.ok) return DRAGONSHARE_FETCH_ERROR; // primary query failed — don't report empty
   const posts = postsRes.rows;
 
   const boostsRes = rowsOf(
@@ -120,6 +126,7 @@ async function creatorDragonShare(
       .order("created_at", { ascending: false })
       .limit(15)
   );
+  if (!postsRes.ok) return DRAGONSHARE_FETCH_ERROR; // primary query failed — don't report empty
   const posts = postsRes.rows;
 
   const payoutsRes = rowsOf(
