@@ -63,11 +63,20 @@ export function VideoSlot({
 
   // Arm ambient playback only while the slot is on screen; pause when it leaves.
   useEffect(() => {
-    if (!src || !ambient) return;
-    const wrap = wrapRef.current;
     const video = videoRef.current;
-    if (!wrap || !video || typeof IntersectionObserver === "undefined") {
-      video?.play().catch(() => {});
+    if (!src || !video) return;
+
+    // The morphing hero swaps `src` on the SAME <video>. Because the URL lives on a
+    // <source> child, the element keeps playing the OLD clip until the resource-selection
+    // algorithm re-runs — so reload it whenever `src` changes (otherwise switching roles
+    // keeps the previous role's backdrop).
+    video.load();
+
+    if (!ambient) return; // reduced-motion / autoplay off → poster (the new one) only
+
+    const wrap = wrapRef.current;
+    if (!wrap || typeof IntersectionObserver === "undefined") {
+      video.play().catch(() => {});
       return;
     }
     const io = new IntersectionObserver(
