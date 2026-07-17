@@ -1302,28 +1302,24 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   prod** (restaurant dashboard — ✕ / click-outside / launcher toggle all work, 0 console
   errors). Concept: `docs/wiki/concepts/donny-chat-ux.md`.
 
-- Dark-Luxe app theme — force the whole app to the landing's dark look — **Slice 1 shipped +
-  deployed (PR #269, 2026-07-17).** After the landing's Dark-Luxe redesign, the authenticated app
-  was still light, so signing in felt like a different product. The app is now a **single forced
-  dark theme** (`forcedTheme="dark"` + `<html class="dark">`, light/dark toggle retired), rolled out
-  in **phased slices**. **Keystone insight:** two parallel color systems — ~847 semantic shadcn
-  tokens auto-flip under `.dark`, but ~1,900 hardcoded `dc-*`/`bg-white`/`text-gray` literals don't —
-  so flipping the flag alone yields a broken half-dark app; the fix is (a) retune the neutral `.dark`
-  token block once (re-skins token surfaces + every Radix portal for free) and (b) a mechanical
-  literal→dark-luxe conversion via importless primitives (`.dc-surface`/`.dc-panel`/`.dc-field`,
-  `dc-teal-pill`/`dc-ghost-pill`, `GlowBackdrop`/`Eyebrow`). **Slice 1** = foundation + auth/onboarding
-  (cinematic dark gradient) + shared chrome (nav, sidebar, Donny panel + interior) + the three
-  dashboards + first-run. Teal + pink accents preserved exactly; errors stay semantic red; video
-  backdrops stay landing-only. Two durable traps: the **dark-fill-as-text contrast trap**
-  (`text-dc-dark`/`text-dc-teal-btn` invisible on the dark page but correct on a teal/pink fill — the
-  literal grep misses it) and **named file lists miss children** (grep the touched directory). The
-  global `dc-card`/`dc-pink-bg` token flip was deliberately **skipped** so out-of-scope pages stay
-  coherent-light (two-toned, not broken) until their slices land. Opus whole-branch review + Codex
-  second review clean (1 P2: auth `overflow-hidden` → `overflow-x-hidden`); 936 tests pass;
-  prod-verified on the public `/auth` (authenticated dashboards pending user sign-in). Follow-on
-  slices: campaigns, DragonShare pages, browse/crews/profiles, messaging, settings/org/billing,
-  public marketing. Concept: `docs/wiki/concepts/dark-luxe-app-theme.md`. Spec:
-  `docs/superpowers/specs/2026-07-17-dark-luxe-app-theme-slice1-design.md`.
+- App theme — **light app + dark marketing/entry (final, deployed 2026-07-17, PRs #275 + #277).**
+  After the landing's Dark-Luxe redesign, an experiment forced the *whole* app dark to match
+  (PR #269) — but founder feedback was the dark app read **too dark, some text unreadable, and the
+  half-converted white patches looked unfinished**, while the dark **landing + login/sign-up** were
+  liked. So the working app was **reverted to its original light theme**, and dark is now scoped to
+  only the **entry/marketing surfaces**: landing (self-scopes `.dark`), login/sign-up + auth-adjacent
+  (forgot/update/verify/restore/invite) + onboarding (all via a new **`useDarkHtml()`** hook that adds
+  `dark` to `<html>` for the route's lifetime, mirroring `InternalLayout` for `/internal`), and
+  `/internal` itself. `ThemeProvider` = `defaultTheme="light"` (NOT `forcedTheme` — a forced light
+  fights the route-level `<html class="dark">` and breaks `/internal`; a Codex catch). **Durable
+  learnings kept:** the two-color-system model (~847 semantic tokens flip under `.dark`, ~1,900
+  `dc-*`/`bg-white`/`text-gray` literals don't — which made the per-file revert clean), the
+  **washed-auth gotcha** (a scoped-div `.dark` leaves `<body>` light → the auth glow layers composite
+  over white and wash out → the whole point of `useDarkHtml`), the `.dc-field`-loses-to-shadcn-`<Input>`
+  cascade, and the dark-fill-as-text contrast trap. The reusable dark-luxe kit
+  (`.dc-surface`/`.dc-panel`/`.dc-field`, `dc-teal-pill`/`dc-ghost-pill`, `GlowBackdrop`/`Eyebrow`)
+  remains for the dark surfaces. Codex-clean; prod-verified (auth dark, app light). Concept:
+  `docs/wiki/concepts/dark-luxe-app-theme.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase

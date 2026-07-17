@@ -1,5 +1,20 @@
 # Wiki Log
 
+## [2026-07-17] update | App theme pivot — light app + dark marketing
+Ingested [[App Theme Pivot Session]] (PRs #275 + #277, deployed). **Reverses the app-dark half of the
+same-day force-dark experiment ([[Dark-Luxe App Theme Session]], #269)** after founder feedback that the
+dark *app* was too dark, some text unreadable, and the half-converted white patches looked unfinished —
+while the dark **landing + login/sign-up** were liked. The working app was **reverted to LIGHT** (the 35
+app files restored from the pre-dark commit via `git checkout` — a clean per-file revert enabled by the
+two-color-system model, since the literals never depended on the theme). Dark is now scoped to
+**landing** (self-scopes `.dark`) + **login/sign-up + auth-adjacent + onboarding** (a new **`useDarkHtml()`**
+hook adds `dark` to `<html>` per-route, mirroring `InternalLayout`) + **`/internal`**. `ThemeProvider` =
+`defaultTheme="light"` (NOT `forcedTheme` — Codex caught a forced light breaks the dark `/internal`).
+**Keystone learning captured** on [[Dark-Luxe App Theme]] (rewritten): a scoped-div `.dark` leaves
+`<body>` light, so the auth page's translucent glow layers composite over white and **wash the page to
+gray** — the reason `useDarkHtml` sets a dark `<body>`. DESIGN_SYSTEM.md "Theme" section + PROJECT_CONTEXT
+workstream rewritten to "Light app, Dark marketing/entry."
+
 ## [2026-07-17] update | Landing backdrop HEVC .mov fix
 Ingested [[Landing Backdrop HEVC .MOV Fix Session]] (branch `worktree-dc-landing-page-upgrade`,
 PR #273, merged + live), a next-day follow-up to [[DragonFeed Backdrop Adapter Session]] (PR

@@ -3,103 +3,86 @@ title: Dark-Luxe App Theme
 type: concept
 created: 2026-07-17
 updated: 2026-07-17
-sources: [2026-07-17-dark-luxe-app-theme-slice1.md]
+sources: [2026-07-17-dark-luxe-app-theme-slice1.md, 2026-07-17-app-light-marketing-dark-pivot.md]
 tags: [theme, dark-mode, design-system, tailwind, next-themes, frontend]
 ---
 # Dark-Luxe App Theme
 
-Bringing the whole authenticated app into visual consistency with the "Dark Luxe" landing page
-by forcing a **single dark theme** and converting the hardcoded light surfaces to the landing's
-dark-luxe language. Shipped in **phased slices** — Slice 1 (PR #269, 2026-07-17) = foundation +
-auth/onboarding + shared chrome + dashboards. Video backdrops stay landing-only.
+**Current state: the working app is LIGHT; only the marketing/entry surfaces are dark.** This page
+covers both the current design *and* the short-lived experiment that got us here, because the
+mechanics learned (two color systems, the scoped-dark gotchas) are durable.
 
-## Key Decisions
+## Current design (as shipped)
 
-### Two parallel color systems (the insight that shapes everything)
-The app runs two color systems, and only one responds to the theme:
-- **~847** semantic shadcn tokens (`bg-background`, `bg-card`, `bg-sidebar`, `border-border`,
-  `text-muted-foreground`) — **auto-flip** to dark under the `.dark` class (`src/index.css`).
-- **~1,900** hardcoded `dc-*` hex + literal `bg-white`/`bg-gray-*`/`text-gray-*`/`dc-pink-bg` —
-  do **not** respond to the theme.
+- **Light:** the entire authenticated/working app — dashboards, chrome/nav, Donny panel + chat,
+  campaigns, messaging, settings, DragonShare, etc. Build app UI light (`dc-*` palette, `bg-white`
+  cards, `dc-text`/`dc-text-muted`).
+- **Dark:** only **landing**, **login/sign-up (+ forgot/update/verify/restore/invite)**, **onboarding**,
+  and **`/internal` (AIOS)**.
+- **Theme wiring:** `ThemeProvider` = `defaultTheme="light"` (next-themes), **no toggle**. Dark surfaces
+  opt in per-route:
+  - Landing **self-scopes** `.dark` on its root `<div>` (see [[Landing Redesign & Public Lead Capture]]).
+  - Auth + onboarding call **`useDarkHtml()`** (`src/hooks/useDarkHtml.ts`) — a `useEffect` that adds
+    `dark` to `<html>` for the route's lifetime and removes it on unmount.
+  - `/internal` does the same via `InternalLayout`.
 
-**Flipping the theme flag alone = a broken half-dark app** (dark sidebar, white page bodies).
-The fix is two-part: (a) turn the token layer dark once, and (b) mechanically convert the literal
-light surfaces. The landing itself uses **literals** (`bg-dc-dark` + `bg-white/5` + a
-white-opacity text ramp), not tokens — so it is the reference, and its scoped-`.dark` technique
-(see [[Landing Redesign & Public Lead Capture]]) generalizes here to a **global** `<html class="dark">`.
+## Why not `forcedTheme`
 
-### Force dark with `forcedTheme`, not `defaultTheme`
-`ThemeProvider` uses `forcedTheme="dark"`. `defaultTheme="dark"` only affects users with no stored
-preference — a returning user who once toggled Light has `theme:"light"` in localStorage and would
-still render light. `forcedTheme` overrides stored + system values and neuters any stray `setTheme`.
-`<html class="dark" style="color-scheme:dark">` in `index.html` kills the first-paint flash and
-fixes native controls. The light/dark toggle is retired.
+`ThemeProvider` must **not** force a theme:
+- `forcedTheme="dark"` = the whole app dark (the reverted experiment).
+- `forcedTheme="light"` actively re-asserts `<html class="light">` and **fights** `InternalLayout` /
+  `useDarkHtml`, breaking the dark `/internal` + auth surfaces on direct load/refresh (a Codex catch).
+- `defaultTheme="light"` gives fresh users light (system-dark users included — the default is "light",
+  not "system") while letting route-level effects add `<html class="dark">` that *sticks*.
 
-### Retune the `.dark` token block — highest-leverage single edit
-Retuning the neutral `.dark` CSS vars (`--background` to brand charcoal `#1A1A2A`, `--card`/`--popover`
-a `white/5`-over-charcoal feel, `--border`/`--input` a `white/10-15` feel, `--muted-foreground` a
-`white/60` feel) — **leaving `--primary` (teal), `--secondary` (pink), `--ring`, `--sidebar-*`
-untouched** — re-skins all ~847 token surfaces (sidebar, glass header, **every Radix portal**) for
-free. Because the class is on `<html>` (not a subtree), token-based portals inherit dark automatically;
-only **literal-painted** portaled surfaces (e.g. `MobileBottomNav`) need manual conversion.
+## The washed-auth gotcha (keystone)
 
-### Global token flips fight a phased rollout
-The optional "accelerator" (CSS-var-backing `dc-card`/`dc-pink-bg` so every `bg-dc-card` flips
-globally) was **deliberately skipped**: it would darken cards on the **out-of-scope** pages that still
-have light bodies until their slices land → broken half-states. Per-file conversion is the
-phasing-safe path. (Corollary: out-of-scope pages stay **coherent light pages** because their literal
-classes ignore `.dark` — the app is temporarily two-toned but readable, not broken.)
+A scoped-div `.dark` (just adding `dark` to the page's own root) is **not enough** for a dark page when
+the app is light. `<body>` stays light (white `bg-background`), and the auth page's **translucent
+teal+pink glow layers** (two radial gradients + `GlowBackdrop`) composite over the white body and
+**wash the page out to gray**. It only looked dark during the force-dark experiment because the whole
+`<body>` was dark. **Fix:** `useDarkHtml()` makes `<body>` dark (via the `.dark` `--background` token),
+so the glows sit on dark — restoring the rich look. Verified: with `useDarkHtml`, the auth root's
+`<body>` is dark and the page renders charcoal; without it, washed gray.
 
-### Shared primitives keep churn low
-Importless, global vehicles so leaf files just swap class strings: `@layer components` classes
-`.dc-surface` / `.dc-panel` / `.dc-field` (named `.dc-panel` **not** `.dc-card`, to avoid clashing
-with the `bg-dc-card` utility); `button.tsx` CVA variants `dc-teal-pill` / `dc-ghost-pill`; and
-`GlowBackdrop` + `Eyebrow` components in `src/components/dark/`.
+## The two-color-system insight (still true, and why the revert was clean)
 
-## Known Issues / Traps
+The app runs two color systems:
+- ~847 semantic shadcn tokens (`bg-background`/`bg-card`/`bg-sidebar`/`border-border`) that flip under
+  `.dark`.
+- ~1,900 hardcoded `dc-*`/`bg-white`/`text-gray` literals that don't.
 
-### The contrast trap — dark-fill-as-text
-`text-dc-dark`, `text-dc-teal-btn` (#0F766E), `text-dc-pink-accent-btn` (#DB2777) are **dark fills**.
-Used as a **text color on the dark page/panel** they are invisible / low-contrast. Convert to
-`text-white` / `text-dc-teal` / `text-dc-pink-accent`. **BUT** on a teal/pink/white **fill** they are
-correct (e.g. `bg-dc-teal text-dc-dark` button text — the landing's own pattern; the `dc-teal-pill`
-variant relies on it). Judge by the element's own background. This bit `ActivityFeedCard` (invisible
-`text-dc-dark` title), `PendingActionBanners`, the `RecentActivitySection` active tab, and the
-`dc-primary` button (its `dark:text-dc-dark` was a latent bug that forcing-dark exposed app-wide —
-fixed by dropping the override so white text applies in all modes). **The literal residual-grep does
-NOT catch these** — run a whole-branch `text-dc-dark|text-dc-teal-btn|text-dc-pink-accent-btn` sweep
-and judge each hit on-fill vs on-dark.
+The dark experiment converted the literals surface-by-surface; the revert simply restored those files to
+their pre-experiment light versions (`git checkout <pre-dark-sha> -- <files>` — a clean per-file revert,
+verified no other PR had touched them). Because the literals never depended on the theme, the light app
+came back exactly as it was.
 
-### Named file lists miss children — grep the tree
-A per-group completeness grep over the touched *directory* (`bg-white([^/]|$)|bg-gray-|text-gray-|
-text-dc-dark|…`, using `bg-white([^/]|$)` so `bg-white/5` opacity variants don't false-positive)
-caught two dashboard blocks the task list didn't enumerate (`ActivityFeedCard`, `PendingActionBanners`)
-and the first-run children (`MissionChecklist`/`MissionItem`). A "white hole" on a shared component
-looks broken; grep the directory, don't trust a hand-written file list.
+## Reusable dark-luxe kit (for the dark surfaces)
 
-### Shared chrome includes the Donny interior
-The Donny chat panel is docked on **every** authenticated page, so converting only the panel container
-leaves a white chat box everywhere — its interior (messages, input, tray, chips, rich cards) is shared
-chrome and belongs in the same slice.
+`.dc-surface`/`.dc-panel`/`.dc-field` (`@layer components`), `dc-teal-pill`/`dc-ghost-pill` button
+variants, `GlowBackdrop`/`Eyebrow` (`src/components/dark/`), the white-opacity text ramp
+(`text-white`→`/80`→`/60`→`/40`), teal+pink accents, errors as `bg-red-500/10 text-red-300`.
 
-## Verification notes
-Login/sign-up screens are **public** → screenshot-verifiable on prod (deploy confirmed via the
-`.dc-panel`/`.dc-surface`/`.dc-field` sentinels in the prod CSS bundle — Tailwind emits custom classes
-literally, unlike minified JS). Authenticated dashboards need the **user to sign in** (Claude cannot
-type passwords). The browser MCP window-resize does **not** reflow to a true mobile viewport (fixed
-~1568px capture) → mobile is on-device / CDP device-metrics.
+## Traps
+
+- **Scoped-div `.dark` needs a dark `<body>`** — use `useDarkHtml()` (above), or glows wash out.
+- **`.dc-field` loses to a shadcn `<Input>`** — a `@layer components` class is overridden by the
+  component's own `@layer utilities`; use explicit `border-white/15 bg-white/5 text-white
+  placeholder:text-white/40` on shadcn inputs.
+- **Dark-fill-as-text contrast trap:** `text-dc-dark`/`text-dc-teal-btn`/`text-dc-pink-accent-btn` are
+  correct **on** a teal/pink/white fill (e.g. `bg-dc-teal text-dc-dark`) but invisible as text on a dark
+  page. The literal residual-grep doesn't catch these — judge by the element's own background.
 
 ## Deploy mechanics
-`git push` hangs in this environment (send-pack, after the pre-push build hook), so the branch landed
-via the `gh` REST blob→tree→commit→ref workaround. **Gotcha:** `gh api …/git/blobs -f content=@-`
-silently sends **empty** blobs (every SHA becomes the empty-blob `e69de29b…`); use
-`jq -n --rawfile c <b64file> '{content:$c,encoding:"base64"}' | gh api …/git/blobs --input -`
-(a big base64 passed as a command `--arg` also throws `Argument list too long`). Always sanity-check
-`gh api compare/main...branch` shows the expected additions/deletions **before** opening the PR.
+`git push` hangs in this environment (send-pack), so branches land via the `gh` REST
+blob→tree→commit→ref workaround (`git fetch` works). Blobs must be created with
+`jq --rawfile … | gh api …/git/blobs --input -` (`-f content=@-` sends **empty** blobs); always
+sanity-check `gh api compare/main...branch` shows the expected additions/deletions before the PR. See
+the project-memory REST-push recipe.
 
 ## See Also
-- The `DESIGN_SYSTEM.md` core doc — the `dc-*` tokens + the "dark is now the default" rule.
-- [[Landing Redesign & Public Lead Capture]] — the scoped-`.dark` technique this generalizes to a global force.
-- [[Landing Cinematic Video Redesign]] — the landing look this makes the app consistent with.
-- [[Donny Chat UX]] — the Donny panel whose interior is converted here as shared chrome.
-- [[Mobile Viewport & Fixed Positioning]] — the fixed-overlay / portal rules the chrome relies on.
+- The `DESIGN_SYSTEM.md` core doc — "Theme — Light app, Dark marketing/entry".
+- [[Landing Redesign & Public Lead Capture]] — the scoped-`.dark` landing (self-scopes on its div).
+- [[Landing Cinematic Video Redesign]] — the dark landing look the marketing surfaces share.
+- [[AIOS Internal Shell]] — `/internal`'s `InternalLayout` html-dark pattern that `useDarkHtml` mirrors.
+- [[Mobile Viewport & Fixed Positioning]] — fixed-overlay/portal rules the chrome relies on.

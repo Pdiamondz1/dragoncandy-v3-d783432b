@@ -107,6 +107,32 @@
   features. Only mint a separate page when the new work is a genuinely distinct *subject*, not just
   the next chapter of a story you already started. (advisory — reinforces the existing "close the
   prediction" + compound-onto-hub Lessons with the sharper case of a same-session/next-day pair.)
+### [2026-07-17] App theme PIVOT — light app + dark marketing (PRs #275/#277 → paired docs PR)
+- Output: paired docs PR — new `raw/sessions/2026-07-17-app-light-marketing-dark-pivot.md`, **REWROTE**
+  `concepts/dark-luxe-app-theme.md` (force-dark → light-app-dark-marketing), `index.md` (new source +
+  rewrote the concept line + a "Superseded" note on the Slice-1 source line), `log.md` update entry,
+  **REWROTE** DESIGN_SYSTEM.md "Theme" section + PROJECT_CONTEXT workstream bullet, + THIS entry. Also
+  updated the project memory `project_dark_luxe_app_theme.md` (loaded each session — it described the
+  reverted force-dark approach).
+- Happened: **same-day reversal of my own #269 work** — the founder rejected the force-dark app (too
+  dark / unreadable / white patches) after it shipped, so the app was reverted to light and dark scoped
+  to landing+auth+onboarding+/internal. The knowledge layer described the SUPERSEDED force-dark approach
+  everywhere, so this was an **edit-in-place correction** across the concept page + both core docs +
+  project memory (not an append) — a `[Remember]`-supersedes-in-place case.
+- Worked: [scope] (docs checked out from origin/main first to avoid clobbering #271's index/log changes)
+  + [runlog-in-pr] + [wikilinks]-exact (grepped index.md: [[AIOS Internal Shell]] / the two Landing pages
+  / [[Mobile Viewport & Fixed Positioning]] confirmed; de-linked a `[[git push…]]` that's a memory not a
+  wiki page). Kept the still-true durable knowledge (two-color-system model, the traps) while flipping the
+  direction; added the NEW keystone (the washed-auth gotcha + `useDarkHtml`).
+- Failed: none for knowledge-sync. (The washed-auth regression itself was a real prod miss — a scoped-div
+  `.dark` isn't enough; caught only by post-deploy prod screenshot, since local dev looked closer to OK.)
+- Remember: when a shipped feature is REVERSED by founder feedback the same session, the knowledge layer
+  must be **corrected in place across ALL layers** (concept page + core docs + project memory + a
+  superseded-note on the original source), not just appended — a stale "we forced the app dark"
+  instruction in DESIGN_SYSTEM.md/PROJECT_CONTEXT.md would actively mislead the next UI task. And a
+  scoped-`.dark` surface in an otherwise-light app needs a dark `<body>` (`useDarkHtml`), not just a dark
+  root div — translucent glow layers wash out over a white body. (advisory)
+
 ### [2026-07-17] Dark-Luxe app theme — Slice 1 (PR #269 → paired docs PR)
 - Output: paired docs PR off origin/main — `raw/sessions/2026-07-17-dark-luxe-app-theme-slice1.md`,
   NEW `concepts/dark-luxe-app-theme.md`, `index.md` (Concepts + Sources, alphabetical), `log.md`
