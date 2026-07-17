@@ -3,15 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 import { Header } from "@/components/landing/Header";
 import { HeroSection } from "@/components/landing/HeroSection";
-import { WhyDragonCandy } from "@/components/landing/WhyDragonCandy";
 import { DonnySection } from "@/components/landing/DonnySection";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { AudienceLanes } from "@/components/landing/AudienceLanes";
-import { StoriesSection } from "@/components/landing/StoriesSection";
-import { DragonRewardsSection } from "@/components/landing/DragonRewardsSection";
-import { CreatorHubSection } from "@/components/landing/CreatorHubSection";
-import { LeadCaptureSection } from "@/components/landing/LeadCaptureSection";
-import { BottomCTA } from "@/components/landing/BottomCTA";
+import { ProofSection } from "@/components/landing/ProofSection";
+import { StartFreeSection } from "@/components/landing/StartFreeSection";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function LandingPage() {
@@ -31,7 +27,7 @@ export default function LandingPage() {
     <div className="dark min-h-screen overflow-x-hidden bg-dc-dark text-white">
       <SEO
         title="DragonCandy — AI-Powered Content for Businesses & Creators"
-        description="DragonCandy connects local businesses, brands, and creators for short-form social media campaigns. Powered by Donny AI."
+        description="DragonCandy connects local businesses, brands, and creators for short-form social media campaigns. Powered by Donny."
         path="/landing"
       />
 
@@ -39,15 +35,11 @@ export default function LandingPage() {
 
       <main>
         <HeroSection />
-        <WhyDragonCandy />
         <DonnySection />
         <HowItWorks />
         <AudienceLanes />
-        <StoriesSection />
-        <DragonRewardsSection />
-        <CreatorHubSection />
-        <LeadCaptureSection />
-        <BottomCTA />
+        <ProofSection />
+        <StartFreeSection />
       </main>
 
       <footer className="border-t border-white/10 py-10">
