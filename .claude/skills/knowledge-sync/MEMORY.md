@@ -30,6 +30,34 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-16] Donny data visibility + quick-action 404 (branch worktree-dc-issues-6, PR #260)
+- Output: bundled INTO the work PR #260 — `raw/sessions/2026-07-16-donny-data-visibility-quick-actions.md`,
+  new `concepts/donny-data-and-quick-actions.md` (sibling of [[AI Creator Matching]]), `index.md`
+  (Sources + Concepts), `log.md` ingest entry, PROJECT_CONTEXT active-workstream bullet, + THIS entry.
+  No DATABASE_SCHEMA change (the fix corrects code to the EXISTING schema — no columns changed;
+  the real column names are captured on the concept page). RAG sync + [[verify-knowledge]] post-merge.
+- Happened: a founder BUG-report session whose durable knowledge is TWO reusable bug classes (captured
+  as ONE new concept for Donny's data/navigation, distinct from the [[AI Creator Matching]] *matching*
+  page but cross-linked): (1) schema-drift-swallowed-to-`[]` (`campaigns.platform` doesn't exist → the
+  real "no campaigns" cause; the whole DragonShare agent on dead columns/enums) and (2) LLM-invented-
+  route→404 (the `isKnownRoute` allow-list pattern). Merged origin/main mid-session (the deploy
+  pre-flight caught the #248/#251 web-Donny collision — deploying the stale branch would have reverted
+  them), so the branch is off latest main; per [scope] the docs edit the latest index/log/PROJECT_CONTEXT.
+- Worked: [runlog-in-pr] + [orphans]-by-path (new concept + session both cataloged in index.md).
+  [wikilinks]-exact: grepped index.md first — [[AI Creator Matching]], [[Donny AI]], [[Donny Web Access]]
+  all confirmed before linking; Sources insert alphabetical (Chat < **Data** < Desktop), Concepts insert
+  alphabetical (Donny Chat UX < **Donny Data...** < Donny Web Access). Compounded onto the matching page
+  by reference rather than duplicating the two-backend wiring.
+- Failed: the edge-function-reviewer caught the ACTUAL root cause I MISSED — my initial diagnosis blamed
+  org-ownership + a fragile `.or`, but the headline bug was the nonexistent `campaigns.platform` column
+  (carried over verbatim from the original code) 400'ing every query. The prod SQL I ran early even
+  listed the columns (no `platform`) but I didn't cross-check the agent's SELECT against it. Two-model
+  review earned its keep.
+- Remember: when rewriting a data-access query, **cross-check every selected column/enum against the
+  column list you already pulled from prod** — carrying forward the OLD select is how a pre-existing
+  swallowed-400 survives a "rewrite". And a bug-report session's durable knowledge is the *class of bug*
+  (schema-drift-swallow + invented-route-404), captured as a concept, not "we fixed Donny". (advisory)
+
 ### [2026-07-16] Donny first-open tray close-trap fix + branded redesign (PR #258 → paired docs PR)
 - Output: paired docs PR off origin/main — `raw/sessions/2026-07-16-donny-tray-close-ux.md`, compounded
   `concepts/donny-chat-ux.md` (new "Panel stages & the shared header" section + frontmatter sources +
