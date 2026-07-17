@@ -1150,9 +1150,30 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   WITHOUT `--no-verify-jwt`). **LIVE-VERIFIED** as a Hoboken business: "find me creators near Hoboken"
   → a ranked list (Ricky Ricardo · Charlie Smith · Elias Acevedo 2 mi away · …) with distances + View
   buttons — the founder's original ask, resolved on the correct surface. **PR #249 (donny-chat forcing)
-  closed as wrong-function.** Deferred: rich avatar cards (Option B — `donny_messages.rich_card` →
-  array); server-side lat/lng distance (shared scale path). Concept:
+  closed as wrong-function.** Deferred: rich avatar cards (Option B, now shipped — see next bullet);
+  server-side lat/lng distance (shared scale path). Concept:
   `docs/wiki/concepts/ai-creator-matching.md` ("Which Donny?" section).
+
+- Web Donny find_creators results as avatar rich cards (Option B) — **built + backend-deployed
+  (branch `feat/donny-rich-creator-cards`, 2026-07-16; orchestrator v62 live + migration applied;
+  frontend merges when GitHub's REST API recovers).** The `find_creators` results now render as
+  **avatar cards** in the web Donny chat, not just a text list. Keystone: a **deterministic card
+  side-channel that bypasses the LLM** — the sub-agent returns structured `cards[]`; `dispatchAgent`
+  returns `{result, cards}` where the JSON string fed to Claude carries ONLY `context` +
+  `suggested_actions` (never the cards); the orchestrator threads `collectedCards` into the SSE `done`
+  event; `useDonny` persists them to a NEW **nullable `donny_messages.rich_cards jsonb`** column
+  (additive — the singular `rich_card` is untouched, so internal Donny renders identically); and
+  `DonnyMessage` maps them to one `DonnyRichCard` per creator (reusing the existing `creator_profile`
+  card + a distance line). Per-creator "View" buttons dropped (cards own View Portfolio/Invite);
+  "Browse all creators" remains. Built brainstorm→plan→subagent-implementer→review;
+  `edge-function-reviewer` PASS; **Codex clean after 1 P2** (reset `collectedCards` even on an empty
+  later find_creators so stale cards can't render — "last find_creators wins"); typecheck + build +
+  DonnyMessage suite (5/5) pass. Migration applied via MCP (nullable, no new advisor); `donny-orchestrator`
+  deployed **v62** (`verify_jwt=true` preserved). **Deploy ordering:** migration to prod BEFORE the
+  frontend merges (the `useDonny` insert writes `rich_cards`); the edge fn is forward-compatible (old
+  client ignores the extra SSE field). Live-verify after the frontend deploys. Concept:
+  `docs/wiki/concepts/ai-creator-matching.md` (Option B section). Plan:
+  `docs/superpowers/plans/2026-07-16-donny-orchestrator-rich-cards.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase

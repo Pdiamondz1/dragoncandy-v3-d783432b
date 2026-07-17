@@ -128,8 +128,21 @@ location), ranks via the shared `rankCreators`, and returns a present-ready **te
 name:"find_creators"}` on the first `callClaude` when `isCreatorDiscoveryIntent(query)` — which
 **excludes any "campaign" mention** so campaign-creation defers to `prepare_campaign` and
 campaign-specific asks ("top creators for my campaigns") defer to `campaign_agent` (two Codex P2s).
-Deployed `donny-orchestrator` (v61, **`verify_jwt=true` → deploy WITHOUT `--no-verify-jwt`**). Rich
-avatar cards (making `donny_messages.rich_card` an array) are a documented Option-B fast-follow.
+Deployed `donny-orchestrator` (v61, **`verify_jwt=true` → deploy WITHOUT `--no-verify-jwt`**).
+
+**Option B — avatar rich cards (shipped, `feat/donny-rich-creator-cards`, orchestrator v62).** The
+find_creators results now render as **avatar cards** in chat, not just a text list. The keystone is a
+**deterministic card side-channel that bypasses the LLM**: the sub-agent returns structured
+`cards[]`, `dispatchAgent` returns `{result, cards}` (the JSON string fed to Claude carries ONLY
+`context`+`suggested_actions`, never the cards), the orchestrator threads `collectedCards` into the
+SSE `done` event, `useDonny` persists them to a NEW **nullable `donny_messages.rich_cards jsonb`**
+column (additive; the singular `rich_card` untouched → internal Donny unaffected), and `DonnyMessage`
+maps them to one `DonnyRichCard` per creator (with a distance line). Per-creator "View" buttons are
+dropped (cards own View Portfolio/Invite); "Browse all creators" remains. **Deploy ordering:**
+migration to prod BEFORE the frontend merges (the `useDonny` insert writes `rich_cards`); the edge fn
+is forward-compatible (an old client ignores the extra SSE field). Codex P2 caught: reset
+`collectedCards` even on an empty later find_creators ("last find_creators wins") so stale cards can't
+render. Reuses the existing `creator_profile` `DonnyRichCard`.
 
 ## Known limitations
 

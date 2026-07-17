@@ -145,7 +145,7 @@ active members, who one-tap apply with no payment (free `fixed_price=0`). See
 | `donny_actions` | Tracked Donny AI actions and their outcomes |
 | `donny_campaign_previews` | Donny AI campaign preview data |
 | `donny_conversations` | Donny AI conversation threads |
-| `donny_messages` | Individual messages in Donny conversations |
+| `donny_messages` | Individual messages in Donny conversations. `rich_card` (jsonb, singular) + `rich_cards` (jsonb, nullable — a LIST of cards, e.g. the web-chat `find_creators` avatar cards; additive, internal Donny leaves it null) |
 | `donny_help_logs` | Help requests and resolutions via Donny |
 | `donny_knowledge` | Donny's knowledge base entries (RAG) |
 | `donny_nudges` | Proactive nudge definitions and delivery tracking |
