@@ -30,6 +30,36 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-17] Dark-Luxe app theme — Slice 1 (PR #269 → paired docs PR)
+- Output: paired docs PR off origin/main — `raw/sessions/2026-07-17-dark-luxe-app-theme-slice1.md`,
+  NEW `concepts/dark-luxe-app-theme.md`, `index.md` (Concepts + Sources, alphabetical), `log.md`
+  ingest entry, **DESIGN_SYSTEM.md** new "Theme — Dark-Luxe (default, forced)" section (a design-token/
+  UI-pattern change → core-doc refresh warranted), PROJECT_CONTEXT active-workstream bullet, + THIS entry.
+- Happened: code PR #269 merged + deployed FIRST (git push env-blocked → landed via gh REST
+  blob→tree→commit→ref), so this is the paired docs PR off a fresh origin/main (per [scope]). Wrote a NEW
+  concept (a distinct subject — the app-wide dark-theme mechanics, cross-linked to the landing's
+  [[Landing Redesign & Public Lead Capture]] scoped-`.dark` page it generalizes). The DESIGN_SYSTEM.md
+  edit is load-bearing: it's a project-instruction file, so "the app is dark now + use `.dc-surface`/
+  `.dc-panel`/`.dc-field`" MUST be there or future UI work defaults to the old light literals. RAG sync +
+  [[verify-knowledge]] are post-merge (hook on the docs/ ff).
+- Worked: [scope] + [runlog-in-pr] + [orphans]-by-path (new concept + session both cataloged in index.md).
+  [wikilinks]-exact caught TWO would-be dangling links up front — grepped index.md and found NO
+  `[[Design System]]` (it's a core doc, not a wiki page → de-linked to plain text) and NO
+  `[[Landing Lead Capture]]` (real name is `[[Landing Redesign & Public Lead Capture]]`); kept the real
+  [[Landing Cinematic Video Redesign]] / [[Donny Chat UX]] / [[Mobile Viewport & Fixed Positioning]].
+  Pre-flight `gh api compare/89e3c5ce...main` confirmed none of my target doc files (index/log/
+  DESIGN_SYSTEM/PROJECT_CONTEXT) changed on main → safe to edit the worktree copies.
+- Failed: none for knowledge-sync. (Mobile viewport + authenticated dashboards couldn't be independently
+  verified — the browser MCP resize doesn't reflow to a true mobile viewport, and Claude can't type the
+  test password; recorded honestly in the verify-prod verdict as met:false + missing[] notes, not a
+  silent pass — same wall as the [2026-07-16 Donny Tray] run.)
+- Remember: the **gh REST push has an empty-blob footgun** — `gh api …/git/blobs -f content=@-` sends
+  EMPTY (every SHA = `e69de29b…`); use `jq -n --rawfile c <b64file> '{content:$c,encoding:"base64"}' |
+  gh api …/git/blobs --input -` (a big base64 as a command `--arg` also throws `Argument list too long`),
+  and ALWAYS sanity-check `gh api compare/main...branch` shows the expected additions/deletions before the
+  PR. A doc-token/UI-pattern change (dark-luxe) earns a **DESIGN_SYSTEM.md** refresh, not just a concept
+  page — it's a project-instruction file future UI work reads. (advisory)
+
 ### [2026-07-16] Donny data visibility + quick-action 404 (branch worktree-dc-issues-6, PR #260)
 - Output: bundled INTO the work PR #260 — `raw/sessions/2026-07-16-donny-data-visibility-quick-actions.md`,
   new `concepts/donny-data-and-quick-actions.md` (sibling of [[AI Creator Matching]]), `index.md`

@@ -1,5 +1,22 @@
 # Wiki Log
 
+## [2026-07-17] ingest | Dark-Luxe App Theme — Slice 1
+Ingested [[Dark-Luxe App Theme Session]] (PR #269, merged + deployed 2026-07-17). New concept
+[[Dark-Luxe App Theme]]. The app was forced to a single dark theme matching the landing, in
+**phased slices** (Slice 1 = foundation + auth/onboarding + shared chrome + dashboards). Keystone:
+**two parallel color systems** — ~847 semantic shadcn tokens auto-flip under `.dark`, but ~1,900
+`dc-*`/`bg-white`/`text-gray` literals don't — so flipping the flag alone is a broken half-dark app;
+the fix is (a) `forcedTheme="dark"` + `<html class="dark">` + a retuned neutral `.dark` token block
+(re-skins token surfaces + every Radix portal for free) and (b) a mechanical literal→dark-luxe
+conversion using importless `.dc-surface`/`.dc-panel`/`.dc-field` primitives + `dc-teal-pill`/
+`dc-ghost-pill` + `GlowBackdrop`/`Eyebrow`. Two durable traps captured: the **dark-fill-as-text
+contrast trap** (`text-dc-dark`/`text-dc-teal-btn` invisible on the dark page but correct on a
+teal/pink fill — the literal residual-grep misses it) and **named file lists miss children** (grep
+the touched directory). Teal/pink accents unchanged; out-of-scope pages stay coherent-light (two-toned,
+not broken) — the global `dc-card` flip is deliberately skipped during phasing. Cross-linked
+[[Landing Redesign & Public Lead Capture]], [[Landing Cinematic Video Redesign]], [[Donny Chat UX]],
+[[Mobile Viewport & Fixed Positioning]]. DESIGN_SYSTEM.md + PROJECT_CONTEXT.md refreshed.
+
 ## [2026-07-16] update | Web Donny find_creators — the fix belongs in donny-orchestrator
 Ingested [[Donny Orchestrator Find-Creators Session]]. Keystone: the consumer web/mobile Donny chat
 calls **`donny-orchestrator`** (`useDonny.ts:157`), NOT `donny-chat` (`useInternalDonny.ts:79` =

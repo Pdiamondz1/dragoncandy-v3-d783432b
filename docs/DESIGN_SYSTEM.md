@@ -2,6 +2,31 @@
 
 > Screenshots of all screens are in the `/designs` folder. Always reference them when building or modifying UI.
 
+## Theme — Dark-Luxe (default, forced)
+
+**The app is a single dark "Dark-Luxe" theme** matching the landing page (rollout in phased slices;
+Slice 1 shipped 2026-07-17, PR #269). `ThemeProvider` uses `forcedTheme="dark"` and `<html>` carries
+`class="dark"` — there is **no light/dark toggle**. When building or restyling UI, target dark:
+
+- **Page root:** `.dc-surface` (`min-h-screen bg-dc-dark text-white`) — never `bg-white`/`bg-gray-*`.
+- **Cards/panels:** `.dc-panel` (`rounded-3xl border border-white/10 bg-white/5`) — translucent films
+  over the charcoal, **never a flat gray card**.
+- **Inputs:** `.dc-field` on a raw `<input>`; on a shadcn `<Input>`/`<Textarea>` use explicit utilities
+  (`border-white/15 bg-white/5 text-white placeholder:text-white/40`) — a `@layer components` class
+  loses to the component's own `@layer utilities`.
+- **Text ramp (never flat gray):** `text-white` → `text-white/80` → `text-white/60` → `text-white/40`.
+- **Buttons:** `dc-teal-pill` (primary) / `dc-ghost-pill` (secondary) CVA variants; `GlowBackdrop` +
+  `Eyebrow` in `src/components/dark/`.
+- **Accents unchanged:** teal (`#4DD9C0`) + pink (`#EC4899`/`#F9A8D4`) stay exactly; errors stay
+  semantic red (`bg-red-500/10 text-red-300`), never remapped to pink.
+- **Contrast trap:** `text-dc-dark` / `text-dc-teal-btn` / `text-dc-pink-accent-btn` are *dark fills* —
+  correct **on** a teal/pink/white fill (e.g. `bg-dc-teal text-dc-dark`), **invisible as text on the
+  dark page**. Judge by the element's own background.
+
+The two-color-system mechanics, per-slice conversion pattern, and traps are in
+`docs/wiki/concepts/dark-luxe-app-theme.md`. Video backdrops remain landing-only. Some
+not-yet-converted feature pages are still light during the phased rollout (coherent, not broken).
+
 ## Color Palette (Tailwind `dc-*` tokens)
 
 Use the `dc-*` Tailwind tokens defined in `tailwind.config.ts` — never hardcode hex values in components.
