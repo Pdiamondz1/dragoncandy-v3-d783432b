@@ -61,6 +61,12 @@ const TOOL_DEFINITIONS = [
     input_schema: { type: "object", properties: {} },
   },
   {
+    name: "get_dragonshare",
+    description:
+      "Get the user's DragonShare activity. For a business/brand: organic posts about their restaurant and boosts they've funded. For a creator: posts they've submitted and payouts they've earned.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
     name: "update_campaign",
     description: "Update an existing campaign's details (title, description, budget, status).",
     input_schema: {
@@ -535,7 +541,7 @@ const TOOLS_BY_ROLE: Record<string, string[]> = {
     'match_creators', 'get_creator_profile', 'invite_creator',
     'get_applications', 'respond_to_application',
     'get_submissions', 'approve_content', 'request_revision',
-    'prepare_payment', 'get_payment_status',
+    'prepare_payment', 'get_payment_status', 'get_dragonshare',
     'update_profile', 'get_dashboard_summary', 'get_analytics',
     'send_message', 'get_onboarding_step', 'complete_onboarding_step',
     'generate_campaign_preview', 'get_toast_insights',
@@ -546,7 +552,7 @@ const TOOLS_BY_ROLE: Record<string, string[]> = {
     'match_creators', 'get_creator_profile', 'invite_creator',
     'get_applications', 'respond_to_application',
     'get_submissions', 'approve_content', 'request_revision',
-    'prepare_payment', 'get_payment_status',
+    'prepare_payment', 'get_payment_status', 'get_dragonshare',
     'update_profile', 'get_dashboard_summary', 'get_analytics',
     'send_message', 'get_onboarding_step', 'complete_onboarding_step',
     'generate_campaign_preview', 'get_toast_insights',
@@ -555,7 +561,7 @@ const TOOLS_BY_ROLE: Record<string, string[]> = {
   content_creator: [
     'get_campaigns', 'get_creator_profile',
     'apply_to_campaign', 'get_submissions',
-    'get_payment_status',
+    'get_payment_status', 'get_dragonshare',
     'update_profile', 'get_dashboard_summary', 'get_analytics',
     'send_message', 'get_onboarding_step', 'complete_onboarding_step',
     'schedule_post', 'suggest_post_times',
@@ -658,7 +664,7 @@ When presenting creators or campaigns from tool results, include a JSON code blo
 - Name: ${profile.full_name || "there"}
 - Role: ${profile.role}
 - ${roleContext}
-- Active campaigns: ${userContext.campaigns?.length ?? 0}
+- Campaigns owned: ${userContext.campaigns?.length ?? 0}
 - Pending applications: ${userContext.pendingApplications ?? 0}
 </user_data>`;
 
@@ -1041,13 +1047,13 @@ async function executeTool(
       const { data, error } = await supabaseAdmin
         .from("campaigns")
         .insert({
+          // campaigns has `platforms text[]` (not `platform`) and no `content_type` column.
           user_id: userId,
           title: args.title,
           description: args.description,
-          platform: args.platform,
+          platforms: args.platform ? [args.platform] : null,
           fixed_price: args.price,
           pricing_type: 'fixed',
-          content_type: args.content_type ?? "video",
           status: "draft",
         })
         .select("id, title, status")
@@ -1057,14 +1063,97 @@ async function executeTool(
     }
 
     case "get_campaigns": {
+      // Owners (business/brand) own campaigns; creators apply to / collaborate on
+      // them. Return the creator's applications + collaborations instead of an
+      // owner query that is always empty for them.
+      if (userRole === "content_creator") {
+        const [appsRes, collabsRes] = await Promise.all([
+          supabaseAdmin
+            .from("campaign_applications")
+            .select("id, status, campaign_id, created_at, campaigns!inner(id, title, status, platforms)")
+            .eq("creator_id", userId)
+            .order("created_at", { ascending: false })
+            .limit(20),
+          supabaseAdmin
+            .from("campaign_collaborations")
+            .select("id, status, campaign_id, created_at, campaigns!inner(id, title, status)")
+            .eq("creator_id", userId)
+            .order("created_at", { ascending: false })
+            .limit(20),
+        ]);
+        if (appsRes.error) throw appsRes.error;
+        if (collabsRes.error) throw collabsRes.error;
+        return { result: { applications: appsRes.data ?? [], collaborations: collabsRes.data ?? [] } };
+      }
       const { data, error } = await supabaseAdmin
         .from("campaigns")
-        .select("id, title, status, platform, fixed_price, created_at, campaign_applications(count)")
+        .select("id, title, status, platforms, fixed_price, created_at, campaign_applications(count)")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(10);
       if (error) throw error;
       return { result: data };
+    }
+
+    case "get_dragonshare": {
+      // Role-aware, matched to the ACTUAL schema:
+      //   dragonshare_posts   → creator_id (submitter), target_org_id (restaurant it's about)
+      //   dragonshare_boosts  → boosting_org_id, amount_cents
+      //   dragonshare_payouts → creator_id, amount_cents, processed_at
+      if (userRole === "content_creator") {
+        const [postsRes, payoutsRes] = await Promise.all([
+          supabaseAdmin
+            .from("dragonshare_posts")
+            .select("id, status, platform, boost_status, target_org_id, created_at")
+            .eq("creator_id", userId)
+            .order("created_at", { ascending: false })
+            .limit(15),
+          supabaseAdmin
+            .from("dragonshare_payouts")
+            .select("id, amount_cents, status, processed_at")
+            .eq("creator_id", userId)
+            .order("processed_at", { ascending: false })
+            .limit(15),
+        ]);
+        if (postsRes.error) throw postsRes.error;
+        if (payoutsRes.error) throw payoutsRes.error;
+        return { result: { role: userRole, posts: postsRes.data ?? [], payouts: payoutsRes.data ?? [] } };
+      }
+      // business / brand: posts about their org + boosts they funded
+      const { data: prof, error: profErr } = await supabaseAdmin
+        .from("profiles")
+        .select("org_id")
+        .eq("id", userId)
+        .maybeSingle();
+      if (profErr) throw profErr; // don't mask a DB error as "no org linked"
+      const orgId = prof?.org_id ?? null;
+      if (!orgId) {
+        return {
+          result: {
+            role: userRole,
+            note: "No organization is linked to this account yet, so there's no DragonShare activity to show.",
+            posts: [],
+            boosts: [],
+          },
+        };
+      }
+      const [dsPostsRes, boostsRes] = await Promise.all([
+        supabaseAdmin
+          .from("dragonshare_posts")
+          .select("id, status, platform, boost_status, creator_id, created_at")
+          .eq("target_org_id", orgId)
+          .order("created_at", { ascending: false })
+          .limit(15),
+        supabaseAdmin
+          .from("dragonshare_boosts")
+          .select("id, status, amount_cents, boosted_at, post_id")
+          .eq("boosting_org_id", orgId)
+          .order("boosted_at", { ascending: false })
+          .limit(15),
+      ]);
+      if (dsPostsRes.error) throw dsPostsRes.error;
+      if (boostsRes.error) throw boostsRes.error;
+      return { result: { role: userRole, posts: dsPostsRes.data ?? [], boosts: boostsRes.data ?? [] } };
     }
 
     case "update_campaign": {
@@ -2025,11 +2114,13 @@ serve(async (req) => {
     // Load user context for system prompt (consumer surface only)
     let userContext = { campaigns: [] as any[], pendingApplications: 0 };
     if (!internalMode) {
+      // Count ALL owned campaigns (any status) — filtering to 'published' made an
+      // 'active'/'draft' campaign read as 0, priming Donny's false "no campaigns /
+      // data sync issue" reply.
       const { data: campaigns } = await supabaseAdmin
         .from("campaigns")
         .select("id, title, status")
         .eq("user_id", userId)
-        .eq("status", "published")
         .limit(10);
 
       const { count: pendingAppCount } = await supabaseAdmin

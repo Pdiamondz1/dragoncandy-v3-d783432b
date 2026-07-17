@@ -15,6 +15,7 @@ import * as guidanceAgent from "./agents/guidance.ts";
 import * as generalAgent from "./agents/general.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
+import { isKnownRoute } from "./routes.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -55,7 +56,8 @@ Rules:
 - When the user wants to create or start a NEW campaign, call prepare_campaign with a concise brief distilled from the conversation, then tell them you've set up the builder with their idea and to click the button to review and launch
 - When the user asks about social media posting, analytics, or content scheduling, use the social_ tools
 - If unsure, say so honestly
-- Format suggested_actions as: [{"label":"Action text","route":"/path"}]`;
+- Format suggested_actions as: [{"label":"Action text","route":"/path"}]
+- Only use routes that appear in a tool result; never invent, guess, or paraphrase a URL. If no route is available, omit suggested_actions rather than making one up`;
 
   const volatile = `Current user: ${userContext.full_name ?? "Unknown"} (${userContext.user_role})
 Current page: ${pagePath}
@@ -321,12 +323,17 @@ serve(async (req) => {
     // --- Fetch user context ---
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id, role, full_name")
+      .select("id, role, full_name, org_id")
       .eq("id", userId)
       .maybeSingle();
 
     let orgTier: string | undefined;
-    const resolvedOrgId = org_id ?? undefined;
+    // A user's org IS their profile org, so derive it server-side and prefer that
+    // over any client-supplied org_id — org-scoped reads (applications by org_id,
+    // DragonShare boosts, the campaignDetail authorization check) must not trust a
+    // client value that could point at another tenant's org. Fall back to the body
+    // value only when the profile has no org.
+    const resolvedOrgId = profile?.org_id ?? org_id ?? undefined;
 
     if (resolvedOrgId) {
       const { data: org } = await supabase
@@ -468,7 +475,12 @@ serve(async (req) => {
 
     // --- Extract final answer ---
     const rawText = extractText(claudeResult.content);
-    const { answer, suggested_actions } = parseSuggestedActions(rawText);
+    const parsed = parseSuggestedActions(rawText);
+    const answer = parsed.answer;
+    // Drop any route the model invented that isn't a real in-app path — an unknown
+    // route navigates to the catch-all 404 (the "Invite Creators" bug). Server-side
+    // half of the fix; DonnyMessage.tsx also guards already-persisted actions.
+    const suggested_actions = parsed.suggested_actions.filter((a) => isKnownRoute(a.route));
 
     // --- Log to donny_help_logs ---
     try {
