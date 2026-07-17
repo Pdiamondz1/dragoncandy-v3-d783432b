@@ -43,6 +43,20 @@ function rowsOf<T>(res: QueryResult<T>): { rows: T[]; ok: boolean } {
 }
 
 /**
+ * Deterministic response when a PRIMARY data fetch fails — so a transient 400/500
+ * or a future schema regression is never reported as a genuinely-empty account
+ * (which would falsely say "no campaigns" + a "Create your first campaign" CTA).
+ * The Supabase client returns `{data:null,error}` rather than throwing, so the
+ * outer try/catch does NOT cover a failed query — we must check `.ok` explicitly
+ * before walking the empty path. Mirrors the outer catch message. (Codex P2.)
+ */
+const CAMPAIGN_FETCH_ERROR: SubAgentResult = {
+  context:
+    "Unable to load campaign data right now — this is a temporary fetch issue. Tell the user to try again in a moment. Do NOT tell them they have no campaigns.",
+  suggested_actions: [],
+};
+
+/**
  * Handles "show me my campaigns / applications / collaborations / matching" intent.
  * Role-aware: owners (business/brand) see the campaigns they own plus applications
  * and collaborations on those campaigns; creators see the campaigns they've applied
@@ -64,11 +78,7 @@ export async function execute(
       : await creatorSummary(supabase, userId, role, campaignId);
   } catch (err) {
     console.error("[campaign_agent] error:", err);
-    return {
-      context:
-        "Unable to load campaign data right now — this is a temporary fetch issue. Tell the user to try again in a moment. Do NOT tell them they have no campaigns.",
-      suggested_actions: [],
-    };
+    return CAMPAIGN_FETCH_ERROR;
   }
 }
 
@@ -92,6 +102,8 @@ async function ownerSummary(
       .order("created_at", { ascending: false })
       .limit(50)
   );
+  // Primary query failed → don't report an empty account (Codex P2).
+  if (!campaignsRes.ok) return CAMPAIGN_FETCH_ERROR;
   const campaigns = campaignsRes.rows;
   const ownedIds = campaigns.map((c: { id: string }) => c.id);
 
@@ -201,6 +213,8 @@ async function creatorSummary(
       .order("created_at", { ascending: false })
       .limit(30)
   );
+  // Primary query failed → don't report an empty account (Codex P2).
+  if (!applicationsRes.ok) return CAMPAIGN_FETCH_ERROR;
   const applications = applicationsRes.rows;
 
   const collaborationsRes = rowsOf(
