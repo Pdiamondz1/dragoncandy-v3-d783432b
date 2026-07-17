@@ -4,8 +4,9 @@ import { render, cleanup } from "@testing-library/react";
 import { VideoSlot } from "./VideoSlot";
 
 beforeEach(() => {
-  // jsdom doesn't implement HTMLMediaElement.play; the ambient-play effect calls it.
+  // jsdom doesn't implement HTMLMediaElement.play/load; the ambient-play effect calls them.
   vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined as unknown as void);
+  vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => {});
 });
 afterEach(() => {
   cleanup();
@@ -39,5 +40,14 @@ describe("VideoSlot variant", () => {
   it("backdrop without src still renders the branded placeholder", () => {
     const { container } = render(<VideoSlot variant="backdrop" />);
     expect(container.querySelector("video")).toBeNull();
+  });
+
+  it("reloads the element when src changes so the morphing hero swaps clips", () => {
+    // A <source> swap alone does NOT reload a <video>; the effect must call load().
+    const load = HTMLMediaElement.prototype.load as ReturnType<typeof vi.fn>;
+    const { rerender } = render(<VideoSlot src="business.mp4" poster="b.jpg" variant="backdrop" />);
+    load.mockClear();
+    rerender(<VideoSlot src="creator.mp4" poster="c.jpg" variant="backdrop" />);
+    expect(load).toHaveBeenCalled();
   });
 });
