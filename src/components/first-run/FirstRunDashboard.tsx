@@ -59,7 +59,7 @@ export function FirstRunDashboard({ role, missions, onCompleteMission: _onComple
   };
 
   return (
-    <div className="min-h-screen bg-gray-400 p-4">
+    <div className="dc-surface p-4">
       {/* Top bar */}
       <div className="flex justify-between items-center mb-4">
         <span className="text-sm font-bold text-teal-400">🐉 DragonCandy</span>
@@ -79,7 +79,7 @@ export function FirstRunDashboard({ role, missions, onCompleteMission: _onComple
         onSkip={onSkip}
       />
 
-      <p className="text-center text-xs text-gray-500 mt-4">
+      <p className="text-center text-xs text-white/60 mt-4">
         Takes about 60 seconds total ⚡
       </p>
     </div>

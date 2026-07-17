@@ -10,10 +10,10 @@ interface Props {
 
 export function DragonShareStatTile({ label, totalCents, count, href }: Props) {
   return (
-    <Link to={href} className="block rounded-2xl border border-teal-200 bg-teal-50/50 p-4 hover:bg-teal-50 transition-colors">
+    <Link to={href} className="block rounded-2xl border border-dc-teal/20 bg-dc-teal/5 p-4 hover:bg-dc-teal/10 transition-colors">
       <div className="flex items-center gap-2 mb-1">
-        <Sparkles className="h-4 w-4 text-teal-500" />
-        <span className="text-xs font-medium text-teal-700">{label}</span>
+        <Sparkles className="h-4 w-4 text-dc-teal" />
+        <span className="text-xs font-medium text-dc-teal">{label}</span>
       </div>
       {count > 0 ? (
         <>

@@ -20,7 +20,7 @@ export function NeedsAttentionSection({ children }: NeedsAttentionSectionProps) 
   return (
     <section className="hidden [&:has([data-attention-slot]:not(:empty))]:block">
       <SectionHeader title="Needs your attention" />
-      <div className="rounded-2xl border border-dc-teal/15 bg-white shadow-dc-sm overflow-hidden [&>div:not(:empty)~div:not(:empty)]:border-t [&>div]:border-dc-teal/10">
+      <div className="dc-panel overflow-hidden [&>div:not(:empty)~div:not(:empty)]:border-t [&>div]:border-white/10">
         {Children.map(children, (child) =>
           child == null || child === false ? null : <div data-attention-slot>{child}</div>
         )}

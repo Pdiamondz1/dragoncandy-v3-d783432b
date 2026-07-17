@@ -37,15 +37,15 @@ function pillFor(item: DSActivityItem, role: 'creator' | 'business') {
     case 'paid':
       return {
         text: `Paid +$${((item.payoutCents ?? 0) / 100).toFixed(0)}`,
-        className: 'bg-emerald-100 text-emerald-700',
+        className: 'bg-emerald-500/15 text-emerald-300',
       };
     case 'not_selected':
-      return { text: 'Not selected', className: 'bg-amber-100 text-amber-800' };
+      return { text: 'Not selected', className: 'bg-amber-500/15 text-amber-300' };
     case 'submitted':
     default:
       return {
         text: role === 'business' ? 'Awaiting boost' : 'Submitted',
-        className: 'bg-dc-teal/15 text-dc-teal-btn',
+        className: 'bg-dc-teal/15 text-dc-teal',
       };
   }
 }
@@ -73,7 +73,7 @@ export function DragonShareActivityCard({ role, items, isLoading }: DragonShareA
             ))}
           </div>
         ) : items.length === 0 ? (
-          <div className="text-center py-8 text-dc-text-muted">
+          <div className="text-center py-8 text-white/60">
             <p className="text-sm font-medium">No DragonShare activity yet</p>
             <p className="text-xs mt-1">{emptyHint}</p>
           </div>
@@ -93,11 +93,11 @@ export function DragonShareActivityCard({ role, items, isLoading }: DragonShareA
                   >
                     {pill.text}
                   </span>
-                  <span className="flex-1 min-w-0 truncate text-sm text-dc-text">
+                  <span className="flex-1 min-w-0 truncate text-sm text-white">
                     {itemLabel(item)}
                   </span>
                   {time && (
-                    <span className="flex-shrink-0 text-xs text-dc-text-muted whitespace-nowrap">
+                    <span className="flex-shrink-0 text-xs text-white/60 whitespace-nowrap">
                       {time}
                     </span>
                   )}

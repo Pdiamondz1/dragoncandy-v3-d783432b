@@ -25,7 +25,7 @@ export function OnboardingProgress({ currentStep, totalSteps, accentColor }: Onb
                 ? `${fillClass} ${glowClass}`
                 : isComplete
                   ? `${fillClass} opacity-60`
-                  : 'bg-gray-200'
+                  : 'bg-white/10'
             }`}
             animate={{
               width: isActive ? 32 : 10,

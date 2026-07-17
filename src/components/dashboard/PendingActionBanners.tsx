@@ -25,8 +25,8 @@ function dismiss(campaignId: string) {
 function ActionBanner({ action, onDismiss }: { action: PendingAction; onDismiss: () => void }) {
   const navigate = useNavigate();
   const icon = action.actionType === 'review_application'
-    ? <Clock className="h-4 w-4 text-amber-600 shrink-0" />
-    : <Eye className="h-4 w-4 text-pink-600 shrink-0" />;
+    ? <Clock className="h-4 w-4 text-amber-300 shrink-0" />
+    : <Eye className="h-4 w-4 text-dc-pink-accent shrink-0" />;
 
   const timeAgo = formatRelativeTime(action.occurredAt);
   const message = action.actionType === 'review_application'
@@ -38,18 +38,18 @@ function ActionBanner({ action, onDismiss }: { action: PendingAction; onDismiss:
   return (
     <div className="flex items-center gap-3 px-4 py-2.5 border-l-2 border-l-amber-400">
       {icon}
-      <p className="text-sm text-dc-text flex-1 min-w-0">
+      <p className="text-sm text-white flex-1 min-w-0">
         {message} —{' '}
         <button
           onClick={() => navigate(`/dashboard/business/campaigns/${action.campaignId}`)}
-          className="font-semibold text-dc-teal-btn hover:underline"
+          className="font-semibold text-dc-teal hover:underline"
         >
           {ctaLabel}
         </button>
       </p>
       <button
         onClick={(e) => { e.stopPropagation(); onDismiss(); }}
-        className="text-dc-text-muted hover:text-dc-text shrink-0"
+        className="text-white/60 hover:text-white shrink-0"
         aria-label="Dismiss"
       >
         <X className="h-4 w-4" />
@@ -85,7 +85,7 @@ export function PendingActionBanners() {
         />
       ))}
       {remaining > 0 && (
-        <p className="text-xs text-amber-600 font-medium px-4 py-2">
+        <p className="text-xs text-amber-300 font-medium px-4 py-2">
           + {remaining} more campaign{remaining !== 1 ? 's' : ''} need attention
         </p>
       )}

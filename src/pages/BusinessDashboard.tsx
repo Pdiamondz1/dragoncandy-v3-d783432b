@@ -62,7 +62,7 @@ const BusinessDashboard = () => {
   if (!profile) {
     return (
       <DashboardLayout userRole="business_client">
-        <div className="min-h-screen bg-white overflow-x-hidden">
+        <div className="dc-surface overflow-x-hidden">
           <div className="px-4 lg:px-8 pt-8 lg:pt-12 pb-24 md:pb-12">
             <div className="max-w-2xl lg:max-w-5xl mx-auto space-y-10">
               <div className="space-y-3">
@@ -114,7 +114,7 @@ const BusinessDashboard = () => {
       {hasMore && (
         <Link
           to="/dashboard/business/campaigns"
-          className="block text-center text-sm font-semibold text-dc-teal-btn hover:underline pt-3"
+          className="block text-center text-sm font-semibold text-dc-teal hover:underline pt-3"
         >
           View all campaigns
         </Link>
@@ -124,7 +124,7 @@ const BusinessDashboard = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="min-h-screen bg-white overflow-x-hidden">
+      <div className="dc-surface overflow-x-hidden">
         <div className="px-4 lg:px-8 pt-8 lg:pt-12 pb-24 md:pb-12">
           <div className="max-w-2xl lg:max-w-5xl mx-auto space-y-10 lg:space-y-14">
 
@@ -148,8 +148,8 @@ const BusinessDashboard = () => {
             <NeedsAttentionSection>
               {hasActiveLocation && !isReady && (
                 <div className="flex items-start gap-3 px-4 py-2.5 border-l-2 border-l-amber-400">
-                  <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                  <p className="text-sm text-dc-text flex-1 min-w-0">
+                  <AlertTriangle className="h-4 w-4 text-amber-300 shrink-0 mt-0.5" />
+                  <p className="text-sm text-white flex-1 min-w-0">
                     <span className="font-semibold">Complete {locationName}'s setup</span> — this location needs
                     {missingStripe && ' a connected Stripe account'}
                     {missingStripe && missingSocial && ' and'}
@@ -157,7 +157,7 @@ const BusinessDashboard = () => {
                     {' '}before you can create campaigns, promotions, or use DragonShare.{' '}
                     <button
                       onClick={() => navigate('/dashboard/business/settings')}
-                      className="font-semibold text-dc-teal-btn hover:underline"
+                      className="font-semibold text-dc-teal hover:underline"
                     >
                       Go to Settings →
                     </button>
@@ -209,7 +209,7 @@ const BusinessDashboard = () => {
                   {hasMore && (
                     <Link
                       to="/dashboard/business/campaigns"
-                      className="text-xs font-semibold text-dc-teal-btn hover:underline flex items-center gap-0.5"
+                      className="text-xs font-semibold text-dc-teal hover:underline flex items-center gap-0.5"
                     >
                       View all <ChevronRight className="w-3 h-3" />
                     </Link>

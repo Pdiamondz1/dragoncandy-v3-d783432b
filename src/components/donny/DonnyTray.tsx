@@ -60,22 +60,22 @@ export function DonnyTray({ variant = 'desktop' }: DonnyTrayProps) {
   const emptyState = (
     <div className="text-center px-4 py-8">
       <div className="text-2xl mb-1">🎉</div>
-      <p className="text-sm font-semibold text-dc-text">You're all caught up!</p>
-      <p className="text-xs text-dc-text-muted mt-1">
+      <p className="text-sm font-semibold text-white">You're all caught up!</p>
+      <p className="text-xs text-white/60 mt-1">
         Pick a quick action below, or ask me anything.
       </p>
     </div>
   );
 
   const pageHelpSection = pageSuggestions.length > 0 && (
-    <div className="px-3 py-2 border-t border-dc-teal/15">
-      <p className="text-[10px] text-dc-text-muted mb-1 uppercase tracking-wide">Help on this page</p>
+    <div className="px-3 py-2 border-t border-white/10">
+      <p className="text-[10px] text-white/60 mb-1 uppercase tracking-wide">Help on this page</p>
       <div className="flex flex-wrap gap-1.5">
         {pageSuggestions.map((s) => (
           <button
             key={s.label}
             onClick={() => handleChipTap(s.question, true)}
-            className="whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium border bg-white border-dc-teal/40 text-dc-teal-btn hover:bg-dc-teal/5 transition-colors"
+            className="whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium border bg-white/5 border-dc-teal/40 text-dc-teal hover:bg-dc-teal/5 transition-colors"
           >
             {s.label}
           </button>
@@ -85,8 +85,8 @@ export function DonnyTray({ variant = 'desktop' }: DonnyTrayProps) {
   );
 
   const quickChipsSection = quickChips.length > 0 && (
-    <div className="px-3 py-2 border-t border-dc-teal/15">
-      <p className="text-[10px] text-dc-text-muted mb-1 uppercase tracking-wide">Quick actions</p>
+    <div className="px-3 py-2 border-t border-white/10">
+      <p className="text-[10px] text-white/60 mb-1 uppercase tracking-wide">Quick actions</p>
       <div className="flex flex-wrap gap-1.5">
         {quickChips.map((chip) => (
           <button
@@ -95,8 +95,8 @@ export function DonnyTray({ variant = 'desktop' }: DonnyTrayProps) {
             className={cn(
               'whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium border transition-colors',
               chip.variant === 'teal'
-                ? 'bg-teal-50 border-teal-300 text-teal-700 hover:bg-teal-100'
-                : 'bg-pink-50 border-pink-300 text-pink-700 hover:bg-pink-100'
+                ? 'bg-dc-teal/10 border-dc-teal/30 text-dc-teal hover:bg-dc-teal/20'
+                : 'bg-dc-pink-accent/10 border-dc-pink-accent/30 text-dc-pink-accent hover:bg-dc-pink-accent/20'
             )}
           >
             {chip.label}
@@ -110,7 +110,7 @@ export function DonnyTray({ variant = 'desktop' }: DonnyTrayProps) {
 
   if (variant === 'mobile') {
     return (
-      <div className="flex flex-col h-full bg-white pb-[env(safe-area-inset-bottom)]">
+      <div className="flex flex-col h-full bg-dc-dark pb-[env(safe-area-inset-bottom)]">
         {header}
         {/* Input first — the primary action, full-size under the header */}
         {input}
@@ -129,7 +129,7 @@ export function DonnyTray({ variant = 'desktop' }: DonnyTrayProps) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-white pb-[env(safe-area-inset-bottom)]">
+    <div className="flex flex-col h-full bg-dc-dark pb-[env(safe-area-inset-bottom)]">
       {header}
 
       {/* Nudge cards */}

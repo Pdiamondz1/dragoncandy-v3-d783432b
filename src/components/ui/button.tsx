@@ -20,11 +20,15 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
         "dc-primary":
-          "bg-dc-teal-btn text-white dark:text-dc-dark hover:bg-dc-teal-btn-hover transition-[color,background-color,transform] duration-150 hover:scale-[1.02] active:scale-[0.98]",
+          "bg-dc-teal-btn text-white hover:bg-dc-teal-btn-hover transition-[color,background-color,transform] duration-150 hover:scale-[1.02] active:scale-[0.98]",
         "dc-outline":
           "border-2 border-dc-teal text-dc-teal bg-transparent hover:bg-dc-teal/10 transition-[color,background-color,transform] duration-150 hover:scale-[1.02] active:scale-[0.98]",
         "dc-ghost":
           "text-muted-foreground bg-transparent hover:text-dc-teal hover:bg-dc-teal/5",
+        "dc-teal-pill":
+          "rounded-full bg-dc-teal text-dc-dark font-bold hover:bg-dc-teal-dark hover:shadow-glow-teal",
+        "dc-ghost-pill":
+          "rounded-full border border-white/20 bg-white/5 text-white hover:border-dc-teal hover:text-dc-teal backdrop-blur",
       },
       size: {
         default: "h-12 px-6 py-2",

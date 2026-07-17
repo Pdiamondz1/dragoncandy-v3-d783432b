@@ -9,6 +9,7 @@ import { RoleSelection } from "@/components/auth/RoleSelection";
 import { toast } from 'sonner';
 import { BRAND_ROLE_ENABLED } from "@/lib/featureConfig";
 import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.webp';
+import { GlowBackdrop } from "@/components/dark/GlowBackdrop";
 
 type SignupStep = "role-selection" | "signup-form";
 
@@ -254,7 +255,10 @@ const AuthPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1A5C5C] via-[#2D7A7A] to-[#9B5A8A] flex flex-col">
+    <div className="relative min-h-screen flex flex-col overflow-x-hidden bg-dc-dark text-white
+      bg-[radial-gradient(120%_120%_at_20%_0%,rgba(77,217,192,0.18),transparent_45%),radial-gradient(120%_120%_at_80%_100%,rgba(236,72,153,0.18),transparent_45%)]">
+      <GlowBackdrop />
+      <div className="relative z-10 flex flex-1 flex-col">
       <SEO
         title="Sign In or Sign Up - DragonCandy"
         description="Log in to DragonCandy or create a brand, restaurant, or creator account in under a minute."
@@ -277,14 +281,14 @@ const AuthPage = () => {
           <AuthForm mode="login" onError={setError} />
 
           {error === 'verify_email' ? (
-            <div className="bg-red-50 px-4 py-3 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto text-center space-y-2">
-              <p className="text-sm text-red-600">
+            <div className="bg-red-500/10 border border-red-500/20 px-4 py-3 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto text-center space-y-2">
+              <p className="text-sm text-red-300">
                 Please verify your email before continuing. Check your inbox for the verification link.
               </p>
               <button
                 onClick={handleResendVerification}
                 disabled={resendCooldown > 0}
-                className="text-sm font-semibold text-dc-teal hover:text-dc-teal-dark disabled:text-gray-400 transition-colors"
+                className="text-sm font-semibold text-dc-teal hover:text-dc-teal-dark disabled:text-white/30 transition-colors"
               >
                 {resendCooldown > 0
                   ? `Resend in ${resendCooldown}s`
@@ -292,13 +296,13 @@ const AuthPage = () => {
               </button>
               <button
                 onClick={handleDismissVerification}
-                className="block mx-auto text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                className="block mx-auto text-xs text-white/60 hover:text-white transition-colors"
               >
                 Back to login
               </button>
             </div>
           ) : error ? (
-            <div className="text-sm text-red-600 bg-red-50 px-4 py-2 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto">
+            <div className="text-sm text-red-300 bg-red-500/10 border border-red-500/20 px-4 py-2 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto">
               {error}
             </div>
           ) : null}
@@ -330,14 +334,14 @@ const AuthPage = () => {
           />
 
           {error === 'verify_email' ? (
-            <div className="bg-red-50 px-4 py-3 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto text-center space-y-2">
-              <p className="text-sm text-red-600">
+            <div className="bg-red-500/10 border border-red-500/20 px-4 py-3 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto text-center space-y-2">
+              <p className="text-sm text-red-300">
                 Please verify your email before continuing. Check your inbox for the verification link.
               </p>
               <button
                 onClick={handleResendVerification}
                 disabled={resendCooldown > 0}
-                className="text-sm font-semibold text-dc-teal hover:text-dc-teal-dark disabled:text-gray-400 transition-colors"
+                className="text-sm font-semibold text-dc-teal hover:text-dc-teal-dark disabled:text-white/30 transition-colors"
               >
                 {resendCooldown > 0
                   ? `Resend in ${resendCooldown}s`
@@ -345,13 +349,13 @@ const AuthPage = () => {
               </button>
               <button
                 onClick={handleDismissVerification}
-                className="block mx-auto text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                className="block mx-auto text-xs text-white/60 hover:text-white transition-colors"
               >
                 Back to login
               </button>
             </div>
           ) : error ? (
-            <div className="text-sm text-red-600 bg-red-50 px-4 py-2 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto">
+            <div className="text-sm text-red-300 bg-red-500/10 border border-red-500/20 px-4 py-2 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto">
               {error}
             </div>
           ) : null}
@@ -361,6 +365,7 @@ const AuthPage = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

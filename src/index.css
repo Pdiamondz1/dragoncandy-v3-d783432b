@@ -85,13 +85,13 @@
 
   /* ── Dark mode tokens ──────────────────────────────────────────────────── */
   .dark {
-    --background: 240 23% 13%;
+    --background: 240 24% 13%;
     --foreground: 0 0% 94%;
 
-    --card: 240 22% 18%;
+    --card: 240 16% 17%;
     --card-foreground: 0 0% 94%;
 
-    --popover: 240 22% 16%;
+    --popover: 240 16% 16%;
     --popover-foreground: 0 0% 94%;
 
     --primary: 166 52% 51%;
@@ -100,8 +100,8 @@
     --secondary: 330 65% 74%;
     --secondary-foreground: 240 27% 14%;
 
-    --muted: 240 20% 23%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 240 16% 20%;
+    --muted-foreground: 240 6% 64%;
 
     --accent: 330 38% 16%;
     --accent-foreground: 330 65% 74%;
@@ -109,8 +109,8 @@
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 94%;
 
-    --border: 240 20% 24%;
-    --input: 240 20% 24%;
+    --border: 240 16% 24%;
+    --input: 240 16% 24%;
     --ring: 166 52% 51%;
 
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
@@ -149,6 +149,12 @@
 }
 
 /* ── Component utilities ───────────────────────────────────────────────────── */
+
+@layer components {
+  .dc-surface { @apply min-h-screen bg-dc-dark text-white; }
+  .dc-panel   { @apply rounded-3xl border border-white/10 bg-white/5; }
+  .dc-field   { @apply h-12 rounded-xl border border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-2 focus-visible:ring-dc-teal; }
+}
 
 @layer utilities {
   .fixed-sidebar {

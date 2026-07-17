@@ -22,7 +22,7 @@ interface StatsRowProps {
 export function StatsRow({ stats, isLoading }: StatsRowProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 gap-x-6 gap-y-5 lg:flex lg:gap-0 lg:divide-x lg:divide-dc-teal/10">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-5 lg:flex lg:gap-0 lg:divide-x lg:divide-white/10">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="lg:px-8 lg:first:pl-0">
             <Skeleton className="h-8 w-16 mb-2" />
@@ -34,19 +34,19 @@ export function StatsRow({ stats, isLoading }: StatsRowProps) {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-x-6 gap-y-5 lg:flex lg:gap-0 lg:divide-x lg:divide-dc-teal/10">
+    <div className="grid grid-cols-2 gap-x-6 gap-y-5 lg:flex lg:gap-0 lg:divide-x lg:divide-white/10">
       {stats.map((stat) => {
         const content = (
           <>
-            <div className="text-2xl lg:text-3xl font-bold tabular-nums text-dc-text">
+            <div className="text-2xl lg:text-3xl font-bold tabular-nums text-white">
               {stat.value}
             </div>
             <div className="flex items-center gap-1.5 mt-1">
-              {stat.icon && <stat.icon className="h-3.5 w-3.5 text-dc-text-muted" aria-hidden="true" />}
-              <p className="text-xs font-medium text-dc-text-muted">{stat.label}</p>
+              {stat.icon && <stat.icon className="h-3.5 w-3.5 text-white/60" aria-hidden="true" />}
+              <p className="text-xs font-medium text-white/60">{stat.label}</p>
             </div>
             {stat.subtitle && (
-              <p className="text-xs text-dc-text-muted/80 mt-0.5">{stat.subtitle}</p>
+              <p className="text-xs text-white/40 mt-0.5">{stat.subtitle}</p>
             )}
           </>
         );

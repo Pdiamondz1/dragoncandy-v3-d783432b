@@ -27,7 +27,6 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { Settings, LogOut, PlusCircle, HelpCircle } from 'lucide-react';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
 import { useLogout } from '@/hooks/useLogout';
 import { useProfileData } from '@/hooks/useProfileData';
@@ -165,8 +164,8 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
 
   const topNavBgClass =
     userRole === 'business_client' || userRole === 'content_creator' || userRole === 'brand'
-      ? 'bg-gradient-to-b from-dc-pink-bg to-pink-50'
-      : 'bg-white';
+      ? 'bg-dc-dark/80 backdrop-blur-xl border-b border-white/10'
+      : 'bg-dc-dark/80 backdrop-blur-xl border-b border-white/10';
   const showWelcome =
     (userRole === 'business_client' && location.pathname === '/dashboard/business') ||
     (userRole === 'brand' && location.pathname === '/dashboard/brand');
@@ -224,7 +223,6 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
                       }}
                     />
                   )}
-                  <ThemeToggle />
                   <NotificationDropdown />
 
                   <button
@@ -281,7 +279,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={logout} className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-600">
+                      <DropdownMenuItem onClick={logout} className="cursor-pointer text-red-300 focus:text-red-300">
                         <LogOut className="mr-2 h-4 w-4" />
                         <span>Log out</span>
                       </DropdownMenuItem>
