@@ -132,6 +132,23 @@ describe("RotatingBackdrop", () => {
     expect((getByTestId("backdrop-layer-1") as HTMLVideoElement).src).not.toContain("c2.mp4");
   });
 
+  it("force-advances via the max-dwell watchdog if a clip never ends or errors (no stall)", () => {
+    vi.useFakeTimers();
+    try {
+      const { getByTestId } = render(<RotatingBackdrop playlist={[clip(1), clip(2), clip(3)]} />);
+      expect(getByTestId("backdrop-layer-0").getAttribute("data-active")).toBe("true");
+      // No `ended` and no `error` fired — a silently-undecodable/stalled clip. The watchdog must
+      // still advance the rotation so it can never permanently freeze.
+      act(() => {
+        vi.advanceTimersByTime(15100);
+      });
+      expect(getByTestId("backdrop-layer-1").getAttribute("data-active")).toBe("true");
+      expect(getByTestId("backdrop-layer-0").getAttribute("data-active")).toBe("false");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("ignores an `ended` fired by the non-active (hidden) layer", () => {
     const { getByTestId } = render(<RotatingBackdrop playlist={[clip(1), clip(2)]} />);
     act(() => {

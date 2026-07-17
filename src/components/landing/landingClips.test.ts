@@ -77,15 +77,17 @@ describe("mergeBackdropPlaylist", () => {
   const staticClips = [s("h1"), s("h2")];
   const dynamicClips = [d("boost1"), d("boost2")];
 
-  it("leads with dynamic clips, then static, for hero.business", () => {
+  it("leads with static clips, then dynamic (trailing), for hero.business", () => {
     const out = mergeBackdropPlaylist("hero.business", staticClips, dynamicClips);
     expect(out.map((c) => c.src)).toEqual([
-      "https://cdn/boost1.mp4", "https://cdn/boost2.mp4", "/landing/h1.mp4", "/landing/h2.mp4",
+      "/landing/h1.mp4", "/landing/h2.mp4", "https://cdn/boost1.mp4", "https://cdn/boost2.mp4",
     ]);
   });
 
-  it("also applies to hero.creator", () => {
-    expect(mergeBackdropPlaylist("hero.creator", staticClips, dynamicClips)[0].src).toBe("https://cdn/boost1.mp4");
+  it("also applies to hero.creator (curated leads, dynamic trails)", () => {
+    const out = mergeBackdropPlaylist("hero.creator", staticClips, dynamicClips);
+    expect(out[0].src).toBe("/landing/h1.mp4");
+    expect(out[out.length - 1].src).toBe("https://cdn/boost2.mp4");
   });
 
   it("returns static unchanged for hero.brand (not an eligible key)", () => {
