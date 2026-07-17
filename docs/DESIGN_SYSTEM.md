@@ -2,30 +2,38 @@
 
 > Screenshots of all screens are in the `/designs` folder. Always reference them when building or modifying UI.
 
-## Theme — Dark-Luxe (default, forced)
+## Theme — Light app, Dark marketing/entry (current, 2026-07-17)
 
-**The app is a single dark "Dark-Luxe" theme** matching the landing page (rollout in phased slices;
-Slice 1 shipped 2026-07-17, PR #269). `ThemeProvider` uses `forcedTheme="dark"` and `<html>` carries
-`class="dark"` — there is **no light/dark toggle**. When building or restyling UI, target dark:
+**The working app is LIGHT; only the marketing/entry surfaces are dark.** After a brief experiment
+that forced the whole app dark (PR #269), founder feedback was that the dark *app* was too dark, some
+text unreadable, and the phased-rollout white patches looked unfinished — so the app was reverted to
+its **original light theme** (PRs #275 + #277). Build/restyle **app** UI **light** (the `dc-*` palette
+below, `bg-white` cards, `dc-text`/`dc-text-muted` on light, pink/gray dashboard headers).
 
-- **Page root:** `.dc-surface` (`min-h-screen bg-dc-dark text-white`) — never `bg-white`/`bg-gray-*`.
-- **Cards/panels:** `.dc-panel` (`rounded-3xl border border-white/10 bg-white/5`) — translucent films
-  over the charcoal, **never a flat gray card**.
-- **Inputs:** `.dc-field` on a raw `<input>`; on a shadcn `<Input>`/`<Textarea>` use explicit utilities
-  (`border-white/15 bg-white/5 text-white placeholder:text-white/40`) — a `@layer components` class
-  loses to the component's own `@layer utilities`.
-- **Text ramp (never flat gray):** `text-white` → `text-white/80` → `text-white/60` → `text-white/40`.
-- **Buttons:** `dc-teal-pill` (primary) / `dc-ghost-pill` (secondary) CVA variants; `GlowBackdrop` +
-  `Eyebrow` in `src/components/dark/`.
-- **Accents unchanged:** teal (`#4DD9C0`) + pink (`#EC4899`/`#F9A8D4`) stay exactly; errors stay
-  semantic red (`bg-red-500/10 text-red-300`), never remapped to pink.
-- **Contrast trap:** `text-dc-dark` / `text-dc-teal-btn` / `text-dc-pink-accent-btn` are *dark fills* —
-  correct **on** a teal/pink/white fill (e.g. `bg-dc-teal text-dc-dark`), **invisible as text on the
-  dark page**. Judge by the element's own background.
+**Dark surfaces (only these):**
+- **Landing** (`src/pages/LandingPage.tsx` + `components/landing/*`) — self-scopes `.dark` on its root div.
+- **Login/sign-up + auth-adjacent** (`AuthPage`, forgot/update/verify/restore/invite) and **onboarding**
+  (`OnboardingWizard`) — each calls the **`useDarkHtml()`** hook (`src/hooks/useDarkHtml.ts`), which adds
+  `dark` to `<html>` for the route's lifetime (mirrors `InternalLayout` for `/internal`) and reverts on
+  unmount, so `<body>` is dark and their dark literals + glows render correctly.
+- **`/internal` AIOS** — `InternalLayout` adds `dark` to `<html>` (dark ops-deck).
 
-The two-color-system mechanics, per-slice conversion pattern, and traps are in
-`docs/wiki/concepts/dark-luxe-app-theme.md`. Video backdrops remain landing-only. Some
-not-yet-converted feature pages are still light during the phased rollout (coherent, not broken).
+`ThemeProvider` = `defaultTheme="light"` (NOT `forcedTheme` — a forced light would fight
+`InternalLayout`/`useDarkHtml`'s `<html class="dark">`; a forced dark makes the whole app dark). No
+light/dark toggle.
+
+**When building a DARK surface**, the reusable dark-luxe kit lives on: `.dc-surface`/`.dc-panel`/`.dc-field`
+classes, `dc-teal-pill`/`dc-ghost-pill` button variants, `GlowBackdrop`/`Eyebrow` (`src/components/dark/`),
+the white-opacity text ramp (`text-white`→`/80`→`/60`→`/40`), teal+pink accents, and errors as
+`bg-red-500/10 text-red-300`. **Gotchas:** (1) a scoped-div `.dark` alone leaves `<body>` light → the
+auth glows composite over white and wash out; use `useDarkHtml()` so `<body>` is dark. (2) `.dc-field`
+(a `@layer components` class) loses to a shadcn `<Input>`'s own utilities → use explicit
+`border-white/15 bg-white/5 text-white placeholder:text-white/40` there. (3) Dark-fill-as-text trap:
+`text-dc-dark`/`text-dc-teal-btn`/`text-dc-pink-accent-btn` are correct **on** a teal/pink/white fill but
+invisible as text on a dark page.
+
+Video backdrops remain landing-only. Full mechanics + history:
+`docs/wiki/concepts/dark-luxe-app-theme.md`.
 
 ## Color Palette (Tailwind `dc-*` tokens)
 
