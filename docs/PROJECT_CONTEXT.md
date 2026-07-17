@@ -1208,6 +1208,28 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   optionally fill real testimonials + align the gated rewards copy to "Reputation (Rep)". Concept:
   `docs/wiki/concepts/landing-cinematic-video-redesign.md`. Spec:
   `docs/superpowers/specs/2026-07-16-landing-cinematic-video-redesign-design.md`.
+- Public landing — DragonFeed hero backdrop adapter — **shipped + deployed (PR #268,
+  2026-07-17).** Closes the prior session's own prediction ("a future DragonFeed adapter…swaps the
+  source with zero component changes"): the hero backdrop now **leads with real boosted DragonShare
+  video** when any exists, falling back to the curated static clips otherwise. Video-only; no
+  schema/RLS/migration/secret. New anon `landing-clips` edge fn (`verify_jwt=true`, the platform
+  default) does a service-role read of `dragonshare_posts` gated on verified + unflagged +
+  **boosted** (paid boost = the curation gate — safer than "all verified" for anonymous
+  top-of-funnel exposure, since DragonShare is trust-then-flag) + a playable video extension + a
+  captured/transferred boost row; returns only `{src, poster?}`, never PII. Frontend: a new
+  `useLandingBackdropPlaylist` hook merges the dynamic clips (leading) over the static playlist via
+  a pure `mergeBackdropPlaylist`, and `HeroSection` remounts `RotatingBackdrop` on a new
+  content-aware `playlistSignature` key (its rotation is index-based, so a same-length-different-
+  clips swap needs a real remount, not `key={role}`). **No-stall fix** (caught by the whole-branch
+  review, not the per-task reviews): `RotatingBackdrop` only ever advanced on `onEnded`, but an
+  undecodable/404 clip fires `error` instead — with a real (uncurated) upload now possibly leading
+  at index 0, one bad clip would have frozen the hero forever; fixed by also advancing on `onError`
+  and skipping an already-errored preloaded clip. The whole-branch review also found the feature was
+  **not latent** — 5 eligible boosted rows already existed in prod. Reviews: Opus whole-branch →
+  `edge-function-reviewer` PASS → Codex second review clean → `careful`-gated CLI deploy
+  (`verify_jwt=true` preserved, boot-checked). Concept:
+  `docs/wiki/concepts/landing-cinematic-video-redesign.md` (new "DragonFeed Backdrop Adapter"
+  section). Spec: `docs/superpowers/specs/2026-07-17-dragonfeed-backdrop-adapter-design.md`.
 
 - Web Donny find_creators results as avatar rich cards (Option B) — **built + backend-deployed
   (branch `feat/donny-rich-creator-cards`, 2026-07-16; orchestrator v62 live + migration applied;

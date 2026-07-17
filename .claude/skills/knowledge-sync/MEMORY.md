@@ -30,6 +30,44 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-17] DragonFeed hero backdrop adapter (PR #268 → paired docs)
+- Output: bundled INTO the work — `raw/sessions/2026-07-17-dragonfeed-backdrop-adapter.md`,
+  **compounded** `concepts/landing-cinematic-video-redesign.md` (new "DragonFeed Backdrop Adapter
+  (shipped)" section + flipped the seam's forward-looking "future DragonFeed adapter" line to
+  shipped + See-Also [[Trust-Then-Flag Model]]/[[QA CI/CD Gate]] + frontmatter sources/updated),
+  `index.md` (Sources + rewrote the concept line), `log.md` ingest entry, PROJECT_CONTEXT
+  active-workstream bullet, + THIS entry. No DATABASE_SCHEMA/DESIGN_SYSTEM/CLAUDE.md change (reads
+  existing columns, adds one edge fn — no schema/token/workflow change).
+- Happened: **closed a same-branch, one-day-old prediction** — the 2026-07-16
+  `landing-cinematic-video-redesign.md` concept page (written by the PRIOR knowledge-sync run, on
+  the SAME worktree) explicitly predicted "a future DragonFeed adapter…swaps the source with zero
+  component changes"; this session built exactly that adapter one day later. Per the standing
+  close-the-prediction pattern, compounded a new section onto that SAME page (flip gated→shipped)
+  rather than minting a thin new "backdrop adapter" page — even though the feature has real
+  standalone architecture (a new edge fn + a merge/signature seam), it is fundamentally the *next
+  layer* of the one clip-source-seam story, not a separate subject. Also cross-linked
+  [[Trust-Then-Flag Model]] (why the curation gate is "paid boost" not "all verified") and
+  [[QA CI/CD Gate]] (why the feature is unverifiable on a PR preview — Preview points at staging,
+  which has no eligible boosted rows).
+- Worked: [runlog-in-pr] + [orphans]-by-path (new raw session cataloged; concept page already
+  cataloged, only its line rewritten). [wikilinks]-exact: grepped index.md first — confirmed
+  [[Trust-Then-Flag Model]], [[QA CI/CD Gate]], [[Dragon Feed]] all exist before linking; did NOT
+  invent a `[[DragonFeed Backdrop Adapter]]` concept-page link since no such page exists (the
+  content lives as a section on the existing page instead). Captured the two durable technical
+  lessons as concept knowledge, not just a log line: (1) an index-based rotation component needs a
+  **content-aware** remount key, not just a role/length key, the moment its playlist can grow
+  post-mount; (2) a rotation that only advances on success (`onEnded`) becomes a real hazard the
+  moment its content source stops being 100%-curated (`onError` must also advance).
+- Failed: none for knowledge-sync. (The underlying feature's true visual E2E — does the hero show
+  the real clip logged-out — is inherently post-merge/founder-verified on prod, same class of gap
+  as every other prod-content landing feature; documented explicitly rather than glossed over.)
+- Remember: when a concept page you wrote in the IMMEDIATELY PRIOR knowledge-sync run explicitly
+  predicts "a future X," and the very next session builds X, **compound onto that same page and
+  flip the prediction to shipped** even if X has its own nontrivial architecture (a new edge fn, a
+  new hook) — the reader's mental model is "one seam, now with a second source," not two unrelated
+  features. Only mint a separate page when the new work is a genuinely distinct *subject*, not just
+  the next chapter of a story you already started. (advisory — reinforces the existing "close the
+  prediction" + compound-onto-hub Lessons with the sharper case of a same-session/next-day pair.)
 ### [2026-07-17] Dark-Luxe app theme — Slice 1 (PR #269 → paired docs PR)
 - Output: paired docs PR off origin/main — `raw/sessions/2026-07-17-dark-luxe-app-theme-slice1.md`,
   NEW `concepts/dark-luxe-app-theme.md`, `index.md` (Concepts + Sources, alphabetical), `log.md`

@@ -1,5 +1,32 @@
 # Wiki Log
 
+## [2026-07-17] ingest | DragonFeed hero backdrop adapter
+Ingested [[DragonFeed Backdrop Adapter Session]] (branch `worktree-dc-landing-page-upgrade`,
+PR #268, merged + live). Closes the prediction [[Landing Cinematic Video Redesign]] made one day
+earlier ("a future DragonFeed adapter can back `resolveLandingClip` … with zero changes to any
+consuming component"): the public hero backdrop now **leads with real boosted DragonShare video**
+when any exists, falling back to the curated static clips otherwise. New anon `landing-clips` edge
+fn (`verify_jwt=true`, service-role read of `dragonshare_posts`, eligibility = verified + unflagged
++ **boosted** (paid boost = curation gate, since trust-then-flag alone is too risky for anonymous
+top-of-funnel exposure) + video extension + a captured/transferred boost row; returns only
+`{src, poster?}`, never PII). Frontend: a new `useLandingBackdropPlaylist` hook merges dynamic
+clips (leading) over the static playlist via a pure `mergeBackdropPlaylist`, and `HeroSection` now
+remounts `RotatingBackdrop` on a content-aware `playlistSignature` (its rotation is index-based, so
+a same-length-different-clips swap needed a real remount key, not `key={role}`).
+**`RotatingBackdrop` no-stall fix** (caught by the whole-branch review, not per-task reviews): it
+only ever advanced on `onEnded`, but an undecodable/404 clip fires `error` not `ended` — with a
+real (uncurated) upload now possibly leading at index 0, one bad clip would freeze the hero forever;
+fixed by advancing on `onError` too + skipping an already-errored preloaded clip. The whole-branch
+review also found the feature was **not latent** — 5 eligible boosted rows already existed in prod.
+Reviews: Opus whole-branch → `edge-function-reviewer` PASS → Codex second review clean →
+`careful`-gated CLI deploy (verify_jwt=true preserved, boot-checked). No schema/RLS/migration/secret.
+Pages created: the raw session source. Pages updated: [[Landing Cinematic Video Redesign]] (new
+"DragonFeed Backdrop Adapter (shipped)" section + flipped the seam's forward-looking language to
+shipped + See-Also [[Trust-Then-Flag Model]]/[[QA CI/CD Gate]] + frontmatter), `index.md` (Sources +
+rewrote the concept line), PROJECT_CONTEXT (active-workstream bullet). No DATABASE_SCHEMA/
+DESIGN_SYSTEM/CLAUDE.md change (no schema/token/workflow change — reads existing columns + adds one
+edge fn). RAG sync + [[verify-knowledge]] are post-merge (the post-merge hook fires on the `main`
+fast-forward).
 ## [2026-07-17] ingest | Dark-Luxe App Theme — Slice 1
 Ingested [[Dark-Luxe App Theme Session]] (PR #269, merged + deployed 2026-07-17). New concept
 [[Dark-Luxe App Theme]]. The app was forced to a single dark theme matching the landing, in
