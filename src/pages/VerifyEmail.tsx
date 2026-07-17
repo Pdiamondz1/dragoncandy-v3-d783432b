@@ -52,7 +52,7 @@ const VerifyEmail = () => {
   }, [searchParams, navigate]);
 
   return (
-    <div className="min-h-screen bg-white flex flex-col overflow-x-hidden">
+    <div className="dc-surface flex flex-col overflow-x-hidden">
       <SEO
         title="Verify Your Email"
         description="Verifying your DragonCandy email address."
@@ -60,15 +60,15 @@ const VerifyEmail = () => {
         noindex
       />
       {/* Template C header */}
-      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+      <div className="bg-dc-dark/80 backdrop-blur-xl border-b border-white/10 px-4 py-3 flex items-center">
         <div className="flex-1 text-center">
-          <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Email Verification</h1>
+          <h1 className="font-sans text-base font-bold text-white uppercase tracking-wide">Email Verification</h1>
         </div>
       </div>
 
       <div className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-md border-2 border-dc-teal rounded-2xl p-6 text-center space-y-4" aria-live="polite">
-          <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <div className="w-full max-w-md bg-white/5 border-2 border-dc-teal rounded-2xl p-6 text-center space-y-4" aria-live="polite">
+          <p className="font-sans text-xs font-semibold uppercase tracking-wider text-white/60">
             {status === 'verifying' && 'Verifying your email address…'}
             {status === 'success' && 'Your email has been verified!'}
             {status === 'error' && 'Verification failed'}
@@ -81,7 +81,7 @@ const VerifyEmail = () => {
           {status === 'success' && (
             <>
               <CheckCircle2 className="h-16 w-16 text-dc-teal mx-auto" aria-hidden="true" />
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-white/60">
                 Your email has been verified successfully. Redirecting you to login…
               </p>
             </>
@@ -90,7 +90,7 @@ const VerifyEmail = () => {
           {status === 'error' && (
             <>
               <XCircle className="h-16 w-16 text-dc-pink-accent mx-auto" aria-hidden="true" />
-              <p className="text-sm text-gray-500">{errorMessage}</p>
+              <p className="text-sm text-white/60">{errorMessage}</p>
               <button
                 onClick={() => navigate('/auth')}
                 className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3 hover:bg-dc-teal-btn-hover transition-colors"

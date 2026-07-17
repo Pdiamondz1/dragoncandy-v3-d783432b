@@ -64,9 +64,9 @@ export function DonnyMobileSheet() {
             ref={handleRef}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
-            className="flex justify-center pt-2 pb-1 bg-white rounded-t-2xl cursor-grab"
+            className="flex justify-center pt-2 pb-1 bg-dc-dark rounded-t-2xl cursor-grab"
           >
-            <div className="w-9 h-1 bg-gray-300 rounded-full" />
+            <div className="w-9 h-1 bg-white/30 rounded-full" />
           </div>
         )}
 

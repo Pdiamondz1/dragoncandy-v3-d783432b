@@ -17,7 +17,7 @@ interface MobileTopNavProps {
 }
 
 export const MobileTopNav: React.FC<MobileTopNavProps> = ({
-  bgClass = 'bg-white',
+  bgClass = 'bg-dc-dark/80 backdrop-blur-xl border-b border-white/10',
   userRole,
   showWelcome = false,
   displayName,
@@ -61,7 +61,7 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
               className="p-2 rounded-full hover:bg-muted transition-colors"
               aria-label="Open menu"
             >
-              <Menu className="h-6 w-6 text-gray-600" />
+              <Menu className="h-6 w-6 text-white/60" />
             </button>
           </SheetTrigger>
         <SheetContent side="right" className="w-72 pt-8 flex flex-col h-full">
@@ -97,7 +97,7 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
           <div className="border-t border-border pt-3 pb-4">
             <button
               onClick={() => { setSheetOpen(false); logout(); }}
-              className="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-red-50 text-red-600 text-sm font-medium w-full text-left transition-colors"
+              className="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/10 text-red-300 text-sm font-medium w-full text-left transition-colors"
             >
               <LogOut className="h-5 w-5" />
               Sign Out

@@ -278,8 +278,8 @@ export function OnboardingWizard() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-white md:bg-gradient-to-br md:from-gray-50 md:via-white md:to-teal-50/30 flex items-center justify-center">
-      <div className="w-full md:max-w-lg md:bg-white md:rounded-3xl md:shadow-card-elevated md:my-8">
+    <div className="min-h-[100dvh] bg-dc-dark text-white flex items-center justify-center">
+      <div className="w-full md:max-w-lg md:bg-white/5 md:border md:border-white/10 md:rounded-3xl md:shadow-card-elevated md:my-8">
       <div className="flex flex-col min-h-[100dvh] md:min-h-[580px] max-w-md mx-auto px-5 py-6 md:py-8">
         {/* Header */}
         {!isWelcome && (
@@ -293,7 +293,7 @@ export function OnboardingWizard() {
                 type="button"
                 onClick={goBack}
                 whileTap={{ scale: 0.9 }}
-                className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
+                className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/60 hover:bg-white/10 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
               </motion.button>
@@ -322,8 +322,8 @@ export function OnboardingWizard() {
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.2 }}
               >
-                <h2 className="text-xl font-bold text-gray-900">{stepTitle()}</h2>
-                <p className="text-sm text-gray-400 mt-0.5">{stepSubtitle()}</p>
+                <h2 className="text-xl font-bold text-white">{stepTitle()}</h2>
+                <p className="text-sm text-white/40 mt-0.5">{stepSubtitle()}</p>
               </motion.div>
             </AnimatePresence>
           </div>
@@ -336,10 +336,10 @@ export function OnboardingWizard() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <h2 className="text-xl font-bold text-gray-900">
+              <h2 className="text-xl font-bold text-white">
                 {role === 'content_creator' ? "What should we call you?" : role === 'brand' ? "What's your brand?" : "What's your restaurant called?"}
               </h2>
-              <p className="text-sm text-gray-400 mt-0.5">
+              <p className="text-sm text-white/40 mt-0.5">
                 {role === 'content_creator' ? "Your creative name or real name" : "This is how others will find you"}
               </p>
             </motion.div>
@@ -371,8 +371,8 @@ export function OnboardingWizard() {
             transition={{ delay: 0.5 }}
             className={`rounded-full px-4 py-2 mb-4 text-xs flex items-center justify-center gap-1.5 ${
               accentColor === 'teal'
-                ? 'bg-teal-50 text-teal-600'
-                : 'bg-pink-50 text-pink-600'
+                ? 'bg-dc-teal/10 text-dc-teal'
+                : 'bg-dc-pink-accent/10 text-dc-pink-accent'
             }`}
           >
             <MapPin className="w-3 h-3" />
@@ -392,8 +392,8 @@ export function OnboardingWizard() {
               disabled={!isStepValid()}
               className={`w-full rounded-full py-6 text-base font-bold transition-all duration-200 ${
                 accentColor === 'teal'
-                  ? 'bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white disabled:bg-gray-200 disabled:text-gray-400'
-                  : 'bg-dc-pink-accent-btn hover:bg-dc-pink-accent-btn-hover text-white disabled:bg-gray-200 disabled:text-gray-400'
+                  ? 'bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white disabled:bg-white/10 disabled:text-white/30'
+                  : 'bg-dc-pink-accent-btn hover:bg-dc-pink-accent-btn-hover text-white disabled:bg-white/10 disabled:text-white/30'
               }`}
             >
               <span className="flex items-center gap-2">
@@ -401,7 +401,7 @@ export function OnboardingWizard() {
                 <ArrowRight className="w-4 h-4" />
               </span>
             </Button>
-            <p className="text-center text-xs text-gray-400 mt-3">
+            <p className="text-center text-xs text-white/40 mt-3">
               {currentStep === 'identity' && 'You can change this later in settings'}
               {currentStep === 'industry' && 'This helps us match you with the right people'}
               {currentStep === 'skills' && 'Brands filter by these to find you'}

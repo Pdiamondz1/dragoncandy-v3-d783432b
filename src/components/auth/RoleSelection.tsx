@@ -21,14 +21,14 @@ export const RoleSelection = ({ onSelectRole, onBackToLogin }: RoleSelectionProp
         <button
           type="button"
           onClick={() => onSelectRole("business_client")}
-          className="w-full bg-white rounded-2xl border-2 border-dc-teal p-6 flex items-center gap-5 shadow-md hover:shadow-lg transition-shadow text-left"
+          className="w-full rounded-2xl border-2 border-dc-teal bg-white/5 p-6 flex items-center gap-5 hover:bg-white/10 transition-colors text-left"
         >
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-50 to-teal-200 flex items-center justify-center flex-shrink-0">
+          <div className="w-14 h-14 rounded-2xl bg-dc-teal/10 flex items-center justify-center flex-shrink-0">
             <Store className="w-7 h-7 text-dc-teal" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-lg font-bold text-gray-900">I'm a Restaurant</div>
-            <div className="text-sm text-gray-500 leading-snug">
+            <div className="text-lg font-bold text-white">I'm a Restaurant</div>
+            <div className="text-sm text-white/60 leading-snug">
               Restaurants & cafes looking for content creators
             </div>
           </div>
@@ -40,14 +40,14 @@ export const RoleSelection = ({ onSelectRole, onBackToLogin }: RoleSelectionProp
           <button
             type="button"
             onClick={() => onSelectRole("brand")}
-            className="w-full bg-white rounded-2xl border-2 border-pink-400 p-6 flex items-center gap-5 shadow-md hover:shadow-lg transition-shadow text-left"
+            className="w-full rounded-2xl border-2 border-pink-400 bg-white/5 p-6 flex items-center gap-5 hover:bg-white/10 transition-colors text-left"
           >
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-50 to-pink-200 flex items-center justify-center flex-shrink-0">
+            <div className="w-14 h-14 rounded-2xl bg-dc-pink-accent/10 flex items-center justify-center flex-shrink-0">
               <Megaphone className="w-7 h-7 text-pink-500" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-lg font-bold text-gray-900">I'm a Brand/Sponsor</div>
-              <div className="text-sm text-gray-500 leading-snug">
+              <div className="text-lg font-bold text-white">I'm a Brand/Sponsor</div>
+              <div className="text-sm text-white/60 leading-snug">
                 Brands running sponsored creator campaigns
               </div>
             </div>
@@ -55,22 +55,22 @@ export const RoleSelection = ({ onSelectRole, onBackToLogin }: RoleSelectionProp
           </button>
         )}
 
-        {/* Creator card — outlined/gray style to distinguish from the two primary roles */}
+        {/* Creator card — neutral style to distinguish from the two primary roles */}
         <button
           type="button"
           onClick={() => onSelectRole("content_creator")}
-          className="w-full bg-white rounded-2xl border-2 border-gray-200 p-6 flex items-center gap-5 shadow-md hover:shadow-lg transition-shadow text-left"
+          className="w-full rounded-2xl border-2 border-white/15 bg-white/5 p-6 flex items-center gap-5 hover:bg-white/10 transition-colors text-left"
         >
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-gray-50 to-gray-200 flex items-center justify-center flex-shrink-0">
-            <Camera className="w-7 h-7 text-gray-500" />
+          <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0">
+            <Camera className="w-7 h-7 text-white/60" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-lg font-bold text-gray-900">I'm a Creator</div>
-            <div className="text-sm text-gray-500 leading-snug">
+            <div className="text-lg font-bold text-white">I'm a Creator</div>
+            <div className="text-sm text-white/60 leading-snug">
               Content creators looking for restaurant gigs
             </div>
           </div>
-          <span className="text-gray-300 text-xl flex-shrink-0">&#8250;</span>
+          <span className="text-white/40 text-xl flex-shrink-0">&#8250;</span>
         </button>
 
         {/* Back to login */}

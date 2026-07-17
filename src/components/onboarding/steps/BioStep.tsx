@@ -37,11 +37,11 @@ export function BioStep({ bio, onBioChange }: BioStepProps) {
           }}
           onFocus={() => { if (!bio) setShowSuggestions(true); }}
           placeholder="I create viral food content for restaurants"
-          className="text-center text-lg font-medium h-14 rounded-2xl border-2 border-gray-200 focus:border-dc-teal placeholder:text-gray-300"
+          className="text-center text-lg font-medium h-14 rounded-2xl border-2 border-white/15 bg-white/5 text-white focus:border-dc-teal placeholder:text-white/40"
           maxLength={120}
           autoFocus
         />
-        <p className="text-xs text-gray-400 text-center mt-2">
+        <p className="text-xs text-white/40 text-center mt-2">
           {bio.length}/120
         </p>
       </motion.div>
@@ -53,7 +53,7 @@ export function BioStep({ bio, onBioChange }: BioStepProps) {
           transition={{ delay: 0.2 }}
           className="w-full space-y-2"
         >
-          <div className="flex items-center justify-center gap-1.5 text-xs text-gray-400">
+          <div className="flex items-center justify-center gap-1.5 text-xs text-white/40">
             <Sparkles className="w-3 h-3" />
             <span>Tap one to get started</span>
           </div>
@@ -69,7 +69,7 @@ export function BioStep({ bio, onBioChange }: BioStepProps) {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.25 + i * 0.06 }}
               whileTap={{ scale: 0.97 }}
-              className="w-full text-left px-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 text-sm text-gray-500 hover:border-dc-teal hover:bg-dc-teal/5 transition-colors"
+              className="w-full text-left px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-sm text-white/60 hover:border-dc-teal hover:bg-dc-teal/10 transition-colors"
             >
               "{suggestion}"
             </motion.button>

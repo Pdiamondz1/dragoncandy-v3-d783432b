@@ -57,9 +57,9 @@ export function MissionChecklist({ role, missions, onMissionGo, onSkip }: Missio
   const completedCount = defs.filter((d) => (missions as unknown as Record<string, unknown>)[d.key] === true).length;
 
   return (
-    <div className="bg-white rounded-2xl p-4">
+    <div className="dc-panel p-4">
       <div className="flex justify-between items-center mb-3">
-        <span className="text-sm font-bold text-gray-900">Your Missions</span>
+        <span className="text-sm font-bold text-white">Your Missions</span>
         <span className={`text-xs font-semibold ${accentColor === 'pink' ? 'text-pink-500' : 'text-teal-500'}`}>
           {completedCount} / {defs.length}
         </span>
@@ -82,7 +82,7 @@ export function MissionChecklist({ role, missions, onMissionGo, onSkip }: Missio
       </div>
       <button
         onClick={onSkip}
-        className="w-full text-center text-xs text-gray-400 mt-4 hover:text-gray-600 transition-colors"
+        className="w-full text-center text-xs text-white/40 mt-4 hover:text-white/70 transition-colors"
       >
         Skip for now
       </button>

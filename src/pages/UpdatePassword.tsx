@@ -55,36 +55,36 @@ const UpdatePassword: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col overflow-x-hidden">
+    <div className="dc-surface flex flex-col overflow-x-hidden">
       <SEO
         title="Update Password"
         description="Set a new password for your DragonCandy account."
         path="/auth/update-password"
       />
       {/* Template C header */}
-      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+      <div className="bg-dc-dark/80 backdrop-blur-xl border-b border-white/10 px-4 py-3 flex items-center">
         <div className="flex-1 text-center">
-          <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Update Password</h1>
+          <h1 className="font-sans text-base font-bold text-white uppercase tracking-wide">Update Password</h1>
         </div>
       </div>
 
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <div className="border-2 border-dc-teal rounded-2xl p-6">
+          <div className="bg-white/5 border-2 border-dc-teal rounded-2xl p-6">
             <AuthHeader />
 
             <div className="text-center mb-6 mt-4">
-              <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">
+              <p className="font-sans text-xs font-semibold uppercase tracking-wider text-white/60">
                 Set a new password
               </p>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-white/60 mt-1">
                 Enter and confirm your new password.
               </p>
             </div>
 
             <form onSubmit={onSubmit} className="space-y-4">
               <div className="space-y-1">
-                <label htmlFor="password" className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">
+                <label htmlFor="password" className="font-sans text-xs font-semibold uppercase tracking-wider text-white/60">
                   New password
                 </label>
                 <Input
@@ -98,12 +98,12 @@ const UpdatePassword: React.FC = () => {
                   aria-required="true"
                   aria-invalid={!!errorMessage}
                   aria-describedby={errorMessage ? "password-error" : undefined}
-                  className="rounded-full h-12 px-5 text-base border-gray-200"
+                  className="h-12 rounded-xl px-5 text-base border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-dc-teal"
                 />
               </div>
 
               <div className="space-y-1">
-                <label htmlFor="confirm" className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">
+                <label htmlFor="confirm" className="font-sans text-xs font-semibold uppercase tracking-wider text-white/60">
                   Confirm new password
                 </label>
                 <Input
@@ -117,7 +117,7 @@ const UpdatePassword: React.FC = () => {
                   aria-required="true"
                   aria-invalid={!!errorMessage}
                   aria-describedby={errorMessage ? "password-error" : undefined}
-                  className="rounded-full h-12 px-5 text-base border-gray-200"
+                  className="h-12 rounded-xl px-5 text-base border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-dc-teal"
                 />
               </div>
 
