@@ -30,6 +30,59 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-16] Donny data visibility + quick-action 404 (branch worktree-dc-issues-6, PR #260)
+- Output: bundled INTO the work PR #260 — `raw/sessions/2026-07-16-donny-data-visibility-quick-actions.md`,
+  new `concepts/donny-data-and-quick-actions.md` (sibling of [[AI Creator Matching]]), `index.md`
+  (Sources + Concepts), `log.md` ingest entry, PROJECT_CONTEXT active-workstream bullet, + THIS entry.
+  No DATABASE_SCHEMA change (the fix corrects code to the EXISTING schema — no columns changed;
+  the real column names are captured on the concept page). RAG sync + [[verify-knowledge]] post-merge.
+- Happened: a founder BUG-report session whose durable knowledge is TWO reusable bug classes (captured
+  as ONE new concept for Donny's data/navigation, distinct from the [[AI Creator Matching]] *matching*
+  page but cross-linked): (1) schema-drift-swallowed-to-`[]` (`campaigns.platform` doesn't exist → the
+  real "no campaigns" cause; the whole DragonShare agent on dead columns/enums) and (2) LLM-invented-
+  route→404 (the `isKnownRoute` allow-list pattern). Merged origin/main mid-session (the deploy
+  pre-flight caught the #248/#251 web-Donny collision — deploying the stale branch would have reverted
+  them), so the branch is off latest main; per [scope] the docs edit the latest index/log/PROJECT_CONTEXT.
+- Worked: [runlog-in-pr] + [orphans]-by-path (new concept + session both cataloged in index.md).
+  [wikilinks]-exact: grepped index.md first — [[AI Creator Matching]], [[Donny AI]], [[Donny Web Access]]
+  all confirmed before linking; Sources insert alphabetical (Chat < **Data** < Desktop), Concepts insert
+  alphabetical (Donny Chat UX < **Donny Data...** < Donny Web Access). Compounded onto the matching page
+  by reference rather than duplicating the two-backend wiring.
+- Failed: the edge-function-reviewer caught the ACTUAL root cause I MISSED — my initial diagnosis blamed
+  org-ownership + a fragile `.or`, but the headline bug was the nonexistent `campaigns.platform` column
+  (carried over verbatim from the original code) 400'ing every query. The prod SQL I ran early even
+  listed the columns (no `platform`) but I didn't cross-check the agent's SELECT against it. Two-model
+  review earned its keep.
+- Remember: when rewriting a data-access query, **cross-check every selected column/enum against the
+  column list you already pulled from prod** — carrying forward the OLD select is how a pre-existing
+  swallowed-400 survives a "rewrite". And a bug-report session's durable knowledge is the *class of bug*
+  (schema-drift-swallow + invented-route-404), captured as a concept, not "we fixed Donny". (advisory)
+
+### [2026-07-16] Donny first-open tray close-trap fix + branded redesign (PR #258 → paired docs PR)
+- Output: paired docs PR off origin/main — `raw/sessions/2026-07-16-donny-tray-close-ux.md`, compounded
+  `concepts/donny-chat-ux.md` (new "Panel stages & the shared header" section + frontmatter sources +
+  See-Also [[Mobile Viewport & Fixed Positioning]] / [[Donny Tray Close UX Session]]), `index.md` (Sources),
+  `log.md` update entry, PROJECT_CONTEXT active-workstream bullet, + THIS entry. No
+  DATABASE_SCHEMA/DESIGN_SYSTEM/CLAUDE.md change (frontend-only; no schema/token/workflow change).
+- Happened: code PR #258 merged first (git push env-blocked → landed via gh REST blob→tree→commit→ref),
+  so this is the paired docs PR off a fresh branch off origin/main (per [scope]). **Compounded, didn't
+  duplicate** — a [[Donny Chat UX]] page already existed with a "Two different inputs" tray section, so the
+  first-open close-trap fix + shared-header unification belongs there as a new section, not a thin new page.
+  RAG sync + [[verify-knowledge]] are post-merge (post-merge hook on the docs/ ff).
+- Worked: [scope] + [runlog-in-pr] + compound-onto-existing-page. [wikilinks]-exact: grepped index.md first —
+  [[Design System]], [[Donny AI]], [[Mobile Viewport & Fixed Positioning]] confirmed before linking; the new
+  session source is cataloged in index.md Sources (path-based [orphans]). Captured the durable knowledge as
+  concept (the 3-stage machine + the *structural* one-shared-header fix + the useIsMobile-gate-because-CSS-hidden
+  click-outside gotcha + the rebase-onto-#236-fixed-overlay catch), not just "we added a close button".
+- Failed: none for knowledge-sync. (Mobile viewport couldn't be independently verified in verify-prod — the
+  browser-automation renderer captures at a fixed ~1568px and ignored the phone-width resize; recorded in the
+  session source + the verify-prod verdict as met:false + a manual-spot-check note, not a silent pass.)
+- Remember: verifying an **auth-gated frontend fix on prod** hits two known walls — (1) a code-split chunk
+  change leaves the entry `index-*.js` hash unchanged, so bundle-hash polling never fires → confirm deploy-live
+  via the **Vercel deployment `success` status on the merge commit** (+ the app's own "new version" banner); and
+  (2) can't type the test password → have the user sign in on the driven browser, then drive the checks.
+  (advisory — reinforces the [2026-07-16 desktop-overlay] Remember)
+
 ### [2026-07-16] Web Donny find_creators — right function this time (branch feat/donny-orchestrator-find-creators)
 - Output: bundled INTO the work PR — `raw/sessions/2026-07-16-donny-orchestrator-find-creators.md`,
   **compounded** `concepts/ai-creator-matching.md` (new "Which Donny? consumer uses donny-orchestrator,

@@ -2,8 +2,8 @@
 title: Donny Chat UX
 type: concept
 created: 2026-06-20
-updated: 2026-07-14
-sources: [raw/sessions/2026-06-20-donny-chat-input-timestamps.md, raw/sessions/2026-07-14-donny-mobile-quick-action-navigate.md]
+updated: 2026-07-16
+sources: [raw/sessions/2026-06-20-donny-chat-input-timestamps.md, raw/sessions/2026-07-14-donny-mobile-quick-action-navigate.md, raw/sessions/2026-07-16-donny-tray-close-ux.md]
 tags: [donny, chat, ux, frontend, design-system, shared-components]
 ---
 
@@ -92,10 +92,43 @@ The consumer `DonnyDesktopPanel` **home/landing tray** has its own composer
 message). Relevant when testing/verifying: you must enter a thread to see the chat-view
 components.
 
+## Panel stages & the shared header (first-open close-trap, PR #258)
+
+The consumer panel is a **3-stage machine** — `closed → tray → chat` (`DonnyStage` in
+`src/types/donnyNudge.ts`, held in `DonnyProvider`; `open()`→tray, `expand()`→chat,
+`collapse()`→tray, `close()`→closed). Both open stages now share **one** header,
+`DonnyPanelHeader.tsx` (teal gradient):
+
+- **tray** → `⌃ expand` + `✕ close` (+ optional unread badge)
+- **chat** → `⌄ minimize` + `✕ close`
+
+This unification fixed a **first-open close-trap**: the tray used to render its own inline
+header with **no ✕ and no `close`** wired, so the ✕ existed only in the chat stage — users
+were stuck until they sent a message (which `expand()`s to chat). The fix was *structural*
+(one shared header), not a `{hasMessages && <Close/>}` toggle. `DonnyChatHeader.tsx` was
+deleted and folded into `DonnyPanelHeader`.
+
+**Desktop dismiss = ✕, Escape, or click-outside.** `DonnyDesktopPanel` adds a `pointerdown`
+document listener that closes on a click outside the panel `ref`, **gated desktop-only via
+`useIsMobile()`** — the panel is only CSS-hidden (`hidden md:flex`), *not* unmounted, on
+mobile, so an ungated listener would close Donny on unrelated mobile taps — and it **ignores
+`[data-donny-launcher]`** targets so the toggle launcher (the `DashboardLayout` header button
++ `DonnyNavButton`) doesn't fight it. Mobile keeps its own backdrop-tap + swipe-down
+(`DonnyMobileSheet`); the desktop panel is a `fixed` overlay (see [[Mobile Viewport & Fixed
+Positioning]] §4), so this edit rebased onto that layout rather than the older docked one.
+
+**Branded tray, no gray.** The empty state leads with an inviting "🎉 You're all caught up!
+Pick a quick action below…" (was a flat gray "No new notifications"), and the two chip groups
+("Help on this page" + a new "Quick actions" label) + the `#donny-tray-input` are
+brand-colored per the [[Design System]] no-gray rule. Chip *data* is unchanged
+(`getSuggestionsForPage` + `useDonnyQuickChips`).
+
 ## See Also
 
 - [[Donny AI]]
 - [[Design System]]
+- [[Mobile Viewport & Fixed Positioning]]
+- [[Donny Tray Close UX Session]]
 - [[Donny Chat Input & Timestamps Session]]
 - [[Edge Function Streaming]]
 - [[Codex Second Review]]

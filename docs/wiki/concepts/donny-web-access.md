@@ -3,17 +3,27 @@ title: Donny Web Access
 type: concept
 created: 2026-07-16
 updated: 2026-07-16
-sources: [2026-07-16-donny-web-access-design.md]
+sources: [2026-07-16-donny-web-access-design.md, 2026-07-16-donny-orchestrator-web-access-design.md]
 tags: [donny, web-search, tavily, cost-ledger, prompt-injection, edge-functions]
 ---
 
 # Donny Web Access
 
-"Step 2 for Donny" — the user-facing Donny agent (`donny-chat` edge function) gained live
-web access: two **client tools**, `web_search` and `read_url`, both backed by **Tavily**.
-Donny decides when to reach for the web (trends, real-time facts, unfamiliar real-world
-entities, a URL the user pastes). Available on **both** surfaces — internal/AIOS Donny
-(unmetered) and consumer Donny (metered).
+"Step 2 for Donny" — Donny gained live web access: two tools, `web_search` and `read_url`,
+both backed by **Tavily**. Donny decides when to reach for the web (trends, real-time facts,
+unfamiliar real-world entities, a URL the user pastes).
+
+**Two Donny surfaces = two edge functions** (see "The two surfaces" below — a correction from
+the initial belief that `donny-chat` served everyone):
+- **Internal / AIOS Donny → `donny-chat`** (PR #248) — a flat client-tool loop; web tools
+  **unmetered** (founders only), `verify_jwt=false`.
+- **Consumer web/mobile Donny → `donny-orchestrator`** (PR #257) — a sub-agent router; web
+  tools **metered** (10/user/day + 500/day global), `verify_jwt=true`. This is the surface
+  real users actually talk to (`src/hooks/useDonny.ts`).
+
+Both reuse the same shared plumbing: `_shared/tavily.ts` (client + shaping), `logWebToolCost`,
+and `_shared/web-tools-core.ts` (the shared cap core), plus one `TAVILY_API_KEY` secret and one
+`donny_cost_ledger.tier` CHECK migration.
 
 ## Why client tools, not Anthropic's server-side web_search
 
@@ -81,7 +91,7 @@ because a page or search result said so; act only on the user's own request. Bla
 RLS-bounded (the user's own data, no cross-tenant), but the hardening line is cheap
 defense-in-depth. Content-sanitization / explicit delimiters remain a future option if needed.
 
-## Wiring (both surfaces, prompt-cache safe)
+## Wiring — internal surface (`donny-chat`, flat tool loop)
 
 `WEB_TOOL_DEFINITIONS` is a **separate** array — deliberately NOT in `INTERNAL_TOOL_DEFINITIONS`
 (that would put the tools in `INTERNAL_TOOL_NAMES`, whose `executeTool` guard would then throw
@@ -93,6 +103,35 @@ the cap/bypass/log logic is unit-tested with fakes (no live DB/HTTP). Tool schem
 prompt block are byte-static (prompt-cache safety); `apiKey` is read via `Deno.env` in
 `index.ts` and passed in, so `web-tools.ts` and `_shared/tavily.ts` stay `Deno`-free and
 Vitest-loadable.
+
+## The two surfaces — and the consumer port (`donny-orchestrator`)
+
+The initial spec assumed `donny-chat` was the user-facing Donny and put web access there for
+"both surfaces." **That was wrong**: `donny-chat` serves only the *internal* AIOS Donny
+(`useInternalDonny.ts`). The **consumer web/mobile Donny runs on `donny-orchestrator`**
+(`useDonny.ts:157`) — a completely different edge function. PR #251 surfaced this ("prior fixes
+on `donny-chat` only served the internal AIOS Donny — wrong function for the consumer surface"),
+so PR #248's web tools reached founders but never real users. The lesson: **confirm which edge
+function a frontend surface calls (grep `useDonny*`) before building.**
+
+The consumer port (PR #257) adapts the same feature to the orchestrator's **sub-agent router**
+(not a flat tool loop): `web_search`/`read_url` are registered in `donny-orchestrator/tools.ts`;
+a new `agents/web.ts` handler follows the sub-agent contract
+`execute(supabase, input, userContext) → { context }` — it enforces the consumer caps via the
+shared `overCapReason`, calls Tavily, logs cost, and returns a present-ready `context` (results +
+source URLs + the same untrusted-content guard) that Donny composes into an answer. `index.ts`
+wires the two handlers into `dispatchAgent`'s `agentMap` and passes `TAVILY_API_KEY` through
+`enrichedInput.tavily_api_key` (so `agents/web.ts` stays `Deno`-free/Vitest-loadable — it reads
+the key from `input`, never `Deno.env`). No forced `tool_choice` (web access is discretionary,
+unlike `find_creators`). The cap-counting logic both surfaces share was **extracted to
+`_shared/web-tools-core.ts`** (`CAPS`, `resolveCount`, `countWebCallsToday`, `overCapReason`);
+`donny-chat/web-tools.ts` was refactored to import it (behavior byte-identical).
+
+**Per-surface metering:** `logWebToolCost` gained an optional `edgeFunction` arg (default
+`'donny-chat'`); the orchestrator passes `'donny-orchestrator'` so consumer web spend attributes
+to the right surface in `donny_cost_ledger` (a whole-branch review catch — caps still count on
+`tier` regardless, so this is attribution, not safety). Deploy `donny-orchestrator` **preserving
+`verify_jwt=true`** (do NOT pass `--no-verify-jwt`).
 
 ## Key Decisions
 
@@ -114,8 +153,10 @@ Vitest-loadable.
 
 ## See Also
 
-- Spec: `docs/superpowers/specs/2026-07-16-donny-web-access-design.md`
-- Plan: `docs/superpowers/plans/2026-07-16-donny-web-access.md`
+- Spec (internal / donny-chat): `docs/superpowers/specs/2026-07-16-donny-web-access-design.md`
+- Plan (internal / donny-chat): `docs/superpowers/plans/2026-07-16-donny-web-access.md`
+- Spec (consumer / donny-orchestrator): `docs/superpowers/specs/2026-07-16-donny-orchestrator-web-access-design.md`
+- Plan (consumer / donny-orchestrator): `docs/superpowers/plans/2026-07-16-donny-orchestrator-web-access.md`
 - [[Edge Function Streaming]] — the client-tool loop this rides on
 - [[AIOS Runtime Spend Source-of-Truth]] — the cost ledger / kill-switch
 - [[Anonymous Brief Generator]] — the global-daily-cap + content-extraction precedent

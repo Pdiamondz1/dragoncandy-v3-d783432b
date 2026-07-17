@@ -33,6 +33,35 @@ export const SUB_AGENT_TOOLS = [
     },
   },
   {
+    name: "web_search",
+    description:
+      "Search the live web for CURRENT or time-sensitive information — trends, recent news, what's popular right now, or facts about a real-world business/place/person you're not sure of. Returns ranked results with snippets and source URLs. Always cite sources by URL. Use read_url to open a specific result or a link the user pasted. Do NOT use for DragonCandy's own data (use the other agents).",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query: { type: "string", description: "The search query." },
+        recency: {
+          type: "string",
+          enum: ["day", "week", "month", "year", "any"],
+          description: "Restrict to results from this recent window. Default 'any'.",
+        },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "read_url",
+    description:
+      "Fetch and read the main text of a specific web page — a link the user pasted, a menu, a competitor's site, an article. Returns clean extracted text. Cite the URL.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        url: { type: "string", description: "The absolute http(s) URL to read." },
+      },
+      required: ["url"],
+    },
+  },
+  {
     name: "prepare_campaign",
     description:
       "Use when the user wants to CREATE or START a new campaign. Distill a concise brief of what they want to promote and pass it as `brief`. This pre-loads the campaign builder so the user lands on a ready-to-review campaign instead of a blank form.",

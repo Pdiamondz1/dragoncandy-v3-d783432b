@@ -6,6 +6,7 @@ import { DonnyRichCard } from './DonnyRichCard';
 import { formatBubbleTime } from './donnyTime';
 import { parseAndDispatchDeepLink } from '@/features/donny/deepLinks';
 import { safeUrl } from '@/lib/safeUrl';
+import { isKnownDonnyRoute } from '@/lib/donnyRoutes';
 import { useDonnyContext } from '@/contexts/DonnyProvider';
 import type { DonnyMessage as DonnyMessageType, DonnyAvatarState } from '@/types/donny';
 
@@ -36,6 +37,12 @@ export function DonnyMessage({ message, avatarState = 'idle', isLatestAssistant 
       </div>
     );
   }
+
+  // Only show navigate actions that point at a real in-app route — an unknown
+  // route (from a message persisted before the server-side fix) would 404.
+  const visibleQuickActions = (message.quick_actions ?? []).filter(
+    (a) => a.action !== 'navigate' || (!!a.url && isKnownDonnyRoute(a.url))
+  );
 
   // Assistant message
   return (
@@ -99,14 +106,16 @@ export function DonnyMessage({ message, avatarState = 'idle', isLatestAssistant 
             {message.rich_cards.map((card, i) => <DonnyRichCard key={i} card={card} />)}
           </div>
         )}
-        {message.quick_actions && message.quick_actions.length > 0 && !dismissedActions && (
+        {visibleQuickActions.length > 0 && !dismissedActions && (
           <div className="flex gap-2 flex-wrap mt-2">
-            {message.quick_actions.map((action, i) => (
+            {visibleQuickActions.map((action, i) => (
               <button
                 key={i}
                 type="button"
                 onClick={() => {
                   if (action.action === 'navigate' && action.url) {
+                    // Guard again at click time — never navigate to an unknown route.
+                    if (!isKnownDonnyRoute(action.url)) return;
                     // On mobile the chat sheet is a fullscreen overlay — close it
                     // so the destination page is actually visible. The desktop
                     // panel is docked beside the content, so it stays open.
