@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from "vitest";
-import { render, cleanup, act } from "@testing-library/react";
+import { render, cleanup, act, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { Header } from "./Header";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  document.body.innerHTML = ""; // drop any manually-appended #main-content between tests
+});
 
 /**
  * The landing renders inside the app shell's scrolling `<main id="main-content">`
@@ -56,5 +59,42 @@ describe("Header scroll-aware background", () => {
     expect(header.className).toContain("bg-dc-dark/80");
     expect(header.className).toContain("backdrop-blur-xl");
     expect(header.className).not.toContain("bg-transparent");
+  });
+});
+
+describe("Header scroll pass-through", () => {
+  // The fixed header must not eat scroll at the top: pointer-events pass through the header
+  // to the content (native scroll), and wheel over the interactive bits forwards to the scroller.
+  it("disables pointer events on the header but keeps the interactive bits enabled", () => {
+    const { container } = render(
+      <MemoryRouter>
+        <Header />
+      </MemoryRouter>,
+    );
+    expect(container.querySelector("header")!.className).toContain("pointer-events-none");
+    expect(container.querySelector("img")!.className).toContain("pointer-events-auto");
+    expect(container.querySelector("nav")!.className).toContain("pointer-events-auto");
+  });
+
+  it("forwards a wheel over the nav to the #main-content scroller", () => {
+    let scrollTop = 0;
+    const main = document.createElement("main");
+    main.id = "main-content";
+    Object.defineProperty(main, "scrollTop", {
+      configurable: true,
+      get: () => scrollTop,
+      set: (v: number) => {
+        scrollTop = v;
+      },
+    });
+    document.body.appendChild(main);
+
+    const { container } = render(
+      <MemoryRouter>
+        <Header />
+      </MemoryRouter>,
+    );
+    fireEvent.wheel(container.querySelector("nav")!, { deltaY: 150 });
+    expect(scrollTop).toBe(150);
   });
 });
