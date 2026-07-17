@@ -1,3 +1,4 @@
+import { useDarkHtml } from "@/hooks/useDarkHtml";
 import { useCallback, useEffect, useState } from "react";
 import { SEO } from "@/components/SEO";
 import { useNavigate, useSearchParams, useLocation, Link } from "react-router-dom";
@@ -21,6 +22,7 @@ const ALLOWED_REDIRECT_ORIGINS = new Set([
 ]);
 
 const AuthPage = () => {
+  useDarkHtml();
   const [searchParams] = useSearchParams();
   const initialMode = searchParams.get('mode') === 'login' ? 'login' : 'signup';
   // Pre-select role from the landing "Join as a Business/Creator" CTAs (?role=).

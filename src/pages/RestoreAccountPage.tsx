@@ -1,3 +1,4 @@
+import { useDarkHtml } from "@/hooks/useDarkHtml";
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { RefreshCw, CheckCircle2, XCircle } from 'lucide-react';
@@ -7,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function RestoreAccountPage() {
+  useDarkHtml();
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
