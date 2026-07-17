@@ -5,20 +5,14 @@ const steps = [
   {
     number: "01",
     title: "Paste your link",
-    description:
-      "Drop your website or socials. Donny drafts a starting campaign brief in seconds — you tweak it, then go.",
   },
   {
     number: "02",
-    title: "Get matched with creators",
-    description:
-      "Our AI scores and matches local creators by style, audience, and track record — no guesswork.",
+    title: "Donny builds it",
   },
   {
     number: "03",
-    title: "Content for your business, fast",
-    description:
-      "Choose DragonDash for content in hours, or standard delivery in days. Approve, pay, done.",
+    title: "Creators deliver",
   },
 ];
 
@@ -48,9 +42,6 @@ export const HowItWorks: React.FC = () => {
                 <h3 className="mt-5 text-xl font-bold text-white lg:text-2xl">
                   {step.title}
                 </h3>
-                <p className="mt-3 max-w-sm text-base leading-relaxed text-white/55">
-                  {step.description}
-                </p>
               </div>
             </Reveal>
           ))}

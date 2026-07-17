@@ -1206,3 +1206,13 @@ new raw session source [[AI Creator Matching Fix Session]], new concept [[AI Cre
 Pages updated: [[Creator Location Search]] (See-Also + geo-port note + frontmatter), index.md
 (Concepts + Sources), PROJECT_CONTEXT (workstream bullet).
 RAG sync + verify-knowledge run post-merge (post-merge hook fires on the `main` fast-forward).
+
+## [2026-07-16] ingest | Landing cinematic AI-video redesign
+Ingested [[Landing Cinematic Video Redesign Session]] (branch `worktree-dc-landing-page-upgrade`,
+frontend-only). New raw session source + new concept [[Landing Cinematic Video Redesign]]. Cinematic
+6-section landing: morphing per-role hero, swappable `landingClips` seam (empty v1 → gradient →
+Cloudflare Stream → future DragonFeed), `VideoSlot variant="backdrop"`, honest Proof band, "Donny"
+naming, transparent scroll-aware header. Durable gotchas captured: Tailwind position-utility ordering
+(`.relative` beats `.absolute`), size a tall logo by height, transparent-header scroll-fade.
+Pages updated: index.md (Sources + Concepts), PROJECT_CONTEXT (workstream bullet). RAG sync +
+verify-knowledge run post-merge (post-merge hook fires on the `main` fast-forward).

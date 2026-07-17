@@ -9,6 +9,8 @@ interface VideoSlotProps {
   label?: string;
   /** Ambient autoplay/muted/loop (default). Set false for a click-to-play player. */
   autoplay?: boolean;
+  /** Layout variant: "framed" (default, 16:9 aspect + controls) or "backdrop" (full-bleed, no controls). */
+  variant?: "framed" | "backdrop";
   className?: string;
 }
 
@@ -50,12 +52,14 @@ export function VideoSlot({
   poster,
   label = "Showreel",
   autoplay = true,
+  variant = "framed",
   className = "",
 }: VideoSlotProps) {
   const reduce = usePrefersReducedMotion();
   const wrapRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const ambient = autoplay && !reduce;
+  const isBackdrop = variant === "backdrop";
 
   // Arm ambient playback only while the slot is on screen; pause when it leaves.
   useEffect(() => {
@@ -80,15 +84,19 @@ export function VideoSlot({
     };
   }, [src, ambient]);
 
+  const wrapClass = isBackdrop
+    ? `absolute inset-0 h-full w-full overflow-hidden ${className}`
+    : `relative aspect-video overflow-hidden rounded-3xl ${className}`;
+
   return (
-    <div ref={wrapRef} className={`relative aspect-video overflow-hidden rounded-3xl ${className}`}>
+    <div ref={wrapRef} className={wrapClass}>
       {src ? (
         <video
           ref={videoRef}
           muted={ambient}
           loop={ambient}
           playsInline
-          controls
+          controls={!isBackdrop}
           poster={poster}
           preload="none"
           className="h-full w-full object-cover"
@@ -96,17 +104,19 @@ export function VideoSlot({
           <source src={src} />
         </video>
       ) : (
-        <div className="absolute inset-0 bg-gradient-to-br from-dc-teal/25 via-dc-dark to-dc-pink-accent/25 ring-1 ring-inset ring-white/10">
+        <div className={`absolute inset-0 bg-gradient-to-br from-dc-teal/25 via-dc-dark to-dc-pink-accent/25 ${isBackdrop ? "" : "ring-1 ring-inset ring-white/10"}`}>
           <div className="pointer-events-none absolute -right-20 -top-16 h-56 w-56 rounded-full bg-dc-teal/25 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-20 -left-16 h-56 w-56 rounded-full bg-dc-pink-accent/20 blur-3xl" />
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-dc-teal text-dc-dark shadow-glow-teal">
-              <Play className="h-6 w-6 translate-x-0.5 fill-current" aria-hidden />
-            </span>
-            <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/45">
-              {label}
-            </span>
-          </div>
+          {!isBackdrop && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-dc-teal text-dc-dark shadow-glow-teal">
+                <Play className="h-6 w-6 translate-x-0.5 fill-current" aria-hidden />
+              </span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/45">
+                {label}
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>
