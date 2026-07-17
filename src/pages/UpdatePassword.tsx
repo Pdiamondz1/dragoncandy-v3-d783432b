@@ -1,3 +1,4 @@
+import { useDarkHtml } from "@/hooks/useDarkHtml";
 import React, { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -7,6 +8,7 @@ import { AuthHeader } from "@/components/auth/AuthHeader";
 import { SEO } from "@/components/SEO";
 
 const UpdatePassword: React.FC = () => {
+  useDarkHtml();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);

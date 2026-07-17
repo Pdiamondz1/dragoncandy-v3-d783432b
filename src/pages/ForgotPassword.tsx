@@ -1,3 +1,4 @@
+import { useDarkHtml } from "@/hooks/useDarkHtml";
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,6 +8,7 @@ import { AuthHeader } from "@/components/auth/AuthHeader";
 import { SEO } from "@/components/SEO";
 
 const ForgotPassword: React.FC = () => {
+  useDarkHtml();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 

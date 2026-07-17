@@ -1,3 +1,4 @@
+import { useDarkHtml } from "@/hooks/useDarkHtml";
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from '@/lib/motion';
@@ -80,6 +81,7 @@ const slideVariants = {
 };
 
 export function OnboardingWizard() {
+  useDarkHtml();
   const navigate = useNavigate();
   const { user } = useAuth();
   const autoDetect = useAutoDetect();

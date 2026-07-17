@@ -1,3 +1,4 @@
+import { useDarkHtml } from "@/hooks/useDarkHtml";
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
@@ -8,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { SEO } from '@/components/SEO';
 
 export default function InviteAcceptPage() {
+  useDarkHtml();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
