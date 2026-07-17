@@ -12,6 +12,8 @@ interface Lane {
   role: "business" | "creator" | "brand";
   cta: string;
   accent: "teal" | "pink";
+  /** Lane card still — reuses the matching hero clip's poster (a cinematic frame of that role's scene). */
+  image: string;
 }
 
 const businessLane: Lane = {
@@ -22,6 +24,7 @@ const businessLane: Lane = {
   role: "business",
   cta: "Get Started",
   accent: "teal",
+  image: "/landing/hero-business-poster.jpg",
 };
 
 const brandLane: Lane = {
@@ -32,6 +35,7 @@ const brandLane: Lane = {
   role: "brand",
   cta: "Launch Campaigns",
   accent: "pink",
+  image: "/landing/hero-brand-poster.jpg",
 };
 
 const creatorLane: Lane = {
@@ -42,6 +46,7 @@ const creatorLane: Lane = {
   role: "creator",
   cta: "Join as a Creator",
   accent: "pink",
+  image: "/landing/hero-creator-poster.jpg",
 };
 
 const lanes: Lane[] = BRAND_ROLE_ENABLED
@@ -75,7 +80,7 @@ export function AudienceLanes() {
             return (
               <Reveal key={lane.role} delay={i * 0.08}>
                 <div className="group flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-5 transition-all duration-300 hover:border-dc-teal/40 hover:bg-white/[0.07]">
-                  <MediaSlot ratio="video" alt={`${lane.title} on DragonCandy`} label={lane.eyebrow} />
+                  <MediaSlot ratio="video" src={lane.image} alt={`${lane.title} on DragonCandy`} label={lane.eyebrow} />
 
                   <div className="mt-6 flex items-center gap-3">
                     <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${accentChip}`}>
