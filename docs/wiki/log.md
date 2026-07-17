@@ -1289,3 +1289,10 @@ de-grayed brand chips; rebased onto main's fixed-overlay panel (#236). Live-veri
 Pages created: raw/sessions/2026-07-16-donny-tray-close-ux.md. Pages updated:
 concepts/donny-chat-ux.md, index.md (Sources), PROJECT_CONTEXT (workstream bullet). RAG sync +
 verify-knowledge run post-merge (post-merge hook fires on the `main` fast-forward).
+
+## [2026-07-17] update | Help Center refresh + Donny guidance-agent fix
+Shipped the help-center content refresh + fixed consumer Donny's broken guidance_agent (queried
+nonexistent help_articles columns → 0 results). Applied 2 migrations to prod (search_vector
+trigger + GIN + rewards category; 6 refreshed + 5 new articles) and deployed donny-orchestrator v68
+(verify_jwt=true). Pages created: concepts/help-center-and-guidance.md. Pages updated: index.md
+(Concepts). RAG sync + core-doc refresh run post-merge.

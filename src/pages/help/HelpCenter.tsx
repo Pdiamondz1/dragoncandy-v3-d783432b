@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, BookOpen, Megaphone, Zap, CreditCard, Shield, Sparkles, MessageCircle, ChevronDown, ArrowLeft } from "lucide-react";
+import { Search, BookOpen, Megaphone, Zap, CreditCard, Shield, Sparkles, MessageCircle, ChevronDown, ArrowLeft, Award } from "lucide-react";
 import { DCSkeleton } from "@/components/ui/dc-skeleton";
 import { Button } from "@/components/ui/button";
 import { SEO } from "@/components/SEO";
@@ -27,6 +27,7 @@ const CATEGORIES = [
   { key: "messaging", label: "Messaging", icon: MessageCircle },
   { key: "billing", label: "Billing & Plans", icon: CreditCard },
   { key: "account", label: "Account & Privacy", icon: Shield },
+  { key: "rewards", label: "Rewards", icon: Award },
 ] as const;
 
 export default function HelpCenter() {
