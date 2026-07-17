@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   resolveLandingClip,
   resolveLandingPlaylist,
+  mergeBackdropPlaylist,
+  playlistSignature,
   LANDING_CLIPS,
   type LandingClip,
   type LandingClipKey,
@@ -66,5 +68,62 @@ describe("resolveLandingPlaylist", () => {
     };
     const list = resolveLandingPlaylist("hero.business", playlists);
     expect(list.map((c) => c.src)).toEqual(["/landing/a.mp4", "/landing/b.mp4"]);
+  });
+});
+
+describe("mergeBackdropPlaylist", () => {
+  const s = (n: string) => ({ src: `/landing/${n}.mp4`, poster: `/landing/${n}.jpg` });
+  const d = (n: string) => ({ src: `https://cdn/${n}.mp4` });
+  const staticClips = [s("h1"), s("h2")];
+  const dynamicClips = [d("boost1"), d("boost2")];
+
+  it("leads with dynamic clips, then static, for hero.business", () => {
+    const out = mergeBackdropPlaylist("hero.business", staticClips, dynamicClips);
+    expect(out.map((c) => c.src)).toEqual([
+      "https://cdn/boost1.mp4", "https://cdn/boost2.mp4", "/landing/h1.mp4", "/landing/h2.mp4",
+    ]);
+  });
+
+  it("also applies to hero.creator", () => {
+    expect(mergeBackdropPlaylist("hero.creator", staticClips, dynamicClips)[0].src).toBe("https://cdn/boost1.mp4");
+  });
+
+  it("returns static unchanged for hero.brand (not an eligible key)", () => {
+    expect(mergeBackdropPlaylist("hero.brand", staticClips, dynamicClips)).toBe(staticClips);
+  });
+
+  it("returns static unchanged when there are no dynamic clips", () => {
+    expect(mergeBackdropPlaylist("hero.business", staticClips, [])).toBe(staticClips);
+  });
+
+  it("de-dupes by src", () => {
+    const out = mergeBackdropPlaylist("hero.business", [d("x")], [d("x")]);
+    expect(out).toHaveLength(1);
+  });
+
+  it("caps the merged total", () => {
+    const many = Array.from({ length: 10 }, (_, i) => d(`v${i}`));
+    expect(mergeBackdropPlaylist("hero.business", staticClips, many).length).toBeLessThanOrEqual(6);
+  });
+});
+
+describe("playlistSignature", () => {
+  it("changes when the joined srcs change (grow)", () => {
+    const a = playlistSignature("business", [{ src: "a.mp4" }]);
+    const b = playlistSignature("business", [{ src: "x.mp4" }, { src: "a.mp4" }]);
+    expect(a).not.toBe(b);
+  });
+  it("changes for same-length different-clips", () => {
+    const a = playlistSignature("business", [{ src: "a.mp4" }]);
+    const b = playlistSignature("business", [{ src: "b.mp4" }]);
+    expect(a).not.toBe(b);
+  });
+  it("is stable for identical contents", () => {
+    expect(playlistSignature("business", [{ src: "a.mp4" }]))
+      .toBe(playlistSignature("business", [{ src: "a.mp4" }]));
+  });
+  it("differs by role", () => {
+    expect(playlistSignature("business", [{ src: "a.mp4" }]))
+      .not.toBe(playlistSignature("creator", [{ src: "a.mp4" }]));
   });
 });

@@ -99,6 +99,39 @@ describe("RotatingBackdrop", () => {
     }
   });
 
+  it("advances to the next layer when the active (leading) clip errors — no stall", () => {
+    // A leading clip that fails to load/decode (e.g. an undecodable .MOV) fires `error`, never
+    // `ended`; the rotation must advance off it instead of freezing on a blank layer.
+    const { getByTestId } = render(<RotatingBackdrop playlist={[clip(1), clip(2), clip(3)]} />);
+    const l0 = getByTestId("backdrop-layer-0");
+    act(() => {
+      fireEvent.error(l0);
+    });
+    expect(getByTestId("backdrop-layer-1").getAttribute("data-active")).toBe("true");
+    expect(getByTestId("backdrop-layer-0").getAttribute("data-active")).toBe("false");
+  });
+
+  it("skips a preloaded clip that is already unplayable when it becomes active", () => {
+    // Simulate the incoming (hidden) layer having already errored during preload: its `error`
+    // event fired while hidden and will never re-fire, and it will never fire `ended`. When the
+    // active clip ends, advancing must skip the dead preloaded clip rather than stall on it.
+    const { getByTestId } = render(<RotatingBackdrop playlist={[clip(1), clip(2), clip(3)]} />);
+    const l1 = getByTestId("backdrop-layer-1") as HTMLVideoElement;
+    // Layer 1 preloaded clip index 1 (c2) and it "failed": give it a non-null MediaError.
+    Object.defineProperty(l1, "error", {
+      configurable: true,
+      get: () => ({ code: 4 }) as unknown as MediaError,
+    });
+    act(() => {
+      fireEvent.ended(getByTestId("backdrop-layer-0")); // active clip ends → advance
+    });
+    // Advanced (did not stall): layer 1 is now the visible layer...
+    expect((getByTestId("backdrop-layer-1") as HTMLVideoElement).getAttribute("data-active")).toBe("true");
+    // ...and it skipped the dead c2 to the next clip c3, rather than showing the unplayable one.
+    expect((getByTestId("backdrop-layer-1") as HTMLVideoElement).src).toContain("c3.mp4");
+    expect((getByTestId("backdrop-layer-1") as HTMLVideoElement).src).not.toContain("c2.mp4");
+  });
+
   it("ignores an `ended` fired by the non-active (hidden) layer", () => {
     const { getByTestId } = render(<RotatingBackdrop playlist={[clip(1), clip(2)]} />);
     act(() => {

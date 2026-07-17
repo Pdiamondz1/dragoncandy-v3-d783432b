@@ -19,7 +19,10 @@ const CROSSFADE_MS = 700;
  * Rendering paths:
  * - **rotating** (motion allowed AND playlist has >1 clip): two stacked `<video>` layers. The
  *   active layer plays one clip to its end; the other layer has the *next* clip preloaded and
- *   fades in over ~700ms when the active one ends. Only ever two clips are loaded at once.
+ *   fades in over ~700ms when the active one ends. Only ever two clips are loaded at once. A clip
+ *   that fails to load/decode (bad codec, 404, corrupt) never fires `ended`, so the rotation also
+ *   advances on `error` (and skips a preloaded-but-already-errored incoming clip) — an unplayable
+ *   clip can never permanently freeze the backdrop.
  * - **single** (motion allowed, one clip): a lone looping `<video>` (identical to the old
  *   single-clip backdrop).
  * - **reduced-motion**: a static poster `<img>` (first clip) — no motion, no video fetch.
@@ -96,13 +99,34 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
     setLayerSource(1, nextIndex(0, len), false);
   }, [rotating, len, setLayerSource]);
 
-  // Advance when the active layer's clip ends: fade in the preloaded layer, queue the next clip
-  // onto the now-hidden layer.
+  // Advance the rotation off the visible layer. Fired on the active clip's `ended` AND on its
+  // `error` (a clip that fails to load/decode never fires `ended`, so without the error path a
+  // single unplayable clip — e.g. an HEVC .MOV Chrome can't decode, a 404, a corrupt file —
+  // would freeze the backdrop forever). Guards `layer === visibleRef.current`, so an `error`
+  // fired by the hidden/preloading layer is ignored here (handled lazily by the already-errored
+  // skip below when that layer would next become visible).
   const handleEnded = useCallback(
     (layer: 0 | 1) => {
       if (!rotating || layer !== visibleRef.current) return;
       const other = (1 - layer) as 0 | 1;
-      const incoming = layerClipRef.current[other]; // already preloaded on `other`
+      let incoming = layerClipRef.current[other]; // already preloaded on `other`
+
+      // If the preloaded incoming clip already failed while it was the hidden layer, its `error`
+      // event has ALREADY fired (won't re-fire) and it will NEVER fire `ended` — showing it would
+      // stall the rotation. Skip past it to the next clip, which `setLayerSource` loads fresh
+      // below (a `load()` resets `.error` to null). A still-bad fresh clip re-advances async via
+      // its own `onError`, and the known-good static backfill clips are mp4, so the rotation
+      // converges. `.error` is null on a freshly-loaded clip, so this skips at most one dead clip
+      // per activation — no synchronous advance loop.
+      if (layerRefs[other].current?.error) {
+        incoming = nextIndex(incoming, len);
+        setLayerClip((prev) => {
+          const n: [number, number] = [prev[0], prev[1]];
+          n[other] = incoming;
+          return n;
+        });
+      }
+
       setLayerSource(other, incoming, true); // play the incoming clip as it fades in
       setVisible(other); // starts the 700ms opacity crossfade
 
@@ -121,6 +145,8 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
         setLayerSource(layer, queued, false); // preload next on the now-hidden layer
       }, CROSSFADE_MS + 50);
     },
+    // layerRefs are stable (ref containers), same as setLayerSource / the observer effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [rotating, len, setLayerSource],
   );
 
@@ -195,6 +221,7 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
           preload="auto"
           poster={clips[layerClip[layer]]?.poster}
           onEnded={() => handleEnded(layer as 0 | 1)}
+          onError={() => handleEnded(layer as 0 | 1)}
           className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ease-in-out ${
             visible === layer ? "opacity-100" : "opacity-0"
           }`}
