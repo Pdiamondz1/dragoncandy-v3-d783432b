@@ -55,9 +55,22 @@ export const Header: React.FC = () => {
     setTimeout(() => navigate(path), 350);
   };
 
+  // The fixed header sits over the scrolling `#main-content`, but a fixed element's wheel
+  // scroll-chain targets the (non-scrolling) viewport — so scrolling while the pointer is over
+  // the header does nothing (can't scroll from the very top). `pointer-events-none` lets wheel/
+  // touch pass THROUGH the transparent header to the content (native scroll, incl. mobile
+  // momentum); the interactive bits re-enable pointer events, and this forwards wheel to the
+  // scroller so desktop scrolling works over them too.
+  const forwardWheelToScroller = (e: React.WheelEvent) => {
+    const scroller = document.getElementById("main-content");
+    if (!scroller) return;
+    const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? scroller.clientHeight : 1;
+    scroller.scrollTop += e.deltaY * unit;
+  };
+
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
+      className={`pointer-events-none fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
         scrolled ? "bg-dc-dark/80 backdrop-blur-xl" : "bg-transparent"
       }`}
     >
@@ -67,12 +80,17 @@ export const Header: React.FC = () => {
           alt="DragonCandy"
           width={140}
           height={47}
-          className="h-16 w-auto cursor-pointer transition-transform duration-200 hover:scale-105 drop-shadow-[0_3px_10px_rgba(0,0,0,0.35)] lg:h-20"
+          className="pointer-events-auto h-16 w-auto cursor-pointer transition-transform duration-200 hover:scale-105 drop-shadow-[0_3px_10px_rgba(0,0,0,0.35)] lg:h-20"
           onClick={() => navigate("/")}
+          onWheel={forwardWheelToScroller}
         />
 
         {/* Desktop nav */}
-        <nav aria-label="Primary" className="hidden items-center gap-7 md:flex">
+        <nav
+          aria-label="Primary"
+          className="pointer-events-auto hidden items-center gap-7 md:flex"
+          onWheel={forwardWheelToScroller}
+        >
           {visibleNavLinks.map((link) => (
             <button
               key={link.label}
@@ -97,7 +115,7 @@ export const Header: React.FC = () => {
         </nav>
 
         {/* Mobile hamburger */}
-        <div className="md:hidden">
+        <div className="pointer-events-auto md:hidden" onWheel={forwardWheelToScroller}>
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
               <button
