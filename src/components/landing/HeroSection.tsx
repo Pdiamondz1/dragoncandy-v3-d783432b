@@ -3,8 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { BRAND_ROLE_ENABLED } from "@/lib/featureConfig";
 import { HERO_CONTENT, parseRoleParam, visibleRoles, type HeroRole } from "./heroRole";
-import { useLandingClip } from "./landingClips";
-import { VideoSlot } from "./VideoSlot";
+import { useLandingPlaylist } from "./landingClips";
+import { RotatingBackdrop } from "./RotatingBackdrop";
 
 /**
  * Faint dc-* gradient placeholders for the kinetic clip-wall (14 tiles, cycled) — replaced by
@@ -26,7 +26,7 @@ export const HeroSection: React.FC = () => {
     parseRoleParam(params.get("role"), BRAND_ROLE_ENABLED),
   );
   const content = HERO_CONTENT[role];
-  const clip = useLandingClip(content.clipKey);
+  const playlist = useLandingPlaylist(content.clipKey);
 
   const scrollToSeeItWork = () => {
     document.getElementById("see-it-work")?.scrollIntoView({ behavior: "smooth" });
@@ -37,13 +37,10 @@ export const HeroSection: React.FC = () => {
       id="hero"
       className="relative isolate flex min-h-[88vh] items-center overflow-hidden pt-28 lg:min-h-screen lg:pt-32"
     >
-      {/* Full-bleed cinematic backdrop — swappable per-role clip; gradient fallback pre-clips */}
-      <VideoSlot
-        variant="backdrop"
-        src={clip.src}
-        poster={clip.poster}
-        className="-z-20"
-      />
+      {/* Full-bleed cinematic backdrop — per-role playlist that crossfades between clips, then
+          loops; gradient fallback pre-clips. key={role} remounts a fresh rotation (starting at
+          clip 1) whenever the visitor switches sides. */}
+      <RotatingBackdrop key={role} playlist={playlist} className="-z-20" />
 
       {/* Kinetic energy: faint drifting clip-wall (desktop only, static under reduced-motion).
           Rotate + scale are baked into the driftY keyframe itself (not a separate static

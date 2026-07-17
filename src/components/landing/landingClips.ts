@@ -52,3 +52,47 @@ export function resolveLandingClip(
 export function useLandingClip(key: LandingClipKey): LandingClip {
   return resolveLandingClip(key);
 }
+
+/**
+ * Per-role backdrop playlists — the hero rotates through these in order, then loops.
+ * Ordered: the branded role clip first (kept identical to `LANDING_CLIPS[key]` so the first
+ * frame the visitor sees is unchanged), then supporting clips. Each `{ src, poster }` is a
+ * direct MP4 + still served from `public/landing/`. A key with no playlist entry falls back to
+ * its single `LANDING_CLIPS` clip, so the seam degrades cleanly (and `hero.brand` — hidden
+ * behind BRAND_ROLE_ENABLED — needs no playlist until Brand launches).
+ */
+export const LANDING_PLAYLISTS: Partial<Record<LandingClipKey, LandingClip[]>> = {
+  "hero.business": [
+    { src: "/landing/hero-business.mp4", poster: "/landing/hero-business-poster.jpg" },
+    { src: "/landing/hero-business-2.mp4", poster: "/landing/hero-business-2-poster.jpg" },
+    { src: "/landing/hero-business-3.mp4", poster: "/landing/hero-business-3-poster.jpg" },
+    { src: "/landing/hero-business-4.mp4", poster: "/landing/hero-business-4-poster.jpg" },
+  ],
+  "hero.creator": [
+    { src: "/landing/hero-creator.mp4", poster: "/landing/hero-creator-poster.jpg" },
+    { src: "/landing/hero-creator-2.mp4", poster: "/landing/hero-creator-2-poster.jpg" },
+    { src: "/landing/hero-creator-3.mp4", poster: "/landing/hero-creator-3-poster.jpg" },
+    { src: "/landing/hero-creator-4.mp4", poster: "/landing/hero-creator-4-poster.jpg" },
+  ],
+};
+
+/**
+ * Resolve a role's ordered backdrop playlist. Returns only entries with a real `src`. Falls
+ * back to the single `LANDING_CLIPS` clip when no playlist is registered, and to an empty array
+ * when neither exists (RotatingBackdrop then shows its branded gradient — ship-before-clips).
+ */
+export function resolveLandingPlaylist(
+  key: LandingClipKey,
+  playlists: Partial<Record<LandingClipKey, LandingClip[]>> = LANDING_PLAYLISTS,
+  registry: Record<LandingClipKey, LandingClip> = LANDING_CLIPS,
+): LandingClip[] {
+  const list = playlists[key];
+  if (list && list.length > 0) return list.filter((c) => !!c.src);
+  const single = resolveLandingClip(key, registry);
+  return single.src ? [single] : [];
+}
+
+/** Hook form. Pure pass-through over the static playlist registry. */
+export function useLandingPlaylist(key: LandingClipKey): LandingClip[] {
+  return resolveLandingPlaylist(key);
+}
