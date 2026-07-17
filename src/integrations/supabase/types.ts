@@ -2877,6 +2877,7 @@ export type Database = {
           model: string | null
           quick_actions: Json | null
           rich_card: Json | null
+          rich_cards: Json | null
           role: string
           tokens_used: number | null
           tool_calls: Json | null
@@ -2893,6 +2894,7 @@ export type Database = {
           model?: string | null
           quick_actions?: Json | null
           rich_card?: Json | null
+          rich_cards?: Json | null
           role: string
           tokens_used?: number | null
           tool_calls?: Json | null
@@ -2909,6 +2911,7 @@ export type Database = {
           model?: string | null
           quick_actions?: Json | null
           rich_card?: Json | null
+          rich_cards?: Json | null
           role?: string
           tokens_used?: number | null
           tool_calls?: Json | null

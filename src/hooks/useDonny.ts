@@ -8,6 +8,7 @@ import type {
   DonnyState,
   DonnyAvatarState,
   DonnyQuickChip,
+  DonnyRichCard,
 } from '@/types/donny';
 
 const DEFAULT_QUICK_CHIPS: Record<string, DonnyQuickChip[]> = {
@@ -84,7 +85,7 @@ export function useDonny(options?: UseDonnyOptions) {
 
       const { data, error: fetchError } = await supabase
         .from('donny_messages')
-        .select('id, conversation_id, role, content, tool_calls, tool_result, rich_card, quick_actions, created_at')
+        .select('id, conversation_id, role, content, tool_calls, tool_result, rich_card, rich_cards, quick_actions, created_at')
         .eq('conversation_id', conversation.id)
         .order('created_at', { ascending: true });
 
@@ -196,6 +197,7 @@ export function useDonny(options?: UseDonnyOptions) {
         let buffer = '';
         let accumulatedText = '';
         let suggestedActions: Array<{ label: string; route: string }> = [];
+        let richCards: DonnyRichCard[] = [];
 
         try {
           while (true) {
@@ -223,6 +225,7 @@ export function useDonny(options?: UseDonnyOptions) {
               } else if (eventType === 'done' && eventData) {
                 const parsed = JSON.parse(eventData);
                 suggestedActions = parsed.suggested_actions ?? [];
+                richCards = parsed.rich_cards ?? [];
                 if (parsed.answer) {
                   accumulatedText = parsed.answer;
                 }
@@ -252,6 +255,7 @@ export function useDonny(options?: UseDonnyOptions) {
             role: 'assistant',
             content: accumulatedText,
             quick_actions: quickActions.length > 0 ? quickActions : null,
+            rich_cards: richCards.length ? richCards : null,
           });
           if (saveErr) throw saveErr;
         } else {
@@ -272,12 +276,14 @@ export function useDonny(options?: UseDonnyOptions) {
             url: a.route,
           })
         );
+        const jsonRichCards = (data.rich_cards ?? []) as DonnyRichCard[];
 
         const { error: saveErr } = await supabase.from('donny_messages').insert({
           conversation_id: conversation.id,
           role: 'assistant',
           content: data.answer,
           quick_actions: quickActions.length > 0 ? quickActions : null,
+          rich_cards: jsonRichCards.length ? jsonRichCards : null,
         });
         if (saveErr) throw saveErr;
       } else {

@@ -7,7 +7,7 @@ import { getUserUsageStage, incrementUsage, checkQuotaOrBlock, checkHourlyRateLi
 import { embedQuery, retrieveContext } from "./rag.ts";
 import { SUB_AGENT_TOOLS, mergeToolsWithMcp, detectSocialIntent, isSocialTool } from "./tools.ts";
 import { createOutstandMcpBridge, type OutstandMcpBridge } from "../_shared/outstand-mcp.ts";
-import type { OrchestratorInput, UserContext } from "./types.ts";
+import type { CreatorCard, OrchestratorInput, UserContext } from "./types.ts";
 import * as campaignAgent from "./agents/campaign.ts";
 import * as creatorsAgent from "./agents/creators.ts";
 import * as dragonshareAgent from "./agents/dragonshare.ts";
@@ -83,14 +83,14 @@ async function dispatchAgent(
   toolInput: Record<string, unknown>,
   supabase: SupabaseClient,
   userContext: UserContext
-): Promise<string> {
+): Promise<{ result: string; cards?: CreatorCard[] }> {
   const agentMap: Record<
     string,
     (
       s: SupabaseClient,
       i: Record<string, unknown>,
       u: UserContext
-    ) => Promise<{ context: string; suggested_actions?: Array<{ label: string; route: string }> }>
+    ) => Promise<{ context: string; suggested_actions?: Array<{ label: string; route: string }>; cards?: CreatorCard[] }>
   > = {
     campaign_agent: campaignAgent.execute,
     find_creators: creatorsAgent.execute,
@@ -105,11 +105,15 @@ async function dispatchAgent(
 
   const handler = agentMap[toolName];
   if (!handler) {
-    return JSON.stringify({ error: `Unknown agent: ${toolName}` });
+    return { result: JSON.stringify({ error: `Unknown agent: ${toolName}` }) };
   }
 
-  const result = await handler(supabase, toolInput, userContext);
-  return JSON.stringify(result);
+  const r = await handler(supabase, toolInput, userContext);
+  // Cards are a deterministic side-channel — the LLM only ever sees the text
+  // context + suggested_actions, never the structured cards (threaded separately
+  // into the SSE `done` event).
+  const result = JSON.stringify({ context: r.context, suggested_actions: r.suggested_actions });
+  return { result, cards: r.cards };
 }
 
 // ---------------------------------------------------------------------------
@@ -439,6 +443,9 @@ serve(async (req) => {
     await incrementUsage(supabase, userId, modelConfig.actionCost);
     let lastToolUsed = "general";
     let loopCount = 0;
+    // Structured cards from find_creators, threaded straight into the SSE `done`
+    // event (bypassing the LLM). Last find_creators dispatch wins.
+    let collectedCards: CreatorCard[] = [];
 
     while (claudeResult.stop_reason === "tool_use" && loopCount < 3) {
       loopCount++;
@@ -476,7 +483,13 @@ serve(async (req) => {
             rag_context: ragChunks.join("\n"),
             tavily_api_key: TAVILY_API_KEY,
           };
-          agentResult = await dispatchAgent(toolName, enrichedInput, supabase, userContext);
+          const dispatched = await dispatchAgent(toolName, enrichedInput, supabase, userContext);
+          agentResult = dispatched.result;
+          // "Last find_creators wins" — reset even when it returns no cards (empty
+          // pool / error), so a later empty lookup can't leave STALE cards from an
+          // earlier one on the response (Codex P2). Gate on the tool name, not on
+          // card presence: other sub-agents (undefined cards) must not clear it.
+          if (toolName === "find_creators") collectedCards = dispatched.cards ?? [];
         }
 
         toolResultBlocks.push({
@@ -532,6 +545,7 @@ serve(async (req) => {
       suggested_actions,
       agent_used: lastToolUsed,
       answer,
+      rich_cards: collectedCards.length ? collectedCards : undefined,
     });
     const sseBody = `event: text_delta\ndata: ${textChunk}\n\nevent: done\ndata: ${doneChunk}\n\n`;
 

@@ -1,6 +1,17 @@
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SubAgentResult, UserContext } from "../types.ts";
+import { CreatorCard, SubAgentResult, UserContext } from "../types.ts";
 import { resolveSearchCenter, rankCreators } from "../../_shared/creator-discovery.ts";
+
+// Social-platform URL columns → display label, in presentation order. A creator's
+// `platforms` list is derived from which of these columns are populated.
+const PLATFORM_COLS: Array<{ col: string; label: string }> = [
+  { col: "instagram_url", label: "Instagram" },
+  { col: "tiktok_url", label: "TikTok" },
+  { col: "youtube_url", label: "YouTube" },
+  { col: "facebook_url", label: "Facebook" },
+  { col: "linkedin_url", label: "LinkedIn" },
+  { col: "x_url", label: "X" },
+];
 
 // Role-aware "browse all creators" route. Business (restaurant) and brand have
 // separate dashboards; both have a creators browse page.
@@ -11,8 +22,7 @@ function browseCreatorsRoute(userRole: string): string {
 }
 
 const CANDIDATE_LIMIT = 500; // bounded in-memory rank; the pool is ~dozens today.
-const TOP_N = 8;             // how many ranked creators to hand Claude
-const ACTION_N = 5;          // how many "View <name>" buttons to surface
+const TOP_N = 8;             // how many ranked creators to hand Claude (and render as cards)
 
 /**
  * Standalone creator discovery for the consumer Donny — "find me creators near X",
@@ -39,7 +49,7 @@ export async function execute(
     // nearby lower-rated creators before scoring).
     let query = supabase
       .from("creator_profiles")
-      .select("user_id, creator_name, avatar_url, bio, skills, location, city, country, average_rating, total_reviews, profile_slug")
+      .select("user_id, creator_name, avatar_url, bio, skills, location, city, country, average_rating, total_reviews, profile_slug, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url")
       .eq("is_completed", true)
       .eq("profile_visibility", "public");
     if (minRating !== null) query = query.gte("average_rating", minRating);
@@ -93,14 +103,37 @@ export async function execute(
       `Present these as a short numbered list with each creator's distance when shown; use ONLY this data, do not invent creators, distances, or ratings:\n` +
       JSON.stringify(list);
 
-    // "View <name>" buttons for the top few that have a public profile slug, plus a browse-all.
-    const suggested_actions = ranked
-      .filter((c: any) => c.profile_slug)
-      .slice(0, ACTION_N)
-      .map((c: any) => ({ label: `View ${c.creator_name ?? "creator"}`, route: `/creator/${c.profile_slug}` }));
-    suggested_actions.push({ label: "Browse all creators", route: browseRoute });
+    // Structured avatar cards — a deterministic side-channel the orchestrator threads
+    // straight into the SSE `done` event (never through the LLM). Each card carries its
+    // own "View Portfolio" + "Invite" actions, so the per-creator "View" buttons are
+    // dropped from suggested_actions below.
+    const cards: CreatorCard[] = ranked.map((c: any) => {
+      const platforms = PLATFORM_COLS
+        .filter(({ col }) => typeof c[col] === "string" && c[col].trim())
+        .map(({ label }) => label);
+      const niche = Array.isArray(c.skills) && c.skills.length
+        ? c.skills.slice(0, 3).join(", ")
+        : "General";
+      return {
+        type: "creator_profile" as const,
+        data: {
+          id: c.user_id,
+          name: c.creator_name ?? "Unknown creator",
+          avatar_url: c.avatar_url ?? null,
+          profile_slug: c.profile_slug ?? null,
+          platforms,
+          niche,
+          rating: Number(c.average_rating ?? 0),
+          project_count: c.total_reviews ?? 0,
+          distance_miles: typeof c.distanceMiles === "number" ? c.distanceMiles : null,
+        },
+      };
+    });
 
-    return { context, suggested_actions };
+    // Cards own per-creator navigation; keep only the browse-all action.
+    const suggested_actions = [{ label: "Browse all creators", route: browseRoute }];
+
+    return { context, suggested_actions, cards };
   } catch (err) {
     console.error("[find_creators] error:", err);
     return {
