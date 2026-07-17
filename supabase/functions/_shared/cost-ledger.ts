@@ -103,6 +103,7 @@ const WEB_TOOL_COSTS: Record<"web_search" | "web_extract", number> = {
 export interface WebToolCostEntry {
   userId: string | null;
   kind: "web_search" | "web_extract";
+  edgeFunction?: string;
 }
 
 /**
@@ -115,7 +116,7 @@ export async function logWebToolCost(
 ): Promise<void> {
   const { error } = await supabaseAdmin.from("donny_cost_ledger").insert({
     user_id: normalizeUserId(entry.userId),
-    edge_function: "donny-chat",
+    edge_function: entry.edgeFunction ?? "donny-chat",
     model: "tavily",
     tier: entry.kind,
     input_tokens: 0,
