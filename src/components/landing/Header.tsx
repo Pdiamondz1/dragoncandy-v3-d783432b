@@ -27,13 +27,22 @@ export const Header: React.FC = () => {
   const [scrolled, setScrolled] = useState(false);
 
   React.useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof document === "undefined") return;
 
-    const handleScroll = () => setScrolled(window.scrollY > 16);
+    // The landing renders inside the app shell's scrolling `<main id="main-content">`
+    // (App.tsx: `flex h-screen` shell + inner `overflow-auto` main), so the WINDOW never
+    // scrolls — `window.scrollY` stays 0 and the header would never leave its transparent
+    // state, floating illegibly over bright sections. Key off the real scroll container,
+    // falling back to `window` if that shell id ever changes.
+    const scroller = document.getElementById("main-content");
+    const target: HTMLElement | Window = scroller ?? window;
+    const readScroll = () => (scroller ? scroller.scrollTop : window.scrollY);
+
+    const handleScroll = () => setScrolled(readScroll() > 16);
     handleScroll();
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    target.addEventListener("scroll", handleScroll, { passive: true });
+    return () => target.removeEventListener("scroll", handleScroll);
   }, []);
 
   const handleNavClick = (sectionId: string) => {
@@ -49,9 +58,7 @@ export const Header: React.FC = () => {
   return (
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
-        scrolled
-          ? "bg-dc-dark/80 backdrop-blur-xl border-b border-white/10"
-          : "bg-transparent border-b border-transparent"
+        scrolled ? "bg-dc-dark/80 backdrop-blur-xl" : "bg-transparent"
       }`}
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5 sm:px-8 lg:px-12">
