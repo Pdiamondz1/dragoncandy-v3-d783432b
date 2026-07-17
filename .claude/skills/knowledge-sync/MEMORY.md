@@ -30,6 +30,45 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-17] Landing backdrop HEVC .mov fix (PR #273 → paired docs)
+- Output: bundled INTO the work — `raw/sessions/2026-07-17-landing-backdrop-mov-fix.md`,
+  **corrected in place** `concepts/landing-cinematic-video-redesign.md` (the "DragonFeed Backdrop
+  Adapter" section's eligibility regex/frontend-merge-order/no-stall-fix bullets rewritten to the
+  current behavior, not appended as a contradictory new section; added a "Durable lessons from
+  PR #273" bullet + frontmatter `sources:`), `index.md` (Sources, alphabetical), `log.md` update
+  entry, PROJECT_CONTEXT (follow-up sentence appended to the existing PR #268 bullet, not a new
+  bullet), + THIS entry. No DATABASE_SCHEMA/DESIGN_SYSTEM/CLAUDE.md change (frontend + one edge-fn
+  `lib.ts` redeploy; no schema/token/workflow change).
+- Happened: a same-branch, **next-day** bug-report session that REVERSED two decisions the
+  IMMEDIATELY PRIOR knowledge-sync run (PR #268, one entry below) had just documented as shipped —
+  "dynamic clips lead" and "`.mov` is eligible." Per the standing "edit-in-place on supersession"
+  Lesson, corrected those exact sentences in the concept page rather than leaving them stale or
+  bolting on a second, contradictory section — a reader hitting that page must see the CURRENT
+  merge order and eligibility regex, not a stale one two paragraphs above a correction. Root cause
+  (a real HEVC `.MOV` silently failing to decode, no `error` event) + the reversed decisions +
+  the three-layer fix went into both the concept-page correction and a new raw session narrating
+  the debugging path.
+- Worked: [runlog-in-pr] + [orphans]-by-path (new raw session cataloged in index.md; no new
+  concept page). [wikilinks]-exact: grepped index.md first — confirmed
+  [[DragonFeed Backdrop Adapter Session]], [[Trust-Then-Flag Model]], [[Dragon Feed]],
+  [[Landing Cinematic Video Redesign]] all exist before linking. Read the actual PR #273 commit
+  diff (`git show`) rather than trusting only the task's prose summary, which caught the exact
+  `mergeBackdropPlaylist` array-order line, the `VIDEO_EXT` regex before/after, and the
+  `MAX_DWELL_MS` value verbatim — durable pages should quote the real code, not a paraphrase.
+- Failed: none for knowledge-sync. (The underlying fix's true visual E2E — does the hero now
+  avoid the HEVC clip and never freeze on prod — is founder/post-merge verification, same class
+  of gap as every other prod-content landing feature; not silently glossed over.)
+- Remember: **a fix that reverses a decision an EARLIER knowledge-sync run already documented as
+  shipped must EDIT that concept section in place, not append a second "actually, here's what
+  really happens now" section below it.** A concept page that contradicts itself top-to-bottom is
+  worse than one that's simply out of date — a reader has no way to know which paragraph is
+  current. This is the same "edit-in-place on supersession" Lesson already captured for a
+  *different* session's rewrite (2026-07-16 DragonFeed creator search), now confirmed for the
+  sharper case of a **same-page, next-day, same-branch** correction — check `git log`/the actual
+  diff for the real before/after values rather than re-deriving them from a prose task
+  description, since the commit is the ground truth. (advisory — extends [orphans]/[wikilinks]
+  discipline to a "verify against the diff" sibling)
+
 ### [2026-07-17] DragonFeed hero backdrop adapter (PR #268 → paired docs)
 - Output: bundled INTO the work — `raw/sessions/2026-07-17-dragonfeed-backdrop-adapter.md`,
   **compounded** `concepts/landing-cinematic-video-redesign.md` (new "DragonFeed Backdrop Adapter

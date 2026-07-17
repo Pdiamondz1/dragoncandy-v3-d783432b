@@ -3,7 +3,7 @@ title: Landing Cinematic Video Redesign
 type: concept
 created: 2026-07-16
 updated: 2026-07-17
-sources: [2026-07-16-landing-cinematic-video-redesign.md, 2026-07-17-dragonfeed-backdrop-adapter.md]
+sources: [2026-07-16-landing-cinematic-video-redesign.md, 2026-07-17-dragonfeed-backdrop-adapter.md, 2026-07-17-landing-backdrop-mov-fix.md]
 tags: [landing, frontend, video, design, tailwind, dragonfeed]
 ---
 # Landing Cinematic Video Redesign
@@ -41,16 +41,19 @@ AI-video backdrop**. Frontend-only — no schema/edge-fn/secret change.
 - **`VideoSlot variant="backdrop"`** — additive full-bleed, controls-less variant; the default
   framed player is byte-unchanged. All hardening kept (see [[Landing Prerendered Shell & Performance]]).
 
-## DragonFeed Backdrop Adapter (shipped, PR #268, 2026-07-17)
+## DragonFeed Backdrop Adapter (shipped, PR #268, 2026-07-17; fixed in PR #273: real HEVC `.MOV` was leading and breaking the hero)
 
-The predicted "future DragonFeed adapter" above is now built: the hero backdrop **leads with
-real boosted DragonShare video when any exists**, falling back to the curated static clips
-otherwise. Video-only; no schema/RLS/migration/secret.
+The predicted "future DragonFeed adapter" above is now built: the hero backdrop plays real
+boosted DragonShare video **after** the curated static clips whenever an eligible clip exists,
+falling back to static-only otherwise. (PR #268 originally had dynamic clips **leading** the
+static ones; PR #273 flipped that — see below.) Video-only; no schema/RLS/migration/secret.
 
 - **Source: a new anon edge fn `landing-clips`** (`verify_jwt=true`, the platform default — no
   `config.toml` entry). Service-role reads `dragonshare_posts` for eligibility: `status='verified'
   AND flagged_at IS NULL AND boost_status='boosted' AND content_type IN ('video','reel') AND
-  content_file_path IS NOT NULL AND content_file_path ~* '\.(mp4|webm|mov)$'`, plus an
+  content_file_path IS NOT NULL AND content_file_path ~* '\.(mp4|webm)$'` — **`.mov`/`.MOV`
+  dropped in PR #273** (originally `\.(mp4|webm|mov)$`; an iPhone `.mov` is frequently HEVC
+  (H.265), which Chrome/Firefox cannot decode, or a portrait phone capture) — plus an
   inner-joined `dragonshare_boosts` row (`status IN ('captured','transferred')`). Returns ONLY
   `{ src, poster? }` — public URLs, never a row, never PII. Never throws to the client: any
   failure → `{ clips: [] }`.
@@ -61,7 +64,10 @@ otherwise. Video-only; no schema/RLS/migration/secret.
   this specific post — is a cheap, structural quality signal.
 - **Frontend seam:** a new `useLandingBackdropPlaylist(key)` hook returns the static playlist
   immediately (no flash), React-Query-fetches the dynamic clips once, and merges via a new pure
-  `mergeBackdropPlaylist` in `landingClips.ts` — **dynamic leads, static backfills**, de-duped,
+  `mergeBackdropPlaylist` in `landingClips.ts` — **static clips LEAD, dynamic clips TRAIL**
+  (`[...staticClips, ...dynamicClips]`; **flipped in PR #273** from the original
+  `[...dynamicClips, ...staticClips]` — an unpredictable-quality user upload must never be the
+  hero's first impression, even though it still plays later as social proof), de-duped,
   capped at 6, same-reference-when-nothing-changed (so nothing spuriously remounts). `hero.brand`
   stays static-only (still hidden behind `BRAND_ROLE_ENABLED`).
 - **Index-based rotation needs a content-aware remount key.** `RotatingBackdrop` tracks its two
@@ -69,17 +75,34 @@ otherwise. Video-only; no schema/RLS/migration/secret.
   `playlistSignature(role, playlist)` (role + joined `src`s) instead of `key={role}` — a
   same-length-different-clips swap (dynamic clips arriving after mount) would otherwise never be
   reflected, since neither the role nor the array length changed.
-- **No-stall fix, found by the whole-branch review, not the per-task reviews.**
-  `RotatingBackdrop` only ever advanced on a clip's `onEnded`. Once the source can include a real
-  (not curated) user upload, an undecodable or unreachable clip — a bad codec, a 404, a corrupt
-  file — **never fires `ended`**, only `error`; with dynamic clips now potentially leading at
-  index 0, one bad boosted upload would freeze the hero on a blank layer forever. Fixed by
-  advancing on `onError` too (and skipping an already-errored preloaded clip when it would next
-  become visible). The extension guard alone (`\.(mp4|webm|mov)$`) does not cover this — a
-  `.mov` container can still hold an HEVC stream Chrome can't decode.
+- **No-stall fix — layered, not one-shot.** `RotatingBackdrop` originally only advanced on a
+  clip's `onEnded`. Once the source could include a real (not curated) user upload, an
+  undecodable or unreachable clip — a bad codec, a 404, a corrupt file — **never fires `ended`**,
+  only `error`; PR #268 fixed the reachable case by also advancing on `onError` (and skipping an
+  already-errored preloaded clip when it would next become visible). **That still wasn't
+  graceful enough: PR #273 found the actual failure mode in prod was a real HEVC (H.265,
+  `hvc1`) 1920×1080 `.MOV` — a codec some browsers show as a silent black frame for, without
+  ever firing `error`.** A guard that only reacts to `error` can't catch a silent decode failure,
+  so PR #273 added a **15s max-dwell watchdog** (`MAX_DWELL_MS`) that force-advances any clip
+  that neither ends nor errors within the window — armed on every `visible` change, cleared by a
+  normal advance, so a healthy clip never trips it. This is the definitive no-freeze guarantee;
+  the extension guard (see above) narrows the *input*, the watchdog guarantees the *rotation*
+  regardless of input.
 - **The feature was not latent.** The whole-branch review queried prod directly and found
   **5 eligible boosted rows already existed** (the leading/newest one a `.MOV`) — verify against
-  prod data before assuming a cold start.
+  prod data before assuming a cold start. (That same `.MOV` is the exact clip PR #273 later
+  proved was HEVC and breaking playback.)
+- **Durable lessons from PR #273.** A `.mov` extension is **not** a safe web-video signal — an
+  iPhone `.mov` is frequently HEVC, undecodable outside Safari; gate a public video backdrop to
+  `mp4`/`webm` only. Unpredictable user-upload quality is exactly why dynamic clips should
+  **trail**, never **lead**, a polished hero. And a rotation that advances only on `onEnded`
+  needs **both** an `onError` path **and** a max-dwell watchdog to truly never freeze — the
+  extension guard alone doesn't cover a decode failure that renders black without ever firing
+  `error`. This reverses two decisions made during the original PR #268 build ("keep `.mov`",
+  "dynamic leads") on concrete evidence, not speculation. Reviews: `edge-function-reviewer` PASS
+  on the redeployed `landing-clips/lib.ts`; Codex second review clean (its one P2 — re-raising
+  `verify_jwt=false` — was a false positive, since the dynamic clips already reached the browser
+  pre-fix, proving `verify_jwt=true` works for a logged-out visitor).
 - **Vercel PREVIEW builds point at the STAGING Supabase project** (see [[QA CI/CD Gate]]), so a
   prod-content feature like this cannot be visually E2E-verified on a PR preview (staging's
   `dragonshare_posts` has no eligible boosted rows). Verified instead via the prod edge-fn

@@ -1,5 +1,29 @@
 # Wiki Log
 
+## [2026-07-17] update | Landing backdrop HEVC .mov fix
+Ingested [[Landing Backdrop HEVC .MOV Fix Session]] (branch `worktree-dc-landing-page-upgrade`,
+PR #273, merged + live), a next-day follow-up to [[DragonFeed Backdrop Adapter Session]] (PR
+#268). Founder report "creator side shows one looped video" root-caused to the leading boosted
+DragonShare clip on prod being a real **HEVC (H.265, `hvc1`) 1920×1080 `.MOV`** — undecodable in
+Chrome/Firefox, rendering a silent black frame that never fires `error`, so PR #268's
+`onError`-advance fix never triggered. Three fixes, all in `landing-cinematic-video-redesign.md`
+(edited **in place**, not appended, per the supersession pattern): (1) `mergeBackdropPlaylist`
+flipped so dynamic (boosted) clips now **trail** the curated static clips instead of leading —
+the hero always opens on a polished on-brand clip; (2) `.mov`/`.MOV` dropped from
+`landing-clips`'s eligibility regex (`mp4`/`webm` only — an iPhone `.mov` is frequently HEVC or
+portrait); (3) a **15s max-dwell watchdog** on `RotatingBackdrop` force-advances any clip that
+neither ends nor errors, the definitive no-freeze guarantee layered over PR #268's `onError`
+path. Explicitly reverses two PR #268 decisions ("keep `.mov`", "dynamic leads") on concrete
+evidence. Reviews: `edge-function-reviewer` PASS, Codex second review clean (its one P2 —
+re-raising `verify_jwt=false` — was a false positive). Pages created: the raw session source.
+Pages updated: [[Landing Cinematic Video Redesign]] (corrected the "DragonFeed Backdrop Adapter"
+section's stale pre-fix descriptions — eligibility regex, merge order, no-stall-fix bullet — in
+place, added a "Durable lessons from PR #273" bullet + frontmatter `sources:`), `index.md`
+(Sources, alphabetical among the Landing entries), PROJECT_CONTEXT (follow-up sentence appended
+to the existing "DragonFeed hero backdrop adapter" bullet). No DATABASE_SCHEMA/DESIGN_SYSTEM/
+CLAUDE.md change (frontend + one edge-fn `lib.ts` redeploy; no schema/token/workflow change). RAG
+sync + [[verify-knowledge]] are post-merge (the post-merge hook fires on the `main` fast-forward).
+
 ## [2026-07-17] ingest | DragonFeed hero backdrop adapter
 Ingested [[DragonFeed Backdrop Adapter Session]] (branch `worktree-dc-landing-page-upgrade`,
 PR #268, merged + live). Closes the prediction [[Landing Cinematic Video Redesign]] made one day

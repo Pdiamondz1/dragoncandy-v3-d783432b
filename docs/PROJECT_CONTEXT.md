@@ -1230,6 +1230,13 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   (`verify_jwt=true` preserved, boot-checked). Concept:
   `docs/wiki/concepts/landing-cinematic-video-redesign.md` (new "DragonFeed Backdrop Adapter"
   section). Spec: `docs/superpowers/specs/2026-07-17-dragonfeed-backdrop-adapter-design.md`.
+  **Follow-up fix (PR #273, same day, merged + live):** the founder reported "the creator side
+  shows one looped video" — the leading boosted clip on prod was a real HEVC (H.265) `.MOV`
+  Chrome/Firefox can't decode (silent black frame, no `error` event, so PR #268's `onError`-skip
+  never fired). Fixed with three changes: dynamic clips now **trail** the curated static clips
+  instead of leading (`mergeBackdropPlaylist`), `.mov`/`.MOV` dropped from `landing-clips`
+  eligibility (`mp4`/`webm` only), and a 15s max-dwell watchdog on `RotatingBackdrop` so a clip
+  that neither ends nor errors force-advances. `edge-function-reviewer` PASS + Codex clean.
 
 - Web Donny find_creators results as avatar rich cards (Option B) — **built + backend-deployed
   (branch `feat/donny-rich-creator-cards`, 2026-07-16; orchestrator v62 live + migration applied;
