@@ -293,6 +293,14 @@
   100% { background-position: 200% 0; }
 }
 
+/* Kinetic clip-wall drift (HeroSection hero backdrop) — rotate + scale are baked into both
+   keyframe steps (not left as a separate static transform) so the running animation doesn't
+   clobber the tilt; only gated in via `motion-safe:` on the consuming class. */
+@keyframes driftY {
+  from { transform: rotate(-6deg) scale(1.15) translateY(0); }
+  to { transform: rotate(-6deg) scale(1.15) translateY(-3%); }
+}
+
 @keyframes slideInLeft {
   from {
     opacity: 0;

@@ -1153,6 +1153,33 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   closed as wrong-function.** Deferred: rich avatar cards (Option B — `donny_messages.rich_card` →
   array); server-side lat/lng distance (shared scale path). Concept:
   `docs/wiki/concepts/ai-creator-matching.md` ("Which Donny?" section).
+- Public landing — Cinematic AI-video redesign — **built (branch
+  `worktree-dc-landing-page-upgrade`, 2026-07-16; frontend-only, no schema/edge-fn/secret change).**
+  Evolved the Dark-Luxe landing (`src/components/landing/*`) into a **cinematic, kinetic, 6-section**
+  page: a **morphing per-role hero** (R2 switcher — `Business·Creator·Brand` pills re-film the
+  headline/backdrop-clip/CTA; own-property-guarded `?role=` deep-link; Brand pill gated by
+  `BRAND_ROLE_ENABLED`), a **swappable `landingClips` clip-source seam** (semantic key →
+  `{src,poster}`; v1 registry ships **empty** so `VideoSlot` degrades to its gradient — **ship-before-clips**;
+  founder pastes Cloudflare Stream URLs into one file to turn on video; a future **DragonFeed adapter**
+  swaps the source with zero component changes), an additive **`VideoSlot variant="backdrop"`**
+  (full-bleed, controls-less), a **Lean-6** structure (Hero → See-it-work [the anonymous brief
+  generator] → How-it-works → Pick-your-lane → **honest** Proof [empty testimonials slot, no fabricated
+  quotes] → Start-free [merged CTA + lead form]), **"Donny"** naming (never "Donny AI"), and a
+  **transparent scroll-aware header** (transparent over the hero, fades in a dark blur on scroll).
+  Recommended clip pipeline (founder, outside code): Nano Banana Pro stills → image-to-video (Veo 3.1
+  / Kling / Runway) → 4–8s silent loops → Cloudflare Stream. Built subagent-driven (11 tasks, per-task
+  review; pure `landingClips`/`heroRole`/`VideoSlot` unit-tested TDD). **Opus whole-branch review**
+  "ready to merge with fixes" caught one Important bug — the backdrop wrapper's `relative` beat the
+  hero's `absolute inset-0` (Tailwind emits `.relative` after `.absolute`, so the later-defined wins →
+  not full-bleed; masked until a clip URL is added) — fixed to self-position `absolute inset-0` + a
+  regression test. **Codex second review clean.** Browser-verified logged-out: hero morph
+  (Business↔Creator), brief generator, honest Proof, scroll-aware header, no console errors; found +
+  fixed two more in the browser pass (size a tall logo by **height** not width; a fixed transparent
+  header is illegible over bright scrolled content → scroll-fade). Founder follow-ups: Cloudflare
+  Stream account + generate/drop clip URLs into `LANDING_CLIPS`; confirm `LEADS_NOTIFY_EMAIL`;
+  optionally fill real testimonials + align the gated rewards copy to "Reputation (Rep)". Concept:
+  `docs/wiki/concepts/landing-cinematic-video-redesign.md`. Spec:
+  `docs/superpowers/specs/2026-07-16-landing-cinematic-video-redesign-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
