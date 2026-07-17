@@ -16,7 +16,7 @@ export function DonnyQuickChips({ chips, onChipTap, disabled = false }: DonnyQui
           key={chip.label}
           onClick={() => onChipTap(chip.message)}
           disabled={disabled}
-          className="bg-white/5 border border-dc-teal text-dc-teal text-xs font-medium px-3 py-1.5 rounded-full hover:bg-dc-teal-btn hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-dc-teal"
+          className="bg-white border border-dc-teal text-dc-teal text-xs font-medium px-3 py-1.5 rounded-full hover:bg-dc-teal-btn hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-dc-teal"
         >
           {chip.label}
         </button>

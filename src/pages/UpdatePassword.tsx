@@ -55,7 +55,7 @@ const UpdatePassword: React.FC = () => {
   };
 
   return (
-    <div className="dc-surface flex flex-col overflow-x-hidden">
+    <div className="dark dc-surface flex flex-col overflow-x-hidden">
       <SEO
         title="Update Password"
         description="Set a new password for your DragonCandy account."

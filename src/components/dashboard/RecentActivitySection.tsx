@@ -48,14 +48,14 @@ export function RecentActivitySection({
       <SectionHeader title={title} action={action} />
 
       {/* Desktop: quiet pill tabs */}
-      <div className="hidden lg:block dc-panel">
+      <div className="hidden lg:block rounded-2xl border border-dc-teal/15 bg-white shadow-dc-sm">
         <Tabs defaultValue={groups[0].id}>
           <TabsList className="bg-transparent p-0 gap-2 px-5 pt-4 h-auto justify-start">
             {groups.map((g) => (
               <TabsTrigger
                 key={g.id}
                 value={g.id}
-                className="rounded-full border border-white/10 px-4 py-1.5 text-xs font-semibold text-white/60 data-[state=active]:bg-dc-teal/10 data-[state=active]:text-dc-teal data-[state=active]:border-dc-teal/30 data-[state=active]:shadow-none"
+                className="rounded-full border border-dc-teal/15 px-4 py-1.5 text-xs font-semibold text-dc-text-muted data-[state=active]:bg-dc-teal/10 data-[state=active]:text-dc-teal-btn data-[state=active]:border-dc-teal/30 data-[state=active]:shadow-none"
               >
                 {g.label}
                 <CountPill count={g.count} className="ml-1.5" />
@@ -71,11 +71,11 @@ export function RecentActivitySection({
       </div>
 
       {/* Mobile: accordion, first group open */}
-      <div className="lg:hidden dc-panel overflow-hidden">
+      <div className="lg:hidden rounded-2xl border border-dc-teal/15 bg-white shadow-dc-sm overflow-hidden">
         <Accordion type="multiple" defaultValue={[groups[0].id]}>
           {groups.map((g) => (
-            <AccordionItem key={g.id} value={g.id} className="border-white/10 last:border-b-0">
-              <AccordionTrigger className="px-4 py-3 text-sm font-semibold text-white hover:no-underline">
+            <AccordionItem key={g.id} value={g.id} className="border-dc-teal/10 last:border-b-0">
+              <AccordionTrigger className="px-4 py-3 text-sm font-semibold text-dc-text hover:no-underline">
                 <span className="flex items-center">
                   {g.label}
                   <CountPill count={g.count} className="ml-2" />

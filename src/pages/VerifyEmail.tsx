@@ -52,7 +52,7 @@ const VerifyEmail = () => {
   }, [searchParams, navigate]);
 
   return (
-    <div className="dc-surface flex flex-col overflow-x-hidden">
+    <div className="dark dc-surface flex flex-col overflow-x-hidden">
       <SEO
         title="Verify Your Email"
         description="Verifying your DragonCandy email address."

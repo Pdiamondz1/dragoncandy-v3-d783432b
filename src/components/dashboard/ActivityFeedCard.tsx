@@ -1,16 +1,16 @@
 
 const statusStyles: Record<string, string> = {
-  active: 'bg-emerald-500/15 text-emerald-300',
-  published: 'bg-emerald-500/15 text-emerald-300',
-  'in progress': 'bg-emerald-500/15 text-emerald-300',
-  accepted: 'bg-emerald-500/15 text-emerald-300',
-  pending: 'bg-amber-500/15 text-amber-300',
-  review: 'bg-amber-500/15 text-amber-300',
-  reviewing: 'bg-amber-500/15 text-amber-300',
-  completed: 'bg-dc-teal/10 text-dc-teal',
-  draft: 'bg-blue-500/15 text-blue-300',
-  cancelled: 'bg-red-500/15 text-red-300',
-  rejected: 'bg-red-500/15 text-red-300',
+  active: 'bg-emerald-100 text-emerald-700',
+  published: 'bg-emerald-100 text-emerald-700',
+  'in progress': 'bg-emerald-100 text-emerald-700',
+  accepted: 'bg-emerald-100 text-emerald-700',
+  pending: 'bg-amber-100 text-amber-800',
+  review: 'bg-amber-100 text-amber-800',
+  reviewing: 'bg-amber-100 text-amber-800',
+  completed: 'bg-dc-teal/10 text-dc-teal-btn',
+  draft: 'bg-blue-100 text-blue-700',
+  cancelled: 'bg-red-100 text-red-600',
+  rejected: 'bg-red-100 text-red-600',
 };
 
 interface ActivityFeedCardProps {
@@ -23,7 +23,7 @@ interface ActivityFeedCardProps {
 /** Borderless list row for the calm dashboard activity sections. */
 export function ActivityFeedCard({ title, subtitle, status, onClick }: ActivityFeedCardProps) {
   const Wrapper = onClick ? 'button' : 'div';
-  const statusClass = statusStyles[status.toLowerCase()] ?? 'bg-dc-teal/10 text-dc-teal';
+  const statusClass = statusStyles[status.toLowerCase()] ?? 'bg-dc-teal/10 text-dc-teal-btn';
 
   return (
     <Wrapper
@@ -34,8 +34,8 @@ export function ActivityFeedCard({ title, subtitle, status, onClick }: ActivityF
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-bold text-white truncate">{title}</div>
-          <div className="text-xs text-white/60 mt-0.5">{subtitle}</div>
+          <div className="text-sm font-bold text-dc-dark truncate">{title}</div>
+          <div className="text-xs text-dc-text-muted mt-0.5">{subtitle}</div>
         </div>
         <span
           className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 capitalize ${statusClass}`}

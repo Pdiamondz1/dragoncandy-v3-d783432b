@@ -393,7 +393,7 @@ function AppShell() {
 
   return (
     <div className="flex h-screen">
-      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-dc-dark focus:text-white focus:underline">Skip to main content</a>
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-black focus:underline">Skip to main content</a>
       <main id="main-content" className="flex-1 overflow-auto">
         <UpdateBanner />
         <SiteGateGuard>
@@ -429,7 +429,7 @@ function AppLayout() {
 
   if (loading && isPublic && hasSessionHint()) {
     return (
-      <div className="min-h-screen bg-dc-dark flex flex-col items-center justify-center">
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center">
         <img src="/logo.webp" alt="DragonCandy" className="h-16 w-auto mb-6" />
         <Spinner className="h-10 w-10 border-teal-400" />
       </div>

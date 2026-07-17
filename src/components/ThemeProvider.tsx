@@ -8,7 +8,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   return (
     <NextThemesProvider
       attribute="class"
-      forcedTheme="dark"
+      defaultTheme="light"
+      enableSystem
       disableTransitionOnChange={false}
     >
       {children}

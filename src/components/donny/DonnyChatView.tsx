@@ -44,7 +44,7 @@ export function DonnyChatView() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-dc-dark pt-[env(safe-area-inset-top)]" style={{ paddingBottom: kbOffset }}>
+    <div className="flex flex-col h-full bg-white pt-[env(safe-area-inset-top)]" style={{ paddingBottom: kbOffset }}>
       <DonnyPanelHeader
         avatarState={avatarState}
         onCollapse={collapse}
@@ -52,12 +52,12 @@ export function DonnyChatView() {
       />
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 bg-dc-teal/5 space-y-3" role="log" aria-label="Donny conversation" aria-live="polite">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 bg-teal-50/30 space-y-3" role="log" aria-label="Donny conversation" aria-live="polite">
         {messages.length === 0 && !isStreaming && (
           <div className="flex flex-col items-center justify-center h-full text-center px-6">
             <div className="text-3xl mb-2">🐉</div>
-            <p className="text-sm font-semibold text-white">Hey! I'm Donny</p>
-            <p className="text-xs text-white/60 mt-1">Ask me anything — find creators, manage campaigns, check analytics, or just brainstorm ideas.</p>
+            <p className="text-sm font-semibold text-dc-text">Hey! I'm Donny</p>
+            <p className="text-xs text-dc-text-muted mt-1">Ask me anything — find creators, manage campaigns, check analytics, or just brainstorm ideas.</p>
           </div>
         )}
         {messages.map((msg, i) => (
@@ -88,8 +88,8 @@ export function DonnyChatView() {
           </div>
         )}
         {error && !isStreaming && (
-          <div className="mx-2 px-3 py-2 bg-red-500/15 border border-red-500/30 rounded-lg">
-            <p className="text-xs text-red-300">{error}</p>
+          <div className="mx-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-xs text-red-600">{error}</p>
             <div className="flex gap-2 mt-1.5">
               {error.includes('Upgrade') && (
                 <WebOnly>
@@ -112,7 +112,7 @@ export function DonnyChatView() {
 
       {/* Quick chips */}
       {quickChips.length > 0 && !isStreaming && (
-        <div className="px-3 py-1.5 border-t border-white/10">
+        <div className="px-3 py-1.5 border-t border-gray-100">
           <DonnyQuickChips
             chips={quickChips.map((c) => ({ label: c.label, message: c.message }))}
             onChipTap={handleChipTap}

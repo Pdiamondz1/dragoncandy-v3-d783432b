@@ -38,7 +38,7 @@ export default function RestoreAccountPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="dc-surface flex items-center justify-center p-6">
+      <div className="dark dc-surface flex items-center justify-center p-6">
         <Card className="w-full max-w-sm">
           <CardContent className="flex flex-col items-center py-12 text-center">
             <p className="font-medium mb-4">Sign in to restore your account</p>
@@ -55,7 +55,7 @@ export default function RestoreAccountPage() {
   }
 
   return (
-    <div className="dc-surface flex items-center justify-center p-6">
+    <div className="dark dc-surface flex items-center justify-center p-6">
       <Card className="w-full max-w-sm">
         <CardContent className="flex flex-col items-center py-12 text-center">
           {status === 'idle' && (

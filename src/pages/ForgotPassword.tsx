@@ -38,7 +38,7 @@ const ForgotPassword: React.FC = () => {
   };
 
   return (
-    <div className="dc-surface flex flex-col overflow-x-hidden">
+    <div className="dark dc-surface flex flex-col overflow-x-hidden">
       <SEO
         title="Reset Password"
         description="Reset your DragonCandy account password via email."
