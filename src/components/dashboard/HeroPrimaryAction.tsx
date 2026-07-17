@@ -16,8 +16,8 @@ export function HeroPrimaryAction({ label, to, secondary }: HeroPrimaryActionPro
     <div className="flex flex-col items-stretch lg:items-end gap-3">
       <Button
         asChild
-        variant="dc-teal-pill"
-        className="h-12 lg:h-14 px-8 rounded-full text-base shadow-glow-teal w-full lg:w-auto"
+        variant="dc-primary"
+        className="h-12 lg:h-14 px-8 rounded-full text-base font-semibold shadow-glow-teal w-full lg:w-auto"
       >
         <Link to={to}>{label}</Link>
       </Button>

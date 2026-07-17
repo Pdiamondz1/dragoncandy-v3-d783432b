@@ -4,9 +4,11 @@ import { Toaster as Sonner, toast } from "sonner"
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
 const Toaster = ({ ...props }: ToasterProps) => {
+  // App is forced light (ThemeProvider forcedTheme="light"); pin toasts light
+  // so a device on system-dark doesn't get dark toasts on the light app.
   return (
     <Sonner
-      theme="dark"
+      theme="light"
       className="toaster group"
       toastOptions={{
         classNames: {

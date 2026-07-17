@@ -69,7 +69,7 @@ const CreatorDashboard = () => {
   if (!profile) {
     return (
       <DashboardLayout userRole="content_creator">
-        <div className="dc-surface overflow-x-hidden">
+        <div className="min-h-screen bg-white overflow-x-hidden">
           <div className="px-4 lg:px-8 pt-8 lg:pt-12 pb-24 md:pb-12">
             <div className="max-w-2xl lg:max-w-5xl mx-auto space-y-10">
               <div className="space-y-3">
@@ -133,7 +133,7 @@ const CreatorDashboard = () => {
             <Badge variant={getActivityBadgeVariant(activity.status)}>
               {activity.status}
             </Badge>
-            <span className="text-sm text-white">{activity.description}</span>
+            <span className="text-sm text-dc-text">{activity.description}</span>
           </div>
         );
         return activity.campaign_id ? (
@@ -146,7 +146,7 @@ const CreatorDashboard = () => {
       })}
     </div>
   ) : (
-    <div className="text-center py-8 text-white/60">
+    <div className="text-center py-8 text-dc-text-muted">
       <p className="text-sm">No recent activity yet</p>
       <p className="text-xs mt-1">Start applying to campaigns to see your activity here</p>
     </div>
@@ -154,7 +154,7 @@ const CreatorDashboard = () => {
 
   return (
     <DashboardLayout userRole="content_creator">
-      <div className="dc-surface overflow-x-hidden">
+      <div className="min-h-screen bg-white overflow-x-hidden">
         <div className="px-4 lg:px-8 pt-8 lg:pt-12 pb-24 md:pb-12">
           <div className="max-w-2xl lg:max-w-5xl mx-auto space-y-10 lg:space-y-14">
 
@@ -177,12 +177,12 @@ const CreatorDashboard = () => {
             <NeedsAttentionSection>
               <RatingPromptManager variant="row" />
               {!deadlinesLoading && deadlines && deadlines.length > 0 && (
-                <div className="divide-y divide-white/10">
+                <div className="divide-y divide-dc-teal/10">
                   {deadlines.map((deadline) => {
                     const inner = (
                       <div className={`border-l-2 ${getDeadlineColor(deadline.daysUntilDeadline)} px-4 py-2.5 ${deadline.campaign_id ? 'cursor-pointer hover:bg-dc-teal/[0.04] transition-colors' : ''}`}>
-                        <p className="text-sm font-semibold text-white">{deadline.title}</p>
-                        <p className="text-xs text-white/60">
+                        <p className="text-sm font-semibold text-dc-text">{deadline.title}</p>
+                        <p className="text-xs text-dc-text-muted">
                           Due in {deadline.daysUntilDeadline} {deadline.daysUntilDeadline === 1 ? 'day' : 'days'}
                         </p>
                       </div>
@@ -245,10 +245,10 @@ const CreatorDashboard = () => {
             />
 
             {/* Calendar, tucked behind a disclosure */}
-            <Collapsible className="dc-panel overflow-hidden">
-              <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-sm font-semibold text-white hover:bg-dc-teal/[0.04] transition-colors [&[data-state=open]>svg]:rotate-180">
+            <Collapsible className="rounded-2xl border border-dc-teal/15 bg-white shadow-dc-sm overflow-hidden">
+              <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-sm font-semibold text-dc-text hover:bg-dc-teal/[0.04] transition-colors [&[data-state=open]>svg]:rotate-180">
                 Calendar
-                <ChevronDown className="h-4 w-4 text-white/60 transition-transform" />
+                <ChevronDown className="h-4 w-4 text-dc-text-muted transition-transform" />
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="px-4 pb-4 flex justify-center">

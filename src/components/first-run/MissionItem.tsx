@@ -8,8 +8,8 @@ interface MissionItemProps {
 }
 
 const ACCENT_STYLES = {
-  teal: { active: 'bg-dc-teal/10 border border-dc-teal/30', go: 'text-dc-teal' },
-  pink: { active: 'bg-dc-pink-accent/10 border border-dc-pink-accent/30', go: 'text-dc-pink-accent' },
+  teal: { active: 'bg-teal-50 border border-teal-200', go: 'text-teal-500' },
+  pink: { active: 'bg-pink-50 border border-pink-200', go: 'text-pink-500' },
 };
 
 export function MissionItem({ emoji, title, subtitle, status, onGo, accentColor = 'teal' }: MissionItemProps) {
@@ -24,16 +24,16 @@ export function MissionItem({ emoji, title, subtitle, status, onGo, accentColor 
         isActive
           ? accent.active
           : isCompleted
-          ? 'bg-emerald-500/15 border border-emerald-500/30'
+          ? 'bg-green-50 border border-green-200'
           : 'opacity-50'
       }`}
     >
       <div className="text-lg">{isCompleted ? '✅' : emoji}</div>
       <div className="flex-1">
-        <div className={`text-sm font-semibold ${isLocked ? 'text-white/40' : 'text-white'}`}>
+        <div className={`text-sm font-semibold ${isLocked ? 'text-gray-400' : 'text-gray-900'}`}>
           {title}
         </div>
-        <div className={`text-xs ${isLocked ? 'text-white/30' : 'text-white/60'}`}>
+        <div className={`text-xs ${isLocked ? 'text-gray-300' : 'text-gray-500'}`}>
           {subtitle}
         </div>
       </div>

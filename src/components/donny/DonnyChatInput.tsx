@@ -37,8 +37,8 @@ export function DonnyChatInput({ onSubmit, disabled }: DonnyChatInputProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-end gap-2 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] bg-dc-dark border-t border-white/10">
-      <button type="button" aria-label="Attach file" className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white flex-shrink-0">
+    <form onSubmit={handleSubmit} className="flex items-end gap-2 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] bg-white border-t border-gray-100">
+      <button type="button" aria-label="Attach file" className="w-7 h-7 rounded-full bg-gray-900 flex items-center justify-center text-white flex-shrink-0">
         <Plus className="w-4 h-4" />
       </button>
       <label htmlFor="donny-chat-input" className="sr-only">Message Donny</label>
@@ -52,13 +52,13 @@ export function DonnyChatInput({ onSubmit, disabled }: DonnyChatInputProps) {
         placeholder="Ask Donny anything..."
         disabled={disabled}
         aria-label="Message Donny"
-        className="flex-1 resize-none min-h-[36px] max-h-[160px] overflow-y-auto bg-white/5 rounded-2xl py-2 px-4 text-base md:text-sm text-white placeholder:text-white/40 outline-none focus:ring-2 focus:ring-dc-teal/30 disabled:opacity-50"
+        className="flex-1 resize-none min-h-[36px] max-h-[160px] overflow-y-auto bg-gray-100 rounded-2xl py-2 px-4 text-base md:text-sm text-gray-700 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-dc-teal/30 disabled:opacity-50"
       />
       <button
         type="submit"
         disabled={!value.trim() || disabled}
         aria-label="Send message"
-        className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white flex-shrink-0 disabled:opacity-30"
+        className="w-7 h-7 rounded-full bg-gray-900 flex items-center justify-center text-white flex-shrink-0 disabled:opacity-30"
       >
         <Send className="w-3.5 h-3.5" />
       </button>

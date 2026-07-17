@@ -9,15 +9,15 @@ interface DonnyNudgeCardProps {
 }
 
 const priorityStyles = {
-  high: 'bg-gradient-to-r from-dc-teal/10 to-emerald-500/10 border-dc-teal/30',
-  medium: 'bg-gradient-to-r from-dc-pink/10 to-fuchsia-500/10 border-dc-pink-accent/30',
-  low: 'bg-white/5 border-white/10',
+  high: 'bg-gradient-to-r from-teal-50 to-emerald-50 border-teal-300',
+  medium: 'bg-gradient-to-r from-pink-50 to-fuchsia-50 border-pink-300',
+  low: 'bg-gray-50 border-gray-200',
 };
 
 const variantStyles = {
   primary: 'bg-dc-teal-btn text-white',
-  secondary: 'bg-white/5 text-white/60 border border-white/10',
-  ghost: 'bg-white/5 text-white/60',
+  secondary: 'bg-white text-gray-600 border border-gray-200',
+  ghost: 'bg-gray-100 text-gray-500',
 };
 
 export function DonnyNudgeCard({ nudge, onAction, onDismiss }: DonnyNudgeCardProps) {
@@ -25,10 +25,10 @@ export function DonnyNudgeCard({ nudge, onAction, onDismiss }: DonnyNudgeCardPro
     <div className={cn('rounded-xl border p-3 transition-all', priorityStyles[nudge.priority])}>
       <div className="flex items-start gap-2 mb-2">
         <DonnyAvatar size="xs" />
-        <p className="text-sm text-white/80 flex-1">{nudge.summary}</p>
+        <p className="text-sm text-gray-700 flex-1">{nudge.summary}</p>
         <button
           onClick={onDismiss}
-          className="text-white/40 hover:text-white/60 text-xs leading-none"
+          className="text-gray-400 hover:text-gray-600 text-xs leading-none"
           aria-label="Dismiss"
         >
           ✕

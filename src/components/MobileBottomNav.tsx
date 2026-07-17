@@ -31,7 +31,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
     <>
       {/* Always visible — no hide-on-scroll: the nav is Donny's only mobile entry point
           (founder decision 2026-07-14; the old scroll-direction hide left users stranded). */}
-      <nav aria-label="Mobile bottom" className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-dc-dark/95 backdrop-blur border-t border-white/10 pb-[env(safe-area-inset-bottom)]">
+      <nav aria-label="Mobile bottom" className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-gray-100 pb-[env(safe-area-inset-bottom)]">
         <div className="flex items-end justify-around px-1 pt-1 pb-2">
           {items.map((item) => {
             const Icon = item.icon;
@@ -53,7 +53,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
                 aria-label={item.label}
               >
                 <span className="relative">
-                  <Icon className={`h-5 w-5 ${active ? 'text-dc-teal font-bold' : 'text-white/50'}`} />
+                  <Icon className={`h-5 w-5 ${active ? 'text-dc-teal font-bold' : 'text-gray-400'}`} />
                   {item.label === 'Messages' && unreadCount > 0 && (
                     <span className="absolute -top-1.5 -right-2.5 bg-pink-500 text-white text-[9px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full px-1">
                       {unreadCount > 9 ? '9+' : unreadCount}
@@ -62,7 +62,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
                 </span>
                 <span
                   className={`text-[10px] leading-tight truncate ${
-                    active ? 'text-dc-teal font-semibold' : 'text-white/50'
+                    active ? 'text-dc-teal font-semibold' : 'text-gray-400'
                   }`}
                 >
                   {item.label}

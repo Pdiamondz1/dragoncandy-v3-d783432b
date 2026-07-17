@@ -28,38 +28,38 @@ function BriefView({ brief, usedPerf }: { brief: ContentBrief; usedPerf: boolean
   return (
     <div className="mt-4 space-y-3">
       <div className="flex flex-wrap gap-2">
-        <span className="rounded-full bg-dc-teal/15 text-dc-teal px-3 py-1 text-xs font-semibold">
+        <span className="rounded-full bg-dc-teal/15 text-dc-teal-btn px-3 py-1 text-xs font-semibold">
           {brief.recommended_format}
         </span>
         <span className="rounded-full bg-dc-pink/40 text-dc-pink-accent px-3 py-1 text-xs font-semibold capitalize">
           {brief.platform}
         </span>
-        <span className="rounded-full bg-dc-teal/10 text-white/60 px-3 py-1 text-xs">
+        <span className="rounded-full bg-dc-teal/10 text-dc-text-muted px-3 py-1 text-xs">
           {brief.best_time}
         </span>
       </div>
-      <div className="rounded-2xl border border-dc-teal/30 bg-white/5 p-4">
-        <p className="text-xs font-bold uppercase text-white/60">Hook</p>
-        <p className="text-sm text-white mt-1">{brief.hook}</p>
+      <div className="rounded-2xl border border-dc-teal/30 bg-dc-card p-4">
+        <p className="text-xs font-bold uppercase text-dc-text-muted">Hook</p>
+        <p className="text-sm text-dc-text mt-1">{brief.hook}</p>
       </div>
-      <div className="rounded-2xl border border-dc-teal/30 bg-white/5 p-4">
-        <p className="text-xs font-bold uppercase text-white/60">3 angles</p>
-        <ul className="mt-1 list-disc pl-5 text-sm text-white space-y-1">
+      <div className="rounded-2xl border border-dc-teal/30 bg-dc-card p-4">
+        <p className="text-xs font-bold uppercase text-dc-text-muted">3 angles</p>
+        <ul className="mt-1 list-disc pl-5 text-sm text-dc-text space-y-1">
           {brief.angles.map((a, i) => (
             <li key={i}>{a}</li>
           ))}
         </ul>
       </div>
-      <div className="rounded-2xl border border-dc-teal/30 bg-white/5 p-4">
+      <div className="rounded-2xl border border-dc-teal/30 bg-dc-card p-4">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-bold uppercase text-white/60">Caption</p>
+          <p className="text-xs font-bold uppercase text-dc-text-muted">Caption</p>
           <CopyButton text={brief.sample_caption} />
         </div>
-        <p className="text-sm text-white mt-1 whitespace-pre-wrap">{brief.sample_caption}</p>
+        <p className="text-sm text-dc-text mt-1 whitespace-pre-wrap">{brief.sample_caption}</p>
         <p className="text-xs text-dc-pink-accent mt-2">{brief.hashtags.join(' ')}</p>
       </div>
-      <p className="text-xs text-white/60">{brief.rationale}</p>
-      <p className="text-[11px] text-white/60 italic">
+      <p className="text-xs text-dc-text-muted">{brief.rationale}</p>
+      <p className="text-[11px] text-dc-text-muted italic">
         {usedPerf
           ? 'Based on your top-performing posts + this restaurant\'s profile.'
           : 'Based on this restaurant\'s profile + content best practices.'}
@@ -74,12 +74,12 @@ export function ContentIdeaCard() {
   const navigate = useNavigate();
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-dc-dark shadow-dc-sm p-5 lg:p-6">
+    <div className="rounded-2xl border border-dc-teal/15 bg-dc-card shadow-dc-sm p-5 lg:p-6">
       <div className="flex items-center gap-2">
         <Sparkles className="h-5 w-5 text-dc-teal" />
-        <h3 className="text-base font-bold text-white">Get a content idea</h3>
+        <h3 className="text-base font-bold text-dc-text">Get a content idea</h3>
       </div>
-      <p className="text-sm text-white/60 mt-1">
+      <p className="text-sm text-dc-text-muted mt-1">
         Pick a restaurant and Donny will draft a content brief.
       </p>
       <div className="mt-3">

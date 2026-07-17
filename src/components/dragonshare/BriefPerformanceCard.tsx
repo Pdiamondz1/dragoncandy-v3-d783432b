@@ -20,14 +20,14 @@ function relativeTime(dateString: string): string {
 function statusPill(row: CreatorBriefPerformanceRow): { text: string; className: string } {
   switch (deriveBriefStatus(row)) {
     case 'has_performance':
-      return { text: `${Math.round(row.total_views ?? 0)} views`, className: 'bg-emerald-500/15 text-emerald-300' };
+      return { text: `${Math.round(row.total_views ?? 0)} views`, className: 'bg-emerald-100 text-emerald-700' };
     case 'measuring':
-      return { text: 'Measuring…', className: 'bg-amber-500/15 text-amber-300' };
+      return { text: 'Measuring…', className: 'bg-amber-100 text-amber-800' };
     case 'unmeasured':
       return { text: 'Metrics unavailable', className: 'bg-dc-pink/30 text-dc-pink-accent' };
     case 'awaiting_post':
     default:
-      return { text: 'Not posted yet', className: 'bg-dc-teal/15 text-dc-teal' };
+      return { text: 'Not posted yet', className: 'bg-dc-teal/15 text-dc-teal-btn' };
   }
 }
 
@@ -51,7 +51,7 @@ export function BriefPerformanceCard() {
             ))}
           </div>
         ) : !briefs || briefs.length === 0 ? (
-          <div className="text-center py-8 text-white/60">
+          <div className="text-center py-8 text-dc-text-muted">
             <p className="text-sm font-medium">No content briefs yet</p>
             <p className="text-xs mt-1">Generate a content brief above to see it here</p>
           </div>
@@ -68,16 +68,16 @@ export function BriefPerformanceCard() {
                   <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${pill.className}`}>
                     {pill.text}
                   </span>
-                  <span className="flex-1 min-w-0 truncate text-sm text-white">
+                  <span className="flex-1 min-w-0 truncate text-sm text-dc-text">
                     {restaurant ?? 'Restaurant'}
                     {(format || platform) && (
-                      <span className="ml-2 text-xs text-white/60 capitalize">
+                      <span className="ml-2 text-xs text-dc-text-muted capitalize">
                         {[format, platform].filter(Boolean).join(' · ')}
                       </span>
                     )}
                   </span>
                   {time && (
-                    <span className="flex-shrink-0 text-xs text-white/60 whitespace-nowrap">{time}</span>
+                    <span className="flex-shrink-0 text-xs text-dc-text-muted whitespace-nowrap">{time}</span>
                   )}
                 </div>
               );

@@ -62,7 +62,7 @@ const BrandDashboard = () => {
   if (!profile) {
     return (
       <DashboardLayout userRole="brand">
-        <div className="dc-surface overflow-x-hidden">
+        <div className="min-h-screen bg-white overflow-x-hidden">
           <div className="px-4 lg:px-8 pt-8 lg:pt-12 pb-24 md:pb-12">
             <div className="max-w-2xl lg:max-w-5xl mx-auto space-y-10">
               <div className="space-y-3">
@@ -109,10 +109,10 @@ const BrandDashboard = () => {
     </div>
   ) : !campaigns || campaigns.length === 0 ? (
     <div className="py-6 text-center">
-      <p className="text-sm text-white/60">No active campaigns yet.</p>
+      <p className="text-sm text-dc-text-muted">No active campaigns yet.</p>
       <button
         onClick={() => navigate('/dashboard/brand/campaigns/create')}
-        className="text-sm font-semibold text-dc-teal hover:underline mt-1"
+        className="text-sm font-semibold text-dc-teal-btn hover:underline mt-1"
       >
         Let Donny help you create one
       </button>
@@ -137,7 +137,7 @@ const BrandDashboard = () => {
 
   return (
     <DashboardLayout userRole="brand">
-      <div className="dc-surface overflow-x-hidden">
+      <div className="min-h-screen bg-white overflow-x-hidden">
         <div className="px-4 lg:px-8 pt-8 lg:pt-12 pb-24 md:pb-12">
           <div className="max-w-2xl lg:max-w-5xl mx-auto space-y-10 lg:space-y-14">
 
@@ -181,17 +181,17 @@ const BrandDashboard = () => {
               </div>
               <Link
                 to="/dashboard/brand/social"
-                className="block dc-panel p-4 hover:bg-dc-teal/[0.04] transition-colors"
+                className="block rounded-2xl border border-dc-teal/15 bg-white shadow-dc-sm p-4 hover:bg-dc-teal/[0.04] transition-colors"
               >
                 <div className="flex items-center gap-3 h-full">
                   <div className="w-10 h-10 bg-dc-teal/10 rounded-xl flex items-center justify-center shrink-0">
                     <Share2 className="h-5 w-5 text-dc-teal" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="font-bold text-white text-sm">Social Media</h3>
-                    <p className="text-xs text-white/60">Manage your brand's social presence, amplify sponsored content</p>
+                    <h3 className="font-bold text-dc-text text-sm">Social Media</h3>
+                    <p className="text-xs text-dc-text-muted">Manage your brand's social presence, amplify sponsored content</p>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-white/60 ml-auto shrink-0" />
+                  <ChevronRight className="h-4 w-4 text-dc-text-muted ml-auto shrink-0" />
                 </div>
               </Link>
             </div>

@@ -79,7 +79,7 @@ export default function InviteAcceptPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="dc-surface flex items-center justify-center p-6">
+      <div className="dark dc-surface flex items-center justify-center p-6">
         <Card className="w-full max-w-sm">
           <CardContent className="flex flex-col items-center py-12 text-center">
             <Loader2 className="h-8 w-8 animate-spin text-teal-500 mb-4" />
@@ -97,7 +97,7 @@ export default function InviteAcceptPage() {
   }
 
   return (
-    <div className="dc-surface flex items-center justify-center p-6">
+    <div className="dark dc-surface flex items-center justify-center p-6">
       <SEO
         title="Accept Your DragonCandy Invite"
         description="Accept your invitation to join DragonCandy."

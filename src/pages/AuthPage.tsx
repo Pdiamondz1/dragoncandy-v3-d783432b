@@ -255,7 +255,7 @@ const AuthPage = () => {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col overflow-x-hidden bg-dc-dark text-white
+    <div className="dark relative min-h-screen flex flex-col overflow-x-hidden bg-dc-dark text-white
       bg-[radial-gradient(120%_120%_at_20%_0%,rgba(77,217,192,0.18),transparent_45%),radial-gradient(120%_120%_at_80%_100%,rgba(236,72,153,0.18),transparent_45%)]">
       <GlowBackdrop />
       <div className="relative z-10 flex flex-1 flex-col">

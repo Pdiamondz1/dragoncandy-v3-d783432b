@@ -8,7 +8,7 @@ interface DashboardGreetingProps {
 }
 
 /**
- * Calm replacement for the pink-gradient DashboardHero. Dark-luxe surface,
+ * Calm replacement for the pink-gradient DashboardHero. White background,
  * quiet eyebrow, one bold greeting line — the pink tick is the only accent.
  */
 export function DashboardGreeting({
@@ -21,15 +21,15 @@ export function DashboardGreeting({
     <div className="min-w-0">
       <div className="flex items-center gap-2">
         <span className="h-3.5 w-1 rounded-full bg-dc-pink" aria-hidden="true" />
-        <p className="text-xs font-semibold uppercase tracking-wider text-white/60">
+        <p className="text-xs font-semibold uppercase tracking-wider text-dc-text-muted">
           {roleLabel}
         </p>
         {badge}
       </div>
-      <h2 className="text-2xl lg:text-3xl font-bold text-white truncate mt-2">
+      <h2 className="text-2xl lg:text-3xl font-bold text-dc-text truncate mt-2">
         Welcome back, {userName}
       </h2>
-      <p className="text-sm text-white/60 mt-1">{subtitle}</p>
+      <p className="text-sm text-dc-text-muted mt-1">{subtitle}</p>
     </div>
   );
 }

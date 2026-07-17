@@ -278,7 +278,7 @@ export function OnboardingWizard() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-dc-dark text-white flex items-center justify-center">
+    <div className="dark min-h-[100dvh] bg-dc-dark text-white flex items-center justify-center">
       <div className="w-full md:max-w-lg md:bg-white/5 md:border md:border-white/10 md:rounded-3xl md:shadow-card-elevated md:my-8">
       <div className="flex flex-col min-h-[100dvh] md:min-h-[580px] max-w-md mx-auto px-5 py-6 md:py-8">
         {/* Header */}

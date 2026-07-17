@@ -128,7 +128,7 @@ export function DonnyMessage({ message, avatarState = 'idle', isLatestAssistant 
                 className={
                   action.action === 'navigate'
                     ? 'bg-dc-teal-btn text-white text-xs font-semibold px-4 py-2 rounded-full'
-                    : 'bg-white/5 text-dc-pink-accent border border-white/10 text-xs font-semibold px-4 py-2 rounded-full'
+                    : 'bg-white text-dc-pink-accent border border-gray-200 text-xs font-semibold px-4 py-2 rounded-full'
                 }
               >
                 {action.label}

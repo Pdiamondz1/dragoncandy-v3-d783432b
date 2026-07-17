@@ -59,12 +59,12 @@ export function FirstRunDashboard({ role, missions, onCompleteMission: _onComple
   };
 
   return (
-    <div className="dc-surface p-4">
+    <div className="min-h-screen bg-gray-100 p-4">
       {/* Top bar */}
       <div className="flex justify-between items-center mb-4">
-        <span className="text-sm font-bold text-teal-400">🐉 DragonCandy</span>
+        <span className="text-sm font-bold text-dc-teal-btn">🐉 DragonCandy</span>
         <button
-          className="w-7 h-7 rounded-full bg-white/30 flex items-center justify-center text-xs text-white"
+          className="w-7 h-7 rounded-full bg-dc-teal/10 flex items-center justify-center text-xs text-dc-teal-btn"
           aria-label="Help tour"
         >
           ?
@@ -79,7 +79,7 @@ export function FirstRunDashboard({ role, missions, onCompleteMission: _onComple
         onSkip={onSkip}
       />
 
-      <p className="text-center text-xs text-white/60 mt-4">
+      <p className="text-center text-xs text-gray-500 mt-4">
         Takes about 60 seconds total ⚡
       </p>
     </div>
