@@ -1216,3 +1216,20 @@ naming, transparent scroll-aware header. Durable gotchas captured: Tailwind posi
 (`.relative` beats `.absolute`), size a tall logo by height, transparent-header scroll-fade.
 Pages updated: index.md (Sources + Concepts), PROJECT_CONTEXT (workstream bullet). RAG sync +
 verify-knowledge run post-merge (post-merge hook fires on the `main` fast-forward).
+
+## [2026-07-16] ingest | Donny data visibility + quick-action 404 (branch worktree-dc-issues-6, PR #260)
+Ingested [[Donny Data Visibility & Quick-Actions Session]]. Founder bug (Uncle Rocco): the consumer
+Donny (`donny-orchestrator`) 404'd on the "Invite Creators" quick-action and reported "no campaigns /
+DragonShare — data sync issue". Two bug classes, both fixed on `donny-orchestrator` AND `donny-chat`:
+(1) **schema drift swallowed to `[]`** — `campaigns.platform` doesn't exist (it's `platforms[]`) so
+every campaigns SELECT 400'd (the real "no campaigns" cause; caught by edge-function-reviewer, not my
+initial org-ownership guess), and the entire DragonShare agent queried dead columns/enums → always
+empty; fixed to the real schema, role-aware, with a `data_partial` error flag instead of `?? []`;
+(2) **LLM-invented `route`s → 404** — new pure `routes.ts` `isKnownRoute` allow-list drops invented
+routes server-side + `src/lib/donnyRoutes.ts` guards persisted ones client-side + role-aware route
+builders. Also closed a service-role IDOR in `campaignDetail` (ownership gate) and made `org_id`
+server-side-only (Codex P1). New concept page [[Donny Data Visibility & Quick-Action Routing]]
+(sibling of [[AI Creator Matching]]). Deploy pre-flight caught an origin/main collision (#248/#251
+web-Donny) → merged before deploying; edge fns deployed `donny-orchestrator` v63 / `donny-chat` v145,
+boot-checked. Pages updated: index.md (Sources + Concepts), PROJECT_CONTEXT (workstream bullet). RAG
+sync + verify-knowledge run post-merge (post-merge hook fires on the `main` fast-forward).

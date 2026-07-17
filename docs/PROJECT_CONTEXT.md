@@ -1209,6 +1209,34 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `docs/wiki/concepts/landing-cinematic-video-redesign.md`. Spec:
   `docs/superpowers/specs/2026-07-16-landing-cinematic-video-redesign-design.md`.
 
+- Donny data visibility + quick-action 404 — **shipped + deployed (branch `worktree-dc-issues-6`,
+  PR #260, 2026-07-16; edge fns live on prod, frontend on merge).** Founder bug (Uncle Rocco): the
+  consumer Donny chat (`donny-orchestrator`) 404'd on the "Invite Creators" quick-action and reported
+  *"no campaigns / DragonShare — data sync issue"* despite 12 campaigns / 10 applications / 7
+  collaborations / 3 DragonShare posts. Two bug classes, fixed on **both** backends (`donny-orchestrator`
+  + `donny-chat`), for **businesses and creators**. **(1) Schema drift swallowed to `[]`:** the campaign
+  agent selected **`campaigns.platform`**, which doesn't exist (it's `platforms text[]`), so every
+  campaigns SELECT 400'd → `[]` (the real "no campaigns" cause — caught by the edge-function-reviewer,
+  not the initial org-ownership guess); the **entire DragonShare agent** queried dead columns/enums
+  (`dragonshare_posts.user_id`/`campaign_id`, `dragonshare_boosts.org_id`/`budget_used`, `amount`,
+  `payout_date`, enum `pending`/`paid`/`active`) → always empty. Rewrote both agents schema-correct +
+  role-aware (owners: campaigns by `user_id`, applications by `org_id`/`in(campaign_id)`, collaborations
+  by `in(campaign_id)`; creators by `creator_id`), surfacing errors via a `data_partial` flag instead of
+  `?? []`. **(2) LLM-invented `route`s → 404:** quick-action routes were free text the model writes,
+  regex-scraped and passed to `navigate()` unvalidated; new pure vitest-tested `donny-orchestrator/routes.ts`
+  `isKnownRoute` allow-list (mirrors `src/App.tsx`) drops invented routes server-side, `src/lib/donnyRoutes.ts`
+  guards already-persisted ones client-side (`DonnyMessage.tsx`), and role-aware route builders replace the
+  hardcoded `/dashboard/brand/campaigns` (a list route that exists for no role); invite intent → Browse
+  Creators. Also closed a **service-role IDOR** in `campaignDetail` (ownership gate — service role bypasses
+  RLS) and made **`org_id` server-side-only** (Codex P1 — a client value could point at another tenant).
+  `donny-chat` parity: role-aware `get_campaigns` (creators → applications/collaborations), a new
+  `get_dragonshare` tool, the `platforms` fix in `get_campaigns` + `create_campaign`, and the
+  system-prompt count no longer filters `status='published'` (an `active` campaign read as 0 → the false
+  "data sync issue"). edge-function-reviewer PASS on both; Codex clean (1 P1 fixed). The **careful** deploy
+  gate caught an `origin/main` collision (#248/#251 web-Donny) → merged before deploying; `donny-orchestrator`
+  v63 (verify_jwt=true) + `donny-chat` v145 (verify_jwt=false) deployed via CLI + boot-checked. Concept:
+  `docs/wiki/concepts/donny-data-and-quick-actions.md`.
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).
