@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { DonnyChatHeader } from './DonnyChatHeader';
+import { DonnyPanelHeader } from './DonnyPanelHeader';
 import { DonnyChatInput } from './DonnyChatInput';
 import { DonnyMessage } from './DonnyMessage';
 import { DonnyDateDivider } from './DonnyDateDivider';
@@ -45,7 +45,7 @@ export function DonnyChatView() {
 
   return (
     <div className="flex flex-col h-full bg-white pt-[env(safe-area-inset-top)]" style={{ paddingBottom: kbOffset }}>
-      <DonnyChatHeader
+      <DonnyPanelHeader
         avatarState={avatarState}
         onCollapse={collapse}
         onClose={close}

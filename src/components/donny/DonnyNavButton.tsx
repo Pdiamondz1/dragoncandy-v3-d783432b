@@ -16,6 +16,7 @@ export function DonnyNavButton() {
     <button
       onClick={handleClick}
       data-tour="donny-help"
+      data-donny-launcher
       className="flex flex-col items-center min-h-[44px] min-w-[44px] -mt-3"
       aria-label="Open Donny"
     >
