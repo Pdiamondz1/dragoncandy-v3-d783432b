@@ -14,8 +14,10 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, useNavigate: () => navigateMock };
 });
 
+const sendMessageMock = vi.fn();
+
 vi.mock('@/contexts/DonnyProvider', () => ({
-  useDonnyContext: () => ({ close: closeMock }),
+  useDonnyContext: () => ({ close: closeMock, sendMessage: sendMessageMock }),
 }));
 
 function stubViewport(isMobile: boolean) {
@@ -94,5 +96,75 @@ describe('DonnyMessage quick actions', () => {
     expect(closeMock).not.toHaveBeenCalled();
     expect(navigateMock).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: 'Dismiss' })).not.toBeInTheDocument();
+  });
+});
+
+describe('DonnyMessage rich cards (plural creator-discovery cards)', () => {
+  beforeEach(() => {
+    navigateMock.mockClear();
+    closeMock.mockClear();
+    sendMessageMock.mockClear();
+  });
+
+  const cardMessage: DonnyMessageType = {
+    ...baseMessage,
+    content: 'Here are creators near Hoboken:',
+    quick_actions: [{ label: 'Browse all creators', action: 'navigate', url: '/dashboard/business/creators' }],
+    rich_cards: [
+      {
+        type: 'creator_profile',
+        data: {
+          id: 'u1',
+          name: 'Ava Reels',
+          avatar_url: null,
+          profile_slug: 'ava-reels',
+          platforms: ['Instagram', 'TikTok'],
+          niche: 'Food, Lifestyle',
+          rating: 4.8,
+          project_count: 12,
+          distance_miles: 5,
+        },
+      },
+      {
+        type: 'creator_profile',
+        data: {
+          id: 'u2',
+          name: 'Bea Lens',
+          avatar_url: null,
+          profile_slug: 'bea-lens',
+          platforms: ['YouTube'],
+          niche: 'General',
+          rating: 4.5,
+          project_count: 3,
+          distance_miles: 0.4,
+        },
+      },
+    ],
+  };
+
+  it('renders one card per creator with distance and portfolio navigation', () => {
+    stubViewport(false);
+    renderMessage(cardMessage);
+
+    // Both creator cards render.
+    expect(screen.getByText('Ava Reels')).toBeInTheDocument();
+    expect(screen.getByText('Bea Lens')).toBeInTheDocument();
+
+    // Distance line: >= 1 mi rounds to "N mi away"; < 1 mi reads "Nearby".
+    expect(screen.getByText('5 mi away')).toBeInTheDocument();
+    expect(screen.getByText('Nearby')).toBeInTheDocument();
+
+    // Each card owns its own "View Portfolio" nav (to the creator's public slug).
+    const viewButtons = screen.getAllByRole('button', { name: 'View Portfolio' });
+    expect(viewButtons).toHaveLength(2);
+    fireEvent.click(viewButtons[0]);
+    expect(navigateMock).toHaveBeenCalledWith('/creator/ava-reels');
+  });
+
+  it('does not render the plural block when rich_cards is absent (internal Donny parity)', () => {
+    stubViewport(false);
+    renderMessage({ ...baseMessage, rich_cards: null });
+
+    expect(screen.queryByRole('button', { name: 'View Portfolio' })).not.toBeInTheDocument();
   });
 });

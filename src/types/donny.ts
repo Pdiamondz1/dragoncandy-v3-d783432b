@@ -23,6 +23,7 @@ export interface DonnyRichCardCreatorProfile {
     niche: string;
     rating: number;
     project_count: number;
+    distance_miles?: number | null;
   };
 }
 
@@ -102,6 +103,7 @@ export interface DonnyMessage {
   tool_calls: DonnyToolCall[] | null;
   tool_result: Record<string, unknown> | null;
   rich_card: DonnyRichCard | null;
+  rich_cards?: DonnyRichCard[] | null;
   quick_actions: DonnyQuickAction[] | null;
   created_at: string;
 }

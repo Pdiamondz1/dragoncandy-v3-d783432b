@@ -34,6 +34,11 @@ export function DonnyRichCard({ card }: DonnyRichCardProps) {
               <div className="text-sm font-bold text-dc-text">{card.data.name}</div>
               <div className="text-xs text-dc-text-muted">{(card.data.platforms ?? []).join(' · ')}{card.data.niche ? ` · ${card.data.niche}` : ''}</div>
               <div className="text-xs text-dc-pink-accent">⭐ {card.data.rating} · {card.data.project_count} projects</div>
+              {typeof card.data.distance_miles === 'number' && (
+                <div className="text-xs text-dc-text-muted">
+                  {card.data.distance_miles < 1 ? 'Nearby' : `${Math.round(card.data.distance_miles)} mi away`}
+                </div>
+              )}
             </div>
           </div>
           <div className="flex gap-2 mt-2">

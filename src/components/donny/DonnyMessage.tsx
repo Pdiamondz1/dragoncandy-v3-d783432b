@@ -94,6 +94,11 @@ export function DonnyMessage({ message, avatarState = 'idle', isLatestAssistant 
           </div>
         )}
         {message.rich_card && <DonnyRichCard card={message.rich_card} />}
+        {message.rich_cards && message.rich_cards.length > 0 && (
+          <div className="space-y-1.5 mt-1.5">
+            {message.rich_cards.map((card, i) => <DonnyRichCard key={i} card={card} />)}
+          </div>
+        )}
         {message.quick_actions && message.quick_actions.length > 0 && !dismissedActions && (
           <div className="flex gap-2 flex-wrap mt-2">
             {message.quick_actions.map((action, i) => (

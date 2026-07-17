@@ -13,9 +13,25 @@ export interface OrchestratorOutput {
   agent_used: string;
 }
 
+export interface CreatorCard {
+  type: "creator_profile";
+  data: {
+    id: string;
+    name: string;
+    avatar_url: string | null;
+    profile_slug: string | null;
+    platforms: string[];
+    niche: string;
+    rating: number;
+    project_count: number;
+    distance_miles: number | null;
+  };
+}
+
 export interface SubAgentResult {
   context: string;
   suggested_actions?: Array<{ label: string; route: string }>;
+  cards?: CreatorCard[]; // NEW — only find_creators sets this
 }
 
 export interface UserContext {
