@@ -21,12 +21,23 @@ export interface LandingClip {
   poster?: string;
 }
 
-/** v1 registry — fill `src`/`poster` with direct MP4 + poster URLs when clips are ready. */
+/** v1 registry — direct MP4 + poster URLs served from `public/landing/`. */
 export const LANDING_CLIPS: Record<LandingClipKey, LandingClip> = {
-  "hero.business": {}, // { src: "/landing/hero-business.mp4", poster: "/landing/hero-business-poster.jpg" }
-  "hero.creator": {}, //  { src: "/landing/hero-creator.mp4",  poster: "/landing/hero-creator-poster.jpg" }
-  "hero.brand": {}, //    fill when Brand launches (BRAND_ROLE_ENABLED)
-  "proof.reel": {}, //    reserved — no component renders this yet; leave empty
+  "hero.business": {
+    src: "/landing/hero-business.mp4",
+    poster: "/landing/hero-business-poster.jpg",
+  },
+  "hero.creator": {
+    src: "/landing/hero-creator.mp4",
+    poster: "/landing/hero-creator-poster.jpg",
+  },
+  "hero.brand": {
+    // Staged — the Brand pill is hidden behind BRAND_ROLE_ENABLED, so this clip
+    // isn't fetched until Brand launches; ready the instant the flag flips.
+    src: "/landing/hero-brand.mp4",
+    poster: "/landing/hero-brand-poster.jpg",
+  },
+  "proof.reel": {}, // reserved — no component renders this yet
 };
 
 export function resolveLandingClip(
