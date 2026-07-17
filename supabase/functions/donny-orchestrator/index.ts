@@ -301,8 +301,10 @@ serve(async (req) => {
     }
 
     // --- Parse request ---
+    // NB: body.org_id is intentionally NOT read — the org is resolved server-side
+    // from the profile below (a client org_id must never scope service-role reads).
     const body = (await req.json()) as OrchestratorInput;
-    const { query, page_path, page_context, user_role, org_id, conversation_history } = body;
+    const { query, page_path, page_context, user_role, conversation_history } = body;
 
     if (!query || !page_path) {
       return new Response(
@@ -328,12 +330,12 @@ serve(async (req) => {
       .maybeSingle();
 
     let orgTier: string | undefined;
-    // A user's org IS their profile org, so derive it server-side and prefer that
-    // over any client-supplied org_id — org-scoped reads (applications by org_id,
-    // DragonShare boosts, the campaignDetail authorization check) must not trust a
-    // client value that could point at another tenant's org. Fall back to the body
-    // value only when the profile has no org.
-    const resolvedOrgId = profile?.org_id ?? org_id ?? undefined;
+    // A user's org IS their profile org. Resolve it SERVER-SIDE only — never trust a
+    // client-supplied org_id, which the service-role client would use for org-scoped
+    // reads (applications by org_id, DragonShare boosts) and the campaignDetail
+    // authorization check, letting a caller point at another tenant's org. No profile
+    // org ⇒ no org (org-scoped reads return nothing; the org-match authz branch fails).
+    const resolvedOrgId = profile?.org_id ?? undefined;
 
     if (resolvedOrgId) {
       const { data: org } = await supabase
