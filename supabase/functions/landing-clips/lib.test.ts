@@ -26,14 +26,13 @@ describe("buildClips", () => {
     expect(buildClips([row({ content_file_path: "https://cdn.example.com/uid/a.jpg" })])).toEqual([]);
   });
 
-  it("accepts mp4/webm/mov, case-insensitive", () => {
-    const rows = ["a.mp4", "b.WEBM", "c.mov"].map((p) =>
+  it("accepts mp4/webm (case-insensitive) and REJECTS .mov/.MOV (HEVC / portrait risk)", () => {
+    const rows = ["a.mp4", "b.WEBM", "c.mov", "d.MOV"].map((p) =>
       row({ content_file_path: `https://cdn.example.com/uid/${p}` }),
     );
     expect(buildClips(rows).map((c) => c.src)).toEqual([
       "https://cdn.example.com/uid/a.mp4",
       "https://cdn.example.com/uid/b.WEBM",
-      "https://cdn.example.com/uid/c.mov",
     ]);
   });
 

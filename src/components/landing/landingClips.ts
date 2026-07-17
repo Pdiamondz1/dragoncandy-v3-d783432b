@@ -104,8 +104,10 @@ const DYNAMIC_BACKDROP_KEYS: LandingClipKey[] = ["hero.business", "hero.creator"
 const BACKDROP_MERGED_CAP = 6;
 
 /**
- * Merge real (dynamic) clips ahead of the curated static playlist for eligible hero keys.
- * Dynamic leads (real content first), static backfills so the rotation is never thin. Returns the
+ * Merge real (dynamic) clips into the curated static playlist for eligible hero keys. The curated
+ * clips LEAD (the polished, on-brand, known-good clip is always the first impression) and the
+ * dynamic boosted clips TRAIL — real content still appears in the loop as social proof, but an
+ * unpredictable-quality user upload (low-res, portrait, odd codec) never opens the hero. Returns the
  * static array UNCHANGED (same reference) for non-eligible keys or when there are no dynamic clips —
  * so the signature stays stable and nothing remounts. De-dupes by src; caps the total.
  */
@@ -117,7 +119,7 @@ export function mergeBackdropPlaylist(
   if (!DYNAMIC_BACKDROP_KEYS.includes(key) || dynamicClips.length === 0) return staticClips;
   const seen = new Set<string>();
   const merged: LandingClip[] = [];
-  for (const c of [...dynamicClips, ...staticClips]) {
+  for (const c of [...staticClips, ...dynamicClips]) {
     if (!c.src || seen.has(c.src)) continue;
     seen.add(c.src);
     merged.push(c);

@@ -14,6 +14,15 @@ const nextIndex = (i: number, len: number) => (i + 1) % len;
 const CROSSFADE_MS = 700;
 
 /**
+ * Max time a single clip may hold the screen before the rotation force-advances. A clip that
+ * neither fires `ended` nor `error` (e.g. an undecodable HEVC clip a browser shows black for
+ * without erroring, or a mid-play network stall) would otherwise freeze the backdrop forever.
+ * Comfortably longer than a normal backdrop clip (~6–10s) so it never cuts a healthy one short —
+ * it's a stall backstop, not a pacer.
+ */
+const MAX_DWELL_MS = 15000;
+
+/**
  * Full-bleed cinematic hero backdrop that rotates through a per-role playlist with a crossfade.
  *
  * Rendering paths:
@@ -149,6 +158,17 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rotating, len, setLayerSource],
   );
+
+  // Stall watchdog: arm a max-dwell timer each time a layer becomes active. A normal advance
+  // (`ended`/`error` → handleEnded → setVisible) changes `visible`, which re-runs this effect and
+  // clears the prior timer — so a healthy clip never trips it. If a clip neither ends nor errors
+  // within MAX_DWELL_MS (undecodable-but-silent HEVC, a mid-play stall), the timer force-advances
+  // so the rotation can never permanently freeze. Fires against the *current* visible layer.
+  useEffect(() => {
+    if (!rotating) return;
+    const t = setTimeout(() => handleEnded(visibleRef.current), MAX_DWELL_MS);
+    return () => clearTimeout(t);
+  }, [visible, rotating, handleEnded]);
 
   // Pause off-screen / resume the active layer on-screen (battery + CPU). Only relevant in
   // rotating mode; the single-clip and reduced-motion paths self-manage (SingleClip / static img).

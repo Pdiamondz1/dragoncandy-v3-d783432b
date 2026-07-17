@@ -11,7 +11,10 @@ export interface LandingClipDTO {
   poster?: string;
 }
 
-const VIDEO_EXT = /\.(mp4|webm|mov)$/i;
+// mp4/webm only. `.mov` is EXCLUDED: iPhone .MOV is frequently HEVC (H.265), which Chrome and
+// Firefox cannot decode — a leading HEVC .MOV breaks the backdrop (black frame / stall). Even an
+// H.264 .mov is often a portrait phone capture. Only reliably-decodable landscape-ish web formats.
+const VIDEO_EXT = /\.(mp4|webm)$/i;
 
 /**
  * Map eligible DragonShare rows to the response shape. Belt-and-suspenders over the SQL filter:
