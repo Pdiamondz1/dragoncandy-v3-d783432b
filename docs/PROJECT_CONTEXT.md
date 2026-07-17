@@ -1209,6 +1209,21 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `docs/wiki/concepts/landing-cinematic-video-redesign.md`. Spec:
   `docs/superpowers/specs/2026-07-16-landing-cinematic-video-redesign-design.md`.
 
+- Donny first-open UX — close-trap fix + branded tray redesign — **shipped + live-verified
+  (PR #258, 2026-07-16; frontend-only).** The first-open Donny "tray" had **no ✕ close** —
+  the consumer panel is a 3-stage machine (`closed→tray→chat`) whose tray and chat rendered
+  two *different* headers, and only the chat header carried the ✕, so users were **trapped
+  until they sent a message** (which `expand()`s to chat). On desktop the tray had no
+  backdrop either → an undiscoverable Escape was the only exit. Fix: one shared teal
+  `DonnyPanelHeader` used by **both** stages (tray: ⌃ expand + ✕ close; chat: ⌄ minimize + ✕
+  close), `DonnyChatHeader` deleted; **desktop close-on-outside-click** (`useIsMobile`-gated —
+  the panel is only CSS-hidden, not unmounted, on mobile — and `[data-donny-launcher]`-excluded
+  so the launcher toggle doesn't fight it); an inviting "🎉 You're all caught up" empty state +
+  labeled brand-colored chip groups + de-grayed `DonnyTrayInput`. Chip data/logic unchanged;
+  rebased onto main's fixed-overlay `DonnyDesktopPanel` (#236). Codex-clean; **live-verified on
+  prod** (restaurant dashboard — ✕ / click-outside / launcher toggle all work, 0 console
+  errors). Concept: `docs/wiki/concepts/donny-chat-ux.md`.
+
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
 boundaries (see `.claude/handoffs/`).
