@@ -98,3 +98,39 @@ export function resolveLandingPlaylist(
 export function useLandingPlaylist(key: LandingClipKey): LandingClip[] {
   return resolveLandingPlaylist(key);
 }
+
+/** Roles whose hero backdrop can lead with real (dynamic) clips. Brand stays static (hidden). */
+const DYNAMIC_BACKDROP_KEYS: LandingClipKey[] = ["hero.business", "hero.creator"];
+const BACKDROP_MERGED_CAP = 6;
+
+/**
+ * Merge real (dynamic) clips ahead of the curated static playlist for eligible hero keys.
+ * Dynamic leads (real content first), static backfills so the rotation is never thin. Returns the
+ * static array UNCHANGED (same reference) for non-eligible keys or when there are no dynamic clips —
+ * so the signature stays stable and nothing remounts. De-dupes by src; caps the total.
+ */
+export function mergeBackdropPlaylist(
+  key: LandingClipKey,
+  staticClips: LandingClip[],
+  dynamicClips: LandingClip[],
+): LandingClip[] {
+  if (!DYNAMIC_BACKDROP_KEYS.includes(key) || dynamicClips.length === 0) return staticClips;
+  const seen = new Set<string>();
+  const merged: LandingClip[] = [];
+  for (const c of [...dynamicClips, ...staticClips]) {
+    if (!c.src || seen.has(c.src)) continue;
+    seen.add(c.src);
+    merged.push(c);
+    if (merged.length >= BACKDROP_MERGED_CAP) break;
+  }
+  return merged;
+}
+
+/**
+ * A stable string that changes whenever the playlist's clip CONTENTS change (grow, or same-length
+ * different-clips), and stays identical when contents are unchanged. Used as the RotatingBackdrop
+ * `key` so its index-based rotation always mounts against a stable playlist (see spec §4.3).
+ */
+export function playlistSignature(role: string, playlist: LandingClip[]): string {
+  return `${role}::${playlist.map((c) => c.src ?? "").join("|")}`;
+}

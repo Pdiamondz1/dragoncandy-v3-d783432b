@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { BRAND_ROLE_ENABLED } from "@/lib/featureConfig";
 import { HERO_CONTENT, parseRoleParam, visibleRoles, type HeroRole } from "./heroRole";
-import { useLandingPlaylist } from "./landingClips";
+import { playlistSignature } from "./landingClips";
+import { useLandingBackdropPlaylist } from "./useLandingBackdropPlaylist";
 import { RotatingBackdrop } from "./RotatingBackdrop";
 
 /**
@@ -26,7 +27,7 @@ export const HeroSection: React.FC = () => {
     parseRoleParam(params.get("role"), BRAND_ROLE_ENABLED),
   );
   const content = HERO_CONTENT[role];
-  const playlist = useLandingPlaylist(content.clipKey);
+  const playlist = useLandingBackdropPlaylist(content.clipKey);
 
   const scrollToSeeItWork = () => {
     document.getElementById("see-it-work")?.scrollIntoView({ behavior: "smooth" });
@@ -38,9 +39,11 @@ export const HeroSection: React.FC = () => {
       className="relative isolate flex min-h-[88vh] items-center overflow-hidden pt-28 lg:min-h-screen lg:pt-32"
     >
       {/* Full-bleed cinematic backdrop — per-role playlist that crossfades between clips, then
-          loops; gradient fallback pre-clips. key={role} remounts a fresh rotation (starting at
-          clip 1) whenever the visitor switches sides. */}
-      <RotatingBackdrop key={role} playlist={playlist} className="-z-20" />
+          loops; gradient fallback pre-clips. Keyed on playlistSignature(role, playlist) so it
+          remounts a fresh rotation (arming at clip 0) both when the visitor switches sides AND
+          when the resolved clip contents change — e.g. real boosted clips arriving after the
+          static fallback lead the merged playlist, so the remount arms with the real clip. */}
+      <RotatingBackdrop key={playlistSignature(role, playlist)} playlist={playlist} className="-z-20" />
 
       {/* Kinetic energy: faint drifting clip-wall (desktop only, static under reduced-motion).
           Rotate + scale are baked into the driftY keyframe itself (not a separate static
