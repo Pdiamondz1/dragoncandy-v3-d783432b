@@ -1,5 +1,20 @@
 # Wiki Log
 
+## [2026-07-16] update | Web Donny find_creators — the fix belongs in donny-orchestrator
+Ingested [[Donny Orchestrator Find-Creators Session]]. Keystone: the consumer web/mobile Donny chat
+calls **`donny-orchestrator`** (`useDonny.ts:157`), NOT `donny-chat` (`useInternalDonny.ts:79` =
+internal AIOS only) — so the earlier `donny-chat` `match_creators` fix + forcing never reached the
+surface businesses test (found via a `read_network_requests` capture — the durable lesson: confirm
+WHICH edge fn a surface calls before building). The orchestrator is a sub-agent router with no
+standalone creator-list tool, so "find creators near X" honestly redirected. Real fix (live-verified
+returning real Hoboken creators + distances): relocated `creator-discovery.ts` → `_shared/`, added a
+**`find_creators` sub-agent** (public+completed query → shared `rankCreators` → text list + View nav
+buttons), `tool_choice`-forced on `isCreatorDiscoveryIntent` (excludes any campaign mention →
+`prepare_campaign`/`campaign_agent` win, two Codex P2s). Deployed `donny-orchestrator` v61
+(verify_jwt=true). Compounded onto `concepts/ai-creator-matching.md` (new "Which Donny?" section +
+fixed the stale privacy-parity bullet), + raw session + index (Sources + concept line) + this entry.
+`donny-chat`-based PR #249 closed as wrong-function.
+
 ## [2026-07-16] ingest | Donny chat `match_creators` fix (feat/donny-chat-matcher)
 Ingested [[Donny Chat Matcher Fix Session]] — the sibling of PR #241's campaign-matcher fix, on
 Donny's conversational `match_creators` tool. Same over-narrow-filter class of bug (a *required*

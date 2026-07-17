@@ -30,6 +30,30 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-16] Web Donny find_creators — right function this time (branch feat/donny-orchestrator-find-creators)
+- Output: bundled INTO the work PR — `raw/sessions/2026-07-16-donny-orchestrator-find-creators.md`,
+  **compounded** `concepts/ai-creator-matching.md` (new "Which Donny? consumer uses donny-orchestrator,
+  not donny-chat" section + FIXED the now-stale "privacy parity deferred" bullet → shipped in #247 +
+  frontmatter sources), `index.md` (Sources + rewrote the concept line), `log.md` update entry,
+  PROJECT_CONTEXT active-workstream bullet, + THIS entry. No DATABASE_SCHEMA/DESIGN_SYSTEM/CLAUDE.md change.
+- Happened: the session's headline is a **wrong-function debugging lesson** — two prior fixes (PR #246/#249)
+  were built on `donny-chat`, but the consumer web/mobile Donny calls `donny-orchestrator`; a
+  `read_network_requests` capture was the decisive diagnostic. So the durable knowledge is a wiring fact +
+  the "confirm the endpoint before building" rule, compounded onto the SAME [[AI Creator Matching]] concept
+  (it's the next layer of the same subject) — including a **correction** of the prior section's implication
+  that donny-chat was the consumer fix. Pre-merge off origin/main (per [scope]); RAG sync + [[verify-knowledge]]
+  post-merge via the docs/ hook.
+- Worked: [scope] + [runlog-in-pr] + [orphans]-by-path (new raw session cataloged). Compounded + CORRECTED
+  the existing concept page rather than spawning a new one; also fixed a stale bullet the prior sync left
+  (privacy parity was "deferred" but #247 shipped it). Captured the reusable orchestrator sub-agent pattern
+  (add a tool + agents/*.ts + agentMap + tool_choice forcing) as concept knowledge.
+- Failed: none for knowledge-sync. (The underlying feature is LIVE-verified — a rare fully-verified pre-merge
+  run — because the founder signed in mid-session so I could drive the browser E2E on the correct endpoint.)
+- Remember: when knowledge-sync captured a fix that later proved MISDIRECTED (wrong function/surface), the
+  next sync must **CORRECT the earlier section in place** (not just append) so the concept page doesn't keep
+  implying the wrong thing — and record the diagnostic that found the truth (here: capture the network request
+  to confirm the endpoint). (advisory — extends the "edit-in-place on supersession" Lesson to *corrections*)
+
 ### [2026-07-16] Donny chat `match_creators` fix — sibling of PR #241 (branch feat/donny-chat-matcher)
 - Output: bundled INTO the work PR — `raw/sessions/2026-07-16-donny-chat-matcher-fix.md`, **compounded**
   `concepts/ai-creator-matching.md` (new "Donny chat sibling" section + flipped the known-limitations
