@@ -21,6 +21,29 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-18] Light-theme polish Phase 3 knowledge-sync validation (PR #285 code + PR #286 docs)
+- Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for the light-theme
+  polish Phase 3 session (settings + promotions + org/billing/payments; Outstand deferred to Phase 4).
+- Happened: (a) wiki lint — path-based orphan/index-completeness check clean (0 across
+  concepts+entities+analyses on origin/main), no contradictions (compounded onto [[Light-App Kit]] —
+  extended its Rollout to Phase 3/4; no new page); (b) `LAST_WIKI_SYNC` 2026-07-18T20:07:19Z,
+  raw `RAG_LAST` ≈16:47Z (UPDATE-only sync — `updated_at` not bumped) ~3h20m behind, well <24h, AND
+  the post-merge hook synced errors=0 with `content ilike '%CGCPostingPreferences%'` = 2 +
+  `%Phase 4%(deferred)%Outstand%` = 2 confirming the Phase-3 Rollout text is in `donny_knowledge`
+  → [freshness-proxy], (b) met; (c) `concepts/light-app-kit.md` in index.md + the `[2026-07-18] ...
+  Light-theme polish Phase 3` log.md ingest entry names it, new raw session catalogued in Sources.
+- Worked: [freshness-proxy] again resolved (b) on an UPDATE-only compound sync — `CGCPostingPreferences`
+  is a single distinctive token unique to the new Rollout text (no line-wrap), so the RAG hit is
+  unambiguous; the multi-word `%StripeConnectSetup chrome-only%` probe read 0 (wrapped-phrase
+  false-negative — exactly why single hyphenated/code tokens are the right probe). Docs-only PR #286
+  skipped Codex per convention.
+- Failed: none (validator). Third consecutive rollout-phase (Phase 1/2/3) knowledge-sync closed clean.
+  The run is post-merge (PR #286 already merged) → this entry strands on the worktree → persisted via a
+  dedicated `chore/verify-knowledge-runlog-286` PR (documented pattern, no work branch to bundle into).
+- Remember: re-confirms [freshness-proxy] + single-token-probe + post-merge-strand → chore-PR pattern
+  for a rollout-phase knowledge-sync. Pick a hyphen/camelCase token unique to the NEW text (here
+  `CGCPostingPreferences`) — never a multi-word phrase that can wrap. (advisory)
+
 ### [2026-07-18] Light-theme polish Phase 2 knowledge-sync validation (PR #282 code + PR #283 docs)
 - Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for the light-theme
   polish Phase 2 session.
