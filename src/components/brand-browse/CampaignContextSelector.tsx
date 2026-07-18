@@ -32,7 +32,7 @@ export const CampaignContextSelector: React.FC<CampaignContextSelectorProps> = (
 
   if (isLoading) {
     return (
-      <div className="h-9 w-48 bg-gray-100 rounded-full animate-pulse" />
+      <div className="h-9 w-48 bg-dc-teal/10 rounded-full animate-pulse" />
     );
   }
 
@@ -52,11 +52,11 @@ export const CampaignContextSelector: React.FC<CampaignContextSelectorProps> = (
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 md:left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 py-1 min-w-[240px] max-h-[280px] overflow-y-auto">
+        <div className="absolute right-0 md:left-0 top-full mt-1 bg-white border border-dc-teal/15 rounded-xl shadow-lg z-50 py-1 min-w-[240px] max-h-[280px] overflow-y-auto">
           {/* Clear selection */}
           <button
             onClick={() => { onSelect(null); setIsOpen(false); }}
-            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors ${
+            className={`w-full text-left px-4 py-2 text-sm hover:bg-dc-teal/5 transition-colors ${
               !selectedId ? 'text-dc-teal font-medium' : 'text-gray-500'
             }`}
           >
@@ -67,7 +67,7 @@ export const CampaignContextSelector: React.FC<CampaignContextSelectorProps> = (
             <button
               key={campaign.id}
               onClick={() => { onSelect(campaign.id); setIsOpen(false); }}
-              className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors ${
+              className={`w-full text-left px-4 py-2 text-sm hover:bg-dc-teal/5 transition-colors ${
                 selectedId === campaign.id ? 'text-dc-teal font-medium' : 'text-gray-700'
               }`}
             >

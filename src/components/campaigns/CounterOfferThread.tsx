@@ -40,7 +40,7 @@ export const CounterOfferThread: React.FC<CounterOfferThreadProps> = ({ counterO
             <div
               key={offer.id}
               className={`p-3 rounded-lg border text-sm ${
-                isFromMe ? 'bg-primary/5 border-primary/20 ml-4' : 'bg-muted/50 mr-4'
+                isFromMe ? 'bg-primary/5 border-primary/20 ml-4' : 'bg-dc-teal/[0.04] mr-4'
               } ${isSuperseded ? 'opacity-50' : ''}`}
             >
               <div className="flex items-center justify-between mb-1.5">
@@ -67,7 +67,7 @@ export const CounterOfferThread: React.FC<CounterOfferThreadProps> = ({ counterO
                 )}
                 {offer.proposed_timeline && (
                   <span className="flex items-center gap-1 text-xs font-medium">
-                    <Calendar className="h-3 w-3 text-blue-600" />
+                    <Calendar className="h-3 w-3 text-dc-teal" />
                     {offer.proposed_timeline}
                   </span>
                 )}

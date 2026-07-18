@@ -48,13 +48,13 @@ export const ContentSourceSelector = ({ value, onChange }: ContentSourceSelector
               'flex items-start gap-3 rounded-xl border-2 p-4 text-left transition-colors',
               isSelected
                 ? 'border-dc-teal bg-teal-50'
-                : 'border-gray-200 bg-white hover:border-gray-300',
+                : 'border-dc-teal/20 bg-white hover:border-dc-teal/40',
             ].join(' ')}
           >
             <span
               className={[
                 'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full',
-                isSelected ? 'bg-dc-teal-btn text-white' : 'bg-gray-100 text-gray-500',
+                isSelected ? 'bg-dc-teal-btn text-white' : 'bg-dc-teal/10 text-dc-teal-btn',
               ].join(' ')}
             >
               <Icon className="h-5 w-5" />

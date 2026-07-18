@@ -71,15 +71,15 @@ export const DirectMessagesList: React.FC<DirectMessagesListProps> = ({
     return (
       <div className="flex flex-col h-full">
         <div className="p-4 border-b border-border/50">
-          <div className="h-6 w-28 bg-muted rounded animate-pulse" />
+          <div className="h-6 w-28 bg-dc-teal/10 rounded animate-pulse" />
         </div>
         <div className="flex-1 p-2 space-y-1">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="flex items-center gap-3 p-3 rounded-2xl">
-              <div className="h-12 w-12 bg-muted rounded-full animate-pulse flex-shrink-0" />
+              <div className="h-12 w-12 bg-dc-teal/10 rounded-full animate-pulse flex-shrink-0" />
               <div className="flex-1 space-y-2">
-                <div className="h-3.5 bg-muted rounded w-3/4 animate-pulse" />
-                <div className="h-3 bg-muted rounded w-1/2 animate-pulse" />
+                <div className="h-3.5 bg-dc-teal/10 rounded w-3/4 animate-pulse" />
+                <div className="h-3 bg-dc-teal/10 rounded w-1/2 animate-pulse" />
               </div>
             </div>
           ))}
@@ -103,7 +103,7 @@ export const DirectMessagesList: React.FC<DirectMessagesListProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:text-foreground hover:bg-dc-teal/5"
               onClick={() => setShowSearch(!showSearch)}
               aria-label="Toggle search"
             >
@@ -117,7 +117,7 @@ export const DirectMessagesList: React.FC<DirectMessagesListProps> = ({
             placeholder="Search conversations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="mt-3 h-9 text-sm bg-muted/40 border-0 rounded-xl focus-visible:ring-dc-teal"
+            className="mt-3 h-9 text-sm bg-white border-dc-teal/20 rounded-xl focus-visible:ring-dc-teal"
             aria-label="Search conversations"
             name="search"
             autoFocus
@@ -155,7 +155,7 @@ export const DirectMessagesList: React.FC<DirectMessagesListProps> = ({
                   className={`group flex items-center gap-3 px-3 py-3 rounded-2xl cursor-pointer transition-all duration-200 min-w-0 ${
                     isActive
                       ? 'bg-dc-teal/8'
-                      : 'hover:bg-muted/40'
+                      : 'hover:bg-dc-teal/5'
                   }`}
                   onClick={() => handleConversationClick(conversation)}
                   role="button"

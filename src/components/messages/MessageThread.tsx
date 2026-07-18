@@ -78,7 +78,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({
     <div className="flex h-[600px]">
       <Card className="flex flex-col flex-1">
         {campaignTitle && (
-          <div className="p-4 border-b bg-muted flex items-center justify-between">
+          <div className="p-4 border-b border-dc-teal/15 bg-dc-teal/[0.04] flex items-center justify-between">
             <div>
               <h3 className="font-medium text-foreground">{campaignTitle}</h3>
               <p className="text-sm text-muted-foreground">Campaign Discussion</p>

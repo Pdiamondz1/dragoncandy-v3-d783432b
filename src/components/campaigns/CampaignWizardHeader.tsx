@@ -37,7 +37,7 @@ export const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
                     w-7 h-7 md:w-10 md:h-10 rounded-full flex items-center justify-center text-[11px] md:text-sm font-semibold
                     ${index < currentStep
                       ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground'
+                      : 'bg-dc-teal/10 text-dc-teal-btn'
                     }
                   `}>
                     {step.number}
@@ -52,7 +52,7 @@ export const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
                 {index < steps.length - 1 && (
                   <div className={`
                     w-2 md:w-8 h-0.5
-                    ${index < currentStep - 1 ? 'bg-primary' : 'bg-muted'}
+                    ${index < currentStep - 1 ? 'bg-primary' : 'bg-dc-teal/10'}
                   `} />
                 )}
               </div>

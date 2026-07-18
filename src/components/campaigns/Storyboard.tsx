@@ -19,7 +19,7 @@ export const Storyboard: React.FC<StoryboardProps> = ({ frames, title = 'Storybo
         ) : (
           <div className="space-y-3">
             {frames.map((frame, index) => (
-              <div key={index} className="p-3 bg-gray-50 rounded-lg">
+              <div key={index} className="p-3 bg-dc-teal/[0.04] rounded-lg">
                 <p className="text-sm text-gray-800">
                   <span className="font-bold">Frame {frame.frame_number}:</span>{' '}
                   {frame.scene_description}

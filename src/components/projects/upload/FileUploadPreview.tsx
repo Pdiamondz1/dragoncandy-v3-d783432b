@@ -34,7 +34,7 @@ export const FileUploadPreview: React.FC<FileUploadPreviewProps> = ({
     <div className="space-y-2">
       <h4 className="font-medium text-gray-700">Files to upload:</h4>
       {files.map((file) => (
-        <div key={file.name} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg overflow-hidden">
+        <div key={file.name} className="flex items-center gap-3 p-3 bg-dc-teal/[0.04] rounded-lg overflow-hidden">
           <div className="flex-shrink-0 text-gray-500">
             {getFileIcon(file)}
           </div>

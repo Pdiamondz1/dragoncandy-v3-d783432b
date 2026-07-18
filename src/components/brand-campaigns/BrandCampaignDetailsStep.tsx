@@ -215,7 +215,7 @@ export const BrandCampaignDetailsStep = ({
         <CardContent className="p-4 space-y-3">
           <h3 className="text-sm font-semibold text-gray-800">Brand Assets</h3>
 
-          <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 p-6 cursor-pointer hover:border-dc-teal transition-colors">
+          <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-dc-teal/25 p-6 cursor-pointer hover:border-dc-teal transition-colors">
             <Upload className="h-6 w-6 text-gray-400" />
             <span className="text-sm text-gray-500 text-center">
               Upload logo, brand guidelines, sample content
@@ -234,7 +234,7 @@ export const BrandCampaignDetailsStep = ({
               {detailsData.brandAssets.map((asset, idx) => (
                 <li
                   key={`${asset.name}-${idx}`}
-                  className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2"
+                  className="flex items-center justify-between rounded-lg bg-dc-teal/[0.04] px-3 py-2"
                 >
                   <span className="text-sm text-gray-700 truncate max-w-[200px]">
                     {asset.name}

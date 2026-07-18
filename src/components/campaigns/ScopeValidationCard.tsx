@@ -87,7 +87,7 @@ export const ScopeValidationCard: React.FC<ScopeValidationCardProps> = ({
 
         {/* Quick-fix suggestion */}
         {suggestion && (
-          <div className="bg-gray-50 rounded-xl p-3">
+          <div className="bg-dc-teal/[0.04] rounded-xl p-3">
             <p className="text-sm text-gray-700">
               <span className="font-medium">Suggestion: </span>
               {suggestion}

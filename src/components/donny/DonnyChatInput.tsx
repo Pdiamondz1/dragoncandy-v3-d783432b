@@ -37,7 +37,7 @@ export function DonnyChatInput({ onSubmit, disabled }: DonnyChatInputProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-end gap-2 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] bg-white border-t border-gray-100">
+    <form onSubmit={handleSubmit} className="flex items-end gap-2 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] bg-white border-t border-dc-teal/10">
       <button type="button" aria-label="Attach file" className="w-7 h-7 rounded-full bg-gray-900 flex items-center justify-center text-white flex-shrink-0">
         <Plus className="w-4 h-4" />
       </button>
@@ -52,7 +52,7 @@ export function DonnyChatInput({ onSubmit, disabled }: DonnyChatInputProps) {
         placeholder="Ask Donny anything..."
         disabled={disabled}
         aria-label="Message Donny"
-        className="flex-1 resize-none min-h-[36px] max-h-[160px] overflow-y-auto bg-gray-100 rounded-2xl py-2 px-4 text-base md:text-sm text-gray-700 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-dc-teal/30 disabled:opacity-50"
+        className="flex-1 resize-none min-h-[36px] max-h-[160px] overflow-y-auto bg-white border border-dc-teal/20 rounded-2xl py-2 px-4 text-base md:text-sm text-dc-text placeholder:text-dc-text-muted outline-none focus:ring-2 focus:ring-dc-teal/30 disabled:opacity-50"
       />
       <button
         type="submit"

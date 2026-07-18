@@ -30,7 +30,7 @@ export function LogisticsSection({ campaign }: LogisticsSectionProps) {
   return (
     <AppCard className="space-y-4">
         <div className="flex items-center gap-3">
-          <Calendar className="w-4 h-4 text-blue-600 flex-shrink-0" />
+          <Calendar className="w-4 h-4 text-dc-teal flex-shrink-0" />
           <div>
             <span className="text-[11px] text-gray-500 uppercase tracking-wider">Deadline</span>
             <p className="text-sm font-medium text-gray-900">{formatDate(campaign.deadline)}</p>

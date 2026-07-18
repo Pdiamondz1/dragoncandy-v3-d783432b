@@ -11,13 +11,13 @@ interface DonnyNudgeCardProps {
 const priorityStyles = {
   high: 'bg-gradient-to-r from-teal-50 to-emerald-50 border-teal-300',
   medium: 'bg-gradient-to-r from-pink-50 to-fuchsia-50 border-pink-300',
-  low: 'bg-gray-50 border-gray-200',
+  low: 'bg-dc-teal/[0.04] border-dc-teal/10',
 };
 
 const variantStyles = {
   primary: 'bg-dc-teal-btn text-white',
-  secondary: 'bg-white text-gray-600 border border-gray-200',
-  ghost: 'bg-gray-100 text-gray-500',
+  secondary: 'bg-white text-gray-600 border border-dc-teal/15',
+  ghost: 'bg-dc-teal/5 text-dc-text-muted',
 };
 
 export function DonnyNudgeCard({ nudge, onAction, onDismiss }: DonnyNudgeCardProps) {

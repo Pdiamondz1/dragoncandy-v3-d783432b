@@ -120,7 +120,7 @@ export const ContactCreatorModal: React.FC<ContactCreatorModalProps> = ({
         
         <div className="space-y-4">
           {/* Creator Info */}
-          <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+          <div className="flex items-center gap-3 p-3 bg-dc-teal/[0.04] rounded-lg">
             <Avatar className="h-12 w-12">
               <AvatarImage src={resolvedAvatarUrl} />
               <AvatarFallback>
@@ -141,7 +141,7 @@ export const ContactCreatorModal: React.FC<ContactCreatorModalProps> = ({
 
           {/* Bio Preview */}
           {creator.bio && (
-            <div className="p-3 bg-muted/50 rounded-lg">
+            <div className="p-3 bg-dc-teal/[0.04] rounded-lg">
               <p className="text-sm text-muted-foreground line-clamp-2">
                 {creator.bio}
               </p>

@@ -21,7 +21,7 @@ const STATUS_CONFIG = {
   approved: { label: 'Approved', bg: 'bg-emerald-100 text-emerald-700', border: 'border-dc-teal' },
   submitted: { label: 'Pending Review', bg: 'bg-yellow-100 text-yellow-700', border: 'border-yellow-400' },
   revision_requested: { label: 'Revision Requested', bg: 'bg-amber-100 text-amber-700', border: 'border-amber-500' },
-  not_submitted: { label: 'Not Submitted', bg: 'bg-gray-100 text-gray-500', border: 'border-dashed border-gray-400' },
+  not_submitted: { label: 'Not Submitted', bg: 'bg-dc-teal/5 text-dc-text-muted', border: 'border-dashed border-dc-teal/30' },
 } as const;
 
 export function ContentTile({
@@ -55,7 +55,7 @@ export function ContentTile({
       <button
         onClick={handleThumbnailClick}
         disabled={isNotSubmitted}
-        className="relative w-full h-[120px] bg-gray-100 rounded-t-xl overflow-hidden"
+        className="relative w-full h-[120px] bg-dc-teal/[0.04] rounded-t-xl overflow-hidden"
       >
         {isVideo ? (
           <VideoFrameThumbnail
@@ -86,7 +86,7 @@ export function ContentTile({
         {/* Multi-select checkbox */}
         {isSelecting && file.fileId && (
           <div className={`absolute top-1.5 left-1.5 w-5 h-5 rounded border-2 flex items-center justify-center ${
-            isSelected ? 'bg-dc-teal border-dc-teal' : 'bg-white/80 border-gray-300'
+            isSelected ? 'bg-dc-teal border-dc-teal' : 'bg-white/80 border-dc-teal/30'
           }`}>
             {isSelected && <span className="text-white text-xs">✓</span>}
           </div>

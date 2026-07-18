@@ -123,7 +123,7 @@ export const SponsorshipStatusCard = ({
               <FileText className="h-4 w-4" />
               Your Proposal
             </p>
-            <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
+            <p className="text-sm text-muted-foreground bg-dc-teal/[0.04] p-3 rounded-md">
               {sponsorshipStatus.proposal_message}
             </p>
           </div>

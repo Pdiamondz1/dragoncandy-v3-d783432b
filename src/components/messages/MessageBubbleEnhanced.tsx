@@ -132,7 +132,7 @@ export const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
           <div className={`mb-1 px-3 py-1.5 rounded-xl text-xs border-l-2 ${
             isOwnMessage
               ? 'bg-white/10 border-white/30 text-white/80'
-              : 'bg-muted/60 border-dc-pink/40 text-muted-foreground'
+              : 'bg-dc-teal/[0.04] border-dc-pink/40 text-muted-foreground'
           }`}>
             <span className="font-medium text-[10px]">
               {message.parent_message.sender_profile?.full_name || 'User'}
@@ -186,7 +186,7 @@ export const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
                   } else {
                     return (
                       <div className={`mt-1.5 p-2 rounded-lg ${
-                        isOwnMessage ? 'bg-white/15' : 'bg-muted/60'
+                        isOwnMessage ? 'bg-white/15' : 'bg-white/40'
                       }`}>
                         <a
                           href={safeUrl(message.attachment_url) ?? '#'}

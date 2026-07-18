@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { AppChip } from '@/components/app/AppChip';
 import type {
   BrandBriefData,
   BrandGoal,
@@ -123,18 +124,13 @@ export const BrandCampaignBriefStep = ({
           </label>
           <div className="flex flex-wrap gap-2">
             {BRAND_GOALS.map(({ value, label }) => (
-              <button
+              <AppChip
                 key={value}
-                type="button"
+                active={briefData.brandGoal === value}
                 onClick={() => updateField('brandGoal', value)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  briefData.brandGoal === value
-                    ? 'bg-dc-teal-btn text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
               >
                 {label}
-              </button>
+              </AppChip>
             ))}
           </div>
         </CardContent>
@@ -148,18 +144,13 @@ export const BrandCampaignBriefStep = ({
           </label>
           <div className="flex flex-wrap gap-2">
             {CREATOR_PERSONAS.map(({ value, label }) => (
-              <button
+              <AppChip
                 key={value}
-                type="button"
+                active={briefData.targetPersonas.includes(value)}
                 onClick={() => togglePersona(value)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  briefData.targetPersonas.includes(value)
-                    ? 'bg-dc-teal-btn text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
               >
                 {label}
-              </button>
+              </AppChip>
             ))}
           </div>
         </CardContent>
@@ -173,18 +164,13 @@ export const BrandCampaignBriefStep = ({
           </label>
           <div className="flex flex-wrap gap-2">
             {PLATFORMS.map(({ value, label }) => (
-              <button
+              <AppChip
                 key={value}
-                type="button"
+                active={briefData.platforms.includes(value)}
                 onClick={() => togglePlatform(value)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  briefData.platforms.includes(value)
-                    ? 'bg-dc-teal-btn text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
               >
                 {label}
-              </button>
+              </AppChip>
             ))}
           </div>
         </CardContent>
@@ -198,18 +184,13 @@ export const BrandCampaignBriefStep = ({
           </label>
           <div className="flex flex-wrap gap-2">
             {GEOGRAPHIC_SCOPES.map(({ value, label }) => (
-              <button
+              <AppChip
                 key={value}
-                type="button"
+                active={briefData.geographicScope === value}
                 onClick={() => updateField('geographicScope', value)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  briefData.geographicScope === value
-                    ? 'bg-dc-teal-btn text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
               >
                 {label}
-              </button>
+              </AppChip>
             ))}
           </div>
         </CardContent>

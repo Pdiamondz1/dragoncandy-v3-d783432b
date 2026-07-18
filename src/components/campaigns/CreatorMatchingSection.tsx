@@ -147,7 +147,7 @@ export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            <Sparkles className="h-5 w-5 text-dc-teal" />
             AI-Powered Creator Matching
           </CardTitle>
           <p className="text-sm text-muted-foreground">
@@ -176,20 +176,20 @@ export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ 
           {/* Match summary stats */}
           {matchStats && !isLoading && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="text-center p-2 rounded-lg bg-muted/50">
+              <div className="text-center p-2 rounded-lg bg-dc-teal/[0.04]">
                 <div className="text-lg font-bold text-foreground">{matchStats.total}</div>
                 <div className="text-xs text-muted-foreground">Matches</div>
               </div>
-              <div className="text-center p-2 rounded-lg bg-muted/50">
+              <div className="text-center p-2 rounded-lg bg-dc-teal/[0.04]">
                 <div className="text-lg font-bold text-teal-600 dark:text-teal-400">{matchStats.avg}</div>
                 <div className="text-xs text-muted-foreground">Avg Score</div>
               </div>
-              <div className="text-center p-2 rounded-lg bg-muted/50">
+              <div className="text-center p-2 rounded-lg bg-dc-teal/[0.04]">
                 <div className="text-lg font-bold text-green-600 dark:text-green-400">{matchStats.top}</div>
                 <div className="text-xs text-muted-foreground">Top Score</div>
               </div>
-              <div className="text-center p-2 rounded-lg bg-muted/50">
-                <div className="text-lg font-bold text-purple-600 dark:text-purple-400">
+              <div className="text-center p-2 rounded-lg bg-dc-teal/[0.04]">
+                <div className="text-lg font-bold text-dc-pink-accent">
                   {matchStats.excellent + matchStats.great}
                 </div>
                 <div className="text-xs text-muted-foreground">Strong Fits</div>

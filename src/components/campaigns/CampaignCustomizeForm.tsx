@@ -76,7 +76,7 @@ export const CampaignCustomizeForm: React.FC<CampaignCustomizeFormProps> = ({
           <Button type="button" variant="outline" onClick={onBackToAnalysis}>
             Back to Analysis
           </Button>
-          <Button type="submit" className="bg-gray-900 hover:bg-gray-800 text-white">
+          <Button type="submit" variant="dc-primary">
             Continue
           </Button>
         </div>

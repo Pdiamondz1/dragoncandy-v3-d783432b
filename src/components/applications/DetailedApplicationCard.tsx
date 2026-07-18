@@ -152,7 +152,7 @@ export const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = (
       <CardContent className="space-y-4">
         <div>
           <h4 className="font-medium mb-1">Your Message</h4>
-          <p className="text-sm text-muted-foreground bg-muted p-3 rounded">
+          <p className="text-sm text-muted-foreground bg-dc-teal/[0.04] p-3 rounded">
             {application.intro_message || 'No message provided'}
           </p>
         </div>
@@ -166,7 +166,7 @@ export const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = (
             <button
               type="button"
               onClick={() => window.open(resolvedPortfolioUrl, '_blank')}
-              className="w-20 h-20 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-dc-teal transition-colors"
+              className="w-20 h-20 rounded-lg overflow-hidden border-2 border-dc-teal/15 hover:border-dc-teal transition-colors"
             >
               {/\.(mp4|mov|webm|avi)(\?|$)/i.test(application.portfolio_url || '') ? (
                 <video src={resolvedPortfolioUrl} preload="metadata" muted className="w-full h-full object-cover" />
@@ -185,7 +185,7 @@ export const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {application.proposed_timeline && (
             <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-blue-600" />
+              <Clock className="h-4 w-4 text-dc-teal" />
               <div>
                 <p className="text-xs text-muted-foreground">Timeline</p>
                 <p className="text-sm font-medium">{application.proposed_timeline}</p>

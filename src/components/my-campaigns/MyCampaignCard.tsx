@@ -48,7 +48,7 @@ function getActiveOverrides(contentStatus: string | null): {
   switch (contentStatus) {
     case 'submitted':
       return {
-        status: { label: '📤 Submitted', className: 'bg-blue-50 text-blue-800' },
+        status: { label: '📤 Submitted', className: 'bg-dc-teal/10 text-dc-teal-btn' },
         cta: { label: 'View →', className: 'text-dc-teal' },
         hint: 'Awaiting review',
       };

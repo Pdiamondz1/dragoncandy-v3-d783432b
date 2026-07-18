@@ -158,7 +158,7 @@ export const ShortlistDrawer: React.FC<ShortlistDrawerProps> = ({
                 {resolvedCreators.map((rc) => (
                   <div
                     key={rc.creator.id}
-                    className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50"
+                    className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-dc-teal/5"
                   >
                     <ShortlistAvatar url={rc.avatarUrl} name={rc.creator.creator_name} size="md" />
                     <div className="flex-1 min-w-0">
@@ -171,7 +171,7 @@ export const ShortlistDrawer: React.FC<ShortlistDrawerProps> = ({
                     </div>
                     <button
                       onClick={() => onRemove(rc.creator.user_id)}
-                      className="p-1.5 rounded-full hover:bg-gray-200 transition-colors flex-shrink-0"
+                      className="p-1.5 rounded-full hover:bg-dc-teal/5 transition-colors flex-shrink-0"
                     >
                       <X className="h-4 w-4 text-gray-400" />
                     </button>
@@ -180,14 +180,14 @@ export const ShortlistDrawer: React.FC<ShortlistDrawerProps> = ({
 
                 {/* Campaign selector (if not already selected at page level) */}
                 {!selectedCampaignId && campaigns.length > 0 && (
-                  <div className="pt-2 border-t border-gray-100">
+                  <div className="pt-2 border-t border-dc-teal/15">
                     <label className="block text-xs font-medium text-gray-600 mb-1.5">
                       Choose a campaign to invite to
                     </label>
                     <select
                       onChange={(e) => onSelectCampaign(e.target.value || null)}
                       value={selectedCampaignId ?? ''}
-                      className="w-full px-3 py-2 bg-gray-100 rounded-xl text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-dc-teal"
+                      className="w-full px-3 py-2 bg-white border border-dc-teal/20 rounded-xl text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-dc-teal"
                     >
                       <option value="">Select campaign...</option>
                       {campaigns.map((c) => (

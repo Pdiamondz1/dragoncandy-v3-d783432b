@@ -108,7 +108,7 @@ export const JointApprovalCard = ({ application, userRole }: JointApprovalCardPr
 
         {/* Status Message */}
         {myStatus === 'approved' && otherStatus === 'pending' && (
-          <p className="text-sm text-muted-foreground bg-muted p-2 rounded">
+          <p className="text-sm text-muted-foreground bg-dc-teal/[0.04] p-2 rounded">
             ✓ You've approved. Waiting for {userRole === 'brand' ? 'restaurant owner' : 'brand sponsor'} approval.
           </p>
         )}
