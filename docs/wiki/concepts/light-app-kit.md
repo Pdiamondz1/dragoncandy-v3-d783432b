@@ -3,7 +3,7 @@ title: Light-App Kit
 type: concept
 created: 2026-07-18
 updated: 2026-07-18
-sources: [2026-07-18-light-theme-polish-phase1.md, 2026-07-18-light-theme-polish-phase2.md]
+sources: [2026-07-18-light-theme-polish-phase1.md, 2026-07-18-light-theme-polish-phase2.md, 2026-07-18-light-theme-polish-phase3.md]
 tags: [design-system, ui, tailwind, consistency, frontend, light-theme]
 ---
 # Light-App Kit
@@ -81,8 +81,14 @@ keep `text-white` that sits on a colored button/badge/avatar.
   inset tint), the **DragonShare + Dragon Feed** pair (`PageBody`/`AppCard`/`AppChip`), and **public
   profiles** (`AppCard`/`AppStatusBadge`; pink hero untouched) — surfaced the third gotcha (`AppCard`
   is not `forwardRef`).
-- **Phase 3** (deferred, only if requested): settings, org/billing/payments, promotions, the Outstand
-  surfaces.
+- **Phase 3** (shipped, PR #285, [[Light-Theme Polish Phase 3 Session]]): **Settings** (the shared
+  `SettingsSection` wrapper de-grayed — cascades across every settings section AND promotions'
+  `CGCPostingPreferences`; `StripeConnectSetup` chrome-only), **Promotions** (cards → `AppCard`, tabs →
+  `AppChip`, pills → `AppStatusBadge`), and **Org/Billing/Payments** (money-flow styling-only; failure
+  red + semantic payment colors kept; tier badges de-grayed with starter/growth kept distinct).
+- **Phase 4** (deferred): the **Outstand** social-integration surface only (~51 files; its social-platform
+  brand colors need per-instance judgment, so it's a dedicated effort, likely sub-split). Everything else
+  in the light app is now on the kit.
 
 ## See Also
 - The `DESIGN_SYSTEM.md` core doc — "Shared light-app kit" section + the clean-white background table.

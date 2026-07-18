@@ -1339,9 +1339,19 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   (`AppCard`/`AppStatusBadge`; pink hero + white text untouched; Busy badge → `tone="neutral"`, green
   "Available" kept). Surfaced the **third kit gotcha**: `AppCard` is not a `forwardRef` component, so a
   card that needs a `ref` (`PublicBusinessProfile`'s `reviewsRef` scroll target) keeps the ref on a
-  plain `<div>`. Presentational only; Codex-clean; residual-grep zero. **Phase 3 (deferred, only if
-  requested):** settings, org/billing/payments, promotions, outstand. Concept:
-  `docs/wiki/concepts/light-app-kit.md`. Spec:
+  plain `<div>`. Presentational only; Codex-clean; residual-grep zero.
+  **Phase 3 shipped + deployed (PR #285, 2026-07-18)** — pure rollout of the same kit onto the three
+  surfaces Phase 1/2 deferred: **Settings** (the shared `SettingsSection` wrapper de-grayed → cascades
+  across every settings section AND promotions' `CGCPostingPreferences` — the highest-leverage node;
+  `StripeConnectSetup` chrome-only, semantic status panels kept), **Promotions** (cards → `AppCard`, tabs
+  → `AppChip`, pills → `AppStatusBadge`; error-boundary keeps its `bg-red-50` wash), and
+  **Org/Billing/Payments** (**money-flow styling-only** — amounts/fee-math/status-enums/handlers/redirect
+  URLs byte-unchanged; failure red + semantic payment colors kept as literals since `AppStatusBadge` has
+  no red tone; starter/growth tier badges kept distinct). Founder scope call: **Outstand deferred to a
+  Phase 4** (~51 files, per-instance social-platform-color judgment). Scope guards held — `AvatarCropModal`
+  (dark-onboarding-shared), `PricingPage`, and the public customer funnel all verified absent from the
+  diff. Codex-clean; 983/983 tests; residual-grep zero. **Phase 4 (deferred): the Outstand
+  social-integration surface only.** Concept: `docs/wiki/concepts/light-app-kit.md`. Spec:
   `docs/superpowers/specs/2026-07-17-light-theme-polish-phase1-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time

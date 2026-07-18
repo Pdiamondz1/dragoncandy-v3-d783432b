@@ -1,5 +1,22 @@
 # Wiki Log
 
+## [2026-07-18] ingest | Light-theme polish Phase 3
+Ingested [[Light-Theme Polish Phase 3 Session]] (PR #285, deployed). Third slice — a **pure rollout** of
+the [[Light-App Kit]] onto the surfaces Phase 1/2 deferred, no new primitives. Founder scope call: after
+a read-only audit found the four candidate buckets very lopsided, **Outstand was deferred to a Phase 4**
+(~51 files, per-instance social-platform-color judgment), so Phase 3 = the three lower-risk buckets.
+**Settings:** the shared `SettingsSection` wrapper de-grayed (cascades across every settings section AND
+promotions' `CGCPostingPreferences` — the highest-leverage node); `StripeConnectSetup` chrome-only.
+**Promotions:** cards → `AppCard`, tabs → `AppChip`, pills → `AppStatusBadge`; the error-boundary keeps
+its `bg-red-50` wash (a whole-branch-review catch — `AppCard` forces `bg-white`). **Org/Billing/Payments:**
+**money-flow styling-only** (amounts/fee-math/status-enums/handlers/redirect-URLs byte-unchanged; failure
+red + semantic payment colors kept as literals since `AppStatusBadge` has no red tone); starter/growth
+tier badges kept distinct. Scope guards held: `AvatarCropModal` (dark-onboarding-shared), `PricingPage`,
+and the public customer funnel all absent from the diff. No new kit gotcha; reinforced money-flow-styling-only
++ shared-wrapper-is-highest-leverage + semantic/social-color keeps. Pages updated: concepts/light-app-kit.md
+(Rollout Phase 3/4 + sources). Core doc: PROJECT_CONTEXT (Phase-3 note). Codex-clean; 983/983 tests;
+residual-grep zero. RAG sync + verify-knowledge run post-merge (post-merge hook on the `main` ff).
+
 ## [2026-07-18] ingest | Light-theme polish Phase 2
 Ingested [[Light-Theme Polish Phase 2 Session]] (PR #282, deployed). Pure **rollout** of the Phase-1
 [[Light-App Kit]] onto the three surface groups Phase 1 deferred — no new primitives. **Messaging:**
