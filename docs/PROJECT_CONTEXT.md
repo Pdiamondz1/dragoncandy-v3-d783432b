@@ -1331,9 +1331,17 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   is a gray by design). Two durable gotchas: `AppChip` is a `<button>` → use `AppStatusBadge` (a span)
   for tags inside clickable cards (invalid nested buttons); wrap a shadcn `Card` with `<AppCard
   className="p-0">` (don't double-pad). Also fixed a same-file card mismatch + invisible `text-white`
-  leftovers on the now-white page. Codex-clean; residual-grep zero; `DESIGN_SYSTEM.md` refreshed. Phase
-  2/3 (follow-on): messaging, DragonShare, settings, org/billing, promotions, outstand, profiles.
-  Concept: `docs/wiki/concepts/light-app-kit.md`. Spec:
+  leftovers on the now-white page. Codex-clean; residual-grep zero; `DESIGN_SYSTEM.md` refreshed.
+  **Phase 2 shipped + deployed (PR #282, 2026-07-18)** — pure rollout of the same kit onto the three
+  surfaces Phase 1 deferred: **messaging** (retired the `bg-teal-50` "teal island" bg → white +
+  `PageBody`; `teal-50` wash panels → `bg-dc-teal/[0.04]` inset tint; input/presence/status de-gray;
+  chat bubbles pink/teal untouched), the **DragonShare + Dragon Feed** pair, and **public profiles**
+  (`AppCard`/`AppStatusBadge`; pink hero + white text untouched; Busy badge → `tone="neutral"`, green
+  "Available" kept). Surfaced the **third kit gotcha**: `AppCard` is not a `forwardRef` component, so a
+  card that needs a `ref` (`PublicBusinessProfile`'s `reviewsRef` scroll target) keeps the ref on a
+  plain `<div>`. Presentational only; Codex-clean; residual-grep zero. **Phase 3 (deferred, only if
+  requested):** settings, org/billing/payments, promotions, outstand. Concept:
+  `docs/wiki/concepts/light-app-kit.md`. Spec:
   `docs/superpowers/specs/2026-07-17-light-theme-polish-phase1-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
