@@ -15,6 +15,8 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { PrerequisiteGate } from '@/components/PrerequisiteGate';
 import { usePagedList } from '@/hooks/usePagedList';
 import { LoadMoreButton } from '@/components/shared/LoadMoreButton';
+import { PageBody } from '@/components/app/PageBody';
+import { AppChip } from '@/components/app/AppChip';
 
 type Tab = 'available' | 'boosted' | 'all';
 
@@ -64,7 +66,7 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
   return (
     <DashboardLayout userRole={userRole}>
       <PrerequisiteGate feature="use DragonShare">
-      <div className="space-y-6 max-w-4xl mx-auto">
+      <PageBody maxWidth="4xl" className="space-y-6">
         <PageHeader>
           <h1 className="text-2xl font-bold">DragonShare</h1>
           <p className="text-sm text-muted-foreground">
@@ -74,17 +76,13 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
 
         <div className="flex gap-2">
           {tabs.map((tab) => (
-            <button
+            <AppChip
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === tab.key
-                  ? 'bg-dc-teal-btn text-white'
-                  : 'bg-dc-teal/10 text-dc-text-muted hover:bg-dc-teal/20'
-              }`}
+              active={activeTab === tab.key}
             >
               {tab.label}
-            </button>
+            </AppChip>
           ))}
         </div>
 
@@ -122,7 +120,7 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
             />
           </div>
         )}
-      </div>
+      </PageBody>
       </PrerequisiteGate>
     </DashboardLayout>
   );

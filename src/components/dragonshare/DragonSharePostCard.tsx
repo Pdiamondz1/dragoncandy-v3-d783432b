@@ -11,6 +11,7 @@ import { BoostConfirmationSheet } from './BoostConfirmationSheet';
 import { DragonShareSharePanel } from './DragonShareSharePanel';
 import { AmplificationPreview } from './AmplificationPreview';
 import { WatermarkedMedia } from './WatermarkedMedia';
+import { AppCard } from '@/components/app/AppCard';
 import { BOOST_TIERS, isVideoPost } from '@/types/dragonshare';
 import { useFlagDragonSharePost } from '@/hooks/useFlagDragonSharePost';
 import { useDeclineDragonSharePost } from '@/hooks/useDeclineDragonSharePost';
@@ -42,7 +43,7 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
 
   return (
     <>
-      <div className="rounded-2xl border bg-dc-card overflow-hidden">
+      <AppCard className="p-0 overflow-hidden">
         {/* Header: creator info */}
         <div className="p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -217,7 +218,7 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
             <span className="text-[10px]">Report</span>
           </Button>
         </div>
-      </div>
+      </AppCard>
 
       {selectedTier && (
         <BoostConfirmationSheet

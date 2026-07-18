@@ -24,6 +24,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { composeCaption } from '@/lib/composeCaption';
 import { useQuery } from '@tanstack/react-query';
 import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
+import { PageBody } from '@/components/app/PageBody';
+import { AppCard } from '@/components/app/AppCard';
+import { AppChip } from '@/components/app/AppChip';
 
 type Tab = 'submitted' | 'boosted' | 'expired';
 
@@ -132,7 +135,7 @@ const CreatorDragonShare: React.FC = () => {
   return (
     <DashboardLayout userRole="content_creator">
       <PrerequisiteGate feature="use DragonShare">
-        <div className="space-y-6 pt-4">
+        <PageBody className="space-y-6 pt-4">
           {/* Page header */}
           <div className="rounded-2xl bg-gradient-to-br from-dc-teal/10 to-pink-50 border border-dc-teal/15 p-5">
             <h1 className="text-2xl font-bold tracking-tight">DragonShare</h1>
@@ -161,20 +164,16 @@ const CreatorDragonShare: React.FC = () => {
             <div className="flex-1 min-w-0 space-y-4">
               <div className="flex gap-2">
                 {tabs.map((tab) => (
-                  <button
+                  <AppChip
                     key={tab.key}
                     onClick={() => setActiveTab(tab.key)}
-                    className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                      activeTab === tab.key
-                        ? 'bg-dc-teal-btn text-white'
-                        : 'bg-dc-teal/10 text-dc-text-muted hover:bg-dc-teal/20'
-                    }`}
+                    active={activeTab === tab.key}
                   >
                     {tab.label}
                     {tab.count > 0 && (
                       <Badge variant="secondary" className="ml-2">{tab.count}</Badge>
                     )}
-                  </button>
+                  </AppChip>
                 ))}
               </div>
 
@@ -208,7 +207,7 @@ const CreatorDragonShare: React.FC = () => {
               )}
             </div>
           </div>
-        </div>
+        </PageBody>
 
         {/* Mobile-only: bottom sheet */}
         <div className="lg:hidden">
@@ -232,7 +231,7 @@ function CreatorPostCard({ post }: { post: DragonSharePostWithRelations }) {
   const platformLabel = post.platform ?? 'direct upload';
 
   return (
-    <div className="rounded-2xl border bg-card p-4 space-y-3">
+    <AppCard className="space-y-3">
       {contentUrl && (
         <WatermarkedMedia src={contentUrl} isVideo={isVideoPost(post)} watermark={false} />
       )}
@@ -285,7 +284,7 @@ function CreatorPostCard({ post }: { post: DragonSharePostWithRelations }) {
           )}
         </div>
       </div>
-    </div>
+    </AppCard>
   );
 }
 

@@ -79,10 +79,10 @@ export const ConversationMessageThread: React.FC<ConversationMessageThreadProps>
   if (isError) {
     return (
       <div className="flex flex-col h-full">
-        <div className="flex-1 flex items-center justify-center p-8 bg-teal-50">
+        <div className="flex-1 flex items-center justify-center p-8 bg-dc-teal/[0.04]">
           <div className="text-center space-y-3">
-            <div className="p-4 bg-teal-100 rounded-2xl w-fit mx-auto">
-              <MessageSquare className="h-8 w-8 text-teal-400" />
+            <div className="p-4 bg-dc-teal/10 rounded-2xl w-fit mx-auto">
+              <MessageSquare className="h-8 w-8 text-dc-teal/60" />
             </div>
             <p className="text-sm font-medium text-gray-600">Couldn't load messages</p>
             <Button variant="outline" size="sm" onClick={() => refetch()} className="rounded-full">
@@ -106,7 +106,7 @@ export const ConversationMessageThread: React.FC<ConversationMessageThreadProps>
   return (
     <div className="flex flex-col h-full">
       {/* Messages area */}
-      <div className="flex-1 min-h-0 bg-stone-100" aria-live="polite">
+      <div className="flex-1 min-h-0 bg-white" aria-live="polite">
         <MessageList
           conversationId={conversationId}
           messages={messages}

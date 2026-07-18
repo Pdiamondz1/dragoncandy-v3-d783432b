@@ -10,6 +10,7 @@ import { ArrowLeft } from 'lucide-react';
 import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
 import { usePagedList } from '@/hooks/usePagedList';
 import { LoadMoreButton } from '@/components/shared/LoadMoreButton';
+import { PageBody } from '@/components/app/PageBody';
 
 const DragonShareBrowseRestaurants: React.FC = () => {
   const navigate = useNavigate();
@@ -24,7 +25,7 @@ const DragonShareBrowseRestaurants: React.FC = () => {
   return (
     <DashboardLayout userRole="content_creator">
       <PrerequisiteGate feature="use DragonShare">
-        <div className="space-y-5 pt-4">
+        <PageBody className="space-y-5 pt-4">
           {/* Back link + page header */}
           <div>
             <button
@@ -90,7 +91,7 @@ const DragonShareBrowseRestaurants: React.FC = () => {
               />
             </div>
           )}
-        </div>
+        </PageBody>
       </PrerequisiteGate>
     </DashboardLayout>
   );

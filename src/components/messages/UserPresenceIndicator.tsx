@@ -37,7 +37,7 @@ export const UserPresenceIndicator: React.FC<UserPresenceIndicatorProps> = ({
       case 'away':
         return 'bg-yellow-500';
       default:
-        return 'bg-gray-500';
+        return 'bg-dc-teal/30';
     }
   };
 

@@ -9,6 +9,8 @@ import { MessageThread } from '@/components/messages/MessageThread';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCampaignApplications } from '@/hooks/useFetchApplications';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { PageBody } from '@/components/app/PageBody';
+import { AppCard } from '@/components/app/AppCard';
 
 const CampaignMessagesPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -51,7 +53,8 @@ const CampaignMessagesPage: React.FC = () => {
   if (isLoading) {
     return (
       <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
-        <div className="min-h-screen overflow-x-hidden bg-teal-50">
+        <div className="min-h-screen overflow-x-hidden bg-white">
+        <PageBody maxWidth="4xl" className="space-y-0">
           <PageHeader>
             <div className="flex items-center">
               <div className="w-7" />
@@ -65,6 +68,7 @@ const CampaignMessagesPage: React.FC = () => {
             <Skeleton className="h-10 w-full rounded-2xl" />
             <Skeleton className="h-96 w-full rounded-2xl" />
           </div>
+        </PageBody>
         </div>
       </DashboardLayout>
     );
@@ -73,7 +77,8 @@ const CampaignMessagesPage: React.FC = () => {
   if (error || !campaign) {
     return (
       <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
-        <div className="min-h-screen overflow-x-hidden bg-teal-50">
+        <div className="min-h-screen overflow-x-hidden bg-white">
+        <PageBody maxWidth="4xl" className="space-y-0">
           <PageHeader>
             <div className="flex items-center">
               <button
@@ -90,7 +95,7 @@ const CampaignMessagesPage: React.FC = () => {
             </div>
           </PageHeader>
           <div className="px-4 pt-4 pb-24 md:pb-0">
-            <div className="border-2 border-dc-teal rounded-2xl p-4 bg-white flex flex-col items-center py-12">
+            <AppCard variant="emphasis" className="p-4 flex flex-col items-center py-12">
               <h3 className="text-base font-bold text-gray-900 mb-2">Campaign not found</h3>
               <p className="text-sm text-gray-500 text-center mb-4">
                 The campaign you're looking for doesn't exist or you don't have access to it.
@@ -101,8 +106,9 @@ const CampaignMessagesPage: React.FC = () => {
               >
                 Back to Messages
               </Link>
-            </div>
+            </AppCard>
           </div>
+        </PageBody>
         </div>
       </DashboardLayout>
     );
@@ -111,7 +117,8 @@ const CampaignMessagesPage: React.FC = () => {
   if (!recipientId) {
     return (
       <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
-        <div className="min-h-screen overflow-x-hidden bg-teal-50">
+        <div className="min-h-screen overflow-x-hidden bg-white">
+        <PageBody maxWidth="4xl" className="space-y-0">
           <PageHeader>
             <div className="flex items-center">
               <button
@@ -128,7 +135,7 @@ const CampaignMessagesPage: React.FC = () => {
             </div>
           </PageHeader>
           <div className="px-4 pt-4 pb-24 md:pb-0">
-            <div className="border-2 border-dc-teal rounded-2xl p-4 bg-white flex flex-col items-center py-12">
+            <AppCard variant="emphasis" className="p-4 flex flex-col items-center py-12">
               <h3 className="text-base font-bold text-gray-900 mb-2">No conversation available</h3>
               <p className="text-sm text-gray-500 text-center mb-4">
                 {userRole === 'business_client'
@@ -141,8 +148,9 @@ const CampaignMessagesPage: React.FC = () => {
               >
                 Back to Messages
               </Link>
-            </div>
+            </AppCard>
           </div>
+        </PageBody>
         </div>
       </DashboardLayout>
     );
@@ -150,7 +158,8 @@ const CampaignMessagesPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
-      <div className="min-h-screen overflow-x-hidden bg-teal-50 md:max-w-4xl md:mx-auto">
+      <div className="min-h-screen overflow-x-hidden bg-white">
+      <PageBody maxWidth="4xl" className="space-y-0">
         {/* Template B header */}
         <PageHeader>
           <div className="flex items-center">
@@ -170,14 +179,15 @@ const CampaignMessagesPage: React.FC = () => {
 
         {/* Message thread inside teal-bordered card */}
         <div className="px-4 pt-4 pb-24 md:pb-0">
-          <div className="border-2 border-dc-teal rounded-2xl overflow-hidden bg-white">
+          <AppCard variant="emphasis" className="p-0 overflow-hidden">
             <MessageThread
               campaignId={campaign.id}
               recipientId={recipientId}
               campaignTitle={campaign.title}
             />
-          </div>
+          </AppCard>
         </div>
+      </PageBody>
       </div>
     </DashboardLayout>
   );
