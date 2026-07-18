@@ -58,7 +58,7 @@ export function ApplyConfirmation({ open, onClose, businessName }: ApplyConfirma
             onClose();
             navigate('/dashboard/creator/my-campaigns?tab=applied');
           }}
-          className="w-full rounded-full border-2 border-gray-300 text-gray-600 font-semibold py-3"
+          className="w-full rounded-full border-2 border-dc-teal/20 text-gray-600 font-semibold py-3"
         >
           View my applications
         </button>

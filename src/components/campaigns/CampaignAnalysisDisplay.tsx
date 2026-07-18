@@ -39,7 +39,7 @@ export const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = (
       {analysis.title && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl sm:text-2xl text-center text-blue-600 break-words">
+            <CardTitle className="text-xl sm:text-2xl text-center text-dc-teal-btn break-words">
               {analysis.title}
             </CardTitle>
           </CardHeader>
@@ -52,7 +52,7 @@ export const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Target className="h-5 w-5 text-blue-500" />
+                <Target className="h-5 w-5 text-dc-teal-btn" />
                 Campaign Description
               </CardTitle>
             </CardHeader>
@@ -150,7 +150,7 @@ export const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <MessageSquare className="h-5 w-5 text-indigo-500" />
+                  <MessageSquare className="h-5 w-5 text-dc-teal-btn" />
                   Key Messages
                 </CardTitle>
               </CardHeader>
@@ -261,7 +261,7 @@ export const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex flex-wrap items-center gap-2 text-lg min-w-0">
-                    <Hash className="h-5 w-5 text-blue-500 shrink-0" />
+                    <Hash className="h-5 w-5 text-dc-teal-btn shrink-0" />
                     <span className="min-w-0">Hashtags</span>
                     <Button
                       variant="ghost"
@@ -402,8 +402,9 @@ export const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = (
           )}
           {onApproveAndCustomize && (
             <Button
+              variant="dc-primary"
               onClick={onApproveAndCustomize}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
+              className="flex items-center gap-2 w-full sm:w-auto"
             >
               Approve & Customize
               <ArrowRight className="h-4 w-4" />

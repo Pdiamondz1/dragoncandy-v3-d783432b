@@ -35,6 +35,35 @@ invisible as text on a dark page.
 Video backdrops remain landing-only. Full mechanics + history:
 `docs/wiki/concepts/dark-luxe-app-theme.md`.
 
+## Shared light-app kit (use these for the light app)
+
+The light app has **one** consistent, on-brand look, codified in `src/components/app/`. When building or
+restyling an app surface, adopt these instead of hand-rolling — that's what keeps it consistent:
+
+- **`PageBody`** — the page-body wrapper (`mx-auto max-w-6xl space-y-8`; `maxWidth` prop). Owns
+  max-width + section rhythm. **Do NOT add your own page padding** — the `DashboardLayout` shell owns it
+  (incl. the `pb-24` mobile-nav clearance). Toolbar-style pages can pass `className="space-y-4"`.
+- **`AppCard`** — the one canonical card: `rounded-2xl border border-dc-teal/15 bg-white shadow-dc-sm`
+  (`pad="5"|"6"`; `variant="emphasis"` = 2px teal border for selected/featured; `variant="inset"` =
+  `bg-dc-teal/[0.04]` soft-tint nested panel). Wrap an existing shadcn `Card`+`CardHeader/CardContent`
+  with `<AppCard className="p-0">` (don't double-pad). This is a NEW primitive — do **not** restyle the
+  shadcn `ui/card` (it's shared with dark surfaces).
+- **`AppChip`** — de-grayed filter/segment control (renders a `<button>`): off = `bg-white
+  border-dc-teal/20 text-dc-text-muted`, on (`active`) = teal fill. Never nest inside another
+  button/clickable card.
+- **`AppStatusBadge`** — brand-tinted status badge (a `<span>`; `tone="teal|pink|amber|neutral"`, never
+  gray). Use for non-interactive tags/pills, incl. inside clickable cards (where `AppChip` would make an
+  invalid nested button).
+- **Buttons:** filled primary → `<Button variant="dc-primary">` (one teal fill, `dc-teal-btn`); pink
+  secondary → `variant="dc-secondary"` (white, pink text, teal border — never a gray border/hover).
+
+**De-gray palette (surfaces/badges — the no-gray rule):** gray backgrounds → white / `bg-dc-teal/[0.04]`
+inset; gray "off" chips → `AppChip`; gray status badges → `AppStatusBadge`; `border-gray-*` →
+`border-dc-teal/15`; gray input fills → `bg-white border-dc-teal/20`; off-brand `bg-blue-*`/purple accents
+→ teal/pink. **Gray secondary text (`dc-text-muted`/`text-gray-500`) is fine** — the rule is about
+surfaces/badges, not text. `amber` is the allowed warm-neutral status tone. (Applied to dashboards +
+campaigns + browse in Phase 1; messaging/settings/DragonShare/etc. follow.)
+
 ## Color Palette (Tailwind `dc-*` tokens)
 
 Use the `dc-*` Tailwind tokens defined in `tailwind.config.ts` — never hardcode hex values in components.
@@ -113,16 +142,16 @@ Use the `dc-*` Tailwind tokens defined in `tailwind.config.ts` — never hardcod
 
 ## Page-Specific Backgrounds
 
-| Page | Background |
+The **working app is uniformly white** — pages are `bg-white`, wrapped in the shared `PageBody` (max-width
++ section spacing) inside the `DashboardLayout` shell (which owns padding). Accent color comes from
+**cards (teal-bordered), chips, badges, and CTAs — not page washes.** The old per-page pink/gray
+backgrounds are retired (they never matched the built app). Only the mobile top-nav keeps a subtle pink
+gradient. Landing/login/sign-up/onboarding + `/internal` are dark (see the Theme section).
+
+| Surface | Background |
 |-|-|
-| Landing / Marketing | White (`#FFFFFF`) |
-| Login | Medium gray (`#A8A8A0`) |
-| Business Dashboard | Light pink (`#F9C8E0`) header, white body |
-| Browse Creators | Light pink (`#F9C8E0`) full page |
-| Creator Portfolio | Medium gray (`#A8A8A0`) |
-| Available Campaigns | Medium gray (`#A8A8A0`) |
-| Messaging | Medium gray (`#A8A8A0`) |
-| Creator/Business Profile | Gray with hero image |
+| All authenticated app pages (dashboards, campaigns, browse, messaging, settings, DragonShare, profiles, …) | White (`#FFFFFF`) |
+| Landing + login/sign-up + onboarding + `/internal` (AIOS) | Dark charcoal (`#1A1A2A`) |
 
 ## Design Rules
 

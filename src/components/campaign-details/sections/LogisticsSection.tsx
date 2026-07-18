@@ -1,6 +1,7 @@
 import { Calendar, Globe } from 'lucide-react';
 import { Sparkles, Rocket, Package } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { AppCard } from '@/components/app/AppCard';
 import { TIER_LIMITS } from '@/types/campaignMedia';
 import { mapDeliveryType } from '@/lib/campaignUtils';
 import type { Campaign } from '@/hooks/useCampaignQueries';
@@ -27,7 +28,7 @@ export function LogisticsSection({ campaign }: LogisticsSectionProps) {
     : Package;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+    <AppCard className="space-y-4">
         <div className="flex items-center gap-3">
           <Calendar className="w-4 h-4 text-blue-600 flex-shrink-0" />
           <div>
@@ -43,7 +44,7 @@ export function LogisticsSection({ campaign }: LogisticsSectionProps) {
               <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
                 campaign.delivery_type === 'dragonrush' ? 'bg-teal-100 text-teal-800' :
                 campaign.delivery_type === 'expedited' ? 'bg-yellow-100 text-yellow-800' :
-                'bg-gray-100 text-gray-700'
+                'bg-dc-teal/10 text-dc-teal-btn'
               }`}>
                 <TierIcon className="w-3.5 h-3.5" />
                 {tierConfig.label} · {tierConfig.timeframe}
@@ -87,6 +88,6 @@ export function LogisticsSection({ campaign }: LogisticsSectionProps) {
             </div>
           </div>
         )}
-    </div>
+    </AppCard>
   );
 }

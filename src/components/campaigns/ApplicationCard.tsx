@@ -177,7 +177,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
             <button
               type="button"
               onClick={() => window.open(resolvedPortfolioUrl, '_blank')}
-              className="w-20 h-20 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-dc-teal transition-colors"
+              className="w-20 h-20 rounded-lg overflow-hidden border-2 border-dc-teal/15 hover:border-dc-teal transition-colors"
             >
               {/\.(mp4|mov|webm|avi)(\?|$)/i.test(application.portfolio_url || '') ? (
                 <video src={resolvedPortfolioUrl} preload="metadata" muted className="w-full h-full object-cover" />

@@ -12,6 +12,7 @@ import { SocialPostPrompt } from '@/components/outstand/SocialPostPrompt';
 import { SponsorshipAmplificationPrompt } from '@/components/outstand/SponsorshipAmplificationPrompt';
 import { PostingPlanReview } from '@/components/outstand/PostingPlanReview';
 import { DragonCandyOutstandProvider } from '@/integrations/outstand/Provider';
+import { AppCard } from '@/components/app/AppCard';
 
 interface DeliverablesArchiveProps {
   campaignId: string;
@@ -109,7 +110,7 @@ export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
+    <AppCard className="space-y-3">
       <h3 className="font-bold text-gray-900 text-sm">Deliverables</h3>
 
       {isLoading && (
@@ -142,7 +143,7 @@ export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
                   key={file.id}
                   onClick={() => setSelectedFileIndex(index)}
                   disabled={downloadingId === file.id}
-                  className="aspect-square rounded-xl border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center relative group hover:border-teal-400 transition-colors"
+                  className="aspect-square rounded-xl border border-dc-teal/15 overflow-hidden bg-dc-teal/[0.04] flex items-center justify-center relative group hover:border-teal-400 transition-colors"
                   title={file.original_filename}
                 >
                   {downloadingId === file.id && (
@@ -273,6 +274,6 @@ export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
           )}
         </>
       )}
-    </div>
+    </AppCard>
   );
 };

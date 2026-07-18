@@ -11,7 +11,7 @@ export function CampaignProgressBar({ currentStep, className = '' }: CampaignPro
   return (
     <div className={`flex gap-1 ${className}`}>
       {PROJECT_STEPS.map((step, i) => {
-        let color = 'bg-gray-200';
+        let color = 'bg-dc-teal/15';
         if (i < currentIndex) color = 'bg-teal-400';
         else if (i === currentIndex) color = 'bg-yellow-400';
         return (

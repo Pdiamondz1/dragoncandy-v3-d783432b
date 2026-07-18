@@ -336,7 +336,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
             return (
               <div
                 key={file.id}
-                className="relative aspect-video rounded-xl border border-gray-200 overflow-hidden bg-gray-50 group"
+                className="relative aspect-video rounded-xl border border-dc-teal/15 overflow-hidden bg-dc-teal/[0.04] group"
               >
                 {isImage ? (
                   <>
@@ -369,7 +369,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
                 ) : (
                   <button
                     onClick={() => setSelectedFileIndex(index)}
-                    className="w-full h-full flex flex-col items-center justify-center gap-1 hover:bg-gray-100 transition-colors cursor-pointer"
+                    className="w-full h-full flex flex-col items-center justify-center gap-1 hover:bg-dc-teal/10 transition-colors cursor-pointer"
                   >
                     <Eye className="h-5 w-5 text-gray-400" />
                     <span className="text-xs text-gray-500 truncate max-w-[90%] px-2">
@@ -381,7 +381,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
             );
           })}
           {files!.length > 6 && (
-            <div className="aspect-video rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-center">
+            <div className="aspect-video rounded-xl border border-dc-teal/15 bg-dc-teal/[0.04] flex items-center justify-center">
               <span className="text-sm text-gray-500 font-semibold">+{files!.length - 6} more</span>
             </div>
           )}
@@ -568,7 +568,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
                     : null;
                   return (
                     <div key={file.id} className="space-y-1">
-                      <label className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                      <label className="flex items-center gap-2 p-2 rounded-lg hover:bg-dc-teal/5 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={isChecked}
@@ -580,12 +580,12 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
                               return next;
                             });
                           }}
-                          className="rounded border-gray-300 text-dc-teal focus:ring-dc-teal"
+                          className="rounded border-dc-teal/20 text-dc-teal focus:ring-dc-teal"
                         />
                         {thumbUrl ? (
                           <img src={thumbUrl} alt="" className="w-10 h-10 rounded object-cover" />
                         ) : (
-                          <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded bg-dc-teal/[0.06] flex items-center justify-center">
                             {isVideo ? <Eye className="h-4 w-4 text-gray-400" /> : <FileCheck className="h-4 w-4 text-gray-400" />}
                           </div>
                         )}

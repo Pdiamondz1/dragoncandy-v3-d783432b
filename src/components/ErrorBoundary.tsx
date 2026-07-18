@@ -45,7 +45,7 @@ class ErrorBoundary extends Component<Props, State> {
 
       return (
         <div className={`flex flex-col items-center justify-center ${
-          isPage ? 'min-h-screen bg-gray-50' : 'min-h-[200px]'
+          isPage ? 'min-h-screen bg-white' : 'min-h-[200px]'
         } p-6 text-center`}>
           <div className="max-w-md space-y-4">
             {isPage && (
@@ -60,7 +60,7 @@ class ErrorBoundary extends Component<Props, State> {
                 : "This part couldn't load properly."}
             </p>
             {this.state.error && (
-              <details className="p-4 bg-gray-100 rounded-lg text-left text-sm">
+              <details className="p-4 bg-white border border-dc-teal/15 rounded-lg text-left text-sm">
                 <summary className="cursor-pointer font-medium">Error Details</summary>
                 <div className="mt-2 text-gray-700">
                   <div className="font-medium">Message:</div>

@@ -2,6 +2,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { PageBody } from '@/components/app/PageBody';
 import { DCTour } from '@/components/guidance/DCTour';
 import { TourButton } from '@/components/guidance/TourButton';
 import { useTour } from '@/hooks/useTour';
@@ -63,16 +64,14 @@ const BusinessDashboard = () => {
     return (
       <DashboardLayout userRole="business_client">
         <div className="min-h-screen bg-white overflow-x-hidden">
-          <div className="px-4 lg:px-8 pt-8 lg:pt-12 pb-24 md:pb-12">
-            <div className="max-w-2xl lg:max-w-5xl mx-auto space-y-10">
-              <div className="space-y-3">
-                <DCSkeleton variant="text-block" className="h-3 w-32" />
-                <DCSkeleton variant="text-block" className="h-8 w-48" />
-              </div>
-              <DCSkeleton variant="text-block" className="h-12 w-full lg:w-72 rounded-full" />
-              <DCSkeleton variant="list-row" count={3} />
+          <PageBody>
+            <div className="space-y-3">
+              <DCSkeleton variant="text-block" className="h-3 w-32" />
+              <DCSkeleton variant="text-block" className="h-8 w-48" />
             </div>
-          </div>
+            <DCSkeleton variant="text-block" className="h-12 w-full lg:w-72 rounded-full" />
+            <DCSkeleton variant="list-row" count={3} />
+          </PageBody>
         </div>
       </DashboardLayout>
     );
@@ -125,8 +124,7 @@ const BusinessDashboard = () => {
   return (
     <DashboardLayout userRole="business_client">
       <div className="min-h-screen bg-white overflow-x-hidden">
-        <div className="px-4 lg:px-8 pt-8 lg:pt-12 pb-24 md:pb-12">
-          <div className="max-w-2xl lg:max-w-5xl mx-auto space-y-10 lg:space-y-14">
+        <PageBody>
 
             {/* Greeting + the one loud CTA */}
             <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-[1fr_auto] lg:items-center lg:gap-8">
@@ -221,8 +219,7 @@ const BusinessDashboard = () => {
 
             <UpcomingPostsWidget />
 
-          </div>
-        </div>
+        </PageBody>
         {showTour && tourSteps.length > 0 && (
           <DCTour steps={tourSteps} onComplete={completeTour} onSkip={skipTour} />
         )}

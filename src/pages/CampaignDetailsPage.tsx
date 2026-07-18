@@ -48,6 +48,7 @@ import { ScheduleReviewScreen } from '@/components/schedule/ScheduleReviewScreen
 import { useAgreedValue } from '@/hooks/useAgreedValue';
 import { useEscrowCheckout } from '@/hooks/useEscrowCheckout';
 import { useFileUploadCount } from '@/hooks/useFileQuery';
+import { PageBody } from '@/components/app/PageBody';
 
 const CampaignDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -423,7 +424,7 @@ const CampaignDetailsPage: React.FC = () => {
   if (projectLoading && (campaign.status === 'active' || campaign.status === 'completed')) {
     return (
       <DashboardLayout userRole="business_client">
-        <div className="w-full max-w-full lg:max-w-6xl md:mx-auto p-4 space-y-4">
+        <PageBody>
           <Skeleton className="h-24 w-full rounded-2xl" />
           <div className="lg:grid lg:grid-cols-5 lg:gap-6 space-y-4 lg:space-y-0">
             <div className="lg:col-span-3 space-y-4">
@@ -434,14 +435,15 @@ const CampaignDetailsPage: React.FC = () => {
               <Skeleton className="h-48 w-full rounded-2xl" />
             </div>
           </div>
-        </div>
+        </PageBody>
       </DashboardLayout>
     );
   }
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="w-full max-w-full lg:max-w-6xl md:mx-auto p-4 space-y-4 pb-24 md:pb-6">
+      <div className="pb-24 md:pb-6">
+      <PageBody>
         <PageHeader>
           <div className="flex items-center">
             <button onClick={() => navigate(backHref)} className="text-dc-pink-accent mr-2" aria-label="Back">
@@ -596,6 +598,7 @@ const CampaignDetailsPage: React.FC = () => {
             <CollapsibleCampaignDetails campaign={campaign} phase={phase} />
           </div>
         </div>
+      </PageBody>
       </div>
 
       {showRatingModal && collaborationData && creatorData && !hasReviewed && (

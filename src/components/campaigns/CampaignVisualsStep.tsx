@@ -11,6 +11,7 @@ import { TIER_LIMITS } from '@/types/campaignMedia';
 import { MediaUploader } from '@/components/campaigns/MediaUploader';
 import { DeliverableBuilder } from '@/components/campaigns/DeliverableBuilder';
 import { Button } from '@/components/ui/button';
+import { AppCard } from '@/components/app/AppCard';
 
 interface CampaignVisualsStepProps {
   deliveryTier: DeliveryTier;
@@ -41,7 +42,7 @@ export function CampaignVisualsStep({
   return (
     <div className="space-y-4">
       {/* Section A — Visual References */}
-      <div className="bg-white rounded-2xl p-5 space-y-4">
+      <AppCard className="space-y-4">
         <div>
           <h3 className="text-base font-extrabold text-gray-900">
             Show creators what you're looking for
@@ -60,10 +61,10 @@ export function CampaignVisualsStep({
         <p className="text-xs text-gray-400 mt-1">
           Reference media is used during campaign creation and will be removed after the campaign completes. Delivered content from creators is kept permanently.
         </p>
-      </div>
+      </AppCard>
 
       {/* Section B — Raw Footage Toggle */}
-      <div className="bg-white rounded-2xl p-5">
+      <AppCard>
         <div className="flex items-center justify-between">
           <span className="text-base font-extrabold text-gray-900">
             I have footage for the creator to use
@@ -71,7 +72,7 @@ export function CampaignVisualsStep({
           <button
             type="button"
             onClick={() => setShowFootage(!showFootage)}
-            className={`relative w-11 h-6 rounded-full transition-colors ${showFootage ? 'bg-dc-teal' : 'bg-gray-300'}`}
+            className={`relative w-11 h-6 rounded-full transition-colors ${showFootage ? 'bg-dc-teal' : 'bg-dc-teal/20'}`}
           >
             <span
               className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${showFootage ? 'translate-x-5' : 'translate-x-0.5'}`}
@@ -93,10 +94,10 @@ export function CampaignVisualsStep({
             />
           </div>
         )}
-      </div>
+      </AppCard>
 
       {/* Section C — Content Deliverables */}
-      <div className="bg-white rounded-2xl p-5 space-y-4">
+      <AppCard className="space-y-4">
         <div className="flex items-center gap-1">
           <h3 className="text-base font-extrabold text-gray-900">
             How many pieces of content do you need?
@@ -120,7 +121,7 @@ export function CampaignVisualsStep({
           maxDeliverables={TIER_LIMITS[deliveryTier].maxDeliverables}
           allowedContentTypes={[...TIER_LIMITS[deliveryTier].contentTypes]}
         />
-      </div>
+      </AppCard>
 
       {/* Navigation */}
       <div className="flex justify-between gap-2 pt-4">

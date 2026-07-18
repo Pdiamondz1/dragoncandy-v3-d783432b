@@ -8,7 +8,7 @@ const statusStyles: Record<string, string> = {
   review: 'bg-amber-100 text-amber-800',
   reviewing: 'bg-amber-100 text-amber-800',
   completed: 'bg-dc-teal/10 text-dc-teal-btn',
-  draft: 'bg-blue-100 text-blue-700',
+  draft: 'bg-dc-teal/10 text-dc-teal-btn',
   cancelled: 'bg-red-100 text-red-600',
   rejected: 'bg-red-100 text-red-600',
 };

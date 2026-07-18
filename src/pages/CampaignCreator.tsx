@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useCampaignCreator } from '@/hooks/useCampaignCreator';
 import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { PageBody } from '@/components/app/PageBody';
 import { DropScreen } from '@/components/campaign-creator/DropScreen';
 import { LaunchpadScreen } from '@/components/campaign-creator/LaunchpadScreen';
 import { CampaignPreviewCard } from '@/components/campaign-creator/CampaignPreviewCard';
@@ -52,15 +53,34 @@ export default function CampaignCreator() {
     if (isMobile) {
       return (
         <div className="min-h-screen bg-white pb-20">
-          <div className="px-4 pt-4">
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to Dashboard</span>
-            </button>
-          </div>
+          <PageBody maxWidth="4xl">
+            <div className="px-4 pt-4">
+              <button
+                onClick={() => navigate(-1)}
+                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back to Dashboard</span>
+              </button>
+            </div>
+            <PrerequisiteGate feature="create a campaign">
+              <DropScreen
+                onSubmit={submitInput}
+                isExtracting={isExtracting}
+                extractionMessages={extractionMessages}
+                prefillValue={briefPrefill}
+                onInspirationChange={handleInspirationChange}
+                onInspirationScrolled={handleInspirationScrolled}
+              />
+            </PrerequisiteGate>
+          </PageBody>
+          <MobileBottomNav userRole={navRole} />
+        </div>
+      );
+    }
+    return (
+      <DashboardLayout userRole={navRole}>
+        <PageBody maxWidth="4xl">
           <PrerequisiteGate feature="create a campaign">
             <DropScreen
               onSubmit={submitInput}
@@ -71,22 +91,7 @@ export default function CampaignCreator() {
               onInspirationScrolled={handleInspirationScrolled}
             />
           </PrerequisiteGate>
-          <MobileBottomNav userRole={navRole} />
-        </div>
-      );
-    }
-    return (
-      <DashboardLayout userRole={navRole}>
-        <PrerequisiteGate feature="create a campaign">
-          <DropScreen
-            onSubmit={submitInput}
-            isExtracting={isExtracting}
-            extractionMessages={extractionMessages}
-            prefillValue={briefPrefill}
-            onInspirationChange={handleInspirationChange}
-            onInspirationScrolled={handleInspirationScrolled}
-          />
-        </PrerequisiteGate>
+        </PageBody>
       </DashboardLayout>
     );
   }
@@ -116,9 +121,11 @@ export default function CampaignCreator() {
   if (isMobile) {
     return (
       <div className="min-h-screen bg-white pt-4 pb-20">
-        <PrerequisiteGate feature="create a campaign">
-          <LaunchpadScreen {...launchpadProps} />
-        </PrerequisiteGate>
+        <PageBody>
+          <PrerequisiteGate feature="create a campaign">
+            <LaunchpadScreen {...launchpadProps} />
+          </PrerequisiteGate>
+        </PageBody>
         <AuthenticationModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
         <MobileBottomNav userRole={navRole} />
       </div>
@@ -128,18 +135,20 @@ export default function CampaignCreator() {
   // Screen 2: Desktop — always wrapped in DashboardLayout
   return (
     <DashboardLayout userRole={navRole}>
-      <PrerequisiteGate feature="create a campaign">
-        <div className="flex gap-6 max-w-6xl mx-auto">
-          <div className="flex-1 min-w-0">
-            <LaunchpadScreen {...launchpadProps} />
-          </div>
-          {editedCampaign && (
-            <div className="w-80 flex-shrink-0 hidden md:block">
-              <CampaignPreviewCard campaign={editedCampaign} />
+      <PageBody>
+        <PrerequisiteGate feature="create a campaign">
+          <div className="flex gap-6">
+            <div className="flex-1 min-w-0">
+              <LaunchpadScreen {...launchpadProps} />
             </div>
-          )}
-        </div>
-      </PrerequisiteGate>
+            {editedCampaign && (
+              <div className="w-80 flex-shrink-0 hidden md:block">
+                <CampaignPreviewCard campaign={editedCampaign} />
+              </div>
+            )}
+          </div>
+        </PrerequisiteGate>
+      </PageBody>
       <AuthenticationModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </DashboardLayout>
   );

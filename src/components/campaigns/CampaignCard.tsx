@@ -1,8 +1,10 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { CardContent } from '@/components/ui/card';
+import { AppCard } from '@/components/app/AppCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { Loader2, RefreshCw, UserPlus } from 'lucide-react';
 import { useResolvedAvatarUrl } from '@/hooks/useSignedUrl';
 import { useAgreedValue } from '@/hooks/useAgreedValue';
@@ -186,11 +188,14 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
   const isCtaLoading = (ctaLabel === 'Pay & Publish →') && (isPayingEscrow || isVerifying);
 
   return (
-    <Card className={`overflow-hidden hover:shadow-lg transition-shadow duration-200 ${
-      phase === 'active_delivery' && step && needsBusinessAction(step)
-        ? 'border-2 border-pink-400 bg-pink-50/50'
-        : 'border border-teal-200'
-    }`}>
+    <AppCard
+      pad="5"
+      className={cn(
+        "p-0 overflow-hidden hover:shadow-lg transition-shadow duration-200",
+        phase === 'active_delivery' && step && needsBusinessAction(step) &&
+          "border-2 border-pink-400 bg-pink-50/50",
+      )}
+    >
       <CardContent className="p-4 space-y-3">
         {/* Title + status badge */}
         <div className="flex items-start justify-between gap-2">
@@ -324,7 +329,7 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
           </>
         )}
       </CardContent>
-    </Card>
+    </AppCard>
   );
 };
 

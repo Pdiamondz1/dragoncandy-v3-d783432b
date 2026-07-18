@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AppCard } from '@/components/app/AppCard';
 import { Button } from '@/components/ui/button';
 import { Loader2, Sparkles, RefreshCw, ArrowLeft, ArrowRight, SkipForward } from 'lucide-react';
 import { useDonnyPreview, extractMoodBoard, extractStoryboard } from '@/hooks/useDonnyPreview';
@@ -34,7 +35,7 @@ export const CampaignAIPreviewStep: React.FC<CampaignAIPreviewStepProps> = ({
   // Loading state
   if (mutation.isPending) {
     return (
-      <Card className="rounded-xl">
+      <AppCard className="p-0">
         <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-teal-400" aria-hidden="true" />
           <p className="text-base font-semibold text-gray-800">
@@ -42,14 +43,14 @@ export const CampaignAIPreviewStep: React.FC<CampaignAIPreviewStepProps> = ({
           </p>
           <p className="text-sm text-gray-500">This may take a moment</p>
         </CardContent>
-      </Card>
+      </AppCard>
     );
   }
 
   // Error state
   if (mutation.isError) {
     return (
-      <Card className="rounded-xl">
+      <AppCard className="p-0">
         <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
           <Sparkles className="h-10 w-10 text-red-400" aria-hidden="true" />
           <p className="text-base font-semibold text-gray-800">
@@ -69,7 +70,7 @@ export const CampaignAIPreviewStep: React.FC<CampaignAIPreviewStepProps> = ({
             Try Again
           </Button>
         </CardContent>
-      </Card>
+      </AppCard>
     );
   }
 
@@ -81,14 +82,14 @@ export const CampaignAIPreviewStep: React.FC<CampaignAIPreviewStepProps> = ({
 
     return (
       <div className="space-y-6">
-        <Card className="rounded-xl">
+        <AppCard className="p-0">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-teal-400" aria-hidden="true" />
               AI Visual Preview
             </CardTitle>
           </CardHeader>
-        </Card>
+        </AppCard>
 
         {moodBoardData && (
           <MoodBoard

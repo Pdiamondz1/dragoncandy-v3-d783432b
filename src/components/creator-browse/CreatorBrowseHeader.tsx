@@ -4,6 +4,7 @@ import type { SortOption } from '@/hooks/useCreatorBrowse';
 import { SKILL_OPTIONS } from '@/lib/skillUtils';
 import { CreatorLocationControl } from './CreatorLocationControl';
 import type { LocationFilter } from '@/lib/creatorLocationFilter';
+import { AppChip } from '@/components/app/AppChip';
 
 const CONTENT_TYPES = SKILL_OPTIONS
   .filter(s => s.value !== 'other' && s.value !== 'influencer_marketing' && s.value !== 'illustration')
@@ -94,7 +95,7 @@ export const CreatorBrowseHeader: React.FC<CreatorBrowseHeaderProps> = ({
           placeholder="Search by name, skill, or location…"
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full pl-11 pr-4 py-2.5 bg-gray-100 rounded-full text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:bg-white transition-colors"
+          className="w-full pl-11 pr-4 py-2.5 bg-white border border-dc-teal/20 rounded-full text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:bg-white transition-colors"
         />
       </div>
 
@@ -109,28 +110,22 @@ export const CreatorBrowseHeader: React.FC<CreatorBrowseHeaderProps> = ({
 
       {/* Content-Type Pills */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide md:overflow-x-visible md:flex-wrap">
-        <button
+        <AppChip
           onClick={() => onContentTypeChange([])}
-          className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-            contentTypeFilter.length === 0
-              ? 'bg-teal-400 text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
+          active={contentTypeFilter.length === 0}
+          className="flex-shrink-0"
         >
           All
-        </button>
+        </AppChip>
         {CONTENT_TYPES.map(({ value, label }) => (
-          <button
+          <AppChip
             key={value}
             onClick={() => toggleContentType(value)}
-            className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
-              contentTypeFilter.includes(value)
-                ? 'bg-teal-400 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+            active={contentTypeFilter.includes(value)}
+            className="flex-shrink-0 whitespace-nowrap"
           >
             {label}
-          </button>
+          </AppChip>
         ))}
       </div>
 
@@ -140,14 +135,15 @@ export const CreatorBrowseHeader: React.FC<CreatorBrowseHeaderProps> = ({
         <div className="flex items-center gap-2">
           {/* Sort Dropdown */}
           <div className="relative" ref={sortRef}>
-            <button
+            <AppChip
               onClick={() => setIsSortOpen(!isSortOpen)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full text-sm text-gray-600 hover:bg-gray-200 transition-colors"
+              active={isSortOpen}
+              className="inline-flex items-center gap-1.5"
             >
               Sort: {currentSortLabel} <span className="text-xs">▾</span>
-            </button>
+            </AppChip>
             {isSortOpen && (
-              <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 py-1 min-w-[180px]">
+              <div className="absolute right-0 top-full mt-1 bg-white border border-dc-teal/15 rounded-xl shadow-lg z-50 py-1 min-w-[180px]">
                 {sortOptions.map((option) => (
                   <button
                     key={option.value}
@@ -155,7 +151,7 @@ export const CreatorBrowseHeader: React.FC<CreatorBrowseHeaderProps> = ({
                       onSortChange(option.value);
                       setIsSortOpen(false);
                     }}
-                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors ${
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-dc-teal/5 transition-colors ${
                       sortBy === option.value ? 'text-teal-600 font-medium' : 'text-gray-700'
                     }`}
                   >
@@ -167,9 +163,10 @@ export const CreatorBrowseHeader: React.FC<CreatorBrowseHeaderProps> = ({
           </div>
 
           {/* Filters Button */}
-          <button
+          <AppChip
             onClick={onOpenFilters}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full text-sm text-gray-600 hover:bg-gray-200 transition-colors"
+            active={activeFilterCount > 0}
+            className="inline-flex items-center gap-1.5"
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
             Filters
@@ -178,16 +175,16 @@ export const CreatorBrowseHeader: React.FC<CreatorBrowseHeaderProps> = ({
                 {activeFilterCount}
               </span>
             )}
-          </button>
+          </AppChip>
 
           {/* Map Button */}
-          <button
+          <AppChip
             onClick={onOpenMap}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full text-sm text-gray-600 hover:bg-gray-200 transition-colors"
+            className="inline-flex items-center gap-1.5"
           >
             <MapPin className="h-3.5 w-3.5" />
             Map
-          </button>
+          </AppChip>
         </div>
       </div>
     </div>

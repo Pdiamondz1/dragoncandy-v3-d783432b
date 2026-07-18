@@ -31,7 +31,7 @@ export function TierBadge({ deliveryType, tierReasoning, onChange }: TierBadgePr
           'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium',
           deliveryType === 'dragonrush' ? 'bg-teal-100 text-teal-800' :
           deliveryType === 'expedited' ? 'bg-yellow-100 text-yellow-800' :
-          'bg-gray-100 text-gray-800'
+          'bg-dc-teal/5 text-dc-text-muted'
         )}>
           {deliveryType === 'dragonrush' && <Sparkles className="w-3.5 h-3.5 inline" />}
           {deliveryType === 'expedited' && <Rocket className="w-3.5 h-3.5 inline" />}
@@ -53,7 +53,7 @@ export function TierBadge({ deliveryType, tierReasoning, onChange }: TierBadgePr
               onClick={() => { onChange(dbValue); setShowDropdown(false); }}
               className={cn(
                 'w-full text-left rounded-lg px-3 py-2 text-sm',
-                deliveryType === dbValue ? 'bg-teal-50 text-teal-800' : 'hover:bg-gray-50'
+                deliveryType === dbValue ? 'bg-teal-50 text-teal-800' : 'hover:bg-dc-teal/5'
               )}>
               {tier === 'dragondash' ? <Sparkles className="w-3.5 h-3.5 inline mr-1" /> : tier === 'express' ? <Rocket className="w-3.5 h-3.5 inline mr-1" /> : <Package className="w-3.5 h-3.5 inline mr-1" />}
               {TIER_LIMITS[tier].label} — {TIER_LIMITS[tier].timeframe}

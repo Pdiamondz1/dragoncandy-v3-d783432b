@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge';
+import { AppCard } from '@/components/app/AppCard';
 import type { Campaign } from '@/hooks/useCampaignQueries';
 
 interface CampaignOverviewSectionProps {
@@ -7,7 +8,7 @@ interface CampaignOverviewSectionProps {
 
 export function CampaignOverviewSection({ campaign }: CampaignOverviewSectionProps) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+    <AppCard className="space-y-3">
         <div>
           <span className="text-[11px] text-gray-500 uppercase tracking-wider">Title</span>
           <p className="text-base font-semibold text-gray-900">{campaign.title}</p>
@@ -39,6 +40,6 @@ export function CampaignOverviewSection({ campaign }: CampaignOverviewSectionPro
             </div>
           </div>
         )}
-    </div>
+    </AppCard>
   );
 }

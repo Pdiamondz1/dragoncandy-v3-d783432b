@@ -69,33 +69,33 @@ export const RatingPrompt: React.FC<RatingPromptProps> = ({
 
   return (
     <>
-      <Card className="border-blue-200 bg-blue-50">
+      <Card className="border-dc-teal/20 bg-dc-teal/10">
         <CardContent className="p-4">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-3">
-              <div className="rounded-full bg-blue-100 p-2">
-                <Star className="h-5 w-5 text-blue-600" />
+              <div className="rounded-full bg-dc-teal/15 p-2">
+                <Star className="h-5 w-5 text-dc-teal-btn" />
               </div>
               <div>
-                <h4 className="font-medium text-blue-900">
+                <h4 className="font-medium text-dc-text">
                   Rate Your Experience
                 </h4>
-                <p className="text-sm text-blue-700 mt-1">
+                <p className="text-sm text-dc-text-muted mt-1">
                   How was working with {revieweeName}? Your feedback helps improve our community.
                 </p>
                 <div className="flex gap-2 mt-3">
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
+                    variant="dc-primary"
                     onClick={() => setShowModal(true)}
-                    className="bg-blue-600 hover:bg-blue-700"
                   >
                     Leave Review
                   </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={onDismiss}
-                    className="border-blue-300 text-blue-700"
+                    className="border-dc-teal/30 text-dc-teal-btn"
                   >
                     Later
                   </Button>
@@ -106,7 +106,7 @@ export const RatingPrompt: React.FC<RatingPromptProps> = ({
               variant="ghost"
               size="sm"
               onClick={onDismiss}
-              className="text-blue-600 hover:bg-blue-100"
+              className="text-dc-teal-btn hover:bg-dc-teal/10"
             >
               <X className="h-4 w-4" />
             </Button>

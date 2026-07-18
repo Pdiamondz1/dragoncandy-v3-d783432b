@@ -12,6 +12,7 @@ import { DeliveryBadge } from './DeliveryBadge';
 import { CampaignApplyForm } from './CampaignApplyForm';
 import { mapDeliveryType, getRelativeTime, formatCampaignPrice, getTierConfig } from '@/lib/campaignUtils';
 import { Badge } from '@/components/ui/badge';
+import { AppStatusBadge } from '@/components/app/AppStatusBadge';
 
 interface CampaignDetailModalProps {
   campaign: PublicCampaign;
@@ -84,8 +85,8 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
       <div className="fixed inset-0 z-[60] flex items-end lg:items-center lg:justify-center">
         <div className="w-full h-full lg:h-auto lg:max-h-[90vh] lg:max-w-2xl bg-white lg:rounded-2xl overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
           {/* Sticky header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
-            <button onClick={onClose} className="p-1 -ml-1 hover:bg-gray-100 rounded-full transition-colors">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-dc-teal/15 flex-shrink-0">
+            <button onClick={onClose} className="p-1 -ml-1 hover:bg-dc-teal/10 rounded-full transition-colors">
               <X className="w-5 h-5 text-gray-500" />
             </button>
             <span className="font-semibold text-gray-800 text-sm">Campaign Details</span>
@@ -113,7 +114,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
             </div>
 
             {/* Title + business block */}
-            <div className="px-4 py-4 border-b border-gray-100">
+            <div className="px-4 py-4 border-b border-dc-teal/15">
               <h2 className="text-xl font-bold text-gray-900 leading-tight">{campaign.title}</h2>
               <div className="flex items-center gap-2 mt-2">
                 <div className="w-8 h-8 rounded-full ring-2 ring-dc-teal overflow-hidden flex-shrink-0 bg-dc-pink-bg flex items-center justify-center">
@@ -135,24 +136,24 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                   💰 {formatCampaignPrice(campaign)}
                 </span>
                 {(deliverables.length > 0 || fallbackDeliverables.length > 0) && (
-                  <span className="bg-gray-100 text-gray-600 text-xs px-2.5 py-1 rounded-full border border-gray-200">
+                  <AppStatusBadge tone="neutral" className="text-xs px-2.5 py-1">
                     📦 {deliverables.length || fallbackDeliverables.length} deliverable{(deliverables.length || fallbackDeliverables.length) !== 1 ? 's' : ''}
-                  </span>
+                  </AppStatusBadge>
                 )}
                 {(campaign.application_count ?? 0) > 0 && (
-                  <span className="bg-gray-100 text-gray-600 text-xs px-2.5 py-1 rounded-full border border-gray-200">
+                  <AppStatusBadge tone="neutral" className="text-xs px-2.5 py-1">
                     👥 {campaign.application_count} applied
-                  </span>
+                  </AppStatusBadge>
                 )}
-                <span className="bg-gray-100 text-gray-600 text-xs px-2.5 py-1 rounded-full border border-gray-200">
+                <AppStatusBadge tone="neutral" className="text-xs px-2.5 py-1">
                   🕐 {getRelativeTime(campaign.created_at)}
-                </span>
+                </AppStatusBadge>
               </div>
             </div>
 
             {/* About This Campaign */}
             {(campaign.description || campaign.goals) && (
-              <div className="px-4 py-4 border-b border-gray-100">
+              <div className="px-4 py-4 border-b border-dc-teal/15">
                 <h3 className="text-sm font-bold text-gray-900 mb-2">About This Campaign</h3>
                 {campaign.description && (
                   <p className="text-sm text-gray-600 leading-relaxed">{campaign.description}</p>
@@ -167,7 +168,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
             )}
 
             {/* Campaign Details Summary */}
-            <div className="px-4 py-4 border-b border-gray-100 space-y-3">
+            <div className="px-4 py-4 border-b border-dc-teal/15 space-y-3">
               <h3 className="text-sm font-bold text-gray-900 mb-2">Campaign Details</h3>
 
               {/* Campaign type + tagline */}
@@ -186,9 +187,9 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
               {campaign.platforms && campaign.platforms.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {campaign.platforms.map((p) => (
-                    <span key={p} className="bg-gray-100 text-gray-600 text-[11px] px-2 py-0.5 rounded-full capitalize">
+                    <AppStatusBadge key={p} tone="neutral" className="text-[11px] px-2 py-0.5 capitalize">
                       {p.replace(/_/g, ' ')}
-                    </span>
+                    </AppStatusBadge>
                   ))}
                 </div>
               )}
@@ -216,9 +217,9 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
               {campaign.target_creator_personas && campaign.target_creator_personas.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {campaign.target_creator_personas.map((p, i) => (
-                    <span key={i} className="bg-gray-100 text-gray-600 text-[11px] px-2 py-0.5 rounded-full capitalize">
+                    <AppStatusBadge key={i} tone="neutral" className="text-[11px] px-2 py-0.5 capitalize">
                       {p}
-                    </span>
+                    </AppStatusBadge>
                   ))}
                 </div>
               )}
@@ -260,7 +261,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
             </div>
 
             {/* View Full Details link */}
-            <div className="px-4 py-3 border-b border-gray-100">
+            <div className="px-4 py-3 border-b border-dc-teal/15">
               <Link
                 to={`${rolePrefix}/campaigns/${campaign.id}`}
                 className="w-full flex items-center justify-center rounded-full border-2 border-dc-teal text-dc-teal font-bold py-2.5 text-sm hover:bg-teal-50 transition-colors"
@@ -272,11 +273,11 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
 
             {/* Visual References */}
             {referenceMedia.length > 0 && (
-              <div className="px-4 py-4 border-b border-gray-100">
+              <div className="px-4 py-4 border-b border-dc-teal/15">
                 <h3 className="text-sm font-bold text-gray-900 mb-2">Visual References</h3>
                 <div className="flex gap-2 overflow-x-auto pb-1 md:overflow-x-visible md:flex-wrap">
                   {referenceMedia.map((item) => (
-                    <div key={item.id} className="flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border border-gray-200">
+                    <div key={item.id} className="flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border border-dc-teal/15">
                       <img
                         src={item.thumbnail_url || item.file_url}
                         alt={item.file_name}
@@ -290,7 +291,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
 
             {/* Raw Footage */}
             {hasRawFootage && (
-              <div className="px-4 py-4 border-b border-gray-100">
+              <div className="px-4 py-4 border-b border-dc-teal/15">
                 {campaign.application_status === 'accepted' ? (
                   <>
                     <h3 className="text-sm font-bold text-gray-900 mb-2">📹 Raw Footage</h3>
@@ -299,7 +300,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                         .filter(m => m.media_type === 'raw_footage')
                         .map((item) => (
                           <div key={item.id} className="flex-shrink-0">
-                            <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-200 group">
+                            <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-dc-teal/15 group">
                               <img
                                 src={item.thumbnail_url || item.file_url}
                                 alt={item.file_name}
@@ -340,7 +341,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
 
             {/* Deliverables Breakdown */}
             {(deliverables.length > 0 || fallbackDeliverables.length > 0) && (
-              <div className="px-4 py-4 border-b border-gray-100">
+              <div className="px-4 py-4 border-b border-dc-teal/15">
                 <h3 className="text-sm font-bold text-gray-900 mb-3">Deliverables</h3>
                 <div className="space-y-3">
                   {deliverables.length > 0
@@ -376,10 +377,10 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
 
             {/* Timeline */}
             {tierConfig && deliveryTier && (
-              <div className="px-4 py-4 border-b border-gray-100">
+              <div className="px-4 py-4 border-b border-dc-teal/15">
                 <h3 className="text-sm font-bold text-gray-900 mb-2">Timeline</h3>
                 <div className={`rounded-xl p-3 ${
-                  deliveryTier === 'dragondash' ? 'bg-orange-50 border border-orange-200' :
+                  deliveryTier === 'dragondash' ? 'bg-amber-50 border border-amber-200' :
                   deliveryTier === 'express' ? 'bg-yellow-50 border border-yellow-200' :
                   'bg-green-50 border border-green-200'
                 }`}>
@@ -399,7 +400,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
             )}
 
             {/* Budget */}
-            <div className="px-4 py-4 border-b border-gray-100">
+            <div className="px-4 py-4 border-b border-dc-teal/15">
               <h3 className="text-sm font-bold text-gray-900 mb-2">{isGroupCampaign ? 'Collab' : 'Budget'}</h3>
               <div className="text-2xl font-bold text-dc-teal">{formatCampaignPrice(campaign)}</div>
               <div className="text-xs text-gray-500 mt-1">
@@ -416,7 +417,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
             </div>
 
             {/* About the Business */}
-            <div className="px-4 py-4 border-b border-gray-100">
+            <div className="px-4 py-4 border-b border-dc-teal/15">
               <h3 className="text-sm font-bold text-gray-900 mb-2">About the Business</h3>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full ring-2 ring-dc-teal overflow-hidden flex-shrink-0 bg-dc-pink-bg flex items-center justify-center">
@@ -444,7 +445,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
 
             {/* Requirements */}
             {(campaign.style || campaign.tone) && (
-              <div className="px-4 py-4 border-b border-gray-100">
+              <div className="px-4 py-4 border-b border-dc-teal/15">
                 <h3 className="text-sm font-bold text-gray-900 mb-2">Requirements</h3>
                 <div className="text-sm text-gray-600 leading-relaxed">
                   {campaign.style && <span>Style: <strong className="text-gray-800 capitalize">{campaign.style}</strong>. </span>}
@@ -471,7 +472,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
 
           {/* Sticky Apply Button */}
           {!showApplyForm && !readOnly && campaign.status !== 'active' && (
-            <div className="flex-shrink-0 px-4 py-3 border-t border-gray-100 bg-white shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+            <div className="flex-shrink-0 px-4 py-3 border-t border-dc-teal/15 bg-white shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
               <button
                 onClick={() => setShowApplyForm(true)}
                 className="w-full bg-dc-teal-btn text-white rounded-full py-3.5 font-bold text-sm hover:bg-dc-teal-btn-hover transition-colors active:scale-95"
@@ -481,8 +482,8 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
             </div>
           )}
           {!readOnly && campaign.status === 'active' && (
-            <div className="flex-shrink-0 px-4 py-3 border-t border-gray-100 bg-white">
-              <div className="w-full bg-gray-100 text-gray-500 rounded-full py-3.5 font-bold text-sm text-center">
+            <div className="flex-shrink-0 px-4 py-3 border-t border-dc-teal/15 bg-white">
+              <div className="w-full bg-dc-teal/10 text-dc-text-muted rounded-full py-3.5 font-bold text-sm text-center">
                 Position Filled
               </div>
             </div>

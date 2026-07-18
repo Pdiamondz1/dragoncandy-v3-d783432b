@@ -1,5 +1,6 @@
 import React from 'react';
 import { format } from 'date-fns';
+import { AppCard } from '@/components/app/AppCard';
 
 interface PaymentSummaryProps {
   completedAt: string | null;
@@ -11,7 +12,7 @@ export const PaymentSummary: React.FC<PaymentSummaryProps> = ({
   amountPaid,
 }) => {
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
+    <AppCard className="space-y-3">
       <h3 className="font-bold text-gray-900 text-sm">Payment</h3>
 
       <div className="space-y-2">
@@ -31,6 +32,6 @@ export const PaymentSummary: React.FC<PaymentSummaryProps> = ({
           </span>
         </div>
       </div>
-    </div>
+    </AppCard>
   );
 };

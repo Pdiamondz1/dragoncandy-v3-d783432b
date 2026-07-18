@@ -48,8 +48,8 @@ export const StartContentButton: React.FC<StartContentButtonProps> = ({
   return (
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogTrigger asChild>
-        <Button 
-          className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
+        <Button
+          className="bg-gradient-to-r from-dc-pink-accent to-dc-teal hover:from-dc-pink-accent-btn hover:to-dc-teal-dark"
           disabled={disabled || isLoading}
         >
           {isLoading ? (
@@ -79,10 +79,10 @@ export const StartContentButton: React.FC<StartContentButtonProps> = ({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
-          <AlertDialogAction 
+          <AlertDialogAction
             onClick={handleStart}
             disabled={isLoading}
-            className="bg-gradient-to-r from-pink-500 to-purple-600"
+            className="bg-gradient-to-r from-dc-pink-accent to-dc-teal"
           >
             {isLoading ? 'Starting...' : 'Start Timer'}
           </AlertDialogAction>

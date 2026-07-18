@@ -7,6 +7,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { SectionHeader } from './SectionHeader';
+import { AppCard } from '@/components/app/AppCard';
 
 function CountPill({ count, className = '' }: { count?: number; className?: string }) {
   if (typeof count !== 'number' || count <= 0) return null;
@@ -48,7 +49,7 @@ export function RecentActivitySection({
       <SectionHeader title={title} action={action} />
 
       {/* Desktop: quiet pill tabs */}
-      <div className="hidden lg:block rounded-2xl border border-dc-teal/15 bg-white shadow-dc-sm">
+      <AppCard className="hidden lg:block p-0">
         <Tabs defaultValue={groups[0].id}>
           <TabsList className="bg-transparent p-0 gap-2 px-5 pt-4 h-auto justify-start">
             {groups.map((g) => (
@@ -68,10 +69,10 @@ export function RecentActivitySection({
             </TabsContent>
           ))}
         </Tabs>
-      </div>
+      </AppCard>
 
       {/* Mobile: accordion, first group open */}
-      <div className="lg:hidden rounded-2xl border border-dc-teal/15 bg-white shadow-dc-sm overflow-hidden">
+      <AppCard className="lg:hidden p-0 overflow-hidden">
         <Accordion type="multiple" defaultValue={[groups[0].id]}>
           {groups.map((g) => (
             <AccordionItem key={g.id} value={g.id} className="border-dc-teal/10 last:border-b-0">
@@ -85,7 +86,7 @@ export function RecentActivitySection({
             </AccordionItem>
           ))}
         </Accordion>
-      </div>
+      </AppCard>
     </section>
   );
 }

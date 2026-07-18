@@ -59,7 +59,7 @@ export function FirstRunDashboard({ role, missions, onCompleteMission: _onComple
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
+    <div className="min-h-screen bg-white p-4">
       {/* Top bar */}
       <div className="flex justify-between items-center mb-4">
         <span className="text-sm font-bold text-dc-teal-btn">🐉 DragonCandy</span>

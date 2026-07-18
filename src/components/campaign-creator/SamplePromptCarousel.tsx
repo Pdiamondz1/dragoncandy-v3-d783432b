@@ -96,7 +96,7 @@ export function SamplePromptCarousel({ onSelect, disabled }: SamplePromptCarouse
           <div
             key={i}
             className={`w-1.5 h-1.5 rounded-full transition-colors ${
-              i === activeIndex ? 'bg-teal-400' : 'bg-gray-300'
+              i === activeIndex ? 'bg-teal-400' : 'bg-dc-teal/20'
             }`}
           />
         ))}

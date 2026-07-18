@@ -232,7 +232,7 @@ export function OneTapApplySheet({
                   <span className="text-xs text-gray-500 uppercase">Sample</span>
                   <div className="flex items-center gap-2">
                     {sampleUrl && !isVideoSample && (
-                      <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden border border-dc-teal/15">
                         <img
                           src={sampleUrl}
                           alt="Portfolio sample"
@@ -242,7 +242,7 @@ export function OneTapApplySheet({
                       </div>
                     )}
                     {sampleUrl && isVideoSample && (
-                      <div className="w-10 h-10 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-lg bg-dc-teal/[0.06] border border-dc-teal/15 flex items-center justify-center">
                         <span className="text-[10px] font-medium text-gray-500">VIDEO</span>
                       </div>
                     )}
@@ -270,7 +270,7 @@ export function OneTapApplySheet({
                             className={`w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 border-2 transition-all ${
                               selectedThumbIndex === i
                                 ? 'border-dc-teal ring-2 ring-dc-teal'
-                                : 'border-gray-200 hover:border-gray-300'
+                                : 'border-dc-teal/15 hover:border-dc-teal/30'
                             }`}
                           >
                             <img src={toThumbnailUrl(url)} alt={`Portfolio ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
@@ -285,7 +285,7 @@ export function OneTapApplySheet({
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploading}
-                        className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:border-dc-teal hover:text-dc-teal transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl border border-dc-teal/15 text-gray-600 hover:border-dc-teal hover:text-dc-teal transition-colors disabled:opacity-50"
                       >
                         {isUploading ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -304,7 +304,7 @@ export function OneTapApplySheet({
                         value={urlInput}
                         onChange={(e) => handleUrlInput(e.target.value)}
                         placeholder="https://your-portfolio.com/sample"
-                        className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-xs text-gray-800 outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
+                        className="w-full pl-8 pr-3 py-2 border border-dc-teal/15 rounded-xl text-xs text-gray-800 outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
                       />
                     </div>
                   </div>
@@ -313,7 +313,7 @@ export function OneTapApplySheet({
 
               <div>
                 <span className="text-xs text-gray-500 uppercase block mb-1">Pitch</span>
-                <p className="text-sm text-gray-700 italic bg-gray-50 rounded-xl p-3">
+                <p className="text-sm text-gray-700 italic bg-dc-teal/[0.04] rounded-xl p-3">
                   "{pitchData.pitch}"
                 </p>
               </div>
@@ -328,7 +328,7 @@ export function OneTapApplySheet({
                     className={`flex-1 text-xs px-3 py-2 rounded-full font-semibold transition-colors ${
                       offerMode === 'accept'
                         ? 'bg-dc-teal-btn text-white'
-                        : 'bg-white text-gray-600 border border-gray-200 hover:border-dc-teal'
+                        : 'bg-white text-gray-600 border border-dc-teal/15 hover:border-dc-teal'
                     }`}
                   >
                     Accept Price
@@ -339,7 +339,7 @@ export function OneTapApplySheet({
                     className={`flex-1 text-xs px-3 py-2 rounded-full font-semibold transition-colors ${
                       offerMode === 'offer'
                         ? 'bg-dc-pink-accent text-white'
-                        : 'bg-white text-gray-600 border border-gray-200 hover:border-dc-pink-accent'
+                        : 'bg-white text-gray-600 border border-dc-teal/15 hover:border-dc-pink-accent'
                     }`}
                   >
                     Counter Offer
@@ -358,7 +358,7 @@ export function OneTapApplySheet({
                           pattern="[0-9]*"
                           value={counterRate}
                           onChange={(e) => setCounterRate(sanitizeNumericInput(e.target.value))}
-                          className="w-full pl-7 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
+                          className="w-full pl-7 pr-3 py-2.5 border border-dc-teal/15 rounded-xl text-sm text-gray-800 outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
                           placeholder="Enter your offer"
                         />
                       </div>
@@ -370,7 +370,7 @@ export function OneTapApplySheet({
                         value={counterMessage}
                         onChange={(e) => setCounterMessage(e.target.value.slice(0, 280))}
                         placeholder="Why you're proposing this rate…"
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal resize-none h-[60px]"
+                        className="w-full px-3 py-2.5 border border-dc-teal/15 rounded-xl text-sm text-gray-800 outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal resize-none h-[60px]"
                         maxLength={280}
                       />
                     </div>
@@ -407,7 +407,7 @@ export function OneTapApplySheet({
 
             <button
               onClick={() => handleAction(onEditDetails)}
-              className="w-full rounded-full border-2 border-gray-300 text-gray-600 font-semibold py-3 text-sm hover:border-gray-400 transition-colors"
+              className="w-full rounded-full border-2 border-dc-teal/20 text-gray-600 font-semibold py-3 text-sm hover:border-dc-teal/40 transition-colors"
             >
               Edit details
             </button>

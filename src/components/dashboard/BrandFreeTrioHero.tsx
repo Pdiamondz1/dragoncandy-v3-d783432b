@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Users, FileText, LayoutTemplate, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AppCard } from '@/components/app/AppCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useTierGate } from '@/hooks/useTierGate';
 import { useDonnyContext } from '@/contexts/DonnyProvider';
@@ -67,7 +68,7 @@ export function BrandFreeTrioHero({ orgId }: BrandFreeTrioHeroProps) {
         {/* 3-card grid: stacked on mobile, 3-col on md+ */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {/* Card A: Match Report (teal accent) */}
-          <div className="rounded-2xl bg-white border border-dc-teal/15 shadow-dc-sm overflow-hidden">
+          <AppCard className="p-0 overflow-hidden">
             <div className="h-1.5 bg-dc-teal" />
             <div className="p-4 space-y-3">
               <div className="flex items-center gap-2">
@@ -87,10 +88,10 @@ export function BrandFreeTrioHero({ orgId }: BrandFreeTrioHeroProps) {
                 Get matches
               </Button>
             </div>
-          </div>
+          </AppCard>
 
           {/* Card B: Brand Brief (pink accent) */}
-          <div className="rounded-2xl bg-white border border-dc-teal/15 shadow-dc-sm overflow-hidden">
+          <AppCard className="p-0 overflow-hidden">
             <div className="h-1.5 bg-dc-pink" />
             <div className="p-4 space-y-3">
               <div className="flex items-center gap-2">
@@ -110,10 +111,10 @@ export function BrandFreeTrioHero({ orgId }: BrandFreeTrioHeroProps) {
                 Generate brief
               </Button>
             </div>
-          </div>
+          </AppCard>
 
           {/* Card C: Sponsored Templates (yellow accent) */}
-          <div className="rounded-2xl bg-white border border-dc-teal/15 shadow-dc-sm overflow-hidden">
+          <AppCard className="p-0 overflow-hidden">
             <div className="h-1.5 bg-dc-yellow" />
             <div className="p-4 space-y-3">
               <div className="flex items-center gap-2">
@@ -135,7 +136,7 @@ export function BrandFreeTrioHero({ orgId }: BrandFreeTrioHeroProps) {
                 Browse templates
               </Button>
             </div>
-          </div>
+          </AppCard>
         </div>
 
         {/* Slim banner */}

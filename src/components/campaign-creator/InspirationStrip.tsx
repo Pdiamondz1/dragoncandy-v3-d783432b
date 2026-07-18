@@ -50,7 +50,7 @@ export function InspirationStrip({ onSelectionChange, onScrolled }: InspirationS
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="w-[90px] h-[90px] lg:w-[120px] lg:h-[120px] rounded-xl bg-gray-200 animate-pulse flex-shrink-0"
+              className="w-[90px] h-[90px] lg:w-[120px] lg:h-[120px] rounded-xl bg-dc-teal/10 animate-pulse flex-shrink-0"
             />
           ))}
         </div>
@@ -60,7 +60,7 @@ export function InspirationStrip({ onSelectionChange, onScrolled }: InspirationS
 
   if (!items?.length) {
     return (
-      <div className="mt-4 bg-white rounded-2xl border border-dashed border-gray-300 p-5 text-center">
+      <div className="mt-4 bg-white rounded-2xl border border-dashed border-dc-teal/20 p-5 text-center">
         <p className="text-sm text-gray-500">Like content on the DragonFeed to use as style inspiration here</p>
         <button
           onClick={() => navigate('/dashboard/business/dragon-feed')}

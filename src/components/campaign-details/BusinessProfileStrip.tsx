@@ -22,7 +22,7 @@ export function BusinessProfileStrip({ profile, completedCampaignCount }: Busine
   return (
     <button
       onClick={() => navigate(profilePath)}
-      className="w-full flex items-center gap-3 bg-white border border-gray-200 rounded-xl p-3 hover:border-dc-teal transition-colors text-left"
+      className="w-full flex items-center gap-3 bg-white border border-dc-teal/15 rounded-xl p-3 hover:border-dc-teal transition-colors text-left"
     >
       {resolvedLogoUrl && !logoError ? (
         <img

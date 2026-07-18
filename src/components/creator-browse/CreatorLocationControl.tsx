@@ -5,17 +5,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Input } from '@/components/ui/input';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { RADIUS_OPTIONS, type LocationFilter } from '@/lib/creatorLocationFilter';
+import { AppChip } from '@/components/app/AppChip';
 
 interface CreatorLocationControlProps {
   location: LocationFilter;
   onChange: (patch: Partial<LocationFilter>) => void;
   hasBusinessLocation: boolean;
 }
-
-const chipBase =
-  'flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors border';
-const chipOn = 'bg-teal-400 text-white border-teal-400';
-const chipOff = 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50';
 
 function buttonLabel(location: LocationFilter, hasBusinessLocation: boolean): string {
   const radius = location.radiusMiles != null ? ` · ${location.radiusMiles} mi` : ' · Any';
@@ -31,23 +27,23 @@ const Body: React.FC<CreatorLocationControlProps> = ({ location, onChange, hasBu
   <div className="space-y-4">
     {/* Segment toggle */}
     <div className="flex gap-2">
-      <button
-        type="button"
+      <AppChip
         disabled={!hasBusinessLocation}
         aria-pressed={location.mode === 'near_me'}
+        active={location.mode === 'near_me'}
         onClick={() => onChange({ mode: 'near_me', rawQuery: '', status: 'idle' })}
-        className={`${chipBase} ${location.mode === 'near_me' ? chipOn : chipOff} ${!hasBusinessLocation ? 'opacity-40 cursor-not-allowed' : ''}`}
+        className={`flex-shrink-0 ${!hasBusinessLocation ? 'opacity-40 cursor-not-allowed' : ''}`}
       >
         Near me
-      </button>
-      <button
-        type="button"
+      </AppChip>
+      <AppChip
         aria-pressed={location.mode === 'custom'}
+        active={location.mode === 'custom'}
         onClick={() => onChange({ mode: 'custom', center: null, status: 'idle' })}
-        className={`${chipBase} ${location.mode === 'custom' ? chipOn : chipOff}`}
+        className="flex-shrink-0"
       >
         Another area
-      </button>
+      </AppChip>
     </div>
 
     {!hasBusinessLocation && location.mode === 'near_me' && (
@@ -78,24 +74,24 @@ const Body: React.FC<CreatorLocationControlProps> = ({ location, onChange, hasBu
       <p className="text-xs font-medium text-gray-500 mb-2">Distance</p>
       <div className="flex flex-wrap gap-2">
         {RADIUS_OPTIONS.map((r) => (
-          <button
+          <AppChip
             key={r}
-            type="button"
             aria-pressed={location.radiusMiles === r}
+            active={location.radiusMiles === r}
             onClick={() => onChange({ radiusMiles: r })}
-            className={`${chipBase} ${location.radiusMiles === r ? chipOn : chipOff}`}
+            className="flex-shrink-0"
           >
             {r} mi
-          </button>
+          </AppChip>
         ))}
-        <button
-          type="button"
+        <AppChip
           aria-pressed={location.radiusMiles == null}
+          active={location.radiusMiles == null}
           onClick={() => onChange({ radiusMiles: null })}
-          className={`${chipBase} ${location.radiusMiles == null ? chipOn : chipOff}`}
+          className="flex-shrink-0"
         >
           Any
-        </button>
+        </AppChip>
       </div>
     </div>
   </div>

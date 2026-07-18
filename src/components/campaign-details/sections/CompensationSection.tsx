@@ -1,4 +1,5 @@
 import { DollarSign } from 'lucide-react';
+import { AppCard } from '@/components/app/AppCard';
 import { CostBreakdown } from '@/components/campaigns/CostBreakdown';
 import { useCampaignDeliverables } from '@/hooks/useCampaignDeliverables';
 import { useAgreedValue } from '@/hooks/useAgreedValue';
@@ -31,7 +32,7 @@ export function CompensationSection({ campaign, campaignId, role }: Compensation
   const hasAgreedValue = agreedValue != null;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+    <AppCard className="space-y-3">
         <div className="flex items-center gap-3">
           <DollarSign className="w-4 h-4 text-green-600 flex-shrink-0" />
           <div>
@@ -64,6 +65,6 @@ export function CompensationSection({ campaign, campaignId, role }: Compensation
             <p className="text-xs text-gray-500 mt-1">Payment via Stripe upon approval</p>
           </div>
         )}
-    </div>
+    </AppCard>
   );
 }
