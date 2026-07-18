@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { AppCard } from '@/components/app/AppCard';
+import { AppStatusBadge } from '@/components/app/AppStatusBadge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { 
@@ -49,7 +50,7 @@ export const SubmissionCard: React.FC<SubmissionCardProps> = ({
 
   return (
     <>
-      <Card className="hover:shadow-md transition-shadow">
+      <AppCard className="p-0 hover:shadow-md transition-shadow">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div>
@@ -61,7 +62,7 @@ export const SubmissionCard: React.FC<SubmissionCardProps> = ({
                 {submission.promotion?.title}
               </CardDescription>
             </div>
-            <Badge variant="outline">Pending Review</Badge>
+            <AppStatusBadge tone="amber">Pending Review</AppStatusBadge>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -118,7 +119,7 @@ export const SubmissionCard: React.FC<SubmissionCardProps> = ({
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </AppCard>
 
       {/* Media Preview Dialog */}
       <Dialog open={showVideoPreview} onOpenChange={setShowVideoPreview}>
@@ -129,7 +130,7 @@ export const SubmissionCard: React.FC<SubmissionCardProps> = ({
               Submitted by {submission.customer_name}
             </DialogDescription>
           </DialogHeader>
-          <div className="aspect-video bg-muted rounded-lg overflow-hidden flex items-center justify-center">
+          <div className="aspect-video bg-dc-teal/5 rounded-lg overflow-hidden flex items-center justify-center">
             {isLoadingUrl ? (
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             ) : resolvedUrl ? (

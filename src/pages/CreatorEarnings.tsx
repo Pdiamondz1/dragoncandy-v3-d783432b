@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { AppCard } from '@/components/app/AppCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -215,7 +216,7 @@ const CreatorEarnings: React.FC = () => {
       case 'in_wallet':
         return <Badge className="bg-amber-100 text-amber-800 rounded-full text-xs">In Wallet</Badge>;
       default:
-        return <Badge variant="secondary" className="rounded-full text-xs">{status}</Badge>;
+        return <Badge className="bg-dc-teal/5 text-dc-text-muted rounded-full text-xs">{status}</Badge>;
     }
   };
 
@@ -295,7 +296,7 @@ const CreatorEarnings: React.FC = () => {
         <div className="bg-white px-4 pt-4 pb-24 md:pb-0 space-y-4 overflow-hidden">
 
           {/* Balance Stats Row */}
-          <div className="grid grid-cols-3 divide-x divide-dc-pink border-2 border-dc-teal rounded-2xl overflow-hidden">
+          <AppCard variant="emphasis" className="p-0 grid grid-cols-3 divide-x divide-dc-pink overflow-hidden">
             <div className="p-2 sm:p-3 text-center min-w-0 overflow-hidden">
               {isLoadingStatus ? (
                 <Skeleton className="h-6 w-14 mx-auto mb-1" />
@@ -326,10 +327,10 @@ const CreatorEarnings: React.FC = () => {
               )}
               <p className="text-[10px] sm:text-xs text-gray-500 leading-tight">Total Earned</p>
             </div>
-          </div>
+          </AppCard>
 
           {/* Payout Account Card */}
-          <div className="border-2 border-dc-teal rounded-2xl p-4">
+          <AppCard variant="emphasis" className="p-4">
             <div className="flex items-center gap-2 mb-3">
               <Building2 className="h-4 w-4 text-dc-teal" />
               <h2 className="font-bold text-gray-900 uppercase tracking-wide text-sm">Payout Account</h2>
@@ -377,7 +378,7 @@ const CreatorEarnings: React.FC = () => {
             ) : (
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="p-2 bg-gray-100 rounded-full shrink-0">
+                  <div className="p-2 bg-dc-teal/10 rounded-full shrink-0">
                     <AlertCircle className="h-5 w-5 text-gray-400" />
                   </div>
                   <div className="min-w-0">
@@ -400,10 +401,10 @@ const CreatorEarnings: React.FC = () => {
                 </Button>
               </div>
             )}
-          </div>
+          </AppCard>
 
           {/* Payment History */}
-          <div className="border-2 border-dc-teal rounded-2xl p-4">
+          <AppCard variant="emphasis" className="p-4">
             <div className="flex items-center gap-2 mb-3">
               <DollarSign className="h-4 w-4 text-dc-teal" />
               <div>
@@ -415,12 +416,12 @@ const CreatorEarnings: React.FC = () => {
             {isLoadingEarnings ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 animate-pulse">
+                  <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-dc-teal/[0.04] animate-pulse">
                     <div className="space-y-1">
-                      <div className="h-4 bg-gray-200 rounded w-40" />
-                      <div className="h-3 bg-gray-200 rounded w-24" />
+                      <div className="h-4 bg-dc-teal/10 rounded w-40" />
+                      <div className="h-3 bg-dc-teal/10 rounded w-24" />
                     </div>
-                    <div className="h-5 w-16 bg-gray-200 rounded-full" />
+                    <div className="h-5 w-16 bg-dc-teal/10 rounded-full" />
                   </div>
                 ))}
               </div>
@@ -450,7 +451,7 @@ const CreatorEarnings: React.FC = () => {
                   return (
                     <div
                       key={payment.id}
-                      className="p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors space-y-1.5"
+                      className="p-3 rounded-xl bg-dc-teal/[0.04] hover:bg-dc-teal/[0.08] transition-colors space-y-1.5"
                     >
                       <div className="flex items-center justify-between">
                         <p className="font-bold text-gray-900 text-sm truncate">{payment.campaignTitle}</p>
@@ -480,11 +481,11 @@ const CreatorEarnings: React.FC = () => {
                 })}
               </div>
             )}
-          </div>
+          </AppCard>
 
           {/* Summary */}
           {earnings.length > 0 && (
-            <div className="border-2 border-dc-teal rounded-2xl p-4 space-y-2">
+            <AppCard variant="emphasis" className="p-4 space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-500">Total Platform Fees Paid</span>
                 <span className="font-bold text-gray-900">{formatCurrency(totalFees)}</span>
@@ -493,7 +494,7 @@ const CreatorEarnings: React.FC = () => {
                 <span className="text-gray-500">Total Projects Completed</span>
                 <span className="font-bold text-gray-900">{earnings.length}</span>
               </div>
-            </div>
+            </AppCard>
           )}
         </div>
       </div>

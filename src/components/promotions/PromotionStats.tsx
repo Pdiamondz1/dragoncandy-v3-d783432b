@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AppCard } from '@/components/app/AppCard';
 import { Progress } from '@/components/ui/progress';
 import { Video, CheckCircle, Ticket, TrendingUp } from 'lucide-react';
 
@@ -24,7 +25,7 @@ export const PromotionStats: React.FC<PromotionStatsProps> = ({ stats }) => {
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <Card>
+      <AppCard className="p-0">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Submissions</CardTitle>
           <Video className="h-4 w-4 text-muted-foreground" />
@@ -35,9 +36,9 @@ export const PromotionStats: React.FC<PromotionStatsProps> = ({ stats }) => {
             <span className="text-yellow-600">{pendingCount} pending</span>
           </div>
         </CardContent>
-      </Card>
+      </AppCard>
 
-      <Card>
+      <AppCard className="p-0">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Approval Rate</CardTitle>
           <CheckCircle className="h-4 w-4 text-green-500" />
@@ -50,9 +51,9 @@ export const PromotionStats: React.FC<PromotionStatsProps> = ({ stats }) => {
           </div>
           <Progress value={approvalRate} className="h-1 mt-2" />
         </CardContent>
-      </Card>
+      </AppCard>
 
-      <Card>
+      <AppCard className="p-0">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Codes Generated</CardTitle>
           <Ticket className="h-4 w-4 text-muted-foreground" />
@@ -63,9 +64,9 @@ export const PromotionStats: React.FC<PromotionStatsProps> = ({ stats }) => {
             {redemptionCount} redeemed
           </div>
         </CardContent>
-      </Card>
+      </AppCard>
 
-      <Card>
+      <AppCard className="p-0">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Redemption Rate</CardTitle>
           <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -77,7 +78,7 @@ export const PromotionStats: React.FC<PromotionStatsProps> = ({ stats }) => {
           </div>
           <Progress value={redemptionRate} className="h-1 mt-2" />
         </CardContent>
-      </Card>
+      </AppCard>
     </div>
   );
 };

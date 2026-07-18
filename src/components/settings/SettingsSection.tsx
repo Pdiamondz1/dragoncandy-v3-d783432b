@@ -32,7 +32,7 @@ export function SettingsSection({
     : 'text-gray-500';
 
   return (
-    <AccordionItem value={value} className={`bg-white rounded-2xl mb-3 border-0 overflow-hidden ${borderClass}`}>
+    <AccordionItem value={value} className={`bg-white rounded-2xl mb-3 border border-dc-teal/15 shadow-dc-sm overflow-hidden ${borderClass}`}>
       <AccordionTrigger className="px-4 py-3.5 hover:no-underline">
         <div className="flex items-center gap-3">
           <span className="text-lg">{icon}</span>
@@ -44,7 +44,7 @@ export function SettingsSection({
           </div>
         </div>
       </AccordionTrigger>
-      <AccordionContent className="px-4 pb-4 border-t border-gray-100">
+      <AccordionContent className="px-4 pb-4 border-t border-dc-teal/10">
         <div className="pt-4 space-y-4">
           {children}
         </div>

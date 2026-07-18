@@ -1,6 +1,8 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { AppCard } from '@/components/app/AppCard';
+import { AppStatusBadge } from '@/components/app/AppStatusBadge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -55,11 +57,11 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
   const promotionUrl = `${window.location.origin}/promo/${promotion.id}`;
 
   const getStatusBadge = () => {
-    if (isPaused) return <Badge variant="secondary">Paused</Badge>;
+    if (isPaused) return <AppStatusBadge tone="neutral">Paused</AppStatusBadge>;
     if (isExpired) return <Badge variant="destructive">Expired</Badge>;
     if (isUpcoming) return <Badge variant="outline">Upcoming</Badge>;
     if (isActive) return <Badge className="bg-green-500">Active</Badge>;
-    return <Badge variant="secondary">{promotion.status}</Badge>;
+    return <AppStatusBadge tone="neutral">{promotion.status}</AppStatusBadge>;
   };
 
   const discountDisplay = promotion.discount_type === 'percentage'
@@ -105,8 +107,8 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
 
   return (
     <>
-      <Card
-        className="hover:shadow-md transition-shadow"
+      <AppCard
+        className="p-0 hover:shadow-md transition-shadow"
       >
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
@@ -200,7 +202,7 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
             View details <ChevronRight className="w-3 h-3" />
           </Link>
         </CardContent>
-      </Card>
+      </AppCard>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

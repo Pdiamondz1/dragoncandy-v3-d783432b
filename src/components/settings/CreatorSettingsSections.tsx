@@ -238,7 +238,7 @@ export function CreatorSettingsSections({
       >
         <ConnectedAccountsList role="creator" />
 
-        <div className="border-t border-gray-100 pt-4 mt-4">
+        <div className="border-t border-dc-teal/10 pt-4 mt-4">
           <details className="group">
             <summary className="text-xs font-semibold text-gray-400 cursor-pointer hover:text-gray-600">
               Profile Links (for public profile display)

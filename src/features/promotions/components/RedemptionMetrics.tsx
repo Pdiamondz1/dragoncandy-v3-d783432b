@@ -35,7 +35,7 @@ const SparkTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   return (
-    <div className="bg-gray-900 text-white text-[10px] px-2 py-1 rounded shadow-lg">
+    <div className="bg-dc-dark text-white text-[10px] px-2 py-1 rounded shadow-lg">
       <span className="font-medium">{d.label}</span>
       <span className="ml-1.5 tabular-nums">{d.count}</span>
     </div>
@@ -95,7 +95,7 @@ export const RedemptionMetrics: React.FC<RedemptionMetricsProps> = ({
 
       {/* Progress pip — visible when capped */}
       {pct != null && (
-        <div className="hidden sm:block w-12 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className="hidden sm:block w-12 h-1.5 bg-dc-teal/10 rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-500"
             style={{

@@ -60,7 +60,7 @@ export const ActivePromotionsTab: React.FC = () => {
 
   if (isError) {
     return (
-      <div className="text-center py-12 bg-muted/30 rounded-lg">
+      <div className="text-center py-12 bg-dc-teal/[0.04] rounded-2xl">
         <AlertTriangle className="h-12 w-12 mx-auto text-destructive mb-4" />
         <h3 className="text-lg font-medium mb-2">Failed to load promotions</h3>
         <p className="text-muted-foreground mb-4">
@@ -95,7 +95,7 @@ export const ActivePromotionsTab: React.FC = () => {
       </div>
 
       {activePromotions.length === 0 ? (
-        <div className="text-center py-12 bg-muted/30 rounded-lg">
+        <div className="text-center py-12 bg-dc-teal/[0.04] rounded-2xl">
           <QrCode className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-medium mb-2">No Active Promotions</h3>
           <p className="text-muted-foreground mb-4">

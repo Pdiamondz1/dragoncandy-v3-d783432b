@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { AppCard } from '@/components/app/AppCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -51,7 +52,7 @@ export const VerifyCodesTab: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Verify Code Section */}
-      <Card>
+      <AppCard className="p-0">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Ticket className="h-5 w-5" />
@@ -82,10 +83,10 @@ export const VerifyCodesTab: React.FC = () => {
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </AppCard>
 
       {/* Codes History Table */}
-      <Card>
+      <AppCard className="p-0">
         <CardHeader>
           <CardTitle>Discount Code History</CardTitle>
           <CardDescription>
@@ -151,7 +152,7 @@ export const VerifyCodesTab: React.FC = () => {
             </Table>
           )}
         </CardContent>
-      </Card>
+      </AppCard>
     </div>
   );
 };

@@ -16,6 +16,7 @@ import { DeleteUserSheet } from '@/components/org/DeleteUserSheet';
 import { Coachmark } from '@/components/guidance/Coachmark';
 import { WhyExpander } from '@/components/guidance/WhyExpander';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { PageBody } from '@/components/app/PageBody';
 
 const CreatorSettings = () => {
   const { submitProfile } = useCreatorProfileSubmit();
@@ -77,6 +78,7 @@ const CreatorSettings = () => {
   return (
     <DashboardLayout userRole="content_creator">
       <div className="min-h-screen bg-white overflow-x-hidden">
+        <PageBody className="space-y-0">
         <PageHeader>
           <div className="max-w-lg mx-auto">
             <ProfileCompletionBar
@@ -140,6 +142,7 @@ const CreatorSettings = () => {
 
           <DeleteUserSheet open={deleteUserOpen} onOpenChange={setDeleteUserOpen} />
         </div>
+        </PageBody>
       </div>
     </DashboardLayout>
   );

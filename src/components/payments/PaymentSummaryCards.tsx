@@ -1,4 +1,5 @@
 import { DollarSign, Lock, Clock, Wallet } from "lucide-react";
+import { AppCard } from "@/components/app/AppCard";
 import type { UserRole } from "@/lib/paymentEducation";
 import type { PaymentEvent } from "@/hooks/usePaymentTimeline";
 
@@ -102,10 +103,10 @@ export function PaymentSummaryCards({ events, userRole, pendingReviewCount }: Pa
 
 function SummaryCard({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
   return (
-    <div className="bg-white rounded-2xl p-4 border border-gray-100 text-center">
+    <AppCard className="p-4 text-center">
       <Icon className="w-5 h-5 text-teal-400 mx-auto mb-1" />
       <p className="text-lg font-bold text-gray-900">{value}</p>
       <p className="text-xs text-gray-500">{label}</p>
-    </div>
+    </AppCard>
   );
 }

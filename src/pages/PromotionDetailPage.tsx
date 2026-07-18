@@ -7,7 +7,11 @@ import { usePromotions, Promotion, PromotionSubmission, UpdatePromotionData } fr
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { CardContent } from '@/components/ui/card';
+import { AppCard } from '@/components/app/AppCard';
+import { AppChip } from '@/components/app/AppChip';
+import { AppStatusBadge } from '@/components/app/AppStatusBadge';
+import { PageBody } from '@/components/app/PageBody';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -33,7 +37,7 @@ function MediaPreviewButton({ submission }: { submission: PromotionSubmission })
     <>
       <button
         onClick={() => setOpen(true)}
-        className="relative w-full aspect-video bg-gray-100 rounded-lg overflow-hidden group"
+        className="relative w-full aspect-video bg-dc-teal/5 rounded-lg overflow-hidden group"
       >
         {isImage ? (
           <img
@@ -43,7 +47,7 @@ function MediaPreviewButton({ submission }: { submission: PromotionSubmission })
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-900/5">
+          <div className="w-full h-full flex items-center justify-center bg-dc-teal/5">
             <div className="w-12 h-12 rounded-full bg-dc-teal/90 flex items-center justify-center group-hover:bg-dc-teal transition-colors">
               <Play className="w-5 h-5 text-white ml-0.5" fill="white" />
             </div>
@@ -57,7 +61,7 @@ function MediaPreviewButton({ submission }: { submission: PromotionSubmission })
             <DialogTitle>{isImage ? 'Photo' : 'Video'} Preview</DialogTitle>
             <DialogDescription>Submitted by {submission.customer_name}</DialogDescription>
           </DialogHeader>
-          <div className="aspect-video bg-muted rounded-lg overflow-hidden flex items-center justify-center">
+          <div className="aspect-video bg-dc-teal/5 rounded-lg overflow-hidden flex items-center justify-center">
             {isLoading ? (
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             ) : resolvedUrl ? (
@@ -99,7 +103,7 @@ function SubmissionRow({
 
   return (
     <>
-      <Card>
+      <AppCard className="p-0">
         <CardContent className="p-4 space-y-3">
           <MediaPreviewButton submission={submission} />
 
@@ -168,7 +172,7 @@ function SubmissionRow({
             </div>
           )}
         </CardContent>
-      </Card>
+      </AppCard>
 
       <Dialog open={showReject} onOpenChange={setShowReject}>
         <DialogContent>
@@ -328,18 +332,19 @@ const PromotionDetailPage: React.FC = () => {
   const rejectedCount = submissions?.filter((s) => s.status === 'rejected').length ?? 0;
 
   const statusBadge = isPaused
-    ? <Badge variant="secondary">Paused</Badge>
+    ? <AppStatusBadge tone="neutral">Paused</AppStatusBadge>
     : isExpired
     ? <Badge variant="destructive">Expired</Badge>
     : isUpcoming
     ? <Badge variant="outline">Upcoming</Badge>
     : isActive
     ? <Badge className="bg-green-500">Active</Badge>
-    : <Badge variant="secondary">{promotion.status}</Badge>;
+    : <AppStatusBadge tone="neutral">{promotion.status}</AppStatusBadge>;
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="min-h-screen overflow-x-hidden pb-24 md:pb-0 md:max-w-4xl md:mx-auto">
+      <div className="min-h-screen overflow-x-hidden pb-24 md:pb-0">
+        <PageBody maxWidth="4xl" className="space-y-0">
         {/* Header */}
         <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-4 pb-5">
           <button
@@ -445,17 +450,14 @@ const PromotionDetailPage: React.FC = () => {
                 ['approved', 'Approved', approvedCount],
                 ['rejected', 'Rejected', rejectedCount],
               ] as const).map(([key, label, count]) => (
-                <button
+                <AppChip
                   key={key}
+                  active={tab === key}
                   onClick={() => setTab(key)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                    tab === key
-                      ? 'bg-dc-teal-btn text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                  className="px-3 text-xs whitespace-nowrap"
                 >
                   {label} ({count})
-                </button>
+                </AppChip>
               ))}
             </div>
 
@@ -464,7 +466,7 @@ const PromotionDetailPage: React.FC = () => {
                 {[1, 2].map((i) => <Skeleton key={i} className="h-48" />)}
               </div>
             ) : filtered.length === 0 ? (
-              <div className="text-center py-10 bg-muted/30 rounded-lg">
+              <div className="text-center py-10 bg-dc-teal/[0.04] rounded-2xl">
                 <Video className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
                 <p className="text-sm text-muted-foreground">
                   {tab === 'all' ? 'No submissions yet' : `No ${tab} submissions`}
@@ -485,6 +487,7 @@ const PromotionDetailPage: React.FC = () => {
             )}
           </div>
         </div>
+        </PageBody>
       </div>
 
       {/* QR Code Modal */}
