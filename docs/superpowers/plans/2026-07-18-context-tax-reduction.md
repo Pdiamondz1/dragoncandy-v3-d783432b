@@ -247,7 +247,7 @@ wc -c CLAUDE.md docs/PROJECT_CONTEXT.md docs/DESIGN_SYSTEM.md \
       docs/DATABASE_SCHEMA.md docs/KNOWLEDGE_WIKI.md | tee "$SP/baseline.txt"
 ```
 
-Expected total ≈ **175,295 bytes** (~43,800 tokens). Keep this file — Task 5 diffs against it.
+Expected total ≈ **176,620 bytes** (~44,150 tokens). Keep this file — Task 5 diffs against it.
 
 - [ ] **Step 6: Commit the helper**
 
@@ -339,7 +339,7 @@ diff "$SP/before.txt" "$SP/after.txt" && echo "GATE PASS — zero information lo
 wc -l "$SP/before.txt" "$SP/after.txt"
 ```
 
-Expected: `GATE PASS — zero information loss`, and both files **1264** lines.
+Expected: `GATE PASS — zero information loss`, and both files **1277** lines.
 
 **This exact pipeline was tested end-to-end during planning and passed at 1,264/1,264.** If it fails now:
 - **`after.txt` empty (0 lines)** → the sentinel didn't match. Almost always CRLF: `tr -d '\r'` must run *before* the `sed`, never after. Re-check Step 3.
@@ -356,7 +356,7 @@ Moves all 68 §5 bullets into a newest-first append-only log, NOT imported by
 CLAUDE.md. §5 itself is unchanged in this commit — content is duplicated for one
 commit rather than ever absent.
 
-Zero-loss gate passed: sorted-line diff empty, 1264/1264 lines.
+Zero-loss gate passed: sorted-line diff empty, 1277/1277 lines.
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
@@ -615,7 +615,7 @@ wc -c CLAUDE.md docs/PROJECT_CONTEXT.md docs/DESIGN_SYSTEM.md \
       docs/DATABASE_SCHEMA.md docs/KNOWLEDGE_WIKI.md
 ```
 
-Expected: total drops from ~175,295 to roughly **70,000–75,000 bytes** (~17,500–18,800 tokens for the imports; ~19,000–20,000 including skill frontmatter and the SessionStart hook). Record both in the PR body. This is a measurement, not a gate — do not tune §5 to hit a number.
+Expected: total drops from ~176,620 to roughly **70,000–75,000 bytes** (~17,500–18,800 tokens for the imports; ~19,000–20,000 including skill frontmatter and the SessionStart hook). Record both in the PR body. This is a measurement, not a gate — do not tune §5 to hit a number.
 
 - [ ] **Step 2: Run the build**
 
@@ -678,7 +678,7 @@ Some §5 "pending" notes may be stale (work since completed). Please confirm:
 Anything you mark done moves to **Shipped** in a follow-up commit.
 ```
 
-Also state in the PR body: before/after byte counts, that the zero-loss gate passed at 1264/1264, and that `verify-knowledge` does **not** cover this change (spec §6) so its verdict proves nothing here.
+Also state in the PR body: before/after byte counts, that the zero-loss gate passed at 1277/1277, and that `verify-knowledge` does **not** cover this change (spec §6) so its verdict proves nothing here.
 
 - [ ] **Step 8: Post-merge — refresh main and verify Internal Donny**
 
