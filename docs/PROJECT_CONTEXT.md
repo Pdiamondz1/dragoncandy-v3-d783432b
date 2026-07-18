@@ -1350,8 +1350,21 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   no red tone; starter/growth tier badges kept distinct). Founder scope call: **Outstand deferred to a
   Phase 4** (~51 files, per-instance social-platform-color judgment). Scope guards held — `AvatarCropModal`
   (dark-onboarding-shared), `PricingPage`, and the public customer funnel all verified absent from the
-  diff. Codex-clean; 983/983 tests; residual-grep zero. **Phase 4 (deferred): the Outstand
-  social-integration surface only.** Concept: `docs/wiki/concepts/light-app-kit.md`. Spec:
+  diff. Codex-clean; 983/983 tests; residual-grep zero.
+  **Phase 4 shipped + deployed (PR #288, 2026-07-18)** — the FINAL surface group: the ~47-file **Outstand**
+  social-integration surface, in 6 reviewed sub-batches. Its own phase because Outstand's blue/purple/red
+  MIX **social-platform BRAND colors (KEEP)** with off-brand accents → per-instance judgment, not
+  find-replace. Kept: the `socialNetworks.ts` map + IG gradient + `x bg-gray-800` + all platform tints,
+  chart data-viz colors, money-flow (DragonDash rush), `VerifiedBadge`/`CrossPostPrompt` (NO-CHANGE).
+  Codex-clean; 983/983 tests; residual-sweep zero. **All four surface groups now on the kit.**
+  **Backgrounds + off-brand-accents cleanup shipped + deployed (PR #289, 2026-07-18)** — a cross-app pass
+  (founder directive: prioritize backgrounds + off-brand accents) fixing what the surfaces/badges rule
+  left: panel `bg-muted`/`bg-gray-*` backgrounds → `bg-dc-teal/[0.04]` inset, and off-brand blue/purple/
+  indigo accents → teal/pink (keystone: the blue/indigo sponsorship cards), across the campaign builder,
+  application/matching cards, messaging sub-panels, Donny chat, files/projects, modals. Audit finding:
+  **no full-page washes remained** — all panel-level. 55 files, 4 reviewed sub-batches; Codex-clean;
+  983/983 tests; residual-sweep zero. **The entire light app — every panel and accent, not just
+  cards/badges — is now on-brand.** Concept: `docs/wiki/concepts/light-app-kit.md`. Spec:
   `docs/superpowers/specs/2026-07-17-light-theme-polish-phase1-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time

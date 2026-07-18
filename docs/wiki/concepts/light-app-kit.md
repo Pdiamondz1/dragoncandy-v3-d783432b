@@ -3,7 +3,7 @@ title: Light-App Kit
 type: concept
 created: 2026-07-18
 updated: 2026-07-18
-sources: [2026-07-18-light-theme-polish-phase1.md, 2026-07-18-light-theme-polish-phase2.md, 2026-07-18-light-theme-polish-phase3.md]
+sources: [2026-07-18-light-theme-polish-phase1.md, 2026-07-18-light-theme-polish-phase2.md, 2026-07-18-light-theme-polish-phase3.md, 2026-07-18-light-theme-polish-phase4.md, 2026-07-18-degray-backgrounds-accents.md]
 tags: [design-system, ui, tailwind, consistency, frontend, light-theme]
 ---
 # Light-App Kit
@@ -86,9 +86,25 @@ keep `text-white` that sits on a colored button/badge/avatar.
   `CGCPostingPreferences`; `StripeConnectSetup` chrome-only), **Promotions** (cards → `AppCard`, tabs →
   `AppChip`, pills → `AppStatusBadge`), and **Org/Billing/Payments** (money-flow styling-only; failure
   red + semantic payment colors kept; tier badges de-grayed with starter/growth kept distinct).
-- **Phase 4** (deferred): the **Outstand** social-integration surface only (~51 files; its social-platform
-  brand colors need per-instance judgment, so it's a dedicated effort, likely sub-split). Everything else
-  in the light app is now on the kit.
+- **Phase 4** (shipped, PR #288, [[Light-Theme Polish Phase 4 Session]]): the **Outstand**
+  social-integration surface (~47 files, 6 reviewed sub-batches). Its blue/purple/red are a MIX of
+  social-platform BRAND colors (KEEP) + off-brand accents (convert), so it needed **per-instance judgment,
+  not find-replace** — the reason it was its own phase. Chart data-viz colors and money-flow (DragonDash
+  rush) preserved. **With Phase 4, all four surface groups are on the kit.**
+- **Backgrounds + off-brand-accents cleanup** (shipped, PR #289,
+  [[De-gray Backgrounds & Off-Brand Accents]]): a cross-app pass after the phases, prioritizing the two
+  highest-impact categories the surfaces/badges rule left — **panel `bg-muted`/`bg-gray-*` backgrounds** →
+  `bg-dc-teal/[0.04]` inset and **off-brand blue/purple/indigo accents** → teal/pink (keystone: the
+  blue/indigo sponsorship cards). Extended the palette to `bg-muted` (but NOT inside shadcn `ui/*`).
+  **With this, the entire light app — every panel and accent, not just cards/badges — is on-brand.**
+
+## The de-gray palette also covers `bg-muted`
+`bg-muted`/`bg-muted/NN` is a shadcn semantic token that resolves to a near-white **warm gray** in light
+mode, so a `bg-muted` PANEL fill reads as an unstyled gray surface → convert to `bg-dc-teal/[0.04]` inset
+(or `AppCard variant="inset"`). **Exception: `bg-muted` inside `src/components/ui/*` primitives stays** —
+those are theme-aware base components shared with the dark surfaces. And a `bg-dc-teal/[0.04]` inset tint
+is calibrated for a WHITE surface — over a colored bubble/fill it vanishes, so use a translucent overlay
+(`bg-white/40` on a light bubble, mirroring `bg-white/15` on a dark one) there instead.
 
 ## See Also
 - The `DESIGN_SYSTEM.md` core doc — "Shared light-app kit" section + the clean-white background table.
