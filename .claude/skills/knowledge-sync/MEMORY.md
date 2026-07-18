@@ -107,6 +107,30 @@
   features. Only mint a separate page when the new work is a genuinely distinct *subject*, not just
   the next chapter of a story you already started. (advisory — reinforces the existing "close the
   prediction" + compound-onto-hub Lessons with the sharper case of a same-session/next-day pair.)
+### [2026-07-18] Light-theme polish Phase 1 (PR #280 → paired docs PR)
+- Output: paired docs PR off origin/main — new `raw/sessions/2026-07-18-light-theme-polish-phase1.md`,
+  new `concepts/light-app-kit.md`, `index.md` (Concepts + Sources, alphabetical in the L cluster),
+  `log.md` ingest entry, PROJECT_CONTEXT workstream bullet, + THIS entry. **DESIGN_SYSTEM.md was already
+  refreshed IN the code PR #280** (the design-token/UI-pattern change rode with the code) — so this docs
+  PR does NOT re-touch it (avoids a stale-vs-fresh conflict).
+- Happened: a UI-quality feature (a shared primitive kit + de-gray) → wrote a NEW concept
+  ([[Light-App Kit]]) distinct from [[Dark-Luxe App Theme]] (that's the dark surfaces; this is the light
+  app's kit) and cross-linked both + [[App Theme Pivot Session]]. Reset the worktree to a fresh docs
+  branch off origin/main first (per [scope]; the code branch is squash-diverged). RAG sync +
+  [[verify-knowledge]] post-merge via the hook.
+- Worked: [scope] + [runlog-in-pr] + [orphans]-by-path (new concept + session both cataloged in
+  index.md). [wikilinks]-exact (grepped index.md: [[Dark-Luxe App Theme]] / [[App Theme Pivot Session]]
+  confirmed; alphabetical inserts "Li" before the "Lo"/"Loop" cluster). Captured the durable *kit +
+  gotchas* (nested-button, AppCard-p0-over-shadcn-Card, invisible-text-white) as concept knowledge, not
+  "we restyled some screens." Noted DESIGN_SYSTEM already shipped in the code PR so this PR skips it.
+- Failed: none for knowledge-sync. (Authenticated dashboards verified by the founder on prod — Claude
+  can't sign in; the recurring auth-gated-verify wall.)
+- Remember: when the code PR ALREADY carries a core-doc refresh (here DESIGN_SYSTEM.md rode with #280
+  because a design-system change is part of the feature diff), the paired docs PR must **NOT** re-edit
+  that core doc — check `git log <base>..HEAD -- docs/DESIGN_SYSTEM.md` before touching it, or you
+  reintroduce a stale version / conflict. A UI-polish session's durable knowledge is the *kit + its
+  gotchas* (a concept page), not the per-screen sweep. (advisory)
+
 ### [2026-07-17] App theme PIVOT — light app + dark marketing (PRs #275/#277 → paired docs PR)
 - Output: paired docs PR — new `raw/sessions/2026-07-17-app-light-marketing-dark-pivot.md`, **REWROTE**
   `concepts/dark-luxe-app-theme.md` (force-dark → light-app-dark-marketing), `index.md` (new source +
