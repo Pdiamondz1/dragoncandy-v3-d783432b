@@ -1,5 +1,21 @@
 # Wiki Log
 
+## [2026-07-18] ingest | Light-theme polish Phase 2
+Ingested [[Light-Theme Polish Phase 2 Session]] (PR #282, deployed). Pure **rollout** of the Phase-1
+[[Light-App Kit]] onto the three surface groups Phase 1 deferred — no new primitives. **Messaging:**
+retired the `bg-teal-50` "teal island" page bg → clean white + `PageBody`, `teal-50` wash panels →
+`bg-dc-teal/[0.04]` inset tint ("subtle separation, not a full wash"), input/presence/status de-gray;
+chat bubbles (pink inbound / teal outbound) untouched. **DragonShare + Dragon Feed:** `PageBody`/
+`AppCard`/`AppChip` for card + filter-chip consistency. **Public profiles:** `AppCard`/`AppStatusBadge`,
+pink hero + white text untouched, Busy badge → `tone="neutral"` (green "Available" kept), skeleton/
+placeholder fills + Message-button border de-grayed. Surfaced + captured the **third kit gotcha** on
+[[Light-App Kit]]: `AppCard` is not a `forwardRef` component, so a card that needs a `ref`
+(`PublicBusinessProfile`'s `reviewsRef` scroll target) keeps the ref on a plain `<div>`. Presentational
+only; Codex-clean, residual-grep zero; public profile visually checkpointed on prod. Pages updated:
+concepts/light-app-kit.md (third gotcha + Rollout Phase 2 + defensible-keeps), index.md (Sources + the
+[[Light-App Kit]] Concepts entry). Core doc: PROJECT_CONTEXT (Phase-2 note on the light-theme bullet).
+RAG sync + verify-knowledge run post-merge (post-merge hook fires on the `main` fast-forward).
+
 ## [2026-07-18] ingest | Light-theme polish Phase 1
 Ingested [[Light-Theme Polish Phase 1 Session]] (PR #280, deployed). New concept [[Light-App Kit]]. After
 the app went light ([[App Theme Pivot Session]]), the reverted app was unpolished — no shared primitives,

@@ -30,6 +30,30 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-18] Light-theme polish Phase 2 (PR #282 → paired docs)
+- Output: bundled INTO this docs PR — new `raw/sessions/2026-07-18-light-theme-polish-phase2.md`,
+  UPDATED `concepts/light-app-kit.md` (added the 3rd gotcha `AppCard`-not-`forwardRef`, extended the
+  Rollout section to Phase 1/2/3, added the green-"Available"/chat-bubble defensible keeps), `index.md`
+  (new Sources line, alphabetical after Phase 1; refreshed the `[[Light-App Kit]]` Concepts entry),
+  `log.md` (new ingest entry at top), PROJECT_CONTEXT (Phase-2 note appended to the existing
+  light-theme bullet — NOT a new bullet), + THIS entry. No DATABASE_SCHEMA/DESIGN_SYSTEM/CLAUDE.md
+  change (frontend-only presentational rollout; no schema/token/workflow change).
+- Happened: knowledge-sync for a **Phase-2 rollout** of an already-documented pattern
+  ([[Light-App Kit]] from PR #280). Correctly **compounded, didn't duplicate** — no new concept page;
+  updated the existing kit page's Rollout + gotchas rather than spawning a thin "phase 2" page. The
+  one genuinely-new durable fact (AppCard is not forwardRef) went into the kit's gotchas list as gotcha
+  #3, not just the raw session, so future kit adopters see it.
+- Worked: [scope] verified all 5 touched docs were byte-IDENTICAL to origin/main before editing (the
+  squash-merged phase-2 branch had the same doc base). [runlog-in-pr] entry bundled. [wikilinks]-exact:
+  grepped index.md — `[[Light-App Kit]]`, `[[Light-Theme Polish Phase 1 Session]]`, `[[Dragon Feed]]`
+  confirmed present; the new `[[Light-Theme Polish Phase 2 Session]]` self-registers via its index line.
+  Read the real 3-commit diff (`git show`) not just the task summary — that's where the exact de-gray
+  class swaps (`bg-stone-100`→`bg-white border-dc-teal/20`, `bg-gray-300`→`bg-dc-teal/10`) and the
+  forwardRef commit-message note came from verbatim.
+- Failed: none for knowledge-sync. (Authenticated messaging/DragonShare dashboards remain
+  founder-verified only — Claude can't sign in; the public creator profile WAS screenshot-checkpointed
+  on prod. Same known auth-gated-verify gap as every prior app-surface session, not glossed.)
+
 ### [2026-07-17] Landing backdrop HEVC .mov fix (PR #273 → paired docs)
 - Output: bundled INTO the work — `raw/sessions/2026-07-17-landing-backdrop-mov-fix.md`,
   **corrected in place** `concepts/landing-cinematic-video-redesign.md` (the "DragonFeed Backdrop
