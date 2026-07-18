@@ -21,6 +21,26 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-18] Light-theme polish Phase 2 knowledge-sync validation (PR #282 code + PR #283 docs)
+- Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for the light-theme
+  polish Phase 2 session.
+- Happened: (a) wiki lint — path-based orphan/index-completeness check clean (0 across
+  concepts+entities+analyses on origin/main), no contradictions (compounded onto
+  [[Light-App Kit]] — extended its Rollout to Phase 1/2/3 + added the 3rd gotcha; no new page);
+  (b) raw `RAG_LAST` 2026-07-18T16:47:43Z vs `LAST_WIKI_SYNC` 2026-07-18T17:55:13Z (~1h, well
+  <24h) AND the post-merge hook synced errors=0 with `content ilike '%reviewsRef%'` = 2 +
+  `%is not a %forwardRef%component%` = 2 confirming the new gotcha text is in `donny_knowledge`
+  → [freshness-proxy], (b) met; (c) the updated `concepts/light-app-kit.md` is in index.md + the
+  `[2026-07-18] ... Light-theme polish Phase 2` log.md ingest entry names it.
+- Worked: [freshness-proxy] applied cleanly on an UPDATE-only compound sync — `reviewsRef` is
+  unique to the new gotcha #3 text within the synced wiki dirs, so the RAG hit is unambiguous
+  despite the ~1h-stale raw `max(updated_at)`. Docs-only PR #283 skipped Codex per convention.
+- Failed: none (validator). The run is inherently post-merge (PR #283 already merged), so this
+  entry strands on the worktree → persisted via a dedicated `chore/verify-knowledge-runlog-283`
+  PR (the documented pattern when there's no work branch to bundle into).
+- Remember: re-confirms [freshness-proxy] + the post-merge-strand → dedicated-chore-PR pattern
+  for a rollout-phase (compound, no net-new page) knowledge-sync. (advisory)
+
 ### [2026-07-16] Donny desktop fixed-overlay knowledge-sync validation (PRs #236/#237)
 - Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for the Donny desktop
   fixed-overlay fix.
