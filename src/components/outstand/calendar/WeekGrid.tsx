@@ -51,7 +51,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({ posts, weekStart, onReschedu
   }, [posts, weekDates, onReschedule]);
 
   return (
-    <div className="hidden md:grid grid-cols-7 min-h-[320px] border-t border-gray-100">
+    <div className="hidden md:grid grid-cols-7 min-h-[320px] border-t border-dc-teal/10">
       {weekDates.map((day, i) => {
         const dayPosts = postsForDay(posts, day);
         const isToday = isSameDay(day, today);
@@ -60,7 +60,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({ posts, weekStart, onReschedu
         return (
           <div
             key={day.toISOString()}
-            className={`border-r border-gray-100 last:border-r-0 p-1.5 transition-colors ${isDragTarget ? 'bg-dc-teal/5' : ''}`}
+            className={`border-r border-dc-teal/10 last:border-r-0 p-1.5 transition-colors ${isDragTarget ? 'bg-dc-teal/5' : ''}`}
             onDragOver={(e) => handleDragOver(e, i)}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, i)}

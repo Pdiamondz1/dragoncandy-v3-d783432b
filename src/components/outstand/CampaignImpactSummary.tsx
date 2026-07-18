@@ -1,6 +1,7 @@
 import React from 'react';
 import { type BrandSponsorshipAnalytics } from '@/hooks/outstand/useBrandSponsorshipAnalytics';
 import { TrendingUp, Users, BarChart3 } from 'lucide-react';
+import { AppCard } from '@/components/app/AppCard';
 
 interface CampaignImpactSummaryProps {
   sponsorship?: BrandSponsorshipAnalytics;
@@ -9,15 +10,15 @@ interface CampaignImpactSummaryProps {
 export const CampaignImpactSummary: React.FC<CampaignImpactSummaryProps> = ({ sponsorship }) => {
   if (!sponsorship) {
     return (
-      <div className="bg-white rounded-2xl p-4 border border-gray-200 mb-4 text-center">
+      <AppCard className="p-4 mb-4 text-center">
         <h3 className="text-xs font-bold text-dc-teal uppercase tracking-wider mb-2">Campaign Impact</h3>
         <p className="text-sm text-gray-400">Select a sponsorship to view impact metrics.</p>
-      </div>
+      </AppCard>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl p-4 border border-gray-200 mb-4">
+    <AppCard className="p-4 mb-4">
       <h3 className="text-xs font-bold text-dc-teal uppercase tracking-wider mb-3">Campaign Impact</h3>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="text-center">
@@ -49,7 +50,7 @@ export const CampaignImpactSummary: React.FC<CampaignImpactSummaryProps> = ({ sp
         ].map(({ label, color, name }) => (
           <div key={label} className="flex items-center gap-2">
             <span className="text-[10px] text-gray-500 w-16 text-right">{name}</span>
-            <div className="flex-1 bg-gray-100 rounded-full h-2">
+            <div className="flex-1 bg-dc-teal/[0.04] rounded-full h-2">
               <div className={`${color} rounded-full h-2 w-0`} />
             </div>
             <span className="text-[10px] text-gray-400 w-8">--</span>
@@ -60,6 +61,6 @@ export const CampaignImpactSummary: React.FC<CampaignImpactSummaryProps> = ({ sp
       <p className="text-[10px] text-gray-300 text-center mt-3 italic">
         Analytics will populate as posts are tracked across all parties
       </p>
-    </div>
+    </AppCard>
   );
 };

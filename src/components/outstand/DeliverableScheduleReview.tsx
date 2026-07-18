@@ -77,7 +77,7 @@ export const DeliverableScheduleReview: React.FC<DeliverableScheduleReviewProps>
 
   return (
     <div className="space-y-3">
-      <div className="bg-teal-50/50 rounded-xl p-3">
+      <div className="bg-dc-teal/[0.04] rounded-xl p-3">
         <p className="text-[10px] font-semibold uppercase text-dc-teal tracking-wide mb-2">
           Schedule Deliverables
         </p>
@@ -91,7 +91,7 @@ export const DeliverableScheduleReview: React.FC<DeliverableScheduleReviewProps>
           type="checkbox"
           checked={sameDay}
           onChange={(e) => handleSameDayToggle(e.target.checked)}
-          className="rounded border-gray-300 text-dc-teal focus:ring-dc-teal"
+          className="rounded border-dc-teal/30 text-dc-teal focus:ring-dc-teal"
         />
         <span className="text-xs text-gray-600">Schedule all on same day</span>
       </label>
@@ -102,10 +102,10 @@ export const DeliverableScheduleReview: React.FC<DeliverableScheduleReviewProps>
           const filename = getFilename(slot.mediaItem);
 
           return (
-            <div key={index} className="bg-white border border-gray-200 rounded-xl p-3">
+            <div key={index} className="bg-white border border-dc-teal/15 rounded-xl p-3">
               <div className="flex items-start gap-3">
                 {/* Thumbnail */}
-                <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                <div className="w-12 h-12 rounded-lg overflow-hidden bg-dc-teal/[0.04] flex-shrink-0">
                   {isVideo ? (
                     <VideoFrameThumbnail
                       fileId={slot.mediaItem.fileId ?? ''}
@@ -138,7 +138,7 @@ export const DeliverableScheduleReview: React.FC<DeliverableScheduleReviewProps>
                   type="datetime-local"
                   value={toDatetimeLocal(new Date(slot.scheduledAt))}
                   onChange={(e) => handleTimeChange(index, e.target.value)}
-                  className="text-[11px] text-gray-700 border border-gray-200 rounded-lg px-2 py-1.5 w-full focus:outline-none focus:ring-1 focus:ring-dc-teal"
+                  className="text-[11px] text-gray-700 border border-dc-teal/20 rounded-lg px-2 py-1.5 w-full focus:outline-none focus:ring-1 focus:ring-dc-teal"
                 />
               </div>
 
@@ -157,7 +157,7 @@ export const DeliverableScheduleReview: React.FC<DeliverableScheduleReviewProps>
         type="button"
         onClick={onScheduleAll}
         disabled={isScheduling || slots.length === 0}
-        className="w-full flex items-center justify-center gap-2 bg-dc-teal text-white text-sm font-bold py-3.5 rounded-full hover:bg-teal-500 transition-colors disabled:opacity-50"
+        className="w-full flex items-center justify-center gap-2 bg-dc-teal-btn text-white text-sm font-bold py-3.5 rounded-full hover:bg-dc-teal-btn-hover transition-colors disabled:opacity-50"
       >
         {isScheduling ? (
           <>

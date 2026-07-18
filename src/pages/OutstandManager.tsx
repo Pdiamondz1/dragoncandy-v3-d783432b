@@ -191,7 +191,7 @@ const OutstandManagerInner: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab('accounts')}
-            className="bg-white rounded-2xl p-4 border-2 border-dc-teal text-left cursor-pointer hover:shadow-md transition-shadow"
+            className="bg-white rounded-2xl p-4 border-2 border-dc-teal shadow-dc-sm text-left cursor-pointer hover:shadow-md transition-shadow"
           >
             <p className="text-3xl font-extrabold text-gray-900">{connectedCount}</p>
             <p className="text-xs text-gray-500">Connected Accounts</p>
@@ -199,7 +199,7 @@ const OutstandManagerInner: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab('calendar')}
-            className="bg-white rounded-2xl p-4 border-2 border-dc-teal text-left cursor-pointer hover:shadow-md transition-shadow"
+            className="bg-white rounded-2xl p-4 border-2 border-dc-teal shadow-dc-sm text-left cursor-pointer hover:shadow-md transition-shadow"
           >
             <p className="text-3xl font-extrabold text-gray-900">{scheduledCount}</p>
             <p className="text-xs text-gray-500">Scheduled Posts</p>

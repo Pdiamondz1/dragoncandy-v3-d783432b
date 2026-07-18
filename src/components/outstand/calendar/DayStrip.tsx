@@ -46,7 +46,7 @@ export const DayStrip: React.FC<DayStripProps> = ({
   return (
     <div className="md:hidden">
       {/* Horizontal day strip */}
-      <div className="flex border-b border-gray-200 overflow-x-auto">
+      <div className="flex border-b border-dc-teal/15 overflow-x-auto">
         {weekDates.map((day, i) => {
           const isSelected = isSameDay(day, selectedDay);
           const isToday = isSameDay(day, today);
@@ -107,7 +107,7 @@ export const DayStrip: React.FC<DayStripProps> = ({
             <button
               type="button"
               onClick={onScheduleClick}
-              className="bg-dc-teal text-white rounded-full px-5 py-2 text-xs font-semibold inline-flex items-center gap-1"
+              className="bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white rounded-full px-5 py-2 text-xs font-semibold inline-flex items-center gap-1"
             >
               <Plus className="h-3 w-3" /> Schedule a Post
             </button>

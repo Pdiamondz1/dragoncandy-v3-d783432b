@@ -52,7 +52,7 @@ export const MediaPreviewGrid: React.FC<MediaPreviewGridProps> = ({ items, class
     <div className={className}>
       {/* Hero frame — 1:1 square */}
       <div className="flex justify-center mb-2">
-        <div className="w-[200px] h-[200px] lg:w-[200px] lg:h-[200px] w-full aspect-square max-w-[280px] rounded-xl overflow-hidden relative bg-gray-900">
+        <div className="w-[200px] h-[200px] lg:w-[200px] lg:h-[200px] w-full aspect-square max-w-[280px] rounded-xl overflow-hidden relative bg-dc-teal/[0.04]">
           {heroError ? (
             <div className="w-full h-full bg-gradient-to-br from-dc-teal via-dc-pink/40 to-dc-teal-dark flex items-center justify-center">
               <img src={logo} alt="Dragon Candy" className="w-12 h-12 opacity-70" />
@@ -93,7 +93,7 @@ export const MediaPreviewGrid: React.FC<MediaPreviewGridProps> = ({ items, class
                 type="button"
                 onClick={() => setSelectedIndex(i)}
                 className={`w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 relative ${
-                  active ? 'ring-2 ring-dc-teal' : 'ring-1 ring-gray-200'
+                  active ? 'ring-2 ring-dc-teal' : 'ring-1 ring-dc-teal/15'
                 }`}
               >
                 {thumbErrors.has(i) ? (

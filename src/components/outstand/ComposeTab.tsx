@@ -5,6 +5,7 @@ import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { Share2 } from 'lucide-react';
 import { CustomComposeForm } from './CustomComposeForm';
 import { useOutstandPaths } from '@/hooks/outstand/useOutstandPaths';
+import { AppCard } from '@/components/app/AppCard';
 
 interface ComposeTabProps {
   accounts: SocialAccount[];
@@ -35,8 +36,8 @@ export const ComposeTab: React.FC<ComposeTabProps> = ({ accounts, accountsLoadin
   }
 
   return (
-    <div className="bg-white rounded-2xl p-4 border-2 border-dc-teal">
+    <AppCard variant="emphasis">
       <CustomComposeForm accounts={accounts} onPosted={(_post, wasScheduled) => onPosted?.(wasScheduled)} />
-    </div>
+    </AppCard>
   );
 };

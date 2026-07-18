@@ -100,7 +100,7 @@ export const DayGrid: React.FC<DayGridProps> = ({
         </div>
       )}
 
-      <div className="border border-gray-100 rounded-xl overflow-hidden">
+      <div className="border border-dc-teal/10 rounded-xl overflow-hidden">
         {HOURS.map((hour) => {
           const hourPosts = dayPosts.filter((p) => getPostHour(p) === hour);
           const isDragTarget = dragOverHour === hour;
@@ -108,12 +108,12 @@ export const DayGrid: React.FC<DayGridProps> = ({
           return (
             <div
               key={hour}
-              className={`flex border-b border-gray-50 last:border-b-0 min-h-[48px] transition-colors ${isDragTarget ? 'bg-dc-teal/5' : ''}`}
+              className={`flex border-b border-dc-teal/10 last:border-b-0 min-h-[48px] transition-colors ${isDragTarget ? 'bg-dc-teal/5' : ''}`}
               onDragOver={(e) => handleDragOver(e, hour)}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, hour)}
             >
-              <div className="w-16 flex-shrink-0 text-[10px] font-semibold text-gray-400 py-2 px-2 border-r border-gray-100 text-right">
+              <div className="w-16 flex-shrink-0 text-[10px] font-semibold text-gray-400 py-2 px-2 border-r border-dc-teal/10 text-right">
                 {formatHourLabel(hour)}
               </div>
               <div className="flex-1 py-1 px-2 flex flex-wrap gap-1.5">

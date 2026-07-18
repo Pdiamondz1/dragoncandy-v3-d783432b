@@ -59,7 +59,7 @@ export function DCNetworkSelector({ accounts, selectedIds, onChange, className }
                 'flex items-center gap-3 p-3 rounded-lg border transition-all',
                 isSelected
                   ? 'border-dc-teal bg-dc-teal/5'
-                  : 'border-gray-200 hover:border-gray-400',
+                  : 'border-dc-teal/15 hover:border-dc-teal/40',
               )}
             >
               <SocialAccountAvatar
@@ -76,7 +76,7 @@ export function DCNetworkSelector({ accounts, selectedIds, onChange, className }
               <div
                 className={cn(
                   'w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0',
-                  isSelected ? 'border-dc-teal bg-dc-teal' : 'border-gray-300',
+                  isSelected ? 'border-dc-teal bg-dc-teal' : 'border-dc-teal/30',
                 )}
               >
                 {isSelected && (

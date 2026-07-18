@@ -13,6 +13,8 @@ import { useAssignAccountLocation } from '@/hooks/outstand/useAssignAccountLocat
 import { Globe, MapPin, Unplug } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { AppCard } from '@/components/app/AppCard';
+import { AppStatusBadge } from '@/components/app/AppStatusBadge';
 
 const SUPPORTED_NETWORKS: SocialNetwork[] = ['facebook', 'instagram', 'tiktok', 'x', 'youtube'];
 
@@ -119,7 +121,7 @@ export const AccountsTab: React.FC = () => {
 
       {activeOrgUnit ? (
         <>
-          <div className="bg-white rounded-2xl p-4 border-2 border-dc-teal">
+          <AppCard variant="emphasis">
             <h2 className="text-base font-bold text-gray-900">Connect a network</h2>
             <p className="text-xs text-gray-500 mt-1 mb-4">
               Connect your social accounts so you can publish, schedule, and respond to comments from one place.
@@ -165,9 +167,9 @@ export const AccountsTab: React.FC = () => {
               }}
             />
             )}
-          </div>
+          </AppCard>
 
-          <div className="bg-white rounded-2xl p-4 border-2 border-dc-teal">
+          <AppCard variant="emphasis">
             <h2 className="text-base font-bold text-gray-900">Connected accounts</h2>
             <p className="text-xs text-gray-500 mt-1 mb-4">
               Disconnect any account you no longer want to publish to.
@@ -179,18 +181,18 @@ export const AccountsTab: React.FC = () => {
                 toast.success('Account disconnected.');
               }}
             />
-          </div>
+          </AppCard>
         </>
       ) : (
         <>
-          <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200">
+          <div className="bg-dc-teal/[0.04] rounded-2xl p-4 border border-dc-teal/15">
             <div className="flex items-center gap-2 text-gray-500">
               <Globe className="h-4 w-4" />
               <p className="text-sm">Switch to a specific location to connect new accounts.</p>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-4 border-2 border-dc-teal">
+          <AppCard variant="emphasis">
             <h2 className="text-base font-bold text-gray-900">All connected accounts</h2>
             <p className="text-xs text-gray-500 mt-1 mb-4">
               Accounts across all your locations. Change location or disconnect from here.
@@ -200,7 +202,7 @@ export const AccountsTab: React.FC = () => {
             ) : (
               <div className="space-y-2">
                 {allAccounts.map((acct) => (
-                  <div key={acct.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div key={acct.id} className="flex items-center gap-3 p-3 bg-dc-teal/[0.04] rounded-lg">
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${PLATFORM_COLORS[acct.platform] ?? 'bg-gray-100 text-gray-700'}`}>
                       {acct.platform}
                     </span>
@@ -208,10 +210,10 @@ export const AccountsTab: React.FC = () => {
                       {acct.platform_handle || acct.outstand_social_account_id}
                     </span>
                     {acct.org_unit_name && (
-                      <span className="flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                      <AppStatusBadge tone="neutral" className="gap-1">
                         <MapPin className="h-3 w-3" />
                         {acct.org_unit_name}
-                      </span>
+                      </AppStatusBadge>
                     )}
                     <Select
                       value={acct.org_unit_id ?? ''}
@@ -247,25 +249,25 @@ export const AccountsTab: React.FC = () => {
                 ))}
               </div>
             )}
-          </div>
+          </AppCard>
         </>
       )}
 
       {isBrand && (
-        <div className="bg-white rounded-2xl p-4 border-2 border-dc-teal">
+        <AppCard variant="emphasis">
           <h2 className="text-base font-bold text-gray-900 mb-3">Brand Guidelines</h2>
           <p className="text-xs text-gray-500 mb-4">
             These guidelines are auto-applied when amplifying sponsored content.
           </p>
           <BrandGuidelinesEditor />
-        </div>
+        </AppCard>
       )}
 
-      <div className="bg-white rounded-2xl p-4 border border-gray-200">
+      <AppCard>
         <h2 className="text-base font-bold text-gray-900 mb-3">Posting Permissions</h2>
         <p className="text-xs text-gray-500 mb-4">Manage who can post on behalf of your accounts.</p>
         <DelegatedPostingPermissions />
-      </div>
+      </AppCard>
     </div>
   );
 };

@@ -65,7 +65,7 @@ function isVideoMedia(m: PostMedia): boolean {
 const MediaStripItem: React.FC<{ media: PostMedia }> = ({ media: m }) => {
   const [error, setError] = useState(false);
   return (
-    <div className="relative shrink-0 w-20 h-20 rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
+    <div className="relative shrink-0 w-20 h-20 rounded-xl overflow-hidden bg-dc-teal/[0.04] border border-dc-teal/15">
       {error ? (
         <div className="w-full h-full bg-gradient-to-br from-dc-teal via-dc-pink/40 to-dc-teal-dark flex items-center justify-center">
           <img src={logo} alt="Dragon Candy" className="w-6 h-6 opacity-70" />

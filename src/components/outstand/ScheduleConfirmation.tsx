@@ -98,7 +98,7 @@ export const ScheduleConfirmation: React.FC<ScheduleConfirmationProps> = ({
             onDone();
             navigate(`/calendar?date=${encodeURIComponent(earliestPost.scheduledAt)}`);
           }}
-          className="w-full flex items-center justify-center gap-2 bg-dc-teal text-white text-sm font-bold py-3.5 rounded-full hover:bg-teal-500 transition-colors"
+          className="w-full flex items-center justify-center gap-2 bg-dc-teal-btn text-white text-sm font-bold py-3.5 rounded-full hover:bg-dc-teal-btn-hover transition-colors"
         >
           <CalendarDays className="h-4 w-4" />
           View on Calendar
@@ -106,7 +106,7 @@ export const ScheduleConfirmation: React.FC<ScheduleConfirmationProps> = ({
         <button
           type="button"
           onClick={onDone}
-          className="w-full py-3 rounded-full bg-white text-dc-text-muted text-sm font-semibold border border-gray-200 hover:bg-gray-50 transition-colors"
+          className="w-full py-3 rounded-full bg-white text-dc-text-muted text-sm font-semibold border border-dc-teal/15 hover:bg-dc-teal/[0.04] transition-colors"
         >
           Done
         </button>

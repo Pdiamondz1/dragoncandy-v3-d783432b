@@ -10,6 +10,7 @@ import { TopPosts } from './analytics/TopPosts';
 import { PostingHeatmap } from './analytics/PostingHeatmap';
 import { FollowerChart } from './analytics/FollowerChart';
 import { DonnyPerformanceInsights } from './DonnyPerformanceInsights';
+import { AppChip } from '@/components/app/AppChip';
 
 type TimeRange = '7d' | '30d' | '90d';
 
@@ -81,31 +82,27 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ accounts, posts, acc
       <div className="flex items-center justify-between">
         <div className="flex gap-1">
           {ranges.map((r) => (
-            <button
+            <AppChip
               key={r}
-              type="button"
               aria-pressed={timeRange === r}
+              active={timeRange === r}
               onClick={() => setTimeRange(r)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
-                timeRange === r ? 'bg-dc-teal text-white' : 'bg-gray-100 text-gray-600'
-              }`}
+              className="px-3 text-xs"
             >
               {r}
-            </button>
+            </AppChip>
           ))}
         </div>
         <div className="flex gap-1 overflow-x-auto">
           {PLATFORM_FILTERS.map((f) => (
-            <button
+            <AppChip
               key={f.key}
-              type="button"
+              active={platformFilter === f.key}
               onClick={() => setPlatformFilter(f.key)}
-              className={`text-[10px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${
-                platformFilter === f.key ? 'bg-dc-teal text-white' : 'bg-gray-100 text-gray-600'
-              }`}
+              className="px-2.5 py-1 text-[10px] whitespace-nowrap"
             >
               {f.label}
-            </button>
+            </AppChip>
           ))}
         </div>
       </div>

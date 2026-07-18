@@ -3,6 +3,7 @@ import { type BrandSponsorshipAnalytics } from '@/hooks/outstand/useBrandSponsor
 import { ThumbsUp, Sparkles, FileText, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { AppCard } from '@/components/app/AppCard';
 
 interface SponsorshipROISummaryProps {
   sponsorship: BrandSponsorshipAnalytics;
@@ -32,15 +33,15 @@ export const SponsorshipROISummary: React.FC<SponsorshipROISummaryProps> = ({ sp
 
   if (!isCompleted && sponsorship.status !== 'active' && sponsorship.status !== 'accepted') {
     return (
-      <div className="bg-white rounded-2xl p-6 border border-gray-200 text-center">
+      <AppCard pad="6" className="text-center">
         <p className="text-gray-500 text-sm">Complete a sponsorship to see your first ROI report.</p>
-      </div>
+      </AppCard>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-2xl p-4 border border-gray-200">
+      <AppCard className="p-4">
         <h3 className="font-bold text-sm text-gray-900 mb-3">{sponsorship.campaignTitle}</h3>
         <div className="grid grid-cols-3 gap-3 mb-4">
           <div className="text-center">
@@ -58,15 +59,15 @@ export const SponsorshipROISummary: React.FC<SponsorshipROISummaryProps> = ({ sp
         </div>
 
         <div className="grid grid-cols-3 gap-2 text-center text-xs mb-4">
-          <div className="bg-gray-50 rounded-xl p-2">
+          <div className="bg-dc-teal/[0.04] rounded-xl p-2">
             <p className="font-semibold text-gray-700">Restaurant</p>
             <p className="text-gray-400 mt-1">-- posts</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-2">
+          <div className="bg-dc-teal/[0.04] rounded-xl p-2">
             <p className="font-semibold text-gray-700">Creator</p>
             <p className="text-gray-400 mt-1">-- posts</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-2">
+          <div className="bg-dc-teal/[0.04] rounded-xl p-2">
             <p className="font-semibold text-gray-700">Brand</p>
             <p className="text-gray-400 mt-1">-- posts</p>
           </div>
@@ -79,7 +80,7 @@ export const SponsorshipROISummary: React.FC<SponsorshipROISummaryProps> = ({ sp
           </div>
         )}
 
-        <div className="flex items-center gap-2 bg-gray-50 rounded-xl p-3 mb-3">
+        <div className="flex items-center gap-2 bg-dc-teal/[0.04] rounded-xl p-3 mb-3">
           <ThumbsUp className={`h-4 w-4 ${isRecommended ? 'text-dc-teal' : 'text-gray-400'}`} />
           <span className="text-xs text-gray-600">
             Sponsor Again?{' '}
@@ -101,9 +102,9 @@ export const SponsorshipROISummary: React.FC<SponsorshipROISummaryProps> = ({ sp
             Generate ROI Report
           </Button>
         </div>
-      </div>
+      </AppCard>
 
-      <div className="bg-gray-50 rounded-2xl p-4 border border-dashed border-gray-300 text-center">
+      <div className="bg-dc-teal/[0.04] rounded-2xl p-4 border border-dashed border-dc-teal/15 text-center">
         <Sparkles className="h-5 w-5 text-gray-300 mx-auto mb-2" />
         <p className="text-xs text-gray-400">Detailed AI-generated insights coming soon</p>
         <p className="text-[10px] text-gray-300 mt-1">Donny AI will analyze cross-party performance and recommend next steps</p>

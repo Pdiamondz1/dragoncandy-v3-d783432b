@@ -37,7 +37,7 @@ export const FollowerChart: React.FC<FollowerChartProps> = ({ platforms }) => {
   return (
     <div className="hidden md:block">
       <div className="text-sm font-bold text-gray-900 mb-3">Follower Growth</div>
-      <div className="border border-gray-100 rounded-xl p-4">
+      <div className="border border-dc-teal/10 rounded-xl p-4">
         <ResponsiveContainer width="100%" height={160}>
           <BarChart data={data}>
             <XAxis dataKey="name" tick={{ fontSize: 10 }} />
@@ -50,7 +50,7 @@ export const FollowerChart: React.FC<FollowerChartProps> = ({ platforms }) => {
             </Bar>
           </BarChart>
         </ResponsiveContainer>
-        <div className="mt-3 space-y-1.5 border-t border-gray-50 pt-3">
+        <div className="mt-3 space-y-1.5 border-t border-dc-teal/10 pt-3">
           {data.map((entry) => (
             <div key={entry.platform} className="flex items-center justify-between text-[11px]">
               <div className="flex items-center gap-1.5">

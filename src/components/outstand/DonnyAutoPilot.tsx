@@ -47,7 +47,7 @@ export const DonnyAutoPilot: React.FC = () => {
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2 opacity-60 cursor-default">
+            <div className="flex items-center gap-3 bg-dc-teal/[0.04] rounded-xl px-3 py-2 opacity-60 cursor-default">
               <Zap className="h-4 w-4 text-gray-400" />
               <span className="text-xs font-medium text-gray-400 flex-1">Donny Auto-Pilot</span>
               <Switch disabled checked={false} />

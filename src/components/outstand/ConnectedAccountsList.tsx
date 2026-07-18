@@ -109,7 +109,7 @@ const ConnectedAccountsListInner: React.FC<ConnectedAccountsListProps> = ({ role
     return (
       <div className="space-y-2">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />
+          <div key={i} className="h-12 bg-dc-teal/10 rounded-xl animate-pulse" />
         ))}
       </div>
     );
@@ -184,12 +184,12 @@ const ConnectedAccountsListInner: React.FC<ConnectedAccountsListProps> = ({ role
             <div
               key={network}
               className={`flex items-center justify-between px-3 py-2.5 rounded-xl border ${
-                isConnected ? 'border-teal-200 bg-teal-50/50' : 'border-gray-200 bg-white'
+                isConnected ? 'border-teal-200 bg-teal-50/50' : 'border-dc-teal/15 bg-white'
               }`}
             >
               <div className="flex items-center gap-2.5">
                 <div
-                  className={`w-7 h-7 ${isConnected ? color : 'bg-gray-200'} rounded-lg flex items-center justify-center text-white text-[10px] font-bold`}
+                  className={`w-7 h-7 ${isConnected ? `${color} text-white` : 'bg-dc-teal/10 text-dc-teal-btn'} rounded-lg flex items-center justify-center text-[10px] font-bold`}
                 >
                   {label.slice(0, 2).toUpperCase()}
                 </div>
@@ -216,7 +216,7 @@ const ConnectedAccountsListInner: React.FC<ConnectedAccountsListProps> = ({ role
                         accountId: account.id,
                       })
                     }
-                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="p-1.5 rounded-lg hover:bg-dc-teal/10 text-gray-400 hover:text-gray-600 transition-colors"
                     title="Switch account"
                   >
                     <RefreshCw className="h-3.5 w-3.5" />
@@ -279,7 +279,7 @@ const ConnectedAccountsListInner: React.FC<ConnectedAccountsListProps> = ({ role
 
       <Link
         to={base}
-        className="flex items-center justify-center gap-1.5 bg-dc-teal text-white text-xs font-bold py-3 rounded-full w-full hover:bg-teal-500 transition-colors"
+        className="flex items-center justify-center gap-1.5 bg-dc-teal-btn text-white text-xs font-bold py-3 rounded-full w-full hover:bg-dc-teal-btn-hover transition-colors"
       >
         ◆ Open Social Media Manager →
       </Link>
@@ -329,7 +329,7 @@ const ConnectedAccountsListInner: React.FC<ConnectedAccountsListProps> = ({ role
             <AlertDialogCancel className="rounded-full" disabled={actionPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmSwitch}
-              className="rounded-full bg-teal-600 hover:bg-teal-700"
+              className="rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover"
               disabled={actionPending}
             >
               {actionPending ? 'Switching...' : 'Switch Account'}

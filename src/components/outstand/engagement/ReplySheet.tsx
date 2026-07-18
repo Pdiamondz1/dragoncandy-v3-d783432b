@@ -52,7 +52,7 @@ export const ReplySheet: React.FC<ReplySheetProps> = ({ comment, open, onOpenCha
         </SheetHeader>
         {comment && (
           <div className="mt-4 space-y-4">
-            <div className="bg-gray-50 rounded-xl p-3">
+            <div className="bg-dc-teal/[0.04] rounded-xl p-3">
               <div className="text-[10px] text-gray-400 mb-1">on: {comment.postCaption}</div>
               <div className="text-xs text-gray-700">{comment.text}</div>
             </div>
@@ -63,7 +63,7 @@ export const ReplySheet: React.FC<ReplySheetProps> = ({ comment, open, onOpenCha
                 onChange={(e) => setReplyText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleReply()}
                 placeholder="Write a reply..."
-                className="flex-1 border border-gray-200 rounded-full px-4 py-2.5 text-xs outline-none focus:border-dc-teal"
+                className="flex-1 border border-dc-teal/20 rounded-full px-4 py-2.5 text-xs outline-none focus:border-dc-teal"
                 disabled={sending}
                 autoFocus
               />
@@ -72,7 +72,7 @@ export const ReplySheet: React.FC<ReplySheetProps> = ({ comment, open, onOpenCha
                 aria-label="Send reply"
                 onClick={handleReply}
                 disabled={sending || !replyText.trim()}
-                className="w-9 h-9 bg-dc-teal text-white rounded-full flex items-center justify-center shrink-0 disabled:opacity-50"
+                className="w-9 h-9 bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white rounded-full flex items-center justify-center shrink-0 disabled:opacity-50"
               >
                 <Send className="h-4 w-4" />
               </button>

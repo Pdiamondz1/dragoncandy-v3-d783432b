@@ -7,6 +7,7 @@ import { usePostComments, type Comment } from '@/hooks/outstand/usePostComments'
 import { EngagementList } from './engagement/EngagementList';
 import { EngagementDetail } from './engagement/EngagementDetail';
 import { ReplySheet } from './engagement/ReplySheet';
+import { AppChip } from '@/components/app/AppChip';
 
 type FilterType = 'all' | 'comment' | 'mention';
 
@@ -75,28 +76,26 @@ export const EngagementTab: React.FC<EngagementTabProps> = ({ posts, ownAccountI
     <div>
       <div className="flex gap-1.5 mb-3 overflow-x-auto pb-1">
         {filterButtons.map((f) => (
-          <button
+          <AppChip
             key={f.key}
-            type="button"
+            active={filter === f.key}
             onClick={() => setFilter(f.key)}
-            className={`text-[11px] font-semibold px-3 py-1.5 rounded-full whitespace-nowrap inline-flex items-center gap-1 ${
-              filter === f.key ? 'bg-dc-teal text-white' : 'bg-gray-100 text-gray-600'
-            }`}
+            className="text-[11px] px-3 whitespace-nowrap inline-flex items-center gap-1"
           >
             {f.label}
             {f.count !== undefined && f.count > 0 && (
               <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
-                filter === f.key ? 'bg-white/30' : 'bg-red-500 text-white'
+                filter === f.key ? 'bg-dc-teal/20 text-dc-teal-btn' : 'bg-red-500 text-white'
               }`}>
                 {f.count}
               </span>
             )}
-          </button>
+          </AppChip>
         ))}
       </div>
 
-      <div className="md:grid md:grid-cols-[320px_1fr] md:min-h-[400px] md:border md:border-gray-100 md:rounded-xl md:overflow-hidden">
-        <div className="md:border-r md:border-gray-100 md:overflow-y-auto md:max-h-[500px]">
+      <div className="md:grid md:grid-cols-[320px_1fr] md:min-h-[400px] md:border md:border-dc-teal/15 md:rounded-xl md:overflow-hidden">
+        <div className="md:border-r md:border-dc-teal/15 md:overflow-y-auto md:max-h-[500px]">
           <EngagementList
             comments={filteredComments}
             selectedId={selectedId}

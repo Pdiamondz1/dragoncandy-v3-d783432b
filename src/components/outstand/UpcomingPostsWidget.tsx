@@ -82,7 +82,7 @@ export const UpcomingPostsWidget: React.FC = () => {
             className="flex items-center gap-3 p-2.5 rounded-xl bg-dc-teal/5 border border-dc-teal/10"
           >
             {/* Thumbnail */}
-            <div className="w-10 h-10 rounded-lg bg-gray-200 flex-shrink-0 overflow-hidden">
+            <div className="w-10 h-10 rounded-lg bg-dc-teal/10 flex-shrink-0 overflow-hidden">
               {post.media_urls?.[0] ? (
                 <img
                   src={post.media_urls[0]}
@@ -111,7 +111,7 @@ export const UpcomingPostsWidget: React.FC = () => {
             {/* Platform badge */}
             <span
               className={`text-[8px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${
-                PLATFORM_STYLES[post.platform?.toLowerCase()] ?? 'bg-gray-600 text-white'
+                PLATFORM_STYLES[post.platform?.toLowerCase()] ?? 'bg-dc-teal-btn text-white'
               }`}
             >
               {post.platform?.charAt(0).toUpperCase()}{post.platform?.slice(1)}

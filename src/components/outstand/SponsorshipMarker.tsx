@@ -10,14 +10,14 @@ export interface SponsorshipEvent {
 const MARKER_STYLES: Record<SponsorshipEvent['type'], { bg: string; text: string; label: string }> = {
   start: { bg: 'bg-dc-teal/10', text: 'text-dc-teal', label: 'Sponsorship' },
   deadline: { bg: 'bg-amber-50', text: 'text-amber-700', label: 'Content Due' },
-  amplification: { bg: 'bg-purple-50', text: 'text-purple-700', label: 'Amplify' },
+  amplification: { bg: 'bg-dc-pink-accent/10', text: 'text-dc-pink-accent', label: 'Amplify' },
 };
 
 export const SponsorshipMarkerDot: React.FC<{ type: SponsorshipEvent['type'] }> = ({ type }) => {
   const colors: Record<string, string> = {
     start: 'bg-dc-teal',
     deadline: 'bg-amber-400',
-    amplification: 'bg-purple-400',
+    amplification: 'bg-dc-pink-accent',
   };
   return <div className={`w-1.5 h-1.5 rounded-full ${colors[type]}`} />;
 };

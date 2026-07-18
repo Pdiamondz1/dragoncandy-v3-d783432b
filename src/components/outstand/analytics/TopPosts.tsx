@@ -41,9 +41,9 @@ export const TopPosts: React.FC<TopPostsProps> = ({ posts }) => {
       <div className="text-sm font-bold text-gray-900 mb-3">Top Posts</div>
       <div className="space-y-2">
         {topPosts.map(({ post, caption, networks, publishedCount }, i) => (
-          <div key={post.id} className="flex items-center gap-2.5 py-1.5 border-b border-gray-50 last:border-0">
+          <div key={post.id} className="flex items-center gap-2.5 py-1.5 border-b border-dc-teal/10 last:border-0">
             <div className="text-sm font-extrabold text-dc-teal w-4">{i + 1}</div>
-            <div className="w-9 h-9 bg-gray-100 rounded-lg shrink-0" />
+            <div className="w-9 h-9 bg-dc-teal/[0.04] rounded-lg shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="text-[11px] font-semibold text-gray-900 truncate">{caption || 'Untitled'}</div>
               <div className="text-[10px] text-gray-400">
@@ -53,7 +53,7 @@ export const TopPosts: React.FC<TopPostsProps> = ({ posts }) => {
               </div>
             </div>
             {networks[0] && (
-              <span className={`text-[8px] ${NETWORK_COLORS[networks[0]]?.bg ?? 'bg-gray-400'} text-white px-1.5 py-0.5 rounded font-semibold`}>
+              <span className={`text-[8px] ${NETWORK_COLORS[networks[0]]?.bg ?? 'bg-dc-teal-btn'} text-white px-1.5 py-0.5 rounded font-semibold`}>
                 {NETWORK_COLORS[networks[0]]?.label ?? networks[0]}
               </span>
             )}

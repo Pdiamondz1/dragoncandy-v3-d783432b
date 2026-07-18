@@ -199,7 +199,7 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
     <div className="space-y-4 overflow-y-auto max-h-[70vh]">
       {/* Hero media preview */}
       {displayUrl && (
-        <div className="w-full aspect-square rounded-xl overflow-hidden bg-gray-100 max-w-[200px] mx-auto lg:max-w-[240px]">
+        <div className="w-full aspect-square rounded-xl overflow-hidden bg-dc-teal/[0.04] max-w-[200px] mx-auto lg:max-w-[240px]">
           {heroMediaError ? (
             <div className="w-full h-full bg-gradient-to-br from-dc-teal via-dc-pink/40 to-dc-teal-dark flex items-center justify-center">
               <img src={logo} alt="Dragon Candy" className="w-12 h-12 opacity-70" />
@@ -240,9 +240,9 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
 
       {/* Plan context */}
       {planContext && planContext.siblingCount > 1 && (
-        <div className="flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-xl p-3">
-          <Layers className="h-4 w-4 text-purple-500 flex-shrink-0" />
-          <p className="text-[11px] text-purple-700 font-medium">
+        <div className="flex items-center gap-2 bg-dc-teal/[0.04] border border-dc-teal/15 rounded-xl p-3">
+          <Layers className="h-4 w-4 text-dc-teal flex-shrink-0" />
+          <p className="text-[11px] text-dc-teal-btn font-medium">
             Part of a posting plan ({planContext.siblingCount} posts)
           </p>
         </div>
@@ -255,7 +255,7 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
             <span
               key={name}
               className={`text-[9px] font-semibold px-2.5 py-1 rounded-full ${
-                PLATFORM_STYLES[name.toLowerCase()] ?? 'bg-gray-600 text-white'
+                PLATFORM_STYLES[name.toLowerCase()] ?? 'bg-dc-teal-btn text-white'
               }`}
             >
               {name.charAt(0).toUpperCase() + name.slice(1)}
@@ -290,7 +290,7 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
                 size="sm"
                 onClick={handleSaveCaption}
                 disabled={saving}
-                className="rounded-full bg-dc-teal hover:bg-teal-500 text-white text-xs"
+                className="rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white text-xs"
               >
                 {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
                 Save
@@ -317,7 +317,7 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
 
       {/* Actions */}
       {scheduled && (
-        <div className="space-y-2 pt-2 border-t border-gray-100">
+        <div className="space-y-2 pt-2 border-t border-dc-teal/10">
           {/* Reschedule */}
           {rescheduling ? (
             <div className="space-y-2">
@@ -327,14 +327,14 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
                 value={newDateTime}
                 onChange={(e) => setNewDateTime(e.target.value)}
                 min={toDatetimeLocal(new Date())}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-dc-teal"
+                className="w-full px-3 py-2 text-sm border border-dc-teal/20 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-dc-teal"
               />
               <div className="flex gap-2">
                 <Button
                   size="sm"
                   onClick={handleReschedule}
                   disabled={saving || !newDateTime}
-                  className="rounded-full bg-dc-teal hover:bg-teal-500 text-white text-xs flex-1"
+                  className="rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white text-xs flex-1"
                 >
                   {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Calendar className="h-3 w-3 mr-1" />}
                   Confirm
@@ -374,10 +374,10 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
           {/* Cancel Plan */}
           {planContext && planContext.siblingCount > 1 && (
             <Button
-              variant="outline"
+              variant="dc-secondary"
               onClick={handleCancelPlan}
               disabled={cancellingPlan}
-              className="w-full rounded-full border-purple-300 text-purple-600 hover:bg-purple-50 font-semibold text-sm"
+              className="w-full rounded-full font-semibold text-sm"
             >
               {cancellingPlan ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Layers className="h-4 w-4 mr-2" />}
               Cancel Plan ({planContext.siblingCount} posts)
@@ -390,7 +390,7 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
       {campaignLink && (
         <a
           href={campaignLink}
-          className="flex items-center gap-2 text-sm text-dc-teal hover:text-teal-600 font-medium pt-2 border-t border-gray-100"
+          className="flex items-center gap-2 text-sm text-dc-teal hover:text-teal-600 font-medium pt-2 border-t border-dc-teal/10"
         >
           <ExternalLink className="h-3.5 w-3.5" />
           View Campaign

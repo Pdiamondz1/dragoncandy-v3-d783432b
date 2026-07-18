@@ -22,7 +22,7 @@ export const PlatformBreakdown: React.FC<PlatformBreakdownProps> = ({ platforms 
       <div className="text-sm font-bold text-gray-900 mb-3">Platform Breakdown</div>
       <div className="flex md:grid md:grid-cols-3 gap-2.5 overflow-x-auto pb-1">
         {platforms.map((p) => {
-          const style = PLATFORM_STYLES[p.platform] ?? { bg: 'bg-gray-50', icon: '?', iconBg: 'bg-gray-400' };
+          const style = PLATFORM_STYLES[p.platform] ?? { bg: 'bg-dc-teal/[0.04]', icon: '?', iconBg: 'bg-dc-teal-btn' };
           return (
             <div key={p.accountId} className={`${style.bg} rounded-xl p-3 text-center flex-none w-[100px] md:w-auto`}>
               <div className={`w-7 h-7 ${style.iconBg} rounded-lg mx-auto flex items-center justify-center text-white text-[11px] font-bold mb-2`}>

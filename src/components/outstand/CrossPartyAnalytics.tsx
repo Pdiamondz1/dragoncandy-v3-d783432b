@@ -7,6 +7,7 @@ import { CampaignImpactSummary } from './CampaignImpactSummary';
 import { AIPerformanceInsights } from './AIPerformanceInsights';
 import { DonnyIntelligenceStub } from './DonnyIntelligenceStub';
 import { Loader2 } from 'lucide-react';
+import { AppCard } from '@/components/app/AppCard';
 
 export const CrossPartyAnalytics: React.FC = () => {
   const { data: sponsorships, isLoading } = useBrandSponsorshipAnalytics();
@@ -23,13 +24,13 @@ export const CrossPartyAnalytics: React.FC = () => {
   if (!sponsorships || sponsorships.length === 0) {
     return (
       <div className="space-y-4">
-        <div className="bg-white rounded-2xl p-6 border border-gray-200 text-center">
+        <AppCard pad="6" className="text-center">
           <p className="text-gray-500 text-sm">No active sponsorships yet.</p>
           <p className="text-gray-400 text-xs mt-1">
             <Link to="/dashboard/brand/discover-campaigns" className="text-dc-teal hover:underline">Browse campaigns</Link>
             {' '}to find your first sponsorship opportunity.
           </p>
-        </div>
+        </AppCard>
         <DonnyIntelligenceStub />
       </div>
     );
