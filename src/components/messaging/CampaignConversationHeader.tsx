@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ExternalLink } from 'lucide-react';
+import { AppStatusBadge } from '@/components/app/AppStatusBadge';
 
 interface CampaignConversationHeaderProps {
   campaignId: string;
@@ -27,20 +28,20 @@ export function CampaignConversationHeader({ campaignId }: CampaignConversationH
   if (!campaign) return null;
 
   const emoji = (campaign.ai_analysis as Record<string, unknown>)?.emoji as string || '📣';
-  const statusColors: Record<string, string> = {
-    published: 'bg-green-100 text-green-700',
-    active: 'bg-blue-100 text-blue-700',
-    draft: 'bg-gray-100 text-gray-600',
-    completed: 'bg-purple-100 text-purple-700',
+  const statusTones: Record<string, 'teal' | 'pink' | 'amber' | 'neutral'> = {
+    published: 'teal',
+    active: 'teal',
+    draft: 'neutral',
+    completed: 'pink',
   };
 
   return (
-    <div className="bg-teal-50 border-b border-teal-200 px-4 py-2 flex items-center gap-2">
+    <div className="bg-white border-b border-dc-teal/15 px-4 py-2 flex items-center gap-2">
       <span className="text-lg">{emoji}</span>
       <span className="text-sm font-semibold text-gray-900 flex-1 truncate">{campaign.title}</span>
-      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full capitalize ${statusColors[campaign.status] || 'bg-gray-100 text-gray-600'}`}>
+      <AppStatusBadge tone={statusTones[campaign.status] || 'neutral'} className="text-[10px] px-2 py-0.5 capitalize">
         {campaign.status}
-      </span>
+      </AppStatusBadge>
       <button
         onClick={() => navigate(`/dashboard/creator/campaigns/${campaign.id}`)}
         className="text-teal-500 hover:text-teal-600"

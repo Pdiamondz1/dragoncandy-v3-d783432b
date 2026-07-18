@@ -20,6 +20,8 @@ import { PublicPageHeader } from '@/components/PublicPageHeader';
 import { VideoThumbnail } from '@/components/shared/VideoThumbnail';
 import { usePublicDragonTier } from '@/hooks/useDragonPoints';
 import { DragonTierBadge } from '@/components/badges/DragonTierBadge';
+import { AppCard } from '@/components/app/AppCard';
+import { AppStatusBadge } from '@/components/app/AppStatusBadge';
 
 interface CreatorProfile {
   id: string;
@@ -236,9 +238,9 @@ const PublicCreatorProfile = () => {
         <PublicPageHeader />
         <div className="flex items-center justify-center py-16">
           <div className="animate-pulse space-y-6 w-full max-w-md px-4">
-            <div className="h-[40vh] bg-gray-300 rounded-lg"></div>
-            <div className="h-24 bg-white rounded-3xl"></div>
-            <div className="h-20 bg-white rounded-2xl"></div>
+            <div className="h-[40vh] bg-dc-teal/10 rounded-lg"></div>
+            <div className="h-24 bg-dc-teal/10 rounded-3xl"></div>
+            <div className="h-20 bg-dc-teal/10 rounded-2xl"></div>
           </div>
         </div>
       </div>
@@ -250,7 +252,7 @@ const PublicCreatorProfile = () => {
       <div className="min-h-screen bg-white">
         <PublicPageHeader />
         <div className="flex items-center justify-center px-4 py-16">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-md">
+          <AppCard className="max-w-md w-full text-center p-8">
             <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h1 className="text-lg font-bold text-gray-900 mb-2">
               Creator Profile Not Found
@@ -264,7 +266,7 @@ const PublicCreatorProfile = () => {
             >
               Go Home
             </Button>
-          </div>
+          </AppCard>
         </div>
       </div>
     );
@@ -320,7 +322,7 @@ const PublicCreatorProfile = () => {
       </div>
 
       {/* White Profile Card — overlaps hero */}
-      <div className="bg-white rounded-3xl -mt-6 relative z-10 mx-4 px-4 py-3 flex items-center gap-3 shadow-md">
+      <AppCard className="-mt-6 relative z-10 mx-4 px-4 py-3 flex items-center gap-3 rounded-3xl shadow-md">
         <Avatar className="w-16 h-16 ring-2 ring-dc-teal flex-shrink-0">
           <AvatarImage src={avatarUrl} />
           <AvatarFallback className="bg-dc-teal/20">
@@ -349,15 +351,15 @@ const PublicCreatorProfile = () => {
           )}
         </div>
         {profile.availability && (
-          <span className={`text-xs px-3 py-1 rounded-full font-semibold flex-shrink-0 ${
-            profile.availability === 'available'
-              ? 'bg-green-500 text-white'
-              : 'bg-gray-300 text-gray-600'
-          }`}>
-            {profile.availability === 'available' ? 'Available' : 'Busy'}
-          </span>
+          profile.availability === 'available' ? (
+            <span className="text-xs px-3 py-1 rounded-full font-semibold flex-shrink-0 bg-green-500 text-white">
+              Available
+            </span>
+          ) : (
+            <AppStatusBadge tone="neutral" className="flex-shrink-0">Busy</AppStatusBadge>
+          )
         )}
-      </div>
+      </AppCard>
 
       {/* Stats Row */}
       {projectsCount === 0 && portfolioItems.length === 0 && (profile.total_reviews ?? 0) === 0 ? (
@@ -367,7 +369,7 @@ const PublicCreatorProfile = () => {
           </span>
         </div>
       ) : (
-        <div className="flex justify-around py-4 px-4 mt-2">
+        <AppCard className="mx-4 mt-2 flex justify-around py-4 px-4" pad="5">
           <div className="flex-1 text-center">
             <p className="text-3xl font-extrabold text-gray-900">{projectsCount}</p>
             <p className="text-xs text-gray-500">Projects</p>
@@ -382,14 +384,14 @@ const PublicCreatorProfile = () => {
             <p className="text-3xl font-extrabold text-gray-900">{profile.total_reviews ?? 0}</p>
             <p className="text-xs text-gray-500">Reviews</p>
           </div>
-        </div>
+        </AppCard>
       )}
 
       {profile.user_id && <VerifiedSocialStats userId={profile.user_id} />}
 
       {/* About Card */}
       {(profile.bio || (profile.skills && profile.skills.length > 0) || profile.base_rate_per_hour) && (
-        <div className="mx-4 mb-3 bg-white rounded-2xl p-4 shadow-sm">
+        <AppCard className="mx-4 mb-3" pad="5">
           <h2 className="text-sm font-bold text-gray-900 mb-2">About</h2>
           {profile.bio && (
             <p className="text-sm text-gray-600 leading-relaxed mb-3">{profile.bio}</p>
@@ -411,7 +413,7 @@ const PublicCreatorProfile = () => {
               💰 ${profile.base_rate_per_hour} / hr
             </p>
           )}
-        </div>
+        </AppCard>
       )}
 
       {/* Portfolio Grid */}
@@ -443,7 +445,7 @@ const PublicCreatorProfile = () => {
                         const parent = target.parentElement;
                         if (parent && !parent.querySelector('.portfolio-error')) {
                           const placeholder = document.createElement('div');
-                          placeholder.className = 'portfolio-error w-full h-full bg-gray-200 flex items-center justify-center';
+                          placeholder.className = 'portfolio-error w-full h-full bg-dc-teal/[0.04] flex items-center justify-center';
                           placeholder.innerHTML = '<span class="text-gray-400 text-xs text-center px-2">Unable to load</span>';
                           parent.appendChild(placeholder);
                         }
@@ -505,13 +507,13 @@ const PublicCreatorProfile = () => {
 
       {/* Reviews Section — only shown when reviews exist */}
       {(profile.total_reviews ?? 0) > 0 && (
-        <div className="mx-4 mb-4 bg-white rounded-2xl p-4 shadow-sm">
+        <AppCard className="mx-4 mb-4" pad="5">
           <h2 className="text-sm font-bold text-gray-900 mb-3">Reviews</h2>
           <PublicProfileReviews
             profileId={profile.user_id}
             profileType="creator"
           />
-        </div>
+        </AppCard>
       )}
 
       {/* CTA Buttons */}
@@ -548,8 +550,8 @@ const PublicCreatorProfile = () => {
               creator={creatorForModal}
               trigger={
                 <Button
-                  variant="outline"
-                  className="w-full bg-white text-dc-pink-accent rounded-full h-14 font-bold border-2 border-gray-200 text-base hover:bg-gray-50"
+                  variant="dc-secondary"
+                  className="w-full rounded-full h-14 font-bold text-base"
                 >
                   Message
                 </Button>

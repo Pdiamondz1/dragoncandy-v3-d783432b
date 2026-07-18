@@ -1,6 +1,7 @@
 // src/components/dragonshare/RestaurantBrowseHeader.tsx
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
+import { AppChip } from '@/components/app/AppChip';
 
 interface Props {
   search: string;
@@ -34,28 +35,18 @@ export function RestaurantBrowseHeader({
 
       {/* Cuisine pills + result count */}
       <div className="flex items-center gap-2 flex-wrap">
-        <button
-          onClick={() => onCuisineChange(null)}
-          className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
-            !activeCuisine
-              ? 'bg-dc-teal-btn text-white'
-              : 'bg-dc-teal/10 text-dc-text-muted hover:bg-dc-teal/20'
-          }`}
-        >
+        <AppChip onClick={() => onCuisineChange(null)} active={!activeCuisine}>
           All
-        </button>
+        </AppChip>
         {cuisines.map((cuisine) => (
-          <button
+          <AppChip
             key={cuisine}
             onClick={() => onCuisineChange(activeCuisine === cuisine ? null : cuisine)}
-            className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors capitalize ${
-              activeCuisine === cuisine
-                ? 'bg-dc-teal-btn text-white'
-                : 'bg-dc-teal/10 text-dc-text-muted hover:bg-dc-teal/20'
-            }`}
+            active={activeCuisine === cuisine}
+            className="capitalize"
           >
             {cuisine}
-          </button>
+          </AppChip>
         ))}
 
         <div className="flex-1" />

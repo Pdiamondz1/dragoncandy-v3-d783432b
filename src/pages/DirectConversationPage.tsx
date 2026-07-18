@@ -96,7 +96,7 @@ const DirectConversationPage: React.FC = () => {
   if (!conversationId) {
     return (
       <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
-        <div className="flex-1 p-6 bg-teal-50 min-h-screen overflow-x-hidden">
+        <div className="flex-1 p-6 bg-white min-h-screen overflow-x-hidden">
           <div className="text-center">
             <p>Conversation not found</p>
             <Button onClick={() => {
@@ -115,7 +115,7 @@ const DirectConversationPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
-      <div className="flex flex-col h-full bg-teal-50">
+      <div className="flex flex-col h-full bg-white">
         {/* Chat header */}
         <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-6 pb-4 flex items-center justify-between flex-shrink-0">
           {/* Left: back arrow */}

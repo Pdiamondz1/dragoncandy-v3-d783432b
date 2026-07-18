@@ -13,6 +13,7 @@ import { PublicPageHeader } from '@/components/PublicPageHeader';
 import { useResolvedLogoUrl, resolveProfileAssetUrl } from '@/hooks/useSignedUrl';
 import { usePublicDragonTier } from '@/hooks/useDragonPoints';
 import { DragonTierBadge } from '@/components/badges/DragonTierBadge';
+import { AppCard } from '@/components/app/AppCard';
 
 interface BusinessProfile {
   id: string;
@@ -107,9 +108,9 @@ const PublicBusinessProfile = () => {
         <PublicPageHeader />
         <div className="flex items-center justify-center py-16">
           <div className="animate-pulse space-y-6 w-full max-w-md px-4">
-            <div className="h-[40vh] bg-gray-300 rounded-lg"></div>
-            <div className="h-24 bg-white rounded-3xl"></div>
-            <div className="h-20 bg-white rounded-2xl"></div>
+            <div className="h-[40vh] bg-dc-teal/10 rounded-lg"></div>
+            <div className="h-24 bg-dc-teal/10 rounded-3xl"></div>
+            <div className="h-20 bg-dc-teal/10 rounded-2xl"></div>
           </div>
         </div>
       </div>
@@ -121,7 +122,7 @@ const PublicBusinessProfile = () => {
       <div className="min-h-screen bg-white">
         <PublicPageHeader />
         <div className="flex items-center justify-center px-4 py-16">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-md">
+          <AppCard className="max-w-md w-full text-center p-8">
             <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-gray-900 mb-2">
               Business Profile Not Found
@@ -135,7 +136,7 @@ const PublicBusinessProfile = () => {
             >
               Go Home
             </Button>
-          </div>
+          </AppCard>
         </div>
       </div>
     );
@@ -186,7 +187,7 @@ const PublicBusinessProfile = () => {
       </div>
 
       {/* White Profile Card — overlaps hero */}
-      <div className="bg-white rounded-3xl -mt-6 relative z-10 mx-4 px-4 py-3 flex items-center gap-3 shadow-md">
+      <AppCard className="-mt-6 relative z-10 mx-4 px-4 py-3 flex items-center gap-3 rounded-3xl shadow-md">
         <Avatar className="w-16 h-16 ring-2 ring-dc-teal flex-shrink-0">
           <AvatarImage src={resolvedLogoUrl} />
           <AvatarFallback className="bg-dc-teal/20">
@@ -217,10 +218,10 @@ const PublicBusinessProfile = () => {
             </p>
           )}
         </div>
-      </div>
+      </AppCard>
 
       {/* Stats Row */}
-      <div className="flex justify-around py-4 px-4 mt-2">
+      <AppCard className="mx-4 mt-2 flex justify-around py-4 px-4" pad="5">
         <div className="flex-1 text-center">
           <p className="text-3xl font-extrabold text-gray-900">
             {profile.founded_year ?? '—'}
@@ -241,7 +242,7 @@ const PublicBusinessProfile = () => {
           </p>
           <p className="text-xs text-gray-500">Projects</p>
         </div>
-      </div>
+      </AppCard>
 
       {/* Description */}
       {profile.description && (
@@ -269,12 +270,14 @@ const PublicBusinessProfile = () => {
       )}
 
       {/* Reviews Section */}
-      <div ref={reviewsRef} className="px-4 pb-4 scroll-mt-4">
-        <h2 className="text-lg font-bold text-center mb-3 text-gray-900">Reviews</h2>
-        <PublicProfileReviews
-          profileId={profile.user_id}
-          profileType="business"
-        />
+      <div ref={reviewsRef} className="scroll-mt-4">
+        <AppCard className="mx-4 mb-4" pad="5">
+          <h2 className="text-lg font-bold text-center mb-3 text-gray-900">Reviews</h2>
+          <PublicProfileReviews
+            profileId={profile.user_id}
+            profileType="business"
+          />
+        </AppCard>
       </div>
 
       {/* CTA Button */}

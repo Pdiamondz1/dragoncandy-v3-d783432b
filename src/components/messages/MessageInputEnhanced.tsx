@@ -236,7 +236,7 @@ export const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
         {/* Attachment button */}
         <button
           type="button"
-          className="w-9 h-9 rounded-full bg-stone-100 text-muted-foreground flex items-center justify-center flex-shrink-0 hover:bg-stone-200 transition-colors disabled:opacity-50"
+          className="w-9 h-9 rounded-full bg-white border border-dc-teal/20 text-dc-text-muted flex items-center justify-center flex-shrink-0 hover:bg-dc-teal/5 transition-colors disabled:opacity-50"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || uploading}
           aria-label="Attach file"
@@ -251,7 +251,7 @@ export const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled || uploading}
-          className="flex-1 min-h-[38px] max-h-[120px] resize-none text-[15px] bg-stone-100 border-0 rounded-2xl px-4 py-2 focus:outline-none focus-visible:ring-1 focus-visible:ring-dc-teal"
+          className="flex-1 min-h-[38px] max-h-[120px] resize-none text-[15px] bg-white border border-dc-teal/20 rounded-2xl px-4 py-2 focus:outline-none focus-visible:ring-1 focus-visible:ring-dc-teal"
           rows={1}
           aria-label="Message"
           name="message"

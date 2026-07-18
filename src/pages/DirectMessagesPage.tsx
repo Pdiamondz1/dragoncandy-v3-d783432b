@@ -11,6 +11,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { LocationBadge } from '@/components/org/LocationBadge';
+import { PageBody } from '@/components/app/PageBody';
 
 const DirectMessagesPage: React.FC = () => {
   const { user, activeOrgUnit } = useAuth();
@@ -60,7 +61,8 @@ const DirectMessagesPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole={userRole as 'business_client' | 'content_creator' | 'brand'}>
-      <div className="min-h-screen overflow-x-hidden bg-teal-50 w-full max-w-full md:max-w-4xl md:mx-auto">
+      <div className="min-h-screen overflow-x-hidden bg-white">
+      <PageBody maxWidth="4xl" className="space-y-0">
         {/* Template B header */}
         <PageHeader>
           <div className="flex items-center">
@@ -131,6 +133,7 @@ const DirectMessagesPage: React.FC = () => {
             </div>
           </>
         )}
+      </PageBody>
       </div>
     </DashboardLayout>
   );
