@@ -22,7 +22,7 @@ export const PendingReviewsTab: React.FC = () => {
 
   if (!pendingSubmissions?.length) {
     return (
-      <div className="text-center py-12 bg-muted/30 rounded-lg">
+      <div className="text-center py-12 bg-dc-teal/[0.04] rounded-2xl">
         <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" />
         <h3 className="text-lg font-medium mb-2">All Caught Up!</h3>
         <p className="text-muted-foreground">

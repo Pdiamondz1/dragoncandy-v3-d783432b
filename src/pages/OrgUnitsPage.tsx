@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { MapPin, Tag, MoreVertical, Plus, Building2 } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Card, CardContent } from '@/components/ui/card';
+import { CardContent } from '@/components/ui/card';
+import { AppCard } from '@/components/app/AppCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -33,15 +34,15 @@ function getUnitSubtext(unit: OrgUnit): string | null {
 
 function UnitCardSkeleton() {
   return (
-    <Card className="border border-teal-300 rounded-2xl">
+    <AppCard className="p-0">
       <CardContent className="flex items-center gap-4 p-4">
-        <div className="h-12 w-12 rounded-full bg-gray-200 animate-pulse flex-shrink-0" />
+        <div className="h-12 w-12 rounded-full bg-dc-teal/10 animate-pulse flex-shrink-0" />
         <div className="flex-1 space-y-2">
-          <div className="h-4 w-1/2 bg-gray-200 animate-pulse rounded" />
-          <div className="h-3 w-3/4 bg-gray-200 animate-pulse rounded" />
+          <div className="h-4 w-1/2 bg-dc-teal/10 animate-pulse rounded" />
+          <div className="h-3 w-3/4 bg-dc-teal/10 animate-pulse rounded" />
         </div>
       </CardContent>
-    </Card>
+    </AppCard>
   );
 }
 
@@ -62,7 +63,7 @@ function UnitCard({ unit, canManage, isLastUnit, onEdit, onDelete }: UnitCardPro
   const Icon = unit.unit_type === 'location' ? MapPin : Tag;
 
   return (
-    <Card className="border border-teal-300 rounded-2xl hover:shadow-md transition-shadow">
+    <AppCard className="p-0 hover:shadow-md transition-shadow">
       <CardContent className="flex items-center gap-4 p-4">
         {resolvedLogoUrl && !logoError ? (
           <img
@@ -120,7 +121,7 @@ function UnitCard({ unit, canManage, isLastUnit, onEdit, onDelete }: UnitCardPro
           </DropdownMenu>
         )}
       </CardContent>
-    </Card>
+    </AppCard>
   );
 }
 
@@ -190,7 +191,8 @@ export default function OrgUnitsPage() {
             {canManage && (
               <Button
                 onClick={openAdd}
-                className="rounded-full bg-teal-500 text-white hover:bg-teal-600 gap-1.5"
+                variant="dc-primary"
+                className="rounded-full gap-1.5"
               >
                 <Plus className="h-4 w-4" />
                 Add
@@ -222,7 +224,8 @@ export default function OrgUnitsPage() {
             {canManage && (
               <Button
                 onClick={openAdd}
-                className="rounded-full bg-teal-500 text-white hover:bg-teal-600 gap-1.5"
+                variant="dc-primary"
+                className="rounded-full gap-1.5"
               >
                 <Plus className="h-4 w-4" />
                 Add {unitLabel}

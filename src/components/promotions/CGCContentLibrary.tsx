@@ -3,6 +3,7 @@ import { usePromotions } from '@/hooks/usePromotions';
 import { CGCReviewSheet } from './CGCReviewSheet';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { AppChip } from '@/components/app/AppChip';
 import { Search, Play, Download } from 'lucide-react';
 import { downloadBlob } from '@/lib/downloadUtils';
 
@@ -107,17 +108,14 @@ export function CGCContentLibrary({ promotionTitle = '' }: CGCContentLibraryProp
       {/* Filter chips */}
       <div className="flex gap-2 overflow-x-auto pb-1">
         {FILTER_OPTIONS.map(opt => (
-          <button
+          <AppChip
             key={opt.value}
+            active={filter === opt.value}
             onClick={() => setFilter(opt.value)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-              filter === opt.value
-                ? 'bg-dc-teal text-white'
-                : 'bg-dc-teal/5 text-dc-text-muted hover:bg-dc-teal/10'
-            }`}
+            className="px-3 text-xs whitespace-nowrap"
           >
             {opt.label}
-          </button>
+          </AppChip>
         ))}
       </div>
 

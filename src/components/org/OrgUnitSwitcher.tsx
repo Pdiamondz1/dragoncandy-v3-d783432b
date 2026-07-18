@@ -207,7 +207,7 @@ export function OrgUnitSwitcher({ onAddUnit, canManage }: OrgUnitSwitcherProps) 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search..."
-                className="pl-8 h-8 rounded-full text-sm border-gray-200"
+                className="pl-8 h-8 rounded-full text-sm border-dc-teal/20"
               />
             </div>
           )}
@@ -235,7 +235,7 @@ export function OrgUnitSwitcher({ onAddUnit, canManage }: OrgUnitSwitcherProps) 
               {!activeOrgUnit && <Check className="w-4 h-4 text-teal-500 shrink-0" />}
             </button>
 
-            <div className="border-b border-gray-100 my-1" />
+            <div className="border-b border-dc-teal/10 my-1" />
 
             {filteredUnits.length === 0 ? (
               <p className="text-center text-xs text-gray-400 py-4">No results</p>
@@ -255,7 +255,7 @@ export function OrgUnitSwitcher({ onAddUnit, canManage }: OrgUnitSwitcherProps) 
           </div>
 
           {canManage && onAddUnit && (
-            <div className="border-t border-gray-100 mt-2 pt-2">
+            <div className="border-t border-dc-teal/10 mt-2 pt-2">
               <button
                 type="button"
                 onClick={() => {

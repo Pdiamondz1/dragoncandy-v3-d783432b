@@ -241,8 +241,9 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
             <Button
               onClick={() => handleConnect('reconnect')}
               disabled={connecting}
+              variant="dc-primary"
               size="sm"
-              className="rounded-full bg-teal-500 hover:bg-teal-600"
+              className="rounded-full"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               {connecting ? 'Reconnecting...' : 'Reconnect Previous Account'}
@@ -268,7 +269,8 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
           <Button
             onClick={() => handleConnect()}
             disabled={connecting}
-            className="rounded-full bg-teal-500 hover:bg-teal-600"
+            variant="dc-primary"
+            className="rounded-full"
           >
             <ExternalLink className="w-4 h-4 mr-2" />
             {connecting ? 'Connecting...' : config.connectLabel}
@@ -378,8 +380,9 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
             <Button
               onClick={handleWithdraw}
               disabled={withdrawing}
+              variant="dc-primary"
               size="sm"
-              className="rounded-full bg-teal-500 hover:bg-teal-600"
+              className="rounded-full"
             >
               {withdrawing ? 'Withdrawing...' : 'Withdraw to Stripe'}
             </Button>

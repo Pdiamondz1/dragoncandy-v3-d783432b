@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { AppCard } from '@/components/app/AppCard';
+import { AppStatusBadge } from '@/components/app/AppStatusBadge';
+import { cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -51,37 +53,40 @@ function deriveStatus(conn: ToastConnection | null): ConnectionStatus {
 
 const statusConfig: Record<ConnectionStatus, {
   label: string;
-  className: string;
+  tone: 'teal' | 'amber' | 'neutral';
+  className?: string;
   icon: React.ReactNode;
 }> = {
   not_connected: {
     label: 'Not Connected',
-    className: 'bg-gray-100 text-gray-600 border-gray-200',
+    tone: 'neutral',
     icon: <WifiOff className="w-3 h-3" />,
   },
   active: {
     label: 'Connected',
-    className: 'bg-teal-50 text-teal-700 border-teal-200',
+    tone: 'teal',
     icon: <CheckCircle2 className="w-3 h-3" />,
   },
   refreshing: {
     label: 'Refreshing',
-    className: 'bg-amber-50 text-amber-700 border-amber-200',
+    tone: 'amber',
     icon: <RefreshCw className="w-3 h-3 animate-spin" />,
   },
   error: {
+    // Semantic destructive red kept as a literal override (AppStatusBadge has no red tone).
     label: 'Error',
-    className: 'bg-red-50 text-red-600 border-red-200',
+    tone: 'neutral',
+    className: 'bg-red-50 text-red-600',
     icon: <XCircle className="w-3 h-3" />,
   },
   expired: {
     label: 'Expired',
-    className: 'bg-amber-50 text-amber-700 border-amber-200',
+    tone: 'amber',
     icon: <AlertCircle className="w-3 h-3" />,
   },
   revoked: {
     label: 'Not Connected',
-    className: 'bg-gray-100 text-gray-600 border-gray-200',
+    tone: 'neutral',
     icon: <WifiOff className="w-3 h-3" />,
   },
 };
@@ -251,22 +256,22 @@ export const ToastConnectionCard = () => {
   // --- Loading skeleton ---
   if (loading) {
     return (
-      <Card className="border border-gray-200">
+      <AppCard className="p-0">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Zap className="w-5 h-5 text-teal-500" /> Toast POS
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-6 w-40 bg-gray-100 rounded animate-pulse" />
+          <div className="h-6 w-40 bg-dc-teal/10 rounded animate-pulse" />
         </CardContent>
-      </Card>
+      </AppCard>
     );
   }
 
   return (
     <>
-      <Card className="border border-gray-200 overflow-hidden">
+      <AppCard className="p-0 overflow-hidden">
         {/* Accent strip */}
         <div className="h-1 bg-gradient-to-r from-teal-400 to-teal-500" />
 
@@ -276,13 +281,10 @@ export const ToastConnectionCard = () => {
               <Zap className="w-5 h-5 text-teal-500" />
               Toast POS
             </CardTitle>
-            <Badge
-              variant="outline"
-              className={`flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-medium border ${pill.className}`}
-            >
+            <AppStatusBadge tone={pill.tone} className={cn('gap-1.5', pill.className)}>
               {pill.icon}
               {pill.label}
-            </Badge>
+            </AppStatusBadge>
           </div>
           <CardDescription className="text-sm text-gray-500 mt-1">
             Sync menus, track redemptions, and let Donny read your sales data.
@@ -305,7 +307,7 @@ export const ToastConnectionCard = () => {
                 </div>
               </div>
             ) : (
-              <div className="rounded-xl border-2 border-dashed border-gray-200 p-5 lg:grid lg:grid-cols-2 lg:gap-6">
+              <div className="rounded-xl border-2 border-dashed border-dc-teal/20 p-5 lg:grid lg:grid-cols-2 lg:gap-6">
                 <div className="space-y-3 mb-4 lg:mb-0">
                   <p className="text-sm text-gray-600 leading-relaxed">
                     Connect your Toast POS so DragonCandy can read menus and
@@ -328,7 +330,8 @@ export const ToastConnectionCard = () => {
                   <Button
                     onClick={handleConnect}
                     disabled={connecting}
-                    className="w-full lg:w-auto rounded-full bg-teal-500 hover:bg-teal-600 text-white font-semibold px-8"
+                    variant="dc-primary"
+                    className="w-full lg:w-auto px-8"
                   >
                     {connecting ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -346,7 +349,7 @@ export const ToastConnectionCard = () => {
           {status !== 'not_connected' && connection && (
             <div className="space-y-4">
               {/* Info grid */}
-              <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4 lg:grid lg:grid-cols-2 lg:gap-x-6 lg:gap-y-3 space-y-2 lg:space-y-0">
+              <div className="rounded-xl border border-dc-teal/10 bg-dc-teal/[0.04] p-4 lg:grid lg:grid-cols-2 lg:gap-x-6 lg:gap-y-3 space-y-2 lg:space-y-0">
                 <div>
                   <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Restaurant</span>
                   <p className="text-sm font-mono text-gray-700 truncate">{connection.restaurant_guid || '—'}</p>
@@ -404,7 +407,7 @@ export const ToastConnectionCard = () => {
                 <Button
                   onClick={() => setDisconnectOpen(true)}
                   variant="outline"
-                  className="rounded-full border-gray-300 text-gray-500 hover:text-red-600 hover:border-red-300 hover:bg-red-50 font-medium"
+                  className="rounded-full border-red-200 text-red-600 hover:text-red-700 hover:border-red-300 hover:bg-red-50 font-medium"
                 >
                   <Unplug className="w-4 h-4 mr-2" />
                   Disconnect
@@ -413,7 +416,7 @@ export const ToastConnectionCard = () => {
             </div>
           )}
         </CardContent>
-      </Card>
+      </AppCard>
 
       {/* --- Disconnect confirmation modal --- */}
       <Dialog open={disconnectOpen} onOpenChange={setDisconnectOpen}>

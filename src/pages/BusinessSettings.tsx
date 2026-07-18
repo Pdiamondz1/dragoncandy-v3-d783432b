@@ -28,6 +28,7 @@ import { DeleteUserSheet } from '@/components/org/DeleteUserSheet';
 import { Coachmark } from '@/components/guidance/Coachmark';
 import { WhyExpander } from '@/components/guidance/WhyExpander';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { PageBody } from '@/components/app/PageBody';
 import { CGCPostingPreferences } from '@/components/promotions/CGCPostingPreferences';
 
 const BusinessSettings = () => {
@@ -193,6 +194,7 @@ const BusinessSettings = () => {
   return (
     <DashboardLayout userRole="business_client">
       <div className="min-h-screen bg-white overflow-x-hidden">
+        <PageBody className="space-y-0">
         <PageHeader>
           <div className="max-w-lg mx-auto">
             <ProfileCompletionBar
@@ -231,7 +233,7 @@ const BusinessSettings = () => {
                 />
               )}
 
-              <div className="my-6 border-t-2 border-dashed border-gray-200" />
+              <div className="my-6 border-t-2 border-dashed border-dc-teal/15" />
 
               <div className="mb-2">
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1 mb-2">
@@ -324,6 +326,7 @@ const BusinessSettings = () => {
           <LeaveOrgSheet open={leaveOrgOpen} onOpenChange={setLeaveOrgOpen} />
           <DeleteUserSheet open={deleteUserOpen} onOpenChange={setDeleteUserOpen} />
         </div>
+        </PageBody>
       </div>
     </DashboardLayout>
   );

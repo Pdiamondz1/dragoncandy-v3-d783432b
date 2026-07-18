@@ -1,6 +1,7 @@
 
 import React, { Component, ReactNode } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { CardContent } from '@/components/ui/card';
+import { AppCard } from '@/components/app/AppCard';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
@@ -34,7 +35,7 @@ export class PromotionsErrorBoundary extends Component<Props, State> {
   override render() {
     if (this.state.hasError) {
       return (
-        <Card className="border-red-200 bg-red-50">
+        <AppCard className="p-0 border-red-200 bg-red-50">
           <CardContent className="flex flex-col items-center justify-center py-8">
             <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
             <h3 className="text-lg font-semibold text-red-900 mb-2">
@@ -52,7 +53,7 @@ export class PromotionsErrorBoundary extends Component<Props, State> {
               Try Again
             </Button>
           </CardContent>
-        </Card>
+        </AppCard>
       );
     }
 

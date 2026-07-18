@@ -94,7 +94,7 @@ export function LocationSettingsSections({
           />
         </div>
 
-        <div className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3">
+        <div className="flex items-center justify-between rounded-xl border border-dc-teal/15 px-4 py-3">
           <div>
             <Label htmlFor="show_parent_brand" className="cursor-pointer text-sm font-medium">
               Show parent brand to creators
@@ -141,7 +141,7 @@ export function LocationSettingsSections({
       >
         <ConnectedAccountsList role="business" />
 
-        <div className="border-t border-gray-100 pt-4 mt-4">
+        <div className="border-t border-dc-teal/10 pt-4 mt-4">
           <details className="group">
             <summary className="text-xs font-semibold text-gray-400 cursor-pointer hover:text-gray-600">
               Profile Links (for public profile display)

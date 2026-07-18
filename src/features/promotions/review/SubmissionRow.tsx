@@ -41,7 +41,7 @@ const PLATFORM_META: Record<SocialPlatform, PlatformMeta> = {
   x: {
     icon: <Twitter className="w-3.5 h-3.5" />,
     label: 'X',
-    chipClasses: 'bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200',
+    chipClasses: 'bg-dc-dark/5 text-dc-text border-dc-dark/20 hover:bg-dc-dark/10',
     profileUrl: (h) => `https://x.com/${h}`,
   },
   youtube: {

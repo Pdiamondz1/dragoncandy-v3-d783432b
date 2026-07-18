@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { WhyExpander } from '@/components/guidance/WhyExpander';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AppCard } from '@/components/app/AppCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { WebOnly } from '@/components/platform/WebOnly';
@@ -21,11 +22,11 @@ import { TestModeBanner } from '@/components/payments/TestModeBanner';
 import { StripeTestHelper } from '@/components/payments/StripeTestHelper';
 
 const TIER_COLORS: Record<string, string> = {
-  free: 'bg-gray-100 text-gray-700',
-  starter: 'bg-blue-100 text-blue-700',
-  growth: 'bg-teal-100 text-teal-700',
-  pro: 'bg-purple-100 text-purple-700',
-  enterprise: 'bg-amber-100 text-amber-700',
+  free: 'bg-dc-teal/5 text-dc-text-muted',
+  starter: 'bg-dc-teal/10 text-dc-teal-btn',
+  growth: 'bg-dc-teal/20 text-dc-teal-btn',
+  pro: 'bg-dc-pink-accent/10 text-dc-pink-accent',
+  enterprise: 'bg-amber-50 text-amber-700',
 };
 
 
@@ -88,7 +89,7 @@ export default function OrgBillingPage() {
           </div>
         </PageHeader>
         <div className="p-4 lg:p-6 space-y-6">
-        <Card>
+        <AppCard className="p-0">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg">Current Plan</CardTitle>
@@ -145,7 +146,8 @@ export default function OrgBillingPage() {
                           setUpgrading(false);
                         }
                       }}
-                      className="mt-3 rounded-full bg-teal-500 hover:bg-teal-600 text-white"
+                      variant="dc-primary"
+                      className="mt-3 rounded-full"
                     >
                       {upgrading ? 'Redirecting…' : 'Upgrade plan'}
                     </Button>
@@ -154,9 +156,9 @@ export default function OrgBillingPage() {
               </div>
             )}
           </CardContent>
-        </Card>
+        </AppCard>
 
-        <Card>
+        <AppCard className="p-0">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5 text-muted-foreground" />
@@ -182,9 +184,9 @@ export default function OrgBillingPage() {
               ))}
             </div>
           </CardContent>
-        </Card>
+        </AppCard>
 
-        <Card>
+        <AppCard className="p-0">
           <CardHeader>
             <div className="flex items-center gap-2">
               <CreditCard className="h-5 w-5 text-muted-foreground" />
@@ -196,7 +198,7 @@ export default function OrgBillingPage() {
               {Object.entries(SEAT_LIMITS).filter(([t]) => t !== 'enterprise').map(([t, l]) => (
                 <div
                   key={t}
-                  className={`flex items-center justify-between rounded-lg border p-3 ${t === tier ? 'border-teal-400 bg-teal-50/30' : 'border-border'}`}
+                  className={`flex items-center justify-between rounded-lg border p-3 ${t === tier ? 'border-teal-400 bg-teal-50/30' : 'border-dc-teal/15'}`}
                 >
                   <div>
                     <p className="font-medium text-sm capitalize">{t}</p>
@@ -218,7 +220,7 @@ export default function OrgBillingPage() {
               ))}
             </div>
           </CardContent>
-        </Card>
+        </AppCard>
         </div>
       </div>
     </DashboardLayout>

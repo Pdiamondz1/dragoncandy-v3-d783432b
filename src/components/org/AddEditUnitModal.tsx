@@ -203,7 +203,7 @@ export function AddEditUnitModal({
             </div>
           )}
 
-          <div className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3">
+          <div className="flex items-center justify-between rounded-xl border border-dc-teal/15 px-4 py-3">
             <Label htmlFor="unit-primary" className="cursor-pointer text-sm font-medium">
               Set as default
             </Label>
@@ -228,7 +228,8 @@ export function AddEditUnitModal({
           <Button
             onClick={handleSave}
             disabled={!canSave}
-            className="rounded-full bg-teal-400 text-white hover:bg-dc-teal-btn-hover disabled:opacity-50"
+            variant="dc-primary"
+            className="rounded-full disabled:opacity-50"
           >
             {isSaving ? 'Saving…' : 'Save'}
           </Button>

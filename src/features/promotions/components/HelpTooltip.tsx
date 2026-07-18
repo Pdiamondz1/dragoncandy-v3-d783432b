@@ -37,10 +37,10 @@ export const HelpTooltip: React.FC<HelpTooltipProps> = ({
       {open && (
         <div className="absolute z-50 left-1/2 -translate-x-1/2 top-full mt-2 w-64 animate-in fade-in slide-in-from-top-1 duration-150">
           {/* Arrow */}
-          <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 bg-white border-l border-t border-gray-200" />
+          <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 bg-white border-l border-t border-dc-teal/15" />
 
           {/* Card */}
-          <div className="relative bg-white rounded-xl border border-gray-200 shadow-lg p-3.5">
+          <div className="relative bg-white rounded-xl border border-dc-teal/15 shadow-lg p-3.5">
             <p className="text-xs text-gray-600 leading-relaxed mb-3">
               {summary}
             </p>

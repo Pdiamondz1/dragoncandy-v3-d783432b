@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { AppCard } from '@/components/app/AppCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
@@ -62,7 +63,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ submission }) => {
 
   return (
     <>
-      <Card className="hover:shadow-md transition-shadow">
+      <AppCard className="p-0 hover:shadow-md transition-shadow">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
@@ -150,7 +151,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ submission }) => {
             )}
           </div>
         </CardContent>
-      </Card>
+      </AppCard>
 
       {/* Media Preview Dialog */}
       <Dialog open={showVideoPreview} onOpenChange={setShowVideoPreview}>
@@ -161,7 +162,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ submission }) => {
               {submission.promotion?.title} • {format(new Date(submission.created_at), 'MMM d, yyyy')}
             </DialogDescription>
           </DialogHeader>
-          <div className="aspect-video bg-muted rounded-lg overflow-hidden flex items-center justify-center">
+          <div className="aspect-video bg-dc-teal/5 rounded-lg overflow-hidden flex items-center justify-center">
             {isLoadingUrl ? (
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             ) : resolvedUrl ? (
@@ -206,7 +207,7 @@ export const ApprovedVideosTab: React.FC<ApprovedVideosTabProps> = ({
 
   if (totalVideos === 0) {
     return (
-      <Card>
+      <AppCard className="p-0">
         <CardContent className="flex flex-col items-center justify-center py-12">
           <Film className="h-12 w-12 text-muted-foreground mb-4" />
           <h3 className="text-lg font-medium mb-2">No Reviewed Videos Yet</h3>
@@ -214,7 +215,7 @@ export const ApprovedVideosTab: React.FC<ApprovedVideosTabProps> = ({
             Reviewed customer video submissions will appear here. Approved videos can be downloaded for your marketing use.
           </p>
         </CardContent>
-      </Card>
+      </AppCard>
     );
   }
 
@@ -234,7 +235,7 @@ export const ApprovedVideosTab: React.FC<ApprovedVideosTabProps> = ({
 
         <TabsContent value="approved">
           {approvedSubmissions.length === 0 ? (
-            <Card>
+            <AppCard className="p-0">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <CheckCircle className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium mb-2">No Approved Videos</h3>
@@ -242,7 +243,7 @@ export const ApprovedVideosTab: React.FC<ApprovedVideosTabProps> = ({
                   Approved videos will appear here for download.
                 </p>
               </CardContent>
-            </Card>
+            </AppCard>
           ) : (
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -263,7 +264,7 @@ export const ApprovedVideosTab: React.FC<ApprovedVideosTabProps> = ({
 
         <TabsContent value="rejected">
           {rejectedSubmissions.length === 0 ? (
-            <Card>
+            <AppCard className="p-0">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <XCircle className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium mb-2">No Rejected Videos</h3>
@@ -271,7 +272,7 @@ export const ApprovedVideosTab: React.FC<ApprovedVideosTabProps> = ({
                   Rejected video submissions will appear here.
                 </p>
               </CardContent>
-            </Card>
+            </AppCard>
           ) : (
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

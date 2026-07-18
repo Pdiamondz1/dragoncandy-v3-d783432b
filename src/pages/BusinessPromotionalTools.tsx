@@ -4,6 +4,7 @@ import { ActivePromotionsTab } from '@/components/promotions/ActivePromotionsTab
 import { CGCContentLibrary } from '@/components/promotions/CGCContentLibrary';
 import { HelpTooltip } from '@/features/promotions/components/HelpTooltip';
 import { Button } from '@/components/ui/button';
+import { PageBody } from '@/components/app/PageBody';
 import { usePromotions } from '@/hooks/usePromotions';
 import { PrerequisiteGate } from '@/components/PrerequisiteGate';
 import { useState } from 'react';
@@ -20,7 +21,8 @@ const BusinessPromotionalTools = () => {
   return (
     <DashboardLayout userRole="business_client">
       <PrerequisiteGate feature="use Promotions">
-      <div className="min-h-screen overflow-x-hidden pb-24 md:pb-0 md:max-w-4xl md:mx-auto">
+      <div className="min-h-screen overflow-x-hidden pb-24 md:pb-0">
+        <PageBody maxWidth="4xl" className="space-y-0">
         {/* Header */}
         <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-6 pb-4">
           <h1 className="font-sans text-sm font-bold uppercase tracking-wide text-dc-text inline-flex items-center gap-2">
@@ -101,6 +103,7 @@ const BusinessPromotionalTools = () => {
             </TabsContent>
           </Tabs>
         </div>
+        </PageBody>
       </div>
       </PrerequisiteGate>
     </DashboardLayout>
