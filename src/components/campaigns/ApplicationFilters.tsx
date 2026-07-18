@@ -23,7 +23,7 @@ export const ApplicationFiltersComponent: React.FC<ApplicationFiltersProps> = ({
   filteredCount,
 }) => {
   return (
-    <div className="space-y-4 p-4 bg-muted rounded-lg">
+    <div className="space-y-4 p-4 bg-dc-teal/[0.04] border border-dc-teal/15 rounded-lg">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4" aria-hidden="true" />

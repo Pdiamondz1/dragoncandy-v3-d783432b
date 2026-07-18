@@ -28,7 +28,7 @@ export const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
       <Card
         {...getRootProps()}
         className={`p-8 border-2 border-dashed cursor-pointer transition-colors ${
-          isDragActive ? 'border-blue-500 bg-blue-50' : 'border-border hover:border-border'
+          isDragActive ? 'border-teal-400 bg-teal-50' : 'border-border hover:border-border'
         }`}
       >
         <input {...getInputProps()} />

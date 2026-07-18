@@ -65,7 +65,7 @@ export const FileCommentsPanel: React.FC<FileCommentsPanelProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setReplyTo(comment.id)}
-              className="h-auto p-0 text-xs text-blue-600 hover:text-blue-800"
+              className="h-auto p-0 text-xs text-dc-pink-accent hover:text-dc-pink-accent-btn"
             >
               <Reply className="h-3 w-3 mr-1" />
               Reply
@@ -102,7 +102,7 @@ export const FileCommentsPanel: React.FC<FileCommentsPanelProps> = ({
       <Card className="p-4">
         <form onSubmit={handleSubmitComment} className="space-y-4">
           {replyTo && (
-            <div className="flex items-center gap-2 text-sm text-blue-600">
+            <div className="flex items-center gap-2 text-sm text-dc-pink-accent">
               <Reply className="h-4 w-4" />
               <span>Replying to comment</span>
               <Button

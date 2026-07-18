@@ -80,7 +80,7 @@ export const ReactionTrigger: React.FC<ReactionTriggerProps> = ({
             <button
               key={emoji}
               onClick={() => handleEmojiClick(emoji)}
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-lg transition-colors hover:bg-muted/60 ${
+              className={`w-8 h-8 rounded-full flex items-center justify-center text-lg transition-colors hover:bg-dc-teal/5 ${
                 userReactedEmojis.has(emoji) ? 'bg-dc-teal/10' : ''
               }`}
               aria-label={`React with ${emoji}`}
@@ -95,7 +95,7 @@ export const ReactionTrigger: React.FC<ReactionTriggerProps> = ({
           <Popover open={showFullPicker} onOpenChange={setShowFullPicker}>
             <PopoverTrigger asChild>
               <button
-                className="w-8 h-8 rounded-full flex items-center justify-center text-sm text-muted-foreground hover:bg-muted/60 transition-colors"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-sm text-muted-foreground hover:bg-dc-teal/5 transition-colors"
                 aria-label="More emojis"
               >
                 +
@@ -106,7 +106,7 @@ export const ReactionTrigger: React.FC<ReactionTriggerProps> = ({
                 {ALL_EMOJIS.map((emoji) => (
                   <button
                     key={emoji}
-                    className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg hover:bg-muted/60 transition-colors ${
+                    className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg hover:bg-dc-teal/5 transition-colors ${
                       userReactedEmojis.has(emoji) ? 'bg-dc-teal/10' : ''
                     }`}
                     onClick={() => handleEmojiClick(emoji)}

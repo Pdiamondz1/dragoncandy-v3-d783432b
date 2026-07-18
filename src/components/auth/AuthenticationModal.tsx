@@ -80,17 +80,17 @@ export const AuthenticationModal: React.FC<AuthenticationModalProps> = ({
 
         <div className="space-y-4 mt-4">
           {/* Benefits */}
-          <div className="bg-muted/30 p-4 rounded-lg space-y-3">
+          <div className="bg-dc-teal/[0.04] p-4 rounded-lg space-y-3">
             <div className="flex items-center gap-3 text-sm">
               <Save className="h-4 w-4 text-green-600" aria-hidden="true" />
               <span>Your campaign progress will be saved</span>
             </div>
             <div className="flex items-center gap-3 text-sm">
-              <Rocket className="h-4 w-4 text-blue-600" aria-hidden="true" />
+              <Rocket className="h-4 w-4 text-dc-teal" aria-hidden="true" />
               <span>Publish to our creator marketplace</span>
             </div>
             <div className="flex items-center gap-3 text-sm">
-              <Shield className="h-4 w-4 text-purple-600" aria-hidden="true" />
+              <Shield className="h-4 w-4 text-dc-pink-accent" aria-hidden="true" />
               <span>Manage all your campaigns in one place</span>
             </div>
           </div>

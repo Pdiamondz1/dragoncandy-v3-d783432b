@@ -61,7 +61,7 @@ export function GroupInviteCard({ invitation, onAccept, onDecline, isPending = f
         <button
           onClick={onDecline}
           disabled={isPending}
-          className="flex-1 bg-white text-pink-500 font-semibold py-2 rounded-full text-sm border-2 border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex-1 bg-white text-pink-500 font-semibold py-2 rounded-full text-sm border-2 border-dc-teal/30 hover:bg-dc-teal/5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
         >
           Decline
         </button>

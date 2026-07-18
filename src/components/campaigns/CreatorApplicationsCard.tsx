@@ -88,7 +88,7 @@ export const CreatorApplicationsCard = ({ campaignId }: CreatorApplicationsCardP
         ) : (
           <div className="space-y-4">
             {applications?.map((application) => (
-              <div key={application.id} className="flex items-start gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+              <div key={application.id} className="flex items-start gap-4 p-4 border rounded-lg hover:bg-dc-teal/[0.04] transition-colors">
                 <ResolvedAvatar
                   path={application.creator_profile?.avatar_url}
                   alt={application.creator_profile?.creator_name || 'Creator'}
@@ -131,7 +131,7 @@ export const CreatorApplicationsCard = ({ campaignId }: CreatorApplicationsCardP
                   </div>
 
                   {application.intro_message && (
-                    <p className="text-sm text-muted-foreground bg-muted p-2 rounded">
+                    <p className="text-sm text-muted-foreground bg-dc-teal/[0.04] p-2 rounded">
                       {application.intro_message}
                     </p>
                   )}

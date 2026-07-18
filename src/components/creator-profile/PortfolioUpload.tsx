@@ -132,7 +132,7 @@ export const PortfolioUpload = ({
         <Label className="text-sm text-muted-foreground">Add New Items</Label>
 
         {!canUpload && !overLimit && (
-          <div className="mt-2 rounded-lg bg-gray-50 border border-gray-200 px-4 py-3">
+          <div className="mt-2 rounded-lg bg-dc-teal/[0.04] border border-dc-teal/10 px-4 py-3">
             <p className="text-sm text-gray-600">
               Portfolio limit reached ({MAX_PORTFOLIO_ITEMS}/{MAX_PORTFOLIO_ITEMS}). Remove an item to upload new content.
             </p>
@@ -175,7 +175,7 @@ export const PortfolioUpload = ({
             {newPreviews.map((item, idx) => (
               <div
                 key={idx}
-                className="relative aspect-square rounded-lg overflow-hidden border border-gray-200"
+                className="relative aspect-square rounded-lg overflow-hidden border border-dc-teal/15"
               >
                 <img
                   src={item.url}

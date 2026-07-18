@@ -190,8 +190,8 @@ export function MediaUploader({
       {/* Dropzone */}
       <div
         {...getRootProps()}
-        className={`rounded-xl border-2 border-dashed cursor-pointer transition-colors p-6 text-center bg-gray-100
-          ${isDragActive ? 'border-teal-400 bg-teal-50' : 'border-gray-300 hover:border-teal-300 hover:bg-gray-50'}`}
+        className={`rounded-xl border-2 border-dashed cursor-pointer transition-colors p-6 text-center bg-dc-teal/[0.04]
+          ${isDragActive ? 'border-teal-400 bg-teal-50' : 'border-dc-teal/20 hover:border-teal-300 hover:bg-dc-teal/[0.06]'}`}
       >
         <input {...getInputProps()} />
         <div className="flex flex-col items-center gap-2">
@@ -225,7 +225,7 @@ export function MediaUploader({
             {Math.round(totalBytes / (1024 * 1024))}MB of{' '}
             {Math.round(maxTotalBytes / (1024 * 1024))}MB used
           </div>
-          <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
+          <div className="h-1 bg-dc-teal/10 rounded-full overflow-hidden">
             <div
               className="h-full bg-dc-teal-btn rounded-full transition-all"
               style={{
@@ -282,7 +282,7 @@ export function MediaUploader({
                 <div className="flex items-center gap-1.5 mb-0.5">
                   <span
                     className={`text-white text-[10px] font-semibold rounded-full px-2 py-0.5 ${
-                      staged.type.startsWith('video/') ? 'bg-purple-500/80' : 'bg-blue-500/80'
+                      staged.type.startsWith('video/') ? 'bg-dc-teal-btn/90' : 'bg-dc-pink-accent-btn/90'
                     }`}
                   >
                     {staged.type.startsWith('video/') ? 'Video' : 'Photo'}

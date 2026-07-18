@@ -87,7 +87,7 @@ export const ProtectedFilePreview: React.FC<ProtectedFilePreviewProps> = ({
   const fileSizeMB = (file.file_size / 1024 / 1024).toFixed(2);
 
   return (
-    <div className="rounded-lg border bg-muted/30 overflow-hidden">
+    <div className="rounded-lg border border-dc-teal/10 bg-dc-teal/[0.04] overflow-hidden">
       {/* File Info Header */}
       <div className="flex items-center justify-between p-3">
         <div className="flex items-center gap-3">

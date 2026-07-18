@@ -73,7 +73,7 @@ const ScoreBar: React.FC<{ label: string; score: number; icon: React.ElementType
   <div className="flex items-center gap-2">
     <Icon className={`h-3.5 w-3.5 flex-shrink-0 ${getScoreColor(score)}`} />
     <span className="text-xs text-muted-foreground w-24 flex-shrink-0">{label}</span>
-    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+    <div className="flex-1 h-2 bg-dc-teal/10 rounded-full overflow-hidden">
       <div
         className={`h-full rounded-full transition-all duration-500 ${getScoreBg(score)}`}
         style={{ width: `${score}%` }}
@@ -212,7 +212,7 @@ export const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({ match, isInv
             </button>
 
             {showBreakdown && breakdown && (
-              <div className="mt-2 p-3 rounded-lg bg-muted/50 space-y-2">
+              <div className="mt-2 p-3 rounded-lg bg-dc-teal/[0.04] space-y-2">
                 {(Object.entries(SCORE_LABELS) as [keyof ScoreBreakdown, { label: string; icon: React.ElementType }][]).map(
                   ([key, config]) => (
                     <ScoreBar

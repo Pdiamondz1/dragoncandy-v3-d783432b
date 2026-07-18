@@ -90,7 +90,7 @@ export const ContactRestaurantModal: React.FC<ContactRestaurantModalProps> = ({
 
         <div className="space-y-4">
           {/* Restaurant Info */}
-          <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+          <div className="flex items-center gap-3 p-3 bg-dc-teal/[0.04] rounded-lg">
             <Avatar>
               <AvatarImage src={resolvedLogoUrl} alt={restaurant.business_name ?? "Restaurant avatar"} />
               <AvatarFallback>

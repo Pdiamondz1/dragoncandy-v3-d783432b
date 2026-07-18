@@ -163,7 +163,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
 
         <div>
           <h4 className="font-medium mb-1">Introduction Message</h4>
-          <p className="text-sm text-muted-foreground bg-muted p-3 rounded">
+          <p className="text-sm text-muted-foreground bg-dc-teal/[0.04] p-3 rounded">
             {application.intro_message || 'No message provided'}
           </p>
         </div>
@@ -196,7 +196,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {application.proposed_timeline && (
             <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-blue-600" aria-hidden="true" />
+              <Clock className="h-4 w-4 text-dc-teal" aria-hidden="true" />
               <div>
                 <p className="text-xs text-muted-foreground">Proposed Timeline</p>
                 <p className="text-sm font-medium">{application.proposed_timeline}</p>

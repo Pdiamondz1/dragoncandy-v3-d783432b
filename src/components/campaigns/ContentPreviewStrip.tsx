@@ -14,7 +14,7 @@ export function ContentPreviewStrip({ campaignId, collaborationId, role }: Conte
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 bg-gray-50 rounded-lg border border-gray-200 p-2">
+      <div className="flex items-center gap-2 bg-dc-teal/[0.04] rounded-lg border border-dc-teal/15 p-2">
         <div className="flex gap-1.5">
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="w-[44px] h-[44px] rounded-lg" />
@@ -56,7 +56,7 @@ export function ContentPreviewStrip({ campaignId, collaborationId, role }: Conte
   }
 
   return (
-    <div className="flex items-center gap-2.5 bg-gray-50 rounded-lg border border-gray-200 p-2">
+    <div className="flex items-center gap-2.5 bg-dc-teal/[0.04] rounded-lg border border-dc-teal/15 p-2">
       {data.thumbnailUrls.length > 0 && (
         <div className="flex gap-1.5 flex-shrink-0">
           {data.thumbnailUrls.map((url, i) => (
@@ -69,7 +69,7 @@ export function ContentPreviewStrip({ campaignId, collaborationId, role }: Conte
             />
           ))}
           {data.submitted > data.thumbnailUrls.length && (
-            <div className="w-[44px] h-[44px] rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
+            <div className="w-[44px] h-[44px] rounded-lg border-2 border-dashed border-dc-teal/20 flex items-center justify-center">
               <span className="text-xs text-gray-400 font-semibold">
                 +{data.submitted - data.thumbnailUrls.length}
               </span>

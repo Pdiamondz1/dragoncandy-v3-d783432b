@@ -109,7 +109,7 @@ export function ReviewCountdownTimer({
   // Brief "processing" message right after expiry, then hide
   if (expired) {
     return (
-      <div className="rounded-xl border border-gray-300 bg-gray-50 p-4 text-center text-sm text-gray-600">
+      <div className="rounded-xl border border-dc-teal/15 bg-dc-teal/[0.04] p-4 text-center text-sm text-gray-600">
         <Clock className="mx-auto mb-1 h-5 w-5 animate-spin" />
         Auto-approval processing...
       </div>

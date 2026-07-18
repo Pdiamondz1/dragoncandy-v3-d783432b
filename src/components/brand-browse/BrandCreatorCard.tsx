@@ -67,7 +67,7 @@ export const BrandCreatorCard: React.FC<BrandCreatorCardProps> = ({
 
   return (
     <>
-      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+      <div className="bg-white border border-dc-teal/15 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
         {/* Clickable card body */}
         <button
           type="button"
@@ -129,7 +129,7 @@ export const BrandCreatorCard: React.FC<BrandCreatorCardProps> = ({
               {platforms.slice(0, 3).map((p) => (
                 <span
                   key={p.name}
-                  className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-gray-500"
+                  className="w-5 h-5 rounded-full bg-dc-teal/10 flex items-center justify-center text-gray-500"
                 >
                   {p.icon}
                 </span>
@@ -189,7 +189,7 @@ export const BrandCreatorCard: React.FC<BrandCreatorCardProps> = ({
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full text-sm font-semibold transition-colors ${
               isShortlisted
                 ? 'bg-pink-50 text-pink-600 border border-pink-200'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-dc-teal/5 text-dc-text-muted hover:bg-dc-teal/10'
             }`}
           >
             <Bookmark className={`h-4 w-4 ${isShortlisted ? 'fill-pink-400' : ''}`} />

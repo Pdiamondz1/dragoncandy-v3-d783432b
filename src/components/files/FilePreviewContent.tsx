@@ -23,15 +23,15 @@ export const FilePreviewContent: React.FC<FilePreviewContentProps> = ({
 }) => {
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 bg-gray-100 rounded-lg">
-        <Spinner className="border-blue-600" label="Loading file preview..." />
+      <div className="flex items-center justify-center h-64 bg-dc-teal/[0.04] rounded-lg">
+        <Spinner className="border-dc-teal" label="Loading file preview..." />
       </div>
     );
   }
 
   if (!fileUrl) {
     return (
-      <div className="flex items-center justify-center h-64 bg-gray-100 rounded-lg">
+      <div className="flex items-center justify-center h-64 bg-dc-teal/[0.04] rounded-lg">
         <p className="text-gray-500">Unable to load preview</p>
       </div>
     );
@@ -65,7 +65,7 @@ export const FilePreviewContent: React.FC<FilePreviewContentProps> = ({
     
     case 'audio':
       return (
-        <div className="p-8 bg-gray-50 rounded-lg text-center">
+        <div className="p-8 bg-dc-teal/[0.04] rounded-lg text-center">
           <audio controls aria-label="File audio preview" className="w-full">
             <source src={fileUrl} type={file.mime_type} />
             Your browser does not support the audio tag.
@@ -75,7 +75,7 @@ export const FilePreviewContent: React.FC<FilePreviewContentProps> = ({
     
     case 'document':
       return (
-        <div className="p-8 bg-gray-50 rounded-lg text-center">
+        <div className="p-8 bg-dc-teal/[0.04] rounded-lg text-center">
           <div className="text-6xl mb-4">📄</div>
           <p className="text-gray-600 mb-4">Document preview not available</p>
           <Button onClick={onDownload}>
@@ -87,7 +87,7 @@ export const FilePreviewContent: React.FC<FilePreviewContentProps> = ({
     
     default:
       return (
-        <div className="p-8 bg-gray-50 rounded-lg text-center">
+        <div className="p-8 bg-dc-teal/[0.04] rounded-lg text-center">
           <div className="text-6xl mb-4">📁</div>
           <p className="text-gray-600 mb-4">Preview not available for this file type</p>
           <Button onClick={onDownload}>

@@ -75,8 +75,8 @@ export function ProjectStepper({
                 <div
                   className={cn(
                     'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
-                    isCompleted && 'bg-[#4DD9C0] text-white',
-                    !isCompleted && !isCurrent && 'bg-gray-200 text-gray-500'
+                    isCompleted && 'bg-dc-teal text-white',
+                    !isCompleted && !isCurrent && 'bg-dc-teal/10 text-dc-teal-btn'
                   )}
                   style={
                     isCurrent

@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useCampaignContentGallery, type GalleryFile } from '@/hooks/useCampaignContentGallery';
 import { ContentTile } from './ContentTile';
 import { ProtectedFilePreview } from '@/components/projects/ProtectedFilePreview';
+import { AppChip } from '@/components/app/AppChip';
 
 interface CampaignContentGalleryProps {
   campaignId: string;
@@ -260,17 +261,14 @@ export function CampaignContentGallery({ campaignId }: CampaignContentGalleryPro
       {/* Filter chips */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         {FILTERS.map(f => (
-          <button
+          <AppChip
             key={f.value}
+            active={filter === f.value}
             onClick={() => setFilter(f.value)}
-            className={`text-xs px-3 py-1.5 rounded-full whitespace-nowrap transition-colors ${
-              filter === f.value
-                ? 'bg-dc-teal text-white font-semibold'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+            className="text-xs px-3 whitespace-nowrap"
           >
             {f.label}
-          </button>
+          </AppChip>
         ))}
       </div>
 

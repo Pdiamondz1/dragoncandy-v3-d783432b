@@ -46,7 +46,7 @@ export const CampaignGoalStep: React.FC<CampaignGoalStepProps> = ({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+          <div className="w-8 h-8 bg-dc-teal-btn rounded-full flex items-center justify-center text-white text-sm font-semibold">
             2
           </div>
           Step 2: Describe Your Campaign Goal
@@ -80,7 +80,7 @@ export const CampaignGoalStep: React.FC<CampaignGoalStepProps> = ({
                   key={example.label}
                   type="button"
                   onClick={() => handleUseExample(example.text)}
-                  className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-full bg-gray-50 hover:bg-teal-50 text-sm text-gray-600 hover:text-teal-600 transition-colors border border-gray-200 hover:border-teal-300 text-center sm:text-left"
+                  className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-full bg-dc-teal/[0.04] hover:bg-teal-50 text-sm text-gray-600 hover:text-teal-600 transition-colors border border-dc-teal/20 hover:border-teal-300 text-center sm:text-left"
                 >
                   {example.label}
                 </button>

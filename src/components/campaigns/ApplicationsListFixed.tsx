@@ -142,7 +142,7 @@ export const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ ca
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
               <CardContent className="flex items-center gap-3 p-4">
-                <Users className="h-8 w-8 text-blue-600" />
+                <Users className="h-8 w-8 text-dc-teal" />
                 <div>
                   <p className="text-2xl font-bold">{applications.length}</p>
                   <p className="text-sm text-gray-600">Total Applications</p>

@@ -91,7 +91,7 @@ export const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <Users className="h-5 w-5 text-purple-500" />
+                  <Users className="h-5 w-5 text-dc-teal" />
                   Target Audience
                 </CardTitle>
               </CardHeader>
@@ -130,7 +130,7 @@ export const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <Palette className="h-5 w-5 text-orange-500" />
+                  <Palette className="h-5 w-5 text-dc-pink-accent" />
                   Content Types
                 </CardTitle>
               </CardHeader>
@@ -236,7 +236,7 @@ export const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = (
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {analysis.content_ideas.map((idea, index) => (
-                    <div key={index} className="border rounded-lg p-4 bg-muted">
+                    <div key={index} className="border border-dc-teal/15 rounded-lg p-4 bg-dc-teal/[0.04]">
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-semibold text-foreground">{idea.concept}</span>
                         <Badge variant="secondary" className="text-xs">{idea.format}</Badge>
@@ -280,7 +280,7 @@ export const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = (
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
                     {analysis.hashtags.map((tag, index) => (
-                      <Badge key={index} variant="outline" className="text-sm cursor-pointer hover:bg-muted"
+                      <Badge key={index} variant="outline" className="text-sm cursor-pointer hover:bg-dc-teal/5"
                         onClick={() => {
                           navigator.clipboard.writeText(tag);
                           toast.success(`Copied ${tag}`);
@@ -298,14 +298,14 @@ export const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Type className="h-5 w-5 text-purple-500" />
+                    <Type className="h-5 w-5 text-dc-pink-accent" />
                     Ready-to-Post Captions
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     {analysis.captions.map((caption, index) => (
-                      <div key={index} className="border rounded-lg p-3 bg-muted relative group">
+                      <div key={index} className="border border-dc-teal/15 rounded-lg p-3 bg-dc-teal/[0.04] relative group">
                         <p className="text-sm text-foreground pr-8">{caption}</p>
                         <Button
                           variant="ghost"

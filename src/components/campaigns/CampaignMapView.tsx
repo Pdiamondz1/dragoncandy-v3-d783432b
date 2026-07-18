@@ -56,7 +56,7 @@ export const CampaignMapView: React.FC<CampaignMapViewProps> = ({ campaigns, onV
 
   if (loadError) {
     return (
-      <div className="flex items-center justify-center h-[600px] bg-muted rounded-lg">
+      <div className="flex items-center justify-center h-[600px] bg-dc-teal/[0.04] border border-dc-teal/15 rounded-lg">
         <div className="text-center space-y-2">
           <MapPin className="h-12 w-12 mx-auto text-muted-foreground" aria-hidden="true" />
           <p className="text-muted-foreground">Error loading maps</p>
@@ -67,7 +67,7 @@ export const CampaignMapView: React.FC<CampaignMapViewProps> = ({ campaigns, onV
 
   if (!isLoaded) {
     return (
-      <div className="flex items-center justify-center h-[600px] bg-muted rounded-lg">
+      <div className="flex items-center justify-center h-[600px] bg-dc-teal/[0.04] border border-dc-teal/15 rounded-lg">
         <div className="text-center space-y-2">
           <MapPin className="h-12 w-12 mx-auto text-muted-foreground animate-pulse" aria-hidden="true" />
           <p className="text-muted-foreground">Loading map…</p>

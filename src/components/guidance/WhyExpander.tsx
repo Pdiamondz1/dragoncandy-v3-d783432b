@@ -47,7 +47,7 @@ export function WhyExpander({ expanderKey, title, body }: WhyExpanderProps) {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.15 }}
-            className="block w-full mt-1 px-2.5 py-1.5 bg-gray-50 rounded-md text-xs text-gray-600 leading-relaxed"
+            className="block w-full mt-1 px-2.5 py-1.5 bg-dc-teal/[0.04] rounded-md text-xs text-gray-600 leading-relaxed"
           >
             {body}
           </motion.span>
