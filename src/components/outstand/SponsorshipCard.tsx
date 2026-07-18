@@ -12,10 +12,10 @@ function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
     active: 'bg-green-100 text-green-700',
     pending: 'bg-yellow-100 text-yellow-700',
-    completed: 'bg-gray-100 text-gray-600',
+    completed: 'bg-dc-teal/5 text-dc-text-muted',
   };
   return (
-    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${colors[status] ?? 'bg-gray-100 text-gray-600'}`}>
+    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${colors[status] ?? 'bg-dc-teal/5 text-dc-text-muted'}`}>
       {status}
     </span>
   );
@@ -27,7 +27,7 @@ export const SponsorshipCard: React.FC<SponsorshipCardProps> = ({ sponsorship, i
       type="button"
       onClick={onSelect}
       className={`w-full text-left p-4 rounded-2xl border-2 transition-all ${
-        isSelected ? 'border-dc-teal bg-dc-teal/5' : 'border-gray-200 bg-white hover:border-gray-300'
+        isSelected ? 'border-dc-teal bg-dc-teal/5' : 'border-dc-teal/15 bg-white hover:border-dc-teal/30'
       }`}
     >
       <div className="flex items-start justify-between mb-2">

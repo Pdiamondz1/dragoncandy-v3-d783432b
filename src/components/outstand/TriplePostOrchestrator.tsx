@@ -8,7 +8,7 @@ interface PartyStatusProps {
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-dc-teal',
   posted: 'bg-green-500',
-  skipped: 'bg-gray-300',
+  skipped: 'bg-dc-teal/40',
   'n/a': 'bg-transparent',
 };
 

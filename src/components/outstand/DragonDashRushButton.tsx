@@ -28,7 +28,7 @@ export const DragonDashRushButton: React.FC<DragonDashRushButtonProps> = ({
 
   if (tierLocked) {
     return (
-      <div className="bg-gray-100 rounded-2xl p-3.5 text-center opacity-60 cursor-not-allowed">
+      <div className="bg-dc-teal/[0.04] rounded-2xl p-3.5 text-center opacity-60 cursor-not-allowed">
         <div className="flex items-center justify-center gap-2">
           <Zap className="h-4 w-4 text-gray-400" />
           <span className="text-xs font-semibold text-gray-400">Upgrade to unlock Rush Posting</span>

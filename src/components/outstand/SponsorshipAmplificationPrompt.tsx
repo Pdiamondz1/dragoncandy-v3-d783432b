@@ -106,7 +106,7 @@ function SponsorshipAmplificationPromptInner({
         </div>
       ) : (
         <>
-          <div className="bg-gray-50 rounded-xl p-3">
+          <div className="bg-dc-teal/[0.04] rounded-xl p-3">
             <p className="text-[10px] font-semibold uppercase text-gray-400 tracking-wide mb-2">
               Amplify to ({selectedAccountIds.length} of {connectedCount})
             </p>
@@ -121,7 +121,7 @@ function SponsorshipAmplificationPromptInner({
                     className={`inline-flex items-center gap-1.5 text-xs font-semibold pl-1 pr-3 py-1 rounded-full border transition-colors ${
                       selected
                         ? 'bg-dc-teal text-white border-dc-teal'
-                        : 'bg-white text-gray-500 border-gray-200'
+                        : 'bg-white text-gray-500 border-dc-teal/20'
                     }`}
                   >
                     <SocialAccountAvatar
@@ -137,7 +137,7 @@ function SponsorshipAmplificationPromptInner({
             </div>
           </div>
 
-          <div className="bg-gray-50 rounded-xl p-3">
+          <div className="bg-dc-teal/[0.04] rounded-xl p-3">
             <p className="text-[10px] font-semibold uppercase text-gray-400 tracking-wide mb-2">
               Caption Preview
             </p>
@@ -145,7 +145,7 @@ function SponsorshipAmplificationPromptInner({
               <textarea
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
-                className="w-full text-sm text-gray-700 bg-white border border-gray-200 rounded-lg p-2 min-h-[100px] resize-none focus:outline-none focus:ring-2 focus:ring-dc-teal"
+                className="w-full text-sm text-gray-700 bg-white border border-dc-teal/20 rounded-lg p-2 min-h-[100px] resize-none focus:outline-none focus:ring-2 focus:ring-dc-teal"
                 autoFocus
               />
             ) : (
@@ -174,7 +174,7 @@ function SponsorshipAmplificationPromptInner({
               type="button"
               onClick={handleAmplifyNow}
               disabled={amplify.isPending || selectedAccountIds.length === 0 || prohibitedViolations.length > 0}
-              className="flex items-center justify-center gap-1.5 bg-dc-teal text-white text-sm font-bold py-3 rounded-full hover:bg-teal-500 transition-colors disabled:opacity-50"
+              className="flex items-center justify-center gap-1.5 bg-dc-teal-btn text-white text-sm font-bold py-3 rounded-full hover:bg-dc-teal-btn-hover transition-colors disabled:opacity-50"
             >
               <Send className="h-3.5 w-3.5" />
               Amplify Now
@@ -185,7 +185,7 @@ function SponsorshipAmplificationPromptInner({
                 onOpenChange(false);
                 navigate('/dashboard/brand/social?tab=compose');
               }}
-              className="flex items-center justify-center gap-1.5 bg-white text-gray-700 text-sm font-semibold py-3 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors"
+              className="flex items-center justify-center gap-1.5 bg-white text-gray-700 text-sm font-semibold py-3 rounded-full border border-dc-teal/15 hover:bg-dc-teal/5 transition-colors"
             >
               <CalendarDays className="h-3.5 w-3.5" />
               Schedule
@@ -193,7 +193,7 @@ function SponsorshipAmplificationPromptInner({
             <button
               type="button"
               onClick={() => setIsEditing(!isEditing)}
-              className="flex items-center justify-center gap-1.5 bg-white text-dc-pink-accent text-sm font-semibold py-3 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors"
+              className="flex items-center justify-center gap-1.5 bg-white text-dc-pink-accent text-sm font-semibold py-3 rounded-full border border-dc-teal/15 hover:bg-dc-teal/5 transition-colors"
             >
               <Edit3 className="h-3.5 w-3.5" />
               {isEditing ? 'Done' : 'Edit Caption'}
@@ -201,7 +201,7 @@ function SponsorshipAmplificationPromptInner({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="flex items-center justify-center gap-1.5 bg-white text-gray-400 text-sm font-semibold py-3 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors"
+              className="flex items-center justify-center gap-1.5 bg-white text-gray-400 text-sm font-semibold py-3 rounded-full border border-dc-teal/15 hover:bg-dc-teal/5 transition-colors"
             >
               <SkipForward className="h-3.5 w-3.5" />
               Skip

@@ -34,7 +34,7 @@ export const DonnyWeeklyPlanner: React.FC = () => {
 
   if (isLocked) {
     return (
-      <div className="bg-gray-50 rounded-2xl p-4 border border-dashed border-gray-300 text-center">
+      <div className="bg-dc-teal/[0.04] rounded-2xl p-4 border border-dashed border-dc-teal/15 text-center">
         <div className="flex items-center justify-center gap-2 mb-2">
           <CalendarRange className="h-5 w-5 text-gray-300" />
           <Sparkles className="h-4 w-4 text-gray-300" />
@@ -58,7 +58,7 @@ export const DonnyWeeklyPlanner: React.FC = () => {
       <button
         onClick={handleGenerate}
         disabled={isGenerating}
-        className="inline-flex items-center gap-1.5 bg-dc-teal text-white text-xs font-bold py-2 px-4 rounded-full hover:bg-teal-500 transition-colors disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 bg-dc-teal-btn text-white text-xs font-bold py-2 px-4 rounded-full hover:bg-dc-teal-btn-hover transition-colors disabled:opacity-50"
       >
         {isGenerating ? (
           <>

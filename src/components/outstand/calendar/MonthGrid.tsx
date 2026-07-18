@@ -68,7 +68,7 @@ export const MonthGrid: React.FC<MonthGridProps> = ({ posts, year, month, onDayC
         <div key={wi} className="grid grid-cols-7">
           {week.map((day, di) => {
             if (!day) {
-              return <div key={di} className="h-14 border-b border-r border-gray-50 last:border-r-0" />;
+              return <div key={di} className="h-14 border-b border-r border-dc-teal/10 last:border-r-0" />;
             }
             const dayPostsList = postsForDay(posts, day);
             const isToday = isSameDay(day, today);
@@ -80,7 +80,7 @@ export const MonthGrid: React.FC<MonthGridProps> = ({ posts, year, month, onDayC
                 key={di}
                 type="button"
                 onClick={() => onDayClick(day)}
-                className={`md:min-h-[92px] h-14 border-b border-r border-gray-50 last:border-r-0 flex flex-col items-center justify-start pt-1 hover:bg-gray-50 transition-colors ${isToday ? 'bg-teal-50/50' : ''}`}
+                className={`md:min-h-[92px] h-14 border-b border-r border-dc-teal/10 last:border-r-0 flex flex-col items-center justify-start pt-1 hover:bg-dc-teal/5 transition-colors ${isToday ? 'bg-teal-50/50' : ''}`}
               >
                 <span className={`text-xs font-bold ${isToday ? 'text-dc-teal' : 'text-gray-700'}`}>
                   {day.getDate()}

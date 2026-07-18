@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Comment } from '@/hooks/outstand/usePostComments';
+import { AppStatusBadge } from '@/components/app/AppStatusBadge';
 
 const PLATFORM_COLORS: Record<string, { bg: string; label: string }> = {
   instagram: { bg: 'bg-[#E1306C]', label: 'IG' },
@@ -34,11 +35,11 @@ export const EngagementList: React.FC<EngagementListProps> = ({
   onSelect,
 }) => {
   return (
-    <div className="divide-y divide-gray-50">
+    <div className="divide-y divide-dc-teal/10">
       {comments.map((comment) => {
         const isSelected = selectedId === comment.id;
         const isReplied = ownAccountIds.includes(comment.authorId) || comment.isReply;
-        const platform = PLATFORM_COLORS[comment.platform] ?? { bg: 'bg-gray-400', label: '?' };
+        const platform = PLATFORM_COLORS[comment.platform] ?? { bg: 'bg-dc-teal-btn', label: '?' };
 
         return (
           <button
@@ -46,7 +47,7 @@ export const EngagementList: React.FC<EngagementListProps> = ({
             type="button"
             onClick={() => onSelect(comment)}
             className={`w-full text-left px-4 py-3 transition-colors ${
-              isSelected ? 'bg-teal-50/50 border-l-[3px] border-l-dc-teal' : 'hover:bg-gray-50'
+              isSelected ? 'bg-teal-50/50 border-l-[3px] border-l-dc-teal' : 'hover:bg-dc-teal/5'
             } ${isReplied ? 'opacity-60' : ''}`}
           >
             <div className="flex items-start justify-between gap-2">
@@ -62,9 +63,9 @@ export const EngagementList: React.FC<EngagementListProps> = ({
               <span className="text-[9px] text-gray-300 whitespace-nowrap shrink-0">{timeAgo(comment.createdAt)}</span>
             </div>
             <div className="flex gap-1 mt-1.5 ml-[42px]">
-              <span className="text-[9px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-medium">
+              <AppStatusBadge tone="teal" className="text-[9px] px-1.5 py-0.5 rounded font-medium">
                 {comment.isReply ? 'Reply' : 'Comment'}
-              </span>
+              </AppStatusBadge>
               {isReplied ? (
                 <span className="text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-medium">Replied</span>
               ) : (

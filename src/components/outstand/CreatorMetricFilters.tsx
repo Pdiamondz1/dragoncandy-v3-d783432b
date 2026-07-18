@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { SlidersHorizontal } from 'lucide-react';
+import { AppChip } from '@/components/app/AppChip';
 
 export interface MetricFilters {
   platforms: string[];
@@ -52,18 +53,14 @@ function PillGroup<T extends string | number>({
   return (
     <div className="flex flex-wrap gap-1.5">
       {options.map((opt) => (
-        <button
+        <AppChip
           key={String(opt.value)}
-          type="button"
+          active={selected === opt.value}
           onClick={() => onSelect(opt.value)}
-          className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-            selected === opt.value
-              ? 'bg-dc-teal text-white border-dc-teal'
-              : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
-          }`}
+          className="px-3 text-xs"
         >
           {opt.label}
-        </button>
+        </AppChip>
       ))}
     </div>
   );
@@ -83,18 +80,14 @@ function FilterBody({ filters, onChange }: CreatorMetricFiltersProps) {
         <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Platform</p>
         <div className="flex flex-wrap gap-1.5">
           {PLATFORM_OPTIONS.map((p) => (
-            <button
+            <AppChip
               key={p}
-              type="button"
+              active={filters.platforms.includes(p)}
               onClick={() => togglePlatform(p)}
-              className={`text-xs px-3 py-1.5 rounded-full border capitalize transition-colors ${
-                filters.platforms.includes(p)
-                  ? 'bg-dc-teal text-white border-dc-teal'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
-              }`}
+              className="px-3 text-xs capitalize"
             >
               {p}
-            </button>
+            </AppChip>
           ))}
         </div>
       </div>

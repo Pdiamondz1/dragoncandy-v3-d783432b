@@ -299,7 +299,7 @@ export const CustomComposeForm: React.FC<CustomComposeFormProps> = ({ accounts, 
               min={minScheduledLocal()}
               max={maxScheduledLocal()}
               onChange={(e) => setScheduledLocal(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-dc-teal"
+              className="w-full rounded-xl border border-dc-teal/20 bg-white px-3 py-2 text-sm focus:outline-none focus:border-dc-teal"
             />
             <p className="text-xs text-gray-500">
               Up to {SCHEDULE_MAX_DAYS} days in advance · {Intl.DateTimeFormat().resolvedOptions().timeZone}

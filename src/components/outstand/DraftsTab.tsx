@@ -7,6 +7,7 @@ import { useDraftPosts, type DraftPost } from '@/hooks/useDraftPosts';
 import { useDonnyContext } from '@/contexts/DonnyProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { AppCard } from '@/components/app/AppCard';
 
 const SOURCE_BADGES: Record<string, { label: string; className: string }> = {
   campaign_social_hook: { label: 'Campaign', className: 'bg-dc-teal/20 text-dc-teal' },
@@ -23,7 +24,7 @@ const PLATFORM_LABELS: Record<string, string> = {
 };
 
 function SourceBadge({ source }: { source: string | undefined }) {
-  const badge = SOURCE_BADGES[source ?? ''] ?? { label: 'Manual', className: 'bg-gray-100 text-gray-600' };
+  const badge = SOURCE_BADGES[source ?? ''] ?? { label: 'Manual', className: 'bg-dc-teal/5 text-dc-text-muted' };
   return (
     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${badge.className}`}>
       {badge.label}
@@ -112,13 +113,13 @@ export const DraftsTab: React.FC<DraftsTabProps> = ({ onSwitchTab }) => {
           : null;
 
         return (
-          <div key={draft.id} className="bg-white rounded-2xl p-4 border-2 border-dc-teal">
+          <AppCard key={draft.id} variant="emphasis">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 {/* Source + platform badges */}
                 <div className="flex items-center gap-1.5 mb-2">
                   <SourceBadge source={source} />
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-dc-teal/5 text-dc-text-muted">
                     {PLATFORM_LABELS[draft.platform] || draft.platform}
                   </span>
                 </div>
@@ -146,7 +147,7 @@ export const DraftsTab: React.FC<DraftsTabProps> = ({ onSwitchTab }) => {
                     <img
                       src={draft.media_urls[0]}
                       alt="Draft media"
-                      className="h-16 w-16 rounded-lg object-cover border border-gray-200"
+                      className="h-16 w-16 rounded-lg object-cover border border-dc-teal/15"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                   </div>
@@ -194,7 +195,7 @@ export const DraftsTab: React.FC<DraftsTabProps> = ({ onSwitchTab }) => {
                 </Button>
               </div>
             </div>
-          </div>
+          </AppCard>
         );
       })}
     </div>

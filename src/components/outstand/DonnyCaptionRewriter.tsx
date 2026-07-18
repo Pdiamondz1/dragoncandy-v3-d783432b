@@ -70,7 +70,7 @@ export const DonnyCaptionRewriter: React.FC<DonnyCaptionRewriterProps> = ({
       <div className="flex gap-2 mt-2">
         <button
           onClick={() => { onAccept(suggestion); setDismissed(true); }}
-          className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-dc-teal px-2.5 py-1 rounded-full hover:bg-teal-500"
+          className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-dc-teal-btn px-2.5 py-1 rounded-full hover:bg-dc-teal-btn-hover"
         >
           <Check className="h-3 w-3" />
           Use this

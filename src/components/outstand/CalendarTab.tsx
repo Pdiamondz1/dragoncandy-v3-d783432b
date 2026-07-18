@@ -18,6 +18,7 @@ import { RescheduleConfirmDialog } from './RescheduleConfirmDialog';
 import { AgendaView } from '@/components/schedule/agenda/AgendaView';
 import { groupByDay, startOfDay, type AgendaItem } from '@/components/schedule/agenda/agendaModel';
 import { outstandPostToAgendaItem, deadlineToAgendaItem, sponsorshipToAgendaItem } from '@/components/schedule/agenda/agendaAdapters';
+import { AppChip } from '@/components/app/AppChip';
 
 type CalendarView = 'agenda' | 'day' | 'week' | 'month';
 
@@ -220,7 +221,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
               type="button"
               aria-label={view === 'day' ? 'Previous day' : view === 'week' ? 'Previous week' : 'Previous month'}
               onClick={() => (view === 'day' ? navigateDay(-1) : view === 'week' ? navigateWeek(-1) : navigateMonth(-1))}
-              className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50"
+              className="p-1.5 rounded-lg border border-dc-teal/15 hover:bg-dc-teal/[0.04]"
             >
               <ChevronLeft className="h-4 w-4 text-gray-600" />
             </button>
@@ -229,64 +230,42 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
               type="button"
               aria-label={view === 'day' ? 'Next day' : view === 'week' ? 'Next week' : 'Next month'}
               onClick={() => (view === 'day' ? navigateDay(1) : view === 'week' ? navigateWeek(1) : navigateMonth(1))}
-              className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50"
+              className="p-1.5 rounded-lg border border-dc-teal/15 hover:bg-dc-teal/[0.04]"
             >
               <ChevronRight className="h-4 w-4 text-gray-600" />
             </button>
           </div>
         ) : <div />}
         <div className="hidden md:flex gap-1">
-          <button
-            type="button"
-            onClick={() => setView('agenda')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${view === 'agenda' ? 'bg-dc-teal text-white' : 'bg-gray-100 text-gray-600'}`}
-          >
+          <AppChip active={view === 'agenda'} onClick={() => setView('agenda')} className="px-3 text-xs">
             Agenda
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('day')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${view === 'day' ? 'bg-dc-teal text-white' : 'bg-gray-100 text-gray-600'}`}
-          >
+          </AppChip>
+          <AppChip active={view === 'day'} onClick={() => setView('day')} className="px-3 text-xs">
             Day
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('week')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${view === 'week' ? 'bg-dc-teal text-white' : 'bg-gray-100 text-gray-600'}`}
-          >
+          </AppChip>
+          <AppChip active={view === 'week'} onClick={() => setView('week')} className="px-3 text-xs">
             Week
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('month')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${view === 'month' ? 'bg-dc-teal text-white' : 'bg-gray-100 text-gray-600'}`}
-          >
+          </AppChip>
+          <AppChip active={view === 'month'} onClick={() => setView('month')} className="px-3 text-xs">
             Month
-          </button>
-          <button
-            type="button"
-            onClick={goToToday}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200"
-          >
+          </AppChip>
+          <AppChip onClick={goToToday} className="px-3 text-xs">
             Today
-          </button>
+          </AppChip>
         </div>
       </div>
 
       {/* Platform filter pills */}
       <div className="flex gap-1.5 mb-3 overflow-x-auto pb-1">
         {PLATFORM_FILTERS.map((f) => (
-          <button
+          <AppChip
             key={f.key}
-            type="button"
+            active={platformFilter === f.key}
             onClick={() => setPlatformFilter(f.key)}
-            className={`text-[10px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${
-              platformFilter === f.key ? 'bg-dc-teal text-white' : 'bg-gray-100 text-gray-600'
-            }`}
+            className="px-2.5 py-1 text-[10px] whitespace-nowrap"
           >
             {f.label}
-          </button>
+          </AppChip>
         ))}
       </div>
 
@@ -338,7 +317,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
 
       {/* Legend (desktop only, Week/Day grids only) */}
       {(view === 'week' || view === 'day') && (
-        <div className="hidden md:flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 text-[10px] text-gray-400">
+        <div className="hidden md:flex items-center gap-4 mt-3 pt-3 border-t border-dc-teal/10 text-[10px] text-gray-400">
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-dc-teal" /> Scheduled</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-amber-400" /> Published</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-red-400" /> Failed</span>

@@ -36,7 +36,7 @@ export const DelegatedPostingPermissions: React.FC = () => {
           <p className="text-xs font-semibold text-gray-500 uppercase mb-2">You've granted access to</p>
           <div className="space-y-2">
             {activeGranted.map((p) => (
-              <div key={p.id} className="flex items-center justify-between bg-gray-50 rounded-xl p-3">
+              <div key={p.id} className="flex items-center justify-between bg-dc-teal/[0.04] rounded-xl p-3">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-700">{profileNames?.[p.grantee_id] ?? p.grantee_id.slice(0, 8)}</p>
                   <div className="flex gap-1 mt-1">

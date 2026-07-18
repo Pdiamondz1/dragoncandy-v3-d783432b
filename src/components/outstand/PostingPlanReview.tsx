@@ -7,6 +7,7 @@ import { useOutstandConfig } from '@/integrations/outstand/Provider';
 import { useCrossPost } from '@/hooks/outstand/useCrossPost';
 import { VideoFrameThumbnail } from '@/components/content/VideoFrameThumbnail';
 import { ScheduleConfirmation } from './ScheduleConfirmation';
+import { AppCard } from '@/components/app/AppCard';
 import { toDatetimeLocal } from '@/lib/dateUtils';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -278,7 +279,7 @@ function PostingPlanReviewInner({
           {retryCount < 2 ? (
             <button
               onClick={handleRegenerate}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-dc-teal text-white text-sm font-semibold hover:bg-teal-500 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-dc-teal-btn text-white text-sm font-semibold hover:bg-dc-teal-btn-hover transition-colors"
             >
               <RefreshCw className="h-4 w-4" /> Try Again
             </button>
@@ -334,14 +335,14 @@ function PostingPlanReviewInner({
               post.content_type === 'video_reel' || post.content_type === 'tiktok' || post.content_type === 'youtube_short';
 
             return (
-              <div key={`${post.plan_order}-${index}`} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <AppCard key={`${post.plan_order}-${index}`} className="p-0 overflow-hidden">
                 {/* Post header */}
                 <button
                   onClick={() => setExpandedIndex(isExpanded ? null : index)}
                   className="w-full flex items-center gap-2.5 p-3 text-left"
                 >
                   {/* Thumbnail */}
-                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-dc-teal/[0.04] flex-shrink-0">
                     {isVideo && post.media_urls[0] ? (
                       <VideoFrameThumbnail
                         fileId={mediaItem?.fileId ?? ''}
@@ -363,7 +364,7 @@ function PostingPlanReviewInner({
                       <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-dc-teal/15 text-dc-teal">
                         {CONTENT_TYPE_LABELS[post.content_type] ?? post.content_type}
                       </span>
-                      <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full ${PLATFORM_STYLES[post.platform] ?? 'bg-gray-600 text-white'}`}>
+                      <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full ${PLATFORM_STYLES[post.platform] ?? 'bg-dc-teal-btn text-white'}`}>
                         {post.platform.charAt(0).toUpperCase() + post.platform.slice(1)}
                       </span>
                     </div>
@@ -384,14 +385,14 @@ function PostingPlanReviewInner({
 
                 {/* Expanded content */}
                 {isExpanded && (
-                  <div className="px-3 pb-3 border-t border-gray-100 pt-2.5 space-y-2">
+                  <div className="px-3 pb-3 border-t border-dc-teal/10 pt-2.5 space-y-2">
                     {/* Caption */}
                     {isEditingThis ? (
                       <div className="space-y-1.5">
                         <textarea
                           value={post.caption}
                           onChange={e => handleUpdateCaption(index, e.target.value)}
-                          className="w-full text-xs text-dc-text border border-gray-200 rounded-lg p-2 resize-none focus:outline-none focus:ring-1 focus:ring-dc-teal"
+                          className="w-full text-xs text-dc-text border border-dc-teal/20 rounded-lg p-2 resize-none focus:outline-none focus:ring-1 focus:ring-dc-teal"
                           rows={4}
                         />
                         <button
@@ -425,7 +426,7 @@ function PostingPlanReviewInner({
                         type="datetime-local"
                         value={toDatetimeLocal(new Date(post.scheduled_at))}
                         onChange={e => handleUpdateTime(index, e.target.value)}
-                        className="text-[11px] text-dc-text border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-dc-teal"
+                        className="text-[11px] text-dc-text border border-dc-teal/20 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-dc-teal"
                       />
                     </div>
 
@@ -435,7 +436,7 @@ function PostingPlanReviewInner({
                     )}
                   </div>
                 )}
-              </div>
+              </AppCard>
             );
           })}
         </div>
@@ -445,14 +446,14 @@ function PostingPlanReviewInner({
           <button
             onClick={handleScheduleAll}
             disabled={posts.length === 0 || !accounts?.length}
-            className="w-full flex items-center justify-center gap-2 bg-dc-teal text-white text-sm font-bold py-3.5 rounded-full hover:bg-teal-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-2 bg-dc-teal-btn text-white text-sm font-bold py-3.5 rounded-full hover:bg-dc-teal-btn-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <CalendarDays className="h-4 w-4" />
             Schedule All ({posts.length})
           </button>
           <button
             onClick={handleRegenerate}
-            className="w-full py-3 rounded-full bg-white text-dc-text-muted text-sm font-semibold border border-gray-200 hover:bg-gray-50 transition-colors"
+            className="w-full py-3 rounded-full bg-white text-dc-text-muted text-sm font-semibold border border-dc-teal/15 hover:bg-dc-teal/5 transition-colors"
           >
             <RefreshCw className="h-3.5 w-3.5 inline mr-1.5" />
             Let Donny Decide

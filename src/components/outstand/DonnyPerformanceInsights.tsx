@@ -62,7 +62,7 @@ export const DonnyPerformanceInsights: React.FC = () => {
 
   if (isLocked) {
     return (
-      <div className="bg-gray-50 rounded-2xl p-4 border border-dashed border-gray-300 text-center mt-4">
+      <div className="bg-dc-teal/[0.04] rounded-2xl p-4 border border-dashed border-dc-teal/15 text-center mt-4">
         <div className="flex items-center justify-center gap-2 mb-2">
           <LineChart className="h-5 w-5 text-gray-300" />
           <Sparkles className="h-4 w-4 text-gray-300" />
@@ -85,7 +85,7 @@ export const DonnyPerformanceInsights: React.FC = () => {
         <button
           onClick={handleRefresh}
           disabled={isRefreshing}
-          className="inline-flex items-center gap-1.5 bg-dc-teal text-white text-xs font-bold py-2 px-4 rounded-full hover:bg-teal-500 transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 bg-dc-teal-btn text-white text-xs font-bold py-2 px-4 rounded-full hover:bg-dc-teal-btn-hover transition-colors disabled:opacity-50"
         >
           {isRefreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
           {isRefreshing ? 'Analyzing...' : 'Get Insights'}
@@ -104,14 +104,14 @@ export const DonnyPerformanceInsights: React.FC = () => {
         <button
           onClick={handleRefresh}
           disabled={isRefreshing}
-          className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+          className="p-1.5 rounded-full hover:bg-dc-teal/5 transition-colors"
         >
           {isRefreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" /> : <RefreshCw className="h-3.5 w-3.5 text-gray-400" />}
         </button>
       </div>
       <div className="space-y-3">
         {insights.map((insight, i) => (
-          <div key={i} className="bg-gray-50 rounded-xl p-3">
+          <div key={i} className="bg-dc-teal/[0.04] rounded-xl p-3">
             <h4 className="text-xs font-bold text-gray-700">{insight.title}</h4>
             <p className="text-xs text-gray-500 mt-1">{insight.text}</p>
             {insight.action && (

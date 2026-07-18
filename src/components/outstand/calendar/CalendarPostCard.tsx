@@ -65,7 +65,7 @@ export const CalendarPostCard: React.FC<CalendarPostCardProps> = ({
       {networks.length > 0 && (
         <div className="flex gap-0.5 mt-1 flex-wrap">
           {networks.map((n) => {
-            const color = NETWORK_COLORS[n] ?? { bg: 'bg-gray-400', text: 'text-white', label: n };
+            const color = NETWORK_COLORS[n] ?? { bg: 'bg-dc-teal-btn', text: 'text-white', label: n };
             return (
               <span
                 key={n}

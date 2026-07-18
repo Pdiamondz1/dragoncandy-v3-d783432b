@@ -491,7 +491,7 @@ function SocialPostPromptInner({
         <>
           <MediaPreviewGrid items={resolvedItems} />
 
-          <div className="bg-teal-50/50 rounded-xl p-3">
+          <div className="bg-dc-teal/[0.04] rounded-xl p-3">
             <div className="flex items-center justify-between mb-2">
               <p className="text-[10px] font-semibold uppercase text-gray-400 tracking-wide">
                 Post to ({selectedAccountIds.length} of {connectedCount})
@@ -513,7 +513,7 @@ function SocialPostPromptInner({
                     className={`inline-flex items-center gap-1.5 text-xs font-semibold pl-1 pr-3 py-1 rounded-full border transition-colors ${
                       selected
                         ? 'bg-dc-teal text-white border-dc-teal'
-                        : 'bg-white text-gray-500 border-gray-200'
+                        : 'bg-white text-gray-500 border-dc-teal/20'
                     }`}
                   >
                     <SocialAccountAvatar
@@ -529,7 +529,7 @@ function SocialPostPromptInner({
             </div>
           </div>
 
-          <div className="bg-teal-50/50 rounded-xl p-3">
+          <div className="bg-dc-teal/[0.04] rounded-xl p-3">
             <div className="flex items-center justify-between mb-2">
               <p className="text-[10px] font-semibold uppercase text-dc-teal tracking-wide">
                 AI Caption
@@ -565,7 +565,7 @@ function SocialPostPromptInner({
                 <textarea
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
-                  className="w-full text-sm text-gray-700 bg-white border border-gray-200 rounded-lg p-2 min-h-[100px] resize-none focus:outline-none focus:ring-2 focus:ring-dc-teal"
+                  className="w-full text-sm text-gray-700 bg-white border border-dc-teal/20 rounded-lg p-2 min-h-[100px] resize-none focus:outline-none focus:ring-2 focus:ring-dc-teal"
                   autoFocus
                 />
                 <input
@@ -573,7 +573,7 @@ function SocialPostPromptInner({
                   value={hashtags.join(' ')}
                   onChange={(e) => setHashtags(e.target.value.split(/\s+/).filter(Boolean))}
                   placeholder="#hashtags"
-                  className="w-full text-xs text-dc-teal bg-white border border-gray-200 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-dc-teal"
+                  className="w-full text-xs text-dc-teal bg-white border border-dc-teal/20 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-dc-teal"
                 />
               </div>
             ) : (
@@ -620,7 +620,7 @@ function SocialPostPromptInner({
               type="button"
               onClick={handleScheduleForBestTime}
               disabled={schedulingState === 'scheduling' || selectedAccountIds.length === 0}
-              className="w-full flex items-center justify-center gap-2 bg-dc-teal text-white text-sm font-bold py-3.5 rounded-full hover:bg-teal-500 transition-colors disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 bg-dc-teal-btn text-white text-sm font-bold py-3.5 rounded-full hover:bg-dc-teal-btn-hover transition-colors disabled:opacity-50"
             >
               <CalendarDays className="h-4 w-4" />
               {schedulingState === 'scheduling' ? 'Scheduling...' : 'Schedule for Best Time'}
@@ -636,7 +636,7 @@ function SocialPostPromptInner({
                 type="button"
                 onClick={handlePostNow}
                 disabled={crossPost.isPending || selectedAccountIds.length === 0}
-                className="flex items-center justify-center gap-1.5 bg-white text-gray-700 text-sm font-semibold py-3 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="flex items-center justify-center gap-1.5 bg-white text-gray-700 text-sm font-semibold py-3 rounded-full border border-dc-teal/15 hover:bg-dc-teal/5 transition-colors disabled:opacity-50"
               >
                 <Send className="h-3.5 w-3.5" />
                 Post Now
@@ -644,7 +644,7 @@ function SocialPostPromptInner({
               <button
                 type="button"
                 onClick={() => setIsEditing(!isEditing)}
-                className="flex items-center justify-center gap-1.5 bg-white text-dc-pink-accent text-sm font-semibold py-3 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-center gap-1.5 bg-white text-dc-pink-accent text-sm font-semibold py-3 rounded-full border border-dc-teal/15 hover:bg-dc-teal/5 transition-colors"
               >
                 <Edit3 className="h-3.5 w-3.5" />
                 {isEditing ? 'Done' : 'Edit Caption'}
