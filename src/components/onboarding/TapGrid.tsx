@@ -22,7 +22,7 @@ export function TapGrid({ items, selected, onToggle, mode: _mode, accentColor, c
     ? 'bg-dc-teal/15 border-dc-teal ring-1 ring-dc-teal/30 shadow-glow-teal'
     : 'bg-dc-pink/15 border-dc-pink ring-1 ring-dc-pink/30 shadow-glow-pink';
 
-  const inactiveClasses = 'bg-white/5 border-white/10 hover:border-white/20';
+  const inactiveClasses = 'bg-white border-dc-text/10 hover:border-dc-text/20';
 
   return (
     <div className={`grid ${gridClass} gap-2.5`}>
@@ -46,7 +46,7 @@ export function TapGrid({ items, selected, onToggle, mode: _mode, accentColor, c
             <span className={`text-xs font-medium leading-tight text-center ${
               isSelected
                 ? accentColor === 'teal' ? 'text-dc-teal' : 'text-dc-pink-accent'
-                : 'text-white/60'
+                : 'text-dc-text-muted'
             }`}>
               {item.label}
             </span>

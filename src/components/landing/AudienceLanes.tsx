@@ -62,7 +62,7 @@ export function AudienceLanes() {
     <section id="pick-your-lane" className="py-20 lg:py-32">
       <div className="mx-auto max-w-6xl px-5 sm:px-8 lg:px-12">
         <Reveal>
-          <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
+          <h2 className="text-3xl font-extrabold tracking-tight text-dc-text sm:text-4xl lg:text-5xl">
             Pick your lane.
           </h2>
         </Reveal>
@@ -79,7 +79,7 @@ export function AudienceLanes() {
                 : "bg-dc-pink-accent-btn text-white hover:bg-dc-pink-accent-btn-hover";
             return (
               <Reveal key={lane.role} delay={i * 0.08}>
-                <div className="group flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-5 transition-all duration-300 hover:border-dc-teal/40 hover:bg-white/[0.07]">
+                <div className="group flex h-full flex-col overflow-hidden rounded-3xl border border-dc-text/10 bg-white p-5 transition-all duration-300 hover:border-dc-teal/40 hover:bg-dc-teal/5">
                   <MediaSlot ratio="video" src={lane.image} alt={`${lane.title} on DragonCandy`} label={lane.eyebrow} />
 
                   <div className="mt-6 flex items-center gap-3">
@@ -91,9 +91,9 @@ export function AudienceLanes() {
                     </span>
                   </div>
 
-                  <h3 className="mt-4 text-2xl font-bold text-white">{lane.title}</h3>
+                  <h3 className="mt-4 text-2xl font-bold text-dc-text">{lane.title}</h3>
 
-                  <p className="mt-3 text-sm text-white/75">{lane.hook}</p>
+                  <p className="mt-3 text-sm text-dc-text-muted">{lane.hook}</p>
 
                   <button
                     onClick={() => signupWithRole(lane.role)}

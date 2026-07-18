@@ -198,7 +198,7 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
   if (len === 0) {
     return (
       <div ref={wrapRef} className={wrapClass} aria-hidden>
-        <div className="absolute inset-0 bg-gradient-to-br from-dc-teal/25 via-dc-dark to-dc-pink-accent/25" />
+        <div className="absolute inset-0 bg-gradient-to-br from-dc-teal/25 via-white to-dc-pink-accent/25" />
       </div>
     );
   }
@@ -211,7 +211,7 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
         {first.poster ? (
           <img src={first.poster} alt="" className="h-full w-full object-cover" />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-dc-teal/25 via-dc-dark to-dc-pink-accent/25" />
+          <div className="absolute inset-0 bg-gradient-to-br from-dc-teal/25 via-white to-dc-pink-accent/25" />
         )}
       </div>
     );

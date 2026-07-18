@@ -25,8 +25,8 @@
       @font-face{font-family:'Pacifico';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/pacifico-latin-400.woff2) format('woff2')}
       body{margin:0;font-family:'Outfit',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
       #root{width:100%;min-height:100vh}
-      /* Minimal dark splash for the prerendered shell below — intentionally content-free
-         (just the brand mark on the app's dark bg) so it can never go stale after a redesign. */
+      /* Minimal light splash for the prerendered shell below — intentionally content-free
+         (just the brand mark on the app's light bg) so it can never go stale after a redesign. */
       .animate-fade-in{animation:fadeIn .4s ease-out}
       @keyframes fadeIn{from{opacity:0}to{opacity:1}}
     </style>
@@ -69,10 +69,10 @@
   </head>
 
   <body>
-    <!-- Prerendered splash: brand mark on the app's dark bg (#1A1A2A = dc-dark). Content-free
-         on purpose so the real landing fades in over an identical background (no flash) and the
-         shell can never show a stale old design again. -->
-    <div id="root"><div style="min-height:100vh;background:#1A1A2A;display:flex;align-items:center;justify-content:center;overflow-x:hidden"><img src="/logo.webp" alt="DragonCandy" width="140" height="47" fetchpriority="high" class="animate-fade-in" style="width:132px;height:auto"></div></div>
+    <!-- Prerendered splash: brand mark on the app's light bg (#FFFFFF = bg-white, matching
+         LandingPage's root). Content-free on purpose so the real landing fades in over an
+         identical background (no flash) and the shell can never show a stale old design again. -->
+    <div id="root"><div style="min-height:100vh;background:#FFFFFF;display:flex;align-items:center;justify-content:center;overflow-x:hidden"><img src="/logo.webp" alt="DragonCandy" width="140" height="47" fetchpriority="high" class="animate-fade-in" style="width:132px;height:auto"></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

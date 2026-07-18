@@ -59,8 +59,10 @@ export const HeroSection: React.FC = () => {
         </div>
       </div>
 
-      {/* Legibility scrim */}
-      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-dc-dark via-dc-dark/85 to-dc-dark/50" />
+      {/* Legibility scrim — LIGHT (inverse of the old dark scrim): a white bottom-up gradient,
+          strongest where the headline/CTAs sit, fading up. Pairs with dark ink text over LIGHTER
+          clips. Tune opacity to the actual clip brightness. */}
+      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-white via-white/85 to-white/40" />
 
       <div className="relative mx-auto w-full max-w-6xl px-5 pb-16 sm:px-8 lg:px-12">
         {/* Role pills — the morph switcher */}
@@ -74,7 +76,7 @@ export const HeroSection: React.FC = () => {
               className={`rounded-full px-5 py-2 text-sm font-semibold transition-all duration-300 ${
                 role === r
                   ? "bg-dc-teal text-dc-dark shadow-glow-teal"
-                  : "border border-white/15 bg-white/5 text-white/60 hover:border-dc-teal/50 hover:text-white"
+                  : "border border-dc-text/15 bg-dc-text/[0.04] text-dc-text-muted hover:border-dc-teal hover:text-dc-text"
               }`}
             >
               {HERO_CONTENT[r].label}
@@ -90,14 +92,14 @@ export const HeroSection: React.FC = () => {
 
         {/* key={role} restarts the entrance animation on each pill swap for a "morph" feel */}
         <div key={role} className="contents">
-          <h1 className="max-w-3xl text-[2.75rem] font-extrabold leading-[0.95] tracking-tight text-white animate-fade-in-up sm:text-6xl lg:text-7xl xl:text-8xl">
+          <h1 className="max-w-3xl text-[2.75rem] font-extrabold leading-[0.95] tracking-tight text-dc-text animate-fade-in-up sm:text-6xl lg:text-7xl xl:text-8xl">
             {content.headline}{" "}
             <span className="font-script text-gradient text-[3.25rem] font-normal leading-none sm:text-7xl lg:text-8xl xl:text-9xl">
               {content.accent}
             </span>
           </h1>
 
-          <p className="mt-7 max-w-xl text-base leading-relaxed text-white/65 animate-fade-in-up-delay-1 sm:text-lg lg:text-xl">
+          <p className="mt-7 max-w-xl text-base leading-relaxed text-dc-text-muted animate-fade-in-up-delay-1 sm:text-lg lg:text-xl">
             {content.sub}
           </p>
         </div>
@@ -114,14 +116,14 @@ export const HeroSection: React.FC = () => {
           <button
             type="button"
             onClick={scrollToSeeItWork}
-            className="inline-flex h-14 items-center justify-center rounded-full border border-white/20 bg-white/5 px-8 text-base font-semibold text-white backdrop-blur transition-all duration-300 hover:border-dc-teal hover:text-dc-teal"
+            className="inline-flex h-14 items-center justify-center rounded-full border border-dc-text/20 bg-white/60 px-8 text-base font-semibold text-dc-text backdrop-blur transition-all duration-300 hover:border-dc-teal hover:text-dc-teal"
           >
             See it work ↓
           </button>
         </div>
 
         {/* Floating proof chip */}
-        <div className="mt-8 inline-flex max-w-full items-center gap-2 whitespace-normal rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70 backdrop-blur animate-fade-in-up-delay-3">
+        <div className="mt-8 inline-flex max-w-full items-center gap-2 whitespace-normal rounded-full border border-dc-text/10 bg-white/60 px-4 py-2 text-sm text-dc-text-muted backdrop-blur animate-fade-in-up-delay-3">
           <span aria-hidden>✨</span>
           Paste your website → a full campaign in 60s
         </div>

@@ -49,13 +49,13 @@ export function MediaSlot({
         <div
           role="img"
           aria-label={alt}
-          className="absolute inset-0 bg-gradient-to-br from-dc-teal/25 via-dc-dark to-dc-pink-accent/25 ring-1 ring-inset ring-white/10"
+          className="absolute inset-0 bg-gradient-to-br from-dc-teal/25 via-white to-dc-pink-accent/25 ring-1 ring-inset ring-dc-text/10"
         >
           <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-dc-teal/25 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-dc-pink-accent/20 blur-3xl" />
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center">
-            <ImageIcon className="h-6 w-6 text-white/35" aria-hidden />
-            <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/45">
+            <ImageIcon className="h-6 w-6 text-dc-text-muted/70" aria-hidden />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-dc-text-muted/70">
               {label}
             </span>
           </div>

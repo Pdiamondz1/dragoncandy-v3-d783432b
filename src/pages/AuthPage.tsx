@@ -1,4 +1,3 @@
-import { useDarkHtml } from "@/hooks/useDarkHtml";
 import { useCallback, useEffect, useState } from "react";
 import { SEO } from "@/components/SEO";
 import { useNavigate, useSearchParams, useLocation, Link } from "react-router-dom";
@@ -10,7 +9,6 @@ import { RoleSelection } from "@/components/auth/RoleSelection";
 import { toast } from 'sonner';
 import { BRAND_ROLE_ENABLED } from "@/lib/featureConfig";
 import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.webp';
-import { GlowBackdrop } from "@/components/dark/GlowBackdrop";
 
 type SignupStep = "role-selection" | "signup-form";
 
@@ -22,7 +20,6 @@ const ALLOWED_REDIRECT_ORIGINS = new Set([
 ]);
 
 const AuthPage = () => {
-  useDarkHtml();
   const [searchParams] = useSearchParams();
   const initialMode = searchParams.get('mode') === 'login' ? 'login' : 'signup';
   // Pre-select role from the landing "Join as a Business/Creator" CTAs (?role=).
@@ -257,9 +254,7 @@ const AuthPage = () => {
   };
 
   return (
-    <div className="dark relative min-h-screen flex flex-col overflow-x-hidden bg-dc-dark text-white
-      bg-[radial-gradient(120%_120%_at_20%_0%,rgba(77,217,192,0.18),transparent_45%),radial-gradient(120%_120%_at_80%_100%,rgba(236,72,153,0.18),transparent_45%)]">
-      <GlowBackdrop />
+    <div className="relative min-h-screen flex flex-col overflow-x-hidden bg-dc-gray text-dc-text">
       <div className="relative z-10 flex flex-1 flex-col">
       <SEO
         title="Sign In or Sign Up - DragonCandy"
@@ -276,21 +271,21 @@ const AuthPage = () => {
       {/* Render based on mode and signup step */}
       {mode === "login" && (
         <div className="flex-1 flex flex-col justify-center px-6 py-8">
-          <h1 className="text-xl font-bold uppercase tracking-wider text-white text-center mb-6">
+          <h1 className="text-xl font-bold uppercase tracking-wider text-dc-text text-center mb-6">
             Welcome to DragonCandy
           </h1>
 
           <AuthForm mode="login" onError={setError} />
 
           {error === 'verify_email' ? (
-            <div className="bg-red-500/10 border border-red-500/20 px-4 py-3 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto text-center space-y-2">
-              <p className="text-sm text-red-300">
+            <div className="bg-red-50 border border-red-200 px-4 py-3 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto text-center space-y-2">
+              <p className="text-sm text-red-600">
                 Please verify your email before continuing. Check your inbox for the verification link.
               </p>
               <button
                 onClick={handleResendVerification}
                 disabled={resendCooldown > 0}
-                className="text-sm font-semibold text-dc-teal hover:text-dc-teal-dark disabled:text-white/30 transition-colors"
+                className="text-sm font-semibold text-dc-teal hover:text-dc-teal-dark disabled:text-dc-text-muted/40 transition-colors"
               >
                 {resendCooldown > 0
                   ? `Resend in ${resendCooldown}s`
@@ -298,13 +293,13 @@ const AuthPage = () => {
               </button>
               <button
                 onClick={handleDismissVerification}
-                className="block mx-auto text-xs text-white/60 hover:text-white transition-colors"
+                className="block mx-auto text-xs text-dc-text-muted hover:text-dc-text transition-colors"
               >
                 Back to login
               </button>
             </div>
           ) : error ? (
-            <div className="text-sm text-red-300 bg-red-500/10 border border-red-500/20 px-4 py-2 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto">
+            <div className="text-sm text-red-600 bg-red-50 border border-red-200 px-4 py-2 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto">
               {error}
             </div>
           ) : null}
@@ -324,7 +319,7 @@ const AuthPage = () => {
 
       {mode === "signup" && signupStep === "signup-form" && selectedRole && (
         <div className="flex-1 flex flex-col justify-center px-6 py-8">
-          <h1 className="text-xl font-bold uppercase tracking-wider text-white text-center mb-3">
+          <h1 className="text-xl font-bold uppercase tracking-wider text-dc-text text-center mb-3">
             Create Account
           </h1>
 
@@ -336,14 +331,14 @@ const AuthPage = () => {
           />
 
           {error === 'verify_email' ? (
-            <div className="bg-red-500/10 border border-red-500/20 px-4 py-3 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto text-center space-y-2">
-              <p className="text-sm text-red-300">
+            <div className="bg-red-50 border border-red-200 px-4 py-3 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto text-center space-y-2">
+              <p className="text-sm text-red-600">
                 Please verify your email before continuing. Check your inbox for the verification link.
               </p>
               <button
                 onClick={handleResendVerification}
                 disabled={resendCooldown > 0}
-                className="text-sm font-semibold text-dc-teal hover:text-dc-teal-dark disabled:text-white/30 transition-colors"
+                className="text-sm font-semibold text-dc-teal hover:text-dc-teal-dark disabled:text-dc-text-muted/40 transition-colors"
               >
                 {resendCooldown > 0
                   ? `Resend in ${resendCooldown}s`
@@ -351,13 +346,13 @@ const AuthPage = () => {
               </button>
               <button
                 onClick={handleDismissVerification}
-                className="block mx-auto text-xs text-white/60 hover:text-white transition-colors"
+                className="block mx-auto text-xs text-dc-text-muted hover:text-dc-text transition-colors"
               >
                 Back to login
               </button>
             </div>
           ) : error ? (
-            <div className="text-sm text-red-300 bg-red-500/10 border border-red-500/20 px-4 py-2 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto">
+            <div className="text-sm text-red-600 bg-red-50 border border-red-200 px-4 py-2 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto">
               {error}
             </div>
           ) : null}

@@ -1,4 +1,3 @@
-import { useDarkHtml } from "@/hooks/useDarkHtml";
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { RefreshCw, CheckCircle2, XCircle } from 'lucide-react';
@@ -8,7 +7,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function RestoreAccountPage() {
-  useDarkHtml();
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -40,7 +38,7 @@ export default function RestoreAccountPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="dark dc-surface flex items-center justify-center p-6">
+      <div className="min-h-screen bg-dc-gray text-dc-text flex items-center justify-center p-6">
         <Card className="w-full max-w-sm">
           <CardContent className="flex flex-col items-center py-12 text-center">
             <p className="font-medium mb-4">Sign in to restore your account</p>
@@ -57,7 +55,7 @@ export default function RestoreAccountPage() {
   }
 
   return (
-    <div className="dark dc-surface flex items-center justify-center p-6">
+    <div className="min-h-screen bg-dc-gray text-dc-text flex items-center justify-center p-6">
       <Card className="w-full max-w-sm">
         <CardContent className="flex flex-col items-center py-12 text-center">
           {status === 'idle' && (

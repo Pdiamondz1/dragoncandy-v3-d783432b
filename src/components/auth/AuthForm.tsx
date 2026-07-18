@@ -157,14 +157,14 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
       {/* Role badge (signup only) */}
       {mode === "signup" && preSelectedRole && (
         <div className="flex justify-center mb-6">
-          <div className="inline-flex items-center gap-2 bg-white/15 rounded-full px-4 py-1.5">
+          <div className="inline-flex items-center gap-2 bg-dc-teal/10 rounded-full px-4 py-1.5">
             {roleIcon}
-            <span className="text-white text-sm font-semibold">{roleLabel}</span>
+            <span className="text-dc-text text-sm font-semibold">{roleLabel}</span>
             {onChangeRole && (
               <button
                 type="button"
                 onClick={onChangeRole}
-                className="text-white/50 text-xs hover:text-white/80 ml-1"
+                className="text-dc-text-muted text-xs hover:text-dc-text ml-1"
               >
                 Change
               </button>
@@ -174,12 +174,12 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
       )}
 
       {/* Form card container */}
-      <div className="dc-panel p-8">
+      <div className="bg-white border border-teal-300 rounded-3xl shadow-dc-lg p-8">
         <form className="space-y-4" onSubmit={handleSubmit}>
           {/* Full name (signup only) */}
           {mode === "signup" && (
             <div className="space-y-1">
-              <Label htmlFor="fullName" className="text-sm font-medium text-white">Full Name</Label>
+              <Label htmlFor="fullName" className="text-sm font-medium text-dc-text">Full Name</Label>
               <input
                 id="fullName"
                 name="fullName"
@@ -191,14 +191,14 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
                 onChange={e => setFullName(e.target.value)}
                 placeholder="Full Name"
                 disabled={loading}
-                className="dc-field w-full px-4 text-[15px]"
+                className="h-12 rounded-xl border border-gray-200 bg-gray-50 text-dc-text placeholder:text-dc-text-muted/60 focus-visible:ring-2 focus-visible:ring-dc-teal focus-visible:outline-none w-full px-4 text-[15px]"
               />
             </div>
           )}
 
           {/* Email */}
           <div className="space-y-1">
-            <Label htmlFor="email" className="text-sm font-medium text-white">Email</Label>
+            <Label htmlFor="email" className="text-sm font-medium text-dc-text">Email</Label>
             <input
               id="email"
               type="email"
@@ -209,13 +209,13 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
               onChange={e => setEmail(e.target.value)}
               placeholder="Email"
               disabled={loading}
-              className="dc-field w-full px-4 text-[15px]"
+              className="h-12 rounded-xl border border-gray-200 bg-gray-50 text-dc-text placeholder:text-dc-text-muted/60 focus-visible:ring-2 focus-visible:ring-dc-teal focus-visible:outline-none w-full px-4 text-[15px]"
             />
           </div>
 
           {/* Password */}
           <div className="space-y-1">
-            <Label htmlFor="password" className="text-sm font-medium text-white">Password</Label>
+            <Label htmlFor="password" className="text-sm font-medium text-dc-text">Password</Label>
           <div className="relative">
             <input
               id="password"
@@ -227,12 +227,12 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
               onChange={e => setPassword(e.target.value)}
               placeholder="Password"
               disabled={loading}
-              className="dc-field w-full px-4 pr-12 text-[15px]"
+              className="h-12 rounded-xl border border-gray-200 bg-gray-50 text-dc-text placeholder:text-dc-text-muted/60 focus-visible:ring-2 focus-visible:ring-dc-teal focus-visible:outline-none w-full px-4 pr-12 text-[15px]"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-dc-text-muted/60 hover:text-dc-text-muted transition-colors"
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -266,9 +266,9 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
 
         {/* Divider */}
         <div className="flex items-center gap-3 my-6">
-          <div className="flex-1 h-px bg-white/10" />
-          <span className="text-white/60 text-sm whitespace-nowrap">or continue with</span>
-          <div className="flex-1 h-px bg-white/10" />
+          <div className="flex-1 h-px bg-dc-text/10" />
+          <span className="text-dc-text-muted text-sm whitespace-nowrap">or continue with</span>
+          <div className="flex-1 h-px bg-dc-text/10" />
         </div>
 
         {/* Social auth buttons */}
@@ -278,7 +278,7 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
             type="button"
             aria-label="Sign in with Google"
             onClick={handleSocialClick}
-            className="w-[52px] h-[52px] rounded-lg border border-white/15 bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors"
+            className="w-[52px] h-[52px] rounded-lg border border-gray-200 bg-white flex items-center justify-center hover:bg-gray-50 transition-colors"
           >
             <svg viewBox="0 0 24 24" className="w-5 h-5" xmlns="http://www.w3.org/2000/svg">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>

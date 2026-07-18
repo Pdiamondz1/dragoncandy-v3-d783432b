@@ -9,10 +9,10 @@ interface RoleSelectionProps {
 export const RoleSelection = ({ onSelectRole, onBackToLogin }: RoleSelectionProps) => {
   return (
     <div className="flex-1 flex flex-col justify-center px-6 py-8">
-      <h2 className="text-xl font-bold uppercase tracking-wider text-white text-center mb-3">
+      <h2 className="text-xl font-bold uppercase tracking-wider text-dc-text text-center mb-3">
         Join DragonCandy
       </h2>
-      <p className="text-white/70 text-sm text-center mb-8">
+      <p className="text-dc-text text-sm text-center mb-8">
         How will you use DragonCandy?
       </p>
 
@@ -21,14 +21,14 @@ export const RoleSelection = ({ onSelectRole, onBackToLogin }: RoleSelectionProp
         <button
           type="button"
           onClick={() => onSelectRole("business_client")}
-          className="w-full rounded-2xl border-2 border-dc-teal bg-white/5 p-6 flex items-center gap-5 hover:bg-white/10 transition-colors text-left"
+          className="w-full rounded-2xl border-2 border-dc-teal bg-white shadow-dc-sm p-6 flex items-center gap-5 hover:bg-dc-teal/5 transition-colors text-left"
         >
           <div className="w-14 h-14 rounded-2xl bg-dc-teal/10 flex items-center justify-center flex-shrink-0">
             <Store className="w-7 h-7 text-dc-teal" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-lg font-bold text-white">I'm a Restaurant</div>
-            <div className="text-sm text-white/60 leading-snug">
+            <div className="text-lg font-bold text-dc-text">I'm a Restaurant</div>
+            <div className="text-sm text-dc-text-muted leading-snug">
               Restaurants & cafes looking for content creators
             </div>
           </div>
@@ -40,14 +40,14 @@ export const RoleSelection = ({ onSelectRole, onBackToLogin }: RoleSelectionProp
           <button
             type="button"
             onClick={() => onSelectRole("brand")}
-            className="w-full rounded-2xl border-2 border-pink-400 bg-white/5 p-6 flex items-center gap-5 hover:bg-white/10 transition-colors text-left"
+            className="w-full rounded-2xl border-2 border-pink-400 bg-white shadow-dc-sm p-6 flex items-center gap-5 hover:bg-dc-pink-accent/5 transition-colors text-left"
           >
             <div className="w-14 h-14 rounded-2xl bg-dc-pink-accent/10 flex items-center justify-center flex-shrink-0">
               <Megaphone className="w-7 h-7 text-pink-500" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-lg font-bold text-white">I'm a Brand/Sponsor</div>
-              <div className="text-sm text-white/60 leading-snug">
+              <div className="text-lg font-bold text-dc-text">I'm a Brand/Sponsor</div>
+              <div className="text-sm text-dc-text-muted leading-snug">
                 Brands running sponsored creator campaigns
               </div>
             </div>
@@ -59,27 +59,27 @@ export const RoleSelection = ({ onSelectRole, onBackToLogin }: RoleSelectionProp
         <button
           type="button"
           onClick={() => onSelectRole("content_creator")}
-          className="w-full rounded-2xl border-2 border-white/15 bg-white/5 p-6 flex items-center gap-5 hover:bg-white/10 transition-colors text-left"
+          className="w-full rounded-2xl border-2 border-dc-text/15 bg-white shadow-dc-sm p-6 flex items-center gap-5 hover:bg-dc-text/5 transition-colors text-left"
         >
-          <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0">
-            <Camera className="w-7 h-7 text-white/60" />
+          <div className="w-14 h-14 rounded-2xl bg-dc-text/5 flex items-center justify-center flex-shrink-0">
+            <Camera className="w-7 h-7 text-dc-text-muted" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-lg font-bold text-white">I'm a Creator</div>
-            <div className="text-sm text-white/60 leading-snug">
+            <div className="text-lg font-bold text-dc-text">I'm a Creator</div>
+            <div className="text-sm text-dc-text-muted leading-snug">
               Content creators looking for restaurant gigs
             </div>
           </div>
-          <span className="text-white/40 text-xl flex-shrink-0">&#8250;</span>
+          <span className="text-dc-text-muted/70 text-xl flex-shrink-0">&#8250;</span>
         </button>
 
         {/* Back to login */}
         <div className="mt-8 mb-6 text-center text-base md:text-lg">
-          <span className="text-white/80">Already have an account?{' '}</span>
+          <span className="text-dc-text">Already have an account?{' '}</span>
           <button
             type="button"
             onClick={onBackToLogin}
-            className="text-white font-semibold underline underline-offset-2 hover:text-dc-teal transition-colors py-2 px-1"
+            className="text-dc-text font-semibold underline underline-offset-2 hover:text-dc-teal transition-colors py-2 px-1"
           >
             Log in
           </button>

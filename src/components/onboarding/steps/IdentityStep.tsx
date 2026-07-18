@@ -60,7 +60,7 @@ export function IdentityStep({ name, onNameChange, avatarPreview, onAvatarChange
           />
         ) : (
           <div
-            className={`w-24 h-24 border-[3px] border-dashed ${borderClass} ${config.photoShape} flex flex-col items-center justify-center gap-1 transition-colors group-hover:bg-white/5`}
+            className={`w-24 h-24 border-[3px] border-dashed ${borderClass} ${config.photoShape} flex flex-col items-center justify-center gap-1 transition-colors group-hover:bg-dc-text/5`}
           >
             <Camera className={`w-6 h-6 ${textClass}`} />
             <span className={`text-[10px] font-medium ${textClass}`}>{config.photoLabel}</span>
@@ -80,7 +80,7 @@ export function IdentityStep({ name, onNameChange, avatarPreview, onAvatarChange
           value={name}
           onChange={e => onNameChange(e.target.value)}
           placeholder={config.placeholder}
-          className="text-center text-lg font-medium h-14 rounded-2xl border-2 border-white/15 bg-white/5 text-white focus:border-dc-teal placeholder:text-white/40"
+          className="text-center text-lg font-medium h-14 rounded-2xl border-2 border-dc-text/15 bg-white text-dc-text focus:border-dc-teal placeholder:text-dc-text-muted/70"
           autoFocus
         />
       </motion.div>

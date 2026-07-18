@@ -71,7 +71,7 @@ export const Header: React.FC = () => {
   return (
     <header
       className={`pointer-events-none fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
-        scrolled ? "bg-dc-dark/80 backdrop-blur-xl" : "bg-transparent"
+        scrolled ? "bg-white/80 backdrop-blur-xl" : "bg-transparent"
       }`}
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5 sm:px-8 lg:px-12">
@@ -80,7 +80,7 @@ export const Header: React.FC = () => {
           alt="DragonCandy"
           width={140}
           height={47}
-          className="pointer-events-auto h-16 w-auto cursor-pointer transition-transform duration-200 hover:scale-105 drop-shadow-[0_3px_10px_rgba(0,0,0,0.35)] lg:h-20"
+          className="pointer-events-auto h-16 w-auto cursor-pointer transition-transform duration-200 hover:scale-105 lg:h-20"
           onClick={() => navigate("/")}
           onWheel={forwardWheelToScroller}
         />
@@ -95,14 +95,14 @@ export const Header: React.FC = () => {
             <button
               key={link.label}
               onClick={() => scrollToSection(link.target)}
-              className="cursor-pointer border-none bg-transparent text-sm font-medium text-white/65 transition-colors duration-200 hover:text-dc-teal [text-shadow:0_1px_6px_rgba(0,0,0,0.4)]"
+              className="cursor-pointer border-none bg-transparent text-sm font-medium text-dc-text-muted transition-colors duration-200 hover:text-dc-teal"
             >
               {link.label}
             </button>
           ))}
           <button
             onClick={() => navigate("/auth?mode=login")}
-            className="cursor-pointer border-none bg-transparent text-sm font-medium text-white/65 transition-colors duration-200 hover:text-dc-teal [text-shadow:0_1px_6px_rgba(0,0,0,0.4)]"
+            className="cursor-pointer border-none bg-transparent text-sm font-medium text-dc-text-muted transition-colors duration-200 hover:text-dc-teal"
           >
             Login
           </button>
@@ -119,7 +119,7 @@ export const Header: React.FC = () => {
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
               <button
-                className="rounded-full p-2 text-white/80 transition-colors hover:bg-white/10"
+                className="rounded-full p-2 text-dc-text-muted transition-colors hover:bg-dc-text/10"
                 aria-label="Toggle menu"
               >
                 <Menu className="h-6 w-6" />
@@ -127,22 +127,22 @@ export const Header: React.FC = () => {
             </SheetTrigger>
             <SheetContent
               side="right"
-              className="w-64 border-white/10 bg-dc-dark pt-10 text-white"
+              className="w-64 border-dc-text/10 bg-white pt-10 text-dc-text"
             >
               <div className="flex flex-col gap-2">
                 {visibleNavLinks.map((link) => (
                   <button
                     key={link.label}
                     onClick={() => handleNavClick(link.target)}
-                    className="w-full cursor-pointer rounded-full border-none bg-transparent px-4 py-2.5 text-left font-medium text-white/75 transition-colors hover:bg-white/5 hover:text-dc-teal"
+                    className="w-full cursor-pointer rounded-full border-none bg-transparent px-4 py-2.5 text-left font-medium text-dc-text-muted transition-colors hover:bg-dc-text/5 hover:text-dc-teal"
                   >
                     {link.label}
                   </button>
                 ))}
-                <hr className="my-2 border-white/10" />
+                <hr className="my-2 border-dc-text/10" />
                 <button
                   onClick={() => handleNavigate("/auth?mode=login")}
-                  className="w-full cursor-pointer rounded-full border-none bg-transparent px-4 py-2.5 text-left font-medium text-white/75 transition-colors hover:bg-white/5 hover:text-dc-teal"
+                  className="w-full cursor-pointer rounded-full border-none bg-transparent px-4 py-2.5 text-left font-medium text-dc-text-muted transition-colors hover:bg-dc-text/5 hover:text-dc-teal"
                 >
                   Login
                 </button>

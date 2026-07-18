@@ -1,4 +1,3 @@
-import { useDarkHtml } from "@/hooks/useDarkHtml";
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
@@ -9,7 +8,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { SEO } from '@/components/SEO';
 
 export default function InviteAcceptPage() {
-  useDarkHtml();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
@@ -81,7 +79,7 @@ export default function InviteAcceptPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="dark dc-surface flex items-center justify-center p-6">
+      <div className="min-h-screen bg-dc-gray text-dc-text flex items-center justify-center p-6">
         <Card className="w-full max-w-sm">
           <CardContent className="flex flex-col items-center py-12 text-center">
             <Loader2 className="h-8 w-8 animate-spin text-teal-500 mb-4" />
@@ -99,7 +97,7 @@ export default function InviteAcceptPage() {
   }
 
   return (
-    <div className="dark dc-surface flex items-center justify-center p-6">
+    <div className="min-h-screen bg-dc-gray text-dc-text flex items-center justify-center p-6">
       <SEO
         title="Accept Your DragonCandy Invite"
         description="Accept your invitation to join DragonCandy."

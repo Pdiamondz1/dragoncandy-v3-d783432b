@@ -85,7 +85,7 @@ export function WelcomeStep({ name, role, onContinue, loading }: WelcomeStepProp
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="text-2xl font-bold text-white mb-1"
+        className="text-2xl font-bold text-dc-text mb-1"
       >
         {config.heading}
       </motion.h2>
@@ -105,7 +105,7 @@ export function WelcomeStep({ name, role, onContinue, loading }: WelcomeStepProp
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.55 }}
-        className="text-sm text-white/60 max-w-xs mb-8"
+        className="text-sm text-dc-text-muted max-w-xs mb-8"
       >
         {config.body}
       </motion.p>

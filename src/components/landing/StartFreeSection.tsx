@@ -11,7 +11,7 @@ import { useSubmitLead, type LeadAudience } from "@/hooks/useSubmitLead";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const FIELD =
-  "h-12 rounded-xl border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-dc-teal";
+  "h-12 rounded-xl border-dc-text/15 bg-white text-dc-text placeholder:text-dc-text-muted/70 focus-visible:ring-dc-teal";
 
 const reasons = [
   "See a live demo built around your business",
@@ -74,16 +74,16 @@ export const StartFreeSection = () => {
       <div className="mx-auto max-w-6xl px-5 sm:px-8 lg:px-12">
         {/* Role-aware CTA */}
         <Reveal>
-          <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-dc-teal/12 via-white/[0.04] to-dc-pink-accent/12 px-6 py-16 text-center lg:px-16 lg:py-24">
+          <div className="relative overflow-hidden rounded-[2rem] border border-dc-teal/20 bg-white bg-gradient-to-br from-dc-teal/12 via-white to-dc-pink-accent/12 px-6 py-16 text-center lg:px-16 lg:py-24">
             <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-dc-teal/20 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-dc-pink-accent/15 blur-3xl" />
 
             <div className="relative">
-              <h2 className="mx-auto max-w-2xl text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-6xl">
+              <h2 className="mx-auto max-w-2xl text-3xl font-extrabold tracking-tight text-dc-text sm:text-4xl lg:text-6xl">
                 Ready to make content{" "}
                 <span className="font-script text-gradient font-normal">effortless?</span>
               </h2>
-              <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/65 lg:text-lg">
+              <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-dc-text-muted lg:text-lg">
                 Join DragonCandy and put your content on autopilot —{" "}
                 {BRAND_ROLE_ENABLED
                   ? "for any business, brand, or creator."
@@ -106,14 +106,14 @@ export const StartFreeSection = () => {
                 </button>
                 <button
                   onClick={() => signupAs('creator')}
-                  className="inline-flex h-14 items-center justify-center rounded-full border border-white/20 bg-white/5 px-8 text-base font-semibold text-white backdrop-blur transition-all duration-300 hover:border-dc-teal hover:text-dc-teal"
+                  className="inline-flex h-14 items-center justify-center rounded-full border border-dc-text/20 bg-white/60 px-8 text-base font-semibold text-dc-text backdrop-blur transition-all duration-300 hover:border-dc-teal hover:text-dc-teal"
                 >
                   Join as a Creator
                 </button>
                 {BRAND_ROLE_ENABLED && (
                   <button
                     onClick={() => signupAs('brand')}
-                    className="inline-flex h-14 items-center justify-center rounded-full border border-dc-pink-accent/40 bg-transparent px-8 text-base font-semibold text-white transition-all duration-300 hover:border-dc-pink-accent hover:text-dc-pink-accent"
+                    className="inline-flex h-14 items-center justify-center rounded-full border border-dc-pink-accent/40 bg-transparent px-8 text-base font-semibold text-dc-text transition-all duration-300 hover:border-dc-pink-accent hover:text-dc-pink-accent"
                   >
                     For Brands
                   </button>
@@ -134,10 +134,10 @@ export const StartFreeSection = () => {
                   Get in touch
                 </span>
               </div>
-              <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
+              <h2 className="text-3xl font-extrabold tracking-tight text-dc-text sm:text-4xl lg:text-5xl">
                 Let's <span className="font-script text-gradient font-normal">talk.</span>
               </h2>
-              <p className="mt-5 max-w-md text-base leading-relaxed text-white/65 lg:text-lg">
+              <p className="mt-5 max-w-md text-base leading-relaxed text-dc-text-muted lg:text-lg">
                 Not ready to sign up? Tell us about your business and we'll show you what
                 DragonCandy can do — no account required.
               </p>
@@ -145,7 +145,7 @@ export const StartFreeSection = () => {
                 {reasons.map((r) => (
                   <li key={r} className="flex items-start gap-3">
                     <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-dc-teal" />
-                    <span className="text-base text-white/75">{r}</span>
+                    <span className="text-base text-dc-text-muted">{r}</span>
                   </li>
                 ))}
               </ul>
@@ -154,14 +154,14 @@ export const StartFreeSection = () => {
 
           {/* Form */}
           <Reveal delay={0.1}>
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm lg:p-8">
+            <div className="rounded-3xl border border-dc-text/10 bg-white p-6 shadow-sm lg:p-8">
               {submitted ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <span className="flex h-16 w-16 items-center justify-center rounded-full bg-dc-teal/15 text-dc-teal">
                     <Sparkles className="h-8 w-8" />
                   </span>
-                  <h3 className="mt-5 text-2xl font-bold text-white">You're on our radar.</h3>
-                  <p className="mt-2 max-w-xs text-base text-white/60">
+                  <h3 className="mt-5 text-2xl font-bold text-dc-text">You're on our radar.</h3>
+                  <p className="mt-2 max-w-xs text-base text-dc-text-muted/70">
                     Thanks for reaching out — the DragonCandy team will be in touch soon.
                   </p>
                 </div>
@@ -181,7 +181,7 @@ export const StartFreeSection = () => {
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <Label htmlFor="lead-name" className="text-white/70">
+                      <Label htmlFor="lead-name" className="text-dc-text-muted">
                         Name
                       </Label>
                       <Input
@@ -194,7 +194,7 @@ export const StartFreeSection = () => {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="lead-email" className="text-white/70">
+                      <Label htmlFor="lead-email" className="text-dc-text-muted">
                         Email
                       </Label>
                       <Input
@@ -211,8 +211,8 @@ export const StartFreeSection = () => {
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <Label htmlFor="lead-company" className="text-white/70">
-                        Business <span className="text-white/40">(optional)</span>
+                      <Label htmlFor="lead-company" className="text-dc-text-muted">
+                        Business <span className="text-dc-text-muted/70">(optional)</span>
                       </Label>
                       <Input
                         id="lead-company"
@@ -224,8 +224,8 @@ export const StartFreeSection = () => {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="lead-phone" className="text-white/70">
-                        Phone <span className="text-white/40">(optional)</span>
+                      <Label htmlFor="lead-phone" className="text-dc-text-muted">
+                        Phone <span className="text-dc-text-muted/70">(optional)</span>
                       </Label>
                       <Input
                         id="lead-phone"
@@ -240,34 +240,34 @@ export const StartFreeSection = () => {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="lead-audience" className="text-white/70">
+                    <Label htmlFor="lead-audience" className="text-dc-text-muted">
                       I'm a…
                     </Label>
                     <select
                       id="lead-audience"
                       value={audience}
                       onChange={(e) => setAudience(e.target.value as LeadAudience)}
-                      className="h-12 w-full rounded-xl border border-white/15 bg-white/5 px-4 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dc-teal"
+                      className="h-12 w-full rounded-xl border border-dc-text/15 bg-white px-4 text-dc-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dc-teal"
                     >
-                      <option value="business" className="bg-dc-dark">Local business</option>
+                      <option value="business" className="bg-white">Local business</option>
                       {BRAND_ROLE_ENABLED && (
-                        <option value="brand" className="bg-dc-dark">Brand / sponsor</option>
+                        <option value="brand" className="bg-white">Brand / sponsor</option>
                       )}
-                      <option value="creator" className="bg-dc-dark">Creator</option>
-                      <option value="other" className="bg-dc-dark">Something else</option>
+                      <option value="creator" className="bg-white">Creator</option>
+                      <option value="other" className="bg-white">Something else</option>
                     </select>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="lead-message" className="text-white/70">
-                      Message <span className="text-white/40">(optional)</span>
+                    <Label htmlFor="lead-message" className="text-dc-text-muted">
+                      Message <span className="text-dc-text-muted/70">(optional)</span>
                     </Label>
                     <Textarea
                       id="lead-message"
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       placeholder="Tell us what you're looking for…"
-                      className="min-h-[96px] rounded-xl border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-dc-teal"
+                      className="min-h-[96px] rounded-xl border-dc-text/15 bg-white text-dc-text placeholder:text-dc-text-muted/70 focus-visible:ring-dc-teal"
                     />
                   </div>
 

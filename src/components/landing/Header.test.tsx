@@ -47,16 +47,16 @@ describe("Header scroll-aware background", () => {
   it("is transparent while at the top of the scroll container", () => {
     const { header } = setup(0);
     expect(header.className).toContain("bg-transparent");
-    expect(header.className).not.toContain("bg-dc-dark/80");
+    expect(header.className).not.toContain("bg-white/80");
   });
 
-  it("switches to the dark blurred background once #main-content scrolls past the threshold", () => {
+  it("switches to the light blurred background once #main-content scrolls past the threshold", () => {
     const { header, scrollTo } = setup(0);
     expect(header.className).toContain("bg-transparent");
 
     scrollTo(100);
 
-    expect(header.className).toContain("bg-dc-dark/80");
+    expect(header.className).toContain("bg-white/80");
     expect(header.className).toContain("backdrop-blur-xl");
     expect(header.className).not.toContain("bg-transparent");
   });

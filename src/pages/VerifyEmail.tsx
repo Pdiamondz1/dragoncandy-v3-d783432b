@@ -1,4 +1,3 @@
-import { useDarkHtml } from "@/hooks/useDarkHtml";
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,7 +6,6 @@ import { toast } from 'sonner';
 import { SEO } from '@/components/SEO';
 
 const VerifyEmail = () => {
-  useDarkHtml();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
@@ -54,7 +52,7 @@ const VerifyEmail = () => {
   }, [searchParams, navigate]);
 
   return (
-    <div className="dark dc-surface flex flex-col overflow-x-hidden">
+    <div className="min-h-screen bg-dc-gray text-dc-text flex flex-col overflow-x-hidden">
       <SEO
         title="Verify Your Email"
         description="Verifying your DragonCandy email address."
@@ -62,15 +60,15 @@ const VerifyEmail = () => {
         noindex
       />
       {/* Template C header */}
-      <div className="bg-dc-dark/80 backdrop-blur-xl border-b border-white/10 px-4 py-3 flex items-center">
+      <div className="bg-white/80 backdrop-blur-xl border-b border-dc-text/10 px-4 py-3 flex items-center">
         <div className="flex-1 text-center">
-          <h1 className="font-sans text-base font-bold text-white uppercase tracking-wide">Email Verification</h1>
+          <h1 className="font-sans text-base font-bold text-dc-text uppercase tracking-wide">Email Verification</h1>
         </div>
       </div>
 
       <div className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white/5 border-2 border-dc-teal rounded-2xl p-6 text-center space-y-4" aria-live="polite">
-          <p className="font-sans text-xs font-semibold uppercase tracking-wider text-white/60">
+        <div className="w-full max-w-md bg-white border-2 border-dc-teal rounded-2xl shadow-dc-lg p-6 text-center space-y-4" aria-live="polite">
+          <p className="font-sans text-xs font-semibold uppercase tracking-wider text-dc-text-muted">
             {status === 'verifying' && 'Verifying your email address…'}
             {status === 'success' && 'Your email has been verified!'}
             {status === 'error' && 'Verification failed'}
@@ -83,7 +81,7 @@ const VerifyEmail = () => {
           {status === 'success' && (
             <>
               <CheckCircle2 className="h-16 w-16 text-dc-teal mx-auto" aria-hidden="true" />
-              <p className="text-sm text-white/60">
+              <p className="text-sm text-dc-text-muted">
                 Your email has been verified successfully. Redirecting you to login…
               </p>
             </>
@@ -92,7 +90,7 @@ const VerifyEmail = () => {
           {status === 'error' && (
             <>
               <XCircle className="h-16 w-16 text-dc-pink-accent mx-auto" aria-hidden="true" />
-              <p className="text-sm text-white/60">{errorMessage}</p>
+              <p className="text-sm text-dc-text-muted">{errorMessage}</p>
               <button
                 onClick={() => navigate('/auth')}
                 className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3 hover:bg-dc-teal-btn-hover transition-colors"

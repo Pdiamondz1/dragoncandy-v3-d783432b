@@ -27,7 +27,7 @@ export const HowItWorks: React.FC = () => {
               How it works
             </span>
           </div>
-          <h2 className="max-w-2xl text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
+          <h2 className="max-w-2xl text-3xl font-extrabold tracking-tight text-dc-text sm:text-4xl lg:text-5xl">
             From paste to posted in three steps.
           </h2>
         </Reveal>
@@ -39,7 +39,7 @@ export const HowItWorks: React.FC = () => {
                 <span className="text-gradient text-5xl font-extrabold tabular-nums lg:text-6xl">
                   {step.number}
                 </span>
-                <h3 className="mt-5 text-xl font-bold text-white lg:text-2xl">
+                <h3 className="mt-5 text-xl font-bold text-dc-text lg:text-2xl">
                   {step.title}
                 </h3>
               </div>
