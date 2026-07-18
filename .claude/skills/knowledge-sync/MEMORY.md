@@ -30,6 +30,28 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-18] Light-theme polish Phase 4 (Outstand) + backgrounds/accents cleanup (PRs #288/#289 → one paired docs PR)
+- Output: bundled INTO this docs PR — TWO new raw sessions (`raw/sessions/2026-07-18-light-theme-polish-phase4.md`,
+  `raw/sessions/2026-07-18-degray-backgrounds-accents.md`), UPDATED `concepts/light-app-kit.md` (Rollout →
+  Phase 4 + the cleanup + a new "de-gray palette also covers `bg-muted`" section + sources), `index.md`
+  (2 new Sources lines + refreshed `[[Light-App Kit]]` Concepts entry), `log.md` (2 new ingest entries at
+  top), PROJECT_CONTEXT (Phase-4 + cleanup notes on the existing light-theme bullet), + THIS entry. No
+  DATABASE_SCHEMA/DESIGN_SYSTEM/CLAUDE.md change (frontend-only presentational; the kit + palette were in
+  DESIGN_SYSTEM from Phase 1 — the `bg-muted` nuance is captured in the wiki concept, not the core doc).
+- Happened: bundled TWO closely-related efforts (the final surface-group phase + the cross-app cleanup
+  the founder redirected to mid-flow) into ONE knowledge-sync, since they're the same light-theme-polish
+  workstream and Phase 4's sync hadn't run yet when the cleanup started. Two raw sessions (distinct
+  efforts) but ONE compounded concept page (extended [[Light-App Kit]] Rollout + added the `bg-muted`
+  palette nuance) — compound, don't duplicate.
+- Worked: [scope] all 4 touched docs byte-IDENTICAL to origin/main before editing (both PRs were
+  code-only). [runlog-in-pr] bundled. [wikilinks]-exact: grepped index.md — the new
+  `[[Light-Theme Polish Phase 4 Session]]` + `[[De-gray Backgrounds & Off-Brand Accents]]` self-register
+  via their new index Sources lines; `[[Light-App Kit]]` confirmed present. Read the real batch commits +
+  whole-branch reviews, not just task summaries — captured the durable `bg-muted`-palette + inset-tint-
+  over-colored-bubble (`bg-white/40`) lessons verbatim from the review catches.
+- Failed: none for knowledge-sync. (Authenticated Outstand + app surfaces are founder-verify-only —
+  Claude can't sign in; both deploys are bundle-hash + public-console verified. Same known gap.)
+
 ### [2026-07-18] Light-theme polish Phase 3 (PR #285 → paired docs)
 - Output: bundled INTO this docs PR — new `raw/sessions/2026-07-18-light-theme-polish-phase3.md`,
   UPDATED `concepts/light-app-kit.md` (Rollout → Phase 3 shipped + Phase 4 = Outstand-only + sources),

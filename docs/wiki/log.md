@@ -1,5 +1,33 @@
 # Wiki Log
 
+## [2026-07-18] ingest | De-gray backgrounds + off-brand accents cleanup
+Ingested [[De-gray Backgrounds & Off-Brand Accents]] (PR #289, deployed). A cross-app cleanup after the
+four [[Light-App Kit]] phases, on a founder directive to **prioritize backgrounds + off-brand accents**.
+Audit keystone: **no full-page gray washes remain** (every page is white) — the work was all panel-level
+`bg-muted`/`bg-gray-*` fills → `bg-dc-teal/[0.04]` inset + off-brand blue/purple/indigo accents →
+teal/pink, across the campaign builder, application/matching cards, campaign-details, messaging
+sub-panels, brand-browse, consumer Donny chat, files/projects, and modals. Keystone accent: the two
+blue/indigo sponsorship cards → teal/pink. 4 reviewed sub-batches, 55 files. Durable additions to
+[[Light-App Kit]]: the de-gray palette also covers `bg-muted` panels (but NOT inside shadcn `ui/*`), and
+a `bg-dc-teal/[0.04]` inset tint is calibrated for a WHITE surface (over a colored bubble use a
+translucent overlay — `bg-white/40`). Keeps held: pink/teal chat bubbles, dark-circle send buttons, chart
+data-viz, semantic amber/red/emerald/green, media backings, gray TEXT. Codex-clean; 983/983 tests;
+residual-sweep zero. Pages updated: concepts/light-app-kit.md (Rollout + `bg-muted` section). Core doc:
+PROJECT_CONTEXT. RAG sync + verify-knowledge run post-merge.
+
+## [2026-07-18] ingest | Light-theme polish Phase 4 (Outstand)
+Ingested [[Light-Theme Polish Phase 4 Session]] (PR #288, deployed). The **final surface-group slice** —
+the ~47-file **Outstand** social-integration surface, deferred from Phase 3 as its own effort because its
+blue/purple/red MIX social-platform BRAND colors (KEEP) with off-brand accents, needing **per-instance
+judgment, not find-replace**. 6 reviewed sub-batches (shell/accounts, compose/drafts, calendar, analytics,
+prompts/sponsorship/money, engagement/Donny). Kept: the `socialNetworks.ts` map + IG gradient + `x
+bg-gray-800` + all platform tints, chart data-viz colors, money-flow (DragonDash rush), `VerifiedBadge`/
+`CrossPostPrompt` (NO-CHANGE); only neutral unknown-platform fallbacks de-grayed. Batch 6 hit a
+stream-timeout **after committing** → verified independently + re-checked in the whole-branch review.
+Codex-clean; 983/983 tests; residual-sweep zero. Pages updated: concepts/light-app-kit.md (Rollout Phase
+4). Core doc: PROJECT_CONTEXT. **With Phase 4, all four surface groups are on the kit.** RAG sync +
+verify-knowledge run post-merge.
+
 ## [2026-07-18] ingest | Light-theme polish Phase 3
 Ingested [[Light-Theme Polish Phase 3 Session]] (PR #285, deployed). Third slice — a **pure rollout** of
 the [[Light-App Kit]] onto the surfaces Phase 1/2 deferred, no new primitives. Founder scope call: after
