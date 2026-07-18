@@ -30,6 +30,29 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-18] Light-theme polish Phase 3 (PR #285 → paired docs)
+- Output: bundled INTO this docs PR — new `raw/sessions/2026-07-18-light-theme-polish-phase3.md`,
+  UPDATED `concepts/light-app-kit.md` (Rollout → Phase 3 shipped + Phase 4 = Outstand-only + sources),
+  `index.md` (new Sources line alphabetically after Phase 2; refreshed the `[[Light-App Kit]]` Concepts
+  entry), `log.md` (new ingest entry at top), PROJECT_CONTEXT (Phase-3 note appended to the existing
+  light-theme bullet — NOT a new bullet), + THIS entry. No DATABASE_SCHEMA/DESIGN_SYSTEM/CLAUDE.md change
+  (frontend-only presentational rollout; the kit + de-gray palette were already in DESIGN_SYSTEM from
+  Phase 1).
+- Happened: third consecutive **rollout-phase** knowledge-sync of the same [[Light-App Kit]] pattern.
+  **Compounded, didn't duplicate** — no new concept page; extended the kit page's Rollout to Phase 3/4
+  and refreshed its index entry. No genuinely-new kit gotcha this phase (unlike Phase 2's forwardRef), so
+  the raw session records the *reinforced* rules (money-flow-styling-only, shared-wrapper-is-highest-
+  leverage, semantic/social-color keeps) rather than inventing a new concept.
+- Worked: [scope] all 5 touched docs byte-IDENTICAL to origin/main before editing (Phase 3 was code-only,
+  so #285 didn't move them). [runlog-in-pr] bundled. [wikilinks]-exact: grepped index.md — `[[Light-App
+  Kit]]`, `[[Light-Theme Polish Phase 1/2 Session]]` all present; the new `[[Light-Theme Polish Phase 3
+  Session]]` self-registers via its index line. Read the real 5-commit diff, not just the task summaries —
+  captured the exact money-flow-styling-only wording + the two review-caught fixes (tier-badge distinction,
+  error-boundary `bg-red-50` re-assert) verbatim.
+- Failed: none for knowledge-sync. (Authenticated settings/billing/payments/promotions surfaces are
+  founder-verify-only — Claude can't sign in; the public deploy is bundle-hash + console verified. Same
+  known auth-gated-verify gap as Phase 1/2, not glossed.)
+
 ### [2026-07-18] Light-theme polish Phase 2 (PR #282 → paired docs)
 - Output: bundled INTO this docs PR — new `raw/sessions/2026-07-18-light-theme-polish-phase2.md`,
   UPDATED `concepts/light-app-kit.md` (added the 3rd gotcha `AppCard`-not-`forwardRef`, extended the
