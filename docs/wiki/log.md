@@ -1,5 +1,21 @@
 # Wiki Log
 
+## [2026-07-18] ingest | Light-theme polish Phase 1
+Ingested [[Light-Theme Polish Phase 1 Session]] (PR #280, deployed). New concept [[Light-App Kit]]. After
+the app went light ([[App Theme Pivot Session]]), the reverted app was unpolished — no shared primitives,
+so each screen hand-rolled its own card/padding/chips (~5 card-border variants, radius/spacing drift, two
+button teals, double-padding) and drifted off-brand (gray surfaces/badges, blue/purple buttons). Phase 1
+built a small **light-app kit** (`src/components/app/`: `PageBody`/`AppCard`/`AppChip`/`AppStatusBadge` +
+a `dc-secondary` button variant, TDD) and adopted it across the dashboards + campaigns + browse — the
+keystone being that **adopting the kit fixes consistency AND de-grays at the source** (rather than blind
+class swaps). De-gray targets surfaces/badges only (gray secondary text is fine — `dc-text-muted` is a
+gray by design). Two durable gotchas captured on [[Light-App Kit]]: `AppChip` is a `<button>` → use
+`AppStatusBadge` (a span) for tags inside clickable cards (invalid nested buttons), and wrap a shadcn
+`Card` with `<AppCard className="p-0">` (don't double-pad). Two bugs fixed en route (a same-file card
+mismatch; invisible `text-white` leftovers on the now-white page). Codex-clean; residual-grep zero across
+Phase-1 surfaces. `DESIGN_SYSTEM.md` refreshed in-PR (Theme + a new "Shared light-app kit" section + the
+stale per-page background table retired). PROJECT_CONTEXT workstream bullet added.
+
 ## [2026-07-17] update | App theme pivot — light app + dark marketing
 Ingested [[App Theme Pivot Session]] (PRs #275 + #277, deployed). **Reverses the app-dark half of the
 same-day force-dark experiment ([[Dark-Luxe App Theme Session]], #269)** after founder feedback that the

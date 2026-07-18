@@ -1320,6 +1320,21 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   (`.dc-surface`/`.dc-panel`/`.dc-field`, `dc-teal-pill`/`dc-ghost-pill`, `GlowBackdrop`/`Eyebrow`)
   remains for the dark surfaces. Codex-clean; prod-verified (auth dark, app light). Concept:
   `docs/wiki/concepts/dark-luxe-app-theme.md`.
+- Light-theme polish — **Phase 1 shipped + deployed (PR #280, 2026-07-18).** After the app went light,
+  it was consistent-ish but hand-rolled per screen (~5 card-border variants, radius/spacing drift, two
+  button teals, double-padding) and off-brand in places (gray surfaces/badges, `bg-blue-600` buttons,
+  pink→purple gradients). Phase 1 built a **shared light-app kit** (`src/components/app/`: `PageBody` /
+  `AppCard` / `AppChip` / `AppStatusBadge` + a `dc-secondary` button variant, TDD) and adopted it across
+  the **3 dashboards, campaigns (builder + list/details/marketplace), and browse** — the keystone being
+  that adopting the kit **fixes consistency AND de-grays at the source**. Direction: **clean white +
+  brand accents**; de-gray targets **surfaces/badges only** (gray secondary text stays — `dc-text-muted`
+  is a gray by design). Two durable gotchas: `AppChip` is a `<button>` → use `AppStatusBadge` (a span)
+  for tags inside clickable cards (invalid nested buttons); wrap a shadcn `Card` with `<AppCard
+  className="p-0">` (don't double-pad). Also fixed a same-file card mismatch + invisible `text-white`
+  leftovers on the now-white page. Codex-clean; residual-grep zero; `DESIGN_SYSTEM.md` refreshed. Phase
+  2/3 (follow-on): messaging, DragonShare, settings, org/billing, promotions, outstand, profiles.
+  Concept: `docs/wiki/concepts/light-app-kit.md`. Spec:
+  `docs/superpowers/specs/2026-07-17-light-theme-polish-phase1-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
