@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AppCard } from '@/components/app/AppCard';
 
 interface CostBreakdownProps {
   deliverableCount: number;
@@ -17,12 +18,12 @@ export const CostBreakdown: React.FC<CostBreakdownProps> = ({
   deliveryType,
 }) => {
   return (
-    <Card className="rounded-xl">
+    <AppCard className="p-0">
       <CardHeader>
         <CardTitle className="text-lg">Cost Breakdown</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-dc-teal/15">
           {/* Base cost per deliverable */}
           <div className="py-2 flex justify-between items-center">
             <span className="text-sm text-gray-600">
@@ -55,7 +56,7 @@ export const CostBreakdown: React.FC<CostBreakdownProps> = ({
           Donny will match you with creators in your area
         </p>
       </CardContent>
-    </Card>
+    </AppCard>
   );
 };
 

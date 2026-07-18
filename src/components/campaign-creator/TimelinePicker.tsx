@@ -59,7 +59,7 @@ export function TimelinePicker({ deadline, onChange }: TimelinePickerProps) {
                 'flex items-center gap-2 rounded-xl px-3 py-2.5 text-left transition-colors border',
                 selectedKey === opt.key
                   ? 'bg-teal-50 border-dc-teal text-dc-teal-dark'
-                  : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                  : 'bg-white border-dc-teal/20 text-gray-600 hover:border-dc-teal/40'
               )}
             >
               <Icon className="w-4 h-4 flex-shrink-0" />

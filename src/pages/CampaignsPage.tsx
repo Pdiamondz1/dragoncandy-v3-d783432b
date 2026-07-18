@@ -13,6 +13,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { LocationBadge } from '@/components/org/LocationBadge';
 import { deriveCampaignPhase, phaseToDisplayLabel } from '@/lib/campaignPhase';
+import { PageBody } from '@/components/app/PageBody';
 
 const CampaignsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -105,7 +106,8 @@ const CampaignsPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="min-h-screen bg-white overflow-x-hidden w-full max-w-full lg:max-w-6xl md:mx-auto">
+      <div className="min-h-screen bg-white overflow-x-hidden">
+      <PageBody className="space-y-0">
         {/* Template B Header */}
         <PageHeader>
           <div className="flex items-center">
@@ -172,6 +174,7 @@ const CampaignsPage: React.FC = () => {
         <div className="px-4 pt-4 pb-24 md:pb-0 space-y-3">
           <CampaignsList statusFilter={statusFilter} filterByOwnership={true} />
         </div>
+      </PageBody>
       </div>
     </DashboardLayout>
   );

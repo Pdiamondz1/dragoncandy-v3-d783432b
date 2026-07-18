@@ -40,7 +40,7 @@ export const DonnyPicksRow: React.FC<DonnyPicksRowProps> = ({ picks, onViewDetai
               {pick.campaign.description && (
                 <p className="text-xs text-gray-500 line-clamp-2">{pick.campaign.description}</p>
               )}
-              <div className="flex items-center justify-between pt-1 border-t border-gray-100">
+              <div className="flex items-center justify-between pt-1 border-t border-dc-teal/15">
                 <span className="text-sm text-dc-teal font-semibold">{formatBudget(pick.campaign)}</span>
                 {pick.campaign.business_profile?.business_name && (
                   <span className="text-xs text-gray-400">by {pick.campaign.business_profile.business_name}</span>

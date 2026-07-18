@@ -17,7 +17,7 @@ import { useDonnyMatches } from '@/hooks/useDonnyMatches';
 import { CampaignSearchFilters } from '@/components/campaigns/CampaignSearchFilters';
 import { DonnyPicksRow } from '@/components/campaigns/DonnyPicksRow';
 import { MapPin, Target } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { formatBudget, formatCampaignPrice } from '@/lib/campaignUtils';
 import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
@@ -28,6 +28,8 @@ import { useMyCrewActivity } from '@/hooks/useMyCrewActivity';
 import { GroupInviteCard } from '@/components/groups/GroupInviteCard';
 import { CrewActivityFeed } from '@/components/groups/CrewActivityFeed';
 import { UndoToast } from '@/components/campaigns/UndoToast';
+import { AppCard } from '@/components/app/AppCard';
+import { Button } from '@/components/ui/button';
 
 
 type Tab = 'all' | 'donny' | 'invitations' | 'crews';
@@ -221,7 +223,7 @@ const CreatorCampaignMarketplace = () => {
         </PageHeader>
 
         {/* Tab Bar */}
-        <div className="flex bg-white border-b-2 border-gray-100 px-4">
+        <div className="flex bg-white border-b-2 border-dc-teal/15 px-4">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -267,7 +269,7 @@ const CreatorCampaignMarketplace = () => {
 
             {donnyPicks.length === 0 && swipeCampaigns.length > 0 && (
               <div className="px-4 pb-1">
-                <p className="text-xs text-white/40 text-center">
+                <p className="text-xs text-dc-text-muted text-center">
                   We're still learning your preferences. Complete more campaigns to improve your matches.
                 </p>
               </div>
@@ -293,12 +295,12 @@ const CreatorCampaignMarketplace = () => {
               )}
               {swipeCampaigns.length === 0 && hasActiveFilters && (
                 <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-                  <p className="text-white font-semibold mb-2">
+                  <p className="text-dc-text font-semibold mb-2">
                     {filters.distanceRadius !== 'any'
                       ? 'No campaigns in your area yet.'
                       : 'No campaigns found.'}
                   </p>
-                  <p className="text-white/60 text-sm mb-4">
+                  <p className="text-dc-text-muted text-sm mb-4">
                     {filters.distanceRadius !== 'any'
                       ? 'Expand your search radius or check back soon.'
                       : 'Try different filters or ask Donny for suggestions.'}
@@ -331,9 +333,9 @@ const CreatorCampaignMarketplace = () => {
               ) : (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">
                   {availableCampaigns.map((campaign) => (
-                    <Card
+                    <AppCard
                       key={campaign.id}
-                      className="hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-dc-teal/30"
+                      className="p-0 hover:shadow-lg transition-shadow cursor-pointer hover:border-dc-teal/30"
                       onClick={() => handleViewDetail(campaign)}
                     >
                       <CardContent className="p-5 space-y-3">
@@ -343,7 +345,7 @@ const CreatorCampaignMarketplace = () => {
                         {campaign.description && (
                           <p className="text-sm text-gray-500 line-clamp-2">{campaign.description}</p>
                         )}
-                        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                        <div className="flex items-center justify-between pt-2 border-t border-dc-teal/15">
                           <span className="text-sm text-dc-teal font-semibold">{formatBudget(campaign)}</span>
                           <button
                             onClick={(e) => {
@@ -359,7 +361,7 @@ const CreatorCampaignMarketplace = () => {
                           <p className="text-xs text-gray-500">by {campaign.business_profile.business_name}</p>
                         )}
                       </CardContent>
-                    </Card>
+                    </AppCard>
                   ))}
                 </div>
               )}
@@ -368,14 +370,14 @@ const CreatorCampaignMarketplace = () => {
               {!showCycled && skippedIds.size > 0 && (
                 <div className="mt-8 max-w-6xl mx-auto">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white">Previously Skipped</h3>
-                    <span className="text-sm text-white/60">{skippedIds.size} campaign{skippedIds.size !== 1 ? 's' : ''}</span>
+                    <h3 className="text-lg font-semibold text-dc-text">Previously Skipped</h3>
+                    <span className="text-sm text-dc-text-muted">{skippedIds.size} campaign{skippedIds.size !== 1 ? 's' : ''}</span>
                   </div>
                   <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredBySearch
                       .filter((c) => skippedIds.has(c.id) && !c.user_applied)
                       .map((campaign) => (
-                        <div key={campaign.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                        <AppCard key={campaign.id}>
                           <h4 className="font-semibold text-sm text-gray-900 mb-1 truncate">{campaign.title}</h4>
                           <p className="text-xs text-gray-500 mb-3 truncate">
                             {campaign.business_profile?.business_name ?? 'Unknown Business'} &bull; {formatBudget(campaign)}
@@ -393,7 +395,7 @@ const CreatorCampaignMarketplace = () => {
                           >
                             Restore
                           </button>
-                        </div>
+                        </AppCard>
                       ))}
                   </div>
                 </div>
@@ -407,10 +409,10 @@ const CreatorCampaignMarketplace = () => {
             {donnyPicks && donnyPicks.length > 0 ? (
               <div className="space-y-3">
                 {donnyPicks.map((pick) => (
-                  <div
+                  <AppCard
                     key={pick.campaign.id}
                     onClick={() => handleViewDetail(pick.campaign)}
-                    className="bg-white rounded-2xl p-4 cursor-pointer hover:shadow-md transition-shadow border border-teal-200"
+                    className="cursor-pointer hover:shadow-md transition-shadow"
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
@@ -424,7 +426,7 @@ const CreatorCampaignMarketplace = () => {
                     {pick.matchReasons?.length > 0 && (
                       <p className="text-xs text-gray-500">{pick.matchReasons[0]}</p>
                     )}
-                  </div>
+                  </AppCard>
                 ))}
               </div>
             ) : (
@@ -475,21 +477,25 @@ const CreatorCampaignMarketplace = () => {
                       </div>
                     )}
                     <div className="flex gap-2">
-                      <button
+                      <Button
+                        variant="dc-primary"
+                        size="sm"
+                        className="flex-1 text-sm"
                         onClick={() => {
                           navigate(`/dashboard/creator/campaigns/${campaign?.id}?invited=true`);
                         }}
-                        className="flex-1 bg-dc-teal text-white font-semibold py-2 rounded-full text-sm hover:bg-dc-teal/90 transition-colors"
                       >
                         Apply Now
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="dc-secondary"
+                        size="sm"
+                        className="flex-1 text-sm"
                         onClick={() => declineInvitation.mutate(inv.id)}
                         disabled={declineInvitation.isPending}
-                        className="flex-1 bg-white text-pink-500 font-semibold py-2 rounded-full text-sm border-2 border-gray-200 hover:bg-gray-50 transition-colors"
                       >
                         Decline
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 );
@@ -539,9 +545,10 @@ const CreatorCampaignMarketplace = () => {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {availableGroupCampaigns.map((campaign) => (
-                    <Card
+                    <AppCard
                       key={campaign.id}
-                      className="hover:shadow-lg transition-shadow cursor-pointer border-2 border-dc-teal/40 hover:border-dc-teal"
+                      variant="emphasis"
+                      className="p-0 hover:shadow-lg transition-shadow cursor-pointer"
                       onClick={() => handleViewDetail(campaign)}
                     >
                       <CardContent className="p-5 space-y-3">
@@ -556,7 +563,7 @@ const CreatorCampaignMarketplace = () => {
                         {campaign.description && (
                           <p className="text-sm text-gray-500 line-clamp-2">{campaign.description}</p>
                         )}
-                        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                        <div className="flex items-center justify-between pt-2 border-t border-dc-teal/15">
                           <span className="text-sm text-dc-teal font-semibold">{formatCampaignPrice(campaign)}</span>
                           <button
                             onClick={(e) => {
@@ -572,7 +579,7 @@ const CreatorCampaignMarketplace = () => {
                           <p className="text-xs text-gray-500">by {campaign.business_profile.business_name}</p>
                         )}
                       </CardContent>
-                    </Card>
+                    </AppCard>
                   ))}
                 </div>
               )}

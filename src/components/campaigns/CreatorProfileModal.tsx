@@ -93,7 +93,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
           <div>
             <h4 className="font-medium mb-3">Application Details</h4>
             <div className="space-y-3">
-              <div className="bg-gray-50 p-3 rounded-lg">
+              <div className="bg-dc-teal/[0.04] p-3 rounded-lg">
                 <h5 className="font-medium mb-1">Introduction Message</h5>
                 <p className="text-sm text-gray-600">
                   {application.intro_message || 'No message provided'}

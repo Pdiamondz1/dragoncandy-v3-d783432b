@@ -117,7 +117,7 @@ export const ApplicationAnalytics: React.FC<ApplicationAnalyticsProps> = ({ appl
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Creator Diversity</CardTitle>
-          <Users className="h-4 w-4 text-indigo-600" />
+          <Users className="h-4 w-4 text-dc-teal" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{totalApplications}</div>

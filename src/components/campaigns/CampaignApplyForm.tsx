@@ -173,7 +173,7 @@ export const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
                 className={`flex-1 text-xs px-3 py-2 rounded-full font-semibold transition-colors ${
                   offerMode === 'accept'
                     ? 'bg-dc-teal-btn text-white'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:border-dc-teal'
+                    : 'bg-white text-gray-600 border border-dc-teal/15 hover:border-dc-teal'
                 }`}
               >
                 Accept Price
@@ -184,7 +184,7 @@ export const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
                 className={`flex-1 text-xs px-3 py-2 rounded-full font-semibold transition-colors ${
                   offerMode === 'offer'
                     ? 'bg-dc-pink-accent text-white'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:border-dc-pink-accent'
+                    : 'bg-white text-gray-600 border border-dc-teal/15 hover:border-dc-pink-accent'
                 }`}
               >
                 Make an Offer
@@ -201,7 +201,7 @@ export const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
                     pattern="[0-9]*"
                     value={proposedRate}
                     onChange={(e) => setProposedRate(sanitizeNumericInput(e.target.value))}
-                    className="w-full pl-7 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
+                    className="w-full pl-7 pr-3 py-2.5 border border-dc-teal/15 rounded-xl text-sm text-gray-800 outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
                     placeholder="Enter your offer"
                     required
                   />
@@ -225,7 +225,7 @@ export const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
               className={`text-xs px-3 py-1.5 rounded-full font-semibold transition-colors ${
                 selectedDate === opt.value
                   ? 'bg-teal-50 text-teal-700 border-2 border-dc-teal'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
+                  : 'bg-white text-gray-600 border border-dc-teal/15 hover:border-dc-teal/30'
               }`}
             >
               {opt.label}
@@ -233,7 +233,7 @@ export const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
           ))}
         </div>
         {isDragonDash && (
-          <p className="text-[11px] text-orange-700 mt-1.5">
+          <p className="text-[11px] text-amber-700 mt-1.5">
             ⚡ DragonDash — must deliver within {TIER_LIMITS.dragondash.timeframe} of acceptance
           </p>
         )}
@@ -248,7 +248,7 @@ export const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
           value={pitch}
           onChange={(e) => setPitch(e.target.value.slice(0, 280))}
           placeholder="Why you're a great fit for this campaign…"
-          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal resize-none h-[72px]"
+          className="w-full px-3 py-2.5 border border-dc-teal/15 rounded-xl text-sm text-gray-800 outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal resize-none h-[72px]"
           maxLength={280}
         />
         <p className="text-[11px] text-gray-400 mt-0.5">
@@ -282,7 +282,7 @@ export const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
                   className={`w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border-2 transition-all ${
                     selectedThumbIndex === i
                       ? 'border-dc-teal ring-2 ring-dc-teal'
-                      : 'border-gray-200 hover:border-gray-300'
+                      : 'border-dc-teal/15 hover:border-dc-teal/30'
                   }`}
                 >
                   {/\.(mp4|mov|webm|avi)(\?|$)/i.test(url) ? (
@@ -306,15 +306,15 @@ export const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
             setSelectedThumbIndex(null);
           }}
           placeholder="https://your-portfolio.com/sample"
-          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
+          className="w-full px-3 py-2.5 border border-dc-teal/15 rounded-xl text-sm text-gray-800 outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
         />
       </div>
 
       {/* DragonDash urgency warning */}
       {isDragonDash && (
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 mb-4 flex items-center gap-2">
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 flex items-center gap-2">
           <span className="text-base">⚡</span>
-          <p className="text-xs text-orange-800 leading-snug">
+          <p className="text-xs text-amber-800 leading-snug">
             <strong>DragonDash campaign.</strong> If accepted, you'll need to deliver within {TIER_LIMITS.dragondash.timeframe}.
           </p>
         </div>

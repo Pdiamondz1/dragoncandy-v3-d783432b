@@ -129,7 +129,7 @@ export function MyCampaignCard({
             <span>Deliverables</span>
             <span>{deliverableProgress.done}/{deliverableProgress.total} done</span>
           </div>
-          <div className="bg-gray-200 rounded-full h-1.5 overflow-hidden">
+          <div className="bg-dc-teal/15 rounded-full h-1.5 overflow-hidden">
             <div
               className="bg-dc-teal h-full rounded-full transition-all"
               style={{ width: `${deliverableProgress.total > 0 ? (deliverableProgress.done / deliverableProgress.total) * 100 : 0}%` }}

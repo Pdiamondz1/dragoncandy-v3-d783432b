@@ -111,7 +111,7 @@ export function ReHireCreatorsModal({
               {pastCreators.map((creator) => (
                 <label
                   key={creator.creator_id}
-                  className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 cursor-pointer"
+                  className="flex items-center gap-3 p-2 rounded-xl hover:bg-dc-teal/5 cursor-pointer"
                 >
                   <Checkbox
                     checked={selectedIds.has(creator.creator_id)}

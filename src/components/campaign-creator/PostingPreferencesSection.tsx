@@ -1,6 +1,7 @@
 import { Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PostingPreferences } from '@/types/campaignCreator';
+import { AppChip } from '@/components/app/AppChip';
 
 interface PostingPreferencesSectionProps {
   preferences: PostingPreferences;
@@ -91,30 +92,12 @@ export function PostingPreferencesSection({
           How do you want to spread your content?
         </p>
         <div className="flex gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => handleStrategySelect('auto')}
-            className={cn(
-              'rounded-full px-4 py-2 text-sm border transition-colors',
-              !isCustom
-                ? 'bg-teal-50 border-dc-teal text-dc-teal-dark font-semibold'
-                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
-            )}
-          >
+          <AppChip active={!isCustom} onClick={() => handleStrategySelect('auto')}>
             Let Donny decide
-          </button>
-          <button
-            type="button"
-            onClick={() => handleStrategySelect('custom')}
-            className={cn(
-              'rounded-full px-4 py-2 text-sm border transition-colors',
-              isCustom
-                ? 'bg-teal-50 border-dc-teal text-dc-teal-dark font-semibold'
-                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
-            )}
-          >
+          </AppChip>
+          <AppChip active={isCustom} onClick={() => handleStrategySelect('custom')}>
             I'll pick the days
-          </button>
+          </AppChip>
         </div>
       </div>
 
@@ -126,19 +109,10 @@ export function PostingPreferencesSection({
             <p className="text-sm font-medium text-gray-700 mb-2">Over how long?</p>
             <div className="flex gap-2 flex-wrap">
               {WINDOW_OPTIONS.map((opt) => (
-                <button
-                  key={opt.days}
-                  type="button"
-                  onClick={() => handleWindowSelect(opt.days)}
-                  className={cn(
-                    'rounded-full px-4 py-2 text-sm border transition-colors',
-                    preferences.spread_window_days === opt.days
-                      ? 'bg-teal-50 border-dc-teal text-dc-teal-dark font-semibold'
-                      : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
-                  )}
-                >
+                <AppChip key={opt.days} active={preferences.spread_window_days === opt.days}
+                  onClick={() => handleWindowSelect(opt.days)}>
                   {opt.label}
-                </button>
+                </AppChip>
               ))}
             </div>
           </div>
@@ -160,7 +134,7 @@ export function PostingPreferencesSection({
                       'w-10 h-10 rounded-full flex items-center justify-center text-sm select-none',
                       isSelected
                         ? 'border-2 border-dc-teal bg-dc-teal/15 text-dc-teal font-bold cursor-pointer'
-                        : 'border border-gray-300 text-gray-500 cursor-pointer hover:border-gray-400'
+                        : 'border border-dc-teal/20 text-gray-500 cursor-pointer hover:border-dc-teal/40'
                     )}
                   >
                     {day.label}
@@ -176,7 +150,7 @@ export function PostingPreferencesSection({
       )}
 
       {/* Auto-schedule toggle */}
-      <div className="flex justify-between items-center pt-3 border-t border-gray-200 mt-3">
+      <div className="flex justify-between items-center pt-3 border-t border-dc-teal/15 mt-3">
         <div>
           <p className="text-sm text-gray-900">Auto-schedule after approval</p>
           <p className="text-[11px] text-gray-400">
@@ -196,7 +170,7 @@ export function PostingPreferencesSection({
           }}
           className={cn(
             'w-11 h-6 rounded-full relative cursor-pointer transition-colors',
-            preferences.auto_schedule_on_approval ? 'bg-dc-teal' : 'bg-gray-200'
+            preferences.auto_schedule_on_approval ? 'bg-dc-teal' : 'bg-dc-teal/20'
           )}
         >
           <span

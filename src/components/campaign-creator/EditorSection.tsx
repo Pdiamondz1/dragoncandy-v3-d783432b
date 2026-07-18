@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { AppCard } from '@/components/app/AppCard';
 
 interface EditorSectionProps {
   title: string;
@@ -12,7 +13,7 @@ export function EditorSection({ title, defaultOpen = true, children, id }: Edito
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div id={id} className="border border-gray-200 rounded-xl overflow-hidden">
+    <AppCard id={id} className="p-0 overflow-hidden">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -26,10 +27,10 @@ export function EditorSection({ title, defaultOpen = true, children, id }: Edito
         )}
       </button>
       {isOpen && (
-        <div className="px-4 py-3 border-t border-gray-200 space-y-3">
+        <div className="px-4 py-3 border-t border-dc-teal/10 space-y-3">
           {children}
         </div>
       )}
-    </div>
+    </AppCard>
   );
 }

@@ -20,7 +20,7 @@ export function CampaignReferencesGallery({ referenceMedia }: CampaignReferences
             <button
               key={item.id}
               onClick={() => setLightboxIndex(i)}
-              className="flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border border-gray-200 hover:border-dc-teal transition-colors"
+              className="flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border border-dc-teal/15 hover:border-dc-teal transition-colors"
             >
               {item.media_type === 'reference_video' ? (
                 <div className="w-full h-full bg-gray-900 flex items-center justify-center">

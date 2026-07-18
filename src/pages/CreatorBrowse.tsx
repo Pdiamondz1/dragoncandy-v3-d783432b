@@ -5,6 +5,7 @@ import { CreatorBrowseHeader } from '@/components/creator-browse/CreatorBrowseHe
 import { CreatorBrowseContent } from '@/components/creator-browse/CreatorBrowseContent';
 import { useCreatorBrowse } from '@/hooks/useCreatorBrowse';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { PageBody } from '@/components/app/PageBody';
 
 const CreatorBrowseInner: React.FC = () => {
   const {
@@ -41,7 +42,7 @@ const CreatorBrowseInner: React.FC = () => {
     <DashboardLayout userRole="business_client">
       <div className="flex-1 bg-white min-h-screen overflow-x-hidden">
         <PageHeader>
-          <div className="max-w-7xl mx-auto">
+          <div className="max-w-6xl mx-auto">
             <CreatorBrowseHeader
               resultCount={filteredCreators.length}
               searchTerm={filters.searchTerm}
@@ -59,7 +60,7 @@ const CreatorBrowseInner: React.FC = () => {
             />
           </div>
         </PageHeader>
-        <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-4">
+        <PageBody className="space-y-4">
           <CreatorBrowseContent
             filteredCreators={filteredCreators}
             filters={filters}
@@ -76,7 +77,7 @@ const CreatorBrowseInner: React.FC = () => {
             isLocationFiltered={location.center != null && location.radiusMiles != null}
             onWidenLocation={() => updateLocation({ radiusMiles: null })}
           />
-        </div>
+        </PageBody>
       </div>
     </DashboardLayout>
   );

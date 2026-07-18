@@ -55,7 +55,7 @@ export function DeliverablesList({ deliverables, onChange }: DeliverablesListPro
         {deliverables.map((d, i) => {
           const Icon = TYPE_ICONS[d.content_type] || Camera;
           return (
-            <div key={d.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2.5 border border-gray-100">
+            <div key={d.id} className="flex items-center gap-3 bg-dc-teal/[0.04] rounded-xl px-3 py-2.5 border border-dc-teal/10">
               <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center flex-shrink-0">
                 <Icon className="w-4 h-4 text-dc-teal" />
               </div>
@@ -88,7 +88,7 @@ export function DeliverablesList({ deliverables, onChange }: DeliverablesListPro
         </button>
 
         {showAddMenu && (
-          <div className="absolute left-0 top-8 z-10 bg-white rounded-xl border border-gray-200 shadow-lg py-1 w-52">
+          <div className="absolute left-0 top-8 z-10 bg-white rounded-xl border border-dc-teal/15 shadow-lg py-1 w-52">
             {CONTENT_OPTIONS.map((option) => {
               const Icon = option.icon;
               return (

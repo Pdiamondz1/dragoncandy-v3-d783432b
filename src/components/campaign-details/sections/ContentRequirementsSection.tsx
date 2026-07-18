@@ -1,4 +1,6 @@
 import { Badge } from '@/components/ui/badge';
+import { AppCard } from '@/components/app/AppCard';
+import { AppStatusBadge } from '@/components/app/AppStatusBadge';
 import { useCampaignDeliverables } from '@/hooks/useCampaignDeliverables';
 import type { Campaign } from '@/hooks/useCampaignQueries';
 
@@ -44,7 +46,7 @@ export function ContentRequirementsSection({ campaign, campaignId }: ContentRequ
   const hashtags = campaign.hashtag_requirements?.split(' ').filter(Boolean) ?? [];
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+    <AppCard className="space-y-4">
         {campaign.platforms && campaign.platforms.length > 0 && (
           <div>
             <span className="text-[11px] text-gray-500 uppercase tracking-wider">Platforms</span>
@@ -196,9 +198,9 @@ export function ContentRequirementsSection({ campaign, campaignId }: ContentRequ
             <span className="text-[11px] text-gray-500 uppercase tracking-wider">Key Messages</span>
             <div className="flex flex-wrap gap-2 mt-1">
               {campaign.key_messages.map((msg, i) => (
-                <span key={i} className="bg-gray-100 text-gray-700 text-xs px-2.5 py-1 rounded-full border border-gray-200">
+                <AppStatusBadge key={i} tone="neutral" className="text-xs px-2.5 py-1">
                   {msg}
-                </span>
+                </AppStatusBadge>
               ))}
             </div>
           </div>
@@ -216,6 +218,6 @@ export function ContentRequirementsSection({ campaign, campaignId }: ContentRequ
             </div>
           </div>
         )}
-    </div>
+    </AppCard>
   );
 }

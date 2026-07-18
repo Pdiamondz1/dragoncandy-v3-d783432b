@@ -29,6 +29,8 @@ const buttonVariants = cva(
           "rounded-full bg-dc-teal text-dc-dark font-bold hover:bg-dc-teal-dark hover:shadow-glow-teal",
         "dc-ghost-pill":
           "rounded-full border border-white/20 bg-white/5 text-white hover:border-dc-teal hover:text-dc-teal backdrop-blur",
+        "dc-secondary":
+          "bg-white text-dc-pink-accent border-2 border-dc-teal/30 hover:bg-dc-teal/5 transition-[color,background-color] duration-150",
       },
       size: {
         default: "h-12 px-6 py-2",

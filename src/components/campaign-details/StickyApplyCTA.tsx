@@ -22,7 +22,7 @@ export function StickyApplyCTA({
   const canReapply = hasApplied && applicationStatus === 'rejected';
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-t border-gray-200 px-5 py-3 pb-6">
+    <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-t border-dc-teal/15 px-5 py-3 pb-6">
       <div className="md:max-w-2xl md:mx-auto">
         {canApply && (
           <button
@@ -64,7 +64,7 @@ export function StickyApplyCTA({
           </button>
         )}
         {positionFilled && !hasApplied && (
-          <div className="w-full rounded-full bg-gray-100 text-gray-500 font-bold py-3.5 h-14 flex items-center justify-center gap-2">
+          <div className="w-full rounded-full bg-dc-teal/10 text-dc-text-muted font-bold py-3.5 h-14 flex items-center justify-center gap-2">
             <UserCheck className="h-4 w-4" />
             Position Filled
           </div>

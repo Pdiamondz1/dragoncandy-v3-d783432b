@@ -9,6 +9,7 @@ import { MyCampaignCard } from '@/components/my-campaigns/MyCampaignCard';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { PageBody } from '@/components/app/PageBody';
 
 type TabId = 'applied' | 'active' | 'done';
 
@@ -58,6 +59,7 @@ export default function MyCampaignsPage() {
   return (
     <DashboardLayout userRole="content_creator">
       <div className="bg-white min-h-full">
+      <PageBody className="space-y-0">
         {/* Page title */}
         <div className="px-4 pt-4 pb-3 flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900 tracking-wide">MY CAMPAIGNS</h1>
@@ -172,6 +174,7 @@ export default function MyCampaignsPage() {
             </>
           )}
         </div>
+      </PageBody>
       </div>
     </DashboardLayout>
   );

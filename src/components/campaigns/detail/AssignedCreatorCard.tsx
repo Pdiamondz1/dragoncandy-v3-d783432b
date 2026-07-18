@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useResolvedAvatarUrl } from '@/hooks/useSignedUrl';
+import { AppCard } from '@/components/app/AppCard';
 
 interface AssignedCreatorCardProps {
   creatorName: string;
@@ -23,7 +24,7 @@ export const AssignedCreatorCard: React.FC<AssignedCreatorCardProps> = ({
   const [avatarError, setAvatarError] = useState(false);
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
+    <AppCard className="space-y-3">
       {/* Creator info row */}
       <div className="flex items-center gap-3">
         {resolvedAvatarUrl && !avatarError ? (
@@ -62,6 +63,6 @@ export const AssignedCreatorCard: React.FC<AssignedCreatorCardProps> = ({
           View Portfolio
         </Button>
       </div>
-    </div>
+    </AppCard>
   );
 };

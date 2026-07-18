@@ -27,6 +27,7 @@ import { useActiveCampaignGate } from '@/hooks/useActiveCampaignGate';
 import { SoftPaywallSheet } from '@/components/pricing/SoftPaywallSheet';
 import { useAuth } from '@/hooks/useAuth';
 import { BRAND_ROLE_ENABLED } from '@/lib/featureConfig';
+import { AppCard } from '@/components/app/AppCard';
 
 const finalizeSchema = z.object({
   title: z.string().min(3, 'Campaign name must be at least 3 characters'),
@@ -349,12 +350,12 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
             </div>
 
             {campaignData.deliveryFee > 0 && (
-              <div className="p-3 rounded-lg bg-orange-50 border border-orange-200 min-w-0">
-                <div className="flex items-center gap-1 text-orange-600 text-xs mb-1">
+              <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 min-w-0">
+                <div className="flex items-center gap-1 text-amber-700 text-xs mb-1">
                   <Rocket className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">Rush Fee</span>
                 </div>
-                <p className="font-semibold text-orange-700 text-sm">+${campaignData.deliveryFee}</p>
+                <p className="font-semibold text-amber-800 text-sm">+${campaignData.deliveryFee}</p>
               </div>
             )}
           </div>
@@ -373,7 +374,7 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
 
       {/* Campaign Summary Card */}
       {campaignData.contentSource && (
-        <Card className="mb-6 rounded-xl">
+        <AppCard className="mb-6 p-0">
           <CardHeader>
             <CardTitle className="text-lg">Campaign Summary</CardTitle>
           </CardHeader>
@@ -395,12 +396,12 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
               </div>
             </div>
           </CardContent>
-        </Card>
+        </AppCard>
       )}
 
       {/* Deliverables List */}
       {campaignData.structuredDeliverables && campaignData.structuredDeliverables.length > 0 && (
-        <Card className="mb-6 rounded-xl">
+        <AppCard className="mb-6 p-0">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               Deliverables
@@ -412,7 +413,7 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
           <CardContent>
             <div className="space-y-2">
               {campaignData.structuredDeliverables.map((deliverable, index) => (
-                <div key={deliverable.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <AppCard key={deliverable.id} variant="inset" className="flex items-center gap-3 p-3">
                   <span className="text-sm font-semibold text-gray-400 w-5 text-center">{index + 1}</span>
                   {getContentTypeIcon(deliverable.content_type)}
                   <div className="min-w-0 flex-1">
@@ -428,11 +429,11 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
                       </p>
                     )}
                   </div>
-                </div>
+                </AppCard>
               ))}
             </div>
           </CardContent>
-        </Card>
+        </AppCard>
       )}
 
       {/* Scope Validation */}
@@ -457,7 +458,7 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
       )}
 
       {/* Payment Summary */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-2 mb-6">
+      <AppCard className="p-4 space-y-2 mb-6">
         <h4 className="font-semibold text-sm text-gray-600 uppercase tracking-wide">Payment Summary</h4>
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Content budget</span>
@@ -478,7 +479,7 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
         <p className="text-xs text-gray-400">
           A {Math.round((activeOrg?.take_rate ?? 0.10) * 100)}% service fee is deducted from the creator's payout — you are not charged extra.
         </p>
-      </div>
+      </AppCard>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -668,7 +669,7 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
       </Form>
 
       {!campaignGate.loading && !campaignGate.allowed && (
-        <div className="mt-4 p-4 rounded-xl border border-orange-200 bg-orange-50 text-sm text-orange-800">
+        <div className="mt-4 p-4 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-800">
           You've reached your active campaign limit ({campaignGate.currentCount}/{campaignGate.limit}).
           Upgrade your plan to publish more campaigns simultaneously.
         </div>

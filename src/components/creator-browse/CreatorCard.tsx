@@ -9,6 +9,8 @@ import { useVerifiedStatus } from '@/hooks/outstand/useVerifiedStatus';
 import { formatSkillLabel } from '@/lib/skillUtils';
 import { VideoThumbnail } from '@/components/shared/VideoThumbnail';
 import { InlineRating } from '@/components/reviews/InlineRating';
+import { AppCard } from '@/components/app/AppCard';
+import { AppStatusBadge } from '@/components/app/AppStatusBadge';
 
 interface CreatorCardProps {
   creator: CreatorProfile;
@@ -97,13 +99,13 @@ export const CreatorCard: React.FC<CreatorCardProps> = React.memo(({ creator }) 
 
   return (
     <>
-      <div
+      <AppCard
         onClick={handleCardClick}
-        className="bg-white border border-gray-200 rounded-2xl overflow-hidden flex flex-row items-start p-4 gap-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative"
+        className="p-4 overflow-hidden flex flex-row items-start gap-4 hover:shadow-md transition-shadow cursor-pointer relative"
       >
         {/* Avatar — preserve the full uploaded photo */}
         <div className="w-24 flex-shrink-0 self-center">
-          <div className="max-h-32 rounded-xl bg-gray-100 ring-2 ring-teal-400 overflow-hidden flex items-center justify-center">
+          <div className="max-h-32 rounded-xl bg-dc-teal/[0.04] ring-2 ring-teal-400 overflow-hidden flex items-center justify-center">
             {thumbnailUrl && isVideoThumbnail ? (
               <div className="relative w-full h-24">
                 <VideoThumbnail src={thumbnailUrl} className="w-full h-24 object-cover" />
@@ -174,12 +176,9 @@ export const CreatorCard: React.FC<CreatorCardProps> = React.memo(({ creator }) 
           {visibleSkills.length > 0 && (
             <div className="flex gap-1 mb-1.5 flex-wrap">
               {visibleSkills.map((skill) => (
-                <span
-                  key={skill}
-                  className="bg-teal-50 text-teal-700 rounded-full text-[11px] px-2 py-0.5 font-medium"
-                >
+                <AppStatusBadge key={skill} tone="teal">
                   {formatSkillLabel(skill)}
-                </span>
+                </AppStatusBadge>
               ))}
               {overflowCount > 0 && (
                 <span className="text-gray-400 text-[11px] py-0.5">+{overflowCount}</span>
@@ -203,7 +202,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = React.memo(({ creator }) 
             View Profile
           </button>
         </div>
-      </div>
+      </AppCard>
 
       <CreatorProfileModal
         creator={creator}

@@ -1,5 +1,6 @@
 import type { CampaignIdea } from '@/types/campaignCreator';
 import { cn } from '@/lib/utils';
+import { AppStatusBadge } from '@/components/app/AppStatusBadge';
 
 interface IdeaCardProps {
   idea: CampaignIdea;
@@ -35,16 +36,16 @@ export function IdeaCard({ idea, isSelected, onSelect }: IdeaCardProps) {
         </p>
       )}
       <div className="flex flex-wrap gap-2 mt-3">
-        <span className="bg-gray-100 rounded-full px-2 py-1 text-xs font-medium text-gray-700">
+        <AppStatusBadge tone="neutral">
           ${idea.price ?? idea.budget_range?.max ?? 'TBD'}
-        </span>
-        <span className="bg-gray-100 rounded-full px-2 py-1 text-xs font-medium text-gray-700">
+        </AppStatusBadge>
+        <AppStatusBadge tone="neutral">
           {idea.timeline_days} days
-        </span>
+        </AppStatusBadge>
         {idea.recommended_platforms.map((p) => (
-          <span key={p} className="bg-gray-100 rounded-full px-2 py-1 text-xs font-medium text-gray-700">
+          <AppStatusBadge key={p} tone="neutral">
             {PLATFORM_LABELS[p] || p}
-          </span>
+          </AppStatusBadge>
         ))}
       </div>
       {idea.content_strategy && (

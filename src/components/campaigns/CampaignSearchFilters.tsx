@@ -10,6 +10,7 @@ import type {
   CampaignFilterState,
 } from '@/hooks/useCampaignFilters';
 import logo from '@/assets/Transparent_DragonCandy_logo.webp';
+import { AppChip } from '@/components/app/AppChip';
 
 interface CampaignSearchFiltersProps {
   filters: CampaignFilterState;
@@ -132,7 +133,7 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
               placeholder="Search campaigns…"
               value={localSearch}
               onChange={(e) => handleSearchInput(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 rounded-full bg-white text-sm text-gray-900 placeholder-gray-400 border border-gray-200 focus:outline-none focus:border-dc-teal"
+              className="w-full pl-9 pr-8 py-2 rounded-full bg-white text-sm text-gray-900 placeholder-gray-400 border border-dc-teal/20 focus:outline-none focus:border-dc-teal"
             />
             <button
               onClick={() => {
@@ -148,30 +149,27 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
           <>
             <button
               onClick={() => setSearchOpen(true)}
-              className="w-9 h-9 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center flex-shrink-0 hover:border-dc-teal transition-colors"
+              className="w-9 h-9 rounded-full bg-white border border-dc-teal/20 flex items-center justify-center flex-shrink-0 hover:border-dc-teal transition-colors"
             >
               <Search className="w-4 h-4 text-gray-500" />
             </button>
             <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:overflow-x-visible md:flex-wrap">
               {CONTENT_TYPE_PILLS.map((pill) => (
-                <button
+                <AppChip
                   key={pill.value}
+                  active={filters.contentType === pill.value}
                   onClick={() => onContentTypeChange(pill.value)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
-                    filters.contentType === pill.value
-                      ? 'bg-dc-teal-btn text-white'
-                      : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
-                  }`}
+                  className="px-3 py-1.5 text-xs whitespace-nowrap"
                 >
                   {pill.label}
-                </button>
+                </AppChip>
               ))}
             </div>
           </>
         )}
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-9 h-9 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center flex-shrink-0 hover:border-dc-teal transition-colors"
+          className="w-9 h-9 rounded-full bg-white border border-dc-teal/20 flex items-center justify-center flex-shrink-0 hover:border-dc-teal transition-colors"
         >
           {expanded ? (
             <ChevronUp className="w-4 h-4 text-gray-500" />
@@ -184,17 +182,14 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
       {searchOpen && (
         <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:overflow-x-visible md:flex-wrap">
           {CONTENT_TYPE_PILLS.map((pill) => (
-            <button
+            <AppChip
               key={pill.value}
+              active={filters.contentType === pill.value}
               onClick={() => onContentTypeChange(pill.value)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
-                filters.contentType === pill.value
-                  ? 'bg-dc-teal-btn text-white'
-                  : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
-              }`}
+              className="px-3 py-1.5 text-xs whitespace-nowrap"
             >
               {pill.label}
-            </button>
+            </AppChip>
           ))}
         </div>
       )}
@@ -211,7 +206,7 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                   filters.deliveryTier === pill.value
                     ? 'bg-dc-pink text-white'
-                    : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-pink'
+                    : 'bg-white text-dc-text-muted border border-dc-teal/20 hover:border-dc-pink'
                 }`}
               >
                 {pill.label}
@@ -224,17 +219,14 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
             <SectionLabel>More Content Types</SectionLabel>
             <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:overflow-x-visible md:flex-wrap mb-2.5">
               {MORE_CONTENT_PILLS.map((pill) => (
-                <button
+                <AppChip
                   key={pill.value}
+                  active={filters.contentType === pill.value}
                   onClick={() => onContentTypeChange(pill.value)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
-                    filters.contentType === pill.value
-                      ? 'bg-dc-teal-btn text-white'
-                      : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
-                  }`}
+                  className="px-3 py-1.5 text-xs whitespace-nowrap"
                 >
                   {pill.label}
-                </button>
+                </AppChip>
               ))}
             </div>
           </div>
@@ -243,17 +235,14 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
             <SectionLabel>Distance</SectionLabel>
             <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:overflow-x-visible md:flex-wrap mb-2.5">
               {DISTANCE_PILLS.map((pill) => (
-                <button
+                <AppChip
                   key={String(pill.value)}
+                  active={filters.distanceRadius === pill.value}
                   onClick={() => onDistanceChange(pill.value)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
-                    filters.distanceRadius === pill.value
-                      ? 'bg-dc-teal-btn text-white'
-                      : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
-                  }`}
+                  className="px-3 py-1.5 text-xs whitespace-nowrap"
                 >
                   {pill.label}
-                </button>
+                </AppChip>
               ))}
             </div>
           </div>
@@ -262,17 +251,14 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
             <SectionLabel>Budget Min</SectionLabel>
             <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:overflow-x-visible md:flex-wrap mb-2.5">
               {BUDGET_MIN_PILLS.map((pill) => (
-                <button
+                <AppChip
                   key={String(pill.value)}
+                  active={filters.budgetMin === pill.value}
                   onClick={() => onBudgetMinChange(pill.value)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
-                    filters.budgetMin === pill.value
-                      ? 'bg-dc-teal-btn text-white'
-                      : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
-                  }`}
+                  className="px-3 py-1.5 text-xs whitespace-nowrap"
                 >
                   {pill.label}
-                </button>
+                </AppChip>
               ))}
             </div>
           </div>
@@ -281,17 +267,14 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
             <SectionLabel>Budget Max</SectionLabel>
             <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:overflow-x-visible md:flex-wrap mb-2.5">
               {BUDGET_MAX_PILLS.map((pill) => (
-                <button
+                <AppChip
                   key={String(pill.value)}
+                  active={filters.budgetMax === pill.value}
                   onClick={() => onBudgetMaxChange(pill.value)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
-                    filters.budgetMax === pill.value
-                      ? 'bg-dc-teal-btn text-white'
-                      : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
-                  }`}
+                  className="px-3 py-1.5 text-xs whitespace-nowrap"
                 >
                   {pill.label}
-                </button>
+                </AppChip>
               ))}
             </div>
           </div>
@@ -300,7 +283,7 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
             <select
               value={filters.sortBy}
               onChange={(e) => onSortChange(e.target.value as SortOption)}
-              className="bg-white border border-gray-200 rounded-full px-3 py-1.5 text-xs text-gray-600 focus:outline-none focus:border-dc-teal"
+              className="bg-white border border-dc-teal/20 rounded-full px-3 py-1.5 text-xs text-gray-600 focus:outline-none focus:border-dc-teal"
             >
               {SORT_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>

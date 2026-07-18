@@ -33,7 +33,7 @@ export function TemplateStrip() {
             key={t.id}
             onClick={() => handleDuplicate(t.id)}
             disabled={duplicatingId === t.id}
-            className="min-w-[140px] bg-gray-50 rounded-xl p-3 border border-gray-200 text-left flex-shrink-0 hover:border-teal-300 transition-colors disabled:opacity-50"
+            className="min-w-[140px] bg-dc-teal/[0.04] rounded-xl p-3 border border-dc-teal/10 text-left flex-shrink-0 hover:border-teal-300 transition-colors disabled:opacity-50"
           >
             {duplicatingId === t.id ? (
               <div className="flex items-center justify-center h-full">

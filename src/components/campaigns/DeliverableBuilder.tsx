@@ -1,5 +1,7 @@
 import { Plus, Trash2 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { CardContent } from '@/components/ui/card';
+import { AppCard } from '@/components/app/AppCard';
+import { AppChip } from '@/components/app/AppChip';
 import {
   Select,
   SelectContent,
@@ -97,7 +99,7 @@ export function DeliverableBuilder({
       {/* Deliverable cards */}
       <div className="space-y-3">
         {deliverables.map((deliverable, index) => (
-          <Card key={deliverable.id} className="rounded-xl border border-gray-200">
+          <AppCard key={deliverable.id} className="p-0">
             <CardContent className="p-4 space-y-4">
               {/* Card header row */}
               <div className="flex items-center justify-between">
@@ -173,20 +175,16 @@ export function DeliverableBuilder({
                 <label className="text-xs font-medium text-gray-600">Aspect Ratio</label>
                 <div className="flex gap-2 flex-wrap">
                   {ASPECT_RATIO_OPTIONS.map((ratio) => (
-                    <button
+                    <AppChip
                       key={ratio}
-                      type="button"
+                      active={deliverable.aspect_ratio === ratio}
                       onClick={() =>
                         updateDeliverable(deliverable.id, { aspect_ratio: ratio })
                       }
-                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                        deliverable.aspect_ratio === ratio
-                          ? 'bg-dc-teal-btn text-white'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
+                      className="px-3 py-1 text-xs"
                     >
                       {ratio}
-                    </button>
+                    </AppChip>
                   ))}
                 </div>
               </div>
@@ -230,7 +228,7 @@ export function DeliverableBuilder({
                 />
               </div>
             </CardContent>
-          </Card>
+          </AppCard>
         ))}
       </div>
 
@@ -238,7 +236,7 @@ export function DeliverableBuilder({
       <Button
         type="button"
         variant="outline"
-        className="w-full rounded-full border-dashed border-gray-300 text-gray-600 hover:border-dc-teal hover:text-dc-teal hover:bg-dc-teal/5 gap-2"
+        className="w-full rounded-full border-dashed border-dc-teal/20 text-gray-600 hover:border-dc-teal hover:text-dc-teal hover:bg-dc-teal/5 gap-2"
         onClick={addDeliverable}
         disabled={deliverables.length >= maxDeliverables}
       >

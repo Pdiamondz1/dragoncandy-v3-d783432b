@@ -12,6 +12,8 @@ import { CostBreakdown } from '@/components/campaigns/CostBreakdown';
 import { TIER_LIMITS } from '@/types/campaignMedia';
 import { mapDeliveryType } from '@/lib/campaignUtils';
 import { sanitizeNumericInput } from '@/lib/inputUtils';
+import { AppChip } from '@/components/app/AppChip';
+import { AppStatusBadge } from '@/components/app/AppStatusBadge';
 
 interface CampaignEditorProps {
   campaign: EditableCampaign;
@@ -69,7 +71,7 @@ export function CampaignEditor({
           <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Key Messages</label>
           <div className="flex flex-wrap gap-1.5 mt-1">
             {campaign.key_messages.map((msg, i) => (
-              <span key={i} className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full">{msg}</span>
+              <AppStatusBadge key={i} tone="neutral">{msg}</AppStatusBadge>
             ))}
           </div>
         </div>
@@ -103,7 +105,7 @@ export function CampaignEditor({
                     const clean = sanitizeNumericInput(e.target.value);
                     updateField('fixed_price', Number(clean) || 0);
                   }}
-                  className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-lg font-semibold outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
+                  className="w-full pl-8 pr-3 py-2 border border-dc-teal/20 rounded-xl text-lg font-semibold outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
                 />
               </div>
             </div>
@@ -127,11 +129,10 @@ export function CampaignEditor({
           <label className="text-xs font-medium text-gray-500">Geographic Scope</label>
           <div className="flex gap-2 mt-2">
             {GEO_OPTIONS.map(({ value, label }) => (
-              <button key={value} type="button" onClick={() => updateField('geographic_scope', value)}
-                className={cn('rounded-full px-3 py-1 text-sm font-medium transition-colors',
-                  campaign.geographic_scope === value ? 'bg-teal-400 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
+              <AppChip key={value} active={campaign.geographic_scope === value}
+                onClick={() => updateField('geographic_scope', value)}>
                 {label}
-              </button>
+              </AppChip>
             ))}
           </div>
         </div>
@@ -149,8 +150,8 @@ export function CampaignEditor({
                       : [...campaign.target_creator_persona, key];
                     updateField('target_creator_persona', next);
                   }}
-                  className={cn('rounded-full px-3 py-1 text-sm font-medium transition-colors',
-                    isSelected ? 'bg-pink-300 text-gray-900' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
+                  className={cn('rounded-full px-3 py-1 text-sm font-medium border transition-colors',
+                    isSelected ? 'bg-pink-300 text-gray-900 border-pink-300' : 'bg-white border-dc-teal/20 text-dc-text-muted hover:bg-dc-teal/5')}>
                   {persona}
                 </button>
               );

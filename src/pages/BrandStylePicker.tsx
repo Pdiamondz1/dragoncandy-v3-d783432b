@@ -20,11 +20,11 @@ export default function BrandStylePicker() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-400 p-4">
+    <div className="min-h-screen bg-white p-4">
       <div className="mb-6 text-center">
         <div className="text-3xl mb-2">🎨</div>
-        <h1 className="text-xl font-bold text-white">Pick your vibe</h1>
-        <p className="text-sm text-white/80 mt-1">What content style fits your brand?</p>
+        <h1 className="text-xl font-bold text-dc-teal-btn">Pick your vibe</h1>
+        <p className="text-sm text-dc-text-muted mt-1">What content style fits your brand?</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-6">

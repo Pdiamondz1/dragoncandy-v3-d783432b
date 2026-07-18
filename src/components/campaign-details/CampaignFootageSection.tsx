@@ -25,7 +25,7 @@ export function CampaignFootageSection({ footageItems, hasApplied }: CampaignFoo
         {footageItems.map((item) => (
           <div
             key={item.id}
-            className="relative w-full aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-200"
+            className="relative w-full aspect-square rounded-lg overflow-hidden bg-dc-teal/[0.06] border border-dc-teal/15"
           >
             <img
               src={item.thumbnail_url || item.file_url}

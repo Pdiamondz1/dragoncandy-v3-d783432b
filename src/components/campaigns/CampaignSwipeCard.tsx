@@ -152,7 +152,7 @@ export const CampaignSwipeCard: React.FC<CampaignSwipeCardProps> = ({
           {(skippedCount ?? 0) > 0 && onShowSkipped && (
             <button
               onClick={onShowSkipped}
-              className="mt-4 bg-dc-teal text-white font-semibold py-2.5 px-6 rounded-full text-sm hover:bg-dc-teal/90 transition-colors"
+              className="mt-4 bg-dc-teal-btn text-white font-semibold py-2.5 px-6 rounded-full text-sm hover:bg-dc-teal-btn-hover transition-colors"
             >
               Show Skipped ({skippedCount})
             </button>

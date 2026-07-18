@@ -44,7 +44,7 @@ export const ProgressTimeline: React.FC<ProgressTimelineProps> = ({
                   {isCompleted ? '✅' : isCurrent ? '🟡' : '○'}
                 </span>
                 {index < PROJECT_STEPS.length - 1 && (
-                  <div className={`w-0.5 h-5 mt-1 rounded-full ${isCompleted ? 'bg-teal-400' : 'bg-gray-200'}`} />
+                  <div className={`w-0.5 h-5 mt-1 rounded-full ${isCompleted ? 'bg-teal-400' : 'bg-dc-teal/15'}`} />
                 )}
               </div>
 

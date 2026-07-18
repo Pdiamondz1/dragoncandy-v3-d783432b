@@ -2,6 +2,7 @@ import type { EditableCampaign } from '@/types/campaignCreator';
 import { mapDeliveryType } from '@/lib/campaignUtils';
 import { TIER_LIMITS } from '@/types/campaignMedia';
 import { Sparkles, Rocket, Package } from 'lucide-react';
+import { AppStatusBadge } from '@/components/app/AppStatusBadge';
 
 interface CampaignPreviewCardProps {
   campaign: EditableCampaign;
@@ -26,7 +27,7 @@ export function CampaignPreviewCard({ campaign }: CampaignPreviewCardProps) {
   return (
     <div className="sticky top-4">
       <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">What creators will see</p>
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+      <div className="bg-white rounded-2xl border border-dc-teal/15 overflow-hidden shadow-dc-sm">
         <div className="h-32 bg-gradient-to-br from-teal-400 to-emerald-400" />
         <div className="p-4 space-y-3">
           <h3 className="font-bold text-lg text-gray-900">{campaign.title || 'Untitled Campaign'}</h3>
@@ -36,10 +37,10 @@ export function CampaignPreviewCard({ campaign }: CampaignPreviewCardProps) {
               ${campaign.fixed_price || 0}
             </span>
             {tierConfig && (
-              <span className="bg-gray-100 rounded-full px-2 py-1 text-xs font-medium text-gray-700 inline-flex items-center gap-1">
+              <AppStatusBadge tone="neutral" className="inline-flex items-center gap-1">
                 {TierIcon && <TierIcon className="w-3 h-3" />}
                 {tierConfig.label} · {tierConfig.timeframe}
-              </span>
+              </AppStatusBadge>
             )}
           </div>
           <div className="flex flex-wrap gap-1.5">

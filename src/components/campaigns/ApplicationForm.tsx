@@ -112,8 +112,8 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
           
           {/* DragonRush urgency warning */}
           {campaign.delivery_type === 'dragonrush' && (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-              <p className="text-sm text-orange-800 font-medium">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm text-amber-800 font-medium">
                 ⚡ DragonRush Campaign - Content needed within 1-3 hours of acceptance!
               </p>
             </div>
