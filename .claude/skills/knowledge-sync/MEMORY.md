@@ -27,8 +27,57 @@
   `fixed-probe` or `82dvh`, not a multi-word sentence) — wrapped prose false-negatives the check.
   Also `inserted=0` in the sync log does NOT mean a new page was missed (upsert counting) — trust
   the ilike probe, not the counters.
+- **[squash-drift] For a still-OPEN PR, `git fetch origin <branch>` and diff it against the local
+  worktree branch before editing shared docs.** When `git push` is env-blocked, code branches often
+  land via the blob→tree→commit→ref REST workaround, which **squashes** into one commit rebased onto
+  the *current* `origin/main` — so the actual PR head can be far ahead of (and unrelated in SHA to) the
+  local worktree's own unsquashed commit history. Editing `PROJECT_CONTEXT.md`/`index.md`/`log.md` on
+  the stale local branch risks a docs commit that doesn't sit on top of the real PR, or silently reverts
+  origin/main commits the PR head already carries. Fetch the named branch ref directly, confirm the
+  local branch's file-set is disjoint from what changed since the merge-base (so nothing is lost), then
+  build the knowledge-sync commit on a fresh local branch off the FETCHED PR head, not the stale one.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-07-18] Landing "Human-driven. AI-assisted." redesign (branch feat/landing-joe-redesign, PR #293)
+- Output: bundled INTO the open work PR #293 — `raw/sessions/2026-07-18-landing-joe-redesign.md`, new
+  `concepts/landing-human-driven-redesign.md`, `concepts/landing-cinematic-video-redesign.md` (edited
+  in place — supersession callout + See-Also, content NOT overwritten since the video-system mechanics
+  it documents still apply when the new opt-in flag is on), `index.md` (Sources + Concepts, alphabetical),
+  `log.md` ingest entry, `PROJECT_CONTEXT.md` (new Active Workstreams bullet), `DESIGN_SYSTEM.md` (Theme
+  section corrected — landing is no longer in the "dark surfaces" list — + a new "Landing's own scoped
+  marketing identity" section + the Page-Specific-Backgrounds table split landing out of the dark row),
+  + THIS entry. RAG sync + [[verify-knowledge]] are post-merge (this PR is still open).
+- Happened: a founder-directed strategic repositioning ("Human-driven. AI-assisted.") shipped as a full
+  landing redesign, PRE-merge on an OPEN PR (#293). [squash-drift] fired for real: the local worktree's
+  `feat/landing-joe-redesign` branch (17 unsquashed commits) had diverged from the actual PR #293 head on
+  GitHub, which was a single commit squash-rebased onto the *latest* `origin/main` (4 commits ahead,
+  unrelated "Light-App Kit" Phase 4 + de-gray work) — landed via the known git-push-blocked REST
+  workaround. Confirmed the local branch's changed files were 100% disjoint from origin/main's new
+  commits, then authored all docs on a fresh branch off the *fetched* PR head so the commit sits
+  correctly on top of the real PR state, not a stale fork. Also found + fixed a **real DESIGN_SYSTEM.md
+  contradiction**, not just an addition: its Theme section still listed "Landing... self-scopes `.dark`"
+  and the Page-Specific-Backgrounds table still had landing as dark charcoal — both now false, since this
+  redesign removes the landing's `.dark` wrapper entirely. Left uncorrected, the next UI session would
+  have read stale, wrong guidance from a project-instruction file.
+- Worked: [orphans]-by-path (both new pages confirmed cataloged) + [wikilinks]-exact (grepped index.md
+  first for every target: [[Landing Cinematic Video Redesign]], [[Landing Redesign & Public Lead
+  Capture]], [[Landing Prerendered Shell & Performance]], [[Anonymous Brief Generator]], [[Dark-Luxe App
+  Theme]], [[Light-App Kit]] all confirmed real before linking). [runlog-in-pr] (this entry bundled into
+  the same commit). Read the actual shipped code (LandingPage.tsx, HeroVideoBackdrop.tsx, featureConfig.ts,
+  tailwind.config.ts, index.html, the whole-branch-review commit diff) rather than trusting only the
+  task's prose summary — caught that `HeroVideoBackdrop` is fixed to a single `hero.business` key with a
+  LIGHT scrim (not the old per-role dark-scrim switching), which the existing
+  `docs/runbooks/landing-video-backdrop-kit.md` doesn't reflect (flagged as a follow-up in the raw
+  session + concept page, left un-edited — out of the explicit deliverable list this run).
+- Failed: none for knowledge-sync. (The redesign's true visual/copy E2E on a logged-out prod visitor is
+  founder/post-merge verification, same class of gap as every other landing-feature run.)
+- Remember: **[squash-drift] → promoted to Lessons.** When a knowledge-sync run targets an OPEN PR (not
+  a just-merged branch), don't assume the local worktree branch matches the PR — fetch and diff the named
+  remote branch first. Also: a redesign that changes the landing's light/dark posture is a **Theme**-level
+  fact, not just a landing-page fact — grep the *other* core docs (here, `DESIGN_SYSTEM.md`'s Theme
+  section written for a DIFFERENT recent redesign) for now-false claims about the surface you just
+  changed, not only the page that talks about that surface by name. (advisory, extends [orphans])
 
 ### [2026-07-18] Light-theme polish Phase 4 (Outstand) + backgrounds/accents cleanup (PRs #288/#289 → one paired docs PR)
 - Output: bundled INTO this docs PR — TWO new raw sessions (`raw/sessions/2026-07-18-light-theme-polish-phase4.md`,
