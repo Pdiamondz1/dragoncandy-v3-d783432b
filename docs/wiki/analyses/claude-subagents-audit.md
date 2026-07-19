@@ -2,7 +2,7 @@
 title: Claude Subagents Audit
 type: analysis
 created: 2026-07-07
-updated: 2026-07-07
+updated: 2026-07-19
 sources: [https://youtu.be/e18sdZLwP7o]
 tags: [subagents, claude-code, aios, audit, edge-functions]
 ---
@@ -123,7 +123,7 @@ Subagent-vs-skill test: **passes clearly** — context isolation and independent
 apply, and the isolation payoff is non-trivial (a thorough edge-fn review touches many files).
 Value **high** (prevents the documented prod-overwrite/silent-version-keep/401 class). Effort **S**.
 
-### Tier 2 — next cycles
+### Tier 2 — **SHIPPED 2026-07-19** as `data-exposure-reviewer`
 
 **`rls-migration-reviewer`** — reviews a migration for the definer-revoke-from-anon gotcha,
 `get_advisors` after DDL, add-nullable-not-drop, FK-to-`auth.users` for internal-only users.
@@ -134,7 +134,28 @@ Context-isolation `✓` · Single-result `✓` · Non-redundant **`~` partial** 
 `verify-db-schema` skill covers meaningful overlap; the backlog item is to resolve whether this
 becomes a fully distinct subagent or its most acute gotchas are absorbed into the skill. The
 subagent-vs-skill test only partly clears: the isolation payoff is real but the redundancy check
-fails until the boundary is drawn. Value **high**, effort **M**. Deferred.
+fails until the boundary is drawn. Value **high**, effort **M**. ~~Deferred.~~
+
+**Resolution (2026-07-19).** Shipped as **`data-exposure-reviewer`** — see
+[[Service-Role Data Exposure]]. The `~` partial cleared by drawing the boundary the deferral asked
+for, in one sentence: **`verify-db-schema` checks RLS *permits* the real caller; the subagent checks
+RLS and the query *exclude* everyone else.** Same subject, opposite direction.
+
+Two things changed versus this entry's framing:
+
+- **Renamed.** The evidence is mostly **not** in migrations — it is in service-role query call sites
+  (86 of 90 edge functions build a service-role client). Naming it for the failure mode rather than
+  the mechanism keeps its single responsibility legible.
+- **The trigger evidence sharpened.** This audit assumed the gap was "RLS/migration review runs
+  inline". The stronger case turned out to be that `edge-function-reviewer` **actively passes** these
+  defects — recorded verbatim for PR #260: *"edge-function-reviewer PASS on both; Codex clean (1 P1
+  fixed)"*, on a branch closing a service-role IDOR and a client-controlled `org_id`. Its RLS clause
+  is one line at the bottom of a bundling/`verify_jwt`-led checklist. **A buried checkbox is not a
+  specialty** — which also validates this audit's own honesty gate: the redundancy `~` was real, and
+  resolving it needed a boundary, not enthusiasm.
+
+Also `model: opus` rather than this audit's cheap-specialist default — the "cheap specialists"
+heuristic assumes symmetric error cost, which does not hold when a miss is a cross-tenant leak.
 
 ### Tier 3 — convenience / future loops
 

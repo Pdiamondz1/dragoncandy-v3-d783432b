@@ -1,5 +1,23 @@
 # Wiki Log
 
+## [2026-07-19] ingest | data-exposure-reviewer subagent (service-role RLS bypass)
+Ingested [[Data-Exposure Reviewer Session]]. New concept [[Service-Role Data Exposure]]. Updated
+[[Claude Subagents Audit]] **in place** — its Tier-2 `rls-migration-reviewer` deferral is now
+RESOLVED/shipped (renamed, because the evidence is in service-role *query call sites*, not
+migrations). The ask was "port Harbormill AIOS's subagents"; **the premise did not hold** — Harbormill
+has zero custom subagents, and DC is ahead on 2 of its 4 skill candidates, so the valuable direction
+is DC → Harbormill. Shipped exactly one justified subagent (`Read/Grep/Glob`, no MCP tools,
+`model: opus`) + a hard-wired dispatch in `codex-review` step 1, since `description:` auto-invocation
+is best-effort and not test-verifiable. Validated by re-staging 3 historical defects as replay
+worktrees (fixtures built BEFORE the agent); the Crews replay reached
+`send-campaign-publish-notifications` **unprompted by grep**. Whole-branch review caught the entry
+gate could gate out that very check. Its first real runs surfaced **6 unfixed exposures on
+`origin/main`** (5 controller-verified), filed for a separate branch — not fixed here.
+**Correction recorded:** an earlier claim in this session that PR #288 shipped without its
+knowledge-sync was **wrong** — asserted from a worktree 15 commits behind `origin/main`, where PR #290
+had already done it and #291 verified it. Retracted in the spec + plan rather than deleted. Core doc:
+PROJECT_CONTEXT §5 + SHIPPED_LOG. RAG sync post-merge.
+
 ## [2026-07-19] ingest | Context-tax split: PROJECT_CONTEXT §5 -> index + SHIPPED_LOG
 Ingested [[Context-Tax Split Session]] (PRs #294 + #295, merged + live). New concept [[Context Tax]].
 Every session loaded ~45,700 tok before reading a line of code; §5 alone was ~29,950 (65%) — 68

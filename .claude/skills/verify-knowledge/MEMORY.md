@@ -19,7 +19,44 @@
   this clarifies how to *read* check (b)'s signal; it doesn't loosen the >24h rule for a genuinely
   un-synced RAG, which content-ilike would also reveal as absent.)
 
+- **[unmerged-branch] Validating a PRE-merge branch is legitimate — and (b) must stay anchored to
+  `origin/main`.** `LAST_WIKI_SYNC` is defined on `origin/main`, so a branch's un-merged pages are
+  correctly out of (b)'s scope: a `content ilike` probe returning `[]` for this session's pages is the
+  **expected** result, not a fail. Do not "fix" it by running the sync — the RAG tracks `origin/main`,
+  and the post-merge hook propagates merged content. Only (c) covers the branch's own pages
+  (are they in `index.md` + `log.md`). (Advisory: clarifies scope; does not loosen the >24h rule.)
+- **[dated-analysis] A dated analysis page is not a contradiction just because reality moved on.**
+  `claude-subagents-audit.md` still reads "zero custom `.claude/agents/`" and lists
+  `rls-migration-reviewer` as deferred — both correct **as of its cycle**, and its own text says
+  "none, **until this cycle**". With a dated Resolution block added, it is a historical record (the
+  same rule SHIPPED_LOG states explicitly). Judge (a)'s contradiction half on whether pages assert
+  conflicting **current** state, not on keyword staleness — a naive grep false-flags these critical.
+
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-07-19] data-exposure-reviewer knowledge-sync validation (branch `worktree-dc-improvements-3`, PRE-merge)
+- Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for the
+  `data-exposure-reviewer` subagent branch.
+- Happened: **first run against an UNMERGED branch** — every prior entry validated post-merge. That
+  changes how (b) reads, and the skill's own wording already handles it: `LAST_WIKI_SYNC` is defined
+  on **`origin/main`**, so the branch's not-yet-merged pages are correctly out of scope.
+  `LAST_WIKI_SYNC` 2026-07-19T07:29:06Z vs `RAG_LAST` 07:02:02Z → **27 minutes**, far inside the 24h
+  window → (b) met. A `content ilike '*data-exposure-reviewer*'` probe returned `[]`, which is the
+  **expected and correct** result pre-merge, NOT a fail — the RAG tracks `origin/main`, and this
+  branch's pages reach it via the post-merge hook ([rag-sync] in knowledge-sync's memory).
+  (a) index-incompleteness 0 by path; (c) both session pages in index + log.
+- Worked: judging (a)'s contradiction half required real care rather than a grep verdict — the audit
+  page still says "zero custom `.claude/agents/`" and names `rls-migration-reviewer` as deferred.
+  Neither is a contradiction: it is a **dated analysis** whose own text qualifies it ("none, **until
+  this cycle**") and which now carries a dated 2026-07-19 Resolution block. Same class as
+  SHIPPED_LOG's "entries are historical snapshots" rule. A naive keyword check would have
+  false-flagged it critical.
+- Failed: none as a validator. Caught one **advisory** defect the gated checks do not cover — the
+  edited analysis page kept `updated: 2026-07-07`. Correctly left out of `missing[]` (that array is
+  strictly the fix input for `met:false`) and reported in prose; the caller fixed it in a follow-up
+  commit.
+- Remember: promoted to a Lesson below ([unmerged-branch]). Also worth noting the frontmatter miss —
+  editing a page in place without bumping `updated:` is invisible to all three gated checks.
 
 ### [2026-07-18] Light-theme Phase 4 + backgrounds/accents cleanup knowledge-sync validation (PRs #288/#289 code + PR #290 docs)
 - Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for the FINAL light-theme-polish
