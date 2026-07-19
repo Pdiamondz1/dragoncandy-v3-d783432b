@@ -48,6 +48,26 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-19] Context-tax split — PROJECT_CONTEXT §5 -> index + SHIPPED_LOG (PRs #294 + #295)
+- Output: `docs/wiki/concepts/context-tax.md` + its `index.md` Sources/Concepts entries + the
+  `log.md` ingest line; a `SHIPPED_LOG.md` prose entry and ONE §5 index line (the new rule,
+  self-applied for the first time).
+- Happened: first run under the `[context-tax]` Lesson written earlier in the same session. Raw
+  source -> one concept page -> index (Sources + Concepts, alphabetical) -> `log.md` -> core docs.
+  Orphan check by PATH: clean. `npm run build` green.
+- Worked: the `[scope]` Lesson (branch off `origin/main`) mattered more than usual — `origin/main`
+  moved FIVE times during the parent branch. The `[orphans]`-by-path sweep was clean first try.
+- Failed: (1) let bash eat backticks inside `python -c` TWICE in one session — the `log.md` entry
+  silently lost every backticked term and had to be rewritten, and the same trap then broke this
+  very entry. **Write the script to a FILE and run it; never inline python containing backticks.**
+  (2) Skipped this skill entirely after merging #294/#295 and only ran it when asked "are we good
+  to close out" — the required step is *on branch finish*, not on request.
+- Remember: **a merged reconciliation can be silently reverted by a concurrent PR.** #301 (an
+  unrelated `read-the-traces` refactor) carried a stale §5 and re-added all four entries #295 had
+  resolved — +4 `Pending:` lines, 0 removed, with no conflict. Before editing §5, diff it against
+  what you last landed, not just against `origin/main`'s tip. Always-loaded shared docs are the
+  highest-contention files in the repo.
+
 ### [2026-07-18] Read the traces — agent-layer observability (PR #292, bundled)
 - Output: bundled INTO the work PR #292 — new `raw/sessions/2026-07-18-read-the-traces.md`, new
   `concepts/reading-agent-traces.md`, `index.md` (Concepts after [[QA CI/CD Gate]] + Sources),

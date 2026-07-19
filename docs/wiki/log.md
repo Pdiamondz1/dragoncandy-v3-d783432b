@@ -1,5 +1,26 @@
 # Wiki Log
 
+## [2026-07-19] ingest | Context-tax split: PROJECT_CONTEXT §5 -> index + SHIPPED_LOG
+Ingested [[Context-Tax Split Session]] (PRs #294 + #295, merged + live). New concept [[Context Tax]].
+Every session loaded ~45,700 tok before reading a line of code; §5 alone was ~29,950 (65%) — 68
+multi-paragraph prose bullets under a heading that said "Active Workstreams". The prose moved
+**verbatim** into the non-auto-loaded `docs/SHIPPED_LOG.md` (which still reaches `/internal/strategy`
+and Internal Donny, because `sync-internal-docs.mjs` globs `docs/*.md` non-recursively; seeded
+`is_core=true`), and §5 became a three-section index — `### In flight` / `### Built — awaiting founder
+go-live` / `### Shipped`. The durable half is that **both** generators were amended in the same PR —
+`knowledge-sync` step 4 **and** the always-loaded `CLAUDE.md` clause (the load-bearing one) — so §5
+cannot regrow: 176,620 -> 73,742 B (−58%), growth per shipped branch ~440 -> ~15 tok. Paired PR #295
+reconciled the go-live triage 6 -> 2 and scheduled three report-only cloud routines
+(`ai-cost-vs-cap` weekly; Dezzy Press & Events + Strategy Library audit monthly).
+Gotchas recorded on the concept page: a gate that counts bullet *headings* proves nothing (prose lives
+in indented continuation lines); CRLF must be normalized **before** any end-anchored regex or the gate
+false-fails as total data loss on a correct migration; and three "pending" items plus one
+**already-closed security follow-up** (`match-creators`' `profile_visibility` filter, shipped in #247)
+were retired only because prod was checked instead of the document. Validated in the wild 15 minutes
+after merge: an unrelated session (PR #299) wrote 33 lines to `SHIPPED_LOG.md` plus one §5 index line,
+in the binding format, unprompted.
+Updated: `index.md`, this log; new raw source `raw/sessions/2026-07-19-context-tax-split.md`.
+
 ## [2026-07-19] ingest | Auth+onboarding landing-theme retheme
 Ingested the [[Auth + Onboarding Landing-Theme Retheme Session]] (PR #299, merged + live). Retheme
 of all 7 entry surfaces (login/sign-up `AuthPage`, the 5 auth siblings, onboarding wizard + steps,
