@@ -17,6 +17,13 @@
 > monthly `strategy-library-audit-agent` should not file `strategy-dupe` or
 > `strategy-bloat` findings against it.
 >
+> **Entries are historical snapshots, not current status.** Each was written when the
+> work shipped and is preserved verbatim, so a "founder go-live pending" or "pending
+> deploy" note records the state *at the time of writing* — it does not mean the step is
+> still outstanding. **`PROJECT_CONTEXT.md` §5 is the authority on current status:** its
+> "Built — awaiting founder go-live" subsection lists what is genuinely still open, and
+> anything under "Shipped" is done. Where the two appear to disagree, §5 wins.
+>
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 > `PROJECT_CONTEXT.md` §5 is an index — one line per entry, detail lives here.
 
