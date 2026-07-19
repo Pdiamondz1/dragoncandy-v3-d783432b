@@ -28,6 +28,74 @@
 > `PROJECT_CONTEXT.md` §5 is an index — one line per entry, detail lives here.
 
 ---END-HEADER---
+
+- DragonCandy AIOS — Reading agent traces (the 4th loop-stack layer) — **built (PR #292,
+  2026-07-18; schema + edge fn live on prod, skill ships on merge).** A founder-supplied video on how
+  Anthropic engineers automate was **audited against the repo before adopting**, and three of its four
+  rules were already implemented past what it describes — Loop Scout's 4-Condition Test *is* "match the
+  bottleneck", the 7 scheduled routines *are* "Claude comes to you", and Founder Playbooks'
+  `done_criteria` + the `{done,checklist,missing}` verdict contract *are* "objectives, not tasks". Only
+  **"read the traces"** was a real gap: every existing layer reasons about **outputs**, `/internal/loops`
+  admits in its own source that there is no central run-log ("last output ≠ last run"), and a scheduled
+  routine that ran clean leaves **zero** durable trace — while Claude Code was writing a rich per-session
+  JSONL trace (**598 files, ~40MB**) that nothing had ever opened. Shipped the **`read-the-traces`**
+  skill — global (`~/.claude/skills/`) with a byte-identical committed repo copy, so future projects
+  inherit it — a zero-dependency **streamed** scanner (133MB in ~7s under a 256MB heap cap) reporting
+  tool errors, permission/classifier denials, hook errors, repeat-failure clusters, per-skill error
+  rates and dead skills, gated on **four deterministic checks** and ending with the standard verdict
+  block `parseDoneCheck` already reads. Deliberately **not** named `verify-*` (that prefix is Loop
+  Scout's project-local discovery glob; this is a global **auditor** of the agent layer, not a validator
+  of a shipped change). **No schema/edge-fn/cron for the skill itself.** Also repaired the two broken
+  trace writes it depends on: `donny-orchestrator`'s `donny_tool_executions` insert used columns that
+  **do not exist** (`tool_input`/`tool_output`/`is_error`) and omitted the NOT NULL `message_id`, so it
+  had **never written a row** — while `bug-sweep-agent` (`status=eq.error`) read the empty table as a
+  clean sweep; verified against **prod, not the migration file**, `message_id` made nullable
+  (non-destructive; also fixes a latent null-id failure in `donny-chat`), and the `.then(ok,fail)` shape
+  replaced with an explicit `error` check — **supabase-js v2 *resolves* on a Postgrest error**, which is
+  why the bug survived undetected while *looking* like it had error handling (a trace surface that
+  silently drops every write is worse than none: it reads as healthy). `playbook-runner-agent`, which
+  posts under `playbook:<slug>` and writes no `aios_playbook_runs` row, is now watched on
+  `/internal/loops`. First run surfaced, and survived verification: six classifier denials incl. a
+  merge-without-review and a fabricated-data prod submission, Chrome screenshot timeouts as the largest
+  reliability drag, and 84 declared skills of which **77 never fire**. **Two of its three headline
+  findings were the tool's own false positives, reported before verification and retracted the same
+  session** — a hook that BLOCKED was classified as a hook that FAILED (a denial surfaces with an
+  "error" prefix, so the scanner inverted a gate failing *closed* into one "failing open"), and a
+  last-skill-seen heuristic charged the git-only `refresh-main` with a 68% error rate assembled from
+  Chrome timeouts it never issued (exact `tool_use_id` attribution: 4%). Both fixed — attribution is now
+  strictly id-based and `hook-blocked`/`policy-blocked` are advisory classes, never faults. The durable
+  lesson is about the tool: **an observability tool that misclassifies is worse than none**, because it
+  manufactures alarming false positives that get acted on. `edge-function-reviewer` PASS; **Codex clean
+  after 4 rounds** (fine-grained `github_pat_` redaction, per-record `--days` filtering, skill
+  attribution, generated-type nullability); `donny-orchestrator` deployed **v69** (`verify_jwt=true`
+  preserved). **Deferred:** a central `aios_loop_runs` run-log for the scheduled routines — building
+  storage before the free read exists inverts "automate last". Concept:
+  `docs/wiki/concepts/reading-agent-traces.md`.
+
+- Public landing — "Human-driven. AI-assisted." redesign (Joe's direction) — **built (branch
+  `feat/landing-joe-redesign`, PR #293, 2026-07-18; frontend-only, video off by default).** A full
+  visual + messaging redesign of the public landing to a founder-provided mockup, reframing
+  DragonCandy's positioning from "AI generates your content, fast" to **"Human-driven.
+  AI-assisted."** — a real human creator becomes a business's social-media team; Donny assists in
+  the background; humans drive every decision. Founder-confirmed as the platform's true
+  positioning, not a cosmetic pass. New **light** landing (drops the prior scoped `.dark` wrapper
+  entirely, rejoining the rest of the light app — see the light-theme-polish bullet above) on its
+  own additive `landing-*` Tailwind tokens + self-hosted Bricolage Grotesque/Instrument
+  Sans/Silkscreen fonts (the app's `dc-*`/Outfit system byte-unchanged). Static two-door hero
+  (Business/Creator) replaces the prior role-morphing hero; `AudienceLanes`/`ProofSection`/
+  `StartFreeSection` deleted. **The entire cinematic-video system from the prior landing redesign
+  is preserved, not deleted** — demoted to opt-in behind a new `LANDING_VIDEO_BACKDROP_ENABLED`
+  flag (default `false`, mirrors `BRAND_ROLE_ENABLED`) via a single-key, light-scrim
+  `HeroVideoBackdrop.tsx`; re-enabling is a one-line flag flip plus real (non-AI) footage. Both
+  conversion tools (the paste-a-URL brief generator, lead capture) reused byte-identical on the
+  backend — only restyled. Splash + the three landing-route Suspense fallbacks flipped dark→light
+  to avoid a load flash (the mirror of the earlier light→dark flash fix). No schema/RLS/edge-fn/
+  secret change. Subagent-driven (10 tasks, per-task review) → whole-branch Opus review (3 fixes:
+  door `scroll-mt`, `LandingButton` `cn()`-merge + `type="button"` default, keyboard-accessible
+  logo button) → Codex second review clean; 1017 tests pass. Concept:
+  `docs/wiki/concepts/landing-human-driven-redesign.md`. Spec:
+  `docs/superpowers/specs/2026-07-18-landing-joe-redesign-design.md`.
+
 - Light-theme polish — **Phase 1 shipped + deployed (PR #280, 2026-07-18).** After the app went light,
   it was consistent-ish but hand-rolled per screen (~5 card-border variants, radius/spacing drift, two
   button teals, double-padding) and off-brand in places (gray surfaces/badges, `bg-blue-600` buttons,

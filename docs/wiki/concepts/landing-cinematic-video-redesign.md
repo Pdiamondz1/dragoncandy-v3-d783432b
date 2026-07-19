@@ -2,11 +2,24 @@
 title: Landing Cinematic Video Redesign
 type: concept
 created: 2026-07-16
-updated: 2026-07-17
-sources: [2026-07-16-landing-cinematic-video-redesign.md, 2026-07-17-dragonfeed-backdrop-adapter.md, 2026-07-17-landing-backdrop-mov-fix.md]
+updated: 2026-07-18
+sources: [2026-07-16-landing-cinematic-video-redesign.md, 2026-07-17-dragonfeed-backdrop-adapter.md, 2026-07-17-landing-backdrop-mov-fix.md, 2026-07-18-landing-joe-redesign.md]
 tags: [landing, frontend, video, design, tailwind, dragonfeed]
 ---
 # Landing Cinematic Video Redesign
+
+> **Superseded (2026-07-18) as the shipped landing design** by
+> [[Landing "Human-driven. AI-assisted." Redesign]] (PR #293) — the public landing is now a
+> **light**, static-two-door page, not this page's dark, role-morphing hero. The video-backdrop
+> system documented below (`RotatingBackdrop`/`landingClips`/`VideoSlot`/`MediaSlot`/the
+> DragonFeed adapter) is **not deleted** — it is preserved as-is and reused via a new
+> `HeroVideoBackdrop.tsx`, now **off by default** behind `LANDING_VIDEO_BACKDROP_ENABLED`
+> (mirrors `BRAND_ROLE_ENABLED`) rather than always rendering a role-morphing hero. Everything
+> below describes the design as it shipped 2026-07-16/17 and the video system's mechanics, which
+> remain accurate for how the code works when the flag is on; the "morphing role switcher" and
+> "6-section page" framing no longer describe what a logged-out visitor sees by default. See the
+> new page's "Video system preserved, not deleted" decision for the two concrete wiring changes
+> (single fixed `hero.business` key, light scrim) since this page was written.
 
 The 2026-07-16 evolution of the public landing (`src/components/landing/*` +
 `src/pages/LandingPage.tsx`) from the Dark-Luxe rebuild ([[Landing Redesign & Public Lead Capture]])
@@ -136,6 +149,9 @@ static ones; PR #273 flipped that — see below.) Video-only; no schema/RLS/migr
   breakpoint — true-mobile needs verify-prod / on-device.
 
 ## See Also
+- [[Landing "Human-driven. AI-assisted." Redesign]] — supersedes this page's design as the shipped
+  landing (2026-07-18); reuses the video system documented here, now opt-in behind
+  `LANDING_VIDEO_BACKDROP_ENABLED`.
 - [[Landing Redesign & Public Lead Capture]] — the Dark-Luxe base this evolves; the scoped `.dark`
   wrapper + Reveal/MediaSlot/VideoSlot primitives + `leads`/`capture-lead` pipeline (all retained).
 - [[Landing Prerendered Shell & Performance]] — the perf discipline (shared-observer Reveal,

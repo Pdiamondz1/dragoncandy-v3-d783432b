@@ -120,6 +120,17 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **AIOS Reading agent traces (4th loop-stack layer)** — the `read-the-traces` skill audits the
+  agent layer from Claude Code's own JSONL session traces (598 files, ~40MB nothing had ever
+  read): tool errors, permission/classifier denials, hook errors, repeat-failure clusters,
+  per-skill error rates, dead skills. Also repaired `donny-orchestrator`’s
+  `donny_tool_executions` insert (columns that did not exist + a missing NOT NULL `message_id`)
+  → deployed v69. → `docs/wiki/concepts/reading-agent-traces.md` · #292
+- **Public landing — "Human-driven. AI-assisted." redesign** — full visual + messaging rebuild
+  to the founder mockup; landing rejoins the light app on its own additive `landing-*` tokens +
+  fonts. The cinematic-video system is preserved but opt-in behind
+  `LANDING_VIDEO_BACKDROP_ENABLED` (default off).
+  → `docs/wiki/concepts/landing-human-driven-redesign.md` · #293
 - **Auth session management** — loading guard, 3-hour inactivity timeout, session-hint
   cleanup. → `docs/SHIPPED_LOG.md`
 - **Dashboard UX polish** — ongoing practice: badge sizing, avatar cache invalidation,

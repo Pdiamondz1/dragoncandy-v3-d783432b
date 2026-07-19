@@ -1,5 +1,34 @@
 # Wiki Log
 
+## [2026-07-18] ingest | Landing Human-driven redesign
+Ingested [[Landing "Human-driven. AI-assisted." Redesign Session]] (branch
+`feat/landing-joe-redesign`, PR #293, open). A full visual + messaging redesign of the public
+landing to a founder-provided mockup ("Joe's design"), reframing DragonCandy's positioning from
+"AI generates your content, fast" to **"Human-driven. AI-assisted."** — a real human creator
+becomes a business's social-media team, Donny assists in the background, humans drive every
+decision; confirmed by the founder as the platform's true positioning. New light landing (drops
+the prior scoped `.dark` wrapper entirely), additive `landing-*` Tailwind tokens + self-hosted
+Bricolage Grotesque/Instrument Sans/Silkscreen fonts (the app's `dc-*`/Outfit system untouched — no
+existing token renamed or removed). Static two-door hero (Business/Creator) replaces the prior
+role-morphing hero; `AudienceLanes`/`ProofSection`/`StartFreeSection` deleted. The entire cinematic-
+video system from [[Landing Cinematic Video Redesign]] is preserved, not deleted — demoted to
+opt-in behind a new `LANDING_VIDEO_BACKDROP_ENABLED` flag (default off) via a single-key,
+light-scrim `HeroVideoBackdrop.tsx`. Conversion tools (the paste-a-URL brief generator, lead
+capture) reused byte-identical on the backend. Splash + landing Suspense fallbacks flipped
+dark→light to avoid a load flash. Whole-branch Opus review (3 fixes: door `scroll-mt`, `LandingButton`
+`cn()`-merge + `type="button"` default, keyboard-accessible logo button) + Codex second review
+clean; 1017 tests pass. Frontend + font-asset only — no schema/RLS/edge-fn/secret change. New
+concept page [[Landing "Human-driven. AI-assisted." Redesign]]; edited
+[[Landing Cinematic Video Redesign]] in place with a supersession note (video system lives on,
+now opt-in — not overwritten, since its mechanics remain accurate for when the flag is on). Pages
+created: raw/sessions/2026-07-18-landing-joe-redesign.md,
+concepts/landing-human-driven-redesign.md. Pages updated:
+concepts/landing-cinematic-video-redesign.md, index.md (Sources + Concepts), PROJECT_CONTEXT.md
+(workstream bullet), DESIGN_SYSTEM.md (landing-scoped identity note). RAG sync + verify-knowledge
+are post-merge (this is a pre-merge, bundled-into-the-open-PR run — the PR branch head at ingest
+time was a single squashed commit rebased onto the latest `origin/main`, so these docs edit the
+current index/log/PROJECT_CONTEXT, not a stale local copy).
+
 ## [2026-07-18] ingest | De-gray backgrounds + off-brand accents cleanup
 Ingested [[De-gray Backgrounds & Off-Brand Accents]] (PR #289, deployed). A cross-app cleanup after the
 four [[Light-App Kit]] phases, on a founder directive to **prioritize backgrounds + off-brand accents**.

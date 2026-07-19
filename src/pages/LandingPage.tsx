@@ -3,11 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 import { Header } from "@/components/landing/Header";
 import { HeroSection } from "@/components/landing/HeroSection";
-import { DonnySection } from "@/components/landing/DonnySection";
+import { PositioningBand } from "@/components/landing/PositioningBand";
+import { ValuesSection } from "@/components/landing/ValuesSection";
 import { HowItWorks } from "@/components/landing/HowItWorks";
-import { AudienceLanes } from "@/components/landing/AudienceLanes";
-import { ProofSection } from "@/components/landing/ProofSection";
-import { StartFreeSection } from "@/components/landing/StartFreeSection";
+import { DonnySection } from "@/components/landing/DonnySection";
+import { FinalCTASection } from "@/components/landing/FinalCTASection";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function LandingPage() {
@@ -21,13 +21,10 @@ export default function LandingPage() {
   }, [user, loading, navigate]);
 
   return (
-    // Dark theme is scoped to this subtree only — `.dark` redefines the dark CSS
-    // variables for everything inside, and `bg-dc-dark` pins the brand charcoal.
-    // It never leaks into the authenticated app (next-themes writes only to <html>).
-    <div className="dark min-h-screen overflow-x-hidden bg-dc-dark text-white">
+    <div className="dc-landing min-h-screen overflow-x-hidden bg-white text-landing-ink font-instrument">
       <SEO
-        title="DragonCandy — AI-Powered Content for Businesses & Creators"
-        description="DragonCandy connects local businesses, brands, and creators for short-form social media campaigns. Powered by Donny."
+        title="DragonCandy — Human-driven. AI-assisted."
+        description="DragonCandy connects business owners with talented social media creators — and gives both the tools to run and grow their businesses. AI assists. Humans drive."
         path="/landing"
       />
 
@@ -35,28 +32,35 @@ export default function LandingPage() {
 
       <main>
         <HeroSection />
-        <DonnySection />
+        <PositioningBand />
+        <ValuesSection />
         <HowItWorks />
-        <AudienceLanes />
-        <ProofSection />
-        <StartFreeSection />
+        <DonnySection />
+        <FinalCTASection />
       </main>
 
-      <footer className="border-t border-white/10 py-10">
-        <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-5 text-sm sm:px-8 lg:px-12">
-          <img src="/logo.webp" alt="DragonCandy" className="h-6 w-auto opacity-90" />
+      <footer className="border-t border-landing-line py-10">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-5 text-sm sm:flex-row sm:justify-between sm:px-8 lg:px-12">
+          <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
+            <img src="/logo.webp" alt="DragonCandy" className="h-6 w-auto" />
+            <span className="font-pixel text-[11px] uppercase tracking-[0.14em] text-landing-ink-soft">
+              DragonCandy · Human-driven. AI-assisted.
+            </span>
+          </div>
           <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-            <Link to="/privacy" className="text-white/50 transition-colors hover:text-dc-teal">
-              Privacy Policy
+            <a href="#join" className="text-landing-ink-soft transition-colors hover:text-landing-ink">
+              Contact
+            </a>
+            <Link to="/terms" className="text-landing-ink-soft transition-colors hover:text-landing-ink">
+              Terms
             </Link>
-            <Link to="/terms" className="text-white/50 transition-colors hover:text-dc-teal">
-              Terms of Service
+            <Link to="/privacy" className="text-landing-ink-soft transition-colors hover:text-landing-ink">
+              Privacy
             </Link>
-            <Link to="/help" className="text-white/50 transition-colors hover:text-dc-teal">
-              Help Center
+            <Link to="/help" className="text-landing-ink-soft transition-colors hover:text-landing-ink">
+              Help
             </Link>
           </nav>
-          <p className="text-xs text-white/35">© 2026 DragonCandy. All rights reserved.</p>
         </div>
       </footer>
     </div>

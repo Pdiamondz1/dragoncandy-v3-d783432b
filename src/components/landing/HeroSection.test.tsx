@@ -1,72 +1,97 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, cleanup } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import type { LandingClip } from "./landingClips";
+import "@testing-library/jest-dom";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { render, cleanup, screen, within, fireEvent } from "@testing-library/react";
 
-// Mock the backdrop-playlist hook so the test drives exactly what the hero resolves — and so the
-// real hook's supabase/react-query dependencies aren't pulled in.
-vi.mock("./useLandingBackdropPlaylist", () => ({
-  useLandingBackdropPlaylist: vi.fn(),
-}));
-
-import { useLandingBackdropPlaylist } from "./useLandingBackdropPlaylist";
-import { HeroSection } from "./HeroSection";
-
-const mockPlaylist = vi.mocked(useLandingBackdropPlaylist);
-
-beforeEach(() => {
-  // jsdom implements none of these on HTMLMediaElement; RotatingBackdrop drives them imperatively.
-  vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined as unknown as void);
-  vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
-  vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => {});
-  Object.defineProperty(HTMLMediaElement.prototype, "currentTime", {
-    configurable: true,
-    writable: true,
-    value: 0,
-  });
-});
-
+// `LANDING_VIDEO_BACKDROP_ENABLED` is read as a top-level import in HeroSection.tsx, so a single
+// hoisted `vi.mock('@/lib/featureConfig')` would bind the whole file to one value. To exercise
+// both flag states we reset the module registry and `vi.doMock` + dynamic-`import()` a fresh copy
+// of HeroSection per test instead.
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
-  delete (HTMLMediaElement.prototype as unknown as { currentTime?: number }).currentTime;
+  vi.resetModules();
 });
 
-const staticOnly: LandingClip[] = [
-  { src: "/landing/static-a.mp4", poster: "/landing/static-a.jpg" },
-  { src: "/landing/static-b.mp4", poster: "/landing/static-b.jpg" },
-];
-// Real boosted clips arriving after first paint LEAD the merged playlist (dynamic-first).
-const dynamicLed: LandingClip[] = [
-  { src: "https://cdn/boost-x.mp4" },
-  { src: "/landing/static-a.mp4", poster: "/landing/static-a.jpg" },
-  { src: "/landing/static-b.mp4", poster: "/landing/static-b.jpg" },
-];
+/** jsdom doesn't implement scrollIntoView; stub it on the rendered element in place. */
+function stubScroll(el: Element) {
+  const spy = vi.fn();
+  (el as unknown as { scrollIntoView: () => void }).scrollIntoView = spy;
+  return spy;
+}
 
-describe("HeroSection backdrop signature-key remount", () => {
-  it("re-arms the leading backdrop clip when dynamic clips arrive (signature key drives a remount)", () => {
-    // First paint: static-only playlist → the leading rotating layer arms with the static clip.
-    mockPlaylist.mockReturnValue(staticOnly);
-    const { getByTestId, rerender } = render(
-      <MemoryRouter>
-        <HeroSection />
-      </MemoryRouter>,
-    );
-    expect((getByTestId("backdrop-layer-0") as HTMLVideoElement).src).toContain("static-a.mp4");
+describe("HeroSection — video backdrop OFF (default)", () => {
+  it("renders the eyebrow, headline, sub, note, hero CTAs (scroll), and both doors (signup links) — with no video backdrop mounted", async () => {
+    vi.doMock("@/lib/featureConfig", () => ({ LANDING_VIDEO_BACKDROP_ENABLED: false }));
+    const { HeroSection } = await import("./HeroSection");
 
-    // Boosted clips resolve and now LEAD the merged playlist. Because HeroSection keys
-    // RotatingBackdrop on playlistSignature(role, playlist) (NOT key={role}), the signature
-    // changes → RotatingBackdrop remounts and arms clip 0 with the real dynamic clip. A regression
-    // back to key={role} would keep the stale instance, whose index-based re-arm skips reloading
-    // clip 0, so the leading src would remain the static clip and this assertion would fail.
-    mockPlaylist.mockReturnValue(dynamicLed);
-    rerender(
-      <MemoryRouter>
-        <HeroSection />
-      </MemoryRouter>,
-    );
-    expect((getByTestId("backdrop-layer-0") as HTMLVideoElement).src).toContain("boost-x.mp4");
-    expect((getByTestId("backdrop-layer-0") as HTMLVideoElement).src).not.toContain("static-a.mp4");
+    render(<HeroSection />);
+
+    expect(screen.getByText("Human-driven · AI-assisted")).toBeInTheDocument();
+
+    const h1 = screen.getByRole("heading", { level: 1 });
+    expect(h1.textContent).toContain("creators");
+    expect(h1.textContent).toContain("entrepreneurs");
+    expect(h1.textContent).toContain("build together.");
+
+    expect(
+      screen.getByText(
+        /DragonCandy connects business owners with talented social media creators/,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Real people. Real partnerships. AI in the toolbelt."),
+    ).toBeInTheDocument();
+
+    // Hero CTAs scroll in-page to the doors — they do NOT navigate to signup.
+    const businessDoor = document.getElementById("business")!;
+    const creatorsDoor = document.getElementById("creators")!;
+    expect(businessDoor).toBeInTheDocument();
+    expect(creatorsDoor).toBeInTheDocument();
+    const businessScrollSpy = stubScroll(businessDoor);
+    const creatorsScrollSpy = stubScroll(creatorsDoor);
+
+    fireEvent.click(screen.getByRole("button", { name: "I run a business" }));
+    expect(businessScrollSpy).toHaveBeenCalledTimes(1);
+    expect(creatorsScrollSpy).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "I'm a creator" }));
+    expect(creatorsScrollSpy).toHaveBeenCalledTimes(1);
+
+    // Business door.
+    expect(within(businessDoor).getByText("For business owners")).toBeInTheDocument();
+    expect(
+      within(businessDoor).getByText("Your own social media department — without hiring one."),
+    ).toBeInTheDocument();
+    const businessCta = within(businessDoor).getByRole("link", { name: "Find your creator" });
+    expect(businessCta).toHaveAttribute("href", "/auth?mode=signup&role=business");
+
+    // Creator door.
+    expect(within(creatorsDoor).getByText("For creators")).toBeInTheDocument();
+    expect(
+      within(creatorsDoor).getByText("Turn what you do every day into a real business."),
+    ).toBeInTheDocument();
+    const creatorCta = within(creatorsDoor).getByRole("link", { name: "Find your clients" });
+    expect(creatorCta).toHaveAttribute("href", "/auth?mode=signup&role=creator");
+
+    // No video backdrop mounts when the flag is off.
+    expect(screen.queryByTestId("rotating-backdrop")).not.toBeInTheDocument();
+  });
+});
+
+describe("HeroSection — video backdrop ON", () => {
+  it("lazy-mounts HeroVideoBackdrop (RotatingBackdrop) when the flag is on", async () => {
+    vi.doMock("@/lib/featureConfig", () => ({ LANDING_VIDEO_BACKDROP_ENABLED: true }));
+    vi.doMock("./useLandingBackdropPlaylist", () => ({
+      useLandingBackdropPlaylist: () => [],
+    }));
+    vi.doMock("./RotatingBackdrop", () => ({
+      RotatingBackdrop: () => <div data-testid="rotating-backdrop" />,
+    }));
+    const { HeroSection } = await import("./HeroSection");
+
+    render(<HeroSection />);
+
+    expect(await screen.findByTestId("rotating-backdrop")).toBeInTheDocument();
   });
 });
