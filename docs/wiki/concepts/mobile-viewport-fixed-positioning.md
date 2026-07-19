@@ -2,9 +2,9 @@
 title: Mobile Viewport & Fixed Positioning
 type: concept
 created: 2026-07-14
-updated: 2026-07-16
-sources: [2026-07-14-mobile-screenfit-fixed-position.md, 2026-07-16-donny-desktop-overlay.md]
-tags: [mobile, ios, css, viewport, fixed-position, framer-motion, page-transition, desktop, flexbox, overscroll, portal]
+updated: 2026-07-19
+sources: [2026-07-14-mobile-screenfit-fixed-position.md, 2026-07-16-donny-desktop-overlay.md, 2026-07-19-mobile-nav-modal-zindex.md]
+tags: [mobile, ios, css, viewport, fixed-position, framer-motion, page-transition, desktop, flexbox, overscroll, portal, z-index]
 ---
 # Mobile Viewport & Fixed Positioning
 
@@ -125,6 +125,40 @@ content must be a **fixed overlay**, never an in-flow `flex-shrink-0` sibling of
 content column — otherwise it silently reflows every viewport-breakpoint-keyed page underneath
 it. (Converting every page grid to container queries is the far larger alternative that was
 rejected.)
+
+## 6. App chrome must sit BELOW the modal layer (the bottom-nav overlap class, PR #297)
+
+Reported: on iOS Safari the "Send Invitation" button at the bottom of the campaign-invite
+bottom-sheet (`InviteToCampaignModal`) was mostly hidden behind the fixed bottom nav.
+
+Root cause is a plain **z-index collision** (not §1's transform trap, not §3's overscroll
+mis-paint): `MobileBottomNav` **and** `MobileTopNav` were `z-50` — the SAME layer as every
+Radix modal (shadcn `Sheet`/`Dialog`/`AlertDialog` overlay + content are all `z-50`, see
+`src/components/ui/sheet.tsx`). Both the nav and the sheets `createPortal` to `<body>`, so at
+equal z-index paint order is decided only by DOM insertion order — fragile and engine-dependent,
+and on iOS Safari the opaque white nav won the tie and painted over the sheet's bottom button.
+
+**Contract — the app's z-layering stack (low → high):** page content (`z-auto`) < in-page
+sticky sub-headers (`z-10/20/30`) < **app chrome** (both mobile navs, desktop header,
+`DonnyDesktopPanel` = `z-40`) < **Radix modal layer** (every `Sheet`/`Dialog`/`AlertDialog`/
+`Popover`/`Dropdown`/`Tooltip` = `z-50`) < `DonnyMobileSheet` (`z-[60]/[61]`) < toasts
+(`z-[100]`). Never give persistent app chrome the modal layer's `z-50`. Lowering both navs to
+`z-40` puts every dialog/sheet reliably above them at once (~20 `side="bottom"` sheets + all
+dialogs), with the modal overlay correctly dimming the nav. Nav dropdowns (OrgUnitSwitcher,
+notifications) are `z-50` and open downward, so they still render above the nav.
+
+**In-page (non-modal) bottom bars must clear the nav themselves.** A `fixed bottom-0` bar that
+coexists with the nav — no overlay, e.g. `StickyApplyCTA` and the `ShortlistDrawer` peek bar —
+can't be fixed by z-index alone (it should sit *above* the nav, and both are `z-40`). Offset it
+up on mobile with the app's nav-clearance — `bottom-[calc(6rem+env(safe-area-inset-bottom))]`
+(the `6rem` mirrors the `pb-24` the mobile content area already uses to clear the nav) — so the
+button clears the ~56px nav bar + the floating Donny emblem + the home-indicator safe area;
+`md:bottom-0` on desktop (no bottom nav). A sticky footer *inside* a `Sheet` (e.g.
+`ScheduleReviewScreen`) needs nothing — the Sheet (`z-50`) already sits above the nav.
+
+**Rule:** persistent app chrome is `z-40`, the Radix modal layer is `z-50` — never tie them. A
+new `fixed`/`sticky` bottom-anchored *in-page* bar must either live inside a modal or offset
+itself above the nav on mobile (`6rem + env(safe-area-inset-bottom)`).
 
 ## Key Decisions
 
