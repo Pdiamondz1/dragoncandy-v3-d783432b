@@ -49,10 +49,11 @@ and an append-only **Run Log**. Full contract: `docs/wiki/concepts/loop-memory-p
    - `docs/SHIPPED_LOG.md` — **prepend** the session's full entry, newest-first
      (almost always).
    - `docs/PROJECT_CONTEXT.md` §5 — **only** when work *starts* (add to In flight),
-     *reaches built-but-not-live* (move to Awaiting go-live with a `**Pending:**`
-     clause), or *fully completes* (move to Shipped as a one-liner + pointer). One line
-     per entry — plus a `**Pending:**` clause for Awaiting go-live entries only. Detail
-     belongs in `SHIPPED_LOG.md` or the wiki. **§5 is an index, not a log.**
+     *reaches built-but-not-live* (move to Built — awaiting founder go-live with a
+     `**Pending:**` clause), or *fully completes* (move to Shipped as a one-liner +
+     pointer). One line per entry — plus a `**Pending:**` clause for Built — awaiting
+     founder go-live entries only. Detail belongs in `SHIPPED_LOG.md` or the wiki.
+     **§5 is an index, not a log.**
    - `docs/PROJECT_CONTEXT.md` §4 Current State — if the project-level picture changed.
    - `docs/DATABASE_SCHEMA.md` — if tables/columns/views changed.
    - `docs/DESIGN_SYSTEM.md` — if design tokens / UI patterns changed.
