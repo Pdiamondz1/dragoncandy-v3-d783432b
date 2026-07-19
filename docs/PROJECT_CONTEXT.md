@@ -7,25 +7,27 @@
 
 ## 1. What We're Building
 
-**Mission.** DragonCandy makes the human side of social-media marketing
-effortless — real creators working with real businesses, with the grind deleted.
-Restaurants, creators, and brands meet in one marketplace, and **Donny** — an AI
-super agent, the engine the whole platform runs on — generates the campaigns,
-matches the right people, and posts across every channel. People make the calls
-that matter; Donny handles the work in between. **Less typing = more margin.**
+**Mission.** DragonCandy is where real people build together: business owners
+and the talented creators who become their social media team. It gives a business
+its own social media department without hiring one, and turns a creator's everyday
+craft into a real business — real working relationships, not gig-app roulette or
+algorithms. People do the work and make the calls that matter; **Donny**,
+DragonCandy's built-in AI, works in the background — drafting, scheduling,
+researching — so everyone moves faster. It's the assistant in everyone's toolbelt,
+never a replacement. Human-driven, AI-assisted. People first, platform underneath.
 
 **The story it's built around.** Joe Castelo was drowning in it: keeping his
 Hoboken restaurants alive on social media meant an endless grind of finding
-creators, briefing them, managing posts, and paying premium rates. Every owner
-he knew hit the same wall. So with Juwan Robinson and Dame Williams he set out to
-delete that work — and the wall turned out to be everyone's: creators with real
-talent stuck doing a second job just to find paying work and get paid, brands
-paying more for social than ever while trusting it less. DragonCandy became one
-marketplace for all three, run by Donny — not a chatbot bolted onto a dashboard,
-but the engine the whole platform runs on. As AI advances, Donny does too,
-learning each business he serves and embedding into its daily rhythm. The bet: in
-the next era of marketing, the winners won't type at all — they'll just ask
-Donny, and let him handle the rest.
+creators, briefing them, managing posts, and paying premium rates. Every owner he
+knew hit the same wall. So with Juwan Robinson and Dame Williams he set out to fix
+it — and the wall turned out to be everyone's: creators with real talent stuck
+doing a second job just to find steady, paying work, and businesses paying more
+for social than ever while trusting it less. DragonCandy became one marketplace
+where both sides find each other and build real partnerships — a person who learns
+your brand and becomes your social team, or steady clients who need exactly what
+you make. Donny speeds up the busywork so the humans can focus on the creative and
+strategic calls only people can make. Real people, real partnerships — AI in the
+toolbelt, never at the wheel.
 
 DragonCandy (dragoncandy.io) is an AI-powered creator–business marketplace HQ'd
 in Hoboken, NJ, connecting three roles — Restaurant/Business, Content Creator,
