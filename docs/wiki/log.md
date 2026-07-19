@@ -1,5 +1,15 @@
 # Wiki Log
 
+## [2026-07-19] update | Mobile bottom-nav overlap fix — z-layering contract
+Updated [[Mobile Viewport & Fixed Positioning]] with §6 (PR #297): app chrome (`MobileBottomNav`,
+`MobileTopNav`) was `z-50`, tying the Radix modal layer (`Sheet`/`Dialog` = `z-50`), so the
+opaque nav painted over bottom-sheet action buttons on iOS Safari (`InviteToCampaignModal`'s
+Send button). Fix: lower both navs to `z-40` (below the modal layer) — deterministically renders
+every dialog/sheet above the nav at once; plus offset the two non-modal in-page bottom bars
+(`StickyApplyCTA`, `ShortlistDrawer` peek bar) above the nav on mobile with
+`6rem+env(safe-area-inset-bottom)`. Also added a DESIGN_SYSTEM design rule. Source:
+2026-07-19-mobile-nav-modal-zindex.md.
+
 ## [2026-07-18] ingest | Read the traces — agent-layer observability
 Ingested [[Read the Traces Session]] (PR #292). A founder-supplied video on how Anthropic engineers
 automate was **audited against the repo before adopting** — three of its four rules were already
