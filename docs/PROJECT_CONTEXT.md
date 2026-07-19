@@ -428,6 +428,7 @@ and cost ledger in `_shared/`.
 
 **Key project documents**:
 - `CLAUDE.md` — developer guidance + design system import
+- `docs/SHIPPED_LOG.md` — full prose changelog of shipped work (not auto-loaded; §5 indexes it)
 - `docs/STRIPE_PRICES.md` — pricing source of truth
 - `docs/DragonCandy_Strategy_Briefing.md` — competitive strategy
 - `docs/DragonCandy_Moat_Playbook.md` — competitive defensibility
