@@ -3,7 +3,7 @@ title: Service-Role Data Exposure
 type: concept
 created: 2026-07-19
 updated: 2026-07-19
-sources: [2026-07-19-data-exposure-reviewer.md]
+sources: [2026-07-19-data-exposure-reviewer.md, 2026-07-19-service-role-remediation.md]
 tags: [security, rls, service-role, edge-functions, subagents, review, privacy, gotcha]
 ---
 # Service-Role Data Exposure
@@ -120,8 +120,58 @@ Six findings on `origin/main` (five controller-verified, one flagged unverified)
 The fix was applied at one query site and missed at its sibling — check 1's exact failure mode. These
 survived 14 Codex rounds, an adversarial review, and PRs #246/#247/#260.
 
+## The remediation (PR #308 — shipped + deployed)
+
+12 guards across 4 edge functions, plus the pure `_shared/campaign-access.ts`
+(`evaluateCampaignAccess` / `evaluateApplyAccess`, 19 tests, fails closed). No migration, no schema
+change. See [[Service-Role Remediation Session]].
+
+**Running the reviewer on its own remediation found more than the original six.** Round 1 surfaced 3
+additional `[high]` sites — the worst not in the original set at all: `donny-campaign-preview`
+`handleRegenerate` had no ownership check, so any caller could regenerate an arbitrary preview,
+receive the full row (incl. `ai_prompt_used`, which embeds another tenant's brief and budget) **and
+destructively overwrite the victim's row**. A cross-tenant *write*. Round 2 found 2 `[med]`
+consistency gaps; round 3 was hardening only.
+
+**Then Codex found one all three rounds missed** — the strongest in-repo argument for a second
+independent model. `isParticipant` collapsed collaborations and applications into one flag, but the
+live `campaigns` SELECT policy treats them differently:
+
+```
+(user_id = auth.uid())
+OR (status = 'published' AND (group_id IS NULL OR is_active_group_member(group_id, auth.uid())))
+OR has_collaboration_on_campaign(id, auth.uid())
+```
+
+`has_collaboration_on_campaign` is **status-independent**, and there is **no application arm at
+all** — so a rejected or stale applicant retained access to a *closed* campaign's brief and budget.
+Split into `isCollaborator` (status-independent) and `hasApplication` (requires `published`).
+`verify-db-schema` read that policy from prod and independently confirmed it.
+
+### A security fix that breaks the feature is its own failure mode
+
+Two functional regressions were introduced during remediation and caught in review — neither by
+tests, both by asking *"does this still work for the person who's supposed to use it?"*
+
+1. **Gating a pre-application endpoint on participation.** `donny-apply-pitch` exists to help a
+   creator write a pitch *before* applying, so they are by definition not yet a participant —
+   `evaluateCampaignAccess` denied every legitimate first use. The right question was
+   `evaluateApplyAccess`.
+2. **Filtering the caller's OWN row on visibility.** After `creator_id === user.id` had already
+   proved ownership, a `profile_visibility='public'` filter closed no exposure (a caller can only
+   reach their own row there) while locking private creators out of their own data. **Ownership is
+   the stronger guard and supersedes visibility** — cross-user reads correctly keep their filters.
+
+### Stricter-than-RLS, on purpose
+
+`evaluateCampaignAccess` denies some access the policy would allow: RLS grants any authenticated user
+a published non-crew campaign, while the helper also requires owner ∨ org ∨ collaborator ∨ applicant.
+`handleGenerate` spends AI budget, so "anyone may read it" must not become "anyone may bill previews
+against it." Documented rather than silently diverging.
+
 ## See Also
 
+- [[Service-Role Remediation Session]] — the PR #308 fix, its review rounds, and the deploy
 - [[Claude Subagents Audit]] — the 7-dimension rubric and the backlog this resolves
 - [[AI Creator Matching]] — the `match-creators`/`donny-chat` instances of this class
 - [[Donny Data Visibility & Quick-Action Routing]] — the `org_id` tenant-scoping instance

@@ -22,6 +22,14 @@
   `origin/main` having restructured PROJECT_CONTEXT under me (PR #294: §5 → index + `SHIPPED_LOG.md`);
   writing from the stale worktree would have produced an entry in the exact format #294 deleted, plus
   a conflict against a 100KB restructure. Rebase onto `origin/main` before authoring.
+- **[status-correction] A follow-up PR must EDIT the earlier §5 line, not append a second one.**
+  §5 is an index of *current status* (its own header says "§5 wins on status"), and it is
+  **always loaded**, so a stale entry there is worse than a stale one in `SHIPPED_LOG.md` — every
+  future session reads it. On 2026-07-19, PR #307's line said its findings were "not yet fixed";
+  PR #308 fixed them, so the line was corrected in place and the prose went to `SHIPPED_LOG.md`.
+  Contrast with `SHIPPED_LOG.md`, which is **append-only historical snapshots** — never rewrite a
+  past entry there to reflect later work; prepend a new one. Same discipline as the standing
+  edit-in-place-on-supersession rule for concept pages, applied to the core-doc split.
 - **[gap-claims] Verify a claimed knowledge gap against `origin/main`, never a worktree.** A worktree
   drifts silently — **absence in one proves nothing.** On 2026-07-19 I asserted "PR #288 shipped
   without its knowledge-sync" from a worktree 15 commits behind; PR #290 had already done the sync and
@@ -59,6 +67,30 @@
   build the knowledge-sync commit on a fresh local branch off the FETCHED PR head, not the stale one.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-07-19] Service-role remediation (PR #308 → paired docs PR)
+- Output: new `raw/sessions/2026-07-19-service-role-remediation.md`; **compounded** onto
+  `concepts/service-role-data-exposure.md` (new "The remediation" section + the
+  two-functional-regressions and stricter-than-RLS notes; frontmatter `sources:` extended);
+  `index.md` (new Sources line alphabetically after Schedule Agenda Simplification + refreshed the
+  `[[Service-Role Data Exposure]]` Concepts entry); `log.md` (new ingest entry at top);
+  **`SHIPPED_LOG.md` prepended** + **PROJECT_CONTEXT §5 one-liner corrected** (its #307 text still
+  said the findings were "not yet fixed"); + THIS entry. No DATABASE_SCHEMA/DESIGN_SYSTEM/CLAUDE.md
+  change — no schema, RLS, token, or workflow change.
+- Happened: **first run under the post-#294 core-doc split where §5 needed CORRECTING, not just
+  appending.** PR #307's §5 line described the findings as unfixed; #308 fixed them, so leaving it
+  would have made the always-loaded index actively wrong. §5 is an index whose job is *current
+  status* — the [context-tax] header says so explicitly ("§5 wins on status") — so a follow-up PR
+  that changes an earlier entry's status must edit that line, not add a second one.
+- Worked: [scope] every touched doc verified IDENTICAL to `origin/main` before editing, on a fresh
+  `docs/knowledge-sync-308` branch cut from `origin/main` (both work branches were already merged).
+  Compounded rather than duplicated — the concept page already owned the defect class from #307, so
+  the remediation became a section, not a thin sibling page. [runlog-in-pr] bundled.
+  [wikilinks]-exact: grepped `index.md` before linking; the new `[[Service-Role Remediation Session]]`
+  self-registers via its own Sources line and is referenced from the concept page's See Also.
+- Failed: none for knowledge-sync. (Deploy verification was done in-session via `list_edge_functions`
+  — versions + `verify_jwt` + changed `ezbr_sha256` — not by signing in, the usual auth-gated gap.)
+- Remember: promoted to a Lesson below ([status-correction]).
 
 ### [2026-07-19] Help center screenshots + sidebar link & improved search (PRs #306, #310 → paired docs PR)
 - Output: paired docs PR off origin/main — `raw/sessions/2026-07-19-help-center-screenshots-and-search.md`,

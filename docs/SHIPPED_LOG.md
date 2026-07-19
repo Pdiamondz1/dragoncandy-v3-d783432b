@@ -29,6 +29,56 @@
 
 ---END-HEADER---
 
+- Service-role authorization remediation — **shipped + deployed (PR #308, 2026-07-19).** Sequel to
+  #307: fixes what the new `data-exposure-reviewer` found. **12 guards across 4 edge functions** plus
+  a new pure `_shared/campaign-access.ts` (`evaluateCampaignAccess` / `evaluateApplyAccess`, 19 unit
+  tests, fails closed on every missing input). **No migration, no schema change, no RLS change.**
+  Deployed `donny-chat` v147, `donny-campaign-preview` v98, `donny-creator-match` v73,
+  `donny-apply-pitch` v57 — **`verify_jwt` preserved on each** (apply-pitch is live `true`, the other
+  three `false`; a blanket `--no-verify-jwt` loop would silently flip it), all four `ezbr_sha256`
+  changed so no function silently kept old code.
+  **The durable lesson is about review layering, not the fix.** Running the subagent on its *own*
+  remediation found **3 more `[high]` sites than the original six** — the worst absent from the filed
+  findings entirely: `donny-campaign-preview` `handleRegenerate` had no ownership check, so any
+  authenticated caller could regenerate an arbitrary preview, receive the full row (incl.
+  `ai_prompt_used`, which embeds another tenant's brief and budget) **and destructively overwrite the
+  victim's row** — a cross-tenant *write*. Round 2 found 2 `[med]` consistency gaps (the rejected
+  `profiles.org_id` cache still used in `get_dragonshare`; the org-branch `dragonshare_posts` read
+  dropping the `status='verified'` half of `ds_posts_org_select`, surfacing pending/flagged/removed
+  submissions). Round 3 was hardening only — it converged. **Codex then caught a P2 all three rounds
+  missed**, the strongest in-repo argument for a second independent model: `isParticipant` collapsed
+  collaborations and applications into one flag, but the live `campaigns` SELECT policy treats them
+  differently — `has_collaboration_on_campaign` is **status-independent** and there is **no
+  application arm at all**, so a rejected or stale applicant retained access to a *closed* campaign's
+  brief and budget. Split into `isCollaborator` (status-independent) and `hasApplication` (requires
+  `published`). `verify-db-schema` read the policy from prod and **independently confirmed** it, and
+  found **0 stale `profiles.org_id` pointers** (23 active memberships, 0 non-active) — so that fix is
+  latent-correct rather than closing a live hole.
+  **Two functional regressions were introduced and caught in review**, worth recording because a
+  security fix that breaks the feature is its own failure mode — neither was caught by tests, both by
+  asking *"does this still work for the person who's supposed to use it?"*: (1) the pitch endpoint was
+  gated on `evaluateCampaignAccess` (owner ∨ org ∨ **participant**), but `donny-apply-pitch` exists to
+  help a creator write a pitch *before* applying, so they are never yet a participant — that denied
+  every legitimate first use; now `evaluateApplyAccess`. (2) a `profile_visibility='public'` filter was
+  added to the caller's **own** profile read after ownership had already been asserted, closing no
+  exposure while locking private creators out of their own data — **ownership supersedes visibility**;
+  cross-user reads correctly keep their filters. One deliberate, documented deviation:
+  `evaluateCampaignAccess` is **stricter than RLS** (the policy grants any authenticated user a
+  published non-crew campaign; the helper also requires owner ∨ org ∨ collaborator ∨ applicant) because
+  `handleGenerate` spends AI budget — "anyone may read it" must not become "anyone may bill previews
+  against it."
+  **Urgency was calibrated against prod, not assumed:** 0 private creators (13/13 public), 0 private
+  businesses (17/17), 0 crew campaigns, 0 draft campaigns — every finding **latent, not actively
+  leaking**. Latent here means *one user action away* (the first crew built, creator set private, or
+  draft saved), so the guards landed **before** the features that would expose them get used.
+  Process gotchas: `origin/main` moved **three times** during the session and this repo requires
+  up-to-date branches with **auto-merge disabled**, making the merge a manual update-then-merge race —
+  an early REST-path diff computed against a stale base contained two deleted migrations and a landing
+  revert, so always re-derive and verify `removed: 0` before opening the PR. Codex **buffers** its
+  output; ~20 min at 0 bytes is normal, not a stall. Deferred, documented, not defects: two `[low]`
+  `select('*')` reads in own-row-scoped paths. Concept:
+  `docs/wiki/concepts/service-role-data-exposure.md`.
+
 - `data-exposure-reviewer` subagent — service-role RLS-bypass review — **built
   (branch `worktree-dc-improvements-3`, 2026-07-19; markdown only, no code/schema/edge-fn/deploy).**
   The ask was "this project only has 1 sub-agent — port Harbormill AIOS's". **The premise did not

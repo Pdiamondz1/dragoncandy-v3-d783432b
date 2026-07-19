@@ -1,5 +1,23 @@
 # Wiki Log
 
+## [2026-07-19] ingest | Service-role authorization remediation (PR #308, deployed)
+Ingested [[Service-Role Remediation Session]]. **Compounded** onto [[Service-Role Data Exposure]] (new
+"The remediation" section + the two-functional-regressions and stricter-than-RLS notes) rather than
+spawning a thin sibling page — the concept page already owned the defect class from PR #307. 12
+guards across 4 edge functions + the pure `_shared/campaign-access.ts`; no migration, no schema
+change; deployed with `verify_jwt` preserved per function.
+**The durable lesson is about review layering, not the fix.** Running `data-exposure-reviewer` on its
+own remediation found 3 more `[high]` sites than the original six — including a cross-tenant *write*
+(`handleRegenerate` overwrote another tenant's preview row while returning their brief) absent from
+the filed findings. It then converged to "hardening only" across three rounds — and **Codex still
+caught a P2 all three missed**: applications are not collaborations under the `campaigns` SELECT
+policy (`has_collaboration_on_campaign` is status-independent; there is **no application arm**), so a
+rejected applicant kept access to a closed campaign. `verify-db-schema` read the live policy from prod
+and independently confirmed it. Also records two **functional regressions** the remediation introduced
+and review caught — a security fix that breaks the feature is its own failure mode.
+Core docs: SHIPPED_LOG (prepended) + PROJECT_CONTEXT §5 (the #307 line's "not yet fixed" clause is now
+stale and was corrected). RAG sync post-merge.
+
 ## [2026-07-19] ingest | data-exposure-reviewer subagent (service-role RLS bypass)
 Ingested [[Data-Exposure Reviewer Session]]. New concept [[Service-Role Data Exposure]]. Updated
 [[Claude Subagents Audit]] **in place** — its Tier-2 `rls-migration-reviewer` deferral is now
