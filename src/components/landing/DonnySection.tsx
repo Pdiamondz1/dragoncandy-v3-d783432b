@@ -1,50 +1,46 @@
-import { lazy, Suspense } from "react";
-import { ArrowDown } from "lucide-react";
+import donnyEmblem from "@/assets/donny-emblem.webp";
+import { Eyebrow } from "./Eyebrow";
 import { Reveal } from "./Reveal";
 
-// Code-split the interactive brief generator so it stays out of the initial bundle.
-const BriefGeneratorPreview = lazy(() =>
-  import("./BriefGeneratorPreview").then((m) => ({ default: m.BriefGeneratorPreview })),
-);
-
+/**
+ * The grape "Meet Donny" card — introduces Donny using the real in-app emblem (the same crop
+ * used everywhere else, `src/components/donny/DonnyAvatar.tsx`: `object-cover scale-[1.35]`
+ * inside a circular mask, since the source image has transparent padding). Verbatim copy from
+ * the mockup's `.donny`/`.donny-card` section. The interactive brief-generator proof block that
+ * used to live here was relocated to `HowItWorks` (the "see it work" section).
+ */
 export function DonnySection() {
   return (
-    <section id="see-it-work" className="py-20 lg:py-32">
+    <section id="donny" className="py-20 lg:py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-8 lg:px-12">
-        <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-white/[0.05] via-white/[0.02] to-dc-teal/[0.07] p-6 sm:p-10 lg:p-14">
-          <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-dc-teal/15 blur-3xl" />
+        <Reveal>
+          <div className="grid items-center gap-10 rounded-[28px] bg-landing-grape p-10 text-center text-white lg:grid-cols-[auto_1fr] lg:p-14 lg:text-left">
+            <span className="mx-auto inline-flex h-[150px] w-[150px] overflow-hidden rounded-full shadow-[0_0_0_5px_rgba(47,199,150,0.35)] lg:mx-0">
+              <img
+                src={donnyEmblem}
+                alt="Donny"
+                loading="lazy"
+                className="h-full w-full object-cover scale-[1.35]"
+              />
+            </span>
 
-          <div className="relative grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-16">
-            <Reveal>
-              <div>
-                <div className="mb-4 flex items-center gap-3">
-                  <span className="h-2 w-2 rounded-full bg-dc-teal" />
-                  <span className="text-xs font-bold uppercase tracking-[0.3em] text-dc-teal">
-                    See it work
-                  </span>
-                </div>
-                <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
-                  Watch Donny build your first{" "}
-                  <span className="font-script text-gradient">campaign.</span>
-                </h2>
-                <p className="mt-5 max-w-md text-base text-white/65 lg:text-lg">
-                  Paste a URL and watch Donny write a complete campaign brief.
-                </p>
-
-                <p className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-dc-pink-accent">
-                  Try it now — paste a link
-                  <ArrowDown className="h-4 w-4 animate-float lg:hidden" />
-                </p>
-              </div>
-            </Reveal>
-
-            <Reveal delay={0.1}>
-              <Suspense fallback={null}>
-                <BriefGeneratorPreview />
-              </Suspense>
-            </Reveal>
+            <div>
+              <Eyebrow className="mb-3.5 justify-center text-landing-mint lg:justify-start">
+                Meet Donny
+              </Eyebrow>
+              <h2 className="font-display text-3xl font-extrabold leading-[1.15] tracking-tight sm:text-4xl lg:text-[38px]">
+                The assistant in everyone's toolbelt.
+              </h2>
+              <p className="mx-auto mt-3.5 max-w-[560px] text-lg text-[#CBB9E0] lg:mx-0">
+                Donny is DragonCandy's built-in AI — drafting, scheduling, and researching so
+                creators and business owners move faster.{" "}
+                <strong className="text-white">
+                  Donny never replaces the humans. Donny works for them.
+                </strong>
+              </p>
+            </div>
           </div>
-        </div>
+        </Reveal>
       </div>
     </section>
   );

@@ -15,6 +15,7 @@
     <link rel="preconnect" href="https://zocahiffooqdybdhguqv.supabase.co" crossorigin>
     <link rel="preload" as="font" type="font/woff2" href="/fonts/outfit-latin-400.woff2" crossorigin>
     <link rel="preload" as="font" type="font/woff2" href="/fonts/outfit-latin-800.woff2" crossorigin>
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/bricolage-grotesque-latin-800.woff2" crossorigin>
     <link rel="preload" as="image" type="image/webp" href="/logo.webp" fetchpriority="high">
     <style>
       @font-face{font-family:'Outfit';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/outfit-latin-400.woff2) format('woff2')}
@@ -23,10 +24,18 @@
       @font-face{font-family:'Outfit';font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/outfit-latin-700.woff2) format('woff2')}
       @font-face{font-family:'Outfit';font-style:normal;font-weight:800;font-display:swap;src:url(/fonts/outfit-latin-800.woff2) format('woff2')}
       @font-face{font-family:'Pacifico';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/pacifico-latin-400.woff2) format('woff2')}
+      @font-face{font-family:'Bricolage Grotesque';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/bricolage-grotesque-latin-400.woff2) format('woff2')}
+      @font-face{font-family:'Bricolage Grotesque';font-style:normal;font-weight:600;font-display:swap;src:url(/fonts/bricolage-grotesque-latin-600.woff2) format('woff2')}
+      @font-face{font-family:'Bricolage Grotesque';font-style:normal;font-weight:800;font-display:swap;src:url(/fonts/bricolage-grotesque-latin-800.woff2) format('woff2')}
+      @font-face{font-family:'Instrument Sans';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/instrument-sans-latin-400.woff2) format('woff2')}
+      @font-face{font-family:'Instrument Sans';font-style:normal;font-weight:500;font-display:swap;src:url(/fonts/instrument-sans-latin-500.woff2) format('woff2')}
+      @font-face{font-family:'Instrument Sans';font-style:normal;font-weight:600;font-display:swap;src:url(/fonts/instrument-sans-latin-600.woff2) format('woff2')}
+      @font-face{font-family:'Silkscreen';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/silkscreen-latin-400.woff2) format('woff2')}
+      @font-face{font-family:'Silkscreen';font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/silkscreen-latin-700.woff2) format('woff2')}
       body{margin:0;font-family:'Outfit',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
       #root{width:100%;min-height:100vh}
-      /* Minimal dark splash for the prerendered shell below — intentionally content-free
-         (just the brand mark on the app's dark bg) so it can never go stale after a redesign. */
+      /* Minimal light splash for the prerendered shell below — intentionally content-free
+         (just the brand mark on the app's light bg) so it can never go stale after a redesign. */
       .animate-fade-in{animation:fadeIn .4s ease-out}
       @keyframes fadeIn{from{opacity:0}to{opacity:1}}
     </style>
@@ -69,10 +78,10 @@
   </head>
 
   <body>
-    <!-- Prerendered splash: brand mark on the app's dark bg (#1A1A2A = dc-dark). Content-free
+    <!-- Prerendered splash: brand mark on the app's light bg (#FFFFFF = landing paper). Content-free
          on purpose so the real landing fades in over an identical background (no flash) and the
          shell can never show a stale old design again. -->
-    <div id="root"><div style="min-height:100vh;background:#1A1A2A;display:flex;align-items:center;justify-content:center;overflow-x:hidden"><img src="/logo.webp" alt="DragonCandy" width="140" height="47" fetchpriority="high" class="animate-fade-in" style="width:132px;height:auto"></div></div>
+    <div id="root"><div style="min-height:100vh;background:#FFFFFF;display:flex;align-items:center;justify-content:center;overflow-x:hidden"><img src="/logo.webp" alt="DragonCandy" width="140" height="47" fetchpriority="high" class="animate-fade-in" style="width:132px;height:auto"></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

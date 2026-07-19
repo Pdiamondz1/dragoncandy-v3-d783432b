@@ -1,30 +1,34 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
+import { CheckCircle2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { BRAND_ROLE_ENABLED } from "@/lib/featureConfig";
+import { Eyebrow } from "./Eyebrow";
+import { LandingButton } from "./LandingButton";
 import { Reveal } from "./Reveal";
 import { useSubmitLead, type LeadAudience } from "@/hooks/useSubmitLead";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const FIELD =
-  "h-12 rounded-xl border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-dc-teal";
+  "h-12 rounded-xl border-2 border-landing-line bg-white text-landing-ink placeholder:text-landing-ink-soft focus-visible:ring-landing-mint";
 
 const reasons = [
   "See a live demo built around your business",
   "Get matched with local creators",
-  "Talk pricing & DragonDash rush delivery",
+  "Talk through how it works",
 ];
 
 /**
- * Final "Start free" section — merges the role-aware CTA (formerly `BottomCTA`) with the
- * no-account-required lead-capture pitch + form (formerly `LeadCaptureSection`) into one
- * section. This is where the header "Contact" nav link (`#start-free`) lands.
+ * Final CTA + lead-capture section — the platform's closing pitch (Joe redesign copy: "Ready to
+ * build together?") plus the no-account-required lead-capture form (formerly `LeadCaptureSection`,
+ * merged into `StartFreeSection`). The lead-form logic (state, `EMAIL_RE`, `useSubmitLead`,
+ * honeypot, `handleSubmit`) is ported verbatim from `StartFreeSection` — only the visual styling
+ * and surrounding copy changed. This is where the header "Contact" nav link (`#join`) lands.
  */
-export const StartFreeSection = () => {
+export const FinalCTASection = () => {
   const navigate = useNavigate();
   const signupAs = (role?: string) =>
     navigate(`/auth?mode=signup${role ? `&role=${role}` : ''}`);
@@ -70,55 +74,30 @@ export const StartFreeSection = () => {
   };
 
   return (
-    <section id="start-free" className="scroll-mt-24 py-20 lg:py-28">
+    <section id="join" className="scroll-mt-24 bg-white py-20 lg:py-28">
       <div className="mx-auto max-w-6xl px-5 sm:px-8 lg:px-12">
         {/* Role-aware CTA */}
         <Reveal>
-          <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-dc-teal/12 via-white/[0.04] to-dc-pink-accent/12 px-6 py-16 text-center lg:px-16 lg:py-24">
-            <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-dc-teal/20 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-dc-pink-accent/15 blur-3xl" />
+          <div className="text-center">
+            <h2 className="mx-auto max-w-2xl font-display text-3xl font-extrabold leading-[1.08] tracking-tight text-landing-ink sm:text-4xl lg:text-[52px]">
+              Ready to build together?
+            </h2>
+            <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-landing-ink-soft lg:text-lg">
+              Join the platform where real people do the work — and AI makes it fly.
+            </p>
 
-            <div className="relative">
-              <h2 className="mx-auto max-w-2xl text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-6xl">
-                Ready to make content{" "}
-                <span className="font-script text-gradient font-normal">effortless?</span>
-              </h2>
-              <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/65 lg:text-lg">
-                Join DragonCandy and put your content on autopilot —{" "}
-                {BRAND_ROLE_ENABLED
-                  ? "for any business, brand, or creator."
-                  : "for any business or creator."}
-              </p>
-
-              <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row sm:flex-wrap">
-                <button
-                  onClick={() => signupAs()}
-                  className="group inline-flex h-14 items-center justify-center gap-2 rounded-full bg-dc-teal px-8 text-base font-bold text-dc-dark transition-all duration-300 hover:bg-dc-teal-dark hover:shadow-glow-teal"
-                >
-                  Get Started
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </button>
-                <button
-                  onClick={() => signupAs('business')}
-                  className="inline-flex h-14 items-center justify-center rounded-full bg-dc-pink-accent-btn px-8 text-base font-semibold text-white transition-all duration-300 hover:bg-dc-pink-accent-btn-hover"
-                >
-                  Join as a Business
-                </button>
-                <button
-                  onClick={() => signupAs('creator')}
-                  className="inline-flex h-14 items-center justify-center rounded-full border border-white/20 bg-white/5 px-8 text-base font-semibold text-white backdrop-blur transition-all duration-300 hover:border-dc-teal hover:text-dc-teal"
-                >
-                  Join as a Creator
-                </button>
-                {BRAND_ROLE_ENABLED && (
-                  <button
-                    onClick={() => signupAs('brand')}
-                    className="inline-flex h-14 items-center justify-center rounded-full border border-dc-pink-accent/40 bg-transparent px-8 text-base font-semibold text-white transition-all duration-300 hover:border-dc-pink-accent hover:text-dc-pink-accent"
-                  >
-                    For Brands
-                  </button>
-                )}
-              </div>
+            <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap">
+              <LandingButton variant="pink" onClick={() => signupAs('business')}>
+                I run a business
+              </LandingButton>
+              <LandingButton variant="mint" onClick={() => signupAs('creator')}>
+                I'm a creator
+              </LandingButton>
+              {BRAND_ROLE_ENABLED && (
+                <LandingButton variant="ghost" onClick={() => signupAs('brand')}>
+                  For Brands
+                </LandingButton>
+              )}
             </div>
           </div>
         </Reveal>
@@ -128,24 +107,19 @@ export const StartFreeSection = () => {
           {/* Pitch */}
           <Reveal>
             <div>
-              <div className="mb-4 flex items-center gap-3">
-                <span className="h-2 w-2 rounded-full bg-dc-teal" />
-                <span className="text-xs font-bold uppercase tracking-[0.3em] text-dc-teal">
-                  Get in touch
-                </span>
-              </div>
-              <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
-                Let's <span className="font-script text-gradient font-normal">talk.</span>
-              </h2>
-              <p className="mt-5 max-w-md text-base leading-relaxed text-white/65 lg:text-lg">
+              <Eyebrow className="mb-4 text-landing-pink">Get in touch</Eyebrow>
+              <h3 className="font-display text-3xl font-extrabold tracking-tight text-landing-ink sm:text-4xl">
+                Let's talk.
+              </h3>
+              <p className="mt-5 max-w-md text-base leading-relaxed text-landing-ink-soft lg:text-lg">
                 Not ready to sign up? Tell us about your business and we'll show you what
                 DragonCandy can do — no account required.
               </p>
               <ul className="mt-8 space-y-3">
                 {reasons.map((r) => (
                   <li key={r} className="flex items-start gap-3">
-                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-dc-teal" />
-                    <span className="text-base text-white/75">{r}</span>
+                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-landing-mint" />
+                    <span className="text-base text-landing-ink-soft">{r}</span>
                   </li>
                 ))}
               </ul>
@@ -154,14 +128,14 @@ export const StartFreeSection = () => {
 
           {/* Form */}
           <Reveal delay={0.1}>
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm lg:p-8">
+            <div className="rounded-3xl border-2 border-landing-line bg-white p-6 lg:p-8">
               {submitted ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <span className="flex h-16 w-16 items-center justify-center rounded-full bg-dc-teal/15 text-dc-teal">
+                  <span className="flex h-16 w-16 items-center justify-center rounded-full bg-landing-mint-soft text-landing-mint-ink">
                     <Sparkles className="h-8 w-8" />
                   </span>
-                  <h3 className="mt-5 text-2xl font-bold text-white">You're on our radar.</h3>
-                  <p className="mt-2 max-w-xs text-base text-white/60">
+                  <h3 className="mt-5 text-2xl font-bold text-landing-ink">You're on our radar.</h3>
+                  <p className="mt-2 max-w-xs text-base text-landing-ink-soft">
                     Thanks for reaching out — the DragonCandy team will be in touch soon.
                   </p>
                 </div>
@@ -181,7 +155,7 @@ export const StartFreeSection = () => {
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <Label htmlFor="lead-name" className="text-white/70">
+                      <Label htmlFor="lead-name" className="text-landing-ink-soft">
                         Name
                       </Label>
                       <Input
@@ -194,7 +168,7 @@ export const StartFreeSection = () => {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="lead-email" className="text-white/70">
+                      <Label htmlFor="lead-email" className="text-landing-ink-soft">
                         Email
                       </Label>
                       <Input
@@ -211,8 +185,8 @@ export const StartFreeSection = () => {
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <Label htmlFor="lead-company" className="text-white/70">
-                        Business <span className="text-white/40">(optional)</span>
+                      <Label htmlFor="lead-company" className="text-landing-ink-soft">
+                        Business <span className="text-landing-ink-soft/60">(optional)</span>
                       </Label>
                       <Input
                         id="lead-company"
@@ -224,8 +198,8 @@ export const StartFreeSection = () => {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="lead-phone" className="text-white/70">
-                        Phone <span className="text-white/40">(optional)</span>
+                      <Label htmlFor="lead-phone" className="text-landing-ink-soft">
+                        Phone <span className="text-landing-ink-soft/60">(optional)</span>
                       </Label>
                       <Input
                         id="lead-phone"
@@ -240,43 +214,41 @@ export const StartFreeSection = () => {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="lead-audience" className="text-white/70">
+                    <Label htmlFor="lead-audience" className="text-landing-ink-soft">
                       I'm a…
                     </Label>
                     <select
                       id="lead-audience"
                       value={audience}
                       onChange={(e) => setAudience(e.target.value as LeadAudience)}
-                      className="h-12 w-full rounded-xl border border-white/15 bg-white/5 px-4 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dc-teal"
+                      className="h-12 w-full rounded-xl border-2 border-landing-line bg-white px-4 text-landing-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-landing-mint"
                     >
-                      <option value="business" className="bg-dc-dark">Local business</option>
-                      {BRAND_ROLE_ENABLED && (
-                        <option value="brand" className="bg-dc-dark">Brand / sponsor</option>
-                      )}
-                      <option value="creator" className="bg-dc-dark">Creator</option>
-                      <option value="other" className="bg-dc-dark">Something else</option>
+                      <option value="business">Local business</option>
+                      {BRAND_ROLE_ENABLED && <option value="brand">Brand / sponsor</option>}
+                      <option value="creator">Creator</option>
+                      <option value="other">Something else</option>
                     </select>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="lead-message" className="text-white/70">
-                      Message <span className="text-white/40">(optional)</span>
+                    <Label htmlFor="lead-message" className="text-landing-ink-soft">
+                      Message <span className="text-landing-ink-soft/60">(optional)</span>
                     </Label>
                     <Textarea
                       id="lead-message"
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       placeholder="Tell us what you're looking for…"
-                      className="min-h-[96px] rounded-xl border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-dc-teal"
+                      className="min-h-[96px] rounded-xl border-2 border-landing-line bg-white text-landing-ink placeholder:text-landing-ink-soft focus-visible:ring-landing-mint"
                     />
                   </div>
 
-                  {error && <p className="text-sm text-dc-pink-accent">{error}</p>}
+                  {error && <p className="text-sm text-landing-pink-ink">{error}</p>}
 
                   <Button
                     type="submit"
                     isLoading={submitLead.isPending}
-                    className="h-12 w-full rounded-full bg-dc-teal text-base font-bold text-dc-dark hover:bg-dc-teal-dark hover:shadow-glow-teal"
+                    className="h-12 w-full rounded-full bg-landing-pink text-base font-bold text-white shadow-landing-pink transition-[box-shadow,transform] hover:shadow-landing-pink-hover motion-safe:hover:-translate-y-0.5"
                   >
                     Send message
                   </Button>
