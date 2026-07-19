@@ -6,6 +6,7 @@ import { logCost } from "../_shared/cost-ledger.ts";
 import { getUserUsageStage, incrementUsage, checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
+import { evaluateCampaignAccess } from "../_shared/campaign-access.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -248,15 +249,78 @@ async function handleGenerate(
     );
   }
 
-  // Fetch campaign data
+  // Fetch campaign data — includes the columns evaluateCampaignAccess needs to gate
+  // this read (service role bypasses RLS, incl. the private-crew-campaign policy).
   const { data: campaign, error: campaignErr } = await supabaseAdmin
     .from("campaigns")
-    .select("id, title, description, fixed_price, budget_min, budget_max, goals, style, tone, platforms, deliverables, content_source, delivery_type")
+    .select("id, title, description, fixed_price, budget_min, budget_max, goals, style, tone, platforms, deliverables, content_source, delivery_type, group_id, user_id, org_id, status")
     .eq("id", campaign_id)
     .single();
 
   if (campaignErr || !campaign) {
     return jsonResponse(req, { success: false, error: "Campaign not found" }, 404);
+  }
+
+  // Re-assert campaign-detail access before it's spent on an AI preview generation
+  // (and stored under the caller's user_id): owner, ACTIVE org member, or an existing
+  // participant — and, for a private crew campaign, participant alone isn't enough.
+  // `profiles.org_id` is a denormalized cache with no status qualifier — resolve org
+  // membership from `org_members` directly, gated on invitation_status='active' (the
+  // canonical active-membership predicate used everywhere else in this codebase), so a
+  // merely-invited or suspended member isn't granted org-basis access.
+  const { data: activeOrgMemberships } = await supabaseAdmin
+    .from("org_members")
+    .select("org_id")
+    .eq("user_id", userId)
+    .eq("invitation_status", "active");
+  const orgIds = (activeOrgMemberships ?? []).map((m) => m.org_id);
+  const [{ data: applications }, { data: collaborations }] = await Promise.all([
+    supabaseAdmin
+      .from("campaign_applications")
+      .select("id")
+      .eq("campaign_id", campaign_id)
+      .eq("creator_id", userId)
+      .limit(1),
+    supabaseAdmin
+      .from("campaign_collaborations")
+      .select("id")
+      .eq("campaign_id", campaign_id)
+      .eq("creator_id", userId)
+      .limit(1),
+  ]);
+  // Kept separate on purpose: a collaboration grants access regardless of campaign
+  // status, but an application only counts while the campaign is still `published`
+  // (see evaluateCampaignAccess). Collapsing both into one flag let a rejected or
+  // stale applicant keep reading a closed campaign's brief and budget.
+  const isCollaborator = !!collaborations?.length;
+  const hasApplication = !!applications?.length;
+
+  let isActiveGroupMember = false;
+  if (campaign.group_id) {
+    const { data: activeMember } = await supabaseAdmin.rpc("is_active_group_member", {
+      p_group_id: campaign.group_id,
+      p_creator_id: userId,
+    });
+    isActiveGroupMember = activeMember === true;
+  }
+
+  const access = evaluateCampaignAccess({
+    campaign: {
+      id: campaign_id,
+      user_id: campaign.user_id,
+      org_id: campaign.org_id,
+      group_id: campaign.group_id,
+      status: campaign.status,
+    },
+    userId,
+    orgIds,
+    isCollaborator,
+    hasApplication,
+    isActiveGroupMember,
+  });
+
+  if (!access.allowed) {
+    return jsonResponse(req, { success: false, error: "You don't have access to this campaign" }, 403);
   }
 
   const usageStage = await getUserUsageStage(supabaseAdmin, userId);
@@ -355,6 +419,9 @@ async function handleRegenerate(
 
   if (fetchErr || !original) {
     return jsonResponse(req, { success: false, error: "Preview not found" }, 404);
+  }
+  if (original.user_id !== userId) {
+    return jsonResponse(req, { success: false, error: "Unauthorized" }, 403);
   }
 
   // Build new prompt from original + style notes

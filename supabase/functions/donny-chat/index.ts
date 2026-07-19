@@ -13,6 +13,7 @@ import { applyEdits } from "./doc-edits.ts";
 import { resolveDonnyProfile, type DonnyProfile } from "./profile.ts";
 import { handleWebSearch, handleReadUrl } from "./web-tools.ts";
 import { resolveSearchCenter, rankCreators } from "./creator-discovery.ts";
+import { evaluateApplyAccess } from "../_shared/campaign-access.ts";
 import {
   GoogleWorkspaceError,
   assertDriveFileId,
@@ -1173,15 +1174,21 @@ async function executeTool(
         if (payoutsRes.error) throw payoutsRes.error;
         return { result: { role: userRole, posts: postsRes.data ?? [], payouts: payoutsRes.data ?? [] } };
       }
-      // business / brand: posts about their org + boosts they funded
-      const { data: prof, error: profErr } = await supabaseAdmin
-        .from("profiles")
+      // business / brand: posts about their org(s) + boosts they funded.
+      // `profiles.org_id` is a denormalized cache with no membership-status qualifier —
+      // mirrors the fix in donny-campaign-preview/index.ts: resolve org membership from
+      // `org_members` directly, gated on invitation_status='active' (the same predicate
+      // `get_user_org_ids()` uses, which backs the ds_posts_org_select / ds_boosts_org_select
+      // RLS policies this service-role read bypasses), so a merely-invited, suspended, or
+      // removed member's stale cached org_id can't be used to read that org's DragonShare data.
+      const { data: activeOrgMemberships, error: orgErr } = await supabaseAdmin
+        .from("org_members")
         .select("org_id")
-        .eq("id", userId)
-        .maybeSingle();
-      if (profErr) throw profErr; // don't mask a DB error as "no org linked"
-      const orgId = prof?.org_id ?? null;
-      if (!orgId) {
+        .eq("user_id", userId)
+        .eq("invitation_status", "active");
+      if (orgErr) throw orgErr; // don't mask a DB error as "no org linked"
+      const orgIds = (activeOrgMemberships ?? []).map((m) => m.org_id);
+      if (orgIds.length === 0) {
         return {
           result: {
             role: userRole,
@@ -1195,13 +1202,17 @@ async function executeTool(
         supabaseAdmin
           .from("dragonshare_posts")
           .select("id, status, platform, boost_status, creator_id, created_at")
-          .eq("target_org_id", orgId)
+          .in("target_org_id", orgIds)
+          // Mirrors ds_posts_org_select RLS: an org sees only verified posts about it,
+          // never pending/flagged/removed submissions (trust-then-flag model) or the
+          // submitting creator_id behind them.
+          .eq("status", "verified")
           .order("created_at", { ascending: false })
           .limit(15),
         supabaseAdmin
           .from("dragonshare_boosts")
           .select("id, status, amount_cents, boosted_at, post_id")
-          .eq("boosting_org_id", orgId)
+          .in("boosting_org_id", orgIds)
           .order("boosted_at", { ascending: false })
           .limit(15),
       ]);
@@ -1295,6 +1306,7 @@ async function executeTool(
         .from("creator_profiles")
         .select("id, user_id, creator_name, avatar_url, bio, skills, location, average_rating, total_reviews, base_rate_per_hour, portfolio_urls, instagram_url, tiktok_url, youtube_url")
         .eq("user_id", args.creator_id)
+        .eq("profile_visibility", "public") // don't surface private creators via the service role (RLS-bypass)
         .single();
       if (error) throw error;
       return { result: data };
@@ -1346,6 +1358,16 @@ async function executeTool(
 
     // --- Application Tools ---
     case "get_applications": {
+      const { data: campaignOwner, error: ownerErr } = await supabaseAdmin
+        .from("campaigns")
+        .select("user_id")
+        .eq("id", args.campaign_id)
+        .single();
+      if (ownerErr) throw ownerErr;
+      if (campaignOwner.user_id !== userId) {
+        throw new Error("You don't have access to this campaign");
+      }
+
       const { data, error } = await supabaseAdmin
         .from("campaign_applications")
         .select("id, status, intro_message, proposed_rate, creator_id, profiles!creator_id(full_name, avatar_url)")
@@ -1361,13 +1383,34 @@ async function executeTool(
       }
       const { data: campaign, error: campaignErr } = await supabaseAdmin
         .from("campaigns")
-        .select("id, status")
+        .select("id, status, group_id")
         .eq("id", args.campaign_id)
         .single();
       if (campaignErr) throw campaignErr;
-      if (campaign.status !== "published") {
-        throw new Error("This campaign is not accepting applications");
+
+      // service role bypasses RLS (incl. the can_create_application WITH CHECK) — re-assert
+      // the apply gate here too: published, and members-only for a private crew campaign.
+      let isActiveGroupMember = false;
+      if (campaign.group_id) {
+        const { data: activeMember, error: memberErr } = await supabaseAdmin.rpc(
+          "is_active_group_member",
+          { p_group_id: campaign.group_id, p_creator_id: userId }
+        );
+        if (memberErr) throw memberErr;
+        isActiveGroupMember = activeMember === true;
       }
+      const applyAccess = evaluateApplyAccess({
+        campaign: { id: campaign.id, user_id: null, org_id: null, group_id: campaign.group_id, status: campaign.status },
+        isActiveGroupMember,
+      });
+      if (!applyAccess.allowed) {
+        throw new Error(
+          applyAccess.reason === "crew_non_member"
+            ? "This campaign is only open to members of the crew it was posted to"
+            : "This campaign is not accepting applications"
+        );
+      }
+
       const { data, error } = await supabaseAdmin
         .from("campaign_applications")
         .insert({
@@ -1425,6 +1468,17 @@ async function executeTool(
 
     // --- Content Tools ---
     case "get_submissions": {
+      const { data: collab, error: collabErr } = await supabaseAdmin
+        .from("campaign_collaborations")
+        .select("id, creator_id, campaigns!campaign_id(user_id)")
+        .eq("id", args.collaboration_id)
+        .returns<{ id: string; creator_id: string; campaigns: { user_id: string } | null }>()
+        .single();
+      if (collabErr) throw collabErr;
+      if (collab.campaigns?.user_id !== userId && collab.creator_id !== userId) {
+        throw new Error("You don't have access to this collaboration");
+      }
+
       const { data, error } = await supabaseAdmin
         .from("file_uploads")
         .select("id, filename, file_path, upload_status, created_at, uploaded_by")

@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
+import { evaluateApplyAccess } from "../_shared/campaign-access.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -102,7 +103,26 @@ serve(async (req) => {
       );
     }
 
-    // Fetch creator profile
+    // creator_id is client-supplied and was never compared to the authenticated
+    // caller — a caller could otherwise request a pitch (incl. base_rate_per_hour
+    // and portfolio_urls) for an arbitrary creator via the service role (RLS-bypass).
+    if (creator_id !== user.id) {
+      return new Response(
+        JSON.stringify({ error: "creator_id must match the authenticated user" }),
+        {
+          status: 403,
+          headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Deliberately NO profile_visibility filter here: the check above already proved
+    // creator_id === user.id, so this is the caller's OWN profile. Ownership is the
+    // stronger guard and supersedes visibility — a creator who sets their profile
+    // private must still be able to generate their own pitch. (Adding the filter here
+    // was a functional regression caught in review: it locked private creators out of
+    // their own data while closing no exposure, since a caller can only ever reach
+    // their own row on this path.)
     const { data: creator } = await supabaseAdmin
       .from("creator_profiles")
       .select(
@@ -111,19 +131,13 @@ serve(async (req) => {
       .eq("user_id", creator_id)
       .single();
 
-    // Fetch campaign
+    // Fetch campaign — includes the columns evaluateApplyAccess needs to gate
+    // this read (service role bypasses RLS, incl. the private-crew-campaign policy).
     const { data: campaign } = await supabaseAdmin
       .from("campaigns")
-      .select("title, description, goals, budget_min, budget_max")
+      .select("title, description, goals, budget_min, budget_max, group_id, user_id, org_id, status")
       .eq("id", campaign_id)
       .single();
-
-    // Fetch campaign deliverables for content types
-    const { data: deliverables } = await supabaseAdmin
-      .from("campaign_deliverables")
-      .select("content_type")
-      .eq("campaign_id", campaign_id)
-      .limit(5);
 
     if (!creator || !campaign) {
       return new Response(
@@ -134,6 +148,52 @@ serve(async (req) => {
         }
       );
     }
+
+    // Re-assert campaign-detail access before any campaign data (title/description/
+    // goals/budget) is used to draft a pitch: owner, org member, or an existing
+    // participant — and, for a private crew campaign, participant alone isn't enough.
+    // Gate on APPLY-eligibility, not campaign-detail access. This endpoint exists to help a
+    // creator write a pitch *before* they apply, so they are by definition not yet a participant —
+    // gating on evaluateCampaignAccess (owner ∨ org ∨ participant) would deny every legitimate
+    // first-time use. evaluateApplyAccess is the right question ("may this creator apply?"): it
+    // still blocks unpublished campaigns and keeps a private crew campaign invisible to a
+    // non-member, which is the actual exposure being closed here.
+    let isActiveGroupMember = false;
+    if (campaign.group_id) {
+      const { data: activeMember } = await supabaseAdmin.rpc("is_active_group_member", {
+        p_group_id: campaign.group_id,
+        p_creator_id: user.id,
+      });
+      isActiveGroupMember = activeMember === true;
+    }
+
+    const access = evaluateApplyAccess({
+      campaign: {
+        id: campaign_id,
+        user_id: campaign.user_id,
+        org_id: campaign.org_id,
+        group_id: campaign.group_id,
+        status: campaign.status,
+      },
+      isActiveGroupMember,
+    });
+
+    if (!access.allowed) {
+      return new Response(
+        JSON.stringify({ error: "You don't have access to this campaign" }),
+        {
+          status: 403,
+          headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Fetch campaign deliverables for content types
+    const { data: deliverables } = await supabaseAdmin
+      .from("campaign_deliverables")
+      .select("content_type")
+      .eq("campaign_id", campaign_id)
+      .limit(5);
 
     // Fetch last 3 successful deliveries by this creator
     const { data: pastWork } = await supabaseAdmin
