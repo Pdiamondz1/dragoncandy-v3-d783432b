@@ -19,10 +19,10 @@ export function TapGrid({ items, selected, onToggle, mode: _mode, accentColor, c
   const gridClass = columns === 4 ? 'grid-cols-4' : 'grid-cols-3';
 
   const activeClasses = accentColor === 'teal'
-    ? 'bg-dc-teal/15 border-dc-teal ring-1 ring-dc-teal/30 shadow-glow-teal'
-    : 'bg-dc-pink/15 border-dc-pink ring-1 ring-dc-pink/30 shadow-glow-pink';
+    ? 'bg-landing-mint-soft border-landing-mint-line'
+    : 'bg-landing-pink-soft border-landing-pink-line';
 
-  const inactiveClasses = 'bg-white/5 border-white/10 hover:border-white/20';
+  const inactiveClasses = 'bg-white border-landing-line hover:border-landing-ink-soft/40';
 
   return (
     <div className={`grid ${gridClass} gap-2.5`}>
@@ -45,8 +45,8 @@ export function TapGrid({ items, selected, onToggle, mode: _mode, accentColor, c
             <span className="text-xl leading-none">{item.icon}</span>
             <span className={`text-xs font-medium leading-tight text-center ${
               isSelected
-                ? accentColor === 'teal' ? 'text-dc-teal' : 'text-dc-pink-accent'
-                : 'text-white/60'
+                ? accentColor === 'teal' ? 'text-landing-mint-ink' : 'text-landing-pink-ink'
+                : 'text-landing-ink-soft'
             }`}>
               {item.label}
             </span>
@@ -57,7 +57,7 @@ export function TapGrid({ items, selected, onToggle, mode: _mode, accentColor, c
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] ${
-                  accentColor === 'teal' ? 'bg-dc-teal-btn' : 'bg-dc-pink'
+                  accentColor === 'teal' ? 'bg-landing-mint' : 'bg-landing-pink'
                 }`}
               >
                 ✓
