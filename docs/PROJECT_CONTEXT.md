@@ -7,9 +7,30 @@
 
 ## 1. What We're Building
 
-DragonCandy (dragoncandy.io) is an AI-powered creator-restaurant marketplace
-HQ'd in Hoboken, NJ. The platform connects three roles — Restaurant/Business,
-Content Creator, and Brand/Sponsor — through a hybrid marketplace model.
+**Mission.** DragonCandy makes the human side of social-media marketing
+effortless — real creators working with real businesses, with the grind deleted.
+Restaurants, creators, and brands meet in one marketplace, and **Donny** — an AI
+super agent, the engine the whole platform runs on — generates the campaigns,
+matches the right people, and posts across every channel. People make the calls
+that matter; Donny handles the work in between. **Less typing = more margin.**
+
+**The story it's built around.** Joe Castelo was drowning in it: keeping his
+Hoboken restaurants alive on social media meant an endless grind of finding
+creators, briefing them, managing posts, and paying premium rates. Every owner
+he knew hit the same wall. So with Juwan Robinson and Dame Williams he set out to
+delete that work — and the wall turned out to be everyone's: creators with real
+talent stuck doing a second job just to find paying work and get paid, brands
+paying more for social than ever while trusting it less. DragonCandy became one
+marketplace for all three, run by Donny — not a chatbot bolted onto a dashboard,
+but the engine the whole platform runs on. As AI advances, Donny does too,
+learning each business he serves and embedding into its daily rhythm. The bet: in
+the next era of marketing, the winners won't type at all — they'll just ask
+Donny, and let him handle the rest.
+
+DragonCandy (dragoncandy.io) is an AI-powered creator–business marketplace HQ'd
+in Hoboken, NJ, connecting three roles — Restaurant/Business, Content Creator,
+and Brand/Sponsor — through a hybrid marketplace model. Restaurants are the
+beachhead.
 
 **Co-founders**
 - Damon "Dame" Williams — co-founder, CPO

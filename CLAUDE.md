@@ -6,6 +6,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Mission
+
+DragonCandy makes the human side of social-media marketing effortless — real
+creators working with real businesses, with the grind deleted. Restaurants,
+creators, and brands meet in one marketplace, and **Donny** — an AI super agent,
+the engine the whole platform runs on, not a feature bolted on — generates the
+campaigns, matches the right people, and posts across every channel. People make
+the calls that matter; Donny handles the work in between. North star: **less
+typing = more margin.** Every decision in this repo serves that story. (Full
+narrative: `docs/PROJECT_CONTEXT.md` §1 and `docs/dragoncandy-origin-story.md`.)
+
 ## Commands
 
 ```bash
