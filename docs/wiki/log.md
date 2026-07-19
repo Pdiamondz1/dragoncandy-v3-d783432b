@@ -1,5 +1,17 @@
 # Wiki Log
 
+## [2026-07-19] ingest | Delivery timing + tier merged into one selection
+Ingested [[Delivery Tier Timing Merge Session]]. New concept [[Delivery Tier Selection]] — no page
+owned the delivery-tier subject before, and the durable content is broader than the UI merge: the
+tier↔deadline derivation rules, the UI-vs-DB vocabulary split, the local-midnight parsing invariant,
+and the cost invariant `budgetTotal === fixed_price + delivery_fee`. Cross-linked
+[[Campaign Lifecycle]], [[Content Delivery State Machine]], [[Pricing Architecture]],
+[[Take-Rate Ladder]], [[Creator Groups (Crews)]], [[Light-App Kit]], [[Musk's Algorithm]].
+Recorded as Known Issues (found, deliberately not fixed — they reach into escrow and auto-approval):
+**five conflicting turnaround tables**, where a Standard campaign is displayed as 5–7 days, invoiced
+as 72 hours and auto-approves on a 72-hour clock; and `match-creators` scoring the raw
+`delivery_type` string against creator *skills*. Index: Concepts + Sources, alphabetical.
+
 ## [2026-07-19] ingest | Service-role authorization remediation (PR #308, deployed)
 Ingested [[Service-Role Remediation Session]]. **Compounded** onto [[Service-Role Data Exposure]] (new
 "The remediation" section + the two-functional-regressions and stricter-than-RLS notes) rather than
