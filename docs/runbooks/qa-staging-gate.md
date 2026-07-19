@@ -72,8 +72,21 @@ Signing in by hand made the founder a bottleneck on every UI check, and an agent
 type a password into a login form at all. `npm run staging:login` routes around both:
 
 ```bash
-npm run staging:login -- restaurant --base https://<preview>.vercel.app
-npm run staging:login -- creator --base http://127.0.0.1:8080
+npm run staging:login -- restaurant --base https://<preview>.vercel.app   # simplest
+```
+
+**Prefer a preview URL.** Vercel's Preview scope is wired to staging, so a preview is
+correct by configuration. A **local** dev server is not: the committed `.env` sets
+`VITE_SUPABASE_URL` to the **prod** project, and `client.ts` falls back to prod when it is
+unset — so a staging session handed to `localhost` authenticates against the wrong backend
+and silently stays signed out. The script refuses that case rather than reporting a success
+that doesn't work. To use localhost, first point it at staging in a gitignored `.env.local`
+(which wins over `.env`) and restart the dev server:
+
+```bash
+# .env.local
+VITE_SUPABASE_URL=https://mhffqrawgizhprbobcta.supabase.co
+VITE_SUPABASE_ANON_KEY=<staging anon key>
 ```
 
 It mints a one-time magiclink via the admin API, exchanges it for a session as JSON, and

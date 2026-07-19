@@ -96,6 +96,58 @@ if (/(^|\.)dragoncandy\.io$/i.test(base.hostname)) {
   );
 }
 
+// ── The target's FRONTEND must also point at staging ────────────────────────────────
+// A staging session is useless if the app it opens in talks to a different Supabase:
+// client.ts falls back to the PROD project whenever VITE_SUPABASE_URL is unset, so the
+// app would send a staging JWT to prod and stay signed out — while this script happily
+// printed "success". Refuse instead of lying about it.
+assertTargetUsesStaging(base);
+
+function assertTargetUsesStaging(url) {
+  const host = url.hostname.toLowerCase();
+  const isLocal = host === "localhost" || host === "127.0.0.1" || host === "[::1]";
+
+  // Vercel Preview scope is wired to the staging Supabase project (see
+  // docs/runbooks/qa-staging-gate.md), so preview deployments are correct by config.
+  if (host.endsWith(".vercel.app")) return;
+
+  if (!isLocal) {
+    die(
+      `Cannot confirm ${host} is built against staging Supabase.\n\n` +
+        "  Known-good targets: a *.vercel.app preview, or a local dev server whose\n" +
+        "  VITE_SUPABASE_URL points at the staging project."
+    );
+  }
+
+  // Local dev server: Vite reads .env* at startup, so those files decide the backend.
+  const envFiles = [".env.local", ".env.development.local", ".env.development", ".env"];
+  const repoRoot = join(HERE, "..", "..");
+  let seen = null;
+
+  for (const name of envFiles) {
+    const p = join(repoRoot, name);
+    if (!existsSync(p)) continue;
+    const m = readFileSync(p, "utf8").match(/^\s*VITE_SUPABASE_URL\s*=\s*(.+?)\s*$/m);
+    if (!m) continue;
+    seen = { file: name, value: m[1].replace(/^["']|["']$/g, "") };
+    break; // first match wins, mirroring Vite's precedence order
+  }
+
+  if (seen?.value.includes(STAGING_REF)) return;
+
+  die(
+    `Your local dev server is not pointed at staging, so a staging session cannot work.\n\n` +
+      (seen
+        ? `  ${seen.file} has VITE_SUPABASE_URL=${seen.value}\n` +
+          (seen.value.includes(PROD_REF) ? "  ^ that is PRODUCTION.\n" : "")
+        : "  No VITE_SUPABASE_URL found in any .env* file, and client.ts falls back to PROD.\n") +
+      `\n  Fix: create .env.local (gitignored, wins over .env) with the staging project:\n` +
+      `    VITE_SUPABASE_URL=${STAGING_URL}\n` +
+      `    VITE_SUPABASE_ANON_KEY=<staging anon key>\n` +
+      `  then restart the dev server. Or just target a *.vercel.app preview instead.`
+  );
+}
+
 const SECRET = process.env.STAGING_SUPABASE_SECRET_KEY;
 if (!SECRET) {
   die(
