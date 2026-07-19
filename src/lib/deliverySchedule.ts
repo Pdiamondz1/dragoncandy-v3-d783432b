@@ -53,6 +53,30 @@ export function todayISO(): string {
   return toLocalISODate(new Date());
 }
 
+/** Local midnight today — the reference point for every comparison in this module. */
+function startOfToday(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/**
+ * Whether a YYYY-MM-DD deadline is acceptable to launch against.
+ *
+ * **Today counts.** DragonDash turns content around in 1–3 hours, so a same-day deadline
+ * is the honest one for it — rejecting today would make the tier unlaunchable.
+ *
+ * This replaced a `new Date(d) > new Date()` check, which failed twice over: it parsed a
+ * date-only string as UTC midnight (already in the past by morning anywhere west of
+ * Greenwich) and it required strictly-future, blocking same-day entirely.
+ */
+export function isDeadlineAcceptable(deadline: string): boolean {
+  if (!deadline) return false;
+  const target = new Date(`${deadline}T00:00:00`);
+  if (Number.isNaN(target.getTime())) return false;
+  return target.getTime() >= startOfToday().getTime();
+}
+
 /** Forward: the deadline a tier implies. */
 export function deadlineForTier(tier: DeliveryTier): string {
   const d = new Date();
@@ -64,7 +88,7 @@ export function deadlineForTier(tier: DeliveryTier): string {
  * Reverse: the tier a deadline implies.
  *
  * Always resolves. The control this replaced returned null past 22 days, which left no
- * option highlighted at all; here anything past 3 days is simply Standard.
+ * option highlighted at all; here anything beyond Express's reach is simply Standard.
  */
 export function tierForDeadline(deadline: string): DeliveryTier {
   if (!deadline) return 'standard';
@@ -72,11 +96,10 @@ export function tierForDeadline(deadline: string): DeliveryTier {
   const target = new Date(`${deadline}T00:00:00`);
   if (Number.isNaN(target.getTime())) return 'standard';
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
   // Midnight-to-midnight, rounded — immune to the 23/25-hour days around DST.
-  const diffDays = Math.round((target.getTime() - today.getTime()) / 86_400_000);
+  const diffDays = Math.round(
+    (target.getTime() - startOfToday().getTime()) / 86_400_000
+  );
 
   if (diffDays <= TIER_MAX_DAYS_OUT.dragondash) return 'dragondash';
   if (diffDays <= TIER_MAX_DAYS_OUT.express) return 'express';

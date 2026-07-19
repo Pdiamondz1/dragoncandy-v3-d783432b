@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isDeadlineAcceptable } from '@/lib/deliverySchedule';
 
 const contentTypeSchema = z.enum(['photo', 'video_reel', 'story', 'carousel', 'tiktok', 'youtube_short']);
 const platformSchema = z.enum(['instagram', 'tiktok', 'facebook', 'youtube', 'google_business', 'multi_platform']);
@@ -81,10 +82,7 @@ export const launchValidationSchema = z.object({
     description: z.string().nullish(),
   })).min(1, 'At least one deliverable required'),
   fixed_price: z.number().min(50, 'Price must be at least $50'),
-  deadline: z.string().refine(
-    (d) => new Date(d) > new Date(),
-    'Deadline must be in the future'
-  ),
+  deadline: z.string().refine(isDeadlineAcceptable, 'Deadline cannot be in the past'),
   delivery_type: z.enum(['standard', 'expedited', 'dragonrush']),
   tagline: z.string().max(120).optional().default(''),
   per_creator_cap: z.number().min(0).optional().default(0),

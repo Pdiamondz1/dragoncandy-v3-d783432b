@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import type { DeliveryTier } from '@/types/campaignMedia';
-import { deadlineForTier, tierForDeadline, todayISO } from './deliverySchedule';
+import {
+  deadlineForTier,
+  tierForDeadline,
+  todayISO,
+  isDeadlineAcceptable,
+} from './deliverySchedule';
+import { launchValidationSchema } from './campaignCreatorValidation';
 
 const ALL_TIERS: DeliveryTier[] = ['dragondash', 'express', 'standard'];
 
@@ -82,5 +88,37 @@ describe('tierForDeadline', () => {
 describe('todayISO', () => {
   it('is zero days out', () => {
     expect(daysOut(todayISO())).toBe(0);
+  });
+});
+
+describe('isDeadlineAcceptable', () => {
+  it('accepts today, because DragonDash delivers same-day', () => {
+    expect(isDeadlineAcceptable(todayISO())).toBe(true);
+  });
+
+  it('accepts future dates and rejects past ones', () => {
+    expect(isDeadlineAcceptable(localDateNDaysOut(1))).toBe(true);
+    expect(isDeadlineAcceptable(localDateNDaysOut(30))).toBe(true);
+    expect(isDeadlineAcceptable(localDateNDaysOut(-1))).toBe(false);
+  });
+
+  it('rejects empty and unparseable input', () => {
+    expect(isDeadlineAcceptable('')).toBe(false);
+    expect(isDeadlineAcceptable('not-a-date')).toBe(false);
+  });
+});
+
+describe('launch validation accepts every tier this selector can produce', () => {
+  // Regression: DragonDash writes today's date, and the old check
+  // (`new Date(d) > new Date()`) parsed that as UTC midnight — already past by
+  // morning in the Americas — so picking DragonDash made the campaign unlaunchable.
+  const deadlineField = launchValidationSchema.shape.deadline;
+
+  it.each(ALL_TIERS)('accepts the %s deadline', (tier) => {
+    expect(deadlineField.safeParse(deadlineForTier(tier)).success).toBe(true);
+  });
+
+  it('still rejects a past deadline', () => {
+    expect(deadlineField.safeParse(localDateNDaysOut(-1)).success).toBe(false);
   });
 });
