@@ -98,6 +98,11 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **`data-exposure-reviewer` subagent** — a read-only reviewer for the dominant Codex P1 class
+  (service-role RLS bypass), resolving the [[Claude Subagents Audit]] Tier-2 deferral; hard-wired
+  into `codex-review` step 1. Its first runs found **6 unfixed exposures on `origin/main`** — filed
+  in `.claude/handoffs/2026-07-19-service-role-exposure-findings.md`, **not yet fixed**.
+  → `docs/wiki/concepts/service-role-data-exposure.md`
 - **AIOS kill-switch playbook + loop-callable playbooks** — a report-only `kill-switch-watch`
   playbook over §3's four kill-switches (pre-revenue: an armed-watch scaffold) + a
   `playbook-runner-agent` template making any playbook loop-callable. Live weekly (Mon 12:00

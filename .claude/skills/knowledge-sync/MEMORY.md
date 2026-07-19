@@ -17,7 +17,19 @@
   `.git/knowledge-sync.log` — `errors=0` is the authority (not counts); confirm retrievability
   with a `content ilike` query on the changed pages.
 - **[scope] Branch off `origin/main`, not the just-merged worktree.** A merged feature branch
-  is squash-diverged; author knowledge-sync docs on a fresh branch for a clean PR.
+  is squash-diverged; author knowledge-sync docs on a fresh branch for a clean PR. **Corollary
+  (2026-07-19): before editing ANY core doc, diff it against `origin/main` first.** That check caught
+  `origin/main` having restructured PROJECT_CONTEXT under me (PR #294: §5 → index + `SHIPPED_LOG.md`);
+  writing from the stale worktree would have produced an entry in the exact format #294 deleted, plus
+  a conflict against a 100KB restructure. Rebase onto `origin/main` before authoring.
+- **[gap-claims] Verify a claimed knowledge gap against `origin/main`, never a worktree.** A worktree
+  drifts silently — **absence in one proves nothing.** On 2026-07-19 I asserted "PR #288 shipped
+  without its knowledge-sync" from a worktree 15 commits behind; PR #290 had already done the sync and
+  #291 verified it. The claim reached the founder, a spec, a plan, and a ledger before being caught,
+  and would have produced a **duplicate** wiki source — the exact opposite of "compound, don't
+  duplicate". Cheap check first: `git fetch origin` then
+  `git ls-tree -r --name-only origin/main -- docs/wiki/raw/sessions/ | grep <topic>`. Applies to any
+  "X is missing / was never documented" claim, not just knowledge-sync.
 - **[runlog-in-pr] Bundle this MEMORY.md Run Log entry INTO the docs PR commit**, not a
   separate follow-up. Forgetting it (as on the #176 run) costs a whole extra PR cycle just to
   persist one bookkeeping line.
@@ -47,6 +59,33 @@
   build the knowledge-sync commit on a fresh local branch off the FETCHED PR head, not the stale one.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-07-19] data-exposure-reviewer subagent (branch `worktree-dc-improvements-3`)
+- Output: new `raw/sessions/2026-07-19-data-exposure-reviewer.md`, new
+  `concepts/service-role-data-exposure.md`, **edited in place** `analyses/claude-subagents-audit.md`
+  (Tier-2 `rls-migration-reviewer` deferral → RESOLVED/shipped/renamed), `index.md` (new Sources +
+  Concepts lines, alphabetical; refreshed the `[[Claude Subagents Audit]]` Analyses entry), `log.md`
+  (new ingest entry at top), **PROJECT_CONTEXT §5 one-line index entry + the full prose in
+  `SHIPPED_LOG.md`** (first run under the post-#294 structure), + THIS entry.
+  No DATABASE_SCHEMA/DESIGN_SYSTEM/CLAUDE.md change (markdown-only branch: one agent + one skill line).
+- Happened: **the run started on a false premise I had asserted myself.** I told the founder PR #288
+  shipped without its knowledge-sync and wrote it into the spec, the plan, and the ledger. It was
+  wrong — checked from *this worktree*, **15 commits behind `origin/main`**, where PR #290 had already
+  done the sync and #291 verified it. Caught only at step 1 of this skill, by the `[scope]` Lesson's
+  "is it identical to origin/main?" check. Retracted in the spec + plan rather than deleted.
+- Worked: **[scope] paid for itself and then some.** The diff-vs-`origin/main` check caught both the
+  false gap AND that `origin/main` had restructured PROJECT_CONTEXT (PR #294: §5 → index +
+  `SHIPPED_LOG.md`, 129,707 → 28,825 B). Writing docs from the stale worktree would have produced a
+  long §5 entry in exactly the format #294 deleted, plus a conflict against a 100KB restructure.
+  Rebased onto `origin/main` first (7 commits, zero conflicts — `codex-review/SKILL.md` was unchanged
+  there), then authored against the new structure. [wikilinks]-exact: grepped `index.md` before
+  linking — dropped `[[Worktree Stale-Main Gotcha]]` because **no such page exists** (stated the
+  lesson inline instead of minting a dangling link). [runlog-in-pr] bundled. Compounded rather than
+  duplicated: edited the existing audit's Tier-2 block in place instead of spawning a thin
+  "audit part 2" page.
+- Failed: the #288 error itself — three artifacts had to be corrected after the fact. RAG sync is
+  post-merge (branch unmerged), per [rag-sync].
+- Remember: promoted to a Lesson below ([gap-claims]).
 
 ### [2026-07-19] Context-tax split — PROJECT_CONTEXT §5 -> index + SHIPPED_LOG (PRs #294 + #295)
 - Output: `docs/wiki/concepts/context-tax.md` + its `index.md` Sources/Concepts entries + the

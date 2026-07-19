@@ -29,6 +29,53 @@
 
 ---END-HEADER---
 
+- `data-exposure-reviewer` subagent — service-role RLS-bypass review — **built
+  (branch `worktree-dc-improvements-3`, 2026-07-19; markdown only, no code/schema/edge-fn/deploy).**
+  The ask was "this project only has 1 sub-agent — port Harbormill AIOS's". **The premise did not
+  hold:** Harbormill has **zero** custom subagents (no `.claude/agents/`, none in git history), its
+  agent layer is skills, and DC is *ahead* on two of its four candidates — `loop-audit` is behind
+  Loop Scout (which verifies its conditions with live PostgREST probes and dedupes via stable
+  fingerprints), and `validator-forge` grades done-rules as prose where DC shipped the
+  `{done,checklist,missing}` contract `parseDoneCheck` consumes. Only `wiki-gardener` is a real DC
+  gap; **the valuable direction is DC → Harbormill.** So the work became "is *one* new subagent
+  justified?" — yes, on hard evidence: for PR #260 the record reads *"edge-function-reviewer **PASS**
+  on both; Codex clean (**1 P1 fixed**)"* on a branch closing a **service-role IDOR** in
+  `campaignDetail` and making `org_id` server-side-only. A service-role client **bypasses RLS
+  entirely** (86 of 90 edge fns build one, + 4 `_shared` modules inheriting into every importer), and
+  these defects **run perfectly**, so the sibling agent's "will it deploy and run?" lens passes them —
+  its RLS mention is one clause under a bundling/`verify_jwt`-led checklist. **A buried checkbox is
+  not a specialty.** Cost, quantified: 14-round and 10-round Codex loops, 8-fix loops twice.
+  This resolves the 2026-07-07 [[Claude Subagents Audit]] Tier-2 deferral (`~` partial
+  non-redundancy vs `verify-db-schema`) by stating the boundary it asked for — **`verify-db-schema`
+  checks RLS *permits* the real caller; this checks RLS and the query *exclude* everyone else** —
+  and renames it (the evidence is in query call sites, not migrations). Ships `Read/Grep/Glob` only
+  (**no MCP tools**: `execute_sql` runs DDL/DML; `list_tables`/`get_advisors` were granted then
+  dropped — unused, and `get_advisors` would reopen the shelved 149-advisor triage), `model: opus`
+  (the cheap-specialist heuristic assumes symmetric error cost, false when a miss is a cross-tenant
+  leak), 8 checks, and a **hard-wired dispatch in `codex-review` step 1** since `description:`
+  auto-invocation is best-effort and not test-verifiable. Keystone contract: the changed-file list is
+  a **TRIGGER SET, not a READ SET** — the opposite of `edge-function-reviewer`'s "do not fan out".
+  Validated by re-staging 3 historical defects as detached replay worktrees **built before the agent**;
+  all passed, including the sharpest — on the Crews fixture it reached
+  `send-campaign-publish-notifications` **unprompted, by grep** (that file deliberately excluded from
+  its input) and flagged the platform-wide broadcast leak that took an adversarial review to find
+  after 14 Codex rounds. That replay needed **reconstruction, not `<sha>^`** (`dc827171` is a squash
+  merge whose parent has zero `creator_group` migrations). Whole-branch review then caught what the
+  replays could not: **the entry gate could gate out check 6**, the flagship capability — a
+  scope-column-only migration has no `policy`/`security definer`, so it fell through; the Crews replay
+  passed only because 16 *sibling* migrations held the gate open. Durable lesson: **a suite can appear
+  to cover a capability while exercising it only through an unrelated precondition.** Fixed +
+  regression-tested. Its first real runs found **6 unfixed exposures on `origin/main`** (5
+  controller-verified against `origin/main`, 1 flagged unverified) — sharpest being
+  `donny-chat/index.ts` where `:1237` has the visibility filter and its sibling `:1295` does not, 58
+  lines apart; filed in `.claude/handoffs/2026-07-19-service-role-exposure-findings.md` for a
+  **dedicated branch**, deliberately not fixed here. 983/983 tests. **Correction recorded:** an
+  earlier claim in this session that PR #288 shipped without its knowledge-sync was **wrong** —
+  asserted from a worktree 15 commits behind `origin/main`, where PR #290 had already done it and
+  #291 verified it; retracted in the spec + plan rather than deleted so the error stays traceable.
+  Concept: `docs/wiki/concepts/service-role-data-exposure.md`. Spec:
+  `docs/superpowers/specs/2026-07-19-data-exposure-reviewer-design.md`.
+
 - Session context-tax reduction — PROJECT_CONTEXT §5 split into an index + SHIPPED_LOG —
   **shipped (PRs #294 + #295, 2026-07-19).** Prompted by a founder-supplied video on Claude token
   efficiency, **audited against the repo before adopting** (3 of its 10 techniques applied; RTK and

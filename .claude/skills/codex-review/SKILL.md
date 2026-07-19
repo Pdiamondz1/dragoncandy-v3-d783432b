@@ -13,17 +13,26 @@ and BEFORE finishing a branch / opening a PR. Not optional. See
 
 ## Steps
 
-1. From the worktree, run the review against the base branch:
+1. **Dispatch `data-exposure-reviewer` first** if the branch touches `supabase/functions/` or
+   `supabase/migrations/`. Give it the changed-file list plus the unified diff for any migration
+   file. Resolve every `high` and `med` finding before running Codex — service-role RLS bypass is
+   the single most common Codex P1 on this project, and front-running it is what keeps the Codex
+   loop from running 10+ rounds. Route any `low` definer-grant finding to the `verify-db-schema`
+   skill instead of dismissing it — that's the one class `data-exposure-reviewer` explicitly can't
+   adjudicate without prod access, and `verify-db-schema` is the reviewer that can. Skip only for a
+   frontend-only or docs-only branch.
+
+2. From the worktree, run the review against the base branch:
    ```bash
    codex review --base main --title "<short title>"
    ```
    Other modes: `--uncommitted` (staged/unstaged/untracked), `--commit <sha>` (one commit).
    (Codex CLI is installed: `codex-cli`, at `~/AppData/Roaming/npm/codex`.)
 
-2. **Act on findings.** If Codex flags real issues, Claude fixes them, then **re-run** Codex
+3. **Act on findings.** If Codex flags real issues, Claude fixes them, then **re-run** Codex
    until it's clean. Don't merge with unaddressed real findings.
 
-3. **Relay the verdict** to the user — quote Codex's summary line.
+4. **Relay the verdict** to the user — quote Codex's summary line.
 
 ## Notes
 
