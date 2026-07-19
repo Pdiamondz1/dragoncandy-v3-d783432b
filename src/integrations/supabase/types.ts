@@ -3201,7 +3201,7 @@ export type Database = {
           created_at: string
           id: string
           input: Json
-          message_id: string
+          message_id: string | null
           output: Json | null
           status: string
           tool_name: string
@@ -3211,7 +3211,7 @@ export type Database = {
           created_at?: string
           id?: string
           input?: Json
-          message_id: string
+          message_id?: string | null
           output?: Json | null
           status?: string
           tool_name: string
@@ -3221,7 +3221,7 @@ export type Database = {
           created_at?: string
           id?: string
           input?: Json
-          message_id?: string
+          message_id?: string | null
           output?: Json | null
           status?: string
           tool_name?: string

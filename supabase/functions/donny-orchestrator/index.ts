@@ -463,14 +463,28 @@ serve(async (req) => {
           const mcpResult = await mcpBridge.callTool(toolName, toolInput);
           agentResult = JSON.stringify(mcpResult);
 
-          // Audit log — all MCP tool calls logged to donny_tool_executions
-          await supabase.from("donny_tool_executions").insert({
-            user_id: userId,
-            tool_name: toolName,
-            tool_input: toolInput,
-            tool_output: mcpResult,
-            is_error: mcpResult.isError ?? false,
-          }).then(() => {}, (err: unknown) => console.error("[donny-orchestrator] tool exec log failed:", err));
+          // Audit log — all MCP tool calls logged to donny_tool_executions.
+          // This insert wrote nothing for the function's entire life: it used columns that
+          // don't exist (tool_input/tool_output/is_error) and the failure was invisible,
+          // because supabase-js v2 RESOLVES rather than rejects on a Postgrest error, so the
+          // old `.then(() => {}, fail)` shape discarded `{error}` entirely. Hence both the
+          // real column names AND the explicit `error` check — the latter is what keeps any
+          // future schema/RLS drift visible instead of silently emptying the trace again.
+          // `message_id` is null by design: the assistant message is persisted client-side
+          // in useDonny, so the orchestrator never holds its id.
+          try {
+            const { error: logErr } = await supabase.from("donny_tool_executions").insert({
+              user_id: userId,
+              message_id: null,
+              tool_name: toolName,
+              input: toolInput,
+              output: mcpResult,
+              status: mcpResult.isError ? "error" : "success",
+            });
+            if (logErr) console.error("[donny-orchestrator] tool exec log failed:", logErr);
+          } catch (err) {
+            console.error("[donny-orchestrator] tool exec log threw:", err);
+          }
         } else if (isSocialTool(toolName)) {
           agentResult = JSON.stringify({ error: "No social accounts connected. Connect a social account in the Social Media Manager to use this feature." });
         } else {
