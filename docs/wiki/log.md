@@ -1532,3 +1532,14 @@ nonexistent help_articles columns → 0 results). Applied 2 migrations to prod (
 trigger + GIN + rewards category; 6 refreshed + 5 new articles) and deployed donny-orchestrator v68
 (verify_jwt=true). Pages created: concepts/help-center-and-guidance.md. Pages updated: index.md
 (Concepts). RAG sync + core-doc refresh run post-merge.
+
+## [2026-07-19] update | Help center screenshots + sidebar link & improved search
+Two frontend/content help efforts. PR #306: 7 new feature screenshots + a landing refresh embedded
+into help articles via the public `help-screenshots` bucket (2 content migrations; targeted
+`regexp_replace` insert; CLI upload gotchas — relative src + `--workdir`, PowerShell not Git Bash,
+cp won't overwrite → additive + repoint). PR #310: a Help item in the desktop sidebar (`navConfig`,
+all 3 roles) + an improved `/help` search (pure client-side ranked `rankHelpArticles`, `?q=` IS the
+state, article-page search box; client-side over `search_vector` for the ~32-article corpus).
+Sources: raw/sessions/2026-07-19-help-center-screenshots-and-search.md. Pages updated:
+concepts/help-center-and-guidance.md (Screenshots + Search sections, stale-screenshots issue
+resolved), index.md (Sources + Concepts). RAG sync verified post-merge via the docs/ hook.
