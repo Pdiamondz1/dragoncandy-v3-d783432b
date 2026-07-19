@@ -110,9 +110,12 @@ export const ShortlistDrawer: React.FC<ShortlistDrawerProps> = ({
 
   return (
     <>
-      {/* Peek bar (mobile only) — shows when drawer is closed and there are items */}
+      {/* Peek bar (mobile only) — shows when drawer is closed and there are items.
+          Mobile bottom offset clears the fixed MobileBottomNav — same 6rem+safe-area
+          clearance as StickyApplyCTA (the app's pb-24 nav-clearance convention), so the
+          bar sits fully above the nav bar + floating Donny emblem. Desktop has no bottom nav. */}
       {count > 0 && !isOpen && (
-        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+60px)] md:bottom-4 left-2 right-2 md:left-auto md:right-4 md:w-80 z-40">
+        <div className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] md:bottom-4 left-2 right-2 md:left-auto md:right-4 md:w-80 z-40">
           <button
             onClick={() => onOpenChange(true)}
             className="w-full flex items-center justify-between px-4 py-3 bg-white border border-dc-teal rounded-2xl shadow-lg hover:shadow-xl transition-shadow"

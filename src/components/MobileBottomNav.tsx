@@ -30,8 +30,12 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
   return createPortal(
     <>
       {/* Always visible — no hide-on-scroll: the nav is Donny's only mobile entry point
-          (founder decision 2026-07-14; the old scroll-direction hide left users stranded). */}
-      <nav aria-label="Mobile bottom" className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-gray-100 pb-[env(safe-area-inset-bottom)]">
+          (founder decision 2026-07-14; the old scroll-direction hide left users stranded).
+          z-40 (NOT z-50): app chrome must sit BELOW the Radix modal layer (Sheet/Dialog
+          overlay + content are all z-50). At z-50 the nav TIED the modal layer and, being
+          portaled to <body> too, its opaque bar painted over bottom-sheet action buttons on
+          iOS Safari (DOM-order tie). Keep it z-40 so every dialog/sheet renders above it. */}
+      <nav aria-label="Mobile bottom" className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white border-t border-gray-100 pb-[env(safe-area-inset-bottom)]">
         <div className="flex items-end justify-around px-1 pt-1 pb-2">
           {items.map((item) => {
             const Icon = item.icon;
