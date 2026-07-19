@@ -120,7 +120,13 @@ function assertTargetUsesStaging(url) {
   }
 
   // Local dev server: Vite reads .env* at startup, so those files decide the backend.
-  const envFiles = [".env.local", ".env.development.local", ".env.development", ".env"];
+  //
+  // Listed HIGHEST-priority first. Vite loads `.env` → `.env.local` → `.env.[mode]` →
+  // `.env.[mode].local` with each overriding the last, so the effective value is the
+  // reverse of that load order. `npm run dev` runs mode=development. Getting this
+  // backwards would make the gate approve a prod-pointed server (or reject a correctly
+  // staged one), which is worse than having no gate — it would look verified.
+  const envFiles = [".env.development.local", ".env.development", ".env.local", ".env"];
   const repoRoot = join(HERE, "..", "..");
   let seen = null;
 
