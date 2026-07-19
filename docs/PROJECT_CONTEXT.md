@@ -91,23 +91,12 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   **Pending:** register the Chat app, set `GOOGLE_CHAT_PROJECT_NUMBER` +
   `GOOGLE_ALLOWED_DOMAIN` — all blocked on creating the DragonCandy Workspace org.
   → `docs/superpowers/specs/2026-06-11-google-workspace-connections-design.md`
-- **AIOS Workspace reading, Strategy-library import & in-UI knowledge merge** — Donny reads
-  AIOS Drive docs; `wiki-merge-pr` + a "Pending knowledge" panel merge wiki PRs in-UI. Code
-  is on `main`, but edge functions do not deploy on merge. **Pending:** deploy
-  `wiki-merge-pr` + `wiki-import-doc` + `google-workspace-proxy`, redeploy `donny-chat`,
-  sync the RAG, verify prod.
-  → `docs/superpowers/specs/2026-06-20-aios-workspace-knowledge-merge-design.md` · `feat/aios-workspace-knowledge-merge`
 - **AIOS kill-switch playbook + loop-callable playbooks** — a report-only
   `kill-switch-watch` playbook over §3's four kill-switches (pre-revenue, an armed-watch
-  scaffold) + a `playbook-runner-agent` template making any playbook loop-callable.
-  **Pending:** apply the seed migration, then `/schedule` the runner pinned to
-  `slug='kill-switch-watch'`.
+  scaffold) + a `playbook-runner-agent` template making any playbook loop-callable. The seed
+  is applied and the playbook has run (manually, 3×). **Pending:** `/schedule` the runner
+  pinned to `slug='kill-switch-watch'` so it runs unattended.
   → `docs/superpowers/specs/2026-06-20-aios-playbook-killswitch-loop-design.md` · `feat/aios-killswitch-playbook-loop`
-- **Dragon Rewards Engine (DRE) v1** — points ledger, idempotent award engine, 5 tiers +
-  badges. Migrations, Vault URL, edge fn and cron are all live (it has already backfilled
-  real users). Later phases (referrals, streaks, redemption) deferred. **Pending:** set the
-  real `go_live_at` — the second launch switch, which un-mutes the notification bell.
-  → `docs/wiki/analyses/dragoncandy-dragon-rewards-engine-dre-full-system-spec.md` · #191
 - **Dezzy AI Press & Events scout (Domain 4)** — the one Dezzy domain shipping as a cloud
   routine, not a playbook (press discovery needs the open web the runner lacks); files
   URL-required, deduped findings monthly. The template is committed. **Pending:** create the
@@ -118,9 +107,9 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   **Pending:** set the `LEADS_NOTIFY_EMAIL` edge secret — without it nobody is notified of a
   captured lead. → `docs/wiki/concepts/landing-lead-capture.md` · `feat/landing-luxe-redesign`
 - **AIOS Strategy-library management** — `is_core` protection, reversible soft-archive, dedup
-  RPCs, an archive-aware sync, and a monthly audit routine. Code + migration are on `main`.
-  **Pending:** apply the migration, deploy `donny-knowledge-sync` + `aios-playbook-run` +
-  `donny-chat`, and `/schedule` the audit routine.
+  RPCs, an archive-aware sync, and a monthly audit routine. Migration applied (21 docs
+  core-flagged, all four RPCs live) and the edge functions are deployed. **Pending:**
+  `/schedule` the monthly audit routine.
   → `docs/superpowers/specs/2026-06-29-aios-strategy-library-management-design.md` · `feat/aios-strategy-library-management`
 - **AIOS agent-loop audit (3 gaps)** — the `make-validator` meta-skill, `/internal/loops`
   mission control, and the runtime-spend source of truth that makes `donny_cost_ledger`
@@ -128,12 +117,6 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   **Pending:** `/schedule` the `playbook-runner-agent` so the `ai-cost-vs-cap` verdict files
   a finding (same runner as the kill-switch entry).
   → `docs/wiki/concepts/aios-runtime-spend-source-of-truth.md` · #217, #218, #220
-- **Donny web access** — `web_search` + `read_url` client tools on Tavily (server-side fetch,
-  so no SSRF surface), metered off `donny_cost_ledger` rows. Caching + per-tier caps
-  deferred. **Pending:** set `TAVILY_API_KEY` and apply the ledger `tier`-CHECK migration
-  *before* deploying `donny-chat`, else inserts fail silently and caps never fire. (Later
-  entries suggest this may already be live — confirm before acting.)
-  → `docs/wiki/concepts/donny-web-access.md` · `feat/donny-web-access`
 
 ### Shipped
 
@@ -166,6 +149,11 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 - **AIOS Founder Playbooks** — saved repeatable internal tasks, report-only + propose through
   the corrections gate. Donny's conversational playbook tools deferred.
   → `docs/superpowers/specs/2026-06-19-aios-founder-playbooks-design.md` · #132
+- **AIOS Workspace reading, Strategy-library import & in-UI knowledge merge** — Donny reads
+  AIOS Drive docs; `wiki-merge-pr` + a "Pending knowledge" panel merge wiki PRs in-UI,
+  deleting the GitHub trip from every knowledge capture. All three edge functions are
+  deployed and live.
+  → `docs/superpowers/specs/2026-06-20-aios-workspace-knowledge-merge-design.md` · `feat/aios-workspace-knowledge-merge`
 - **AIOS Validator Skills → closeable loops** — one `{done,checklist,missing}` verdict
   contract; `verify-knowledge` + a bounded verify→fix loop in `knowledge-sync`.
   → `docs/superpowers/specs/2026-06-20-validator-skills-loops-design.md` · `validator-skills-loops`
@@ -179,7 +167,7 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   (DB-backed memory for cloud routines) designed but deferred.
   → `docs/wiki/concepts/loop-memory-protocol.md` · #161
 - **AIOS security-advisor triage** — 149 prod advisors triaged read-only, then deliberately
-  shelved pre-launch. No changes made; do not re-raise as new.
+  shelved pre-launch. No changes made.
   → `docs/wiki/concepts/security-definer-advisor-triage.md`
 - **Test-mode Stripe UX** — one-tap payout onboarding + card-only checkout, gated on a test
   key so live mode is byte-unchanged. → `docs/wiki/concepts/test-mode-stripe-ux.md` · #168
@@ -199,7 +187,7 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   → `docs/wiki/concepts/internal-only-users.md` · #185, #180
 - **Dezzy AI — Outreach Machine (Domain 3)** — report-only `dezzy-outreach` +
   `get_reactivation_targets` (public handles only, never emails). Auto-send deferred to v1.5+.
-  → `docs/wiki/analyses/the-core-idea-two-agents-one-company.md` · `worktree-DC-Dezzy-AI`
+  → `docs/wiki/concepts/dezzy-agent-playbook-suite.md` · `worktree-DC-Dezzy-AI`
 - **Dezzy AI content playbooks (Domains 1+2)** — draft-only `dezzy-content-calendar` +
   `dezzy-website-updates`, seeded on prod. → `docs/wiki/concepts/dezzy-content-playbooks.md` · #190
 - **Dezzy AI Weekly Operating Brief (Domain 5)** — an admin-only action console orchestrating
@@ -208,6 +196,10 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 - **Dezzy AI SEO articles (Domain 6 slice)** — one publish-ready SEO article per run for $0
   organic acquisition; seeded on prod.
   → `docs/wiki/concepts/dezzy-agent-playbook-suite.md` · #196
+- **Dragon Rewards Engine (DRE) v1** — points ledger, idempotent award engine, 5 tiers +
+  badges; live since 2026-06-28, when both launch switches were thrown in one transaction
+  (`go_live_at` set and `DRAGON_REWARDS_ENABLED` on). Later phases (referrals, streaks,
+  redemption) deferred. → `docs/wiki/concepts/dragon-rewards-engine.md` · #191
 - **Dragon Rewards UI launch gate** — rewards UI gated behind `DRAGON_REWARDS_ENABLED` (a
   public-read flag, since public profiles are anon-accessible); launch is two switches.
   → `docs/wiki/concepts/dragon-rewards-engine.md` · `feat/dre-ui-launch-gate`
@@ -257,7 +249,7 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   one media tree mounts; desktop grid unchanged. → `docs/wiki/concepts/dragon-feed.md` · #242
 - **DragonFeed Instagram-style creator search** — one box, two modes: empty → media feed;
   name and/or location → a vertical creator list narrowed by radius.
-  → `docs/wiki/concepts/dragon-feed.md` · #242
+  → `docs/wiki/concepts/dragon-feed.md` · `feat/dragonfeed-creator-search`
 - **Donny desktop panel fixed-overlay** — the panel left the flex flow, so `<main>` keeps full
   width and pages stop squishing.
   → `docs/wiki/concepts/mobile-viewport-fixed-positioning.md` · #236
@@ -267,9 +259,12 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 - **Donny campaign-idea creativity** — the weak ideas were the prompt, not the model: freed
   prompt, a wildcard per batch, a premium 8192-token tier with a Sonnet floor.
   → `docs/wiki/concepts/campaign-generation-creativity.md` · #243
+- **Donny web access** — `web_search` + `read_url` client tools on Tavily (server-side fetch,
+  so no SSRF surface), live on both Donny surfaces and metered off `donny_cost_ledger` rows.
+  Response caching + per-tier caps deferred.
+  → `docs/wiki/concepts/donny-web-access.md` · `feat/donny-web-access`
 - **Donny chat `match_creators` fix** — two ANDed hard `ilike` filters replaced by
   fetch-broad→score-soft→rank; service-role queries re-assert `profile_visibility='public'`.
-  Open follow-up: apply that same filter to `match-creators`.
   → `docs/wiki/concepts/ai-creator-matching.md` · #241
 - **Web Donny "find creators near me"** — the consumer chat calls `donny-orchestrator`, not
   `donny-chat`: added a `find_creators` sub-agent over the shared scorer; live-verified.
