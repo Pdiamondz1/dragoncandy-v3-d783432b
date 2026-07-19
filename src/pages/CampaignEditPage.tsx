@@ -9,8 +9,7 @@ import { ArrowLeft, Save, Eye, X } from 'lucide-react';
 import { EditorSection } from '@/components/campaign-creator/EditorSection';
 import { PlatformChips } from '@/components/campaign-creator/PlatformChips';
 import { DeliverablesList } from '@/components/campaign-creator/DeliverablesList';
-import { TimelinePicker } from '@/components/campaign-creator/TimelinePicker';
-import { TierBadge } from '@/components/campaign-creator/TierBadge';
+import { DeliveryScheduleSelector } from '@/components/campaign-creator/DeliveryScheduleSelector';
 import { CostBreakdown } from '@/components/campaigns/CostBreakdown';
 import { CampaignSponsorshipToggle } from '@/components/campaigns/CampaignSponsorshipToggle';
 import { Input } from '@/components/ui/input';
@@ -372,15 +371,17 @@ const CampaignEditPage: React.FC = () => {
           {/* ── Section 4: Logistics & Targeting ─────────────────────────── */}
           <EditorSection title="Logistics & Targeting" defaultOpen>
 
-            <TimelinePicker
+            <DeliveryScheduleSelector
               deadline={formData.deadline}
-              onChange={v => handleInputChange('deadline', v)}
-            />
-
-            <TierBadge
               deliveryType={formData.delivery_type}
               tierReasoning={formData.tier_reasoning}
-              onChange={v => handleInputChange('delivery_type', v)}
+              onChange={patch => {
+                handleInputChange('deadline', patch.deadline);
+                handleInputChange('delivery_type', patch.delivery_type);
+                if (patch.tier_reasoning !== undefined) {
+                  handleInputChange('tier_reasoning', patch.tier_reasoning);
+                }
+              }}
             />
 
             {/* Geographic scope */}
