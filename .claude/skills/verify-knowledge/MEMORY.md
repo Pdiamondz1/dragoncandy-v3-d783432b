@@ -34,6 +34,28 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-19] Service-role remediation knowledge-sync validation (PR #308 code + PR #314 docs)
+- Output: emitted `done:true` (all 3 met), closing the knowledge-sync loop for the service-role
+  authorization remediation.
+- Happened: (a) index-incompleteness 0 by path; **no contradiction** despite the concept page now
+  carrying both "What it found on its first runs" (findings filed, unfixed) and "The remediation
+  (shipped + deployed)" — that is a chronological narrative *within one page*, not two pages
+  disagreeing, and the stale claim that DID exist (PROJECT_CONTEXT §5's "not yet fixed" from #307)
+  was corrected in the same PR rather than left to rot. (b) `LAST_WIKI_SYNC` 09:44:05Z vs `RAG_LAST`
+  08:35:05Z ≈ 69 min — inside the 24h window, and an **UPDATE-only** sync (`inserted=0 updated=107/85
+  errors=0`) so the stale timestamp is expected per [freshness-proxy]; content probes confirm
+  retrievability (`campaign-access.ts`=3, `handleRegenerate`=2, `isCollaborator`=2). (c) concept in
+  index + named twice in log; new raw session cataloged.
+- Worked: [freshness-proxy] again on an UPDATE-only sync — `handleRegenerate` and `isCollaborator` are
+  single tokens unique to the new remediation prose and can't straddle a line-wrap, so they are
+  unambiguous RAG proof despite `max(updated_at)` not moving. Validated **post-merge this time**
+  (unlike the #307 run, which was pre-merge and correctly saw its own pages absent from the RAG) — so
+  both scope directions of [unmerged-branch] are now confirmed in practice.
+- Failed: none as a validator.
+- Remember: nothing new — this run re-confirms [freshness-proxy], [unmerged-branch] (post-merge
+  direction), and [dated-analysis] (a page narrating found→fixed in sequence is not self-contradictory).
+
+
 ### [2026-07-19] Help center screenshots + sidebar/search knowledge-sync validation (docs PR #312, POST-merge)
 - Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for the help-center
   screenshots (#306) + sidebar/search (#310) efforts.
