@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, BookOpen, Megaphone, Zap, CreditCard, Shield, Sparkles, MessageCircle, ChevronDown, ArrowLeft, Award } from "lucide-react";
@@ -8,16 +8,7 @@ import { Button } from "@/components/ui/button";
 import { SEO } from "@/components/SEO";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PublicPageHeader } from '@/components/PublicPageHeader';
-
-interface HelpArticle {
-  id: string;
-  slug: string;
-  title: string;
-  body: string;
-  category: string;
-  roles: string[];
-  search_terms: string[];
-}
+import { rankHelpArticles, type HelpArticle } from "@/lib/helpSearch";
 
 const CATEGORIES = [
   { key: "getting_started", label: "Getting Started", icon: BookOpen },
@@ -30,9 +21,13 @@ const CATEGORIES = [
   { key: "rewards", label: "Rewards", icon: Award },
 ] as const;
 
+const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
+  CATEGORIES.map((c) => [c.key, c.label])
+);
+
 export default function HelpCenter() {
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
   const [openCategories, setOpenCategories] = useState<Set<string>>(
     new Set(CATEGORIES.map((c) => c.key))
   );
@@ -50,16 +45,24 @@ export default function HelpCenter() {
     },
   });
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return articles;
-    const q = search.toLowerCase();
-    return articles.filter(
-      (a) =>
-        a.title.toLowerCase().includes(q) ||
-        a.search_terms.some((t) => t.toLowerCase().includes(q)) ||
-        a.body.toLowerCase().includes(q)
+  // The URL ?q= param IS the search state (no separate useState), so the input and
+  // results stay in sync with deep links and browser back/forward with zero drift.
+  // Shareable/deep-linkable; replace (not push) so typing doesn't spam history.
+  const search = searchParams.get("q") ?? "";
+  const setSearch = (value: string) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) next.set("q", value);
+        else next.delete("q");
+        return next;
+      },
+      { replace: true }
     );
-  }, [articles, search]);
+  };
+
+  const isSearching = search.trim().length > 0;
+  const results = useMemo(() => rankHelpArticles(articles, search), [articles, search]);
 
   const toggleCategory = (key: string) => {
     setOpenCategories((prev) => {
@@ -69,6 +72,8 @@ export default function HelpCenter() {
       return next;
     });
   };
+
+  const excerpt = (body: string) => body.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 90);
 
   return (
     <div className="min-h-screen bg-white">
@@ -96,27 +101,67 @@ export default function HelpCenter() {
         </div>
       </PageHeader>
       <div className="max-w-2xl lg:max-w-3xl mx-auto px-4 py-8 lg:py-12">
-        {/* Search */}
+        {/* Prominent, branded search */}
         <div className="relative mb-8">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-dc-teal" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search help…"
-            className="w-full pl-10 pr-4 py-3 rounded-full border border-gray-200 text-sm focus:outline-none focus:border-dc-teal"
+            placeholder="Search help articles…"
+            aria-label="Search help articles"
+            className="w-full pl-12 pr-4 py-4 rounded-full border-2 border-gray-200 text-base shadow-sm focus:outline-none focus:border-dc-teal focus:ring-2 focus:ring-dc-teal/30 transition-colors"
           />
         </div>
 
         {isLoading && <DCSkeleton variant="list-row" count={5} />}
 
-        {/* Categories */}
-        {!isLoading && (
+        {/* Ranked search results */}
+        {!isLoading && isSearching && (
+          results.length > 0 ? (
+            <div>
+              <p className="text-xs text-gray-400 mb-3">
+                {results.length} result{results.length === 1 ? "" : "s"}
+              </p>
+              <div className="border border-gray-100 rounded-xl divide-y divide-gray-50 overflow-hidden">
+                {results.map((article) => (
+                  <Link
+                    key={article.id}
+                    to={`/help/${article.slug}`}
+                    className="block px-4 py-3 hover:bg-dc-teal/5 transition-colors"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-medium text-dc-dark">{article.title}</p>
+                      {CATEGORY_LABELS[article.category] && (
+                        <span className="text-[10px] uppercase tracking-wide text-dc-teal/70 flex-shrink-0">
+                          {CATEGORY_LABELS[article.category]}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
+                      {excerpt(article.body)}…
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-sm text-gray-500">
+                No articles found for "{search}"
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                Try different keywords or ask Donny
+              </p>
+            </div>
+          )
+        )}
+
+        {/* Category browse (when not searching) */}
+        {!isLoading && !isSearching && articles.length > 0 && (
           <div className="space-y-4">
             {CATEGORIES.map(({ key, label, icon: Icon }) => {
-              const categoryArticles = filtered.filter(
-                (a) => a.category === key
-              );
-              if (search && categoryArticles.length === 0) return null;
+              const categoryArticles = articles.filter((a) => a.category === key);
+              if (categoryArticles.length === 0) return null;
               const isOpen = openCategories.has(key);
 
               return (
@@ -142,7 +187,7 @@ export default function HelpCenter() {
                     />
                   </button>
 
-                  {isOpen && categoryArticles.length > 0 && (
+                  {isOpen && (
                     <div className="border-t border-gray-50 divide-y divide-gray-50">
                       {categoryArticles.map((article) => (
                         <Link
@@ -154,7 +199,7 @@ export default function HelpCenter() {
                             {article.title}
                           </p>
                           <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
-                            {article.body.replace(/<[^>]*>/g, '').slice(0, 80)}...
+                            {excerpt(article.body)}…
                           </p>
                         </Link>
                       ))}
@@ -166,18 +211,8 @@ export default function HelpCenter() {
           </div>
         )}
 
-        {!isLoading && search && filtered.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-sm text-gray-500">
-              No articles found for "{search}"
-            </p>
-            <p className="text-xs text-gray-400 mt-1">
-              Try different keywords or ask Donny
-            </p>
-          </div>
-        )}
-
-        {!isLoading && !search && articles.length === 0 && (
+        {/* No articles at all */}
+        {!isLoading && !isSearching && articles.length === 0 && (
           <div className="text-center py-16 space-y-3">
             <BookOpen className="h-10 w-10 text-gray-300 mx-auto" />
             <p className="text-sm text-gray-500">

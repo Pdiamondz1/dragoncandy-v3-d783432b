@@ -61,6 +61,7 @@ export const businessSidebarNav: SidebarNavItem[] = [
   { icon: Users2, label: 'Team', href: '/dashboard/business/team' },
   { icon: CreditCard, label: 'Billing', href: '/dashboard/business/billing' },
   { icon: Settings, label: 'Settings', href: '/dashboard/business/settings' },
+  { icon: HelpCircle, label: 'Help', href: '/help' },
 ];
 
 export const brandSidebarNav: SidebarNavItem[] = [
@@ -76,6 +77,7 @@ export const brandSidebarNav: SidebarNavItem[] = [
   { icon: Users2, label: 'Team', href: '/dashboard/brand/team' },
   { icon: CreditCard, label: 'Billing', href: '/dashboard/brand/billing' },
   { icon: Settings, label: 'Settings', href: '/dashboard/brand/settings' },
+  { icon: HelpCircle, label: 'Help', href: '/help' },
 ];
 
 export const creatorSidebarNav: SidebarNavItem[] = [
@@ -89,6 +91,7 @@ export const creatorSidebarNav: SidebarNavItem[] = [
   { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
   { icon: Wallet, label: 'Payments', href: '/dashboard/payments' },
   { icon: Settings, label: 'Settings', href: '/dashboard/creator/settings' },
+  { icon: HelpCircle, label: 'Help', href: '/help' },
 ];
 
 export function getSidebarNav(role: UserRole): SidebarNavItem[] {
