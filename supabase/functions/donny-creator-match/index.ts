@@ -115,6 +115,7 @@ serve(async (req) => {
       .from("creator_profiles")
       .select("user_id, creator_name, bio, skills, location, city, country, base_rate_per_hour, average_rating, instagram_url, tiktok_url, youtube_url, avatar_url")
       .eq("is_completed", true)
+      .eq("profile_visibility", "public") // service role bypasses RLS — never surface private creators
       .limit(50);
 
     if (filters.location) {
