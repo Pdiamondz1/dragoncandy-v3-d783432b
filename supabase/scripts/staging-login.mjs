@@ -37,6 +37,10 @@ import { dirname, join } from "node:path";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ENV_FILE = join(HERE, ".env.sync.local");
 
+// Snapshot the real shell environment BEFORE the key file is merged in below, so the
+// Vite-env check can tell "you exported this" apart from "our key file set this".
+const SHELL_ENV = { ...process.env };
+
 const STAGING_REF = "mhffqrawgizhprbobcta";
 const STAGING_URL = `https://${STAGING_REF}.supabase.co`;
 const PROD_REF = "zocahiffooqdybdhguqv";
@@ -167,8 +171,13 @@ function assertTargetUsesStaging(url) {
   // paired with a staging URL is as far as this can verify.
 }
 
-/** Reads a Vite env var the way Vite would, honouring file precedence. */
+/** Reads a Vite env var the way Vite would, honouring its precedence. */
 function resolveViteEnv(name) {
+  // An already-exported variable outranks every file — Vite never overwrites the real
+  // environment. Miss this and a dev server started with `VITE_SUPABASE_URL=… npm run
+  // dev` gets judged by the committed prod `.env` and wrongly refused.
+  if (SHELL_ENV[name]) return { file: "your shell environment", value: SHELL_ENV[name] };
+
   // HIGHEST-priority first. Vite loads `.env` → `.env.local` → `.env.[mode]` →
   // `.env.[mode].local`, each overriding the last, so the effective value is the reverse
   // of that load order. `npm run dev` runs mode=development. Getting this backwards would
