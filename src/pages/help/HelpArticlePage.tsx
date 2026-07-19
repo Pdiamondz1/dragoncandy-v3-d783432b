@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import DOMPurify from "dompurify";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useDonnyContext } from "@/contexts/DonnyProvider";
-import { ArrowLeft, ThumbsUp, ThumbsDown, Sparkles, Mail } from "lucide-react";
+import { ArrowLeft, ThumbsUp, ThumbsDown, Sparkles, Mail, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DCSkeleton } from "@/components/ui/dc-skeleton";
 import { SEO } from "@/components/SEO";
@@ -14,9 +14,17 @@ import { PublicPageHeader } from '@/components/PublicPageHeader';
 
 export default function HelpArticlePage() {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { openDonnyWithContext } = useDonnyContext();
   const [feedback, setFeedback] = useState<boolean | null>(null);
+  const [q, setQ] = useState("");
+
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const query = q.trim();
+    if (query) navigate(`/help?q=${encodeURIComponent(query)}`);
+  };
 
   const { data: article, isLoading } = useQuery({
     queryKey: ["help-article", slug],
@@ -100,6 +108,16 @@ export default function HelpArticlePage() {
             Help Center
           </Link>
           <h1 className="text-xl lg:text-2xl font-bold text-dc-dark">{article.title}</h1>
+          <form onSubmit={submitSearch} className="relative mt-4 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dc-teal" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search all help…"
+              aria-label="Search help articles"
+              className="w-full pl-9 pr-4 py-2.5 rounded-full border border-gray-200 bg-white text-sm focus:outline-none focus:border-dc-teal focus:ring-2 focus:ring-dc-teal/30 transition-colors"
+            />
+          </form>
         </div>
       </PageHeader>
       <div className="max-w-2xl mx-auto px-4 py-8 lg:py-12">
