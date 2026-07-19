@@ -148,9 +148,21 @@ function assertTargetUsesStaging(url) {
   const host = url.hostname.toLowerCase();
   const isLocal = host === "localhost" || host === "127.0.0.1" || host === "[::1]";
 
-  // Vercel Preview scope is wired to the staging Supabase project (see
-  // docs/runbooks/qa-staging-gate.md), so preview deployments are correct by config.
-  if (host.endsWith(".vercel.app")) return;
+  // Only per-branch PREVIEW deployments are wired to the staging Supabase project (see
+  // docs/runbooks/qa-staging-gate.md). A Vercel PRODUCTION alias is ALSO *.vercel.app but
+  // points at prod, so a staging session would just fail there — reporting success for it
+  // is the exact "looks configured but doesn't work" trap this gate exists to prevent.
+  // Vercel names branch previews "<project>-git-<branch>-<scope>.vercel.app", so require
+  // the "-git-" marker rather than trusting every *.vercel.app host.
+  if (host.endsWith(".vercel.app")) {
+    if (host.includes("-git-")) return;
+    die(
+      `${host} is a *.vercel.app URL but not a recognizable branch preview (no "-git-").\n\n` +
+        "  Only per-branch Preview deployments are wired to staging Supabase; a production\n" +
+        "  alias points at prod, where a staging session cannot authenticate. Pass the PR\n" +
+        '  preview URL (contains "-git-<branch>-"), or a local dev server pointed at staging.'
+    );
+  }
 
   if (!isLocal) {
     die(
@@ -196,7 +208,7 @@ function assertTargetUsesStaging(url) {
     );
   }
 
-  const keyRef = projectRefOfAnonKey(envKey.value);
+  const keyRef = projectRefOfSupabaseKey(envKey.value);
   if (keyRef && keyRef !== STAGING_REF) {
     die(
       `VITE_SUPABASE_ANON_KEY belongs to project "${keyRef}", not staging.\n\n` +
@@ -234,10 +246,14 @@ function resolveViteEnv(name) {
   return null;
 }
 
-/** Project ref from a Supabase anon JWT, or null if it isn't a decodable JWT. */
-function projectRefOfAnonKey(key) {
+/**
+ * Project ref from a Supabase JWT key (anon OR service-role), or null if it isn't a
+ * decodable JWT. Legacy Supabase keys carry the project ref in the base64url payload, not
+ * as plaintext — so a substring check can't tell a prod key from a staging one; this can.
+ */
+function projectRefOfSupabaseKey(key) {
   const parts = key.split(".");
-  if (parts.length !== 3) return null; // sb_publishable_… — not a JWT
+  if (parts.length !== 3) return null; // sb_publishable_… / sb_secret_… — not a JWT
   try {
     const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
     return typeof payload.ref === "string" ? payload.ref : null;
@@ -258,7 +274,11 @@ if (!SECRET) {
       "  (This is the STAGING key. Never put the prod key here.)"
   );
 }
-if (SECRET.includes(PROD_REF)) {
+// Refuse the prod key. It's a legacy JWT, so the ref lives base64-encoded in the payload,
+// not as plaintext — decode it. Keep the substring check too for any non-JWT key format
+// that might carry the ref in the clear.
+const secretRef = projectRefOfSupabaseKey(SECRET);
+if (secretRef === PROD_REF || SECRET.includes(PROD_REF)) {
   die("That looks like the PRODUCTION key. This script targets staging only — aborting.");
 }
 
