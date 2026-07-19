@@ -91,35 +91,30 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   **Pending:** register the Chat app, set `GOOGLE_CHAT_PROJECT_NUMBER` +
   `GOOGLE_ALLOWED_DOMAIN` — all blocked on creating the DragonCandy Workspace org.
   → `docs/superpowers/specs/2026-06-11-google-workspace-connections-design.md`
-- **AIOS kill-switch playbook + loop-callable playbooks** — a report-only
-  `kill-switch-watch` playbook over §3's four kill-switches (pre-revenue, an armed-watch
-  scaffold) + a `playbook-runner-agent` template making any playbook loop-callable. The seed
-  is applied and the playbook has run (manually, 3×). **Pending:** `/schedule` the runner
-  pinned to `slug='kill-switch-watch'` so it runs unattended.
-  → `docs/superpowers/specs/2026-06-20-aios-playbook-killswitch-loop-design.md` · `feat/aios-killswitch-playbook-loop`
-- **Dezzy AI Press & Events scout (Domain 4)** — the one Dezzy domain shipping as a cloud
-  routine, not a playbook (press discovery needs the open web the runner lacks); files
-  URL-required, deduped findings monthly. The template is committed. **Pending:** create the
-  live monthly routine via `/schedule`.
-  → `docs/wiki/concepts/dezzy-agent-playbook-suite.md` · `feat/aios-dezzy-press-events`
 - **Public landing — Dark-Luxe redesign + lead capture** — scoped-`.dark` rebuild + a
   closed-anon-DML `leads` table and throttled `capture-lead` fn; both live on prod.
   **Pending:** set the `LEADS_NOTIFY_EMAIL` edge secret — without it nobody is notified of a
   captured lead. → `docs/wiki/concepts/landing-lead-capture.md` · `feat/landing-luxe-redesign`
-- **AIOS Strategy-library management** — `is_core` protection, reversible soft-archive, dedup
-  RPCs, an archive-aware sync, and a monthly audit routine. Migration applied (21 docs
-  core-flagged, all four RPCs live) and the edge functions are deployed. **Pending:**
-  `/schedule` the monthly audit routine.
-  → `docs/superpowers/specs/2026-06-29-aios-strategy-library-management-design.md` · `feat/aios-strategy-library-management`
-- **AIOS agent-loop audit (3 gaps)** — the `make-validator` meta-skill, `/internal/loops`
-  mission control, and the runtime-spend source of truth that makes `donny_cost_ledger`
-  govern the AI kill-switch. DDLs applied, both edge fns deployed + live-verified.
-  **Pending:** `/schedule` the `playbook-runner-agent` so the `ai-cost-vs-cap` verdict files
-  a finding (same runner as the kill-switch entry).
-  → `docs/wiki/concepts/aios-runtime-spend-source-of-truth.md` · #217, #218, #220
 
 ### Shipped
 
+- **AIOS kill-switch playbook + loop-callable playbooks** — a report-only `kill-switch-watch`
+  playbook over §3's four kill-switches (pre-revenue: an armed-watch scaffold) + a
+  `playbook-runner-agent` template making any playbook loop-callable. Live weekly (Mon 12:00
+  UTC) since 2026-06-21; posts a finding only on breach/watch.
+  → `docs/superpowers/specs/2026-06-20-aios-playbook-killswitch-loop-design.md`
+- **AIOS agent-loop audit (3 gaps)** — the `make-validator` meta-skill, `/internal/loops`
+  mission control, and the runtime-spend source of truth that makes `donny_cost_ledger` govern
+  the AI kill-switch. The `ai-cost-vs-cap` verdict now runs unattended weekly (Mon 13:00 UTC).
+  → `docs/wiki/concepts/aios-runtime-spend-source-of-truth.md` · #217, #218, #220
+- **AIOS Strategy-library management** — `is_core` protection, reversible soft-archive, dedup
+  RPCs, an archive-aware sync, and a monthly audit routine (live, 1st of month 09:00 UTC)
+  filing dupe/conflict/orphan/bloat findings for the founder to action.
+  → `docs/superpowers/specs/2026-06-29-aios-strategy-library-management-design.md`
+- **Dezzy AI Press & Events scout (Domain 4)** — the one Dezzy domain shipping as a cloud
+  routine, not a playbook (press discovery needs the open web the runner lacks). Live monthly
+  (1st, 08:00 UTC), filing URL-required, deduped `[press]`/`[event]` findings.
+  → `docs/wiki/concepts/dezzy-agent-playbook-suite.md`
 - **AIOS Reading agent traces (4th loop-stack layer)** — the `read-the-traces` skill audits the
   agent layer from Claude Code's own JSONL session traces (598 files, ~40MB nothing had ever
   read): tool errors, permission/classifier denials, hook errors, repeat-failure clusters,
