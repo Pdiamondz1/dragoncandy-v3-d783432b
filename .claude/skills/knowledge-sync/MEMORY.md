@@ -27,6 +27,15 @@
   `fixed-probe` or `82dvh`, not a multi-word sentence) — wrapped prose false-negatives the check.
   Also `inserted=0` in the sync log does NOT mean a new page was missed (upsert counting) — trust
   the ilike probe, not the counters.
+- **[context-tax] Session detail goes to `docs/SHIPPED_LOG.md`, NOT `PROJECT_CONTEXT.md` §5.**
+  §5 is now a one-line-per-entry index with three subsections — `### In flight`, `### Built —
+  awaiting founder go-live` (these carry a `**Pending:**` clause), `### Shipped` — because §5 is
+  auto-loaded into every session, so detail there is a compounding per-session tax: it reached
+  ~29,950 tokens, 65% of the whole session load, before this split. Prepend full session detail
+  to `SHIPPED_LOG.md` (newest-first) instead. Older Run Log entries below this Lesson predate the
+  split and model the old behavior (`Output: ... PROJECT_CONTEXT active-workstream bullet`) —
+  don't pattern-match their `Output:` line into a new run; that's exactly the mistake this Lesson
+  corrects.
 - **[squash-drift] For a still-OPEN PR, `git fetch origin <branch>` and diff it against the local
   worktree branch before editing shared docs.** When `git push` is env-blocked, code branches often
   land via the blob→tree→commit→ref REST workaround, which **squashes** into one commit rebased onto
