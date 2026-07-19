@@ -173,11 +173,11 @@ function AnimatedRoutes() {
     <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Spinner /></div>}>
       <PageTransition locationKey={location.pathname}>
         <Routes location={location}>
-          {/* Landing is lazy (kept out of the initial bundle); its fallback is dark so it
-              stays seamless with the index.html dark splash — never a white flash. */}
-          <Route path="/" element={<Suspense fallback={<div className="min-h-screen bg-dc-dark" />}><LandingPage /></Suspense>} />
-          <Route path="/home" element={<Suspense fallback={<div className="min-h-screen bg-dc-dark" />}><LandingPage /></Suspense>} />
-          <Route path="/landing" element={<Suspense fallback={<div className="min-h-screen bg-dc-dark" />}><LandingPage /></Suspense>} />
+          {/* Landing is lazy (kept out of the initial bundle); its fallback is white so it
+              stays seamless with the light landing page — never a dark flash. */}
+          <Route path="/" element={<Suspense fallback={<div className="min-h-screen bg-white" />}><LandingPage /></Suspense>} />
+          <Route path="/home" element={<Suspense fallback={<div className="min-h-screen bg-white" />}><LandingPage /></Suspense>} />
+          <Route path="/landing" element={<Suspense fallback={<div className="min-h-screen bg-white" />}><LandingPage /></Suspense>} />
           {/* Internal host gets the founders-only login (no signup surface) */}
           <Route path="/auth" element={isInternalHost() ? <InternalAuth /> : <AuthPage />} />
           <Route path="/verify-email" element={<VerifyEmail />} />

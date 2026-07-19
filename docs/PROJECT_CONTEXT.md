@@ -1366,6 +1366,29 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   983/983 tests; residual-sweep zero. **The entire light app — every panel and accent, not just
   cards/badges — is now on-brand.** Concept: `docs/wiki/concepts/light-app-kit.md`. Spec:
   `docs/superpowers/specs/2026-07-17-light-theme-polish-phase1-design.md`.
+- Public landing — "Human-driven. AI-assisted." redesign (Joe's direction) — **built (branch
+  `feat/landing-joe-redesign`, PR #293, 2026-07-18; frontend-only, video off by default).** A full
+  visual + messaging redesign of the public landing to a founder-provided mockup, reframing
+  DragonCandy's positioning from "AI generates your content, fast" to **"Human-driven.
+  AI-assisted."** — a real human creator becomes a business's social-media team; Donny assists in
+  the background; humans drive every decision. Founder-confirmed as the platform's true
+  positioning, not a cosmetic pass. New **light** landing (drops the prior scoped `.dark` wrapper
+  entirely, rejoining the rest of the light app — see the light-theme-polish bullet above) on its
+  own additive `landing-*` Tailwind tokens + self-hosted Bricolage Grotesque/Instrument
+  Sans/Silkscreen fonts (the app's `dc-*`/Outfit system byte-unchanged). Static two-door hero
+  (Business/Creator) replaces the prior role-morphing hero; `AudienceLanes`/`ProofSection`/
+  `StartFreeSection` deleted. **The entire cinematic-video system from the prior landing redesign
+  is preserved, not deleted** — demoted to opt-in behind a new `LANDING_VIDEO_BACKDROP_ENABLED`
+  flag (default `false`, mirrors `BRAND_ROLE_ENABLED`) via a single-key, light-scrim
+  `HeroVideoBackdrop.tsx`; re-enabling is a one-line flag flip plus real (non-AI) footage. Both
+  conversion tools (the paste-a-URL brief generator, lead capture) reused byte-identical on the
+  backend — only restyled. Splash + the three landing-route Suspense fallbacks flipped dark→light
+  to avoid a load flash (the mirror of the earlier light→dark flash fix). No schema/RLS/edge-fn/
+  secret change. Subagent-driven (10 tasks, per-task review) → whole-branch Opus review (3 fixes:
+  door `scroll-mt`, `LandingButton` `cn()`-merge + `type="button"` default, keyboard-accessible
+  logo button) → Codex second review clean; 1017 tests pass. Concept:
+  `docs/wiki/concepts/landing-human-driven-redesign.md`. Spec:
+  `docs/superpowers/specs/2026-07-18-landing-joe-redesign-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase

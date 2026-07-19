@@ -1,100 +1,139 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from "vitest";
-import { render, cleanup, act, fireEvent } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { render, cleanup, fireEvent, screen, within, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { Header } from "./Header";
 
-afterEach(() => {
-  cleanup();
-  document.body.innerHTML = ""; // drop any manually-appended #main-content between tests
+const navigateMock = vi.fn();
+
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
+  return { ...actual, useNavigate: () => navigateMock };
 });
 
-/**
- * The landing renders inside the app shell's scrolling `<main id="main-content">`
- * (App.tsx: `flex h-screen` shell + inner `overflow-auto` main), so the WINDOW never
- * scrolls — the header's scroll-aware background must key off that container, not
- * `window.scrollY` (which stays 0 forever and leaves the header transparent over
- * bright content). This mirrors that shell so the header sees a real scroll source.
- */
-function setup(initialScrollTop = 0) {
-  let scrollTop = initialScrollTop;
-  const main = document.createElement("main");
-  main.id = "main-content";
-  Object.defineProperty(main, "scrollTop", {
-    configurable: true,
-    get: () => scrollTop,
-  });
-  document.body.appendChild(main);
+const SECTION_IDS = ["business", "creators", "how", "donny"];
 
-  const utils = render(
+/** Header's nav buttons scroll-target these ids via `document.getElementById(...).scrollIntoView()`,
+ * which jsdom doesn't implement — stub real target elements with their own spy. */
+function stubSections() {
+  const spies: Record<string, ReturnType<typeof vi.fn>> = {};
+  for (const id of SECTION_IDS) {
+    const el = document.createElement("div");
+    el.id = id;
+    const spy = vi.fn();
+    (el as unknown as { scrollIntoView: () => void }).scrollIntoView = spy;
+    document.body.appendChild(el);
+    spies[id] = spy;
+  }
+  return spies;
+}
+
+function setup() {
+  return render(
     <MemoryRouter>
       <Header />
     </MemoryRouter>,
-    { container: main },
   );
-
-  const header = main.querySelector("header")!;
-  const scrollTo = (value: number) => {
-    scrollTop = value;
-    act(() => {
-      main.dispatchEvent(new Event("scroll"));
-    });
-  };
-  return { header, scrollTo, ...utils };
 }
 
-describe("Header scroll-aware background", () => {
-  it("is transparent while at the top of the scroll container", () => {
-    const { header } = setup(0);
-    expect(header.className).toContain("bg-transparent");
-    expect(header.className).not.toContain("bg-dc-dark/80");
-  });
+afterEach(() => {
+  cleanup();
+  document.body.innerHTML = "";
+  navigateMock.mockClear();
+  vi.useRealTimers();
+});
 
-  it("switches to the dark blurred background once #main-content scrolls past the threshold", () => {
-    const { header, scrollTo } = setup(0);
-    expect(header.className).toContain("bg-transparent");
+describe("Header logo", () => {
+  it("renders the DragonCandy wordmark logo and navigates home on click", () => {
+    setup();
+    const logo = screen.getByAltText("DragonCandy") as HTMLImageElement;
+    expect(logo.getAttribute("src")).toBe("/logo.webp");
 
-    scrollTo(100);
-
-    expect(header.className).toContain("bg-dc-dark/80");
-    expect(header.className).toContain("backdrop-blur-xl");
-    expect(header.className).not.toContain("bg-transparent");
+    fireEvent.click(logo);
+    expect(navigateMock).toHaveBeenCalledWith("/");
   });
 });
 
-describe("Header scroll pass-through", () => {
-  // The fixed header must not eat scroll at the top: pointer-events pass through the header
-  // to the content (native scroll), and wheel over the interactive bits forwards to the scroller.
-  it("disables pointer events on the header but keeps the interactive bits enabled", () => {
-    const { container } = render(
-      <MemoryRouter>
-        <Header />
-      </MemoryRouter>,
-    );
-    expect(container.querySelector("header")!.className).toContain("pointer-events-none");
-    expect(container.querySelector("img")!.className).toContain("pointer-events-auto");
-    expect(container.querySelector("nav")!.className).toContain("pointer-events-auto");
+describe("Header desktop nav", () => {
+  it("scroll-links each of the four section buttons to its target", () => {
+    const spies = stubSections();
+    setup();
+    const nav = screen.getByRole("navigation", { name: "Primary" });
+
+    fireEvent.click(within(nav).getByText("For businesses"));
+    expect(spies.business).toHaveBeenCalled();
+
+    fireEvent.click(within(nav).getByText("For creators"));
+    expect(spies.creators).toHaveBeenCalled();
+
+    fireEvent.click(within(nav).getByText("How it works"));
+    expect(spies.how).toHaveBeenCalled();
+
+    fireEvent.click(within(nav).getByText("Meet Donny"));
+    expect(spies.donny).toHaveBeenCalled();
   });
 
-  it("forwards a wheel over the nav to the #main-content scroller", () => {
-    let scrollTop = 0;
-    const main = document.createElement("main");
-    main.id = "main-content";
-    Object.defineProperty(main, "scrollTop", {
-      configurable: true,
-      get: () => scrollTop,
-      set: (v: number) => {
-        scrollTop = v;
-      },
-    });
-    document.body.appendChild(main);
+  it("routes Log in to /auth?mode=login and Get started to /auth?mode=signup", () => {
+    setup();
+    const nav = screen.getByRole("navigation", { name: "Primary" });
 
-    const { container } = render(
-      <MemoryRouter>
-        <Header />
-      </MemoryRouter>,
-    );
-    fireEvent.wheel(container.querySelector("nav")!, { deltaY: 150 });
-    expect(scrollTop).toBe(150);
+    fireEvent.click(within(nav).getByText("Log in"));
+    expect(navigateMock).toHaveBeenCalledWith("/auth?mode=login");
+
+    fireEvent.click(within(nav).getByText("Get started"));
+    expect(navigateMock).toHaveBeenCalledWith("/auth?mode=signup");
+  });
+});
+
+describe("Header mobile Sheet menu", () => {
+  it("exposes the same four section links plus Log in and Get started once opened", () => {
+    setup();
+    fireEvent.click(screen.getByLabelText("Toggle menu"));
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("For businesses")).toBeInTheDocument();
+    expect(within(dialog).getByText("For creators")).toBeInTheDocument();
+    expect(within(dialog).getByText("How it works")).toBeInTheDocument();
+    expect(within(dialog).getByText("Meet Donny")).toBeInTheDocument();
+    expect(within(dialog).getByText("Log in")).toBeInTheDocument();
+    expect(within(dialog).getByText("Get started")).toBeInTheDocument();
+  });
+
+  it("closes the sheet then scrolls to the section after clicking a mobile section link", () => {
+    vi.useFakeTimers();
+    const spies = stubSections();
+    setup();
+
+    fireEvent.click(screen.getByLabelText("Toggle menu"));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByText("How it works"));
+
+    expect(spies.how).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(spies.how).toHaveBeenCalled();
+  });
+
+  it("closes the sheet then navigates after clicking mobile Log in / Get started", () => {
+    vi.useFakeTimers();
+    setup();
+
+    fireEvent.click(screen.getByLabelText("Toggle menu"));
+    let dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Log in"));
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(navigateMock).toHaveBeenCalledWith("/auth?mode=login");
+
+    fireEvent.click(screen.getByLabelText("Toggle menu"));
+    dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Get started"));
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(navigateMock).toHaveBeenCalledWith("/auth?mode=signup");
   });
 });
