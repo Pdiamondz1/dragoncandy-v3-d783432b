@@ -2,48 +2,55 @@
 
 > Screenshots of all screens are in the `/designs` folder. Always reference them when building or modifying UI.
 
-## Theme — Light app, Dark entry surfaces (current, 2026-07-18)
+## Theme — Light app + entry, Dark only `/internal` (current, 2026-07-18)
 
-**The working app is LIGHT; only entry surfaces (auth/onboarding/`/internal`) are dark — the public
-landing is now LIGHT too.** After a brief experiment that forced the whole app dark (PR #269), founder
-feedback was that the dark *app* was too dark, some text unreadable, and the phased-rollout white
-patches looked unfinished — so the app was reverted to its **original light theme** (PRs #275 + #277).
-**2026-07-18:** the public landing dropped its own scoped `.dark` wrapper as part of the "Human-driven.
-AI-assisted." redesign (PR #293) — it now renders on `bg-white` like the rest of the app, so the
-dark-marketing carve-out narrowed from four surfaces to three. Build/restyle **app** UI **light** (the
-`dc-*` palette below, `bg-white` cards, `dc-text`/`dc-text-muted` on light, pink/gray dashboard headers)
-— this now includes the landing (see "Landing's own scoped marketing identity" below for its
-additional, additive token/font layer).
+**The working app is LIGHT; the public landing, login/sign-up, and onboarding are LIGHT too —
+`/internal` (AIOS) is the only surface still dark.** After a brief experiment that forced the whole
+app dark (PR #269), founder feedback was that the dark *app* was too dark, some text unreadable,
+and the phased-rollout white patches looked unfinished — so the app was reverted to its **original
+light theme** (PRs #275 + #277). **2026-07-18:** the public landing dropped its own scoped `.dark`
+wrapper as part of the "Human-driven. AI-assisted." redesign (PR #293), and the
+`feat/auth-onboarding-landing-theme` branch carried that same light identity into **login/sign-up +
+the 5 auth siblings + onboarding** — the moment a visitor clicks "Get started" no longer drops them
+into a dark screen. Build/restyle **app** UI **light** (the `dc-*` palette below, `bg-white` cards,
+`dc-text`/`dc-text-muted` on light, pink/gray dashboard headers) — this now includes the landing
+AND the entry flow (see "Marketing + entry's own scoped identity" below for their additional,
+additive token/font layer).
 
-**Dark surfaces (only these):**
-- **Login/sign-up + auth-adjacent** (`AuthPage`, forgot/update/verify/restore/invite) and **onboarding**
-  (`OnboardingWizard`) — each calls the **`useDarkHtml()`** hook (`src/hooks/useDarkHtml.ts`), which adds
-  `dark` to `<html>` for the route's lifetime (mirrors `InternalLayout` for `/internal`) and reverts on
-  unmount, so `<body>` is dark and their dark literals + glows render correctly.
-- **`/internal` AIOS** — `InternalLayout` adds `dark` to `<html>` (dark ops-deck).
+**Dark surfaces (only this one):**
+- **`/internal` AIOS** — `InternalLayout` adds `dark` to `<html>` via its own inline `useEffect`
+  (`documentElement.classList.add('dark')`) for the route's lifetime. This is now the **only** place
+  `<html class="dark">` is ever set. The shared `useDarkHtml()` hook that used to also drive
+  auth/onboarding (`src/hooks/useDarkHtml.ts`) has been **deleted** — once those 7 surfaces (the 6
+  auth pages + `OnboardingWizard`) went light, nothing else ever called it; `/internal`'s toggle was
+  always its own independent mechanism, so removing the hook is a no-op for `/internal`.
 
 `ThemeProvider` = `defaultTheme="light"` (NOT `forcedTheme` — a forced light would fight
-`InternalLayout`/`useDarkHtml`'s `<html class="dark">`; a forced dark makes the whole app dark). No
-light/dark toggle.
+`InternalLayout`'s `<html class="dark">`; a forced dark makes the whole app dark). No light/dark
+toggle.
 
-**When building a DARK surface**, the reusable dark-luxe kit lives on: `.dc-surface`/`.dc-panel`/`.dc-field`
-classes, `dc-teal-pill`/`dc-ghost-pill` button variants, `GlowBackdrop`/`Eyebrow` (`src/components/dark/`),
-the white-opacity text ramp (`text-white`→`/80`→`/60`→`/40`), teal+pink accents, and errors as
-`bg-red-500/10 text-red-300`. **Gotchas:** (1) a scoped-div `.dark` alone leaves `<body>` light → the
-auth glows composite over white and wash out; use `useDarkHtml()` so `<body>` is dark. (2) `.dc-field`
-(a `@layer components` class) loses to a shadcn `<Input>`'s own utilities → use explicit
-`border-white/15 bg-white/5 text-white placeholder:text-white/40` there. (3) Dark-fill-as-text trap:
-`text-dc-dark`/`text-dc-teal-btn`/`text-dc-pink-accent-btn` are correct **on** a teal/pink/white fill but
-invisible as text on a dark page.
+**When building a NEW dark surface**, the reusable dark-luxe kit still lives in the codebase
+(currently unused by anything shipped — `/internal` has its own ops-deck styling, and auth/onboarding
+no longer use it): `.dc-surface`/`.dc-panel`/`.dc-field` classes, `dc-teal-pill`/`dc-ghost-pill`
+button variants, `GlowBackdrop`/`Eyebrow` (`src/components/dark/`), the white-opacity text ramp
+(`text-white`→`/80`→`/60`→`/40`), teal+pink accents, and errors as `bg-red-500/10 text-red-300`.
+**Gotchas:** (1) a scoped-div `.dark` alone leaves `<body>` light → glows composite over white and
+wash out — apply `dark` to `<html>` (mirror `InternalLayout`'s inline `useEffect`), not just a
+wrapper div. (2) `.dc-field` (a `@layer components` class) loses to a shadcn `<Input>`'s own
+utilities → use explicit `border-white/15 bg-white/5 text-white placeholder:text-white/40` there.
+(3) Dark-fill-as-text trap: `text-dc-dark`/`text-dc-teal-btn`/`text-dc-pink-accent-btn` are correct
+**on** a teal/pink/white fill but invisible as text on a dark page.
 
 Video backdrops remain landing-only, and are now **opt-in** (off by default — see below). Full
 mechanics + history: `docs/wiki/concepts/dark-luxe-app-theme.md`.
 
-## Landing's own scoped marketing identity (additive, never leaks into the app)
+## Marketing + entry's own scoped identity (additive, never leaks into the app)
 
-The public landing (`src/pages/LandingPage.tsx` + `src/components/landing/*`) is light like the rest
-of the app, but it is **not** on the shared `dc-*`/Outfit system — it carries its **own** marketing
-visual identity, kept strictly additive so it can never regress the authenticated app:
+The public landing (`src/pages/LandingPage.tsx` + `src/components/landing/*`) **and** the entry flow —
+login/sign-up (`src/pages/AuthPage.tsx` + the 5 siblings, `src/components/auth/*`) and onboarding
+(`src/components/onboarding/**`) — are light like the rest of the app, but they are **not** on the
+shared `dc-*`/Outfit system — together they carry **one** marketing visual identity, kept strictly
+additive so it can never regress the authenticated app:
 
 - **Tokens:** a `landing.*` Tailwind color group (`grape`, `pink`, `mint`, `yellow`, `lilac`, plus
   soft/line/ink variants) and matching `landing-pink`/`landing-mint` box-shadow tokens, added to
@@ -51,15 +58,22 @@ visual identity, kept strictly additive so it can never regress the authenticate
 - **Fonts:** self-hosted `.woff2` (the existing Outfit/Pacifico pattern — no Google Fonts CDN) —
   **Bricolage Grotesque** (`font-display`, headlines), **Instrument Sans** (`font-sans-alt`/
   `font-instrument`, body), **Silkscreen** (`font-pixel`, eyebrows/step numbers/footer tag). The
-  authenticated app keeps Outfit/Pacifico; these fonts are landing-scoped only.
-- **Only landing components reference these tokens/fonts**, so nothing needs to be "scoped back out"
-  the way the old `.dark` wrapper was — the app was never at risk of inheriting them.
+  authenticated app keeps Outfit/Pacifico; these fonts are landing + entry scoped only.
+- **Entry surfaces reuse landing primitives rather than duplicating them:** a shared
+  `AuthShell` wrapper (`src/components/auth/AuthShell.tsx`) gives auth/onboarding the white base +
+  soft grape/pink/mint glow (a light echo of the old dark `GlowBackdrop`); forms reuse
+  `LandingButton` for primary actions and `Eyebrow` (from `@/components/landing/Eyebrow`) as a
+  one-per-screen brand accent above headings. Fields stay calm/standard (shadcn `Input`/`Label`,
+  `border-landing-line`, mint/pink focus rings) — "softened for forms," not pixel-everywhere.
+- **Only landing + entry components reference these tokens/fonts**, so nothing needs to be "scoped
+  back out" the way the old `.dark` wrapper was — the app was never at risk of inheriting them.
 - **Video backdrop is opt-in, off by default.** `LANDING_VIDEO_BACKDROP_ENABLED` (in
   `src/lib/featureConfig.ts`, mirrors `BRAND_ROLE_ENABLED`) gates the entire cinematic-video system
   (`RotatingBackdrop`/`landingClips`/`VideoSlot`/`MediaSlot`) behind a single lazy-loaded
   `HeroVideoBackdrop.tsx`. Default `false` — the shipped landing is a static, illustrative hero;
   flipping the flag (plus real, non-AI footage) re-enables the video experience with zero other code
-  changes. See `docs/wiki/concepts/landing-human-driven-redesign.md`.
+  changes. See `docs/wiki/concepts/landing-human-driven-redesign.md`. Video backdrops are
+  landing-only — auth/onboarding never carry them.
 
 ## Shared light-app kit (use these for the light app)
 
@@ -172,14 +186,14 @@ The **working app is uniformly white** — pages are `bg-white`, wrapped in the 
 + section spacing) inside the `DashboardLayout` shell (which owns padding). Accent color comes from
 **cards (teal-bordered), chips, badges, and CTAs — not page washes.** The old per-page pink/gray
 backgrounds are retired (they never matched the built app). Only the mobile top-nav keeps a subtle pink
-gradient. Login/sign-up/onboarding + `/internal` are dark; the public landing is light on its own
-scoped token/font system (see the Theme section).
+gradient. Login/sign-up/onboarding are light on the same scoped token/font system as the public
+landing; only `/internal` stays dark (see the Theme section).
 
 | Surface | Background |
 |-|-|
 | All authenticated app pages (dashboards, campaigns, browse, messaging, settings, DragonShare, profiles, …) | White (`#FFFFFF`) |
-| Public landing (`/`, `/home`, `/landing`) | White paper (`#FFFFFF`, landing's own `landing-paper` token) |
-| Login/sign-up + onboarding + `/internal` (AIOS) | Dark charcoal (`#1A1A2A`) |
+| Public landing (`/`, `/home`, `/landing`) + login/sign-up + onboarding | White paper (`#FFFFFF`, the shared `landing-*`/`AuthShell` token/font system) |
+| `/internal` (AIOS) | Dark charcoal (`#1A1A2A`) |
 
 ## Design Rules
 

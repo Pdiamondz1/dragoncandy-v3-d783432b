@@ -1,4 +1,3 @@
-import { useDarkHtml } from "@/hooks/useDarkHtml";
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from '@/lib/motion';
@@ -8,7 +7,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { uploadProfileAsset } from '@/lib/storage/uploadProfileAsset';
 import { consumePendingBrief } from '@/lib/pendingBrief';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { AuthShell } from '@/components/auth/AuthShell';
+import { LandingButton } from '@/components/landing/LandingButton';
 import { AvatarCropModal } from '@/components/settings/AvatarCropModal';
 import { ArrowLeft, ArrowRight, MapPin } from 'lucide-react';
 import { OnboardingProgress } from './OnboardingProgress';
@@ -81,7 +81,6 @@ const slideVariants = {
 };
 
 export function OnboardingWizard() {
-  useDarkHtml();
   const navigate = useNavigate();
   const { user } = useAuth();
   const autoDetect = useAutoDetect();
@@ -280,8 +279,8 @@ export function OnboardingWizard() {
   };
 
   return (
-    <div className="dark min-h-[100dvh] bg-dc-dark text-white flex items-center justify-center">
-      <div className="w-full md:max-w-lg md:bg-white/5 md:border md:border-white/10 md:rounded-3xl md:shadow-card-elevated md:my-8">
+    <AuthShell className="flex items-center justify-center">
+      <div className="w-full md:max-w-lg md:bg-white md:border-2 md:border-landing-line md:rounded-3xl md:shadow-[0_14px_30px_rgba(36,19,50,0.08)] md:my-8">
       <div className="flex flex-col min-h-[100dvh] md:min-h-[580px] max-w-md mx-auto px-5 py-6 md:py-8">
         {/* Header */}
         {!isWelcome && (
@@ -295,7 +294,7 @@ export function OnboardingWizard() {
                 type="button"
                 onClick={goBack}
                 whileTap={{ scale: 0.9 }}
-                className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/60 hover:bg-white/10 transition-colors"
+                className="w-10 h-10 rounded-full bg-white border border-landing-line flex items-center justify-center text-landing-ink-soft hover:bg-landing-lilac transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
               </motion.button>
@@ -324,8 +323,8 @@ export function OnboardingWizard() {
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.2 }}
               >
-                <h2 className="text-xl font-bold text-white">{stepTitle()}</h2>
-                <p className="text-sm text-white/40 mt-0.5">{stepSubtitle()}</p>
+                <h2 className="font-display text-xl font-bold text-landing-ink">{stepTitle()}</h2>
+                <p className="text-sm text-landing-ink-soft mt-0.5">{stepSubtitle()}</p>
               </motion.div>
             </AnimatePresence>
           </div>
@@ -338,10 +337,10 @@ export function OnboardingWizard() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <h2 className="text-xl font-bold text-white">
+              <h2 className="font-display text-xl font-bold text-landing-ink">
                 {role === 'content_creator' ? "What should we call you?" : role === 'brand' ? "What's your brand?" : "What's your restaurant called?"}
               </h2>
-              <p className="text-sm text-white/40 mt-0.5">
+              <p className="text-sm text-landing-ink-soft mt-0.5">
                 {role === 'content_creator' ? "Your creative name or real name" : "This is how others will find you"}
               </p>
             </motion.div>
@@ -373,8 +372,8 @@ export function OnboardingWizard() {
             transition={{ delay: 0.5 }}
             className={`rounded-full px-4 py-2 mb-4 text-xs flex items-center justify-center gap-1.5 ${
               accentColor === 'teal'
-                ? 'bg-dc-teal/10 text-dc-teal'
-                : 'bg-dc-pink-accent/10 text-dc-pink-accent'
+                ? 'bg-landing-mint-soft text-landing-mint-ink'
+                : 'bg-landing-pink-soft text-landing-pink-ink'
             }`}
           >
             <MapPin className="w-3 h-3" />
@@ -389,21 +388,18 @@ export function OnboardingWizard() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <Button
+            <LandingButton
               onClick={goNext}
               disabled={!isStepValid()}
-              className={`w-full rounded-full py-6 text-base font-bold transition-all duration-200 ${
-                accentColor === 'teal'
-                  ? 'bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white disabled:bg-white/10 disabled:text-white/30'
-                  : 'bg-dc-pink-accent-btn hover:bg-dc-pink-accent-btn-hover text-white disabled:bg-white/10 disabled:text-white/30'
-              }`}
+              variant="pink"
+              className="w-full h-14 text-base disabled:opacity-60"
             >
               <span className="flex items-center gap-2">
                 Continue
                 <ArrowRight className="w-4 h-4" />
               </span>
-            </Button>
-            <p className="text-center text-xs text-white/40 mt-3">
+            </LandingButton>
+            <p className="text-center text-xs text-landing-ink-soft mt-3">
               {currentStep === 'identity' && 'You can change this later in settings'}
               {currentStep === 'industry' && 'This helps us match you with the right people'}
               {currentStep === 'skills' && 'Brands filter by these to find you'}
@@ -424,6 +420,6 @@ export function OnboardingWizard() {
         />
       )}
       </div>
-    </div>
+    </AuthShell>
   );
 }

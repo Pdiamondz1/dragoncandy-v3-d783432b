@@ -6,10 +6,7 @@ interface OnboardingProgressProps {
   accentColor: 'teal' | 'pink';
 }
 
-export function OnboardingProgress({ currentStep, totalSteps, accentColor }: OnboardingProgressProps) {
-  const fillClass = accentColor === 'teal' ? 'bg-dc-teal' : 'bg-dc-pink';
-  const glowClass = accentColor === 'teal' ? 'shadow-glow-teal' : 'shadow-glow-pink';
-
+export function OnboardingProgress({ currentStep, totalSteps }: OnboardingProgressProps) {
   return (
     <div className="flex items-center justify-center gap-2">
       {Array.from({ length: totalSteps }, (_, i) => {
@@ -22,10 +19,10 @@ export function OnboardingProgress({ currentStep, totalSteps, accentColor }: Onb
             layout
             className={`h-2 rounded-full transition-colors duration-300 ${
               isActive
-                ? `${fillClass} ${glowClass}`
+                ? 'bg-landing-pink'
                 : isComplete
-                  ? `${fillClass} opacity-60`
-                  : 'bg-white/10'
+                  ? 'bg-landing-pink opacity-60'
+                  : 'bg-landing-line'
             }`}
             animate={{
               width: isActive ? 32 : 10,

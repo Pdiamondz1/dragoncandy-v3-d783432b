@@ -32,9 +32,9 @@ const roleConfig = {
 export function IdentityStep({ name, onNameChange, avatarPreview, onAvatarChange, role }: IdentityStepProps) {
   const config = roleConfig[role];
   const accentColor = role === 'content_creator' ? 'teal' : 'pink';
-  const borderClass = accentColor === 'teal' ? 'border-dc-teal' : 'border-dc-pink';
-  const textClass = accentColor === 'teal' ? 'text-dc-teal' : 'text-dc-pink-accent';
-  const ringClass = accentColor === 'teal' ? 'ring-dc-teal' : 'ring-dc-pink';
+  const borderClass = accentColor === 'teal' ? 'border-landing-mint' : 'border-landing-pink';
+  const textClass = accentColor === 'teal' ? 'text-landing-mint-ink' : 'text-landing-pink-ink';
+  const ringClass = accentColor === 'teal' ? 'ring-landing-mint' : 'ring-landing-pink';
 
   return (
     <div className="flex flex-col items-center">
@@ -60,7 +60,7 @@ export function IdentityStep({ name, onNameChange, avatarPreview, onAvatarChange
           />
         ) : (
           <div
-            className={`w-24 h-24 border-[3px] border-dashed ${borderClass} ${config.photoShape} flex flex-col items-center justify-center gap-1 transition-colors group-hover:bg-white/5`}
+            className={`w-24 h-24 border-[3px] border-dashed ${borderClass} ${config.photoShape} flex flex-col items-center justify-center gap-1 transition-colors group-hover:bg-landing-lilac`}
           >
             <Camera className={`w-6 h-6 ${textClass}`} />
             <span className={`text-[10px] font-medium ${textClass}`}>{config.photoLabel}</span>
@@ -80,7 +80,7 @@ export function IdentityStep({ name, onNameChange, avatarPreview, onAvatarChange
           value={name}
           onChange={e => onNameChange(e.target.value)}
           placeholder={config.placeholder}
-          className="text-center text-lg font-medium h-14 rounded-2xl border-2 border-white/15 bg-white/5 text-white focus:border-dc-teal placeholder:text-white/40"
+          className="text-center text-lg font-medium h-14 rounded-2xl border-2 border-landing-line bg-white text-landing-ink focus-visible:ring-2 focus-visible:ring-landing-mint placeholder:text-landing-ink-soft"
           autoFocus
         />
       </motion.div>

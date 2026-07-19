@@ -1,15 +1,14 @@
-import { useDarkHtml } from "@/hooks/useDarkHtml";
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { SEO } from '@/components/SEO';
+import { AuthShell } from '@/components/auth/AuthShell';
+import { LandingButton } from '@/components/landing/LandingButton';
 
 export default function InviteAcceptPage() {
-  useDarkHtml();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
@@ -81,61 +80,63 @@ export default function InviteAcceptPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="dark dc-surface flex items-center justify-center p-6">
-        <Card className="w-full max-w-sm">
+      <AuthShell className="flex items-center justify-center p-6">
+        <Card className="w-full max-w-sm rounded-2xl border-2 border-landing-line bg-white shadow-[0_14px_30px_rgba(36,19,50,0.08)]">
           <CardContent className="flex flex-col items-center py-12 text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-teal-500 mb-4" />
+            <Loader2 className="h-8 w-8 animate-spin text-landing-mint mb-4" />
             <p className="font-medium">Sign in to accept your invitation</p>
-            <Button
+            <LandingButton
               onClick={() => navigate(`/auth?redirect=/invite/accept?${searchParams.toString()}`)}
-              className="mt-4 rounded-full bg-teal-500 hover:bg-teal-600 text-white"
+              variant="pink"
+              className="mt-4"
             >
               Sign In
-            </Button>
+            </LandingButton>
           </CardContent>
         </Card>
-      </div>
+      </AuthShell>
     );
   }
 
   return (
-    <div className="dark dc-surface flex items-center justify-center p-6">
+    <AuthShell className="flex items-center justify-center p-6">
       <SEO
         title="Accept Your DragonCandy Invite"
         description="Accept your invitation to join DragonCandy."
         path="/invite/accept"
         noindex
       />
-      <Card className="w-full max-w-sm">
+      <Card className="w-full max-w-sm rounded-2xl border-2 border-landing-line bg-white shadow-[0_14px_30px_rgba(36,19,50,0.08)]">
         <CardContent className="flex flex-col items-center py-12 text-center">
           {status === 'loading' && (
             <>
-              <Loader2 className="h-8 w-8 animate-spin text-teal-500 mb-4" />
+              <Loader2 className="h-8 w-8 animate-spin text-landing-mint mb-4" />
               <p className="font-medium">Accepting invitation...</p>
             </>
           )}
           {status === 'success' && (
             <>
-              <CheckCircle2 className="h-12 w-12 text-green-500 mb-4" />
+              <CheckCircle2 className="h-12 w-12 text-green-600 mb-4" />
               <p className="font-medium text-lg">Welcome to the team!</p>
               <p className="text-sm text-muted-foreground mt-1">Redirecting to your dashboard...</p>
             </>
           )}
           {status === 'error' && (
             <>
-              <XCircle className="h-12 w-12 text-red-500 mb-4" />
+              <XCircle className="h-12 w-12 text-red-600 mb-4" />
               <p className="font-medium text-lg">Something went wrong</p>
               <p className="text-sm text-muted-foreground mt-1">{errorMessage}</p>
-              <Button
+              <LandingButton
                 onClick={() => navigate('/dashboard/business')}
-                className="mt-4 rounded-full bg-teal-500 hover:bg-teal-600 text-white"
+                variant="pink"
+                className="mt-4"
               >
                 Go to Dashboard
-              </Button>
+              </LandingButton>
             </>
           )}
         </CardContent>
       </Card>
-    </div>
+    </AuthShell>
   );
 }

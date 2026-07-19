@@ -1,5 +1,5 @@
 import { motion } from '@/lib/motion';
-import { Button } from '@/components/ui/button';
+import { LandingButton } from '@/components/landing/LandingButton';
 import { Rocket, ArrowRight } from 'lucide-react';
 
 interface WelcomeStepProps {
@@ -31,7 +31,7 @@ const particles = Array.from({ length: 12 }, (_, i) => ({
   id: i,
   x: Math.cos((i / 12) * Math.PI * 2) * 80,
   y: Math.sin((i / 12) * Math.PI * 2) * 80,
-  color: i % 3 === 0 ? '#4DD9C0' : i % 3 === 1 ? '#F9A8D4' : '#FACC15',
+  color: i % 3 === 0 ? '#2FC796' : i % 3 === 1 ? '#F43F7F' : '#FFC93C',
   size: 4 + (i % 3) * 2,
   delay: i * 0.06,
 }));
@@ -75,7 +75,7 @@ export function WelcomeStep({ name, role, onContinue, loading }: WelcomeStepProp
           transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
           className="absolute inset-0 flex items-center justify-center"
         >
-          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-dc-teal to-dc-pink flex items-center justify-center shadow-card-elevated">
+          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-landing-mint to-landing-pink flex items-center justify-center shadow-[0_14px_30px_rgba(36,19,50,0.12)]">
             <Rocket className="w-10 h-10 text-white" />
           </div>
         </motion.div>
@@ -85,7 +85,7 @@ export function WelcomeStep({ name, role, onContinue, loading }: WelcomeStepProp
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="text-2xl font-bold text-white mb-1"
+        className="font-display text-2xl font-bold text-landing-ink mb-1"
       >
         {config.heading}
       </motion.h2>
@@ -95,7 +95,7 @@ export function WelcomeStep({ name, role, onContinue, loading }: WelcomeStepProp
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="text-lg font-script text-dc-pink-accent mb-3"
+          className="text-lg font-script text-landing-pink mb-3"
         >
           {name}
         </motion.p>
@@ -105,7 +105,7 @@ export function WelcomeStep({ name, role, onContinue, loading }: WelcomeStepProp
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.55 }}
-        className="text-sm text-white/60 max-w-xs mb-8"
+        className="text-sm text-landing-ink-soft max-w-xs mb-8"
       >
         {config.body}
       </motion.p>
@@ -116,10 +116,11 @@ export function WelcomeStep({ name, role, onContinue, loading }: WelcomeStepProp
         transition={{ delay: 0.7 }}
         className="w-full"
       >
-        <Button
+        <LandingButton
           onClick={onContinue}
           disabled={loading}
-          className="w-full rounded-full py-6 text-base font-bold bg-gradient-to-r from-dc-teal to-emerald-400 hover:from-dc-teal hover:to-dc-teal text-white shadow-glow-teal"
+          variant="pink"
+          className="w-full h-14 text-base disabled:opacity-60"
         >
           {loading ? 'Setting up...' : (
             <span className="flex items-center gap-2">
@@ -127,7 +128,7 @@ export function WelcomeStep({ name, role, onContinue, loading }: WelcomeStepProp
               <ArrowRight className="w-4 h-4" />
             </span>
           )}
-        </Button>
+        </LandingButton>
       </motion.div>
     </div>
   );
