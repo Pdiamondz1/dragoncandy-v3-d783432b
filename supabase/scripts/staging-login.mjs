@@ -31,11 +31,43 @@
 // holding no real user data. Do not adapt this script to production: it refuses to.
 
 import { readFileSync, existsSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const ENV_FILE = join(HERE, ".env.sync.local");
+
+/**
+ * Where the gitignored key file may live, most-specific first.
+ *
+ * Work happens in worktrees under .claude/worktrees/ (30+ of them), and a gitignored
+ * file cannot be shared across them by git. Reading only the local copy would force the
+ * key to be duplicated into every worktree — more copies of a secret on disk, and a
+ * confusing "not set" error when it is in fact set in the main checkout. So fall back to
+ * the main working tree, which is where it naturally gets created once.
+ */
+function keyFileCandidates() {
+  const local = join(HERE, ".env.sync.local");
+  const paths = [local];
+  try {
+    // In a worktree, --git-common-dir points at the MAIN checkout's .git; its parent is
+    // that checkout's root. In the main checkout this just resolves back to the same file.
+    const commonGitDir = execFileSync("git", ["rev-parse", "--git-common-dir"], {
+      cwd: HERE,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    const mainRoot = dirname(resolve(HERE, commonGitDir));
+    const shared = join(mainRoot, "supabase", "scripts", ".env.sync.local");
+    if (shared !== local) paths.push(shared);
+  } catch {
+    // git unavailable or not a repo — the local path is all we have.
+  }
+  return paths;
+}
+
+const KEY_FILES = keyFileCandidates();
+const ENV_FILE = KEY_FILES[0];
 
 // Snapshot the real shell environment BEFORE the key file is merged in below, so the
 // Vite-env check can tell "you exported this" apart from "our key file set this".
@@ -56,9 +88,13 @@ function die(msg) {
   process.exit(1);
 }
 
-// ── Load the gitignored key file without overriding a real env var ──────────────────
-if (existsSync(ENV_FILE)) {
-  for (const line of readFileSync(ENV_FILE, "utf8").split(/\r?\n/)) {
+// ── Load the gitignored key file(s) without overriding a real env var ───────────────
+// Candidates are most-specific first, and an earlier hit wins per key, so a worktree
+// copy can override the shared one in the main checkout.
+let loadedFrom = null;
+for (const file of KEY_FILES) {
+  if (!existsSync(file)) continue;
+  for (const line of readFileSync(file, "utf8").split(/\r?\n/)) {
     if (/^\s*(#|$)/.test(line)) continue;
     const m = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*?)\s*$/);
     if (!m) continue;
@@ -66,6 +102,7 @@ if (existsSync(ENV_FILE)) {
     const val = rawVal.replace(/^["']|["']$/g, "");
     if (!process.env[key]) process.env[key] = val;
   }
+  if (!loadedFrom) loadedFrom = file;
 }
 
 // ── Args ────────────────────────────────────────────────────────────────────────────
@@ -213,7 +250,9 @@ const SECRET = process.env.STAGING_SUPABASE_SECRET_KEY;
 if (!SECRET) {
   die(
     "STAGING_SUPABASE_SECRET_KEY is not set.\n\n" +
-      `  Add it to the gitignored ${ENV_FILE}:\n` +
+      "  Looked in:\n" +
+      KEY_FILES.map((f) => `    ${existsSync(f) ? "found, no such key" : "no file"}  ${f}`).join("\n") +
+      "\n\n  Add it to whichever you prefer (the main-checkout one is shared by every worktree):\n" +
       "    STAGING_SUPABASE_SECRET_KEY=<staging service_role key>\n\n" +
       "  Supabase dashboard → dragoncandy-staging → Project Settings → API → service_role.\n" +
       "  (This is the STAGING key. Never put the prod key here.)"
