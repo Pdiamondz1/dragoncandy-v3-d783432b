@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -19,6 +19,23 @@ const navLinks = [
 export const Header: React.FC = () => {
   const navigate = useNavigate();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  // The landing renders inside the app shell's scrolling `#main-content`, so `window.scrollY`
+  // is always 0 — key the scroll-state off that container (falling back to the window for the
+  // standalone/prerender case). At the very top the header is transparent so it blends into the
+  // hero's soft glow; once you scroll it fades to a frosted-white bar that stays legible over the
+  // colored sections below.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const scroller = document.getElementById("main-content");
+    const target: HTMLElement | Window = scroller ?? window;
+    const read = () => (scroller ? scroller.scrollTop : window.scrollY);
+    const onScroll = () => setScrolled(read() > 12);
+    onScroll();
+    target.addEventListener("scroll", onScroll, { passive: true });
+    return () => target.removeEventListener("scroll", onScroll);
+  }, []);
 
   const handleNavClick = (sectionId: string) => {
     setSheetOpen(false);
@@ -31,10 +48,14 @@ export const Header: React.FC = () => {
   };
 
   return (
-    // Opaque light nav, so — unlike the prior transparent-over-video header — no scroll-state,
-    // pointer-events-none, or wheel-forwarding is needed: a plain `sticky` header inside the app
-    // shell's scrolling `#main-content` behaves like a normal in-flow sticky element.
-    <header className="sticky top-0 z-50 border-b border-landing-line bg-white/90 backdrop-blur">
+    // `sticky top-0` sticks to the app shell's scrolling `#main-content` — but ONLY because the
+    // LandingPage wrapper no longer has an `overflow-x` (which would make it the scroll container
+    // and break sticky). Transparent over the hero glow, frosted-white once scrolled for legibility.
+    <header
+      className={`sticky top-0 z-50 transition-colors duration-300 ${
+        scrolled ? "bg-white/85 backdrop-blur-md" : "bg-transparent"
+      }`}
+    >
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5 sm:px-8 lg:px-12">
         <button
           type="button"

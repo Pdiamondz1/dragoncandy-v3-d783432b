@@ -21,7 +21,17 @@ export default function LandingPage() {
   }, [user, loading, navigate]);
 
   return (
-    <div className="dc-landing min-h-screen overflow-x-hidden bg-white text-landing-ink font-instrument">
+    <div className="dc-landing relative isolate min-h-screen bg-white text-landing-ink font-instrument">
+      {/* Ambient top glow behind the header + hero, so the sticky header shares the hero's soft
+          pink/mint lighting instead of reading as a flat white bar. Behind content via -z-10 and
+          the wrapper's `isolate` stacking context. NOTE: overflow-x clipping lives on `<main>`
+          below, NOT this wrapper — an overflow value here would make it a scroll container and
+          break the header's `sticky top-0` (it would stick to the wrapper, not `#main-content`). */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] overflow-hidden">
+        <div className="absolute -top-28 -left-24 h-80 w-80 rounded-full bg-landing-pink/15 blur-3xl" />
+        <div className="absolute -top-16 right-0 h-72 w-72 rounded-full bg-landing-mint/10 blur-3xl" />
+      </div>
+
       <SEO
         title="DragonCandy — Human-driven. AI-assisted."
         description="DragonCandy connects business owners with talented social media creators — and gives both the tools to run and grow their businesses. AI assists. Humans drive."
@@ -30,7 +40,10 @@ export default function LandingPage() {
 
       <Header />
 
-      <main>
+      {/* overflow-x-hidden lives HERE (not on the wrapper) so it clips off-screen content
+          (e.g. the lead-form honeypot at left-[-9999px]) against the app shell's #main-content
+          scroller WITHOUT becoming the sticky header's scroll container. */}
+      <main className="overflow-x-hidden">
         <HeroSection />
         <PositioningBand />
         <ValuesSection />
