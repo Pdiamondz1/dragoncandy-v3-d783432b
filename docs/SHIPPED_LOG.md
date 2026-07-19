@@ -29,6 +29,51 @@
 
 ---END-HEADER---
 
+- Session context-tax reduction — PROJECT_CONTEXT §5 split into an index + SHIPPED_LOG —
+  **shipped (PRs #294 + #295, 2026-07-19).** Prompted by a founder-supplied video on Claude token
+  efficiency, **audited against the repo before adopting** (3 of its 10 techniques applied; RTK and
+  pxpipe were rejected outright — a third-party tool intercepting tool output is not a dependency
+  to take on in a repo carrying prod Supabase service-role and Stripe credentials). Measured first:
+  every session loaded **~45,700 tokens** before reading a line of code, and §5 alone was
+  **~29,950 (65%)** — 68 multi-paragraph prose bullets under a heading that said "Active
+  Workstreams". **The mislabel mattered more than the length**, because it made the cost
+  *compounding*: `knowledge-sync` step 4 **and** the always-loaded `CLAUDE.md` clause each told
+  every session to append detail there, so §5 grew ~440 tok per shipped branch forever. Coverage was
+  verified per-bullet before designing — 58 of 68 already cited a wiki page or spec, so §5 was
+  largely a prose cache of content the wiki held. **The split:** all prose moved **verbatim** into a
+  new `docs/SHIPPED_LOG.md` (not imported by `CLAUDE.md`, so never auto-loaded, but still collected
+  by `sync-internal-docs.mjs`'s non-recursive `docs/*.md` glob → `/internal/strategy` + Internal
+  Donny, seeded `is_core=true`); §5 became a three-section index (`### In flight` / `### Built —
+  awaiting founder go-live`, each with a `**Pending:**` clause / `### Shipped`) on a binding entry
+  format (`- **<Name>** — <one clause>. → <pointer> · <refs>`, wiki page beats spec, refs omitted
+  entirely when neither PR nor branch exists); and **both generators were amended in the same PR** —
+  the load-bearing half being `CLAUDE.md`, since a session that never opens the skill file would
+  otherwise re-bloat §5. **176,620 → 73,742 B (−58%)**, growth per branch ~440 → ~15 tok.
+  **Paired #295** worked the founder go-live triage 6 → 2 and scheduled three report-only cloud
+  routines from their committed `.claude/schedules/` prompts (`ai-cost-vs-cap` playbook runner
+  weekly; Dezzy Press & Events scout and Strategy Library audit monthly) — the library audit
+  explicitly told `SHIPPED_LOG.md`'s size and wiki overlap are by design so it never files it as
+  `strategy-bloat`. **Durable gotchas, all found by review rather than testing:** a zero-loss gate
+  that counted `^- ` bullet *headings* proved nothing (prose lives in indented continuation lines);
+  line endings must be normalized **before** any end-anchored regex, or on a CRLF repo the sentinel
+  never matches, `sed '1,/re/d'` deletes through EOF, and the gate reports **total data loss on a
+  correct migration** (dangerous, because the instinct is then to loosen the gate); an `awk` range
+  must terminate at its sentinel rather than filtering one line, since the `**Workflow discipline**`
+  block is three column-0 lines and is an operating instruction that must stay in §5; and **a status
+  claim in a document is a claim, not a fact** — checking prod retired three stale "pending" entries
+  (DRE's two launch switches share an identical `updated_at`; web-tool rows exist in
+  `donny_cost_ledger`; three edge functions are ACTIVE) and deleted one **already-closed security
+  follow-up** that had twice been reported upward as a live privacy gap (`match-creators`'
+  `profile_visibility` filter, present since #247). `origin/main` moved **five times** mid-branch;
+  the gate earned its keep when a first conflict resolution missed a concurrent PR's new bullet and
+  it failed loudly, naming the exact missing prose. Standing rule established: **log entries are
+  historical snapshots, §5 is the authority on current status**. Verified: sorted-line diff empty at
+  1342/1342, citations unchanged, 70 entries / 2 `Pending:`, `npm run build` green, Codex clean.
+  **Validated in the wild 15 minutes after merge** — an unrelated session (PR #299) wrote 33 lines
+  to `SHIPPED_LOG.md` and one §5 index line in the binding format, unprompted. Concept:
+  `docs/wiki/concepts/context-tax.md`. Spec:
+  `docs/superpowers/specs/2026-07-18-context-tax-reduction-design.md`.
+
 - Auth + onboarding — landing-theme retheme — **shipped + deployed (PR #299, 2026-07-19;
   frontend-only, no schema/edge-fn/secret change).** A **presentational-only** retheme of all 7
   entry surfaces — login/sign-up (`AuthPage`), the 5 auth siblings (`ForgotPassword`/
