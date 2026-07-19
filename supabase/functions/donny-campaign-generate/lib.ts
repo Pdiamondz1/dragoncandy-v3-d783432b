@@ -19,6 +19,28 @@ function softPlatformGuidance(
     '(each value one of: instagram, tiktok, facebook, youtube, google_business, multi_platform).';
 }
 
+/**
+ * Pricing is a hard constraint, not a creative choice. Without this block the model free-
+ * associated a number (~$400/deliverable — agency pricing), and because the campaign editor
+ * pre-filled it, business owners read it as the required price. Keep these bands in sync with
+ * TIER_PRICE_BANDS in src/lib/campaignPricing.ts.
+ */
+function pricingGuidance(): string {
+  return '\n\nPRICING — treat this as a hard constraint.\n' +
+    'These are LOCAL, single-location small businesses (one restaurant, salon, gym, shop), and ' +
+    'most are trying DragonCandy for the first time. Agency-scale pricing kills the sale before ' +
+    'it starts. Price PER DELIVERABLE within these bands:\n' +
+    '  standard (5-7 days):    $75-$150 per deliverable\n' +
+    '  express (24-48 hours):  $110-$225 per deliverable\n' +
+    '  dragondash (1-3 hours): $150-$300 per deliverable\n' +
+    'For every idea return:\n' +
+    '  "suggested_price_min": deliverable count x the LOW end of that band. A first-time owner ' +
+    'should read this number and think "I can try that."\n' +
+    '  "suggested_price_max": deliverable count x the HIGH end of that band.\n' +
+    '  "price": your single best recommendation, which has to fall inside that range.\n' +
+    'Never exceed suggested_price_max, and never price a whole campaign below $50.';
+}
+
 export function buildDonnyFirstSystemPrompt(
   connectedPlatforms?: Array<{ platform: string; platform_handle: string | null }>,
 ): string {
@@ -35,6 +57,7 @@ export function buildDonnyFirstSystemPrompt(
     'content_type: photo, video_reel, story, carousel, tiktok, youtube_short.\n' +
     'aspect_ratio: 9:16, 16:9, 1:1, 4:5.\n' +
     'tier: dragondash (rush, 1-3 hours), express (24-48 hours), standard (5-7 days).' +
+    pricingGuidance() +
     softPlatformGuidance(connectedPlatforms) +
     '\n\nOutput only raw JSON matching this exact schema — no preamble, no markdown fences, no ' +
     'commentary before or after:\n' +
@@ -67,6 +90,8 @@ export function buildDonnyFirstSystemPrompt(
     '        { "description": "<what the creator makes>", "content_type": "<content_type>", "platform": "<platform>", "aspect_ratio": "<aspect_ratio>", "estimated_duration": <seconds or null> }\n' +
     '      ],\n' +
     '      "price": <number>,\n' +
+    '      "suggested_price_min": <number>,\n' +
+    '      "suggested_price_max": <number>,\n' +
     '      "timeline_days": <number>,\n' +
     '      "tier": "<dragondash|express|standard>",\n' +
     '      "tier_reasoning": "<1-2 sentences>",\n' +

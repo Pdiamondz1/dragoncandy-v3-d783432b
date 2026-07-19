@@ -50,6 +50,10 @@ export const campaignIdeaSchema = z.object({
   recommended_platforms: z.array(platformSchema.catch('multi_platform')).min(1).catch(['multi_platform']),
   deliverables: z.array(ideaDeliverableSchema).min(1),
   price: z.number().optional(),
+  // Optional so ideas generated before these fields existed still parse; the campaign
+  // editor falls back to the tier band in src/lib/campaignPricing.ts when they're absent.
+  suggested_price_min: z.number().optional(),
+  suggested_price_max: z.number().optional(),
   budget_range: z.object({ min: z.number(), max: z.number() }).optional(),
   timeline_days: z.number().positive(),
   tier: deliveryTierSchema.catch('standard'),

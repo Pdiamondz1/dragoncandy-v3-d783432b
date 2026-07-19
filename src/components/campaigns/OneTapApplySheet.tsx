@@ -28,7 +28,6 @@ interface OneTapApplySheetProps {
   campaign: Campaign;
   onSend: (pitch: DonnyPitchResult, portfolioUrl?: string) => void;
   onEditDetails: (pitch: DonnyPitchResult) => void;
-  isInvited?: boolean;
   onCounterOffer?: (pitch: DonnyPitchResult, counterRate: number, message: string, portfolioUrl?: string) => void;
 }
 
@@ -44,7 +43,6 @@ export function OneTapApplySheet({
   campaign,
   onSend,
   onEditDetails,
-  isInvited,
   onCounterOffer,
 }: OneTapApplySheetProps) {
   const { data: pitchData, isPending: pitchPending, mutate: pitchMutate } = useDonnyApplyPitch();
@@ -184,7 +182,10 @@ export function OneTapApplySheet({
     }
   };
 
-  const showInviteNegotiation = isInvited && isFixedPrice && onCounterOffer;
+  // Negotiation used to be invited-only, which left every creator who found a campaign
+  // organically with no way to counter — the counter-offer system existed but was unreachable
+  // on this path. An unfavourable rate has to be answerable, not just declinable.
+  const showNegotiation = isFixedPrice && onCounterOffer;
 
   const isVideoSample = sampleUrl && /\.(mp4|mov|webm|avi)(\?|$)/i.test(sampleUrl);
 
@@ -211,11 +212,18 @@ export function OneTapApplySheet({
             <h3 className="text-base font-bold text-gray-900">Review Your Application</h3>
 
             <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-gray-500 uppercase">{isFixedPrice ? 'Price' : 'Rate'}</span>
-                <span className="text-sm font-bold text-dc-teal">
-                  ${displayRate}
-                </span>
+              <div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500 uppercase">{isFixedPrice ? 'Price' : 'Rate'}</span>
+                  <span className="text-sm font-bold text-dc-teal">
+                    {displayRate != null ? `$${displayRate.toLocaleString()}` : '—'}
+                  </span>
+                </div>
+                {showNegotiation && (
+                  <p className="text-[11px] text-dc-text-muted mt-1">
+                    This price is negotiable — you can counter-offer below.
+                  </p>
+                )}
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-gray-500 uppercase">When</span>
@@ -319,7 +327,7 @@ export function OneTapApplySheet({
               </div>
             </div>
 
-            {showInviteNegotiation ? (
+            {showNegotiation ? (
               <div className="space-y-3 pt-2">
                 <div className="flex gap-2">
                   <button

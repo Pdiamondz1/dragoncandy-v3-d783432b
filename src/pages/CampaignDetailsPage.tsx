@@ -270,10 +270,13 @@ const CampaignDetailsPage: React.FC = () => {
         proposedTimeline: computeProposedTimeline(campaign.delivery_type),
         portfolioUrl: portfolioUrl ?? pitch.suggested_portfolio_piece_url ?? undefined,
         isCounterOffer: true,
-        isInvited: true,
+        // Was hardcoded true back when only invited creators could reach this. Any creator
+        // can counter now, and the RLS INSERT policy keys off this flag — an organic creator
+        // must not be recorded as invited.
+        isInvited,
       });
 
-      logDonnyEvent('counter_offer_from_invite', { counter_rate: counterRate, original_price: campaign.fixed_price });
+      logDonnyEvent('counter_offer', { counter_rate: counterRate, original_price: campaign.fixed_price, is_invited: isInvited });
       setShowApplySheet(false);
       setShowConfirmation(true);
     } catch {
@@ -370,7 +373,6 @@ const CampaignDetailsPage: React.FC = () => {
                   campaign={campaign}
                   onSend={handleDonnySend}
                   onEditDetails={handleEditDetails}
-                  isInvited={isInvited}
                   onCounterOffer={handleCounterOffer}
                 />
               </>
