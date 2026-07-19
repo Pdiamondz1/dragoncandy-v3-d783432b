@@ -34,6 +34,26 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-19] Help center screenshots + sidebar/search knowledge-sync validation (docs PR #312, POST-merge)
+- Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for the help-center
+  screenshots (#306) + sidebar/search (#310) efforts.
+- Happened: (a) wiki lint — path-based orphan/index-completeness check clean (0 orphans across
+  concepts+entities+analyses), no contradictions (compounded onto the existing
+  [[Help Center & Donny Guidance]] page + a raw session, no net-new concept page → no new orphan risk);
+  (b) `LAST_WIKI_SYNC` 2026-07-19T05:36:54-04:00 (=09:36 UTC), `RAG_LAST` 08:35 UTC — the classic
+  UPDATE-only `max(updated_at)`-not-bumped case (compound-onto-existing-page), BUT the post-merge hook
+  synced wiki errors=0/updated=85 and `content ilike` = `rankHelpArticles` 2 + `help-screenshots` 5 +
+  `help-landing-page-2026-07` 2 confirm the new text is in `donny_knowledge` → [freshness-proxy], (b) met
+  (also within 24h regardless); (c) the updated concept page is in index.md + the `[2026-07-19] update`
+  log.md entry.
+- Worked: [freshness-proxy] resolved (b) — `rankHelpArticles` / `help-landing-page-2026-07` are unique to
+  the new help text within the synced wiki dirs, so the content-ilike hits are unambiguous proof despite
+  the UPDATE-only timestamp.
+- Failed: none (validator). Post-merge run → this run-log entry rides a dedicated
+  `chore/verify-knowledge-runlog-312` PR (no work branch left to bundle into), matching the pattern.
+- Remember: re-confirms [freshness-proxy] for a compound-onto-existing-page sync — the content-ilike probe
+  on a token unique to the NEW text is the decisive (b) signal, not `max(updated_at)`. (advisory)
+
 ### [2026-07-19] data-exposure-reviewer knowledge-sync validation (branch `worktree-dc-improvements-3`, PRE-merge)
 - Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for the
   `data-exposure-reviewer` subagent branch.
