@@ -1,5 +1,17 @@
 # Wiki Log
 
+## [2026-07-19] ingest | Campaign price anchoring + opening negotiation to all creators
+Ingested [[Campaign Price Anchoring Session]]. New concept [[Campaign Price Anchoring & Negotiation
+Reach]] — a genuinely distinct subject from both [[Pricing Architecture]] (platform monetization) and
+[[Campaign Generation Creativity]] (idea quality): this is the money flowing *between* two users, and
+it is the number both sides judge the marketplace by. **Compounded** the pre-existing
+`create_counter_offer` authorization gap onto [[Service-Role Data Exposure]] as an open finding rather
+than a new page — it is that page's defect class (a `SECURITY DEFINER` function bypassing RLS with no
+`auth.uid()` check), surfaced by this review but not introduced by it, and deliberately not routed
+through. Updated `index.md` (Sources + Concepts) and this log. `SHIPPED_LOG.md` prepended;
+`PROJECT_CONTEXT.md` §5 gained one Shipped index line. No `DATABASE_SCHEMA`/`DESIGN_SYSTEM`/`CLAUDE.md`
+change — no schema, token, or workflow change (the tier bands are app constants, not design tokens).
+
 ## [2026-07-19] ingest | Service-role authorization remediation (PR #308, deployed)
 Ingested [[Service-Role Remediation Session]]. **Compounded** onto [[Service-Role Data Exposure]] (new
 "The remediation" section + the two-functional-regressions and stricter-than-RLS notes) rather than

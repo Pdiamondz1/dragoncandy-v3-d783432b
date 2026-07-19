@@ -29,6 +29,47 @@
 
 ---END-HEADER---
 
+- Campaign price anchoring + negotiation reach — **shipped (2026-07-19).** Founder feedback: the
+  generated campaign price is too high to start, and because it arrives **pre-filled** a business
+  owner reads it as the required price. The instinct — relabel it "Suggested: $800" — would only move
+  the anchor one line down, so the fix went upstream. `donny-campaign-generate` had **zero** pricing
+  guidance: its prompt asked for a bare `"price": <number>` with no floor, ceiling, or relation to
+  deliverable count or tier, so the model free-associated to roughly **$400/deliverable** — agency
+  pricing shown to a first-time local restaurant. It now prices against founder-approved
+  per-deliverable bands (`standard` $75–150, `express` $110–225, `dragondash` $150–300) and returns
+  `suggested_price_min`/`suggested_price_max` beside its single pick.
+  **Business side:** the price field starts **empty**; beneath it the suggested range plus three
+  one-tap `AppChip` amounts (low/mid/high — a tap beats typing, per the North Star). New
+  `src/lib/campaignPricing.ts` is the single source for every figure (14 unit tests) and falls back to
+  `deliverableCount × band` for ideas generated before the new fields existed — so the anchor drops on
+  frontend merge alone and the edge deploy only adds Donny's per-campaign judgment. Cost Breakdown
+  hides below the $50 floor (at $0 it rendered "(2 × $0.00)"); launch is gated with a plain message
+  instead of the stringified ZodError toast that was previously the only feedback — which mattered
+  because everyone now *starts* at $0, making a never-hit validation branch the default path. Crew
+  campaigns stay exempt (free by DB constraint). The copy says "a starting point, not a market rate":
+  DragonCandy is pre-revenue with zero completed campaigns, so implying market data would be the same
+  anchoring problem in a lab coat. The screenshot case (2 deliverables, standard) goes from a
+  pre-filled **$800** to an empty field suggesting **$150–$300**.
+  **Creator side:** needed no new machinery. The whole counter-offer system — table, RPCs,
+  notification, negotiation thread, business accept/decline — already existed and worked; it was
+  simply **unreachable**, gated on `isInvited`, so a creator who found a campaign organically saw only
+  "Looks good — Send". Any creator can now counter from the apply sheet, with the price explicitly
+  marked negotiable at the point of decision. Also fixed: `handleCounterOffer` passed a hardcoded
+  `isInvited: true`, and a failed counter-offer insert was a silent `console.error` that left the
+  application at `counter_offered` with no offer row for the business to answer.
+  **Durable gotcha:** a crew campaign's `fixed_price` is `0`, **not null**, so `isFixedPrice`
+  (`!= null`) did not exclude crews — dropping the invite gate exposed a "$50 minimum" counter-offer
+  form on campaigns the DB declares free (`campaigns_group_free`); the invite gate had been masking it
+  by accident. Caught **independently by both Codex and `data-exposure-reviewer`**, fixed by gating on
+  `group_id`. Generalized: a `!= null` check is not an "is this paid?" check once a sibling feature
+  writes a real `0`. Also corrected a comment claiming `isInvited` drives the RLS INSERT policy — it
+  never reaches the database, and derives partly from `?invited=true` in the URL, so it was never a
+  control at all. **Filed, not fixed:** `create_counter_offer` is `SECURITY DEFINER` with no
+  authorization whatsoever (no `auth.uid()` check, no participant check) — pre-existing and live via
+  `useCounterOffers.ts`; this work deliberately kept the widened path on the RLS-checked direct insert
+  instead. Reviews: `edge-function-reviewer` PASS, Codex clean after the crew fix, 1057 tests.
+  → `docs/wiki/concepts/campaign-price-anchoring.md`
+
 - Service-role authorization remediation — **shipped + deployed (PR #308, 2026-07-19).** Sequel to
   #307: fixes what the new `data-exposure-reviewer` found. **12 guards across 4 edge functions** plus
   a new pure `_shared/campaign-access.ts` (`evaluateCampaignAccess` / `evaluateApplyAccess`, 19 unit

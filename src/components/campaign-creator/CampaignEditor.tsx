@@ -12,6 +12,12 @@ import { CostBreakdown } from '@/components/campaigns/CostBreakdown';
 import { TIER_LIMITS } from '@/types/campaignMedia';
 import { mapDeliveryType } from '@/lib/campaignUtils';
 import { sanitizeNumericInput } from '@/lib/inputUtils';
+import {
+  MIN_CAMPAIGN_PRICE,
+  getSuggestedRange,
+  getPriceChips,
+  formatSuggestedRange,
+} from '@/lib/campaignPricing';
 import { AppChip } from '@/components/app/AppChip';
 import { AppStatusBadge } from '@/components/app/AppStatusBadge';
 
@@ -42,6 +48,21 @@ export function CampaignEditor({
 }: CampaignEditorProps) {
   const currentTier = mapDeliveryType(campaign.delivery_type);
   const tierConfig = currentTier ? TIER_LIMITS[currentTier] : TIER_LIMITS.standard;
+
+  const deliverableCount = campaign.deliverables.length;
+  // Donny's figures describe the idea as generated. Once the business edits the deliverables
+  // or the tier, they're stale — fall back to the band so the suggestion tracks what they
+  // actually configured.
+  const matchesGeneratedIdea =
+    deliverableCount === originalIdea.deliverables.length && currentTier === originalIdea.tier;
+  const suggestedRange = getSuggestedRange({
+    tier: currentTier,
+    deliverableCount,
+    suggestedMin: matchesGeneratedIdea ? originalIdea.suggested_price_min : undefined,
+    suggestedMax: matchesGeneratedIdea ? originalIdea.suggested_price_max : undefined,
+  });
+  const priceChips = getPriceChips(suggestedRange);
+  const hasLaunchablePrice = campaign.fixed_price >= MIN_CAMPAIGN_PRICE;
 
   return (
     <div className="bg-white rounded-2xl border border-teal-300 p-5 space-y-3 animate-in slide-in-from-bottom-4 duration-300">
@@ -93,13 +114,15 @@ export function CampaignEditor({
         ) : (
           <>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Campaign Price</label>
+              <label htmlFor="campaign-price" className="text-sm font-medium text-gray-700">Campaign Price</label>
               <div className="relative max-w-xs">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dc-teal font-bold">$</span>
                 <input
+                  id="campaign-price"
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
+                  placeholder="0"
                   value={campaign.fixed_price || ''}
                   onChange={(e) => {
                     const clean = sanitizeNumericInput(e.target.value);
@@ -108,14 +131,39 @@ export function CampaignEditor({
                   className="w-full pl-8 pr-3 py-2 border border-dc-teal/20 rounded-xl text-lg font-semibold outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
                 />
               </div>
+              <p className="text-xs text-dc-text-muted">
+                Donny suggests{' '}
+                <span className="font-semibold text-dc-text">{formatSuggestedRange(suggestedRange)}</span>
+                {' '}for {deliverableCount} {deliverableCount === 1 ? 'deliverable' : 'deliverables'} — a
+                starting point, not a market rate. You set the price.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {priceChips.map((amount) => (
+                  <AppChip
+                    key={amount}
+                    active={campaign.fixed_price === amount}
+                    onClick={() => updateField('fixed_price', amount)}
+                  >
+                    ${amount.toLocaleString()}
+                  </AppChip>
+                ))}
+              </div>
+              {!hasLaunchablePrice && (
+                <p className="text-xs text-dc-text-muted">
+                  Set a price of at least ${MIN_CAMPAIGN_PRICE} to launch.
+                </p>
+              )}
             </div>
-            <CostBreakdown
-              deliverableCount={campaign.deliverables.length}
-              budgetTotal={campaign.fixed_price + tierConfig.fee}
-              baseCostPerDeliverable={campaign.deliverables.length > 0 ? campaign.fixed_price / campaign.deliverables.length : 0}
-              premiumAmount={tierConfig.fee}
-              deliveryType={tierConfig.label}
-            />
+            {/* At $0 this renders "(2 x $0.00)" and a $0.00 total, which reads as broken. */}
+            {hasLaunchablePrice && (
+              <CostBreakdown
+                deliverableCount={deliverableCount}
+                budgetTotal={campaign.fixed_price + tierConfig.fee}
+                baseCostPerDeliverable={deliverableCount > 0 ? campaign.fixed_price / deliverableCount : 0}
+                premiumAmount={tierConfig.fee}
+                deliveryType={tierConfig.label}
+              />
+            )}
           </>
         )}
       </EditorSection>

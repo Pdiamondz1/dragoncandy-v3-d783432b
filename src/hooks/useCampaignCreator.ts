@@ -44,8 +44,10 @@ function ideaToEditableCampaign(idea: CampaignIdea): EditableCampaign {
     campaign_type: idea.campaign_type,
     platforms: [...idea.recommended_platforms],
     deliverables,
-    fixed_price: idea.price ?? idea.budget_range?.max ?? idea.budget_range?.min ?? 500,
-    per_creator_cap: idea.price ?? idea.budget_range?.max ?? 500,
+    // Start empty on purpose. A pre-filled price reads as "this is what I owe"; the business
+    // sets it from the suggested range in CampaignEditor. See src/lib/campaignPricing.ts.
+    fixed_price: 0,
+    per_creator_cap: 0,
     usage_rights_days: 30,
     exclusivity_days: 14,
     geographic_scope: 'city' as const,

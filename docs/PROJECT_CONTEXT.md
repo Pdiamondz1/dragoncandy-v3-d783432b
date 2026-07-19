@@ -119,6 +119,11 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **Campaign price anchoring + negotiation reach** — the generated price arrived pre-filled and read
+  as "what I must pay"; the real cause was a generator with **no** pricing guidance (~$400/deliverable).
+  Now tier-banded, the field starts at $0 with a tap-to-fill suggested range, and counter-offer is
+  reachable by every creator instead of invited-only.
+  → `docs/wiki/concepts/campaign-price-anchoring.md`
 - **`data-exposure-reviewer` subagent + service-role remediation** — a read-only reviewer for the
   dominant Codex P1 class (service-role RLS bypass), resolving the [[Claude Subagents Audit]] Tier-2
   deferral and hard-wired into `codex-review` step 1; what it found is **fixed and deployed** (12

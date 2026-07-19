@@ -270,10 +270,15 @@ const CampaignDetailsPage: React.FC = () => {
         proposedTimeline: computeProposedTimeline(campaign.delivery_type),
         portfolioUrl: portfolioUrl ?? pitch.suggested_portfolio_piece_url ?? undefined,
         isCounterOffer: true,
-        isInvited: true,
+        // Was hardcoded true back when only invited creators could reach this. The flag
+        // carries no authorization weight — it never reaches the database, it only selects
+        // which client-side pre-check runs in useCreateApplication — but hardcoding it sent
+        // an organic creator down the invitation-lookup branch instead of the correct
+        // immediate rejection.
+        isInvited,
       });
 
-      logDonnyEvent('counter_offer_from_invite', { counter_rate: counterRate, original_price: campaign.fixed_price });
+      logDonnyEvent('counter_offer', { counter_rate: counterRate, original_price: campaign.fixed_price, is_invited: isInvited });
       setShowApplySheet(false);
       setShowConfirmation(true);
     } catch {
@@ -370,7 +375,6 @@ const CampaignDetailsPage: React.FC = () => {
                   campaign={campaign}
                   onSend={handleDonnySend}
                   onEditDetails={handleEditDetails}
-                  isInvited={isInvited}
                   onCounterOffer={handleCounterOffer}
                 />
               </>

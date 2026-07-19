@@ -113,7 +113,12 @@ export const useCreateApplication = () => {
           status: 'pending',
         });
         if (counterOfferError) {
+          // The application is already sitting at 'counter_offered'. Without this row the
+          // business sees "counter offered" and has nothing to accept or decline, so this
+          // cannot stay a silent console.error — retrying re-inserts the offer via the
+          // existingApp branch above.
           console.error('Error creating counter offer record:', counterOfferError);
+          throw new Error('Your application was created, but the offer could not be sent. Please try again.');
         }
       }
 
