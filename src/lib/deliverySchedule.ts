@@ -10,13 +10,29 @@
 import type { DeliveryTier } from '@/types/campaignMedia';
 
 /**
- * How many days out each tier's deadline lands. Also the upper bound used when
- * deriving a tier back from a date, so the two directions stay exact inverses.
+ * How many days out each tier's deadline lands — matched to the turnaround the UI
+ * advertises from TIER_LIMITS, so the date written never overshoots the promise:
+ * DragonDash is 1–3 hours (today), Express is 24–48 hours (two days), Standard is
+ * 5–7 days (a week).
  */
 export const TIER_DEADLINE_DAYS: Record<DeliveryTier, number> = {
-  dragondash: 1,
-  express: 3,
+  dragondash: 0,
+  express: 2,
   standard: 7,
+};
+
+/**
+ * Upper bound, in days out, for deriving a tier back from a date: the **cheapest tier
+ * whose advertised turnaround can still make that date**.
+ *
+ * A deadline one day out cannot rely on Express (its 48-hour worst case would miss it),
+ * so it resolves to DragonDash. A deadline five days out is inside Standard's 5–7 day
+ * window, so it stays Standard rather than upselling. These are exact inverses of
+ * TIER_DEADLINE_DAYS above — 0 -> dragondash, 2 -> express, 7 -> standard.
+ */
+const TIER_MAX_DAYS_OUT: Record<Exclude<DeliveryTier, 'standard'>, number> = {
+  dragondash: 1,
+  express: 4,
 };
 
 /**
@@ -62,7 +78,7 @@ export function tierForDeadline(deadline: string): DeliveryTier {
   // Midnight-to-midnight, rounded — immune to the 23/25-hour days around DST.
   const diffDays = Math.round((target.getTime() - today.getTime()) / 86_400_000);
 
-  if (diffDays <= TIER_DEADLINE_DAYS.dragondash) return 'dragondash';
-  if (diffDays <= TIER_DEADLINE_DAYS.express) return 'express';
+  if (diffDays <= TIER_MAX_DAYS_OUT.dragondash) return 'dragondash';
+  if (diffDays <= TIER_MAX_DAYS_OUT.express) return 'express';
   return 'standard';
 }

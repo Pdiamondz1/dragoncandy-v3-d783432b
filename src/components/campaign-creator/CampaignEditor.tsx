@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { CostBreakdown } from '@/components/campaigns/CostBreakdown';
 import { TIER_LIMITS } from '@/types/campaignMedia';
-import { mapDeliveryType } from '@/lib/campaignUtils';
+import { mapDeliveryType, computeCampaignCost } from '@/lib/campaignUtils';
 import { sanitizeNumericInput } from '@/lib/inputUtils';
 import { AppChip } from '@/components/app/AppChip';
 import { AppStatusBadge } from '@/components/app/AppStatusBadge';
@@ -110,9 +110,11 @@ export function CampaignEditor({
             </div>
             <CostBreakdown
               deliverableCount={campaign.deliverables.length}
-              budgetTotal={campaign.fixed_price + tierConfig.fee}
-              baseCostPerDeliverable={campaign.deliverables.length > 0 ? campaign.fixed_price / campaign.deliverables.length : 0}
-              premiumAmount={tierConfig.fee}
+              {...computeCampaignCost(
+                campaign.fixed_price,
+                currentTier ?? 'standard',
+                campaign.deliverables.length
+              )}
               deliveryType={tierConfig.label}
             />
           </>

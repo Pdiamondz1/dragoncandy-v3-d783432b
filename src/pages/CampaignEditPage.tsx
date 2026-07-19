@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { mapDeliveryType, getTierConfig } from '@/lib/campaignUtils';
+import { mapDeliveryType, getTierConfig, computeCampaignCost } from '@/lib/campaignUtils';
 import type { Platform, Deliverable } from '@/types/campaignMedia';
 import { cn } from '@/lib/utils';
 
@@ -153,10 +153,11 @@ const CampaignEditPage: React.FC = () => {
   const tierConfig = getTierConfig(tier);
   const deliverableCount = structuredDeliverables.length || formData.deliverables.length || 1;
   const budgetMax = parseFloat(formData.fixed_price) || 0;
-  const premiumAmount = tierConfig?.fee ?? 0;
-  const baseCostPerDeliverable = deliverableCount > 0
-    ? Math.max(0, (budgetMax - premiumAmount) / deliverableCount)
-    : 0;
+  const { baseCostPerDeliverable, premiumAmount, budgetTotal } = computeCampaignCost(
+    budgetMax,
+    tier,
+    deliverableCount
+  );
 
   // ── Loading state ──────────────────────────────────────────────────────────
   if (isLoading) {
@@ -360,10 +361,10 @@ const CampaignEditPage: React.FC = () => {
 
             <CostBreakdown
               deliverableCount={deliverableCount}
-              budgetTotal={budgetMax}
+              budgetTotal={budgetTotal}
               baseCostPerDeliverable={baseCostPerDeliverable}
               premiumAmount={premiumAmount}
-              deliveryType={formData.delivery_type}
+              deliveryType={tierConfig?.label ?? ''}
             />
 
           </EditorSection>

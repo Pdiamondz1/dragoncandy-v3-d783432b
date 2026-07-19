@@ -24,10 +24,13 @@ function daysOut(iso: string): number {
 }
 
 describe('deadlineForTier', () => {
-  it('lands each tier the documented number of days out', () => {
-    expect(daysOut(deadlineForTier('dragondash'))).toBe(1);
-    expect(daysOut(deadlineForTier('express'))).toBe(3);
-    expect(daysOut(deadlineForTier('standard'))).toBe(7);
+  // Each date must sit inside the turnaround the UI advertises from TIER_LIMITS —
+  // DragonDash "1–3 hours", Express "24–48 hours", Standard "5–7 days" — so tapping a
+  // fast tier never writes a deadline the tier itself could not meet.
+  it('writes a deadline that matches the advertised turnaround', () => {
+    expect(daysOut(deadlineForTier('dragondash'))).toBe(0); // 1–3 hours = today
+    expect(daysOut(deadlineForTier('express'))).toBe(2); // 24–48 hours
+    expect(daysOut(deadlineForTier('standard'))).toBe(7); // 5–7 days
   });
 
   it('emits a local YYYY-MM-DD date, never a UTC-shifted one', () => {
@@ -47,12 +50,15 @@ describe('tierForDeadline', () => {
     }
   });
 
-  it('maps each day boundary to the right tier', () => {
+  // The rule is "cheapest tier that can still make the date", not "nearest label".
+  it('maps each day boundary to the cheapest tier that can still hit it', () => {
     expect(tierForDeadline(localDateNDaysOut(0))).toBe('dragondash'); // due today
+    // 1 day out: Express's 48-hour worst case could miss it, so it stays DragonDash.
     expect(tierForDeadline(localDateNDaysOut(1))).toBe('dragondash');
     expect(tierForDeadline(localDateNDaysOut(2))).toBe('express');
-    expect(tierForDeadline(localDateNDaysOut(3))).toBe('express');
-    expect(tierForDeadline(localDateNDaysOut(4))).toBe('standard');
+    expect(tierForDeadline(localDateNDaysOut(4))).toBe('express');
+    // 5 days out is inside Standard's own 5–7 day window — don't upsell to Express.
+    expect(tierForDeadline(localDateNDaysOut(5))).toBe('standard');
     expect(tierForDeadline(localDateNDaysOut(7))).toBe('standard');
   });
 
