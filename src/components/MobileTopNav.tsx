@@ -31,8 +31,12 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
   const isActive = (href: string) =>
     location.pathname === href || location.pathname.startsWith(href + '/');
 
+  // z-40 (NOT z-50): app chrome sits BELOW the Radix modal layer (dialogs/sheets are z-50),
+  // so a full-screen dialog's overlay dims this bar instead of it poking through. The nav's
+  // own dropdowns (OrgUnitSwitcher, notifications) are z-50 and open downward, so they still
+  // render above it. Matches MobileBottomNav's z-40.
   return (
-    <header className={`sticky top-0 z-50 flex items-center justify-between px-4 py-2 ${bgClass} border-b border-border`}>
+    <header className={`sticky top-0 z-40 flex items-center justify-between px-4 py-2 ${bgClass} border-b border-border`}>
       <Link to="/" className="flex-shrink-0">
         <img src={dragonCandyLogo} alt="DragonCandy" className="w-[64px] md:w-[120px] lg:w-[140px] h-auto" />
       </Link>

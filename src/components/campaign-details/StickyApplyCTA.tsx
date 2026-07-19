@@ -21,8 +21,12 @@ export function StickyApplyCTA({
 }: StickyApplyCTAProps) {
   const canReapply = hasApplied && applicationStatus === 'rejected';
 
+  // Non-modal in-page CTA that coexists with the fixed MobileBottomNav (both z-40).
+  // On mobile, sit ABOVE the nav so the button clears its ~56px bar + the floating Donny
+  // emblem + the home-indicator safe area (6rem matches the app's pb-24 nav-clearance
+  // convention). On desktop there is no bottom nav, so anchor flush at bottom-0.
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-t border-dc-teal/15 px-5 py-3 pb-6">
+    <div className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-t border-dc-teal/15 px-5 py-3 pb-6">
       <div className="md:max-w-2xl md:mx-auto">
         {canApply && (
           <button
