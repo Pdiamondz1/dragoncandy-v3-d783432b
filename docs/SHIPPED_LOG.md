@@ -29,6 +29,39 @@
 
 ---END-HEADER---
 
+- Auth + onboarding — landing-theme retheme — **shipped + deployed (PR #299, 2026-07-19;
+  frontend-only, no schema/edge-fn/secret change).** A **presentational-only** retheme of all 7
+  entry surfaces — login/sign-up (`AuthPage`), the 5 auth siblings (`ForgotPassword`/
+  `UpdatePassword`/`VerifyEmail`/`RestoreAccountPage`/`InviteAcceptPage`), and the onboarding
+  wizard + steps, plus shared components (`AuthForm`/`AuthModeToggle`/`RoleSelection`) — from
+  **dark** to the shipped **light "Human-driven. AI-assisted."** landing identity (PR #293),
+  "softened for forms." Closes the gap the landing redesign left open: a visitor who clicked "Get
+  started" on the bright landing still dropped into a dark auth screen. **Zero auth-logic
+  changes** — every handler/effect/redirect/Supabase call is byte-identical, verified at per-task
+  review, the whole-branch Opus review, and the Codex second review. New shared **`AuthShell`**
+  (`src/components/auth/AuthShell.tsx`, a light glow wrapper) replaces the dark `bg-dc-dark` root +
+  `GlowBackdrop`; it reuses the landing's already-shipped, additive `landing-*` tokens/fonts plus
+  the `Eyebrow`/`LandingButton` primitives — ADDITIVE, so the authenticated app (still `dc-*`/
+  Outfit) is untouched. Light Bricolage headings, grape/pink/mint accents, chunky pink buttons,
+  calm light shadcn form fields, and `RoleSelection` restyled to pastel door-cards. **Both dark
+  triggers removed together** from all 7 surfaces (the `useDarkHtml()` call AND the literal
+  `dark`/`bg-dc-dark` wrapper class — removing only one would have left a half-migrated wrapper),
+  and **`src/hooks/useDarkHtml.ts` deleted** as dead code once every caller went light —
+  `/internal` has always applied dark via its own independent inline `useEffect`
+  (`InternalLayout`), so the deletion is a no-op there and **`/internal` is now the only dark
+  surface left in the app**. **`AuthShell` `isolate` gotcha (Codex + whole-branch catch):** the
+  first version wrapped `children` in a `relative z-10` slot, which became a shrink-wrapping flex
+  item whenever a caller centers via `flex items-center justify-center` (invite/restore/onboarding),
+  collapsing their `w-full max-w-*` cards to content width. Fixed with the landing's own `isolate`
+  pattern: root `isolate` + glow `-z-10`, `children` rendered directly, with a regression test
+  (`AuthShell.test.tsx`) locking in the fix. Closed the previously parked PR #279 (a rejected
+  `dc-*`-toward-the-app retheme option) as superseded. Deferred cosmetic follow-ups: the sibling
+  pages' chrome-bar headings stayed `font-sans` rather than picking up `font-display`, and
+  onboarding doesn't yet visibly "soften toward the app" as it progresses. `docs/DESIGN_SYSTEM.md`
+  was updated in the same PR to document the marketing+entry identity now covering auth/onboarding.
+  Concept: `docs/wiki/concepts/auth-onboarding-landing-theme.md`. Spec:
+  `docs/superpowers/specs/2026-07-18-auth-onboarding-landing-theme-design.md`.
+
 - DragonCandy AIOS — Reading agent traces (the 4th loop-stack layer) — **built (PR #292,
   2026-07-18; schema + edge fn live on prod, skill ships on merge).** A founder-supplied video on how
   Anthropic engineers automate was **audited against the repo before adopting**, and three of its four
