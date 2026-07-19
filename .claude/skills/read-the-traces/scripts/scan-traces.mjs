@@ -373,7 +373,7 @@ function buildReport(acc, ctx) {
   const failingSkills = skillRows.filter(
     (s) => s.turns >= SKILL_MIN_TURNS && s.errorRate > SKILL_ERROR_RATE_GATE,
   );
-  const gate = {
+  const gate = { // exposed as `observations` — counts a human interprets, never a verdict
     hookErrors: hookErrors.reduce((n, g) => n + g.count, 0),
     denials: denials.reduce((n, g) => n + g.count, 0),
     failingSkills: failingSkills.map((s) => ({
@@ -383,7 +383,7 @@ function buildReport(acc, ctx) {
   };
 
   return {
-    gate,
+    observations: gate,
     scope: {
       project: ctx.project,
       traceDir: ctx.traceDir,
@@ -420,13 +420,15 @@ function printHuman(r) {
   if (s.parseErrors) L(`unparseable ${s.parseErrors} lines`);
   L(`totals      ${r.totals.toolCalls} tool calls, ${r.totals.errors} errors`);
 
-  const g = r.gate;
-  L(`\n## Gate (the four deterministic checks)`);
-  L(`  hook errors                ${g.hookErrors}`);
-  L(`  permission/classifier      ${g.denials}`);
-  L(`  skills over ${Math.round(SKILL_ERROR_RATE_GATE * 100)}% err rate  ${g.failingSkills.length}${
+  const g = r.observations;
+  L(`\n## Observations — counts, NOT a verdict`);
+  L(`  Every one of these has misled at least once. Verify before repeating any of them:`);
+  L(`  ask "does this subject even do the thing it is blamed for?" first.`);
+  L(`  hook FAILURES (a block is not a failure)   ${g.hookErrors}`);
+  L(`  permission/classifier events (not bugs)    ${g.denials}`);
+  L(`  skills over ${Math.round(SKILL_ERROR_RATE_GATE * 100)}% err rate            ${g.failingSkills.length}${
     g.failingSkills.length ? "  -> " + g.failingSkills.map((s) => `${s.name} ${s.pct}%`).join(", ") : ""}`);
-  L(`  clusters >=${CLUSTER_GATE} in a session   ${g.bigClusters.length}`);
+  L(`  repeat clusters >=${CLUSTER_GATE} in a session          ${g.bigClusters.length}`);
 
   L(`\n## Hook errors (${r.hookErrors.length})`);
   if (!r.hookErrors.length) L(`  none`);
