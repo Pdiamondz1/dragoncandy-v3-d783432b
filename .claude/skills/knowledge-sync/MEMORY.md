@@ -68,6 +68,39 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-19] Campaign price anchoring + negotiation reach (branch `worktree-dc-improvements-7`)
+- Output: bundled INTO the work branch — new `raw/sessions/2026-07-19-campaign-price-anchoring.md`,
+  new `concepts/campaign-price-anchoring.md`, **compounded** the pre-existing `create_counter_offer`
+  authz gap onto `concepts/service-role-data-exposure.md` (new "Open finding" section above "The
+  remediation"), `index.md` (Sources in the "Ca" cluster + Concepts after [[Campaign Lifecycle]]),
+  `log.md` ingest entry at top, `SHIPPED_LOG.md` **prepended**, `PROJECT_CONTEXT.md` §5 one Shipped
+  index line, + THIS entry. No DATABASE_SCHEMA/DESIGN_SYSTEM/CLAUDE.md change — the tier bands are app
+  constants in `src/lib/campaignPricing.ts`, not design tokens, and no schema or workflow rule moved.
+- Happened: a **founder-feedback pricing session** whose durable knowledge is a NEW concept rather than
+  a compound. Deliberated it: [[Pricing Architecture]] is platform monetization (take-rate/credits/rush)
+  and [[Campaign Generation Creativity]] is idea quality — neither owns "what a business pays a
+  creator", which is the number both sides of the marketplace judge us by. Wrote it as one page
+  spanning generation → business editor → creator counter-offer, because that IS one story. The
+  security finding went the other way: compounded onto [[Service-Role Data Exposure]], which already
+  owns the definer-bypasses-RLS class, instead of a thin sibling page.
+- Worked: [scope] — fetched first, found the branch 1 behind, rebased onto `origin/main`, and confirmed
+  all five target docs byte-IDENTICAL to `origin/main` before editing. [runlog-in-pr] bundled.
+  [wikilinks]-exact earned its keep again: grepped `index.md` for every target and **dropped
+  `[[Revoke Definer From Anon]]` — no such page exists** (it's a project *memory*, not a wiki page), so
+  the trap is stated inline as prose instead of minting a dangling link. Verified the exact display
+  names `[[Creator Groups (Crews)]]` and `[[Campaign Lifecycle]]` (both have near-miss siblings —
+  `[[Creator Groups Session]]`, `[[Campaign Lifecycle Flow]]` — that a careless link would have hit).
+- Failed: none for knowledge-sync. The edge-function deploy and prod verification are post-merge by
+  the founder's choice ("deploy with the merge"); RAG sync is post-merge via the hook, per [rag-sync].
+- Remember: **when two independent reviewers flag the same finding, verify it yourself before
+  believing OR dismissing it — but treat the agreement as a strong prior.** Codex and
+  `data-exposure-reviewer` both caught that a crew campaign's `fixed_price` is `0` **not `null`**, so
+  an `isFixedPrice` (`!= null`) guard silently failed to exclude free campaigns once the co-located
+  `isInvited` term was removed. The general trap is a **guard that was only ever correct by accident**:
+  `isInvited` had been masking the crew case, so removing it for good reasons exposed a defect that
+  predated the change. Before deleting a condition from a compound guard, ask what *each* term was
+  independently excluding — not just the one you meant to remove. (advisory)
+
 ### [2026-07-19] Service-role remediation (PR #308 → paired docs PR)
 - Output: new `raw/sessions/2026-07-19-service-role-remediation.md`; **compounded** onto
   `concepts/service-role-data-exposure.md` (new "The remediation" section + the
