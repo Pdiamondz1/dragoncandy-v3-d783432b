@@ -43,6 +43,25 @@ verification use the built-in `/verify`; use this for the real prod deploy.)
 5. **Report:** new bundle hash, `#root` mounted, **console errors = 0** on each viewport, and the
    two screenshots. Flag any error or layout breakage.
 
+## Let the page settle before you capture
+
+Screenshot timeouts are the single largest source of tool errors in this project's traces — 38 of
+them, ~29% of all recorded errors — and the second-biggest group names the cause outright:
+*"Script injection timed out — the page is busy or mid-navigation."* Capturing is not free: it
+injects a script, and a busy renderer cannot answer. These are avoidable, not ambient flakiness.
+
+- **Never capture immediately after `navigate` or a `setDeviceMetricsOverride`.** Both leave the
+  renderer mid-work — and step 4 does exactly that twice, which is why this skill owns most of the
+  failures. Wait for quiet first: poll `document.readyState === 'complete'`, confirm the element you
+  actually care about exists, then capture.
+- **A 30s `Page.captureScreenshot` timeout is not flakiness to retry.** It means the renderer was
+  still busy; retrying at the same moment reproduces it. If two captures time out in a row, stop and
+  report rather than keep firing — that is how one session accumulated 17 failed captures.
+- **Don't screenshot what you can read.** For a textual assertion — copy present, error banner
+  absent, a route rendered — a DOM query or `get_page_text` is faster and cannot time out. Reserve
+  screenshots for genuine *visual* judgment: layout, spacing, theme, overlap.
+- **Two captures total is the target** (one per viewport), not a burst.
+
 ## Notes
 
 - Local dev browser auth redirects to the prod origin and is unreliable — verify against prod, not localhost.
