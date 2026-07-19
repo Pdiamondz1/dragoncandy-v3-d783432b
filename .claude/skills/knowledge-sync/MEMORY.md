@@ -60,6 +60,32 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-19] Help center screenshots + sidebar link & improved search (PRs #306, #310 → paired docs PR)
+- Output: paired docs PR off origin/main — `raw/sessions/2026-07-19-help-center-screenshots-and-search.md`,
+  compounded `concepts/help-center-and-guidance.md` (new "Screenshots" + "Search & navigation" sections +
+  flipped the "Stale screenshots" known-issue → resolved + frontmatter sources/updated), `index.md`
+  (Sources + extended the Concepts line), `log.md` update entry, PROJECT_CONTEXT §5 workstream bullet,
+  + THIS entry. No DATABASE_SCHEMA/DESIGN_SYSTEM/CLAUDE.md change (frontend + content only; the
+  `help-screenshots` bucket + the client search are not schema/token/workflow).
+- Happened: two founder help efforts on a surface that ALREADY had a concept page (last session's #272), so
+  the durable knowledge is a **compound-in-place**, not a new page. Both code PRs merged FIRST (git push
+  env-blocked → gh REST overlay), so this is the paired docs PR off a fresh origin/main. Both efforts
+  reframed on discovery: the screenshot system already existed (`help-screenshots` bucket) → refresh+extend
+  not build; `/help` already had a search → improve not add. Also RESOLVED the concept page's own "Stale
+  screenshots" known-issue that #306 fixed (edit the gate, don't just append — the gate-flip Lesson).
+- Worked: [scope] — based ALL doc edits on origin/main's CURRENT versions (index/log/PROJECT_CONTEXT/MEMORY
+  had DIVERGED 30+ commits; `git checkout origin/main -- <files>` first so the REST overlay doesn't clobber
+  other sessions' edits) + [runlog-in-pr] + [orphans]-by-path (new raw session cataloged in Sources; concept
+  page already cataloged → Concepts line extended in place). Captured the durable CLI-storage-upload recipe +
+  the cp-won't-overwrite→additive-repoint gotcha as concept knowledge, not just a log line.
+- Failed: the sidebar Help item couldn't be visually prod-verified (renders only in the logged-in shell;
+  founder was logged out) — build-verified + recorded honestly, same class of gap as prior auth-gated
+  verifies. RAG sync + verify-knowledge close-the-loop are inherently post-merge for this run.
+- Remember: **`supabase storage cp` won't overwrite** (409 Duplicate) and `storage rm` silently no-ops, so
+  "replace an image" = upload a NEW filename + repoint the referencing rows (additive), never an in-place
+  overwrite; and cp needs a RELATIVE src + `--workdir <linked-repo>` from PowerShell (absolute `C:\` →
+  "unsupported operation"; MSYS mangles `ss://`). (advisory)
+
 ### [2026-07-19] data-exposure-reviewer subagent (branch `worktree-dc-improvements-3`)
 - Output: new `raw/sessions/2026-07-19-data-exposure-reviewer.md`, new
   `concepts/service-role-data-exposure.md`, **edited in place** `analyses/claude-subagents-audit.md`

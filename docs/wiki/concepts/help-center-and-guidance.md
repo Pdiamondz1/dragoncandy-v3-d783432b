@@ -2,9 +2,9 @@
 title: Help Center & Donny Guidance
 type: concept
 created: 2026-07-17
-updated: 2026-07-17
-sources: [2026-07-17-help-center-refresh-donny-guidance.md]
-tags: [help, donny, guidance, full-text-search, help_articles, schema-contract]
+updated: 2026-07-19
+sources: [2026-07-17-help-center-refresh-donny-guidance.md, 2026-07-19-help-center-screenshots-and-search.md]
+tags: [help, donny, guidance, full-text-search, help_articles, schema-contract, screenshots, search]
 ---
 # Help Center & Donny Guidance
 
@@ -59,6 +59,47 @@ Migration (adds `search_vector` + content + the `rewards` CHECK value) → deplo
 entry). Articles in existing categories appear on `/help` the moment their rows land; a `rewards`
 article waits on the frontend; Donny sees all of them once the migration lands.
 
+## Screenshots (human-help only, PR #306)
+
+Article bodies embed screenshots from a **public Supabase storage bucket `help-screenshots`**:
+`<img src="…/storage/v1/object/public/help-screenshots/<file>.png" class="rounded-xl shadow-md my-4
+max-w-full" alt="…">`. `HelpArticlePage.tsx` already sanitizes `body` (DOMPurify) + styles `[&_img]`, and
+CSP `img-src` allows `https://*.supabase.co` — so adding images needs **no component change**, just an
+image in the bucket + an `<img>` in the body. **Donny never sees them** — `guidance_agent` strips HTML.
+
+**Embed via a targeted `regexp_replace(body, '</p>', …)`** (3-arg form = first match only → lands right
+after the intro paragraph), guarded `AND body NOT LIKE '%<file>%'` for idempotency; the `search_vector`
+trigger reindexes on the body UPDATE. Never transcribe the full body.
+
+**CLI upload gotchas** (the bucket is populated by `supabase storage cp`, no service-key file needed):
+- Run from **PowerShell** (Git Bash MSYS mangles the `ss://` arg), with a **relative** src (absolute
+  `C:\…` → "LegacyStorageUnsupportedOperationError" local-copy) + `--workdir "<linked-repo>"` (which
+  supplies the project link; `--project-ref` is NOT accepted by `storage cp`):
+  `supabase storage cp --experimental --workdir "<repo>" "<rel-src>" "ss:///help-screenshots/<dest>.png"`.
+- **cp will NOT overwrite** an existing object (409 Duplicate) and `storage rm` **silently no-ops**
+  (`deleted:[]`). To "replace" an image, upload a **new filename** and repoint the referencing articles
+  (`replace(body,'old','new')` migration) — **additive**, the old file becomes an unused spare. This is
+  how the stale May `help-landing-page.png` was refreshed → `help-landing-page-2026-07.png` on the 3
+  sign-up articles (2026-07-19).
+
+## Search & navigation (human `/help`, PR #310)
+
+The human `/help` search is **client-side** and separate from Donny's `search_vector`. `src/lib/helpSearch.ts`
+`rankHelpArticles(articles, query)` — field-priority ranking (title > `search_terms` > body, word-boundary
+bonus), **AND-token** semantics, **partial/type-ahead** substring matching, and **HTML-stripped body** so
+embedded image URLs don't pollute results. Chosen over server-side `search_vector` deliberately: for a
+~32-article corpus, client-side is instant + type-ahead; full-text adds per-keystroke latency and loses
+partial matching.
+
+- **`?q=` URL param IS the search state** (no separate `useState`) — deep-linkable + back/forward-safe (a
+  separate state synced only *to* the URL showed stale results on back/forward — a Codex P2).
+- Ranked flat result list while searching; category tree otherwise. `HelpArticlePage.tsx` has a compact
+  search box that routes to `/help?q=<query>`.
+- **Sidebar Help item:** `{ HelpCircle, 'Help', '/help' }` in all 3 role arrays in `src/lib/navConfig.ts`.
+  `/help` is a **standalone route** (own `PublicPageHeader`, not in `DashboardLayout`) → no in-sidebar
+  active-highlight; the ask was reachability, which the item delivers. (Help was already in the account
+  dropdown + mobile drawer.)
+
 ## Known issues / open
 
 - **Naming drift:** the `dragon-rewards` article uses the live UI's **"DC Points"** label, while
@@ -66,8 +107,9 @@ article waits on the frontend; Donny sees all of them once the migration lands.
   Copy matches the live UI; align if the product decides on "Rep". See [[Dragon Rewards Engine (DRE)]].
 - **HTML-in-tsvector noise:** `search_vector` indexes raw HTML `body` (tag tokens, embedded image-URL
   path fragments). Acceptable for v1; a strip-before-`to_tsvector` pass would sharpen relevance.
-- **Stale screenshots:** some pre-2026-07 article bodies embed screenshots predating the redesign
-  (e.g. `signup-restaurant`'s landing shot) — flagged for a later text-first→recapture pass.
+- **Stale screenshots — resolved 2026-07-19 (PR #306).** The `signup-*` landing shot was refreshed and 7
+  new-feature articles got screenshots (see "Screenshots" above). Remaining May-12 shots (dashboards,
+  messaging, billing, campaign-create/detail) are a documented later refresh pass — not stale-critical.
 
 ## See Also
 
