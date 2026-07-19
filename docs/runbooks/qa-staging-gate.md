@@ -53,9 +53,39 @@ JSON
 | Stripe | single sandbox `acct_1SkFixJi7lqzzhdM` (keys `…SkFixJi`) — publishable, secret, and webhook must all match |
 | AI-spend guard | dedicated `DragonCandy Staging` Anthropic workspace, hard **$25/mo** cap |
 
-Test accounts (password stored in project memory / secret manager — **not** committed here):
-`restaurant.staging@dragoncandy.test`, `creator.staging@dragoncandy.test`,
-`brand.staging@dragoncandy.test`.
+Test accounts: `restaurant.staging@dragoncandy.test` (`business_client`),
+`creator.staging@dragoncandy.test` (`content_creator`), `brand.staging@dragoncandy.test`
+(`brand`). These three are the **entire** staging user table — a founder's own
+`@harbormill.net` account exists only in *production*, which is why real credentials never
+work against a preview deploy.
+
+> ⚠️ **The shared password IS committed in three tracked files** (2026-07-19 audit): a
+> `.claude/handoffs/` doc, a `docs/superpowers/plans/` doc, and
+> `tests/e2e/playwright/_scratch/debug-local.spec.ts`. This line previously claimed it was
+> "not committed here" — that claim was false and has been corrected rather than left to
+> mislead. Treat the password as compromised and rotate it (see "Headless login" below,
+> which removes the main reason to hand it around).
+
+### Headless login — verifying auth-gated screens without a person
+
+Signing in by hand made the founder a bottleneck on every UI check, and an agent cannot
+type a password into a login form at all. `npm run staging:login` routes around both:
+
+```bash
+npm run staging:login -- restaurant --base https://<preview>.vercel.app
+npm run staging:login -- creator --base http://127.0.0.1:8080
+```
+
+It mints a one-time magiclink via the admin API, exchanges it for a session as JSON, and
+prints a URL carrying that session in the hash; supabase-js (`detectSessionInUrl` is on by
+default) persists it on open. **No password is involved at any step.** Using the JSON
+verify endpoint deliberately avoids Supabase's Redirect-URL allow-list, which cannot cover
+per-branch preview hostnames.
+
+Setup once: put the **staging** service-role key in the gitignored
+`supabase/scripts/.env.sync.local` as `STAGING_SUPABASE_SECRET_KEY` (see the `.example`).
+The script refuses to run against `dragoncandy.io` and refuses a key that looks like prod's.
+Sessions last ~1 hour and belong to seeded test accounts holding no real user data.
 
 ## Secrets
 
