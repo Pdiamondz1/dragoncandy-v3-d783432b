@@ -120,38 +120,84 @@ function assertTargetUsesStaging(url) {
   }
 
   // Local dev server: Vite reads .env* at startup, so those files decide the backend.
-  //
-  // Listed HIGHEST-priority first. Vite loads `.env` → `.env.local` → `.env.[mode]` →
-  // `.env.[mode].local` with each overriding the last, so the effective value is the
-  // reverse of that load order. `npm run dev` runs mode=development. Getting this
-  // backwards would make the gate approve a prod-pointed server (or reject a correctly
-  // staged one), which is worse than having no gate — it would look verified.
-  const envFiles = [".env.development.local", ".env.development", ".env.local", ".env"];
-  const repoRoot = join(HERE, "..", "..");
-  let seen = null;
+  // BOTH vars matter — client.ts falls back to prod independently for each, so a staging
+  // URL paired with the hardcoded prod anon key still fails to authenticate.
+  const envUrl = resolveViteEnv("VITE_SUPABASE_URL");
+  const envKey = resolveViteEnv("VITE_SUPABASE_ANON_KEY");
 
-  for (const name of envFiles) {
-    const p = join(repoRoot, name);
-    if (!existsSync(p)) continue;
-    const m = readFileSync(p, "utf8").match(/^\s*VITE_SUPABASE_URL\s*=\s*(.+?)\s*$/m);
-    if (!m) continue;
-    seen = { file: name, value: m[1].replace(/^["']|["']$/g, "") };
-    break; // first match wins, mirroring Vite's precedence order
+  const fix =
+    `\n  Fix: create .env.local (gitignored, wins over .env) with BOTH staging values:\n` +
+    `    VITE_SUPABASE_URL=${STAGING_URL}\n` +
+    `    VITE_SUPABASE_ANON_KEY=<staging anon key>\n` +
+    `  (dashboard → dragoncandy-staging → Project Settings → API → anon/public)\n` +
+    `  then restart the dev server. Or just target a *.vercel.app preview instead.`;
+
+  if (!envUrl?.value.includes(STAGING_REF)) {
+    die(
+      "Your local dev server is not pointed at staging, so a staging session cannot work.\n\n" +
+        (envUrl
+          ? `  ${envUrl.file} has VITE_SUPABASE_URL=${envUrl.value}\n` +
+            (envUrl.value.includes(PROD_REF) ? "  ^ that is PRODUCTION.\n" : "")
+          : "  No VITE_SUPABASE_URL in any .env* file — client.ts then falls back to PROD.\n") +
+        fix
+    );
   }
 
-  if (seen?.value.includes(STAGING_REF)) return;
+  // The URL is staging; the key must be too. Unset is the dangerous case: client.ts
+  // substitutes a hardcoded PROD anon key, so the app talks to staging with prod's key
+  // and simply fails to authenticate — while everything *looks* configured.
+  if (!envKey) {
+    die(
+      "VITE_SUPABASE_URL points at staging, but VITE_SUPABASE_ANON_KEY is not set.\n\n" +
+        "  client.ts falls back to a hardcoded PRODUCTION anon key when it's unset, so the\n" +
+        "  app would call staging with prod's key and stay signed out.\n" +
+        fix
+    );
+  }
 
-  die(
-    `Your local dev server is not pointed at staging, so a staging session cannot work.\n\n` +
-      (seen
-        ? `  ${seen.file} has VITE_SUPABASE_URL=${seen.value}\n` +
-          (seen.value.includes(PROD_REF) ? "  ^ that is PRODUCTION.\n" : "")
-        : "  No VITE_SUPABASE_URL found in any .env* file, and client.ts falls back to PROD.\n") +
-      `\n  Fix: create .env.local (gitignored, wins over .env) with the staging project:\n` +
-      `    VITE_SUPABASE_URL=${STAGING_URL}\n` +
-      `    VITE_SUPABASE_ANON_KEY=<staging anon key>\n` +
-      `  then restart the dev server. Or just target a *.vercel.app preview instead.`
-  );
+  const keyRef = projectRefOfAnonKey(envKey.value);
+  if (keyRef && keyRef !== STAGING_REF) {
+    die(
+      `VITE_SUPABASE_ANON_KEY belongs to project "${keyRef}", not staging.\n\n` +
+        `  Set in ${envKey.file}${keyRef === PROD_REF ? " — that is the PRODUCTION key." : "."}\n` +
+        fix
+    );
+  }
+  // A non-JWT publishable key (sb_publishable_…) carries no ref to check; being set and
+  // paired with a staging URL is as far as this can verify.
+}
+
+/** Reads a Vite env var the way Vite would, honouring file precedence. */
+function resolveViteEnv(name) {
+  // HIGHEST-priority first. Vite loads `.env` → `.env.local` → `.env.[mode]` →
+  // `.env.[mode].local`, each overriding the last, so the effective value is the reverse
+  // of that load order. `npm run dev` runs mode=development. Getting this backwards would
+  // make the gate judge the wrong file — worse than no gate, because it looks verified.
+  const envFiles = [".env.development.local", ".env.development", ".env.local", ".env"];
+  const repoRoot = join(HERE, "..", "..");
+  const pattern = new RegExp(`^\\s*${name}\\s*=\\s*(.+?)\\s*$`, "m");
+
+  for (const file of envFiles) {
+    const p = join(repoRoot, file);
+    if (!existsSync(p)) continue;
+    const m = readFileSync(p, "utf8").match(pattern);
+    if (!m) continue;
+    const value = m[1].replace(/^["']|["']$/g, "");
+    if (value) return { file, value };
+  }
+  return null;
+}
+
+/** Project ref from a Supabase anon JWT, or null if it isn't a decodable JWT. */
+function projectRefOfAnonKey(key) {
+  const parts = key.split(".");
+  if (parts.length !== 3) return null; // sb_publishable_… — not a JWT
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
+    return typeof payload.ref === "string" ? payload.ref : null;
+  } catch {
+    return null;
+  }
 }
 
 const SECRET = process.env.STAGING_SUPABASE_SECRET_KEY;
