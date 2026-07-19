@@ -31,6 +31,17 @@ export function HeroSection() {
         </Suspense>
       )}
 
+      {/* Soft pink/mint corner glow — the SAME background lighting the auth/login pages use
+          (mirrors AuthShell) so the landing hero and the sign-in screen match. Only when the video
+          backdrop is off (the video is the background otherwise). Behind the content via -z-10 +
+          the section's `isolate`. */}
+      {!LANDING_VIDEO_BACKDROP_ENABLED && (
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+          <div className="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-landing-pink/15 blur-3xl" />
+          <div className="absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-landing-mint/15 blur-3xl" />
+        </div>
+      )}
+
       <div className="relative mx-auto max-w-2xl px-5 sm:px-8">
         <Eyebrow className="text-landing-pink">Human-driven · AI-assisted</Eyebrow>
 
