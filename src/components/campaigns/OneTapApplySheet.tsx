@@ -185,7 +185,12 @@ export function OneTapApplySheet({
   // Negotiation used to be invited-only, which left every creator who found a campaign
   // organically with no way to counter — the counter-offer system existed but was unreachable
   // on this path. An unfavourable rate has to be answerable, not just declinable.
-  const showNegotiation = isFixedPrice && onCounterOffer;
+  //
+  // Crew campaigns are excluded explicitly: they are free by DB constraint
+  // (campaigns_group_free) and skip escrow, so a counter-offer would produce a paid-looking
+  // application the free crew flow cannot honour. isFixedPrice does NOT filter them out — a
+  // crew campaign carries fixed_price = 0, which is not null.
+  const showNegotiation = isFixedPrice && campaign.group_id == null && onCounterOffer;
 
   const isVideoSample = sampleUrl && /\.(mp4|mov|webm|avi)(\?|$)/i.test(sampleUrl);
 

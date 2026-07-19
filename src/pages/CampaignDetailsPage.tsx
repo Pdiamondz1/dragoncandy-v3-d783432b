@@ -270,9 +270,11 @@ const CampaignDetailsPage: React.FC = () => {
         proposedTimeline: computeProposedTimeline(campaign.delivery_type),
         portfolioUrl: portfolioUrl ?? pitch.suggested_portfolio_piece_url ?? undefined,
         isCounterOffer: true,
-        // Was hardcoded true back when only invited creators could reach this. Any creator
-        // can counter now, and the RLS INSERT policy keys off this flag — an organic creator
-        // must not be recorded as invited.
+        // Was hardcoded true back when only invited creators could reach this. The flag
+        // carries no authorization weight — it never reaches the database, it only selects
+        // which client-side pre-check runs in useCreateApplication — but hardcoding it sent
+        // an organic creator down the invitation-lookup branch instead of the correct
+        // immediate rejection.
         isInvited,
       });
 
