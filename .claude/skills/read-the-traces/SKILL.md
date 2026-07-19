@@ -1,6 +1,6 @@
 ---
 name: read-the-traces
-description: "Audit the agent layer by reading Claude Code's own session traces — which tools error, where permission gates trip, which skills silently fail or never fire — and end with the {done,checklist,missing} verdict block a loop can branch on. Use when asked to 'read the traces', 'audit the agent layer', 'why does <skill> keep failing', 'which skills actually get used', or before tuning skills/hooks/subagents."
+description: "Investigate what actually happened in past Claude Code sessions by reading their local JSONL traces — tool errors, permission denials, per-skill activity. Emits EVIDENCE for a human to interpret, never a verdict: its interpretations have been wrong before, so every number is a lead to verify, not a conclusion. NOT a validator — no {done,checklist,missing} block; never wire it into a loop. Use for 'read the traces', 'what went wrong in those sessions', 'which tools keep failing'."
 ---
 
 # Read the Traces — audit the agent layer from its own transcripts
@@ -13,18 +13,30 @@ permission classifier stopped it, which skills fail silently, which never fire a
 **Scope: the agent layer, not the product.** Findings here are fixes to skills, hooks,
 subagents, and permissions — not to application code.
 
-> **Source of truth:** `~/.claude/skills/read-the-traces/` (global, project-agnostic), with a
-> byte-identical committed copy in each project that wants it versioned. If you are reading
-> the repo copy, fix the global one and re-copy, or they drift. (Same contract as
-> `media-ingest`.)
+> **Scope: project-local, deliberately.** This lived briefly in `~/.claude/skills/` (global).
+> It was pulled back after its first real run, because it had not earned installation
+> everywhere — see below.
 
-## Why not `verify-*`
+## This is NOT a validator, and emits no verdict block
 
-DragonCandy's Loop Scout discovers validators by globbing `.claude/skills/verify-*`. This
-skill deliberately sits outside that convention because it is **global and project-agnostic**,
-while that glob is a DragonCandy-local integration. It still emits the exact same verdict
-block, so any loop — including `aios-playbook-run`'s `parseDoneCheck` — can branch on it.
-It is an **auditor** (judges the agent layer) rather than a validator of a shipped change.
+It was originally built as one. That was a mistake, and the mistake is worth stating so nobody
+re-adds it.
+
+On its first run this skill produced **three misleading findings out of five**: it reported a
+`PreToolUse` hook as "failing open" when the hook had run and correctly *blocked* a push
+(Claude Code surfaces a hook denial with an "error" prefix); it charged a git-only skill with a
+68% error rate assembled from Chrome timeouts it never issued; and it called 77 never-fired
+skills "bloat" when they were untracked local installs that had never been loadable. The
+extraction was right every time. The **interpretation** was wrong every time.
+
+So this skill deliberately does **not** emit the `{done,checklist,missing}` block, and must not
+be given one. That block exists so a loop can branch automatically — and a misclassifying
+judge wired into automation is precisely what [[Musk's Algorithm]]'s "never automate a broken
+process" forbids. A human caught these; a loop would have acted on them.
+
+Its output is **evidence for a person to interpret**, not a verdict. Treat every number it
+prints as a lead to verify, not a conclusion. Do not name it `verify-*` (Loop Scout globs that
+prefix to discover validators), and do not wire it into `parseDoneCheck`.
 
 ## Loop memory
 
@@ -32,11 +44,11 @@ This skill keeps a co-located **`MEMORY.md`** — two zones: curated **Lessons**
 and an append-only **Run Log**. Contract: `docs/wiki/concepts/loop-memory-protocol.md`.
 
 - **Start of every run:** read `MEMORY.md` and apply its **Lessons** — but only to sharpen
-  prose, remediation hints, and what to look for. Lessons MUST NOT change the deterministic
-  gate below.
-- **End of every run:** prepend a **Run Log** entry (`Output:` a pointer to the verdict, then
-  `Happened / Worked / Failed / Remember`), then promote durable takeaways into Lessons and
-  prune what this run superseded.
+  prose and what to look for.
+- **End of every run:** prepend a **Run Log** entry (`Output:` a pointer to the report this run
+  produced, then `Happened / Worked / Failed / Remember`), then promote durable takeaways into
+  Lessons and prune what this run superseded. **Record any observation that turned out to be
+  misleading** — that list is the most valuable thing this skill accumulates.
 
 ## Steps
 
@@ -46,7 +58,7 @@ Call the script **by absolute path** — cwd varies by project, and a relative p
 resolves against the wrong root:
 
 ```bash
-node ~/.claude/skills/read-the-traces/scripts/scan-traces.mjs [--days 14] [--json]
+node .claude/skills/read-the-traces/scripts/scan-traces.mjs [--days 14] [--json]
 ```
 
 | Flag | Effect |
@@ -64,61 +76,53 @@ picture, scan each root separately.
 Exit `2` = no trace directory resolved (pass `--dir`). Exit `3` = directory exists but no
 session touched the window (widen `--days` before concluding anything).
 
-### 2. Judge — the four deterministic gates
+### 2. Read the observations — then verify before repeating any of them
 
-The script prints a `## Gate` block. Each is a pure count, so the same traces always yield
-the same verdict:
+The script prints an `## Observations` block. These are **counts, not verdicts**. Each one below
+carries the specific way it has already misled once, because that is the useful part:
 
-1. **Hook errors = 0.** A hook that *fails to run* is config rot: the gate you believe
-   protects you is failing open. **A hook that RAN and blocked is not this** — Claude Code
-   surfaces a hook denial with an "error" prefix, and a prompt-type hook echoes its prompt
-   as `hook error: [<prompt>]: <decision>`. Those are classified `hook-blocked` and are
-   **advisory**: the gate working. Reading them as failures inverts the finding, reporting a
-   gate that is correctly failing *closed* as one failing *open*.
-2. **Permission / classifier denials = 0.** A denial is not a bug; it is autonomy meeting
-   policy. Each one deserves a human read — it marks either a genuinely risky action that
-   was correctly stopped, or a workflow that needs legitimate permission it does not have.
-3. **No skill with ≥10 turns and >25% error rate.** Below 10 turns there is too little
-   activity to judge. Errors attach to a skill **only** through the `tool_use_id` of the call
-   its own assistant turn issued. Unattributed errors stay unattributed — never charge them
-   to whichever skill happened to run most recently, or a clean skill acquires a fabricated
-   rate from unrelated work.
-4. **No repeat-failure cluster ≥5 in one session.** The same tool failing five times in one
-   session is the "correcting over and over" antipattern; the fix is upstream, in the
-   skill or the environment, not in retrying.
+1. **Hook failures.** A hook that *fails to run* is config rot — the gate you believe protects
+   you is failing open. **A hook that ran and blocked is not that**, and is counted separately
+   (`hook-blocked`). This exact distinction is what the skill got backwards once.
+2. **Permission / classifier events.** Not bugs. A denial marks either a genuinely risky action
+   correctly stopped, or a workflow lacking permission it legitimately needs. Worth a human
+   read; never a defect count.
+3. **Skill error rates.** Errors attach to a skill **only** via the `tool_use_id` of the call its
+   own assistant turn issued. Unattributed errors stay unattributed. Before believing a high
+   rate, check the skill actually issues the failing tool — a git-only skill once showed 68%
+   from browser timeouts it never called.
+4. **Repeat-failure clusters.** The same tool failing repeatedly in one session suggests the fix
+   is upstream, in the skill or the environment, rather than in retrying.
 
-**Advisory — never flips a gate:** the dead-skill list, tool volumes, subagent mix, branch
-spread. Advisory notes go in the prose summary and **never** in `missing[]`.
+**Weakest signal of all — the dead-skill list.** "Never fired" can simply mean "never loadable"
+(untracked, or absent from this worktree). Establish that a skill *could* have run before
+concluding anything from its absence. Tool volumes, subagent mix and branch spread are context,
+not findings.
 
-### 3. Report
+### 3. Report — as leads, with the check you ran
 
-Prose first: a ranked list of **agent-layer fixes**, each naming the evidence (tool, count,
-error class) and a concrete next action. Rank by gate severity, then by frequency.
+Prose only. No verdict block, no pass/fail. For each observation worth raising, state the
+evidence (tool, count, sample error) **and the check you ran to confirm it means what it
+appears to mean.** An unverified observation is reported as unverified, or not at all.
 
-Then end with **exactly one** fenced JSON block, and it MUST be the last fenced block:
+The verification is usually one question, and it is what would have caught all three past
+misreads:
 
-```json
-{"done": false,
- "checklist": [{"criterion": "no hook errors", "met": false},
-               {"criterion": "no unreviewed permission/classifier denials", "met": false},
-               {"criterion": "no skill over 25% error rate (>=10 turns)", "met": false},
-               {"criterion": "no repeat-failure cluster >=5 in a session", "met": true}],
- "missing": ["PreToolUse:Bash hook errored 5x — fix the git-push gate in .claude/settings.json",
-             "6 classifier denials incl. a Merge-Without-Review on PR #245 — review each",
-             "refresh-main fails 68% (17/25 turns) — repair or retire the skill"]}
-```
+- *Does this subject even do the thing it is blamed for?* (`refresh-main` never opens a browser.)
+- *Does this message describe a failure, or a decision?* (A hook printing a reasoned block
+  message is working.)
+- *Could this be zero for a boring reason?* (Never-fired can mean never-loadable.)
 
-`done` = every `met` true. `missing[]` carries one runnable remediation per failed check and
-is `[]` when `done:true`.
+Rank by how confident you are, not by count. A verified small thing beats an unverified big one.
 
-If the scan cannot run (no trace directory, unreadable), report **BLOCKED** in prose and set
-the affected criteria `met:false` with a note that it was unreachable — a blocked check is
-never a silent pass.
+If the scan cannot run (no trace directory, unreadable), say so plainly and stop — do not
+report a clean agent layer, which is a different claim entirely.
 
 ## Rules
 
-- **Read-and-judge only.** This skill never edits skills, hooks, settings, or application
-  code. It reports; the fix is the caller's. The lone write is its own `MEMORY.md`.
+- **Read-and-report only.** This skill never edits skills, hooks, settings, or application
+  code, and never renders a verdict. It reports evidence; interpreting and fixing are the
+  caller's. The lone write is its own `MEMORY.md`.
 - **Privacy is load-bearing.** Session transcripts contain the operator's own prompts and can
   contain secrets. The script emits aggregate counts plus short, redacted error snippets, and
   it redacts JWTs, `sk-`/`sb_secret_`/`gh*_` tokens, and Bearer headers. **Never paste raw

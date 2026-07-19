@@ -40,19 +40,26 @@ project-agnostic, so the same skill works in any repo.
 
 ## The `read-the-traces` skill
 
-Global at `~/.claude/skills/read-the-traces/`, with a byte-identical committed repo copy (the
-same global+copy pattern the `media-ingest` skill documents). A zero-dependency streamed
-scanner extracts tool errors,
-permission/classifier denials, hook errors, repeat-failure clusters, per-skill error rates, and
-dead skills; the skill ranks them into agent-layer fixes and ends with the standard verdict
-block, so `aios-playbook-run`'s `parseDoneCheck` reads it with no new code.
+**Project-local** (`.claude/skills/read-the-traces/`). A zero-dependency streamed scanner
+extracts tool errors, permission/classifier denials, hook errors, repeat-failure clusters,
+per-skill error rates, and dead skills, and the skill reports them as **evidence for a human**.
 
-It is deliberately **not** named `verify-*`. That prefix is Loop Scout's discovery glob — a
-DragonCandy-local integration — and this skill is global. It is an **auditor** of the agent
-layer rather than a validator of a shipped change.
+### It emits no verdict block — deliberately, after it failed as one
 
-**Four deterministic gates:** zero hook errors; zero permission/classifier denials; no skill
-with ≥10 turns and >25% error rate; no repeat-failure cluster ≥5 in one session. Everything
+It shipped as a validator, emitting the `{done,checklist,missing}` block and installed globally.
+Both were reverted within the day. On its first real run it produced **three misleading findings
+out of five** (see below), so it was reduced to a read-only investigative tool: no verdict
+contract, not named `verify-*`, never wired into `parseDoneCheck`, and not installed in projects
+where it has not earned its place.
+
+The reasoning is [[Musk's Algorithm]]'s *never automate a broken process*. The verdict block
+exists precisely so a loop can branch without a human — and this tool's judgment layer is the
+part demonstrated to be unreliable. A human caught all three misreads; a loop would have acted
+on them. **Where a misclassifying judge is the failure mode, the safest change is to remove the
+judgment, not to tune it.**
+
+**What it counts** (observations, not gates): hook failures — kept strictly distinct from hook
+*blocks*; permission/classifier events; per-skill error rates; repeat-failure clusters. Everything
 else (dead-skill list, tool volumes, subagent mix) is **advisory** and never flips a gate.
 
 **Privacy is load-bearing.** Session transcripts contain the operator's own prompts and can
@@ -126,8 +133,13 @@ the subject actually does before reporting it.
 - **Build the free read before the storage.** A central `aios_loop_runs` table for the scheduled
   routines stays deferred — building storage before the zero-infrastructure read exists inverts
   [[Musk's Algorithm]]'s "automate last". Let the skill say whether it is needed.
-- **Global-first.** Authored project-agnostically so other repos inherit it, per the standing
-  skills-global-by-default rule.
+- **Reduced rather than tuned, after it misled.** When the failing component is the judgment
+  layer of an observability tool, deleting that layer beats iterating on it — an unreliable
+  judge that keeps a machine-readable verdict contract is one wiring change away from
+  automating its own errors. The extraction layer, which was correct throughout, was kept.
+- **Un-globalized.** It was installed to `~/.claude/skills/` before it had been run once, then
+  pulled back to project-local. The standing skills-global-by-default rule assumes a skill that
+  works; global scope is earned, not a default for something unproven.
 
 ## Known Issues
 
@@ -143,5 +155,5 @@ the subject actually does before reporting it.
 - [[Validator Skills]] — the verdict contract this reuses
 - [[Loop Memory Protocol]] — the co-located two-zone MEMORY.md
 - [[Self-Improving App]] — the 4-Condition Test and Loop Scout
-- [[Founder Playbooks]] — `parseDoneCheck`, the same block parser
+- [[Founder Playbooks]] — `parseDoneCheck`, the verdict parser this skill deliberately avoids
 - [[AIOS Internal Shell]] — where `/internal/loops` and `/internal/findings` live
