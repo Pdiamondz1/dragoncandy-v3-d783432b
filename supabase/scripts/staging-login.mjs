@@ -77,6 +77,12 @@ const STAGING_REF = "mhffqrawgizhprbobcta";
 const STAGING_URL = `https://${STAGING_REF}.supabase.co`;
 const PROD_REF = "zocahiffooqdybdhguqv";
 
+// Vercel names a branch preview "<project>-git-<branch>-<team-slug>.vercel.app". The
+// team-slug suffix is owner-specific, so pinning to it is what stops a session from being
+// minted onto a FOREIGN vercel.app origin (where that origin's JS could read the tokens
+// from the URL fragment). Only DragonCandy-owned previews are wired to staging anyway.
+const VERCEL_PREVIEW_SUFFIX = "-dragon-candy-s-projects.vercel.app";
+
 const ROLES = {
   restaurant: { email: "restaurant.staging@dragoncandy.test", role: "business_client" },
   creator: { email: "creator.staging@dragoncandy.test", role: "content_creator" },
@@ -148,19 +154,20 @@ function assertTargetUsesStaging(url) {
   const host = url.hostname.toLowerCase();
   const isLocal = host === "localhost" || host === "127.0.0.1" || host === "[::1]";
 
-  // Only per-branch PREVIEW deployments are wired to the staging Supabase project (see
-  // docs/runbooks/qa-staging-gate.md). A Vercel PRODUCTION alias is ALSO *.vercel.app but
-  // points at prod, so a staging session would just fail there — reporting success for it
-  // is the exact "looks configured but doesn't work" trap this gate exists to prevent.
-  // Vercel names branch previews "<project>-git-<branch>-<scope>.vercel.app", so require
-  // the "-git-" marker rather than trusting every *.vercel.app host.
+  // A DragonCandy branch PREVIEW is the only remote target wired to staging Supabase.
+  // Pin to BOTH the owner-scoped suffix and the "-git-" branch marker. Requiring only
+  // "-git-" would accept ANY team's preview (e.g. evil-git-x.vercel.app) and hand it a
+  // real staging session in the URL fragment, where that foreign origin's JS could read
+  // the tokens — a token leak, not just a failed login. The suffix pins to this project's
+  // Vercel team; a bare prod alias (no "-git-") is refused too, since it points at prod.
   if (host.endsWith(".vercel.app")) {
-    if (host.includes("-git-")) return;
+    if (host.endsWith(VERCEL_PREVIEW_SUFFIX) && host.includes("-git-")) return;
     die(
-      `${host} is a *.vercel.app URL but not a recognizable branch preview (no "-git-").\n\n` +
-        "  Only per-branch Preview deployments are wired to staging Supabase; a production\n" +
-        "  alias points at prod, where a staging session cannot authenticate. Pass the PR\n" +
-        '  preview URL (contains "-git-<branch>-"), or a local dev server pointed at staging.'
+      `${host} is not a DragonCandy branch preview.\n\n` +
+        `  Expected a per-branch preview ending in "${VERCEL_PREVIEW_SUFFIX}" and containing\n` +
+        '  "-git-<branch>-". Any other *.vercel.app host is refused: a prod alias points at\n' +
+        "  prod, and a foreign preview would receive the staging tokens in its URL fragment.\n" +
+        "  Pass the PR preview URL, or a local dev server pointed at staging."
     );
   }
 
