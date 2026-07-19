@@ -1,5 +1,30 @@
 # Wiki Log
 
+## [2026-07-18] ingest | Read the traces — agent-layer observability
+Ingested [[Read the Traces Session]] (PR #292). A founder-supplied video on how Anthropic engineers
+automate was **audited against the repo before adopting** — three of its four rules were already
+implemented past what it describes ([[Self-Improving App]]'s 4-Condition Test, the 7 scheduled
+routines, [[Founder Playbooks]]' `done_criteria` + the [[Validator Skills]] verdict contract), so only
+rule 3 was built. New concept [[Reading Agent Traces]] — the 4th loop-stack layer, alongside discovery,
+closure, and [[Loop Memory Protocol]] memory.
+
+Pages created: `concepts/reading-agent-traces.md`, `raw/sessions/2026-07-18-read-the-traces.md`.
+Pages updated: `index.md` (Concepts + Sources), `log.md`, `docs/PROJECT_CONTEXT.md`,
+`docs/DATABASE_SCHEMA.md` (`donny_tool_executions.message_id` now nullable).
+
+Durable knowledge captured: the **silent-write trap** (a supabase-js v2 builder *resolves* on a
+Postgrest error, so `.then(ok, fail)` discards `{error}` — which is why `donny_tool_executions` sat
+empty for `donny-orchestrator` while `bug-sweep-agent` read it as a clean sweep; a trace surface that
+silently drops every write is worse than none, because it reads as healthy), and the trace-extraction
+gotchas (attribute strictly by `tool_use_id`, never by proximity; mtime selects files but does not
+honour `--days`; a worktree has its own trace dir; redact both GitHub token shapes).
+
+Also recorded, because it is the more instructive half: **two of the three headline findings from the
+first run were the tool's own false positives**, reported before verification and retracted the same
+session — a hook that BLOCKED was read as a hook that FAILED (inverting a gate failing *closed* into
+one failing *open*), and a last-skill-seen heuristic charged the git-only `refresh-main` with a 68%
+error rate built from Chrome timeouts it never issued (exact attribution: 4%). **An observability tool
+that misclassifies is worse than none** — it manufactures alarming false positives that get acted on.
 ## [2026-07-18] ingest | Landing Human-driven redesign
 Ingested [[Landing "Human-driven. AI-assisted." Redesign Session]] (branch
 `feat/landing-joe-redesign`, PR #293, open). A full visual + messaging redesign of the public

@@ -149,7 +149,7 @@ active members, who one-tap apply with no payment (free `fixed_price=0`). See
 | `donny_help_logs` | Help requests and resolutions via Donny |
 | `donny_knowledge` | Donny's knowledge base entries (RAG) |
 | `donny_nudges` | Proactive nudge definitions and delivery tracking |
-| `donny_tool_executions` | Tool call logs from Donny orchestrator |
+| `donny_tool_executions` | Tool call logs from Donny. Columns are `message_id` · `user_id` · `tool_name` · `input` · `output` · `status` (`pending`/`success`/`error`) — **not** `tool_input`/`tool_output`/`is_error`; writing those names is how `donny-orchestrator` silently logged nothing for its entire life. `message_id` is **nullable** (2026-07-18): a streaming caller has no assistant-message id at log time because the client persists the message. Read by `bug-sweep-agent` (`status=eq.error`) — note an empty table is indistinguishable from "no errors". See [[Reading Agent Traces]]. |
 | `donny_oauth_clients` | OAuth client registrations for Donny API |
 | `donny_oauth_codes` | OAuth authorization codes |
 | `donny_oauth_tokens` | OAuth access/refresh tokens |

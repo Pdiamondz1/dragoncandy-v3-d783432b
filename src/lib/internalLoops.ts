@@ -94,6 +94,20 @@ export const ROUTINES: RoutineDef[] = [
     link: '/internal/findings',
     outputLabel: 'last finding',
   },
+  {
+    // The scheduled playbook executor. It bypasses the `aios-playbook-run` edge function
+    // entirely, so it writes NO `aios_playbook_runs` row — meaning it appears in neither
+    // section of this page unless it is watched here, by the `playbook:<slug>` source it
+    // actually POSTs. Pinned to the slug the live routine runs (see
+    // `.claude/schedules/playbook-runner-agent.md`); add a row per pinned slug.
+    key: 'playbook-runner-agent',
+    name: 'Playbook runner — kill-switch watch',
+    cadenceLabel: 'Weekly',
+    cadenceDays: 7,
+    signal: { type: 'findings', source: 'playbook:kill-switch-watch' },
+    link: '/internal/findings',
+    outputLabel: 'last finding',
+  },
 ];
 
 /** Skill loops whose state lives in MEMORY.md / git — not the DB (informational). */
