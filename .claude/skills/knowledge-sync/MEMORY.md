@@ -39,6 +39,37 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-18] Read the traces — agent-layer observability (PR #292, bundled)
+- Output: bundled INTO the work PR #292 — new `raw/sessions/2026-07-18-read-the-traces.md`, new
+  `concepts/reading-agent-traces.md`, `index.md` (Concepts after [[QA CI/CD Gate]] + Sources),
+  `log.md` ingest entry, **DATABASE_SCHEMA.md** (`donny_tool_executions` row rewritten — the real
+  column names + `message_id` now nullable), PROJECT_CONTEXT workstream bullet, + THIS entry. No
+  DESIGN_SYSTEM/CLAUDE.md change (no design token or workflow-rule change).
+- Happened: an **external-source audit** session — the founder asked whether a YouTube video's
+  content could be adopted. The durable knowledge is NOT "we watched a video"; it's (a) the scoping
+  result — 3 of its 4 rules were already implemented past what it described, so only one was built
+  — and (b) the **silent-write trap** the build uncovered. Wrote a NEW concept ([[Reading Agent
+  Traces]]) because agent-layer observability is a genuinely distinct subject from the existing
+  discovery/closure/memory layers ([[Self-Improving App]] / [[Validator Skills]] / [[Loop Memory
+  Protocol]]), and cross-linked all three as the 4th layer of the same stack rather than duplicating
+  them.
+- Worked: [scope] — the 3 docs (index/log/PROJECT_CONTEXT) were DIVERGED because origin/main had
+  gained 4 commits (#288/#289/#290/#291) mid-session; `git checkout origin/main -- <docs>` before
+  editing avoided clobbering that Phase-4 knowledge sync. [runlog-in-pr] bundled. [wikilinks]-exact
+  caught TWO would-be dangling links up front — no `[[Media Ingest]]` page exists (de-linked to
+  plain text) and the real name is `[[Donny Data Visibility & Quick-Action Routing]]`, not the
+  `[[Donny Data & Quick Actions]]` I'd guessed. [orphans]-by-path: both new files cataloged.
+- Failed: none for knowledge-sync. (The orchestrator fix's true E2E — a row actually landing —
+  needs a real social/MCP tool call I can't synthesize; recorded honestly in the concept's Known
+  Issues with the exact proof anchor: baseline is 125 rows / **0** null `message_id`, so the first
+  null-`message_id` row is the proof. Not glossed.)
+- Remember: when the founder supplies an EXTERNAL best-practices source (video/article/framework),
+  the highest-value move is to **audit it against the repo before adopting any of it** — here 3 of 4
+  rules were already implemented better than described, so adopting wholesale would have re-bought
+  owned capability and buried the one real gap. Capture the *audit result* (the scorecard) as durable
+  knowledge, not a summary of the source — and never imply the source was consumed more deeply than
+  it was (the transcript was never captured; the rule NAMES came from the chapter list and the detail
+  was grounded in first-party vendor docs, which is stated plainly on the page). (advisory)
 ### [2026-07-18] Landing "Human-driven. AI-assisted." redesign (branch feat/landing-joe-redesign, PR #293)
 - Output: bundled INTO the open work PR #293 — `raw/sessions/2026-07-18-landing-joe-redesign.md`, new
   `concepts/landing-human-driven-redesign.md`, `concepts/landing-cinematic-video-redesign.md` (edited
