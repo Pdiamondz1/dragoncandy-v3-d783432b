@@ -77,10 +77,13 @@ const STAGING_REF = "mhffqrawgizhprbobcta";
 const STAGING_URL = `https://${STAGING_REF}.supabase.co`;
 const PROD_REF = "zocahiffooqdybdhguqv";
 
-// Vercel names a branch preview "<project>-git-<branch>-<team-slug>.vercel.app". The
-// team-slug suffix is owner-specific, so pinning to it is what stops a session from being
-// minted onto a FOREIGN vercel.app origin (where that origin's JS could read the tokens
-// from the URL fragment). Only DragonCandy-owned previews are wired to staging anyway.
+// Vercel names a branch preview "<project>-git-<branch>-<team-slug>.vercel.app". Pin BOTH
+// ends — the project prefix AND the team-slug suffix — so the only host that passes is a
+// preview of THIS project under THIS team. Pinning the suffix alone would still accept a
+// different project under the same team; pinning neither would accept a foreign origin,
+// which would then receive the staging tokens in its URL fragment (a token leak, since
+// that origin's JS can read them). Only this project's previews are wired to staging.
+const VERCEL_PREVIEW_PREFIX = "dragoncandy-v3-d783432b-git-";
 const VERCEL_PREVIEW_SUFFIX = "-dragon-candy-s-projects.vercel.app";
 
 const ROLES = {
@@ -154,20 +157,18 @@ function assertTargetUsesStaging(url) {
   const host = url.hostname.toLowerCase();
   const isLocal = host === "localhost" || host === "127.0.0.1" || host === "[::1]";
 
-  // A DragonCandy branch PREVIEW is the only remote target wired to staging Supabase.
-  // Pin to BOTH the owner-scoped suffix and the "-git-" branch marker. Requiring only
-  // "-git-" would accept ANY team's preview (e.g. evil-git-x.vercel.app) and hand it a
-  // real staging session in the URL fragment, where that foreign origin's JS could read
-  // the tokens — a token leak, not just a failed login. The suffix pins to this project's
-  // Vercel team; a bare prod alias (no "-git-") is refused too, since it points at prod.
+  // A branch PREVIEW of THIS project is the only remote target wired to staging Supabase.
+  // Must match the project prefix AND the team suffix — see the constants above for why
+  // both are load-bearing (a foreign or same-team-other-project preview would otherwise be
+  // handed the staging tokens in its URL fragment). A bare prod alias fails the prefix too.
   if (host.endsWith(".vercel.app")) {
-    if (host.endsWith(VERCEL_PREVIEW_SUFFIX) && host.includes("-git-")) return;
+    if (host.startsWith(VERCEL_PREVIEW_PREFIX) && host.endsWith(VERCEL_PREVIEW_SUFFIX)) return;
     die(
-      `${host} is not a DragonCandy branch preview.\n\n` +
-        `  Expected a per-branch preview ending in "${VERCEL_PREVIEW_SUFFIX}" and containing\n` +
-        '  "-git-<branch>-". Any other *.vercel.app host is refused: a prod alias points at\n' +
-        "  prod, and a foreign preview would receive the staging tokens in its URL fragment.\n" +
-        "  Pass the PR preview URL, or a local dev server pointed at staging."
+      `${host} is not a preview of this project.\n\n` +
+        `  Expected "${VERCEL_PREVIEW_PREFIX}<branch>${VERCEL_PREVIEW_SUFFIX}".\n` +
+        "  Any other *.vercel.app host is refused: a prod alias points at prod, and a\n" +
+        "  foreign/other-project preview would receive the staging tokens in its URL\n" +
+        "  fragment. Pass this project's PR preview URL, or a local dev server on staging."
     );
   }
 
