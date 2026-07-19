@@ -79,11 +79,20 @@ from the moved prose rather than prod — but the ambiguity underneath was real)
   ordering is deliberate so that window covers recent work. Not a regression —
   `PROJECT_CONTEXT.md` was already truncated identically at ~131KB, and the split restored full
   embedding coverage for `PROJECT_CONTEXT.md` itself.
-- **The Dezzy content playbooks still ground on §5.** `dezzy-content-calendar` and
-  `dezzy-website-updates` read §5 for "recently shipped features" under a strict non-fabrication
-  and "if nothing shipped, stop" rule; post-split they see one-liners. Both are report-only and
-  founder-reviewed. Pointing them at `SHIPPED_LOG.md` needs a seed migration — open follow-up.
-  The Dezzy Press & Events scout and the Strategy Library audit were already updated.
+- **The Dezzy content playbooks were repointed** (resolved 2026-07-19, migration
+  `20260719080000_dezzy_content_playbooks_shipped_log.sql`). `dezzy-content-calendar` and
+  `dezzy-website-updates` grounded "recently shipped features" in §5 under a strict
+  non-fabrication rule — and `dezzy-website-updates` additionally says *"if nothing notably
+  user-facing shipped recently, say so plainly and stop"* — so post-split they would have drafted
+  from one-liners, or stopped outright. Both now read the **top** of `docs/SHIPPED_LOG.md`
+  (newest-first, bounded to the first few entries since the file is long). A survey found **six**
+  playbooks referencing `PROJECT_CONTEXT`, but only these two were affected: `ai-cost-vs-cap` (§8
+  Pricing), `kill-switch-watch` (§3), and `dezzy-seo-articles` (positioning / North Star / GTM)
+  read sections the split never touched, and `dezzy-weekly-brief`'s "active workstreams" now
+  resolves to the concise In-flight + Awaiting subsections — better for a brief, not worse. The
+  Dezzy Press & Events scout and the Strategy Library audit were updated when they were scheduled.
+  **The general lesson: after moving content out of a shared doc, grep every consumer for what it
+  reads that doc FOR — a reference is only stale if it points at the part that moved.**
 - **Always-loaded shared docs are high-contention.** `origin/main` moved five times during this
   branch. Land changes to them fast, and re-diff against **all** of `origin/main`'s §5 rather than
   the conflict region — a first resolution pass caught one concurrent PR's new bullet and missed
