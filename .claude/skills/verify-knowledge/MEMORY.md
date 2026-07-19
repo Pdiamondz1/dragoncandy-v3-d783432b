@@ -21,6 +21,29 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-18] Light-theme Phase 4 + backgrounds/accents cleanup knowledge-sync validation (PRs #288/#289 code + PR #290 docs)
+- Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for the FINAL light-theme-polish
+  work — Phase 4 (Outstand) + the cross-app backgrounds/off-brand-accents cleanup, bundled into one sync.
+- Happened: (a) wiki lint — path-based orphan/index-completeness check clean (0 on origin/main), no
+  contradictions (compounded onto [[Light-App Kit]] — extended Rollout + added the `bg-muted` palette
+  section; no new concept page); (b) `LAST_WIKI_SYNC` 2026-07-18T23:55:51Z, raw `RAG_LAST` ≈16:47Z
+  (UPDATE-only sync, `updated_at` not bumped) ~7h behind, well <24h, AND the post-merge hook synced
+  errors=0 with `content ilike '%bg-white/40%'` = 2 + `%de-gray palette also covers%bg-muted%` = 2 +
+  `%all four surface groups%on the kit%` = 2 confirming both the Phase-4 + cleanup Rollout text and the
+  new `bg-muted` section are in `donny_knowledge` → [freshness-proxy], (b) met; (c) `concepts/light-app-kit.md`
+  in index.md + BOTH new log ingest entries name it, and the 2 new raw sessions are catalogued in index
+  Sources.
+- Worked: [freshness-proxy] on an UPDATE-only sync again — `bg-white/40` is a single distinctive token
+  unique to the new `bg-muted` section (no line-wrap), unambiguous RAG proof despite the stale timestamp.
+  Bundling two efforts' docs into ONE sync (compound concept page, two raw sessions) kept it to a single
+  docs PR. Docs-only PR #290 skipped Codex per convention.
+- Failed: none (validator). This closes the ENTIRE light-theme polish (Phases 1–4 + the cleanup) —
+  the whole light app is on the kit. The run is post-merge (PR #290 already merged) → this entry strands
+  on the worktree → persisted via a dedicated `chore/verify-knowledge-runlog-290` PR.
+- Remember: re-confirms [freshness-proxy] + single-token-probe + post-merge-strand → chore-PR pattern.
+  Bundling a deferred phase's sync with the next effort's sync (when the phase's own sync hadn't run yet)
+  is fine — two raw sessions, one compounded concept page, one docs PR. (advisory)
+
 ### [2026-07-18] Light-theme polish Phase 3 knowledge-sync validation (PR #285 code + PR #286 docs)
 - Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for the light-theme
   polish Phase 3 session (settings + promotions + org/billing/payments; Outstand deferred to Phase 4).
