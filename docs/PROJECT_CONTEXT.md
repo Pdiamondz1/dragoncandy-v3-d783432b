@@ -126,6 +126,10 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   fonts. The cinematic-video system is preserved but opt-in behind
   `LANDING_VIDEO_BACKDROP_ENABLED` (default off).
   → `docs/wiki/concepts/landing-human-driven-redesign.md` · #293
+- **Auth + onboarding landing-theme retheme** — presentational-only retheme of login/sign-up +
+  the 5 auth siblings + onboarding to the light "Human-driven. AI-assisted." landing identity;
+  zero auth-logic changes; `/internal` is now the only dark surface (`useDarkHtml` deleted).
+  → `docs/wiki/concepts/auth-onboarding-landing-theme.md` · #299
 - **Auth session management** — loading guard, 3-hour inactivity timeout, session-hint
   cleanup. → `docs/SHIPPED_LOG.md`
 - **Dashboard UX polish** — ongoing practice: badge sizing, avatar cache invalidation,

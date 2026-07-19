@@ -2,7 +2,7 @@
 title: Landing "Human-driven. AI-assisted." Redesign
 type: concept
 created: 2026-07-18
-updated: 2026-07-18
+updated: 2026-07-19
 sources: [2026-07-18-landing-joe-redesign.md]
 tags: [landing, frontend, design, tailwind, positioning]
 ---
@@ -123,6 +123,10 @@ keyboard-activatable `<button aria-label="DragonCandy home">`) → Codex second 
   `docs/PROJECT_CONTEXT.md`/`docs/wiki/index.md`/`docs/wiki/log.md`.
 
 ## See Also
+- [[Auth + Onboarding Landing-Theme Retheme]] — 2026-07-19 follow-up (PR #299) that carries this
+  landing's light identity into login/sign-up + onboarding, closing the "bright landing → dark
+  auth" handoff this redesign left open; reuses the same `landing-*` tokens/fonts + `Eyebrow`/
+  `LandingButton` primitives via a new `AuthShell`.
 - [[Landing Cinematic Video Redesign]] — the dark, role-morphing landing this redesign
   supersedes as the shipped design; its video-backdrop system is preserved and reused
   here, now opt-in.

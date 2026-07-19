@@ -1,5 +1,22 @@
 # Wiki Log
 
+## [2026-07-19] ingest | Auth+onboarding landing-theme retheme
+Ingested the [[Auth + Onboarding Landing-Theme Retheme Session]] (PR #299, merged + live). Retheme
+of all 7 entry surfaces (login/sign-up `AuthPage`, the 5 auth siblings, onboarding wizard + steps,
+their shared components) from the old dark look to the shipped light "Human-driven. AI-assisted."
+landing identity ([[Landing "Human-driven. AI-assisted." Redesign]], PR #293), softened for forms.
+Presentational only — zero auth-logic changes, verified byte-identical handlers/effects/Supabase
+calls at per-task, whole-branch, and Codex review. New shared `AuthShell` reuses the landing's
+already-shipped additive `landing-*` tokens/fonts; both dark triggers removed from every surface
+and the now-dead `useDarkHtml()` hook deleted, leaving `/internal` as the only dark surface in the
+app. Recorded the `AuthShell` `isolate`-vs-`relative z-10` flex-collapse gotcha (caught by the
+whole-branch review and Codex independently, fixed with the landing's own `isolate` pattern).
+
+Pages created: `concepts/auth-onboarding-landing-theme.md`,
+`raw/sessions/2026-07-19-auth-onboarding-landing-theme.md`.
+Pages updated: `concepts/landing-human-driven-redesign.md` (See Also cross-link), `index.md`
+(Sources + Concepts), `log.md`, `docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` (§5 index line).
+
 ## [2026-07-19] update | Mobile bottom-nav overlap fix — z-layering contract
 Updated [[Mobile Viewport & Fixed Positioning]] with §6 (PR #297): app chrome (`MobileBottomNav`,
 `MobileTopNav`) was `z-50`, tying the Radix modal layer (`Sheet`/`Dialog` = `z-50`), so the
