@@ -29,6 +29,37 @@
 
 ---END-HEADER---
 
+- create_counter_offer authorization hardening — **shipped + applied to prod (2026-07-20,
+  `fix/counter-offer-authz`).** Closed the open finding filed on `docs/wiki/concepts/service-role-data-exposure.md`
+  during the 2026-07-19 pricing work. `create_counter_offer` was a `SECURITY DEFINER` RPC with
+  **`anon:EXECUTE`** and **zero authorization** — no `auth.uid()` check, no participant check, no
+  `p_sender_role` validation — bypassing RLS. Any caller (incl. anonymous) could pass any
+  `application_id`, flip a stranger's application to `counter_offered`, decline its pending offers,
+  and insert an offer under an arbitrary `sender_id`/`sender_role`; the escalation was to forge an
+  offer **as the counterparty** and self-accept (the UPDATE policy's only sender test is
+  `sender_id != auth.uid()`). Demonstrated live pre-fix (a rollback-wrapped forged third-party call
+  returned a full offer row). One `CREATE OR REPLACE` migration (`20260720000000_counter_offer_authz.sql`,
+  **identical 6-arg signature** so the sole caller `useCounterOffers.ts` + generated `types.ts` are
+  untouched): (1) **identity** before the row lock (`auth.uid() IS DISTINCT FROM p_sender_id` → raise;
+  mirrors `apply_to_campaign`); (2) **participant + derive role** (caller = application creator →
+  `'creator'`, = campaign owner → `'business'`, else raise); (3) **role integrity** (raise if
+  `p_sender_role` ≠ derived), and the INSERT writes `auth.uid()` + the **derived** role, never the
+  client's — which **closes the self-accept escalation** because the forged offer now carries
+  `sender_id = auth.uid()`; (4) `REVOKE EXECUTE … FROM anon, public` + explicit `GRANT … TO
+  authenticated, service_role`; (5) recreated the sibling `application_counter_offers` INSERT RLS
+  policy with `sender_role` **pinned** via `CASE`; (6) pinned the `RETURNING` column list (not
+  `RETURNING *`) so the definer path can't auto-surface a future column. **Verified live red→green**
+  (rollback-wrapped SQL, `set_config('request.jwt.claim.sub',…,true)` to fake `auth.uid()`, `SET
+  LOCAL ROLE authenticated` for the RLS path): forged third-party / anon / identity-spoof / role-forge
+  all raise; real creator + owner succeed; the RLS pin accepts the correct role and rejects a forged
+  one; grants show `anon` gone. Reviews: **data-exposure-reviewer** PASS (its `RETURNING *` [low] →
+  fixed); **Codex** raised a P1 ("`REVOKE … FROM public` strips `authenticated`'s EXECUTE") that was
+  **verified empirically false** — `authenticated` keeps a **direct** default-privilege grant the
+  revoke doesn't touch (confirmed via `routine_privileges` + an as-`authenticated`-role call); the
+  explicit GRANT was added anyway for replay-safety, and Codex re-ran clean. `apply_to_campaign`'s
+  identical anon grant is left alone (guarded by its own `auth.uid()` check; out of scope).
+  → `docs/wiki/concepts/service-role-data-exposure.md`
+
 - apply_to_campaign overload → PGRST203 "Failed to submit application" — **shipped (PR #321,
   2026-07-20).** Creator **PalmDom** got "Failed to submit application. Please try again later." with
   **no application row created**. Root cause was an **overloaded RPC**: `apply_to_campaign` had a 6-arg

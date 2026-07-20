@@ -1,5 +1,18 @@
 # Wiki Log
 
+## [2026-07-20] ingest | create_counter_offer authorization hardening (fix/counter-offer-authz)
+Ingested [[Counter-Offer Authorization Session]]. **Compounded** onto [[Service-Role Data Exposure]] —
+flipped its "Open finding — create_counter_offer" section to a dated **Resolved** record (the three
+guards + server-derived role closing the self-accept escalation + anon revoke/explicit grant + the
+sibling `sender_role` RLS pin + the pinned `RETURNING`) rather than a new page: the concept page
+already owns this defect class, and the finding it filed on 2026-07-19 is exactly what shipped. New
+raw session cataloged in `index.md` Sources; the `[[Service-Role Data Exposure]]` Concepts entry
+refreshed (open → closed). `DATABASE_SCHEMA.md` gains a line on the `create_counter_offer` authz + the
+pinned INSERT policy (a real RLS/authz change). `SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5
+one Shipped line. No `DESIGN_SYSTEM`/`CLAUDE.md` change. Durable lesson captured: verify a reviewer's
+grant claim against live `routine_privileges` + an as-role call before accepting/dismissing (Codex's
+P1 was empirically false).
+
 ## [2026-07-20] ingest | apply_to_campaign overload → PGRST203 (PR #321)
 Ingested [[Apply Overload PGRST203 Session]]. **Compounded** onto
 [[Campaign Price Anchoring & Negotiation Reach]] (same apply surface: `useCreateApplication` /

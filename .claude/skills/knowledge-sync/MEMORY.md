@@ -68,6 +68,33 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-20] create_counter_offer authorization hardening (branch `fix/counter-offer-authz`)
+- Output: bundled INTO the work branch — new `raw/sessions/2026-07-20-counter-offer-authz.md`;
+  **compounded** onto `concepts/service-role-data-exposure.md` (flipped its "Open finding —
+  create_counter_offer" section, which I had filed in the prior pricing run, to a dated **Resolved**
+  record; frontmatter `sources`/`updated` bumped); `index.md` (new Sources line + refreshed the
+  `[[Service-Role Data Exposure]]` Concepts entry open→closed); `log.md` ingest entry at top;
+  `SHIPPED_LOG.md` **prepended**; `PROJECT_CONTEXT.md` §5 one Shipped line; **`DATABASE_SCHEMA.md`**
+  `application_counter_offers` row extended (the authz + pinned INSERT policy — a real RLS/authz
+  change); + THIS entry. No `DESIGN_SYSTEM`/`CLAUDE.md` change.
+- Happened: a security-fix session that **closed a finding a prior run of THIS skill had filed** —
+  so the natural move was compound-in-place (open→resolved on the page that owns the defect class),
+  not a new page, mirroring the found→fixed narrative the page already carries for PR #308. The wiki
+  work rides the SAME work branch as the code (the migration), so it's bundled, not a paired docs PR.
+- Worked: [scope] the branch was rebased onto `origin/main` first, so core docs matched HEAD before
+  editing (the on-disk-modified warnings were the rebase pulling #321/#322; handled by re-anchoring
+  grep before each edit — the top Run Log entry had shifted to a different branch's). [runlog-in-pr]
+  bundled. [wikilinks]-exact: the new `[[Counter-Offer Authorization Session]]` self-registers via its
+  Sources line; `[[Service-Role Data Exposure]]` confirmed present. [orphans]-by-path: no new concept
+  page (compound), new raw session cataloged.
+- Failed: none for knowledge-sync. RAG sync + close-the-loop verify-knowledge are post-merge (the
+  post-merge hook syncs since `docs/` changed).
+- Remember: the sharp lesson is a *review* one, captured on the concept/raw pages, not a knowledge-sync
+  one — **verify a reviewer's grant claim against live `routine_privileges` + an as-role call before
+  accepting OR dismissing it** (Codex's "authenticated loses EXECUTE" P1 was empirically false: a
+  direct default-privilege grant survives `REVOKE … FROM public`). For this skill, re-confirms
+  compound-in-place when closing a finding an earlier run filed. (advisory)
+
 ### [2026-07-19] Delivery timing + tier merged into one selection (branch `worktree-dc-improvements-4`)
 - Output: bundled INTO the work PR — new `raw/sessions/2026-07-19-delivery-tier-timing-merge.md`, new
   `concepts/delivery-tier-selection.md`, `index.md` (Concepts between [[Deep-Link Param Query Race]] and
