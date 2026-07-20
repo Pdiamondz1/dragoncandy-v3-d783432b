@@ -34,6 +34,29 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-20] create_counter_offer authorization hardening knowledge-sync validation (PR #323, POST-merge)
+- Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for the create_counter_offer
+  authorization hardening.
+- Happened: (a) orphan-by-path sweep on origin/main = 0; **no contradiction** — the compounded page
+  now reads the create_counter_offer finding as **Resolved** and the index Concepts entry says
+  "closed", consistent (no page still calls it open). (b) `LAST_WIKI_SYNC` 2026-07-20T18:36:55Z vs
+  `RAG_LAST` 2026-07-20T00:37:07Z ≈ **18h** (inside the 24h window → met on the raw rule alone), AND
+  the post-merge hook synced wiki `errors=0` UPDATE-only (`inserted=0 updated=87` — the finding was
+  compounded onto an existing page, so `max(updated_at)` did NOT move, the classic [freshness-proxy]
+  case); content probe `20260720000000` (the migration name, brand-new to the synced wiki text) = **3
+  rows** confirms the resolved-section text is retrievable. (c) service-role page in index + a new
+  `[2026-07-20] ingest` log entry naming it; new raw session cataloged in Sources.
+- Worked: [freshness-proxy] again — a compound-onto-existing-page sync leaves `RAG_LAST` pinned to an
+  older insert (00:37Z, same value as the #319 verify), so the migration-name content probe, not the
+  timestamp, is the decisive (b) signal. It also happened to be <24h so it passed the raw rule too.
+  Validated the "flip an open finding to Resolved" contradiction case carefully: a page narrating
+  found→resolved for ITS OWN prior finding is a chronological record, not a self-contradiction
+  ([dated-analysis] class).
+- Failed: none as a validator. Post-merge run → this entry strands on the merged branch; carry it
+  forward in a `chore/verify-knowledge-runlog-323` PR (or the next docs PR), same as #319→#320.
+- Remember: nothing new — re-confirms [freshness-proxy] (compound sync, timestamp pinned, probe on a
+  token unique to the NEW text) and [dated-analysis] (found→resolved on one page is not a contradiction).
+
 ### [2026-07-19] Campaign price anchoring + negotiation reach knowledge-sync validation (PR #319, POST-merge)
 - Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for the campaign
   price-anchoring + negotiation-reach session.
