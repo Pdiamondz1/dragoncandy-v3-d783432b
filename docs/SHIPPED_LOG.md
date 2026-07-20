@@ -50,8 +50,11 @@
   (`STAGING_SUPABASE_SECRET_KEY`) lives in the gitignored `supabase/scripts/.env.sync.local`, resolved
   from the **main checkout** so it works from any of the 30+ worktrees.
   **Codex took 9 rounds and every finding hardened a real footgun:** `--base` is required (the
-  Playwright config defaults to prod — refuse it); the prod key is caught by decoding the JWT `ref`
-  (not a substring); the target frontend must be on staging (`client.ts` falls back to prod for both
+  Playwright config defaults to prod — refuse it); a non-staging key is refused **fail-closed** — a
+  JWT is caught by an allowlist on its decoded `ref` (the prod service-role is a JWT), and an opaque
+  `sb_secret_…` prod key (no decodable ref) is caught by a read-only **preflight** that refuses to
+  mint unless the key authenticates against the staging project (the key only ever reaches the staging
+  URL, never prod); the target frontend must be on staging (`client.ts` falls back to prod for both
   `VITE_SUPABASE_URL` **and** the anon key, checked under Vite's real env precedence); and the remote
   target is **pinned to this project's own previews** — a foreign or same-team-other-project preview
   would receive the tokens in its URL fragment (a leak). **Proven end-to-end:** authenticated as

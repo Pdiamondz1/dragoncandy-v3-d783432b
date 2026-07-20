@@ -49,8 +49,13 @@ the 30+ worktrees without copying the secret into each.
 **Guards (why the script is defensive — each earned a Codex round):**
 - `--base` is **required** — `playwright.config.ts` defaults to prod
   `dragoncandy.io`, a footgun; the script refuses prod.
-- Refuses a **prod key** — decodes the JWT `ref` (legacy prod service-role is a
-  JWT; a substring check misses it).
+- Refuses a **non-staging key, fail-closed.** Two key formats pull opposite ways:
+  the prod service-role is a legacy **JWT** (ref decodable → **allowlist**
+  `STAGING_REF`, refusing prod and any other project statically); the staging key
+  is an opaque **`sb_secret_…`** (no decodable ref). So a prod *opaque* key can't
+  be caught statically — closed by a read-only **preflight** admin call against
+  `STAGING_URL` that refuses to mint unless the key authenticates there. The key
+  only ever reaches `STAGING_URL`, never prod. (Codex fail-closed round.)
 - Requires the **target frontend to be on staging** — `client.ts` falls back to
   prod independently for both `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`,
   so it checks both and follows Vite's real env precedence (exported >
