@@ -44,16 +44,32 @@ then. This spec fixes it.
 
 ### 1. `create_counter_offer` — add authorization (server-derived, not client-trusted)
 
-Inside the function, immediately after the existing `SELECT * INTO v_app … FOR UPDATE`:
+Ordering matters. The **pure identity check runs first, before the `FOR UPDATE`**, so an
+unauthorized or anon caller never even takes the application row lock. The existing
+`IF NOT FOUND` (Application not found) stays immediately after the `SELECT … FOR UPDATE`, so a
+bad `application_id` still yields "Application not found", not "not a participant". Then the
+participant/role checks:
 
-1. **Identity.** `IF auth.uid() IS DISTINCT FROM p_sender_id THEN RAISE EXCEPTION
-   'Unauthorized: sender_id must match authenticated user';`. Rejects anon (auth.uid() is null).
-2. **Participant + derive role.** Read `v_app.creator_id` and
-   `SELECT user_id INTO v_owner FROM campaigns WHERE id = v_app.campaign_id`. Then:
-   - `auth.uid() = v_app.creator_id` → `v_role := 'creator'`
-   - `auth.uid() = v_owner` → `v_role := 'business'`
-   - else → `RAISE EXCEPTION 'Unauthorized: not a participant on this application'`
-3. **Role integrity.** `IF p_sender_role IS DISTINCT FROM v_role THEN RAISE EXCEPTION
+1. **Identity (before the lock).** `IF auth.uid() IS DISTINCT FROM p_sender_id THEN RAISE
+   EXCEPTION 'Unauthorized: sender_id must match authenticated user';`. Rejects anon (auth.uid()
+   is null).
+2. *(existing)* `SELECT * INTO v_app … FOR UPDATE;` then the existing
+   `IF NOT FOUND THEN RAISE EXCEPTION 'Application not found';`.
+3. **Participant + derive role.** Read `v_app.creator_id` and
+   `SELECT user_id INTO v_owner FROM campaigns WHERE id = v_app.campaign_id`. Derive with an
+   explicit **`IF / ELSIF / ELSE`** chain (never two independent `IF`s — a second `IF` could
+   overwrite the first):
+   ```
+   IF    auth.uid() = v_app.creator_id THEN v_role := 'creator';
+   ELSIF auth.uid() = v_owner          THEN v_role := 'business';
+   ELSE  RAISE EXCEPTION 'Unauthorized: not a participant on this application';
+   END IF;
+   ```
+   **Self-application edge case:** if the campaign owner also applied to their own campaign,
+   `auth.uid()` matches both — first-branch precedence pins `v_role := 'creator'`. Intentional
+   and benign (no escalation; the offer still can't be self-accepted), and §3's `CASE` uses the
+   same precedence so RPC and RLS stay consistent.
+4. **Role integrity.** `IF p_sender_role IS DISTINCT FROM v_role THEN RAISE EXCEPTION
    'Unauthorized: sender_role does not match your role on this application';`. The INSERT then
    writes **`v_role`** (the derived value), never `p_sender_role`.
 
@@ -105,15 +121,21 @@ role.
 
 ## Verification
 
-1. **Rollback-wrapped SQL simulation on prod** (no persisted writes):
+1. **RPC — rollback-wrapped SQL simulation on prod** (no persisted writes):
    `BEGIN; SELECT set_config('request.jwt.claim.sub', '<uid>', true); SELECT create_counter_offer(…); ROLLBACK;`
    - **Positive:** the application's real creator and the real campaign owner each succeed with a
      matching `p_sender_role`.
    - **Negative (each must RAISE):** a third-party uid; anon (`sub` unset); `p_sender_id` ≠
      `auth.uid()`; `p_sender_role` mismatching the derived role.
-2. **`get_advisors`** (security) after the migration — no new findings; confirm the grant change.
-3. **`data-exposure-reviewer`** on the migration, then **Codex** `--base main`.
-4. **App-path smoke:** the live post-apply counter flow (`useCounterOffers`) still sends an offer
+2. **§3 RLS policy — prove both sides** (the migration's other half; not implied by advisors):
+   - **Positive:** a rollback-wrapped direct `INSERT` into `application_counter_offers` as the
+     application's creator with `sender_role='creator'` (the `useCreateApplication.ts:107` shape)
+     still succeeds.
+   - **Negative:** the same insert with a mismatched `sender_role='business'` is now **rejected**
+     by the policy.
+3. **`get_advisors`** (security) after the migration — no new findings; confirm the grant change.
+4. **`data-exposure-reviewer`** on the migration, then **Codex** `--base main`.
+5. **App-path smoke:** the live post-apply counter flow (`useCounterOffers`) still sends an offer
    for a legitimate participant (both creator and business directions).
 
 ## Rollback
