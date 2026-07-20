@@ -1,5 +1,29 @@
 # Wiki Log
 
+## [2026-07-19] ingest | Delivery timing + tier merged into one selection
+Ingested [[Delivery Tier Timing Merge Session]]. New concept [[Delivery Tier Selection]] — no page
+owned the delivery-tier subject before, and the durable content is broader than the UI merge: the
+tier↔deadline derivation rules, the UI-vs-DB vocabulary split, the local-midnight parsing invariant,
+and the cost invariant `budgetTotal === fixed_price + delivery_fee`. Cross-linked
+[[Campaign Lifecycle]], [[Content Delivery State Machine]], [[Pricing Architecture]],
+[[Take-Rate Ladder]], [[Creator Groups (Crews)]], [[Light-App Kit]], [[Musk's Algorithm]].
+Recorded as Known Issues (found, deliberately not fixed — they reach into escrow and auto-approval):
+**five conflicting turnaround tables**, where a Standard campaign is displayed as 5–7 days, invoiced
+as 72 hours and auto-approves on a 72-hour clock; and `match-creators` scoring the raw
+`delivery_type` string against creator *skills*. Index: Concepts + Sources, alphabetical.
+
+## [2026-07-19] ingest | Campaign price anchoring + opening negotiation to all creators
+Ingested [[Campaign Price Anchoring Session]]. New concept [[Campaign Price Anchoring & Negotiation
+Reach]] — a genuinely distinct subject from both [[Pricing Architecture]] (platform monetization) and
+[[Campaign Generation Creativity]] (idea quality): this is the money flowing *between* two users, and
+it is the number both sides judge the marketplace by. **Compounded** the pre-existing
+`create_counter_offer` authorization gap onto [[Service-Role Data Exposure]] as an open finding rather
+than a new page — it is that page's defect class (a `SECURITY DEFINER` function bypassing RLS with no
+`auth.uid()` check), surfaced by this review but not introduced by it, and deliberately not routed
+through. Updated `index.md` (Sources + Concepts) and this log. `SHIPPED_LOG.md` prepended;
+`PROJECT_CONTEXT.md` §5 gained one Shipped index line. No `DATABASE_SCHEMA`/`DESIGN_SYSTEM`/`CLAUDE.md`
+change — no schema, token, or workflow change (the tier bands are app constants, not design tokens).
+
 ## [2026-07-19] ingest | Service-role authorization remediation (PR #308, deployed)
 Ingested [[Service-Role Remediation Session]]. **Compounded** onto [[Service-Role Data Exposure]] (new
 "The remediation" section + the two-functional-regressions and stricter-than-RLS notes) rather than

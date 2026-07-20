@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isDeadlineAcceptable } from '@/lib/deliverySchedule';
 
 const contentTypeSchema = z.enum(['photo', 'video_reel', 'story', 'carousel', 'tiktok', 'youtube_short']);
 const platformSchema = z.enum(['instagram', 'tiktok', 'facebook', 'youtube', 'google_business', 'multi_platform']);
@@ -50,6 +51,10 @@ export const campaignIdeaSchema = z.object({
   recommended_platforms: z.array(platformSchema.catch('multi_platform')).min(1).catch(['multi_platform']),
   deliverables: z.array(ideaDeliverableSchema).min(1),
   price: z.number().optional(),
+  // Optional so ideas generated before these fields existed still parse; the campaign
+  // editor falls back to the tier band in src/lib/campaignPricing.ts when they're absent.
+  suggested_price_min: z.number().optional(),
+  suggested_price_max: z.number().optional(),
   budget_range: z.object({ min: z.number(), max: z.number() }).optional(),
   timeline_days: z.number().positive(),
   tier: deliveryTierSchema.catch('standard'),
@@ -81,10 +86,7 @@ export const launchValidationSchema = z.object({
     description: z.string().nullish(),
   })).min(1, 'At least one deliverable required'),
   fixed_price: z.number().min(50, 'Price must be at least $50'),
-  deadline: z.string().refine(
-    (d) => new Date(d) > new Date(),
-    'Deadline must be in the future'
-  ),
+  deadline: z.string().refine(isDeadlineAcceptable, 'Deadline cannot be in the past'),
   delivery_type: z.enum(['standard', 'expedited', 'dragonrush']),
   tagline: z.string().max(120).optional().default(''),
   per_creator_cap: z.number().min(0).optional().default(0),

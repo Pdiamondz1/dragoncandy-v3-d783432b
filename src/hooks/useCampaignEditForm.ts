@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { Campaign } from '@/hooks/useCampaignQueries';
 import type { CreateCampaignData } from '@/hooks/useCampaignMutations';
 import type { Deliverable } from '@/types/campaignMedia';
+import { mapDeliveryType, getTierConfig } from '@/lib/campaignUtils';
 
 export interface CampaignEditFormData {
   title: string;
@@ -157,6 +158,11 @@ export const useCampaignEditForm = (campaign: Campaign | undefined) => {
         tone: formData.tone,
         open_for_sponsorship: formData.open_for_sponsorship,
         delivery_type: formData.delivery_type || undefined,
+        // Keep the charged fee in step with the tier. Without this the edit page wrote
+        // delivery_type alone, so switching Standard -> DragonDash showed the business
+        // "+$75" in the CostBreakdown while create-campaign-escrow kept charging off the
+        // stale delivery_fee. The crew override below still wins and forces 0.
+        delivery_fee: getTierConfig(mapDeliveryType(formData.delivery_type))?.fee ?? 0,
         ai_analysis: {
           ...existingAnalysis,
           tagline: formData.tagline || null,

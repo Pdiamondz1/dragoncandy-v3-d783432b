@@ -9,15 +9,14 @@ import { ArrowLeft, Save, Eye, X } from 'lucide-react';
 import { EditorSection } from '@/components/campaign-creator/EditorSection';
 import { PlatformChips } from '@/components/campaign-creator/PlatformChips';
 import { DeliverablesList } from '@/components/campaign-creator/DeliverablesList';
-import { TimelinePicker } from '@/components/campaign-creator/TimelinePicker';
-import { TierBadge } from '@/components/campaign-creator/TierBadge';
+import { DeliveryScheduleSelector } from '@/components/campaign-creator/DeliveryScheduleSelector';
 import { CostBreakdown } from '@/components/campaigns/CostBreakdown';
 import { CampaignSponsorshipToggle } from '@/components/campaigns/CampaignSponsorshipToggle';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { mapDeliveryType, getTierConfig } from '@/lib/campaignUtils';
+import { mapDeliveryType, getTierConfig, computeCampaignCost } from '@/lib/campaignUtils';
 import type { Platform, Deliverable } from '@/types/campaignMedia';
 import { cn } from '@/lib/utils';
 
@@ -154,10 +153,11 @@ const CampaignEditPage: React.FC = () => {
   const tierConfig = getTierConfig(tier);
   const deliverableCount = structuredDeliverables.length || formData.deliverables.length || 1;
   const budgetMax = parseFloat(formData.fixed_price) || 0;
-  const premiumAmount = tierConfig?.fee ?? 0;
-  const baseCostPerDeliverable = deliverableCount > 0
-    ? Math.max(0, (budgetMax - premiumAmount) / deliverableCount)
-    : 0;
+  const { baseCostPerDeliverable, premiumAmount, budgetTotal } = computeCampaignCost(
+    budgetMax,
+    tier,
+    deliverableCount
+  );
 
   // ── Loading state ──────────────────────────────────────────────────────────
   if (isLoading) {
@@ -340,47 +340,55 @@ const CampaignEditPage: React.FC = () => {
                 <p className="text-xs text-dc-text-muted">Only this crew sees it — no payment.</p>
               </div>
             ) : (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Campaign Price</label>
-                <div className="relative max-w-xs">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dc-teal font-bold">$</span>
-                  <input
-                    type="number"
-                    value={formData.fixed_price}
-                    onChange={(e) => handleInputChange('fixed_price', e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-lg font-semibold outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
-                    min={50}
-                    step={25}
-                  />
+              /* Crew campaigns are free, so they get no price input and no cost
+                 breakdown — handleSave forces fixed_price and delivery_fee to 0, and a
+                 tier premium rendered next to "Free crew collab" would contradict it.
+                 Mirrors how CampaignEditor scopes its own CostBreakdown. */
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Campaign Price</label>
+                  <div className="relative max-w-xs">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dc-teal font-bold">$</span>
+                    <input
+                      type="number"
+                      value={formData.fixed_price}
+                      onChange={(e) => handleInputChange('fixed_price', e.target.value)}
+                      className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-lg font-semibold outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
+                      min={50}
+                      step={25}
+                    />
+                  </div>
+                  {parseFloat(formData.fixed_price) > 0 && parseFloat(formData.fixed_price) < 50 && (
+                    <p className="text-sm text-red-500">Minimum campaign price is $50</p>
+                  )}
                 </div>
-                {parseFloat(formData.fixed_price) > 0 && parseFloat(formData.fixed_price) < 50 && (
-                  <p className="text-sm text-red-500">Minimum campaign price is $50</p>
-                )}
-              </div>
-            )}
 
-            <CostBreakdown
-              deliverableCount={deliverableCount}
-              budgetTotal={budgetMax}
-              baseCostPerDeliverable={baseCostPerDeliverable}
-              premiumAmount={premiumAmount}
-              deliveryType={formData.delivery_type}
-            />
+                <CostBreakdown
+                  deliverableCount={deliverableCount}
+                  budgetTotal={budgetTotal}
+                  baseCostPerDeliverable={baseCostPerDeliverable}
+                  premiumAmount={premiumAmount}
+                  deliveryType={tierConfig?.label ?? ''}
+                />
+              </>
+            )}
 
           </EditorSection>
 
           {/* ── Section 4: Logistics & Targeting ─────────────────────────── */}
           <EditorSection title="Logistics & Targeting" defaultOpen>
 
-            <TimelinePicker
+            <DeliveryScheduleSelector
               deadline={formData.deadline}
-              onChange={v => handleInputChange('deadline', v)}
-            />
-
-            <TierBadge
               deliveryType={formData.delivery_type}
               tierReasoning={formData.tier_reasoning}
-              onChange={v => handleInputChange('delivery_type', v)}
+              onChange={patch => {
+                handleInputChange('deadline', patch.deadline);
+                handleInputChange('delivery_type', patch.delivery_type);
+                if (patch.tier_reasoning !== undefined) {
+                  handleInputChange('tier_reasoning', patch.tier_reasoning);
+                }
+              }}
             />
 
             {/* Geographic scope */}

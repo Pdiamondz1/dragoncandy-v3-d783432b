@@ -29,6 +29,80 @@
 
 ---END-HEADER---
 
+- Delivery timing + tier merged into one selection — **shipped (2026-07-19).** A founder screenshot
+  of the campaign builder's Logistics & Targeting step: *"the delivery method (DragonDash, Express, and
+  Standard) and the delivery tiers need to be one feature/selection… you have to select each
+  separately."* The two controls were not merely adjacent, they were **fully decoupled** —
+  `TimelinePicker` wrote only `deadline` (its tier subtitles were cosmetic strings that set nothing) and
+  `TierBadge` wrote only `delivery_type`, the field carrying the fee, the deliverable cap, the SLA
+  countdown and the Stripe escrow line item. So "This Weekend" + Standard tier was reachable: a campaign
+  promising a weekend turnaround while the invoice and the auto-approval clock said 5–7 days.
+  **The fix is structural, not cosmetic.** `DeliveryScheduleSelector` replaces both with three
+  `TIER_LIMITS`-driven options and emits **one patch containing `deadline` + `delivery_type` together**,
+  so the inconsistent state is *unrepresentable* rather than discouraged — there is no API for setting
+  one without the other. "Pick a specific date" survives but re-derives the tier from the chosen date,
+  closing the escape hatch that would otherwise reintroduce the drift. Tier↔deadline derivation
+  extracted to a pure, tested `src/lib/deliverySchedule.ts`; stale `tier_reasoning` is cleared when the
+  user overrides the AI's tier.
+  **Two pre-existing money bugs, both made live by this change.** (1) `useCampaignEditForm` wrote
+  `delivery_type` on save but never `delivery_fee`, so editing a tier moved the promise and left the
+  price behind. (2) `CampaignEditPage` treated `fixed_price` as *inclusive* of the premium while
+  `CampaignEditor` and `create-campaign-escrow` treat it as the base — fixing (1) turned that latent
+  split into a real "$500 shown, $575 charged". Resolved by extracting `computeCampaignCost()` and
+  putting both surfaces on it, with a test pinning `budgetTotal === fixed_price + delivery_fee`.
+  **Codex took three rounds and every finding was real — each one caused by the previous fix.**
+  SLA-mismatched offsets (DragonDash wrote *tomorrow* while advertising "1–3 hours") → the cost split
+  above → DragonDash's now-correct same-day date being rejected by a launch validator that parsed
+  date-only strings as UTC midnight *and* demanded strictly-future, **making DragonDash unlaunchable**
+  → a free crew campaign printing "Total $75.00" under "Free crew collab". The validator was wrong, not
+  the offset: a 1–3 hour tier whose own deadline is refused is a contradiction.
+  1051 tests pass (up from a 1039 baseline), typecheck/lint/build clean, Codex clean on round 4. No
+  migration, no edge-function deploy. **Deliberately not fixed:** the tiers carry **five conflicting
+  turnaround tables** — a Standard campaign is displayed as 5–7 days, invoiced as 72 hours and
+  auto-approves on a 72-hour clock — scoped as its own branch since it reaches into escrow and
+  auto-approval. → `docs/wiki/concepts/delivery-tier-selection.md`
+
+- Campaign price anchoring + negotiation reach — **shipped (2026-07-19).** Founder feedback: the
+  generated campaign price is too high to start, and because it arrives **pre-filled** a business
+  owner reads it as the required price. The instinct — relabel it "Suggested: $800" — would only move
+  the anchor one line down, so the fix went upstream. `donny-campaign-generate` had **zero** pricing
+  guidance: its prompt asked for a bare `"price": <number>` with no floor, ceiling, or relation to
+  deliverable count or tier, so the model free-associated to roughly **$400/deliverable** — agency
+  pricing shown to a first-time local restaurant. It now prices against founder-approved
+  per-deliverable bands (`standard` $75–150, `express` $110–225, `dragondash` $150–300) and returns
+  `suggested_price_min`/`suggested_price_max` beside its single pick.
+  **Business side:** the price field starts **empty**; beneath it the suggested range plus three
+  one-tap `AppChip` amounts (low/mid/high — a tap beats typing, per the North Star). New
+  `src/lib/campaignPricing.ts` is the single source for every figure (14 unit tests) and falls back to
+  `deliverableCount × band` for ideas generated before the new fields existed — so the anchor drops on
+  frontend merge alone and the edge deploy only adds Donny's per-campaign judgment. Cost Breakdown
+  hides below the $50 floor (at $0 it rendered "(2 × $0.00)"); launch is gated with a plain message
+  instead of the stringified ZodError toast that was previously the only feedback — which mattered
+  because everyone now *starts* at $0, making a never-hit validation branch the default path. Crew
+  campaigns stay exempt (free by DB constraint). The copy says "a starting point, not a market rate":
+  DragonCandy is pre-revenue with zero completed campaigns, so implying market data would be the same
+  anchoring problem in a lab coat. The screenshot case (2 deliverables, standard) goes from a
+  pre-filled **$800** to an empty field suggesting **$150–$300**.
+  **Creator side:** needed no new machinery. The whole counter-offer system — table, RPCs,
+  notification, negotiation thread, business accept/decline — already existed and worked; it was
+  simply **unreachable**, gated on `isInvited`, so a creator who found a campaign organically saw only
+  "Looks good — Send". Any creator can now counter from the apply sheet, with the price explicitly
+  marked negotiable at the point of decision. Also fixed: `handleCounterOffer` passed a hardcoded
+  `isInvited: true`, and a failed counter-offer insert was a silent `console.error` that left the
+  application at `counter_offered` with no offer row for the business to answer.
+  **Durable gotcha:** a crew campaign's `fixed_price` is `0`, **not null**, so `isFixedPrice`
+  (`!= null`) did not exclude crews — dropping the invite gate exposed a "$50 minimum" counter-offer
+  form on campaigns the DB declares free (`campaigns_group_free`); the invite gate had been masking it
+  by accident. Caught **independently by both Codex and `data-exposure-reviewer`**, fixed by gating on
+  `group_id`. Generalized: a `!= null` check is not an "is this paid?" check once a sibling feature
+  writes a real `0`. Also corrected a comment claiming `isInvited` drives the RLS INSERT policy — it
+  never reaches the database, and derives partly from `?invited=true` in the URL, so it was never a
+  control at all. **Filed, not fixed:** `create_counter_offer` is `SECURITY DEFINER` with no
+  authorization whatsoever (no `auth.uid()` check, no participant check) — pre-existing and live via
+  `useCounterOffers.ts`; this work deliberately kept the widened path on the RLS-checked direct insert
+  instead. Reviews: `edge-function-reviewer` PASS, Codex clean after the crew fix, 1057 tests.
+  → `docs/wiki/concepts/campaign-price-anchoring.md`
+
 - Service-role authorization remediation — **shipped + deployed (PR #308, 2026-07-19).** Sequel to
   #307: fixes what the new `data-exposure-reviewer` found. **12 guards across 4 edge functions** plus
   a new pure `_shared/campaign-access.ts` (`evaluateCampaignAccess` / `evaluateApplyAccess`, 19 unit

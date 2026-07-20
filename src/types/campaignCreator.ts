@@ -38,7 +38,11 @@ export interface CampaignIdea {
   campaign_type: CampaignType;
   recommended_platforms: Platform[];
   deliverables: IdeaDeliverable[];
+  /** Donny's single best pick inside the suggested range. Never pre-fills the price field. */
   price?: number;
+  /** Starting range shown beneath the (empty) price field. See src/lib/campaignPricing.ts. */
+  suggested_price_min?: number;
+  suggested_price_max?: number;
   budget_range?: { min: number; max: number };
   timeline_days: number;
   tier: DeliveryTier;

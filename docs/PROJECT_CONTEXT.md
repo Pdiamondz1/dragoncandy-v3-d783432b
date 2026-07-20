@@ -119,6 +119,15 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **Delivery timing + tier → one selection** — the campaign builder asked for delivery speed twice
+  via two fully decoupled controls (one wrote only `deadline`, the other only `delivery_type`);
+  now one control emitting both fields atomically. Fixed 2 pre-existing fee bugs en route.
+  → `docs/wiki/concepts/delivery-tier-selection.md`
+- **Campaign price anchoring + negotiation reach** — the generated price arrived pre-filled and read
+  as "what I must pay"; the real cause was a generator with **no** pricing guidance (~$400/deliverable).
+  Now tier-banded, the field starts at $0 with a tap-to-fill suggested range, and counter-offer is
+  reachable by every creator instead of invited-only.
+  → `docs/wiki/concepts/campaign-price-anchoring.md`
 - **`data-exposure-reviewer` subagent + service-role remediation** — a read-only reviewer for the
   dominant Codex P1 class (service-role RLS bypass), resolving the [[Claude Subagents Audit]] Tier-2
   deferral and hard-wired into `codex-review` step 1; what it found is **fixed and deployed** (12

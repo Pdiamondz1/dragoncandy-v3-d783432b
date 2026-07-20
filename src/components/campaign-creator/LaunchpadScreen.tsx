@@ -7,6 +7,7 @@ import { CampaignEditor } from './CampaignEditor';
 import { LaunchButton } from './LaunchButton';
 import { ExtractionFeed } from './ExtractionFeed';
 import { GroupTargetSelect } from '@/components/campaigns/GroupTargetSelect';
+import { MIN_CAMPAIGN_PRICE } from '@/lib/campaignPricing';
 
 interface LaunchpadScreenProps {
   ideas: CampaignIdea[];
@@ -81,6 +82,9 @@ export function LaunchpadScreen({
             onSaveDraft={onSaveDraft}
             isAuthenticated={isAuthenticated}
             isLaunching={isLaunching}
+            // Crew campaigns are free by DB constraint (campaigns_group_free) and skip the
+            // price input entirely, so the price gate must not apply to them.
+            canLaunch={groupTarget != null || editedCampaign.fixed_price >= MIN_CAMPAIGN_PRICE}
             onAuthRequired={onAuthRequired}
           />
         </>

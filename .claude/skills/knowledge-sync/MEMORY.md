@@ -68,6 +68,72 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-19] Delivery timing + tier merged into one selection (branch `worktree-dc-improvements-4`)
+- Output: bundled INTO the work PR — new `raw/sessions/2026-07-19-delivery-tier-timing-merge.md`, new
+  `concepts/delivery-tier-selection.md`, `index.md` (Concepts between [[Deep-Link Param Query Race]] and
+  [[Dezzy Agent (Playbook Suite)]]; Sources between [[Data-Exposure Reviewer Session]] and [[Donny Audit
+  Phase 1 Session]]), `log.md` (ingest entry at top), `SHIPPED_LOG.md` (prepended full prose),
+  PROJECT_CONTEXT §5 ONE index line under Shipped, + THIS entry. No DATABASE_SCHEMA change (no columns
+  touched — `delivery_type`/`deadline`/`delivery_fee` all pre-existing), no DESIGN_SYSTEM change (the new
+  control uses the existing light-app kit; no new token), no CLAUDE.md change.
+- Happened: a founder **screenshot bug-report** whose durable knowledge is much broader than the UI
+  merge, so I wrote a NEW concept — **no page owned the delivery-tier subject at all** despite it
+  governing the fee, the deliverable cap, the SLA timer and the Stripe line item. The page captures the
+  derivation rules, the UI-vs-DB vocabulary split, the local-midnight invariant, and the cost invariant
+  `budgetTotal === fixed_price + delivery_fee`; the raw session captures the review narrative.
+- Worked: **[scope] paid off yet again** — `origin/main` had moved **8 commits** ahead mid-session
+  (#308–#315 plus the #309/#311 mission re-grounding of CLAUDE.md + PROJECT_CONTEXT), and 4 of my 6
+  target docs DIFFERED. Editing from the stale worktree would have silently reverted two knowledge-syncs
+  and the founder's new Mission section. Checked code overlap first (`comm -12` on the two file lists →
+  **empty**), then rebased clean. [orphans]-by-path: both new files cataloged. [wikilinks]-exact: all 7
+  targets grepped against index.md before linking, zero dangling. [runlog-in-pr] bundled.
+- Failed: could not exercise the authenticated campaign builder in a browser (local dev login redirects
+  to prod) — recorded honestly as a Known Issue in the raw session rather than glossed. Behaviour is
+  covered by 8 component tests driving the real click/change handlers; the visual pass is founder/preview.
+- Remember: **when a fix makes a *latent* inconsistency load-bearing, the fix is not "wrong" — but it now
+  owns the inconsistency.** Writing `delivery_fee` on the edit page was correct in isolation, yet it
+  converted a dormant display/semantics split into a live "$500 shown, $575 charged". Codex caught it, and
+  the right response was to fix the *root* (extract the duplicated cost math both surfaces had drifted
+  apart on) rather than patch the display or revert the fix. Corollary for review loops: **three
+  consecutive rounds where each finding is caused by the previous fix is a signal you are walking a
+  dependency chain, not churning** — the tell is that every finding was independently verifiable against
+  the code (I read the escrow fn, the validator, and both cost call-sites before acting on each one).
+  Contrast the PR #241 run below, where Codex *oscillated* on a prior demand — that is churn, and the
+  correct move there was to stop. (advisory)
+
+### [2026-07-19] Campaign price anchoring + negotiation reach (branch `worktree-dc-improvements-7`)
+- Output: bundled INTO the work branch — new `raw/sessions/2026-07-19-campaign-price-anchoring.md`,
+  new `concepts/campaign-price-anchoring.md`, **compounded** the pre-existing `create_counter_offer`
+  authz gap onto `concepts/service-role-data-exposure.md` (new "Open finding" section above "The
+  remediation"), `index.md` (Sources in the "Ca" cluster + Concepts after [[Campaign Lifecycle]]),
+  `log.md` ingest entry at top, `SHIPPED_LOG.md` **prepended**, `PROJECT_CONTEXT.md` §5 one Shipped
+  index line, + THIS entry. No DATABASE_SCHEMA/DESIGN_SYSTEM/CLAUDE.md change — the tier bands are app
+  constants in `src/lib/campaignPricing.ts`, not design tokens, and no schema or workflow rule moved.
+- Happened: a **founder-feedback pricing session** whose durable knowledge is a NEW concept rather than
+  a compound. Deliberated it: [[Pricing Architecture]] is platform monetization (take-rate/credits/rush)
+  and [[Campaign Generation Creativity]] is idea quality — neither owns "what a business pays a
+  creator", which is the number both sides of the marketplace judge us by. Wrote it as one page
+  spanning generation → business editor → creator counter-offer, because that IS one story. The
+  security finding went the other way: compounded onto [[Service-Role Data Exposure]], which already
+  owns the definer-bypasses-RLS class, instead of a thin sibling page.
+- Worked: [scope] — fetched first, found the branch 1 behind, rebased onto `origin/main`, and confirmed
+  all five target docs byte-IDENTICAL to `origin/main` before editing. [runlog-in-pr] bundled.
+  [wikilinks]-exact earned its keep again: grepped `index.md` for every target and **dropped
+  `[[Revoke Definer From Anon]]` — no such page exists** (it's a project *memory*, not a wiki page), so
+  the trap is stated inline as prose instead of minting a dangling link. Verified the exact display
+  names `[[Creator Groups (Crews)]]` and `[[Campaign Lifecycle]]` (both have near-miss siblings —
+  `[[Creator Groups Session]]`, `[[Campaign Lifecycle Flow]]` — that a careless link would have hit).
+- Failed: none for knowledge-sync. The edge-function deploy and prod verification are post-merge by
+  the founder's choice ("deploy with the merge"); RAG sync is post-merge via the hook, per [rag-sync].
+- Remember: **when two independent reviewers flag the same finding, verify it yourself before
+  believing OR dismissing it — but treat the agreement as a strong prior.** Codex and
+  `data-exposure-reviewer` both caught that a crew campaign's `fixed_price` is `0` **not `null`**, so
+  an `isFixedPrice` (`!= null`) guard silently failed to exclude free campaigns once the co-located
+  `isInvited` term was removed. The general trap is a **guard that was only ever correct by accident**:
+  `isInvited` had been masking the crew case, so removing it for good reasons exposed a defect that
+  predated the change. Before deleting a condition from a compound guard, ask what *each* term was
+  independently excluding — not just the one you meant to remove. (advisory)
+
 ### [2026-07-19] Service-role remediation (PR #308 → paired docs PR)
 - Output: new `raw/sessions/2026-07-19-service-role-remediation.md`; **compounded** onto
   `concepts/service-role-data-exposure.md` (new "The remediation" section + the

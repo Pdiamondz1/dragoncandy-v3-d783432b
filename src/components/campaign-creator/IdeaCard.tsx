@@ -1,6 +1,7 @@
 import type { CampaignIdea } from '@/types/campaignCreator';
 import { cn } from '@/lib/utils';
 import { AppStatusBadge } from '@/components/app/AppStatusBadge';
+import { getSuggestedRange, formatSuggestedRange } from '@/lib/campaignPricing';
 
 interface IdeaCardProps {
   idea: CampaignIdea;
@@ -13,6 +14,15 @@ const PLATFORM_LABELS: Record<string, string> = {
 };
 
 export function IdeaCard({ idea, isSelected, onSelect }: IdeaCardProps) {
+  // A range, not a single figure — a lone number here re-anchors the business one screen
+  // before they reach the price field.
+  const suggestedRange = getSuggestedRange({
+    tier: idea.tier,
+    deliverableCount: idea.deliverables.length,
+    suggestedMin: idea.suggested_price_min,
+    suggestedMax: idea.suggested_price_max,
+  });
+
   return (
     <button type="button" onClick={() => onSelect(idea.id)}
       className={cn(
@@ -37,7 +47,7 @@ export function IdeaCard({ idea, isSelected, onSelect }: IdeaCardProps) {
       )}
       <div className="flex flex-wrap gap-2 mt-3">
         <AppStatusBadge tone="neutral">
-          ${idea.price ?? idea.budget_range?.max ?? 'TBD'}
+          {formatSuggestedRange(suggestedRange)}
         </AppStatusBadge>
         <AppStatusBadge tone="neutral">
           {idea.timeline_days} days

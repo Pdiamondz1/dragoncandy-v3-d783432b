@@ -24,6 +24,18 @@ describe('buildDonnyFirstSystemPrompt', () => {
     expect(withPlatforms).toMatch(/is_wildcard/);
     expect(withPlatforms).toMatch(/creative_concept/);
   });
+  it('anchors pricing to the local-business tier bands', () => {
+    // Without these the model free-associated ~$400/deliverable — agency pricing shown to a
+    // first-time local business. Keep in sync with TIER_PRICE_BANDS in src/lib/campaignPricing.ts.
+    expect(withPlatforms).toMatch(/PER DELIVERABLE/);
+    expect(withPlatforms).toMatch(/\$75-\$150 per deliverable/);
+    expect(withPlatforms).toMatch(/\$110-\$225 per deliverable/);
+    expect(withPlatforms).toMatch(/\$150-\$300 per deliverable/);
+  });
+  it('asks for a suggested range, not just a single price', () => {
+    expect(withPlatforms).toMatch(/suggested_price_min/);
+    expect(withPlatforms).toMatch(/suggested_price_max/);
+  });
   it('has no stray backtick (Deno bundle hygiene)', () => {
     expect(withPlatforms.includes(String.fromCharCode(96))).toBe(false);
     expect(buildDonnyFirstSystemPrompt().includes(String.fromCharCode(96))).toBe(false);

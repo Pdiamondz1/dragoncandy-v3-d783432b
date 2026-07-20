@@ -120,6 +120,45 @@ Six findings on `origin/main` (five controller-verified, one flagged unverified)
 The fix was applied at one query site and missed at its sibling — check 1's exact failure mode. These
 survived 14 Codex rounds, an adversarial review, and PRs #246/#247/#260.
 
+## Open finding — `create_counter_offer` has no authorization (2026-07-19)
+
+Surfaced while reviewing the campaign-pricing work ([[Campaign Price Anchoring & Negotiation
+Reach]]), **not** introduced by it. `create_counter_offer`
+(`supabase/migrations/20260521000003_atomic_counter_offer.sql`) is `SECURITY DEFINER` with
+`search_path=public` and performs **no authorization of any kind**: it never checks
+`p_sender_id = auth.uid()`, never checks the caller is a participant on the application, and
+never validates `p_sender_role`. Being definer, it bypasses RLS on both
+`campaign_applications` and `application_counter_offers`.
+
+With any application uuid a caller can flip a stranger's application to `counter_offered`,
+mass-decline its pending offers, and insert an offer attributed to an arbitrary `sender_id`.
+The escalation that matters: a legitimate participant forges an offer **as the counterparty**
+and accepts it themselves, because the UPDATE policy's only sender test is
+`sender_id != auth.uid()`.
+
+**Scoped honestly:** the forged value lands in `agreed_rate`, consumed as `settledRate` by
+`verify-campaign-escrow` → `increment_budget_spent`. That is budget accounting — it does not by
+itself move Stripe funds. Live today via `useCounterOffers.ts`, independent of any recent change.
+
+**Deliberately not routed through.** The 2026-07-19 work widened the creator apply path from
+invited-only to every creator. It kept that new traffic on the **direct, RLS-checked insert**
+rather than this RPC — the INSERT policy genuinely enforces `sender_id = auth.uid()` plus
+application participation. Widening a path onto an unauthenticated definer would have been the
+worse of the two options.
+
+**Fix when actioned:** `IF auth.uid() IS DISTINCT FROM p_sender_id THEN RAISE EXCEPTION`, a
+participant check, and a `p_sender_role`-matches-caller check — mirroring the identity guard
+`apply_to_campaign` already carries. Also unverified: no migration issues any `GRANT`/`REVOKE`
+for this function, so default `PUBLIC EXECUTE` implies it is at minimum authenticated-callable
+and possibly anon-callable — confirm live grants. (This is the recurring DragonCandy trap that
+`revoke from public` alone does not lock a definer function: revoke from `public, anon,
+authenticated` and grant `service_role` explicitly, then re-run the advisors.)
+
+A related low-severity sibling: the INSERT policy on `application_counter_offers`
+(`20260216133652`) constrains `sender_id` but not `sender_role`, so a participant can insert a
+row labelled with the opposite role. Display-integrity only — the accept gate keys off
+`sender_id`.
+
 ## The remediation (PR #308 — shipped + deployed)
 
 12 guards across 4 edge functions, plus the pure `_shared/campaign-access.ts`
