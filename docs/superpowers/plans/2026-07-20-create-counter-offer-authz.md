@@ -213,6 +213,13 @@ Invoke `careful` for a prod DDL apply: state the blast radius (one SECURITY DEFI
 Use `mcp__plugin_supabase__apply_migration` (project `zocahiffooqdybdhguqv`, name `counter_offer_authz`, the Task 1 SQL as the query). This applies the DDL to prod.
 Expected: success, no error.
 
+**Known wrinkle (this repo's apply-then-commit flow):** applying via MCP *and* committing the
+`20260720000000_*.sql` file means a replay (staging/CI/`db push`) re-runs the committed file — a
+second history application. This is harmless here because every statement is replay-safe
+(`CREATE OR REPLACE`, `DROP POLICY IF EXISTS` → `CREATE POLICY`, `REVOKE`). Don't be surprised by a
+duplicate history entry; do not "fix" it by dropping the committed file (it is the source of truth
+for fresh environments).
+
 ---
 
 ## Task 4: Verify the RPC is closed (the "green")
@@ -255,6 +262,21 @@ Expected: **returns a JSON offer row** with `sender_id = <creator_id>`, `sender_
 Run with sub = `<owner_id>`, `p_sender_id = <owner_id>`, `p_sender_role = 'business'`.
 Expected: **returns a JSON offer row** with `sender_role = 'business'`. `ROLLBACK`.
 
+- [ ] **Step 7: Live app-path smoke (spec Verification item 5) — both directions**
+
+The SQL positives above prove the RPC accepts legitimate creator + owner calls; this step
+confirms the real UI hook (`useCounterOffers` → `create_counter_offer`) still works end-to-end
+after the role-integrity tightening. On prod, in a real `counter_offered` application:
+- **Creator direction:** as the creator, send a counter-offer from `AppliedPhaseView` /
+  `DetailedApplicationCard` (both hardcode `senderRole:'creator'`).
+- **Business direction:** as the business, send a counter from `ApplicationCard` (hardcodes
+  `senderRole:'business'`).
+Expected: both succeed (offer row created, other party notified), no console error.
+**Note:** this is an auth-gated live check — it needs a logged-in creator *and* business and a
+suitable application, so it may require the user to drive login (same class as the mobile-viewport
+gap). If a real `counter_offered` fixture isn't readily available, the Task 4 SQL positives +
+the verified per-surface role hardcoding stand as the primary proof; record honestly which was done.
+
 ---
 
 ## Task 5: Verify the §3 RLS policy — both sides
@@ -274,6 +296,12 @@ VALUES ('<application_id>', '<creator_id>', 'creator', 100, 'ok', 'pending');
 ROLLBACK;
 ```
 Expected: **INSERT succeeds** (1 row).
+
+**If this positive UNEXPECTEDLY fails,** suspect the harness, not the new policy: MCP `execute_sql`
+runs as `postgres`, and this step relies on `postgres` being able to `SET ROLE authenticated`,
+`authenticated` holding table INSERT, and the `WITH CHECK` subquery seeing the `campaign_applications`
+row through *that* table's RLS. All hold in stock Supabase; a failure here is a harness/role issue,
+not a policy bug — confirm before concluding the policy is wrong.
 
 - [ ] **Step 2: Negative — creator inserts with forged 'business' is rejected**
 
