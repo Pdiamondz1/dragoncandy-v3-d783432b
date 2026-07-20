@@ -29,6 +29,39 @@
 
 ---END-HEADER---
 
+- Delivery timing + tier merged into one selection — **shipped (2026-07-19).** A founder screenshot
+  of the campaign builder's Logistics & Targeting step: *"the delivery method (DragonDash, Express, and
+  Standard) and the delivery tiers need to be one feature/selection… you have to select each
+  separately."* The two controls were not merely adjacent, they were **fully decoupled** —
+  `TimelinePicker` wrote only `deadline` (its tier subtitles were cosmetic strings that set nothing) and
+  `TierBadge` wrote only `delivery_type`, the field carrying the fee, the deliverable cap, the SLA
+  countdown and the Stripe escrow line item. So "This Weekend" + Standard tier was reachable: a campaign
+  promising a weekend turnaround while the invoice and the auto-approval clock said 5–7 days.
+  **The fix is structural, not cosmetic.** `DeliveryScheduleSelector` replaces both with three
+  `TIER_LIMITS`-driven options and emits **one patch containing `deadline` + `delivery_type` together**,
+  so the inconsistent state is *unrepresentable* rather than discouraged — there is no API for setting
+  one without the other. "Pick a specific date" survives but re-derives the tier from the chosen date,
+  closing the escape hatch that would otherwise reintroduce the drift. Tier↔deadline derivation
+  extracted to a pure, tested `src/lib/deliverySchedule.ts`; stale `tier_reasoning` is cleared when the
+  user overrides the AI's tier.
+  **Two pre-existing money bugs, both made live by this change.** (1) `useCampaignEditForm` wrote
+  `delivery_type` on save but never `delivery_fee`, so editing a tier moved the promise and left the
+  price behind. (2) `CampaignEditPage` treated `fixed_price` as *inclusive* of the premium while
+  `CampaignEditor` and `create-campaign-escrow` treat it as the base — fixing (1) turned that latent
+  split into a real "$500 shown, $575 charged". Resolved by extracting `computeCampaignCost()` and
+  putting both surfaces on it, with a test pinning `budgetTotal === fixed_price + delivery_fee`.
+  **Codex took three rounds and every finding was real — each one caused by the previous fix.**
+  SLA-mismatched offsets (DragonDash wrote *tomorrow* while advertising "1–3 hours") → the cost split
+  above → DragonDash's now-correct same-day date being rejected by a launch validator that parsed
+  date-only strings as UTC midnight *and* demanded strictly-future, **making DragonDash unlaunchable**
+  → a free crew campaign printing "Total $75.00" under "Free crew collab". The validator was wrong, not
+  the offset: a 1–3 hour tier whose own deadline is refused is a contradiction.
+  1051 tests pass (up from a 1039 baseline), typecheck/lint/build clean, Codex clean on round 4. No
+  migration, no edge-function deploy. **Deliberately not fixed:** the tiers carry **five conflicting
+  turnaround tables** — a Standard campaign is displayed as 5–7 days, invoiced as 72 hours and
+  auto-approves on a 72-hour clock — scoped as its own branch since it reaches into escrow and
+  auto-approval. → `docs/wiki/concepts/delivery-tier-selection.md`
+
 - Campaign price anchoring + negotiation reach — **shipped (2026-07-19).** Founder feedback: the
   generated campaign price is too high to start, and because it arrives **pre-filled** a business
   owner reads it as the required price. The instinct — relabel it "Suggested: $800" — would only move

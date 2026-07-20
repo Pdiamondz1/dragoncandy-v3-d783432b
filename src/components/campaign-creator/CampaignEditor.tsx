@@ -2,15 +2,14 @@ import type { EditableCampaign, BrandFields, CampaignIdea } from '@/types/campai
 import { EditableField } from './EditableField';
 import { PlatformChips } from './PlatformChips';
 import { DeliverablesList } from './DeliverablesList';
-import { TimelinePicker } from './TimelinePicker';
-import { TierBadge } from './TierBadge';
+import { DeliveryScheduleSelector } from './DeliveryScheduleSelector';
 import { EditorSection } from './EditorSection';
 import { PostingPreferencesSection } from './PostingPreferencesSection';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { CostBreakdown } from '@/components/campaigns/CostBreakdown';
 import { TIER_LIMITS } from '@/types/campaignMedia';
-import { mapDeliveryType } from '@/lib/campaignUtils';
+import { mapDeliveryType, computeCampaignCost } from '@/lib/campaignUtils';
 import { sanitizeNumericInput } from '@/lib/inputUtils';
 import {
   MIN_CAMPAIGN_PRICE,
@@ -158,9 +157,11 @@ export function CampaignEditor({
             {hasLaunchablePrice && (
               <CostBreakdown
                 deliverableCount={deliverableCount}
-                budgetTotal={campaign.fixed_price + tierConfig.fee}
-                baseCostPerDeliverable={deliverableCount > 0 ? campaign.fixed_price / deliverableCount : 0}
-                premiumAmount={tierConfig.fee}
+                {...computeCampaignCost(
+                  campaign.fixed_price,
+                  currentTier ?? 'standard',
+                  deliverableCount
+                )}
                 deliveryType={tierConfig.label}
               />
             )}
@@ -170,9 +171,18 @@ export function CampaignEditor({
 
       {/* Logistics & Targeting */}
       <EditorSection title="Logistics & Targeting" id="section-logistics">
-        <TimelinePicker deadline={campaign.deadline} onChange={(v) => updateField('deadline', v)} />
-        <TierBadge deliveryType={campaign.delivery_type} tierReasoning={campaign.tier_reasoning}
-          onChange={(v) => updateField('delivery_type', v)} />
+        <DeliveryScheduleSelector
+          deadline={campaign.deadline}
+          deliveryType={campaign.delivery_type}
+          tierReasoning={campaign.tier_reasoning}
+          onChange={(patch) => {
+            updateField('deadline', patch.deadline);
+            updateField('delivery_type', patch.delivery_type);
+            if (patch.tier_reasoning !== undefined) {
+              updateField('tier_reasoning', patch.tier_reasoning);
+            }
+          }}
+        />
         <div>
           <label className="text-xs font-medium text-gray-500">Geographic Scope</label>
           <div className="flex gap-2 mt-2">

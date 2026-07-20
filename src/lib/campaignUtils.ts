@@ -153,3 +153,34 @@ export function getTierConfig(tier: DeliveryTier | null) {
   if (!tier) return null;
   return TIER_LIMITS[tier];
 }
+
+export interface CampaignCost {
+  baseCostPerDeliverable: number;
+  premiumAmount: number;
+  budgetTotal: number;
+}
+
+/**
+ * The cost breakdown for a campaign, for `<CostBreakdown />`.
+ *
+ * `fixedPrice` is the **base** the creator is paid; the delivery-tier premium sits on
+ * top of it. That matches `create-campaign-escrow`, which charges
+ * `fixed_price + delivery_fee` — the authority on what the business is actually billed.
+ *
+ * This lives here because the builder and the edit page each used to compute it inline
+ * and had drifted apart: the edit page treated `fixed_price` as *inclusive* of the
+ * premium and showed it as the total, so it quoted a number lower than the charge.
+ * One function, one answer.
+ */
+export function computeCampaignCost(
+  fixedPrice: number,
+  tier: DeliveryTier | null,
+  deliverableCount: number
+): CampaignCost {
+  const premiumAmount = getTierConfig(tier)?.fee ?? 0;
+  return {
+    baseCostPerDeliverable: deliverableCount > 0 ? fixedPrice / deliverableCount : 0,
+    premiumAmount,
+    budgetTotal: fixedPrice + premiumAmount,
+  };
+}
