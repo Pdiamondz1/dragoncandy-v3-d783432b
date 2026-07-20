@@ -9,17 +9,17 @@ import {
 } from '@/components/ui/select';
 import { useCreatorGroups } from '@/hooks/useCreatorGroups';
 
-/** Sentinel value for the "Public marketplace" option (Radix Select can't use ""). */
+/** Sentinel value for the "Creator marketplace" option (Radix Select can't use ""). */
 const PUBLIC_VALUE = '__public__';
 
 interface GroupTargetSelectProps {
-  /** Selected crew id, or null for the public marketplace. */
+  /** Selected crew id, or null for the creator marketplace. */
   value: string | null;
   onChange: (groupId: string | null) => void;
 }
 
 /**
- * "Post to: Public marketplace | <crew>" selector for the campaign creator.
+ * "Post to: Creator marketplace | <crew>" selector for the campaign creator.
  * Choosing a crew turns the post into a free, private group campaign — only the
  * crew's active members see it and there is no payment. Emits `null` for public.
  */
@@ -46,10 +46,10 @@ export function GroupTargetSelect({ value, onChange }: GroupTargetSelectProps) {
           id="group-target"
           className="w-full rounded-full border-2 border-dc-teal/50 focus:ring-dc-teal focus:ring-offset-0"
         >
-          <SelectValue placeholder="Public marketplace" />
+          <SelectValue placeholder="Creator marketplace" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={PUBLIC_VALUE}>Public marketplace</SelectItem>
+          <SelectItem value={PUBLIC_VALUE}>Creator marketplace</SelectItem>
           {groups.map((g) => (
             <SelectItem key={g.id} value={g.id}>
               {g.name}
@@ -75,7 +75,7 @@ export function GroupTargetSelect({ value, onChange }: GroupTargetSelectProps) {
         </p>
       ) : (
         <p className="mt-2 text-xs text-dc-text-muted">
-          Public reaches the whole marketplace. Pick a crew for a free, private collab.
+          Reaches every creator on DragonCandy. Pick a crew for a free, private collab.
         </p>
       )}
     </div>
