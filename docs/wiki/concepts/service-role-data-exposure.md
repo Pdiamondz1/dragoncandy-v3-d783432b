@@ -2,8 +2,8 @@
 title: Service-Role Data Exposure
 type: concept
 created: 2026-07-19
-updated: 2026-07-19
-sources: [2026-07-19-data-exposure-reviewer.md, 2026-07-19-service-role-remediation.md]
+updated: 2026-07-20
+sources: [2026-07-19-data-exposure-reviewer.md, 2026-07-19-service-role-remediation.md, 2026-07-20-counter-offer-authz.md]
 tags: [security, rls, service-role, edge-functions, subagents, review, privacy, gotcha]
 ---
 # Service-Role Data Exposure
@@ -120,44 +120,50 @@ Six findings on `origin/main` (five controller-verified, one flagged unverified)
 The fix was applied at one query site and missed at its sibling — check 1's exact failure mode. These
 survived 14 Codex rounds, an adversarial review, and PRs #246/#247/#260.
 
-## Open finding — `create_counter_offer` has no authorization (2026-07-19)
+## Resolved — `create_counter_offer` authorization (found 2026-07-19, fixed 2026-07-20)
 
-Surfaced while reviewing the campaign-pricing work ([[Campaign Price Anchoring & Negotiation
-Reach]]), **not** introduced by it. `create_counter_offer`
-(`supabase/migrations/20260521000003_atomic_counter_offer.sql`) is `SECURITY DEFINER` with
-`search_path=public` and performs **no authorization of any kind**: it never checks
-`p_sender_id = auth.uid()`, never checks the caller is a participant on the application, and
-never validates `p_sender_role`. Being definer, it bypasses RLS on both
-`campaign_applications` and `application_counter_offers`.
+Surfaced by the `data-exposure-reviewer` while reviewing the campaign-pricing work
+([[Campaign Price Anchoring & Negotiation Reach]]), **not** introduced by it, and fixed the next
+day in its own migration (`20260720000000_counter_offer_authz.sql`, `fix/counter-offer-authz`).
 
-With any application uuid a caller can flip a stranger's application to `counter_offered`,
-mass-decline its pending offers, and insert an offer attributed to an arbitrary `sender_id`.
-The escalation that matters: a legitimate participant forges an offer **as the counterparty**
-and accepts it themselves, because the UPDATE policy's only sender test is
-`sender_id != auth.uid()`.
+**The hole.** `create_counter_offer` was `SECURITY DEFINER` with **`anon:EXECUTE`** (confirmed
+live) and **no authorization of any kind** — no `auth.uid()` check, no participant check, no
+`p_sender_role` validation. Being definer it bypassed RLS on both `campaign_applications` and
+`application_counter_offers`. Any caller (including anonymous) could flip a stranger's application
+to `counter_offered`, mass-decline its pending offers, and insert an offer under an arbitrary
+`sender_id`/`sender_role`. The escalation: forge an offer **as the counterparty**, then self-accept
+(the UPDATE policy's only sender test is `sender_id != auth.uid()`). Scoped honestly, the forged
+value feeds `agreed_rate` → `increment_budget_spent` (budget accounting), not Stripe movement.
+The 2026-07-19 pricing work had deliberately kept its widened apply path on the **direct,
+RLS-checked insert** rather than routing new traffic through this RPC — the right call.
 
-**Scoped honestly:** the forged value lands in `agreed_rate`, consumed as `settledRate` by
-`verify-campaign-escrow` → `increment_budget_spent`. That is budget accounting — it does not by
-itself move Stripe funds. Live today via `useCounterOffers.ts`, independent of any recent change.
+**The fix (one `CREATE OR REPLACE` migration, identical 6-arg signature — the sole caller
+`useCounterOffers.ts` untouched):**
+- **Identity**, before the row lock: `IF auth.uid() IS DISTINCT FROM p_sender_id THEN RAISE`
+  (mirrors `apply_to_campaign`). Rejects anon (`auth.uid()` is null).
+- **Participant + derive role**: caller must be the application's `creator_id` → `'creator'`, or
+  the campaign `user_id` → `'business'`; else raise. Server-derived, `IF/ELSIF/ELSE`.
+- **Role integrity**: raise if `p_sender_role` ≠ the derived role. The INSERT then writes
+  `auth.uid()` and the **derived** role — never the client's — which **closes the self-accept
+  escalation**: a forged offer now always carries `sender_id = auth.uid()`, so the UPDATE policy's
+  `sender_id != auth.uid()` blocks the inserter from accepting it.
+- **Grants**: `REVOKE EXECUTE … FROM anon, public` + explicit `GRANT … TO authenticated,
+  service_role`. (The confirm-live-grants todo resolved: it *was* anon-executable; `authenticated`
+  keeps a **direct** default-privilege grant that the revoke doesn't touch — verified via
+  `routine_privileges` **and** an as-`authenticated`-role call, which is why Codex's "authenticated
+  loses EXECUTE" flag was empirically false. The explicit GRANT was added anyway so the migration
+  doesn't depend on default privileges on a fresh replay.)
+- **Sibling RLS**: recreated the `application_counter_offers` INSERT policy with `sender_role`
+  pinned via `CASE` (creator→`'creator'`, else→`'business'`), closing the low-sev forged-role gap
+  on the direct-insert path too.
+- **`RETURNING` column list pinned** (not `RETURNING *`) so this RLS-bypassing definer path can't
+  auto-surface a future sensitive column (data-exposure-reviewer catch).
 
-**Deliberately not routed through.** The 2026-07-19 work widened the creator apply path from
-invited-only to every creator. It kept that new traffic on the **direct, RLS-checked insert**
-rather than this RPC — the INSERT policy genuinely enforces `sender_id = auth.uid()` plus
-application participation. Widening a path onto an unauthenticated definer would have been the
-worse of the two options.
-
-**Fix when actioned:** `IF auth.uid() IS DISTINCT FROM p_sender_id THEN RAISE EXCEPTION`, a
-participant check, and a `p_sender_role`-matches-caller check — mirroring the identity guard
-`apply_to_campaign` already carries. Also unverified: no migration issues any `GRANT`/`REVOKE`
-for this function, so default `PUBLIC EXECUTE` implies it is at minimum authenticated-callable
-and possibly anon-callable — confirm live grants. (This is the recurring DragonCandy trap that
-`revoke from public` alone does not lock a definer function: revoke from `public, anon,
-authenticated` and grant `service_role` explicitly, then re-run the advisors.)
-
-A related low-severity sibling: the INSERT policy on `application_counter_offers`
-(`20260216133652`) constrains `sender_id` but not `sender_role`, so a participant can insert a
-row labelled with the opposite role. Display-integrity only — the accept gate keys off
-`sender_id`.
+**Verified live, red→green** (rollback-wrapped SQL, `set_config('request.jwt.claim.sub',…,true)`
+to fake `auth.uid()`; `SET LOCAL ROLE authenticated` for the RLS path): the forged third-party
+call **succeeded pre-fix** and now **raises**; anon, identity-spoof, and role-forge all raise;
+real creator + owner still succeed; the RLS pin accepts the correct role and rejects a forged one.
+See [[Counter-Offer Authorization Session]].
 
 ## The remediation (PR #308 — shipped + deployed)
 

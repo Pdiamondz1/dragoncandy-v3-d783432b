@@ -119,6 +119,12 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **create_counter_offer authorization hardening** — the `SECURITY DEFINER` counter-offer RPC was
+  anon-executable with **zero authz** (forge/decline/insert on any application, then self-accept); one
+  migration adds identity + participant + role-integrity guards (server-derived role), revokes anon +
+  explicit-grants authenticated/service_role, and pins `sender_role` in the sibling INSERT RLS policy.
+  Closed the open finding on [[Service-Role Data Exposure]]; verified live red→green.
+  → `docs/wiki/concepts/service-role-data-exposure.md`
 - **Staging headless login (`npm run staging:login`)** — mints a passwordless session for a seeded
   staging test account so an agent (or the founder) reaches auth-gated screens without a manual login;
   the founder's account is prod-only. Surfaced that staging is drift-corrupted → the green `smoke` gate

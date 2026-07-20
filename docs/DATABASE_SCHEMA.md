@@ -31,7 +31,7 @@
 | `campaign_invitations` | Direct invites from brands to creators |
 | `campaign_matches` | Matched brand/creator pairings |
 | `campaign_sponsorships` | Sponsorship arrangements within campaigns |
-| `application_counter_offers` | Negotiation counter-offers on applications |
+| `application_counter_offers` | Negotiation counter-offers on applications. Written via the `create_counter_offer` SECURITY DEFINER RPC (authorization-hardened 2026-07-20: identity + participant + role-integrity guards, writes the server-derived `sender_id`/`sender_role`, `anon` EXECUTE revoked) or the direct-insert apply-time path; the INSERT RLS policy pins `sender_role` to the caller's derived role. See [[Service-Role Data Exposure]]. |
 
 ## Creator Groups (Crews)
 
