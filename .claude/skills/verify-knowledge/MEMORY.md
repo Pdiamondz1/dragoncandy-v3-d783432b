@@ -34,6 +34,31 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-19] Campaign price anchoring + negotiation reach knowledge-sync validation (PR #319, POST-merge)
+- Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for the campaign
+  price-anchoring + negotiation-reach session.
+- Happened: post-merge run (my #319 confirmed an ancestor of origin/main; #316 merged on top
+  afterward — concurrent, harmless). (a) orphan-by-path sweep on origin/main = 0 across
+  concepts+entities+analyses; **no contradiction** — the new `campaign-price-anchoring.md` is a
+  distinct subject cross-linked to (not conflicting with) [[Pricing Architecture]], and the
+  compounded `create_counter_offer` block on [[Service-Role Data Exposure]] narrates
+  found→filed, a [dated-analysis]-class chronological record, not two pages disagreeing. (b)
+  `LAST_WIKI_SYNC` 2026-07-20T00:35:59Z vs `RAG_LAST` 2026-07-20T00:37:07Z — RAG **ahead** by
+  ~1 min (a net-new-page sync moved `max(updated_at)` this time, unlike the usual UPDATE-only
+  case), well inside 24h; content probes `getSuggestedRange`=2 (both scopes) + `create_counter_offer`=5
+  confirm retrievability. (c) new concept in index.md + a `[2026-07-19] ingest` log.md entry;
+  raw session cataloged in Sources; compounded service-role page already in index and covered by
+  the same log entry.
+- Worked: this run is the clean-signal counterpart to [freshness-proxy] — a net-new page (not a
+  compound-only sync) legitimately moved `RAG_LAST` past `LAST_WIKI_SYNC`, so (b) was unambiguous
+  on the timestamp alone; the content probes were confirmation, not the sole evidence. Single-token
+  probes (`getSuggestedRange`) held — a code symbol unique to the new page within the synced dirs.
+- Failed: none as a validator.
+- Remember: nothing new — re-confirms the post-merge direction of [unmerged-branch] and that a
+  net-new-page sync gives a clean `RAG_LAST ≥ LAST_WIKI_SYNC` (the case [freshness-proxy] is the
+  exception to, not the rule). This entry is post-merge so it strands on the worktree → carry it
+  forward in the next docs PR or a `chore/verify-knowledge-runlog-319` PR. (advisory)
+
 ### [2026-07-19] Service-role remediation knowledge-sync validation (PR #308 code + PR #314 docs)
 - Output: emitted `done:true` (all 3 met), closing the knowledge-sync loop for the service-role
   authorization remediation.
