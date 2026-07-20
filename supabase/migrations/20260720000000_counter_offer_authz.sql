@@ -75,7 +75,12 @@ BEGIN
     p_application_id, auth.uid(), v_role,
     p_proposed_rate, p_proposed_timeline, p_message, 'pending'
   )
-  RETURNING * INTO v_offer;
+  -- Explicit column list (not RETURNING *): this is an RLS-bypassing definer path, so a
+  -- future sensitive column on the table must not silently surface to the client. Matches
+  -- the CounterOffer frontend type exactly.
+  RETURNING id, application_id, sender_id, sender_role, proposed_rate, proposed_timeline,
+            message, status, created_at
+    INTO v_offer;
 
   RETURN row_to_json(v_offer);
 END;
