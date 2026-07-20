@@ -1,5 +1,17 @@
 # Wiki Log
 
+## [2026-07-19] ingest | Staging headless login + staging-drift discovery
+Ingested [[Staging Headless Login Session]]. **Compounded** onto [[QA CI/CD Gate]] rather than a new
+page — the headless-login tool and the drift finding are both about the same gate. Added a "Headless
+login" section (the `npm run staging:login` mechanism + guards), a **false-assurance** Known Issue
+(the green `smoke` gate runs against a ~6-week-stale, drift-corrupted backend; verify auth-gated
+features on prod after merge), and **flagged the stale "Lovable stays the prod host" decision** as
+superseded by the 2026-07-16 Vercel cutover (plain-text runbook ref — no `[[Vercel Prod Cutover]]`
+wiki page exists, so no dangling link minted). Updated `index.md` (Sources, beside the QA Staging
+entry) and this log. `SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5 gained one Shipped index
+line. No DATABASE_SCHEMA/DESIGN_SYSTEM change (a dev script + docs, no schema/token). Related to
+[[Migration Replay Drift]].
+
 ## [2026-07-19] ingest | Delivery timing + tier merged into one selection
 Ingested [[Delivery Tier Timing Merge Session]]. New concept [[Delivery Tier Selection]] — no page
 owned the delivery-tier subject before, and the durable content is broader than the UI merge: the

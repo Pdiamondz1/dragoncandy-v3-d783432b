@@ -24,6 +24,7 @@
     "audit:agent": "npx tsx scripts/managed-agent-audit.ts",
     "sync:internal": "node supabase/scripts/with-env.mjs sync-internal-docs.mjs",
     "sync:wiki": "node supabase/scripts/with-env.mjs sync-wiki-to-donny.mjs",
+    "staging:login": "node supabase/scripts/staging-login.mjs",
     "test:e2e": "npx playwright test --project=chromium",
     "test:e2e:auth": "npx playwright test auth.setup --project=chromium",
     "test:e2e:report": "npx playwright show-report"
