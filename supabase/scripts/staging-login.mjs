@@ -282,15 +282,38 @@ if (!SECRET) {
       "  (This is the STAGING key. Never put the prod key here.)"
   );
 }
-// Refuse the prod key. It's a legacy JWT, so the ref lives base64-encoded in the payload,
-// not as plaintext — decode it. Keep the substring check too for any non-JWT key format
-// that might carry the ref in the clear.
+// Refuse any key we can positively identify as NOT staging. Two key formats exist and they
+// pull in opposite directions, so a prod-blocklist alone fails open:
+//   • Legacy JWT (today's prod service_role): the ref is base64-encoded in the payload — decode
+//     it and ALLOWLIST staging, so a prod JWT (or any other project's JWT) is refused statically,
+//     before the key touches the network.
+//   • Opaque `sb_secret_…` (today's staging service_role): carries no decodable ref, so we cannot
+//     tell staging from prod statically. The substring check catches only a ref-in-the-clear; a
+//     prod *opaque* key would slip past. That case is closed by the preflight below — we never
+//     send the key anywhere but STAGING_URL, and we refuse to mint unless it authenticates there.
 const secretRef = projectRefOfSupabaseKey(SECRET);
-if (secretRef === PROD_REF || SECRET.includes(PROD_REF)) {
-  die("That looks like the PRODUCTION key. This script targets staging only — aborting.");
+if (SECRET.includes(PROD_REF) || (secretRef !== null && secretRef !== STAGING_REF)) {
+  die("That key is not the STAGING key — it identifies a different project (looks like PROD). Aborting.");
 }
 
 const { email, role } = ROLES[roleArg];
+
+// ── 0. Preflight: prove the key belongs to the STAGING project before minting anything ──
+// For opaque `sb_secret_…` keys this is the only way to tell staging from prod — the static guard
+// above cannot decode them. A read-only admin GET against STAGING_URL succeeds only for a staging
+// service_role key; a prod key pasted into STAGING_SUPABASE_SECRET_KEY fails here (401/403) and we
+// refuse to mint, rather than proceeding as if the key were verified. (The key only ever reaches
+// STAGING_URL — never prod.)
+const preflight = await fetch(`${STAGING_URL}/auth/v1/admin/users?page=1&per_page=1`, {
+  headers: { apikey: SECRET, Authorization: `Bearer ${SECRET}` },
+});
+if (!preflight.ok) {
+  die(
+    `Staging key preflight failed (${preflight.status}). This key does not authenticate against the ` +
+      `staging project (${STAGING_REF}). Make sure STAGING_SUPABASE_SECRET_KEY is the STAGING ` +
+      `service_role key — not prod. Aborting before minting a session.`
+  );
+}
 
 // ── 1. Mint a one-time magiclink token (admin API — no password anywhere) ───────────
 const genRes = await fetch(`${STAGING_URL}/auth/v1/admin/generate_link`, {
