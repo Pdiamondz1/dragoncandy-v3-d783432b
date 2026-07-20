@@ -1,5 +1,16 @@
 # Wiki Log
 
+## [2026-07-20] ingest | apply_to_campaign overload → PGRST203 (PR #321)
+Ingested [[Apply Overload PGRST203 Session]]. **Compounded** onto
+[[Campaign Price Anchoring & Negotiation Reach]] (same apply surface: `useCreateApplication` /
+`OneTapApplySheet`) rather than a new page — added a Gotcha (two overloads → PostgREST `PGRST203`
+by argument-name ambiguity → generic "Failed to submit" toast + no row; drop the obsolete overload;
+the `execute_sql`-bypasses-PostgREST + run-RPC-as-a-user-in-a-rolled-back-`DO` debugging notes) plus
+a See Also. Added the raw session to `index.md` Sources (beside the campaign cluster) and this log;
+`SHIPPED_LOG.md` prepended. No DATABASE_SCHEMA change beyond the dropped overload (documented at the
+`apply_to_campaign` mention is not needed — no table/column moved); no DESIGN_SYSTEM/CLAUDE.md change.
+Related: [[AI Creator Matching]] (sibling "generic error masking a specific backend one" class).
+
 ## [2026-07-19] ingest | Staging headless login + staging-drift discovery
 Ingested [[Staging Headless Login Session]]. **Compounded** onto [[QA CI/CD Gate]] rather than a new
 page — the headless-login tool and the drift finding are both about the same gate. Added a "Headless

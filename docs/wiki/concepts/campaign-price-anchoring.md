@@ -2,8 +2,8 @@
 title: Campaign Price Anchoring & Negotiation Reach
 type: concept
 created: 2026-07-19
-updated: 2026-07-19
-sources: [2026-07-19-campaign-price-anchoring.md]
+updated: 2026-07-20
+sources: [2026-07-19-campaign-price-anchoring.md, 2026-07-20-apply-to-campaign-overload.md]
 tags: [pricing, campaigns, negotiation, donny, marketplace, ux]
 ---
 
@@ -112,6 +112,22 @@ falsy and only `formatCampaignPrice` special-cases crews. The launch gate now bl
 but `CampaignEditPage`'s $50 warning is still display-only, so a published campaign can be
 edited back down.
 
+**Two RPC overloads → PostgREST `PGRST203` → a generic "Failed to submit"
+(2026-07-20, PR #321).** `apply_to_campaign` had *two* overloads on the database — the original
+6-arg and a 7-arg superset that added `p_portfolio_url`. **PostgREST resolves RPC calls by
+argument NAME**, so any call omitting `p_portfolio_url` (a 6-key body) matched **both** →
+`PGRST203 "Could not choose the best candidate function"`. That message contains neither
+`row-level security` nor `violates row`, so `useCreateApplication.onError` fell through to its
+generic default toast **and no row inserted** — indistinguishable, from the UI, from a network
+blip. Fixed by **dropping the obsolete 6-arg overload** (the surviving 7-arg's `p_portfolio_url`
+`DEFAULT NULL` covers 6-key callers). **Generalized: two overloads where one is a
+superset-via-DEFAULT is a latent landmine — the call with the *smaller* key-set is ambiguous;
+prefer one function with optional params.** Two debugging notes worth keeping: (1) `execute_sql`
+runs SQL *directly* and bypasses PostgREST, so it will not reproduce a resolution error — probe
+`/rest/v1/rpc/<fn>` over HTTP to see `PGRST203`; (2) reproduce an RPC *as a specific user* by
+`set_config('request.jwt.claims', …, true)` inside a `DO` block that `RAISE`s to roll back. See
+[[Apply Overload PGRST203 Session]].
+
 ## Known issues
 
 - `CampaignEditPage`'s minimum-price warning does not block save — a published campaign can be
@@ -123,6 +139,7 @@ edited back down.
 
 ## See Also
 
+- [[Apply Overload PGRST203 Session]] — the apply_to_campaign overload fix on this same surface
 - [[Campaign Price Anchoring Session]] — the session that shipped this
 - [[Campaign Generation Creativity]] — the same prompt and `lib.ts`, on idea quality
 - [[Campaign Lifecycle]] — the application/counter-offer state machine

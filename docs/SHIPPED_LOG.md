@@ -29,6 +29,33 @@
 
 ---END-HEADER---
 
+- apply_to_campaign overload → PGRST203 "Failed to submit application" — **shipped (PR #321,
+  2026-07-20).** Creator **PalmDom** got "Failed to submit application. Please try again later." with
+  **no application row created**. Root cause was an **overloaded RPC**: `apply_to_campaign` had a 6-arg
+  original and a 7-arg superset that added `p_portfolio_url` (+ the crew group guard). **PostgREST
+  resolves RPC calls by argument NAME**, so any call omitting `p_portfolio_url` (a 6-key body) matched
+  **both** overloads → **`PGRST203` "Could not choose the best candidate function"** (HTTP 300). That
+  message contains neither `row-level security` nor `violates row`, so `useCreateApplication.onError`
+  fell through to its generic default toast, and the transaction never inserted — from the UI,
+  indistinguishable from a network blip. **Proven against prod:** the DB body works (ran the RPC *as
+  PalmDom* in a rolled-back `DO` block after `set_config('request.jwt.claims', '{"sub":…}', true)` → a
+  valid `pending` row), so the INSERT / `ON CONFLICT` partial index / `notify_donny_nudge` +
+  `trg_applications_auto_org` triggers are all fine; the break is at the PostgREST layer — a `curl`
+  **6-key** POST to `/rest/v1/rpc/apply_to_campaign` returned `PGRST203` while a **7-key** POST
+  resolved and ran (returned the function's own `Unauthorized`, since the anon probe has no matching
+  `auth.uid()`). **Fix:** `DROP FUNCTION` the obsolete 6-arg overload — the surviving 7-arg's
+  `p_portfolio_url DEFAULT NULL` covers 6-key callers too, so both shapes now resolve. Applied to prod
+  via MCP `apply_migration` (migration `20260720120000_…` is the tracked record); post-fix probe
+  confirms the 6-key call now resolves. Also: `useCreateApplication.onError` now logs the structured
+  `{code,message,details,hint}` and shows a support-actionable `(code: …)` for unknown errors instead
+  of the opaque "try again later"; `types.ts` synced to the single overload. **Honest caveat:** the
+  deployed web bundle sends 7 keys (works in every test), so PalmDom's *exact* trigger couldn't be
+  reproduced on current code and the 24h `api` request logs were gone — this removes the one concrete,
+  reproducible defect in the apply path (a landmine producing exactly this symptom for any 6-key
+  caller) and hardens the error surface. **Durable lesson:** two RPC overloads where one is a
+  superset-via-DEFAULT is a PostgREST landmine — the call with the *smaller* key-set is ambiguous;
+  prefer one function with optional params. Codex clean. → `docs/wiki/concepts/campaign-price-anchoring.md`
+
 - Staging headless login + staging-drift discovery — **shipped (PR #318, 2026-07-19).** Founder:
   *"my credentials do not work in the testing environment… I don't want to be a bottleneck to always
   log in and we need working accounts in the testing environment."* The diagnosis went two layers
