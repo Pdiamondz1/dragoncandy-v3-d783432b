@@ -119,6 +119,11 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **Staging headless login (`npm run staging:login`)** — mints a passwordless session for a seeded
+  staging test account so an agent (or the founder) reaches auth-gated screens without a manual login;
+  the founder's account is prod-only. Surfaced that staging is drift-corrupted → the green `smoke` gate
+  is false assurance; verify auth-gated features on prod after merge.
+  → `docs/wiki/concepts/qa-cicd-gate.md` · #318
 - **Delivery timing + tier → one selection** — the campaign builder asked for delivery speed twice
   via two fully decoupled controls (one wrote only `deadline`, the other only `delivery_type`);
   now one control emitting both fields atomically. Fixed 2 pre-existing fee bugs en route.

@@ -29,6 +29,46 @@
 
 ---END-HEADER---
 
+- Staging headless login + staging-drift discovery — **shipped (PR #318, 2026-07-19).** Founder:
+  *"my credentials do not work in the testing environment… I don't want to be a bottleneck to always
+  log in and we need working accounts in the testing environment."* The diagnosis went two layers
+  deep. **The accounts were never broken:** the founder's `@harbormill.net` account exists **only in
+  production**, while staging's user table is *only* the three seeded `.staging@dragoncandy.test`
+  accounts — so real credentials can never authenticate against a preview. Deeper, **staging's schema
+  is drift-corrupted** — recorded `schema_migrations` disagrees with its actual objects (tables
+  missing that predate its own recorded cutoff), ~6 weeks / ~90 migrations behind prod. The
+  consequence that matters: **the QA `smoke` gate has been passing against that stale backend** — it
+  signs in and navigates, so it goes green while the DB can't run current code (**false assurance,
+  worse than no gate**).
+  **The fix: `npm run staging:login -- <restaurant|creator|brand> --base <preview-url>`**
+  (`supabase/scripts/staging-login.mjs`). It mints a browser-ready session for a seeded test account
+  **with no password typed anywhere** — admin `generate_link` (magiclink) → exchange at
+  `/auth/v1/verify` for a session **as JSON** (not the redirect — deliberately avoids Supabase's
+  Redirect-URL allow-list, which can't cover per-branch preview hostnames) → prints a URL carrying the
+  session in the hash, which supabase-js persists on open. So an agent (which cannot type a password
+  into a login form) or the founder reaches auth-gated screens without a manual login. The secret
+  (`STAGING_SUPABASE_SECRET_KEY`) lives in the gitignored `supabase/scripts/.env.sync.local`, resolved
+  from the **main checkout** so it works from any of the 30+ worktrees.
+  **Codex took 9 rounds and every finding hardened a real footgun:** `--base` is required (the
+  Playwright config defaults to prod — refuse it); the prod key is caught by decoding the JWT `ref`
+  (not a substring); the target frontend must be on staging (`client.ts` falls back to prod for both
+  `VITE_SUPABASE_URL` **and** the anon key, checked under Vite's real env precedence); and the remote
+  target is **pinned to this project's own previews** — a foreign or same-team-other-project preview
+  would receive the tokens in its URL fragment (a leak). **Proven end-to-end:** authenticated as
+  `restaurant.staging` and reached a `BusinessRoute`-guarded dashboard, no password typed.
+  Also **partially repaired staging:** replayed the 28-migration Crews cluster (via MCP
+  `apply_migration`) to unblock the dashboard + campaign **list** surfaces that 400'd on a missing
+  `campaigns.group_id` — with the gotcha that **MCP `apply_migration` runs the SQL but does not write
+  `supabase_migrations.schema_migrations`**, so the history rows were inserted by hand. Full parity
+  (the other ~25 migrations + missing base tables + stale edge functions) is a separate, larger
+  effort. **Couldn't do, recorded honestly:** screenshotting the #316 delivery control *on staging* —
+  blocked by a PostgREST bare-name embed 400 and a stale `donny-campaign-generate` (both staging-drift
+  artifacts, not #316 defects). **Rule: verify auth-gated features on prod after merge (schema
+  current), not on drifted staging.** **Follow-ups flagged, not fixed:** the staging shared password
+  is committed in three tracked files (rotate — this tool removes the reason to hand it around); June's
+  leaked prod `service_role` key still needs dashboard rotation. Dev tooling + docs only, no app
+  runtime or edge-function change. → `docs/wiki/concepts/qa-cicd-gate.md`
+
 - Delivery timing + tier merged into one selection — **shipped (2026-07-19).** A founder screenshot
   of the campaign builder's Logistics & Targeting step: *"the delivery method (DragonDash, Express, and
   Standard) and the delivery tiers need to be one feature/selection… you have to select each
