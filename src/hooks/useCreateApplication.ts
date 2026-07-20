@@ -179,12 +179,26 @@ export const useCreateApplication = () => {
       // Invitation sync is handled atomically by the apply_to_campaign RPC
     },
     onError: (error: Error) => {
-      console.error('Application submission failed:', error);
-      let description = 'Please try again later.';
-      if (error.message?.includes('already applied') || error.message?.includes('no longer accepting')) {
-        description = error.message;
-      } else if (error.message?.includes('row-level security') || error.message?.includes('violates row')) {
+      // The thrown value is often a Supabase PostgrestError ({ code, message, details, hint }),
+      // not a plain Error. Log it structured so a failure is diagnosable from the console instead
+      // of being flattened to "[object Object]".
+      const pg = error as Error & { code?: string; details?: string; hint?: string };
+      const message = pg.message ?? '';
+      console.error('Application submission failed:', {
+        code: pg.code, message, details: pg.details, hint: pg.hint,
+      });
+
+      let description: string;
+      if (message.includes('already applied') || message.includes('no longer accepting')) {
+        description = message;
+      } else if (message.includes('row-level security') || message.includes('violates row')) {
         description = 'A permissions issue occurred. Please refresh and try again.';
+      } else {
+        // Anything else was previously an opaque "Please try again later." Surface a short,
+        // support-actionable reference (e.g. the PGRST/Postgres error code) so a recurrence can
+        // be diagnosed from the user's report rather than guessed at.
+        const ref = pg.code ? ` (code: ${pg.code})` : '';
+        description = `Something went wrong on our end. Please try again${ref} — if it keeps happening, contact support.`;
       }
       toast({
         title: 'Failed to submit application',

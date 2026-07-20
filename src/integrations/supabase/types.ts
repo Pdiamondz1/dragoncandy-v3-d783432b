@@ -6545,30 +6545,18 @@ export type Database = {
       aios_metrics_snapshot: { Args: never; Returns: Json }
       aios_platform_stats: { Args: never; Returns: Json }
       aios_revenue_stats: { Args: never; Returns: Json }
-      apply_to_campaign:
-        | {
-            Args: {
-              p_campaign_id: string
-              p_creator_id: string
-              p_intro_message: string
-              p_is_counter_offer?: boolean
-              p_proposed_rate: number
-              p_proposed_timeline?: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_campaign_id: string
-              p_creator_id: string
-              p_intro_message: string
-              p_is_counter_offer?: boolean
-              p_portfolio_url?: string
-              p_proposed_rate: number
-              p_proposed_timeline?: string
-            }
-            Returns: Json
-          }
+      apply_to_campaign: {
+        Args: {
+          p_campaign_id: string
+          p_creator_id: string
+          p_intro_message: string
+          p_is_counter_offer?: boolean
+          p_portfolio_url?: string
+          p_proposed_rate: number
+          p_proposed_timeline?: string
+        }
+        Returns: Json
+      }
       block_user: { Args: { p_blocked_id: string }; Returns: undefined }
       can_create_application: {
         Args: { p_campaign_id: string; p_creator_id: string }
