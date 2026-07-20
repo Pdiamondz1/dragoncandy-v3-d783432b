@@ -92,6 +92,14 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.create_counter_offer(uuid, uuid, text, numeric, text, text)
   FROM anon, public;
 
+-- Explicit grant so the authenticated caller's EXECUTE never depends on Supabase's default
+-- privileges having already fired. Prod already shows authenticated:EXECUTE (a DIRECT grant, so
+-- the REVOKE of anon/public does not touch it — verified live), making this a no-op there; but
+-- it makes the intent explicit and keeps the single caller (useCounterOffers.ts) working on any
+-- fresh replay regardless of that environment's default privileges.
+GRANT EXECUTE ON FUNCTION public.create_counter_offer(uuid, uuid, text, numeric, text, text)
+  TO authenticated, service_role;
+
 -- Sibling RLS: the INSERT policy constrained sender_id but NOT sender_role, so a hand-crafted
 -- REST insert on the direct-insert apply-time path (useCreateApplication.ts:107) could label a
 -- creator's row 'business' (display-only, but same forged-role class). Recreate with the role
