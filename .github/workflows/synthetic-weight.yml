@@ -1,0 +1,64 @@
+name: synthetic-weight-engine
+
+# DORMANT scheduler for the Synthetic Weight Engine (Phase 1, private crew lane).
+#
+# Manual trigger ONLY. The daily `schedule` block below stays COMMENTED OUT until a
+# founder-authorized live smoke passes (see
+# docs/superpowers/plans/2026-07-23-synthetic-weight-engine-phase-1-crew-lane.md, Task 8).
+# Enabling the cron is the second of the two deliberate go-live switches (the first is
+# flipping SYNTHETIC_BOTS_ENABLED on).
+#
+# Every run is fail-closed regardless of trigger: sim/env.ts refuses unless the Stripe keys
+# are test keys AND SYNTHETIC_BOTS_ENABLED reads back exactly `true`. `dry-run` is always safe
+# (no client, no network).
+
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "Harness subcommand"
+        type: choice
+        options: [dry-run, tick, mint, purge]
+        default: dry-run
+      n:
+        description: "Cohort size (mint only)"
+        default: "25"
+  # schedule:
+  #   - cron: "0 14 * * *"   # daily 14:00 UTC — ENABLE ONLY after a passing live smoke (Task 8)
+
+concurrency:
+  group: synthetic-weight
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    # A GitHub Environment ('synthetic-weight') can require reviewers before any prod-touching
+    # run and scopes the secrets. The PROD service-role key here is the inherent exposure surface
+    # of a prod harness — mitigated by the kill switch, this environment gate, and no auto-cron.
+    environment: synthetic-weight
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci
+      - name: Run harness
+        env:
+          SIM_SUPABASE_URL: ${{ secrets.SIM_SUPABASE_URL }}
+          SIM_SUPABASE_ANON_KEY: ${{ secrets.SIM_SUPABASE_ANON_KEY }}
+          SIM_SUPABASE_SECRET_KEY: ${{ secrets.SIM_SUPABASE_SECRET_KEY }}
+          SIM_STRIPE_SECRET_KEY: ${{ secrets.SIM_STRIPE_SECRET_KEY }}
+          SIM_STRIPE_PUBLISHABLE_KEY: ${{ secrets.SIM_STRIPE_PUBLISHABLE_KEY }}
+          # Inputs go through env vars — NEVER interpolated into the run script — so a crafted
+          # `n`/`command` value cannot break out of the shell and reach the secrets above.
+          SIM_COMMAND: ${{ inputs.command || 'tick' }}
+          SIM_N: ${{ inputs.n || '25' }}
+        # Invoke the LOCAL, lockfile-pinned tsx binary — never `npx --yes tsx`, which would
+        # resolve+execute an unpinned package straight from the registry in the same step where
+        # the prod service-role + Stripe secrets above are already exported (a supply-chain path
+        # to those secrets). `npm ci` above installs tsx from the checked-in package-lock.json.
+        run: node_modules/.bin/tsx sim/cli.ts "$SIM_COMMAND" --n "$SIM_N"
