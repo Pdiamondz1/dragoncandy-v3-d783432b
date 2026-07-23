@@ -134,6 +134,11 @@ export async function executeAction(action: Action, ctx: ActionContext): Promise
       // file_uploads requires bucket_name/filename/original_filename/mime_type in addition to
       // file_path/file_size/uploaded_by (all NOT NULL, no default — verified live). Metadata-only
       // (no storage object) → teardown stays covered by purge_synthetic_data via campaign_id cascade.
+      // file_category/upload_status MUST mirror the real upload path (useProjectFileUpload sets
+      // 'deliverable', useFileUploadMutations sets 'completed'): the content gallery + summary
+      // (useCampaignContentGallery/useCampaignContentSummary) count ONLY file_category='deliverable',
+      // so the DB defaults ('general'/'pending') would make synthetic deliverables invisible/uncounted
+      // and the funnel coverage would be a lie.
       const { error: fuErr } = await bot.from("file_uploads").insert({
         campaign_id: action.campaignId,
         uploaded_by: action.creatorId,
@@ -143,6 +148,8 @@ export async function executeAction(action: Action, ctx: ActionContext): Promise
         original_filename: "deliverable.txt",
         mime_type: "text/plain",
         file_size: 1024,
+        file_category: "deliverable",
+        upload_status: "completed",
       });
       orThrow("uploadDeliverable (file_uploads)", fuErr);
       const { error: csErr } = await bot
