@@ -1,5 +1,20 @@
 # Wiki Log
 
+## [2026-07-23] ingest | Payout durable re-entrancy — Complete follow-up (PR #329)
+Ingested `raw/sessions/2026-07-23-payout-durable-reentrancy.md`. **Compounded** onto
+[[Payout Finalization & Re-entrancy]]: the Complete follow-up #328 could only ship the safe subset of. `release-creator-payout` is now durably
+re-entrant — a per-collaboration marker (`payout_executed_at`/`stripe_transfer_id`) set AFTER money moves
+(deliberately NOT a pre-claim, which would risk marked-not-paid on a crash) is the re-entry guard; the
+pending path credits + marks atomically via the new SECURITY DEFINER RPC `credit_pending_balance_for_payout`
+(migration `20260723170000`); finalize failures safely surface `500 {needsRetry}`; a 15-min reconciliation
+sweep (min-age-guarded) heals marked-but-unfinalized rows. Reviews: data-exposure PASS, edge-function
+ISSUES resolved-or-documented, Codex clean (one P1 fixed — marker-write-failure is now non-retry/manual
+reconciliation). Two residuals documented (cross-path concurrent double-pay; Stripe-up/DB-down split-brain)
+→ next payout hardening = wallet-first-then-idempotent-flush. Updated concept "durable marker" + "residuals"
+sections; `index.md` refreshed; `SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5 one Shipped line;
+`DATABASE_SCHEMA.md` `campaign_collaborations`/`credit_pending_balance_for_payout` note. RAG sync +
+[[verify-knowledge]] post-merge.
+
 ## [2026-07-23] ingest | Payout finalize retry + safe failure handling (PR #328)
 Ingested [[Payout Finalize Retry Session]]. NEW concept [[Payout Finalization & Re-entrancy]] — no
 existing payment page owned the escrow→payout→finalize flow. `release-creator-payout` ran its post-money

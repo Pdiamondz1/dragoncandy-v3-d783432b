@@ -125,6 +125,12 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **Payout durable re-entrancy** — the Complete follow-up to #328: `release-creator-payout` is durably
+  re-entrant via a per-collaboration marker (`payout_executed_at`/`stripe_transfer_id`) set AFTER money
+  moves (never a pre-claim → no marked-not-paid) as the re-entry guard; the pending path credits + marks
+  atomically via a new SECURITY DEFINER RPC `credit_pending_balance_for_payout`; finalize failures safely
+  surface for retry + a 15-min reconciliation sweep. Strictly better than #328 on every axis; two narrow
+  residuals documented (→ wallet-first redesign). → `docs/wiki/concepts/payout-finalization-consistency.md` · #329
 - **Payout finalize retry** — `release-creator-payout` ran its post-money finalize once, fire-and-forget
   (logged CRITICAL, returned 200 → money moved + DB left inconsistent); a retried `finalizePayoutState`
   now self-heals transient DB blips. Safe subset only — surfacing/retrying a finalize failure needs a
