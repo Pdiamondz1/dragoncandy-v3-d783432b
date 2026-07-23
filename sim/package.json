@@ -2,15 +2,17 @@
   "name": "dragoncandy-sim",
   "private": true,
   "type": "module",
-  "version": "0.0.0",
-  "description": "Synthetic Weight Engine — bot harness for load-testing DragonCandy against synthetic (never-billed) users. Test-mode Stripe + a fail-closed kill switch only; see sim/env.ts.",
+  "version": "0.1.0",
+  "description": "Synthetic Weight Engine harness — mints + drives synthetic (never-billed) bot users on prod inside PRIVATE CREWS (free-rails, no Stripe/Donny). Test-mode Stripe + a fail-closed kill switch only; see sim/env.ts and sim/README.md. Tests + typecheck run from the repo root (npx vitest run sim/ ; npx tsc -p sim/tsconfig.json); deps resolve from the root node_modules. The CLI runs via tsx: npx --yes tsx sim/cli.ts <cmd>.",
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json",
+    "cli": "tsx cli.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.50.0"
   },
   "devDependencies": {
-    "@faker-js/faker": "^9.0.0"
+    "tsx": "^4.19.0"
   }
 }
