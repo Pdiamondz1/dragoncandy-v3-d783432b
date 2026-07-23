@@ -123,10 +123,15 @@ existing crew/content/review RPCs.
 ### Running the harness
 
 ```bash
+npm ci                              # installs the lockfile-pinned tsx (root devDependency)
 npx vitest run sim/                 # unit tests (from repo root)
 npx tsc -p sim/tsconfig.json        # type-check the harness
-npx --yes tsx sim/cli.ts dry-run --n 25   # preview a cohort + first-tick plan (no client, no network)
+npx tsx sim/cli.ts dry-run --n 25   # preview a cohort + first-tick plan (no client, no network)
 ```
+
+`tsx` is pinned in the root `package-lock.json`, so `npx tsx` runs the **local** binary — the
+harness never fetches an unpinned package from the registry. CI invokes `node_modules/.bin/tsx`
+directly (never `npx --yes`), since that step has the prod service-role + Stripe secrets in scope.
 
 `mint` / `tick` / `purge` are **boot-gated** — they refuse unless `SYNTHETIC_BOTS_ENABLED` reads
 back `true` and the Stripe keys are test keys. Env (harness-local, gitignored / CI secrets):

@@ -57,4 +57,8 @@ jobs:
           # `n`/`command` value cannot break out of the shell and reach the secrets above.
           SIM_COMMAND: ${{ inputs.command || 'tick' }}
           SIM_N: ${{ inputs.n || '25' }}
-        run: npx --yes tsx sim/cli.ts "$SIM_COMMAND" --n "$SIM_N"
+        # Invoke the LOCAL, lockfile-pinned tsx binary — never `npx --yes tsx`, which would
+        # resolve+execute an unpinned package straight from the registry in the same step where
+        # the prod service-role + Stripe secrets above are already exported (a supply-chain path
+        # to those secrets). `npm ci` above installs tsx from the checked-in package-lock.json.
+        run: node_modules/.bin/tsx sim/cli.ts "$SIM_COMMAND" --n "$SIM_N"

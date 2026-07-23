@@ -124,6 +124,7 @@
     "remark-frontmatter": "^5.0.0",
     "remark-gfm": "^4.0.1",
     "tailwindcss": "^3.4.11",
+    "tsx": "^4.23.1",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",
     "vite": "^5.4.1",

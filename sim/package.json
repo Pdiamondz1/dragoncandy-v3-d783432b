@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "version": "0.1.0",
-  "description": "Synthetic Weight Engine harness — mints + drives synthetic (never-billed) bot users on prod inside PRIVATE CREWS (free-rails, no Stripe/Donny). Test-mode Stripe + a fail-closed kill switch only; see sim/env.ts and sim/README.md. Tests + typecheck run from the repo root (npx vitest run sim/ ; npx tsc -p sim/tsconfig.json); deps resolve from the root node_modules. The CLI runs via tsx: npx --yes tsx sim/cli.ts <cmd>.",
+  "description": "Synthetic Weight Engine harness — mints + drives synthetic (never-billed) bot users on prod inside PRIVATE CREWS (free-rails, no Stripe/Donny). Test-mode Stripe + a fail-closed kill switch only; see sim/env.ts and sim/README.md. Tests + typecheck run from the repo root (npx vitest run sim/ ; npx tsc -p sim/tsconfig.json); deps resolve from the root node_modules. The CLI runs via the lockfile-pinned root tsx: npx tsx sim/cli.ts <cmd> (CI uses node_modules/.bin/tsx).",
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json",
@@ -13,6 +13,6 @@
     "@supabase/supabase-js": "^2.50.0"
   },
   "devDependencies": {
-    "tsx": "^4.19.0"
+    "tsx": "^4.23.1"
   }
 }
