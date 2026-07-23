@@ -6,6 +6,8 @@ import { calculatePlatformFee, getOrgTakeRate } from "../_shared/platform-fee.ts
 import { resolvePayoutAmount } from "../_shared/pricing-utils.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { verifyPayoutReady } from "../_shared/payout-ready.ts";
+import { isTestKey } from "../_shared/stripe-mode.ts";
+import { shouldRefuseSettlement } from "../_shared/synthetic-guard.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -175,11 +177,26 @@ serve(async (req) => {
       throw new Error("Only the campaign owner can release payments");
     }
 
-    logStep("Collaboration found", { 
-      campaignId: collaboration.campaign_id, 
+    logStep("Collaboration found", {
+      campaignId: collaboration.campaign_id,
       creatorId: collaboration.creator_id,
       status: collaboration.status,
     });
+
+    // Synthetic Weight Engine safety spine: never settle real money to/from a
+    // synthetic (bot) creator. Test-mode Stripe keys are exempt (that's the
+    // whole point of the bot harness); a live key + synthetic creator refuses.
+    const { data: synthRow, error: synthError } = await supabaseClient
+      .from('synthetic_users')
+      .select('user_id')
+      .eq('user_id', collaboration.creator_id)
+      .maybeSingle();
+    if (synthError) {
+      logStep("Synthetic-user lookup failed (treated as not synthetic)", { error: synthError.message });
+    }
+    if (shouldRefuseSettlement({ isTestMode: isTestKey(stripeKey), isSynthetic: !!synthRow })) {
+      throw new Error("Refusing live-mode payout to a synthetic user");
+    }
 
     // Get creator's Stripe account
     const { data: creatorProfile } = await supabaseClient
