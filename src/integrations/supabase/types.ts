@@ -6743,6 +6743,7 @@ export type Database = {
           org_type: string
         }[]
       }
+      get_simulation_stats: { Args: never; Returns: Json }
       get_unavailable_campaign_ids: {
         Args: never
         Returns: {
