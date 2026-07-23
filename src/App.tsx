@@ -103,6 +103,7 @@ const HelpBriefDrawer = lazy(() => import("./features/donny/HelpBriefDrawer").th
 const InternalLayout = lazy(() => import("./components/internal/InternalLayout").then(m => ({ default: m.InternalLayout })));
 const InternalOverview = lazy(() => import("./pages/internal/InternalOverview"));
 const InternalWeight = lazy(() => import("./pages/internal/InternalWeight"));
+const InternalSimulation = lazy(() => import("./pages/internal/InternalSimulation"));
 const InternalExpenses = lazy(() => import("./pages/internal/InternalExpenses"));
 const InternalStrategy = lazy(() => import("./pages/internal/InternalStrategy"));
 const InternalDonny = lazy(() => import("./pages/internal/InternalDonny"));
@@ -354,6 +355,7 @@ function AnimatedRoutes() {
             <Route path="playbooks/:slug" element={<InternalRoute tier="admin"><InternalPlaybookDetail /></InternalRoute>} />
             <Route path="loops" element={<InternalRoute tier="admin"><InternalLoops /></InternalRoute>} />
             <Route path="stakeholders" element={<InternalRoute tier="admin"><InternalStakeholders /></InternalRoute>} />
+            <Route path="simulation" element={<InternalRoute tier="admin"><InternalSimulation /></InternalRoute>} />
           </Route>
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

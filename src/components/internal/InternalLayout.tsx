@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
+  Bot,
   Bug,
   BookOpen,
   ClipboardCheck,
@@ -62,6 +63,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/internal/playbooks', label: 'Playbooks', icon: ListChecks },
       { to: '/internal/loops', label: 'Loops', icon: Repeat },
       { to: '/internal/stakeholders', label: 'Stakeholders', icon: Users },
+      { to: '/internal/simulation', label: 'Simulation', icon: Bot },
     ],
   },
 ];
