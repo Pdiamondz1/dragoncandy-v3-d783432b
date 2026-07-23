@@ -38,6 +38,52 @@ serve(async (req) => {
   try {
     logStep("Scheduled check started");
 
+    // Reconciliation sweep: heal collaborations where the payout already executed (money moved,
+    // `payout_executed_at` set) but finalize didn't complete (`status != 'completed'`). release-creator-payout
+    // is re-entrant — with the marker set it finalizes ONLY (no re-credit / re-transfer), so re-invoking it
+    // is safe. Runs every tick regardless of whether there's submitted content to auto-approve. Non-blocking.
+    try {
+      // Only reconcile markers at least 5 min old, so we never contend with a still-in-flight
+      // same-request finalize (the happy path sets the marker then finalizes within one invocation).
+      // With the marker written only AFTER money moves, a match here means the money already moved and
+      // only finalize is outstanding — the age guard is cheap belt-and-suspenders.
+      const reconcileCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const { data: stuckPayouts } = await supabaseClient
+        .from('campaign_collaborations')
+        .select('id')
+        .not('payout_executed_at', 'is', null)
+        .lt('payout_executed_at', reconcileCutoff)
+        .neq('status', 'completed')
+        .order('payout_executed_at', { ascending: true })
+        .limit(50);
+
+      if (stuckPayouts && stuckPayouts.length > 0) {
+        logStep('Reconciling stuck payouts', { count: stuckPayouts.length });
+        for (const row of stuckPayouts) {
+          try {
+            const resp = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/release-creator-payout`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+              },
+              body: JSON.stringify({ collaborationId: (row as { id: string }).id }),
+            });
+            const result = await resp.json();
+            if (result.finalized || result.success) {
+              logStep('Reconciled stuck payout', { collaborationId: (row as { id: string }).id });
+            } else {
+              logStep('Reconcile did not finalize (will retry next tick)', { collaborationId: (row as { id: string }).id, error: result.error });
+            }
+          } catch (reconErr) {
+            logStep('Reconcile fetch failed', { collaborationId: (row as { id: string }).id, error: String(reconErr) });
+          }
+        }
+      }
+    } catch (sweepErr) {
+      logStep('Reconciliation sweep failed (non-blocking)', { error: String(sweepErr) });
+    }
+
     // Find all collaborations with content_status='submitted' and their delivery type.
     // Time the review window off `content_submitted_at`, NOT `submitted_at`: the client
     // submit paths (SubmitForReviewButton / useProjectComplete) raw-update content_status
