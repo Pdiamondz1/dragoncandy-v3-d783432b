@@ -103,16 +103,16 @@ export async function executeAction(action: Action, ctx: ActionContext): Promise
 
     case "hire": {
       const bot = await ctx.botFor(action.bizId);
-      const { error: updErr } = await bot
-        .from("campaign_applications")
-        .update({ status: "accepted", restaurant_approval_status: "approved" })
-        .eq("id", action.applicationId);
-      orThrow("hire (accept application)", updErr);
-      // Creates the collaboration (status 'active') and rejects sibling applications.
+      // ONE atomic, idempotent write: the RPC sets the application to 'accepted'
+      // (+ restaurant_approval_status='approved'), creates the collaboration
+      // (ON CONFLICT DO NOTHING), activates the free crew campaign, and rejects siblings —
+      // all in a single transaction. Its guard accepts an already-'accepted' app, so a retry
+      // is safe. A manual pre-accept would be redundant with this and only add a non-atomic
+      // window (accepted-app-with-no-collab), so we don't do one.
       const { error: rpcErr } = await bot.rpc("accept_application_with_collaboration", {
         p_application_id: action.applicationId,
       });
-      orThrow("hire (create collaboration)", rpcErr);
+      orThrow("hire", rpcErr);
       // Best-effort 'hired' crew activity (RPC only → no email).
       const { data: collab } = await bot
         .from("campaign_collaborations")

@@ -66,6 +66,17 @@ describe("planDay — funnel progression", () => {
     expect(rc).toHaveLength(1);
     expect(rc[0].kind === "requestCompletion" && rc[0].role).toBe("content_creator");
   });
+  it("submitted with BOTH already requested but not completed → re-drives the finalize (no silent wedge)", () => {
+    const plan = planDay(withCollab({
+      contentStatus: "submitted",
+      businessCompletionStatus: "requested",
+      creatorCompletionStatus: "requested",
+      status: "active", // finalize previously no-op'd — must not wedge
+    }), 1);
+    const rc = plan.filter((a) => a.kind === "requestCompletion");
+    expect(rc).toHaveLength(1); // one re-drive, which re-runs the finalize
+    expect(plan.some((a) => a.kind === "leaveReview")).toBe(false);
+  });
   it("completed + unreviewed → leaveReview for both, no completion/upload", () => {
     const plan = planDay(withCollab({ status: "completed", contentStatus: "approved" }), 1);
     expect(plan.filter((a) => a.kind === "leaveReview")).toHaveLength(2);

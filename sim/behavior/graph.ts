@@ -68,6 +68,12 @@ function planCollaboration(c: CollaborationState): Action[] {
     if (c.creatorCompletionStatus !== "requested" && c.creatorCompletionStatus !== "approved") {
       out.push({ kind: "requestCompletion", actorId: c.creatorId, role: "content_creator", collaborationId: c.collaborationId });
     }
+    // Both parties already requested but the collab is still not 'completed' — a prior finalize
+    // no-op'd or failed. Re-drive it (requestCompletion re-runs the finalize on the second party)
+    // so a collaboration can never wedge silently between "both requested" and "completed".
+    if (out.length === 0) {
+      out.push({ kind: "requestCompletion", actorId: c.ownerId, role: "business_client", collaborationId: c.collaborationId });
+    }
     return out;
   }
   // cs === 'approved' but status not yet 'completed' — transient; nothing this tick.
