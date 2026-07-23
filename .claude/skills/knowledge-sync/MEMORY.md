@@ -68,6 +68,61 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-23] posting_schedule_status 'failed' CHECK gap (PR #326)
+- Output: bundled INTO the work PR #326 — new `raw/sessions/2026-07-23-posting-schedule-failed-status.md`;
+  **compounded** onto `concepts/content-delivery-state-machine.md` (new "Sibling CHECK-gap in the
+  post-approval scheduling leg" note + frontmatter `sources`); `index.md` (new Sources line, alphabetical
+  "Po" slot before [[Project Context]]); `log.md` update entry at top; `SHIPPED_LOG.md` prepended;
+  `PROJECT_CONTEXT.md` §5 one Shipped line; + THIS entry. No `DATABASE_SCHEMA` change (a CHECK value, not
+  a table/column), no `DESIGN_SYSTEM`/`CLAUDE.md`.
+- Happened: a small, self-contained follow-up increment from the SAME content-delivery-stabilization
+  backlog as the #325 drift repair (user said "keep going"). Correctly **compounded** onto the drift page
+  (same recorded-vs-intended CHECK-gap class) rather than minting a thin new page — the durable lesson
+  already lives there.
+- Worked: [scope] all 6 target docs byte-IDENTICAL to `origin/main` (dae067a4, my own #325 merge) before
+  editing. [orphans]-by-path: new raw session cataloged in Sources. [wikilinks]-exact: `[[Content Delivery
+  State Machine]]`, `[[Posting-Schedule Failed-Status Session]]` (self-registers), `[[verify-knowledge]]`
+  confirmed present. Proportionate: skipped the DATABASE_SCHEMA edit (no table/column moved — just a CHECK
+  value). [runlog-in-pr] bundled.
+- Failed: none for knowledge-sync. RAG sync + close-the-loop [[verify-knowledge]] are post-merge (PR open;
+  the post-merge hook syncs since `docs/` changed).
+- Remember: **scale the knowledge footprint to the change** — a one-line CHECK fix in an area that already
+  has a concept page is a compound + a SHIPPED_LOG line, NOT a new page; and `DATABASE_SCHEMA.md` is for
+  table/column/view changes, not every CHECK-value tweak. (advisory)
+
+### [2026-07-23] Content-delivery state-machine drift repair + auto-approval revival (PR #325)
+- Output: bundled INTO the open work PR #325 — new `raw/sessions/2026-07-23-content-state-machine-drift-repair.md`;
+  **compounded** onto `concepts/content-delivery-state-machine.md` (new "Prod Drift Incident & Repair"
+  section + a `submitted → rejected` transition row + a service-role-only-RPC note; frontmatter
+  `updated`/`sources` bumped) rather than a new page — that page already owned the `content_status`
+  machine and documented it as *working*; `index.md` (new Sources line after [[Content Delivery System
+  Flows]] + refreshed the `[[Content Delivery State Machine]]` Concepts entry); `log.md` ingest entry at
+  top; `SHIPPED_LOG.md` **prepended** (full prose); `PROJECT_CONTEXT.md` §5 ONE Shipped index line (the
+  broad "Content delivery system stabilization" workstream stays In flight — this repaired one chunk);
+  **`DATABASE_SCHEMA.md`** (new `content_disputes` row + a state-machine/`budget_spent` blockquote — a
+  real table/column/RPC restore); + THIS entry. No `DESIGN_SYSTEM`/`CLAUDE.md` change.
+- Happened: an exploration that turned into a **schema-drift repair** — the collaboration state machine
+  was recorded-applied but MISSING from prod (phantom drift), silently breaking auto-approval + reject +
+  dispute. The durable knowledge is a **compound-in-place** on the page that owns the machine, flipping
+  its implicit "this works" framing to "was drifted, here's the repair," + the reusable lesson
+  (`schema_migrations` recording ≠ objects exist on prod).
+- Worked: [scope] all 6 target docs verified byte-IDENTICAL to `origin/main` (unchanged at 9f3cb08a)
+  before editing — the code branch only touched migrations+edge-fn, so the docs matched. [squash-drift]
+  noted: PR #325 was landed as a REST squash rebased onto `origin/main`, diverged from the local 3-commit
+  branch — so the docs commit must ride on the PR head, not the stale local. [orphans]-by-path: the new
+  raw session cataloged in Sources; concept page already cataloged (line refreshed). [wikilinks]-exact:
+  grepped `index.md` — `[[Content Delivery System Flows]]`, `[[Service-Role Data Exposure]]` confirmed
+  present before linking. [context-tax]: full prose to `SHIPPED_LOG.md`, §5 got one line. [runlog-in-pr]
+  bundled.
+- Failed: none for knowledge-sync. RAG sync + close-the-loop [[verify-knowledge]] are post-merge (PR open;
+  the post-merge hook syncs since `docs/` changed) — per [rag-sync].
+- Remember: **when a schema-drift repair fixes a machine a concept page documents as working, the
+  compound is a *reframe*, not just an append** — the page's existing "here's the working flow" framing
+  is now historically wrong-by-omission, so add the drift/repair section AND correct any transition
+  table/invariant the repair changed (here the new `submitted → rejected` row), rather than leaving a
+  page that reads as if it always worked. And the sharp non-knowledge lesson (captured on the raw/concept
+  pages): verify object existence on prod directly, never trust `schema_migrations` recording. (advisory)
+
 ### [2026-07-20] create_counter_offer authorization hardening (branch `fix/counter-offer-authz`)
 - Output: bundled INTO the work branch — new `raw/sessions/2026-07-20-counter-offer-authz.md`;
   **compounded** onto `concepts/service-role-data-exposure.md` (flipped its "Open finding —

@@ -125,6 +125,17 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **posting_schedule_status 'failed' unblocked** — a sibling CHECK gap in the post-approval scheduling
+  leg: `confirm-posting-schedule` writes `'failed'` and `CampaignScheduleSection` already renders it, but
+  the CHECK forbade it → silent stuck + dead UI; one DB-only migration adds the value.
+  → `docs/wiki/concepts/content-delivery-state-machine.md` · #326
+- **Content-delivery state-machine drift repair** — the collaboration state machine was
+  recorded-applied but MISSING from prod (phantom drift); restored `transition_content_status` /
+  `content_disputes` / triggers / the 9-value CHECK, revived auto-approval (dead 3 ways:
+  `submitted_at`→`content_submitted_at` anchor, no pg_cron job, missing RPC), closed a SECURITY
+  DEFINER IDOR, and allowed reject-past-max-revisions. One chunk of the still-in-flight content
+  stabilization; broader content/payment fragility backlog left for follow-ups.
+  → `docs/wiki/concepts/content-delivery-state-machine.md` · #325
 - **create_counter_offer authorization hardening** — the `SECURITY DEFINER` counter-offer RPC was
   anon-executable with **zero authz** (forge/decline/insert on any application, then self-accept); one
   migration adds identity + participant + role-integrity guards (server-derived role), revokes anon +

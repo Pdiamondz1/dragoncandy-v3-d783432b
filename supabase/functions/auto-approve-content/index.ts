@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
+import { isAuthorizedIngest } from "../_shared/ingest-auth.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -22,8 +23,10 @@ const EXTENSION_HOURS: Record<string, number> = {
 };
 
 serve(async (req) => {
-  const expected = `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}`;
-  if (req.headers.get("Authorization") !== expected) {
+  // Accepts the injected service-role key OR AIOS_INGEST_SECRET (the sb_secret value
+  // held in Vault as `aios_ingest_key`), so this can be driven by the same pg_cron +
+  // net.http_post pattern as the rest of the scheduled fleet without a strict-key 401.
+  if (!isAuthorizedIngest(req)) {
     return new Response("Unauthorized", { status: 401 });
   }
   const supabaseClient = createClient(
@@ -35,16 +38,22 @@ serve(async (req) => {
   try {
     logStep("Scheduled check started");
 
-    // Find all collaborations with content_status='submitted' and their delivery type
+    // Find all collaborations with content_status='submitted' and their delivery type.
+    // Time the review window off `content_submitted_at`, NOT `submitted_at`: the client
+    // submit paths (SubmitForReviewButton / useProjectComplete) raw-update content_status
+    // and never set `submitted_at` (only the transition_content_status RPC does, which the
+    // client never calls) — but the `set_content_submitted_at` trigger reliably stamps
+    // `content_submitted_at` on every entry to 'submitted' (incl. resubmits). Keying off
+    // `submitted_at` meant this cron matched zero rows and auto-approval never fired.
     const { data: overdue, error: fetchError } = await supabaseClient
       .from('campaign_collaborations')
       .select(`
-        id, campaign_id, creator_id, content_status, submitted_at, review_extended,
+        id, campaign_id, creator_id, content_status, content_submitted_at, review_extended,
         campaign:campaigns(id, title, user_id, delivery_type, escrow_status, fixed_price, budget_max, delivery_fee, pricing_type)
       `)
       .eq('content_status', 'submitted')
       .eq('status', 'active')
-      .not('submitted_at', 'is', null)
+      .not('content_submitted_at', 'is', null)
       .not('content_status', 'in', '("approved","auto_approved","rejected","disputed")');
 
     if (fetchError) {
@@ -79,7 +88,7 @@ serve(async (req) => {
         : 0;
       const approveAfterHours = baseHours + extensionHours;
 
-      const submittedAt = new Date(collab.submitted_at!).getTime();
+      const submittedAt = new Date(collab.content_submitted_at!).getTime();
       const hoursElapsed = (now - submittedAt) / (1000 * 60 * 60);
 
       if (hoursElapsed < approveAfterHours) continue;
