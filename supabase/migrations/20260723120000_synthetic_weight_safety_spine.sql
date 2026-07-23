@@ -40,8 +40,8 @@ create or replace function public.is_synthetic(p_user_id uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.synthetic_users s where s.user_id = p_user_id);
 $$;
-revoke execute on function public.is_synthetic(uuid) from public, anon;
-grant execute on function public.is_synthetic(uuid) to authenticated, service_role;
+revoke execute on function public.is_synthetic(uuid) from public, anon, authenticated;
+grant execute on function public.is_synthetic(uuid) to service_role;
 
 -- is_synthetic_campaign(campaign) — parent-owner check via campaigns.user_id.
 create or replace function public.is_synthetic_campaign(p_campaign_id uuid)
@@ -52,8 +52,8 @@ returns boolean language sql stable security definer set search_path = public as
     where c.id = p_campaign_id
   );
 $$;
-revoke execute on function public.is_synthetic_campaign(uuid) from public, anon;
-grant execute on function public.is_synthetic_campaign(uuid) to authenticated, service_role;
+revoke execute on function public.is_synthetic_campaign(uuid) from public, anon, authenticated;
+grant execute on function public.is_synthetic_campaign(uuid) to service_role;
 
 -- is_synthetic_org(org) — org-owner check. organizations has no owner column, so ownership
 -- is resolved through the org_members row with role = 'owner'. Used by the dragonshare
@@ -67,8 +67,8 @@ returns boolean language sql stable security definer set search_path = public as
     where m.org_id = p_org_id and m.role = 'owner'
   );
 $$;
-revoke execute on function public.is_synthetic_org(uuid) from public, anon;
-grant execute on function public.is_synthetic_org(uuid) to authenticated, service_role;
+revoke execute on function public.is_synthetic_org(uuid) from public, anon, authenticated;
+grant execute on function public.is_synthetic_org(uuid) to service_role;
 
 create table if not exists public.sim_load_snapshots (
   id uuid primary key default gen_random_uuid(),
@@ -154,6 +154,7 @@ begin
     or (new.campaign_id is not null and public.is_synthetic_campaign(new.campaign_id));
   return new;
 end; $$;
+revoke execute on function public.stamp_payment_event_synthetic() from public, anon, authenticated;
 drop trigger if exists trg_stamp_payment_event_synthetic on public.payment_events;
 create trigger trg_stamp_payment_event_synthetic
   before insert on public.payment_events
@@ -166,6 +167,7 @@ begin
   new.is_synthetic := new.user_id is not null and public.is_synthetic(new.user_id);
   return new;
 end; $$;
+revoke execute on function public.stamp_user_row_synthetic() from public, anon, authenticated;
 drop trigger if exists trg_stamp_analytics_synthetic on public.analytics_events;
 create trigger trg_stamp_analytics_synthetic before insert on public.analytics_events
   for each row execute function public.stamp_user_row_synthetic();
@@ -186,6 +188,7 @@ begin
           (select dp.creator_id from public.dragonshare_posts dp where dp.id = new.post_id)));
   return new;
 end; $$;
+revoke execute on function public.stamp_dragonshare_event_synthetic() from public, anon, authenticated;
 drop trigger if exists trg_stamp_dragonshare_event_synthetic on public.dragonshare_events;
 create trigger trg_stamp_dragonshare_event_synthetic before insert on public.dragonshare_events
   for each row execute function public.stamp_dragonshare_event_synthetic();
