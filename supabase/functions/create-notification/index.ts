@@ -166,28 +166,38 @@ const handler = async (req: Request): Promise<Response> => {
     if (forceDelivery || categoryPrefs.email) {
       const resolvedEmailType = emailType ?? NOTIFICATION_TYPE_TO_EMAIL_TYPE[type];
       if (resolvedEmailType) {
-        try {
-          const emailResponse = await fetch(
-            `${supabaseUrl}/functions/v1/send-notification-email`,
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${serviceKey}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                type: resolvedEmailType,
-                data: {
-                  recipientUserId: recipientId,
-                  ...emailData,
-                  ...(data ?? {}),
+        // Synthetic Weight Engine: never send real email to bot accounts (protects sender
+        // reputation). The in-app notification row above is still created for bots — only the
+        // outbound email leg is suppressed.
+        const { data: isSyntheticRecipient } = await admin.rpc("is_synthetic", {
+          p_user_id: recipientId,
+        });
+        if (isSyntheticRecipient) {
+          console.warn("[email] suppressed send to synthetic recipient:", recipientId);
+        } else {
+          try {
+            const emailResponse = await fetch(
+              `${supabaseUrl}/functions/v1/send-notification-email`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${serviceKey}`,
+                  "Content-Type": "application/json",
                 },
-              }),
-            }
-          );
-          emailSent = emailResponse.ok;
-        } catch (e) {
-          console.error("Email delivery failed:", e);
+                body: JSON.stringify({
+                  type: resolvedEmailType,
+                  data: {
+                    recipientUserId: recipientId,
+                    ...emailData,
+                    ...(data ?? {}),
+                  },
+                }),
+              }
+            );
+            emailSent = emailResponse.ok;
+          } catch (e) {
+            console.error("Email delivery failed:", e);
+          }
         }
       }
     }
