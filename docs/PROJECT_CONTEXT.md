@@ -119,6 +119,10 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **posting_schedule_status 'failed' unblocked** — a sibling CHECK gap in the post-approval scheduling
+  leg: `confirm-posting-schedule` writes `'failed'` and `CampaignScheduleSection` already renders it, but
+  the CHECK forbade it → silent stuck + dead UI; one DB-only migration adds the value.
+  → `docs/wiki/concepts/content-delivery-state-machine.md` · #326
 - **Content-delivery state-machine drift repair** — the collaboration state machine was
   recorded-applied but MISSING from prod (phantom drift); restored `transition_content_status` /
   `content_disputes` / triggers / the 9-value CHECK, revived auto-approval (dead 3 ways:

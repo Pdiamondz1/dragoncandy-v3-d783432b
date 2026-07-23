@@ -68,6 +68,28 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-23] posting_schedule_status 'failed' CHECK gap (PR #326)
+- Output: bundled INTO the work PR #326 — new `raw/sessions/2026-07-23-posting-schedule-failed-status.md`;
+  **compounded** onto `concepts/content-delivery-state-machine.md` (new "Sibling CHECK-gap in the
+  post-approval scheduling leg" note + frontmatter `sources`); `index.md` (new Sources line, alphabetical
+  "Po" slot before [[Project Context]]); `log.md` update entry at top; `SHIPPED_LOG.md` prepended;
+  `PROJECT_CONTEXT.md` §5 one Shipped line; + THIS entry. No `DATABASE_SCHEMA` change (a CHECK value, not
+  a table/column), no `DESIGN_SYSTEM`/`CLAUDE.md`.
+- Happened: a small, self-contained follow-up increment from the SAME content-delivery-stabilization
+  backlog as the #325 drift repair (user said "keep going"). Correctly **compounded** onto the drift page
+  (same recorded-vs-intended CHECK-gap class) rather than minting a thin new page — the durable lesson
+  already lives there.
+- Worked: [scope] all 6 target docs byte-IDENTICAL to `origin/main` (dae067a4, my own #325 merge) before
+  editing. [orphans]-by-path: new raw session cataloged in Sources. [wikilinks]-exact: `[[Content Delivery
+  State Machine]]`, `[[Posting-Schedule Failed-Status Session]]` (self-registers), `[[verify-knowledge]]`
+  confirmed present. Proportionate: skipped the DATABASE_SCHEMA edit (no table/column moved — just a CHECK
+  value). [runlog-in-pr] bundled.
+- Failed: none for knowledge-sync. RAG sync + close-the-loop [[verify-knowledge]] are post-merge (PR open;
+  the post-merge hook syncs since `docs/` changed).
+- Remember: **scale the knowledge footprint to the change** — a one-line CHECK fix in an area that already
+  has a concept page is a compound + a SHIPPED_LOG line, NOT a new page; and `DATABASE_SCHEMA.md` is for
+  table/column/view changes, not every CHECK-value tweak. (advisory)
+
 ### [2026-07-23] Content-delivery state-machine drift repair + auto-approval revival (PR #325)
 - Output: bundled INTO the open work PR #325 — new `raw/sessions/2026-07-23-content-state-machine-drift-repair.md`;
   **compounded** onto `concepts/content-delivery-state-machine.md` (new "Prod Drift Incident & Repair"

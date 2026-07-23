@@ -29,6 +29,20 @@
 
 ---END-HEADER---
 
+- posting_schedule_status 'failed' now allowed — **shipped + applied to prod (2026-07-23,
+  `fix/posting-schedule-failed-status`, PR #326).** Sibling of the #325 state-machine drift, in the
+  post-approval scheduling leg: `confirm-posting-schedule` writes `campaigns.posting_schedule_status='failed'`
+  when every post fails to schedule (`failedCount > 0 && scheduledCount === 0`), and
+  `CampaignScheduleSection` already renders a complete "Schedule Failed" card for it — but the CHECK from
+  `20260527100000` never included `'failed'`, so the UPDATE silently violated the constraint (the edge fn
+  only `console.error`s the update failure), leaving the status stuck at `pending_review` and the built UI
+  unreachable dead code. One DB-only migration (`20260723130000`) adds `'failed'` to the CHECK — no code
+  change (the edge fn already writes it, the frontend already renders it). Pure expansion (0 rows use
+  `'failed'`). Verified: rolled-back dry-run (a `'failed'` write that previously violated the CHECK now
+  succeeds); applied to prod (CHECK allows `'failed'`, all 25 campaign rows intact, migration recorded);
+  Codex clean. Same recorded-vs-intended lesson: verify the actual prod CHECK against what the code
+  writes/renders, not just the migration file.
+
 - Content-delivery state-machine drift repair + auto-approval revival — **shipped + applied to
   prod (2026-07-23, `fix/content-state-machine-drift-repair`, PR #325).** While exploring
   "content-delivery stabilization," found the launch-gating problem was not a bug list but a

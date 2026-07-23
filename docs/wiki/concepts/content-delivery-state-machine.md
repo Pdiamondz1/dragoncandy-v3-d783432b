@@ -3,7 +3,7 @@ title: Content Delivery State Machine
 type: concept
 created: 2026-05-23
 updated: 2026-07-23
-sources: [docs/content-delivery-system-flows.md, docs/wiki/raw/sessions/2026-07-23-content-state-machine-drift-repair.md]
+sources: [docs/content-delivery-system-flows.md, docs/wiki/raw/sessions/2026-07-23-content-state-machine-drift-repair.md, docs/wiki/raw/sessions/2026-07-23-posting-schedule-failed-status.md]
 tags: [state-machine, content-delivery, collaboration]
 ---
 
@@ -89,6 +89,15 @@ so the three callers are unaffected — see [[Service-Role Data Exposure]]).
 **Lesson:** on this prod DB, `schema_migrations` recording is not proof the objects exist —
 verify directly (`pg_proc`/`information_schema`/`pg_trigger`) before assuming a documented
 feature works. Full narrative: the 2026-07-23 drift-repair session source.
+
+**Sibling CHECK-gap in the post-approval scheduling leg (2026-07-23, PR #326).** The same
+recorded-vs-intended pattern hit `campaigns.posting_schedule_status`: `confirm-posting-schedule`
+writes `'failed'` when every post fails to schedule, and `CampaignScheduleSection` already renders
+a "Schedule Failed" card for it — but the CHECK from `20260527100000` never allowed `'failed'`, so
+the UPDATE silently violated the constraint (only `console.error`'d), leaving the status stuck at
+`pending_review` and the built UI unreachable. Migration `20260723130000` adds `'failed'` to the
+CHECK (DB-only; code already writes + renders it). Same lesson: verify the actual prod CHECK against
+what the code writes/renders. See the posting-schedule-failed-status session source.
 
 ## See Also
 
