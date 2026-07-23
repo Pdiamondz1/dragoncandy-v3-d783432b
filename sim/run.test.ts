@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { parseArgs, main } from "./run";
+import { parseArgs, main, nonZeroResiduals } from "./run";
 
 describe("parseArgs", () => {
   it("parses a full command line", () => {
@@ -18,6 +18,17 @@ describe("parseArgs", () => {
     const a = parseArgs(["mint", "--n", "abc", "--seed", "xyz"]);
     expect(a.n).toBe(25);
     expect(a.seed).toBe(1);
+  });
+});
+
+describe("nonZeroResiduals (purge teardown assertion)", () => {
+  it("returns [] when every residual is zero", () => {
+    expect(nonZeroResiduals({ purged_users: 5, residual_synthetic_users: 0, residual_orgs: 0 })).toEqual([]);
+  });
+  it("flags any non-zero residual, ignoring non-residual keys", () => {
+    expect(
+      nonZeroResiduals({ purged_users: 3, residual_orgs: 2, residual_cost_ledger: 0, note: "x" }),
+    ).toEqual([["residual_orgs", 2]]);
   });
 });
 

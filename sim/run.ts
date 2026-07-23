@@ -50,6 +50,15 @@ function safeInt(value: string | undefined, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+/** Pure: the `residual_*` entries of a purge report that are non-zero (teardown must have none). */
+export function nonZeroResiduals(report: Record<string, unknown>): [string, number][] {
+  const out: [string, number][] = [];
+  for (const [k, v] of Object.entries(report)) {
+    if (k.startsWith("residual_") && typeof v === "number" && v > 0) out.push([k, v]);
+  }
+  return out;
+}
+
 export function parseArgs(argv: string[]): Args {
   const command = argv.find((a) => !a.startsWith("--"));
   if (!command || !(COMMANDS as readonly string[]).includes(command)) {
@@ -129,6 +138,11 @@ async function cmdTick(): Promise<void> {
   if (report.attempted < floor) {
     console.warn(`[tick] SHORTFALL: ${report.attempted} planned < floor ${floor} — cohort is quiescent (mint more bots or let crews post fresh campaigns).`);
   }
+  // A CI/smoke run must NOT report green when a real marketplace write failed — that would mask
+  // exactly the integration breakages this harness exists to surface. (Shortfall alone is fine.)
+  if (report.failures.length > 0) {
+    throw new Error(`[tick] ${report.failures.length} action(s) failed — see errors above`);
+  }
 }
 
 async function cmdPurge(): Promise<void> {
@@ -137,6 +151,12 @@ async function cmdPurge(): Promise<void> {
   const { data, error } = await svc.rpc("purge_synthetic_data");
   if (error) throw new Error(`purge failed: ${error.message}`);
   console.warn(`[purge] ${JSON.stringify(data)}`);
+  // Teardown must be PROVABLE: a report that returns but leaves any residual is a failed teardown,
+  // not a success — surface it so a run can never report green with synthetic rows still on prod.
+  const residuals = nonZeroResiduals((data ?? {}) as Record<string, unknown>);
+  if (residuals.length > 0) {
+    throw new Error(`[purge] non-zero residuals after teardown: ${residuals.map(([k, v]) => `${k}=${v}`).join(", ")}`);
+  }
 }
 
 export async function main(argv: string[]): Promise<void> {
