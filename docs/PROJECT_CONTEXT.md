@@ -107,9 +107,11 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 - **Synthetic Weight Engine** — tagged synthetic-user ("bot") safety spine on prod (registry +
   actor-OR-parent metric/moat exclusion + `SYNTHETIC_BOTS_ENABLED` kill switch + live-mode money
   guard + email suppression + `/internal/simulation` + `purge_synthetic_data()` teardown), proven on
-  a rollback-wrapped 5-bot round-trip (founder metrics byte-identical, zero residue). Phase 0 shipped
-  (kill switch OFF, 0 bots); Phases 1–4 (identity/behavior/scale-to-N/load-proof) are separate plans.
-  → `docs/SHIPPED_LOG.md`
+  a rollback-wrapped 5-bot round-trip (founder metrics byte-identical, zero residue). Phase 0 (spine) +
+  Phase 1 (private-crew free-rails behavior engine — mints N=25 + drives the crew funnel RLS-real in the
+  `sim/` harness, no migrations/edge-fns) both built; kill switch OFF, 0 bots. **Parked for the
+  founder-gated live smoke** (flip `SYNTHETIC_BOTS_ENABLED` + provision `SIM_*` secrets). Phases 2–4
+  (Stripe-test checkout / capped Donny / scale-to-N / load-proof) are separate plans. → `docs/SHIPPED_LOG.md`
 
 ### Built — awaiting founder go-live
 

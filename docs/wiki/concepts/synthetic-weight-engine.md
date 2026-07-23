@@ -3,7 +3,7 @@ title: Synthetic Weight Engine
 type: concept
 created: 2026-07-23
 updated: 2026-07-23
-sources: [2026-07-23-synthetic-weight-engine-phase-0.md]
+sources: [2026-07-23-synthetic-weight-engine-phase-0.md, 2026-07-23-synthetic-weight-engine-phase-1.md]
 tags: [synthetic, bots, load-testing, segregation, safety-spine, aios, metrics, teardown]
 ---
 # Synthetic Weight Engine
@@ -17,8 +17,9 @@ by pressuring connections under burst, not by transaction count).
 It runs on **production**, so its defining constraint is **segregation completeness**: every row a bot
 writes must be tagged and excluded from every founder metric and the data-flywheel moat (Donny's
 training corpus). One missed surface = permanent contamination. That safety spine is **Phase 0** and
-gates everything else. Phase 0 shipped 2026-07-23 (`feat/synthetic-weight-engine`); the kill switch is
-**OFF** and there are **0 bots**, so the spine is present but inert.
+gates everything else. Phase 0 shipped 2026-07-23 (`feat/synthetic-weight-engine`); **Phase 1** (the
+private-crew behavior engine, below) followed on `feat/synthetic-weight-phase-1`. The kill switch is
+**OFF** and there are **0 bots**, so both phases are present but inert.
 
 ## Architecture — the safety spine
 
@@ -70,6 +71,50 @@ returns **every residual = 0** → ROLLBACK. Reproducible any time the spine cha
 `set_config('request.jwt.claim.sub', <admin uuid>, true)` fakes `auth.uid()` so the internal-gated RPCs
 run (see [[Testing auth.uid() RPCs and RLS on prod]]); `auth.users` has exactly one insert trigger
 (`handle_new_user`, pure SQL, no external call) so a rollback-wrapped mint fires no webhook/email.
+
+## Phase 1 — the private-crew behavior engine
+
+The first live-cohort engine, entirely in the `sim/` harness — **no DB migrations, no edge-function
+changes** (it only *uses* the Phase 0 spine + existing crew/content/review RPCs). It mints a real
+N=25 cohort (≈65% creators / 35% Hoboken restaurants) and drives the full **free-rails** funnel
+**inside private crews** so bots only ever interact with bots.
+
+- **Isolation is structural.** Crew campaigns (`group_id` set) are visible only to member bots via
+  the `campaigns` SELECT RLS and are never broadcast — real users literally can't see or apply. The
+  chosen lane (over a public-marketplace lane) needs **zero new metric-exclusion surfaces**; the pure
+  planner has a hard invariant + test that it never creates a public (`group_id IS NULL`) campaign.
+- **Every marketplace write is RLS-real, as the bot** (a per-bot JWT minted via the `staging-login`
+  magiclink→verify pattern, adapted to prod synthetic users). Service-role is used ONLY for minting,
+  `email_verified`, cohort reads, and teardown. The content funnel uses **direct RLS writes**, not the
+  service-role-only `transition_content_status` RPC.
+- **Funnel** (one stage advanced per tick, so a fresh cohort drains over several ticks and a steady
+  cohort keeps flowing): crew → invite → accept → post free crew campaign → apply →
+  hire (one atomic `accept_application_with_collaboration` RPC) → upload (metadata-only `file_uploads`,
+  no storage object) → submit → **dual-party completion** (both parties request; the 2nd flips to
+  `completed`; crew campaigns skip payout) → review → repeat. `record_crew_activity` is RPC-only (no
+  `create-notification` leg) so **a bot never triggers an outbound email**.
+- **Teardown holds for crews** (the gap Phase 0's non-crew proof left): `purge_synthetic_data()`
+  leaves zero residue even with a crew campaign present — the `campaigns.group_id → creator_groups`
+  RESTRICT does not bite because the campaign cascades (via `user_id → profiles`) before its crew
+  (verified rollback-wrapped on prod). See [[Content Delivery State Machine]] for the funnel it drives.
+- **Go-live is two deliberate switches, never a merge.** Merging leaves prod byte-unchanged (harness +
+  a dormant `workflow_dispatch`-only workflow; kill switch OFF). Task 8 (founder-gated live smoke:
+  flip `SYNTHETIC_BOTS_ENABLED` on → `mint --n 5` → `tick`s → assert `aios_*` metrics unchanged +
+  `get_simulation_stats` shows the cohort → `purge` → zero residue) is parked for the founder's
+  `SIM_*` secrets + kill-switch authorization; enabling the daily cron is the second switch.
+
+### Phase 1 gotchas learned
+
+- **`file_uploads` needs `bucket_name`/`filename`/`original_filename`/`mime_type`** (all NOT NULL, no
+  default) beyond `file_path`/`file_size`/`uploaded_by` — the Codex second review caught the missing
+  four (every `uploadDeliverable` would 23502 and wedge the funnel). A multi-statement `execute_sql`
+  schema check had silently returned only its last result set, hiding this (see
+  [[MCP execute_sql returns only the LAST statement's result]]).
+- **GitHub Actions script-injection:** workflow inputs must pass through `env:` vars, never be
+  interpolated into a `run:` shell that holds secrets (Codex P1).
+- **`hire` is one atomic RPC** — `accept_application_with_collaboration` itself sets the app
+  `accepted` + creates the collab `ON CONFLICT DO NOTHING` + accepts an already-`accepted` app, so a
+  manual pre-accept is redundant and only adds a non-atomic wedge window.
 
 ## Known issues / gotchas
 

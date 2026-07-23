@@ -1,5 +1,21 @@
 # Wiki Log
 
+## [2026-07-23] ingest | Synthetic Weight Engine — Phase 1 private crew lane (feat/synthetic-weight-phase-1)
+Ingested `2026-07-23-synthetic-weight-engine-phase-1.md`. **Compounded** onto [[Synthetic Weight Engine]]
+(new "Phase 1 — the private-crew behavior engine" section + "Phase 1 gotchas learned"; intro notes both
+phases inert). The first live-cohort engine, entirely in the `sim/` harness — **no DB migrations, no
+edge-function changes**: mints an N=25 cohort and drives the full free-rails funnel inside **private
+crews** (bots only touch bots; crew campaigns are RLS-private + un-broadcast → zero new metric-exclusion
+surfaces). Every marketplace write is RLS-real as the bot; teardown verified crew-safe
+(`purge_synthetic_data` — the `group_id` RESTRICT doesn't bite, campaign cascades first). Four review
+passes (plan-doc → spec-compliance → code-quality → Codex): the plan reviewer's Task 4 funnel-mapping
+corrections were all TRUE; code-quality fixed two wedge-risk non-atomic writes; Codex caught a real
+workflow script-injection (P1) + a funnel-breaking missing `file_uploads` columns bug (P2). Go-live is
+two deliberate switches (kill switch + cron), never a merge; the founder-gated live smoke (Task 8) is
+parked. New reference memory: [[MCP execute_sql returns only the LAST statement's result]]. `SHIPPED_LOG.md`
+prepended; `PROJECT_CONTEXT.md` §5 one Shipped line. No `DATABASE_SCHEMA`/`DESIGN_SYSTEM`/`CLAUDE.md`
+change (harness only). RAG sync + [[verify-knowledge]] post-merge.
+
 ## [2026-07-23] ingest | Payout finalize retry + safe failure handling (PR #328)
 Ingested [[Payout Finalize Retry Session]]. NEW concept [[Payout Finalization & Re-entrancy]] — no
 existing payment page owned the escrow→payout→finalize flow. `release-creator-payout` ran its post-money

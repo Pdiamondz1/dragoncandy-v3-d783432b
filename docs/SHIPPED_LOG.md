@@ -29,6 +29,37 @@
 
 ---END-HEADER---
 
+- Synthetic Weight Engine — Phase 1 (private crew lane) — **built, merge-ready; prod inert
+  (2026-07-23, `feat/synthetic-weight-phase-1`).** The first live-cohort behavior engine on the Phase 0
+  safety spine, entirely in the `sim/` Node harness — **no DB migrations, no edge-function changes** (it
+  only *uses* the spine + existing crew/content/review RPCs). Mints a real N=25 cohort (≈65% creators /
+  35% Hoboken restaurants) on prod and drives the full **free-rails** marketplace funnel **inside private
+  crews** so bots only ever interact with bots. The founder chose the private-crew lane over a
+  public-marketplace lane: crew campaigns (`group_id` set) are RLS-visible only to member bots and are
+  never broadcast, giving guaranteed isolation with **zero new metric-exclusion surfaces**; the pure
+  planner has a hard invariant + test that it never creates a public campaign. Every marketplace write is
+  **RLS-real, as the bot** (a per-bot JWT via the `staging-login` magiclink→verify pattern); service-role
+  is used only for minting (+ `email_verified` + stamping `cohort`/`persona` on the trigger-created
+  `synthetic_users` row), cohort reads, and teardown. Funnel (one stage/tick, so a fresh cohort drains
+  over several ticks and a steady cohort keeps flowing): crew → invite → accept → post free crew campaign
+  → apply → hire (one atomic `accept_application_with_collaboration` RPC) → upload (metadata-only
+  `file_uploads`, no storage object) → submit → dual-party completion (crew campaigns skip payout) →
+  review. `record_crew_activity` is RPC-only (no `create-notification` leg) so a bot never triggers an
+  outbound email. Teardown verified crew-safe: `purge_synthetic_data()` leaves zero residue even with a
+  crew campaign present (the `campaigns.group_id → creator_groups` RESTRICT doesn't bite — the campaign
+  cascades first; the gap Phase 0's non-crew proof left). Files: `sim/{personas,clients,mint,session,
+  types,run,cli}.ts`, `sim/behavior/{actions,graph}.ts`, `sim/tsconfig.json`, and a **dormant**
+  `workflow_dispatch`-only `.github/workflows/synthetic-weight.yml`. 40 unit tests; app + sim typecheck +
+  build clean. Four review passes: plan-document (its Task 4 funnel-mapping corrections all verified TRUE
+  and folded in before coding), spec-compliance (runtime shapes verified live), code-quality (fixed two
+  wedge-risk non-atomic writes — atomic hire + a self-healing finalize re-drive), and **Codex** (fixed a
+  real workflow script-injection P1 + a funnel-breaking missing-`file_uploads`-columns P2, both verified
+  live rollback-wrapped). **Go-live is two deliberate switches, never a merge:** merging leaves prod
+  byte-unchanged (kill switch OFF); the founder-gated live smoke (flip `SYNTHETIC_BOTS_ENABLED` on →
+  `mint --n 5` → `tick`s → assert `aios_*` metrics byte-identical + `get_simulation_stats` shows the
+  cohort → `purge` → zero residue) + enabling the daily cron are the two switches, parked for the
+  founder's `SIM_*` secrets + authorization. → `docs/wiki/concepts/synthetic-weight-engine.md`
+
 - Payout finalize retry + safe failure handling — **shipped + deployed to prod (2026-07-23,
   `fix/payout-db-consistency`, PR #328).** Third increment from the content-delivery-stabilization
   backlog (after #325 drift repair + #326 posting-schedule). `release-creator-payout` moves money then
