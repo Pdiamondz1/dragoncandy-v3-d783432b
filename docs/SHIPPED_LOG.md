@@ -48,7 +48,7 @@
   matched **zero rows**, so auto-approval had never once fired; (2) **no `pg_cron` job** invoked the
   function → scheduled `*/15` via the Vault + `net.http_post` fleet pattern (new
   `auto_approve_content_url` secret + `aios_ingest_key` bearer), with the function's auth moved to the
-  shared `isAuthorizedIngest` gate; (3) the missing RPC + CHECK values. Four idempotent migrations:
+  shared `isAuthorizedIngest` gate; (3) the missing RPC + CHECK values. Five idempotent migrations:
   `20260723120000` restores the objects (storage policies **excluded** — the original step-7 tightening
   was superseded by `20260513000001`; `insert_payment_event` left as-is) and adds a **REVOKE the
   original never shipped** — `transition_content_status` is `SECURITY DEFINER` and only checks the
@@ -61,7 +61,10 @@
   accepted, 0 active sponsorships → none functionally stuck). `20260723120003_auto_approve_content_cron`
   **schedules the cron** `*/15` (mirroring `dre_award_cron` — the fleet's convention — so a fresh deploy
   from source actually invokes the function; the env-specific Vault URL secret is the documented
-  out-of-band prerequisite), closing the "no scheduler existed" gap. `auto-approve-content` deployed v60.
+  out-of-band prerequisite), closing the "no scheduler existed" gap; `20260723120004` belt-and-suspenders
+  backfills the `content_submitted_at` anchor for any legacy active-`submitted` row via
+  `COALESCE(content_submitted_at, submitted_at, updated_at, created_at)` (0 rows in prod, but future-proofs
+  the cron so no pre-trigger submission is stranded). `auto-approve-content` deployed v60.
   Verified: migration dry-run before apply; all objects confirmed; IDOR closed
   (`authenticated`/`anon` EXECUTE = false); filter + reject fixes proven in rolled-back txns; 0 stale
   rows after backfill; v60 boot-check (both `_shared` bundled, `verify_jwt=false`, bad-bearer 401);

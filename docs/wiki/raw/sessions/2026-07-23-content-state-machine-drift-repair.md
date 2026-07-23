@@ -80,6 +80,11 @@ raw-writes `approved`, which the old CHECK allowed) — but it was a hard launch
 - `20260723120003_auto_approve_content_cron.sql` — schedules the `auto-approve-content` pg_cron job
   `*/15` (mirroring `dre_award_cron`), so the scheduler is source-controlled and reproduces on a fresh
   deploy. `cron.schedule` upserts by name, so it's idempotent with the job created ad-hoc in-session.
+- `20260723120004_backfill_active_submitted_content_anchor.sql` — belt-and-suspenders backfill of
+  `content_submitted_at` for any active `submitted` row missing the anchor, via
+  `COALESCE(content_submitted_at, submitted_at, updated_at, created_at)` (0 rows in prod — nothing is in
+  `submitted` and `submitted_at` is dead — but makes the revived cron robust for any environment/state
+  that DOES have a pre-trigger stuck row; Codex's suggested remedy, using the effective anchor).
 
 **Edge function `auto-approve-content` (deployed v60):** times off `content_submitted_at`;
 auth switched to the shared `isAuthorizedIngest` gate (accepts the injected service-role key
@@ -128,6 +133,6 @@ follow-up PRs. This session repaired the state-machine drift + revived auto-appr
 
 ## Affected
 
-- Migrations: `20260723120000/1/2/3` · Edge fn: `auto-approve-content` (v60) · pg_cron: `auto-approve-content` (job 8, scheduled by migration `…120003`) · Vault: `auto_approve_content_url`.
-- Reviews: edge-function-reviewer PASS, data-exposure-reviewer HIGH fixed, Codex clean (final; P2 "add the cron migration" actioned, P2 "submitted_at fallback" verified a non-issue — 0 rows, structurally impossible).
+- Migrations: `20260723120000/1/2/3/4` · Edge fn: `auto-approve-content` (v60) · pg_cron: `auto-approve-content` (job 8, scheduled by migration `…120003`) · Vault: `auto_approve_content_url`.
+- Reviews: edge-function-reviewer PASS, data-exposure-reviewer HIGH fixed, Codex — every finding verified against the live ACL/data before fix or dismissal: service_role-grant IDOR (fixed + GRANT), reject-from-submitted (fixed), cron-via-migration (fixed, `…120003`), legacy-anchor backfill (fixed via `…120004` — Codex's own suggested remedy, since the `submitted_at` fallback it also proposed is ineffective here: `submitted_at` is NULL on every row). A dependency chain, not churn.
 - Cross-refs: [[Content Delivery State Machine]], [[Service-Role Data Exposure]], [[Stripe Webhook Revival Session]], [[AIOS Runtime Spend Source of Truth]].
