@@ -45,7 +45,10 @@ raw-writes `approved`, which the old CHECK allowed) — but it was a hard launch
 2. **No scheduler.** There was **no `pg_cron` job** invoking `auto-approve-content` at all
    (7 jobs scheduled, not this one). The original plan doc had flagged this as a manual step
    that was never done. Scheduled it `*/15 * * * *` via the Vault + `net.http_post` fleet
-   pattern (new `auto_approve_content_url` Vault secret + `aios_ingest_key` bearer).
+   pattern (new `auto_approve_content_url` Vault secret + `aios_ingest_key` bearer),
+   **source-controlled as migration `20260723120003`** (mirroring `dre_award_cron` — Codex correctly
+   flagged that the fleet schedules crons via migrations, so an ad-hoc SQL schedule wouldn't reproduce
+   on a fresh deploy; the env-specific Vault URL secret stays an out-of-band prerequisite).
 3. **Missing RPC + CHECK.** Even if reached, `transition_content_status` didn't exist and
    `auto_approved` violated the old CHECK — both restored by the migration.
 
@@ -74,6 +77,9 @@ raw-writes `approved`, which the old CHECK allowed) — but it was a hard launch
   since the non-sponsored accept path drives the collaboration off `status`, not
   `final_approval_status`). Updates `final_approval_status` only (the recompute trigger is
   scoped to `brand/restaurant_approval_status`, so it does not fire).
+- `20260723120003_auto_approve_content_cron.sql` — schedules the `auto-approve-content` pg_cron job
+  `*/15` (mirroring `dre_award_cron`), so the scheduler is source-controlled and reproduces on a fresh
+  deploy. `cron.schedule` upserts by name, so it's idempotent with the job created ad-hoc in-session.
 
 **Edge function `auto-approve-content` (deployed v60):** times off `content_submitted_at`;
 auth switched to the shared `isAuthorizedIngest` gate (accepts the injected service-role key
@@ -122,6 +128,6 @@ follow-up PRs. This session repaired the state-machine drift + revived auto-appr
 
 ## Affected
 
-- Migrations: `20260723120000/1/2` · Edge fn: `auto-approve-content` (v60) · pg_cron: `auto-approve-content` (job 8) · Vault: `auto_approve_content_url`.
-- Reviews: edge-function-reviewer PASS, data-exposure-reviewer HIGH fixed, Codex clean (r4).
+- Migrations: `20260723120000/1/2/3` · Edge fn: `auto-approve-content` (v60) · pg_cron: `auto-approve-content` (job 8, scheduled by migration `…120003`) · Vault: `auto_approve_content_url`.
+- Reviews: edge-function-reviewer PASS, data-exposure-reviewer HIGH fixed, Codex clean (final; P2 "add the cron migration" actioned, P2 "submitted_at fallback" verified a non-issue — 0 rows, structurally impossible).
 - Cross-refs: [[Content Delivery State Machine]], [[Service-Role Data Exposure]], [[Stripe Webhook Revival Session]], [[AIOS Runtime Spend Source of Truth]].
