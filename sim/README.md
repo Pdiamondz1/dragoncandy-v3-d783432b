@@ -4,10 +4,10 @@ Generates and drives synthetic ("bot") users on **production** to add liveness/o
 prove load/performance, and surface QA bugs — **without** contaminating the data-flywheel
 moat or founder-facing `/internal` metrics.
 
-> **Phase 0 (this branch) ships the *safety spine* only.** No bots are minted by default,
-> nothing runs on a schedule, and the master kill switch is **OFF**. Phases 1–4 (identity,
-> behavior engine, drive adapters, scheduler, load proof) are separate plans and do not run
-> until this spine is merged, verified, and deliberately enabled.
+> **Phase 0 shipped the *safety spine*; Phase 1 adds the private-crew behavior engine (below).**
+> No bots are minted by default, nothing runs on a schedule, and the master kill switch is **OFF** —
+> so both phases are present but inert until deliberately enabled. Phases 2–4 (real test-mode Stripe
+> checkout, capped Donny, load proof) are separate plans.
 
 Spec: `docs/superpowers/specs/2026-07-23-synthetic-weight-engine-design.md`
 Plan: `docs/superpowers/plans/2026-07-23-synthetic-weight-engine-phase-0-safety-spine.md`
@@ -94,12 +94,49 @@ Storage API first (direct `storage.objects` deletes are blocked by `protect_dele
 
 ---
 
-## Phase 1+ scaffolding (not built yet)
+## Phase 1 — private crew lane (built)
 
-- `sim/package.json` declares the intended harness deps (`@supabase/supabase-js`,
-  `@faker-js/faker`) — **not installed** in Phase 0 (the spine + proof need neither).
-- Planned: `mintBots.ts` (service-role `auth.admin.createUser` with `email_confirm` +
-  `profiles.email_verified = true`), a per-bot daily behavior graph over the real
-  content-delivery state machine, a direct-API drive adapter + a small Playwright pool for
-  real test-mode Stripe checkout, and a scheduled GitHub Actions runner.
-- Bots interact only with bots (keeps real users' history clean and teardown simple).
+Phase 1 mints a real cohort (default N=25 ≈ 65% creators / 35% Hoboken restaurants) and drives
+the full **free-rails** funnel entirely inside **private crews** — bots only ever interact with
+bots. Crew campaigns (`group_id` set) are visible only to member bots and are never broadcast,
+so real users literally cannot see or apply. **No Stripe, no Donny, no public campaigns.** Phase 1
+adds **no DB migrations and no edge-function changes** — it only *uses* the Phase 0 spine + the
+existing crew/content/review RPCs.
+
+- **Every marketplace write is RLS-real, as the bot** (a per-bot JWT via `mintBotSession`). The
+  service-role client is used ONLY for minting, `email_verified`, cohort reads, and teardown.
+- **Funnel** (one stage advanced per tick): crew → invite → accept → post free crew campaign →
+  apply → hire (`accept_application_with_collaboration`) → upload (metadata-only `file_uploads`) →
+  submit → dual-party completion (crew campaigns skip payout) → review → repeat. `record_crew_activity`
+  is called RPC-only (no `create-notification` leg) so **a bot never triggers an outbound email**.
+- **Teardown stays verified for crews:** `purge_synthetic_data()` leaves zero residue even with a
+  crew campaign present — the `campaigns.group_id → creator_groups` RESTRICT does not bite because the
+  campaign cascades before its crew (verified rollback-wrapped on prod).
+
+### Files
+
+`personas.ts` (curated pools + seeded PRNG), `clients.ts` (service + bot-scoped), `mint.ts`
+(`assertSyntheticEmail`, `mintBot`, `readCohort`), `session.ts` (`mintBotSession`), `types.ts`
+(cohort state + `Action`), `behavior/actions.ts` (executors), `behavior/graph.ts` (`planDay`/`runDay`),
+`run.ts` + `cli.ts` (entrypoint), `../.github/workflows/synthetic-weight.yml` (dormant scheduler).
+
+### Running the harness
+
+```bash
+npx vitest run sim/                 # unit tests (from repo root)
+npx tsc -p sim/tsconfig.json        # type-check the harness
+npx --yes tsx sim/cli.ts dry-run --n 25   # preview a cohort + first-tick plan (no client, no network)
+```
+
+`mint` / `tick` / `purge` are **boot-gated** — they refuse unless `SYNTHETIC_BOTS_ENABLED` reads
+back `true` and the Stripe keys are test keys. Env (harness-local, gitignored / CI secrets):
+`SIM_SUPABASE_URL`, `SIM_SUPABASE_ANON_KEY`, `SIM_SUPABASE_SECRET_KEY` (prod service-role),
+`SIM_STRIPE_SECRET_KEY` (`sk_test_…`), `SIM_STRIPE_PUBLISHABLE_KEY` (`pk_test_…`).
+
+### Go-live is two deliberate switches (never a merge)
+
+Merging Phase 1 leaves prod byte-unchanged (harness + a **dormant** `workflow_dispatch`-only
+workflow; kill switch OFF). Going live is: (1) flip `SYNTHETIC_BOTS_ENABLED` on and run the
+founder-authorized live smoke (`mint --n 5` → `tick`s → assert `aios_*` metrics unchanged +
+`get_simulation_stats` shows the cohort → `purge` → zero residue); then (2) uncomment the daily
+`schedule` cron. Flip the kill switch back OFF to return prod to inert.
