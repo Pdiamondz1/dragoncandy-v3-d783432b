@@ -183,25 +183,26 @@ serve(async (req) => {
       status: collaboration.status,
     });
 
-    // Synthetic Weight Engine safety spine: never settle real money to/from a
-    // synthetic (bot) creator. Test-mode Stripe keys are exempt (that's the
-    // whole point of the bot harness); a live key + synthetic creator refuses.
+    // Synthetic Weight Engine safety spine: never settle real money to/from a synthetic
+    // (bot) user. Check BOTH parties — the payout recipient (creator) AND the campaign
+    // owner who funded the escrow — because a synthetic (unfunded, test-mode) campaign
+    // paying a real creator in live mode would move real money out with none in.
+    // Test-mode Stripe keys are exempt (that's the whole point of the bot harness).
     const isTestMode = isTestKey(stripeKey);
-    const { data: synthRow, error: synthError } = await supabaseClient
+    const { data: synthRows, error: synthError } = await supabaseClient
       .from('synthetic_users')
       .select('user_id')
-      .eq('user_id', collaboration.creator_id)
-      .maybeSingle();
+      .in('user_id', [collaboration.creator_id, collaboration.campaign.user_id]);
     if (synthError && !isTestMode) {
-      // Money-safety: in LIVE mode, if we cannot verify the creator is non-synthetic, refuse.
+      // Money-safety: in LIVE mode, if we cannot verify BOTH parties are non-synthetic, refuse.
       logStep("Synthetic-user lookup failed in live mode — refusing payout", { error: synthError.message });
-      throw new Error("Refusing live-mode payout: could not verify creator is non-synthetic");
+      throw new Error("Refusing live-mode payout: could not verify parties are non-synthetic");
     }
     if (synthError) {
       logStep("Synthetic-user lookup failed (test mode — treated as not synthetic)", { error: synthError.message });
     }
-    if (shouldRefuseSettlement({ isTestMode, isSynthetic: !!synthRow })) {
-      throw new Error("Refusing live-mode payout to a synthetic user");
+    if (shouldRefuseSettlement({ isTestMode, isSynthetic: (synthRows?.length ?? 0) > 0 })) {
+      throw new Error("Refusing live-mode payout involving a synthetic user");
     }
 
     // Get creator's Stripe account
