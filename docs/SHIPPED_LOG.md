@@ -33,7 +33,7 @@
   `feat/synthetic-weight-engine`; kill switch OFF, 0 bots — inert).** Foundation for minting synthetic
   ("bot") users on **production** to add liveness/optics, prove load, and surface QA bugs, with the
   load-bearing guarantee that **no synthetic row ever reaches a founder metric or the data-flywheel
-  moat**. Migration `20260723120000` (+ four corrective migrations, see below): a `synthetic_users`
+  moat**. Migration `20260723131000` (+ three corrective migrations, see below): a `synthetic_users`
   registry auto-filled by extending `handle_new_user` (email `bot…@synthetic.dragoncandy.test` is the
   source of truth); `is_synthetic(uuid)`/`is_synthetic_campaign`/`is_synthetic_org` helpers
   (service-role only); a denormalized `is_synthetic` flag on the 5 rootless/telemetry tables stamped by
@@ -52,7 +52,7 @@
   `purge` **zero residue** (incl. orgs) → ROLLBACK (zero prod footprint). **Codex second review caught
   four real segregation gaps across three rounds, all fixed + re-verified on prod:** (R1) the spine
   migration's `CREATE OR REPLACE` of `handle_new_user` silently **reverted** two later migrations
-  (`account_scope='internal'` guard + `ON CONFLICT DO UPDATE` refresh) → corrective `20260723130000`
+  (`account_scope='internal'` guard + `ON CONFLICT DO UPDATE` refresh) → corrective `20260723132000`
   restores the latest body + the synthetic block; (R1) payout guard only checked the creator →
   widened to both parties; (R2) `aios_cost_stats.latest_alert` didn't filter synthetic →
   `20260723140000`; (R2) `/internal/weight` read synthetic-inclusive counts → now shows the physical

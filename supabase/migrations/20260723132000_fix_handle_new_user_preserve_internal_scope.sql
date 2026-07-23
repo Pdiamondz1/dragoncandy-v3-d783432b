@@ -1,4 +1,4 @@
--- CORRECTIVE: 20260723120000_synthetic_weight_safety_spine.sql rebuilt handle_new_user()
+-- CORRECTIVE: 20260723131000_synthetic_weight_safety_spine.sql rebuilt handle_new_user()
 -- from the OLD 20260427220001 body (per the plan's "reproduce verbatim" instruction), which
 -- unknowingly REVERTED two later definitions:
 --   * 20260610120000_refresh_profile_on_resignup.sql  — ON CONFLICT ... DO UPDATE re-signup refresh

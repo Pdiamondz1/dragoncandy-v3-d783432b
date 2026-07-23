@@ -39,7 +39,7 @@ export interface MinimalSupabaseClient {
  * passed service-role Supabase client.
  *
  * Column names confirmed against
- * supabase/migrations/20260723120000_synthetic_weight_safety_spine.sql (Task 0, verified
+ * supabase/migrations/20260723131000_synthetic_weight_safety_spine.sql (Task 0, verified
  * read-only against prod): feature_flags(name, is_enabled, description) — UNIQUE(name).
  *
  * Fail-closed: ANY error, a missing row, or a non-boolean value returns null — never

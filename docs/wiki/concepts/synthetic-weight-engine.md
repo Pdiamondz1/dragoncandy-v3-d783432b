@@ -78,7 +78,7 @@ run (see [[Testing auth.uid() RPCs and RLS on prod]]); `auth.users` has exactly 
   (`account_scope='internal'` guard for [[AIOS Stakeholder Invites]]; `ON CONFLICT DO UPDATE`
   re-signup refresh). The first spine migration reverted both on prod. **Always diff a shared function
   against its CURRENT prod definition (`pg_get_functiondef`), never an old migration file.** Fixed by
-  corrective migration `20260723130000`.
+  corrective migration `20260723132000`.
 - **Apply actor-OR-parent to EVERY party of a multi-party table.** Two rounds of Codex review caught
   single-party predicates: the payout guard (creator only → creator + campaign owner) and the
   `messages` count (`sender_id` only → sender + recipient). `dragonshare_boosts` correctly checks all
