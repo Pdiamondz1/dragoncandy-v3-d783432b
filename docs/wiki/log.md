@@ -1,5 +1,15 @@
 # Wiki Log
 
+## [2026-07-23] update | posting_schedule_status 'failed' CHECK gap (PR #326)
+Ingested [[Posting-Schedule Failed-Status Session]]. **Compounded** onto [[Content Delivery State
+Machine]] (new "Sibling CHECK-gap in the post-approval scheduling leg" note + frontmatter `sources`) —
+same recorded-vs-intended pattern as `content_status`. `campaigns.posting_schedule_status='failed'` was
+written (`confirm-posting-schedule`) and rendered (`CampaignScheduleSection`) but the CHECK forbade it →
+silent stuck at `pending_review` + dead "Schedule Failed" UI; migration `20260723130000` adds it (DB-only,
+no code change). New raw session cataloged in `index.md` Sources; `SHIPPED_LOG.md` prepended;
+`PROJECT_CONTEXT.md` §5 one Shipped line. No `DATABASE_SCHEMA`/`DESIGN_SYSTEM`/`CLAUDE.md` change (a CHECK
+value, not a table/column). RAG sync + [[verify-knowledge]] post-merge.
+
 ## [2026-07-23] ingest | Content-delivery state-machine drift repair + auto-approval revival (PR #325)
 Ingested [[Content State-Machine Drift Repair Session]]. **Compounded** onto
 [[Content Delivery State Machine]] (new "Prod Drift Incident & Repair" section + the
