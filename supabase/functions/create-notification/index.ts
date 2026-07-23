@@ -168,10 +168,15 @@ const handler = async (req: Request): Promise<Response> => {
       if (resolvedEmailType) {
         // Synthetic Weight Engine: never send real email to bot accounts (protects sender
         // reputation). The in-app notification row above is still created for bots — only the
-        // outbound email leg is suppressed.
-        const { data: isSyntheticRecipient } = await admin.rpc("is_synthetic", {
+        // outbound email leg is suppressed. Fail-open on RPC error (log it): bot suppression is
+        // also enforced downstream in send-notification-email by email suffix, and we must not
+        // drop a real user's email on a transient is_synthetic() error.
+        const { data: isSyntheticRecipient, error: syntheticCheckError } = await admin.rpc("is_synthetic", {
           p_user_id: recipientId,
         });
+        if (syntheticCheckError) {
+          console.error("[email] is_synthetic check failed (sending anyway):", syntheticCheckError.message);
+        }
         if (isSyntheticRecipient) {
           console.warn("[email] suppressed send to synthetic recipient:", recipientId);
         } else {
