@@ -186,15 +186,21 @@ serve(async (req) => {
     // Synthetic Weight Engine safety spine: never settle real money to/from a
     // synthetic (bot) creator. Test-mode Stripe keys are exempt (that's the
     // whole point of the bot harness); a live key + synthetic creator refuses.
+    const isTestMode = isTestKey(stripeKey);
     const { data: synthRow, error: synthError } = await supabaseClient
       .from('synthetic_users')
       .select('user_id')
       .eq('user_id', collaboration.creator_id)
       .maybeSingle();
-    if (synthError) {
-      logStep("Synthetic-user lookup failed (treated as not synthetic)", { error: synthError.message });
+    if (synthError && !isTestMode) {
+      // Money-safety: in LIVE mode, if we cannot verify the creator is non-synthetic, refuse.
+      logStep("Synthetic-user lookup failed in live mode — refusing payout", { error: synthError.message });
+      throw new Error("Refusing live-mode payout: could not verify creator is non-synthetic");
     }
-    if (shouldRefuseSettlement({ isTestMode: isTestKey(stripeKey), isSynthetic: !!synthRow })) {
+    if (synthError) {
+      logStep("Synthetic-user lookup failed (test mode — treated as not synthetic)", { error: synthError.message });
+    }
+    if (shouldRefuseSettlement({ isTestMode, isSynthetic: !!synthRow })) {
       throw new Error("Refusing live-mode payout to a synthetic user");
     }
 
