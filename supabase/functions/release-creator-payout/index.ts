@@ -123,12 +123,11 @@ async function finalizePayoutState(
   campaignId: string,
 ): Promise<boolean> {
   for (let attempt = 1; attempt <= 4; attempt++) {
-    // Attempt BOTH terminal updates each try. Moving escrow to 'released' is a deliberate crude
-    // re-entry guard: 'released' is outside the escrow gate's retryable set ('held'/'releasing'), so it
-    // blocks a re-invocation from re-crediting the non-idempotent wallet or re-transferring. (Reliably
-    // guarding re-entry — incl. the rare both-updates-fail case, where escrow stays retryable — needs a
-    // durable per-collaboration payout marker; that's the Complete-scope follow-up. This helper only
-    // adds retry-on-transient over the previous single-shot updates.)
+    // Attempt BOTH terminal updates each try. Re-entry is now guarded by the durable payout marker
+    // (`payout_executed_at` / `stripe_transfer_id`, set the instant money moves) — NOT by this escrow
+    // flip: a re-invocation short-circuits to finalize-only via the early re-entry guard in the handler.
+    // Moving escrow to 'released' is just the terminal business state. Retrying re-sets the same terminal
+    // values (idempotent).
     const { error: collabErr } = await supabaseClient
       .from('campaign_collaborations')
       .update({ status: 'completed', completed_at: new Date().toISOString(), content_status: 'approved' })
@@ -146,6 +145,29 @@ async function finalizePayoutState(
       collaboration: collabErr?.message,
       campaign: campaignErr?.message,
     });
+    if (attempt < 4) await new Promise((r) => setTimeout(r, 400 * attempt));
+  }
+  return false;
+}
+
+// Set the durable "paid" marker for the transfer path the instant the Stripe transfer confirms, BEFORE
+// finalize. `.is('payout_executed_at', null)` makes it set-once: a concurrent winner (the SAME idempotent
+// transfer) that already marked is not overwritten, and a match-of-0-rows (already marked) is treated as
+// success. Retried so a transient blip doesn't force a needless client retry. Returns true once the
+// marker is durably set.
+async function markTransferExecuted(
+  supabaseClient: ReturnType<typeof createClient>,
+  collaborationId: string,
+  transferId: string,
+): Promise<boolean> {
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    const { error } = await supabaseClient
+      .from('campaign_collaborations')
+      .update({ payout_executed_at: new Date().toISOString(), stripe_transfer_id: transferId })
+      .eq('id', collaborationId)
+      .is('payout_executed_at', null);
+    if (!error) return true;
+    logStep('Marker write attempt failed', { attempt, error: error.message });
     if (attempt < 4) await new Promise((r) => setTimeout(r, 400 * attempt));
   }
   return false;
@@ -212,11 +234,36 @@ serve(async (req) => {
       throw new Error("Only the campaign owner can release payments");
     }
 
-    logStep("Collaboration found", { 
-      campaignId: collaboration.campaign_id, 
+    logStep("Collaboration found", {
+      campaignId: collaboration.campaign_id,
       creatorId: collaboration.creator_id,
       status: collaboration.status,
     });
+
+    // ── Durable re-entry guard ──────────────────────────────────────────────────────────────────────
+    // If the payout already executed for this collaboration, NEVER move money again — only (re)run the
+    // finalize state updates. The marker (`payout_executed_at` / `stripe_transfer_id`) is written AFTER
+    // the Stripe transfer confirms, or ATOMICALLY with the pending-balance credit, so "marker set ⇒ money
+    // moved" holds by construction. This handles sequential client retries AND the auto-approve-content
+    // reconciliation sweep, and it runs BEFORE the escrow gate so a reconciliation call (escrow already
+    // 'released') finalizes instead of throwing.
+    if (collaboration.payout_executed_at || collaboration.stripe_transfer_id) {
+      logStep("Payout already executed — finalize-only re-entry", {
+        collaborationId,
+        payoutExecutedAt: collaboration.payout_executed_at,
+        transferId: collaboration.stripe_transfer_id,
+      });
+      const finalized = await finalizePayoutState(supabaseClient, collaborationId, collaboration.campaign_id);
+      return new Response(JSON.stringify({
+        success: finalized,
+        finalized,
+        alreadyPaid: true,
+        ...(finalized ? {} : { needsRetry: true }),
+      }), {
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+        status: finalized ? 200 : 500,
+      });
+    }
 
     // Get creator's Stripe account
     const { data: creatorProfile } = await supabaseClient
@@ -267,6 +314,34 @@ serve(async (req) => {
         .eq('user_id', collaboration.creator_id);
     }
     if (creatorPayoutReady) {
+      // Cross-path race guard: a concurrent PENDING-path invocation for the same collaboration can credit
+      // the wallet + set the marker (atomically, under its FOR UPDATE lock) between our initial read and
+      // here. Re-check right before moving money on the transfer path; if it's already claimed, do NOT
+      // also transfer — finalize-only. This NARROWS (does not fully eliminate — the residual is the
+      // in-flight transfer window) the transfer-vs-pending double-pay, and stays crash-safe: we never set
+      // the marker before the transfer, so this can't mark-paid-without-paying. Fully closing it needs the
+      // wallet-first-then-idempotent-flush redesign. See docs/wiki/concepts/payout-finalization-consistency.md.
+      {
+        const { data: recheck } = await supabaseClient
+          .from('campaign_collaborations')
+          .select('payout_executed_at, stripe_transfer_id')
+          .eq('id', collaborationId)
+          .single();
+        if (recheck?.payout_executed_at || recheck?.stripe_transfer_id) {
+          logStep('Payout claimed by a concurrent invocation — finalize-only', { collaborationId });
+          const finalized = await finalizePayoutState(supabaseClient, collaborationId, campaign.id);
+          return new Response(JSON.stringify({
+            success: finalized,
+            finalized,
+            alreadyPaid: true,
+            ...(finalized ? {} : { needsRetry: true }),
+          }), {
+            headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+            status: finalized ? 200 : 500,
+          });
+        }
+      }
+
       // Ledger: record intent BEFORE moving money
       try {
         await writePaymentEvent(supabaseClient, {
@@ -333,6 +408,29 @@ serve(async (req) => {
 
       logStep("Transfer created", { transferId: transfer.id, amount: creatorPayout });
 
+      // Durable "paid" marker — set the INSTANT the transfer confirms, before anything else. Every later
+      // invocation now gates on this (re-entry guard above) and never re-transfers. If we cannot persist
+      // it, surface for retry: the Stripe idempotency key (`payout_${collaborationId}`) still de-dupes a
+      // retry within ~24h (returns the SAME transfer — no double-pay). Do NOT revert escrow: money moved.
+      const marked = await markTransferExecuted(supabaseClient, collaborationId, transfer.id);
+      if (!marked) {
+        // Money MOVED but we could not persist the durable marker (DB write failing). We must NOT invite a
+        // retry here: with no marker AND escrow still 'releasing' (retryable), a later retry — past Stripe's
+        // ~24h idempotency-key retention — would re-enter past the guard and create a SECOND transfer
+        // (double-pay). Unlike the finalize-failure path below (where the marker IS persisted, so retry is
+        // safely finalize-only), this is a MANUAL / Stripe-verified reconciliation case: a human (or a
+        // Stripe-list-vs-DB job) must confirm the transfer before re-driving. This rare Stripe-up/DB-down
+        // split-brain is invisible to the auto reconciliation sweep (no marker to key on); fully
+        // self-healing it needs the Stripe-query guard. See payout-finalization-consistency.md.
+        console.error('CRITICAL: transfer succeeded but durable marker write failed after retries — MANUAL RECONCILIATION NEEDED (money moved; marker + escrow unrecorded). NOT inviting a retry: a >24h retry with no marker could double-pay.', {
+          collaborationId, transferId: transfer.id,
+        });
+        return new Response(JSON.stringify({ success: false, manualReconciliation: true, error: 'payout_marker_write_failed' }), {
+          headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+          status: 500,
+        });
+      }
+
       try {
         await writePaymentEvent(supabaseClient, {
           event_type: 'payment_released',
@@ -363,18 +461,18 @@ serve(async (req) => {
         console.error('Payment event logging failed (non-blocking):', auditErr);
       }
 
-      // Phase 3: Finalize DB state (retried). On persistent failure we do NOT invite a client retry
-      // and fall through to the 200 below: the money already moved, and the Stripe transfer's
-      // idempotency key is only durable for ~24h (Stripe prunes it) with no persisted transfer marker
-      // to gate on — so a later retry could create a SECOND transfer (double-pay). The retry loop above
-      // self-heals the common transient-DB case; a persistent failure leaves the transfer done and the
-      // collaboration un-finalized (escrow stuck at 'releasing'), recoverable by reconciliation.
-      // (Safely surfacing this for retry needs a durable transfer marker + a reconciliation sweep —
-      // a Complete-scope follow-up.)
+      // Phase 3: Finalize DB state (retried). The durable marker is set (money moved + recorded), so a
+      // re-invocation is finalize-only — we can now SAFELY surface a persistent finalize failure for
+      // retry (500 {needsRetry}) instead of #328's fire-and-forget 200. The auto-approve-content
+      // reconciliation sweep also re-drives finalize for any marked-but-unfinalized row.
       const finalized = await finalizePayoutState(supabaseClient, collaborationId, campaign.id);
       if (!finalized) {
-        console.error('CRITICAL: Transfer succeeded but collaboration finalize failed after retries — manual reconciliation needed (escrow stuck at releasing; content_status/completed not set). NOT inviting a retry: the Stripe idempotency key is not durable enough to guarantee no double-pay.', {
+        console.error('Transfer + marker done but finalize failed after retries — surfacing for retry (re-entry is finalize-only; reconciliation will also heal).', {
           collaborationId, transferId: transfer.id,
+        });
+        return new Response(JSON.stringify({ success: false, needsRetry: true, transferId: transfer.id, error: 'finalize_failed' }), {
+          headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+          status: 500,
         });
       }
 
@@ -395,56 +493,66 @@ serve(async (req) => {
         status: 200,
       });
     } else {
-      // Creator hasn't completed onboarding - add to pending balance atomically
-      const newBalance = await supabaseClient.rpc('increment_pending_balance', {
+      // Creator hasn't completed onboarding — credit the pending wallet ATOMICALLY with the durable
+      // marker via one SECURITY DEFINER RPC. Row-locked inside the RPC, so concurrent invocations cannot
+      // double-credit the (non-idempotent) wallet: exactly one credits + marks, the rest return 'already'.
+      // On error the RPC's transaction rolls back entirely (no partial credit, no marker) — safe to retry.
+      const { data: creditResult, error: creditError } = await supabaseClient.rpc('credit_pending_balance_for_payout', {
+        p_collaboration_id: collaborationId,
         p_user_id: collaboration.creator_id,
         p_amount: creatorPayout,
-        p_profile_type: 'creator',
+      });
+      if (creditError) {
+        throw new Error(`Failed to credit pending balance: ${creditError.message}`);
+      }
+      const alreadyCredited = creditResult === 'already';
+
+      logStep(alreadyCredited ? "Pending balance already credited (re-entry)" : "Added to pending balance", {
+        added: alreadyCredited ? 0 : creatorPayout,
       });
 
-      logStep("Added to pending balance", {
-        previousBalance: creatorProfile?.pending_balance || 0,
-        added: creatorPayout,
-      });
+      // Ledger events only when we actually credited this time (skip on a concurrent-race 'already').
+      if (!alreadyCredited) {
+        try {
+          await writePaymentEvent(supabaseClient, {
+            event_type: 'content_approved',
+            entity_type: 'collaboration',
+            entity_id: collaborationId,
+            campaign_id: campaign.id,
+            actor_id: callerId ?? undefined,
+            actor_role: 'business',
+          }, '[RELEASE-CREATOR-PAYOUT]');
+        } catch (auditErr) {
+          console.error('Payment event logging failed (non-blocking):', auditErr);
+        }
 
-      try {
-        await writePaymentEvent(supabaseClient, {
-          event_type: 'content_approved',
-          entity_type: 'collaboration',
-          entity_id: collaborationId,
-          campaign_id: campaign.id,
-          actor_id: callerId ?? undefined,
-          actor_role: 'business',
-        }, '[RELEASE-CREATOR-PAYOUT]');
-      } catch (auditErr) {
-        console.error('Payment event logging failed (non-blocking):', auditErr);
+        try {
+          await writePaymentEvent(supabaseClient, {
+            event_type: 'payout_pending_wallet',
+            entity_type: 'collaboration',
+            entity_id: collaborationId,
+            campaign_id: campaign.id,
+            actor_id: collaboration.creator_id,
+            actor_role: 'creator',
+            amount_cents: Math.round(creatorPayout * 100),
+            metadata: { reason: 'Creator Stripe onboarding incomplete' },
+          }, '[RELEASE-CREATOR-PAYOUT]');
+        } catch (auditErr) {
+          console.error('Payment event logging failed (non-blocking):', auditErr);
+        }
       }
 
-      try {
-        await writePaymentEvent(supabaseClient, {
-          event_type: 'payout_pending_wallet',
-          entity_type: 'collaboration',
-          entity_id: collaborationId,
-          campaign_id: campaign.id,
-          actor_id: collaboration.creator_id,
-          actor_role: 'creator',
-          amount_cents: Math.round(creatorPayout * 100),
-          metadata: { reason: 'Creator Stripe onboarding incomplete' },
-        }, '[RELEASE-CREATOR-PAYOUT]');
-      } catch (auditErr) {
-        console.error('Payment event logging failed (non-blocking):', auditErr);
-      }
-
-      // Finalize DB state (retried). The pending-balance credit above is NOT idempotent
-      // (increment_pending_balance just adds) AND the frontend prompts a retry on any non-2xx — so on
-      // persistent failure we must NOT return an error here: a caller retry would double-credit the
-      // wallet. Log for reconciliation and fall through to the 200 below. The creator's money is safely
-      // in the wallet; only the collaboration's terminal state didn't finalize (recoverable by
-      // reconciliation — a follow-up), and the retry loop above already self-heals the common transient case.
+      // Finalize DB state (retried). The wallet credit + marker are already committed atomically, so a
+      // re-invocation is finalize-only (re-entry guard) — we can SAFELY surface a persistent finalize
+      // failure for retry (500 {needsRetry}) without risking a double-credit. Reconciliation also heals.
       const finalized = await finalizePayoutState(supabaseClient, collaborationId, campaign.id);
       if (!finalized) {
-        console.error('CRITICAL: Pending-balance credited but collaboration finalize failed after retries — manual reconciliation needed (wallet IS credited; content_status/escrow not updated). NOT returning an error: a retry would double-credit the non-idempotent wallet.', {
+        console.error('Pending-balance credited + marked but finalize failed after retries — surfacing for retry (re-entry is finalize-only; reconciliation will also heal).', {
           collaborationId,
+        });
+        return new Response(JSON.stringify({ success: false, needsRetry: true, error: 'finalize_failed' }), {
+          headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+          status: 500,
         });
       }
 

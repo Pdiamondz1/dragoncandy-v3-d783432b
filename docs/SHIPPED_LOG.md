@@ -29,6 +29,37 @@
 
 ---END-HEADER---
 
+- Payout durable re-entrancy — **shipped + deployed to prod (2026-07-23, `feat/payout-durable-marker`,
+  PR #329).** The "Complete" follow-up that #328 (below) could only ship the safe subset of. Makes
+  `release-creator-payout` **durably re-entrant** so retries and reconciliation can't double-pay. Design
+  principle: **marker = "money moved", set AFTER money moves — never a pre-claim.** A pre-claim (marker
+  before the transfer) would, on a crash between claim and transfer, make a later re-entry finalize-only →
+  collaboration marked paid, creator never paid; that marked-not-paid class is exactly what this avoids,
+  so *"marker set ⇒ money moved"* holds by construction and reconciliation is trivial. **Two new nullable
+  columns** on `campaign_collaborations` (`payout_executed_at`, `stripe_transfer_id`; migration
+  `20260723160000`) and a **new atomic SECURITY DEFINER RPC** `credit_pending_balance_for_payout`
+  (migration `20260723170000`) that row-locks the collaboration `FOR UPDATE`, checks the marker, credits
+  `creator_profiles.pending_balance` and sets `payout_executed_at` in one transaction (`RAISE`s if no
+  wallet row or if `p_user_id` ≠ the row's `creator_id`; service-role only via REVOKE + in-body role
+  guard). **`release-creator-payout`:** an early re-entry guard (before the escrow gate) → finalize-only
+  when the marker is set; the transfer path marks the instant Stripe confirms; the pending path uses the
+  atomic RPC instead of the non-idempotent `increment_pending_balance`; finalize failures now safely
+  surface `500 {needsRetry}` (was #328's fire-and-forget 200); the marker-write-failure split-brain is
+  non-retry / manual-reconciliation (Codex P1 fix — inviting a retry there could double-pay past Stripe's
+  ~24h idempotency window). **`auto-approve-content`:** the reconciliation sweep (re-invokes finalize-only
+  for marked-but-unfinalized rows) gained a 5-min min-age guard. **Strictly better than #328 on every
+  axis** — closes sequential double-credit, finalize-without-pay, fire-and-forget-200, and same-path
+  concurrent double-pay (Stripe idempotency key / `FOR UPDATE` lock). Verified on prod: both migrations
+  live (RPC ACL `{postgres,service_role}` only), both edge fns deployed (`verify_jwt=false` preserved,
+  boot-checked), and a rollback-wrapped RPC test returned `result=credited marker_set=t bal_delta=1.23`.
+  Reviews: data-exposure PASS, edge-function-reviewer ISSUES resolved-or-documented, Codex clean (P1
+  fixed). **Two documented residuals** (narrower than what prod had), both closed by the same next step —
+  the **wallet-first-then-idempotent-flush redesign**: (1) a very narrow transfer-vs-pending *cross-path*
+  concurrent double-pay (needs concurrent invocation + stale cached flag on both reads + a transient
+  Stripe error on one of two `accounts.retrieve` calls; narrowed by a pre-transfer re-check, not fully
+  closable here — can't hold a DB lock across the external Stripe call); (2) a Stripe-up/DB-down
+  marker-write split-brain (non-retry, manual/Stripe-verified reconciliation). → `docs/wiki/concepts/payout-finalization-consistency.md`
+
 - Payout finalize retry + safe failure handling — **shipped + deployed to prod (2026-07-23,
   `fix/payout-db-consistency`, PR #328).** Third increment from the content-delivery-stabilization
   backlog (after #325 drift repair + #326 posting-schedule). `release-creator-payout` moves money then

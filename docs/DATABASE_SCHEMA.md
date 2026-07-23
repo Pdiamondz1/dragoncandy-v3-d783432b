@@ -49,6 +49,20 @@
 > (`pg_cron` job `auto-approve-content`, `*/15`). Verify object existence directly (`pg_proc` /
 > `information_schema` / `pg_trigger`), not just `schema_migrations`.
 
+> **Payout durable re-entrancy (`release-creator-payout`) — 2026-07-23, [[Payout Finalization & Re-entrancy]].**
+> `campaign_collaborations` gained two nullable columns: **`payout_executed_at timestamptz`** and
+> **`stripe_transfer_id text`** (migration `20260723160000`). `payout_executed_at` is the **durable
+> re-entry marker — set the instant money moves (Stripe transfer OR pending-balance credit), so
+> "marker set ⇒ money moved" holds by construction**; `release-creator-payout`'s early guard short-circuits
+> any re-invocation with the marker set to finalize-only (no re-credit / re-transfer). The pending-balance
+> path now credits + marks atomically in **`credit_pending_balance_for_payout(p_collaboration_id, p_user_id,
+> p_amount)`** (migration `20260723170000`; SECURITY DEFINER, `search_path=public`, **service-role only** —
+> REVOKE public/anon/authenticated + in-body `request.jwt.claims->>'role'='service_role'` guard; row-locks
+> the collaboration `FOR UPDATE`, `RAISE`s if no `creator_profiles` row or if `p_user_id` ≠ the row's
+> `creator_id`), **replacing the non-idempotent `increment_pending_balance`** on this path. A `*/15`
+> reconciliation sweep in `auto-approve-content` re-drives finalize-only for marked-but-unfinalized rows
+> (5-min min-age guard).
+
 ## Creator Groups (Crews)
 
 A business's standing private roster of creators; a campaign scoped to a crew is visible only to its
