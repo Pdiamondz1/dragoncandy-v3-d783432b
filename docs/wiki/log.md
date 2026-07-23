@@ -1,5 +1,23 @@
 # Wiki Log
 
+## [2026-07-23] ingest | Content-delivery state-machine drift repair + auto-approval revival (PR #325)
+Ingested [[Content State-Machine Drift Repair Session]]. **Compounded** onto
+[[Content Delivery State Machine]] (new "Prod Drift Incident & Repair" section + the
+`submitted → rejected` transition row + a note that the RPC is service-role-only and the client
+never calls it; frontmatter `updated`/`sources` bumped) rather than a new page — that page owns
+the `content_status` machine and had documented it as working. The collaboration state machine
+(`20260425000000` + `20260408100002`) was recorded in `schema_migrations` but its objects were
+MISSING from prod (`transition_content_status`, `content_disputes`, both triggers, budget RPCs +
+`campaigns.budget_spent`, the 9-value CHECK), silently breaking auto-approval/reject/dispute.
+Auto-approval was dead three ways (wrong `submitted_at` anchor → `content_submitted_at`, no
+`pg_cron` job, missing RPC + CHECK). New raw session cataloged in `index.md` Sources; the
+`[[Content Delivery State Machine]]` Concepts entry refreshed. `DATABASE_SCHEMA.md` gains a
+`content_disputes` row + `campaigns.budget_spent` note. `SHIPPED_LOG.md` prepended;
+`PROJECT_CONTEXT.md` §5 one Shipped line (the broad "Content delivery system stabilization"
+workstream stays In flight — this repaired one major chunk). No `DESIGN_SYSTEM`/`CLAUDE.md`
+change. Durable lesson: `schema_migrations` recording ≠ objects exist on prod — verify via
+`pg_proc`/`information_schema`. RAG sync + [[verify-knowledge]] are post-merge (PR open).
+
 ## [2026-07-20] ingest | create_counter_offer authorization hardening (fix/counter-offer-authz)
 Ingested [[Counter-Offer Authorization Session]]. **Compounded** onto [[Service-Role Data Exposure]] —
 flipped its "Open finding — create_counter_offer" section to a dated **Resolved** record (the three
