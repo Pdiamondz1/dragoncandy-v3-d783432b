@@ -119,15 +119,24 @@ async function cmdMint(args: Args): Promise<void> {
     }
   }
   console.warn(`[mint] minted ${ok}/${cohort.length} bots (cohort='${args.cohort}')`);
+  // A partial mint must NOT report green: the whole cohort is the contract, and a scheduled/smoke
+  // run that quietly minted fewer bots (e.g. a deterministic email already exists, or a transient
+  // Supabase error) would leave the harness exercising a smaller population than intended. Re-minting
+  // requires a purge first (deterministic emails collide on re-run).
+  if (ok < cohort.length) {
+    throw new Error(`[mint] only ${ok}/${cohort.length} bots minted — cohort incomplete (purge before re-minting; see errors above)`);
+  }
 }
 
 async function cmdTick(): Promise<void> {
   const svc = serviceClient();
   await bootGate(svc);
   const state = await readCohort(svc);
+  // An empty cohort must fail, not report green: the scheduled workflow command IS `tick`, so a
+  // forgotten/failed mint or a post-purge run would otherwise look healthy while exercising none of
+  // the marketplace — masking exactly the breakage this harness exists to surface.
   if (state.bots.length === 0) {
-    console.warn("[tick] no synthetic cohort found — run `mint` first.");
-    return;
+    throw new Error("[tick] no synthetic cohort found — run `mint` first.");
   }
   const floor = floorFor(state.bots.length);
   const plan = planDay(state, floor);
