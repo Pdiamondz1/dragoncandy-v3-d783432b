@@ -46,11 +46,15 @@ jobs:
         with:
           node-version: "24"
       - run: npm ci
-      - name: Run harness (${{ inputs.command || 'tick' }})
+      - name: Run harness
         env:
           SIM_SUPABASE_URL: ${{ secrets.SIM_SUPABASE_URL }}
           SIM_SUPABASE_ANON_KEY: ${{ secrets.SIM_SUPABASE_ANON_KEY }}
           SIM_SUPABASE_SECRET_KEY: ${{ secrets.SIM_SUPABASE_SECRET_KEY }}
           SIM_STRIPE_SECRET_KEY: ${{ secrets.SIM_STRIPE_SECRET_KEY }}
           SIM_STRIPE_PUBLISHABLE_KEY: ${{ secrets.SIM_STRIPE_PUBLISHABLE_KEY }}
-        run: npx --yes tsx sim/cli.ts "${{ inputs.command || 'tick' }}" --n "${{ inputs.n || '25' }}"
+          # Inputs go through env vars — NEVER interpolated into the run script — so a crafted
+          # `n`/`command` value cannot break out of the shell and reach the secrets above.
+          SIM_COMMAND: ${{ inputs.command || 'tick' }}
+          SIM_N: ${{ inputs.n || '25' }}
+        run: npx --yes tsx sim/cli.ts "$SIM_COMMAND" --n "$SIM_N"

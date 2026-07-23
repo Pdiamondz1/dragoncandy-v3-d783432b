@@ -131,10 +131,17 @@ export async function executeAction(action: Action, ctx: ActionContext): Promise
 
     case "uploadDeliverable": {
       const bot = await ctx.botFor(action.creatorId);
+      // file_uploads requires bucket_name/filename/original_filename/mime_type in addition to
+      // file_path/file_size/uploaded_by (all NOT NULL, no default — verified live). Metadata-only
+      // (no storage object) → teardown stays covered by purge_synthetic_data via campaign_id cascade.
       const { error: fuErr } = await bot.from("file_uploads").insert({
         campaign_id: action.campaignId,
         uploaded_by: action.creatorId,
+        bucket_name: "campaign-deliverables",
         file_path: `synthetic/${action.collaborationId}/deliverable.txt`,
+        filename: "deliverable.txt",
+        original_filename: "deliverable.txt",
+        mime_type: "text/plain",
         file_size: 1024,
       });
       orThrow("uploadDeliverable (file_uploads)", fuErr);
