@@ -222,6 +222,38 @@ clients read their own rows (`auth.uid() = user_id`).
 |-|-|
 | `leads` | Public landing-page lead capture (the "Contact" form). **Private** — internal-team read/update RLS via `is_internal_user()`, and **no anon/authenticated INSERT or SELECT policy** (holds contact PII). Rows are inserted by the `capture-lead` edge function with the service-role key (bypasses RLS); the edge fn enforces a honeypot + a fail-open per-IP throttle and Resend-notifies the team. `audience` ∈ business/brand/creator/other; `status` new→contacted→qualified→…; `metadata jsonb` (user_agent, ip). |
 
+## Synthetic Weight Engine
+
+Safety spine for synthetic ("bot") users minted on prod (Phase 0). Kill switch
+`SYNTHETIC_BOTS_ENABLED` (feature_flags, default off, fail-closed). Every synthetic row is tagged
+and excluded from founder metrics + the data-flywheel moat via a two-sided **actor-OR-parent**
+predicate. See `docs/wiki/concepts/synthetic-weight-engine.md`.
+
+| Table | Purpose |
+|-|-|
+| `synthetic_users` | Registry of bot accounts (`user_id` PK → `auth.users` ON DELETE CASCADE, `cohort`, `persona`). Auto-filled by the extended `handle_new_user` trigger when a `bot…@synthetic.dragoncandy.test` account signs up (email is the source of truth). RLS: internal-`SELECT` only, no client write policy (writes via service_role / SECURITY DEFINER). |
+| `sim_load_snapshots` | Per-run load metrics (`active_connections`/`max_connections`/`reserved_headroom`/`avg_query_ms`/`error_rate`) for the Phase-4 burst/tier-scaling proof. Internal-`SELECT` RLS. |
+
+> **Denormalized `is_synthetic boolean default false`** added (nullable) to 5 rootless/telemetry
+> tables — `payment_events`, `analytics_events`, `dragonshare_events`, `pricing_funnel_events`,
+> `donny_cost_ledger` — stamped by `BEFORE INSERT` triggers (payment = actor-OR-campaign; dragonshare
+> = actor-OR-org-owner; the rest single-party by `user_id`). This is the column a future training
+> export keys on. `platform_weight` also gained `users_total_real` + `row_counts_real` (synthetic-
+> excluded parallel counts; the physical totals stay synthetic-inclusive by design — real disk/rows
+> drive scaling decisions, so `/internal/weight` shows totals with a "real" subcount).
+>
+> **Functions (SECURITY DEFINER, `search_path=public`):** `is_synthetic(uuid)` /
+> `is_synthetic_campaign(uuid)` / `is_synthetic_org(uuid)` (exists-in-registry / campaign-owner /
+> org-owner) — **service_role only** (revoked from public/anon/authenticated). `get_simulation_stats()`
+> — the ONE surface that intentionally SHOWS synthetic (internal-gated, authenticated+service_role;
+> aggregate counts only). `purge_synthetic_data()` — service_role-only leaf-first teardown (deletes
+> rootless ledgers before `auth.users`; explicitly deletes the non-cascading synthetic org rows —
+> `organizations`/`org_units` have no `auth.users` FK, ownership only via `org_members.role='owner'`).
+> `aios_platform_stats`/`aios_revenue_stats`/`aios_cost_stats` + `capture_platform_weight` were
+> rewritten to exclude synthetic (actor-OR-parent). The extended `handle_new_user` **preserves** the
+> `account_scope='internal'` guard + `ON CONFLICT DO UPDATE` refresh (a corrective migration restored
+> these after the initial spine migration reverted them — caught by the Codex second review).
+
 ## Social & Outstand Integration
 
 | Table | Purpose |

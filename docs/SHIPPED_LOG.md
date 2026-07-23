@@ -29,6 +29,44 @@
 
 ---END-HEADER---
 
+- Synthetic Weight Engine — Phase 0 safety spine — **shipped + live on prod (2026-07-23,
+  `feat/synthetic-weight-engine`; kill switch OFF, 0 bots — inert).** Foundation for minting synthetic
+  ("bot") users on **production** to add liveness/optics, prove load, and surface QA bugs, with the
+  load-bearing guarantee that **no synthetic row ever reaches a founder metric or the data-flywheel
+  moat**. Migration `20260723120000` (+ four corrective migrations, see below): a `synthetic_users`
+  registry auto-filled by extending `handle_new_user` (email `bot…@synthetic.dragoncandy.test` is the
+  source of truth); `is_synthetic(uuid)`/`is_synthetic_campaign`/`is_synthetic_org` helpers
+  (service-role only); a denormalized `is_synthetic` flag on the 5 rootless/telemetry tables stamped by
+  `BEFORE INSERT` triggers; founder-metric exclusion via a two-sided **actor-OR-parent** predicate in
+  `aios_platform_stats`/`aios_revenue_stats`/`aios_cost_stats` + `platform_weight.*_real`; the
+  `SYNTHETIC_BOTS_ENABLED` kill switch (default off, fail-closed); `get_simulation_stats()` (the one
+  surface that SHOWS synthetic) behind the new `/internal/simulation` founder dashboard; and
+  `purge_synthetic_data()` leaf-first teardown (deletes rootless ledgers before `auth.users` and the
+  non-cascading synthetic org rows). Edge-fn guards: `donny-cost-rollup` excludes synthetic from the AI
+  cap; `release-creator-payout` refuses live-mode settlement if **either** party (creator or campaign
+  owner) is synthetic (pure unit-tested `shouldRefuseSettlement`, live-mode read-error fails closed);
+  `send-notification-email`/`send-welcome-email`/`create-notification` suppress outbound email to bot
+  addresses (in-app row still written). Harness scaffold `sim/env.ts` (fail-closed `assertBootSafety`
+  on test-key + kill-switch, unit-tested) + `sim/README.md`. **Proven** on a rollback-wrapped 5-bot
+  round-trip under `REPEATABLE READ`: mint 5 → mixed activity → founder metrics **byte-identical** →
+  `purge` **zero residue** (incl. orgs) → ROLLBACK (zero prod footprint). **Codex second review caught
+  four real segregation gaps across three rounds, all fixed + re-verified on prod:** (R1) the spine
+  migration's `CREATE OR REPLACE` of `handle_new_user` silently **reverted** two later migrations
+  (`account_scope='internal'` guard + `ON CONFLICT DO UPDATE` refresh) → corrective `20260723130000`
+  restores the latest body + the synthetic block; (R1) payout guard only checked the creator →
+  widened to both parties; (R2) `aios_cost_stats.latest_alert` didn't filter synthetic →
+  `20260723140000`; (R2) `/internal/weight` read synthetic-inclusive counts → now shows the physical
+  total (correct for scaling) **and** a real subcount; (R3) `messages` (a two-party table) excluded on
+  `sender_id` only → `20260723150000` checks sender **and** recipient. **Lessons:** when
+  `CREATE OR REPLACE`-ing a shared function, diff against its CURRENT prod definition
+  (`pg_get_functiondef`), never an old migration file; apply actor-OR-parent to **every** party of a
+  multi-party table (payout, messages); the rollback-wrapped prod proof (`set_config` fakes
+  `auth.uid()` for the internal-gated RPCs; `auth.users` has one pure-SQL insert trigger so no
+  webhook/email escapes) validates the whole spine with zero footprint. Phases 1–4 (identity, behavior
+  engine, drive adapters, scale-to-N, load proof) are separate plans. See
+  `docs/wiki/concepts/synthetic-weight-engine.md` ·
+  `docs/superpowers/specs/2026-07-23-synthetic-weight-engine-design.md`.
+
 - create_counter_offer authorization hardening — **shipped + applied to prod (2026-07-20,
   `fix/counter-offer-authz`).** Closed the open finding filed on `docs/wiki/concepts/service-role-data-exposure.md`
   during the 2026-07-19 pricing work. `create_counter_offer` was a `SECURITY DEFINER` RPC with
