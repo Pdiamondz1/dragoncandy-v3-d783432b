@@ -1,0 +1,16 @@
+{
+  "name": "dragoncandy-sim",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "description": "Synthetic Weight Engine — bot harness for load-testing DragonCandy against synthetic (never-billed) users. Test-mode Stripe + a fail-closed kill switch only; see sim/env.ts.",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.50.0"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^9.0.0"
+  }
+}
