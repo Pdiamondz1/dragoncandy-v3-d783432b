@@ -68,6 +68,30 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-23] Payout finalize retry + safe failure handling (PR #328)
+- Output: bundled INTO the work PR #328 — new `raw/sessions/2026-07-23-payout-finalize-retry.md`, new
+  `concepts/payout-finalization-consistency.md` (no existing payment page owned the escrow→payout→finalize
+  flow); `index.md` (new Sources line in the "Pay" slot before [[Posting-Schedule Failed-Status Session]] +
+  a new Concepts line after [[Payments Split by Surface]]); `log.md` ingest entry at top; `SHIPPED_LOG.md`
+  prepended; `PROJECT_CONTEXT.md` §5 one Shipped line; + THIS entry. No `DATABASE_SCHEMA`/`DESIGN_SYSTEM`/
+  `CLAUDE.md` change (edge fn only).
+- Happened: third increment of the content-delivery-stabilization backlog. The durable knowledge is a NEW
+  money-path re-entrancy/idempotency concept, distinct from the existing payment pages (webhook delivery /
+  test-mode / boost / split-by-surface). The scope descoping through four review passes (safe core →
+  retry-loop-only, because safely surfacing/retrying needs a durable payout marker) IS the durable story.
+- Worked: **[squash-drift] earned its keep** — origin/main advanced to 5d66baa1 (the synthetic-weight-engine
+  PR) WHILE I worked. The REST code push auto-rebased onto it (verified via the compare API that the branch
+  diff = exactly 1 file), and I `git checkout origin/main -- <core docs>` before editing so the docs sit on
+  top of the synthetic-weight-engine changes rather than reverting them. [orphans]-by-path: new raw + concept
+  both cataloged. [wikilinks]-exact: [[Payments Split by Surface]], [[Content Delivery State Machine]],
+  [[Stripe Webhook Delivery]], [[Posting-Schedule Failed-Status Session]] confirmed. [runlog-in-pr] bundled.
+- Failed: none for knowledge-sync. RAG sync + [[verify-knowledge]] post-merge (PR open).
+- Remember: when origin/main moves mid-work, the REST blob→tree→commit uses the CURRENT origin/main tree as
+  base_tree, so the pushed commit auto-rebases — a TREE_MISMATCH vs your STALE local HEAD tree is EXPECTED
+  and fine; verify via the `compare` API that the branch diff is only your files. And `git checkout
+  origin/main -- <core docs>` before editing shared docs, or the docs push reverts whatever just merged.
+  (advisory — sharpens [squash-drift])
+
 ### [2026-07-23] posting_schedule_status 'failed' CHECK gap (PR #326)
 - Output: bundled INTO the work PR #326 — new `raw/sessions/2026-07-23-posting-schedule-failed-status.md`;
   **compounded** onto `concepts/content-delivery-state-machine.md` (new "Sibling CHECK-gap in the

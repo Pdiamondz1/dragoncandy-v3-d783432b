@@ -1,5 +1,16 @@
 # Wiki Log
 
+## [2026-07-23] ingest | Payout finalize retry + safe failure handling (PR #328)
+Ingested [[Payout Finalize Retry Session]]. NEW concept [[Payout Finalization & Re-entrancy]] — no
+existing payment page owned the escrow→payout→finalize flow. `release-creator-payout` ran its post-money
+finalize once, fire-and-forget (logged CRITICAL, returned 200 → money moved, DB inconsistent); added a
+retried `finalizePayoutState` (self-heals transient DB blips). Four review passes descoped it: safely
+surfacing/retrying a finalize failure needs a durable payout marker (the Stripe key is only ~24h; the
+wallet credit is non-idempotent) + a reconciliation sweep → Complete follow-up. `index.md` gains Sources
++ Concepts lines; `SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5 one Shipped line. No
+`DATABASE_SCHEMA`/`DESIGN_SYSTEM`/`CLAUDE.md` change (edge fn only). RAG sync + [[verify-knowledge]]
+post-merge.
+
 ## [2026-07-23] ingest | Synthetic Weight Engine — Phase 0 safety spine (feat/synthetic-weight-engine)
 Ingested [[Synthetic Weight Engine]] from `2026-07-23-synthetic-weight-engine-phase-0.md` — a new
 concept page for the prod-safe synthetic-user tagging/exclusion/teardown spine. Cross-linked to

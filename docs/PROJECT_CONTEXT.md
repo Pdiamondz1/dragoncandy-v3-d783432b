@@ -125,6 +125,10 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **Payout finalize retry** — `release-creator-payout` ran its post-money finalize once, fire-and-forget
+  (logged CRITICAL, returned 200 → money moved + DB left inconsistent); a retried `finalizePayoutState`
+  now self-heals transient DB blips. Safe subset only — surfacing/retrying a finalize failure needs a
+  durable payout marker (Complete follow-up). → `docs/wiki/concepts/payout-finalization-consistency.md` · #328
 - **posting_schedule_status 'failed' unblocked** — a sibling CHECK gap in the post-approval scheduling
   leg: `confirm-posting-schedule` writes `'failed'` and `CampaignScheduleSection` already renders it, but
   the CHECK forbade it → silent stuck + dead UI; one DB-only migration adds the value.

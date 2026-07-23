@@ -29,6 +29,29 @@
 
 ---END-HEADER---
 
+- Payout finalize retry + safe failure handling — **shipped + deployed to prod (2026-07-23,
+  `fix/payout-db-consistency`, PR #328).** Third increment from the content-delivery-stabilization
+  backlog (after #325 drift repair + #326 posting-schedule). `release-creator-payout` moves money then
+  runs a finalize step (collab → `approved`/`completed`, campaign → `escrow_status='released'`); it ran
+  that finalize **once, fire-and-forget** — on failure it logged `CRITICAL` but returned `200`, so money
+  moved, the DB was left inconsistent (escrow stuck at `'releasing'`), the caller saw success, and
+  nothing retried. Added a retried `finalizePayoutState()` helper (4 attempts, backoff) used by both
+  payout paths, self-healing the common transient-DB-failure case. **Deliberately the safe subset:** the
+  user picked "safe core," and four review passes (edge-function-reviewer + Codex ×3) then showed that
+  going further — surfacing a finalize failure for a client retry, or reliably guarding re-entry — is
+  unsafe without a durable per-collaboration payout marker (a schema change), because the pending-balance
+  wallet credit (`increment_pending_balance`) is not idempotent (a retry double-credits) and the Stripe
+  transfer's idempotency key is only durable ~24h (a later retry double-pays). So the helper preserves the
+  prior semantics otherwise (unconditional `escrow='released'` as a crude re-entry guard; both paths fall
+  through to `200` — no client retry after money has moved) and only adds retry-on-transient. Follow-up
+  (Complete scope, recommended next): a durable payout marker + a reconciliation sweep over collaborations
+  stuck at `escrow='releasing'`/`'held'` would let finalize failures be safely surfaced/retried and fully
+  close re-entrancy. Verified: deployed (all 5 `_shared` bundled; clean-boot check returns the handled
+  auth error, not a crash); edge-function-reviewer [high] double-credit fixed; Codex clean. Durable lesson
+  on [[Payout Finalization & Re-entrancy]]: on a money path, "return an error so the caller retries" is
+  only safe if the money-moving op is durably idempotent — verify BOTH the credit mechanism AND the
+  caller's retry behavior before surfacing an error after money has moved.
+
 - Synthetic Weight Engine — Phase 0 safety spine — **shipped + live on prod (2026-07-23,
   `feat/synthetic-weight-engine`; kill switch OFF, 0 bots — inert).** Foundation for minting synthetic
   ("bot") users on **production** to add liveness/optics, prove load, and surface QA bugs, with the
