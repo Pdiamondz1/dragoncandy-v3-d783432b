@@ -32,6 +32,22 @@
 | `campaign_matches` | Matched brand/creator pairings |
 | `campaign_sponsorships` | Sponsorship arrangements within campaigns |
 | `application_counter_offers` | Negotiation counter-offers on applications. Written via the `create_counter_offer` SECURITY DEFINER RPC (authorization-hardened 2026-07-20: identity + participant + role-integrity guards, writes the server-derived `sender_id`/`sender_role`, `anon` EXECUTE revoked) or the direct-insert apply-time path; the INSERT RLS policy pins `sender_role` to the caller's derived role. See [[Service-Role Data Exposure]]. |
+| `content_disputes` | Dispute record opened when a business rejects content after max revisions (`reject-content` inserts `collaboration_id`/`initiated_by`/`reason`, `status=open`) and resolved by `resolve-dispute` (`status=resolved`, `outcome ∈ refund/partial_payment/approved`). Participant-SELECT RLS (creator or campaign owner) + a service-role FOR-ALL policy. **Restored to prod 2026-07-23 (PR #325)** — it, and the whole collaboration state machine, were recorded in `schema_migrations` but MISSING from prod (see below). |
+
+> **Collaboration state machine (`campaign_collaborations.content_status`) — restored 2026-07-23
+> (PR #325, [[Content Delivery State Machine]]).** The `20260425000000_collaboration_state_machine`
+> migration was recorded as applied but its objects were absent from prod (`recorded ≠ actual`):
+> the `transition_content_status(p_collaboration_id, p_new_status, p_actor_id, p_reason)` RPC
+> (SECURITY DEFINER, **service-role-only** — `REVOKE`d from `public/anon/authenticated` to close a
+> cross-actor IDOR; `service_role` keeps its own direct grant), `content_disputes`, the
+> `enforce_revision_limit` + `recompute_final_approval` triggers, `increment/decrement_budget_spent`
+> + **`campaigns.budget_spent`**, and the expanded 9-value `content_status` CHECK
+> (`pending/in_progress/submitted/revision_requested/approved/auto_approved/rejected/disputed/resolved`)
+> were all re-created idempotently. **Auto-approval** (`auto-approve-content` cron) now times the
+> review window off **`content_submitted_at`** (the `set_content_submitted_at` trigger-stamped anchor),
+> NOT `submitted_at` (which the client submit paths never set) — and is finally scheduled
+> (`pg_cron` job `auto-approve-content`, `*/15`). Verify object existence directly (`pg_proc` /
+> `information_schema` / `pg_trigger`), not just `schema_migrations`.
 
 ## Creator Groups (Crews)
 

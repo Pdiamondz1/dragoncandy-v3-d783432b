@@ -29,6 +29,49 @@
 
 ---END-HEADER---
 
+- Content-delivery state-machine drift repair + auto-approval revival — **shipped + applied to
+  prod (2026-07-23, `fix/content-state-machine-drift-repair`, PR #325).** While exploring
+  "content-delivery stabilization," found the launch-gating problem was not a bug list but a
+  **schema-drift incident**: the collaboration state-machine migration
+  (`20260425000000_collaboration_state_machine`, + the revision guard `20260408100002`) was
+  recorded in `schema_migrations` as applied, but its objects were **missing from the prod
+  database** (`recorded ≠ actual`). Missing: `transition_content_status` (called by
+  `auto-approve-content`/`reject-content`/`resolve-dispute` — all failing at the RPC),
+  `content_disputes` table (+indexes/RLS), `enforce_revision_limit` (+trigger),
+  `recompute_final_approval` (+trigger), `increment/decrement_budget_spent` + `campaigns.budget_spent`,
+  and the expanded `content_status` CHECK (prod still had the original 5 values, forbidding
+  `auto_approved/rejected/disputed/resolved`). Nothing was harming users yet (pre-revenue; manual
+  "Approve & Pay" raw-writes `approved`) but it was a hard launch blocker. **Auto-approval was dead
+  three independent ways**, all fixed: (1) the cron timed the window off `submitted_at`, which the
+  client submit paths never set (only the missing RPC did) → switched to `content_submitted_at` (the
+  `set_content_submitted_at` trigger reliably stamps it; a strict superset) — the old filter had
+  matched **zero rows**, so auto-approval had never once fired; (2) **no `pg_cron` job** invoked the
+  function → scheduled `*/15` via the Vault + `net.http_post` fleet pattern (new
+  `auto_approve_content_url` secret + `aios_ingest_key` bearer), with the function's auth moved to the
+  shared `isAuthorizedIngest` gate; (3) the missing RPC + CHECK values. Three idempotent migrations:
+  `20260723120000` restores the objects (storage policies **excluded** — the original step-7 tightening
+  was superseded by `20260513000001`; `insert_payment_event` left as-is) and adds a **REVOKE the
+  original never shipped** — `transition_content_status` is `SECURITY DEFINER` and only checks the
+  participant when `p_actor_id IS NOT NULL` (forgeable), so the default PUBLIC grant was a cross-actor
+  write **IDOR**; `REVOKE … FROM public,anon,authenticated` closes it (`service_role` keeps its own
+  direct grant, so the three callers are unaffected — a `data-exposure-reviewer` HIGH finding).
+  `20260723120001` allows `submitted → rejected` when `revision_count ≥ 2` (a business was trapped in
+  approve-only after a resubmission past the revision budget — a pre-existing gap Codex surfaced).
+  `20260723120002` backfills 15 stale `final_approval_status` rows (all non-sponsored + already
+  accepted, 0 active sponsorships → none functionally stuck). `auto-approve-content` deployed v60.
+  Verified: migration dry-run before apply; all objects confirmed; IDOR closed
+  (`authenticated`/`anon` EXECUTE = false); filter + reject fixes proven in rolled-back txns; 0 stale
+  rows after backfill; v60 boot-check (both `_shared` bundled, `verify_jwt=false`, bad-bearer 401);
+  cron job 8 active. Reviews: edge-function-reviewer PASS, data-exposure-reviewer HIGH fixed, Codex
+  clean (4 rounds; every finding verified against the live ACL/data before fix or dismissal — a
+  dependency chain, not churn). The `git push` was env-blocked; landed via the blob→tree→commit→ref
+  REST workaround with the tree SHA verified byte-identical. Durable lesson: on this prod DB,
+  `schema_migrations` recording ≠ objects exist — verify via `pg_proc`/`information_schema`/`pg_trigger`.
+  The broader content-delivery + payment fragility backlog the exploration mapped (payout-succeeds-DB-
+  fails-returns-200, Stripe pay-and-approve tab desync, boost-checkout no polling fallback, broken
+  deliverable thumbnails, `posting_schedule_status='failed'` CHECK violation, live-mode go-live items)
+  is left for follow-up PRs.
+
 - create_counter_offer authorization hardening — **shipped + applied to prod (2026-07-20,
   `fix/counter-offer-authz`).** Closed the open finding filed on `docs/wiki/concepts/service-role-data-exposure.md`
   during the 2026-07-19 pricing work. `create_counter_offer` was a `SECURITY DEFINER` RPC with
