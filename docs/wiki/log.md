@@ -1,5 +1,15 @@
 # Wiki Log
 
+## [2026-07-23] ingest | Synthetic Weight Engine — Phase 0 safety spine (feat/synthetic-weight-engine)
+Ingested [[Synthetic Weight Engine]] from `2026-07-23-synthetic-weight-engine-phase-0.md` — a new
+concept page for the prod-safe synthetic-user tagging/exclusion/teardown spine. Cross-linked to
+[[Service-Role Data Exposure]] (same re-assert-scope-server-side discipline), [[Testing auth.uid()
+RPCs and RLS on prod]] (the rollback + `set_config` proof technique), [[AIOS Stakeholder Invites]]
+(the `account_scope='internal'` guard a corrective migration restored), [[Dragon Rewards Engine (DRE)]]
+(the two-switch fail-closed launch), [[Test-Mode Stripe UX]] and [[Notification delivery choke point]].
+Pages created: `concepts/synthetic-weight-engine.md`. Records the Codex-caught segregation gaps
+(reverted `handle_new_user`, single-party predicates on multi-party tables, unfiltered cost-alert).
+
 ## [2026-07-23] update | posting_schedule_status 'failed' CHECK gap (PR #326)
 Ingested [[Posting-Schedule Failed-Status Session]]. **Compounded** onto [[Content Delivery State
 Machine]] (new "Sibling CHECK-gap in the post-approval scheduling leg" note + frontmatter `sources`) —

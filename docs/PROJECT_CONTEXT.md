@@ -104,6 +104,12 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   (native camera capture) started; next push + share plugins, then TestFlight. Hard
   prerequisite: a macOS/cloud-Mac build + an Apple Developer account ($99/yr).
   → `docs/superpowers/specs/2026-06-01-apple-app-store-design.md`
+- **Synthetic Weight Engine** — tagged synthetic-user ("bot") safety spine on prod (registry +
+  actor-OR-parent metric/moat exclusion + `SYNTHETIC_BOTS_ENABLED` kill switch + live-mode money
+  guard + email suppression + `/internal/simulation` + `purge_synthetic_data()` teardown), proven on
+  a rollback-wrapped 5-bot round-trip (founder metrics byte-identical, zero residue). Phase 0 shipped
+  (kill switch OFF, 0 bots); Phases 1–4 (identity/behavior/scale-to-N/load-proof) are separate plans.
+  → `docs/SHIPPED_LOG.md`
 
 ### Built — awaiting founder go-live
 

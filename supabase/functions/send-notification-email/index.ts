@@ -185,6 +185,15 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
+    // Synthetic Weight Engine: never send real email to bot accounts (protects sender reputation).
+    if (resolvedTo.endsWith('@synthetic.dragoncandy.test')) {
+      console.warn('[email] suppressed send to synthetic recipient:', resolvedTo);
+      return new Response(JSON.stringify({ success: true, suppressed: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders(req) },
+      });
+    }
+
     console.log('Sending notification email:', type, 'to:', resolvedTo);
     const rn = resolvedRecipientName;
     const esc = {

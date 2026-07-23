@@ -61,7 +61,7 @@ const InternalWeight = () => {
     <PageContainer size="xl">
       <PageHeader
         title="App weight"
-        subtitle="Daily snapshots of database, storage, and data volume — and when it's time to scale Supabase compute or disk."
+        subtitle="Daily snapshots of database, storage, and data volume — and when it's time to scale Supabase compute or disk. Row counts are physical totals (they include synthetic rows under an active load run; a 'real' subcount shows the synthetic-excluded value). Real growth KPIs live on Overview & Simulation."
       />
 
       {alerts.length > 0 && (
@@ -120,9 +120,18 @@ const InternalWeight = () => {
 
       <SectionHeading>Largest tables (rows)</SectionHeading>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {topRows.slice(0, 8).map(([table, count]) => (
-          <StatCard key={table} label={table} value={count.toLocaleString()} />
-        ))}
+        {topRows.slice(0, 8).map(([table, count]) => {
+          const real = (latest.row_counts_real ?? {})[table];
+          const showReal = typeof real === 'number' && real !== count;
+          return (
+            <StatCard
+              key={table}
+              label={table}
+              value={count.toLocaleString()}
+              sub={showReal ? `${real.toLocaleString()} real (excl. synthetic)` : undefined}
+            />
+          );
+        })}
       </div>
     </PageContainer>
   );

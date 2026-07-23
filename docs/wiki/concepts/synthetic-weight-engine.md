@@ -1,0 +1,102 @@
+---
+title: Synthetic Weight Engine
+type: concept
+created: 2026-07-23
+updated: 2026-07-23
+sources: [2026-07-23-synthetic-weight-engine-phase-0.md]
+tags: [synthetic, bots, load-testing, segregation, safety-spine, aios, metrics, teardown]
+---
+# Synthetic Weight Engine
+
+A system for minting synthetic ("bot") users across business + creator roles that behave like live
+daily-active users making marketplace transactions — to add **liveness/optics**, prove **load/
+performance**, and surface **QA bugs**. Cohort size is a tunable `N` (default 500); the real load
+variable is **concurrency**, not headcount (Supabase MICRO caps ~60 connections, so scale is proven
+by pressuring connections under burst, not by transaction count).
+
+It runs on **production**, so its defining constraint is **segregation completeness**: every row a bot
+writes must be tagged and excluded from every founder metric and the data-flywheel moat (Donny's
+training corpus). One missed surface = permanent contamination. That safety spine is **Phase 0** and
+gates everything else. Phase 0 shipped 2026-07-23 (`feat/synthetic-weight-engine`); the kill switch is
+**OFF** and there are **0 bots**, so the spine is present but inert.
+
+## Architecture — the safety spine
+
+Tagging is done at the **DB layer** so the harness cannot "forget" it:
+
+- **Email is the source of truth.** Every bot is minted with `bot…@synthetic.dragoncandy.test`. The
+  existing `handle_new_user` trigger is extended to auto-register any such signup into
+  `public.synthetic_users` (registry: `user_id` PK → `auth.users` ON DELETE CASCADE, `cohort`,
+  `persona`).
+- **Helpers** (SECURITY DEFINER, **service-role only**): `is_synthetic(uuid)` (in-registry),
+  `is_synthetic_campaign(uuid)` (campaign owner), `is_synthetic_org(uuid)` (org owner via
+  `org_members.role='owner'`).
+- **Denormalized `is_synthetic boolean`** (nullable) on the 5 rootless/telemetry tables that can't be
+  traced to a single user FK — `payment_events`, `analytics_events`, `dragonshare_events`,
+  `pricing_funnel_events`, `donny_cost_ledger` — stamped by `BEFORE INSERT` triggers. This is the
+  column a future LoRA export keys on.
+- **Exclusion — the two-sided actor-OR-parent predicate.** A row is excluded from a founder metric iff
+  a synthetic actor **OR** a synthetic parent/counterparty is involved — never a single FK. Applied
+  in `aios_platform_stats` / `aios_revenue_stats` / `aios_cost_stats`, `capture_platform_weight`'s
+  `row_counts_real`, and the edge-fn `donny-cost-rollup`. Compounds the same discipline as
+  [[Service-Role Data Exposure]] (server-side re-assertion of the intended scope).
+- **Kill switch** `SYNTHETIC_BOTS_ENABLED` (feature_flags `name`/`is_enabled`, default false,
+  **fail-closed** — the harness refuses to run unless it reads back exactly `true`; mirrors the DRE
+  two-switch launch, see [[Dragon Rewards Engine (DRE)]]).
+- **Money guard** (`release-creator-payout` + pure `_shared/synthetic-guard.ts`): never settle real
+  money to/from a synthetic user; refuses live-mode settlement if **either** the creator or the
+  campaign owner is synthetic; a `synthetic_users` read error in live mode fails **closed**. Bots use
+  test-mode Stripe only (see [[Test-Mode Stripe UX]]).
+- **Email suppression** to bot addresses in `send-notification-email` / `send-welcome-email` /
+  `create-notification` (the in-app row is still written; only the outbound Resend leg is suppressed,
+  backstopped by the sender's own suffix guard — see [[Notification delivery choke point]]).
+- **SHOW side:** `get_simulation_stats()` (internal-gated) + the `/internal/simulation` founder
+  dashboard is the ONE surface that intentionally shows synthetic. `platform_weight`'s **physical**
+  fields (`db_bytes`/`storage_bytes`) and count **totals** deliberately include synthetic (bots use
+  real disk/rows/connections — that's the load-proof); the parallel `*_real` columns carry the
+  synthetic-excluded growth view, and `/internal/weight` shows the total with a "real" subcount.
+- **Teardown:** `purge_synthetic_data()` (service-role only, leaf-first) deletes the rootless ledgers
+  **before** `auth.users` (so `ON DELETE SET NULL` links aren't lost) and explicitly deletes the
+  **non-cascading** synthetic org rows (`organizations`/`org_units` have no `auth.users` FK — ownership
+  is only via `org_members.role='owner'`).
+
+## The Phase 0 proof (segregation + teardown)
+
+Validated on a 5-bot round-trip run **rollback-wrapped** against prod (persists nothing), under
+`REPEATABLE READ` so concurrent real activity can't cause a false mismatch: mint 5 bots (2 business
+w/ auto-orgs + 3 creators) → mixed real↔bot activity → the real `aios_*` RPCs are **byte-identical**
+before/after (minus `generated_at`) → `get_simulation_stats` shows the cohort → `purge_synthetic_data()`
+returns **every residual = 0** → ROLLBACK. Reproducible any time the spine changes. Enablers:
+`set_config('request.jwt.claim.sub', <admin uuid>, true)` fakes `auth.uid()` so the internal-gated RPCs
+run (see [[Testing auth.uid() RPCs and RLS on prod]]); `auth.users` has exactly one insert trigger
+(`handle_new_user`, pure SQL, no external call) so a rollback-wrapped mint fires no webhook/email.
+
+## Known issues / gotchas
+
+- **`CREATE OR REPLACE` of a shared trigger fn silently reverts later migrations.** The plan said
+  "reproduce `handle_new_user` from `20260427220001`", but two later migrations had changed it
+  (`account_scope='internal'` guard for [[AIOS Stakeholder Invites]]; `ON CONFLICT DO UPDATE`
+  re-signup refresh). The first spine migration reverted both on prod. **Always diff a shared function
+  against its CURRENT prod definition (`pg_get_functiondef`), never an old migration file.** Fixed by
+  corrective migration `20260723132000`.
+- **Apply actor-OR-parent to EVERY party of a multi-party table.** Two rounds of Codex review caught
+  single-party predicates: the payout guard (creator only → creator + campaign owner) and the
+  `messages` count (`sender_id` only → sender + recipient). `dragonshare_boosts` correctly checks all
+  three of its parties. When counting or gating a table with more than one participant, enumerate them
+  all.
+- **Codex earned four fixes across three rounds** — the mandatory second reviewer is high-value on a
+  segregation guarantee where a single missed surface breaks the moat.
+- **Physical vs growth counts are different questions.** `platform_weight` deliberately keeps
+  synthetic-inclusive totals (scaling: real disk/rows) AND `*_real` (growth). Don't "fix" a scaling
+  surface to `*_real` — it would undercount real load.
+- **MCP hand-bundle vs CLI for edge-fn deploys.** MCP `deploy_edge_function` hand-bundles are
+  transcription-risky for large HTML email templates (`send-notification-email` is 1063 lines); prefer
+  `supabase functions deploy <name> --project-ref … --no-verify-jwt` from the worktree (auto-bundles
+  from disk). Always preserve each function's existing `verify_jwt`.
+
+## See Also
+- [[Service-Role Data Exposure]] — the same "re-assert the intended scope server-side" discipline.
+- [[AIOS runtime spend source of truth]] — `donny_cost_ledger` / the 15% AI cap the synthetic
+  exclusion protects.
+- [[Testing auth.uid() RPCs and RLS on prod]] — the rollback + `set_config` technique the proof uses.
+- [[AIOS Stakeholder Invites]] — the `account_scope='internal'` guard the corrective migration restored.

@@ -5086,24 +5086,30 @@ export type Database = {
           db_bytes: number
           id: string
           row_counts: Json
+          row_counts_real: Json | null
           storage_bytes: number
           users_total: number
+          users_total_real: number | null
         }
         Insert: {
           captured_at?: string
           db_bytes: number
           id?: string
           row_counts?: Json
+          row_counts_real?: Json | null
           storage_bytes: number
           users_total: number
+          users_total_real?: number | null
         }
         Update: {
           captured_at?: string
           db_bytes?: number
           id?: string
           row_counts?: Json
+          row_counts_real?: Json | null
           storage_bytes?: number
           users_total?: number
+          users_total_real?: number | null
         }
         Relationships: []
       }
@@ -6743,6 +6749,7 @@ export type Database = {
           org_type: string
         }[]
       }
+      get_simulation_stats: { Args: never; Returns: Json }
       get_unavailable_campaign_ids: {
         Args: never
         Returns: {

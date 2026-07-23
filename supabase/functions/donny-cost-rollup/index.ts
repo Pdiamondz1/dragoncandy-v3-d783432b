@@ -32,7 +32,8 @@ serve(async (req) => {
     const { data: costRows, error: costError } = await supabase
       .from("donny_cost_ledger")
       .select("estimated_cost_usd")
-      .gte("created_at", monthStart.toISOString());
+      .gte("created_at", monthStart.toISOString())
+      .not("is_synthetic", "is", true); // exclude synthetic spend from the AI-cap rollup
 
     if (costError) throw costError;
 

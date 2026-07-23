@@ -6,6 +6,8 @@ import { calculatePlatformFee, getOrgTakeRate } from "../_shared/platform-fee.ts
 import { resolvePayoutAmount } from "../_shared/pricing-utils.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { verifyPayoutReady } from "../_shared/payout-ready.ts";
+import { isTestKey } from "../_shared/stripe-mode.ts";
+import { shouldRefuseSettlement } from "../_shared/synthetic-guard.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -175,11 +177,33 @@ serve(async (req) => {
       throw new Error("Only the campaign owner can release payments");
     }
 
-    logStep("Collaboration found", { 
-      campaignId: collaboration.campaign_id, 
+    logStep("Collaboration found", {
+      campaignId: collaboration.campaign_id,
       creatorId: collaboration.creator_id,
       status: collaboration.status,
     });
+
+    // Synthetic Weight Engine safety spine: never settle real money to/from a synthetic
+    // (bot) user. Check BOTH parties — the payout recipient (creator) AND the campaign
+    // owner who funded the escrow — because a synthetic (unfunded, test-mode) campaign
+    // paying a real creator in live mode would move real money out with none in.
+    // Test-mode Stripe keys are exempt (that's the whole point of the bot harness).
+    const isTestMode = isTestKey(stripeKey);
+    const { data: synthRows, error: synthError } = await supabaseClient
+      .from('synthetic_users')
+      .select('user_id')
+      .in('user_id', [collaboration.creator_id, collaboration.campaign.user_id]);
+    if (synthError && !isTestMode) {
+      // Money-safety: in LIVE mode, if we cannot verify BOTH parties are non-synthetic, refuse.
+      logStep("Synthetic-user lookup failed in live mode — refusing payout", { error: synthError.message });
+      throw new Error("Refusing live-mode payout: could not verify parties are non-synthetic");
+    }
+    if (synthError) {
+      logStep("Synthetic-user lookup failed (test mode — treated as not synthetic)", { error: synthError.message });
+    }
+    if (shouldRefuseSettlement({ isTestMode, isSynthetic: (synthRows?.length ?? 0) > 0 })) {
+      throw new Error("Refusing live-mode payout involving a synthetic user");
+    }
 
     // Get creator's Stripe account
     const { data: creatorProfile } = await supabaseClient
