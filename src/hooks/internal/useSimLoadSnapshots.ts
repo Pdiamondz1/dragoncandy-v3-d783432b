@@ -10,7 +10,6 @@ export interface SimLoadSnapshot {
   run_label: string | null;
   active_connections: number | null;
   max_connections: number | null;
-  reserved_headroom: number | null;
   avg_query_ms: number | null;
   error_rate: number | null;
 }
@@ -22,8 +21,11 @@ export function useSimLoadSnapshots(limit = 50) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('sim_load_snapshots')
+        // reserved_headroom is deliberately omitted — it stores the static
+        // superuser_reserved_connections config (constant per tier), not a
+        // per-step signal, so it adds no value to the concurrency curve.
         .select(
-          'id, captured_at, run_label, active_connections, max_connections, reserved_headroom, avg_query_ms, error_rate',
+          'id, captured_at, run_label, active_connections, max_connections, avg_query_ms, error_rate',
         )
         .order('captured_at', { ascending: false })
         .limit(limit);

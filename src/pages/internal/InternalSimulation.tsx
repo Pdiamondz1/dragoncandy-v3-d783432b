@@ -1,10 +1,6 @@
 import { useSimulationStats } from '@/hooks/internal/useSimulationStats';
 import { useSimLoadSnapshots, type SimLoadSnapshot } from '@/hooks/internal/useSimLoadSnapshots';
-import {
-  computeModeledRevenue,
-  ASSUMED_AVG_CAMPAIGN_VALUE_USD,
-  FREE_TIER_TAKE_RATE,
-} from '@/lib/internal/modeledRevenue';
+import { computeModeledRevenue } from '@/lib/internal/modeledRevenue';
 import { StatCard, SectionHeading, ErrorCard } from '@/components/internal/stats';
 import { PageContainer, PageHeader } from '@/components/internal/layout';
 import { formatUsd } from '@/lib/utils';
@@ -14,6 +10,9 @@ const KILL_SWITCH_CHIP =
   'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-bold';
 
 const CARD = 'rounded-2xl border border-dc-teal/25 bg-white/[0.04] backdrop-blur-sm';
+
+/** Error rate at/above which a load-curve row is tinted as saturation (10%). */
+const ERROR_RATE_WARN_THRESHOLD = 0.1;
 
 const fmtMs = (v: number | null) => (v == null ? '—' : `${v.toFixed(1)} ms`);
 const fmtPct = (v: number | null) => (v == null ? '—' : `${(v * 100).toFixed(1)}%`);
@@ -74,7 +73,9 @@ function LoadCurveTable({
               <td className="px-4 py-3 text-right font-mono">{fmtMs(r.avg_query_ms)}</td>
               <td
                 className={`px-4 py-3 text-right font-mono ${
-                  r.error_rate != null && r.error_rate >= 0.1 ? 'text-dc-pink' : ''
+                  r.error_rate != null && r.error_rate >= ERROR_RATE_WARN_THRESHOLD
+                    ? 'text-dc-pink'
+                    : ''
                 }`}
               >
                 {fmtPct(r.error_rate)}
@@ -124,9 +125,9 @@ function ModeledRevenueCard({ syntheticCampaigns }: { syntheticCampaigns: number
 
       <p className="mt-4 text-xs leading-relaxed text-white/40">
         Assumptions: {syntheticCampaigns.toLocaleString()} synthetic campaigns ×{' '}
-        {formatUsd(ASSUMED_AVG_CAMPAIGN_VALUE_USD)} assumed avg campaign value = projected GMV; ×{' '}
-        {(FREE_TIER_TAKE_RATE * 100).toFixed(0)}% free-tier take-rate = modeled revenue. A pure
-        projection — it moves no money.
+        {formatUsd(m.avgCampaignValueUsd)} assumed avg campaign value = projected GMV; ×{' '}
+        {(m.takeRate * 100).toFixed(0)}% free-tier take-rate = modeled revenue. A pure projection —
+        it moves no money.
       </p>
     </div>
   );
