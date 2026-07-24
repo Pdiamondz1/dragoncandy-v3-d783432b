@@ -20,6 +20,7 @@ import type {
   ApplicationState,
   CollaborationState,
 } from "./types";
+import { DEPTH_POOL_EMAIL_PREFIX, isDepthPoolEmail } from "./seed";
 
 const SYNTHETIC_DOMAIN = "@synthetic.dragoncandy.test";
 
@@ -97,6 +98,34 @@ async function selectIn<T>(
 }
 
 /** Reconstruct the full crew-lane cohort state from the DB (service-role reads). */
+/**
+ * Lightweight cohort read for `load`: fetch ONLY session-capable synthetic bots — the live daily
+ * cohort (bot0##) + the active load cohort (botla…). It filters at the DB by email pattern, so it
+ * never issues an oversized `.in(botIds)` over a large depth pool (a 50K-row `.in()` would blow the
+ * PostgREST URL / time out before the load test even starts), and it deliberately SKIPS the
+ * crew/campaign/application/collaboration graph that `readCohort` reconstructs — `load` drives
+ * read-heavy public-surface traffic and needs only the bot refs (userId + email for session minting).
+ * The depth pool (botseed_*) is DB-only weight that never authenticates, so it is excluded both at
+ * the DB (`.not like`) and by the `isDepthPoolEmail` guard (single-source semantics).
+ */
+export async function readSessionCapableBots(admin: SupabaseClient): Promise<BotRef[]> {
+  const { data, error } = await admin
+    .from("profiles")
+    .select("id, email, role")
+    .like("email", `%${SYNTHETIC_DOMAIN}`)
+    .not("email", "like", `${DEPTH_POOL_EMAIL_PREFIX}%`);
+  if (error) throw new Error(`readSessionCapableBots: ${error.message}`);
+  return (data ?? [])
+    .map((p) => ({
+      userId: p.id as string,
+      email: (p.email as string) ?? "",
+      role: (p.role as Role) ?? "content_creator",
+      personaKey: null as PersonaKey | null,
+      cohort: null as string | null,
+    }))
+    .filter((b) => !isDepthPoolEmail(b.email));
+}
+
 export async function readCohort(admin: SupabaseClient): Promise<CohortState> {
   const { data: reg, error } = await admin.from("synthetic_users").select("user_id, cohort, persona");
   if (error) throw new Error(`readCohort synthetic_users: ${error.message}`);

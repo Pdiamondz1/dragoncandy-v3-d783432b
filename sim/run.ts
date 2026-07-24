@@ -16,8 +16,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { serviceClient, botClient } from "./clients";
 import { assertRuntimeBootSafety, type MinimalSupabaseClient } from "./env";
 import { generateCohort } from "./personas";
-import { mintBot, readCohort } from "./mint";
-import { planSeed, generateActiveCohort, assertActiveNamespaceFree, isDepthPoolEmail } from "./seed";
+import { mintBot, readCohort, readSessionCapableBots } from "./mint";
+import { planSeed, generateActiveCohort, assertActiveNamespaceFree } from "./seed";
 import { SessionPool } from "./session-pool";
 import { planDay, runDay } from "./behavior/graph";
 import { parseRamp, runLoad, type LoadFindingsArtifact } from "./load/driver";
@@ -290,12 +290,11 @@ async function cmdPurge(): Promise<void> {
 async function cmdLoad(args: Args): Promise<void> {
   const svc = serviceClient();
   await bootGate(svc);
-  const state = await readCohort(svc);
   // Drive load ONLY through session-capable bots — the live daily cohort (bot0##) + the active load
-  // cohort (botla…). The depth pool (botseed_*) is DB-only weight that never authenticates; pre-warming
-  // it would fire one magiclink+verify per depth user from a single IP (the exact per-IP 429 wall the
-  // session pool exists to avoid) and pollute the load curve with auth failures. (Codex P1.)
-  const activeBots = state.bots.filter((b) => !isDepthPoolEmail(b.email));
+  // cohort (botla…). readSessionCapableBots filters the depth pool (botseed_*) at the DB and skips the
+  // heavy crew/campaign graph, so a large depth pool never blows an oversized .in() before load starts
+  // nor gets a session minted per depth user (the exact per-IP 429 wall the session pool avoids). (Codex P1.)
+  const activeBots = await readSessionCapableBots(svc);
   // An empty cohort must fail loud, not silently apply zero load (mirrors cmdTick's contract).
   if (activeBots.length === 0) {
     throw new Error(

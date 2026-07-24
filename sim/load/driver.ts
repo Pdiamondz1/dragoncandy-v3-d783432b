@@ -55,15 +55,17 @@ export function parseRamp(raw: string): number[] {
   // Malformed input FAILS LOUD rather than degrading to a trivial [50] one-step ramp — a silent
   // 1-step "load test" reads as a real ramp and masks an operator typo (e.g. a 2-part "50/1500").
   if (trimmed.includes(",")) {
-    const list = trimmed
+    // Any INVALID token fails loud — a typo like "50,150O" must NOT silently drop to a lower-concurrency
+    // run that reads as a successful load test. (Empty tokens from a trailing/double comma are tolerated.)
+    const tokens = trimmed
       .split(",")
-      .map((s) => Math.floor(Number(s.trim())))
-      .filter((n) => Number.isFinite(n) && n > 0);
-    const ascending = [...new Set(list)].sort((a, b) => a - b);
-    if (ascending.length === 0) {
-      throw new Error(`[load] malformed --ramp "${raw}": expected a comma list of positive integers`);
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    const nums = tokens.map((s) => Math.floor(Number(s)));
+    if (tokens.length === 0 || nums.some((n) => !Number.isFinite(n) || n <= 0)) {
+      throw new Error(`[load] malformed --ramp "${raw}": comma list must be positive integers`);
     }
-    return ascending;
+    return [...new Set(nums)].sort((a, b) => a - b);
   }
   if (trimmed.includes("/")) {
     const parts = trimmed.split("/").map((s) => Number(s.trim()));

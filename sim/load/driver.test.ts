@@ -67,6 +67,15 @@ describe("parseRamp", () => {
     expect(() => parseRamp("")).toThrow(/malformed --ramp/);
     expect(() => parseRamp("0")).toThrow(/malformed --ramp/);
   });
+  it("throws on an invalid token in a comma list (never silently drops it)", () => {
+    expect(() => parseRamp("50,150O")).toThrow(/malformed --ramp/); // letter O typo
+    expect(() => parseRamp("50,-200")).toThrow(/malformed --ramp/); // non-positive
+    expect(() => parseRamp("50,abc,200")).toThrow(/malformed --ramp/);
+  });
+  it("tolerates a trailing/double comma (empty tokens dropped, valid values kept)", () => {
+    expect(parseRamp("50,200,")).toEqual([50, 200]);
+    expect(parseRamp("50,,200")).toEqual([50, 200]);
+  });
 });
 
 // ── runPool ───────────────────────────────────────────────────────────────────────────────────────
