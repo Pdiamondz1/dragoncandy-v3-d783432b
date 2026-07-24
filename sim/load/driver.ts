@@ -68,8 +68,18 @@ export function parseRamp(raw: string): number[] {
   if (trimmed.includes("/")) {
     const parts = trimmed.split("/").map((s) => Number(s.trim()));
     const [start, max, factor] = parts;
-    if (parts.length !== 3 || ![start, max, factor].every((n) => Number.isFinite(n))) {
-      throw new Error(`[load] malformed --ramp "${raw}": expected start/max/factor (e.g. 50/1500/2.5)`);
+    // factor MUST be > 1: rampSteps degrades a factor of 0/1/≤1 to a silent two-step [start, max],
+    // which is exactly the fake-ramp-from-a-typo this fail-loud path exists to prevent.
+    if (
+      parts.length !== 3 ||
+      ![start, max, factor].every((n) => Number.isFinite(n)) ||
+      start < 1 ||
+      max < start ||
+      factor <= 1
+    ) {
+      throw new Error(
+        `[load] malformed --ramp "${raw}": expected start/max/factor with start≥1, max≥start, factor>1 (e.g. 50/1500/2.5)`,
+      );
     }
     return rampSteps(start, max, factor);
   }

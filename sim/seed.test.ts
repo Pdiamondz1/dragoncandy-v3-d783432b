@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { planSeed, generateActiveCohort, activeEmail, assertActiveNamespaceFree } from "./seed";
+import {
+  planSeed,
+  generateActiveCohort,
+  activeEmail,
+  assertActiveNamespaceFree,
+  isDepthPoolEmail,
+} from "./seed";
 
 describe("planSeed", () => {
   it("caps active at activeMax and gives depth the remainder", () => {
@@ -76,6 +82,23 @@ describe("generateActiveCohort", () => {
     const a = generateActiveCohort(3, { creators: 0.5 }, 1, "load").map((p) => p.email);
     const b = generateActiveCohort(3, { creators: 0.5 }, 2, "load").map((p) => p.email);
     expect(a.some((e) => b.includes(e))).toBe(false);
+  });
+});
+
+describe("isDepthPoolEmail (keeps the inert depth pool out of the load driver)", () => {
+  it("matches only the botseed_ depth namespace", () => {
+    expect(isDepthPoolEmail("botseed_load_3@synthetic.dragoncandy.test")).toBe(true);
+    expect(isDepthPoolEmail("botseed_phase1_42@synthetic.dragoncandy.test")).toBe(true);
+  });
+  it("does NOT match the session-capable cohorts (live bot0## + active botla…)", () => {
+    expect(isDepthPoolEmail("bot001@synthetic.dragoncandy.test")).toBe(false);
+    expect(isDepthPoolEmail("bot025@synthetic.dragoncandy.test")).toBe(false);
+    expect(isDepthPoolEmail("botla7_1@synthetic.dragoncandy.test")).toBe(false);
+  });
+  it("classifies every generated active-cohort email as session-capable", () => {
+    for (const p of generateActiveCohort(10, { creators: 0.6 }, 3, "load")) {
+      expect(isDepthPoolEmail(p.email)).toBe(false);
+    }
   });
 });
 

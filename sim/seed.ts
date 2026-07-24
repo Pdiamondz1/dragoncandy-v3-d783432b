@@ -50,6 +50,20 @@ export function activeEmail(seed: number, i: number): string {
   return `botla${seed}_${i + 1}${SYNTHETIC_DOMAIN}`;
 }
 
+/** Email prefix minted by the depth-pool RPC (seed_synthetic_cohort): botseed_<cohort>_<i>@… .
+ *  Depth-pool users are DB-only weight to make listings look populated — they NEVER authenticate. */
+export const DEPTH_POOL_EMAIL_PREFIX = "botseed_";
+
+/**
+ * True for a depth-pool email (bulk-inserted, NOT session-capable). The live daily cohort (bot0##)
+ * and the active load cohort (botla…) are session-capable and do NOT match — the `load` driver uses
+ * this to drive traffic only through bots that can actually hold a JWT, never the inert depth pool
+ * (which would otherwise fire one magiclink+verify per depth user and trip the per-IP auth 429 wall).
+ */
+export function isDepthPoolEmail(email: string): boolean {
+  return email.startsWith(DEPTH_POOL_EMAIL_PREFIX);
+}
+
 /**
  * Build the session-capable ACTIVE cohort. Reuses generateCohort's deterministic role/name/personaKey
  * assignment, then REMAPS each email into the distinct botla<seed>_<i> namespace so it can never

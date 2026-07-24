@@ -17,7 +17,7 @@ import { serviceClient, botClient } from "./clients";
 import { assertRuntimeBootSafety, type MinimalSupabaseClient } from "./env";
 import { generateCohort } from "./personas";
 import { mintBot, readCohort } from "./mint";
-import { planSeed, generateActiveCohort, assertActiveNamespaceFree } from "./seed";
+import { planSeed, generateActiveCohort, assertActiveNamespaceFree, isDepthPoolEmail } from "./seed";
 import { SessionPool } from "./session-pool";
 import { planDay, runDay } from "./behavior/graph";
 import { parseRamp, runLoad, type LoadFindingsArtifact } from "./load/driver";
@@ -291,10 +291,16 @@ async function cmdLoad(args: Args): Promise<void> {
   const svc = serviceClient();
   await bootGate(svc);
   const state = await readCohort(svc);
-  const activeBots = state.bots;
+  // Drive load ONLY through session-capable bots — the live daily cohort (bot0##) + the active load
+  // cohort (botla…). The depth pool (botseed_*) is DB-only weight that never authenticates; pre-warming
+  // it would fire one magiclink+verify per depth user from a single IP (the exact per-IP 429 wall the
+  // session pool exists to avoid) and pollute the load curve with auth failures. (Codex P1.)
+  const activeBots = state.bots.filter((b) => !isDepthPoolEmail(b.email));
   // An empty cohort must fail loud, not silently apply zero load (mirrors cmdTick's contract).
   if (activeBots.length === 0) {
-    throw new Error("[load] no synthetic cohort found — run `mint` or `bulk-seed` first.");
+    throw new Error(
+      "[load] no session-capable synthetic cohort found (the depth pool never authenticates) — run `mint` or `bulk-seed --active N` first.",
+    );
   }
   const botFor = makeBotFor(activeBots);
 

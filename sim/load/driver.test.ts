@@ -53,6 +53,15 @@ describe("parseRamp", () => {
   it("throws (never silently degrades to [50]) on a malformed 2-part slash form", () => {
     expect(() => parseRamp("50/1500")).toThrow(/malformed --ramp/);
   });
+  it("throws on a non-growing factor (≤1) instead of a fake two-step ramp", () => {
+    expect(() => parseRamp("50/1500/1")).toThrow(/malformed --ramp/);
+    expect(() => parseRamp("50/1500/0")).toThrow(/malformed --ramp/);
+    expect(() => parseRamp("50/1500/0.5")).toThrow(/malformed --ramp/);
+  });
+  it("throws on an inverted or zero-start slash form", () => {
+    expect(() => parseRamp("1500/50/2")).toThrow(/malformed --ramp/); // max < start
+    expect(() => parseRamp("0/1500/2")).toThrow(/malformed --ramp/); // start < 1
+  });
   it("throws on garbage and on empty input rather than running a trivial ramp", () => {
     expect(() => parseRamp("nonsense")).toThrow(/malformed --ramp/);
     expect(() => parseRamp("")).toThrow(/malformed --ramp/);
