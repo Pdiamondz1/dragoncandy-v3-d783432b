@@ -349,12 +349,14 @@ export const HOT_ACTIONS: HotAction[] = [
   },
   {
     // Creator directory — the public-facing view (no sensitive fields), safe for any reader.
+    // NB: the view exposes creator_name (NOT full_name) and has no role column — selecting
+    // full_name/role 400s and would log a FALSE breakage every run. Columns verified on prod.
     name: "creator_directory",
     weight: 20,
     run: async (client) => {
       const { error } = await client
         .from("public_creator_profiles")
-        .select("id, full_name, role")
+        .select("id, creator_name, location, average_rating")
         .limit(20);
       throwOnError(error);
     },
