@@ -29,6 +29,47 @@
 
 ---END-HEADER---
 
+- **Wallet-first payout reroute (stage 2 of the wallet-first fix)** — **`feat/wallet-first-stage2`.**
+  Follows stage 1 (#334) and #329 ([[Payout Finalization & Re-entrancy]]). **Removes the transfer-vs-pending
+  fork** in `release-creator-payout`: every payout is now ONE shape — `credit_pending_balance_for_payout`
+  (atomic wallet credit + durable `payout_executed_at` marker) → best-effort exactly-once `flushPendingBalance`
+  when `verifyPayoutReady` → `finalizePayoutState`. With no divergent money path, the two #329 residuals
+  **close by construction**: concurrent invocations credit the SAME wallet (the RPC row-locks + dedupes → one
+  credits, the rest `'already'`) and the flush is exactly-once (stage-1 `flush_${id}` key), so no cross-path
+  double-pay; and the only money write is the atomic credit RPC that sets the marker in the same transaction,
+  so the Stripe-up/DB-down "credited-but-unmarked" split-brain cannot happen. Deleted `markTransferExecuted`,
+  the direct `payout_${collab}`-keyed transfer, and the escrow `held→releasing` pre-commit (escrow → `released`
+  at finalize). **No new migration** — all RPCs/columns live from #329/#334.
+  **Ledger-event contract (Approach A):** every payout writes four **collaboration-keyed** events (gated on
+  `!alreadyCredited`): `content_approved`, `payment_release_initiated`, `payment_released` (the business In
+  Escrow↓ signal — now fires on EVERY payout; the old pending path never wrote it, a latent bug fixed), and
+  `payout_pending_wallet` (the creator "earned" signal, `metadata.reason ∈ {flushing_to_stripe,
+  creator_onboarding_incomplete}`). The wallet→Stripe flush keeps its **user-keyed** `transfer_created`
+  (`metadata.type='pending_balance_autoflush'`) — a wallet audit event, not earnings.
+  **Frontend (3 readers reconciled to one rule):** Total Earned = `Σ payout_pending_wallet + Σ (transfer_created
+  whose metadata.type ∉ {wallet_withdrawal, pending_balance_autoflush})`, discriminating on `metadata.type`
+  (not `flush_id`/`entity_type`); `payment_released` never summed. In Wallet = `creator_profiles.pending_balance`
+  (source of truth) via `check-creator-payout-status` (an allowed server path — the column is REVOKE-contested
+  for direct frontend reads), read post-flush, in cents. `payout_pending_wallet` added to `terminalTypes` so a
+  credited-to-wallet collaboration reads as Completed.
+  **Implementation notes:** the DI-testable payout body (`applyWalletFirstPayout` + `finalizePayoutState`) lives
+  in a co-located pure module `release-creator-payout/wallet-first.ts` imported by `index.ts` — NOT exported
+  from `index.ts` behind an `import.meta.main` guard (top-level `serve()` breaks import-based Deno tests, and
+  the guard is untested in the Supabase runtime → a wrong guard silently unregisters the handler).
+  `flushPendingBalance` gained `{assumeReady}` so a caller that already verified readiness (this reroute, via
+  `verifyPayoutReady`) isn't no-op'd by a stale cached `stripe_onboarding_complete` flag. `PaymentsPage` skips
+  wallet-transfer events when grouping entities (else every onboarded payout formed a phantom
+  `collaboration:<creatorUserId>` "Completed" timeline). `getPaymentMessage` is reason-aware for
+  `payout_pending_wallet` (no "complete Stripe setup" CTA for an already-onboarded creator).
+  **Reviews:** `edge-function-reviewer` + `data-exposure-reviewer` PASS; **Codex clean after 4 fix rounds**
+  (In-Wallet post-flush staleness; the round-1 fix read a REVOKE-contested column directly → rerouted through
+  `check-creator-payout-status` fixed to return post-flush `platformPendingBalance` on both paths; phantom
+  timelines; flush-on-verified-readiness + ready-aware copy). Deployed `release-creator-payout` (×2) +
+  `check-creator-payout-status` (`--no-verify-jwt`, boot-checked); **rollback-wrapped prod RPC-contract test**
+  proved credit-once + marker-atomic + re-entry-`'already'`-no-double-credit; the happy path is covered by the
+  DI unit tests + stage-1's real test-mode Stripe flush E2E. Deno + vitest green.
+  → `docs/wiki/concepts/payout-finalization-consistency.md`
+
 - **Durable pending-balance flush ledger (stage 1 of the wallet-first payout fix)** — **`feat/wallet-first-payout`.**
   Follows PR #329 ([[Payout Finalization & Re-entrancy]]). Makes the shared wallet→Stripe flush
   (`transferPendingBalance` in `_shared/flush-pending-balance.ts`) **exactly-once**, fixing the

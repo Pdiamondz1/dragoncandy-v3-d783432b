@@ -127,13 +127,15 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
-- **Durable pending-balance flush ledger** — stage 1 of the wallet-first payout fix ([[Payout Finalization
-  & Re-entrancy]]): a durable `pending_balance_flushes` ledger (table + claim/confirm/fail/bump RPCs, a
-  `flush_${id}`-keyed shared `executeFlushTransfer`, a `reconcile-pending-flushes` `*/15` cron) makes the
-  shared wallet→Stripe flush **exactly-once** — closes the identical-cents under-pay without re-introducing
-  ambiguous over-pay; a `stuck` row alerts, bump-on-confirm-fail bounds the past-TTL double-pay; proven by a
-  real test-mode Stripe replay E2E. Stage 2 (the reroute closing the two cross-path residuals) deferred.
-  → `docs/wiki/concepts/payout-finalization-consistency.md` · `feat/wallet-first-payout`
+- **Wallet-first payout fix (stages 1+2 shipped)** — closes the [[Payout Finalization & Re-entrancy]]
+  residuals. Stage 1: a durable `pending_balance_flushes` ledger (table + claim/confirm/fail/bump RPCs,
+  `flush_${id}`-keyed shared `executeFlushTransfer`, `reconcile-pending-flushes` `*/15` cron) makes the shared
+  wallet→Stripe flush **exactly-once**. Stage 2: **removed the transfer-vs-pending fork** in
+  `release-creator-payout` (one path — atomic credit+marker → best-effort exactly-once flush → finalize),
+  **closing both cross-path residuals** (concurrent double-pay; Stripe-up/DB-down marker split-brain) by
+  construction + reconciling the 3 frontend money readers to one `metadata.type`-keyed rule. No new migration;
+  deployed + rollback-wrapped prod-verified; Codex-clean (4 rounds).
+  → `docs/wiki/concepts/payout-finalization-consistency.md` · `feat/wallet-first-payout` + `feat/wallet-first-stage2`
 - **Payout durable re-entrancy** — the Complete follow-up to #328: `release-creator-payout` is durably
   re-entrant via a per-collaboration marker (`payout_executed_at`/`stripe_transfer_id`) set AFTER money
   moves (never a pre-claim → no marked-not-paid) as the re-entry guard; the pending path credits + marks
