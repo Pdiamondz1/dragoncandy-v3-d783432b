@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
-import { PaymentSummaryCards } from "@/components/payments/PaymentSummaryCards";
+import { PaymentSummaryCards, WALLET_TRANSFER_TYPES } from "@/components/payments/PaymentSummaryCards";
 import { useCreatorEarnings } from "@/hooks/useCreatorEarnings";
 import { usePaymentNotifications } from "@/hooks/usePaymentNotifications";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -94,6 +94,10 @@ export default function PaymentsPage() {
   // Group events by entity
   const entityMap = new Map<string, { entityType: 'collaboration' | 'sponsorship'; entityId: string; campaignId: string; events: PaymentEvent[] }>();
   for (const event of allEvents) {
+    // Wallet→Stripe flush transfers are user-keyed wallet-movement audit events, not collaboration
+    // lifecycle — skip them so they don't form a phantom `collaboration:<creatorUserId>` "Completed"
+    // timeline (post wallet-first reroute every onboarded payout writes one via the shared exactly-once flush).
+    if (event.event_type === 'transfer_created' && WALLET_TRANSFER_TYPES.has((event.metadata?.type as string) ?? '')) continue;
     const key = `${event.entity_type}:${event.entity_id}`;
     if (!entityMap.has(key)) {
       entityMap.set(key, { entityType: event.entity_type, entityId: event.entity_id, campaignId: event.campaign_id, events: [] });

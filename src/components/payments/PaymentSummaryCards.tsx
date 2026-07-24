@@ -14,7 +14,7 @@ interface PaymentSummaryCardsProps {
 // A wallet→Stripe transfer (the shared flush) carries metadata.type ∈ these — the new #334 autoflush events
 // AND legacy pre-#334 wallet withdrawals. A historical DIRECT collaboration transfer carries no such type.
 // So earnings discriminate on metadata.type (not flush_id or entity_type, which can't tell them apart).
-const WALLET_TRANSFER_TYPES = new Set(['wallet_withdrawal', 'pending_balance_autoflush']);
+export const WALLET_TRANSFER_TYPES = new Set(['wallet_withdrawal', 'pending_balance_autoflush']);
 
 function formatCurrency(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
