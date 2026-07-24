@@ -1,8 +1,9 @@
 # Synthetic Weight Engine — Load Proof & Economics Simulation (Phases 2–4)
 
-**Goal:** Measure how the DragonCandy app performs under 50K-DAU-equivalent load and what its real
-expenses and revenue are at scale — fast — using the already-live synthetic bot engine, on prod, with
-synthetic activity kept out of all real KPIs.
+**Goal:** Measure how the DragonCandy app performs under 50K-DAU-equivalent load, what its real
+expenses and revenue are at scale, and — the third payoff — **surface the concrete bugs, bottlenecks,
+and improvements to fix before real users hit that scale** — fast, using the already-live synthetic
+bot engine, on prod, with synthetic activity kept out of all real KPIs.
 
 **Architecture:** Extend the live Phase-1 crew-lane harness (`sim/`) with (1) a **cross-tick session
 pool** (the keystone — refresh tokens instead of re-minting, which lifts the per-IP auth 429 wall),
@@ -160,6 +161,25 @@ tier curve** — the core deliverable.
   (prorated) from 4d.
 - **Modeled revenue (Phase A):** projected GMV = active-cohort activity × avg campaign value × take-
   rate ladder. Clearly labeled "modeled," replaced by measured in Phase B.
+
+### 4f. QA / findings — the bug-and-bottleneck report (third deliverable)
+A load run's purpose is to break things before real users do, so the run is instrumented to **collect
+findings, not just abort on the first**. The load driver already classifies errors (§4b); instead of
+throwing on the first breakage it **accumulates every non-throttle error signature** across the run
+(`{endpoint, status, error, count, first-seen concurrency}`), writes them to a `sim/.load-findings.json`
+artifact, and only then sets a non-zero exit if any breakage occurred (so CI is still red, but we
+captured the whole batch — mirrors `runDay`'s per-action isolation). A **synthesis step** (documented
+in the runbook, run by the operator after each ramp) merges five sources into one categorized
+**Load Findings Report** (`docs/superpowers/load-findings/<date>.md`):
+1. **Bugs** — harness breakage signatures (things that errored under load that don't under light use).
+2. **Bottlenecks** — the slowest + most-frequent queries from `pg_stat_statements`, the saturation
+   concurrency + connection ceiling from `sim_load_snapshots`, and relevant `get_advisors` findings
+   (missing indexes, unindexed FKs, RLS-perf) that bite at scale.
+3. **Improvements** — the tier recommendation (from the cost/perf curve), caching/query-rewrite
+   candidates, and any capacity knob (connection pooler, `max_connections`) to raise.
+Sourced from: the harness artifact, `pg_stat_statements`, Supabase `get_logs` (edge-fn + DB errors in
+the run window), `get_advisors`, and `sim_load_snapshots`. This report is the actionable "what to fix
+before 50K DAUs" list; optionally filed to the existing `/internal/findings` AIOS surface.
 
 ## 5. Phase B — Measured revenue (real test-mode money) + full economics
 
