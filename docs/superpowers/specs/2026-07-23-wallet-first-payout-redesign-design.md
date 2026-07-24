@@ -100,43 +100,56 @@ Every payout writes, **collaboration-keyed** (all four already exist; only *when
 The wallet→Stripe flush keeps writing its **user-keyed** `transfer_created` with `metadata.flush_id` — a
 **wallet-movement audit event**, deliberately NOT counted as earnings.
 
-### 4.1 The one reconciled "Total Earned" rule (both creator readers converge on this)
+### 4.1 The one reconciled "Total Earned" rule
 
-> **Total Earned** = `Σ payout_pending_wallet` + `Σ (transfer_created WHERE entity_type='collaboration' AND
-> metadata has no flush_id)`
+> **Total Earned** = `Σ payout_pending_wallet` + `Σ (transfer_created that is a COLLABORATION payout — i.e.
+> metadata.type ∉ {'wallet_withdrawal','pending_balance_autoflush'})`
 
-Counts each payout **exactly once**, across historical and new:
-- **New payout** → `payout_pending_wallet` (counted); its flush `transfer_created` is user-keyed **and** has
-  `flush_id` → excluded. = 1×.
-- **Historical transfer-path payout** → collaboration-keyed `transfer_created` with no `flush_id` (counted);
-  no `payout_pending_wallet`. = 1×.
-- **Historical pending-path payout** → `payout_pending_wallet` (counted). = 1×.
+Discriminate on **`metadata.type`, not `flush_id` or `entity_type`.** Every wallet→Stripe transfer (the flush)
+carries `metadata.type ∈ {'wallet_withdrawal','pending_balance_autoflush'}` — **both the new #334 flush events
+(which also have `flush_id`) AND legacy pre-#334 wallet-withdrawal events (which do NOT)** — while a historical
+direct collaboration transfer carries `metadata.destination` and **no** `type`. `entity_type` is `'collaboration'`
+for *both* a creator flush and a real collaboration transfer, so it cannot discriminate; a `flush_id`-only filter
+would still double-count legacy wallet withdrawals. Keying on `metadata.type` counts each payout exactly once:
+- **New payout** → `payout_pending_wallet` (counted); its flush `transfer_created` has `type: wallet_withdrawal|pending_balance_autoflush` → excluded. = 1×.
+- **Historical transfer-path payout** → collaboration `transfer_created` (no `type`) → counted; no `payout_pending_wallet`. = 1×.
+- **Historical pending-path payout** → `payout_pending_wallet` (counted); a later wallet withdrawal's
+  `transfer_created` has `type: wallet_withdrawal` → excluded. = 1×.
 
-`payment_released` is **never** summed into earnings (it is the escrow-decrement signal only). This is the
-single rule both creator readers must use.
+`payment_released` is **never** summed into earnings (escrow-decrement signal only). Both creator readers use
+this same logical rule — `useCreatorEarnings` enforces it by *scoping its query* to `entity_id IN collabIds`
+(so user-keyed wallet transfers never enter), `computeCreatorStats` (runs over all events) by the
+`metadata.type` exclusion above. **Do not sum on `stripe_id`** (`payment_events` is not unique on it).
 
 ## 5. Frontend consumer changes
 
 1. **`PaymentSummaryCards.computeCreatorStats` (`src/components/payments/PaymentSummaryCards.tsx`).**
-   - `totalEarned`: add the `metadata?.flush_id == null` filter to the `transfer_created` term (keeps
-     historical collaboration transfers; excludes the new wallet-level flush events). `payout_pending_wallet`
-     term unchanged.
+   - `totalEarned`: change the `transfer_created` term to **exclude wallet-level transfers by
+     `metadata.type`** — count `transfer_created` only when `metadata?.type` is neither `'wallet_withdrawal'`
+     nor `'pending_balance_autoflush'` (§4.1). This is stricter than a `flush_id` filter and also excludes
+     legacy pre-#334 wallet withdrawals. `payout_pending_wallet` term unchanged.
    - `inWallet`: **replace** the event-matching derivation (which matches on `entity_id === collaboration`
      and breaks against the user-keyed flush event) with the **source of truth** — `creator_profiles.pending_balance`.
-     Plumb `pendingBalanceCents` into the component (from `useCreatorEarnings`/a small fetch); the prop is
-     authoritative, the events are not.
+     **Units:** the component formats in **cents** (`formatCurrency` divides by 100), but `pending_balance`
+     (and `useCreatorEarnings.available` / `check-creator-payout-status.platformPendingBalance`) is in
+     **dollars**. So the new prop must be **`Math.round(pending_balance * 100)`** — pass a `pendingBalanceCents`
+     computed from the dollar value, NOT the dollar value directly (that would render 100× too small).
 2. **`computeBusinessStats.inEscrow`** — logic unchanged (decrements on `payment_released`/`refund_completed`).
    Now correct for *all* payouts because `payment_released` fires on every one.
 3. **`useCreatorEarnings` (`src/hooks/useCreatorEarnings.ts`).** Its `totalEarned` currently sums
    `['payment_released','payout_pending_wallet']`, which relied on the old "exactly one of the pair per
    payout" invariant — broken now that every payout writes **both**. Change it to the §4.1 rule: query
-   `payout_pending_wallet` + `transfer_created` (filtering `flush_id`-less, collaboration-keyed), and **drop
-   `payment_released` from the earned sum**. Keep `inEscrow` (escrow_held minus released) and `available`
-   (= `pending_balance` from `check-creator-payout-status`) as-is; `available`/`inWallet` are the same wallet
-   number.
-4. **`PaymentsPage`** — **audit its reads first** (this spec has not yet inspected it) and align any
-   Total-Earned / In-Escrow / In-Wallet computation to the §4.1 rule and the `pending_balance`-for-wallet
-   source. The plan's first step reads it.
+   `['payout_pending_wallet','transfer_created']` scoped to `entity_id IN collabIds` + `entity_type='collaboration'`
+   (this scoping already excludes user-keyed wallet transfers, so no `metadata.type` filter is needed on this
+   side), and **drop `payment_released` from the earned sum**. Keep `inEscrow` and `available` (=
+   `pending_balance` in **dollars** from `check-creator-payout-status`) as-is. `available` and `inWallet` are the
+   same wallet money, but in different units — dollars here, cents in `PaymentSummaryCards`.
+4. **`PaymentsPage` (`src/pages/PaymentsPage.tsx`).** It has **no independent money math** — it passes the full
+   `payment_events` list to `PaymentSummaryCards` — so no reader logic changes there. BUT it does **not**
+   currently fetch `pending_balance`, so making `inWallet` authoritative requires **adding a
+   `pending_balance` source** (reuse `useCreatorEarnings.available × 100`, the single source, to avoid a
+   second fetch + drift) and threading `pendingBalanceCents` into `<PaymentSummaryCards>` as a new prop. The
+   plan's first step re-reads `PaymentsPage` to confirm the wiring.
 
 ## 6. What is deleted (all specific to the removed direct path)
 
@@ -152,9 +165,10 @@ single rule both creator readers must use.
 ## 7. Backward compatibility
 
 Historical `payment_events` are untouched and keep rendering: the §4.1 rule counts historical transfer-path
-(`transfer_created` no-`flush_id`) and pending-path (`payout_pending_wallet`) payouts each once, and the
-business In-Escrow rule is unchanged. No migration of past events. `stripe_transfer_id` on old collaboration
-rows still short-circuits the re-entry guard.
+(`transfer_created` with no wallet `metadata.type`) and pending-path (`payout_pending_wallet`) payouts each
+once, and legacy pre-#334 wallet withdrawals (`transfer_created` with `metadata.type='wallet_withdrawal'`) are
+correctly excluded from earnings. No migration of past events. `stripe_transfer_id` on old collaboration rows
+still short-circuits the re-entry guard.
 
 ## 8. Data flow & error handling
 
