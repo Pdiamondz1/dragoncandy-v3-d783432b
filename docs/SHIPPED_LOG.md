@@ -29,6 +29,16 @@
 
 ---END-HEADER---
 
+- Synthetic Weight Engine — Phase 1 harness 429 backoff (cron hardening) — **`fix/sim-session-429-backoff`.**
+  The go-live fast-follow: `mintBotSession` (the per-bot magiclink→verify session mint) now retries
+  429/503 with exponential backoff, honoring `Retry-After` (`fetchWithRetry`/`parseRetryAfter`/
+  `backoffDelayMs` in `sim/session.ts`), so a transient/borderline per-IP auth rate limit no longer
+  red-fails the unattended daily cron — while a sustained hard-window exhaustion still fails loud after
+  the retries (by design; fail-loud preserved). 7 new unit tests (pure helpers + injected `sleep`, no
+  network). The deeper fix for running more frequently / at larger N — **cross-tick session reuse**
+  (persist each bot's refresh token instead of re-minting every tick) — stays deferred.
+  → `docs/wiki/concepts/synthetic-weight-engine.md`
+
 - Synthetic Weight Engine — Phase 1 go-live: N=25 cohort + daily cron (Task 8 second switch) —
   **live on prod 2026-07-24 (`chore/synthetic-weight-enable-cron`).** After the passing smoke, both
   go-live switches were thrown: `SYNTHETIC_BOTS_ENABLED` on (now permanent), a **persistent 25-bot
