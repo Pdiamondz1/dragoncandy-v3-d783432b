@@ -128,13 +128,27 @@ hypothesis.
 > option passes only `--n`, so depth rows are often `botseed_phase1_%`, not `botseed_load_%`; and the
 > `load` run-label defaults to `load`, not `tier-…`.)
 
+**Prefer the scoped RPC.** `select public.purge_synthetic_load_cohort();` does all of the below
+correctly in one call — it deletes ONLY the `botla%`/`botseed_%` load cohort (spares the live 25),
+leaf-deletes the NO-ACTION-FK rows (`push_notifications.actor_id`, `crew_activity`,
+`creator_group_members`) + trigger/telemetry residue (`dragonshare_events`) BEFORE the `auth.users`
+delete, removes the non-cascading synthetic org, and returns a `residual_*` report (assert every
+`residual_*` is 0). Use the raw SQL below only as a fallback / to also purge snapshot rows:
+
 ```sql
+-- FALLBACK (the RPC above is preferred). Leaf-delete the NO-ACTION push_notifications rows FIRST — the
+-- Phase-4 notify leg creates them with a synthetic actor_id (actor_id → profiles is NO-ACTION and
+-- would block the auth.users→profiles cascade, exactly like the crew tables). Scoped to the load
+-- cohort so the live 25's notification rows are untouched:
+delete from push_notifications where actor_id in (
+  select id from auth.users
+  where email like 'botla%@synthetic.dragoncandy.test' or email like 'botseed_%@synthetic.dragoncandy.test');
 -- removes the load depth + active cohorts (cascades to profiles/registry/etc.); leaves bot001..025:
 delete from auth.users where email like 'botseed_%@synthetic.dragoncandy.test';   -- all depth cohorts
 delete from auth.users where email like 'botla%_%@synthetic.dragoncandy.test';    -- all active load cohorts
--- snapshots: the default run-label is 'load'; runbook ramps use 'tier-<TIER>-<date>'. A CUSTOM
--- --run-label needs its own delete (add it here). sim_load_snapshots only ever holds load-run rows.
-delete from sim_load_snapshots where run_label = 'load' or run_label like 'tier-%';
+-- snapshots: the default run-label is 'load'; runbook ramps use 'tier-<TIER>-<date>'; the matrix uses
+-- 'matrix-*'. A CUSTOM --run-label needs its own delete. sim_load_snapshots only ever holds load rows.
+delete from sim_load_snapshots where run_label = 'load' or run_label like 'tier-%' or run_label like 'matrix-%';
 ```
 Then re-capture and assert no load residue while the live cohort survives:
 ```sql
@@ -146,6 +160,49 @@ select
 Only if you intend to wipe **everything synthetic** (including the live cohort) use
 `select public.purge_synthetic_data();` then assert zero residue + `row_counts_real == row_counts` via
 `capture_platform_weight()`.
+
+## 8. Runner matrix (multi-IP fan-out — Slice 1)
+
+A single GH runner caps at the ~312-concurrency client-side **egress** wall while prod's DB stays
+~91% idle (`docs/superpowers/load-findings/2026-07-24.md`). The **runner matrix** breaks that: it fans
+the SAME load driver across N shards — each a separate GH job on its own runner IP — so the *summed*
+offered concurrency pushes prod's DB toward its real ceiling. **The ramp knob is the shard count.**
+
+**1) Seed at `25 × max_shards` active** (so every shard has a non-empty disjoint `botla…` slice —
+raising the shard count later requires re-seeding; a bigger dispatch over a smaller seed drives empty
+shard slices). Include content so the media-egress + write legs have real targets:
+```
+npx tsx sim/cli.ts bulk-seed --n <TOTAL> --active <25×max_shards> --with-content --cohort load
+#   --with-content also seeds public-free campaigns + DragonShare video posts + file_uploads + avatars/geo
+#   (via seed_synthetic_content) onto the botla…/botseed_… cohort — never the live bot0## 25.
+```
+
+**2) Dispatch the matrix** (manual only — the `synthetic-weight` environment reviewer-gates each shard;
+all inputs go through env vars, never interpolated):
+```
+gh workflow run synthetic-load-matrix.yml \
+  -f shards=5 -f concurrency=200 -f soak_ms=1800000 -f run_label="matrix-<date>"
+# each shard holds a fixed egress-safe C=200 on its own IP for the soak; 5 shards ≈ 1000 offered.
+```
+- **Ramp = step the shard count** (2 → 5 → 10, capped at the workflow's `MAX_SHARDS`). Keep C per shard
+  at/below the single-IP egress-safe ceiling (~200); the concurrency you're proving is `shards × C`.
+- **Kill switch drains mid-soak:** flip `SYNTHETIC_BOTS_ENABLED` off in prod `feature_flags` and every
+  in-flight shard stops within a snapshot cycle (the `isEnabled` re-check) — no `gh run cancel` needed.
+- Each shard uploads its `sim/.load-findings.json` as `findings-shard-<n>`.
+
+**3) Read the summed result:**
+```sql
+select public.get_sim_load_matrix_summary('matrix-<date>');
+--  → {shards, offered_concurrency, requests, ok, breakage, throttled, p95_ms,
+--     media_requests, media_bytes, storage_bytes, db_active_conn_peak, db_avg_query_ms_peak, max_connections}
+```
+`/internal/simulation` renders the same summed row ("Matrix run (summed)"). The DB ceiling shows as
+`db_active_conn_peak` approaching `max_connections` with rising `db_avg_query_ms_peak` — that (not the
+single-IP egress wall) is the number the matrix exists to find.
+
+**4) Teardown** = §7 (prefer `select public.purge_synthetic_load_cohort();` — it spares the live 25 and
+leaf-deletes the synthetic `push_notifications`/crew/telemetry residue the write legs create). **Never
+`purge_synthetic_data()`** for a load test.
 
 ## Notes
 - **Modeled revenue** is a Phase-A dashboard figure (GMV × take-rate, clearly labeled "modeled");
