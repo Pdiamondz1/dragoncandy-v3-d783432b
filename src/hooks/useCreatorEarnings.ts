@@ -22,10 +22,17 @@ export function useCreatorEarnings(userId: string | undefined) {
 
       if (collabIds.length === 0) {
         const payoutStatus = await supabase.functions.invoke('check-creator-payout-status');
+        // Read the wallet balance directly AFTER the status call: its onboarding-return backstop may have
+        // just auto-flushed (zeroed) pending_balance, and its response returns a PRE-flush snapshot.
+        const { data: prof } = await supabase
+          .from('creator_profiles')
+          .select('pending_balance')
+          .eq('user_id', userId!)
+          .maybeSingle();
         return {
           totalEarned: 0,
           inEscrow: 0,
-          available: payoutStatus.data?.platformPendingBalance ?? 0,
+          available: prof?.pending_balance ?? 0,
           onboardingComplete: payoutStatus.data?.onboardingComplete ?? false,
         };
       }
@@ -84,10 +91,22 @@ export function useCreatorEarnings(userId: string | undefined) {
 
       const payoutStatus = payoutStatusResult.data;
 
+      // `available` is the creator's platform wallet balance (creator_profiles.pending_balance, dollars).
+      // Read it directly AFTER the status invoke resolves: check-creator-payout-status's onboarding-return
+      // backstop may auto-flush (zero) the balance server-side, and it returns a PRE-flush snapshot — routing
+      // that snapshot into In Wallet would show already-flushed money as still pending, and its no-Stripe-
+      // account early return omits the field entirely (a not-onboarded creator's wallet would read $0). This
+      // is the post-flush source of truth (RLS: creators can read their own creator_profiles row).
+      const { data: freshProfile } = await supabase
+        .from('creator_profiles')
+        .select('pending_balance')
+        .eq('user_id', userId!)
+        .maybeSingle();
+
       return {
         totalEarned,
         inEscrow,
-        available: payoutStatus?.platformPendingBalance ?? 0,
+        available: freshProfile?.pending_balance ?? 0,
         onboardingComplete: payoutStatus?.onboardingComplete ?? false,
       };
     },
