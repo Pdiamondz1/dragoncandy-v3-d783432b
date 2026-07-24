@@ -237,7 +237,14 @@ return async (userId: string): Promise<SupabaseClient> => {
 
 ---
 
-## Phase 6 — Realtime (WebSocket) sub-leg  ⟨HARD SPLIT-POINT⟩
+## Phase 6 — Realtime (WebSocket) sub-leg  ⟨HARD SPLIT-POINT — DEFERRED 2026-07-24⟩
+
+> **DEFERRED at the split-point (2026-07-24).** Phases 1–5 are a complete, shippable Slice-1 deliverable
+> (multi-IP fan-out → aggregation RPC → dashboard → workflow → runbook → scoped teardown). The realtime
+> leg is architecturally distinct — a WebSocket/presence load with its **own** connection quota
+> (separate from Postgres `max_connections`, Step 6) — and warrants its own focused spec+plan + quota
+> research rather than being appended here. Tracked in [[project_synthetic_load_matrix_progress]]; pick
+> it up as a follow-up worktree once the Phases 1–5 matrix has had a live 2-shard smoke.
 
 > If this phase's estimate exceeds Phases 1–5 combined, STOP and extract it to its own spec+plan.
 
