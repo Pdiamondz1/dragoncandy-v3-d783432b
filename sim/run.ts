@@ -14,13 +14,13 @@
 import { writeFileSync } from "node:fs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { serviceClient, botClient } from "./clients";
-import { assertRuntimeBootSafety, type MinimalSupabaseClient } from "./env";
+import { assertRuntimeBootSafety, readKillSwitch, type MinimalSupabaseClient } from "./env";
 import { generateCohort } from "./personas";
-import { mintBot, readCohort, readSessionCapableBots } from "./mint";
+import { mintBot, readCohort, readSessionCapableBots, readActiveLoadCohort } from "./mint";
 import { planSeed, generateActiveCohort, assertActiveNamespaceFree } from "./seed";
 import { SessionPool } from "./session-pool";
 import { planDay, runDay } from "./behavior/graph";
-import { parseRamp, runLoad, type LoadFindingsArtifact } from "./load/driver";
+import { parseRamp, runLoad, type LoadFindingsArtifact, type RunLoadDeps, type LoadResult } from "./load/driver";
 import type { ActionContext } from "./behavior/actions";
 import type { BotRef, CohortState } from "./types";
 
@@ -309,6 +309,50 @@ async function cmdPurge(): Promise<void> {
   }
 }
 
+/** The resolved load configuration: matrix soak (fixed C held for soakMs) vs the single-runner ramp. */
+export interface LoadPlan {
+  matrix: boolean;
+  ramp: number[];
+  holdMs: number;
+}
+
+/**
+ * Decide the ramp shape from the flags. `--shards > 1` = MATRIX soak: a single fixed-concurrency step
+ * (C, floored at 1 so a mis-passed 0 never becomes a degenerate no-op ramp) held for `--soak-ms`.
+ * Otherwise the single-runner CEILING ramp: parseRamp(--ramp) held --hold-ms per step (byte-unchanged).
+ */
+export function planLoad(args: Args): LoadPlan {
+  if (args.shards > 1) {
+    return { matrix: true, ramp: [Math.max(1, args.concurrency)], holdMs: args.soakMs };
+  }
+  return { matrix: false, ramp: parseRamp(args.ramp), holdMs: args.holdMs };
+}
+
+/**
+ * cmdLoad's injectable seams — every one defaults to the real implementation (DEFAULT_CMD_LOAD_DEPS),
+ * so production callers pass nothing. Tests inject fakes to exercise the matrix branch with no live DB
+ * (mirrors the SessionPool / makeBotFor / runLoad injection style already used across sim/).
+ */
+export interface CmdLoadDeps {
+  serviceClient: () => SupabaseClient;
+  bootGate: (svc: SupabaseClient) => Promise<void>;
+  readActiveLoadCohort: (svc: SupabaseClient, shard: number, shards: number) => Promise<BotRef[]>;
+  readSessionCapableBots: (svc: SupabaseClient) => Promise<BotRef[]>;
+  makeBotFor: (bots: BotRef[], getToken?: BotTokenGetter) => (userId: string) => Promise<SupabaseClient>;
+  runLoad: (deps: RunLoadDeps) => Promise<LoadResult>;
+  readKillSwitch: (client: MinimalSupabaseClient) => Promise<boolean | null>;
+}
+
+const DEFAULT_CMD_LOAD_DEPS: CmdLoadDeps = {
+  serviceClient,
+  bootGate,
+  readActiveLoadCohort,
+  readSessionCapableBots,
+  makeBotFor,
+  runLoad,
+  readKillSwitch,
+};
+
 /**
  * load: drive concurrent, ramped, read-heavy hot-endpoint load to the saturation KNEE (not an
  * outage), sampling capture_sim_load_snapshot per step and COLLECTING every breakage across the run
@@ -316,41 +360,51 @@ async function cmdPurge(): Promise<void> {
  * every bot's token SERIALLY before the burst so the high-concurrency phase only reuses fresh
  * in-memory tokens and never trips the pool's per-bot refresh race. Sets a non-zero exit code iff a
  * breakage occurred — but only AFTER the findings are collected + written (never aborts on the first).
+ *
+ * MATRIX/SOAK mode (`--shards > 1`): drive THIS shard's disjoint botla… slice (readActiveLoadCohort)
+ * at a fixed concurrency C held for the soak, with a periodic SYNTHETIC_BOTS_ENABLED re-check that
+ * drains the ramp within a cycle, and every snapshot stamped with this shard's index (the matrix
+ * summary RPC groups on notes.shard). Single-runner mode (`--shards <= 1`) is byte-unchanged.
  */
-async function cmdLoad(args: Args): Promise<void> {
-  const svc = serviceClient();
-  await bootGate(svc);
-  // Drive load ONLY through session-capable bots — the live daily cohort (bot0##) + the active load
-  // cohort (botla…). readSessionCapableBots filters the depth pool (botseed_*) at the DB and skips the
-  // heavy crew/campaign graph, so a large depth pool never blows an oversized .in() before load starts
-  // nor gets a session minted per depth user (the exact per-IP 429 wall the session pool avoids). (Codex P1.)
-  const activeBots = await readSessionCapableBots(svc);
+export async function cmdLoad(args: Args, deps: CmdLoadDeps = DEFAULT_CMD_LOAD_DEPS): Promise<void> {
+  const svc = deps.serviceClient();
+  await deps.bootGate(svc);
+  const plan = planLoad(args);
+
+  // Cohort: matrix mode drives this shard's disjoint botla… slice from its own IP; single-runner mode
+  // drives the live bot0## + botla… session-capable cohort. Both exclude the depth pool (botseed_*) at
+  // the DB, so a large depth pool never blows an oversized .in() nor gets a per-user session minted.
+  const activeBots = plan.matrix
+    ? await deps.readActiveLoadCohort(svc, args.shard, args.shards)
+    : await deps.readSessionCapableBots(svc);
   // An empty cohort must fail loud, not silently apply zero load (mirrors cmdTick's contract).
   if (activeBots.length === 0) {
     throw new Error(
-      "[load] no session-capable synthetic cohort found (the depth pool never authenticates) — run `mint` or `bulk-seed --active N` first.",
+      plan.matrix
+        ? `[load] no active (botla…) cohort for shard ${args.shard}/${args.shards} — run \`bulk-seed --with-content --active ${25 * args.shards}\` first.`
+        : "[load] no session-capable synthetic cohort found (the depth pool never authenticates) — run `mint` or `bulk-seed --active N` first.",
     );
   }
-  const botFor = makeBotFor(activeBots);
+  const botFor = deps.makeBotFor(activeBots);
 
-  // Pre-warm the pool SERIALLY: tokens last ~1h and a ramp holds minutes, so every task in the burst
-  // reuses an already-fresh in-memory token — the high-concurrency phase never mints/refreshes (which
-  // is what would race the rotated refresh token). A mint failure here fails loud BEFORE any load.
+  // Pre-warm the pool SERIALLY (25 mints/shard from this IP → 429-safe): tokens last ~1h so every task
+  // in the burst reuses an already-fresh in-memory token; makeBotFor rebuilds the client if a token
+  // rotates mid-soak. A mint failure here fails loud BEFORE any load.
   for (const b of activeBots) {
     await botFor(b.userId);
   }
-
-  const ramp = parseRamp(args.ramp);
 
   const captureSnapshot = async (
     runLabel: string,
     errorRate: number,
     notes: Record<string, unknown>,
   ): Promise<void> => {
+    // Matrix mode stamps this shard's index so get_sim_load_matrix_summary can group per shard.
+    const stamped = plan.matrix ? { ...notes, shard: args.shard } : notes;
     const { error } = await svc.rpc("capture_sim_load_snapshot", {
       p_run_label: runLabel,
       p_error_rate: errorRate,
-      p_notes: notes,
+      p_notes: stamped,
     });
     // A snapshot is observability, not the load itself — a failed sample must not abort the ramp.
     if (error) console.warn(`[load] snapshot failed: ${error.message}`);
@@ -360,18 +414,25 @@ async function cmdLoad(args: Args): Promise<void> {
     writeFileSync(FINDINGS_PATH, JSON.stringify(artifact, null, 2), "utf8");
   };
 
+  // Matrix mode re-checks the master kill switch each snapshot cycle so flipping it OFF drains every
+  // shard within a cycle (no `gh run cancel`). Single-runner mode keeps the boot-only gate (undefined).
+  const isEnabled = plan.matrix
+    ? () => deps.readKillSwitch(svc as unknown as MinimalSupabaseClient).then(Boolean)
+    : undefined;
+
   console.warn(
-    `[load] ramp=[${ramp.join(", ")}] hold=${args.holdMs}ms label='${args.runLabel}' cohort=${activeBots.length}`,
+    `[load] ${plan.matrix ? `matrix shard=${args.shard}/${args.shards} ` : ""}ramp=[${plan.ramp.join(", ")}] hold=${plan.holdMs}ms label='${args.runLabel}' cohort=${activeBots.length}`,
   );
-  const result = await runLoad({
-    rampSteps: ramp,
-    holdMs: args.holdMs,
+  const result = await deps.runLoad({
+    rampSteps: plan.ramp,
+    holdMs: plan.holdMs,
     sampleEveryMs: SAMPLE_EVERY_MS,
     runLabel: args.runLabel,
     botFor,
     activeUserIds: activeBots.map((b) => b.userId),
     captureSnapshot,
     writeFindings,
+    isEnabled,
   });
 
   for (const s of result.steps) {
@@ -382,6 +443,9 @@ async function cmdLoad(args: Args): Promise<void> {
   }
   if (result.stoppedAtKnee) {
     console.warn(`[load] stopped at saturation knee (concurrency=${result.kneeConcurrency}) — knee, not outage.`);
+  }
+  if (result.stoppedByKillSwitch) {
+    console.warn(`[load] drained by the SYNTHETIC_BOTS_ENABLED kill switch mid-soak (graceful stop).`);
   }
   console.warn(
     `[load] findings: ${result.breakageCount} breakage event(s) across ${result.breakages.length} signature(s) → ${FINDINGS_PATH}`,

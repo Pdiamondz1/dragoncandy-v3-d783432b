@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { parseArgs, main, nonZeroResiduals, makeBotFor } from "./run";
+import { parseArgs, main, nonZeroResiduals, makeBotFor, planLoad, cmdLoad, type CmdLoadDeps } from "./run";
 import type { BotRef } from "./types";
+import type { RunLoadDeps, LoadResult } from "./load/driver";
 
 describe("parseArgs", () => {
   it("parses a full command line", () => {
@@ -104,6 +105,106 @@ describe("makeBotFor (soak-safe: rebuild the bot client only when the pooled tok
   it("throws for a userId that is not in the cohort", async () => {
     const botFor = makeBotFor([bot], async () => "tok");
     await expect(botFor("nope")).rejects.toThrow(/not in the cohort/);
+  });
+});
+
+describe("planLoad (matrix soak vs single-runner ramp decision)", () => {
+  it("matrix mode (shards>1): a single fixed-C step held for soakMs", () => {
+    expect(planLoad(parseArgs(["load", "--shards", "4", "--concurrency", "200", "--soak-ms", "600000"]))).toEqual({
+      matrix: true,
+      ramp: [200],
+      holdMs: 600000,
+    });
+  });
+  it("single-runner mode (shards<=1): parseRamp + holdMs (unchanged)", () => {
+    expect(planLoad(parseArgs(["load", "--ramp", "50,200", "--hold-ms", "9000"]))).toEqual({
+      matrix: false,
+      ramp: [50, 200],
+      holdMs: 9000,
+    });
+  });
+  it("floors matrix concurrency at 1 (never a degenerate 0-concurrency ramp)", () => {
+    expect(planLoad(parseArgs(["load", "--shards", "2"])).ramp).toEqual([1]);
+  });
+});
+
+describe("cmdLoad — matrix/soak mode wiring (injected deps, no live DB)", () => {
+  const oneBot: BotRef[] = [
+    { userId: "u1", email: "botla1_1@synthetic.dragoncandy.test", role: "content_creator", personaKey: null, cohort: null },
+  ];
+  const emptyResult: LoadResult = {
+    steps: [], breakages: [], breakageCount: 0, stoppedAtKnee: false, kneeConcurrency: null, stoppedByKillSwitch: false,
+  };
+
+  function harness() {
+    const rpc = vi.fn(async () => ({ error: null }));
+    const svc = { rpc } as unknown as import("@supabase/supabase-js").SupabaseClient;
+    const calls = { active: null as [number, number] | null, session: false, killReads: 0, runLoad: null as RunLoadDeps | null };
+    const deps: CmdLoadDeps = {
+      serviceClient: () => svc,
+      bootGate: async () => {},
+      readActiveLoadCohort: async (_svc, shard, shards) => {
+        calls.active = [shard, shards];
+        return oneBot;
+      },
+      readSessionCapableBots: async () => {
+        calls.session = true;
+        return oneBot;
+      },
+      makeBotFor: () => async () => ({}) as unknown as import("@supabase/supabase-js").SupabaseClient,
+      runLoad: async (rl) => {
+        calls.runLoad = rl;
+        return emptyResult;
+      },
+      readKillSwitch: async () => {
+        calls.killReads += 1;
+        return true;
+      },
+    };
+    return { rpc, calls, deps };
+  }
+
+  it("shards>1: selects readActiveLoadCohort, single-step soak ramp, kill-switch isEnabled, stamps notes.shard", async () => {
+    const { rpc, calls, deps } = harness();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const args = parseArgs(["load", "--shards", "3", "--shard", "1", "--concurrency", "200", "--soak-ms", "1800000", "--run-label", "matrix-x"]);
+    await cmdLoad(args, deps);
+
+    expect(calls.active).toEqual([1, 3]); // shard slice, not the live cohort
+    expect(calls.session).toBe(false);
+    expect(calls.runLoad?.rampSteps).toEqual([200]); // single fixed-C step
+    expect(calls.runLoad?.holdMs).toBe(1_800_000); // held for the soak
+    expect(typeof calls.runLoad?.isEnabled).toBe("function"); // kill-switch re-check injected
+    await expect(calls.runLoad?.isEnabled?.()).resolves.toBe(true);
+    expect(calls.killReads).toBe(1);
+
+    // Every snapshot is stamped with this shard's index (the aggregation RPC groups on notes.shard).
+    await calls.runLoad?.captureSnapshot("matrix-x", 0, { concurrency: 200 });
+    expect(rpc).toHaveBeenCalledWith(
+      "capture_sim_load_snapshot",
+      expect.objectContaining({ p_notes: expect.objectContaining({ shard: 1, concurrency: 200 }) }),
+    );
+    warn.mockRestore();
+  });
+
+  it("shards<=1: single-runner path unchanged (readSessionCapableBots, parseRamp, no isEnabled, no shard stamp)", async () => {
+    const { rpc, calls, deps } = harness();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const args = parseArgs(["load", "--ramp", "50,200", "--hold-ms", "9000"]);
+    await cmdLoad(args, deps);
+
+    expect(calls.session).toBe(true);
+    expect(calls.active).toBeNull();
+    expect(calls.runLoad?.rampSteps).toEqual([50, 200]);
+    expect(calls.runLoad?.holdMs).toBe(9000);
+    expect(calls.runLoad?.isEnabled).toBeUndefined();
+
+    await calls.runLoad?.captureSnapshot("load", 0, { concurrency: 50 });
+    expect(rpc).toHaveBeenCalledWith(
+      "capture_sim_load_snapshot",
+      expect.objectContaining({ p_notes: { concurrency: 50 } }), // exactly — no shard key
+    );
+    warn.mockRestore();
   });
 });
 

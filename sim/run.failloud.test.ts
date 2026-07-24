@@ -9,11 +9,13 @@ vi.mock("./clients", () => ({
 }));
 vi.mock("./env", () => ({
   assertRuntimeBootSafety: vi.fn(async () => {}),
+  readKillSwitch: vi.fn(async () => true),
 }));
 vi.mock("./mint", () => ({
   mintBot: vi.fn(async () => {}),
   readCohort: vi.fn(async () => ({ bots: [], crews: [], campaigns: [], applications: [], collaborations: [] })),
   readSessionCapableBots: vi.fn(async () => []),
+  readActiveLoadCohort: vi.fn(async () => []),
 }));
 
 import { main } from "./run";
