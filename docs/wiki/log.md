@@ -1,5 +1,12 @@
 # Wiki Log
 
+## [2026-07-24] update | Synthetic Weight Engine — Phase 1 live smoke (Task 8) + teardown fix (fix/purge-synthetic-crew-teardown)
+Ran the founder-authorized live smoke on prod (mint 5 → funnel → isolation proof → purge → switch off).
+**Compounded** onto [[Synthetic Weight Engine]] a "Phase 1 live smoke (Task 8)" section: isolation held
+byte-for-byte, and the smoke caught a real teardown bug — `purge_synthetic_data()` blocked by crew
+NO ACTION FKs (`creator_group_members.invited_by`, `crew_activity.actor_id`/`participant_id`), fixed by
+migration `20260724011000` (leaf-delete before the cascade). Also prepended a `docs/SHIPPED_LOG.md` entry.
+
 ## [2026-07-23] ingest | Synthetic Weight Engine — Phase 1 private crew lane (feat/synthetic-weight-phase-1)
 Ingested `2026-07-23-synthetic-weight-engine-phase-1.md`. **Compounded** onto [[Synthetic Weight Engine]]
 (new "Phase 1 — the private-crew behavior engine" section + "Phase 1 gotchas learned"; intro notes both

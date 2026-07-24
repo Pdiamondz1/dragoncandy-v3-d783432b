@@ -139,6 +139,34 @@ N=25 cohort (≈65% creators / 35% Hoboken restaurants) and drives the full **fr
   `supabase functions deploy <name> --project-ref … --no-verify-jwt` from the worktree (auto-bundles
   from disk). Always preserve each function's existing `verify_jwt`.
 
+## Phase 1 live smoke (Task 8) — ran on prod 2026-07-24, PASSED (one teardown fix)
+
+The founder-authorized live smoke ran the full cycle on prod: flip `SYNTHETIC_BOTS_ENABLED`→true →
+baseline snapshot → `mint --n 5` → ~10 `tick`s (full crew funnel, **0 failures**, 2 collaborations
+completed+approved and mutually reviewed) → isolation proof → `purge` → switch off.
+
+**Isolation held end-to-end.** Every real corpus count (`WHERE NOT is_synthetic(...)`) was
+byte-identical before/after — campaigns 25, apps 22, collabs 16, files 27, reviews 12, crews 2, users
+41 — while the totals grew by exactly the synthetic rows; zero real-user notifications/messages;
+`get_simulation_stats()` showed the 5-bot cohort (2 hoboken_restaurant + 2 luxury + 1 genz). Phase 0's
+segregation works.
+
+**The teardown bug the smoke caught (its whole purpose).** `purge_synthetic_data()` relied on
+`delete auth.users → profiles CASCADE`, but two Phase 1 crew tables have **NO ACTION** FKs to
+`profiles` that block that cascade: `creator_group_members.invited_by` and
+`crew_activity.actor_id`/`participant_id`. The first real purge failed on
+`creator_group_members_invited_by_fkey` and rolled back (transactional — no half-delete). Fix
+(migration `20260724011000_purge_synthetic_crew_leaf_delete`): leaf-delete synthetic `crew_activity` +
+`creator_group_members` rows BEFORE the cascade, and add both to the fail-loud residual report. Every
+other bot-touched table (campaigns/apps/collabs/file_uploads/project_reviews/creator_groups) is
+`ON DELETE CASCADE` and clears automatically — confirmed via `pg_constraint.confdeltype`. **Lesson:
+"verified by reasoning" ≠ "verified by running"** — Phase 0/1 reasoned that the ONE crew FK it
+considered (`campaigns.group_id` RESTRICT) wouldn't bite, but never considered the crew
+membership/activity FKs; only running the real purge on real crew rows surfaced them, and the fail-loud
+purge (throws on any non-zero residual) made the gap loud instead of silent residue. See
+[[Testing auth.uid() RPCs and RLS on prod]] for the aios_*/get_simulation_stats internal-auth-gated
+snapshot technique the proof used.
+
 ## See Also
 - [[Service-Role Data Exposure]] — the same "re-assert the intended scope server-side" discipline.
 - [[AIOS runtime spend source of truth]] — `donny_cost_ledger` / the 15% AI cap the synthetic

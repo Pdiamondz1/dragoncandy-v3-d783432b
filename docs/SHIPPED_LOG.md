@@ -29,6 +29,25 @@
 
 ---END-HEADER---
 
+- Synthetic Weight Engine — Phase 1 live smoke (Task 8) + teardown fix — **ran on prod 2026-07-24,
+  PASSED (`fix/purge-synthetic-crew-teardown`).** The founder-authorized first live mint: flip
+  `SYNTHETIC_BOTS_ENABLED`→true → baseline snapshot → `mint --n 5` → ~10 `tick`s (full crew funnel,
+  **0 failures**, 2 collaborations completed+approved+mutually reviewed) → isolation proof → `purge` →
+  switch off. **Isolation held perfectly:** every real corpus count (`WHERE NOT is_synthetic(...)`) was
+  byte-identical before/after (campaigns 25, apps 22, collabs 16, files 27, reviews 12, crews 2, users
+  41) while the totals grew by exactly the synthetic rows; zero real-user notifications/messages;
+  `get_simulation_stats()` showed the 5-bot cohort. **The smoke caught a real teardown bug (its whole
+  purpose):** `purge_synthetic_data()` relied on `delete auth.users → profiles CASCADE`, but two Phase 1
+  crew tables have **NO ACTION** FKs to `profiles` that block it — `creator_group_members.invited_by`
+  and `crew_activity.actor_id`/`participant_id`; the first purge failed on
+  `creator_group_members_invited_by_fkey` and rolled back (transactional — no half-delete). Fix
+  (migration `20260724011000`): leaf-delete synthetic `crew_activity` + `creator_group_members` before
+  the cascade + add both to the fail-loud residual report; the re-run purged 5 users with all residuals
+  0 and prod back to byte-identical baseline. Lesson: **"verified by reasoning" ≠ "verified by
+  running"** — Phase 0/1 reasoned the one crew FK it considered (`campaigns.group_id` RESTRICT) wouldn't
+  bite but never considered the membership/activity FKs; only the live purge surfaced them.
+  → `docs/wiki/concepts/synthetic-weight-engine.md`
+
 - Synthetic Weight Engine — Phase 1 (private crew lane) — **built, merge-ready; prod inert
   (2026-07-23, `feat/synthetic-weight-phase-1`).** The first live-cohort behavior engine on the Phase 0
   safety spine, entirely in the `sim/` Node harness — **no DB migrations, no edge-function changes** (it
