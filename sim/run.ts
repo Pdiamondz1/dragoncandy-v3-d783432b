@@ -16,7 +16,7 @@ import { serviceClient, botClient } from "./clients";
 import { assertRuntimeBootSafety, type MinimalSupabaseClient } from "./env";
 import { generateCohort } from "./personas";
 import { mintBot, readCohort } from "./mint";
-import { mintBotSession } from "./session";
+import { SessionPool } from "./session-pool";
 import { planDay, runDay } from "./behavior/graph";
 import type { ActionContext } from "./behavior/actions";
 import type { BotRef, CohortState } from "./types";
@@ -76,10 +76,26 @@ export function parseArgs(argv: string[]): Args {
   };
 }
 
-/** Session pool: mints + caches one bot-scoped client per user id for the life of a tick. */
+/**
+ * Bot-client factory for one tick. Constructs a single cross-tick SessionPool (loaded from disk
+ * ONCE here, not per bot) so ticks REUSE/REFRESH each bot's session instead of re-minting one per
+ * bot per tick — that re-mint (magiclink + verify, two rate-limited auth calls) is what trips
+ * Supabase's per-IP 429 at frequency/scale. The returned closure hands each user a bot-scoped
+ * client built on a fresh pooled token; the botClient is still cached per tick so repeated
+ * botFor(sameUser) in one tick doesn't rebuild the client (session freshness now comes from the
+ * pool, not a per-tick mint).
+ *
+ * Live session-reuse verification — a re-tick showing 0 fresh mints — is done at the FIRST live run,
+ * per docs/runbooks/synthetic-load-tier-ramp.md (Task 8). Two `dry-run`s can't exercise it (no
+ * network; `dry-run` never constructs a client).
+ */
 function makeBotFor(bots: BotRef[]): (userId: string) => Promise<SupabaseClient> {
-  const url = process.env.SIM_SUPABASE_URL;
-  const key = process.env.SIM_SUPABASE_SECRET_KEY ?? "";
+  const pool = new SessionPool("sim/.session-pool.json", {
+    url: process.env.SIM_SUPABASE_URL ?? "",
+    anonKey: process.env.SIM_SUPABASE_ANON_KEY ?? "",
+    serviceKey: process.env.SIM_SUPABASE_SECRET_KEY ?? "",
+  });
+  pool.load();
   const emailById = new Map(bots.map((b) => [b.userId, b.email]));
   const cache = new Map<string, SupabaseClient>();
   return async (userId: string): Promise<SupabaseClient> => {
@@ -87,8 +103,8 @@ function makeBotFor(bots: BotRef[]): (userId: string) => Promise<SupabaseClient>
     if (cached) return cached;
     const email = emailById.get(userId);
     if (!email) throw new Error(`no session: ${userId} is not in the cohort`);
-    const session = await mintBotSession(url, key, email);
-    const client = botClient(session.access_token);
+    const token = await pool.getToken(email, Date.now());
+    const client = botClient(token);
     cache.set(userId, client);
     return client;
   };
