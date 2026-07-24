@@ -23,6 +23,13 @@ dragoncandy-pitch.pdf
 # Knowledge-sync secret (npm run sync:internal / sync:wiki) — never commit the key
 .env.sync.local
 supabase/scripts/.env.sync.local
+# Synthetic Weight harness — persisted bot auth sessions (live refresh tokens; never commit)
+sim/.session-pool.json
+sim/.session-pool.json.*.tmp
+sim/*.session-pool.json
+sim/*.session-pool.json.*.tmp
+# Synthetic Weight harness — per-run load-findings QA artifact (a run output, not source)
+sim/.load-findings.json
 
 # Editor directories and files
 .vscode/*

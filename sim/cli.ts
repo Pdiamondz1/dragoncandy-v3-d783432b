@@ -3,6 +3,7 @@
 // (the CI workflow calls node_modules/.bin/tsx directly — never `npx --yes`, see the workflow):
 //   npx tsx sim/cli.ts dry-run --n 25
 //   npx tsx sim/cli.ts mint --n 5      (boot-gated: needs SIM_* + kill switch ON)
+//   npx tsx sim/cli.ts bulk-seed --n 200 --active 25 --creator-split 0.65   (boot-gated)
 //   npx tsx sim/cli.ts tick
 //   npx tsx sim/cli.ts purge
 //

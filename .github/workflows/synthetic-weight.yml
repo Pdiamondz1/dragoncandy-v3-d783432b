@@ -17,12 +17,16 @@ on:
   workflow_dispatch:
     inputs:
       command:
+        # `load` via a single GH runner uses its DEFAULT ramp and is only a convenience smoke —
+        # one runner = one egress IP, so it may hit a client-side per-IP ceiling before the DB's
+        # (spec §4b). The real "find the ceiling" test is runbook/local-first (or a runner matrix):
+        # docs/runbooks/synthetic-load-tier-ramp.md.
         description: "Harness subcommand"
         type: choice
-        options: [dry-run, tick, mint, purge]
+        options: [dry-run, tick, mint, bulk-seed, load, purge]
         default: dry-run
       n:
-        description: "Cohort size (mint only)"
+        description: "Cohort size (mint / bulk-seed total)"
         default: "25"
   schedule:
     # LIVE since 2026-07-24 — enabled after a passing founder-authorized live smoke (Task 8) at N=25.

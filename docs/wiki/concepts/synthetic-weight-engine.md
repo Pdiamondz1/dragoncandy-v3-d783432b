@@ -2,8 +2,8 @@
 title: Synthetic Weight Engine
 type: concept
 created: 2026-07-23
-updated: 2026-07-23
-sources: [2026-07-23-synthetic-weight-engine-phase-0.md, 2026-07-23-synthetic-weight-engine-phase-1.md]
+updated: 2026-07-24
+sources: [2026-07-23-synthetic-weight-engine-phase-0.md, 2026-07-23-synthetic-weight-engine-phase-1.md, 2026-07-24-synthetic-weight-load-economics-phase-a.md]
 tags: [synthetic, bots, load-testing, segregation, safety-spine, aios, metrics, teardown]
 ---
 # Synthetic Weight Engine
@@ -189,6 +189,75 @@ frequency / larger N remains **cross-tick session reuse** (persist each bot's re
 re-minting every tick) — deferred. To pause the whole engine:
 flip `SYNTHETIC_BOTS_ENABLED` off (every run then fail-closes at boot) and/or re-comment the schedule;
 teardown is `purge_synthetic_data()` (now crew-safe).
+
+## Phase A — load proof & economics (2026-07-24, `feat/synthetic-weight-load-economics`)
+
+Phase A turns the engine from *liveness/QA* (Phase 1) into a **load-proof + economics** engine
+without weakening any Phase 0 invariant. Harness + one migration + a `/internal/simulation` dashboard
+slice; prod stays byte-unchanged behind the kill switch, and the actual ramps are **founder-gated
+operator runs** (a runbook), not part of the merge. Raw source:
+`docs/wiki/raw/sessions/2026-07-24-synthetic-weight-load-economics-phase-a.md`.
+
+**Framing:** the ask was "50,000-bot DAUs quickly"; the reframe that drove the design is **load =
+concurrency, not headcount** (50K DAU ≈ ~800–1,000 peak concurrent → reproduce request VOLUME via a
+reusable session pool + burst driver, not 50K standing sessions). With the user declaring real users
+are testers too, Phase A runs **single-track on prod** and targets the saturation **knee** (measurable
+degradation), never a true outage — so the observability RPCs stay responsive enough to record the
+samples the curve needs (reversing Phase 0's "clone-only saturation" mitigation, owned explicitly).
+
+- **Cross-tick session pool** (`sim/session-pool.ts`) — the keystone Phase 1 marked "deferred."
+  Persists each bot's session to a gitignored `sim/.session-pool.json` and **refreshes** (1 call) or
+  **reuses** (0 calls) instead of re-minting (2 calls) each tick — lifting the per-IP auth 429 wall.
+  GoTrue rotates the refresh token on use → a **per-bot single-flight** guard collapses concurrent
+  `getToken`s into one mint/refresh; `save()` is synchronous (temp-write→rename) so saves can't
+  interleave. Sessions are **bound to `userId`**: after a purge + re-mint the same email maps to a new
+  auth user, so an email-only cache would reuse the deleted user's JWT (empty/failed RLS) — a
+  userId-mismatch is a cache MISS → fresh mint.
+- **Two-lane bulk-seed** (`sim/seed.ts` + `seed_synthetic_cohort` RPC) — a **DEPTH pool**
+  (`botseed_<cohort>_<i>`, bulk-inserted by the service-role RPC, **never authenticates** — just DB
+  weight so listings look populated; idempotent via `extensions.uuid_generate_v5` +
+  `on conflict do nothing`) and an **ACTIVE cohort** (`botla<seed>_<i>`, minted, session-capable).
+  The distinct `botla` namespace is load-bearing: `generateCohort` emits index-based `bot001…`
+  regardless of cohort label and the **live daily cohort already occupies `bot001…bot025`**, so
+  reusing it would duplicate-email. The three namespaces (`botseed_`/`botla`/`bot0##`) are disjoint.
+- **Ramped load driver** (`sim/load/driver.ts`) — reuses pooled sessions (pre-warmed serially),
+  ramps concurrency in geometric steps via a bounded worker pool, and **stops at the knee** (error-rate
+  OR relative-p95 degradation). **Collects ALL breakage signatures** (never abort-on-first) →
+  `sim/.load-findings.json`, exitCode set after writing. `classifyError` scores 429/503/53300 as
+  **throttle** (expected saturation), everything else as **breakage** (a real defect under load).
+  `parseRamp` **fails loud** on any malformed spec (no silent one-step ramp). `load` drives **only
+  session-capable bots** — `readSessionCapableBots` (`sim/mint.ts`) reads them by email pattern
+  (`@synthetic…` AND NOT `botseed_%`), skipping the heavy crew/campaign graph.
+- **Two service-role RPCs** — migration `20260724170000_sim_load_seed_rpcs.sql` (applied to prod):
+  `seed_synthetic_cohort` (depth insert; email domain hardcoded so `handle_new_user` always tags;
+  role only `content_creator`/`business_client` — cannot mint a privileged user) and
+  `capture_sim_load_snapshot` (reads `pg_stat_activity`/`pg_stat_statements` via cross-schema
+  `to_regclass`; degrades `avg_query_ms` to NULL if the extension is absent; `regclass` not user
+  input → no injection). Both DEFINER, `service_role`-only. Snapshot capture runs **concurrently with
+  the in-flight wave** (`Promise.all`) — a snapshot taken after the wave drained would see only the
+  snapshot RPC, not the concurrency, so `active_connections/max_connections` (the curve's primary
+  signal) would read artificially low.
+- **`/internal/simulation` slice** — a `useSimLoadSnapshots` React-Query hook feeds a dark-ops-deck
+  **load-curve table** (active/max conns · avg query · error rate); a **MODELED revenue** block
+  (`computeModeledRevenue`: `synthetic_campaigns × $250 × 10% free-tier take`) styled deliberately
+  distinct (dashed + `MODELED` badge + inline assumptions) so it can never read as real revenue.
+  **Measured** revenue + capped Donny AI are **Phase B** (separate gated plan).
+- **Runbook + findings template** — `docs/runbooks/synthetic-load-tier-ramp.md` (founder-gated ramp;
+  §7 teardown warns **not** to use `purge_synthetic_data()` — it wipes the live 25-bot cohort — and
+  deletes by the by-construction-safe prefixes `botseed_%`/`botla%_%`, disjoint from the live
+  `bot0##`) + `docs/superpowers/load-findings/TEMPLATE.md` (the "what to fix before 50K DAUs" report).
+
+### Phase A — the Codex gauntlet (8 real issues over 7 rounds, all fixed + regression-tested)
+
+The mandatory second reviewer caught, in order: `load` driving the depth pool (per-IP 429); a
+silent one-step ramp on a typo; the heavy `readCohort` running before the depth filter (oversized
+`.in()` at 50K); comma-ramp silently dropping invalid tokens; the `creator_directory` action
+selecting non-existent columns (`full_name`/`role` vs the view's `creator_name`) → a FALSE breakage
+every run; the daily `tick` dragging in the depth pool after a bulk-seed; the DB snapshot captured
+**after** the wave drained (artificially-low connection curve); and a stale pooled JWT reused after a
+purge+re-mint. Each was a LEAD **verified against the code** (R3 against the real prod view schema via
+`information_schema.columns`) before fixing — see [[Verify a reviewer's claim before accepting OR
+dismissing]] and [[MCP execute_sql returns only the LAST statement's result]]. R7 was clean.
 
 ## See Also
 - [[Service-Role Data Exposure]] — the same "re-assert the intended scope server-side" discipline.

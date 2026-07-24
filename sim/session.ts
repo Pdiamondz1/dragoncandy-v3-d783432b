@@ -15,14 +15,25 @@ export interface BotSession {
   expires_in: number;
 }
 
-/** Validate the target; returns the normalized base URL (no trailing slash). Pure. */
-export function assertSessionMintTarget(url: string | undefined, email: string): string {
-  if (!url) throw new Error("mintBotSession requires SIM_SUPABASE_URL");
-  assertSyntheticEmail(email); // never mint a session for a real user
+/**
+ * Shared security guard: assert `url` is a *.supabase.co host and return its normalized base
+ * (no trailing slash). Every place the harness sends a service key or a bot token routes through
+ * here, so a mint/refresh call can never leak a credential to a foreign origin. `ctx` names the
+ * caller in the error message. Pure. Throws on a missing url or a non-supabase host.
+ */
+export function assertSupabaseHost(url: string | undefined, ctx: string): string {
+  if (!url) throw new Error(`${ctx} requires SIM_SUPABASE_URL`);
   if (!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(url)) {
-    throw new Error(`mintBotSession: refusing non-supabase host: ${url}`);
+    throw new Error(`${ctx}: refusing non-supabase host: ${url}`);
   }
   return url.replace(/\/$/, "");
+}
+
+/** Validate the mint target — a *.supabase.co host AND a synthetic email. Returns the base URL. Pure. */
+export function assertSessionMintTarget(url: string | undefined, email: string): string {
+  const base = assertSupabaseHost(url, "mintBotSession");
+  assertSyntheticEmail(email); // never mint a session for a real user
+  return base;
 }
 
 // ── 429 resilience ──────────────────────────────────────────────────────────────────────────────

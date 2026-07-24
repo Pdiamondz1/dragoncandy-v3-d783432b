@@ -5648,6 +5648,42 @@ export type Database = {
           },
         ]
       }
+      sim_load_snapshots: {
+        Row: {
+          active_connections: number | null
+          avg_query_ms: number | null
+          captured_at: string
+          error_rate: number | null
+          id: string
+          max_connections: number | null
+          notes: Json
+          reserved_headroom: number | null
+          run_label: string | null
+        }
+        Insert: {
+          active_connections?: number | null
+          avg_query_ms?: number | null
+          captured_at?: string
+          error_rate?: number | null
+          id?: string
+          max_connections?: number | null
+          notes?: Json
+          reserved_headroom?: number | null
+          run_label?: string | null
+        }
+        Update: {
+          active_connections?: number | null
+          avg_query_ms?: number | null
+          captured_at?: string
+          error_rate?: number | null
+          id?: string
+          max_connections?: number | null
+          notes?: Json
+          reserved_headroom?: number | null
+          run_label?: string | null
+        }
+        Relationships: []
+      }
       social_analytics_cache: {
         Row: {
           fetched_at: string
