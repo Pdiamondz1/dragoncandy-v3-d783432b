@@ -258,6 +258,45 @@ describe("runLoad — collects breakages across the run (does NOT abort on the f
   });
 });
 
+describe("runLoad — samples the DB snapshot WHILE the wave is in flight (Codex P1 regression)", () => {
+  it("takes the snapshot before any wave task completes (concurrent, not post-drain)", async () => {
+    // Every wave task blocks on a gate; the snapshot releases it. So at snapshot time NO task has
+    // completed — proving the snapshot runs concurrently with the in-flight wave. If the snapshot were
+    // taken after `await runPool` drained the wave (the bug), runPool would block on the gate forever
+    // (nothing releases it) → the test would deadlock and time out.
+    let completed = 0;
+    let completedAtSnapshot = -1;
+    let release!: () => void;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const gated: HotAction = {
+      name: "campaign_browse",
+      weight: 1,
+      run: async () => {
+        await gate;
+        completed += 1;
+      },
+    };
+    await runLoad({
+      rampSteps: [2],
+      holdMs: 0,
+      sampleEveryMs: 1000,
+      runLabel: "inflight",
+      botFor: async () => ({}) as unknown as SupabaseClient,
+      activeUserIds: ["u1", "u2"],
+      captureSnapshot: async () => {
+        completedAtSnapshot = completed; // live completed-count at snapshot time
+        release(); // let the gated wave drain
+      },
+      writeFindings: async () => {},
+      actions: [gated],
+      now: () => 0,
+    });
+    expect(completedAtSnapshot).toBe(0); // snapshot fired while the wave was still blocked (in flight)
+    expect(completed).toBe(2); // and after release, the wave drained
+  });
+});
 describe("runLoad — stops at the saturation knee (never pushes to outage)", () => {
   it("halts the ramp on the first saturated step and does not run higher concurrency", async () => {
     const sampledConcurrencies: number[] = [];

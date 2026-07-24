@@ -512,9 +512,37 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
     // offline tests MUST pass holdMs: 0 with a frozen injected `now` (→ exactly one wave). Never
     // inject a frozen clock with holdMs > 0 — the loop would spin forever.
     do {
-      const outcomes = await runPool(concurrency, concurrency, (_index) =>
+      // Launch the wave WITHOUT awaiting, then take the DB snapshot CONCURRENTLY with it: the snapshot
+      // RPC reads pg_stat_activity server-side while the wave's bot queries are actually in flight. A
+      // snapshot taken after the wave drained would see only the snapshot's own connection, not the
+      // requested concurrency — so active_connections/max_connections (the load curve's primary
+      // saturation signal) would read artificially low and never find the DB ceiling. (Codex P1.)
+      const wavePromise = runPool(concurrency, concurrency, (_index) =>
         runOneTask({ activeUserIds: deps.activeUserIds, botFor: deps.botFor, actions, rng, now }),
       );
+      // Sample on the timer (and at least once per step, via lastSampleAt = -Infinity). The metric
+      // notes reflect the waves completed SO FAR this step (empty on the first wave) — the authoritative
+      // per-step metrics live in the returned curve; the snapshot's job is the in-flight connection read.
+      const doSample = now() - lastSampleAt >= sampleEveryMs;
+      const samplePromise = doSample
+        ? (async () => {
+            const seen = latencies.length;
+            const rate = seen > 0 ? (throttled + breakage) / seen : 0;
+            await captureSnapshot(runLabel, round4(rate), {
+              concurrency,
+              count: seen,
+              ok,
+              throttled,
+              breakage,
+              p50_ms: percentile(latencies, 50),
+              p95_ms: percentile(latencies, 95),
+            });
+          })()
+        : Promise.resolve();
+
+      const [outcomes] = await Promise.all([wavePromise, samplePromise]);
+      if (doSample) lastSampleAt = now();
+
       for (const o of outcomes) {
         latencies.push(o.ms);
         if (o.ok) ok += 1;
@@ -523,21 +551,6 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
           breakage += 1;
           breakageEvents.push({ endpoint: o.endpoint, status: o.status, error: o.error, concurrency });
         }
-      }
-      // Sample on the timer (and always at least once per step, via lastSampleAt = -Infinity).
-      if (now() - lastSampleAt >= sampleEveryMs) {
-        const seen = latencies.length;
-        const rate = seen > 0 ? (throttled + breakage) / seen : 0;
-        await captureSnapshot(runLabel, round4(rate), {
-          concurrency,
-          count: seen,
-          ok,
-          throttled,
-          breakage,
-          p50_ms: percentile(latencies, 50),
-          p95_ms: percentile(latencies, 95),
-        });
-        lastSampleAt = now();
       }
     } while (now() - stepStart < holdMs);
 
