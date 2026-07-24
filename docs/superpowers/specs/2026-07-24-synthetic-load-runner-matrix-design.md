@@ -108,8 +108,12 @@ real AI $); the AI-generation and CDN-egress **dollars** are Slice 2's cost mode
   write path (`sim/behavior/actions.ts`): crew writes create `creator_group_members` / `crew_activity` rows
   whose NO-ACTION FKs to `profiles` **block** the raw `botla%` teardown cascade — the exact prod-purge rollback
   in `[[project_synthetic_weight_task8_teardown_fix]]` (only `purge_synthetic_data()` was leaf-fixed, not the
-  runbook's raw delete). Public-free writes cascade clean. Then **notification fanout** (those writes fire real
-  cross-user notification creates); and a sampled **Donny chat** session that **writes the
+  runbook's raw delete). Public-free writes cascade clean. Then **notification fanout** — the leg calls the sanctioned
+  `create-notification` path **bot→bot** (synthetic actor → a *synthetic* recipient, **never a real tester**),
+  because a plain direct insert of a campaign/application/message fires **no** notification (there is no DB
+  trigger on those tables — verified). NOTE: `push_notifications.actor_id → profiles` is a **NO-ACTION FK**
+  (the same class as the crew trap), so teardown must **leaf-delete synthetic `push_notifications` before the
+  `botla%` delete** (§7). And a sampled **Donny chat** session that **writes the
   `donny_conversations`/`donny_messages` rows directly and does NOT invoke the generating edge functions** (DB
   footprint only — the **real AI $ is modeled in Slice 2**). Read:write ~90:10; media fetches (GET/HEAD to
   Storage/CDN) are the **egress proxy**.
@@ -200,6 +204,11 @@ real AI $); the AI-generation and CDN-egress **dollars** are Slice 2's cost mode
   (kills the live 25 daily-tick cohort). The active cohort is just larger now (25×shards); same prefix, same
   clean cascade (depth/active users have no crew rows — the sampled-write leg is pinned to public-free
   campaigns for exactly this reason, §3a — see `[[project_synthetic_weight_task8_teardown_fix]]`).
+  **Leaf-delete first (NO-ACTION FKs):** synthetic `push_notifications` (its `actor_id → profiles` is NO
+  ACTION) must be deleted BEFORE the `botla%`/`botseed_%` `auth.users` delete — mirror the `20260724011000`
+  crew leaf-delete fix; **both** the runbook raw teardown **and** `purge_synthetic_data` need this. (The
+  content seed pins `dragonshare_posts.verified_by = NULL` (§8), so its NO-ACTION FK to `auth.users` needs no
+  leaf-delete.)
 - **Broadcast check (parent §5a):** confirm at kickoff no DB trigger broadcasts on public-campaign INSERT — a
   migration grep finds only *constraint* triggers on `campaigns` (low risk), but §3a's public-campaign volume
   makes the check explicit; the harness inserts campaigns directly, bypassing
@@ -215,7 +224,8 @@ migration `<ts>_sim_load_matrix_rpcs.sql` (`get_sim_load_matrix_summary`, servic
 migration `<ts>_sim_content_seed.sql` (`seed_synthetic_content` — **public-free** campaigns + DragonShare video
 posts + `file_uploads` + per-bot avatars/geo, `is_synthetic`-tagged, service-role only; **invoked via a new
 `bulk-seed --with-content` step**; writes `profiles`/`creator_profiles` (avatar + lat/long), `campaigns`
-(`group_id IS NULL`), `dragonshare_posts`, `file_uploads` — so `mint.ts` stays unchanged).
+(`group_id IS NULL`), `dragonshare_posts` (`verified_by` pinned **NULL** — its FK to `auth.users` is NO
+ACTION), `file_uploads` — so `mint.ts` stays unchanged).
 **Modified:** `sim/run.ts` (`cmdLoad`: new flags `--shard`/`--shards`/`--concurrency`/`--soak-ms`; new
 `readActiveLoadCohort(shard,shards)` selector — `botla…`-only + deterministic `ORDER BY email`; **`makeBotFor`
 made refresh-aware** — rebuild the cached client on token rotation); `sim/load/driver.ts` (fixed-concurrency
