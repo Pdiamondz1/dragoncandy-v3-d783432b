@@ -114,6 +114,13 @@ describe("chooseRefreshOrMint", () => {
     `load()`/`save()` (JSON file; `save` writes atomically; tolerate a missing file);
     `async getToken(email, nowMs)` → applies `chooseRefreshOrMint`, calling `mintBotSession`
     (from `session.ts`) or `refreshSession`, persisting the result; returns the access_token.
+  - **Per-bot single-flight (concurrency-critical, the keystone's whole point):** GoTrue **rotates**
+    the refresh token on every refresh and invalidates the prior one, so two concurrent
+    `getToken(email)` for the same near-expiry bot must NOT both refresh (the second 400s "already
+    used" and the shared-file last-write-wins drops a rotated token). Keep an in-memory
+    `Map<email, Promise<token>>` of in-flight refresh/mint calls; a second concurrent caller for the
+    same email awaits the same promise. Add a test asserting two concurrent `getToken` for one email
+    trigger exactly one refresh.
   - Never log a token.
 
 - [ ] **Step 4: Run tests** — `npx vitest run sim/session-pool.test.ts` → PASS.
@@ -154,8 +161,10 @@ describe("chooseRefreshOrMint", () => {
       `synthetic_users` (email matches `%@synthetic.dragoncandy.test`). The RPC does **not** re-insert
       those (avoids the unique-violation the spec-review flagged); if any belt-and-suspenders insert
       is added, it MUST be `on conflict do nothing`.
-    - Idempotent on re-run: `insert into auth.users ... on conflict (id) do nothing` and skip existing
-      emails. Return `{seeded, skipped}`.
+    - Idempotent on re-run via the **email** (the deterministic key): derive a **deterministic id**
+      `uuid_generate_v5(<namespace>, email)` so `insert into auth.users (...) on conflict (id) do
+      nothing` actually fires on a re-run — a fresh random uuid each run would instead violate the
+      `auth.users` email-unique index (a hard error, not a skip). Return `{seeded, skipped}`.
     - Also `update profiles set email_verified = true where id = <seeded ids>` (bots need it; depth
       bots never log in but keep it consistent).
   - `capture_sim_load_snapshot(p_run_label text, p_error_rate numeric default null, p_notes jsonb
@@ -163,8 +172,9 @@ describe("chooseRefreshOrMint", () => {
     - `active_connections = (select count(*) from pg_stat_activity where state = 'active')`,
     - `max_connections = current_setting('max_connections')::int`,
     - `reserved_headroom = current_setting('superuser_reserved_connections')::int`,
-    - `avg_query_ms = (select round(mean_exec_time::numeric, 2) from pg_stat_statements order by calls
-      desc limit 1)` guarded so it is null if `pg_stat_statements` is absent (wrap in a
+    - `avg_query_ms = (select round((sum(total_exec_time) / nullif(sum(calls),0))::numeric, 2) from
+      pg_stat_statements)` — a call-weighted system average, NOT the most-called statement's mean —
+      guarded so it is null if `pg_stat_statements` is absent (wrap in a
       `to_regclass('pg_stat_statements') is not null` check or exception block),
     - `error_rate = p_error_rate`, `notes = p_notes`, `run_label = p_run_label`.
 - [ ] **Step 2:** data-exposure-reviewer pass on the migration; fix findings; re-run until PASS.
@@ -183,10 +193,20 @@ describe("chooseRefreshOrMint", () => {
   math + that active ≤ activeMax.
 - [ ] **Step 2:** Run → FAIL.
 - [ ] **Step 3: Implement.** `cmdBulkSeed(args)`: boot-gate; call `svc.rpc('seed_synthetic_cohort',
-  {p_n: depthCount, p_cohort, p_creator_split})` for the depth pool; then mint the active cohort
-  (`activeCount`) via the existing `generateCohort` + `mintBot` loop (session-capable). Fail loud if
-  the RPC returns fewer than requested or any active mint fails (mirror `cmdMint`'s incomplete-cohort
-  throw). Print `{depth_seeded, active_minted}`.
+  {p_n: depthCount, p_cohort, p_creator_split})` for the depth pool; then mint the **active cohort**
+  (`activeCount`) — session-capable, via `mintBot`.
+  **HIGH — distinct email namespace (do NOT collide with the LIVE phase-1 cohort):** `generateCohort`
+  emits index-based emails `bot001…botNNN@synthetic.dragoncandy.test` **regardless of the cohort
+  label** (the label only sets `persona.cohort`), and the live daily workflow already minted
+  `bot001…bot025`. Reusing that scheme → `auth.admin.createUser` duplicate-email → fail-loud trips.
+  So the active cohort MUST use a distinct namespace (e.g. prefix `botla<seed>_<i>@…`): parameterize
+  the persona generator with an `emailPrefix` (or add a dedicated active-cohort generator) — never the
+  bare `bot###` scheme. As a guard, pre-query existing synthetic emails and fail if the chosen
+  namespace already exists. Fail loud if the RPC seeds fewer than requested or any active mint fails
+  (mirror `cmdMint`'s incomplete-cohort throw). Print `{depth_seeded, active_minted}`.
+- [ ] **Step 3b: Extend the arg parser.** `parseArgs`/`Args` (`run.ts:62`) parse only
+  `--n/--cohort/--seed`; add `--active <count>` and `--creator-split <num>` for `bulk-seed` (defaults
+  active 25, split 0.65).
 - [ ] **Step 4:** Run tests → PASS; `npm run typecheck && npm run build`.
 - [ ] **Step 5: Commit** — `feat(sim): bulk-seed subcommand (depth RPC + active mint)`.
 
@@ -221,8 +241,12 @@ thin.
     first). At the end, write `sim/.load-findings.json` (the per-step curve + the breakage signatures
     + the sample summary) and print a findings summary. Set `process.exitCode = 1` if any breakage
     occurred (CI stays red) — but only after the batch is collected + written.
-  - `cmdLoad(args)`: boot-gate; read the active cohort; run `runLoad`; print the per-step curve +
-    findings summary.
+  - `cmdLoad(args)`: boot-gate; read the active cohort; **pre-warm the session pool** — refresh/mint
+    every active bot's token once, serially, BEFORE the burst (tokens last ~1h; a ramp holds minutes),
+    so the high-concurrency phase only ever reuses already-fresh in-memory tokens and never triggers
+    the rotation race (Task 1); run `runLoad`; print the per-step curve + findings summary.
+  - **Extend the arg parser** (`parseArgs`/`Args`, `run.ts:62`) with `load` flags: `--ramp`
+    (start/max/factor or a comma list), `--hold-ms`, `--run-label`.
 - [ ] **Step 4:** Add a test asserting breakages are **collected across steps** (a fake worker that
   errors on N calls yields N-in-signatures and a written findings artifact, run not aborted). Run
   tests → PASS; `npm run typecheck && npm run build`.
@@ -240,6 +264,10 @@ thin.
   error rate) + the synthetic cost figure. Use the light-app kit primitives? No — `/internal` is
   **dark**; follow the existing `InternalSimulation.tsx` dark ops-deck styling. Handle loading/error
   states.
+- [ ] **Step 2b: Modeled revenue (spec §4e — a Phase-A deliverable, NOT Phase B).** Compute + render a
+  clearly-labeled **"modeled"** revenue projection: projected GMV = active-cohort activity × avg
+  campaign value × take-rate ladder (a pure computation — moves no money). Keep it visually distinct
+  from measured figures so it is never mistaken for real revenue.
 - [ ] **Step 3:** `npm run build`; verify no `any`, error handling on the query.
 - [ ] **Step 4: Commit** — `feat(internal): simulation dashboard — load curve + synthetic cost`.
 
@@ -249,18 +277,26 @@ thin.
 
 - [ ] **Step 1:** Add `bulk-seed` and `load` to the `command` choice `options`. Keep `SIM_COMMAND`
   env-var passing (never interpolate inputs into the run script). Leave the daily schedule = `tick`.
+  **Surface note (§4b single-egress-IP):** a single GH runner = one IP, so a workflow-driven `load`
+  may hit a client-side per-IP ceiling, not the DB's — `load` is therefore **runbook/local-first** (or
+  a runner matrix). If exposing it via dispatch, add `ramp`/`run-label` inputs too (not just `--n`);
+  otherwise document that dispatch `load` runs defaults only and is a convenience smoke, not the real
+  ceiling test.
 - [ ] **Step 2:** Commit — `chore(ci): allow bulk-seed/load via workflow_dispatch`.
 
 ## Task 8: Tier-ramp runbook
 
 **Files:** Create `docs/runbooks/synthetic-load-tier-ramp.md`
 
-- [ ] **Step 1:** Write the founder-gated procedure: pin a low-traffic slot off the 14:00 cron; run
-  `load` at the current tier; record knee + p95 + connection ceiling + the tier's live $/mo; upgrade
-  prod compute one step (note the brief restart); re-run; repeat MICRO→…→LARGE until it holds target.
-  Include: the first-live-run **session-reuse verification** (re-tick shows 0 fresh mints); the
-  single-egress-IP caveat; how to read `sim_load_snapshots`; and the purge-after step
-  (`purge_synthetic_data()` → assert zero residue + `row_counts_real == row_counts`).
+- [ ] **Step 1:** Write the founder-gated procedure: **confirm `pg_stat_statements` is enabled**
+  (`list_extensions`; enable if absent) and `pg_stat_statements_reset()` just before each ramp; pin a
+  low-traffic slot off the 14:00 cron; run `load` at the current tier; record knee + p95 + connection
+  ceiling + the tier's live $/mo + the **storage-cost leg** (`platform_weight.storage_bytes` delta ×
+  Supabase $/GB, spec §4e); upgrade prod compute one step (note the brief restart); re-run; repeat
+  MICRO→…→LARGE until it holds target. Include: the first-live-run **session-reuse verification**
+  (re-tick shows 0 fresh mints); the single-egress-IP caveat; how to read `sim_load_snapshots`; and
+  the purge-after step (`purge_synthetic_data()` → assert zero residue + `row_counts_real ==
+  row_counts`).
 - [ ] **Step 2:** Commit — `docs(runbook): synthetic-weight load tier-ramp`.
 
 ## Task 9: Load Findings report — template + synthesis procedure
@@ -306,7 +342,8 @@ Follow the runbook: `bulk-seed` (small first, e.g. depth 200 + active 25) → co
 Findings Report** (bugs from `sim/.load-findings.json` + bottlenecks from `pg_stat_statements` /
 advisors / snapshots + tier & optimization improvements) into
 `docs/superpowers/load-findings/<date>.md` — the "what to fix before 50K DAUs" deliverable → `purge`
-to zero residue. Money/AI legs are Phase B — not exercised here.
+to zero residue. **Modeled** revenue IS surfaced here (Phase A); only real money movement, **measured**
+revenue, and Donny AI spend are Phase B — not exercised here.
 
 ## Notes / gotchas (from memory + spec)
 
