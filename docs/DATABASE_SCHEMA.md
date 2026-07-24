@@ -63,6 +63,32 @@
 > reconciliation sweep in `auto-approve-content` re-drives finalize-only for marked-but-unfinalized rows
 > (5-min min-age guard).
 
+> **Durable pending-balance flush ledger (`pending_balance_flushes`) — 2026-07-24, [[Payout Finalization &
+> Re-entrancy]] (stage 1 of the wallet-first fix).** New table **`pending_balance_flushes`** (migration
+> `20260723180000`) makes the shared wallet→Stripe flush (`_shared/flush-pending-balance.ts`)
+> **exactly-once**: one row per flush, whose id **is** the Stripe idempotency key `flush_${id}` — replacing
+> the colliding `withdraw_${user}_${cents}` key that under-paid two identical-cents flushes. Columns: `id`,
+> `user_id` (FK `auth.users` ON DELETE CASCADE), `profile_type` (`creator`/`business`), `stripe_account_id`,
+> `amount_cents`, `source` (`manual`/`autoflush`), `status` (`claimed`/`succeeded`/`failed`/`stuck`),
+> `stripe_transfer_id`, `attempts`, `last_error`, `created_at`/`updated_at`. Partial index
+> `idx_pbf_claimed_created ON (created_at) WHERE status='claimed'` (the only rows the reconcile scan reads).
+> RLS: internal-`SELECT` (`is_internal_user()`) + service-role `FOR ALL`; **no client write path** — all
+> writes go through four SECURITY DEFINER, `search_path=public`, **service-role-only** RPCs (in-body
+> `request.jwt.claims->>'role'='service_role'` guard + REVOKE public/anon/authenticated + GRANT service_role,
+> same lockdown as `credit_pending_balance_for_payout`): **`claim_pending_balance_flush`** (row-locks the
+> profile `FOR UPDATE`, verifies `round(pending_balance*100)=cents`, zeroes the balance, inserts a `claimed`
+> row → its id; NULL on mismatch/no-row ⇒ caller throws `BALANCE_CHANGED`), **`confirm_pending_balance_flush`**
+> (`claimed→succeeded` + records the transfer id; **`RETURNS boolean`** = did *this* call transition the row,
+> so an overlapping reconcile whose `confirm` is a no-op skips the duplicate ledger write — migration
+> `20260723200000`), **`fail_pending_balance_flush`** (`claimed→failed`; if
+> restore, adds back exactly `amount_cents::numeric/100` — the `::numeric` cast avoids an integer floor to 0),
+> **`bump_flush_attempt`** (increments `attempts`; flips `claimed→stuck` at the cap; returns `'stuck'` on
+> **exactly** the transition, giving file-once alerting). Re-driven by the new **`reconcile-pending-flushes`**
+> edge fn on a `*/15` pg_cron (migration `20260723190000`; `verify_jwt=false` + `isAuthorizedIngest`, Vault
+> `reconcile_pending_flushes_url` URL + shared `aios_ingest_key` bearer — mirrors `auto-approve-content`),
+> which scans `claimed` rows >5 min old through the shared `executeFlushTransfer`. Stage 2 (the
+> `release-creator-payout` onboarded-path reroute) is deferred.
+
 ## Creator Groups (Crews)
 
 A business's standing private roster of creators; a campaign scoped to a crew is visible only to its

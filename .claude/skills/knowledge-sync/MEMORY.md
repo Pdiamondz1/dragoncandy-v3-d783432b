@@ -68,6 +68,39 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-24] Durable pending-balance flush ledger — stage 1 of the wallet-first fix (branch `feat/wallet-first-payout`)
+- Output: bundled INTO the work PR — new `raw/sessions/2026-07-24-durable-flush-ledger.md`; **compounded**
+  onto `concepts/payout-finalization-consistency.md` (new "Durable pending-balance flush ledger (stage 1)"
+  section + **reframed** the "Known residuals" — the identical-cents under-pay is CLOSED by the durable
+  per-flush key, the two `release-creator-payout` cross-path residuals still need stage 2; frontmatter
+  `updated`/`sources` bumped); `index.md` (new Sources line in the payout cluster + refreshed the
+  `[[Payout Finalization & Re-entrancy]]` Concepts entry); `log.md` ingest entry at top; `SHIPPED_LOG.md`
+  prepended; `PROJECT_CONTEXT.md` §5 one Shipped line; **`DATABASE_SCHEMA.md`** (new `pending_balance_flushes`
+  blockquote — table + 4 RPCs + the reconcile cron); + THIS entry. No `DESIGN_SYSTEM`/`CLAUDE.md` change.
+- Happened: the next payout-hardening increment after #329, executed via subagent-driven-development
+  (implementer + spec + code-quality subagents per task; migration/deploy/E2E careful-gated in the main
+  session). Correctly **compounded** onto the payout page — it already forward-referenced the flush as "the
+  clean fix," so stage 1 landing is a section + a residuals reframe on the OWNING page, not a thin new page.
+  The durable story is the flush idempotency-key dilemma (a key must be stable-across-retries AND
+  unique-across-movements) resolved by a durable per-flush record whose id is the key.
+- Worked: [scope] rebased onto `origin/main` first (was 4 behind — `SHIPPED_LOG`/`PROJECT_CONTEXT`/`wiki/log`
+  had diverged via recent synthetic-weight knowledge PRs); post-rebase all 6 target docs byte-IDENTICAL to
+  origin/main before editing (clean rebase — my 13 commits were spec/plan/code, disjoint from the shared
+  docs). [context-tax]: full prose to `SHIPPED_LOG.md`, §5 got ONE line. [orphans]-by-path: no new concept
+  page (compound); new raw session cataloged in Sources. [wikilinks]-exact: `[[Payout Finalization &
+  Re-entrancy]]` confirmed present before linking; the new `[[Durable Flush Ledger Session]]` self-registers.
+  [runlog-in-pr] bundled. Edited `DATABASE_SCHEMA.md` (a real table+RPC+cron addition, not a bare CHECK tweak).
+- Failed: none for knowledge-sync. RAG sync + close-the-loop [[verify-knowledge]] are post-merge (PR open;
+  the post-merge hook syncs since `docs/` changed).
+- Remember: **when a concept page you (or a prior run) wrote forward-references a fix as "the clean fix,"
+  and this session ships stage 1 of it, compound onto that page and reframe its residuals** (what stage 1
+  closed vs what still needs stage 2), rather than minting a new page — even though the flush ledger is a
+  substantial subsystem (a table + 4 RPCs + a cron), it is the *next layer* of the payout-finalization
+  story, not a separate subject. The sharp non-knowledge lesson (captured on the raw/concept pages): the
+  ONE unbounded-claimed path — transfer-succeeds/`confirm`-fails — needed **bump-on-confirm-fail** to bound
+  it under Stripe's ~24h idempotency TTL, or reconcile would eventually double-pay. (advisory — reinforces
+  compound-onto-hub)
+
 ### [2026-07-23] Payout finalize retry + safe failure handling (PR #328)
 - Output: bundled INTO the work PR #328 — new `raw/sessions/2026-07-23-payout-finalize-retry.md`, new
   `concepts/payout-finalization-consistency.md` (no existing payment page owned the escrow→payout→finalize
