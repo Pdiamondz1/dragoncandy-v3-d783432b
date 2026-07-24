@@ -22,8 +22,8 @@ One plan, six buildable phases + a gates phase. **Phase 6 (realtime sub-leg) is 
 |---|---|---|
 | `sim/mint.ts` | Modify | add `readActiveLoadCohort(admin, shard, shards)` — `botla…`-only, `ORDER BY email`, disjoint 25-bot slice |
 | `sim/run.ts` | Modify | refresh-aware `makeBotFor`; new flags `--shard/--shards/--concurrency/--soak-ms`; `--with-content` on bulk-seed; matrix/soak wiring in `cmdLoad` |
-| `sim/load/driver.ts` | Modify | `isEnabled()` kill-switch re-check in `runLoad`; behavior-mix `HOT_ACTIONS`; (Phase 6) realtime sub-leg |
-| `sim/load/actions-mix.ts` | Create | the realistic DAU `HotAction[]` (video fetch, geo near-me, mobile/desktop, public-free content writes, notification, Donny-footprint) |
+| `sim/load/driver.ts` | Modify | `isEnabled()` kill-switch re-check in `runLoad`; behavior-mix `HOT_ACTIONS`; **media-egress bytes/requests tally into `notes`**; (Phase 6) realtime sub-leg |
+| `sim/load/actions-mix.ts` | Create | the realistic DAU `HotAction[]` (feed read + **real media GET/HEAD egress fetch**, geo near-me, mobile/desktop, public-free content writes, notification, Donny-footprint) |
 | `supabase/migrations/<ts>_sim_load_matrix_rpcs.sql` | Create | `get_sim_load_matrix_summary(p_run_label)` service-role RPC |
 | `supabase/migrations/<ts>_sim_content_seed.sql` | Create | `seed_synthetic_content(...)` — public-free campaigns + video posts + file_uploads + avatars/geo |
 | `.github/workflows/synthetic-load-matrix.yml` | Create | `setup`→dynamic-matrix `load` job (`max_shards` cap) |
@@ -32,6 +32,8 @@ One plan, six buildable phases + a gates phase. **Phase 6 (realtime sub-leg) is 
 | `sim/*.test.ts` (co-located) | Create/Modify | unit tests per task (mirror existing fake-auth-server + pure-function suite) |
 
 **Reuse unchanged:** safety spine, `seed_synthetic_cohort`, `capture_sim_load_snapshot`, `session-pool.ts`, `env.ts`, `personas.ts`, `synthetic-weight.yml`.
+
+**Migration numbering:** the three `<ts>_*.sql` files must be timestamped AFTER the latest existing migration (`20260724170000`) and checked for a concurrent-worktree collision + disjoint objects before merge (per [[project_migration_timestamp_collision_concurrent_worktrees]]) — `git grep` the bare 14-digit prefix across worktrees (the Grep tool hides bare digit runs), and renumber ours after any already-merged sibling.
 
 ---
 
@@ -77,7 +79,8 @@ export function sliceActiveCohort(rows: { id: string; email: string; role: strin
     .sort((a, b) => a.email.localeCompare(b.email));
   const start = shard * PER_SHARD;
   return ordered.slice(start, start + PER_SHARD).map((r) => ({
-    userId: r.id, email: r.email, role: (r.role as Role) ?? "content_creator", personaKey: null as PersonaKey | null,
+    userId: r.id, email: r.email, role: (r.role as Role) ?? "content_creator",
+    personaKey: null as PersonaKey | null, cohort: null as string | null,  // BotRef requires cohort (types.ts:12)
   }));
 }
 
@@ -101,7 +104,7 @@ export async function readActiveLoadCohort(admin: SupabaseClient, shard: number,
 - [ ] **Step 1: Failing test.** Assert that when the injected pool returns a ROTATED token for the same userId (simulating a mid-soak refresh), `makeBotFor`'s returned factory yields a NEW client bound to the new token, and yields the SAME client while the token is unchanged (0 rebuilds). (Refactor `makeBotFor` to accept an injectable token-getter so the test needs no network — mirror `SessionPool`'s injection style.)
 
 - [ ] **Step 2: Run — FAIL** (current `makeBotFor` caches the client forever).
-- [ ] **Step 3: Implement.** Replace the per-userId client cache with a `{token, client}` cache; call `pool.getToken(email, userId, Date.now())` every invocation (cheap `reuse` path = no network) and rebuild the client only when the token changed:
+- [ ] **Step 3: Implement.** Replace the per-userId client cache with a `{token, client}` cache; call `pool.getToken(email, userId, Date.now())` every invocation (cheap `reuse` path = no network) and rebuild the client only when the token changed. **Keep the token-getter INJECTABLE with a default to the real `SessionPool`** so both existing call sites — `cmdTick` (`run.ts:254`) and `cmdLoad` (`run.ts:304`), which call `makeBotFor(bots)` — compile unchanged (the test injects a fake getter; production passes none):
 
 ```ts
 const cache = new Map<string, { token: string; client: SupabaseClient }>();
@@ -148,7 +151,7 @@ return async (userId: string): Promise<SupabaseClient> => {
 
 - [ ] **Step 1: Failing test** — with `--shards>1`, `cmdLoad` uses `readActiveLoadCohort(shard,shards)` (not `readSessionCapableBots`), builds a single-step ramp `[concurrency]` held for `soakMs`, injects an `isEnabled()` reading `SYNTHETIC_BOTS_ENABLED` via the service client, and stamps `notes.shard` + `notes.concurrency` on every snapshot. (Inject the reads for the test.)
 - [ ] **Step 2: Run — FAIL.**
-- [ ] **Step 3: Implement.** Branch in `cmdLoad`: when `args.shards > 1`, `activeBots = await readActiveLoadCohort(svc, args.shard, args.shards)` and `ramp = [args.concurrency]`, `holdMs = args.soakMs`; pass `isEnabled: () => readKillSwitch(svc).then(Boolean)` (reuse `env.ts`'s `readKillSwitch`) and thread `args.shard` into the `captureSnapshot` `notes`. Single-runner mode (`shards<=1`) is unchanged.
+- [ ] **Step 3: Implement.** Branch in `cmdLoad`: when `args.shards > 1`, `activeBots = await readActiveLoadCohort(svc, args.shard, args.shards)` and `ramp = [args.concurrency]`, `holdMs = args.soakMs`; pass `isEnabled: () => readKillSwitch(svc as unknown as MinimalSupabaseClient).then(Boolean)` (reuse `env.ts`'s `readKillSwitch`; **add `readKillSwitch` + `MinimalSupabaseClient` to the `./env` import**, and use the `as unknown as MinimalSupabaseClient` cast that `bootGate` (`run.ts:59-66`) already uses to dodge the TS "excessively deep" error) and thread `args.shard` + `args.concurrency` into the `captureSnapshot` `notes`. Single-runner mode (`shards<=1`) is unchanged.
 - [ ] **Step 4: Run — PASS.**  **Step 5: Commit** `-m "feat(sim): cmdLoad matrix mode — shard slice + fixed-C soak + kill-switch"`
 
 ---
@@ -182,14 +185,25 @@ return async (userId: string): Promise<SupabaseClient> => {
 
 ---
 
-## Phase 4 — Realistic DAU behavior mix
+## Phase 4 — Realistic DAU behavior mix + media-egress proxy
 
-**Files:** Create `sim/load/actions-mix.ts`; Modify `sim/load/driver.ts` (default `HOT_ACTIONS` → import the mix); Test `sim/load/actions-mix.test.ts`.
+**Files:** Create `sim/load/actions-mix.ts`; Modify `sim/load/driver.ts` (default `HOT_ACTIONS` → import the mix; **media-egress tally**); Test `sim/load/actions-mix.test.ts`, `sim/load/driver.test.ts`.
 
-- [ ] **Step 1: Failing test** — `pickWeighted` over the mix yields ~90:10 read:write and includes each named action (DragonFeed video/media fetch, campaign browse/search, geo near-me, profile view, mobile-feed vs desktop-grid variants, public-free content write, **bot→bot notification** (via `create-notification`, synthetic recipient), Donny-chat-footprint write). Assert the write actions create **public-free** campaigns (`group_id NULL`), never touch crew tables, and the notification recipient is always a *synthetic* bot (never a real user).
+### Task 4.1: the behavior mix
+
+- [ ] **Step 1: Failing test** — `pickWeighted` over the mix yields ~90:10 read:write and includes each named action (DragonFeed feed read + a real **media GET/HEAD fetch** of a sampled public `content_file_path` (Task 4.2), campaign browse/search, geo near-me, profile view, mobile-feed vs desktop-grid variants, public-free content write, **bot→bot notification** (via `create-notification`, synthetic recipient), Donny-chat-footprint write). Assert the write actions create **public-free** campaigns (`group_id NULL`), never touch crew tables, and the notification recipient is always a *synthetic* bot (never a real user).
 - [ ] **Step 2: FAIL.**
 - [ ] **Step 3: Implement** the `HotAction[]` in `actions-mix.ts` (each `run(client)` hits a real hot endpoint / performs a public-free `is_synthetic` write via the caller's own JWT — RLS-real). Weights sum to a ~90:10 read:write split. The **notification action calls `create-notification` bot→bot** (a plain insert fires no notification — there is no trigger on those tables; recipient MUST be another synthetic bot so no real tester is spammed) — this creates `push_notifications` with a synthetic `actor_id`, cleaned by Task 3.3's teardown leaf-delete. The Donny-footprint action inserts `donny_conversations`/`donny_messages` rows directly — **no** `donny-*` edge call. Wire `driver.ts` to default to this mix.
 - [ ] **Step 4: PASS.**  **Step 5: Commit** `-m "feat(sim): realistic DAU behavior mix (video/geo/mobile/content-write/notify/donny-footprint)"`
+
+### Task 4.2: media-egress proxy (spec §3a/§5 — the Slice-1 observability dimension the DB-only view misses)
+
+> Real CDN-egress **dollars** are Slice 2; the Slice-1 deliverable is the client-side **egress proxy** — request count + transferred bytes of real media GET/HEAD fetches. (`platform_weight.storage_bytes` *growth* is ~0 by design under the asset-reuse model (§3a — bots reference a small pool of existing public assets, not 50K distinct files), so the client-side egress tally — not storage growth — is the meaningful proxy; `storage_bytes` is still surfaced as a point reading in Task 5.1.)
+
+- [ ] **Step 1: Failing test** (`driver.test.ts`) — a `HotAction` whose `run` resolves `{ bytes: N }` makes `runLoad` accumulate `notes.media_requests` (count of media calls) and `notes.media_bytes` (Σ bytes) into the sampled snapshot; a `void`-returning action contributes 0 to both.
+- [ ] **Step 2: FAIL.**
+- [ ] **Step 3: Implement** — (a) widen `HotAction.run` to `Promise<{ bytes?: number } | void>` (fully additive — existing read actions return `void`); (b) the media action does a real `fetch(url, { method: "GET" })` of a sampled public content URL and returns `{ bytes }` from `Content-Length` (or the read body length); (c) `runOneTask` reads `res?.bytes ?? 0`; (d) add per-step `mediaRequests`/`mediaBytes` accumulators in `runLoad`, written into the snapshot `notes` alongside the existing keys. A media-fetch failure classifies as breakage/throttle exactly like a query error (the egress path is under test too).
+- [ ] **Step 4: PASS.**  **Step 5: Commit** `-m "feat(sim): media-egress proxy — real media fetch + per-step bytes/requests tally"`
 
 ---
 
@@ -199,7 +213,7 @@ return async (userId: string): Promise<SupabaseClient> => {
 
 **Files:** Create `supabase/migrations/<ts>_sim_load_matrix_rpcs.sql`; verify via MCP.
 
-- [ ] **Step 1** Write the RPC (service-role, SECURITY DEFINER, revoked anon/authenticated). For `p_run_label`: per `notes->>'shard'`, take that shard's MAX-`(notes->>'concurrency')::int` sample; **sum** those shards' `concurrency`/`count`/`ok`/`breakage`/`throttled` and **max** `(notes->>'p95_ms')::numeric`; DB-side = `max(active_connections)`, `max(avg_query_ms)`, `max(max_connections)` across ALL rows of the label. Return one jsonb row `{shards, offered_concurrency, requests, ok, breakage, throttled, p95_ms, db_active_conn_peak, db_avg_query_ms_peak, max_connections}`.
+- [ ] **Step 1** Write the RPC (service-role, SECURITY DEFINER, revoked anon/authenticated). For `p_run_label`, per `notes->>'shard'` pick that shard's **fullest sample = the row with the latest `captured_at`** — NOT max-concurrency: in single-fixed-C soak mode every sample of a shard shares one `concurrency` value (so max-concurrency can't disambiguate), and `notes.count/ok/throttled/breakage` are **cumulative within the step** (`driver.ts` `seen = latencies.length`), so the latest `captured_at` row holds that shard's fullest running total. (`sim_load_snapshots.captured_at` exists — safety spine.) Then **sum** those shards' `concurrency`/`count`/`ok`/`breakage`/`throttled` + `(notes->>'media_requests')::bigint` + `(notes->>'media_bytes')::bigint`, and **max** `(notes->>'p95_ms')::numeric`; DB-side = `max(active_connections)`, `max(avg_query_ms)`, `max(max_connections)` across ALL rows of the label; plus `storage_bytes` = the latest `public.platform_weight.storage_bytes` point reading (spec §5 observability — ~0 growth by design, Task 4.2). Return one jsonb row `{shards, offered_concurrency, requests, ok, breakage, throttled, p95_ms, media_requests, media_bytes, storage_bytes, db_active_conn_peak, db_avg_query_ms_peak, max_connections}`.
 - [ ] **Step 2** Verify on prod rollback-wrapped with two synthetic shard rows (ONE statement per MCP call). **Step 3** `apply_migration` (careful gate). **Step 4** Commit.
 
 ### Task 5.2: dynamic-matrix workflow
@@ -213,13 +227,13 @@ return async (userId: string): Promise<SupabaseClient> => {
 
 **Files:** Modify `src/pages/internal/InternalSimulation.tsx`.
 
-- [ ] **Step 1** Add a React Query hook calling `get_sim_load_matrix_summary` for the latest `matrix-*` label; render the summed offered-concurrency vs DB-peak curve beside the existing single-runner view. Light theme / existing `/internal` dark shell conventions.  **Step 2** `npm run build`.  **Step 3** Commit.
+- [ ] **Step 1** Add a React Query hook calling `get_sim_load_matrix_summary` for the latest `matrix-*` label; render the summed offered-concurrency vs DB-peak curve beside the existing single-runner view, **plus the media-egress proxy (`media_requests`/`media_bytes`) and the `storage_bytes` reading** (spec §5 — the video-platform cost dimension). Light theme / existing `/internal` dark shell conventions.  **Step 2** `npm run build`.  **Step 3** Commit.
 
 ### Task 5.4: runbook matrix section
 
 **Files:** Modify `docs/runbooks/synthetic-load-tier-ramp.md`.
 
-- [ ] **Step 1** Add: `bulk-seed --with-content` seeding at `25×shards` active; the `gh workflow run synthetic-load-matrix.yml -f shards=… -f concurrency=…` dispatch; stepping shard count; the `get_sim_load_matrix_summary` read; and the larger-cohort teardown (**synthetic `push_notifications` leaf-delete first**, then the same `botla%`/`botseed_%` prefix delete — **never** `purge_synthetic_data()`; Task 3.3).  **Step 2** Commit.
+- [ ] **Step 1** Add: `bulk-seed --with-content` seeding at **`25×max_shards`** active (so any shard count up to the workflow cap has a non-empty slice — **raising shard count later requires re-seeding**; a bigger dispatch over a smaller seed drives empty shard slices, per spec §4); the `gh workflow run synthetic-load-matrix.yml -f shards=… -f concurrency=…` dispatch; stepping shard count; the `get_sim_load_matrix_summary` read; and the larger-cohort teardown (**synthetic `push_notifications` leaf-delete first**, then the same `botla%`/`botseed_%` prefix delete — **never** `purge_synthetic_data()`; Task 3.3).  **Step 2** Commit.
 
 ---
 
