@@ -133,8 +133,11 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   + `purge_synthetic_data()`) with Phase 1 (private-crew free-rails behavior engine) **live on prod** (N=25 +
   daily cron) and **Phase A** (load proof & economics — cross-tick session pool, two-lane bulk-seed, ramped
   knee-not-outage load driver + findings, two service-role RPCs, `/internal/simulation` load-curve +
-  MODELED-revenue slice) shipped; live ramps founder-gated (runbook). Measured revenue / capped Donny =
-  Phase B (separate plan). → `docs/SHIPPED_LOG.md`
+  MODELED-revenue slice) and the **runner matrix (Slice 1)** (multi-IP fan-out — `bulk-seed --with-content`,
+  a ~90:10 DAU behavior mix + media-egress proxy, `get_sim_load_matrix_summary`, the `synthetic-load-matrix.yml`
+  workflow, a summed dashboard card; 3 migrations live on prod) shipped; the 2-shard live ramp + Phase 6
+  realtime leg founder-gated/deferred (runbook). Measured revenue / capped Donny = Phase B (separate plan).
+  → `docs/SHIPPED_LOG.md`
 - **Durable pending-balance flush ledger** — stage 1 of the wallet-first payout fix ([[Payout Finalization
   & Re-entrancy]]): a durable `pending_balance_flushes` ledger (table + claim/confirm/fail/bump RPCs, a
   `flush_${id}`-keyed shared `executeFlushTransfer`, a `reconcile-pending-flushes` `*/15` cron) makes the

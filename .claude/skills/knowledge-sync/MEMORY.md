@@ -68,6 +68,22 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-24] Synthetic Weight Engine — runner matrix (Slice 1) (branch `feat/synthetic-load-runner-matrix`, PR #337)
+- **Output:** `raw/sessions/2026-07-24-synthetic-load-runner-matrix.md` → compounded onto
+  [[Synthetic Weight Engine]] a "Runner matrix (Slice 1)" section; `index.md` Concepts-entry tail; `log.md`
+  top entry; `SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5 edited in place; `DATABASE_SCHEMA.md` (3 new RPCs + purge note).
+- **Happened:** Per-session sync for the multi-IP load runner matrix (Task 3.2 + Phases 4–5; Phase 6 deferred).
+  Branch was 1 behind origin/main → **merged origin/main in first** (per the [scope] lesson) before editing
+  the core docs; the 1 stale commit was the wallet-first #336 sync touching the exact same core docs, so a
+  stale-worktree edit would have conflicted.
+- **Worked:** The pre-edit `git rev-list --count $base..origin/main -- <coredoc>` divergence check named
+  exactly which core docs main had moved (PROJECT_CONTEXT/SHIPPED_LOG/index/log, NOT DATABASE_SCHEMA) — a
+  cheap, precise gate. Compounding onto the existing concept page (not a new page) = zero new orphans.
+- **Failed:** An Edit on the `purge_synthetic_data()` DATABASE_SCHEMA note failed on a 3-line `old_string`
+  (likely an em-dash/whitespace mismatch); a shorter unique single-line anchor matched. Prefer short unique anchors.
+- **Remember:** RAG sync + the [[verify-knowledge]] loop-close are **post-merge** here (pre-merge, the
+  committed post-merge hook auto-runs `sync:wiki` on the main fast-forward). Do NOT hand-sync from the worktree.
+
 ### [2026-07-24] Wallet-first payout reroute — stage 2 of the wallet-first fix (branch `feat/wallet-first-stage2`)
 - **Output:** `raw/sessions/2026-07-24-wallet-first-reroute-stage2.md` → compounded onto
   [[Payout Finalization & Re-entrancy]] (new "Wallet-first reroute (stage 2 — shipped)" section + residuals

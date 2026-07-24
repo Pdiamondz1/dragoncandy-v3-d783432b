@@ -259,6 +259,49 @@ purge+re-mint. Each was a LEAD **verified against the code** (R3 against the rea
 `information_schema.columns`) before fixing — see [[Verify a reviewer's claim before accepting OR
 dismissing]] and [[MCP execute_sql returns only the LAST statement's result]]. R7 was clean.
 
+## Runner matrix (Slice 1) — multi-IP fan-out (2026-07-24, PR #337)
+
+Phase A found a single runner caps at a **client-side egress wall (~312 concurrency)** while prod's
+Postgres stays **~91% idle**. The runner matrix breaks that: it fans the SAME load driver across N GH
+jobs (one runner IP each), so the *summed* offered concurrency pushes the DB toward its real ceiling.
+**The ramp knob is the shard count** (each shard holds a fixed egress-safe C on its own IP; N shards ≈
+N×C). Vehicle-agnostic — nothing GitHub-specific lives in `sim/`.
+
+**What shipped:** `bulk-seed --with-content` (content seed onto the load cohort); a realistic **DAU
+behavior mix** (`sim/load/actions-mix.ts`, ~90:10 read:write — feed/grid/media-HEAD-egress-proxy/
+browse/search/geo/profile + 3 RLS-real writes: a public-free **draft** campaign, a bot→bot
+`create-notification` to a synthetic peer, a direct Donny footprint); the `get_sim_load_matrix_summary`
+aggregation RPC; the dynamic `synthetic-load-matrix.yml` workflow; a `/internal/simulation` "Matrix run
+(summed)" card; and the runbook §8 matrix section. **Phase 6 (realtime WebSocket leg) was deferred** at
+its hard split-point (its own connection quota → own spec+plan). Migrations applied to prod under the
+careful gate; the 2-shard live smoke stays founder-gated.
+
+**Load-bearing design rules (each verified against prod / caught by Codex):**
+- **Writes are matrix-ONLY.** The driver default + the single-runner `load` path use the reads-only
+  `DAU_READ_ACTIONS`; the write leg (`DAU_ACTIONS`) runs ONLY in matrix mode. Single-runner drives the
+  LIVE `bot0##` cohort, which `purge_synthetic_load_cohort()` spares — so a write there would leak
+  residue only `purge_synthetic_data()` (killing the live 25) could clean. (Codex P1.)
+- **campaign_write uses `status='draft'`** — role-agnostic RLS (`with_check user_id=auth.uid()`, proven
+  by a rollback-wrapped creator-insert probe), `enforce_active_campaign_limit` fires only on `published`
+  so a draft is limit-exempt + invisible to real browse, still `is_synthetic` + teardown-cleaned.
+- **Media is a HEAD + Content-Length proxy**, never a body GET (a full GET of the CDN video assets at
+  high concurrency would self-inflict the egress wall it measures — spec §3a/§5).
+- **Per-step FINAL snapshot.** In-flight sampling (needed so `active_connections` reads the real load)
+  leaves a single-wave step's latest row at `count=0`, so a short soak reported 0 — a final per-step
+  snapshot with true totals fixes it (DB peaks are MAX-across-rows, so the low post-wave reading can't
+  lower them). (Codex P2.)
+- **A matrix needs ≥2 shards** (`shards<=1` is the single-runner path the summary can't aggregate) and
+  the workflow **suffixes the run-label with `github.run_id`** so each dispatch is a distinct label (the
+  summary groups solely by `run_label`, latest-row-per-shard). (Codex R1.)
+- **Teardown scoping is safety-critical:** the matrix uses `purge_synthetic_load_cohort()`
+  (`botla%`/`botseed_%` ONLY, spares the live 25) — NEVER `purge_synthetic_data()`. It leaf-deletes the
+  NO-ACTION `push_notifications.actor_id` + crew tables + telemetry before cascading the users, then
+  deletes the non-cascading synthetic org.
+
+Codex ran three rounds: R1 (2×P2) + R2 (P1+P2) fixed; **R3 ("creators can't INSERT campaigns") verified
+FALSE** by the rollback-wrapped RLS probe and dismissed — see [[Verify a reviewer's claim before accepting
+OR dismissing]]. data-exposure-reviewer PASS. Full session: `raw/sessions/2026-07-24-synthetic-load-runner-matrix.md`.
+
 ## See Also
 - [[Service-Role Data Exposure]] — the same "re-assert the intended scope server-side" discipline.
 - [[AIOS runtime spend source of truth]] — `donny_cost_ledger` / the 15% AI cap the synthetic

@@ -29,6 +29,35 @@
 
 ---END-HEADER---
 
+- **Synthetic Weight Engine — multi-IP load runner matrix (Slice 1)** — **`feat/synthetic-load-runner-matrix`,
+  PR #337.** Continues [[Synthetic Weight Engine]] Phase A, which found a single GH runner caps at a
+  **client-side egress wall (~312 concurrency)** while prod's Postgres stays **~91% idle**. The runner matrix
+  fans the SAME load driver across N GH jobs (one runner IP each) so the *summed* offered concurrency pushes
+  the DB toward its real ceiling — **the ramp knob is the shard count** (N shards ≈ N×C; nothing
+  GitHub-specific lives in `sim/`). Shipped: `bulk-seed --with-content` (+ a testable `seedContent()` seam);
+  a realistic **DAU behavior mix** (`sim/load/actions-mix.ts`, ~90:10 read:write — mobile feed + desktop grid,
+  a media **HEAD** egress-proxy, campaign browse/search, geo near-me, profile view + 3 RLS-real writes: a
+  public-free **draft** campaign, a bot→bot `create-notification` to a synthetic peer, a direct Donny
+  footprint), with `HotAction.run` widened to carry `ctx={selfId,peerId}` + return media bytes and per-step
+  `mediaRequests`/`mediaBytes` tally; `get_sim_load_matrix_summary` (per-shard latest-sample rollup); the
+  dynamic `synthetic-load-matrix.yml` workflow (≥2 shards, env-var-only inputs, `synthetic-weight` env gate,
+  run-label suffixed with `github.run_id`); a `/internal/simulation` "Matrix run (summed)" card; runbook §8.
+  **Phase 6 (realtime WebSocket leg) deferred** at its hard split-point (own connection quota → own spec+plan).
+  **3 SECURITY DEFINER migrations applied to prod under the careful gate** (`seed_synthetic_content` +
+  `purge_synthetic_load_cohort` (scoped `botla%`/`botseed_%` teardown, spares the live 25) + a patched
+  `purge_synthetic_data` push_notifications leaf-delete + `get_sim_load_matrix_summary`, granted authenticated
+  behind an `is_internal_user()` guard) — verified live (guards fire, purge no-op clean, `get_advisors` clean).
+  **Writes are matrix-ONLY** — the driver default + single-runner `load` use the reads-only `DAU_READ_ACTIONS`
+  (single-runner drives the LIVE `bot0##` cohort the scoped teardown spares, so a write there would leak
+  residue). Verified prod facts drove the writes: campaigns INSERT is role-agnostic (proven by a
+  rollback-wrapped creator-insert probe), the active-campaign limit fires only on `published` (→ `draft` is
+  repeatable + invisible to browse), `create-notification` already suppresses synthetic-recipient email.
+  **Reviews:** data-exposure-reviewer PASS; **Codex 3 rounds** — R1 (2×P2: run-label uniqueness + reject
+  shards<2) + R2 (**P1** write-mix-leak-into-single-runner + P2 short-soak-zero-reporting) fixed TDD, R3
+  (1×P2 "creators can't INSERT campaigns") **verified FALSE** by the RLS probe and dismissed. 153 sim tests /
+  build / typecheck green. **Founder-gated remainder:** the 2-shard live smoke + `types.ts` regen.
+  → `docs/wiki/concepts/synthetic-weight-engine.md` (Runner matrix) · PR #337
+
 - **Wallet-first payout reroute (stage 2 of the wallet-first fix)** — **`feat/wallet-first-stage2`.**
   Follows stage 1 (#334) and #329 ([[Payout Finalization & Re-entrancy]]). **Removes the transfer-vs-pending
   fork** in `release-creator-payout`: every payout is now ONE shape — `credit_pending_balance_for_payout`

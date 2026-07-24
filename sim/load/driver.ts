@@ -20,6 +20,7 @@
 // This driver emits NO console output (it is a library); run.ts's cmdLoad does all the printing.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { DAU_READ_ACTIONS } from "./actions-mix";
 
 // ── Ramp step math (pure) ───────────────────────────────────────────────────────────────────────
 
@@ -139,6 +140,10 @@ export interface StepMetrics {
   breakageRate: number;
   p50Ms: number;
   p95Ms: number;
+  /** Media-egress proxy (Task 4.2): media requests fired + Σ transferred/declared bytes this step.
+   *  Optional in the type (older literals omit them) but ALWAYS populated by runLoad. */
+  mediaRequests?: number;
+  mediaBytes?: number;
 }
 
 export interface KneeThresholds {
@@ -289,103 +294,38 @@ export function foldBreakages(events: BreakageEvent[], seed: BreakageSignature[]
 
 // ── Hot actions (realistic read-heavy DAU endpoints) ──────────────────────────────────────────────
 
-/** One hot endpoint a bot's RLS permits. `run` MUST throw on the query's `error` so the driver
- *  can classify + collect it (supabase-js returns `{ error }`, it does not throw). */
+/** A media action's return: the transferred/declared byte count for the egress proxy (Task 4.2).
+ *  Any non-void object return marks the call as a media request (an `isMedia` flag), so a legit
+ *  0-byte / HEAD response still counts as one request — the count is object-ness, not bytes>0. */
+export interface MediaResult {
+  bytes?: number;
+}
+
+/** Per-task identity handed to a HotAction's `run`: the acting bot (`selfId`, whose JWT the `client`
+ *  carries) and a distinct synthetic cohort peer (`peerId`). The driver draws both from the active
+ *  cohort, so a write action's own-row inserts (user_id = selfId) are RLS-real and a bot→bot
+ *  notification recipient (peerId) is ALWAYS another synthetic bot — never a real user. */
+export interface HotActionContext {
+  selfId: string;
+  peerId: string;
+}
+
+/** One hot endpoint a bot's RLS permits. `run` MUST throw on the query's `error` so the driver can
+ *  classify + collect it (supabase-js returns `{ error }`, it does not throw). A read returns `void`;
+ *  a media action returns `{ bytes }` (Task 4.2). `ctx` is additive — read actions ignore it. */
 export interface HotAction {
   name: string;
   /** Relative selection weight (reads dominate ~90%). */
   weight: number;
-  run: (client: SupabaseClient) => Promise<void>;
+  run: (client: SupabaseClient, ctx: HotActionContext) => Promise<MediaResult | void>;
 }
 
-/** Throw the supabase query error (carrying its PG code) so the driver's classifier can read it. */
-function throwOnError(error: { message: string; code?: string } | null): void {
-  if (error) {
-    const e = new Error(error.message) as Error & { code?: string };
-    if (error.code) e.code = error.code;
-    throw e;
-  }
-}
-
-// Weighted ~90% read / ~10% sampled-write. v1 ships READS ONLY: a sampled write on prod must land on
-// a table `purge_synthetic_data()` provably cleans up (teardown-to-zero is a spine contract), and the
-// worker draws a random bot per task rather than acting as one identity — so the ~10% write leg is
-// deliberately DEFERRED to the live phase (per the plan's "omit writes in v1 if unsure — reads are
-// the bulk" and the ledger/purge-first discipline). Reads are the ceiling signal anyway.
-//
-// NOTE: the exact endpoints below are validated at the FIRST live run — an endpoint a bot's RLS does
-// NOT actually permit surfaces as a *breakage finding* (e.g. a `permission denied`), which is exactly
-// the point of the QA run, not a reason to guess silently.
-export const HOT_ACTIONS: HotAction[] = [
-  {
-    // Campaign browse — the marketplace's primary read. RLS lets an authenticated user see published
-    // PUBLIC campaigns (public path gated on group_id IS NULL); synthetic bots only READ real rows.
-    name: "campaign_browse",
-    weight: 30,
-    run: async (client) => {
-      const { error } = await client
-        .from("campaigns")
-        .select("id, title, status, created_at")
-        .eq("status", "published")
-        .is("group_id", null)
-        .order("created_at", { ascending: false })
-        .limit(20);
-      throwOnError(error);
-    },
-  },
-  {
-    // DragonShare feed — verified posts are the anon/authenticated-readable public feed.
-    name: "dragonshare_feed",
-    weight: 25,
-    run: async (client) => {
-      const { error } = await client
-        .from("dragonshare_posts")
-        .select("id, content_file_path, platform, status, created_at")
-        .eq("status", "verified")
-        .order("created_at", { ascending: false })
-        .limit(20);
-      throwOnError(error);
-    },
-  },
-  {
-    // Creator directory — the public-facing view (no sensitive fields), safe for any reader.
-    // NB: the view exposes creator_name (NOT full_name) and has no role column — selecting
-    // full_name/role 400s and would log a FALSE breakage every run. Columns verified on prod.
-    name: "creator_directory",
-    weight: 20,
-    run: async (client) => {
-      const { error } = await client
-        .from("public_creator_profiles")
-        .select("id, creator_name, location, average_rating")
-        .limit(20);
-      throwOnError(error);
-    },
-  },
-  {
-    // Inbox list — RLS scopes conversations to the bot's own via conversation_participants; an empty
-    // result for a bot with no threads is fine (still exercises the RLS-filtered read path).
-    name: "conversations_list",
-    weight: 15,
-    run: async (client) => {
-      const { error } = await client
-        .from("conversations")
-        .select("id, created_at, updated_at")
-        .order("updated_at", { ascending: false })
-        .limit(20);
-      throwOnError(error);
-    },
-  },
-  {
-    // Dashboard RPC — a creator's "pending crew invites" widget; authenticated-only, gated on
-    // creator_id = auth.uid() (returns [] for a business bot). A realistic per-load dashboard read.
-    name: "pending_group_invitations_rpc",
-    weight: 10,
-    run: async (client) => {
-      const { error } = await client.rpc("get_creator_pending_group_invitations");
-      throwOnError(error);
-    },
-  },
-];
+// The realistic DAU behavior mix lives in ./actions-mix — a separate module so this driver stays a
+// pure, action-agnostic library. runLoad's DEFAULT is the READS-ONLY subset (DAU_READ_ACTIONS): a
+// caller that injects no actions never writes, so the driver is safe against the live cohort. The
+// WRITE leg (DAU_ACTIONS) is opt-in — cmdLoad passes it only in matrix mode (the isolated botla…
+// slice the scoped teardown cleans). (Kept one-way: driver imports the actions VALUE; actions-mix
+// imports only this module's TYPES, so there is no runtime import cycle.)
 
 // ── The driver ────────────────────────────────────────────────────────────────────────────────────
 
@@ -403,6 +343,8 @@ export interface LoadResult {
   breakageCount: number;
   stoppedAtKnee: boolean;
   kneeConcurrency: number | null;
+  /** True if an in-soak isEnabled() re-check drained the ramp (kill switch flipped mid-run). */
+  stoppedByKillSwitch: boolean;
 }
 
 /** The on-disk QA artifact (`sim/.load-findings.json`): the per-step curve + breakage signatures. */
@@ -432,12 +374,16 @@ export interface RunLoadDeps {
   activeUserIds: string[];
   captureSnapshot: (runLabel: string, errorRate: number, notes: Record<string, unknown>) => Promise<void>;
   writeFindings: (artifact: LoadFindingsArtifact) => Promise<void>;
-  /** Injectable — defaults to HOT_ACTIONS. */
+  /** Injectable — defaults to DAU_ACTIONS (the ~90:10 read:write behavior mix in ./actions-mix). */
   actions?: HotAction[];
   kneeThresholds?: KneeThresholds;
   /** Injectable clock/rng for deterministic offline tests. */
   now?: () => number;
   rng?: () => number;
+  /** Periodic in-soak kill-switch re-check (matrix). Consulted at each snapshot sample; resolving
+   *  false drains the ramp gracefully (findings still written, no throw). Default: always enabled,
+   *  so single-runner mode — which never injects it — is byte-unchanged. */
+  isEnabled?: () => Promise<boolean>;
 }
 
 interface TaskOutcome {
@@ -447,6 +393,10 @@ interface TaskOutcome {
   kind: "ok" | "throttle" | "breakage";
   status: number | null;
   error: string;
+  /** True when the action returned a non-void object (a media request — Task 4.2). */
+  isMedia: boolean;
+  /** Bytes reported by a media action (0 for reads / HEAD-style empty returns). */
+  bytes: number;
 }
 
 /** Weighted random pick over a non-empty action list (falls back to the first on a degenerate rng). */
@@ -461,21 +411,37 @@ function pickWeighted(actions: HotAction[], rng: () => number): HotAction {
   return actions[actions.length - 1];
 }
 
-/** Run ONE hot-endpoint call as a random active bot, isolating + classifying any error. */
+/** Pick a synthetic cohort PEER distinct from `selfId` when the cohort has >1 bot (falls back to
+ *  selfId for a singleton). Used for bot→bot writes (e.g. a notification recipient) so the target is
+ *  always another synthetic bot, never a real user. */
+function pickPeer(activeUserIds: string[], selfId: string, rng: () => number): string {
+  if (activeUserIds.length <= 1) return selfId;
+  for (let tries = 0; tries < 4; tries++) {
+    const peer = activeUserIds[Math.floor(rng() * activeUserIds.length)];
+    if (peer !== selfId) return peer;
+  }
+  return activeUserIds.find((u) => u !== selfId) ?? selfId;
+}
+
+/** Run ONE hot-endpoint call as a random active bot, isolating + classifying any error. Captures the
+ *  media-egress signal: `isMedia` = the action returned a non-void object; `bytes` = its byte count. */
 async function runOneTask(
   deps: Required<Pick<RunLoadDeps, "botFor" | "activeUserIds">> & { actions: HotAction[]; rng: () => number; now: () => number },
 ): Promise<TaskOutcome> {
   const { activeUserIds, botFor, actions, rng, now } = deps;
   const userId = activeUserIds[Math.floor(rng() * activeUserIds.length)];
+  const ctx: HotActionContext = { selfId: userId, peerId: pickPeer(activeUserIds, userId, rng) };
   const action = pickWeighted(actions, rng);
   const startedAt = now();
   try {
     const client = await botFor(userId);
-    await action.run(client);
-    return { ok: true, ms: now() - startedAt, endpoint: action.name, kind: "ok", status: null, error: "" };
+    const res = await action.run(client, ctx);
+    const isMedia = typeof res === "object" && res !== null;
+    const bytes = isMedia && typeof (res as MediaResult).bytes === "number" ? (res as MediaResult).bytes! : 0;
+    return { ok: true, ms: now() - startedAt, endpoint: action.name, kind: "ok", status: null, error: "", isMedia, bytes };
   } catch (err) {
     const c = classifyError(err);
-    return { ok: false, ms: now() - startedAt, endpoint: action.name, kind: c.kind, status: c.status, error: c.message };
+    return { ok: false, ms: now() - startedAt, endpoint: action.name, kind: c.kind, status: c.status, error: c.message, isMedia: false, bytes: 0 };
   }
 }
 
@@ -488,22 +454,26 @@ async function runOneTask(
  */
 export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
   const { rampSteps: steps, holdMs, sampleEveryMs, runLabel, captureSnapshot, writeFindings } = deps;
-  const actions = deps.actions ?? HOT_ACTIONS;
+  const actions = deps.actions ?? DAU_READ_ACTIONS;
   const thresholds = deps.kneeThresholds ?? DEFAULT_KNEE_THRESHOLDS;
   const now = deps.now ?? Date.now;
   const rng = deps.rng ?? Math.random;
+  const isEnabled = deps.isEnabled ?? (async () => true);
 
   const results: StepResult[] = [];
   const breakageEvents: BreakageEvent[] = [];
   let prevMetrics: StepMetrics | null = null;
   let stoppedAtKnee = false;
   let kneeConcurrency: number | null = null;
+  let stoppedByKillSwitch = false;
 
   for (const concurrency of steps) {
     const latencies: number[] = [];
     let ok = 0;
     let throttled = 0;
     let breakage = 0;
+    let mediaReq = 0; // media-egress proxy: count of media requests this step (Task 4.2)
+    let mediaBytes = 0; // Σ transferred/declared bytes this step
     const stepStart = now();
     let lastSampleAt = -Infinity; // guarantees the first wave of each step samples once
 
@@ -534,6 +504,8 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
               ok,
               throttled,
               breakage,
+              media_requests: mediaReq,
+              media_bytes: mediaBytes,
               p50_ms: percentile(latencies, 50),
               p95_ms: percentile(latencies, 95),
             });
@@ -545,12 +517,21 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
 
       for (const o of outcomes) {
         latencies.push(o.ms);
+        if (o.isMedia) mediaReq += 1;
+        mediaBytes += o.bytes;
         if (o.ok) ok += 1;
         else if (o.kind === "throttle") throttled += 1;
         else {
           breakage += 1;
           breakageEvents.push({ endpoint: o.endpoint, status: o.status, error: o.error, concurrency });
         }
+      }
+      // Periodic in-soak kill-switch re-check (matrix): gated to the snapshot sample so it costs at
+      // most one extra read per sampleEveryMs. A flipped switch drains this shard's ramp within a
+      // cycle — no `gh run cancel` needed. Single-runner mode never injects isEnabled → always true.
+      if (doSample && !(await isEnabled())) {
+        stoppedByKillSwitch = true;
+        break;
       }
     } while (now() - stepStart < holdMs);
 
@@ -566,9 +547,29 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
       breakageRate: count > 0 ? round4(breakage / count) : 0,
       p50Ms: percentile(latencies, 50),
       p95Ms: percentile(latencies, 95),
+      mediaRequests: mediaReq,
+      mediaBytes,
     };
+    // FINAL per-step snapshot with the step's COMPLETE cumulative totals. The in-step samples are
+    // taken in-flight (before the wave drains) so `count`/`ok`/`media_*` lag by up to one wave — and
+    // for a single-wave step (holdMs 0 / soak < sampleEveryMs) the ONLY in-step sample recorded 0. The
+    // matrix summary reads each shard's LATEST captured_at row as its fullest total, so without this
+    // the summary would report 0 requests/egress for a short soak. This low-connection post-wave
+    // reading never lowers the DB-side peaks (the summary takes MAX(active_connections) across ALL rows).
+    await captureSnapshot(runLabel, metrics.errorRate, {
+      concurrency,
+      count,
+      ok,
+      throttled,
+      breakage,
+      media_requests: mediaReq,
+      media_bytes: mediaBytes,
+      p50_ms: metrics.p50Ms,
+      p95_ms: metrics.p95Ms,
+    });
     const knee = isKnee(metrics, prevMetrics, thresholds);
     results.push({ concurrency, metrics, knee });
+    if (stoppedByKillSwitch) break; // drained by the kill switch — stop the ramp (findings still written)
     if (knee) {
       stoppedAtKnee = true;
       kneeConcurrency = concurrency;
@@ -599,6 +600,7 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
     breakageCount: breakageEvents.length,
     stoppedAtKnee,
     kneeConcurrency,
+    stoppedByKillSwitch,
   };
 }
 

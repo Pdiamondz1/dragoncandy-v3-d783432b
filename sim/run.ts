@@ -14,13 +14,14 @@
 import { writeFileSync } from "node:fs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { serviceClient, botClient } from "./clients";
-import { assertRuntimeBootSafety, type MinimalSupabaseClient } from "./env";
+import { assertRuntimeBootSafety, readKillSwitch, type MinimalSupabaseClient } from "./env";
 import { generateCohort } from "./personas";
-import { mintBot, readCohort, readSessionCapableBots } from "./mint";
+import { mintBot, readCohort, readSessionCapableBots, readActiveLoadCohort } from "./mint";
 import { planSeed, generateActiveCohort, assertActiveNamespaceFree } from "./seed";
 import { SessionPool } from "./session-pool";
 import { planDay, runDay } from "./behavior/graph";
-import { parseRamp, runLoad, type LoadFindingsArtifact } from "./load/driver";
+import { parseRamp, runLoad, type LoadFindingsArtifact, type RunLoadDeps, type LoadResult } from "./load/driver";
+import { DAU_ACTIONS, DAU_READ_ACTIONS } from "./load/actions-mix";
 import type { ActionContext } from "./behavior/actions";
 import type { BotRef, CohortState } from "./types";
 
@@ -42,12 +43,28 @@ export interface Args {
   holdMs: number;
   /** load: sim_load_snapshots run label for this ramp. */
   runLabel: string;
+  /** load matrix: this runner's shard index (0-based). */
+  shard: number;
+  /** load matrix: total shard count S (1 = single-runner mode; the ramp knob is S). */
+  shards: number;
+  /** load matrix: fixed egress-safe concurrency C held per shard for the soak (0 = use --ramp). */
+  concurrency: number;
+  /** load matrix: soak hold duration in ms at fixed C (0 = a single wave). */
+  soakMs: number;
+  /** bulk-seed: also seed public-free content (campaigns + DragonShare posts + file_uploads) onto the cohort. */
+  withContent: boolean;
+  /** bulk-seed --with-content: cap on seeded campaigns (one per distinct synthetic business bot). */
+  campaigns: number;
+  /** bulk-seed --with-content: cap on seeded DragonShare posts (one per synthetic creator bot). */
+  posts: number;
 }
 
 const CREATOR_SPLIT = 0.65;
 const RAMP_DEFAULT = "50/1500/2.5";
 const HOLD_MS_DEFAULT = 15_000;
 const RUN_LABEL_DEFAULT = "load";
+const CAMPAIGNS_DEFAULT = 50;
+const POSTS_DEFAULT = 200;
 /** Minimum spacing between capture_sim_load_snapshot samples within a ramp step. */
 const SAMPLE_EVERY_MS = 5_000;
 /** Gitignored per-run QA artifact (mirrors sim/.session-pool.json's relative-path convention). */
@@ -88,7 +105,7 @@ export function parseArgs(argv: string[]): Args {
   const command = argv.find((a) => !a.startsWith("--"));
   if (!command || !(COMMANDS as readonly string[]).includes(command)) {
     throw new Error(
-      `Usage: cli.ts <${COMMANDS.join("|")}> [--n 25] [--cohort phase1] [--seed 1] [--active 25] [--creator-split 0.65] [--ramp 50/1500/2.5] [--hold-ms 15000] [--run-label load]`,
+      `Usage: cli.ts <${COMMANDS.join("|")}> [--n 25] [--cohort phase1] [--seed 1] [--active 25] [--creator-split 0.65] [--ramp 50/1500/2.5] [--hold-ms 15000] [--run-label load] [--shard 0] [--shards 1] [--concurrency 200] [--soak-ms 1800000] [--with-content] [--campaigns 50] [--posts 200]`,
     );
   }
   const flag = (name: string): string | undefined => {
@@ -105,39 +122,65 @@ export function parseArgs(argv: string[]): Args {
     ramp: flag("ramp") ?? RAMP_DEFAULT,
     holdMs: safeInt(flag("hold-ms"), HOLD_MS_DEFAULT),
     runLabel: flag("run-label") ?? RUN_LABEL_DEFAULT,
+    shard: safeInt(flag("shard"), 0),
+    shards: safeInt(flag("shards"), 1),
+    concurrency: safeInt(flag("concurrency"), 0),
+    soakMs: safeInt(flag("soak-ms"), 0),
+    // --with-content is a presence boolean (no value); --campaigns/--posts cap the seeded content.
+    withContent: argv.includes("--with-content"),
+    campaigns: safeInt(flag("campaigns"), CAMPAIGNS_DEFAULT),
+    posts: safeInt(flag("posts"), POSTS_DEFAULT),
   };
 }
 
+/** How makeBotFor obtains a bot's current access token — INJECTABLE (default = the real
+ *  cross-tick SessionPool) so offline tests can drive token rotation with zero network. */
+export type BotTokenGetter = (email: string, userId: string) => Promise<string>;
+
 /**
- * Bot-client factory for one tick. Constructs a single cross-tick SessionPool (loaded from disk
- * ONCE here, not per bot) so ticks REUSE/REFRESH each bot's session instead of re-minting one per
- * bot per tick — that re-mint (magiclink + verify, two rate-limited auth calls) is what trips
- * Supabase's per-IP 429 at frequency/scale. The returned closure hands each user a bot-scoped
- * client built on a fresh pooled token; the botClient is still cached per tick so repeated
- * botFor(sameUser) in one tick doesn't rebuild the client (session freshness now comes from the
- * pool, not a per-tick mint).
+ * Bot-client factory for one tick / load run. By default constructs a single cross-tick SessionPool
+ * (loaded from disk ONCE here, not per bot) so runs REUSE/REFRESH each bot's session instead of
+ * re-minting one per bot per tick — that re-mint (magiclink + verify, two rate-limited auth calls)
+ * is what trips Supabase's per-IP 429 at frequency/scale.
+ *
+ * REFRESH-AWARE (soak-safe): the token-getter is consulted on EVERY call — the pool's `reuse` path is
+ * a cheap in-memory no-network hit — and the cached bot client is REBUILT only when the token ROTATES
+ * (a mid-soak refresh returns a new JWT). The old code cached the client for the whole run and never
+ * re-consulted the pool after the first hit, so a hold longer than the ~1h token TTL kept the client
+ * pinned to a frozen, expired JWT → every late request `401 JWT expired` (runbook §3), which the
+ * driver then misclassifies as a breakage. Rebuilding on rotation is what makes a long soak survive.
+ *
+ * The `getToken` param is injectable for tests; production passes none and gets the real pool.
  *
  * Live session-reuse verification — a re-tick showing 0 fresh mints — is done at the FIRST live run,
  * per docs/runbooks/synthetic-load-tier-ramp.md (Task 8). Two `dry-run`s can't exercise it (no
  * network; `dry-run` never constructs a client).
  */
-function makeBotFor(bots: BotRef[]): (userId: string) => Promise<SupabaseClient> {
-  const pool = new SessionPool("sim/.session-pool.json", {
-    url: process.env.SIM_SUPABASE_URL ?? "",
-    anonKey: process.env.SIM_SUPABASE_ANON_KEY ?? "",
-    serviceKey: process.env.SIM_SUPABASE_SECRET_KEY ?? "",
-  });
-  pool.load();
+export function makeBotFor(
+  bots: BotRef[],
+  getToken?: BotTokenGetter,
+): (userId: string) => Promise<SupabaseClient> {
+  const resolveToken: BotTokenGetter =
+    getToken ??
+    (() => {
+      const pool = new SessionPool("sim/.session-pool.json", {
+        url: process.env.SIM_SUPABASE_URL ?? "",
+        anonKey: process.env.SIM_SUPABASE_ANON_KEY ?? "",
+        serviceKey: process.env.SIM_SUPABASE_SECRET_KEY ?? "",
+      });
+      pool.load();
+      return (email, userId) => pool.getToken(email, userId, Date.now());
+    })();
   const emailById = new Map(bots.map((b) => [b.userId, b.email]));
-  const cache = new Map<string, SupabaseClient>();
+  const cache = new Map<string, { token: string; client: SupabaseClient }>();
   return async (userId: string): Promise<SupabaseClient> => {
-    const cached = cache.get(userId);
-    if (cached) return cached;
     const email = emailById.get(userId);
     if (!email) throw new Error(`no session: ${userId} is not in the cohort`);
-    const token = await pool.getToken(email, userId, Date.now());
-    const client = botClient(token);
-    cache.set(userId, client);
+    const token = await resolveToken(email, userId);
+    const hit = cache.get(userId);
+    if (hit && hit.token === token) return hit.client; // still-fresh token → reuse client (no rebuild)
+    const client = botClient(token); // token rotated (refresh/mint) → rebuild on the new JWT
+    cache.set(userId, { token, client });
     return client;
   };
 }
@@ -176,6 +219,35 @@ async function cmdMint(args: Args): Promise<void> {
   }
 }
 
+/** Minimal service-role seam for seedContent — just the `rpc` call. A structural interface (not the
+ *  full SupabaseClient) so a test can inject a fake with zero network and TS never has to match the
+ *  client's deep generic rpc signature (mirrors env.ts's MinimalSupabaseClient). */
+export interface RpcCaller {
+  rpc(fn: string, params: Record<string, unknown>): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+}
+
+/**
+ * bulk-seed --with-content: layer public-free content (campaigns + DragonShare video posts +
+ * file_uploads + avatars/geo) onto the already-seeded botla…/botseed_… cohort via the service-role
+ * seed_synthetic_content RPC. A no-op returning null when the flag is off (no rpc call). Fail-loud on
+ * an rpc error, mirroring the depth seed's incomplete-cohort contract — a half-seeded content set
+ * must not report green. Teardown is purge_synthetic_load_cohort(), NEVER the live bot0## cohort.
+ */
+export async function seedContent(
+  svc: RpcCaller,
+  args: Pick<Args, "withContent" | "campaigns" | "posts" | "creatorSplit">,
+): Promise<{ campaigns: number; posts: number } | null> {
+  if (!args.withContent) return null;
+  const { data, error } = await svc.rpc("seed_synthetic_content", {
+    p_campaigns: args.campaigns,
+    p_posts: args.posts,
+    p_creator_split: args.creatorSplit,
+  });
+  if (error) throw new Error(`[bulk-seed] seed_synthetic_content failed: ${error.message}`);
+  const res = (data ?? {}) as { campaigns?: number; posts?: number };
+  return { campaigns: res.campaigns ?? 0, posts: res.posts ?? 0 };
+}
+
 /**
  * bulk-seed: stand up a large synthetic population in two lanes. planSeed splits `--n` into a DEPTH
  * pool (bulk-inserted by the service-role seed_synthetic_cohort RPC; never authenticates) and a
@@ -183,6 +255,7 @@ async function cmdMint(args: Args): Promise<void> {
  * cohort uses a DISTINCT email namespace (botla<seed>_<i>) so it can never collide with the live
  * bot### daily cohort — pre-flighted before any write. Fail-loud on an incomplete seed or mint,
  * mirroring cmdMint's incomplete-cohort contract (bulk-seed is a one-shot: purge before re-seeding).
+ * With `--with-content`, layers content (seedContent) onto the cohort after the depth+active seed.
  */
 async function cmdBulkSeed(args: Args): Promise<void> {
   const svc = serviceClient();
@@ -228,15 +301,23 @@ async function cmdBulkSeed(args: Args): Promise<void> {
     }
   }
 
-  console.warn(
-    `[bulk-seed] ${JSON.stringify({ depth_seeded: depthSeeded, depth_skipped: depthSkipped, active_minted: activeMinted })}`,
-  );
-  // Same incomplete-cohort contract as cmdMint: a partial active mint must not report green.
+  // Same incomplete-cohort contract as cmdMint: a partial active mint must not report green. Fail
+  // BEFORE seeding content so we never layer content onto a half-built cohort.
   if (activeMinted < active.length) {
+    console.warn(
+      `[bulk-seed] ${JSON.stringify({ depth_seeded: depthSeeded, depth_skipped: depthSkipped, active_minted: activeMinted })}`,
+    );
     throw new Error(
       `[bulk-seed] only ${activeMinted}/${active.length} active bots minted — cohort incomplete (purge before re-minting; see errors above)`,
     );
   }
+
+  // 3) Optional content layer (--with-content): public-free campaigns + DragonShare posts + uploads.
+  const content = await seedContent(svc, args);
+
+  console.warn(
+    `[bulk-seed] ${JSON.stringify({ depth_seeded: depthSeeded, depth_skipped: depthSkipped, active_minted: activeMinted, ...(content ? { content } : {}) })}`,
+  );
 }
 
 async function cmdTick(): Promise<void> {
@@ -279,6 +360,50 @@ async function cmdPurge(): Promise<void> {
   }
 }
 
+/** The resolved load configuration: matrix soak (fixed C held for soakMs) vs the single-runner ramp. */
+export interface LoadPlan {
+  matrix: boolean;
+  ramp: number[];
+  holdMs: number;
+}
+
+/**
+ * Decide the ramp shape from the flags. `--shards > 1` = MATRIX soak: a single fixed-concurrency step
+ * (C, floored at 1 so a mis-passed 0 never becomes a degenerate no-op ramp) held for `--soak-ms`.
+ * Otherwise the single-runner CEILING ramp: parseRamp(--ramp) held --hold-ms per step (byte-unchanged).
+ */
+export function planLoad(args: Args): LoadPlan {
+  if (args.shards > 1) {
+    return { matrix: true, ramp: [Math.max(1, args.concurrency)], holdMs: args.soakMs };
+  }
+  return { matrix: false, ramp: parseRamp(args.ramp), holdMs: args.holdMs };
+}
+
+/**
+ * cmdLoad's injectable seams — every one defaults to the real implementation (DEFAULT_CMD_LOAD_DEPS),
+ * so production callers pass nothing. Tests inject fakes to exercise the matrix branch with no live DB
+ * (mirrors the SessionPool / makeBotFor / runLoad injection style already used across sim/).
+ */
+export interface CmdLoadDeps {
+  serviceClient: () => SupabaseClient;
+  bootGate: (svc: SupabaseClient) => Promise<void>;
+  readActiveLoadCohort: (svc: SupabaseClient, shard: number, shards: number) => Promise<BotRef[]>;
+  readSessionCapableBots: (svc: SupabaseClient) => Promise<BotRef[]>;
+  makeBotFor: (bots: BotRef[], getToken?: BotTokenGetter) => (userId: string) => Promise<SupabaseClient>;
+  runLoad: (deps: RunLoadDeps) => Promise<LoadResult>;
+  readKillSwitch: (client: MinimalSupabaseClient) => Promise<boolean | null>;
+}
+
+const DEFAULT_CMD_LOAD_DEPS: CmdLoadDeps = {
+  serviceClient,
+  bootGate,
+  readActiveLoadCohort,
+  readSessionCapableBots,
+  makeBotFor,
+  runLoad,
+  readKillSwitch,
+};
+
 /**
  * load: drive concurrent, ramped, read-heavy hot-endpoint load to the saturation KNEE (not an
  * outage), sampling capture_sim_load_snapshot per step and COLLECTING every breakage across the run
@@ -286,41 +411,51 @@ async function cmdPurge(): Promise<void> {
  * every bot's token SERIALLY before the burst so the high-concurrency phase only reuses fresh
  * in-memory tokens and never trips the pool's per-bot refresh race. Sets a non-zero exit code iff a
  * breakage occurred — but only AFTER the findings are collected + written (never aborts on the first).
+ *
+ * MATRIX/SOAK mode (`--shards > 1`): drive THIS shard's disjoint botla… slice (readActiveLoadCohort)
+ * at a fixed concurrency C held for the soak, with a periodic SYNTHETIC_BOTS_ENABLED re-check that
+ * drains the ramp within a cycle, and every snapshot stamped with this shard's index (the matrix
+ * summary RPC groups on notes.shard). Single-runner mode (`--shards <= 1`) is byte-unchanged.
  */
-async function cmdLoad(args: Args): Promise<void> {
-  const svc = serviceClient();
-  await bootGate(svc);
-  // Drive load ONLY through session-capable bots — the live daily cohort (bot0##) + the active load
-  // cohort (botla…). readSessionCapableBots filters the depth pool (botseed_*) at the DB and skips the
-  // heavy crew/campaign graph, so a large depth pool never blows an oversized .in() before load starts
-  // nor gets a session minted per depth user (the exact per-IP 429 wall the session pool avoids). (Codex P1.)
-  const activeBots = await readSessionCapableBots(svc);
+export async function cmdLoad(args: Args, deps: CmdLoadDeps = DEFAULT_CMD_LOAD_DEPS): Promise<void> {
+  const svc = deps.serviceClient();
+  await deps.bootGate(svc);
+  const plan = planLoad(args);
+
+  // Cohort: matrix mode drives this shard's disjoint botla… slice from its own IP; single-runner mode
+  // drives the live bot0## + botla… session-capable cohort. Both exclude the depth pool (botseed_*) at
+  // the DB, so a large depth pool never blows an oversized .in() nor gets a per-user session minted.
+  const activeBots = plan.matrix
+    ? await deps.readActiveLoadCohort(svc, args.shard, args.shards)
+    : await deps.readSessionCapableBots(svc);
   // An empty cohort must fail loud, not silently apply zero load (mirrors cmdTick's contract).
   if (activeBots.length === 0) {
     throw new Error(
-      "[load] no session-capable synthetic cohort found (the depth pool never authenticates) — run `mint` or `bulk-seed --active N` first.",
+      plan.matrix
+        ? `[load] no active (botla…) cohort for shard ${args.shard}/${args.shards} — run \`bulk-seed --with-content --active ${25 * args.shards}\` first.`
+        : "[load] no session-capable synthetic cohort found (the depth pool never authenticates) — run `mint` or `bulk-seed --active N` first.",
     );
   }
-  const botFor = makeBotFor(activeBots);
+  const botFor = deps.makeBotFor(activeBots);
 
-  // Pre-warm the pool SERIALLY: tokens last ~1h and a ramp holds minutes, so every task in the burst
-  // reuses an already-fresh in-memory token — the high-concurrency phase never mints/refreshes (which
-  // is what would race the rotated refresh token). A mint failure here fails loud BEFORE any load.
+  // Pre-warm the pool SERIALLY (25 mints/shard from this IP → 429-safe): tokens last ~1h so every task
+  // in the burst reuses an already-fresh in-memory token; makeBotFor rebuilds the client if a token
+  // rotates mid-soak. A mint failure here fails loud BEFORE any load.
   for (const b of activeBots) {
     await botFor(b.userId);
   }
-
-  const ramp = parseRamp(args.ramp);
 
   const captureSnapshot = async (
     runLabel: string,
     errorRate: number,
     notes: Record<string, unknown>,
   ): Promise<void> => {
+    // Matrix mode stamps this shard's index so get_sim_load_matrix_summary can group per shard.
+    const stamped = plan.matrix ? { ...notes, shard: args.shard } : notes;
     const { error } = await svc.rpc("capture_sim_load_snapshot", {
       p_run_label: runLabel,
       p_error_rate: errorRate,
-      p_notes: notes,
+      p_notes: stamped,
     });
     // A snapshot is observability, not the load itself — a failed sample must not abort the ramp.
     if (error) console.warn(`[load] snapshot failed: ${error.message}`);
@@ -330,18 +465,29 @@ async function cmdLoad(args: Args): Promise<void> {
     writeFileSync(FINDINGS_PATH, JSON.stringify(artifact, null, 2), "utf8");
   };
 
+  // Matrix mode re-checks the master kill switch each snapshot cycle so flipping it OFF drains every
+  // shard within a cycle (no `gh run cancel`). Single-runner mode keeps the boot-only gate (undefined).
+  const isEnabled = plan.matrix
+    ? () => deps.readKillSwitch(svc as unknown as MinimalSupabaseClient).then(Boolean)
+    : undefined;
+
   console.warn(
-    `[load] ramp=[${ramp.join(", ")}] hold=${args.holdMs}ms label='${args.runLabel}' cohort=${activeBots.length}`,
+    `[load] ${plan.matrix ? `matrix shard=${args.shard}/${args.shards} ` : ""}ramp=[${plan.ramp.join(", ")}] hold=${plan.holdMs}ms label='${args.runLabel}' cohort=${activeBots.length}`,
   );
-  const result = await runLoad({
-    rampSteps: ramp,
-    holdMs: args.holdMs,
+  const result = await deps.runLoad({
+    rampSteps: plan.ramp,
+    holdMs: plan.holdMs,
     sampleEveryMs: SAMPLE_EVERY_MS,
     runLabel: args.runLabel,
     botFor,
     activeUserIds: activeBots.map((b) => b.userId),
     captureSnapshot,
     writeFindings,
+    isEnabled,
+    // Matrix drives the ISOLATED botla… slice (teardown-cleaned) → the full mix incl. the ~10% write
+    // leg. Single-runner drives the LIVE bot0## cohort → READS ONLY: the scoped teardown spares
+    // bot0##, so writes there would leak persistent residue. (Reads are the ceiling signal anyway.)
+    actions: plan.matrix ? DAU_ACTIONS : DAU_READ_ACTIONS,
   });
 
   for (const s of result.steps) {
@@ -352,6 +498,9 @@ async function cmdLoad(args: Args): Promise<void> {
   }
   if (result.stoppedAtKnee) {
     console.warn(`[load] stopped at saturation knee (concurrency=${result.kneeConcurrency}) — knee, not outage.`);
+  }
+  if (result.stoppedByKillSwitch) {
+    console.warn(`[load] drained by the SYNTHETIC_BOTS_ENABLED kill switch mid-soak (graceful stop).`);
   }
   console.warn(
     `[load] findings: ${result.breakageCount} breakage event(s) across ${result.breakages.length} signature(s) → ${FINDINGS_PATH}`,

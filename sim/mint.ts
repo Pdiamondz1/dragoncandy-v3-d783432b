@@ -126,6 +126,59 @@ export async function readSessionCapableBots(admin: SupabaseClient): Promise<Bot
     .filter((b) => !isDepthPoolEmail(b.email));
 }
 
+// ── Matrix shard slice (Phase 1, Task 1.1) ──────────────────────────────────────────────────
+// The active (session-capable) load cohort namespace prefix — bulk-seed mints it as botla<seed>_<i>.
+const ACTIVE_COHORT_PREFIX = "botla";
+// Each runner shard drives its OWN fixed 25-bot slice from its own egress IP (25 mints/IP → 429-safe).
+const PER_SHARD = 25;
+
+/**
+ * PURE: this shard's DISJOINT 25-bot slice of the active (botla…) cohort. Filters OUT the live
+ * bot0## daily-tick cohort, then sorts by email so the slice is STABLE regardless of the row order
+ * PostgREST returned — lexicographic determinism is sufficient (only stable, non-overlapping slices
+ * matter, not numeric order); without it, independent runners would get different orderings →
+ * OVERLAPPING slices (the same bot's session opened from two IPs). Returns the window
+ * [shard·25 … shard·25+25); an out-of-range shard (`shard < 0` or `shard >= shards`) has no slice → [].
+ */
+export function sliceActiveCohort(
+  rows: { id: string; email: string; role: string }[],
+  shard: number,
+  shards: number,
+): BotRef[] {
+  if (!(shards > 0) || shard < 0 || shard >= shards) return [];
+  const ordered = rows
+    .filter((r) => (r.email ?? "").startsWith(ACTIVE_COHORT_PREFIX))
+    .sort((a, b) => a.email.localeCompare(b.email));
+  const start = shard * PER_SHARD;
+  return ordered.slice(start, start + PER_SHARD).map((r) => ({
+    userId: r.id,
+    email: r.email,
+    role: (r.role as Role) ?? "content_creator",
+    personaKey: null as PersonaKey | null,
+    cohort: null as string | null,
+  }));
+}
+
+/**
+ * DB read for a matrix shard: fetch the active (botla…) cohort ordered by email at the DB, then
+ * return THIS shard's slice. The `.like('botla%@synthetic…')` filter keeps the live bot0## cohort
+ * (which readSessionCapableBots also returns) OUT, and `.order('email')` makes every runner see the
+ * same ordering so the per-shard slices are disjoint across IPs (spec decision #3).
+ */
+export async function readActiveLoadCohort(
+  admin: SupabaseClient,
+  shard: number,
+  shards: number,
+): Promise<BotRef[]> {
+  const { data, error } = await admin
+    .from("profiles")
+    .select("id, email, role")
+    .like("email", `${ACTIVE_COHORT_PREFIX}%${SYNTHETIC_DOMAIN}`)
+    .order("email", { ascending: true });
+  if (error) throw new Error(`readActiveLoadCohort: ${error.message}`);
+  return sliceActiveCohort((data ?? []) as { id: string; email: string; role: string }[], shard, shards);
+}
+
 export async function readCohort(admin: SupabaseClient): Promise<CohortState> {
   // Derive the cohort from the SESSION-CAPABLE bots only (live bot0## + active botla…), NOT the whole
   // synthetic_users registry. The depth pool (botseed_*) is inert weight that never authenticates and

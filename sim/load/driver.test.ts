@@ -258,6 +258,66 @@ describe("runLoad — collects breakages across the run (does NOT abort on the f
   });
 });
 
+// ── runLoad — media-egress proxy (Task 4.2: per-step request count + Σ bytes) ─────────────────────────
+describe("runLoad — media-egress proxy tally (request count + transferred bytes)", () => {
+  const captured: Record<string, unknown>[] = [];
+  const baseDeps = () => ({
+    rampSteps: [3], // one wave of 3 tasks
+    holdMs: 0,
+    sampleEveryMs: 1000,
+    runLabel: "media",
+    botFor: async () => ({}) as unknown as SupabaseClient,
+    activeUserIds: ["u1", "u2", "u3"],
+    captureSnapshot: async (_l: string, _r: number, notes: Record<string, unknown>) => {
+      captured.push(notes);
+    },
+    writeFindings: async () => {},
+    now: () => 0,
+  });
+
+  it("counts each media call (isMedia = returned a non-void object) and sums its bytes", async () => {
+    captured.length = 0;
+    // A media action RETURNS { bytes } — every task this step is a media call of 1000 bytes.
+    const media: HotAction = { name: "media_fetch", weight: 1, run: async () => ({ bytes: 1000 }) };
+    const result = await runLoad({ ...baseDeps(), actions: [media] });
+    expect(result.steps[0].metrics.mediaRequests).toBe(3);
+    expect(result.steps[0].metrics.mediaBytes).toBe(3000);
+    // The snapshot notes carry the media keys (cumulative-so-far, like count/ok) for the aggregation RPC.
+    expect(captured[0]).toHaveProperty("media_requests");
+    expect(captured[0]).toHaveProperty("media_bytes");
+  });
+
+  it("a 0-byte / HEAD-style object return still counts as ONE request (isMedia is object-ness, not bytes>0)", async () => {
+    captured.length = 0;
+    const emptyMedia: HotAction = { name: "media_head", weight: 1, run: async () => ({}) };
+    const result = await runLoad({ ...baseDeps(), actions: [emptyMedia] });
+    expect(result.steps[0].metrics.mediaRequests).toBe(3); // counted despite 0 bytes
+    expect(result.steps[0].metrics.mediaBytes).toBe(0);
+  });
+
+  it("a void-returning (read) action contributes 0 to both media counters", async () => {
+    captured.length = 0;
+    const read: HotAction = { name: "campaign_browse", weight: 1, run: async () => {} };
+    const result = await runLoad({ ...baseDeps(), actions: [read] });
+    expect(result.steps[0].metrics.mediaRequests).toBe(0);
+    expect(result.steps[0].metrics.mediaBytes).toBe(0);
+  });
+
+  it("emits a FINAL per-step snapshot with the complete cumulative totals (short-soak correctness)", async () => {
+    // A single-wave step (holdMs 0) samples ONCE, in-flight, before the wave drains → that sample's
+    // count/media are 0. Without a post-wave final snapshot, the matrix summary (latest row per shard)
+    // would read 0 requests/egress for a short soak. The final snapshot must carry the true totals.
+    captured.length = 0;
+    const media: HotAction = { name: "media_fetch", weight: 1, run: async () => ({ bytes: 1000 }) };
+    await runLoad({ ...baseDeps(), actions: [media] });
+    const last = captured[captured.length - 1];
+    expect(last.count).toBe(3); // true wave total, not the pre-wave 0
+    expect(last.ok).toBe(3);
+    expect(last.media_requests).toBe(3);
+    expect(last.media_bytes).toBe(3000);
+  });
+});
+
 describe("runLoad — samples the DB snapshot WHILE the wave is in flight (Codex P1 regression)", () => {
   it("takes the snapshot before any wave task completes (concurrent, not post-drain)", async () => {
     // Every wave task blocks on a gate; the snapshot releases it. So at snapshot time NO task has
@@ -286,6 +346,7 @@ describe("runLoad — samples the DB snapshot WHILE the wave is in flight (Codex
       botFor: async () => ({}) as unknown as SupabaseClient,
       activeUserIds: ["u1", "u2"],
       captureSnapshot: async () => {
+        if (completedAtSnapshot !== -1) return; // only the FIRST (in-flight) snapshot; ignore the final one
         completedAtSnapshot = completed; // live completed-count at snapshot time
         release(); // let the gated wave drain
       },
@@ -293,6 +354,8 @@ describe("runLoad — samples the DB snapshot WHILE the wave is in flight (Codex
       actions: [gated],
       now: () => 0,
     });
+    // Record only the FIRST (in-flight) snapshot — a final post-wave snapshot now also fires per step
+    // (short-soak totals fix), and it must not clobber this in-flight assertion.
     expect(completedAtSnapshot).toBe(0); // snapshot fired while the wave was still blocked (in flight)
     expect(completed).toBe(2); // and after release, the wave drained
   });
@@ -326,6 +389,59 @@ describe("runLoad — stops at the saturation knee (never pushes to outage)", ()
     expect(result.kneeConcurrency).toBe(2);
     expect(result.steps).toHaveLength(1); // never advanced to 4 or 8
     expect(result.breakageCount).toBe(0); // 429 is saturation, NOT a breakage
-    expect(sampledConcurrencies).toEqual([2]);
+    // Every sample (the in-flight one + the per-step final snapshot) was at concurrency 2 — the ramp
+    // halted at the knee and never sampled 4 or 8.
+    expect(sampledConcurrencies.length).toBeGreaterThanOrEqual(1);
+    expect(sampledConcurrencies.every((c) => c === 2)).toBe(true);
+  });
+});
+
+// ── runLoad — periodic kill-switch re-check (matrix soak-safe drain) ─────────────────────────────────
+describe("runLoad — drains gracefully when the kill switch flips mid-soak (isEnabled re-check)", () => {
+  const ok: HotAction = { name: "campaign_browse", weight: 1, run: async () => {} };
+
+  it("stops early, flags stoppedByKillSwitch, still writes findings, does not throw", async () => {
+    let enabledCalls = 0;
+    let written: LoadFindingsArtifact | null = null;
+    const result = await runLoad({
+      rampSteps: [2, 4, 8],
+      holdMs: 0,
+      sampleEveryMs: 1000,
+      runLabel: "killswitch",
+      botFor: async () => ({}) as unknown as SupabaseClient,
+      activeUserIds: ["u1"],
+      captureSnapshot: async () => {},
+      writeFindings: async (a) => {
+        written = a;
+      },
+      actions: [ok],
+      // Enabled at step 1's sample, flipped OFF at step 2's sample.
+      isEnabled: async () => {
+        enabledCalls += 1;
+        return enabledCalls < 2;
+      },
+      now: () => 0,
+    });
+    expect(result.stoppedByKillSwitch).toBe(true);
+    expect(result.stoppedAtKnee).toBe(false);
+    expect(result.steps.length).toBeLessThan(3); // never reached the concurrency-8 step
+    expect(written).not.toBeNull(); // findings still written (graceful, not a throw)
+  });
+
+  it("defaults to enabled — single-runner mode is unaffected (no early stop)", async () => {
+    const result = await runLoad({
+      rampSteps: [2],
+      holdMs: 0,
+      sampleEveryMs: 1000,
+      runLabel: "noks",
+      botFor: async () => ({}) as unknown as SupabaseClient,
+      activeUserIds: ["u1"],
+      captureSnapshot: async () => {},
+      writeFindings: async () => {},
+      actions: [ok],
+      now: () => 0, // no isEnabled injected → always enabled
+    });
+    expect(result.stoppedByKillSwitch).toBe(false);
+    expect(result.steps).toHaveLength(1);
   });
 });

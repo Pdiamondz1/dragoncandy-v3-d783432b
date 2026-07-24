@@ -1,0 +1,124 @@
+name: synthetic-load-matrix
+
+# Multi-IP LOAD RUNNER MATRIX for the Synthetic Weight Engine (Slice 1).
+#
+# A single GH runner caps at the ~312-concurrency client-side EGRESS wall while prod's DB stays ~91%
+# idle (docs/superpowers/load-findings/2026-07-24.md). This workflow fans the SAME load driver across
+# N shards — each a separate job on its own runner IP — so the summed offered concurrency pushes prod's
+# DB toward its real ceiling. The ramp knob is the SHARD COUNT: each shard holds a fixed egress-safe
+# concurrency C on its own IP; N shards ≈ N×C offered. Aggregate with get_sim_load_matrix_summary
+# (groups on notes.shard). Runbook: docs/runbooks/synthetic-load-tier-ramp.md (matrix section).
+#
+# PREREQUISITE: seed 25×max_shards active bots first — `bulk-seed --with-content --active <25×shards>`
+# — so every shard has a non-empty disjoint botla… slice (raising shards later requires re-seeding).
+#
+# SAFETY: manual dispatch only (no schedule). Every shard is fail-closed at boot (sim/env.ts refuses
+# unless the Stripe keys are TEST keys AND SYNTHETIC_BOTS_ENABLED reads back `true`); flipping that
+# flag OFF drains every in-flight shard within a snapshot cycle (the isEnabled re-check). The load job
+# runs in the `synthetic-weight` GitHub Environment (reviewer gate + scoped prod secrets).
+
+on:
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: "Shard count (2..MAX_SHARDS; a matrix needs ≥2 — use the `load` command for single-runner)"
+        default: "5"
+      concurrency:
+        description: "Fixed egress-safe concurrency C held per shard"
+        default: "200"
+      soak_ms:
+        description: "Soak hold per shard (ms)"
+        default: "1800000"
+      run_label:
+        description: "Run label (dashboard groups matrix-* labels)"
+        default: "matrix-manual"
+
+# Prevent two matrix RUNS from overlapping (they would share the botla… cohort), but never cancel a
+# run mid-flight — a half-cancelled ramp leaves sessions/telemetry the teardown must still clean.
+concurrency:
+  group: synthetic-load-matrix
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  MAX_SHARDS: "10"
+
+jobs:
+  # Pure compute (no prod secrets, no environment gate): validate the shard count and emit the matrix.
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - name: Plan shards
+        id: plan
+        env:
+          SHARDS: ${{ inputs.shards }}
+        run: |
+          set -euo pipefail
+          # Fail loud on a non-integer / out-of-range shard count — never silently run a degenerate
+          # count or an unbounded fan-out that would blow the per-IP session budget.
+          case "$SHARDS" in
+            ''|*[!0-9]*) echo "::error::shards must be a positive integer (got '$SHARDS')"; exit 1 ;;
+          esac
+          # A MATRIX needs ≥2 shards: sim/run.ts planLoad routes shards<=1 to the SINGLE-RUNNER path
+          # (reads the live cohort, no notes.shard, no in-soak kill-switch), which the summary RPC
+          # cannot aggregate. For single-runner load use the `load` command / synthetic-weight.yml.
+          if [ "$SHARDS" -lt 2 ] || [ "$SHARDS" -gt "$MAX_SHARDS" ]; then
+            echo "::error::shards $SHARDS out of range 2..$MAX_SHARDS (a matrix needs ≥2; single-runner is the \`load\` command)"; exit 1
+          fi
+          arr=$(seq 0 $((SHARDS - 1)) | paste -sd, -)
+          echo "matrix=[$arr]" >> "$GITHUB_OUTPUT"
+          echo "Planned $SHARDS shard(s): [$arr]"
+
+  # One job per shard = one runner IP. Runs in PARALLEL (that is the point — summed egress).
+  load:
+    needs: setup
+    runs-on: ubuntu-latest
+    environment: synthetic-weight
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.setup.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci
+      - name: Run load shard
+        env:
+          SIM_SUPABASE_URL: ${{ secrets.SIM_SUPABASE_URL }}
+          SIM_SUPABASE_ANON_KEY: ${{ secrets.SIM_SUPABASE_ANON_KEY }}
+          SIM_SUPABASE_SECRET_KEY: ${{ secrets.SIM_SUPABASE_SECRET_KEY }}
+          SIM_STRIPE_SECRET_KEY: ${{ secrets.SIM_STRIPE_SECRET_KEY }}
+          SIM_STRIPE_PUBLISHABLE_KEY: ${{ secrets.SIM_STRIPE_PUBLISHABLE_KEY }}
+          # Every input goes through an env var — NEVER interpolated into the run script — so no
+          # crafted input can break out of the shell and reach the prod secrets above.
+          SIM_SHARD: ${{ matrix.shard }}
+          SIM_SHARDS: ${{ inputs.shards }}
+          SIM_CONCURRENCY: ${{ inputs.concurrency }}
+          SIM_SOAK_MS: ${{ inputs.soak_ms }}
+          # Suffix the operator's label with this run's id (+attempt) so EVERY dispatch is a distinct
+          # run_label. get_sim_load_matrix_summary groups solely by run_label (latest row per shard);
+          # a reused label would let an earlier run's shards leak into a later, smaller run's summary.
+          # All shards of ONE dispatch share github.run_id, so they still aggregate together.
+          SIM_RUN_LABEL: ${{ format('{0}-{1}.{2}', inputs.run_label, github.run_id, github.run_attempt) }}
+        # Local, lockfile-pinned tsx (installed by `npm ci`) — never `npx --yes tsx`, which would
+        # execute an unpinned registry package in the same step the prod secrets are exported.
+        run: >
+          node_modules/.bin/tsx sim/cli.ts load
+          --shard "$SIM_SHARD"
+          --shards "$SIM_SHARDS"
+          --concurrency "$SIM_CONCURRENCY"
+          --soak-ms "$SIM_SOAK_MS"
+          --run-label "$SIM_RUN_LABEL"
+      - name: Upload shard findings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: findings-shard-${{ matrix.shard }}
+          path: sim/.load-findings.json
+          if-no-files-found: warn
