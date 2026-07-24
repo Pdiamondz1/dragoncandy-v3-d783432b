@@ -1,12 +1,13 @@
 name: synthetic-weight-engine
 
-# DORMANT scheduler for the Synthetic Weight Engine (Phase 1, private crew lane).
+# LIVE scheduler for the Synthetic Weight Engine (Phase 1, private crew lane).
 #
-# Manual trigger ONLY. The daily `schedule` block below stays COMMENTED OUT until a
-# founder-authorized live smoke passes (see
-# docs/superpowers/plans/2026-07-23-synthetic-weight-engine-phase-1-crew-lane.md, Task 8).
-# Enabling the cron is the second of the two deliberate go-live switches (the first is
-# flipping SYNTHETIC_BOTS_ENABLED on).
+# Both go-live switches are thrown (2026-07-24, after a passing founder-authorized live smoke —
+# docs/superpowers/plans/2026-07-23-synthetic-weight-engine-phase-1-crew-lane.md, Task 8): (1)
+# SYNTHETIC_BOTS_ENABLED is on in prod feature_flags, and (2) the daily `schedule` below is enabled.
+# It drives the persistent N=25 crew cohort one tick/day. Secrets live in the `synthetic-weight`
+# GitHub Environment. To pause: flip SYNTHETIC_BOTS_ENABLED off (every run then fail-closes at boot)
+# and/or re-comment the schedule.
 #
 # Every run is fail-closed regardless of trigger: sim/env.ts refuses unless the Stripe keys
 # are test keys AND SYNTHETIC_BOTS_ENABLED reads back exactly `true`. `dry-run` is always safe
@@ -23,8 +24,12 @@ on:
       n:
         description: "Cohort size (mint only)"
         default: "25"
-  # schedule:
-  #   - cron: "0 14 * * *"   # daily 14:00 UTC — ENABLE ONLY after a passing live smoke (Task 8)
+  schedule:
+    # LIVE since 2026-07-24 — enabled after a passing founder-authorized live smoke (Task 8) at N=25.
+    # Runs ONE `tick`/day (default command) from a fresh runner IP. Keep it to a single daily run:
+    # rapid same-IP ticking mints many per-bot magiclink sessions and trips Supabase's per-IP auth
+    # `verify` rate limit (429). One tick/day at N=25 stays well under it (validated on prod).
+    - cron: "0 14 * * *"   # daily 14:00 UTC
 
 concurrency:
   group: synthetic-weight

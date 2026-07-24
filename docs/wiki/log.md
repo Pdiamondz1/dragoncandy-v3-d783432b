@@ -1,5 +1,13 @@
 # Wiki Log
 
+## [2026-07-24] update | Synthetic Weight Engine — Phase 1 go-live: N=25 cohort + daily cron (chore/synthetic-weight-enable-cron)
+Threw the Task 8 second switch: permanent `SYNTHETIC_BOTS_ENABLED` on, a persistent 25-bot cohort, 5
+`SIM_*` secrets in a new protected `synthetic-weight` GitHub Environment, and the daily `0 14 * * *`
+cron. **Compounded** onto [[Synthetic Weight Engine]] a "Phase 1 go-live" section documenting the
+per-IP auth `verify` 429 the N=25 run caught (rapid same-IP ticking), the fresh-IP once-daily cron
+profile validated live (apply stage 0→27, 0 failures), and the 429-backoff fast-follow. Isolation held.
+Prepended a `docs/SHIPPED_LOG.md` entry.
+
 ## [2026-07-24] update | Synthetic Weight Engine — Phase 1 live smoke (Task 8) + teardown fix (fix/purge-synthetic-crew-teardown)
 Ran the founder-authorized live smoke on prod (mint 5 → funnel → isolation proof → purge → switch off).
 **Compounded** onto [[Synthetic Weight Engine]] a "Phase 1 live smoke (Task 8)" section: isolation held
