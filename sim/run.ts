@@ -42,6 +42,14 @@ export interface Args {
   holdMs: number;
   /** load: sim_load_snapshots run label for this ramp. */
   runLabel: string;
+  /** load matrix: this runner's shard index (0-based). */
+  shard: number;
+  /** load matrix: total shard count S (1 = single-runner mode; the ramp knob is S). */
+  shards: number;
+  /** load matrix: fixed egress-safe concurrency C held per shard for the soak (0 = use --ramp). */
+  concurrency: number;
+  /** load matrix: soak hold duration in ms at fixed C (0 = a single wave). */
+  soakMs: number;
 }
 
 const CREATOR_SPLIT = 0.65;
@@ -88,7 +96,7 @@ export function parseArgs(argv: string[]): Args {
   const command = argv.find((a) => !a.startsWith("--"));
   if (!command || !(COMMANDS as readonly string[]).includes(command)) {
     throw new Error(
-      `Usage: cli.ts <${COMMANDS.join("|")}> [--n 25] [--cohort phase1] [--seed 1] [--active 25] [--creator-split 0.65] [--ramp 50/1500/2.5] [--hold-ms 15000] [--run-label load]`,
+      `Usage: cli.ts <${COMMANDS.join("|")}> [--n 25] [--cohort phase1] [--seed 1] [--active 25] [--creator-split 0.65] [--ramp 50/1500/2.5] [--hold-ms 15000] [--run-label load] [--shard 0] [--shards 1] [--concurrency 200] [--soak-ms 1800000]`,
     );
   }
   const flag = (name: string): string | undefined => {
@@ -105,6 +113,10 @@ export function parseArgs(argv: string[]): Args {
     ramp: flag("ramp") ?? RAMP_DEFAULT,
     holdMs: safeInt(flag("hold-ms"), HOLD_MS_DEFAULT),
     runLabel: flag("run-label") ?? RUN_LABEL_DEFAULT,
+    shard: safeInt(flag("shard"), 0),
+    shards: safeInt(flag("shards"), 1),
+    concurrency: safeInt(flag("concurrency"), 0),
+    soakMs: safeInt(flag("soak-ms"), 0),
   };
 }
 

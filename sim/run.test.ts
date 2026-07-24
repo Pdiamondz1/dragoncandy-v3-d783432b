@@ -7,12 +7,14 @@ describe("parseArgs", () => {
     expect(parseArgs(["tick", "--n", "25", "--cohort", "x", "--seed", "3"])).toEqual({
       command: "tick", n: 25, cohort: "x", seed: 3, active: 25, creatorSplit: 0.65,
       ramp: "50/1500/2.5", holdMs: 15000, runLabel: "load",
+      shard: 0, shards: 1, concurrency: 0, soakMs: 0,
     });
   });
   it("applies defaults", () => {
     expect(parseArgs(["dry-run"])).toEqual({
       command: "dry-run", n: 25, cohort: "phase1", seed: 1, active: 25, creatorSplit: 0.65,
       ramp: "50/1500/2.5", holdMs: 15000, runLabel: "load",
+      shard: 0, shards: 1, concurrency: 0, soakMs: 0,
     });
   });
   it("throws on an unknown or missing command", () => {
@@ -28,18 +30,28 @@ describe("parseArgs", () => {
     expect(parseArgs(["bulk-seed", "--n", "200", "--active", "30", "--creator-split", "0.5"])).toEqual({
       command: "bulk-seed", n: 200, cohort: "phase1", seed: 1, active: 30, creatorSplit: 0.5,
       ramp: "50/1500/2.5", holdMs: 15000, runLabel: "load",
+      shard: 0, shards: 1, concurrency: 0, soakMs: 0,
     });
   });
   it("parses the load flags (--ramp / --hold-ms / --run-label)", () => {
     expect(parseArgs(["load", "--ramp", "50,200,500", "--hold-ms", "8000", "--run-label", "micro"])).toEqual({
       command: "load", n: 25, cohort: "phase1", seed: 1, active: 25, creatorSplit: 0.65,
       ramp: "50,200,500", holdMs: 8000, runLabel: "micro",
+      shard: 0, shards: 1, concurrency: 0, soakMs: 0,
     });
   });
   it("falls back to defaults on non-numeric --active/--creator-split", () => {
     const a = parseArgs(["bulk-seed", "--active", "abc", "--creator-split", "xyz"]);
     expect(a.active).toBe(25);
     expect(a.creatorSplit).toBe(0.65);
+  });
+  it("parses the matrix flags (--shard / --shards / --concurrency / --soak-ms)", () => {
+    expect(
+      parseArgs(["load", "--shard", "2", "--shards", "5", "--concurrency", "200", "--soak-ms", "1800000"]),
+    ).toMatchObject({ command: "load", shard: 2, shards: 5, concurrency: 200, soakMs: 1_800_000 });
+  });
+  it("defaults the matrix flags (shard 0 / shards 1 / concurrency 0 / soak-ms 0) when absent", () => {
+    expect(parseArgs(["load"])).toMatchObject({ shard: 0, shards: 1, concurrency: 0, soakMs: 0 });
   });
 });
 
