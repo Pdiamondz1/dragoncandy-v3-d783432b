@@ -9,7 +9,7 @@
 // Two hard design stances, mirrored from the harness it extends:
 //   • Pure/logic pieces (rampSteps, parseRamp, runPool, isKnee, foldBreakages, classifyError,
 //     percentile) are unit-tested OFFLINE; the network parts (botFor / captureSnapshot /
-//     writeFindings / sleep / now / rng) are INJECTED, so runLoad is exercised without a live DB.
+//     writeFindings / now / rng) are INJECTED, so runLoad is exercised without a live DB.
 //   • COLLECT-ALL, don't abort-on-first (this is the QA/bug-surfacing deliverable). Exactly like
 //     behavior/graph.ts's runDay isolates each action's failure into `failures[]`, this isolates
 //     every non-throttle error into a deduped breakage SIGNATURE and accumulates it across the WHOLE
@@ -232,7 +232,7 @@ export interface BreakageSignature {
 }
 
 function signatureKey(e: { endpoint: string; status: number | null; error: string }): string {
-  return `${e.endpoint} ${e.status ?? ""} ${e.error}`;
+  return JSON.stringify([e.endpoint, e.status ?? "", e.error]);
 }
 
 /**
@@ -408,10 +408,9 @@ export interface RunLoadDeps {
   /** Injectable — defaults to HOT_ACTIONS. */
   actions?: HotAction[];
   kneeThresholds?: KneeThresholds;
-  /** Injectable clock/rng/sleep for deterministic offline tests. */
+  /** Injectable clock/rng for deterministic offline tests. */
   now?: () => number;
   rng?: () => number;
-  sleep?: (ms: number) => Promise<void>;
 }
 
 interface TaskOutcome {
@@ -481,6 +480,10 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
     const stepStart = now();
     let lastSampleAt = -Infinity; // guarantees the first wave of each step samples once
 
+    // Waves run back-to-back (no inter-wave sleep) for continuous load; this loop terminates ONLY
+    // when the clock advances past holdMs. In prod each wave's real network latency advances Date.now;
+    // offline tests MUST pass holdMs: 0 with a frozen injected `now` (→ exactly one wave). Never
+    // inject a frozen clock with holdMs > 0 — the loop would spin forever.
     do {
       const outcomes = await runPool(concurrency, concurrency, (_index) =>
         runOneTask({ activeUserIds: deps.activeUserIds, botFor: deps.botFor, actions, rng, now }),
