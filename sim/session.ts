@@ -41,11 +41,18 @@ export interface RetryOptions {
   sleep?: (ms: number) => Promise<void>; // injectable for tests
 }
 
-/** Parse a Retry-After header (delta-seconds form) to ms; null if absent/unparseable. Pure. */
-export function parseRetryAfter(header: string | null): number | null {
+/**
+ * Parse a Retry-After header to a wait in ms; null if absent/unparseable. Handles BOTH RFC-7231 forms:
+ * delta-seconds (`120`) and HTTP-date (`Wed, 21 Oct 2026 07:28:00 GMT`) — a past date clamps to 0.
+ * `nowMs` is injectable for deterministic tests. Pure.
+ */
+export function parseRetryAfter(header: string | null, nowMs: number = Date.now()): number | null {
   if (header === null) return null;
-  const secs = Number(header.trim());
-  return Number.isFinite(secs) && secs >= 0 ? secs * 1000 : null;
+  const trimmed = header.trim();
+  const secs = Number(trimmed); // bare number ⇒ delta-seconds (a real HTTP-date is NaN here)
+  if (Number.isFinite(secs)) return secs >= 0 ? secs * 1000 : null;
+  const dateMs = Date.parse(trimmed);
+  return Number.isFinite(dateMs) ? Math.max(0, dateMs - nowMs) : null;
 }
 
 /** Deterministic exponential backoff for a 0-based attempt, capped at maxDelayMs. Pure. */

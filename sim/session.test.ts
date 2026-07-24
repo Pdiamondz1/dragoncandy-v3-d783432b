@@ -42,6 +42,11 @@ describe("parseRetryAfter", () => {
     expect(parseRetryAfter("-1")).toBeNull();
     expect(parseRetryAfter("soon")).toBeNull();
   });
+  it("parses the HTTP-date form as (date - now), clamped at 0", () => {
+    const now = Date.parse("Wed, 21 Oct 2026 07:28:00 GMT");
+    expect(parseRetryAfter("Wed, 21 Oct 2026 07:28:30 GMT", now)).toBe(30_000);
+    expect(parseRetryAfter("Wed, 21 Oct 2026 07:27:00 GMT", now)).toBe(0); // past ⇒ 0
+  });
 });
 
 describe("backoffDelayMs", () => {
