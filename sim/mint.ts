@@ -127,27 +127,26 @@ export async function readSessionCapableBots(admin: SupabaseClient): Promise<Bot
 }
 
 export async function readCohort(admin: SupabaseClient): Promise<CohortState> {
-  const { data: reg, error } = await admin.from("synthetic_users").select("user_id, cohort, persona");
-  if (error) throw new Error(`readCohort synthetic_users: ${error.message}`);
-  const botIds = (reg ?? []).map((r) => r.user_id as string);
+  // Derive the cohort from the SESSION-CAPABLE bots only (live bot0## + active botla…), NOT the whole
+  // synthetic_users registry. The depth pool (botseed_*) is inert weight that never authenticates and
+  // — after a bulk-seed — can be tens of thousands of rows; including it would make `tick` plan/mint
+  // sessions for accounts that never log in AND drag every downstream .in() to that size. We enrich
+  // persona/cohort from the registry over this (small) id set. (Codex P1.)
+  const sessionBots = await readSessionCapableBots(admin);
+  const botIds = sessionBots.map((b) => b.userId);
   if (botIds.length === 0) {
     return { bots: [], crews: [], campaigns: [], applications: [], collaborations: [] };
   }
 
-  const profs = await selectIn<{ id: string; email: string; role: string }>(
-    admin, "profiles", "id, email, role", "id", botIds,
+  const reg = await selectIn<{ user_id: string; cohort: string | null; persona: string | null }>(
+    admin, "synthetic_users", "user_id, cohort, persona", "user_id", botIds,
   );
-  const profById = new Map(profs.map((p) => [p.id, p]));
-  const bots: BotRef[] = (reg ?? []).map((r) => {
-    const p = profById.get(r.user_id as string);
-    return {
-      userId: r.user_id as string,
-      email: p?.email ?? "",
-      role: (p?.role as Role) ?? "content_creator",
-      personaKey: (r.persona as PersonaKey | null) ?? null,
-      cohort: (r.cohort as string | null) ?? null,
-    };
-  });
+  const regById = new Map(reg.map((r) => [r.user_id, r]));
+  const bots: BotRef[] = sessionBots.map((b) => ({
+    ...b,
+    personaKey: (regById.get(b.userId)?.persona as PersonaKey | null) ?? null,
+    cohort: (regById.get(b.userId)?.cohort as string | null) ?? null,
+  }));
 
   const groups = await selectIn<{ id: string; owner_id: string }>(
     admin, "creator_groups", "id, owner_id", "owner_id", botIds,
