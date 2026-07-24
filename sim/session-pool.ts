@@ -20,7 +20,13 @@
 import { readFileSync, writeFileSync, renameSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { randomBytes } from "node:crypto";
-import { fetchWithRetry, mintBotSession, type BotSession, type RetryOptions } from "./session";
+import {
+  assertSupabaseHost,
+  fetchWithRetry,
+  mintBotSession,
+  type BotSession,
+  type RetryOptions,
+} from "./session";
 
 /** One bot's persisted session. `expiresAt` is an absolute epoch-ms deadline (not a duration). */
 export interface PooledSession {
@@ -58,14 +64,6 @@ export function chooseRefreshOrMint(
 
 // ── Refresh call ────────────────────────────────────────────────────────────────────────────────
 
-/** Guard the target host (never POST a refresh token to a foreign origin) and normalize the URL. Pure. */
-function assertSupabaseTarget(url: string): string {
-  if (!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(url)) {
-    throw new Error(`refreshSession: refusing non-supabase host: ${url}`);
-  }
-  return url.replace(/\/$/, "");
-}
-
 /**
  * Exchange a refresh token for a fresh session (ONE call), retrying 429/503 via the shared
  * fetchWithRetry. Mirrors mintBotSession's fetch + `.ok` fail-loud style. GoTrue rotates the
@@ -78,7 +76,7 @@ export async function refreshSession(
   refreshToken: string,
   retry: RetryOptions = {},
 ): Promise<BotSession> {
-  const base = assertSupabaseTarget(url);
+  const base = assertSupabaseHost(url, "refreshSession");
   const res = await fetchWithRetry(
     () =>
       fetch(`${base}/auth/v1/token?grant_type=refresh_token`, {
@@ -168,8 +166,14 @@ export class SessionPool {
     }
     try {
       const parsed = JSON.parse(raw) as Record<string, unknown>;
+      let dropped = 0;
       for (const [email, s] of Object.entries(parsed)) {
         if (isPooledSession(s)) this.sessions.set(email, s);
+        else dropped += 1;
+      }
+      if (dropped > 0) {
+        const plural = dropped === 1 ? "entry" : "entries";
+        console.warn(`[session-pool] dropped ${dropped} malformed ${plural} from ${this.filePath}`);
       }
     } catch (e) {
       console.warn(`[session-pool] ignoring corrupt session file ${this.filePath}: ${errMsg(e)}`);

@@ -27,6 +27,7 @@ supabase/scripts/.env.sync.local
 sim/.session-pool.json
 sim/.session-pool.json.*.tmp
 sim/*.session-pool.json
+sim/*.session-pool.json.*.tmp
 
 # Editor directories and files
 .vscode/*

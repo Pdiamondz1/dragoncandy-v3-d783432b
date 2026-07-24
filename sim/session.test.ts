@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   assertSessionMintTarget,
+  assertSupabaseHost,
   parseRetryAfter,
   backoffDelayMs,
   fetchWithRetry,
@@ -32,6 +33,19 @@ describe("assertSessionMintTarget", () => {
     expect(() =>
       assertSessionMintTarget("https://evil.example.com", "bot001@synthetic.dragoncandy.test"),
     ).toThrow();
+  });
+});
+
+describe("assertSupabaseHost", () => {
+  it("returns the normalized base URL (strips a trailing slash) for a supabase host", () => {
+    expect(assertSupabaseHost(URL, "ctx")).toBe(URL);
+    expect(assertSupabaseHost(`${URL}/`, "ctx")).toBe(URL);
+  });
+  it("throws (naming the ctx) on a missing url", () => {
+    expect(() => assertSupabaseHost(undefined, "refreshSession")).toThrow(/refreshSession requires/);
+  });
+  it("refuses a non-supabase host (no credential leak to a foreign origin)", () => {
+    expect(() => assertSupabaseHost("https://evil.example.com", "ctx")).toThrow(/non-supabase host/);
   });
 });
 
