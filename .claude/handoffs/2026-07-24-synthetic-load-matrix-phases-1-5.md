@@ -55,7 +55,11 @@ suppression, donny/notify FK cascade types).
   role-agnostic. No fix (would add needless role routing); did NOT re-run a 4th time to chase a confirmed
   false positive. **Codex pass COMPLETE — all real findings resolved.**
 
+## STATUS: branch PUSHED, PR #337 OPEN (migrations already live on prod). Smoke deferred per founder.
+
 ## Next steps (in order) — FOUNDER-GATED boundary
+0. **PR #337** open (https://github.com/Pdiamondz1/dragoncandy-v3-d783432b/pull/337). Merge is the founder's
+   call. After merge: refresh local main (post-merge RAG hook fires), regenerate `types.ts`, run knowledge-sync.
 1. ~~Codex re-review clean~~ — DONE (R1/R2 fixed, R3 false-positive dismissed).
 2. ~~`careful` gate → apply the 3 migrations to prod~~ — **DONE 2026-07-24.** All 3 applied + verified live:
    grants correct (summary→authenticated+is_internal_user guard, seed/purge→service-role only), guards
