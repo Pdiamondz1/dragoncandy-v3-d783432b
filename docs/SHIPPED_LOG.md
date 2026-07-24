@@ -29,6 +29,21 @@
 
 ---END-HEADER---
 
+- Synthetic Weight Engine — Phase 1 go-live: N=25 cohort + daily cron (Task 8 second switch) —
+  **live on prod 2026-07-24 (`chore/synthetic-weight-enable-cron`).** After the passing smoke, both
+  go-live switches were thrown: `SYNTHETIC_BOTS_ENABLED` on (now permanent), a **persistent 25-bot
+  cohort** minted (≈16 creators / 9 Hoboken restaurants), 5 `SIM_*` secrets set in a new protected
+  `synthetic-weight` GitHub Environment (incl. the prod service-role key — the harness's inherent
+  exposure surface, founder-approved; no required reviewers = unattended), and the daily `0 14 * * *`
+  cron enabled to drive **one tick/day**. **Scaling finding the N=25 run caught:** rapid same-IP ticking
+  (5 ticks in minutes ≈ 125 magiclink→verify session mints) trips Supabase's per-IP auth `verify` rate
+  limit (429) — surfaced by the fail-loud tick, not silently. The **daily cron is a different profile**
+  (one tick/day from a fresh GitHub-runner IP ≈ 25 mints) and was **validated live**: a
+  `workflow_dispatch` tick from the runner drove the apply stage (0→27 applications, **0 failures**)
+  that had 429'd locally. Isolation held throughout (real counts 25 campaigns / 41 users byte-unchanged).
+  **Recommended fast-follow:** 429 backoff/retry (or cross-tick session reuse) in `sim/session.ts` so a
+  heavier day can't red-fail the unattended cron. → `docs/wiki/concepts/synthetic-weight-engine.md`
+
 - Synthetic Weight Engine — Phase 1 live smoke (Task 8) + teardown fix — **ran on prod 2026-07-24,
   PASSED (`fix/purge-synthetic-crew-teardown`).** The founder-authorized first live mint: flip
   `SYNTHETIC_BOTS_ENABLED`→true → baseline snapshot → `mint --n 5` → ~10 `tick`s (full crew funnel,

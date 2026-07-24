@@ -167,6 +167,26 @@ purge (throws on any non-zero residual) made the gap loud instead of silent resi
 [[Testing auth.uid() RPCs and RLS on prod]] for the aios_*/get_simulation_stats internal-auth-gated
 snapshot technique the proof used.
 
+## Phase 1 go-live — N=25 cohort + daily cron (Task 8 second switch), 2026-07-24
+
+After the smoke passed, both go-live switches were thrown: `SYNTHETIC_BOTS_ENABLED` on (now permanent),
+a **persistent 25-bot cohort** minted on prod, the 5 `SIM_*` secrets set in a new **protected
+`synthetic-weight` GitHub Environment** (no required reviewers = unattended; holds the prod
+service-role key, the harness's inherent exposure surface — founder-approved), and the daily
+`0 14 * * *` cron enabled to drive **one tick/day**.
+
+**The scaling finding the N=25 run caught.** The per-bot session model mints a fresh magiclink→verify
+session per acting bot **each tick** (`makeBotFor` caches only within a tick). Running ~5 ticks
+back-to-back from one IP (~125 session mints in minutes) trips Supabase's **per-IP auth `verify` rate
+limit → 429**; the fail-loud tick surfaced it loudly. **The daily cron is a different profile** — one
+tick/day from a **fresh GitHub-runner IP** (~25 mints) — and was validated live: a `workflow_dispatch`
+tick from the runner cleanly drove the apply stage (0→27 applications, 0 failures) that had 429'd
+locally. So: **keep it to one run/day** (the workflow comments say so), and the recommended
+**fast-follow** is 429 backoff/retry — or cross-tick session reuse (persist refresh tokens) — in
+`sim/session.ts`, so a heavier funnel day can't red-fail the unattended cron. To pause the whole engine:
+flip `SYNTHETIC_BOTS_ENABLED` off (every run then fail-closes at boot) and/or re-comment the schedule;
+teardown is `purge_synthetic_data()` (now crew-safe).
+
 ## See Also
 - [[Service-Role Data Exposure]] — the same "re-assert the intended scope server-side" discipline.
 - [[AIOS runtime spend source of truth]] — `donny_cost_ledger` / the 15% AI cap the synthetic
