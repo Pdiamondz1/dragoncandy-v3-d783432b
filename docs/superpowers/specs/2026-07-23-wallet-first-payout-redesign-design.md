@@ -97,6 +97,10 @@ Every payout writes, **collaboration-keyed** (all four already exist; only *when
 - **`payout_pending_wallet`** — the creator **earned + wallet-credit** signal (fires on every payout, since
   every payout now transits the wallet).
 
+These four fire **only when the credit actually happened this call** — preserve the existing
+`if (!alreadyCredited)` gate (`credit_pending_balance_for_payout` returns `'already'` on a concurrent-race
+re-entry; skip the ledger writes then, exactly as the current pending path does at `index.ts:515`).
+
 The wallet→Stripe flush keeps writing its **user-keyed** `transfer_created` with `metadata.flush_id` — a
 **wallet-movement audit event**, deliberately NOT counted as earnings.
 
@@ -147,8 +151,8 @@ this same logical rule — `useCreatorEarnings` enforces it by *scoping its quer
 4. **`PaymentsPage` (`src/pages/PaymentsPage.tsx`).** It has **no independent money math** — it passes the full
    `payment_events` list to `PaymentSummaryCards` — so no reader logic changes there. BUT it does **not**
    currently fetch `pending_balance`, so making `inWallet` authoritative requires **adding a
-   `pending_balance` source** (reuse `useCreatorEarnings.available × 100`, the single source, to avoid a
-   second fetch + drift) and threading `pendingBalanceCents` into `<PaymentSummaryCards>` as a new prop. The
+   `pending_balance` source** (reuse `Math.round(useCreatorEarnings.available × 100)`, the single source, to
+   avoid a second fetch + drift) and threading `pendingBalanceCents` into `<PaymentSummaryCards>` as a new prop. The
    plan's first step re-reads `PaymentsPage` to confirm the wiring.
 
 ## 6. What is deleted (all specific to the removed direct path)
@@ -168,7 +172,9 @@ Historical `payment_events` are untouched and keep rendering: the §4.1 rule cou
 (`transfer_created` with no wallet `metadata.type`) and pending-path (`payout_pending_wallet`) payouts each
 once, and legacy pre-#334 wallet withdrawals (`transfer_created` with `metadata.type='wallet_withdrawal'`) are
 correctly excluded from earnings. No migration of past events. `stripe_transfer_id` on old collaboration rows
-still short-circuits the re-entry guard.
+still short-circuits the re-entry guard. **Not backfilled:** historical pending-path collaborations (paid
+pre-reroute) never wrote `payment_released`, so their business In Escrow stays overstated until a future
+re-payout/refund — negligible pre-revenue/test-mode, and this spec does not migrate past events.
 
 ## 8. Data flow & error handling
 
