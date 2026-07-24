@@ -50,6 +50,14 @@ describe("parseRamp", () => {
   it("parses a single number as a one-step ramp", () => {
     expect(parseRamp("250")).toEqual([250]);
   });
+  it("throws (never silently degrades to [50]) on a malformed 2-part slash form", () => {
+    expect(() => parseRamp("50/1500")).toThrow(/malformed --ramp/);
+  });
+  it("throws on garbage and on empty input rather than running a trivial ramp", () => {
+    expect(() => parseRamp("nonsense")).toThrow(/malformed --ramp/);
+    expect(() => parseRamp("")).toThrow(/malformed --ramp/);
+    expect(() => parseRamp("0")).toThrow(/malformed --ramp/);
+  });
 });
 
 // ── runPool ───────────────────────────────────────────────────────────────────────────────────────

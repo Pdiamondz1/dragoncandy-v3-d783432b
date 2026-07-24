@@ -52,21 +52,34 @@ export function rampSteps(start: number, max: number, factor: number): number[] 
  */
 export function parseRamp(raw: string): number[] {
   const trimmed = (raw ?? "").trim();
+  // Malformed input FAILS LOUD rather than degrading to a trivial [50] one-step ramp — a silent
+  // 1-step "load test" reads as a real ramp and masks an operator typo (e.g. a 2-part "50/1500").
   if (trimmed.includes(",")) {
     const list = trimmed
       .split(",")
       .map((s) => Math.floor(Number(s.trim())))
       .filter((n) => Number.isFinite(n) && n > 0);
     const ascending = [...new Set(list)].sort((a, b) => a - b);
-    return ascending.length > 0 ? ascending : [50];
+    if (ascending.length === 0) {
+      throw new Error(`[load] malformed --ramp "${raw}": expected a comma list of positive integers`);
+    }
+    return ascending;
   }
   if (trimmed.includes("/")) {
-    const [start, max, factor] = trimmed.split("/").map((s) => Number(s.trim()));
-    if ([start, max, factor].every((n) => Number.isFinite(n))) return rampSteps(start, max, factor);
-    return [50];
+    const parts = trimmed.split("/").map((s) => Number(s.trim()));
+    const [start, max, factor] = parts;
+    if (parts.length !== 3 || ![start, max, factor].every((n) => Number.isFinite(n))) {
+      throw new Error(`[load] malformed --ramp "${raw}": expected start/max/factor (e.g. 50/1500/2.5)`);
+    }
+    return rampSteps(start, max, factor);
   }
   const one = Math.floor(Number(trimmed));
-  return Number.isFinite(one) && one > 0 ? [one] : [50];
+  if (!Number.isFinite(one) || one <= 0) {
+    throw new Error(
+      `[load] malformed --ramp "${raw}": expected a positive integer, a comma list, or start/max/factor`,
+    );
+  }
+  return [one];
 }
 
 // ── Bounded-concurrency runner (pure control-flow) ────────────────────────────────────────────────

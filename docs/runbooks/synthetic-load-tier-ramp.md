@@ -62,6 +62,18 @@ npx tsx sim/cli.ts load --ramp 50/1500/2.5 --hold-ms 15000 --run-label "tier-<TI
   matrix / several IPs** and sum. Headline the result as "sustained throughput proven," caveated.
 - Non-throttle errors are collected as **findings** (not aborted on the first) → `sim/.load-findings.json`.
   The process exits non-zero if any breakage occurred.
+- **Keep a single ramp well under ~1 hour.** A pooled bot JWT has a ~1h TTL, and `makeBotFor` caches
+  the bot client for the run; a ramp that runs past the TTL will emit `401 JWT expired`, which the
+  driver classifies as **breakage** (not throttle) → spurious findings. For a longer campaign, run
+  several shorter ramps rather than one multi-hour ramp.
+- **Malformed `--ramp` fails loud.** `parseRamp` throws on a mistyped spec (e.g. a 2-part `50/1500`,
+  garbage, or `0`) instead of silently running a trivial 1-step ramp — so a typo aborts the run
+  rather than producing a fake "ramp." Use `start/max/factor` (e.g. `50/1500/2.5`) or an explicit
+  comma list (`50,200,500,1000`).
+- **Stale session pool → re-mint.** The pool persists bot JWTs to `sim/.session-pool.json` (gitignored).
+  If a prior partial run left stale/rotated refresh tokens, a bot's refresh can fail terminally; delete
+  `sim/.session-pool.json` to force a clean re-mint on the next run. (The GH cron runs on ephemeral
+  runners with no pool file, so it always re-mints — this only affects repeated local runs.)
 
 ## 4. Read the results
 
@@ -108,19 +120,27 @@ hypothesis.
 
 > **CRITICAL — do NOT run `purge_synthetic_data()` to clean up a load test.** That purges **ALL**
 > synthetic users, including the **live persistent 25-bot cohort** (`bot001…bot025`) that drives the
-> daily `tick`. Delete only the load-test namespaces:
+> daily `tick`. Delete only the load-test namespaces — matched on **prefix, not a specific cohort
+> label**. The `botseed_` (depth) and `botla` (active) prefixes are produced *only* by `bulk-seed`,
+> for **any** `--cohort` value, and are structurally disjoint from the live cohort's `bot0##` scheme
+> — so a prefix match is always safe and does **not** depend on which `--cohort`/`--run-label` the run
+> used. (This matters: `bulk-seed` defaults `--cohort` to `phase1` and the GH-workflow `bulk-seed`
+> option passes only `--n`, so depth rows are often `botseed_phase1_%`, not `botseed_load_%`; and the
+> `load` run-label defaults to `load`, not `tier-…`.)
 
 ```sql
 -- removes the load depth + active cohorts (cascades to profiles/registry/etc.); leaves bot001..025:
-delete from auth.users where email like 'botseed_load_%@synthetic.dragoncandy.test';
-delete from auth.users where email like 'botla%_%@synthetic.dragoncandy.test';
-delete from sim_load_snapshots where run_label like 'tier-%';
+delete from auth.users where email like 'botseed_%@synthetic.dragoncandy.test';   -- all depth cohorts
+delete from auth.users where email like 'botla%_%@synthetic.dragoncandy.test';    -- all active load cohorts
+-- snapshots: the default run-label is 'load'; runbook ramps use 'tier-<TIER>-<date>'. A CUSTOM
+-- --run-label needs its own delete (add it here). sim_load_snapshots only ever holds load-run rows.
+delete from sim_load_snapshots where run_label = 'load' or run_label like 'tier-%';
 ```
 Then re-capture and assert no load residue while the live cohort survives:
 ```sql
 select
-  (select count(*) from auth.users where email like 'botseed_load_%@synthetic.dragoncandy.test') as depth_left,
-  (select count(*) from auth.users where email like 'botla%_%@synthetic.dragoncandy.test')        as active_left,
+  (select count(*) from auth.users where email like 'botseed_%@synthetic.dragoncandy.test') as depth_left,
+  (select count(*) from auth.users where email like 'botla%_%@synthetic.dragoncandy.test')   as active_left,
   (select count(*) from synthetic_users) as live_cohort;   -- expect depth_left=0, active_left=0, live_cohort=25
 ```
 Only if you intend to wipe **everything synthetic** (including the live cohort) use
