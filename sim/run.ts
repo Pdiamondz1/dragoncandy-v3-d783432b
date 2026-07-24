@@ -16,12 +16,13 @@ import { serviceClient, botClient } from "./clients";
 import { assertRuntimeBootSafety, type MinimalSupabaseClient } from "./env";
 import { generateCohort } from "./personas";
 import { mintBot, readCohort } from "./mint";
+import { planSeed, generateActiveCohort, assertActiveNamespaceFree } from "./seed";
 import { SessionPool } from "./session-pool";
 import { planDay, runDay } from "./behavior/graph";
 import type { ActionContext } from "./behavior/actions";
 import type { BotRef, CohortState } from "./types";
 
-const COMMANDS = ["dry-run", "mint", "tick", "purge"] as const;
+const COMMANDS = ["dry-run", "mint", "tick", "purge", "bulk-seed"] as const;
 type Command = (typeof COMMANDS)[number];
 
 export interface Args {
@@ -29,6 +30,10 @@ export interface Args {
   n: number;
   cohort: string;
   seed: number;
+  /** bulk-seed: cap on the session-capable ACTIVE cohort (the rest of `n` is the depth pool). */
+  active: number;
+  /** bulk-seed: creator fraction (0..1) for both the depth RPC and the active cohort. */
+  creatorSplit: number;
 }
 
 const CREATOR_SPLIT = 0.65;
@@ -50,6 +55,11 @@ function safeInt(value: string | undefined, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function safeFloat(value: string | undefined, fallback: number): number {
+  const n = value !== undefined ? parseFloat(value) : NaN;
+  return Number.isFinite(n) ? n : fallback;
+}
+
 /** Pure: the `residual_*` entries of a purge report that are non-zero (teardown must have none). */
 export function nonZeroResiduals(report: Record<string, unknown>): [string, number][] {
   const out: [string, number][] = [];
@@ -62,7 +72,9 @@ export function nonZeroResiduals(report: Record<string, unknown>): [string, numb
 export function parseArgs(argv: string[]): Args {
   const command = argv.find((a) => !a.startsWith("--"));
   if (!command || !(COMMANDS as readonly string[]).includes(command)) {
-    throw new Error(`Usage: cli.ts <${COMMANDS.join("|")}> [--n 25] [--cohort phase1] [--seed 1]`);
+    throw new Error(
+      `Usage: cli.ts <${COMMANDS.join("|")}> [--n 25] [--cohort phase1] [--seed 1] [--active 25] [--creator-split 0.65]`,
+    );
   }
   const flag = (name: string): string | undefined => {
     const i = argv.indexOf(`--${name}`);
@@ -73,6 +85,8 @@ export function parseArgs(argv: string[]): Args {
     n: safeInt(flag("n"), 25),
     cohort: flag("cohort") ?? "phase1",
     seed: safeInt(flag("seed"), 1),
+    active: safeInt(flag("active"), 25),
+    creatorSplit: safeFloat(flag("creator-split"), CREATOR_SPLIT),
   };
 }
 
@@ -144,6 +158,69 @@ async function cmdMint(args: Args): Promise<void> {
   }
 }
 
+/**
+ * bulk-seed: stand up a large synthetic population in two lanes. planSeed splits `--n` into a DEPTH
+ * pool (bulk-inserted by the service-role seed_synthetic_cohort RPC; never authenticates) and a
+ * session-capable ACTIVE cohort (minted one-by-one via mintBot, capped at `--active`). The active
+ * cohort uses a DISTINCT email namespace (botla<seed>_<i>) so it can never collide with the live
+ * bot### daily cohort — pre-flighted before any write. Fail-loud on an incomplete seed or mint,
+ * mirroring cmdMint's incomplete-cohort contract (bulk-seed is a one-shot: purge before re-seeding).
+ */
+async function cmdBulkSeed(args: Args): Promise<void> {
+  const svc = serviceClient();
+  await bootGate(svc);
+
+  const { depthCount, activeCount } = planSeed(args.n, args.active);
+  const active = generateActiveCohort(activeCount, { creators: args.creatorSplit }, args.seed, args.cohort);
+
+  // Pre-flight BEFORE any write: a present active namespace means a prior run was not purged.
+  await assertActiveNamespaceFree(svc, active);
+
+  // 1) DEPTH pool — one bulk service-role RPC call.
+  let depthSeeded = 0;
+  let depthSkipped = 0;
+  if (depthCount > 0) {
+    const { data, error } = await svc.rpc("seed_synthetic_cohort", {
+      p_n: depthCount,
+      p_cohort: args.cohort,
+      p_creator_split: args.creatorSplit,
+    });
+    if (error) throw new Error(`[bulk-seed] seed_synthetic_cohort failed: ${error.message}`);
+    const res = (data ?? {}) as { seeded?: number; skipped?: number };
+    depthSeeded = res.seeded ?? 0;
+    depthSkipped = res.skipped ?? 0;
+    // Mirror cmdMint: an all-skipped (re-run) or partial seed is NOT green — the depth pool must be
+    // freshly seeded in full. The RPC is idempotent, but bulk-seed is a one-shot; a pre-existing pool
+    // means teardown was skipped. Purge before re-seeding.
+    if (depthSeeded < depthCount) {
+      throw new Error(
+        `[bulk-seed] depth pool incomplete: RPC seeded ${depthSeeded}/${depthCount} (skipped ${depthSkipped}) — purge before re-seeding`,
+      );
+    }
+  }
+
+  // 2) ACTIVE cohort — session-capable, minted individually (distinct botla namespace).
+  let activeMinted = 0;
+  for (const persona of active) {
+    try {
+      await mintBot(svc, persona);
+      activeMinted += 1;
+    } catch (e) {
+      console.error(`  ✗ active mint ${persona.email}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  console.warn(
+    `[bulk-seed] ${JSON.stringify({ depth_seeded: depthSeeded, depth_skipped: depthSkipped, active_minted: activeMinted })}`,
+  );
+  // Same incomplete-cohort contract as cmdMint: a partial active mint must not report green.
+  if (activeMinted < active.length) {
+    throw new Error(
+      `[bulk-seed] only ${activeMinted}/${active.length} active bots minted — cohort incomplete (purge before re-minting; see errors above)`,
+    );
+  }
+}
+
 async function cmdTick(): Promise<void> {
   const svc = serviceClient();
   await bootGate(svc);
@@ -192,6 +269,9 @@ export async function main(argv: string[]): Promise<void> {
       return;
     case "mint":
       await cmdMint(args);
+      return;
+    case "bulk-seed":
+      await cmdBulkSeed(args);
       return;
     case "tick":
       await cmdTick();
