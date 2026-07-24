@@ -135,7 +135,7 @@ function makeBotFor(bots: BotRef[]): (userId: string) => Promise<SupabaseClient>
     if (cached) return cached;
     const email = emailById.get(userId);
     if (!email) throw new Error(`no session: ${userId} is not in the cohort`);
-    const token = await pool.getToken(email, Date.now());
+    const token = await pool.getToken(email, userId, Date.now());
     const client = botClient(token);
     cache.set(userId, client);
     return client;

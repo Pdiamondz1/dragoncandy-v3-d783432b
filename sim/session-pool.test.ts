@@ -7,6 +7,7 @@ import { isExpired, chooseRefreshOrMint, deriveExpiresAt, SessionPool, type Pool
 
 const SUPABASE_URL = "https://zocahiffooqdybdhguqv.supabase.co";
 const BOT = "bot001@synthetic.dragoncandy.test";
+const USER = "user-0001";
 
 /** A disposable tmp dir + session-file path, auto-cleaned by the returned dispose(). */
 function tmpSessionFile(): { file: string; dispose: () => void } {
@@ -59,14 +60,14 @@ describe("SessionPool single-flight", () => {
         return { access_token: "acc-2", refresh_token: "ref-2", expires_in: 3600 };
       },
     });
-    const [t1, t2] = await Promise.all([pool.getToken(BOT, 0), pool.getToken(BOT, 0)]);
+    const [t1, t2] = await Promise.all([pool.getToken(BOT, USER, 0), pool.getToken(BOT, USER, 0)]);
     try {
       expect(t1).toBe("acc-1");
       expect(t2).toBe("acc-1");
       expect(mints).toBe(1); // ← the keystone: ONE underlying call, not two
       expect(refreshes).toBe(0);
       // After the flight settles the session is cached → a third call reuses it (no new call).
-      expect(await pool.getToken(BOT, 0)).toBe("acc-1");
+      expect(await pool.getToken(BOT, USER, 0)).toBe("acc-1");
       expect(mints).toBe(1);
     } finally {
       dispose();
@@ -98,12 +99,12 @@ describe("SessionPool refresh transition", () => {
     });
     try {
       // Tick 1 at t=0 mints; expiresAt = 3_600_000.
-      expect(await pool.getToken(BOT, 0)).toBe("acc-mint");
+      expect(await pool.getToken(BOT, USER, 0)).toBe("acc-mint");
       expect(mints).toBe(1);
       // Tick 2 at t inside the skew window (past expiresAt - skewMs = 3_540_000) → REFRESH path.
       const t2 = 3_599_000;
       expect(chooseRefreshOrMint({ expiresAt: 3_600_000 }, t2, skewMs).action).toBe("refresh"); // sanity
-      expect(await pool.getToken(BOT, t2)).toBe("acc-refreshed");
+      expect(await pool.getToken(BOT, USER, t2)).toBe("acc-refreshed");
       expect(refreshes).toBe(1);
       expect(mints).toBe(1); // no second mint
       expect(refreshedWith).toBe("ref-mint"); // refresh consumed the prior token
@@ -113,6 +114,45 @@ describe("SessionPool refresh transition", () => {
       expect(persisted[BOT].refresh_token).toBe("ref-rotated");
       expect(persisted[BOT].access_token).toBe("acc-refreshed");
       expect(persisted[BOT].expiresAt).toBe(deriveExpiresAt(t2, 3600));
+    } finally {
+      dispose();
+    }
+  });
+});
+
+describe("SessionPool stale-user invalidation (purge + re-mint of the same email)", () => {
+  it("mints fresh when a cached email now maps to a DIFFERENT user id (never reuses the old JWT)", async () => {
+    const { file, dispose } = tmpSessionFile();
+    let mints = 0;
+    let refreshes = 0;
+    const minted: string[] = [];
+    const pool = new SessionPool(file, {
+      url: SUPABASE_URL,
+      anonKey: "anon-key",
+      serviceKey: "service-key",
+      mint: async (): Promise<BotSession> => {
+        mints += 1;
+        const tok = `acc-${mints}`;
+        minted.push(tok);
+        return { access_token: tok, refresh_token: `ref-${mints}`, expires_in: 3600 };
+      },
+      refresh: async (): Promise<BotSession> => {
+        refreshes += 1;
+        return { access_token: "acc-refreshed", refresh_token: "ref-rotated", expires_in: 3600 };
+      },
+    });
+    try {
+      // Old user mints + caches; a same-user re-read reuses (no new call).
+      expect(await pool.getToken(BOT, "user-OLD", 0)).toBe("acc-1");
+      expect(await pool.getToken(BOT, "user-OLD", 1000)).toBe("acc-1");
+      expect(mints).toBe(1);
+      // The email is purged + re-minted → same email, NEW user id. The still-fresh cached token must
+      // NOT be reused (it carries the deleted user's auth.uid) — a fresh MINT, not a refresh.
+      expect(await pool.getToken(BOT, "user-NEW", 2000)).toBe("acc-2");
+      expect(mints).toBe(2);
+      expect(refreshes).toBe(0); // never refreshed the dead user's token
+      // Persistence now carries the NEW user id.
+      expect(readPersisted(file)[BOT].userId).toBe("user-NEW");
     } finally {
       dispose();
     }
@@ -140,13 +180,13 @@ describe("SessionPool cross-tick persistence", () => {
       const a = { mints: 0, refreshes: 0 };
       const poolA = new SessionPool(file, makeCfg(a));
       poolA.load(); // no file yet — tolerated
-      expect(await poolA.getToken(BOT, 0)).toBe("acc-mint");
+      expect(await poolA.getToken(BOT, USER, 0)).toBe("acc-mint");
       expect(a.mints).toBe(1);
       // Tick 2 — a SEPARATE pool over the SAME path. load() rehydrates; token still fresh → reuse.
       const b = { mints: 0, refreshes: 0 };
       const poolB = new SessionPool(file, makeCfg(b));
       poolB.load();
-      expect(await poolB.getToken(BOT, 1000)).toBe("acc-mint"); // t=1s, far inside the 1h token
+      expect(await poolB.getToken(BOT, USER, 1000)).toBe("acc-mint"); // t=1s, far inside the 1h token
       expect(b.mints).toBe(0);
       expect(b.refreshes).toBe(0);
     } finally {

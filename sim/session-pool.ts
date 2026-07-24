@@ -28,8 +28,11 @@ import {
   type RetryOptions,
 } from "./session";
 
-/** One bot's persisted session. `expiresAt` is an absolute epoch-ms deadline (not a duration). */
+/** One bot's persisted session. `expiresAt` is an absolute epoch-ms deadline (not a duration).
+ *  `userId` binds the token to the auth user it was minted for — a purge+re-mint reuses the email
+ *  but gets a NEW user id, so an email-keyed cache would otherwise hand back the deleted user's JWT. */
 export interface PooledSession {
+  userId: string;
   access_token: string;
   refresh_token: string;
   expiresAt: number;
@@ -126,11 +129,14 @@ function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-/** Runtime shape guard for a persisted entry (a hand-edited/corrupt file must not poison the pool). */
+/** Runtime shape guard for a persisted entry (a hand-edited/corrupt file must not poison the pool).
+ *  Requires `userId` — so a pre-userId cache file from an older harness is dropped on load (forcing a
+ *  clean re-mint), which is exactly the safe behavior after this upgrade. */
 function isPooledSession(v: unknown): v is PooledSession {
   if (typeof v !== "object" || v === null) return false;
   const s = v as Record<string, unknown>;
   return (
+    typeof s.userId === "string" &&
     typeof s.access_token === "string" &&
     typeof s.refresh_token === "string" &&
     typeof s.expiresAt === "number"
@@ -191,23 +197,28 @@ export class SessionPool {
   }
 
   /**
-   * Return a usable access token for `email` as of `nowMs`: reuse a fresh one, refresh a
-   * near-expiry one (1 call), or mint when there is none (2 calls). Concurrent calls for the
-   * SAME email collapse into a single underlying refresh/mint (single-flight) — critical
-   * because GoTrue rotates + invalidates the refresh token on each refresh.
+   * Return a usable access token for `email` (the auth user `userId`) as of `nowMs`: reuse a fresh
+   * one, refresh a near-expiry one (1 call), or mint when there is none (2 calls). A cached session
+   * whose `userId` no longer matches (the email was purged + re-minted to a NEW auth user) is a cache
+   * MISS → mint fresh, so actions never run as the deleted user. Concurrent calls for the SAME email
+   * collapse into a single underlying refresh/mint (single-flight) — critical because GoTrue rotates
+   * + invalidates the refresh token on each refresh.
    */
-  getToken(email: string, nowMs: number): Promise<string> {
+  getToken(email: string, userId: string, nowMs: number): Promise<string> {
     const inflight = this.inflight.get(email);
     if (inflight) return inflight;
-    const p = this.resolveToken(email, nowMs).finally(() => {
+    const p = this.resolveToken(email, userId, nowMs).finally(() => {
       this.inflight.delete(email);
     });
     this.inflight.set(email, p);
     return p;
   }
 
-  private async resolveToken(email: string, nowMs: number): Promise<string> {
-    const existing = this.sessions.get(email);
+  private async resolveToken(email: string, userId: string, nowMs: number): Promise<string> {
+    const cached = this.sessions.get(email);
+    // A cached session for a DIFFERENT user id (email purged + re-minted) must not be reused — treat
+    // it as absent so we mint fresh for the current user rather than act as the deleted one.
+    const existing = cached && cached.userId === userId ? cached : undefined;
     const { action } = chooseRefreshOrMint(existing, nowMs, this.skewMs);
     if (action === "reuse" && existing) return existing.access_token;
     const fresh =
@@ -215,6 +226,7 @@ export class SessionPool {
         ? await this.refresh(existing.refresh_token)
         : await this.mint(email);
     const pooled: PooledSession = {
+      userId,
       access_token: fresh.access_token,
       refresh_token: fresh.refresh_token,
       expiresAt: deriveExpiresAt(nowMs, fresh.expires_in),
