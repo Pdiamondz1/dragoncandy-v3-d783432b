@@ -69,6 +69,38 @@
   proved credit-once + marker-atomic + re-entry-`'already'`-no-double-credit; the happy path is covered by the
   DI unit tests + stage-1's real test-mode Stripe flush E2E. Deno + vitest green.
   → `docs/wiki/concepts/payout-finalization-consistency.md`
+- **Synthetic Weight Engine — Phase A: load proof & economics** — **`feat/synthetic-weight-load-economics`.**
+  Turns the [[Synthetic Weight Engine]] from a liveness/QA engine (Phase 1) into a **load-proof +
+  economics** engine, without weakening any Phase 0 safety invariant. Harness (`sim/`) + one migration
+  + a `/internal/simulation` dashboard slice; prod stays byte-unchanged behind `SYNTHETIC_BOTS_ENABLED`
+  and the actual load ramps are **founder-gated operator runs** (a runbook), not part of the merge.
+  Reframe that drove it: **load = concurrency, not headcount** (50K DAU ≈ ~800–1,000 peak concurrent →
+  reproduce request VOLUME with a reusable session pool + burst driver, not 50K standing sessions);
+  with real users declared testers too, it runs **single-track on prod** and targets the saturation
+  **knee** (measurable degradation), never an outage.
+  **Shipped:** (1) **cross-tick session pool** (`sim/session-pool.ts`) — persists each bot's session
+  and refreshes/reuses instead of re-minting (the deferred fix for the per-IP 429 wall); per-bot
+  single-flight against GoTrue refresh-token rotation; sessions **bound to `userId`** so a purge+re-mint
+  never reuses a deleted user's JWT. (2) **two-lane bulk-seed** (`sim/seed.ts` + service-role
+  `seed_synthetic_cohort` RPC) — a DEPTH pool (`botseed_*`, never authenticates, idempotent uuidv5) +
+  a session-capable ACTIVE cohort (`botla*`, distinct namespace so it can't collide with the live
+  `bot0##`). (3) **ramped load driver** (`sim/load/driver.ts`) — geometric concurrency ramp, **stops at
+  the knee**, **collects ALL breakage signatures** (never abort-on-first) → `sim/.load-findings.json`;
+  throttle (429/503) vs breakage classification; `parseRamp` fails loud on a malformed spec; `load`
+  drives only session-capable bots. (4) two service-role RPCs (migration `20260724170000`,
+  `seed_synthetic_cohort` + `capture_sim_load_snapshot`, both DEFINER/`service_role`-only; snapshot
+  reads `pg_stat_activity` **concurrently with the in-flight wave** so `active_connections` isn't
+  measured after the wave drains). (5) **`/internal/simulation`** load-curve table + a clearly-labeled
+  **MODELED** revenue projection (`synthetic_campaigns × $250 × 10%`) — measured revenue + capped Donny
+  are **Phase B** (separate gated plan). (6) `docs/runbooks/synthetic-load-tier-ramp.md` (teardown by
+  namespace prefix — NOT `purge_synthetic_data()`, which wipes the live cohort) + a load-findings
+  template. **The mandatory Codex second review caught 8 real issues over 7 rounds** (5×P1, 3×P2 — load
+  driving the non-authenticating depth pool; the daily `tick` doing the same after a bulk-seed; the
+  snapshot captured after the wave drained; a stale pooled JWT after re-mint; a hot action selecting
+  non-existent view columns; silent ramp-typo degradation ×2), each verified against the code (R3
+  against the real prod view schema) and fixed with a regression test; R7 clean. Gates: full suite 1220
+  tests / 0 failed, app + `sim/` typecheck, build, eslint, data-exposure-reviewer PASS.
+  → `docs/wiki/concepts/synthetic-weight-engine.md`
 
 - **Durable pending-balance flush ledger (stage 1 of the wallet-first payout fix)** — **`feat/wallet-first-payout`.**
   Follows PR #329 ([[Payout Finalization & Re-entrancy]]). Makes the shared wallet→Stripe flush

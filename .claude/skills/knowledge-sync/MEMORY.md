@@ -86,6 +86,25 @@
   handler). Prefer routing a REVOKE-contested financial column (`creator_profiles.pending_balance`) through an
   edge function over depending on an apparently-accidental table-level re-grant. Rollback-wrapped prod tests:
   end the `DO` block with `RAISE EXCEPTION` so the tx can't commit and the assertions return in the error.
+### [2026-07-24] Synthetic Weight Engine — Phase A: load proof & economics (branch `feat/synthetic-weight-load-economics`)
+- Output: bundled INTO the work PR — new `raw/sessions/2026-07-24-synthetic-weight-load-economics-phase-a.md`;
+  **compounded** a "Phase A — load proof & economics" section onto `concepts/synthetic-weight-engine.md`
+  (+ the 8-issue Codex gauntlet); `index.md` Concepts-entry tail refreshed; `log.md` ingest line;
+  `SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5 corrected + moved; `DATABASE_SCHEMA.md`
+  `sim_load_snapshots` row + the two RPCs.
+- Happened: rebased onto `origin/main` first (base was 1 behind — #334 durable-flush, zero file overlap
+  with my 24 commits → clean rebase) so the docs were authored against current core-doc state.
+- Worked: the `[scope]` lesson (diff/rebase against `origin/main` before editing core docs) paid off —
+  §5 already had a Synthetic Weight line that was **stale** ("kill switch OFF, 0 bots, parked") even
+  though SHIPPED_LOG showed Phase 1 LIVE (N=25 + cron); per `[status-correction]` I corrected it IN
+  PLACE and moved it In-flight→Shipped rather than appending a second line. Compounding onto the existing
+  concept page (not a new thin page) followed "compound, don't duplicate."
+- Failed: nothing blocking.
+- Remember: **for a multi-phase workstream, check whether an EARLIER phase left a stale §5 line before
+  adding the current phase** — Phase 1's go-live hadn't updated §5, so the Phase-A sync had to fix two
+  status boundaries at once (Phase 1 live + Phase A shipped). Also: this engine's live *operation* is a
+  founder toggle (daily cron running), so the whole entry belongs under `### Shipped`, not `### In flight`,
+  even though "live ramps are founder-gated."
 
 ### [2026-07-24] Durable pending-balance flush ledger — stage 1 of the wallet-first fix (branch `feat/wallet-first-payout`)
 - Output: bundled INTO the work PR — new `raw/sessions/2026-07-24-durable-flush-ledger.md`; **compounded**

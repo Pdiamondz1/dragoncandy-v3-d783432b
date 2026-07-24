@@ -4,11 +4,15 @@ import { parseArgs, main, nonZeroResiduals } from "./run";
 describe("parseArgs", () => {
   it("parses a full command line", () => {
     expect(parseArgs(["tick", "--n", "25", "--cohort", "x", "--seed", "3"])).toEqual({
-      command: "tick", n: 25, cohort: "x", seed: 3,
+      command: "tick", n: 25, cohort: "x", seed: 3, active: 25, creatorSplit: 0.65,
+      ramp: "50/1500/2.5", holdMs: 15000, runLabel: "load",
     });
   });
   it("applies defaults", () => {
-    expect(parseArgs(["dry-run"])).toEqual({ command: "dry-run", n: 25, cohort: "phase1", seed: 1 });
+    expect(parseArgs(["dry-run"])).toEqual({
+      command: "dry-run", n: 25, cohort: "phase1", seed: 1, active: 25, creatorSplit: 0.65,
+      ramp: "50/1500/2.5", holdMs: 15000, runLabel: "load",
+    });
   });
   it("throws on an unknown or missing command", () => {
     expect(() => parseArgs(["bogus"])).toThrow();
@@ -18,6 +22,23 @@ describe("parseArgs", () => {
     const a = parseArgs(["mint", "--n", "abc", "--seed", "xyz"]);
     expect(a.n).toBe(25);
     expect(a.seed).toBe(1);
+  });
+  it("parses the bulk-seed flags (--active / --creator-split)", () => {
+    expect(parseArgs(["bulk-seed", "--n", "200", "--active", "30", "--creator-split", "0.5"])).toEqual({
+      command: "bulk-seed", n: 200, cohort: "phase1", seed: 1, active: 30, creatorSplit: 0.5,
+      ramp: "50/1500/2.5", holdMs: 15000, runLabel: "load",
+    });
+  });
+  it("parses the load flags (--ramp / --hold-ms / --run-label)", () => {
+    expect(parseArgs(["load", "--ramp", "50,200,500", "--hold-ms", "8000", "--run-label", "micro"])).toEqual({
+      command: "load", n: 25, cohort: "phase1", seed: 1, active: 25, creatorSplit: 0.65,
+      ramp: "50,200,500", holdMs: 8000, runLabel: "micro",
+    });
+  });
+  it("falls back to defaults on non-numeric --active/--creator-split", () => {
+    const a = parseArgs(["bulk-seed", "--active", "abc", "--creator-split", "xyz"]);
+    expect(a.active).toBe(25);
+    expect(a.creatorSplit).toBe(0.65);
   });
 });
 

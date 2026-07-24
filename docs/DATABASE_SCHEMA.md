@@ -288,7 +288,17 @@ predicate. See `docs/wiki/concepts/synthetic-weight-engine.md`.
 | Table | Purpose |
 |-|-|
 | `synthetic_users` | Registry of bot accounts (`user_id` PK → `auth.users` ON DELETE CASCADE, `cohort`, `persona`). Auto-filled by the extended `handle_new_user` trigger when a `bot…@synthetic.dragoncandy.test` account signs up (email is the source of truth). RLS: internal-`SELECT` only, no client write policy (writes via service_role / SECURITY DEFINER). |
-| `sim_load_snapshots` | Per-run load metrics (`active_connections`/`max_connections`/`reserved_headroom`/`avg_query_ms`/`error_rate`) for the Phase-4 burst/tier-scaling proof. Internal-`SELECT` RLS. |
+| `sim_load_snapshots` | Per-run load metrics (`active_connections`/`max_connections`/`reserved_headroom`/`avg_query_ms`/`error_rate`, `run_label`, `notes` jsonb) for the load-ramp / tier-scaling proof. Written **only** by the service-role `capture_sim_load_snapshot` RPC (Phase A), sampled **concurrently with the in-flight load wave** (a post-drain snapshot would see only the RPC's own connection). Internal-`SELECT` RLS; read by `/internal/simulation`'s load-curve table (`useSimLoadSnapshots`). |
+
+> **Phase A load/economics RPCs** (migration `20260724170000`, both SECURITY DEFINER · `search_path=public`
+> · revoked from public/anon/authenticated · granted `service_role` only): `seed_synthetic_cohort(p_n,
+> p_cohort, p_creator_split)` → `{seeded,skipped}` bulk-inserts the **depth pool** (`botseed_<cohort>_<i>`
+> — never authenticates; deterministic id via `extensions.uuid_generate_v5` + `on conflict do nothing`;
+> relies on the `handle_new_user` trigger to tag `synthetic_users`; role only `content_creator`/`business_client`);
+> `capture_sim_load_snapshot(p_run_label, p_error_rate, p_notes)` → one `sim_load_snapshots` row (reads
+> `pg_stat_activity` + cross-schema `pg_stat_statements` via `to_regclass`, degrading `avg_query_ms` to NULL
+> if absent). The `load` driver reads only session-capable bots (live `bot0##` + active `botla*`), never the
+> depth pool. See `docs/wiki/concepts/synthetic-weight-engine.md` (Phase A).
 
 > **Denormalized `is_synthetic boolean default false`** added (nullable) to 5 rootless/telemetry
 > tables — `payment_events`, `analytics_events`, `dragonshare_events`, `pricing_funnel_events`,

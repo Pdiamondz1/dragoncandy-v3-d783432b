@@ -1,4 +1,6 @@
 import { useSimulationStats } from '@/hooks/internal/useSimulationStats';
+import { useSimLoadSnapshots, type SimLoadSnapshot } from '@/hooks/internal/useSimLoadSnapshots';
+import { computeModeledRevenue } from '@/lib/internal/modeledRevenue';
 import { StatCard, SectionHeading, ErrorCard } from '@/components/internal/stats';
 import { PageContainer, PageHeader } from '@/components/internal/layout';
 import { formatUsd } from '@/lib/utils';
@@ -7,8 +9,133 @@ import { Spinner } from '@/components/ui/spinner';
 const KILL_SWITCH_CHIP =
   'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-bold';
 
+const CARD = 'rounded-2xl border border-dc-teal/25 bg-white/[0.04] backdrop-blur-sm';
+
+/** Error rate at/above which a load-curve row is tinted as saturation (10%). */
+const ERROR_RATE_WARN_THRESHOLD = 0.1;
+
+const fmtMs = (v: number | null) => (v == null ? '—' : `${v.toFixed(1)} ms`);
+const fmtPct = (v: number | null) => (v == null ? '—' : `${(v * 100).toFixed(1)}%`);
+const fmtConc = (active: number | null, max: number | null) =>
+  active == null && max == null ? '—' : `${active ?? '—'} / ${max ?? '—'}`;
+
+/** The performance-per-concurrency curve captured across a load ramp. Handles its
+ *  own loading/error/empty states so a snapshot fetch failure never blanks the page. */
+function LoadCurveTable({
+  isLoading,
+  isError,
+  rows,
+}: {
+  isLoading: boolean;
+  isError: boolean;
+  rows: SimLoadSnapshot[];
+}) {
+  if (isLoading) {
+    return (
+      <div className={`flex min-h-[8rem] items-center justify-center ${CARD}`}>
+        <Spinner className="h-6 w-6 border-teal-400" />
+      </div>
+    );
+  }
+  if (isError) {
+    return <ErrorCard message="Load snapshots failed to load — check your internal access." />;
+  }
+  if (rows.length === 0) {
+    return (
+      <div className={`p-6 text-sm text-white/60 ${CARD}`}>
+        No load snapshots yet — run a load ramp (docs/runbooks/synthetic-load-tier-ramp.md) to
+        capture the performance-per-concurrency curve.
+      </div>
+    );
+  }
+  return (
+    <div className={`overflow-x-auto ${CARD}`}>
+      <table className="w-full min-w-[36rem] text-left text-sm">
+        <thead>
+          <tr className="border-b border-white/10 text-[11px] uppercase tracking-wider text-white/40">
+            <th className="px-4 py-3 font-mono font-medium">Run</th>
+            <th className="px-4 py-3 font-mono font-medium">Captured</th>
+            <th className="px-4 py-3 text-right font-mono font-medium">Active / max conns</th>
+            <th className="px-4 py-3 text-right font-mono font-medium">Avg query</th>
+            <th className="px-4 py-3 text-right font-mono font-medium">Error rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.id} className="border-b border-white/5 text-white/80 last:border-b-0">
+              <td className="px-4 py-3 font-semibold text-white">{r.run_label ?? '—'}</td>
+              <td className="whitespace-nowrap px-4 py-3 text-white/60">
+                {new Date(r.captured_at).toLocaleString()}
+              </td>
+              <td className="px-4 py-3 text-right font-mono">
+                {fmtConc(r.active_connections, r.max_connections)}
+              </td>
+              <td className="px-4 py-3 text-right font-mono">{fmtMs(r.avg_query_ms)}</td>
+              <td
+                className={`px-4 py-3 text-right font-mono ${
+                  r.error_rate != null && r.error_rate >= ERROR_RATE_WARN_THRESHOLD
+                    ? 'text-dc-pink'
+                    : ''
+                }`}
+              >
+                {fmtPct(r.error_rate)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** MODELED revenue projection (spec §4e, Phase A). Deliberately styled distinct from
+ *  the measured StatCards — dashed muted border + a MODELED badge + inline assumptions —
+ *  so it can never be mistaken for real revenue. Phase B measures actual money movement. */
+function ModeledRevenueCard({ syntheticCampaigns }: { syntheticCampaigns: number }) {
+  const m = computeModeledRevenue(syntheticCampaigns);
+  return (
+    <div className="rounded-2xl border border-dashed border-white/25 bg-white/[0.02] p-5 backdrop-blur-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full border border-dc-yellow/50 bg-dc-yellow/10 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-dc-yellow">
+          Modeled
+        </span>
+        <span className="text-xs text-white/40">
+          Projection — not real revenue. Phase B measures actual money movement.
+        </span>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-4">
+        <div>
+          <p className="font-mono text-[11px] uppercase tracking-wider text-white/40">
+            Projected GMV
+          </p>
+          <p className="mt-1 text-3xl font-extrabold text-white/70">
+            {formatUsd(m.projectedGmvUsd)}
+          </p>
+        </div>
+        <div>
+          <p className="font-mono text-[11px] uppercase tracking-wider text-white/40">
+            Modeled revenue
+          </p>
+          <p className="mt-1 text-3xl font-extrabold text-white/70">
+            {formatUsd(m.modeledRevenueUsd)}
+          </p>
+        </div>
+      </div>
+
+      <p className="mt-4 text-xs leading-relaxed text-white/40">
+        Assumptions: {syntheticCampaigns.toLocaleString()} synthetic campaigns ×{' '}
+        {formatUsd(m.avgCampaignValueUsd)} assumed avg campaign value = projected GMV; ×{' '}
+        {(m.takeRate * 100).toFixed(0)}% free-tier take-rate = modeled revenue. A pure projection —
+        it moves no money.
+      </p>
+    </div>
+  );
+}
+
 const InternalSimulation = () => {
   const simulation = useSimulationStats();
+  const loadSnapshots = useSimLoadSnapshots();
 
   if (simulation.isLoading) {
     return (
@@ -62,7 +189,7 @@ const InternalSimulation = () => {
         <StatCard
           label="Synthetic MTD AI spend"
           value={formatUsd(s.synthetic_ai_spend_mtd_usd)}
-          sub="Daily ceiling: TBD (Phase 3)"
+          sub="Real cost of the synthetic run"
           accent="pink"
         />
       </div>
@@ -77,6 +204,20 @@ const InternalSimulation = () => {
           ))}
         </div>
       )}
+
+      <SectionHeading>Load curve</SectionHeading>
+      <p className="-mt-1 mb-3 text-sm text-white/50">
+        Performance per concurrency across a load ramp — active vs max Postgres connections, avg
+        query time, and error rate at each captured step (newest first).
+      </p>
+      <LoadCurveTable
+        isLoading={loadSnapshots.isLoading}
+        isError={loadSnapshots.isError}
+        rows={loadSnapshots.data ?? []}
+      />
+
+      <SectionHeading>Modeled revenue</SectionHeading>
+      <ModeledRevenueCard syntheticCampaigns={s.synthetic_campaigns} />
     </PageContainer>
   );
 };

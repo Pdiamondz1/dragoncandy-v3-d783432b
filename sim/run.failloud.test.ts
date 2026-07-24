@@ -13,6 +13,7 @@ vi.mock("./env", () => ({
 vi.mock("./mint", () => ({
   mintBot: vi.fn(async () => {}),
   readCohort: vi.fn(async () => ({ bots: [], crews: [], campaigns: [], applications: [], collaborations: [] })),
+  readSessionCapableBots: vi.fn(async () => []),
 }));
 
 import { main } from "./run";

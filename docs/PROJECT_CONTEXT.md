@@ -104,14 +104,6 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   (native camera capture) started; next push + share plugins, then TestFlight. Hard
   prerequisite: a macOS/cloud-Mac build + an Apple Developer account ($99/yr).
   → `docs/superpowers/specs/2026-06-01-apple-app-store-design.md`
-- **Synthetic Weight Engine** — tagged synthetic-user ("bot") safety spine on prod (registry +
-  actor-OR-parent metric/moat exclusion + `SYNTHETIC_BOTS_ENABLED` kill switch + live-mode money
-  guard + email suppression + `/internal/simulation` + `purge_synthetic_data()` teardown), proven on
-  a rollback-wrapped 5-bot round-trip (founder metrics byte-identical, zero residue). Phase 0 (spine) +
-  Phase 1 (private-crew free-rails behavior engine — mints N=25 + drives the crew funnel RLS-real in the
-  `sim/` harness, no migrations/edge-fns) both built; kill switch OFF, 0 bots. **Parked for the
-  founder-gated live smoke** (flip `SYNTHETIC_BOTS_ENABLED` + provision `SIM_*` secrets). Phases 2–4
-  (Stripe-test checkout / capped Donny / scale-to-N / load-proof) are separate plans. → `docs/SHIPPED_LOG.md`
 
 ### Built — awaiting founder go-live
 
@@ -136,6 +128,20 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   construction + reconciling the 3 frontend money readers to one `metadata.type`-keyed rule. No new migration;
   deployed + rollback-wrapped prod-verified; Codex-clean (4 rounds).
   → `docs/wiki/concepts/payout-finalization-consistency.md` · `feat/wallet-first-payout` + `feat/wallet-first-stage2`
+- **Synthetic Weight Engine** — tagged synthetic-user ("bot") safety spine (registry + actor-OR-parent
+  metric/moat exclusion + fail-closed `SYNTHETIC_BOTS_ENABLED` + live-mode money guard + `/internal/simulation`
+  + `purge_synthetic_data()`) with Phase 1 (private-crew free-rails behavior engine) **live on prod** (N=25 +
+  daily cron) and **Phase A** (load proof & economics — cross-tick session pool, two-lane bulk-seed, ramped
+  knee-not-outage load driver + findings, two service-role RPCs, `/internal/simulation` load-curve +
+  MODELED-revenue slice) shipped; live ramps founder-gated (runbook). Measured revenue / capped Donny =
+  Phase B (separate plan). → `docs/SHIPPED_LOG.md`
+- **Durable pending-balance flush ledger** — stage 1 of the wallet-first payout fix ([[Payout Finalization
+  & Re-entrancy]]): a durable `pending_balance_flushes` ledger (table + claim/confirm/fail/bump RPCs, a
+  `flush_${id}`-keyed shared `executeFlushTransfer`, a `reconcile-pending-flushes` `*/15` cron) makes the
+  shared wallet→Stripe flush **exactly-once** — closes the identical-cents under-pay without re-introducing
+  ambiguous over-pay; a `stuck` row alerts, bump-on-confirm-fail bounds the past-TTL double-pay; proven by a
+  real test-mode Stripe replay E2E. Stage 2 (the reroute closing the two cross-path residuals) deferred.
+  → `docs/wiki/concepts/payout-finalization-consistency.md` · `feat/wallet-first-payout`
 - **Payout durable re-entrancy** — the Complete follow-up to #328: `release-creator-payout` is durably
   re-entrant via a per-collaboration marker (`payout_executed_at`/`stripe_transfer_id`) set AFTER money
   moves (never a pre-claim → no marked-not-paid) as the re-entry guard; the pending path credits + marks
