@@ -102,26 +102,35 @@ real AI $); the AI-generation and CDN-egress **dollars** are Slice 2's cost mode
   **DragonFeed video/media fetches**; **campaign browse/search + geo "near-me"** (creators/feed by radius —
   bots seeded with varied lat/long, §4); **profile views**; a **mobile-vs-desktop split** (~70:30 mobile,
   which changes the endpoint/query mix — the mobile vertical feed vs the desktop grid); sampled **content
-  writes** (create campaign / post / apply / message, inserted `is_synthetic` — the DB+storage footprint of
-  generation & shipping, **without** a real Donny AI call); **notification fanout** (those writes fire real
-  cross-user notification creates); and a sampled **Donny chat** session (`donny_conversations`/`donny_messages`
-  DB+edge footprint only — the **real AI $ is Slice 2**). Read:write ~90:10; media fetches (GET/HEAD to
+  writes** — **public-free campaigns** (`group_id IS NULL`, `fixed_price=0`: kept in browse *and* producing
+  **no crew rows**) + posts / applications / messages, inserted `is_synthetic` (the DB+storage footprint of
+  generation & shipping **without** a real Donny AI call). This leg deliberately does **NOT** use the crew-lane
+  write path (`sim/behavior/actions.ts`): crew writes create `creator_group_members` / `crew_activity` rows
+  whose NO-ACTION FKs to `profiles` **block** the raw `botla%` teardown cascade — the exact prod-purge rollback
+  in `[[project_synthetic_weight_task8_teardown_fix]]` (only `purge_synthetic_data()` was leaf-fixed, not the
+  runbook's raw delete). Public-free writes cascade clean. Then **notification fanout** (those writes fire real
+  cross-user notification creates); and a sampled **Donny chat** session that **writes the
+  `donny_conversations`/`donny_messages` rows directly and does NOT invoke the generating edge functions** (DB
+  footprint only — the **real AI $ is modeled in Slice 2**). Read:write ~90:10; media fetches (GET/HEAD to
   Storage/CDN) are the **egress proxy**.
 - **Realtime is a distinct load axis (its own ceiling).** Messaging/presence/typing run over **Supabase
   Realtime (WebSockets)**, not REST — so 50K DAU means tens of thousands of **concurrent persistent
   connections** + presence heartbeats + message-broadcast fanout, governed by Realtime's **own** concurrency/
   message quota, *separate from* the 90 DB connections. A dedicated **realtime sub-leg** has each shard's bots
   open and hold conversation/presence channels and exchange messages, with its concurrency recorded separately
-  in the snapshot. This axis often saturates *before* the DB and is invisible to a REST-only test — the
-  heaviest of these additions, sequenced as its own phase in the implementation plan.
+  in the snapshot (a `realtime_connections` key in the `notes` jsonb). This axis often saturates *before* the
+  DB and is invisible to a REST-only test — the heaviest of these additions, sequenced as its own phase in the
+  implementation plan; if that phase proves larger than the rest of Slice 1, the plan **splits it into its own
+  slice/spec**.
 - **Storage/egress observability (new dimension).** Alongside DB connections/latency, the run records
   `platform_weight.storage_bytes` growth and a **media-egress proxy** (bytes/requests to Storage/CDN) — the
   scaling cost the DB-only view misses for a video app.
 - **Real AI generation + real CDN-egress $ are OUT of Slice 1.** No real `donny-*` generate calls fire (they
   cost real AI budget and stress Anthropic/edge functions, not the DB tier this slice proves); serving real
-  media *bytes* at 50K is a CDN concern. Both are the **dominant 1M-DAU costs** and are modeled in **Slice 2**.
-  (An optional tiny sampled real-Donny leg under a hard synthetic-AI USD ceiling — the load-economics spec's
-  deferred capped-Donny — can be added later for ledger realism; not required for the capacity proof.)
+  media *bytes* at 50K is a CDN concern. Both are the **dominant 1M-DAU costs** and are **modeled (not built)**
+  in **Slice 2's cost model**; the actual capped-Donny / paid-leg *build* remains the parent load-economics
+  spec's gated **Phase B** — not conflated with Slice 2. (An optional tiny sampled real-Donny leg under a hard
+  synthetic-AI USD ceiling can be added later for ledger realism; not required for the capacity proof.)
 
 ## 4. Per-shard sessions & cohort
 
@@ -189,8 +198,12 @@ real AI $); the AI-generation and CDN-egress **dollars** are Slice 2's cost mode
   run (verified every run per the runbook).
 - **Teardown:** prefix-match delete (`botseed_%` depth + `botla%` active), **NEVER `purge_synthetic_data()`**
   (kills the live 25 daily-tick cohort). The active cohort is just larger now (25×shards); same prefix, same
-  clean cascade (depth/active users have no crew rows — see
-  `[[project_synthetic_weight_task8_teardown_fix]]`).
+  clean cascade (depth/active users have no crew rows — the sampled-write leg is pinned to public-free
+  campaigns for exactly this reason, §3a — see `[[project_synthetic_weight_task8_teardown_fix]]`).
+- **Broadcast check (parent §5a):** confirm at kickoff no DB trigger broadcasts on public-campaign INSERT — a
+  migration grep finds only *constraint* triggers on `campaigns` (low risk), but §3a's public-campaign volume
+  makes the check explicit; the harness inserts campaigns directly, bypassing
+  `send-campaign-publish-notifications`.
 - **Cost guardrail (new):** `max_shards` cap in the workflow; Actions-minute cost scales with S×duration
   (cheap at the 50K rung — the reason the VM fleet is deferred to Slice 2).
 - **Test-Stripe-only** boot assertion unchanged.
@@ -199,8 +212,10 @@ real AI $); the AI-generation and CDN-egress **dollars** are Slice 2's cost mode
 
 **New:** `.github/workflows/synthetic-load-matrix.yml` (setup → dynamic matrix load job);
 migration `<ts>_sim_load_matrix_rpcs.sql` (`get_sim_load_matrix_summary`, service-role only);
-migration `<ts>_sim_content_seed.sql` (`seed_synthetic_content` — campaigns + DragonShare video posts +
-`file_uploads` + per-bot avatars/geo, `is_synthetic`-tagged, service-role only).
+migration `<ts>_sim_content_seed.sql` (`seed_synthetic_content` — **public-free** campaigns + DragonShare video
+posts + `file_uploads` + per-bot avatars/geo, `is_synthetic`-tagged, service-role only; **invoked via a new
+`bulk-seed --with-content` step**; writes `profiles`/`creator_profiles` (avatar + lat/long), `campaigns`
+(`group_id IS NULL`), `dragonshare_posts`, `file_uploads` — so `mint.ts` stays unchanged).
 **Modified:** `sim/run.ts` (`cmdLoad`: new flags `--shard`/`--shards`/`--concurrency`/`--soak-ms`; new
 `readActiveLoadCohort(shard,shards)` selector — `botla…`-only + deterministic `ORDER BY email`; **`makeBotFor`
 made refresh-aware** — rebuild the cached client on token rotation); `sim/load/driver.ts` (fixed-concurrency
