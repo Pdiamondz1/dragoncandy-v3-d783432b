@@ -68,6 +68,24 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-24] Wallet-first payout reroute — stage 2 of the wallet-first fix (branch `feat/wallet-first-stage2`)
+- **Output:** `raw/sessions/2026-07-24-wallet-first-reroute-stage2.md` → compounded onto
+  [[Payout Finalization & Re-entrancy]] (new "Wallet-first reroute (stage 2 — shipped)" section + residuals
+  flipped to CLOSED); `index.md` Sources line + refreshed Concepts entry; `log.md` top entry; `SHIPPED_LOG.md`
+  prepended; `PROJECT_CONTEXT.md` §5 flush-ledger line updated in place → "Wallet-first payout fix (stages 1+2
+  shipped)". No `DATABASE_SCHEMA.md` change (no migration).
+- **Happened:** stage 2 removed the transfer-vs-pending fork; 4 Codex fix rounds before clean; two edge-fn
+  deploys (`release-creator-payout` ×2, `check-creator-payout-status`).
+- **Worked:** the [scope] lesson's core-doc diff-vs-`origin/main` check confirmed all core docs were SAME as
+  `origin/main` (no drift) before editing — clean. §5 line edited in place (not appended) per [status-correction].
+  Session detail → `SHIPPED_LOG.md`, §5 kept to one consolidated entry per [context-tax].
+- **Failed:** nothing knowledge-side.
+- **Remember:** an edge-fn `index.ts` with a top-level `serve()` is NOT import-testable (server-on-import →
+  Deno leaked-resource failure); factor the testable body into a **co-located pure module**, do NOT reach for
+  an `import.meta.main` guard (untested in the Supabase runtime — a wrong guard silently unregisters the
+  handler). Prefer routing a REVOKE-contested financial column (`creator_profiles.pending_balance`) through an
+  edge function over depending on an apparently-accidental table-level re-grant. Rollback-wrapped prod tests:
+  end the `DO` block with `RAISE EXCEPTION` so the tx can't commit and the assertions return in the error.
 ### [2026-07-24] Synthetic Weight Engine — Phase A: load proof & economics (branch `feat/synthetic-weight-load-economics`)
 - Output: bundled INTO the work PR — new `raw/sessions/2026-07-24-synthetic-weight-load-economics-phase-a.md`;
   **compounded** a "Phase A — load proof & economics" section onto `concepts/synthetic-weight-engine.md`

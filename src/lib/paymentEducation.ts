@@ -200,6 +200,28 @@ export const paymentEducation: Record<UserRole, Partial<Record<PaymentEventType,
   brand: brandMessages,
 };
 
-export function getPaymentMessage(role: UserRole, eventType: string): PaymentMessage | undefined {
+export function getPaymentMessage(
+  role: UserRole,
+  eventType: string,
+  metadata?: Record<string, unknown> | null,
+): PaymentMessage | undefined {
+  // payout_pending_wallet fires on EVERY payout post wallet-first reroute. When the creator was already
+  // onboarded (metadata.reason === 'flushing_to_stripe') the money was flushed to their Stripe account
+  // immediately — the default "complete your Stripe setup" copy would mislead. Use ready-aware copy then.
+  // The not-onboarded case (any other reason, incl. historical events) falls through to the setup copy.
+  if (eventType === 'payout_pending_wallet' && metadata?.reason === 'flushing_to_stripe') {
+    if (role === 'creator') {
+      return {
+        title: "You Got Paid!",
+        description: "Your earnings have been released to your Stripe account. It may take 1-2 business days to arrive in your bank.",
+      };
+    }
+    if (role === 'business') {
+      return {
+        title: "Payment Released",
+        description: "Payment has been released to the creator's connected account.",
+      };
+    }
+  }
   return paymentEducation[role]?.[eventType as PaymentEventType];
 }
