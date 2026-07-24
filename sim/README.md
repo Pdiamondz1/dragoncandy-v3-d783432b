@@ -138,6 +138,17 @@ back `true` and the Stripe keys are test keys. Env (harness-local, gitignored / 
 `SIM_SUPABASE_URL`, `SIM_SUPABASE_ANON_KEY`, `SIM_SUPABASE_SECRET_KEY` (prod service-role),
 `SIM_STRIPE_SECRET_KEY` (`sk_test_…`), `SIM_STRIPE_PUBLISHABLE_KEY` (`pk_test_…`).
 
+### Rate limits — one `tick`/day, and 429 backoff
+
+Each `tick` mints a fresh per-bot auth session (magiclink→verify) per acting bot (`makeBotFor` caches
+only within a tick). **Ticking many times in quick succession from one IP trips Supabase's per-IP auth
+rate limit (429).** `mintBotSession` retries 429/503 with exponential backoff (honoring `Retry-After`;
+`fetchWithRetry` in `session.ts`), so a transient/borderline limit no longer red-fails a run — but a
+sustained hard-window exhaustion still fails loud after the retries. The daily cron is safe because it
+runs **one tick/day from a fresh runner IP** (~N session mints); keep it to one run/day. To run more
+frequently / at higher N without hitting the wall, the real fix is **cross-tick session reuse** (persist
+each bot's refresh token and re-use it instead of re-minting every tick) — deferred.
+
 ### Go-live is two deliberate switches (never a merge)
 
 Merging Phase 1 leaves prod byte-unchanged (harness + a **dormant** `workflow_dispatch`-only

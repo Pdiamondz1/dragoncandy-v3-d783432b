@@ -181,9 +181,12 @@ back-to-back from one IP (~125 session mints in minutes) trips Supabase's **per-
 limit → 429**; the fail-loud tick surfaced it loudly. **The daily cron is a different profile** — one
 tick/day from a **fresh GitHub-runner IP** (~25 mints) — and was validated live: a `workflow_dispatch`
 tick from the runner cleanly drove the apply stage (0→27 applications, 0 failures) that had 429'd
-locally. So: **keep it to one run/day** (the workflow comments say so), and the recommended
-**fast-follow** is 429 backoff/retry — or cross-tick session reuse (persist refresh tokens) — in
-`sim/session.ts`, so a heavier funnel day can't red-fail the unattended cron. To pause the whole engine:
+locally. So: **keep it to one run/day** (the workflow comments say so). **Shipped hardening:**
+`mintBotSession` now retries 429/503 with exponential backoff (honoring `Retry-After`; `fetchWithRetry`
+in `sim/session.ts`), so a transient/borderline limit no longer red-fails a run — a sustained
+hard-window exhaustion still fails loud after the retries (by design). The deeper fix for higher
+frequency / larger N remains **cross-tick session reuse** (persist each bot's refresh token instead of
+re-minting every tick) — deferred. To pause the whole engine:
 flip `SYNTHETIC_BOTS_ENABLED` off (every run then fail-closes at boot) and/or re-comment the schedule;
 teardown is `purge_synthetic_data()` (now crew-safe).
 

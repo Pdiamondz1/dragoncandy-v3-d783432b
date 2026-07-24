@@ -1,5 +1,11 @@
 # Wiki Log
 
+## [2026-07-24] update | Synthetic Weight Engine — harness 429 backoff (cron hardening) (fix/sim-session-429-backoff)
+The go-live fast-follow: `mintBotSession` retries 429/503 with exponential backoff (honoring
+`Retry-After`) so a transient per-IP auth rate limit no longer red-fails the unattended cron; fail-loud
+preserved after exhausting retries. Updated the [[Synthetic Weight Engine]] "Phase 1 go-live" section's
+fast-follow line to "shipped" (cross-tick session reuse still deferred). 7 new unit tests. SHIPPED_LOG entry prepended.
+
 ## [2026-07-24] update | Synthetic Weight Engine — Phase 1 go-live: N=25 cohort + daily cron (chore/synthetic-weight-enable-cron)
 Threw the Task 8 second switch: permanent `SYNTHETIC_BOTS_ENABLED` on, a persistent 25-bot cohort, 5
 `SIM_*` secrets in a new protected `synthetic-weight` GitHub Environment, and the daily `0 14 * * *`
