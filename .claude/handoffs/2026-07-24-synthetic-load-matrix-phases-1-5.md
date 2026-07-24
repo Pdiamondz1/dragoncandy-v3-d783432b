@@ -55,15 +55,16 @@ suppression, donny/notify FK cascade types).
   role-agnostic. No fix (would add needless role routing); did NOT re-run a 4th time to chase a confirmed
   false positive. **Codex pass COMPLETE — all real findings resolved.**
 
-## Next steps (in order) — FOUNDER-GATED boundary starts at step 2
-1. **Confirm the Codex re-review is clean** (dispatched after the 2 P2 fixes). If new findings, fix + re-run.
-2. **`careful` gate → apply the 3 migrations to prod** (`apply_migration`, rollback-wrapped verify
-   FIRST, ONE statement per MCP call — verification blocks are in each migration's footer):
-   - `20260724181500_sim_content_seed.sql`
-   - `20260724182000_purge_synthetic_load_cohort.sql`
-   - `20260724183000_sim_load_matrix_summary.sql`  (then `get_advisors`)
-   Then regenerate `src/integrations/supabase/types.ts` (the summary hook uses a cast until then).
-3. **Founder-gated 2-shard live smoke** (off the 14:00 cron): `bulk-seed --with-content --active 50`,
+## Next steps (in order) — FOUNDER-GATED boundary
+1. ~~Codex re-review clean~~ — DONE (R1/R2 fixed, R3 false-positive dismissed).
+2. ~~`careful` gate → apply the 3 migrations to prod~~ — **DONE 2026-07-24.** All 3 applied + verified live:
+   grants correct (summary→authenticated+is_internal_user guard, seed/purge→service-role only), guards
+   fire (summary `42501 internal only`; seed `no synthetic business bot`), purge no-op clean,
+   `get_advisors` clean (only the expected mitigated authenticated-definer WARN on the summary RPC).
+   `purge_synthetic_data` overwrite was diffed = strict additive superset. **Still pending:** regenerate
+   `src/integrations/supabase/types.ts` (summary hook uses a documented cast until then) — optional, post-merge.
+3. **Founder-gated 2-shard live smoke** (off the 14:00 cron; needs the branch PUSHED so GH can dispatch
+   the workflow with `--ref feat/synthetic-load-runner-matrix`): `bulk-seed --with-content --active 50`,
    then `gh workflow run synthetic-load-matrix.yml -f shards=2 -f concurrency=50`. Assert: distinct
    egress IPs, summed concurrency in `get_sim_load_matrix_summary`, NO cross-shard 429, byte-identical
    real-KPI segregation, clean teardown via `purge_synthetic_load_cohort()` (residuals 0, live 25 survive).
