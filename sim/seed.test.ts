@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { planSeed, generateActiveCohort, activeEmail } from "./seed";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { planSeed, generateActiveCohort, activeEmail, assertActiveNamespaceFree } from "./seed";
 
 describe("planSeed", () => {
   it("caps active at activeMax and gives depth the remainder", () => {
@@ -82,5 +83,55 @@ describe("activeEmail", () => {
   it("is 1-based and under the synthetic domain", () => {
     expect(activeEmail(7, 0)).toBe("botla7_1@synthetic.dragoncandy.test");
     expect(activeEmail(3, 4)).toBe("botla3_5@synthetic.dragoncandy.test");
+  });
+});
+
+describe("assertActiveNamespaceFree (the pre-flight that prevents a half-seeded prod cohort)", () => {
+  const active = generateActiveCohort(2, { creators: 0.5 }, 1, "load");
+  const emails = active.map((p) => p.email);
+
+  /** Minimal fake client: from().select().in() resolves to {data,error}; records the query it saw. */
+  function fakeClient(
+    result: { data: unknown; error: { message: string } | null },
+    onQuery?: (table: string, col: string, vals: unknown) => void,
+  ): SupabaseClient {
+    return {
+      from: (table: string) => ({
+        select: () => ({
+          in: (col: string, vals: unknown) => {
+            onQuery?.(table, col, vals);
+            return Promise.resolve(result);
+          },
+        }),
+      }),
+    } as unknown as SupabaseClient;
+  }
+
+  it("short-circuits on an empty cohort (never queries)", async () => {
+    let queried = false;
+    const svc = fakeClient({ data: [], error: null }, () => {
+      queried = true;
+    });
+    await expect(assertActiveNamespaceFree(svc, [])).resolves.toBeUndefined();
+    expect(queried).toBe(false);
+  });
+
+  it("queries profiles.email by the cohort emails and resolves when none exist", async () => {
+    let seen: { table: string; col: string; vals: unknown } | null = null;
+    const svc = fakeClient({ data: [], error: null }, (table, col, vals) => {
+      seen = { table, col, vals };
+    });
+    await expect(assertActiveNamespaceFree(svc, active)).resolves.toBeUndefined();
+    expect(seen).toEqual({ table: "profiles", col: "email", vals: emails });
+  });
+
+  it("fails loud when the pre-flight query errors", async () => {
+    const svc = fakeClient({ data: null, error: { message: "boom" } });
+    await expect(assertActiveNamespaceFree(svc, active)).rejects.toThrow(/pre-flight query failed: boom/);
+  });
+
+  it("fails loud when the active namespace is already present (a prior run was not purged)", async () => {
+    const svc = fakeClient({ data: [{ email: "botla1_1@synthetic.dragoncandy.test" }], error: null });
+    await expect(assertActiveNamespaceFree(svc, active)).rejects.toThrow(/already present on prod/);
   });
 });
