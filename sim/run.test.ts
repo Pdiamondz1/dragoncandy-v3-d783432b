@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { parseArgs, main, nonZeroResiduals, makeBotFor, planLoad, cmdLoad, type CmdLoadDeps } from "./run";
+import { parseArgs, main, nonZeroResiduals, makeBotFor, planLoad, cmdLoad, seedContent, type CmdLoadDeps, type RpcCaller } from "./run";
 import type { BotRef } from "./types";
 import type { RunLoadDeps, LoadResult } from "./load/driver";
 
@@ -9,6 +9,7 @@ describe("parseArgs", () => {
       command: "tick", n: 25, cohort: "x", seed: 3, active: 25, creatorSplit: 0.65,
       ramp: "50/1500/2.5", holdMs: 15000, runLabel: "load",
       shard: 0, shards: 1, concurrency: 0, soakMs: 0,
+      withContent: false, campaigns: 50, posts: 200,
     });
   });
   it("applies defaults", () => {
@@ -16,6 +17,7 @@ describe("parseArgs", () => {
       command: "dry-run", n: 25, cohort: "phase1", seed: 1, active: 25, creatorSplit: 0.65,
       ramp: "50/1500/2.5", holdMs: 15000, runLabel: "load",
       shard: 0, shards: 1, concurrency: 0, soakMs: 0,
+      withContent: false, campaigns: 50, posts: 200,
     });
   });
   it("throws on an unknown or missing command", () => {
@@ -32,6 +34,7 @@ describe("parseArgs", () => {
       command: "bulk-seed", n: 200, cohort: "phase1", seed: 1, active: 30, creatorSplit: 0.5,
       ramp: "50/1500/2.5", holdMs: 15000, runLabel: "load",
       shard: 0, shards: 1, concurrency: 0, soakMs: 0,
+      withContent: false, campaigns: 50, posts: 200,
     });
   });
   it("parses the load flags (--ramp / --hold-ms / --run-label)", () => {
@@ -39,7 +42,21 @@ describe("parseArgs", () => {
       command: "load", n: 25, cohort: "phase1", seed: 1, active: 25, creatorSplit: 0.65,
       ramp: "50,200,500", holdMs: 8000, runLabel: "micro",
       shard: 0, shards: 1, concurrency: 0, soakMs: 0,
+      withContent: false, campaigns: 50, posts: 200,
     });
+  });
+  it("parses the content flags (--with-content / --campaigns / --posts)", () => {
+    expect(
+      parseArgs(["bulk-seed", "--with-content", "--campaigns", "40", "--posts", "120"]),
+    ).toMatchObject({ command: "bulk-seed", withContent: true, campaigns: 40, posts: 120 });
+  });
+  it("defaults the content flags (withContent false / campaigns 50 / posts 200) when absent", () => {
+    expect(parseArgs(["bulk-seed"])).toMatchObject({ withContent: false, campaigns: 50, posts: 200 });
+  });
+  it("falls back to defaults on non-numeric --campaigns/--posts", () => {
+    const a = parseArgs(["bulk-seed", "--with-content", "--campaigns", "abc", "--posts", "xyz"]);
+    expect(a.campaigns).toBe(50);
+    expect(a.posts).toBe(200);
   });
   it("falls back to defaults on non-numeric --active/--creator-split", () => {
     const a = parseArgs(["bulk-seed", "--active", "abc", "--creator-split", "xyz"]);
@@ -64,6 +81,39 @@ describe("nonZeroResiduals (purge teardown assertion)", () => {
     expect(
       nonZeroResiduals({ purged_users: 3, residual_orgs: 2, residual_cost_ledger: 0, note: "x" }),
     ).toEqual([["residual_orgs", 2]]);
+  });
+});
+
+describe("seedContent (bulk-seed --with-content content-seed step)", () => {
+  const rpcResult = (data: unknown, error: { message: string } | null = null) =>
+    vi.fn(async () => ({ data, error }));
+
+  it("returns null and calls NO rpc when --with-content is off", async () => {
+    const rpc = rpcResult({ campaigns: 3, posts: 9 });
+    const svc = { rpc } as unknown as RpcCaller;
+    const out = await seedContent(svc, { withContent: false, campaigns: 40, posts: 120, creatorSplit: 0.5 });
+    expect(out).toBeNull();
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("calls seed_synthetic_content with the flag values and returns the summary when on", async () => {
+    const rpc = rpcResult({ org: "o", owner: "u", avatars: 5, campaigns: 40, posts: 120 });
+    const svc = { rpc } as unknown as RpcCaller;
+    const out = await seedContent(svc, { withContent: true, campaigns: 40, posts: 120, creatorSplit: 0.5 });
+    expect(rpc).toHaveBeenCalledWith("seed_synthetic_content", {
+      p_campaigns: 40,
+      p_posts: 120,
+      p_creator_split: 0.5,
+    });
+    expect(out).toEqual({ campaigns: 40, posts: 120 });
+  });
+
+  it("throws (fail-loud) when the rpc returns an error", async () => {
+    const rpc = rpcResult(null, { message: "boom" });
+    const svc = { rpc } as unknown as RpcCaller;
+    await expect(
+      seedContent(svc, { withContent: true, campaigns: 40, posts: 120, creatorSplit: 0.5 }),
+    ).rejects.toThrow(/seed_synthetic_content failed: boom/);
   });
 });
 

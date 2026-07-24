@@ -50,12 +50,20 @@ export interface Args {
   concurrency: number;
   /** load matrix: soak hold duration in ms at fixed C (0 = a single wave). */
   soakMs: number;
+  /** bulk-seed: also seed public-free content (campaigns + DragonShare posts + file_uploads) onto the cohort. */
+  withContent: boolean;
+  /** bulk-seed --with-content: cap on seeded campaigns (one per distinct synthetic business bot). */
+  campaigns: number;
+  /** bulk-seed --with-content: cap on seeded DragonShare posts (one per synthetic creator bot). */
+  posts: number;
 }
 
 const CREATOR_SPLIT = 0.65;
 const RAMP_DEFAULT = "50/1500/2.5";
 const HOLD_MS_DEFAULT = 15_000;
 const RUN_LABEL_DEFAULT = "load";
+const CAMPAIGNS_DEFAULT = 50;
+const POSTS_DEFAULT = 200;
 /** Minimum spacing between capture_sim_load_snapshot samples within a ramp step. */
 const SAMPLE_EVERY_MS = 5_000;
 /** Gitignored per-run QA artifact (mirrors sim/.session-pool.json's relative-path convention). */
@@ -96,7 +104,7 @@ export function parseArgs(argv: string[]): Args {
   const command = argv.find((a) => !a.startsWith("--"));
   if (!command || !(COMMANDS as readonly string[]).includes(command)) {
     throw new Error(
-      `Usage: cli.ts <${COMMANDS.join("|")}> [--n 25] [--cohort phase1] [--seed 1] [--active 25] [--creator-split 0.65] [--ramp 50/1500/2.5] [--hold-ms 15000] [--run-label load] [--shard 0] [--shards 1] [--concurrency 200] [--soak-ms 1800000]`,
+      `Usage: cli.ts <${COMMANDS.join("|")}> [--n 25] [--cohort phase1] [--seed 1] [--active 25] [--creator-split 0.65] [--ramp 50/1500/2.5] [--hold-ms 15000] [--run-label load] [--shard 0] [--shards 1] [--concurrency 200] [--soak-ms 1800000] [--with-content] [--campaigns 50] [--posts 200]`,
     );
   }
   const flag = (name: string): string | undefined => {
@@ -117,6 +125,10 @@ export function parseArgs(argv: string[]): Args {
     shards: safeInt(flag("shards"), 1),
     concurrency: safeInt(flag("concurrency"), 0),
     soakMs: safeInt(flag("soak-ms"), 0),
+    // --with-content is a presence boolean (no value); --campaigns/--posts cap the seeded content.
+    withContent: argv.includes("--with-content"),
+    campaigns: safeInt(flag("campaigns"), CAMPAIGNS_DEFAULT),
+    posts: safeInt(flag("posts"), POSTS_DEFAULT),
   };
 }
 
@@ -206,6 +218,35 @@ async function cmdMint(args: Args): Promise<void> {
   }
 }
 
+/** Minimal service-role seam for seedContent — just the `rpc` call. A structural interface (not the
+ *  full SupabaseClient) so a test can inject a fake with zero network and TS never has to match the
+ *  client's deep generic rpc signature (mirrors env.ts's MinimalSupabaseClient). */
+export interface RpcCaller {
+  rpc(fn: string, params: Record<string, unknown>): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+}
+
+/**
+ * bulk-seed --with-content: layer public-free content (campaigns + DragonShare video posts +
+ * file_uploads + avatars/geo) onto the already-seeded botla…/botseed_… cohort via the service-role
+ * seed_synthetic_content RPC. A no-op returning null when the flag is off (no rpc call). Fail-loud on
+ * an rpc error, mirroring the depth seed's incomplete-cohort contract — a half-seeded content set
+ * must not report green. Teardown is purge_synthetic_load_cohort(), NEVER the live bot0## cohort.
+ */
+export async function seedContent(
+  svc: RpcCaller,
+  args: Pick<Args, "withContent" | "campaigns" | "posts" | "creatorSplit">,
+): Promise<{ campaigns: number; posts: number } | null> {
+  if (!args.withContent) return null;
+  const { data, error } = await svc.rpc("seed_synthetic_content", {
+    p_campaigns: args.campaigns,
+    p_posts: args.posts,
+    p_creator_split: args.creatorSplit,
+  });
+  if (error) throw new Error(`[bulk-seed] seed_synthetic_content failed: ${error.message}`);
+  const res = (data ?? {}) as { campaigns?: number; posts?: number };
+  return { campaigns: res.campaigns ?? 0, posts: res.posts ?? 0 };
+}
+
 /**
  * bulk-seed: stand up a large synthetic population in two lanes. planSeed splits `--n` into a DEPTH
  * pool (bulk-inserted by the service-role seed_synthetic_cohort RPC; never authenticates) and a
@@ -213,6 +254,7 @@ async function cmdMint(args: Args): Promise<void> {
  * cohort uses a DISTINCT email namespace (botla<seed>_<i>) so it can never collide with the live
  * bot### daily cohort — pre-flighted before any write. Fail-loud on an incomplete seed or mint,
  * mirroring cmdMint's incomplete-cohort contract (bulk-seed is a one-shot: purge before re-seeding).
+ * With `--with-content`, layers content (seedContent) onto the cohort after the depth+active seed.
  */
 async function cmdBulkSeed(args: Args): Promise<void> {
   const svc = serviceClient();
@@ -258,15 +300,23 @@ async function cmdBulkSeed(args: Args): Promise<void> {
     }
   }
 
-  console.warn(
-    `[bulk-seed] ${JSON.stringify({ depth_seeded: depthSeeded, depth_skipped: depthSkipped, active_minted: activeMinted })}`,
-  );
-  // Same incomplete-cohort contract as cmdMint: a partial active mint must not report green.
+  // Same incomplete-cohort contract as cmdMint: a partial active mint must not report green. Fail
+  // BEFORE seeding content so we never layer content onto a half-built cohort.
   if (activeMinted < active.length) {
+    console.warn(
+      `[bulk-seed] ${JSON.stringify({ depth_seeded: depthSeeded, depth_skipped: depthSkipped, active_minted: activeMinted })}`,
+    );
     throw new Error(
       `[bulk-seed] only ${activeMinted}/${active.length} active bots minted — cohort incomplete (purge before re-minting; see errors above)`,
     );
   }
+
+  // 3) Optional content layer (--with-content): public-free campaigns + DragonShare posts + uploads.
+  const content = await seedContent(svc, args);
+
+  console.warn(
+    `[bulk-seed] ${JSON.stringify({ depth_seeded: depthSeeded, depth_skipped: depthSkipped, active_minted: activeMinted, ...(content ? { content } : {}) })}`,
+  );
 }
 
 async function cmdTick(): Promise<void> {
