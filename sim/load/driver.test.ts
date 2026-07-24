@@ -329,3 +329,53 @@ describe("runLoad — stops at the saturation knee (never pushes to outage)", ()
     expect(sampledConcurrencies).toEqual([2]);
   });
 });
+
+// ── runLoad — periodic kill-switch re-check (matrix soak-safe drain) ─────────────────────────────────
+describe("runLoad — drains gracefully when the kill switch flips mid-soak (isEnabled re-check)", () => {
+  const ok: HotAction = { name: "campaign_browse", weight: 1, run: async () => {} };
+
+  it("stops early, flags stoppedByKillSwitch, still writes findings, does not throw", async () => {
+    let enabledCalls = 0;
+    let written: LoadFindingsArtifact | null = null;
+    const result = await runLoad({
+      rampSteps: [2, 4, 8],
+      holdMs: 0,
+      sampleEveryMs: 1000,
+      runLabel: "killswitch",
+      botFor: async () => ({}) as unknown as SupabaseClient,
+      activeUserIds: ["u1"],
+      captureSnapshot: async () => {},
+      writeFindings: async (a) => {
+        written = a;
+      },
+      actions: [ok],
+      // Enabled at step 1's sample, flipped OFF at step 2's sample.
+      isEnabled: async () => {
+        enabledCalls += 1;
+        return enabledCalls < 2;
+      },
+      now: () => 0,
+    });
+    expect(result.stoppedByKillSwitch).toBe(true);
+    expect(result.stoppedAtKnee).toBe(false);
+    expect(result.steps.length).toBeLessThan(3); // never reached the concurrency-8 step
+    expect(written).not.toBeNull(); // findings still written (graceful, not a throw)
+  });
+
+  it("defaults to enabled — single-runner mode is unaffected (no early stop)", async () => {
+    const result = await runLoad({
+      rampSteps: [2],
+      holdMs: 0,
+      sampleEveryMs: 1000,
+      runLabel: "noks",
+      botFor: async () => ({}) as unknown as SupabaseClient,
+      activeUserIds: ["u1"],
+      captureSnapshot: async () => {},
+      writeFindings: async () => {},
+      actions: [ok],
+      now: () => 0, // no isEnabled injected → always enabled
+    });
+    expect(result.stoppedByKillSwitch).toBe(false);
+    expect(result.steps).toHaveLength(1);
+  });
+});

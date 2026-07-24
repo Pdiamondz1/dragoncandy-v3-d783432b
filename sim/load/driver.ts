@@ -403,6 +403,8 @@ export interface LoadResult {
   breakageCount: number;
   stoppedAtKnee: boolean;
   kneeConcurrency: number | null;
+  /** True if an in-soak isEnabled() re-check drained the ramp (kill switch flipped mid-run). */
+  stoppedByKillSwitch: boolean;
 }
 
 /** The on-disk QA artifact (`sim/.load-findings.json`): the per-step curve + breakage signatures. */
@@ -438,6 +440,10 @@ export interface RunLoadDeps {
   /** Injectable clock/rng for deterministic offline tests. */
   now?: () => number;
   rng?: () => number;
+  /** Periodic in-soak kill-switch re-check (matrix). Consulted at each snapshot sample; resolving
+   *  false drains the ramp gracefully (findings still written, no throw). Default: always enabled,
+   *  so single-runner mode — which never injects it — is byte-unchanged. */
+  isEnabled?: () => Promise<boolean>;
 }
 
 interface TaskOutcome {
@@ -492,12 +498,14 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
   const thresholds = deps.kneeThresholds ?? DEFAULT_KNEE_THRESHOLDS;
   const now = deps.now ?? Date.now;
   const rng = deps.rng ?? Math.random;
+  const isEnabled = deps.isEnabled ?? (async () => true);
 
   const results: StepResult[] = [];
   const breakageEvents: BreakageEvent[] = [];
   let prevMetrics: StepMetrics | null = null;
   let stoppedAtKnee = false;
   let kneeConcurrency: number | null = null;
+  let stoppedByKillSwitch = false;
 
   for (const concurrency of steps) {
     const latencies: number[] = [];
@@ -552,6 +560,13 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
           breakageEvents.push({ endpoint: o.endpoint, status: o.status, error: o.error, concurrency });
         }
       }
+      // Periodic in-soak kill-switch re-check (matrix): gated to the snapshot sample so it costs at
+      // most one extra read per sampleEveryMs. A flipped switch drains this shard's ramp within a
+      // cycle — no `gh run cancel` needed. Single-runner mode never injects isEnabled → always true.
+      if (doSample && !(await isEnabled())) {
+        stoppedByKillSwitch = true;
+        break;
+      }
     } while (now() - stepStart < holdMs);
 
     const count = latencies.length;
@@ -569,6 +584,7 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
     };
     const knee = isKnee(metrics, prevMetrics, thresholds);
     results.push({ concurrency, metrics, knee });
+    if (stoppedByKillSwitch) break; // drained by the kill switch — stop the ramp (findings still written)
     if (knee) {
       stoppedAtKnee = true;
       kneeConcurrency = concurrency;
@@ -599,6 +615,7 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
     breakageCount: breakageEvents.length,
     stoppedAtKnee,
     kneeConcurrency,
+    stoppedByKillSwitch,
   };
 }
 
