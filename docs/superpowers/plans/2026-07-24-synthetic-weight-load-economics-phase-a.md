@@ -162,8 +162,10 @@ describe("chooseRefreshOrMint", () => {
       those (avoids the unique-violation the spec-review flagged); if any belt-and-suspenders insert
       is added, it MUST be `on conflict do nothing`.
     - Idempotent on re-run via the **email** (the deterministic key): derive a **deterministic id**
-      `uuid_generate_v5(<namespace>, email)` so `insert into auth.users (...) on conflict (id) do
-      nothing` actually fires on a re-run — a fresh random uuid each run would instead violate the
+      `extensions.uuid_generate_v5(<namespace>, email)` — **schema-qualified**, because uuid-ossp lives
+      in the `extensions` schema on Supabase and the RPC sets `search_path=public` (an unqualified call
+      fails "function does not exist" at runtime) — so `insert into auth.users (...) on conflict (id)
+      do nothing` actually fires on a re-run; a fresh random uuid each run would instead violate the
       `auth.users` email-unique index (a hard error, not a skip). Return `{seeded, skipped}`.
     - Also `update profiles set email_verified = true where id = <seeded ids>` (bots need it; depth
       bots never log in but keep it consistent).
@@ -199,10 +201,12 @@ describe("chooseRefreshOrMint", () => {
   emits index-based emails `bot001…botNNN@synthetic.dragoncandy.test` **regardless of the cohort
   label** (the label only sets `persona.cohort`), and the live daily workflow already minted
   `bot001…bot025`. Reusing that scheme → `auth.admin.createUser` duplicate-email → fail-loud trips.
-  So the active cohort MUST use a distinct namespace (e.g. prefix `botla<seed>_<i>@…`): parameterize
-  the persona generator with an `emailPrefix` (or add a dedicated active-cohort generator) — never the
-  bare `bot###` scheme. As a guard, pre-query existing synthetic emails and fail if the chosen
-  namespace already exists. Fail loud if the RPC seeds fewer than requested or any active mint fails
+  So the active cohort MUST use a distinct namespace (e.g. prefix `botla<seed>_<i>@…`): add a
+  **dedicated active-cohort generator in `seed.ts`** (keeps `personas.ts` untouched, consistent with
+  the File-Structure "Reuse (no change)" line) rather than the bare `bot###` scheme from
+  `generateCohort`. The namespace still ends in `@synthetic.dragoncandy.test` so `assertSyntheticEmail`
+  / `handle_new_user`'s `LIKE` / the registry auto-tag all still fire. As a guard, pre-query existing
+  synthetic emails and fail if the chosen namespace already exists. Fail loud if the RPC seeds fewer than requested or any active mint fails
   (mirror `cmdMint`'s incomplete-cohort throw). Print `{depth_seeded, active_minted}`.
 - [ ] **Step 3b: Extend the arg parser.** `parseArgs`/`Args` (`run.ts:62`) parse only
   `--n/--cohort/--seed`; add `--active <count>` and `--creator-split <num>` for `bulk-seed` (defaults
