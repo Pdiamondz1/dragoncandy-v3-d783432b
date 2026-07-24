@@ -300,6 +300,20 @@ predicate. See `docs/wiki/concepts/synthetic-weight-engine.md`.
 > if absent). The `load` driver reads only session-capable bots (live `bot0##` + active `botla*`), never the
 > depth pool. See `docs/wiki/concepts/synthetic-weight-engine.md` (Phase A).
 
+> **Runner-matrix (Slice 1) RPCs** (migrations `20260724181500`/`182000`/`183000`, all SECURITY DEFINER
+> · `search_path=public`): `seed_synthetic_content(p_campaigns,p_posts,p_creator_split)` (service_role
+> only) — layers public-free **draft** campaigns + DragonShare video posts + `file_uploads` + one
+> synthetic org + avatars/geo onto the `botla%`/`botseed_%` load cohort (NEVER the live `bot0##` 25);
+> guard-raises if no load-cohort business bot exists. `purge_synthetic_load_cohort()` (service_role only)
+> — the **scoped** teardown for the matrix: deletes ONLY `botla%`/`botseed_%` (spares the live 25),
+> leaf-deleting the NO-ACTION `push_notifications.actor_id` + crew tables + telemetry before cascading
+> the users, then the non-cascading synthetic org; returns a `residual_*` report. `get_sim_load_matrix_summary(p_run_label)`
+> — **granted `authenticated`** (revoked anon/public) with an in-body `is_internal_user()` guard (DEFINER
+> bypasses the `sim_load_snapshots` RLS), rolls a multi-shard run's per-shard **latest-`captured_at`**
+> snapshots into one summed row (Σ concurrency/requests/`media_*`, MAX p95 + DB peaks, latest
+> `platform_weight.storage_bytes`) for the `/internal/simulation` "Matrix run (summed)" card. `sim_load_snapshots.notes`
+> gains `shard`/`media_requests`/`media_bytes` keys in matrix mode.
+
 > **Denormalized `is_synthetic boolean default false`** added (nullable) to 5 rootless/telemetry
 > tables — `payment_events`, `analytics_events`, `dragonshare_events`, `pricing_funnel_events`,
 > `donny_cost_ledger` — stamped by `BEFORE INSERT` triggers (payment = actor-OR-campaign; dragonshare
@@ -314,7 +328,8 @@ predicate. See `docs/wiki/concepts/synthetic-weight-engine.md`.
 > — the ONE surface that intentionally SHOWS synthetic (internal-gated, authenticated+service_role;
 > aggregate counts only). `purge_synthetic_data()` — service_role-only leaf-first teardown (deletes
 > rootless ledgers before `auth.users`; explicitly deletes the non-cascading synthetic org rows —
-> `organizations`/`org_units` have no `auth.users` FK, ownership only via `org_members.role='owner'`).
+> `organizations`/`org_units` have no `auth.users` FK, ownership only via `org_members.role='owner'`;
+> **also leaf-deletes the NO-ACTION `push_notifications.actor_id`** the matrix notify-leg creates — Task 3.3).
 > `aios_platform_stats`/`aios_revenue_stats`/`aios_cost_stats` + `capture_platform_weight` were
 > rewritten to exclude synthetic (actor-OR-parent). The extended `handle_new_user` **preserves** the
 > `account_scope='internal'` guard + `ON CONFLICT DO UPDATE` refresh (a corrective migration restored
