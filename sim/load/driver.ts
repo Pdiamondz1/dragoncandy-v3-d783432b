@@ -20,6 +20,7 @@
 // This driver emits NO console output (it is a library); run.ts's cmdLoad does all the printing.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { DAU_ACTIONS } from "./actions-mix";
 
 // ── Ramp step math (pure) ───────────────────────────────────────────────────────────────────────
 
@@ -319,94 +320,11 @@ export interface HotAction {
   run: (client: SupabaseClient, ctx: HotActionContext) => Promise<MediaResult | void>;
 }
 
-/** Throw the supabase query error (carrying its PG code) so the driver's classifier can read it. */
-function throwOnError(error: { message: string; code?: string } | null): void {
-  if (error) {
-    const e = new Error(error.message) as Error & { code?: string };
-    if (error.code) e.code = error.code;
-    throw e;
-  }
-}
-
-// Weighted ~90% read / ~10% sampled-write. v1 ships READS ONLY: a sampled write on prod must land on
-// a table `purge_synthetic_data()` provably cleans up (teardown-to-zero is a spine contract), and the
-// worker draws a random bot per task rather than acting as one identity — so the ~10% write leg is
-// deliberately DEFERRED to the live phase (per the plan's "omit writes in v1 if unsure — reads are
-// the bulk" and the ledger/purge-first discipline). Reads are the ceiling signal anyway.
-//
-// NOTE: the exact endpoints below are validated at the FIRST live run — an endpoint a bot's RLS does
-// NOT actually permit surfaces as a *breakage finding* (e.g. a `permission denied`), which is exactly
-// the point of the QA run, not a reason to guess silently.
-export const HOT_ACTIONS: HotAction[] = [
-  {
-    // Campaign browse — the marketplace's primary read. RLS lets an authenticated user see published
-    // PUBLIC campaigns (public path gated on group_id IS NULL); synthetic bots only READ real rows.
-    name: "campaign_browse",
-    weight: 30,
-    run: async (client) => {
-      const { error } = await client
-        .from("campaigns")
-        .select("id, title, status, created_at")
-        .eq("status", "published")
-        .is("group_id", null)
-        .order("created_at", { ascending: false })
-        .limit(20);
-      throwOnError(error);
-    },
-  },
-  {
-    // DragonShare feed — verified posts are the anon/authenticated-readable public feed.
-    name: "dragonshare_feed",
-    weight: 25,
-    run: async (client) => {
-      const { error } = await client
-        .from("dragonshare_posts")
-        .select("id, content_file_path, platform, status, created_at")
-        .eq("status", "verified")
-        .order("created_at", { ascending: false })
-        .limit(20);
-      throwOnError(error);
-    },
-  },
-  {
-    // Creator directory — the public-facing view (no sensitive fields), safe for any reader.
-    // NB: the view exposes creator_name (NOT full_name) and has no role column — selecting
-    // full_name/role 400s and would log a FALSE breakage every run. Columns verified on prod.
-    name: "creator_directory",
-    weight: 20,
-    run: async (client) => {
-      const { error } = await client
-        .from("public_creator_profiles")
-        .select("id, creator_name, location, average_rating")
-        .limit(20);
-      throwOnError(error);
-    },
-  },
-  {
-    // Inbox list — RLS scopes conversations to the bot's own via conversation_participants; an empty
-    // result for a bot with no threads is fine (still exercises the RLS-filtered read path).
-    name: "conversations_list",
-    weight: 15,
-    run: async (client) => {
-      const { error } = await client
-        .from("conversations")
-        .select("id, created_at, updated_at")
-        .order("updated_at", { ascending: false })
-        .limit(20);
-      throwOnError(error);
-    },
-  },
-  {
-    // Dashboard RPC — a creator's "pending crew invites" widget; authenticated-only, gated on
-    // creator_id = auth.uid() (returns [] for a business bot). A realistic per-load dashboard read.
-    name: "pending_group_invitations_rpc",
-    weight: 10,
-    run: async (client) => {
-      const { error } = await client.rpc("get_creator_pending_group_invitations");
-      throwOnError(error);
-    },
-  },
-];
+// The realistic DAU behavior mix (~90:10 read:write, incl. the media-egress proxy + public-free
+// writes) lives in ./actions-mix (DAU_ACTIONS) — a separate module so this driver stays a pure,
+// action-agnostic library. runLoad defaults to it when no `actions` are injected. (Kept one-way:
+// driver imports the DAU_ACTIONS value; actions-mix imports only this module's TYPES, so there is no
+// runtime import cycle.)
 
 // ── The driver ────────────────────────────────────────────────────────────────────────────────────
 
@@ -455,7 +373,7 @@ export interface RunLoadDeps {
   activeUserIds: string[];
   captureSnapshot: (runLabel: string, errorRate: number, notes: Record<string, unknown>) => Promise<void>;
   writeFindings: (artifact: LoadFindingsArtifact) => Promise<void>;
-  /** Injectable — defaults to HOT_ACTIONS. */
+  /** Injectable — defaults to DAU_ACTIONS (the ~90:10 read:write behavior mix in ./actions-mix). */
   actions?: HotAction[];
   kneeThresholds?: KneeThresholds;
   /** Injectable clock/rng for deterministic offline tests. */
@@ -535,7 +453,7 @@ async function runOneTask(
  */
 export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
   const { rampSteps: steps, holdMs, sampleEveryMs, runLabel, captureSnapshot, writeFindings } = deps;
-  const actions = deps.actions ?? HOT_ACTIONS;
+  const actions = deps.actions ?? DAU_ACTIONS;
   const thresholds = deps.kneeThresholds ?? DEFAULT_KNEE_THRESHOLDS;
   const now = deps.now ?? Date.now;
   const rng = deps.rng ?? Math.random;
