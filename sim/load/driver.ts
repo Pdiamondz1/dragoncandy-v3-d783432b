@@ -20,7 +20,7 @@
 // This driver emits NO console output (it is a library); run.ts's cmdLoad does all the printing.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { DAU_ACTIONS } from "./actions-mix";
+import { DAU_READ_ACTIONS } from "./actions-mix";
 
 // ── Ramp step math (pure) ───────────────────────────────────────────────────────────────────────
 
@@ -320,11 +320,12 @@ export interface HotAction {
   run: (client: SupabaseClient, ctx: HotActionContext) => Promise<MediaResult | void>;
 }
 
-// The realistic DAU behavior mix (~90:10 read:write, incl. the media-egress proxy + public-free
-// writes) lives in ./actions-mix (DAU_ACTIONS) — a separate module so this driver stays a pure,
-// action-agnostic library. runLoad defaults to it when no `actions` are injected. (Kept one-way:
-// driver imports the DAU_ACTIONS value; actions-mix imports only this module's TYPES, so there is no
-// runtime import cycle.)
+// The realistic DAU behavior mix lives in ./actions-mix — a separate module so this driver stays a
+// pure, action-agnostic library. runLoad's DEFAULT is the READS-ONLY subset (DAU_READ_ACTIONS): a
+// caller that injects no actions never writes, so the driver is safe against the live cohort. The
+// WRITE leg (DAU_ACTIONS) is opt-in — cmdLoad passes it only in matrix mode (the isolated botla…
+// slice the scoped teardown cleans). (Kept one-way: driver imports the actions VALUE; actions-mix
+// imports only this module's TYPES, so there is no runtime import cycle.)
 
 // ── The driver ────────────────────────────────────────────────────────────────────────────────────
 
@@ -453,7 +454,7 @@ async function runOneTask(
  */
 export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
   const { rampSteps: steps, holdMs, sampleEveryMs, runLabel, captureSnapshot, writeFindings } = deps;
-  const actions = deps.actions ?? DAU_ACTIONS;
+  const actions = deps.actions ?? DAU_READ_ACTIONS;
   const thresholds = deps.kneeThresholds ?? DEFAULT_KNEE_THRESHOLDS;
   const now = deps.now ?? Date.now;
   const rng = deps.rng ?? Math.random;
@@ -549,6 +550,23 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
       mediaRequests: mediaReq,
       mediaBytes,
     };
+    // FINAL per-step snapshot with the step's COMPLETE cumulative totals. The in-step samples are
+    // taken in-flight (before the wave drains) so `count`/`ok`/`media_*` lag by up to one wave — and
+    // for a single-wave step (holdMs 0 / soak < sampleEveryMs) the ONLY in-step sample recorded 0. The
+    // matrix summary reads each shard's LATEST captured_at row as its fullest total, so without this
+    // the summary would report 0 requests/egress for a short soak. This low-connection post-wave
+    // reading never lowers the DB-side peaks (the summary takes MAX(active_connections) across ALL rows).
+    await captureSnapshot(runLabel, metrics.errorRate, {
+      concurrency,
+      count,
+      ok,
+      throttled,
+      breakage,
+      media_requests: mediaReq,
+      media_bytes: mediaBytes,
+      p50_ms: metrics.p50Ms,
+      p95_ms: metrics.p95Ms,
+    });
     const knee = isKnee(metrics, prevMetrics, thresholds);
     results.push({ concurrency, metrics, knee });
     if (stoppedByKillSwitch) break; // drained by the kill switch — stop the ramp (findings still written)

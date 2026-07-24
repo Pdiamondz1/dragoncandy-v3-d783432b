@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { parseArgs, main, nonZeroResiduals, makeBotFor, planLoad, cmdLoad, seedContent, type CmdLoadDeps, type RpcCaller } from "./run";
 import type { BotRef } from "./types";
 import type { RunLoadDeps, LoadResult } from "./load/driver";
+import { DAU_ACTIONS, DAU_READ_ACTIONS, WRITE_ACTION_NAMES } from "./load/actions-mix";
 
 describe("parseArgs", () => {
   it("parses a full command line", () => {
@@ -227,6 +228,9 @@ describe("cmdLoad — matrix/soak mode wiring (injected deps, no live DB)", () =
     expect(typeof calls.runLoad?.isEnabled).toBe("function"); // kill-switch re-check injected
     await expect(calls.runLoad?.isEnabled?.()).resolves.toBe(true);
     expect(calls.killReads).toBe(1);
+    // Matrix drives the ISOLATED botla slice → the FULL mix incl. writes is safe (teardown-cleaned).
+    expect(calls.runLoad?.actions).toBe(DAU_ACTIONS);
+    expect(calls.runLoad?.actions?.some((a) => WRITE_ACTION_NAMES.includes(a.name))).toBe(true);
 
     // Every snapshot is stamped with this shard's index (the aggregation RPC groups on notes.shard).
     await calls.runLoad?.captureSnapshot("matrix-x", 0, { concurrency: 200 });
@@ -248,6 +252,10 @@ describe("cmdLoad — matrix/soak mode wiring (injected deps, no live DB)", () =
     expect(calls.runLoad?.rampSteps).toEqual([50, 200]);
     expect(calls.runLoad?.holdMs).toBe(9000);
     expect(calls.runLoad?.isEnabled).toBeUndefined();
+    // Single-runner drives the LIVE bot0## cohort → READS ONLY (the scoped teardown spares bot0##, so
+    // write residue would leak). Writes run only in matrix mode.
+    expect(calls.runLoad?.actions).toBe(DAU_READ_ACTIONS);
+    expect(calls.runLoad?.actions?.some((a) => WRITE_ACTION_NAMES.includes(a.name))).toBe(false);
 
     await calls.runLoad?.captureSnapshot("load", 0, { concurrency: 50 });
     expect(rpc).toHaveBeenCalledWith(

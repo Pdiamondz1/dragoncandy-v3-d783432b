@@ -21,6 +21,7 @@ import { planSeed, generateActiveCohort, assertActiveNamespaceFree } from "./see
 import { SessionPool } from "./session-pool";
 import { planDay, runDay } from "./behavior/graph";
 import { parseRamp, runLoad, type LoadFindingsArtifact, type RunLoadDeps, type LoadResult } from "./load/driver";
+import { DAU_ACTIONS, DAU_READ_ACTIONS } from "./load/actions-mix";
 import type { ActionContext } from "./behavior/actions";
 import type { BotRef, CohortState } from "./types";
 
@@ -483,6 +484,10 @@ export async function cmdLoad(args: Args, deps: CmdLoadDeps = DEFAULT_CMD_LOAD_D
     captureSnapshot,
     writeFindings,
     isEnabled,
+    // Matrix drives the ISOLATED botla… slice (teardown-cleaned) → the full mix incl. the ~10% write
+    // leg. Single-runner drives the LIVE bot0## cohort → READS ONLY: the scoped teardown spares
+    // bot0##, so writes there would leak persistent residue. (Reads are the ceiling signal anyway.)
+    actions: plan.matrix ? DAU_ACTIONS : DAU_READ_ACTIONS,
   });
 
   for (const s of result.steps) {

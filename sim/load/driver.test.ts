@@ -302,6 +302,20 @@ describe("runLoad — media-egress proxy tally (request count + transferred byte
     expect(result.steps[0].metrics.mediaRequests).toBe(0);
     expect(result.steps[0].metrics.mediaBytes).toBe(0);
   });
+
+  it("emits a FINAL per-step snapshot with the complete cumulative totals (short-soak correctness)", async () => {
+    // A single-wave step (holdMs 0) samples ONCE, in-flight, before the wave drains → that sample's
+    // count/media are 0. Without a post-wave final snapshot, the matrix summary (latest row per shard)
+    // would read 0 requests/egress for a short soak. The final snapshot must carry the true totals.
+    captured.length = 0;
+    const media: HotAction = { name: "media_fetch", weight: 1, run: async () => ({ bytes: 1000 }) };
+    await runLoad({ ...baseDeps(), actions: [media] });
+    const last = captured[captured.length - 1];
+    expect(last.count).toBe(3); // true wave total, not the pre-wave 0
+    expect(last.ok).toBe(3);
+    expect(last.media_requests).toBe(3);
+    expect(last.media_bytes).toBe(3000);
+  });
 });
 
 describe("runLoad — samples the DB snapshot WHILE the wave is in flight (Codex P1 regression)", () => {
@@ -332,6 +346,7 @@ describe("runLoad — samples the DB snapshot WHILE the wave is in flight (Codex
       botFor: async () => ({}) as unknown as SupabaseClient,
       activeUserIds: ["u1", "u2"],
       captureSnapshot: async () => {
+        if (completedAtSnapshot !== -1) return; // only the FIRST (in-flight) snapshot; ignore the final one
         completedAtSnapshot = completed; // live completed-count at snapshot time
         release(); // let the gated wave drain
       },
@@ -339,6 +354,8 @@ describe("runLoad — samples the DB snapshot WHILE the wave is in flight (Codex
       actions: [gated],
       now: () => 0,
     });
+    // Record only the FIRST (in-flight) snapshot — a final post-wave snapshot now also fires per step
+    // (short-soak totals fix), and it must not clobber this in-flight assertion.
     expect(completedAtSnapshot).toBe(0); // snapshot fired while the wave was still blocked (in flight)
     expect(completed).toBe(2); // and after release, the wave drained
   });
@@ -372,7 +389,10 @@ describe("runLoad — stops at the saturation knee (never pushes to outage)", ()
     expect(result.kneeConcurrency).toBe(2);
     expect(result.steps).toHaveLength(1); // never advanced to 4 or 8
     expect(result.breakageCount).toBe(0); // 429 is saturation, NOT a breakage
-    expect(sampledConcurrencies).toEqual([2]);
+    // Every sample (the in-flight one + the per-step final snapshot) was at concurrency 2 — the ramp
+    // halted at the knee and never sampled 4 or 8.
+    expect(sampledConcurrencies.length).toBeGreaterThanOrEqual(1);
+    expect(sampledConcurrencies.every((c) => c === 2)).toBe(true);
   });
 });
 

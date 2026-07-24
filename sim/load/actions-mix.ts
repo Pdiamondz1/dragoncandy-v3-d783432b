@@ -230,5 +230,15 @@ export function buildHotActions(opts: BuildMixOptions = {}): HotAction[] {
   return [...reads, ...writes];
 }
 
-/** The default DAU mix the driver fires when no `actions` are injected. */
+/** The full DAU mix (reads + the ~10% write leg). Used by the MATRIX path, which drives the isolated
+ *  `botla…` slice that purge_synthetic_load_cohort() cleans — so its writes are teardown-safe. */
 export const DAU_ACTIONS: HotAction[] = buildHotActions();
+
+/** The reads-only subset. Used by the SINGLE-RUNNER `load` path, which drives the live `bot0##` daily
+ *  cohort (readSessionCapableBots) — the scoped teardown spares bot0##, so a write there would leak
+ *  persistent residue only the full purge (which also deletes the live 25) could clean. Reads are the
+ *  ceiling signal anyway; the write leg is a matrix-only realism dimension. Also the driver's safe
+ *  default (a caller that injects no actions never writes). */
+export const DAU_READ_ACTIONS: HotAction[] = DAU_ACTIONS.filter(
+  (a) => !WRITE_ACTION_NAMES.includes(a.name),
+);
