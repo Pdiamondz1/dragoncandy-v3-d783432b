@@ -1,5 +1,9 @@
 import { useSimulationStats } from '@/hooks/internal/useSimulationStats';
 import { useSimLoadSnapshots, type SimLoadSnapshot } from '@/hooks/internal/useSimLoadSnapshots';
+import {
+  useSimLoadMatrixSummary,
+  type SimLoadMatrixSummary,
+} from '@/hooks/internal/useSimLoadMatrixSummary';
 import { computeModeledRevenue } from '@/lib/internal/modeledRevenue';
 import { StatCard, SectionHeading, ErrorCard } from '@/components/internal/stats';
 import { PageContainer, PageHeader } from '@/components/internal/layout';
@@ -18,6 +22,80 @@ const fmtMs = (v: number | null) => (v == null ? '—' : `${v.toFixed(1)} ms`);
 const fmtPct = (v: number | null) => (v == null ? '—' : `${(v * 100).toFixed(1)}%`);
 const fmtConc = (active: number | null, max: number | null) =>
   active == null && max == null ? '—' : `${active ?? '—'} / ${max ?? '—'}`;
+const fmtBytes = (n: number | null) => {
+  if (n == null) return '—';
+  if (n === 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.min(units.length - 1, Math.floor(Math.log(n) / Math.log(1024)));
+  return `${(n / 1024 ** i).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+};
+
+/** The summed roll-up of the latest multi-shard MATRIX run — offered concurrency (Σ across shards)
+ *  vs the DB-side connection/latency peaks, plus the media-egress proxy and the storage point reading.
+ *  Handles its own loading/error/empty so a summary fetch failure never blanks the page. */
+function MatrixSummaryCard({
+  isLoading,
+  isError,
+  data,
+}: {
+  isLoading: boolean;
+  isError: boolean;
+  data: SimLoadMatrixSummary | null | undefined;
+}) {
+  if (isLoading) {
+    return (
+      <div className={`flex min-h-[8rem] items-center justify-center ${CARD}`}>
+        <Spinner className="h-6 w-6 border-teal-400" />
+      </div>
+    );
+  }
+  if (isError) {
+    return <ErrorCard message="Matrix summary failed to load — check your internal access." />;
+  }
+  if (!data) {
+    return (
+      <div className={`p-6 text-sm text-white/60 ${CARD}`}>
+        No matrix run captured yet — dispatch <span className="font-mono">synthetic-load-matrix.yml</span>{' '}
+        (a <span className="font-mono">matrix-*</span> run label) to fan the load across N runner IPs.
+      </div>
+    );
+  }
+  return (
+    <div className={`p-5 ${CARD}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-mono text-sm font-semibold text-white">{data.run_label}</span>
+        <span className="font-mono text-xs text-white/40">{data.shards} shard(s) summed</span>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard
+          label="Offered concurrency"
+          value={data.offered_concurrency}
+          sub={`Σ across ${data.shards} shards`}
+        />
+        <StatCard
+          label="DB active / max conns"
+          value={`${data.db_active_conn_peak} / ${data.max_connections}`}
+          sub="peak"
+          accent="pink"
+        />
+        <StatCard label="p95 latency" value={fmtMs(data.p95_ms)} sub="max across shards" />
+        <StatCard
+          label="Requests"
+          value={data.requests}
+          sub={`${data.ok} ok · ${data.breakage} brk · ${data.throttled} thr`}
+        />
+        <StatCard label="Media requests" value={data.media_requests} />
+        <StatCard label="Media egress (proxy)" value={fmtBytes(data.media_bytes)} sub="Σ Content-Length" />
+        <StatCard
+          label="Storage bytes"
+          value={fmtBytes(data.storage_bytes)}
+          sub="point reading (~0 growth by design)"
+        />
+        <StatCard label="DB avg query" value={fmtMs(data.db_avg_query_ms_peak)} sub="peak" />
+      </div>
+    </div>
+  );
+}
 
 /** The performance-per-concurrency curve captured across a load ramp. Handles its
  *  own loading/error/empty states so a snapshot fetch failure never blanks the page. */
@@ -136,6 +214,7 @@ function ModeledRevenueCard({ syntheticCampaigns }: { syntheticCampaigns: number
 const InternalSimulation = () => {
   const simulation = useSimulationStats();
   const loadSnapshots = useSimLoadSnapshots();
+  const matrixSummary = useSimLoadMatrixSummary();
 
   if (simulation.isLoading) {
     return (
@@ -204,6 +283,18 @@ const InternalSimulation = () => {
           ))}
         </div>
       )}
+
+      <SectionHeading>Matrix run (summed)</SectionHeading>
+      <p className="-mt-1 mb-3 text-sm text-white/50">
+        The latest multi-shard runner-matrix run — offered concurrency summed across N runner IPs vs
+        the DB-side connection/latency peaks (a single runner caps at the ~312 egress wall), plus the
+        media-egress proxy and the storage point reading.
+      </p>
+      <MatrixSummaryCard
+        isLoading={matrixSummary.isLoading}
+        isError={matrixSummary.isError}
+        data={matrixSummary.data}
+      />
 
       <SectionHeading>Load curve</SectionHeading>
       <p className="-mt-1 mb-3 text-sm text-white/50">
