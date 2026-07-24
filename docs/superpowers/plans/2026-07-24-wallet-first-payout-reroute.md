@@ -34,7 +34,22 @@
 
 - [ ] **Step 1: Read the current function end-to-end.** Confirm the pieces this task KEEPS unchanged: the early re-entry guard (`if (collaboration.payout_executed_at || collaboration.stripe_transfer_id) → finalize-only`, ~lines 243–263), the amount/fee computation (`creatorPayout`), `verifyPayoutReady` + the stale-flag self-heal (~308–315), `finalizePayoutState` (helper ~120), `writePaymentEvent`, and the auto-schedule + response tail. The pieces this task REPLACES: the whole `if (creatorPayoutReady) { … } else { … }` fork (~316–573).
 
-- [ ] **Step 2: Write failing Deno tests.** Create `index.test.ts`. Because the function is a large `serve` handler, either (a) extract the post-guard payout body into an exported helper `applyWalletFirstPayout(deps)` and unit-test that, or (b) if extraction is too invasive, test the two pure decisions in isolation. **Prefer (a)** — extract a testable unit. Cover, with a fake supabase (record `rpc`/`writePaymentEvent` calls) + fake stripe:
+- [ ] **Step 2: Write failing Deno tests.** The function is a large `serve` handler that builds its own supabase/stripe clients from env, so it isn't directly unit-testable. **Extract the wallet-first payout body into an exported, dependency-injected helper** `applyWalletFirstPayout(d)` that returns a plain `{ status, body }` (NOT a `Response` — keeps `req`/CORS out of the testable unit; the handler wraps it). This is the single committed testing approach. Helper signature to implement in Step 4:
+```ts
+export interface WalletFirstDeps {
+  supabase: SupabaseClient;
+  stripe: Stripe;
+  collaborationId: string;
+  campaignId: string;
+  creatorId: string;
+  callerId: string | null;
+  creatorPayout: number;          // dollars
+  stripeAccountId: string | null;
+  creatorPayoutReady: boolean;
+}
+export async function applyWalletFirstPayout(d: WalletFirstDeps): Promise<{ status: number; body: Record<string, unknown> }>;
+```
+Create `index.test.ts` (mirror the fake-stripe / fake-supabase-by-rpc-name style of `_shared/flush-pending-balance.test.ts`; record `rpc`/`from().insert` calls). Cover, calling `applyWalletFirstPayout(deps)` directly:
   - **Onboarded + fresh credit** (`credit_pending_balance_for_payout` → `'credited'`, `verifyPayoutReady.ready=true`): writes exactly `content_approved`, `payment_release_initiated`, `payment_released`, `payout_pending_wallet` (all `entity_type:'collaboration'`, `entity_id:collaborationId`); calls `flushPendingBalance(stripe, supabase, stripeAccountId)`; NO `stripe.transfers.create` directly; finalize called.
   - **Not-onboarded + fresh credit** (`ready=false`): same four ledger writes; `flushPendingBalance` NOT called; finalize called.
   - **Concurrent re-entry** (`credit_… → 'already'`): NO ledger writes (the `!alreadyCredited` gate), NO flush of new intent (flush may still be a no-op call — assert the ledger writes are skipped); finalize still called.
@@ -48,81 +63,70 @@
 ```ts
 import { flushPendingBalance } from "../_shared/flush-pending-balance.ts";
 ```
-Replace the entire `if (creatorPayoutReady) { … } else { … }` block (~316–573, INCLUSIVE of both branches) with the single path below. Keep everything before (guard, fees, verifyPayoutReady + heal) and the shared response/`finalizePayoutState`-failure/auto-schedule tail:
+Define the exported helper at module level (its body is the whole payout logic), then replace the entire `if (creatorPayoutReady) { … } else { … }` block (~lines **316–575**, INCLUSIVE of both branches — the `} else {` is at ~495 and its close `}` at ~575; grep to confirm the exact bounds) with a thin call site. Keep everything BEFORE the fork (early re-entry guard, fees, `verifyPayoutReady` + stale-flag heal). The helper (note: `writePaymentEvent`, `flushPendingBalance`, `finalizePayoutState` are module-level; `generateAutoSchedule` stays in the handler because it needs the full `campaign` object):
 ```ts
-    // ── Wallet-first: ONE money step for every payout ──────────────────────────────────────────────
-    // Credit the pending wallet ATOMICALLY with the durable marker (row-locked inside the RPC): concurrent
-    // invocations cannot double-credit — exactly one credits + marks, the rest return 'already'. On error the
-    // RPC's tx rolls back entirely (no partial credit, no marker) → safe to retry.
-    const { data: creditResult, error: creditError } = await supabaseClient.rpc('credit_pending_balance_for_payout', {
-      p_collaboration_id: collaborationId,
-      p_user_id: collaboration.creator_id,
-      p_amount: creatorPayout,
+export async function applyWalletFirstPayout(d: WalletFirstDeps): Promise<{ status: number; body: Record<string, unknown> }> {
+  const { supabase, stripe, collaborationId, campaignId, creatorId, callerId, creatorPayout, stripeAccountId, creatorPayoutReady } = d;
+
+  // Credit the pending wallet ATOMICALLY with the durable marker (row-locked inside the RPC): concurrent
+  // invocations cannot double-credit — exactly one credits + marks, the rest return 'already'. On error the
+  // RPC's tx rolls back entirely (no partial credit, no marker) → safe to retry.
+  const { data: creditResult, error: creditError } = await supabase.rpc('credit_pending_balance_for_payout', {
+    p_collaboration_id: collaborationId, p_user_id: creatorId, p_amount: creatorPayout,
+  });
+  if (creditError) throw new Error(`Failed to credit pending balance: ${creditError.message}`);
+  const alreadyCredited = creditResult === 'already';
+
+  // Ledger — only when THIS call actually credited (skip on a concurrent-race 'already').
+  // Collaboration-keyed: payment_released decrements business In Escrow; payout_pending_wallet is the
+  // creator "earned" signal. (The wallet→Stripe transfer_created is written user-keyed by the flush.)
+  if (!alreadyCredited) {
+    const amountCents = Math.round(creatorPayout * 100);
+    const events = [
+      { event_type: 'content_approved', actor_id: callerId ?? undefined, actor_role: 'business' as const },
+      { event_type: 'payment_release_initiated', actor_role: 'system' as const, amount_cents: amountCents, metadata: { destination: stripeAccountId } },
+      { event_type: 'payment_released', actor_id: creatorId, actor_role: 'creator' as const, amount_cents: amountCents },
+      { event_type: 'payout_pending_wallet', actor_id: creatorId, actor_role: 'creator' as const, amount_cents: amountCents, metadata: { reason: creatorPayoutReady ? 'flushing_to_stripe' : 'creator_onboarding_incomplete' } },
+    ];
+    for (const ev of events) {
+      try { await writePaymentEvent(supabase, { entity_type: 'collaboration', entity_id: collaborationId, campaign_id: campaignId, ...ev }, '[RELEASE-CREATOR-PAYOUT]'); }
+      catch (auditErr) { console.error('Payment event logging failed (non-blocking):', auditErr); }
+    }
+  }
+
+  // Best-effort exactly-once flush to Stripe if the creator can receive payouts NOW. The wallet credit is
+  // already durable; a flush failure leaves the money SAFELY in the wallet (reconcile-pending-flushes + the
+  // webhook/poll triggers heal it). verifyPayoutReady (not the flush's own onboarding-flag check) is the
+  // "flush now?" decision, so a stale-false flag doesn't wrongly hold the money — the heal in the handler set
+  // stripe_onboarding_complete=true before this, so the flush's internal check now passes.
+  if (creatorPayoutReady && stripeAccountId) {
+    try { await flushPendingBalance(stripe, supabase, stripeAccountId); }
+    catch (flushErr) { console.error('[RELEASE-CREATOR-PAYOUT] flush failed (money safe in wallet; reconcile will retry):', flushErr); }
+  }
+
+  // Finalize DB state (retried). Wallet credit + marker are committed atomically → re-invocation is
+  // finalize-only (early re-entry guard), so a persistent finalize failure can safely surface for retry.
+  const finalized = await finalizePayoutState(supabase, collaborationId, campaignId);
+  if (!finalized) {
+    console.error('Credited + marked but finalize failed after retries — surfacing for retry.', { collaborationId });
+    return { status: 500, body: { success: false, needsRetry: true, error: 'finalize_failed' } };
+  }
+  return { status: 200, body: { success: true, amount: creatorPayout, method: creatorPayoutReady ? 'wallet_flush' : 'pending_balance' } };
+}
+```
+The handler call site (replaces the deleted fork):
+```ts
+    const result = await applyWalletFirstPayout({
+      supabase: supabaseClient, stripe,
+      collaborationId, campaignId: campaign.id, creatorId: collaboration.creator_id,
+      callerId: callerId ?? null, creatorPayout,
+      stripeAccountId: creatorProfile.stripe_account_id ?? null, creatorPayoutReady,
     });
-    if (creditError) {
-      throw new Error(`Failed to credit pending balance: ${creditError.message}`);
+    if (result.status === 200) {
+      try { await generateAutoSchedule(supabaseClient, campaign, collaboration.creator_id); }
+      catch (scheduleError) { logStep('Auto-schedule generation failed (non-blocking)', { error: scheduleError instanceof Error ? scheduleError.message : String(scheduleError) }); }
     }
-    const alreadyCredited = creditResult === 'already';
-    logStep(alreadyCredited ? 'Pending balance already credited (re-entry)' : 'Credited pending balance', {
-      added: alreadyCredited ? 0 : creatorPayout,
-    });
-
-    // Ledger — only when THIS call actually credited (skip on a concurrent-race 'already').
-    // Collaboration-keyed: payment_released decrements business In Escrow; payout_pending_wallet is the
-    // creator "earned" signal. (The wallet→Stripe transfer_created is written user-keyed by the flush.)
-    if (!alreadyCredited) {
-      const amountCents = Math.round(creatorPayout * 100);
-      const events = [
-        { event_type: 'content_approved', actor_id: callerId ?? undefined, actor_role: 'business' as const },
-        { event_type: 'payment_release_initiated', actor_role: 'system' as const, amount_cents: amountCents, metadata: { destination: creatorProfile.stripe_account_id } },
-        { event_type: 'payment_released', actor_id: collaboration.creator_id, actor_role: 'creator' as const, amount_cents: amountCents },
-        { event_type: 'payout_pending_wallet', actor_id: collaboration.creator_id, actor_role: 'creator' as const, amount_cents: amountCents, metadata: { reason: creatorPayoutReady ? 'flushing_to_stripe' : 'creator_onboarding_incomplete' } },
-      ];
-      for (const ev of events) {
-        try {
-          await writePaymentEvent(supabaseClient, { entity_type: 'collaboration', entity_id: collaborationId, campaign_id: campaign.id, ...ev }, '[RELEASE-CREATOR-PAYOUT]');
-        } catch (auditErr) {
-          console.error('Payment event logging failed (non-blocking):', auditErr);
-        }
-      }
-    }
-
-    // Best-effort exactly-once flush to Stripe if the creator can receive payouts NOW. The wallet credit is
-    // already durable; a flush failure leaves the money SAFELY in the wallet (reconcile-pending-flushes +
-    // the webhook/poll triggers heal it). verifyPayoutReady (not the flush's own onboarding-flag check) is
-    // the "flush now?" decision, so a stale-false flag doesn't wrongly hold the money — the heal above set
-    // stripe_onboarding_complete=true, so the flush's internal check now passes.
-    if (creatorPayoutReady && creatorProfile.stripe_account_id) {
-      try {
-        await flushPendingBalance(stripe, supabaseClient, creatorProfile.stripe_account_id);
-      } catch (flushErr) {
-        console.error('[RELEASE-CREATOR-PAYOUT] flush failed (money safe in wallet; reconcile will retry):', flushErr);
-      }
-    }
-
-    // Finalize DB state (retried). Wallet credit + marker are committed atomically → re-invocation is
-    // finalize-only (early re-entry guard), so a persistent finalize failure can safely surface for retry.
-    const finalized = await finalizePayoutState(supabaseClient, collaborationId, campaign.id);
-    if (!finalized) {
-      console.error('Credited + marked but finalize failed after retries — surfacing for retry (re-entry is finalize-only; reconciliation heals).', { collaborationId });
-      return new Response(JSON.stringify({ success: false, needsRetry: true, error: 'finalize_failed' }), {
-        headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 500,
-      });
-    }
-
-    try {
-      await generateAutoSchedule(supabaseClient, campaign, collaboration.creator_id);
-    } catch (scheduleError) {
-      logStep('Auto-schedule generation failed (non-blocking)', { error: scheduleError instanceof Error ? scheduleError.message : String(scheduleError) });
-    }
-
-    return new Response(JSON.stringify({
-      success: true,
-      amount: creatorPayout,
-      method: creatorPayoutReady ? 'wallet_flush' : 'pending_balance',
-    }), {
-      headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 200,
-    });
+    return new Response(JSON.stringify(result.body), { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: result.status });
 ```
 Then **delete** the now-unused `markTransferExecuted` helper (~line 158) and confirm no remaining reference to `stripe.transfers.create`, `markTransferExecuted`, `payout_${collaborationId}`, `escrow_status: 'releasing'`, or `manualReconciliation` in this file (grep to be sure). `verifyPayoutReady`/`finalizePayoutState`/`flushPendingBalance` remain imported/used; remove any import left unused after the deletion.
 
@@ -174,18 +178,22 @@ function computeCreatorStats(events: PaymentEvent[], pendingBalanceCents: number
 
 - [ ] **Step 4: Implement `useCreatorEarnings.ts`.** Change the earned query from `.in('event_type', ['payment_released', 'payout_pending_wallet'])` to `.in('event_type', ['payout_pending_wallet', 'transfer_created'])` (still `.in('entity_id', collabIds).eq('entity_type', 'collaboration')` — that scoping already excludes user-keyed wallet transfers, so no `metadata.type` filter is needed here). Keep `inEscrow`/`available` unchanged. This drops `payment_released` from the earned sum (which now fires on every payout and would double-count).
 
-- [ ] **Step 5: Implement `PaymentsPage.tsx`.** It already fetches `payment_events` and renders `<PaymentSummaryCards events={…} userRole={…} />`. Add a `pending_balance` source and pass it as cents. Reuse the single source (`useCreatorEarnings`) to avoid drift:
+- [ ] **Step 5: Implement `PaymentsPage.tsx`.** It renders `<PaymentSummaryCards events={allEvents} userRole={role} />` and does NOT import `useCreatorEarnings`. **Read the file first** — it uses `user` (`user?.id`) and `role` (not `userId`/`userRole`), so wire with the real names. Add the single-source wallet value (gate the hook on the creator role so business/brand users don't fire an unused `check-creator-payout-status` invoke):
 ```tsx
-const { data: earnings } = useCreatorEarnings(userId);   // its `available` is dollars
-// …
-<PaymentSummaryCards events={allEvents} userRole={userRole}
+import { useCreatorEarnings } from '@/hooks/useCreatorEarnings';
+// …inside the component:
+const { data: earnings } = useCreatorEarnings(role === 'creator' ? user?.id : undefined);   // `available` is dollars
+// …in the render:
+<PaymentSummaryCards events={allEvents} userRole={role}
   pendingBalanceCents={Math.round((earnings?.available ?? 0) * 100)} />
 ```
-  (Read the actual `PaymentsPage` first — confirm how `userId`/`userRole`/`allEvents` are obtained and whether `useCreatorEarnings` is already imported; wire minimally.)
+  `useCreatorEarnings` already short-circuits when its `userId` arg is falsy (`enabled: !!userId`), so passing `undefined` for non-creators is a clean no-op.
 
-- [ ] **Step 6: Run tests — verify pass** (`npx vitest run src/components/payments/PaymentSummaryCards.test.tsx`) and **`npm run typecheck` + `npm run build`** (the push gate). All clean.
+- [ ] **Step 6: Note the tab-classification consequence (verify, don't necessarily change).** `PaymentsPage` groups a collaboration into "Completed" when its latest event type is in `terminalTypes` (`transfer_created`/`payout_completed`/`refund_completed`/`dispute_resolved`). After the reroute an onboarded payout no longer writes a collaboration-keyed `transfer_created`, so its collaboration now ends on `payout_pending_wallet` → it renders under **"Active"**, not "Completed" (same as how pending-path payouts already behave — not a new bug class, but a visible change for onboarded creators). Decide during implementation: either accept it (document in the PR) OR add `'payout_pending_wallet'` to `terminalTypes` so a paid collaboration reads as Completed. This is a UX/classification call, not a money-safety one; confirm the chosen behavior in the Task 3 prod verify.
 
-- [ ] **Step 7: Commit.** `git add src/ && git commit -m "feat(payout): reconcile Total Earned rule + In Wallet from pending_balance across the 3 readers"`
+- [ ] **Step 7: Run tests — verify pass** (`npx vitest run src/components/payments/PaymentSummaryCards.test.tsx`) and **`npm run typecheck` + `npm run build`** (the push gate). All clean.
+
+- [ ] **Step 8: Commit.** `git add src/ && git commit -m "feat(payout): reconcile Total Earned rule + In Wallet from pending_balance across the 3 readers"`
 
 ---
 
