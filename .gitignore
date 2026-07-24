@@ -28,6 +28,8 @@ sim/.session-pool.json
 sim/.session-pool.json.*.tmp
 sim/*.session-pool.json
 sim/*.session-pool.json.*.tmp
+# Synthetic Weight harness — per-run load-findings QA artifact (a run output, not source)
+sim/.load-findings.json
 
 # Editor directories and files
 .vscode/*

@@ -11,6 +11,7 @@
 // SYNTHETIC_BOTS_ENABLED === true, fail-closed). Output uses console.warn/error (no-console
 // lint allows only those).
 
+import { writeFileSync } from "node:fs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { serviceClient, botClient } from "./clients";
 import { assertRuntimeBootSafety, type MinimalSupabaseClient } from "./env";
@@ -19,10 +20,11 @@ import { mintBot, readCohort } from "./mint";
 import { planSeed, generateActiveCohort, assertActiveNamespaceFree } from "./seed";
 import { SessionPool } from "./session-pool";
 import { planDay, runDay } from "./behavior/graph";
+import { parseRamp, runLoad, type LoadFindingsArtifact } from "./load/driver";
 import type { ActionContext } from "./behavior/actions";
 import type { BotRef, CohortState } from "./types";
 
-const COMMANDS = ["dry-run", "mint", "tick", "purge", "bulk-seed"] as const;
+const COMMANDS = ["dry-run", "mint", "tick", "purge", "bulk-seed", "load"] as const;
 type Command = (typeof COMMANDS)[number];
 
 export interface Args {
@@ -34,9 +36,22 @@ export interface Args {
   active: number;
   /** bulk-seed: creator fraction (0..1) for both the depth RPC and the active cohort. */
   creatorSplit: number;
+  /** load: ramp spec — "start/max/factor" (e.g. 50/1500/2.5) or a comma list "50,200,500". */
+  ramp: string;
+  /** load: how long to hold each ramp step (ms). */
+  holdMs: number;
+  /** load: sim_load_snapshots run label for this ramp. */
+  runLabel: string;
 }
 
 const CREATOR_SPLIT = 0.65;
+const RAMP_DEFAULT = "50/1500/2.5";
+const HOLD_MS_DEFAULT = 15_000;
+const RUN_LABEL_DEFAULT = "load";
+/** Minimum spacing between capture_sim_load_snapshot samples within a ramp step. */
+const SAMPLE_EVERY_MS = 5_000;
+/** Gitignored per-run QA artifact (mirrors sim/.session-pool.json's relative-path convention). */
+const FINDINGS_PATH = "sim/.load-findings.json";
 const EMPTY_STATE: CohortState = { bots: [], crews: [], campaigns: [], applications: [], collaborations: [] };
 
 const floorFor = (n: number): number => Math.max(20, n);
@@ -73,7 +88,7 @@ export function parseArgs(argv: string[]): Args {
   const command = argv.find((a) => !a.startsWith("--"));
   if (!command || !(COMMANDS as readonly string[]).includes(command)) {
     throw new Error(
-      `Usage: cli.ts <${COMMANDS.join("|")}> [--n 25] [--cohort phase1] [--seed 1] [--active 25] [--creator-split 0.65]`,
+      `Usage: cli.ts <${COMMANDS.join("|")}> [--n 25] [--cohort phase1] [--seed 1] [--active 25] [--creator-split 0.65] [--ramp 50/1500/2.5] [--hold-ms 15000] [--run-label load]`,
     );
   }
   const flag = (name: string): string | undefined => {
@@ -87,6 +102,9 @@ export function parseArgs(argv: string[]): Args {
     seed: safeInt(flag("seed"), 1),
     active: safeInt(flag("active"), 25),
     creatorSplit: safeFloat(flag("creator-split"), CREATOR_SPLIT),
+    ramp: flag("ramp") ?? RAMP_DEFAULT,
+    holdMs: safeInt(flag("hold-ms"), HOLD_MS_DEFAULT),
+    runLabel: flag("run-label") ?? RUN_LABEL_DEFAULT,
   };
 }
 
@@ -261,6 +279,89 @@ async function cmdPurge(): Promise<void> {
   }
 }
 
+/**
+ * load: drive concurrent, ramped, read-heavy hot-endpoint load to the saturation KNEE (not an
+ * outage), sampling capture_sim_load_snapshot per step and COLLECTING every breakage across the run
+ * (the QA deliverable) into sim/.load-findings.json. Reuses the cross-tick session pool; pre-warms
+ * every bot's token SERIALLY before the burst so the high-concurrency phase only reuses fresh
+ * in-memory tokens and never trips the pool's per-bot refresh race. Sets a non-zero exit code iff a
+ * breakage occurred — but only AFTER the findings are collected + written (never aborts on the first).
+ */
+async function cmdLoad(args: Args): Promise<void> {
+  const svc = serviceClient();
+  await bootGate(svc);
+  const state = await readCohort(svc);
+  const activeBots = state.bots;
+  // An empty cohort must fail loud, not silently apply zero load (mirrors cmdTick's contract).
+  if (activeBots.length === 0) {
+    throw new Error("[load] no synthetic cohort found — run `mint` or `bulk-seed` first.");
+  }
+  const botFor = makeBotFor(activeBots);
+
+  // Pre-warm the pool SERIALLY: tokens last ~1h and a ramp holds minutes, so every task in the burst
+  // reuses an already-fresh in-memory token — the high-concurrency phase never mints/refreshes (which
+  // is what would race the rotated refresh token). A mint failure here fails loud BEFORE any load.
+  for (const b of activeBots) {
+    await botFor(b.userId);
+  }
+
+  const ramp = parseRamp(args.ramp);
+
+  const captureSnapshot = async (
+    runLabel: string,
+    errorRate: number,
+    notes: Record<string, unknown>,
+  ): Promise<void> => {
+    const { error } = await svc.rpc("capture_sim_load_snapshot", {
+      p_run_label: runLabel,
+      p_error_rate: errorRate,
+      p_notes: notes,
+    });
+    // A snapshot is observability, not the load itself — a failed sample must not abort the ramp.
+    if (error) console.warn(`[load] snapshot failed: ${error.message}`);
+  };
+
+  const writeFindings = async (artifact: LoadFindingsArtifact): Promise<void> => {
+    writeFileSync(FINDINGS_PATH, JSON.stringify(artifact, null, 2), "utf8");
+  };
+
+  console.warn(
+    `[load] ramp=[${ramp.join(", ")}] hold=${args.holdMs}ms label='${args.runLabel}' cohort=${activeBots.length}`,
+  );
+  const result = await runLoad({
+    rampSteps: ramp,
+    holdMs: args.holdMs,
+    sampleEveryMs: SAMPLE_EVERY_MS,
+    runLabel: args.runLabel,
+    botFor,
+    activeUserIds: activeBots.map((b) => b.userId),
+    captureSnapshot,
+    writeFindings,
+  });
+
+  for (const s of result.steps) {
+    const m = s.metrics;
+    console.warn(
+      `[load] c=${s.concurrency} n=${m.count} ok=${m.ok} throttle=${m.throttled} breakage=${m.breakage} err=${(m.errorRate * 100).toFixed(1)}% p50=${m.p50Ms}ms p95=${m.p95Ms}ms${s.knee ? " ← KNEE" : ""}`,
+    );
+  }
+  if (result.stoppedAtKnee) {
+    console.warn(`[load] stopped at saturation knee (concurrency=${result.kneeConcurrency}) — knee, not outage.`);
+  }
+  console.warn(
+    `[load] findings: ${result.breakageCount} breakage event(s) across ${result.breakages.length} signature(s) → ${FINDINGS_PATH}`,
+  );
+  for (const b of result.breakages.slice(0, 20)) {
+    console.error(`  ✗ ${b.endpoint} [${b.status ?? "?"}] ${b.error} (x${b.count}, first@c=${b.firstSeenConcurrency})`);
+  }
+  // Collect-all, THEN fail: the artifact + snapshots are already written, so CI still goes red on a
+  // breakage without losing the batch. NOT a throw — the deliverables are done; a throw would read as
+  // an aborted run and skip the "wrote findings" summary above.
+  if (result.breakageCount > 0) {
+    process.exitCode = 1;
+  }
+}
+
 export async function main(argv: string[]): Promise<void> {
   const args = parseArgs(argv);
   switch (args.command) {
@@ -278,6 +379,9 @@ export async function main(argv: string[]): Promise<void> {
       return;
     case "purge":
       await cmdPurge();
+      return;
+    case "load":
+      await cmdLoad(args);
       return;
   }
 }
