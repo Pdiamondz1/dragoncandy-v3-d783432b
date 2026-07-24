@@ -27,7 +27,7 @@ export function usePaymentNotifications(
 
     for (const event of newEvents) {
       seenIds.current.add(event.id);
-      const message = getPaymentMessage(userRole, event.event_type);
+      const message = getPaymentMessage(userRole, event.event_type, event.metadata);
       if (message) {
         toast({
           title: message.title,

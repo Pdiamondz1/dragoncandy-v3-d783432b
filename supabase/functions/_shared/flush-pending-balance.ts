@@ -201,6 +201,7 @@ export async function flushPendingBalance(
   stripe: Stripe,
   supabase: SupabaseClient,
   stripeAccountId: string,
+  opts?: { assumeReady?: boolean },
 ): Promise<{ flushed: boolean; amount: number; transferId?: string }> {
   if (!stripeAccountId) return { flushed: false, amount: 0 };
 
@@ -222,7 +223,13 @@ export async function flushPendingBalance(
 
   if (!table || !row) return { flushed: false, amount: 0 };
 
-  const ready = row.stripe_onboarding_complete === true;
+  // assumeReady lets a caller that has ALREADY verified payout-readiness authoritatively (e.g.
+  // release-creator-payout's verifyPayoutReady Stripe check) flush WITHOUT re-checking the CACHED
+  // stripe_onboarding_complete flag — which can be stale-false (the account.updated webhook that sets it
+  // isn't delivering) and whose caller-side self-heal write we can't guarantee is visible on this re-read.
+  // Without it, a genuinely-ready payout could no-op the flush and leave the money parked in the wallet
+  // while the payout reports success. Stripe still enforces real readiness at transfer time.
+  const ready = opts?.assumeReady === true || row.stripe_onboarding_complete === true;
   const pending = row.pending_balance ?? 0;
   if (!ready || pending <= 0) return { flushed: false, amount: 0 };
 

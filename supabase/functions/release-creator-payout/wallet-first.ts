@@ -112,7 +112,10 @@ export async function applyWalletFirstPayout(d: WalletFirstDeps): Promise<{ stat
   // flush's internal check now passes too.
   if (creatorPayoutReady && stripeAccountId) {
     try {
-      await flushPendingBalance(stripe, supabase, stripeAccountId);
+      // assumeReady: the handler already verified readiness via verifyPayoutReady (a live Stripe check), so
+      // don't let flushPendingBalance's re-read of the CACHED stripe_onboarding_complete flag (possibly
+      // stale-false, self-heal not guaranteed visible) no-op a genuinely-ready payout into the wallet.
+      await flushPendingBalance(stripe, supabase, stripeAccountId, { assumeReady: true });
     } catch (flushErr) {
       console.error("[RELEASE-CREATOR-PAYOUT] flush failed (money safe in wallet; reconcile will retry):", flushErr);
     }
