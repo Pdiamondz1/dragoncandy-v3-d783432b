@@ -21,7 +21,7 @@ on:
   workflow_dispatch:
     inputs:
       shards:
-        description: "Shard count (= the ramp knob; capped at max_shards below)"
+        description: "Shard count (2..MAX_SHARDS; a matrix needs ≥2 — use the `load` command for single-runner)"
         default: "5"
       concurrency:
         description: "Fixed egress-safe concurrency C held per shard"
@@ -59,12 +59,15 @@ jobs:
         run: |
           set -euo pipefail
           # Fail loud on a non-integer / out-of-range shard count — never silently run a degenerate
-          # 0-shard (no load) or an unbounded fan-out that would blow the per-IP session budget.
+          # count or an unbounded fan-out that would blow the per-IP session budget.
           case "$SHARDS" in
             ''|*[!0-9]*) echo "::error::shards must be a positive integer (got '$SHARDS')"; exit 1 ;;
           esac
-          if [ "$SHARDS" -lt 1 ] || [ "$SHARDS" -gt "$MAX_SHARDS" ]; then
-            echo "::error::shards $SHARDS out of range 1..$MAX_SHARDS (raise MAX_SHARDS deliberately)"; exit 1
+          # A MATRIX needs ≥2 shards: sim/run.ts planLoad routes shards<=1 to the SINGLE-RUNNER path
+          # (reads the live cohort, no notes.shard, no in-soak kill-switch), which the summary RPC
+          # cannot aggregate. For single-runner load use the `load` command / synthetic-weight.yml.
+          if [ "$SHARDS" -lt 2 ] || [ "$SHARDS" -gt "$MAX_SHARDS" ]; then
+            echo "::error::shards $SHARDS out of range 2..$MAX_SHARDS (a matrix needs ≥2; single-runner is the \`load\` command)"; exit 1
           fi
           arr=$(seq 0 $((SHARDS - 1)) | paste -sd, -)
           echo "matrix=[$arr]" >> "$GITHUB_OUTPUT"
@@ -98,7 +101,11 @@ jobs:
           SIM_SHARDS: ${{ inputs.shards }}
           SIM_CONCURRENCY: ${{ inputs.concurrency }}
           SIM_SOAK_MS: ${{ inputs.soak_ms }}
-          SIM_RUN_LABEL: ${{ inputs.run_label }}
+          # Suffix the operator's label with this run's id (+attempt) so EVERY dispatch is a distinct
+          # run_label. get_sim_load_matrix_summary groups solely by run_label (latest row per shard);
+          # a reused label would let an earlier run's shards leak into a later, smaller run's summary.
+          # All shards of ONE dispatch share github.run_id, so they still aggregate together.
+          SIM_RUN_LABEL: ${{ format('{0}-{1}.{2}', inputs.run_label, github.run_id, github.run_attempt) }}
         # Local, lockfile-pinned tsx (installed by `npm ci`) — never `npx --yes tsx`, which would
         # execute an unpinned registry package in the same step the prod secrets are exported.
         run: >

@@ -184,21 +184,27 @@ gh workflow run synthetic-load-matrix.yml \
   -f shards=5 -f concurrency=200 -f soak_ms=1800000 -f run_label="matrix-<date>"
 # each shard holds a fixed egress-safe C=200 on its own IP for the soak; 5 shards ≈ 1000 offered.
 ```
+- **A matrix needs ≥2 shards** — the workflow rejects `shards<2` (a 1-shard run is the SINGLE-runner
+  path, which the summary RPC can't aggregate; use the `load` command / `synthetic-weight.yml` for that).
 - **Ramp = step the shard count** (2 → 5 → 10, capped at the workflow's `MAX_SHARDS`). Keep C per shard
   at/below the single-IP egress-safe ceiling (~200); the concurrency you're proving is `shards × C`.
+- **The effective `run_label` is unique per dispatch** — the workflow suffixes your label with the GH
+  run id (`<run_label>-<run_id>.<attempt>`) so a re-used label never mixes two runs in the summary.
 - **Kill switch drains mid-soak:** flip `SYNTHETIC_BOTS_ENABLED` off in prod `feature_flags` and every
   in-flight shard stops within a snapshot cycle (the `isEnabled` re-check) — no `gh run cancel` needed.
 - Each shard uploads its `sim/.load-findings.json` as `findings-shard-<n>`.
 
-**3) Read the summed result:**
+**3) Read the summed result.** `/internal/simulation` renders the summed row ("Matrix run (summed)")
+for the LATEST `matrix-*` run automatically — the simplest read. For SQL, discover this run's effective
+label first (it carries the run-id suffix), then summarize it:
 ```sql
-select public.get_sim_load_matrix_summary('matrix-<date>');
+select distinct run_label from sim_load_snapshots where run_label like 'matrix-%' order by run_label desc;
+select public.get_sim_load_matrix_summary('<effective-run-label>');
 --  → {shards, offered_concurrency, requests, ok, breakage, throttled, p95_ms,
 --     media_requests, media_bytes, storage_bytes, db_active_conn_peak, db_avg_query_ms_peak, max_connections}
 ```
-`/internal/simulation` renders the same summed row ("Matrix run (summed)"). The DB ceiling shows as
-`db_active_conn_peak` approaching `max_connections` with rising `db_avg_query_ms_peak` — that (not the
-single-IP egress wall) is the number the matrix exists to find.
+The DB ceiling shows as `db_active_conn_peak` approaching `max_connections` with rising
+`db_avg_query_ms_peak` — that (not the single-IP egress wall) is the number the matrix exists to find.
 
 **4) Teardown** = §7 (prefer `select public.purge_synthetic_load_cohort();` — it spares the live 25 and
 leaf-deletes the synthetic `push_notifications`/crew/telemetry residue the write legs create). **Never
