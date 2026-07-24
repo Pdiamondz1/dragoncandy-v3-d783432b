@@ -139,6 +139,10 @@ export interface StepMetrics {
   breakageRate: number;
   p50Ms: number;
   p95Ms: number;
+  /** Media-egress proxy (Task 4.2): media requests fired + Σ transferred/declared bytes this step.
+   *  Optional in the type (older literals omit them) but ALWAYS populated by runLoad. */
+  mediaRequests?: number;
+  mediaBytes?: number;
 }
 
 export interface KneeThresholds {
@@ -289,13 +293,30 @@ export function foldBreakages(events: BreakageEvent[], seed: BreakageSignature[]
 
 // ── Hot actions (realistic read-heavy DAU endpoints) ──────────────────────────────────────────────
 
-/** One hot endpoint a bot's RLS permits. `run` MUST throw on the query's `error` so the driver
- *  can classify + collect it (supabase-js returns `{ error }`, it does not throw). */
+/** A media action's return: the transferred/declared byte count for the egress proxy (Task 4.2).
+ *  Any non-void object return marks the call as a media request (an `isMedia` flag), so a legit
+ *  0-byte / HEAD response still counts as one request — the count is object-ness, not bytes>0. */
+export interface MediaResult {
+  bytes?: number;
+}
+
+/** Per-task identity handed to a HotAction's `run`: the acting bot (`selfId`, whose JWT the `client`
+ *  carries) and a distinct synthetic cohort peer (`peerId`). The driver draws both from the active
+ *  cohort, so a write action's own-row inserts (user_id = selfId) are RLS-real and a bot→bot
+ *  notification recipient (peerId) is ALWAYS another synthetic bot — never a real user. */
+export interface HotActionContext {
+  selfId: string;
+  peerId: string;
+}
+
+/** One hot endpoint a bot's RLS permits. `run` MUST throw on the query's `error` so the driver can
+ *  classify + collect it (supabase-js returns `{ error }`, it does not throw). A read returns `void`;
+ *  a media action returns `{ bytes }` (Task 4.2). `ctx` is additive — read actions ignore it. */
 export interface HotAction {
   name: string;
   /** Relative selection weight (reads dominate ~90%). */
   weight: number;
-  run: (client: SupabaseClient) => Promise<void>;
+  run: (client: SupabaseClient, ctx: HotActionContext) => Promise<MediaResult | void>;
 }
 
 /** Throw the supabase query error (carrying its PG code) so the driver's classifier can read it. */
@@ -453,6 +474,10 @@ interface TaskOutcome {
   kind: "ok" | "throttle" | "breakage";
   status: number | null;
   error: string;
+  /** True when the action returned a non-void object (a media request — Task 4.2). */
+  isMedia: boolean;
+  /** Bytes reported by a media action (0 for reads / HEAD-style empty returns). */
+  bytes: number;
 }
 
 /** Weighted random pick over a non-empty action list (falls back to the first on a degenerate rng). */
@@ -467,21 +492,37 @@ function pickWeighted(actions: HotAction[], rng: () => number): HotAction {
   return actions[actions.length - 1];
 }
 
-/** Run ONE hot-endpoint call as a random active bot, isolating + classifying any error. */
+/** Pick a synthetic cohort PEER distinct from `selfId` when the cohort has >1 bot (falls back to
+ *  selfId for a singleton). Used for bot→bot writes (e.g. a notification recipient) so the target is
+ *  always another synthetic bot, never a real user. */
+function pickPeer(activeUserIds: string[], selfId: string, rng: () => number): string {
+  if (activeUserIds.length <= 1) return selfId;
+  for (let tries = 0; tries < 4; tries++) {
+    const peer = activeUserIds[Math.floor(rng() * activeUserIds.length)];
+    if (peer !== selfId) return peer;
+  }
+  return activeUserIds.find((u) => u !== selfId) ?? selfId;
+}
+
+/** Run ONE hot-endpoint call as a random active bot, isolating + classifying any error. Captures the
+ *  media-egress signal: `isMedia` = the action returned a non-void object; `bytes` = its byte count. */
 async function runOneTask(
   deps: Required<Pick<RunLoadDeps, "botFor" | "activeUserIds">> & { actions: HotAction[]; rng: () => number; now: () => number },
 ): Promise<TaskOutcome> {
   const { activeUserIds, botFor, actions, rng, now } = deps;
   const userId = activeUserIds[Math.floor(rng() * activeUserIds.length)];
+  const ctx: HotActionContext = { selfId: userId, peerId: pickPeer(activeUserIds, userId, rng) };
   const action = pickWeighted(actions, rng);
   const startedAt = now();
   try {
     const client = await botFor(userId);
-    await action.run(client);
-    return { ok: true, ms: now() - startedAt, endpoint: action.name, kind: "ok", status: null, error: "" };
+    const res = await action.run(client, ctx);
+    const isMedia = typeof res === "object" && res !== null;
+    const bytes = isMedia && typeof (res as MediaResult).bytes === "number" ? (res as MediaResult).bytes! : 0;
+    return { ok: true, ms: now() - startedAt, endpoint: action.name, kind: "ok", status: null, error: "", isMedia, bytes };
   } catch (err) {
     const c = classifyError(err);
-    return { ok: false, ms: now() - startedAt, endpoint: action.name, kind: c.kind, status: c.status, error: c.message };
+    return { ok: false, ms: now() - startedAt, endpoint: action.name, kind: c.kind, status: c.status, error: c.message, isMedia: false, bytes: 0 };
   }
 }
 
@@ -512,6 +553,8 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
     let ok = 0;
     let throttled = 0;
     let breakage = 0;
+    let mediaReq = 0; // media-egress proxy: count of media requests this step (Task 4.2)
+    let mediaBytes = 0; // Σ transferred/declared bytes this step
     const stepStart = now();
     let lastSampleAt = -Infinity; // guarantees the first wave of each step samples once
 
@@ -542,6 +585,8 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
               ok,
               throttled,
               breakage,
+              media_requests: mediaReq,
+              media_bytes: mediaBytes,
               p50_ms: percentile(latencies, 50),
               p95_ms: percentile(latencies, 95),
             });
@@ -553,6 +598,8 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
 
       for (const o of outcomes) {
         latencies.push(o.ms);
+        if (o.isMedia) mediaReq += 1;
+        mediaBytes += o.bytes;
         if (o.ok) ok += 1;
         else if (o.kind === "throttle") throttled += 1;
         else {
@@ -581,6 +628,8 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
       breakageRate: count > 0 ? round4(breakage / count) : 0,
       p50Ms: percentile(latencies, 50),
       p95Ms: percentile(latencies, 95),
+      mediaRequests: mediaReq,
+      mediaBytes,
     };
     const knee = isKnee(metrics, prevMetrics, thresholds);
     results.push({ concurrency, metrics, knee });

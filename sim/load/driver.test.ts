@@ -258,6 +258,52 @@ describe("runLoad — collects breakages across the run (does NOT abort on the f
   });
 });
 
+// ── runLoad — media-egress proxy (Task 4.2: per-step request count + Σ bytes) ─────────────────────────
+describe("runLoad — media-egress proxy tally (request count + transferred bytes)", () => {
+  const captured: Record<string, unknown>[] = [];
+  const baseDeps = () => ({
+    rampSteps: [3], // one wave of 3 tasks
+    holdMs: 0,
+    sampleEveryMs: 1000,
+    runLabel: "media",
+    botFor: async () => ({}) as unknown as SupabaseClient,
+    activeUserIds: ["u1", "u2", "u3"],
+    captureSnapshot: async (_l: string, _r: number, notes: Record<string, unknown>) => {
+      captured.push(notes);
+    },
+    writeFindings: async () => {},
+    now: () => 0,
+  });
+
+  it("counts each media call (isMedia = returned a non-void object) and sums its bytes", async () => {
+    captured.length = 0;
+    // A media action RETURNS { bytes } — every task this step is a media call of 1000 bytes.
+    const media: HotAction = { name: "media_fetch", weight: 1, run: async () => ({ bytes: 1000 }) };
+    const result = await runLoad({ ...baseDeps(), actions: [media] });
+    expect(result.steps[0].metrics.mediaRequests).toBe(3);
+    expect(result.steps[0].metrics.mediaBytes).toBe(3000);
+    // The snapshot notes carry the media keys (cumulative-so-far, like count/ok) for the aggregation RPC.
+    expect(captured[0]).toHaveProperty("media_requests");
+    expect(captured[0]).toHaveProperty("media_bytes");
+  });
+
+  it("a 0-byte / HEAD-style object return still counts as ONE request (isMedia is object-ness, not bytes>0)", async () => {
+    captured.length = 0;
+    const emptyMedia: HotAction = { name: "media_head", weight: 1, run: async () => ({}) };
+    const result = await runLoad({ ...baseDeps(), actions: [emptyMedia] });
+    expect(result.steps[0].metrics.mediaRequests).toBe(3); // counted despite 0 bytes
+    expect(result.steps[0].metrics.mediaBytes).toBe(0);
+  });
+
+  it("a void-returning (read) action contributes 0 to both media counters", async () => {
+    captured.length = 0;
+    const read: HotAction = { name: "campaign_browse", weight: 1, run: async () => {} };
+    const result = await runLoad({ ...baseDeps(), actions: [read] });
+    expect(result.steps[0].metrics.mediaRequests).toBe(0);
+    expect(result.steps[0].metrics.mediaBytes).toBe(0);
+  });
+});
+
 describe("runLoad — samples the DB snapshot WHILE the wave is in flight (Codex P1 regression)", () => {
   it("takes the snapshot before any wave task completes (concurrent, not post-drain)", async () => {
     // Every wave task blocks on a gate; the snapshot releases it. So at snapshot time NO task has
