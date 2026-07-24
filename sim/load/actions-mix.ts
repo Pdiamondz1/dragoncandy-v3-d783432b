@@ -174,6 +174,10 @@ export function buildHotActions(opts: BuildMixOptions = {}): HotAction[] {
   const writes: HotAction[] = [
     {
       // Public-free DRAFT campaign write (limit-exempt, invisible to real browse, is_synthetic).
+      // Role-AGNOSTIC by design: the campaigns INSERT policy is `with_check (user_id = auth.uid())`
+      // with NO account-type gate, so a content_creator bot inserts successfully too — verified
+      // 2026-07-24 by a rollback-wrapped insert probe as a synthetic creator under RLS (succeeded).
+      // So this needs no role routing; a creator-owned synthetic draft is harmless + teardown-cleaned.
       name: "campaign_write",
       weight: 4,
       run: async (client: SupabaseClient, ctx: HotActionContext) => {
