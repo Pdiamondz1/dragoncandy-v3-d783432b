@@ -108,36 +108,54 @@ export function parseArgs(argv: string[]): Args {
   };
 }
 
+/** How makeBotFor obtains a bot's current access token — INJECTABLE (default = the real
+ *  cross-tick SessionPool) so offline tests can drive token rotation with zero network. */
+export type BotTokenGetter = (email: string, userId: string) => Promise<string>;
+
 /**
- * Bot-client factory for one tick. Constructs a single cross-tick SessionPool (loaded from disk
- * ONCE here, not per bot) so ticks REUSE/REFRESH each bot's session instead of re-minting one per
- * bot per tick — that re-mint (magiclink + verify, two rate-limited auth calls) is what trips
- * Supabase's per-IP 429 at frequency/scale. The returned closure hands each user a bot-scoped
- * client built on a fresh pooled token; the botClient is still cached per tick so repeated
- * botFor(sameUser) in one tick doesn't rebuild the client (session freshness now comes from the
- * pool, not a per-tick mint).
+ * Bot-client factory for one tick / load run. By default constructs a single cross-tick SessionPool
+ * (loaded from disk ONCE here, not per bot) so runs REUSE/REFRESH each bot's session instead of
+ * re-minting one per bot per tick — that re-mint (magiclink + verify, two rate-limited auth calls)
+ * is what trips Supabase's per-IP 429 at frequency/scale.
+ *
+ * REFRESH-AWARE (soak-safe): the token-getter is consulted on EVERY call — the pool's `reuse` path is
+ * a cheap in-memory no-network hit — and the cached bot client is REBUILT only when the token ROTATES
+ * (a mid-soak refresh returns a new JWT). The old code cached the client for the whole run and never
+ * re-consulted the pool after the first hit, so a hold longer than the ~1h token TTL kept the client
+ * pinned to a frozen, expired JWT → every late request `401 JWT expired` (runbook §3), which the
+ * driver then misclassifies as a breakage. Rebuilding on rotation is what makes a long soak survive.
+ *
+ * The `getToken` param is injectable for tests; production passes none and gets the real pool.
  *
  * Live session-reuse verification — a re-tick showing 0 fresh mints — is done at the FIRST live run,
  * per docs/runbooks/synthetic-load-tier-ramp.md (Task 8). Two `dry-run`s can't exercise it (no
  * network; `dry-run` never constructs a client).
  */
-function makeBotFor(bots: BotRef[]): (userId: string) => Promise<SupabaseClient> {
-  const pool = new SessionPool("sim/.session-pool.json", {
-    url: process.env.SIM_SUPABASE_URL ?? "",
-    anonKey: process.env.SIM_SUPABASE_ANON_KEY ?? "",
-    serviceKey: process.env.SIM_SUPABASE_SECRET_KEY ?? "",
-  });
-  pool.load();
+export function makeBotFor(
+  bots: BotRef[],
+  getToken?: BotTokenGetter,
+): (userId: string) => Promise<SupabaseClient> {
+  const resolveToken: BotTokenGetter =
+    getToken ??
+    (() => {
+      const pool = new SessionPool("sim/.session-pool.json", {
+        url: process.env.SIM_SUPABASE_URL ?? "",
+        anonKey: process.env.SIM_SUPABASE_ANON_KEY ?? "",
+        serviceKey: process.env.SIM_SUPABASE_SECRET_KEY ?? "",
+      });
+      pool.load();
+      return (email, userId) => pool.getToken(email, userId, Date.now());
+    })();
   const emailById = new Map(bots.map((b) => [b.userId, b.email]));
-  const cache = new Map<string, SupabaseClient>();
+  const cache = new Map<string, { token: string; client: SupabaseClient }>();
   return async (userId: string): Promise<SupabaseClient> => {
-    const cached = cache.get(userId);
-    if (cached) return cached;
     const email = emailById.get(userId);
     if (!email) throw new Error(`no session: ${userId} is not in the cohort`);
-    const token = await pool.getToken(email, userId, Date.now());
-    const client = botClient(token);
-    cache.set(userId, client);
+    const token = await resolveToken(email, userId);
+    const hit = cache.get(userId);
+    if (hit && hit.token === token) return hit.client; // still-fresh token → reuse client (no rebuild)
+    const client = botClient(token); // token rotated (refresh/mint) → rebuild on the new JWT
+    cache.set(userId, { token, client });
     return client;
   };
 }

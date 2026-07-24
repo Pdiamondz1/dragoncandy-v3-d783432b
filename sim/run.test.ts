@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { parseArgs, main, nonZeroResiduals } from "./run";
+import { parseArgs, main, nonZeroResiduals, makeBotFor } from "./run";
+import type { BotRef } from "./types";
 
 describe("parseArgs", () => {
   it("parses a full command line", () => {
@@ -50,6 +51,47 @@ describe("nonZeroResiduals (purge teardown assertion)", () => {
     expect(
       nonZeroResiduals({ purged_users: 3, residual_orgs: 2, residual_cost_ledger: 0, note: "x" }),
     ).toEqual([["residual_orgs", 2]]);
+  });
+});
+
+describe("makeBotFor (soak-safe: rebuild the bot client only when the pooled token rotates)", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  const bot: BotRef = {
+    userId: "u1",
+    email: "botla1_1@synthetic.dragoncandy.test",
+    role: "content_creator",
+    personaKey: null,
+    cohort: null,
+  };
+
+  it("reuses the client while the token is unchanged and rebuilds it on rotation", async () => {
+    // botClient() constructs a real (offline) supabase client — it only needs these two env vars.
+    vi.stubEnv("SIM_SUPABASE_URL", "http://localhost:54321");
+    vi.stubEnv("SIM_SUPABASE_ANON_KEY", "anon-test");
+
+    let token = "token-A";
+    let calls = 0;
+    // Injected token-getter (default is the real SessionPool) — simulates the pool's reuse→refresh.
+    const botFor = makeBotFor([bot], async () => {
+      calls += 1;
+      return token;
+    });
+
+    const c1 = await botFor("u1");
+    const c2 = await botFor("u1");
+    expect(c2).toBe(c1); // same token → SAME client (0 rebuilds within a fresh window)
+
+    token = "token-B"; // a mid-soak refresh rotated the token
+    const c3 = await botFor("u1");
+    expect(c3).not.toBe(c1); // rotated token → NEW client bound to the fresh JWT
+
+    expect(calls).toBe(3); // getToken consulted on EVERY call (never a permanent client cache)
+  });
+
+  it("throws for a userId that is not in the cohort", async () => {
+    const botFor = makeBotFor([bot], async () => "tok");
+    await expect(botFor("nope")).rejects.toThrow(/not in the cohort/);
   });
 });
 
