@@ -7,6 +7,7 @@ import { DashboardLayout } from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
 import { PaymentSummaryCards } from "@/components/payments/PaymentSummaryCards";
+import { useCreatorEarnings } from "@/hooks/useCreatorEarnings";
 import { usePaymentNotifications } from "@/hooks/usePaymentNotifications";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +20,10 @@ import type { UserRole as AppUserRole } from "@/types/user";
 type Tab = 'active' | 'completed' | 'issues';
 
 const failureTypes = new Set(['escrow_failed', 'escrow_expired', 'transfer_failed', 'dispute_created']);
-const terminalTypes = new Set(['transfer_created', 'payout_completed', 'refund_completed', 'dispute_resolved']);
+// payout_pending_wallet is terminal for a collaboration: post wallet-first reroute EVERY payout ends the
+// collaboration's ledger on it (the wallet→Stripe flush transfer is a separate user-keyed event), so a
+// credited-to-wallet collaboration reads as Completed — for onboarded AND not-yet-onboarded creators alike.
+const terminalTypes = new Set(['transfer_created', 'payout_completed', 'refund_completed', 'dispute_resolved', 'payout_pending_wallet']);
 
 function getUserRole(role: string | undefined): UserRole {
   if (role === 'content_creator') return 'creator';
@@ -31,6 +35,11 @@ export default function PaymentsPage() {
   const { user, profile } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('active');
   const role = getUserRole(profile?.role);
+
+  // Single source of truth for the creator wallet balance (available is DOLLARS → convert to cents at the
+  // call site). Gated on the creator role so business/brand users don't fire an unused
+  // check-creator-payout-status invoke; useCreatorEarnings short-circuits (enabled: !!userId) on undefined.
+  const { data: earnings } = useCreatorEarnings(role === 'creator' ? user?.id : undefined);
 
   const { data: allEvents = [], isLoading } = useQuery({
     queryKey: ['all-payment-events', user?.id],
@@ -124,7 +133,12 @@ export default function PaymentsPage() {
           </div>
         ) : (
           <>
-            <PaymentSummaryCards events={allEvents} userRole={role} pendingReviewCount={pendingReviewCount} />
+            <PaymentSummaryCards
+              events={allEvents}
+              userRole={role}
+              pendingReviewCount={pendingReviewCount}
+              pendingBalanceCents={Math.round((earnings?.available ?? 0) * 100)}
+            />
 
             {/* Tabs */}
             <div className="flex gap-2">
