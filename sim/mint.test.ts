@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { assertSyntheticEmail, personaToCreateUser, readSessionCapableBots } from "./mint";
+import {
+  assertSyntheticEmail,
+  personaToCreateUser,
+  readSessionCapableBots,
+  sliceActiveCohort,
+  readActiveLoadCohort,
+} from "./mint";
 import type { Persona } from "./personas";
 
 const biz: Persona = {
@@ -83,5 +89,71 @@ describe("readSessionCapableBots (load drives only bots that can hold a JWT)", (
   it("returns an empty list (not a throw) when no session-capable bots exist", async () => {
     const svc = fakeClient({ data: [], error: null });
     await expect(readSessionCapableBots(svc)).resolves.toEqual([]);
+  });
+});
+
+// ── Matrix shard slice (Phase 1, Task 1.1) ──────────────────────────────────────────────
+// Each runner shard drives a DISJOINT 25-bot slice of the botla… active cohort, from its own
+// egress IP. The slice MUST be deterministic and botla-only: PostgREST returns unspecified
+// order, so independent runners would otherwise get different orderings → OVERLAPPING slices
+// (same bot on two IPs → per-IP 429 + non-distinct users), the exact failure the ORDER BY guards.
+type SliceRow = { id: string; email: string; role: string };
+const rangeN = (n: number): number[] => Array.from({ length: n }, (_, i) => i);
+/** botla… active cohort rows (session-capable, one per shard slot). */
+const activeRows = (n: number): SliceRow[] =>
+  rangeN(n).map((i) => ({ id: `u${i}`, email: `botla1_${i + 1}@synthetic.dragoncandy.test`, role: "content_creator" }));
+/** bot0## live daily-tick cohort rows — must be EXCLUDED from every matrix slice. */
+const liveRows = (n: number): SliceRow[] =>
+  rangeN(n).map((i) => ({ id: `live${i}`, email: `bot0${i + 1}@synthetic.dragoncandy.test`, role: "content_creator" }));
+
+describe("sliceActiveCohort (botla-only, ORDER BY email, disjoint 25-bot slices)", () => {
+  it("excludes bot0##, returns disjoint 25-bot slices, order-independent", () => {
+    // Reverse the input (a non-trivial order) to prove the internal sort makes the slice stable.
+    const rows = [...activeRows(50), ...liveRows(25)].reverse();
+    const s0 = sliceActiveCohort(rows, 0, 2);
+    const s1 = sliceActiveCohort(rows, 1, 2);
+    expect(s0).toHaveLength(25);
+    expect(s1).toHaveLength(25);
+    expect(s0.every((b) => b.email.startsWith("botla"))).toBe(true); // no bot0## leaked in
+    const ids0 = new Set(s0.map((b) => b.userId));
+    expect(s1.some((b) => ids0.has(b.userId))).toBe(false); // disjoint slices
+    // order-independent: the un-reversed input yields the identical slice
+    expect(sliceActiveCohort([...activeRows(50), ...liveRows(25)], 0, 2)).toEqual(s0);
+  });
+
+  it("returns BotRef shape with personaKey:null + cohort:null (types.ts BotRef)", () => {
+    const [b] = sliceActiveCohort(activeRows(1), 0, 1);
+    expect(b).toMatchObject({ userId: "u0", role: "content_creator", personaKey: null, cohort: null });
+  });
+
+  it("returns [] for an out-of-range shard index (shard >= shards)", () => {
+    expect(sliceActiveCohort(activeRows(50), 2, 2)).toEqual([]); // shards=2 → valid shards are 0,1
+    expect(sliceActiveCohort(activeRows(50), -1, 2)).toEqual([]);
+  });
+});
+
+describe("readActiveLoadCohort (DB wrapper: botla… filter + ORDER BY email + shard slice)", () => {
+  /** Fake client for the from().select().like().order() → {data,error} chain the reader uses. */
+  function fakeClient(result: { data: unknown; error: { message: string } | null }): SupabaseClient {
+    const terminal = Promise.resolve(result);
+    const orderNode = { order: () => terminal };
+    const likeNode = { like: () => orderNode };
+    const selectNode = { select: () => likeNode };
+    return { from: () => selectNode } as unknown as SupabaseClient;
+  }
+
+  it("returns this shard's disjoint slice from the DB rows", async () => {
+    const svc = fakeClient({ data: [...activeRows(50)], error: null });
+    const s0 = await readActiveLoadCohort(svc, 0, 2);
+    const s1 = await readActiveLoadCohort(svc, 1, 2);
+    expect(s0).toHaveLength(25);
+    expect(s1).toHaveLength(25);
+    const ids0 = new Set(s0.map((b) => b.userId));
+    expect(s1.some((b) => ids0.has(b.userId))).toBe(false);
+  });
+
+  it("fails loud when the query errors", async () => {
+    const svc = fakeClient({ data: null, error: { message: "boom" } });
+    await expect(readActiveLoadCohort(svc, 0, 1)).rejects.toThrow(/readActiveLoadCohort: boom/);
   });
 });
