@@ -119,6 +119,12 @@ verify_jwt = false
 [functions.auto-approve-content]
 verify_jwt = false
 
+# Cron worker: re-drives 'claimed' pending_balance_flushes rows via the shared executeFlushTransfer.
+# Self-gates via isAuthorizedIngest (injected service-role key OR AIOS_INGEST_SECRET), so the gateway
+# JWT check must be off — same posture as auto-approve-content.
+[functions.reconcile-pending-flushes]
+verify_jwt = false
+
 # google-chat-donny verifies Google's OWN signed request JWT (chat@system.gserviceaccount.com),
 # not a Supabase JWT — so Supabase JWT verification must be off.
 [functions.google-chat-donny]

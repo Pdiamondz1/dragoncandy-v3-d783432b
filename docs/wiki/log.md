@@ -1,5 +1,8 @@
 # Wiki Log
 
+## [2026-07-24] ingest | Durable pending-balance flush ledger — stage 1 of the wallet-first payout fix (feat/wallet-first-payout)
+Ingested `raw/sessions/2026-07-24-durable-flush-ledger.md`. **Compounded** onto [[Payout Finalization & Re-entrancy]] a "Durable pending-balance flush ledger (stage 1)" section (table + 4 RPCs + `flush_${id}`-keyed `executeFlushTransfer` + reconcile cron; the stuck alert + bump-on-confirm-fail hardening; the real test-mode replay proof) and **reframed the residuals** — the identical-cents under-pay is now CLOSED by the durable per-flush key; the two `release-creator-payout` cross-path residuals still need stage 2 (the reroute). `index.md`: new Sources line + refreshed the Concepts entry. `SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5 one Shipped line; `DATABASE_SCHEMA.md` (`pending_balance_flushes` + the 4 RPCs + the reconcile cron).
+
 ## [2026-07-24] update | Synthetic Weight Engine — harness 429 backoff (cron hardening) (fix/sim-session-429-backoff)
 The go-live fast-follow: `mintBotSession` retries 429/503 with exponential backoff (honoring
 `Retry-After`) so a transient per-IP auth rate limit no longer red-fails the unattended cron; fail-loud

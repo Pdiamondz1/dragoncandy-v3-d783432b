@@ -29,6 +29,41 @@
 
 ---END-HEADER---
 
+- **Durable pending-balance flush ledger (stage 1 of the wallet-first payout fix)** — **`feat/wallet-first-payout`.**
+  Follows PR #329 ([[Payout Finalization & Re-entrancy]]). Makes the shared wallet→Stripe flush
+  (`transferPendingBalance` in `_shared/flush-pending-balance.ts`) **exactly-once**, fixing the
+  identical-cents idempotency-key **under-pay** without re-introducing an ambiguous-failure **over-pay**.
+  The old key `withdraw_${userId}_${amountCents}` had to be both stable-across-retries AND
+  unique-across-movements; an amount-based key collides — two identical-cents flushes inside Stripe's ~24h
+  window dedupe to one transfer → the creator is under-paid. The fix is a **durable per-flush record** whose
+  id *is* the key. New table `pending_balance_flushes` (migration `20260723180000`; `status ∈
+  claimed/succeeded/failed/stuck`, service-role-only RLS) + four service-role SECURITY DEFINER RPCs: `claim`
+  (row-locks the profile `FOR UPDATE`, verifies `round(pending_balance*100)=cents`, zeroes the balance,
+  inserts a `claimed` row → its id; NULL ⇒ `BALANCE_CHANGED`), `confirm`, `fail(restore)` (adds back exactly
+  `amount_cents::numeric/100`), `bump(cap)` (flips `claimed→stuck` at the cap, returns `'stuck'` on exactly
+  the transition). A shared **`executeFlushTransfer`** — used by the inline flush AND the new
+  `reconcile-pending-flushes` `*/15` pg_cron (migration `20260723190000`) — keys each transfer on
+  `flush_${id}`, built from the stored row so an inline send and a reconcile replay are byte-identical →
+  real Stripe idempotent replay (never a 400 key-conflict). Definite failures (4xx `StripeInvalidRequestError`,
+  raised pre-creation) restore; ambiguous ones (5xx/connection/idempotency-conflict) bump (no restore).
+  Three review-hardened safety points: a `stuck` row files ONE `aios-report-ingest` CRITICAL (its wallet was
+  zeroed at claim and is never auto-restored); **bump-on-confirm-failure** bounds the one path
+  (transfer-succeeds / `confirm`-fails) that would otherwise be re-driven past Stripe's ~24h key TTL into a
+  second transfer; and **`confirm` `RETURNS boolean`** (migration `20260723200000`) so an overlapping
+  reconcile whose `confirm` is a no-op **skips the duplicate ledger write** (Codex [P2] — `payment_events`
+  isn't unique on `stripe_id` and totals sum it, so a duplicate would double-count the payout). Reviews: `data-exposure-reviewer` (migration) + `edge-function-reviewer` (reconcile fn) +
+  spec/code-quality subagent passes per task + Codex. Verified: 26 Deno tests (RED→GREEN), a rollback-wrapped
+  prod RPC behavior test, and a real **test-mode** Stripe replay E2E on prod — the deployed reconcile moved a
+  synthetic `claimed` row exactly-once (`{scanned:1,reconciled:1}`, row→`succeeded`, one ledger row, balance
+  untouched); a re-drive replayed the **same** `stripe_transfer_id` (no second transfer, no double-pay);
+  fully cleaned up. All 5 edge fns deployed + boot-checked (`withdraw-pending-balance`, `stripe-webhook`,
+  `check-creator-payout-status`, `check-restaurant-payout-status` rebundled the refactored shared file; new
+  `reconcile-pending-flushes`); cron scheduled (Vault `reconcile_pending_flushes_url` created, `aios_ingest_key`
+  reused). **Stage 2 — the wallet-first reroute of `release-creator-payout`'s onboarded path, which closes the
+  two remaining cross-path residuals (concurrent double-pay; Stripe-up/DB-down split-brain) — is deferred**;
+  it also needs a frontend ledger-event contract change.
+  → `docs/wiki/concepts/payout-finalization-consistency.md`
+
 - Synthetic Weight Engine — Phase 1 harness 429 backoff (cron hardening) — **`fix/sim-session-429-backoff`.**
   The go-live fast-follow: `mintBotSession` (the per-bot magiclink→verify session mint) now retries
   429/503 with exponential backoff, honoring `Retry-After` (`fetchWithRetry`/`parseRetryAfter`/
