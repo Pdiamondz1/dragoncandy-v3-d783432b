@@ -31,12 +31,16 @@ export function useCreatorEarnings(userId: string | undefined) {
       }
 
       const [earnedResult, escrowResult, releasedResult, payoutStatusResult] = await Promise.all([
+        // Earned = payout_pending_wallet (every payout now transits the wallet) + historical collaboration
+        // transfer_created (direct-path payouts). payment_released is DROPPED — post wallet-first reroute it
+        // fires on EVERY payout alongside payout_pending_wallet, so summing both would double-count. The
+        // entity_id IN collabIds scoping already excludes the user-keyed wallet→Stripe flush transfer. §4.1.
         supabase
           .from('payment_events')
           .select('amount_cents')
           .in('entity_id', collabIds)
           .eq('entity_type', 'collaboration')
-          .in('event_type', ['payment_released', 'payout_pending_wallet']),
+          .in('event_type', ['payout_pending_wallet', 'transfer_created']),
         supabase
           .from('payment_events')
           .select('amount_cents, campaign_id, event_type, created_at')

@@ -62,6 +62,7 @@ export default defineConfig(({ mode }) => ({
       'tests/e2e/**',
       'supabase/functions/_shared/flush-pending-balance.test.ts',
       'supabase/functions/_shared/outstand-webhook-lib.test.ts',
+      'supabase/functions/release-creator-payout/wallet-first.test.ts',
     ],
   },
 }));

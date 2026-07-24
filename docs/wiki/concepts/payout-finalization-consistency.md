@@ -3,7 +3,7 @@ title: Payout Finalization & Re-entrancy
 type: concept
 created: 2026-07-23
 updated: 2026-07-24
-sources: [docs/wiki/raw/sessions/2026-07-23-payout-finalize-retry.md, docs/wiki/raw/sessions/2026-07-23-payout-durable-reentrancy.md, docs/wiki/raw/sessions/2026-07-24-durable-flush-ledger.md]
+sources: [docs/wiki/raw/sessions/2026-07-23-payout-finalize-retry.md, docs/wiki/raw/sessions/2026-07-23-payout-durable-reentrancy.md, docs/wiki/raw/sessions/2026-07-24-durable-flush-ledger.md, docs/wiki/raw/sessions/2026-07-24-wallet-first-reroute-stage2.md]
 tags: [payments, payout, escrow, idempotency, money-path]
 ---
 # Payout Finalization & Re-entrancy
@@ -128,11 +128,64 @@ rows are summed for creator/business totals. Fix: `confirm_pending_balance_flush
 transfer (`{scanned:1,reconciled:1}`, row→`succeeded`, one ledger row, balance untouched); reset to `claimed`
 and re-driven → the **same** `stripe_transfer_id`, no second transfer.
 
-## Known residuals (narrowed, not eliminated — need the wallet-first redesign)
+## Wallet-first reroute (stage 2 — shipped 2026-07-24)
 
-> **Closed by stage 1 (the flush ledger, above):** the flush subsystem's identical-cents idempotency-key
-> **collision / under-pay**. The remaining two residuals below are in `release-creator-payout` itself (the
-> transfer-vs-pending fork) and need **stage 2** — the wallet-first reroute — to close.
+Stage 2 **removes the transfer-vs-pending fork** in `release-creator-payout`. Every payout is now ONE shape:
+
+```
+credit_pending_balance_for_payout(collab, creator, netPayout)   -- the ONE money-in-DB step (atomic credit + marker)
+  → if verifyPayoutReady: flushPendingBalance(..., { assumeReady: true })   -- best-effort, exactly-once (stage 1)
+  → finalizePayoutState(...)   -- escrow=released, status=completed (retried; 500 {needsRetry} on failure)
+```
+
+Because there is no longer a divergent money path, **both residuals below close by construction:**
+concurrent invocations credit the SAME wallet (the RPC row-locks + dedupes via `payout_executed_at` → exactly
+one credits, the rest `'already'`) and the flush is exactly-once (durable `flush_${id}` key); and the only
+money write is the atomic credit RPC that sets the marker in the same transaction (no post-money marker write
+to fail). `verifyPayoutReady` is retained **only to decide whether to flush now**, never whether money
+moves — so even if two concurrent calls diverge on readiness, both already credited and the flush is
+idempotent.
+
+**Ledger-event contract (Approach A).** Every payout writes four **collaboration-keyed** events, gated on
+`if (!alreadyCredited)`: `content_approved`, `payment_release_initiated`, **`payment_released`** (the business
+**In Escrow ↓** signal — now fires on EVERY payout; the old pending path never wrote it, so pending payouts
+never decremented business escrow, a latent bug this fixes), **`payout_pending_wallet`** (the creator
+**earned** signal, `metadata.reason ∈ {flushing_to_stripe, creator_onboarding_incomplete}`). The wallet→Stripe
+flush keeps writing its **user-keyed** `transfer_created` (`metadata.type='pending_balance_autoflush'`) — a
+wallet-movement audit event, deliberately **not** earnings.
+
+**The one reconciled reader rule** (three consumers — `PaymentSummaryCards.computeCreatorStats`,
+`useCreatorEarnings`, and the `PaymentsPage` tab classifier):
+> **Total Earned** = `Σ payout_pending_wallet` + `Σ (transfer_created whose `metadata.type` ∉ {'wallet_withdrawal','pending_balance_autoflush'})` — discriminate on **`metadata.type`, not `flush_id`/`entity_type`** (a creator flush and a real collaboration transfer are both `entity_type='collaboration'`; `flush_id`-only would still miscount legacy wallet withdrawals). `payment_released` is **never** summed (escrow-decrement only). **In Wallet** = `creator_profiles.pending_balance` (source of truth), read via `check-creator-payout-status` (an *allowed server path* — the column is `REVOKE`-contested for direct frontend reads) **after** its auto-flush so it's post-flush, in **cents** (`× 100`). Each payout counts exactly once across historical transfer-path, historical pending-path, and new events.
+
+**Key implementation facts / gotchas:**
+- The payout body is a **co-located pure module** `release-creator-payout/wallet-first.ts`
+  (`applyWalletFirstPayout` + `finalizePayoutState`), imported by `index.ts` — NOT exported from `index.ts`
+  behind an `import.meta.main` guard. `index.ts` runs `serve()` at top level (server-on-import breaks Deno
+  tests via leaked resources), and `import.meta.main` is untested in the Supabase edge runtime (a wrong guard
+  silently unregisters the handler). The module keeps the DI-testable body out of the `serve` handler with
+  zero runtime risk.
+- **`flushPendingBalance` gained `{ assumeReady }`.** It re-reads the CACHED `stripe_onboarding_complete`
+  flag, which can be stale-false; a caller that already verified readiness authoritatively (this reroute, via
+  `verifyPayoutReady`) passes `assumeReady:true` so a genuinely-ready payout isn't no-op'd into the wallet
+  while reporting `wallet_flush`. Backward-compatible (other flush callers omit it). Stripe still enforces
+  real readiness at transfer time.
+- **`PaymentsPage` skips wallet-transfer events when grouping entities** — the flush's user-keyed
+  `transfer_created` (entity_id=creatorUserId) would otherwise form a phantom `collaboration:<creatorUserId>`
+  "Completed" timeline for every onboarded payout.
+- **`getPaymentMessage` is reason-aware** for `payout_pending_wallet`: `metadata.reason==='flushing_to_stripe'`
+  → paid-to-Stripe copy (no "complete Stripe setup" CTA for an already-onboarded creator).
+- **No new migration** — all RPCs/columns are live from #329/#334. Deployed `release-creator-payout` +
+  `check-creator-payout-status` (`--no-verify-jwt`). Proven on prod by a **rollback-wrapped** RPC-contract test
+  (`credit_pending_balance_for_payout`: 0→1.00 once, marker NULL→set atomically, re-entry `'already'` with no
+  double-credit) plus the byte-identical deployed source; the full happy path is covered by the DI unit tests
+  and stage 1's real test-mode Stripe flush E2E.
+
+## Known residuals — closed by stage 2
+
+> **Closed by stage 1** (the flush ledger): the flush subsystem's identical-cents idempotency-key
+> **collision / under-pay**. **Closed by stage 2** (the reroute, above): the two `release-creator-payout`
+> cross-path residuals below. Both are now historical — kept for the reasoning trail.
 
 - **Transfer-vs-pending CROSS-path concurrent double-pay.** Two concurrent invocations for the same
   collaboration can diverge onto different paths only when the creator's cached
@@ -148,15 +201,14 @@ and re-driven → the **same** `stripe_transfer_id`, no second transfer.
   Stripe-verified) reconciliation** — it explicitly does NOT invite an automatic retry, because a
   >24h retry (past Stripe's idempotency-key retention) with no marker could double-pay. It is invisible
   to the auto reconciliation sweep (no marker to key on).
-- **The clean fix for both (staged):** make crediting the pending wallet the **single** atomic money step
-  (one path, the RPC), and turn the Stripe payout into a separate **idempotent wallet→Stripe flush**. **Stage
-  1 shipped** (the durable flush ledger above) — the flush is now idempotent via a durable per-flush
-  `flush_${id}` key (which survives the >24h Stripe idempotency-prune because the row, not the key TTL, is the
-  source of truth) rather than the amount-based key. **Stage 2 (deferred)** reroutes
-  `release-creator-payout`'s onboarded path through that wallet+flush, removing the transfer-vs-pending fork
-  entirely and closing the two residuals above; it also needs a frontend ledger-event contract change (four
-  consumers assume exactly one of `{transfer_created, payout_pending_wallet}` per payout). Spec:
-  `docs/superpowers/specs/2026-07-23-wallet-first-payout-redesign-design.md`.
+- **The clean fix for both (staged) — now fully shipped:** make crediting the pending wallet the **single**
+  atomic money step (one path, the RPC), and turn the Stripe payout into a separate **idempotent
+  wallet→Stripe flush**. **Stage 1 shipped** (the durable flush ledger above) — the flush is idempotent via a
+  durable per-flush `flush_${id}` key (which survives the >24h Stripe idempotency-prune because the row, not
+  the key TTL, is the source of truth). **Stage 2 shipped 2026-07-24** (the reroute — see the section above)
+  removed the transfer-vs-pending fork entirely and reconciled the frontend ledger-event contract (the three
+  money readers no longer assume exactly one of `{transfer_created, payout_pending_wallet}` per payout).
+  Spec: `docs/superpowers/specs/2026-07-23-wallet-first-payout-redesign-design.md`.
 
 ## See Also
 - [[Content Delivery State Machine]]

@@ -7,7 +7,14 @@ interface PaymentSummaryCardsProps {
   events: PaymentEvent[];
   userRole: UserRole;
   pendingReviewCount?: number;
+  /** Creator wallet balance in CENTS (source of truth = creator_profiles.pending_balance × 100). */
+  pendingBalanceCents?: number;
 }
+
+// A wallet→Stripe transfer (the shared flush) carries metadata.type ∈ these — the new #334 autoflush events
+// AND legacy pre-#334 wallet withdrawals. A historical DIRECT collaboration transfer carries no such type.
+// So earnings discriminate on metadata.type (not flush_id or entity_type, which can't tell them apart).
+export const WALLET_TRANSFER_TYPES = new Set(['wallet_withdrawal', 'pending_balance_autoflush']);
 
 function formatCurrency(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -33,7 +40,7 @@ function resolveEscrowAmount(held: PaymentEvent, events: PaymentEvent[]): number
   return auths.length > 0 ? (auths[auths.length - 1].amount_cents ?? 0) : 0;
 }
 
-function computeBusinessStats(events: PaymentEvent[]) {
+export function computeBusinessStats(events: PaymentEvent[]) {
   const heldEvents = events.filter(e => e.event_type === 'escrow_held');
   const totalSpent =
     heldEvents.reduce((sum, e) => sum + resolveEscrowAmount(e, events), 0) +
@@ -52,14 +59,18 @@ function computeBusinessStats(events: PaymentEvent[]) {
   return { totalSpent, inEscrow, pendingReview };
 }
 
-function computeCreatorStats(events: PaymentEvent[]) {
+export function computeCreatorStats(events: PaymentEvent[], pendingBalanceCents: number) {
+  // Total Earned = Σ payout_pending_wallet (every payout now transits the wallet) + Σ collaboration
+  // transfer_created that is NOT a wallet-level transfer (historical direct payouts). Each payout counts
+  // exactly once; payment_released is an escrow-decrement signal only and is never summed. See spec §4.1.
   const totalEarned = events
-    .filter(e => e.event_type === 'transfer_created' || e.event_type === 'payout_pending_wallet')
+    .filter(e =>
+      e.event_type === 'payout_pending_wallet' ||
+      (e.event_type === 'transfer_created' && !WALLET_TRANSFER_TYPES.has((e.metadata?.type as string) ?? '')))
     .reduce((sum, e) => sum + (e.amount_cents ?? 0), 0);
-  const inWallet = events
-    .filter(e => e.event_type === 'payout_pending_wallet')
-    .filter(e => !events.some(w => w.entity_id === e.entity_id && w.event_type === 'transfer_created' && w.metadata?.type === 'wallet_withdrawal'))
-    .reduce((sum, e) => sum + (e.amount_cents ?? 0), 0);
+  // In Wallet is the wallet balance itself (creator_profiles.pending_balance), not event-derived — the
+  // wallet→Stripe flush event is user-keyed and can't be matched against collaboration-keyed credits.
+  const inWallet = pendingBalanceCents;
   const pendingReview = events
     .filter(e => e.event_type === 'content_submitted')
     .filter(e => !events.some(a => a.entity_id === e.entity_id && a.event_type === 'content_approved'))
@@ -67,7 +78,7 @@ function computeCreatorStats(events: PaymentEvent[]) {
   return { totalEarned, inWallet, pendingReview };
 }
 
-export function PaymentSummaryCards({ events, userRole, pendingReviewCount }: PaymentSummaryCardsProps) {
+export function PaymentSummaryCards({ events, userRole, pendingReviewCount, pendingBalanceCents }: PaymentSummaryCardsProps) {
   if (userRole === 'business') {
     const { totalSpent, inEscrow, pendingReview } = computeBusinessStats(events);
     return (
@@ -80,7 +91,7 @@ export function PaymentSummaryCards({ events, userRole, pendingReviewCount }: Pa
   }
 
   if (userRole === 'creator') {
-    const { totalEarned, inWallet, pendingReview } = computeCreatorStats(events);
+    const { totalEarned, inWallet, pendingReview } = computeCreatorStats(events, pendingBalanceCents ?? 0);
     return (
       <div className="grid grid-cols-3 gap-3">
         <SummaryCard icon={DollarSign} label="Total Earned" value={formatCurrency(totalEarned)} />

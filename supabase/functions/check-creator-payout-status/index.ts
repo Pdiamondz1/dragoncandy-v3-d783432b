@@ -50,10 +50,14 @@ serve(async (req) => {
 
     if (!creatorProfile?.stripe_account_id) {
       logStep("No Stripe account found for creator");
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         hasAccount: false,
         onboardingComplete: false,
         pendingBalance: creatorProfile?.pending_balance || 0,
+        // platformPendingBalance is the creator's platform wallet balance the frontend routes into In Wallet.
+        // Include it here too (no Stripe account ⇒ no auto-flush, so the snapshot is current) — omitting it
+        // made a not-onboarded creator's wallet read $0.
+        platformPendingBalance: creatorProfile?.pending_balance || 0,
         chargesEnabled: false,
         payoutsEnabled: false,
       }), {
@@ -115,7 +119,19 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ 
+    // Re-read the platform wallet AFTER the possible auto-flush above: flushPendingBalance zeroes
+    // creator_profiles.pending_balance when it moves money, but `creatorProfile.pending_balance` read at the
+    // top is the PRE-flush snapshot. The frontend In Wallet card routes platformPendingBalance, so returning
+    // the stale snapshot would show already-flushed money as still pending. Fall back to the snapshot on a
+    // read hiccup.
+    const { data: postFlushProfile } = await supabaseClient
+      .from('creator_profiles')
+      .select('pending_balance')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    const platformPendingBalance = postFlushProfile?.pending_balance ?? creatorProfile.pending_balance ?? 0;
+
+    return new Response(JSON.stringify({
       hasAccount: true,
       accountId: creatorProfile.stripe_account_id,
       onboardingComplete,
@@ -123,7 +139,7 @@ serve(async (req) => {
       payoutsEnabled: account.payouts_enabled,
       availableBalance,
       pendingBalance,
-      platformPendingBalance: creatorProfile.pending_balance || 0,
+      platformPendingBalance,
     }), {
       headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       status: 200,

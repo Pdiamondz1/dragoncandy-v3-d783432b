@@ -119,6 +119,15 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **Wallet-first payout fix (stages 1+2 shipped)** — closes the [[Payout Finalization & Re-entrancy]]
+  residuals. Stage 1: a durable `pending_balance_flushes` ledger (table + claim/confirm/fail/bump RPCs,
+  `flush_${id}`-keyed shared `executeFlushTransfer`, `reconcile-pending-flushes` `*/15` cron) makes the shared
+  wallet→Stripe flush **exactly-once**. Stage 2: **removed the transfer-vs-pending fork** in
+  `release-creator-payout` (one path — atomic credit+marker → best-effort exactly-once flush → finalize),
+  **closing both cross-path residuals** (concurrent double-pay; Stripe-up/DB-down marker split-brain) by
+  construction + reconciling the 3 frontend money readers to one `metadata.type`-keyed rule. No new migration;
+  deployed + rollback-wrapped prod-verified; Codex-clean (4 rounds).
+  → `docs/wiki/concepts/payout-finalization-consistency.md` · `feat/wallet-first-payout` + `feat/wallet-first-stage2`
 - **Synthetic Weight Engine** — tagged synthetic-user ("bot") safety spine (registry + actor-OR-parent
   metric/moat exclusion + fail-closed `SYNTHETIC_BOTS_ENABLED` + live-mode money guard + `/internal/simulation`
   + `purge_synthetic_data()`) with Phase 1 (private-crew free-rails behavior engine) **live on prod** (N=25 +

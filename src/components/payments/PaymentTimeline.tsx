@@ -132,7 +132,7 @@ export function PaymentTimeline({ entityType, entityId, campaignId, userRole, va
         <div className="space-y-4">
           {displayEvents.map((event, index) => {
             const isLatest = index === displayEvents.length - 1;
-            const message = getPaymentMessage(userRole, event.event_type);
+            const message = getPaymentMessage(userRole, event.event_type, event.metadata);
             if (!message) return null;
 
             const amount = formatAmount(event.amount_cents);

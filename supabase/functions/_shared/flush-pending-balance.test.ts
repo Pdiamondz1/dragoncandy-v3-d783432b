@@ -102,6 +102,25 @@ Deno.test("flush: not onboarded -> no transfer", async () => {
   assertEquals(stripe.calls.length, 0);
 });
 
+Deno.test("flush: assumeReady bypasses a stale-false onboarding flag -> flushes", async () => {
+  // Caller (release-creator-payout) already verified readiness via Stripe; a stale cached flag must NOT
+  // no-op the flush and park the money in the wallet.
+  const sb = fakeSupabase({ byTable: { creator_profiles: { select: { data: { user_id: "u1", stripe_onboarding_complete: false, pending_balance: 30 }, error: null } } } });
+  const stripe = fakeStripe();
+  const res = await flushPendingBalance(stripe, sb, "acct_1", { assumeReady: true });
+  assertEquals(res.flushed, true);
+  assertEquals(stripe.calls.length, 1);
+  assertEquals(stripe.calls[0].opts.idempotencyKey, `flush_${FLUSH_ID}`);
+});
+
+Deno.test("flush: assumeReady still no-ops on zero balance", async () => {
+  const sb = fakeSupabase({ byTable: { creator_profiles: { select: { data: { user_id: "u1", stripe_onboarding_complete: false, pending_balance: 0 }, error: null } } } });
+  const stripe = fakeStripe();
+  const res = await flushPendingBalance(stripe, sb, "acct_1", { assumeReady: true });
+  assertEquals(res.flushed, false);
+  assertEquals(stripe.calls.length, 0);
+});
+
 Deno.test("flush: lost the atomic claim race -> benign no-op, no transfer", async () => {
   // The claim is now an RPC that returns NULL when it loses the race / balance changed.
   const sb = fakeSupabase({ byTable: { creator_profiles: { select: readyCreator } }, rpc: { claim_pending_balance_flush: { data: null, error: null } } });
