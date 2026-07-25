@@ -536,6 +536,14 @@ export async function cmdLoad(args: Args, deps: CmdLoadDeps = DEFAULT_CMD_LOAD_D
 const SYNTHETIC_DOMAIN = "@synthetic.dragoncandy.test";
 /** `botmk_%@synthetic.dragoncandy.test` — the LIKE pattern for the persistent marketplace cohort. */
 const BOTMK_EMAIL_LIKE = `${MARKETPLACE_EMAIL_PREFIX}%${SYNTHETIC_DOMAIN}`;
+/**
+ * The prod trigger `enforce_active_campaign_limit` fires on the transition into
+ * `status='published'` and reads `organizations.active_campaign_limit` (DEFAULT 1) via
+ * `profiles.org_id`, counting existing published/active PUBLIC campaigns for that user_id.
+ * publishCampaigns publishes 1–3 public campaigns per synthetic business, so the default limit
+ * of 1 aborts the run on the 2nd. Raised well above the seed's per-business ceiling.
+ */
+const MARKETPLACE_ORG_CAMPAIGN_LIMIT = 25;
 
 function requireEnvVar(name: string): string {
   const v = process.env[name];
@@ -559,8 +567,8 @@ function anonClient(): SupabaseClient {
  * shares ONE bot-client factory (`botFor`, built off the full botmk cohort once readCohortRefs has read
  * it) and the sequencer is serial by contract, so no 429 burst.
  */
-function buildDefaultSeedSteps(svc: SupabaseClient, seed: number): SeedSteps {
-  const picker = makePicker(seed);
+function buildDefaultSeedSteps(svc: SupabaseClient, opts: SeedOpts): SeedSteps {
+  const picker = makePicker(opts.seed);
   let botFor: (userId: string) => Promise<SupabaseClient> = () => {
     throw new Error("marketplace-seed: botFor used before readCohortRefs populated the cohort");
   };
@@ -606,6 +614,24 @@ function buildDefaultSeedSteps(svc: SupabaseClient, seed: number): SeedSteps {
         throw new Error(`[marketplace-seed] setupBusinesses: business_profiles lookup failed for ${biz.email}: ${bpErr?.message ?? "no row"}`);
       }
       const businessId = (bp as { id: string }).id;
+
+      // Provision the synthetic org's active-campaign limit BEFORE any campaign is published —
+      // publishCampaigns runs after setupBusinesses completes for the whole cohort (see
+      // runMarketplaceSeed). SERVICE-ROLE infra provisioning of a synthetic org (like the org
+      // auto-creation itself), not a user-facing marketplace flow, so `svc` is correct here — see
+      // MARKETPLACE_ORG_CAMPAIGN_LIMIT's comment on the enforce_active_campaign_limit trigger.
+      const { data: profileRow, error: profErr } = await svc
+        .from("profiles").select("org_id").eq("id", biz.userId).single();
+      const orgId = (profileRow as { org_id: string | null } | null)?.org_id;
+      if (profErr || !orgId) {
+        throw new Error(`[marketplace-seed] setupBusinesses: org_id lookup failed for ${biz.email}: ${profErr?.message ?? "no org_id"}`);
+      }
+      const { error: limitErr } = await svc
+        .from("organizations").update({ active_campaign_limit: MARKETPLACE_ORG_CAMPAIGN_LIMIT }).eq("id", orgId);
+      if (limitErr) {
+        throw new Error(`[marketplace-seed] setupBusinesses: active_campaign_limit update failed for ${biz.email}: ${limitErr.message}`);
+      }
+
       const kind = picker.pick(DISCOUNT_KINDS);
       await createDiscount(bizClient, {
         userId: biz.userId,
@@ -616,14 +642,17 @@ function buildDefaultSeedSteps(svc: SupabaseClient, seed: number): SeedSteps {
         startDate: isoDate(today),
         endDate: isoDate(endDate),
       });
-      // Harmless per-business metadata, set for every business regardless of --cgc: buildSteps only
-      // receives (svc, seed) — not opts — so this layer can't gate on opts.cgc itself. Whether any CGC
-      // promotions/submissions actually get CREATED is entirely gated by runMarketplaceSeed only calling
-      // seedCgc when opts.cgc is true, so --cgc off still produces zero CGC writes.
-      const { error: cgcErr } = await svc
-        .from("business_profiles").update({ cgc_posting_preferences: { enabled: true } }).eq("id", businessId);
-      if (cgcErr) {
-        throw new Error(`[marketplace-seed] setupBusinesses: cgc_posting_preferences update failed for ${biz.email}: ${cgcErr.message}`);
+      // CGC posting prefs are the business's OWN row — write it through the business's own bot
+      // client (RLS user_id=auth.uid), not svc, and only when --cgc is on (buildDefaultSeedSteps
+      // now receives the full SeedOpts, so it can gate on opts.cgc directly). Whether any CGC
+      // promotions/submissions actually get CREATED is separately gated by runMarketplaceSeed only
+      // calling seedCgc when opts.cgc is true.
+      if (opts.cgc) {
+        const { error: cgcErr } = await bizClient
+          .from("business_profiles").update({ cgc_posting_preferences: { enabled: true } }).eq("id", businessId);
+        if (cgcErr) {
+          throw new Error(`[marketplace-seed] setupBusinesses: cgc_posting_preferences update failed for ${biz.email}: ${cgcErr.message}`);
+        }
       }
       count += 1;
     }
@@ -835,7 +864,7 @@ function buildDefaultSeedSteps(svc: SupabaseClient, seed: number): SeedSteps {
 export interface CmdMarketplaceSeedDeps {
   serviceClient: () => SupabaseClient;
   bootGate: (svc: SupabaseClient) => Promise<void>;
-  buildSteps: (svc: SupabaseClient, seed: number) => SeedSteps;
+  buildSteps: (svc: SupabaseClient, opts: SeedOpts) => SeedSteps;
   runSeed: (steps: SeedSteps, opts: SeedOpts, log: (m: string) => void) => Promise<SeedReport>;
 }
 
@@ -860,7 +889,7 @@ export async function cmdMarketplaceSeed(args: Args, deps: CmdMarketplaceSeedDep
     multiLocation: args.multiLocation,
     cgc: args.cgc,
   };
-  const steps = deps.buildSteps(svc, args.seed);
+  const steps = deps.buildSteps(svc, opts);
   const report = await deps.runSeed(steps, opts, (m) => console.warn(m));
   console.warn(`[marketplace-seed] ${JSON.stringify(report)}`);
 }
