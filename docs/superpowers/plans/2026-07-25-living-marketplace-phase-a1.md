@@ -1398,6 +1398,63 @@ git commit -m "feat(sim): optional LLM showcase-brief seam (curated default, met
 
 ---
 
+### Task 12: Full, US-diverse user profiles (founder add-on)
+
+**Why:** a browsable marketplace must look real — profiles fully filled out and spread across the US, not all Hoboken/NYC with empty fields. **Excludes social-media account fields** (per founder): `instagram_url`/`tiktok_url`/`youtube_url`/`facebook_url`/`linkedin_url`/`x_url`/`other_social_url`/`brand_social_guidelines` stay NULL (those need the social integration). Also leave `stripe_*` (Sub-project B) and the computed `average_rating`/`total_reviews` (review trigger) alone.
+
+**Files:**
+- Create: `sim/marketplace/locations.ts` + `.test.ts` — the US location pool + deterministic picker.
+- Create: `sim/marketplace/profile.ts` + `.test.ts` — pure builders for the profile field objects.
+- Modify: `sim/marketplace/text.ts` — add curated profile-field pools.
+- Modify: `sim/marketplace/seed.ts` (+ `.test.ts`) — add a `completeProfiles` step to `SeedSteps`, called right after `readCohortRefs` (profiles complete before campaigns/browse).
+- Modify: `sim/run.ts` `buildDefaultSeedSteps` — implement `completeProfiles` (own-row RLS-real updates via each bot's own client + the business's primary `org_units` geo).
+
+**`locations.ts` — `US_LOCATIONS` (24 regionally-diverse cities), each `{ city, state, location, postalCode, timezone, lat, lng }`:**
+```ts
+export interface UsLocation { city: string; state: string; location: string; postalCode: string; timezone: string; lat: number; lng: number; }
+export const US_LOCATIONS: readonly UsLocation[] = [
+  { city:"New York", state:"NY", location:"New York, NY", postalCode:"10001", timezone:"America/New_York", lat:40.7128, lng:-74.0060 },
+  { city:"Los Angeles", state:"CA", location:"Los Angeles, CA", postalCode:"90012", timezone:"America/Los_Angeles", lat:34.0522, lng:-118.2437 },
+  { city:"Chicago", state:"IL", location:"Chicago, IL", postalCode:"60601", timezone:"America/Chicago", lat:41.8781, lng:-87.6298 },
+  { city:"Houston", state:"TX", location:"Houston, TX", postalCode:"77002", timezone:"America/Chicago", lat:29.7604, lng:-95.3698 },
+  { city:"Phoenix", state:"AZ", location:"Phoenix, AZ", postalCode:"85004", timezone:"America/Phoenix", lat:33.4484, lng:-112.0740 },
+  { city:"Philadelphia", state:"PA", location:"Philadelphia, PA", postalCode:"19107", timezone:"America/New_York", lat:39.9526, lng:-75.1652 },
+  { city:"San Antonio", state:"TX", location:"San Antonio, TX", postalCode:"78205", timezone:"America/Chicago", lat:29.4241, lng:-98.4936 },
+  { city:"San Diego", state:"CA", location:"San Diego, CA", postalCode:"92101", timezone:"America/Los_Angeles", lat:32.7157, lng:-117.1611 },
+  { city:"Dallas", state:"TX", location:"Dallas, TX", postalCode:"75201", timezone:"America/Chicago", lat:32.7767, lng:-96.7970 },
+  { city:"Austin", state:"TX", location:"Austin, TX", postalCode:"78701", timezone:"America/Chicago", lat:30.2672, lng:-97.7431 },
+  { city:"Miami", state:"FL", location:"Miami, FL", postalCode:"33130", timezone:"America/New_York", lat:25.7617, lng:-80.1918 },
+  { city:"Seattle", state:"WA", location:"Seattle, WA", postalCode:"98101", timezone:"America/Los_Angeles", lat:47.6062, lng:-122.3321 },
+  { city:"Denver", state:"CO", location:"Denver, CO", postalCode:"80202", timezone:"America/Denver", lat:39.7392, lng:-104.9903 },
+  { city:"Atlanta", state:"GA", location:"Atlanta, GA", postalCode:"30303", timezone:"America/New_York", lat:33.7490, lng:-84.3880 },
+  { city:"Nashville", state:"TN", location:"Nashville, TN", postalCode:"37203", timezone:"America/Chicago", lat:36.1627, lng:-86.7816 },
+  { city:"Portland", state:"OR", location:"Portland, OR", postalCode:"97205", timezone:"America/Los_Angeles", lat:45.5152, lng:-122.6784 },
+  { city:"Boston", state:"MA", location:"Boston, MA", postalCode:"02108", timezone:"America/New_York", lat:42.3601, lng:-71.0589 },
+  { city:"Minneapolis", state:"MN", location:"Minneapolis, MN", postalCode:"55401", timezone:"America/Chicago", lat:44.9778, lng:-93.2650 },
+  { city:"New Orleans", state:"LA", location:"New Orleans, LA", postalCode:"70112", timezone:"America/Chicago", lat:29.9511, lng:-90.0715 },
+  { city:"Las Vegas", state:"NV", location:"Las Vegas, NV", postalCode:"89101", timezone:"America/Los_Angeles", lat:36.1699, lng:-115.1398 },
+  { city:"Charlotte", state:"NC", location:"Charlotte, NC", postalCode:"28202", timezone:"America/New_York", lat:35.2271, lng:-80.8431 },
+  { city:"Detroit", state:"MI", location:"Detroit, MI", postalCode:"48226", timezone:"America/Detroit", lat:42.3314, lng:-83.0458 },
+  { city:"Kansas City", state:"MO", location:"Kansas City, MO", postalCode:"64106", timezone:"America/Chicago", lat:39.0997, lng:-94.5786 },
+  { city:"Salt Lake City", state:"UT", location:"Salt Lake City, UT", postalCode:"84101", timezone:"America/Denver", lat:40.7608, lng:-111.8910 },
+];
+export function locationAt(i: number): UsLocation { return US_LOCATIONS[i % US_LOCATIONS.length]; }
+```
+Assign each bot a location by its cohort index (`locationAt(index)`) so the spread is even and deterministic, and the SAME location feeds the profile AND (for a business) its org_unit geo.
+
+**`profile.ts` — pure builders (unit-tested for full coverage + NO social fields):**
+- `buildBusinessProfileFields(picker, loc): Record<string,unknown>` → `{ location: loc.location, city: loc.city, country: "United States", postal_code: loc.postalCode, timezone: loc.timezone, industry: <picker over the industry_type enum: technology|fashion|beauty|fitness|food|travel|lifestyle|business|education|entertainment|health|automotive|real_estate|finance|other — restaurants default 'food'>, description: <curated, mentions the city>, website_url: <plausible https URL>, company_size: <picker>, employee_count_range: <picker e.g. '11-50'>, founded_year: <picker 2005..2021>, budget_range: <picker e.g. '$1,000 - $5,000'>, preferred_collaboration_style: <picker>, marketing_objectives: <curated>, brand_category: <picker>, profile_visibility: "public", is_completed: true }`. MUST NOT include any `*_url` social field, `brand_social_guidelines`, `stripe_*`, `average_rating`, `total_reviews`.
+- `buildCreatorProfileFields(picker, loc): Record<string,unknown>` → `{ location: loc.location, city: loc.city, country: "United States", postal_code: loc.postalCode, timezone: loc.timezone, bio: <picker over CREATOR_BIOS>, skills: <picker: string[] e.g. ['Video editing','Photography','Short-form reels']>, availability: <picker e.g. 'Available now'>, base_rate_per_hour: <picker 50..250>, years_of_experience: <picker 1..15>, languages_spoken: <picker e.g. ['English'] | ['English','Spanish']>, response_time: <picker e.g. 'Within a few hours'>, min_project_budget: <picker>, max_projects_per_month: <picker 2..12>, preferred_project_duration: <picker>, collaboration_preferences: <curated>, profile_visibility: "public", allow_portfolio_in_feed: true, is_completed: true }`. Same social-field exclusion. (`portfolio_urls`/`avatar_url` are set in the wiring step from real uploads, not here — keep this builder pure/text-only.)
+- `buildOrgUnitGeo(loc): { lat, lng, address }` → `{ lat: loc.lat, lng: loc.lng, address: <curated street>+', '+loc.location }`.
+
+**`text.ts` additions** (curated arrays): `BUSINESS_DESCRIPTIONS` (city-templated), `COMPANY_SIZES`, `EMPLOYEE_RANGES`, `BUDGET_RANGES`, `COLLABORATION_STYLES`, `MARKETING_OBJECTIVES`, `BRAND_CATEGORIES`, `INDUSTRY_VALUES` (the 15 enum labels), `CREATOR_SKILLS`, `LANGUAGES`, `AVAILABILITY`, `RESPONSE_TIMES`, `PROJECT_DURATIONS`, `COLLAB_PREFS`, `STREET_ADDRESSES`.
+
+**`seed.ts` — add the step** to `SeedSteps`: `completeProfiles: (businesses: BotRef[], creators: BotRef[]) => Promise<number>`, and call it in `runMarketplaceSeed` right after `const { businesses, creators } = await steps.readCohortRefs();` (before `setupBusinesses`). Update `seed.test.ts` (fake + assert called with `[B1]`,`[C1]`).
+
+**`run.ts` `buildDefaultSeedSteps.completeProfiles`** (live glue, serial, fail-loud): for each business (by index i): `bizClient.from("business_profiles").update(buildBusinessProfileFields(picker, locationAt(i))).eq("user_id", bizId)`, then set the primary org_unit geo `bizClient.from("org_units").update(buildOrgUnitGeo(loc)).eq("org_id", orgId).eq("is_primary", true)`; for each creator (by index j): `creatorClient.from("creator_profiles").update(buildCreatorProfileFields(picker, locationAt(j))).eq("user_id", creatorId)`. **Avatar/logo = best-effort** (try/catch, leave NULL on failure — a cosmetic field must not abort the seed): attempt `uploadAsset(botClient, { bucket:"profile-assets", uid, subpath:"avatar.jpg", … })` and set `avatar_url`/`logo_url` + creator `portfolio_urls:[url]` if it succeeds. (The `profile-assets` bucket is public; its bot-upload RLS is a **prod-run-verify** item — hence best-effort.)
+
+**Tests:** `locations.test.ts` (24 entries, `locationAt` wraps + is deterministic, every entry has lat/lng/timezone). `profile.test.ts` (builders return the full non-social field set; assert NONE of the social keys or `stripe_*`/`average_rating` appear; assert `profile_visibility:"public"`, `is_completed:true`, `country:"United States"`, and the location fields match the passed `loc`; assert `industry` is one of the enum labels). Update `seed.test.ts`. Run `npx vitest run sim/` (full suite green) + tsc + lint. Commit `feat(sim): full US-diverse synthetic profiles (excl. social accounts)`.
+
 ## Definition of Done (Phase A1)
 
 - `npx vitest run sim/` green; `npx tsc -p sim/tsconfig.json` clean; `npm run lint` clean for `sim/`.
