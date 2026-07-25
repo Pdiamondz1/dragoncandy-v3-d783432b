@@ -23,25 +23,28 @@
 //   • donny_footprint inserts donny_conversations (surface='web' — the INSERT RLS forbids 'internal')
 //     + donny_messages (role='user'; user_id OMITTED — it is a nullable NO-ACTION FK, so leaving it
 //     null keeps teardown a pure conversation-cascade). NO donny-* edge call.
-//   • media_fetch is the egress PROXY (spec §3a/§5): a real HEAD of a sampled public content URL,
-//     returning { bytes } from Content-Length. HEAD (not a body GET): the assets are third-party CDN
-//     videos and a full-body GET at high concurrency would self-inflict the very egress wall the
-//     proxy exists to measure. Returning a (possibly 0-byte) object marks it a media request.
+//   • media_fetch is the egress PROXY (spec §3a/§5, Slice 2): a real Range-capped GET (default 256
+//     KiB via `Range: bytes=0-<cap-1>`) of a sampled public DragonCandy Storage object
+//     (dragonshare-content — the true serving path), returning { bytes, ok, ms } from the actual
+//     transferred body length. The Range cap bounds egress cost per request while still exercising
+//     the full DNS→TLS→Storage→S3 path (a HEAD would skip the body transfer entirely). A non-2xx /
+//     network error is a media ERROR (tallied apart from breakage), never a throw.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { HotAction, HotActionContext, MediaResult } from "./driver";
 
-/** Swappable pool of public, GET/HEAD-able sample media URLs (mirrors the seed_synthetic_content
- *  video pool). cmdLoad may later pass real seeded content_file_paths; this is the default.
- *  NOTE (2026-07-24 smoke): this GCS sample bucket now returns 403 to GH-runner HEAD requests, so it
- *  yields media_bytes=0 + media_errors (which — post-fix — no longer trip the knee). Real egress
- *  numbers need DragonCandy's OWN public storage (dragonshare-content); measuring CDN-egress $ is
- *  Slice 2. Point this at reachable public URLs (or seeded content_file_paths) when that lands. */
+/** Swappable pool of real public DragonCandy Storage objects (the `dragonshare-content` bucket —
+ *  the true serving path), GET-able with a Range header. cmdLoad may later pass real seeded
+ *  content_file_paths; this is the default. Verified reachable (HTTP 206 to a Range GET) 2026-07-25
+ *  against prod zocahiffooqdybdhguqv — do NOT re-fabricate; re-verify with a fresh `storage.objects`
+ *  query + curl before swapping. */
 export const SAMPLE_MEDIA_URLS: string[] = [
-  "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-  "https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-  "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-  "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+  "https://zocahiffooqdybdhguqv.supabase.co/storage/v1/object/public/dragonshare-content/022a8f93-4dce-4d1d-bec6-86514c775bc0/dragonfeed/1785003561259_3.jpg",
+  "https://zocahiffooqdybdhguqv.supabase.co/storage/v1/object/public/dragonshare-content/1cd5efa8-75f4-4086-8853-d4b9cb1f7a56/dragonfeed/1785003562984_10.jpg",
+  "https://zocahiffooqdybdhguqv.supabase.co/storage/v1/object/public/dragonshare-content/2e9aadb3-38fe-41d9-a8c5-8c04839b825c/dragonfeed/1785003563669_13.jpg",
+  "https://zocahiffooqdybdhguqv.supabase.co/storage/v1/object/public/dragonshare-content/372913b9-7866-4ae1-ab25-24f9bf0e1791/dragonfeed/1785003564127_15.jpg",
+  "https://zocahiffooqdybdhguqv.supabase.co/storage/v1/object/public/dragonshare-content/7dfe511e-3b20-4102-a752-258d25effb4a/28ec77ac-a632-47f2-a9f7-e8259b10f2c3.mp4",
+  "https://zocahiffooqdybdhguqv.supabase.co/storage/v1/object/public/dragonshare-content/7dfe511e-3b20-4102-a752-258d25effb4a/34a81bfd-f87e-48dc-89dc-8fd9ca1199a1.png",
 ];
 
 /** The ~10% write leg — used by tests + the runbook to reason about the read:write split. */
@@ -66,6 +69,10 @@ export interface BuildMixOptions {
   mediaUrls?: string[];
   /** Injectable fetch for offline tests (default: global fetch). */
   fetchImpl?: typeof fetch;
+  /** Hard per-request egress cap in bytes via a Range header (default 256 KiB). */
+  rangeCapBytes?: number;
+  /** Injectable clock for deterministic latency in tests (default Date.now). */
+  now?: () => number;
 }
 
 /**
@@ -75,6 +82,8 @@ export interface BuildMixOptions {
 export function buildHotActions(opts: BuildMixOptions = {}): HotAction[] {
   const mediaUrls = opts.mediaUrls?.length ? opts.mediaUrls : SAMPLE_MEDIA_URLS;
   const fetchImpl = opts.fetchImpl ?? fetch;
+  const rangeCapBytes = opts.rangeCapBytes ?? 262144; // 256 KiB
+  const now = opts.now ?? Date.now;
 
   const reads: HotAction[] = [
     {
@@ -106,22 +115,22 @@ export function buildHotActions(opts: BuildMixOptions = {}): HotAction[] {
       },
     },
     {
-      // Real media egress proxy — a HEAD of a sampled public content URL (Task 4.2). Returns { bytes }.
+      // Real storage-egress: a Range-capped GET of a public DragonCandy Storage object (Slice 2).
+      // Exercises the true serving path (DNS→TLS→Supabase Storage→S3) with a hard byte cap so cost is
+      // computable. Returns { bytes, ok, ms }; a non-2xx / network error is a media ERROR, never a throw.
       name: "media_fetch",
       weight: 15,
       run: async (): Promise<MediaResult> => {
         const url = pick(mediaUrls);
-        // An external media CDN 4xx/5xx / network error must NOT count as a backend BREAKAGE (it would
-        // trip the DB-saturation knee on something unrelated to DragonCandy — the 2026-07-24 smoke
-        // tripped on GCS-sample-bucket 403s). Return { bytes:0, ok:false } → a media request + a media
-        // ERROR (tallied apart from breakage), never a throw.
+        const t0 = now();
         try {
-          const res = await fetchImpl(url, { method: "HEAD" });
-          if (!res.ok) return { bytes: 0, ok: false };
-          const len = Number(res.headers.get("content-length") ?? 0);
-          return { bytes: Number.isFinite(len) ? len : 0, ok: true };
+          const res = await fetchImpl(url, { method: "GET", headers: { Range: `bytes=0-${rangeCapBytes - 1}` } });
+          // 200 and 206 (Partial Content) are both res.ok (200–299). 403/404/416/5xx → media error.
+          if (!res.ok) return { bytes: 0, ok: false, ms: now() - t0 };
+          const buf = await res.arrayBuffer();
+          return { bytes: buf.byteLength, ok: true, ms: now() - t0 };
         } catch {
-          return { bytes: 0, ok: false };
+          return { bytes: 0, ok: false, ms: now() - t0 };
         }
       },
     },

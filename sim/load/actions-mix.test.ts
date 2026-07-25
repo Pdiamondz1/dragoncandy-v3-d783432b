@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildHotActions, WRITE_ACTION_NAMES } from "./actions-mix";
-import type { HotActionContext } from "./driver";
+import type { HotActionContext, MediaResult } from "./driver";
 
 const ctx: HotActionContext = { selfId: "self-uuid", peerId: "peer-uuid" };
 
@@ -107,27 +107,50 @@ describe("buildHotActions — the realistic DAU behavior mix", () => {
     for (const t of CREW_TABLES) expect(rec.inserts.some((i) => i.table === t)).toBe(false);
   });
 
-  it("media_fetch does a real HEAD and returns { bytes } from Content-Length", async () => {
+  it("media_fetch does a Range-capped GET of a real object and returns { bytes, ok, ms }", async () => {
     let method: string | undefined;
-    const fetchImpl = (async (_url: string, o?: { method?: string }) => {
+    let range: string | undefined;
+    const body = new Uint8Array(1234);
+    const fetchImpl = (async (_url: string, o?: { method?: string; headers?: Record<string, string> }) => {
       method = o?.method;
-      return { ok: true, status: 200, headers: { get: (h: string) => (h.toLowerCase() === "content-length" ? "54321" : null) } };
+      range = o?.headers?.Range;
+      return { ok: true, status: 206, arrayBuffer: async () => body.buffer };
     }) as unknown as typeof fetch;
-    const media = buildHotActions({ mediaUrls: ["http://cdn/vid.mp4"], fetchImpl }).find((a) => a.name === "media_fetch")!;
+    const now = (() => { const seq = [100, 142]; let i = 0; return () => seq[i++]; })(); // t0=100, end=142 → ms=42
+    const media = buildHotActions({ mediaUrls: ["http://cdn/vid.mp4"], fetchImpl, now }).find((a) => a.name === "media_fetch")!;
     const res = await media.run({} as SupabaseClient, ctx);
-    expect(method).toBe("HEAD"); // a proxy read — never downloads the full asset (would self-inflict egress)
-    expect(res).toEqual({ bytes: 54321, ok: true });
+    expect(method).toBe("GET");
+    expect(range).toBe("bytes=0-262143"); // default 256 KiB cap
+    expect(res).toEqual({ bytes: 1234, ok: true, ms: 42 });
   });
 
-  it("media_fetch does NOT throw on a non-2xx CDN response — returns { bytes:0, ok:false } (external, not a backend breakage)", async () => {
-    const fetchImpl = (async () => ({ ok: false, status: 503, headers: { get: () => null } })) as unknown as typeof fetch;
-    const media = buildHotActions({ mediaUrls: ["http://cdn/x.mp4"], fetchImpl }).find((a) => a.name === "media_fetch")!;
-    await expect(media.run({} as SupabaseClient, ctx)).resolves.toEqual({ bytes: 0, ok: false });
+  it("media_fetch honors a custom rangeCapBytes", async () => {
+    let range: string | undefined;
+    const fetchImpl = (async (_url: string, o?: { headers?: Record<string, string> }) => {
+      range = o?.headers?.Range;
+      return { ok: true, status: 206, arrayBuffer: async () => new ArrayBuffer(10) };
+    }) as unknown as typeof fetch;
+    const media = buildHotActions({ mediaUrls: ["http://cdn/x"], fetchImpl, rangeCapBytes: 1024 }).find((a) => a.name === "media_fetch")!;
+    await media.run({} as SupabaseClient, ctx);
+    expect(range).toBe("bytes=0-1023");
   });
 
-  it("media_fetch does NOT throw on a network error — returns { bytes:0, ok:false }", async () => {
+  it("media_fetch does NOT throw on a non-2xx response — returns { bytes:0, ok:false } with ms", async () => {
+    const fetchImpl = (async () => ({ ok: false, status: 403, arrayBuffer: async () => new ArrayBuffer(0) })) as unknown as typeof fetch;
+    const media = buildHotActions({ mediaUrls: ["http://cdn/x"], fetchImpl }).find((a) => a.name === "media_fetch")!;
+    // HotAction.run is typed Promise<MediaResult | void> (shared with the void-returning read/write
+    // actions); media_fetch always resolves a MediaResult, so narrow for the property access below.
+    const res = (await media.run({} as SupabaseClient, ctx)) as MediaResult;
+    expect(res.bytes).toBe(0);
+    expect(res.ok).toBe(false);
+    expect(typeof res.ms).toBe("number");
+  });
+
+  it("media_fetch does NOT throw on a network error — returns { bytes:0, ok:false } with ms", async () => {
     const fetchImpl = (async () => { throw new Error("ECONNRESET"); }) as unknown as typeof fetch;
-    const media = buildHotActions({ mediaUrls: ["http://cdn/x.mp4"], fetchImpl }).find((a) => a.name === "media_fetch")!;
-    await expect(media.run({} as SupabaseClient, ctx)).resolves.toEqual({ bytes: 0, ok: false });
+    const media = buildHotActions({ mediaUrls: ["http://cdn/x"], fetchImpl }).find((a) => a.name === "media_fetch")!;
+    const res = (await media.run({} as SupabaseClient, ctx)) as MediaResult;
+    expect(res).toMatchObject({ bytes: 0, ok: false });
+    expect(typeof res.ms).toBe("number");
   });
 });
