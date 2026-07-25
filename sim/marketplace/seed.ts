@@ -2,7 +2,7 @@
 // so the ordering + flag-gating + resumability are unit-tested with zero network; the real writes live
 // in DEFAULT_SEED_STEPS (Task 8 wires it). Serial by contract (mint-429 never bites).
 import type { BotRef } from "../types";
-import type { Role } from "../personas"; // Role lives in personas.ts (types.ts imports but does NOT re-export it)
+import type { Persona } from "../personas"; // Persona/Role live in personas.ts (types.ts imports but does NOT re-export them)
 import { generateMarketplaceCohort } from "./personas";
 
 export interface SeededCampaign {
@@ -13,8 +13,10 @@ export interface SeededCampaign {
 export interface SeedSteps {
   /** Emails already on prod (profiles.email LIKE botmk_%) — drives resumable minting. */
   readExistingEmails: () => Promise<Set<string>>;
-  /** Mint exactly the given (missing) personas, serially. Returns the new BotRefs. */
-  mintCohort: (personas: { email: string; role: Role }[]) => Promise<BotRef[]>;
+  /** Mint exactly the given (missing) personas, serially. Full Personas (not just email/role) — the
+   *  real mintCohort calls mintBot(svc, persona), which needs fullName/personaKey/cohort too. Returns
+   *  the new BotRefs. */
+  mintCohort: (personas: Persona[]) => Promise<BotRef[]>;
   /** The FULL botmk cohort (existing + newly minted), split by role — read AFTER minting so every
    *  downstream phase operates on the whole cohort even on a resume where mintCohort minted nothing. */
   readCohortRefs: () => Promise<{ businesses: BotRef[]; creators: BotRef[] }>;
@@ -64,7 +66,7 @@ export async function runMarketplaceSeed(
   const skipped = personas.length - missing.length;
   log(`[marketplace-seed] cohort=${personas.length} missing=${missing.length} skipped=${skipped}`);
 
-  const minted = await steps.mintCohort(missing.map((p) => ({ email: p.email, role: p.role })));
+  const minted = await steps.mintCohort(missing);
 
   // Read the FULL cohort (existing + newly minted) so every downstream phase operates on the whole
   // botmk cohort — correct on a resume where mintCohort minted nothing.
