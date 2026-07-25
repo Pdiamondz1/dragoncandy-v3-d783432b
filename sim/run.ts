@@ -30,7 +30,7 @@ import { createDiscount, addOrgUnit, submitCgc, sendMessage, postDragonFeed } fr
 import { uploadAsset, loadSampleAsset } from "./marketplace/content";
 import { makePicker, curatedBrief, DISCOUNT_KINDS, MESSAGE_SNIPPETS, CREATOR_BIOS } from "./marketplace/text";
 
-const COMMANDS = ["dry-run", "mint", "tick", "purge", "bulk-seed", "load", "marketplace-seed"] as const;
+const COMMANDS = ["dry-run", "mint", "tick", "purge", "bulk-seed", "load", "marketplace-seed", "marketplace-purge"] as const;
 type Command = (typeof COMMANDS)[number];
 
 export interface Args {
@@ -894,6 +894,24 @@ export async function cmdMarketplaceSeed(args: Args, deps: CmdMarketplaceSeedDep
   console.warn(`[marketplace-seed] ${JSON.stringify(report)}`);
 }
 
+/**
+ * marketplace-purge: boot-gate, then call the botmk-scoped teardown RPC
+ * (purge_synthetic_marketplace_cohort, 20260725120000). Spares the live bot0## daily cohort and the
+ * botla…/botseed_… load cohorts — NEVER purge_synthetic_data() for a routine marketplace-seed reset.
+ * Same fail-loud residual contract as cmdPurge: any non-zero residual_* is a failed teardown.
+ */
+export async function cmdMarketplacePurge(): Promise<void> {
+  const svc = serviceClient();
+  await bootGate(svc);
+  const { data, error } = await svc.rpc("purge_synthetic_marketplace_cohort");
+  if (error) throw new Error(`marketplace purge failed: ${error.message}`);
+  console.warn(`[marketplace-purge] ${JSON.stringify(data)}`);
+  const residuals = nonZeroResiduals((data ?? {}) as Record<string, unknown>);
+  if (residuals.length > 0) {
+    throw new Error(`[marketplace-purge] non-zero residuals: ${residuals.map(([k, v]) => `${k}=${v}`).join(", ")}`);
+  }
+}
+
 export async function main(argv: string[]): Promise<void> {
   const args = parseArgs(argv);
   switch (args.command) {
@@ -917,6 +935,9 @@ export async function main(argv: string[]): Promise<void> {
       return;
     case "marketplace-seed":
       await cmdMarketplaceSeed(args);
+      return;
+    case "marketplace-purge":
+      await cmdMarketplacePurge();
       return;
   }
 }
