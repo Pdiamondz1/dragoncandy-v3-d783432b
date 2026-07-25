@@ -49,7 +49,7 @@ permissions:
   contents: read
 
 env:
-  MAX_SHARDS: "10"
+  MAX_SHARDS: "20"
 
 jobs:
   # Pure compute (no prod secrets, no environment gate): validate the shard count and emit the matrix.
