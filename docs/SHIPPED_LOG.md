@@ -25,6 +25,31 @@
 > anything under "Shipped" is done. Where the two appear to disagree, §5 wins.
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
+
+## [2026-07-25] Living Synthetic Marketplace (Sub-project A) — offline build + live teardown (`feat/living-marketplace`)
+
+Sub-project A of the living-marketplace / 200K-DAU initiative: a **persistent, browsable synthetic
+marketplace on prod** built through **real RLS-enforced app flows** (bot JWTs) — full profiles, free
+campaigns, applications→collaborations, uploaded content, DragonFeed posts, messaging, discounts,
+reviews, multi-location orgs, CGC — visible to all but excluded from founder metrics via `is_synthetic`.
+New `sim/marketplace/` module (personas/text/actions/content/locations/profile/seed) + a
+`marketplace-seed`/`marketplace-purge` harness command + `buildDefaultSeedSteps` live glue, reusing the
+harness spine + the verified free-campaign lifecycle. New `botmk_` cohort namespace, excluded from
+`readSessionCapableBots` (else the daily crew tick + single-runner load would sweep it). **Profiles are
+US-diverse** (24-city pool; business geo on `org_units.lat/lng`, creator geo as location text) **and
+fully filled out excluding all social-account fields**. Standard campaigns are FREE (crew-style
+no-payout); public campaigns are explicitly status-flipped published→active→completed on hire/complete
+(the accept RPC only auto-activates crew campaigns); the synthetic org's `active_campaign_limit` is
+raised (default 1 would abort multi-publish). **ONE-SHOT** (cohort cap ≤150/≤450 + a `botmk_`-freshness
+guard mirroring bulk-seed) — recovery is `marketplace-purge` then re-dispatch. The `botmk_`-scoped
+teardown RPC `purge_synthetic_marketplace_cohort()` (migration `20260725120000`, FK-graph-grounded,
+`residual_*` fail-loud backstop) is **applied + no-op-verified on prod** (0 new advisors). Seeding
+vehicle: `.github/workflows/marketplace-seed.yml` (manual dispatch, `synthetic-weight` Environment;
+`SIM_*` secrets are GitHub-Environment-only, so the branch must merge before the first dispatch). 223
+sim tests; reviewed per-task + opus whole-branch + Codex (4 passes: campaign-limit abort,
+seed-without-teardown, cohort cap, downstream-not-resumable, one-shot doc — all resolved). **Pending
+(founder-gated):** merge → small 2/4 seed → segregation + teardown-to-zero proofs → scale 100/300.
+→ `docs/wiki/concepts/living-synthetic-marketplace.md`
 > `PROJECT_CONTEXT.md` §5 is an index — one line per entry, detail lives here.
 
 ---END-HEADER---
