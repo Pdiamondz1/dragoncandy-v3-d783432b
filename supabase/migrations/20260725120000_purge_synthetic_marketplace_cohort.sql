@@ -1,13 +1,17 @@
 -- Scoped teardown for the PERSISTENT marketplace cohort (botmk_%). Leaf-first, residue-reported.
 -- Spares the live bot0## daily cohort AND the botla…/botseed_… load cohorts. NEVER call
 -- purge_synthetic_data() for routine marketplace resets (it also deletes the live 25).
--- Grounded in the live FK graph (2026-07-25): deleting the botmk auth.users cascades the vast
+-- The cascade chain below was enumerated from prod's live pg_constraint FK graph (confdeltype) on
+-- 2026-07-25, NOT reasoned from schema convention: deleting the botmk auth.users cascades the vast
 -- majority (profiles->campaigns/applications/collaborations/project_reviews/messages/conversations
 -- (+participants)/dragonshare_posts(+boosts/engagement/events)/file_uploads; business_profiles->
--- promotions->discount_codes/promotion_submissions; creator_profiles; synthetic_users; org_members).
--- Non-cascading residue handled explicitly: storage.objects (no FK), organizations (captured before
--- the delete; their org_units/org_members cascade on the org delete), and two NO-ACTION-to-profiles
--- precaution tables. residual_* MUST all be 0 for a clean teardown.
+-- promotions->discount_codes/promotion_submissions; creator_profiles; synthetic_users; org_members
+-- — all confirmed ON DELETE CASCADE). Non-cascading residue handled explicitly: storage.objects
+-- (no FK), organizations (captured before the delete; their org_units/org_members cascade on the org
+-- delete), and two NO-ACTION-to-profiles precaution tables. The residual_* report is the BACKSTOP:
+-- it re-queries each table by the pre-captured id arrays AFTER the deletes, so if any assumed cascade
+-- is ever wrong the teardown fails loud (non-zero residual) rather than silently leaving synthetic
+-- rows on prod. The founder-gated first seed+purge cycle confirms residual_* all-zero live.
 create or replace function public.purge_synthetic_marketplace_cohort()
 returns jsonb
 language plpgsql
