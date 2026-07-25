@@ -22,7 +22,7 @@ export async function sendMessage(
     user2_uuid: p.creatorId,
     p_org_unit_id: p.orgUnitId ?? null,
   });
-  orThrow("sendMessage (conversation)", convErr as { message: string } | null);
+  orThrow("sendMessage (conversation)", convErr);
   const conversationId = convId as string;
   if (!conversationId) throw new Error("sendMessage: create_or_get_direct_conversation returned no id");
   const { error: msgErr } = await bizClient.from("messages").insert({
