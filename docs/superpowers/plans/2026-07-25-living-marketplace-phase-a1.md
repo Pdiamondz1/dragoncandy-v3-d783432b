@@ -119,12 +119,7 @@ Expected: FAIL — `Cannot find module './personas'`.
 // (bot0##), the load cohort (botla…), and the depth pool (botseed_…) so every existing selector
 // stays disjoint. Reuses the deterministic name pools + role mapping from ../personas; only the
 // email scheme is new (role-tagged: botmk_b_<seed>_<i> business, botmk_c_<seed>_<i> creator).
-import {
-  generateCohort,
-  personaRole,
-  type Persona,
-  type Role,
-} from "../personas";
+import { generateCohort, type Persona, type Role } from "../personas";
 
 const SYNTHETIC_DOMAIN = "@synthetic.dragoncandy.test";
 export const MARKETPLACE_EMAIL_PREFIX = "botmk_";
@@ -161,9 +156,6 @@ export function generateMarketplaceCohort(
     ...p,
     email: marketplaceEmail(seed, "content_creator", i),
   }));
-  // personaRole is the invariant these already satisfy (business group → business_client, etc.);
-  // referenced here to keep the role-tag contract explicit and lint-used.
-  void personaRole;
   return [...bizPersonas, ...creatorPersonas];
 }
 ```
@@ -889,9 +881,9 @@ git commit -m "feat(sim): real content-delivery upload to DC public storage + sa
 - Produces:
   - `interface SeedSteps` — one method per phase (injectable; `DEFAULT_SEED_STEPS` wires the real writes).
   - `interface SeedOpts { businesses; creators; seed; multiLocation: boolean; cgc: boolean }`.
-  - `interface SeedReport { minted; campaigns; collaborations; messages; posts; discounts; units; cgcSubmissions; skipped }`.
+  - `interface SeedReport { minted; skipped; campaigns; collaborations; messages; posts; units; cgcSubmissions }`.
   - `runMarketplaceSeed(steps: SeedSteps, opts: SeedOpts, log?: (m: string) => void): Promise<SeedReport>`.
-- **Idempotency/resumability:** each step is given the set of already-existing bots (via `steps.readExisting()`), so a re-run mints only the missing bots and skips businesses/creators already fully wired. The orchestration test asserts this.
+- **Idempotency/resumability:** `readExistingEmails()` drives resumable minting (mint only the missing); after minting, `readCohortRefs()` returns the FULL botmk cohort (existing + newly minted) so every downstream phase operates on the whole cohort, not just the newly-minted refs. The orchestration test asserts both.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -900,13 +892,14 @@ git commit -m "feat(sim): real content-delivery upload to DC public storage + sa
 import { describe, it, expect, vi } from "vitest";
 import { runMarketplaceSeed, type SeedSteps, type SeedOpts } from "./seed";
 
+const B1 = { userId: "b1", email: "botmk_b_1_1@synthetic.dragoncandy.test", role: "business_client" as const, personaKey: null, cohort: "marketplace" };
+const C1 = { userId: "c1", email: "botmk_c_1_1@synthetic.dragoncandy.test", role: "content_creator" as const, personaKey: null, cohort: "marketplace" };
+
 function fakeSteps(overrides: Partial<SeedSteps> = {}): SeedSteps {
   return {
     readExistingEmails: vi.fn(async () => new Set<string>()),
-    mintCohort: vi.fn(async () => [
-      { userId: "b1", email: "botmk_b_1_1@synthetic.dragoncandy.test", role: "business_client", personaKey: null, cohort: "marketplace" },
-      { userId: "c1", email: "botmk_c_1_1@synthetic.dragoncandy.test", role: "content_creator", personaKey: null, cohort: "marketplace" },
-    ]),
+    mintCohort: vi.fn(async () => [B1, C1]),
+    readCohortRefs: vi.fn(async () => ({ businesses: [B1], creators: [C1] })),
     setupBusinesses: vi.fn(async () => 1),
     publishCampaigns: vi.fn(async () => [{ campaignId: "cam1", ownerId: "b1" }]),
     runCollaborations: vi.fn(async () => 1),
@@ -924,7 +917,8 @@ describe("runMarketplaceSeed orchestration", () => {
     const steps = fakeSteps();
     const report = await runMarketplaceSeed(steps, opts);
     expect(steps.mintCohort).toHaveBeenCalled();
-    expect(steps.setupBusinesses).toHaveBeenCalled();
+    expect(steps.readCohortRefs).toHaveBeenCalled();
+    expect(steps.setupBusinesses).toHaveBeenCalledWith([B1]); // FULL cohort, not just minted
     expect(steps.publishCampaigns).toHaveBeenCalled();
     expect(steps.runCollaborations).toHaveBeenCalled();
     expect(steps.seedMessaging).toHaveBeenCalled();
@@ -941,17 +935,18 @@ describe("runMarketplaceSeed orchestration", () => {
     expect(steps.seedCgc).toHaveBeenCalled();
   });
 
-  it("is resumable: a fully-present cohort mints nothing", async () => {
+  it("is resumable: a fully-present cohort mints nothing but still seeds the full cohort", async () => {
     const steps = fakeSteps({
-      readExistingEmails: vi.fn(async () => new Set(["botmk_b_1_1@synthetic.dragoncandy.test", "botmk_c_1_1@synthetic.dragoncandy.test"])),
+      readExistingEmails: vi.fn(async () => new Set([B1.email, C1.email])),
       mintCohort: vi.fn(async (personas: { email: string }[]) => {
-        // mintCohort receives ONLY the missing personas; assert it got none.
-        expect(personas).toHaveLength(0);
+        expect(personas).toHaveLength(0); // mintCohort receives ONLY the missing personas
         return [];
       }),
     });
     const report = await runMarketplaceSeed(steps, opts);
-    expect(report.skipped).toBeGreaterThanOrEqual(2);
+    expect(report.skipped).toBe(2);
+    expect(steps.readCohortRefs).toHaveBeenCalled();
+    expect(steps.publishCampaigns).toHaveBeenCalledWith([B1]); // downstream still runs on the full cohort
   });
 });
 ```
@@ -982,6 +977,9 @@ export interface SeedSteps {
   readExistingEmails: () => Promise<Set<string>>;
   /** Mint exactly the given (missing) personas, serially. Returns the new BotRefs. */
   mintCohort: (personas: { email: string; role: Role }[]) => Promise<BotRef[]>;
+  /** The FULL botmk cohort (existing + newly minted), split by role — read AFTER minting so every
+   *  downstream phase operates on the whole cohort even on a resume where mintCohort minted nothing. */
+  readCohortRefs: () => Promise<{ businesses: BotRef[]; creators: BotRef[] }>;
   /** Per business: business_profiles polish + one discount (+ CGC prefs when cgc). Returns count. */
   setupBusinesses: (businesses: BotRef[]) => Promise<number>;
   /** Publish free public campaigns (~1–3 per business). Returns the created campaigns. */
@@ -1030,11 +1028,9 @@ export async function runMarketplaceSeed(
 
   const minted = await steps.mintCohort(missing.map((p) => ({ email: p.email, role: p.role })));
 
-  // Resolve the FULL cohort refs (existing + newly minted) for downstream phases: the step impls read
-  // the cohort by namespace (Task 8), so here we act on the minted set plus rely on those reads. For
-  // the orchestration contract we pass `minted` split by role; DEFAULT_SEED_STEPS reads the full set.
-  const businesses = minted.filter((b) => b.role === "business_client");
-  const creators = minted.filter((b) => b.role === "content_creator");
+  // Read the FULL cohort (existing + newly minted) so every downstream phase operates on the whole
+  // botmk cohort — correct on a resume where mintCohort minted nothing.
+  const { businesses, creators } = await steps.readCohortRefs();
 
   await steps.setupBusinesses(businesses);
   const campaigns = await steps.publishCampaigns(businesses);
@@ -1072,7 +1068,9 @@ git commit -m "feat(sim): idempotent marketplace populate sequencer (orchestrati
 ```
 
 > **Implementation note for `DEFAULT_SEED_STEPS` (built in Task 8):** each step impl obtains a bot client via `makeBotFor(cohort)` and:
+> - `readExistingEmails` → service read of `profiles.email` LIKE `botmk\_%@synthetic.dragoncandy.test` → `Set<string>`.
 > - `mintCohort` → `for (const p of personas) await mintBot(svc, persona)` (serial; reuse `generateMarketplaceCohort` personas by email).
+> - `readCohortRefs` → service read of all `botmk_%` profiles (id, email, role); split into `{ businesses, creators }` by role. This is the full-cohort source every later step uses (and the `makeBotFor` cohort).
 > - `setupBusinesses` → per business: fetch `business_profiles.id` + `profiles.org_id` via the service client; `createDiscount(bizClient, …)` with a `makePicker`-drawn `DISCOUNT_KINDS` entry, `start_date=today`, `end_date=+30d`; when `cgc`, also `svc.from("business_profiles").update({ cgc_posting_preferences: { enabled: true } }).eq("id", bpId)`.
 > - `publishCampaigns` → per business, 1–3 free campaigns: `bizClient.from("campaigns").insert({ user_id, title, description, status:"published", group_id:null, fixed_price:0, org_unit_id:null })` using a `curatedBrief(picker)` (or the Task-11 `briefFn`). Publish MORE campaigns than you collaborate on, so a realistic subset stays **open/`published`** (browsable, accepting applications) while the rest advance — populated from both the browse side and the in-progress side.
 > - `runCollaborations` → for a SUBSET of (campaign, creator) pairs (leave the rest open): build `Action` objects and call `executeAction` with `ctx = { service: svc, botFor }` — `applyToCampaign` → read the new `campaign_applications.id` (service) → `hire` → **flip the campaign to in-progress** (`bizClient.from("campaigns").update({ status:"active" }).eq("id", campaignId)` — own-row RLS; REQUIRED because the verified `accept_application_with_collaboration` only auto-activates *crew* free campaigns, NOT public free ones, so a hired public campaign stays `published` unless flipped) → `uploadDeliverable` (or the real `uploadAsset` + a `file_uploads` row pointing at the returned public URL) → `submitContent` → dual-party `requestCompletion` (both roles) → **flip the campaign to `completed`** (own-row update, so the lifecycle reads published→active→completed on the business side) → `leaveReview` (both roles). All reuse the verified free-completion NO-payout path (`requestCompletion` never invokes `release-creator-payout`; `record_crew_activity` no-ops off the crew path).
