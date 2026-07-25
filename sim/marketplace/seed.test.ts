@@ -9,6 +9,7 @@ function fakeSteps(overrides: Partial<SeedSteps> = {}): SeedSteps {
     readExistingEmails: vi.fn(async () => new Set<string>()),
     mintCohort: vi.fn(async () => [B1, C1]),
     readCohortRefs: vi.fn(async () => ({ businesses: [B1], creators: [C1] })),
+    completeProfiles: vi.fn(async () => 2),
     setupBusinesses: vi.fn(async () => 1),
     publishCampaigns: vi.fn(async () => [{ campaignId: "cam1", ownerId: "b1" }]),
     runCollaborations: vi.fn(async () => 1),
@@ -27,6 +28,7 @@ describe("runMarketplaceSeed orchestration", () => {
     const report = await runMarketplaceSeed(steps, opts);
     expect(steps.mintCohort).toHaveBeenCalled();
     expect(steps.readCohortRefs).toHaveBeenCalled();
+    expect(steps.completeProfiles).toHaveBeenCalledWith([B1], [C1]); // before setupBusinesses/campaigns
     expect(steps.setupBusinesses).toHaveBeenCalledWith([B1]); // FULL cohort, not just minted
     expect(steps.publishCampaigns).toHaveBeenCalled();
     expect(steps.runCollaborations).toHaveBeenCalled();

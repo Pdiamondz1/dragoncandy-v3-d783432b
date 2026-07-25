@@ -20,6 +20,10 @@ export interface SeedSteps {
   /** The FULL botmk cohort (existing + newly minted), split by role — read AFTER minting so every
    *  downstream phase operates on the whole cohort even on a resume where mintCohort minted nothing. */
   readCohortRefs: () => Promise<{ businesses: BotRef[]; creators: BotRef[] }>;
+  /** Task 12: fill out + geo-spread every profile across the 24-city US_LOCATIONS pool BEFORE
+   *  setupBusinesses/publishCampaigns run, so the marketplace looks real (excludes social-media
+   *  account fields — those need the real integration). Returns count of profiles completed. */
+  completeProfiles: (businesses: BotRef[], creators: BotRef[]) => Promise<number>;
   /** Per business: business_profiles polish + one discount (+ CGC prefs when cgc). Returns count. */
   setupBusinesses: (businesses: BotRef[]) => Promise<number>;
   /** Publish free public campaigns (~1–3 per business). Returns the created campaigns. */
@@ -72,6 +76,7 @@ export async function runMarketplaceSeed(
   // botmk cohort — correct on a resume where mintCohort minted nothing.
   const { businesses, creators } = await steps.readCohortRefs();
 
+  await steps.completeProfiles(businesses, creators);
   await steps.setupBusinesses(businesses);
   const campaigns = await steps.publishCampaigns(businesses);
   const collaborations = await steps.runCollaborations(campaigns, creators);

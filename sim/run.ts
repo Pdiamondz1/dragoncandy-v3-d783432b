@@ -29,6 +29,8 @@ import { MARKETPLACE_EMAIL_PREFIX } from "./marketplace/personas";
 import { createDiscount, addOrgUnit, submitCgc, sendMessage, postDragonFeed } from "./marketplace/actions";
 import { uploadAsset, loadSampleAsset } from "./marketplace/content";
 import { makePicker, curatedBrief, DISCOUNT_KINDS, MESSAGE_SNIPPETS, CREATOR_BIOS } from "./marketplace/text";
+import { locationAt } from "./marketplace/locations";
+import { buildBusinessProfileFields, buildCreatorProfileFields, buildOrgUnitGeo } from "./marketplace/profile";
 
 const COMMANDS = ["dry-run", "mint", "tick", "purge", "bulk-seed", "load", "marketplace-seed", "marketplace-purge"] as const;
 type Command = (typeof COMMANDS)[number];
@@ -601,6 +603,81 @@ function buildDefaultSeedSteps(svc: SupabaseClient, opts: SeedOpts): SeedSteps {
     };
   };
 
+  /**
+   * Task 12: fill out + geo-spread every profile across the 24-city US_LOCATIONS pool BEFORE any
+   * other phase touches business_profiles/creator_profiles — own-row RLS-real updates via each
+   * bot's own client, matching setupBusinesses's convention. Business i / creator j gets
+   * locationAt(i)/locationAt(j) (wraps by modulo), and a business's PRIMARY org_unit gets the SAME
+   * location's geo so a bot's address is consistent across both tables. Fail-loud on the
+   * business_profiles/creator_profiles/org_units writes (a half-completed profile pass must not
+   * report green) — EXCEPT the avatar/logo upload, which is best-effort: profile-assets' bot-upload
+   * RLS is a prod-run-verify item (uid-prefixed path, mirrors uploadAsset's existing convention), so
+   * a storage failure must never abort the whole seed over a cosmetic field.
+   */
+  const completeProfiles = async (businesses: BotRef[], creators: BotRef[]): Promise<number> => {
+    let count = 0;
+    for (let i = 0; i < businesses.length; i++) {
+      const biz = businesses[i];
+      const loc = locationAt(i);
+      const bizClient = await botFor(biz.userId);
+
+      const { error: bpErr } = await bizClient
+        .from("business_profiles").update(buildBusinessProfileFields(picker, loc)).eq("user_id", biz.userId);
+      if (bpErr) throw new Error(`[marketplace-seed] completeProfiles: business_profiles update failed for ${biz.email}: ${bpErr.message}`);
+
+      const { data: profileRow, error: profErr } = await svc
+        .from("profiles").select("org_id").eq("id", biz.userId).single();
+      const orgId = (profileRow as { org_id: string | null } | null)?.org_id;
+      if (profErr || !orgId) {
+        throw new Error(`[marketplace-seed] completeProfiles: org_id lookup failed for ${biz.email}: ${profErr?.message ?? "no org_id"}`);
+      }
+      const { error: unitErr } = await bizClient
+        .from("org_units").update(buildOrgUnitGeo(loc)).eq("org_id", orgId).eq("is_primary", true);
+      if (unitErr) throw new Error(`[marketplace-seed] completeProfiles: org_units geo update failed for ${biz.email}: ${unitErr.message}`);
+
+      try {
+        const asset = loadSampleAsset(picker, "image");
+        const url = await uploadAsset(bizClient, {
+          bucket: "profile-assets", uid: biz.userId, subpath: `logo${asset.ext}`,
+          bytes: asset.bytes, contentType: asset.contentType,
+        });
+        const { error: logoErr } = await bizClient.from("business_profiles").update({ logo_url: url }).eq("user_id", biz.userId);
+        if (logoErr) throw new Error(logoErr.message);
+      } catch (e) {
+        console.warn(`[marketplace-seed] completeProfiles: logo upload skipped for ${biz.email}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+
+      count += 1;
+    }
+
+    for (let j = 0; j < creators.length; j++) {
+      const creator = creators[j];
+      const loc = locationAt(j);
+      const creatorClient = await botFor(creator.userId);
+
+      const { error: cpErr } = await creatorClient
+        .from("creator_profiles").update(buildCreatorProfileFields(picker, loc)).eq("user_id", creator.userId);
+      if (cpErr) throw new Error(`[marketplace-seed] completeProfiles: creator_profiles update failed for ${creator.email}: ${cpErr.message}`);
+
+      try {
+        const asset = loadSampleAsset(picker, "image");
+        const url = await uploadAsset(creatorClient, {
+          bucket: "profile-assets", uid: creator.userId, subpath: `avatar${asset.ext}`,
+          bytes: asset.bytes, contentType: asset.contentType,
+        });
+        const { error: avatarErr } = await creatorClient
+          .from("creator_profiles").update({ avatar_url: url, portfolio_urls: [url] }).eq("user_id", creator.userId);
+        if (avatarErr) throw new Error(avatarErr.message);
+      } catch (e) {
+        console.warn(`[marketplace-seed] completeProfiles: avatar upload skipped for ${creator.email}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+
+      count += 1;
+    }
+
+    return count;
+  };
+
   const setupBusinesses = async (businesses: BotRef[]): Promise<number> => {
     const today = new Date();
     const endDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -851,6 +928,7 @@ function buildDefaultSeedSteps(svc: SupabaseClient, opts: SeedOpts): SeedSteps {
     readExistingEmails,
     mintCohort,
     readCohortRefs,
+    completeProfiles,
     setupBusinesses,
     publishCampaigns,
     runCollaborations,
