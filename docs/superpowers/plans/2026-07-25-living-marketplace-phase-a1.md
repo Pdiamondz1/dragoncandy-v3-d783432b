@@ -1140,9 +1140,9 @@ Expected: FAIL — `cmdMarketplaceSeed`/`CmdMarketplaceSeedDeps` not exported; `
 
 In `sim/run.ts`:
 
-(a) Extend `COMMANDS` (line 28):
+(a) Extend `COMMANDS` (line 28) — add ONLY `marketplace-seed` here (Task 9 adds `marketplace-purge` together with its function + case, so run.ts always compiles):
 ```ts
-const COMMANDS = ["dry-run", "mint", "tick", "purge", "bulk-seed", "load", "marketplace-seed", "marketplace-purge"] as const;
+const COMMANDS = ["dry-run", "mint", "tick", "purge", "bulk-seed", "load", "marketplace-seed"] as const;
 ```
 
 (b) Add to the `Args` interface (after line 59):
@@ -1210,16 +1210,12 @@ export async function cmdMarketplaceSeed(args: Args, deps: CmdMarketplaceSeedDep
 
 > **Convention note (not a placeholder):** `buildDefaultSeedSteps` is thin **live integration glue**, exercised by the boot-gated prod run — exactly like the existing `serviceClient()`/`mintBot` wiring inside `cmdBulkSeed`/`cmdLoad`, which the codebase does NOT unit-test (the *pure* logic — `planSeed`, `sliceActiveCohort`, `buildHotActions`, and here `runMarketplaceSeed`/the action helpers/`personas`/`text`/`content` — is what carries the unit tests). Every call it makes is fully specified above with real RPC/table/helper names; follow that list. Do not invent counts beyond the note's ranges (1–3 campaigns/business, a subset collaborate).
 
-(g) Add the `main` switch cases (in the `switch`):
+(g) Add the `main` switch case (in the `switch`) — ONLY `marketplace-seed` in this task (Task 9 adds the `marketplace-purge` case alongside its function so the tree always compiles):
 ```ts
     case "marketplace-seed":
       await cmdMarketplaceSeed(args);
       return;
-    case "marketplace-purge":
-      await cmdMarketplacePurge();
-      return;
 ```
-(`cmdMarketplacePurge` is added in Task 9.)
 
 - [ ] **Step 4: Run tests to verify they pass**
 
@@ -1333,7 +1329,7 @@ it("cmdMarketplacePurge throws on any non-zero residual", async () => {
   // (Model on the existing cmdPurge test.)
 });
 ```
-Impl (in `sim/run.ts`, mirror `cmdPurge`):
+Impl (in `sim/run.ts`) — add all three in the SAME task so the tree compiles: (i) add `"marketplace-purge"` to the `COMMANDS` tuple; (ii) add the switch case `case "marketplace-purge": await cmdMarketplacePurge(); return;`; (iii) add the function (mirror `cmdPurge`):
 ```ts
 export async function cmdMarketplacePurge(): Promise<void> {
   const svc = serviceClient();
