@@ -106,7 +106,8 @@ that keeps bot campaigns visible but non-applyable/non-messageable by real users
   - **Deliverable `file_uploads` / content:** intentionally RETAINED (they feed Sub-project C's media source), but
     bounded — capped per completed collaboration and by the capped campaign count, so accumulation is finite.
   - **Completed campaigns / collaborations / reviews:** bounded by the per-business campaign cap (not monotonic).
-  - Kill switch drains instantly.
+  - The kill switch **halts new activity instantly** (it gates the tick; it does not purge the persistent cohort — removal is the deliberate scoped teardown of §3).
+  - *(Plan-time details: at-cap behavior — stop vs recycle old campaigns — and whether every business gets an `organizations` row or only the multi-location ones, are pinned down in the implementation plan.)*
 
 ## 6. Text seam (hybrid)
 
