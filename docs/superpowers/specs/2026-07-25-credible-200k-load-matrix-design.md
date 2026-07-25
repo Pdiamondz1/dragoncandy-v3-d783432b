@@ -79,11 +79,14 @@ object**, so `media_fetch` exercises the actual path that serves real users' med
 TLS → Supabase Storage → S3 origin). This is the untested bottleneck.
 
 - **Media pool = real, public, reachable DragonCandy Storage object URLs.** Sourced as a
-  curated static list of known-public objects verified reachable (HTTP 200) at plan time —
-  candidate buckets: `help-screenshots` (confirmed public in the help-center work) and/or
-  `dragonshare` public content. Read-only GETs of existing public objects: **no seeding, no
-  writes, no teardown impact, no data pollution.** The pool stays injectable via
-  `buildHotActions({ mediaUrls })` so it can be overridden or later sourced from prod
+  curated static list of known-public objects verified reachable (HTTP 200) at plan time.
+  **11 public buckets confirmed on prod (2026-07-25)** — the pool draws from
+  **`dragonshare-content`** (the real user-media serving path — most realistic egress target)
+  and **`help-screenshots`** (reliable public images as a fallback). Public-object URL form:
+  `…/storage/v1/object/public/<bucket>/<path>` (the plan reads real object paths from
+  `storage.objects` and verifies each returns 200). Read-only GETs of existing public objects:
+  **no seeding, no writes, no teardown impact, no data pollution.** The pool stays injectable
+  via `buildHotActions({ mediaUrls })` so it can be overridden or later sourced from prod
   `content_file_path`s.
 - **Bounded egress via a `Range` cap.** Each `media_fetch` issues `GET` with
   `Range: bytes=0-<CAP-1>` (default cap **256 KB**). This exercises the full serving path
@@ -91,16 +94,21 @@ TLS → Supabase Storage → S3 origin). This is the untested bottleneck.
   regardless of object size in the pool. Tally the actual bytes returned (`Content-Length` /
   body length). A server that ignores `Range` and returns a small object is fine (we tally
   the real size); a large object is capped.
-- **Egress saturation must be observable.** Add **media request latency** (ms) alongside the
-  existing bytes/error tallies. Under egress pressure the signal is *rising media latency and
-  media error rate* — for this slice that is the **headline ceiling indicator**, not noise.
+- **Egress saturation must be observable.** Measure **media request latency** (ms) **inside
+  `media_fetch`** (the fetch call only — distinct from the driver's per-task `ms`, which also
+  includes the `botFor` client lookup `media_fetch` doesn't use, so the task `ms` is not the
+  egress signal), alongside the existing bytes/error tallies, carried into `StepMetrics` +
+  snapshot `notes` (`media_ms_*`). Under egress pressure the signal is *rising media latency
+  and media error rate* — for this slice that is the **headline ceiling indicator**, not noise.
   Keep media errors tallied **apart from DB breakage** (our storage 5xx/timeout under load is
-  an egress-ceiling finding, not an app bug), but surface media latency/error-rate as a
-  first-class matrix output.
-- **Cost bound.** Worst case at the 200K target (~4,000 concurrency, 2-min soak, media = 15%
-  of the mix, 256 KB cap) is on the order of a few GB of egress ≈ cents. The spec requires the
-  plan to state the computed worst-case egress bytes/$ before the run, and the run to be a
-  bounded soak (not open-ended).
+  an egress-ceiling finding, not an app bug). Media latency, media error rate, and media bytes
+  are then aggregated by the overlap summary RPC (§4b) and shown on the dashboard as
+  **first-class matrix outputs**, not merely per-shard notes.
+- **Cost bound.** The egress run uses a **short bounded soak (~2 min), explicitly overriding
+  the workflow's 30-min `soak_ms` default** (at 30 min the egress would be ~15× larger). The
+  plan MUST set the short soak for the egress run and state the computed worst-case egress
+  bytes/$ up front. Worst case at the 200K target (~4,000 concurrency, ~2-min soak, media = 15%
+  of the mix, 256 KB cap) is on the order of a few GB ≈ cents.
 
 ### 4b. Overlap-honest summation (credibility, non-negotiable)
 
@@ -110,14 +118,18 @@ concurrency **that never occurred**. Fix the summation to report a **time-overla
 concurrency**: the maximum, over time, of the *sum across shards of per-shard concurrency at
 that instant*.
 
-- Implement by **time-bucketing** `sim_load_snapshots` for the run label (e.g., fixed bins
-  over `captured_at`), summing per-shard concurrency within each bin, and taking the **max
-  bin** as the true simultaneous peak. Buckets with only one shard present cannot inflate the
-  number.
-- Return, alongside the honest peak: **`max_concurrent_shards`** (the most shards seen in any
-  bin) and the **naive sum** (old value) so the discrepancy is explicit. If honest ≈ naive,
-  all shards overlapped (good); a gap means GitHub staggered them (the number is bounded by
-  the runner cap).
+- Implement by an **event-sweep** (bin-width-independent, exact): compute each shard's active
+  interval `[min(captured_at), max(captured_at)]` for the run label; then at each snapshot's
+  `captured_at`, sum the latest-known concurrency of every shard whose interval contains that
+  instant; the honest peak is the **max of those per-instant sums**. This deliberately avoids a
+  bin-width parameter — snapshots land every `SAMPLE_EVERY_MS` (5 s), so a fixed bin finer than
+  the cadence would drop a running shard from bins it spanned (silent undercount) while a bin as
+  coarse as the whole run reproduces the naive over-count this section exists to kill. A single
+  shard at an instant cannot inflate its own sum.
+- Return, alongside the honest peak: **`max_concurrent_shards`** (the most shards active at any
+  swept instant) and the **naive sum** (old value) so the discrepancy is explicit. If honest ≈
+  naive, all shards overlapped (good); a gap means GitHub staggered them (the number is bounded
+  by the runner cap).
 - This is a new migration (`CREATE OR REPLACE get_sim_load_matrix_summary` or a companion
   function), same security posture as the original (SECURITY DEFINER, `authenticated` +
   in-body `is_internal_user()` guard, revoke anon/public). Founder-gated apply.
@@ -136,13 +148,19 @@ that instant*.
 
 ### 4d. Execution sequence & safety
 
-1. **Re-probe the per-shard knee *with real media*** — a small dispatch (e.g., 2 shards,
-   stepped C) to find the concurrency at which a single shard's *egress* (media latency/error)
-   or transport breakage knees, now that media is real. This replaces the stale HEAD-only
-   C=200 assumption.
-2. **Cap probe** — from the probe run's overlap computation (§4b), read
-   `max_concurrent_shards` actually achieved to learn the real GitHub concurrent-runner cap
-   for this account (the API does not expose the plan tier).
+1. **Re-probe the per-shard knee *with real media*** — a **single-runner ramp** (`shards ≤ 1`,
+   `--ramp`, stepped C). The matrix path is fixed-C by construction (`planLoad` returns a
+   single-step ramp for `shards > 1`), so a *stepped* knee probe must be single-runner — and it
+   already fires real `media_fetch`, which is a read in `DAU_READ_ACTIONS`. It finds the
+   concurrency at which one shard's *egress* (media latency/error) or transport breakage knees,
+   replacing the stale HEAD-only C=200 assumption. Caveat: single-runner omits the ~10% write
+   leg the matrix adds, so treat its knee as a slight **over**-estimate of the per-shard
+   sustainable C under the full matrix mix (shade C down a step for the run).
+2. **Discover the runner cap** — a **separate high-shard dispatch** (e.g., full `MAX_SHARDS`=20).
+   Only a dispatch requesting *more* shards than the cap can reveal it: the overlap-honest
+   `max_concurrent_shards` (§4b) from that run **is** the GitHub concurrent-runner cap for this
+   account (the API does not expose the plan tier). A 2-shard run could only ever show
+   `max_concurrent_shards ≤ 2` and prove nothing about a cap ≥ 2.
 3. **200K run** — dispatch `~16 × C(from step 1)` (or the largest N×C the cap from step 2
    allows), bounded soak, real egress on.
 4. **Verify** — read the overlap-honest summary; assert peak concurrency, DB peak
@@ -164,8 +182,8 @@ bounded egress cost; new branch/worktree off `main`.
 | `sim/load/actions-mix.ts` | `media_fetch`: `Range`-capped **GET** of a real public object; new default `mediaUrls` = curated public DragonCandy Storage URLs; `MediaResult` gains latency (ms); `buildHotActions` gains an optional `rangeCapBytes` (default 256 KB). Errors still non-throwing, tallied apart from breakage. |
 | `sim/load/driver.ts` | Tally per-step **media latency** (+ existing bytes/errors) into `StepMetrics` + snapshot `notes` (`media_ms_*`). No change to the read/write action set contract. |
 | `.github/workflows/synthetic-load-matrix.yml` | `MAX_SHARDS: "10"` → `"20"`. (Inputs already parameterize shards/C/soak.) |
-| `supabase/migrations/2026072X_sim_load_matrix_overlap_summary.sql` | Overlap-honest summary: time-bucketed max-of-sums peak concurrency + `max_concurrent_shards` + naive sum. Same DEFINER/guard/grants as `get_sim_load_matrix_summary`. |
-| `src/hooks/useSimLoadMatrixSummary.ts` + `src/pages/internal/InternalSimulation.tsx` (paths to confirm) | Surface the honest peak + `max_concurrent_shards`. |
+| `supabase/migrations/<ts>_sim_load_matrix_overlap_summary.sql` (`<ts>` strictly after Slice-1's `20260724183000`, collision-checked vs concurrent worktrees at write time) | Overlap-honest summary: **event-sweep** peak concurrency (§4b) + `max_concurrent_shards` + naive sum, **plus** `media_errors` (sum) and media latency (max + avg of the new `media_ms_*` notes) so the egress signal is aggregated, not just per-shard. Same DEFINER/guard/grants as `get_sim_load_matrix_summary`. |
+| `src/hooks/useSimLoadMatrixSummary.ts` + `src/pages/internal/InternalSimulation.tsx` (paths to confirm) | Surface the honest peak + `max_concurrent_shards` + **media latency + media error rate + media bytes** (the egress-ceiling indicators). |
 | `docs/runbooks/synthetic-load-tier-ramp.md` | Matrix section: real-egress note, the re-probe-knee → 200K sequence, overlap-honest read, MAX_SHARDS=20. |
 
 Interfaces stay small and testable: `media_fetch` is a pure `(fetchImpl, mediaUrls,
@@ -192,8 +210,10 @@ like Slice 1's read-only aggregation test).
   `{ok:false}` + a latency sample without throwing; the media pool defaults to the curated
   public URLs.
 - **Summary SQL test**: a read-only VALUES fixture of staggered vs overlapping shard snapshots
-  proves the honest peak = max-of-time-bucketed-sums and equals the naive sum only when all
-  shards overlap (mirrors Slice 1's `requests=220` aggregation test).
+  proves the event-sweep honest peak equals the naive sum only when all shards overlap and is
+  strictly below it when they are staggered (mirrors Slice 1's `requests=220` aggregation test).
+  Include a case where one shard's interval fully precedes another's (zero overlap) — the naive
+  sum would report double the true peak there, so the test fails without the sweep.
 - **Reachability check** (plan time, not a unit test): confirm each curated media URL returns
   200 to a `Range` GET before locking the pool.
 - **Live**: the re-probe-knee dispatch, then the 200K-band run, then the verify + teardown of
@@ -212,8 +232,9 @@ like Slice 1's read-only aggregation test).
   bytes/$ before the run.
 - **Media pool reachability/rot** — a curated public-object list can rot; the plan verifies
   200s at lock time and the pool is injectable for a quick swap.
-- **Which buckets are public** — to confirm at plan time (`help-screenshots` known-public;
-  `dragonshare` content to verify) before finalizing the pool.
+- **Which buckets are public** — resolved (2026-07-25): 11 public buckets on prod, notably
+  `dragonshare-content` (real serving path) + `help-screenshots`. The plan finalizes exact
+  reachable object paths before locking the pool.
 
 ## 9. Success Criteria
 
