@@ -9,8 +9,10 @@ name: synthetic-load-matrix
 # concurrency C on its own IP; N shards ≈ N×C offered. Aggregate with get_sim_load_matrix_summary
 # (groups on notes.shard). Runbook: docs/runbooks/synthetic-load-tier-ramp.md (matrix section).
 #
-# PREREQUISITE: seed 25×max_shards active bots first — `bulk-seed --with-content --active <25×shards>`
-# — so every shard has a non-empty disjoint botla… slice (raising shards later requires re-seeding).
+# SELF-CONTAINED: the `seed` job (default on) bulk-seeds 25×shards botla… bots (+content) with the
+# environment secrets before the load fans out, so every shard has a non-empty disjoint slice. Pass
+# `seed: false` to reuse an already-seeded cohort. Teardown is `purge_synthetic_load_cohort()` (run
+# separately — botla%/botseed_% only, spares the live 25).
 #
 # SAFETY: manual dispatch only (no schedule). Every shard is fail-closed at boot (sim/env.ts refuses
 # unless the Stripe keys are TEST keys AND SYNTHETIC_BOTS_ENABLED reads back `true`); flipping that
@@ -32,6 +34,10 @@ on:
       run_label:
         description: "Run label (dashboard groups matrix-* labels)"
         default: "matrix-manual"
+      seed:
+        description: "Seed 25×shards botla bots (+content) before loading (off to reuse an existing cohort)"
+        type: boolean
+        default: true
 
 # Prevent two matrix RUNS from overlapping (they would share the botla… cohort), but never cancel a
 # run mid-flight — a half-cancelled ramp leaves sessions/telemetry the teardown must still clean.
@@ -73,9 +79,42 @@ jobs:
           echo "matrix=[$arr]" >> "$GITHUB_OUTPUT"
           echo "Planned $SHARDS shard(s): [$arr]"
 
+  # Seed the disjoint botla… cohort (+content) using the ENVIRONMENT secrets, so the smoke is
+  # self-contained: no local SIM_* secrets, and a single fresh GH runner IP avoids the per-IP mint 429
+  # that rapid same-IP minting hits. Reviewer-gated (same environment as load). Skip with `seed: false`
+  # to reuse an already-seeded cohort. active = 25×shards so every shard gets a full 25-bot slice.
+  seed:
+    needs: setup
+    if: ${{ inputs.seed }}
+    runs-on: ubuntu-latest
+    environment: synthetic-weight
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci
+      - name: Seed load cohort
+        env:
+          SIM_SUPABASE_URL: ${{ secrets.SIM_SUPABASE_URL }}
+          SIM_SUPABASE_ANON_KEY: ${{ secrets.SIM_SUPABASE_ANON_KEY }}
+          SIM_SUPABASE_SECRET_KEY: ${{ secrets.SIM_SUPABASE_SECRET_KEY }}
+          SIM_STRIPE_SECRET_KEY: ${{ secrets.SIM_STRIPE_SECRET_KEY }}
+          SIM_STRIPE_PUBLISHABLE_KEY: ${{ secrets.SIM_STRIPE_PUBLISHABLE_KEY }}
+          SIM_SHARDS: ${{ inputs.shards }}
+        # --n = active (0 depth pool — the matrix drives only the session-capable active cohort).
+        # bulk-seed is one-shot + fail-loud: it aborts if the botla namespace already exists (purge first).
+        run: |
+          set -euo pipefail
+          active=$((25 * SIM_SHARDS))
+          node_modules/.bin/tsx sim/cli.ts bulk-seed --with-content --active "$active" --n "$active" --cohort load
+
   # One job per shard = one runner IP. Runs in PARALLEL (that is the point — summed egress).
   load:
-    needs: setup
+    needs: [setup, seed]
+    # Run after a successful seed, OR when seed was skipped (seed:false → reuse an existing cohort).
+    # A FAILED seed must NOT drive load against a half-built cohort.
+    if: ${{ always() && needs.setup.result == 'success' && (needs.seed.result == 'success' || needs.seed.result == 'skipped') }}
     runs-on: ubuntu-latest
     environment: synthetic-weight
     strategy:
