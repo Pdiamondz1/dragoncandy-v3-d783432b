@@ -79,3 +79,47 @@ export async function createDiscount(
   if (!id) throw new Error("createDiscount: promotions insert returned no id");
   return id;
 }
+
+/** Add a location/product unit to an org the caller OWNS (org_units INSERT RLS = is_org_owner_or_admin).
+ *  Every business bot already owns an auto-created org + primary unit (trg_auto_create_org_fn); this
+ *  makes it multi-location. Provide lat/lng so the unit is discoverable in location search. */
+export async function addOrgUnit(
+  bizClient: SupabaseClient,
+  p: { orgId: string; name: string; unitType?: string; address?: string; lat?: number; lng?: number },
+): Promise<string> {
+  const { data, error } = await bizClient
+    .from("org_units")
+    .insert({
+      org_id: p.orgId,
+      unit_type: p.unitType ?? "location",
+      name: p.name,
+      is_primary: false,
+      address: p.address ?? null,
+      lat: p.lat ?? null,
+      lng: p.lng ?? null,
+    })
+    .select("id")
+    .single();
+  orThrow("addOrgUnit", error);
+  const id = (data as { id: string } | null)?.id;
+  if (!id) throw new Error("addOrgUnit: org_units insert returned no id");
+  return id;
+}
+
+/** Anonymous CGC submission to an ACTIVE, in-window promotion (RLS: "Anyone can submit to active
+ *  promotions"). Pass an ANON client (no JWT) to model a real QR-scanning customer. video_url +
+ *  customer_email are NOT NULL; marketing_rights_accepted must be true. */
+export async function submitCgc(
+  anonClient: SupabaseClient,
+  p: { promotionId: string; customerEmail: string; videoUrl: string; customerName?: string; socialHandles?: Record<string, unknown> },
+): Promise<void> {
+  const { error } = await anonClient.from("promotion_submissions").insert({
+    promotion_id: p.promotionId,
+    customer_name: p.customerName ?? null,
+    customer_email: p.customerEmail,
+    video_url: p.videoUrl,
+    marketing_rights_accepted: true,
+    social_handles: p.socialHandles ?? {},
+  });
+  orThrow("submitCgc", error);
+}

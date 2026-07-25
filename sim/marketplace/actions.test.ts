@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { sendMessage, postDragonFeed, createDiscount } from "./actions";
+import { sendMessage, postDragonFeed, createDiscount, addOrgUnit, submitCgc } from "./actions";
 
 interface Rec {
   rpcs: { fn: string; params: Record<string, unknown> }[];
@@ -136,5 +136,38 @@ describe("marketplace net-new actions", () => {
         discountValue: 15, startDate: "2026-07-25", endDate: "2026-08-24",
       }),
     ).rejects.toThrow(/returned no id/);
+  });
+});
+
+describe("marketplace multi-location + CGC actions", () => {
+  it("addOrgUnit inserts a non-primary org_unit under the owned org and returns its id", async () => {
+    const rec: Rec = { rpcs: [], inserts: [] };
+    // reuse fakeClient but make org_units insert return an id
+    const client = {
+      from: (table: string) => ({
+        insert: (payload: Record<string, unknown>) => {
+          rec.inserts.push({ table, payload });
+          const result = { data: { id: "unit-1" }, error: null };
+          return { select: () => ({ single: async () => result }), then: (r: (x: typeof result) => unknown) => r(result) };
+        },
+      }),
+    } as unknown as SupabaseClient;
+    const id = await addOrgUnit(client, { orgId: "org-1", name: "Uptown Location", lat: 40.75, lng: -74.03 });
+    expect(id).toBe("unit-1");
+    const unit = rec.inserts.find((i) => i.table === "org_units")!;
+    expect(unit.payload).toMatchObject({ org_id: "org-1", name: "Uptown Location", is_primary: false, unit_type: "location" });
+    expect(unit.payload.lat).toBe(40.75);
+  });
+
+  it("submitCgc inserts an anonymous promotion_submission with marketing rights accepted", async () => {
+    const rec: Rec = { rpcs: [], inserts: [] };
+    await submitCgc(fakeClient(rec), {
+      promotionId: "promo-1", customerEmail: "guest@example.com", videoUrl: "https://x/clip.mp4",
+    });
+    const sub = rec.inserts.find((i) => i.table === "promotion_submissions")!;
+    expect(sub.payload).toMatchObject({
+      promotion_id: "promo-1", customer_email: "guest@example.com", video_url: "https://x/clip.mp4",
+      marketing_rights_accepted: true,
+    });
   });
 });
