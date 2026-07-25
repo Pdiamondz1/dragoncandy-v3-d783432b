@@ -557,7 +557,7 @@ const BOTMK_EMAIL_LIKE = `${MARKETPLACE_EMAIL_PREFIX}%${SYNTHETIC_DOMAIN}`;
  * depth pool and never trips the per-IP auth 429 wall. Escaped underscores (LIKE wildcard) mirror
  * assertMarketplaceCohortFresh's convention (marketplace/seed.ts); passed to supabase-js `.or()`.
  */
-const BOTMK_ACTIVE_EMAIL_OR = `email.like.botmk\\_b\\_%${SYNTHETIC_DOMAIN},email.like.botmk\\_c\\_%${SYNTHETIC_DOMAIN}`;
+export const BOTMK_ACTIVE_EMAIL_OR = `email.like.botmk\\_b\\_%${SYNTHETIC_DOMAIN},email.like.botmk\\_c\\_%${SYNTHETIC_DOMAIN}`;
 /**
  * The interactive ACTIVE cohort core cap. The per-IP auth 429 wall caps a single runner's
  * session-minted bots at ~25 — 8 businesses + 16 creators = 24 stays safely under it, proven by the

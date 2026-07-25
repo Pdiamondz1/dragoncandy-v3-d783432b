@@ -1,5 +1,41 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { parseArgs, main, nonZeroResiduals, makeBotFor, planLoad, cmdLoad, seedContent, cmdMarketplaceSeed, type CmdLoadDeps, type RpcCaller, type CmdMarketplaceSeedDeps } from "./run";
+import { parseArgs, main, nonZeroResiduals, makeBotFor, planLoad, cmdLoad, seedContent, cmdMarketplaceSeed, BOTMK_ACTIVE_EMAIL_OR, type CmdLoadDeps, type RpcCaller, type CmdMarketplaceSeedDeps } from "./run";
+
+// Convert a PostgREST/SQL LIKE pattern (with backslash-escaped `\_` literal underscores and `%`
+// wildcards) to an anchored RegExp, so we can prove the active-cohort `.or()` filter EXCLUDES the
+// depth pool. A regression here silently reintroduces the per-IP 429 wall at 100/300 scale.
+function likeToRegExp(pat: string): RegExp {
+  let re = "^";
+  for (let i = 0; i < pat.length; i++) {
+    const c = pat[i];
+    if (c === "\\" && pat[i + 1] === "_") { re += "_"; i++; }      // escaped underscore → literal _
+    else if (c === "%") re += ".*";                                 // wildcard
+    else if (c === "_") re += ".";                                  // unescaped single-char wildcard
+    else re += c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");            // literal (regex-escaped)
+  }
+  return new RegExp(re + "$");
+}
+
+describe("BOTMK_ACTIVE_EMAIL_OR — the active-only readCohortRefs filter (429-avoidance)", () => {
+  const regexes = BOTMK_ACTIVE_EMAIL_OR.split(",")
+    .map((clause) => clause.replace(/^email\.like\./, ""))
+    .map(likeToRegExp);
+  const matchesAny = (email: string) => regexes.some((r) => r.test(email));
+
+  it("matches ONLY the active cohort (botmk_b_/botmk_c_) — NEVER the depth pool or other cohorts", () => {
+    // Active interactive cohort → included (these get session-minted, which is correct).
+    expect(matchesAny("botmk_b_1_1@synthetic.dragoncandy.test")).toBe(true);
+    expect(matchesAny("botmk_c_1_1@synthetic.dragoncandy.test")).toBe(true);
+    // Depth pool → EXCLUDED. If these ever matched, the interactive flow would session-mint the
+    // hundreds of depth bots and hit the per-IP 429 wall at 100/300 — the whole design's failure mode.
+    expect(matchesAny("botmk_db_1_0@synthetic.dragoncandy.test")).toBe(false);
+    expect(matchesAny("botmk_dc_1_0@synthetic.dragoncandy.test")).toBe(false);
+    // Other synthetic cohorts → excluded.
+    expect(matchesAny("bot001@synthetic.dragoncandy.test")).toBe(false);
+    expect(matchesAny("botla1_1@synthetic.dragoncandy.test")).toBe(false);
+    expect(matchesAny("botseed_phase1_3@synthetic.dragoncandy.test")).toBe(false);
+  });
+});
 import type { BotRef } from "./types";
 import type { RunLoadDeps, LoadResult } from "./load/driver";
 import { DAU_ACTIONS, DAU_READ_ACTIONS, WRITE_ACTION_NAMES } from "./load/actions-mix";
