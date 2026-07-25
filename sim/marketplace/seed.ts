@@ -24,15 +24,18 @@ export function assertMarketplaceCohortCap(businesses: number, creators: number)
   }
 }
 
-// One-shot guard: refuse if a botmk_ cohort already exists on prod — marketplace-seed creates
-// PERSISTENT data and only minting is resumable, so a second run would duplicate campaigns/discounts/
-// posts. Run `marketplace-purge` before re-seeding. Mirrors sim/seed.ts assertActiveNamespaceFree.
+// ONE-SHOT guard (mirrors sim/seed.ts assertActiveNamespaceFree): refuse if a botmk_ cohort already
+// exists on prod. marketplace-seed creates PERSISTENT data and its downstream phases
+// (campaigns/discounts/posts/messages) are NOT idempotent, so a second run would duplicate them. This
+// is a deliberate design choice over per-phase idempotency: recovery from any failed/partial run is
+// `marketplace-purge` (fast + verified) then re-dispatch — NOT an in-place resume. So the command is
+// one-shot even though the sequencer's mint step alone is missing-email-aware.
 export async function assertMarketplaceCohortFresh(svc: SupabaseClient): Promise<void> {
   const { data, error } = await svc.from("profiles").select("id")
     .like("email", "botmk\\_%@synthetic.dragoncandy.test").limit(1);
   if (error) throw new Error(`[marketplace-seed] freshness pre-flight failed: ${error.message}`);
   if (data && data.length > 0) {
-    throw new Error("[marketplace-seed] a botmk_ cohort already exists on prod — run `marketplace-purge` before re-seeding (marketplace-seed is one-shot; only minting is resumable).");
+    throw new Error("[marketplace-seed] a botmk_ cohort already exists on prod — this command is ONE-SHOT; run `marketplace-purge` (residual_* all 0) then re-dispatch marketplace-seed.");
   }
 }
 

@@ -19,8 +19,11 @@ name: marketplace-seed
 #     NEVER use the broad `purge` (purge_synthetic_data) for a marketplace reset.
 #   * Start SMALL (the 2/4 defaults) to exercise the live buildDefaultSeedSteps glue before scaling.
 #
-# marketplace-seed is idempotent/resumable: it mints only the MISSING botmk_ bots (a re-run after a
-# partial run resumes). To fully reset, run command=marketplace-purge (residual_* must all report 0).
+# marketplace-seed is ONE-SHOT (like bulk-seed): it FAILS FAST if a botmk_ cohort already exists — the
+# downstream phases (campaigns/discounts/posts/messages) are not idempotent, so a second run is blocked
+# to prevent duplicate persistent prod data. RECOVERY after any failed/partial run: run
+# command=marketplace-purge (residual_* must all report 0), then re-dispatch marketplace-seed. The
+# scoped teardown is fast + verified, so purge-then-reseed is the intended, safe retry path.
 
 on:
   workflow_dispatch:
