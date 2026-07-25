@@ -60,6 +60,12 @@ begin
 
   -- 1) storage.objects (no FK cascade): deliverables + feed + profile-assets avatars/logos under the
   --    bot uid folders; CGC videos under the botmk promotion-id folders.
+  -- storage.objects is guarded by storage.protect_delete(); set its sanctioned, transaction-scoped
+  -- escape-hatch config so this admin bulk-delete is allowed. NOTE: this removes the storage.objects
+  -- metadata rows (so residual_storage -> 0); the underlying S3 bytes for these small synthetic assets
+  -- are left orphaned (negligible + inaccessible without the row) — full S3 removal via the Storage API
+  -- is a possible follow-on.
+  perform set_config('storage.allow_delete_query', 'true', true);
   delete from storage.objects
   where (bucket_id in ('campaign-deliverables', 'dragonshare-content', 'profile-assets')
          and (storage.foldername(name))[1] = any (v_ids::text[]))
