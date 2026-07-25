@@ -12,12 +12,16 @@ const ASSETS_DIR = join(process.cwd(), "sim", "marketplace", "assets");
 
 export async function uploadAsset(
   botClient: SupabaseClient,
-  p: { bucket: string; uid: string; subpath: string; bytes: Uint8Array; contentType: string },
+  p: { bucket: string; uid: string; subpath: string; bytes: Uint8Array; contentType: string; upsert?: boolean },
 ): Promise<string> {
   const path = `${p.uid}/${p.subpath}`; // uid-first: satisfies the storage RLS folder check
+  // upsert defaults to true, BUT a caller must pass upsert:false for a bucket whose RLS has no
+  // UPDATE policy for the uploading role (e.g. promotion-videos + the anon CGC client): upsert=true
+  // makes the Storage API do INSERT..ON CONFLICT DO UPDATE, which needs an UPDATE policy and is
+  // RLS-denied there even for a fresh (non-conflicting) object. A plain INSERT (upsert:false) passes.
   const { error } = await botClient.storage.from(p.bucket).upload(path, p.bytes, {
     contentType: p.contentType,
-    upsert: true,
+    upsert: p.upsert ?? true,
   });
   if (error) throw new Error(`uploadAsset ${p.bucket}/${path}: ${error.message}`);
   const { data } = botClient.storage.from(p.bucket).getPublicUrl(path);

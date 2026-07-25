@@ -920,6 +920,9 @@ function buildDefaultSeedSteps(svc: SupabaseClient, opts: SeedOpts): SeedSteps {
           subpath: `cgc_${i}${asset.ext}`,
           bytes: asset.bytes,
           contentType: asset.contentType,
+          // promotion-videos has NO anon UPDATE policy → upsert:true (INSERT..ON CONFLICT DO UPDATE)
+          // is RLS-denied even for a fresh object. CGC paths are always new, so a plain INSERT is right.
+          upsert: false,
         });
         await submitCgc(anon, {
           promotionId,
