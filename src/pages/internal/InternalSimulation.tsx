@@ -91,7 +91,7 @@ function MatrixSummaryCard({
           sub={`${data.ok} ok · ${data.breakage} brk · ${data.throttled} thr`}
         />
         <StatCard label="Media requests" value={data.media_requests} />
-        <StatCard label="Media egress (proxy)" value={fmtBytes(data.media_bytes)} sub="Σ Content-Length" />
+        <StatCard label="Media egress" value={fmtBytes(data.media_bytes)} sub="Σ real bytes (Range-capped GET)" />
         <StatCard label="Media errors" value={data.media_errors} sub="egress failures (not breakage)" />
         <StatCard label="Media p95 latency" value={fmtMs(data.media_ms_p95_peak)} sub="peak across shards" />
         <StatCard
