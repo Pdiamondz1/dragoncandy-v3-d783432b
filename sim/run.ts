@@ -24,7 +24,15 @@ import { parseRamp, runLoad, type LoadFindingsArtifact, type RunLoadDeps, type L
 import { DAU_ACTIONS, DAU_READ_ACTIONS } from "./load/actions-mix";
 import { executeAction, type ActionContext } from "./behavior/actions";
 import type { BotRef, CohortState } from "./types";
-import { runMarketplaceSeed, type SeedSteps, type SeedOpts, type SeedReport, type SeededCampaign } from "./marketplace/seed";
+import {
+  runMarketplaceSeed,
+  assertMarketplaceCohortCap,
+  assertMarketplaceCohortFresh,
+  type SeedSteps,
+  type SeedOpts,
+  type SeedReport,
+  type SeededCampaign,
+} from "./marketplace/seed";
 import { MARKETPLACE_EMAIL_PREFIX } from "./marketplace/personas";
 import { createDiscount, addOrgUnit, submitCgc, sendMessage, postDragonFeed } from "./marketplace/actions";
 import { uploadAsset, loadSampleAsset } from "./marketplace/content";
@@ -942,6 +950,8 @@ function buildDefaultSeedSteps(svc: SupabaseClient, opts: SeedOpts): SeedSteps {
 export interface CmdMarketplaceSeedDeps {
   serviceClient: () => SupabaseClient;
   bootGate: (svc: SupabaseClient) => Promise<void>;
+  /** One-shot pre-flight (Codex P2): refuses if a botmk_ cohort already exists on prod. */
+  assertCohortFresh: (svc: SupabaseClient) => Promise<void>;
   buildSteps: (svc: SupabaseClient, opts: SeedOpts) => SeedSteps;
   runSeed: (steps: SeedSteps, opts: SeedOpts, log: (m: string) => void) => Promise<SeedReport>;
 }
@@ -949,6 +959,7 @@ export interface CmdMarketplaceSeedDeps {
 const DEFAULT_MP_DEPS: CmdMarketplaceSeedDeps = {
   serviceClient,
   bootGate,
+  assertCohortFresh: assertMarketplaceCohortFresh,
   buildSteps: buildDefaultSeedSteps, // real-write glue (implemented above), per Task 7's note
   runSeed: runMarketplaceSeed,
 };
@@ -956,10 +967,17 @@ const DEFAULT_MP_DEPS: CmdMarketplaceSeedDeps = {
 /**
  * marketplace-seed: boot-gate, then run the idempotent serial populate. Fail-loud on an incomplete
  * mint (mirrors cmdBulkSeed). Teardown is `marketplace-purge` (botmk-scoped) — NEVER purge.
+ *
+ * Two prod-protecting guards (Codex P1+P2): the cohort CAP is checked first thing, before any
+ * client/boot-gate work, so a fat-fingered `--businesses`/`--creators` fails before touching prod at
+ * all; the one-shot FRESHNESS check runs after boot-gate but before buildSteps, so a re-run against an
+ * already-seeded botmk_ cohort fails loud instead of duplicating campaigns/discounts/posts.
  */
 export async function cmdMarketplaceSeed(args: Args, deps: CmdMarketplaceSeedDeps = DEFAULT_MP_DEPS): Promise<void> {
+  assertMarketplaceCohortCap(args.businesses, args.creators);
   const svc = deps.serviceClient();
   await deps.bootGate(svc);
+  await deps.assertCohortFresh(svc);
   const opts: SeedOpts = {
     businesses: args.businesses,
     creators: args.creators,

@@ -1,9 +1,40 @@
 // The serial, idempotent, resumable populate sequencer. Pure orchestration over injected SeedSteps —
 // so the ordering + flag-gating + resumability are unit-tested with zero network; the real writes live
 // in DEFAULT_SEED_STEPS (Task 8 wires it). Serial by contract (mint-429 never bites).
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { BotRef } from "../types";
 import type { Persona } from "../personas"; // Persona/Role live in personas.ts (types.ts imports but does NOT re-export them)
 import { generateMarketplaceCohort } from "./personas";
+
+/** Cohort cap (Codex P1): the workflow passes `--businesses`/`--creators` straight to the prod
+ *  seeder, so a fat-fingered value (e.g. `--businesses 1000 --creators 3000`) would mint thousands of
+ *  persistent botmk_ accounts on prod despite the intended ~100/300 (~400) cohort. These caps sit well
+ *  above the target (~100/300) to allow headroom without allowing a typo-scale blowout. */
+export const MARKETPLACE_MAX_BUSINESSES = 150;
+export const MARKETPLACE_MAX_CREATORS = 450;
+
+/** Pre-flight cap guard — called FIRST in cmdMarketplaceSeed, before any client/boot-gate work, so a
+ *  bad arg fails before touching prod at all. */
+export function assertMarketplaceCohortCap(businesses: number, creators: number): void {
+  if (!Number.isInteger(businesses) || !Number.isInteger(creators) || businesses < 0 || creators < 0) {
+    throw new Error(`[marketplace-seed] businesses/creators must be non-negative integers (got ${businesses}/${creators})`);
+  }
+  if (businesses > MARKETPLACE_MAX_BUSINESSES || creators > MARKETPLACE_MAX_CREATORS) {
+    throw new Error(`[marketplace-seed] cohort cap exceeded: businesses<=${MARKETPLACE_MAX_BUSINESSES}, creators<=${MARKETPLACE_MAX_CREATORS} (target ~100/300) — got ${businesses}/${creators}. The ~400 cohort is capped to prevent a fat-finger minting thousands of persistent bots.`);
+  }
+}
+
+// One-shot guard: refuse if a botmk_ cohort already exists on prod — marketplace-seed creates
+// PERSISTENT data and only minting is resumable, so a second run would duplicate campaigns/discounts/
+// posts. Run `marketplace-purge` before re-seeding. Mirrors sim/seed.ts assertActiveNamespaceFree.
+export async function assertMarketplaceCohortFresh(svc: SupabaseClient): Promise<void> {
+  const { data, error } = await svc.from("profiles").select("id")
+    .like("email", "botmk\\_%@synthetic.dragoncandy.test").limit(1);
+  if (error) throw new Error(`[marketplace-seed] freshness pre-flight failed: ${error.message}`);
+  if (data && data.length > 0) {
+    throw new Error("[marketplace-seed] a botmk_ cohort already exists on prod — run `marketplace-purge` before re-seeding (marketplace-seed is one-shot; only minting is resumable).");
+  }
+}
 
 export interface SeededCampaign {
   campaignId: string;

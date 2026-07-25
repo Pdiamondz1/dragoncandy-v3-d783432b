@@ -1,5 +1,14 @@
 import { describe, it, expect, vi } from "vitest";
-import { runMarketplaceSeed, type SeedSteps, type SeedOpts } from "./seed";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  runMarketplaceSeed,
+  assertMarketplaceCohortCap,
+  assertMarketplaceCohortFresh,
+  MARKETPLACE_MAX_BUSINESSES,
+  MARKETPLACE_MAX_CREATORS,
+  type SeedSteps,
+  type SeedOpts,
+} from "./seed";
 
 const B1 = { userId: "b1", email: "botmk_b_1_1@synthetic.dragoncandy.test", role: "business_client" as const, personaKey: null, cohort: "marketplace" };
 const C1 = { userId: "c1", email: "botmk_c_1_1@synthetic.dragoncandy.test", role: "content_creator" as const, personaKey: null, cohort: "marketplace" };
@@ -58,5 +67,80 @@ describe("runMarketplaceSeed orchestration", () => {
     expect(report.skipped).toBe(2);
     expect(steps.readCohortRefs).toHaveBeenCalled();
     expect(steps.publishCampaigns).toHaveBeenCalledWith([B1]); // downstream still runs on the full cohort
+  });
+});
+
+describe("assertMarketplaceCohortCap (Codex P1 — prevents a fat-fingered mass-mint on prod)", () => {
+  it("accepts the target ~100/300 cohort", () => {
+    expect(() => assertMarketplaceCohortCap(100, 300)).not.toThrow();
+  });
+
+  it("accepts values right at the cap", () => {
+    expect(() => assertMarketplaceCohortCap(MARKETPLACE_MAX_BUSINESSES, MARKETPLACE_MAX_CREATORS)).not.toThrow();
+  });
+
+  it("rejects a fat-fingered over-cap value (e.g. 1000/3000)", () => {
+    expect(() => assertMarketplaceCohortCap(1000, 3000)).toThrow(/cohort cap exceeded/);
+  });
+
+  it("rejects businesses alone exceeding the cap", () => {
+    expect(() => assertMarketplaceCohortCap(MARKETPLACE_MAX_BUSINESSES + 1, 0)).toThrow(/cohort cap exceeded/);
+  });
+
+  it("rejects creators alone exceeding the cap", () => {
+    expect(() => assertMarketplaceCohortCap(0, MARKETPLACE_MAX_CREATORS + 1)).toThrow(/cohort cap exceeded/);
+  });
+
+  it("rejects negative counts", () => {
+    expect(() => assertMarketplaceCohortCap(-1, 300)).toThrow(/non-negative integers/);
+    expect(() => assertMarketplaceCohortCap(100, -1)).toThrow(/non-negative integers/);
+  });
+
+  it("rejects non-integer counts", () => {
+    expect(() => assertMarketplaceCohortCap(100.5, 300)).toThrow(/non-negative integers/);
+    expect(() => assertMarketplaceCohortCap(100, NaN)).toThrow(/non-negative integers/);
+  });
+});
+
+describe("assertMarketplaceCohortFresh (Codex P2 — one-shot guard against duplicate persistent data)", () => {
+  /** Minimal fake client: from().select().like().limit() resolves to {data,error}. */
+  function fakeClient(
+    result: { data: unknown; error: { message: string } | null },
+    onQuery?: (table: string, col: string, pattern: string) => void,
+  ): SupabaseClient {
+    return {
+      from: (table: string) => ({
+        select: (_col: string) => ({
+          like: (likeCol: string, pattern: string) => {
+            onQuery?.(table, likeCol, pattern);
+            return { limit: () => Promise.resolve(result) };
+          },
+        }),
+      }),
+    } as unknown as SupabaseClient;
+  }
+
+  it("resolves when no botmk_ cohort exists on prod", async () => {
+    const svc = fakeClient({ data: [], error: null });
+    await expect(assertMarketplaceCohortFresh(svc)).resolves.toBeUndefined();
+  });
+
+  it("queries profiles by the botmk_ email pattern", async () => {
+    let seen: { table: string; col: string; pattern: string } | null = null;
+    const svc = fakeClient({ data: [], error: null }, (table, col, pattern) => {
+      seen = { table, col, pattern };
+    });
+    await assertMarketplaceCohortFresh(svc);
+    expect(seen).toEqual({ table: "profiles", col: "email", pattern: "botmk\\_%@synthetic.dragoncandy.test" });
+  });
+
+  it("throws when a botmk_ cohort already exists (a prior run was not purged)", async () => {
+    const svc = fakeClient({ data: [{ id: "u1" }], error: null });
+    await expect(assertMarketplaceCohortFresh(svc)).rejects.toThrow(/already exists on prod/);
+  });
+
+  it("fails loud when the pre-flight query errors", async () => {
+    const svc = fakeClient({ data: null, error: { message: "boom" } });
+    await expect(assertMarketplaceCohortFresh(svc)).rejects.toThrow(/freshness pre-flight failed: boom/);
   });
 });
