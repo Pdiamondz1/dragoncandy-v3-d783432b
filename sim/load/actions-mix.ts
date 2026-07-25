@@ -32,7 +32,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { HotAction, HotActionContext, MediaResult } from "./driver";
 
 /** Swappable pool of public, GET/HEAD-able sample media URLs (mirrors the seed_synthetic_content
- *  video pool). cmdLoad may later pass real seeded content_file_paths; this is the default. */
+ *  video pool). cmdLoad may later pass real seeded content_file_paths; this is the default.
+ *  NOTE (2026-07-24 smoke): this GCS sample bucket now returns 403 to GH-runner HEAD requests, so it
+ *  yields media_bytes=0 + media_errors (which — post-fix — no longer trip the knee). Real egress
+ *  numbers need DragonCandy's OWN public storage (dragonshare-content); measuring CDN-egress $ is
+ *  Slice 2. Point this at reachable public URLs (or seeded content_file_paths) when that lands. */
 export const SAMPLE_MEDIA_URLS: string[] = [
   "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
   "https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
@@ -107,10 +111,18 @@ export function buildHotActions(opts: BuildMixOptions = {}): HotAction[] {
       weight: 15,
       run: async (): Promise<MediaResult> => {
         const url = pick(mediaUrls);
-        const res = await fetchImpl(url, { method: "HEAD" });
-        if (!res.ok) throw new Error(`media fetch failed: ${res.status} for ${url}`);
-        const len = Number(res.headers.get("content-length") ?? 0);
-        return { bytes: Number.isFinite(len) ? len : 0 };
+        // An external media CDN 4xx/5xx / network error must NOT count as a backend BREAKAGE (it would
+        // trip the DB-saturation knee on something unrelated to DragonCandy — the 2026-07-24 smoke
+        // tripped on GCS-sample-bucket 403s). Return { bytes:0, ok:false } → a media request + a media
+        // ERROR (tallied apart from breakage), never a throw.
+        try {
+          const res = await fetchImpl(url, { method: "HEAD" });
+          if (!res.ok) return { bytes: 0, ok: false };
+          const len = Number(res.headers.get("content-length") ?? 0);
+          return { bytes: Number.isFinite(len) ? len : 0, ok: true };
+        } catch {
+          return { bytes: 0, ok: false };
+        }
       },
     },
     {

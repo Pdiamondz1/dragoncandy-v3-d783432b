@@ -144,6 +144,8 @@ export interface StepMetrics {
    *  Optional in the type (older literals omit them) but ALWAYS populated by runLoad. */
   mediaRequests?: number;
   mediaBytes?: number;
+  /** Media requests that failed at the external CDN (ok:false) — tallied apart from breakage. */
+  mediaErrors?: number;
 }
 
 export interface KneeThresholds {
@@ -299,6 +301,11 @@ export function foldBreakages(events: BreakageEvent[], seed: BreakageSignature[]
  *  0-byte / HEAD response still counts as one request — the count is object-ness, not bytes>0. */
 export interface MediaResult {
   bytes?: number;
+  /** `false` marks a FAILED media fetch (external CDN 4xx/5xx / network error). It is counted as a
+   *  media request + a media ERROR, but NOT a breakage — an external media host's availability is not
+   *  DragonCandy backend health, so it must never trip the DB-saturation knee. Absent/`true` = ok.
+   *  (The 2026-07-24 live smoke tripped the knee on GCS-sample-bucket 403s, masking real DB headroom.) */
+  ok?: boolean;
 }
 
 /** Per-task identity handed to a HotAction's `run`: the acting bot (`selfId`, whose JWT the `client`
@@ -397,6 +404,9 @@ interface TaskOutcome {
   isMedia: boolean;
   /** Bytes reported by a media action (0 for reads / HEAD-style empty returns). */
   bytes: number;
+  /** True when a media request explicitly returned `ok:false` (external CDN failure). Tallied
+   *  separately from breakage so an external media host never trips the DB-saturation knee. */
+  mediaError: boolean;
 }
 
 /** Weighted random pick over a non-empty action list (falls back to the first on a degenerate rng). */
@@ -438,10 +448,11 @@ async function runOneTask(
     const res = await action.run(client, ctx);
     const isMedia = typeof res === "object" && res !== null;
     const bytes = isMedia && typeof (res as MediaResult).bytes === "number" ? (res as MediaResult).bytes! : 0;
-    return { ok: true, ms: now() - startedAt, endpoint: action.name, kind: "ok", status: null, error: "", isMedia, bytes };
+    const mediaError = isMedia && (res as MediaResult).ok === false;
+    return { ok: true, ms: now() - startedAt, endpoint: action.name, kind: "ok", status: null, error: "", isMedia, bytes, mediaError };
   } catch (err) {
     const c = classifyError(err);
-    return { ok: false, ms: now() - startedAt, endpoint: action.name, kind: c.kind, status: c.status, error: c.message, isMedia: false, bytes: 0 };
+    return { ok: false, ms: now() - startedAt, endpoint: action.name, kind: c.kind, status: c.status, error: c.message, isMedia: false, bytes: 0, mediaError: false };
   }
 }
 
@@ -474,6 +485,7 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
     let breakage = 0;
     let mediaReq = 0; // media-egress proxy: count of media requests this step (Task 4.2)
     let mediaBytes = 0; // Σ transferred/declared bytes this step
+    let mediaErr = 0; // media requests that failed at the external CDN (ok:false) — NOT breakages
     const stepStart = now();
     let lastSampleAt = -Infinity; // guarantees the first wave of each step samples once
 
@@ -506,6 +518,7 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
               breakage,
               media_requests: mediaReq,
               media_bytes: mediaBytes,
+              media_errors: mediaErr,
               p50_ms: percentile(latencies, 50),
               p95_ms: percentile(latencies, 95),
             });
@@ -518,6 +531,7 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
       for (const o of outcomes) {
         latencies.push(o.ms);
         if (o.isMedia) mediaReq += 1;
+        if (o.mediaError) mediaErr += 1;
         mediaBytes += o.bytes;
         if (o.ok) ok += 1;
         else if (o.kind === "throttle") throttled += 1;
@@ -549,6 +563,7 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
       p95Ms: percentile(latencies, 95),
       mediaRequests: mediaReq,
       mediaBytes,
+      mediaErrors: mediaErr,
     };
     // FINAL per-step snapshot with the step's COMPLETE cumulative totals. The in-step samples are
     // taken in-flight (before the wave drains) so `count`/`ok`/`media_*` lag by up to one wave — and
@@ -564,6 +579,7 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
       breakage,
       media_requests: mediaReq,
       media_bytes: mediaBytes,
+      media_errors: mediaErr,
       p50_ms: metrics.p50Ms,
       p95_ms: metrics.p95Ms,
     });

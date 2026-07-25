@@ -116,12 +116,18 @@ describe("buildHotActions — the realistic DAU behavior mix", () => {
     const media = buildHotActions({ mediaUrls: ["http://cdn/vid.mp4"], fetchImpl }).find((a) => a.name === "media_fetch")!;
     const res = await media.run({} as SupabaseClient, ctx);
     expect(method).toBe("HEAD"); // a proxy read — never downloads the full asset (would self-inflict egress)
-    expect(res).toEqual({ bytes: 54321 });
+    expect(res).toEqual({ bytes: 54321, ok: true });
   });
 
-  it("media_fetch is fail-loud on a non-2xx CDN response", async () => {
+  it("media_fetch does NOT throw on a non-2xx CDN response — returns { bytes:0, ok:false } (external, not a backend breakage)", async () => {
     const fetchImpl = (async () => ({ ok: false, status: 503, headers: { get: () => null } })) as unknown as typeof fetch;
     const media = buildHotActions({ mediaUrls: ["http://cdn/x.mp4"], fetchImpl }).find((a) => a.name === "media_fetch")!;
-    await expect(media.run({} as SupabaseClient, ctx)).rejects.toThrow(/503/);
+    await expect(media.run({} as SupabaseClient, ctx)).resolves.toEqual({ bytes: 0, ok: false });
+  });
+
+  it("media_fetch does NOT throw on a network error — returns { bytes:0, ok:false }", async () => {
+    const fetchImpl = (async () => { throw new Error("ECONNRESET"); }) as unknown as typeof fetch;
+    const media = buildHotActions({ mediaUrls: ["http://cdn/x.mp4"], fetchImpl }).find((a) => a.name === "media_fetch")!;
+    await expect(media.run({} as SupabaseClient, ctx)).resolves.toEqual({ bytes: 0, ok: false });
   });
 });

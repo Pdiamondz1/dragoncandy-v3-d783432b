@@ -303,6 +303,19 @@ describe("runLoad — media-egress proxy tally (request count + transferred byte
     expect(result.steps[0].metrics.mediaBytes).toBe(0);
   });
 
+  it("a FAILED media fetch ({ok:false}) counts as a media request + media ERROR, NOT a breakage", async () => {
+    captured.length = 0;
+    // An external CDN 4xx/5xx must NOT trip the DB-saturation knee (it is not backend health). The
+    // media action returns { bytes:0, ok:false } instead of throwing, so it is not a breakage.
+    const failMedia: HotAction = { name: "media_fetch", weight: 1, run: async () => ({ bytes: 0, ok: false }) };
+    const result = await runLoad({ ...baseDeps(), actions: [failMedia] });
+    expect(result.steps[0].metrics.mediaRequests).toBe(3); // still a media request
+    expect(result.steps[0].metrics.mediaErrors).toBe(3); // and a media error
+    expect(result.breakageCount).toBe(0); // NOT a breakage — the knee never trips on external media
+    expect(result.stoppedAtKnee).toBe(false);
+    expect(captured[captured.length - 1]).toHaveProperty("media_errors");
+  });
+
   it("emits a FINAL per-step snapshot with the complete cumulative totals (short-soak correctness)", async () => {
     // A single-wave step (holdMs 0) samples ONCE, in-flight, before the wave drains → that sample's
     // count/media are 0. Without a post-wave final snapshot, the matrix summary (latest row per shard)
