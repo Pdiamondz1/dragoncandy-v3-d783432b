@@ -1,5 +1,41 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { parseArgs, main, nonZeroResiduals, makeBotFor, planLoad, cmdLoad, seedContent, cmdMarketplaceSeed, type CmdLoadDeps, type RpcCaller, type CmdMarketplaceSeedDeps } from "./run";
+import { parseArgs, main, nonZeroResiduals, makeBotFor, planLoad, cmdLoad, seedContent, cmdMarketplaceSeed, BOTMK_ACTIVE_EMAIL_OR, type CmdLoadDeps, type RpcCaller, type CmdMarketplaceSeedDeps } from "./run";
+
+// Convert a PostgREST/SQL LIKE pattern (with backslash-escaped `\_` literal underscores and `%`
+// wildcards) to an anchored RegExp, so we can prove the active-cohort `.or()` filter EXCLUDES the
+// depth pool. A regression here silently reintroduces the per-IP 429 wall at 100/300 scale.
+function likeToRegExp(pat: string): RegExp {
+  let re = "^";
+  for (let i = 0; i < pat.length; i++) {
+    const c = pat[i];
+    if (c === "\\" && pat[i + 1] === "_") { re += "_"; i++; }      // escaped underscore → literal _
+    else if (c === "%") re += ".*";                                 // wildcard
+    else if (c === "_") re += ".";                                  // unescaped single-char wildcard
+    else re += c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");            // literal (regex-escaped)
+  }
+  return new RegExp(re + "$");
+}
+
+describe("BOTMK_ACTIVE_EMAIL_OR — the active-only readCohortRefs filter (429-avoidance)", () => {
+  const regexes = BOTMK_ACTIVE_EMAIL_OR.split(",")
+    .map((clause) => clause.replace(/^email\.like\./, ""))
+    .map(likeToRegExp);
+  const matchesAny = (email: string) => regexes.some((r) => r.test(email));
+
+  it("matches ONLY the active cohort (botmk_b_/botmk_c_) — NEVER the depth pool or other cohorts", () => {
+    // Active interactive cohort → included (these get session-minted, which is correct).
+    expect(matchesAny("botmk_b_1_1@synthetic.dragoncandy.test")).toBe(true);
+    expect(matchesAny("botmk_c_1_1@synthetic.dragoncandy.test")).toBe(true);
+    // Depth pool → EXCLUDED. If these ever matched, the interactive flow would session-mint the
+    // hundreds of depth bots and hit the per-IP 429 wall at 100/300 — the whole design's failure mode.
+    expect(matchesAny("botmk_db_1_0@synthetic.dragoncandy.test")).toBe(false);
+    expect(matchesAny("botmk_dc_1_0@synthetic.dragoncandy.test")).toBe(false);
+    // Other synthetic cohorts → excluded.
+    expect(matchesAny("bot001@synthetic.dragoncandy.test")).toBe(false);
+    expect(matchesAny("botla1_1@synthetic.dragoncandy.test")).toBe(false);
+    expect(matchesAny("botseed_phase1_3@synthetic.dragoncandy.test")).toBe(false);
+  });
+});
 import type { BotRef } from "./types";
 import type { RunLoadDeps, LoadResult } from "./load/driver";
 import { DAU_ACTIONS, DAU_READ_ACTIONS, WRITE_ACTION_NAMES } from "./load/actions-mix";
@@ -285,15 +321,17 @@ describe("main dry-run", () => {
 
 function mpHarness() {
   const calls: Record<string, unknown> = {};
+  const order: string[] = [];
   const svc = {} as SupabaseClient;
   const deps: CmdMarketplaceSeedDeps = {
-    serviceClient: vi.fn(() => { calls.gotClient = true; return svc; }),
-    bootGate: vi.fn(async () => { calls.booted = true; }),
-    assertCohortFresh: vi.fn(async () => { calls.freshnessChecked = true; }),
-    buildSteps: vi.fn(() => ({}) as never),
-    runSeed: vi.fn(async () => { calls.ran = true; return { minted: 2, skipped: 0, campaigns: 1, collaborations: 1, messages: 1, posts: 1, units: 0, cgcSubmissions: 0 }; }),
+    serviceClient: vi.fn(() => { calls.gotClient = true; order.push("serviceClient"); return svc; }),
+    bootGate: vi.fn(async () => { calls.booted = true; order.push("bootGate"); }),
+    assertCohortFresh: vi.fn(async () => { calls.freshnessChecked = true; order.push("assertCohortFresh"); }),
+    buildSteps: vi.fn(() => { order.push("buildSteps"); return ({}) as never; }),
+    runSeed: vi.fn(async () => { calls.ran = true; order.push("runSeed"); return { minted: 2, skipped: 0, campaigns: 1, collaborations: 1, messages: 1, posts: 1, units: 0, cgcSubmissions: 0 }; }),
+    seedDepth: vi.fn(async () => { order.push("seedDepth"); }),
   };
-  return { deps, calls };
+  return { deps, calls, order };
 }
 
 describe("cmdMarketplaceSeed", () => {
@@ -341,6 +379,43 @@ describe("cmdMarketplaceSeed", () => {
     expect(calls.booted).toBe(true); // boot-gate ran before the freshness check
     expect(deps.assertCohortFresh).toHaveBeenCalled();
     expect(deps.runSeed).not.toHaveBeenCalled(); // never seeds once freshness rejects
+    warn.mockRestore();
+  });
+
+  it("depth pool split: --businesses 100 --creators 300 caps active at 8/16 and seeds the 92/284 overflow as depth", async () => {
+    const { deps, order } = mpHarness();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const args = parseArgs(["marketplace-seed", "--businesses", "100", "--creators", "300"]);
+    await cmdMarketplaceSeed(args, deps);
+
+    expect(deps.seedDepth).toHaveBeenCalledWith(expect.anything(), 92, 284, args.seed);
+    expect(deps.runSeed).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ businesses: 8, creators: 16 }),
+      expect.anything(),
+    );
+    // boot-gate + freshness must still run before seedDepth, and seedDepth before runSeed.
+    expect(order.indexOf("bootGate")).toBeLessThan(order.indexOf("seedDepth"));
+    expect(order.indexOf("assertCohortFresh")).toBeLessThan(order.indexOf("seedDepth"));
+    expect(order.indexOf("seedDepth")).toBeLessThan(order.indexOf("runSeed"));
+    warn.mockRestore();
+  });
+
+  it("skips seedDepth when totals are within the active cap (--businesses 2 --creators 4)", async () => {
+    const { deps, order } = mpHarness();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const args = parseArgs(["marketplace-seed", "--businesses", "2", "--creators", "4"]);
+    await cmdMarketplaceSeed(args, deps);
+
+    expect(deps.seedDepth).not.toHaveBeenCalled();
+    expect(deps.runSeed).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ businesses: 2, creators: 4 }),
+      expect.anything(),
+    );
+    // boot-gate + freshness still run before runSeed even when depth is skipped.
+    expect(order.indexOf("bootGate")).toBeLessThan(order.indexOf("runSeed"));
+    expect(order.indexOf("assertCohortFresh")).toBeLessThan(order.indexOf("runSeed"));
     warn.mockRestore();
   });
 });
