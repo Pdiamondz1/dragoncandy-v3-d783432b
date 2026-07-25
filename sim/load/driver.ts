@@ -146,6 +146,9 @@ export interface StepMetrics {
   mediaBytes?: number;
   /** Media requests that failed at the external CDN (ok:false) — tallied apart from breakage. */
   mediaErrors?: number;
+  /** Media request latency (fetch-only) percentiles this step — the egress-saturation signal. */
+  mediaMsP50?: number;
+  mediaMsP95?: number;
 }
 
 export interface KneeThresholds {
@@ -306,6 +309,9 @@ export interface MediaResult {
    *  DragonCandy backend health, so it must never trip the DB-saturation knee. Absent/`true` = ok.
    *  (The 2026-07-24 live smoke tripped the knee on GCS-sample-bucket 403s, masking real DB headroom.) */
   ok?: boolean;
+  /** Fetch-only latency (ms) measured INSIDE the media action — the egress signal. Distinct from the
+   *  driver's per-task `ms`, which also includes the `botFor` client lookup the media action skips. */
+  ms?: number;
 }
 
 /** Per-task identity handed to a HotAction's `run`: the acting bot (`selfId`, whose JWT the `client`
@@ -407,6 +413,8 @@ interface TaskOutcome {
   /** True when a media request explicitly returned `ok:false` (external CDN failure). Tallied
    *  separately from breakage so an external media host never trips the DB-saturation knee. */
   mediaError: boolean;
+  /** Fetch-only latency (ms) reported by a media action (0 for reads / a media action without ms). */
+  mediaMs: number;
 }
 
 /** Weighted random pick over a non-empty action list (falls back to the first on a degenerate rng). */
@@ -449,10 +457,11 @@ async function runOneTask(
     const isMedia = typeof res === "object" && res !== null;
     const bytes = isMedia && typeof (res as MediaResult).bytes === "number" ? (res as MediaResult).bytes! : 0;
     const mediaError = isMedia && (res as MediaResult).ok === false;
-    return { ok: true, ms: now() - startedAt, endpoint: action.name, kind: "ok", status: null, error: "", isMedia, bytes, mediaError };
+    const mediaMs = isMedia && typeof (res as MediaResult).ms === "number" ? (res as MediaResult).ms! : 0;
+    return { ok: true, ms: now() - startedAt, endpoint: action.name, kind: "ok", status: null, error: "", isMedia, bytes, mediaError, mediaMs };
   } catch (err) {
     const c = classifyError(err);
-    return { ok: false, ms: now() - startedAt, endpoint: action.name, kind: c.kind, status: c.status, error: c.message, isMedia: false, bytes: 0, mediaError: false };
+    return { ok: false, ms: now() - startedAt, endpoint: action.name, kind: c.kind, status: c.status, error: c.message, isMedia: false, bytes: 0, mediaError: false, mediaMs: 0 };
   }
 }
 
@@ -486,6 +495,7 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
     let mediaReq = 0; // media-egress proxy: count of media requests this step (Task 4.2)
     let mediaBytes = 0; // Σ transferred/declared bytes this step
     let mediaErr = 0; // media requests that failed at the external CDN (ok:false) — NOT breakages
+    const mediaLatencies: number[] = []; // fetch-only media latencies this step (for p50/p95)
     const stepStart = now();
     let lastSampleAt = -Infinity; // guarantees the first wave of each step samples once
 
@@ -519,6 +529,8 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
               media_requests: mediaReq,
               media_bytes: mediaBytes,
               media_errors: mediaErr,
+              media_ms_p50: percentile(mediaLatencies, 50),
+              media_ms_p95: percentile(mediaLatencies, 95),
               p50_ms: percentile(latencies, 50),
               p95_ms: percentile(latencies, 95),
             });
@@ -532,6 +544,7 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
         latencies.push(o.ms);
         if (o.isMedia) mediaReq += 1;
         if (o.mediaError) mediaErr += 1;
+        if (o.isMedia && o.mediaMs > 0) mediaLatencies.push(o.mediaMs);
         mediaBytes += o.bytes;
         if (o.ok) ok += 1;
         else if (o.kind === "throttle") throttled += 1;
@@ -564,6 +577,8 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
       mediaRequests: mediaReq,
       mediaBytes,
       mediaErrors: mediaErr,
+      mediaMsP50: percentile(mediaLatencies, 50),
+      mediaMsP95: percentile(mediaLatencies, 95),
     };
     // FINAL per-step snapshot with the step's COMPLETE cumulative totals. The in-step samples are
     // taken in-flight (before the wave drains) so `count`/`ok`/`media_*` lag by up to one wave — and
@@ -580,6 +595,8 @@ export async function runLoad(deps: RunLoadDeps): Promise<LoadResult> {
       media_requests: mediaReq,
       media_bytes: mediaBytes,
       media_errors: mediaErr,
+      media_ms_p50: metrics.mediaMsP50,
+      media_ms_p95: metrics.mediaMsP95,
       p50_ms: metrics.p50Ms,
       p95_ms: metrics.p95Ms,
     });

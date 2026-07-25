@@ -329,6 +329,25 @@ describe("runLoad — media-egress proxy tally (request count + transferred byte
     expect(last.media_requests).toBe(3);
     expect(last.media_bytes).toBe(3000);
   });
+
+  it("tallies media latency (p95) from the action's ms into StepMetrics + snapshot notes", async () => {
+    captured.length = 0;
+    // Every task returns ms:42 → p50 and p95 are both 42.
+    const media: HotAction = { name: "media_fetch", weight: 1, run: async () => ({ bytes: 1000, ok: true, ms: 42 }) };
+    const result = await runLoad({ ...baseDeps(), actions: [media] });
+    expect(result.steps[0].metrics.mediaMsP95).toBe(42);
+    expect(result.steps[0].metrics.mediaMsP50).toBe(42);
+    // The LAST captured snapshot (final per-step) carries the media latency for the aggregation RPC.
+    expect(captured.at(-1)?.media_ms_p95).toBe(42);
+  });
+
+  it("a read action (no ms) leaves media latency at 0", async () => {
+    captured.length = 0;
+    const read: HotAction = { name: "campaign_browse", weight: 1, run: async () => {} };
+    const result = await runLoad({ ...baseDeps(), actions: [read] });
+    expect(result.steps[0].metrics.mediaMsP95).toBe(0);
+    expect(captured.at(-1)?.media_ms_p95).toBe(0);
+  });
 });
 
 describe("runLoad — samples the DB snapshot WHILE the wave is in flight (Codex P1 regression)", () => {
