@@ -544,8 +544,28 @@ export async function cmdLoad(args: Args, deps: CmdLoadDeps = DEFAULT_CMD_LOAD_D
 }
 
 const SYNTHETIC_DOMAIN = "@synthetic.dragoncandy.test";
-/** `botmk_%@synthetic.dragoncandy.test` — the LIKE pattern for the persistent marketplace cohort. */
+/** `botmk_%@synthetic.dragoncandy.test` — the LIKE pattern for the FULL persistent marketplace cohort
+ *  (active + depth). Used by readExistingEmails, which needs every existing botmk_ email to compute
+ *  what's still missing to mint — safe against the depth pool too, since generateMarketplaceCohort
+ *  only ever emits active-tagged (botmk_b_/botmk_c_) emails. */
 const BOTMK_EMAIL_LIKE = `${MARKETPLACE_EMAIL_PREFIX}%${SYNTHETIC_DOMAIN}`;
+/**
+ * `email.like.botmk\_b\_%…` OR `email.like.botmk\_c\_%…` — the ACTIVE interactive namespace ONLY
+ * (role tags `b`/`c`). Deliberately excludes the depth pool (`botmk_db_`/`botmk_dc_`, tag starts with
+ * `d`, seeded separately by seed_synthetic_marketplace_depth). readCohortRefs uses this so the
+ * interactive flow — which session-mints every bot it reads via makeBotFor/botFor — never touches the
+ * depth pool and never trips the per-IP auth 429 wall. Escaped underscores (LIKE wildcard) mirror
+ * assertMarketplaceCohortFresh's convention (marketplace/seed.ts); passed to supabase-js `.or()`.
+ */
+const BOTMK_ACTIVE_EMAIL_OR = `email.like.botmk\\_b\\_%${SYNTHETIC_DOMAIN},email.like.botmk\\_c\\_%${SYNTHETIC_DOMAIN}`;
+/**
+ * The interactive ACTIVE cohort core cap. The per-IP auth 429 wall caps a single runner's
+ * session-minted bots at ~25 — 8 businesses + 16 creators = 24 stays safely under it, proven by the
+ * live bot0## 25-bot daily tick (see MEMORY: Synthetic Weight Task 8). Anything above these per-role
+ * caps seeds into the DEPTH pool instead (browsable, never session-minted).
+ */
+const MARKETPLACE_ACTIVE_MAX_BUSINESSES = 8;
+const MARKETPLACE_ACTIVE_MAX_CREATORS = 16;
 /**
  * The prod trigger `enforce_active_campaign_limit` fires on the transition into
  * `status='published'` and reads `organizations.active_campaign_limit` (DEFAULT 1) via
@@ -600,7 +620,9 @@ function buildDefaultSeedSteps(svc: SupabaseClient, opts: SeedOpts): SeedSteps {
   };
 
   const readCohortRefs = async (): Promise<{ businesses: BotRef[]; creators: BotRef[] }> => {
-    const { data, error } = await svc.from("profiles").select("id, email, role").like("email", BOTMK_EMAIL_LIKE);
+    // Active namespace ONLY (botmk_b_/botmk_c_) — the depth pool (botmk_db_/botmk_dc_) never
+    // authenticates and must never reach makeBotFor/botFor. This is THE 429-avoidance.
+    const { data, error } = await svc.from("profiles").select("id, email, role").or(BOTMK_ACTIVE_EMAIL_OR);
     if (error) throw new Error(`[marketplace-seed] readCohortRefs: ${error.message}`);
     const rows = (data ?? []) as { id: string; email: string; role: Role }[];
     const refs: BotRef[] = rows.map((r) => ({ userId: r.id, email: r.email, role: r.role, personaKey: null, cohort: null }));
@@ -957,6 +979,25 @@ export interface CmdMarketplaceSeedDeps {
   assertCohortFresh: (svc: SupabaseClient) => Promise<void>;
   buildSteps: (svc: SupabaseClient, opts: SeedOpts) => SeedSteps;
   runSeed: (steps: SeedSteps, opts: SeedOpts, log: (m: string) => void) => Promise<SeedReport>;
+  /**
+   * Bulk-insert the browsable-but-INERT depth pool (never authenticates, never session-minted) via
+   * the service-role seed_synthetic_marketplace_depth RPC. Called for the OVERFLOW of
+   * --businesses/--creators beyond the active cap, BEFORE runSeed mints + drives the active cohort.
+   * Fail-loud on an RPC error — a half-seeded depth pool must not report green.
+   */
+  seedDepth: (svc: SupabaseClient, businesses: number, creators: number, seed: number) => Promise<void>;
+}
+
+/** Default seedDepth: calls seed_synthetic_marketplace_depth (20260725130000), fail-loud on error. */
+async function defaultSeedDepth(svc: SupabaseClient, businesses: number, creators: number, seed: number): Promise<void> {
+  const { data, error } = await svc.rpc("seed_synthetic_marketplace_depth", {
+    p_businesses: businesses,
+    p_creators: creators,
+    p_seed: seed,
+  });
+  if (error) throw new Error(`[marketplace-seed] seedDepth: ${error.message}`);
+  const res = (data ?? {}) as { seeded?: number; skipped?: number };
+  console.warn(`[marketplace-seed] seedDepth: ${JSON.stringify({ seeded: res.seeded ?? 0, skipped: res.skipped ?? 0 })}`);
 }
 
 const DEFAULT_MP_DEPS: CmdMarketplaceSeedDeps = {
@@ -965,6 +1006,7 @@ const DEFAULT_MP_DEPS: CmdMarketplaceSeedDeps = {
   assertCohortFresh: assertMarketplaceCohortFresh,
   buildSteps: buildDefaultSeedSteps, // real-write glue (implemented above), per Task 7's note
   runSeed: runMarketplaceSeed,
+  seedDepth: defaultSeedDepth,
 };
 
 /**
@@ -975,15 +1017,34 @@ const DEFAULT_MP_DEPS: CmdMarketplaceSeedDeps = {
  * client/boot-gate work, so a fat-fingered `--businesses`/`--creators` fails before touching prod at
  * all; the one-shot FRESHNESS check runs after boot-gate but before buildSteps, so a re-run against an
  * already-seeded botmk_ cohort fails loud instead of duplicating campaigns/discounts/posts.
+ *
+ * DEPTH POOL split: `--businesses`/`--creators` is split into an ACTIVE lane (capped at
+ * MARKETPLACE_ACTIVE_MAX_BUSINESSES/CREATORS, the session-minted interactive cohort that runs the
+ * full apply→hire→deliver→review→message→post flow) and a DEPTH lane (the overflow, bulk-inserted
+ * browsable-but-inert via seedDepth — never authenticates). This is what lets
+ * `--businesses 100 --creators 300` populate ~400 browsable profiles while only ever session-minting
+ * ~24 — safely under the ~30 per-IP auth 429 wall. seedDepth runs BEFORE buildSteps/runSeed so the
+ * depth pool exists before the interactive cohort starts browsing/matching against it.
  */
 export async function cmdMarketplaceSeed(args: Args, deps: CmdMarketplaceSeedDeps = DEFAULT_MP_DEPS): Promise<void> {
   assertMarketplaceCohortCap(args.businesses, args.creators);
   const svc = deps.serviceClient();
   await deps.bootGate(svc);
   await deps.assertCohortFresh(svc);
+
+  const activeBusinesses = Math.min(args.businesses, MARKETPLACE_ACTIVE_MAX_BUSINESSES);
+  const activeCreators = Math.min(args.creators, MARKETPLACE_ACTIVE_MAX_CREATORS);
+  const depthBusinesses = args.businesses - activeBusinesses;
+  const depthCreators = args.creators - activeCreators;
+  console.warn(`[marketplace-seed] active=${activeBusinesses}/${activeCreators}, depth=${depthBusinesses}/${depthCreators}`);
+
+  if (depthBusinesses + depthCreators > 0) {
+    await deps.seedDepth(svc, depthBusinesses, depthCreators, args.seed);
+  }
+
   const opts: SeedOpts = {
-    businesses: args.businesses,
-    creators: args.creators,
+    businesses: activeBusinesses,
+    creators: activeCreators,
     seed: args.seed,
     multiLocation: args.multiLocation,
     cgc: args.cgc,

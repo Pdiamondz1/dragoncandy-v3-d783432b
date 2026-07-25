@@ -285,15 +285,17 @@ describe("main dry-run", () => {
 
 function mpHarness() {
   const calls: Record<string, unknown> = {};
+  const order: string[] = [];
   const svc = {} as SupabaseClient;
   const deps: CmdMarketplaceSeedDeps = {
-    serviceClient: vi.fn(() => { calls.gotClient = true; return svc; }),
-    bootGate: vi.fn(async () => { calls.booted = true; }),
-    assertCohortFresh: vi.fn(async () => { calls.freshnessChecked = true; }),
-    buildSteps: vi.fn(() => ({}) as never),
-    runSeed: vi.fn(async () => { calls.ran = true; return { minted: 2, skipped: 0, campaigns: 1, collaborations: 1, messages: 1, posts: 1, units: 0, cgcSubmissions: 0 }; }),
+    serviceClient: vi.fn(() => { calls.gotClient = true; order.push("serviceClient"); return svc; }),
+    bootGate: vi.fn(async () => { calls.booted = true; order.push("bootGate"); }),
+    assertCohortFresh: vi.fn(async () => { calls.freshnessChecked = true; order.push("assertCohortFresh"); }),
+    buildSteps: vi.fn(() => { order.push("buildSteps"); return ({}) as never; }),
+    runSeed: vi.fn(async () => { calls.ran = true; order.push("runSeed"); return { minted: 2, skipped: 0, campaigns: 1, collaborations: 1, messages: 1, posts: 1, units: 0, cgcSubmissions: 0 }; }),
+    seedDepth: vi.fn(async () => { order.push("seedDepth"); }),
   };
-  return { deps, calls };
+  return { deps, calls, order };
 }
 
 describe("cmdMarketplaceSeed", () => {
@@ -341,6 +343,43 @@ describe("cmdMarketplaceSeed", () => {
     expect(calls.booted).toBe(true); // boot-gate ran before the freshness check
     expect(deps.assertCohortFresh).toHaveBeenCalled();
     expect(deps.runSeed).not.toHaveBeenCalled(); // never seeds once freshness rejects
+    warn.mockRestore();
+  });
+
+  it("depth pool split: --businesses 100 --creators 300 caps active at 8/16 and seeds the 92/284 overflow as depth", async () => {
+    const { deps, order } = mpHarness();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const args = parseArgs(["marketplace-seed", "--businesses", "100", "--creators", "300"]);
+    await cmdMarketplaceSeed(args, deps);
+
+    expect(deps.seedDepth).toHaveBeenCalledWith(expect.anything(), 92, 284, args.seed);
+    expect(deps.runSeed).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ businesses: 8, creators: 16 }),
+      expect.anything(),
+    );
+    // boot-gate + freshness must still run before seedDepth, and seedDepth before runSeed.
+    expect(order.indexOf("bootGate")).toBeLessThan(order.indexOf("seedDepth"));
+    expect(order.indexOf("assertCohortFresh")).toBeLessThan(order.indexOf("seedDepth"));
+    expect(order.indexOf("seedDepth")).toBeLessThan(order.indexOf("runSeed"));
+    warn.mockRestore();
+  });
+
+  it("skips seedDepth when totals are within the active cap (--businesses 2 --creators 4)", async () => {
+    const { deps, order } = mpHarness();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const args = parseArgs(["marketplace-seed", "--businesses", "2", "--creators", "4"]);
+    await cmdMarketplaceSeed(args, deps);
+
+    expect(deps.seedDepth).not.toHaveBeenCalled();
+    expect(deps.runSeed).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ businesses: 2, creators: 4 }),
+      expect.anything(),
+    );
+    // boot-gate + freshness still run before runSeed even when depth is skipped.
+    expect(order.indexOf("bootGate")).toBeLessThan(order.indexOf("runSeed"));
+    expect(order.indexOf("assertCohortFresh")).toBeLessThan(order.indexOf("runSeed"));
     warn.mockRestore();
   });
 });
