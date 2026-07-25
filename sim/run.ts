@@ -12,20 +12,35 @@
 // lint allows only those).
 
 import { writeFileSync } from "node:fs";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { serviceClient, botClient } from "./clients";
 import { assertRuntimeBootSafety, readKillSwitch, type MinimalSupabaseClient } from "./env";
-import { generateCohort } from "./personas";
+import { generateCohort, type Persona, type Role } from "./personas";
 import { mintBot, readCohort, readSessionCapableBots, readActiveLoadCohort } from "./mint";
 import { planSeed, generateActiveCohort, assertActiveNamespaceFree } from "./seed";
 import { SessionPool } from "./session-pool";
 import { planDay, runDay } from "./behavior/graph";
 import { parseRamp, runLoad, type LoadFindingsArtifact, type RunLoadDeps, type LoadResult } from "./load/driver";
 import { DAU_ACTIONS, DAU_READ_ACTIONS } from "./load/actions-mix";
-import type { ActionContext } from "./behavior/actions";
+import { executeAction, type ActionContext } from "./behavior/actions";
 import type { BotRef, CohortState } from "./types";
+import {
+  runMarketplaceSeed,
+  assertMarketplaceCohortCap,
+  assertMarketplaceCohortFresh,
+  type SeedSteps,
+  type SeedOpts,
+  type SeedReport,
+  type SeededCampaign,
+} from "./marketplace/seed";
+import { MARKETPLACE_EMAIL_PREFIX } from "./marketplace/personas";
+import { createDiscount, addOrgUnit, submitCgc, sendMessage, postDragonFeed } from "./marketplace/actions";
+import { uploadAsset, loadSampleAsset } from "./marketplace/content";
+import { makePicker, curatedBrief, DISCOUNT_KINDS, MESSAGE_SNIPPETS, CREATOR_BIOS } from "./marketplace/text";
+import { locationAt } from "./marketplace/locations";
+import { buildBusinessProfileFields, buildCreatorProfileFields, buildOrgUnitGeo } from "./marketplace/profile";
 
-const COMMANDS = ["dry-run", "mint", "tick", "purge", "bulk-seed", "load"] as const;
+const COMMANDS = ["dry-run", "mint", "tick", "purge", "bulk-seed", "load", "marketplace-seed", "marketplace-purge"] as const;
 type Command = (typeof COMMANDS)[number];
 
 export interface Args {
@@ -57,6 +72,14 @@ export interface Args {
   campaigns: number;
   /** bulk-seed --with-content: cap on seeded DragonShare posts (one per synthetic creator bot). */
   posts: number;
+  /** marketplace-seed: number of business bots (persistent botmk cohort). */
+  businesses: number;
+  /** marketplace-seed: number of creator bots. */
+  creators: number;
+  /** marketplace-seed: also promote ~25–30% of businesses to multi-location orgs. */
+  multiLocation: boolean;
+  /** marketplace-seed: also create CGC promotions + anonymous submissions. */
+  cgc: boolean;
 }
 
 const CREATOR_SPLIT = 0.65;
@@ -130,6 +153,10 @@ export function parseArgs(argv: string[]): Args {
     withContent: argv.includes("--with-content"),
     campaigns: safeInt(flag("campaigns"), CAMPAIGNS_DEFAULT),
     posts: safeInt(flag("posts"), POSTS_DEFAULT),
+    businesses: safeInt(flag("businesses"), 100),
+    creators: safeInt(flag("creators"), 300),
+    multiLocation: argv.includes("--multi-location"),
+    cgc: argv.includes("--cgc"),
   };
 }
 
@@ -516,6 +543,471 @@ export async function cmdLoad(args: Args, deps: CmdLoadDeps = DEFAULT_CMD_LOAD_D
   }
 }
 
+const SYNTHETIC_DOMAIN = "@synthetic.dragoncandy.test";
+/** `botmk_%@synthetic.dragoncandy.test` — the LIKE pattern for the persistent marketplace cohort. */
+const BOTMK_EMAIL_LIKE = `${MARKETPLACE_EMAIL_PREFIX}%${SYNTHETIC_DOMAIN}`;
+/**
+ * The prod trigger `enforce_active_campaign_limit` fires on the transition into
+ * `status='published'` and reads `organizations.active_campaign_limit` (DEFAULT 1) via
+ * `profiles.org_id`, counting existing published/active PUBLIC campaigns for that user_id.
+ * publishCampaigns publishes 1–3 public campaigns per synthetic business, so the default limit
+ * of 1 aborts the run on the 2nd. Raised well above the seed's per-business ceiling.
+ */
+const MARKETPLACE_ORG_CAMPAIGN_LIMIT = 25;
+
+function requireEnvVar(name: string): string {
+  const v = process.env[name];
+  if (!v) throw new Error(`Missing required env var: ${name}`);
+  return v;
+}
+
+/** A plain anon-key client with NO bot session — models an anonymous customer (CGC submissions come
+ *  from the public /promo/:id page, never a logged-in bot). Mirrors clients.ts's NO_SESSION pattern. */
+function anonClient(): SupabaseClient {
+  return createClient(requireEnvVar("SIM_SUPABASE_URL"), requireEnvVar("SIM_SUPABASE_ANON_KEY"), {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+/**
+ * The real-write SeedSteps implementation for `marketplace-seed` — LIVE integration glue wiring the
+ * pure sequencer (runMarketplaceSeed, Task 7) to Supabase. Convention note: this is thin glue exercised
+ * by the boot-gated prod run, exactly like the existing serviceClient()/mintBot wiring inside
+ * cmdBulkSeed/cmdLoad — the codebase does NOT unit-test this layer (see the Task 8 brief). Every step
+ * shares ONE bot-client factory (`botFor`, built off the full botmk cohort once readCohortRefs has read
+ * it) and the sequencer is serial by contract, so no 429 burst.
+ */
+function buildDefaultSeedSteps(svc: SupabaseClient, opts: SeedOpts): SeedSteps {
+  const picker = makePicker(opts.seed);
+  let botFor: (userId: string) => Promise<SupabaseClient> = () => {
+    throw new Error("marketplace-seed: botFor used before readCohortRefs populated the cohort");
+  };
+  // Threaded from runCollaborations → seedMessaging: the (campaign, biz, creator) pairs that actually
+  // collaborated, so messaging targets real matched pairs. Safe because runMarketplaceSeed always calls
+  // these two steps serially, in that exact order (Task 7's orchestrator).
+  const collabPairs: { campaignId: string; bizId: string; creatorId: string }[] = [];
+
+  const readExistingEmails = async (): Promise<Set<string>> => {
+    const { data, error } = await svc.from("profiles").select("email").like("email", BOTMK_EMAIL_LIKE);
+    if (error) throw new Error(`[marketplace-seed] readExistingEmails: ${error.message}`);
+    return new Set((data ?? []).map((r) => (r as { email: string }).email));
+  };
+
+  const mintCohort = async (personas: Persona[]): Promise<BotRef[]> => {
+    const refs: BotRef[] = [];
+    for (const p of personas) refs.push(await mintBot(svc, p)); // serial — mint-429 never bites
+    return refs;
+  };
+
+  const readCohortRefs = async (): Promise<{ businesses: BotRef[]; creators: BotRef[] }> => {
+    const { data, error } = await svc.from("profiles").select("id, email, role").like("email", BOTMK_EMAIL_LIKE);
+    if (error) throw new Error(`[marketplace-seed] readCohortRefs: ${error.message}`);
+    const rows = (data ?? []) as { id: string; email: string; role: Role }[];
+    const refs: BotRef[] = rows.map((r) => ({ userId: r.id, email: r.email, role: r.role, personaKey: null, cohort: null }));
+    botFor = makeBotFor(refs); // ONE shared bot-client factory, reused by every downstream step
+    return {
+      businesses: refs.filter((r) => r.role === "business_client"),
+      creators: refs.filter((r) => r.role === "content_creator"),
+    };
+  };
+
+  /**
+   * Task 12: fill out + geo-spread every profile across the 24-city US_LOCATIONS pool BEFORE any
+   * other phase touches business_profiles/creator_profiles — own-row RLS-real updates via each
+   * bot's own client, matching setupBusinesses's convention. Business i / creator j gets
+   * locationAt(i)/locationAt(j) (wraps by modulo), and a business's PRIMARY org_unit gets the SAME
+   * location's geo so a bot's address is consistent across both tables. Fail-loud on the
+   * business_profiles/creator_profiles/org_units writes (a half-completed profile pass must not
+   * report green) — EXCEPT the avatar/logo upload, which is best-effort: profile-assets' bot-upload
+   * RLS is a prod-run-verify item (uid-prefixed path, mirrors uploadAsset's existing convention), so
+   * a storage failure must never abort the whole seed over a cosmetic field.
+   */
+  const completeProfiles = async (businesses: BotRef[], creators: BotRef[]): Promise<number> => {
+    let count = 0;
+    for (let i = 0; i < businesses.length; i++) {
+      const biz = businesses[i];
+      const loc = locationAt(i);
+      const bizClient = await botFor(biz.userId);
+
+      const { error: bpErr } = await bizClient
+        .from("business_profiles").update(buildBusinessProfileFields(picker, loc)).eq("user_id", biz.userId);
+      if (bpErr) throw new Error(`[marketplace-seed] completeProfiles: business_profiles update failed for ${biz.email}: ${bpErr.message}`);
+
+      const { data: profileRow, error: profErr } = await svc
+        .from("profiles").select("org_id").eq("id", biz.userId).single();
+      const orgId = (profileRow as { org_id: string | null } | null)?.org_id;
+      if (profErr || !orgId) {
+        throw new Error(`[marketplace-seed] completeProfiles: org_id lookup failed for ${biz.email}: ${profErr?.message ?? "no org_id"}`);
+      }
+      const { error: unitErr } = await bizClient
+        .from("org_units").update(buildOrgUnitGeo(loc)).eq("org_id", orgId).eq("is_primary", true);
+      if (unitErr) throw new Error(`[marketplace-seed] completeProfiles: org_units geo update failed for ${biz.email}: ${unitErr.message}`);
+
+      try {
+        const asset = loadSampleAsset(picker, "image");
+        const url = await uploadAsset(bizClient, {
+          bucket: "profile-assets", uid: biz.userId, subpath: `logo${asset.ext}`,
+          bytes: asset.bytes, contentType: asset.contentType,
+        });
+        const { error: logoErr } = await bizClient.from("business_profiles").update({ logo_url: url }).eq("user_id", biz.userId);
+        if (logoErr) throw new Error(logoErr.message);
+      } catch (e) {
+        console.warn(`[marketplace-seed] completeProfiles: logo upload skipped for ${biz.email}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+
+      count += 1;
+    }
+
+    for (let j = 0; j < creators.length; j++) {
+      const creator = creators[j];
+      const loc = locationAt(j);
+      const creatorClient = await botFor(creator.userId);
+
+      const { error: cpErr } = await creatorClient
+        .from("creator_profiles").update(buildCreatorProfileFields(picker, loc)).eq("user_id", creator.userId);
+      if (cpErr) throw new Error(`[marketplace-seed] completeProfiles: creator_profiles update failed for ${creator.email}: ${cpErr.message}`);
+
+      try {
+        const asset = loadSampleAsset(picker, "image");
+        const url = await uploadAsset(creatorClient, {
+          bucket: "profile-assets", uid: creator.userId, subpath: `avatar${asset.ext}`,
+          bytes: asset.bytes, contentType: asset.contentType,
+        });
+        const { error: avatarErr } = await creatorClient
+          .from("creator_profiles").update({ avatar_url: url, portfolio_urls: [url] }).eq("user_id", creator.userId);
+        if (avatarErr) throw new Error(avatarErr.message);
+      } catch (e) {
+        console.warn(`[marketplace-seed] completeProfiles: avatar upload skipped for ${creator.email}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+
+      count += 1;
+    }
+
+    return count;
+  };
+
+  const setupBusinesses = async (businesses: BotRef[]): Promise<number> => {
+    const today = new Date();
+    const endDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const isoDate = (d: Date): string => d.toISOString().slice(0, 10);
+    let count = 0;
+    for (const biz of businesses) {
+      const bizClient = await botFor(biz.userId);
+      const { data: bp, error: bpErr } = await svc
+        .from("business_profiles").select("id").eq("user_id", biz.userId).single();
+      if (bpErr || !bp) {
+        throw new Error(`[marketplace-seed] setupBusinesses: business_profiles lookup failed for ${biz.email}: ${bpErr?.message ?? "no row"}`);
+      }
+      const businessId = (bp as { id: string }).id;
+
+      // Provision the synthetic org's active-campaign limit BEFORE any campaign is published —
+      // publishCampaigns runs after setupBusinesses completes for the whole cohort (see
+      // runMarketplaceSeed). SERVICE-ROLE infra provisioning of a synthetic org (like the org
+      // auto-creation itself), not a user-facing marketplace flow, so `svc` is correct here — see
+      // MARKETPLACE_ORG_CAMPAIGN_LIMIT's comment on the enforce_active_campaign_limit trigger.
+      const { data: profileRow, error: profErr } = await svc
+        .from("profiles").select("org_id").eq("id", biz.userId).single();
+      const orgId = (profileRow as { org_id: string | null } | null)?.org_id;
+      if (profErr || !orgId) {
+        throw new Error(`[marketplace-seed] setupBusinesses: org_id lookup failed for ${biz.email}: ${profErr?.message ?? "no org_id"}`);
+      }
+      const { error: limitErr } = await svc
+        .from("organizations").update({ active_campaign_limit: MARKETPLACE_ORG_CAMPAIGN_LIMIT }).eq("id", orgId);
+      if (limitErr) {
+        throw new Error(`[marketplace-seed] setupBusinesses: active_campaign_limit update failed for ${biz.email}: ${limitErr.message}`);
+      }
+
+      const kind = picker.pick(DISCOUNT_KINDS);
+      await createDiscount(bizClient, {
+        userId: biz.userId,
+        businessId,
+        title: kind.title,
+        discountType: kind.discount_type,
+        discountValue: kind.discount_value,
+        startDate: isoDate(today),
+        endDate: isoDate(endDate),
+      });
+      // CGC posting prefs are the business's OWN row — write it through the business's own bot
+      // client (RLS user_id=auth.uid), not svc, and only when --cgc is on (buildDefaultSeedSteps
+      // now receives the full SeedOpts, so it can gate on opts.cgc directly). Whether any CGC
+      // promotions/submissions actually get CREATED is separately gated by runMarketplaceSeed only
+      // calling seedCgc when opts.cgc is true.
+      if (opts.cgc) {
+        const { error: cgcErr } = await bizClient
+          .from("business_profiles").update({ cgc_posting_preferences: { enabled: true } }).eq("id", businessId);
+        if (cgcErr) {
+          throw new Error(`[marketplace-seed] setupBusinesses: cgc_posting_preferences update failed for ${biz.email}: ${cgcErr.message}`);
+        }
+      }
+      count += 1;
+    }
+    return count;
+  };
+
+  const publishCampaigns = async (businesses: BotRef[]): Promise<SeededCampaign[]> => {
+    const out: SeededCampaign[] = [];
+    for (const biz of businesses) {
+      const bizClient = await botFor(biz.userId);
+      const campaignCount = picker.pick([1, 2, 3] as const); // publish MORE than we'll collaborate on
+      for (let i = 0; i < campaignCount; i++) {
+        const brief = curatedBrief(picker);
+        const { data, error } = await bizClient
+          .from("campaigns")
+          .insert({
+            user_id: biz.userId,
+            title: brief.title,
+            description: brief.description,
+            status: "published",
+            group_id: null,
+            fixed_price: 0,
+            org_unit_id: null,
+          })
+          .select("id")
+          .single();
+        if (error) throw new Error(`[marketplace-seed] publishCampaigns: ${error.message}`);
+        const id = (data as { id: string } | null)?.id;
+        if (!id) throw new Error("[marketplace-seed] publishCampaigns: campaigns insert returned no id");
+        out.push({ campaignId: id, ownerId: biz.userId });
+      }
+    }
+    return out;
+  };
+
+  const runCollaborations = async (campaigns: SeededCampaign[], creators: BotRef[]): Promise<number> => {
+    if (creators.length === 0) return 0;
+    const ctx: ActionContext = { service: svc, botFor };
+    let count = 0;
+    for (let i = 0; i < campaigns.length; i++) {
+      if (i % 2 !== 0) continue; // collaborate on ~half the published campaigns; the rest stay open
+      const campaign = campaigns[i];
+      const creator = creators[i % creators.length];
+
+      await executeAction({ kind: "applyToCampaign", creatorId: creator.userId, campaignId: campaign.campaignId }, ctx);
+      const { data: appRow, error: appErr } = await svc
+        .from("campaign_applications").select("id")
+        .eq("campaign_id", campaign.campaignId).eq("creator_id", creator.userId).single();
+      if (appErr || !appRow) {
+        throw new Error(`[marketplace-seed] runCollaborations: application lookup failed: ${appErr?.message ?? "no row"}`);
+      }
+      const applicationId = (appRow as { id: string }).id;
+
+      await executeAction({ kind: "hire", bizId: campaign.ownerId, applicationId }, ctx);
+      const { data: collabRow, error: collabErr } = await svc
+        .from("campaign_collaborations").select("id").eq("application_id", applicationId).single();
+      if (collabErr || !collabRow) {
+        throw new Error(`[marketplace-seed] runCollaborations: collaboration lookup failed: ${collabErr?.message ?? "no row"}`);
+      }
+      const collaborationId = (collabRow as { id: string }).id;
+
+      // accept_application_with_collaboration only auto-activates CREW free campaigns, not public
+      // ones — flip this public free campaign to in-progress ourselves (own-row RLS).
+      const bizClient = await botFor(campaign.ownerId);
+      const { error: activeErr } = await bizClient.from("campaigns").update({ status: "active" }).eq("id", campaign.campaignId);
+      if (activeErr) throw new Error(`[marketplace-seed] runCollaborations: campaign activate failed: ${activeErr.message}`);
+
+      await executeAction({ kind: "uploadDeliverable", creatorId: creator.userId, collaborationId, campaignId: campaign.campaignId }, ctx);
+      await executeAction({ kind: "submitContent", creatorId: creator.userId, collaborationId, campaignId: campaign.campaignId }, ctx);
+      await executeAction({ kind: "requestCompletion", actorId: campaign.ownerId, role: "business_client", collaborationId }, ctx);
+      await executeAction({ kind: "requestCompletion", actorId: creator.userId, role: "content_creator", collaborationId }, ctx);
+
+      const { error: completeErr } = await bizClient.from("campaigns").update({ status: "completed" }).eq("id", campaign.campaignId);
+      if (completeErr) throw new Error(`[marketplace-seed] runCollaborations: campaign complete failed: ${completeErr.message}`);
+
+      await executeAction({ kind: "leaveReview", actorId: campaign.ownerId, role: "business_client", collaborationId, revieweeId: creator.userId }, ctx);
+      await executeAction({ kind: "leaveReview", actorId: creator.userId, role: "content_creator", collaborationId, revieweeId: campaign.ownerId }, ctx);
+
+      collabPairs.push({ campaignId: campaign.campaignId, bizId: campaign.ownerId, creatorId: creator.userId });
+      count += 1;
+    }
+    return count;
+  };
+
+  const seedMessaging = async (_campaigns: SeededCampaign[], _creators: BotRef[]): Promise<number> => {
+    let count = 0;
+    for (const pair of collabPairs) {
+      const bizClient = await botFor(pair.bizId);
+      await sendMessage(bizClient, {
+        bizId: pair.bizId,
+        creatorId: pair.creatorId,
+        content: picker.pick(MESSAGE_SNIPPETS),
+        campaignId: pair.campaignId,
+      });
+      count += 1;
+    }
+    return count;
+  };
+
+  const seedDragonFeed = async (creators: BotRef[], businesses: BotRef[]): Promise<number> => {
+    if (businesses.length === 0) return 0;
+    let count = 0;
+    for (let i = 0; i < creators.length; i++) {
+      const creator = creators[i];
+      const targetBiz = businesses[i % businesses.length];
+      const { data: bizProfile, error: bizErr } = await svc
+        .from("profiles").select("org_id").eq("id", targetBiz.userId).single();
+      const targetOrgId = (bizProfile as { org_id: string | null } | null)?.org_id;
+      if (bizErr || !targetOrgId) {
+        throw new Error(`[marketplace-seed] seedDragonFeed: org_id lookup failed for ${targetBiz.email}: ${bizErr?.message ?? "no org_id"}`);
+      }
+
+      const creatorClient = await botFor(creator.userId);
+      // No real .mp4s ship in sim/marketplace/assets/ yet — loadSampleAsset falls back to a generated
+      // JPEG, so ask for "image" explicitly and label the post "photo" (never mislabel a photo
+      // fallback as content_type "video").
+      const asset = loadSampleAsset(picker, "image");
+      const url = await uploadAsset(creatorClient, {
+        bucket: "dragonshare-content",
+        uid: creator.userId,
+        subpath: `dragonfeed/${Date.now()}_${i}${asset.ext}`,
+        bytes: asset.bytes,
+        contentType: asset.contentType,
+      });
+      await postDragonFeed(creatorClient, {
+        creatorId: creator.userId,
+        targetOrgId,
+        contentType: "photo",
+        contentFilePath: url,
+        caption: picker.pick(CREATOR_BIOS),
+      });
+      count += 1;
+    }
+    return count;
+  };
+
+  const promoteMultiLocation = async (businesses: BotRef[]): Promise<number> => {
+    let count = 0;
+    for (const biz of businesses) {
+      if (picker.pick([true, false, false, false] as const) !== true) continue; // ~25% of businesses
+      const { data: profile, error: profErr } = await svc.from("profiles").select("org_id").eq("id", biz.userId).single();
+      const orgId = (profile as { org_id: string | null } | null)?.org_id;
+      if (profErr || !orgId) {
+        throw new Error(`[marketplace-seed] promoteMultiLocation: org_id lookup failed for ${biz.email}: ${profErr?.message ?? "no org_id"}`);
+      }
+      const bizClient = await botFor(biz.userId);
+      const unitsToAdd = picker.pick([1, 2, 3] as const);
+      for (let i = 0; i < unitsToAdd; i++) {
+        await addOrgUnit(bizClient, {
+          orgId,
+          name: `${biz.email.split("@")[0]} — Location ${i + 2}`,
+          lat: 40.7 + picker.pick([-0.02, -0.01, 0, 0.01, 0.02] as const),
+          lng: -74.03 + picker.pick([-0.02, -0.01, 0, 0.01, 0.02] as const),
+        });
+        count += 1;
+      }
+    }
+    return count;
+  };
+
+  const seedCgc = async (businesses: BotRef[]): Promise<number> => {
+    const anon = anonClient();
+    let count = 0;
+    for (const biz of businesses) {
+      const { data: promo, error: promoErr } = await svc
+        .from("promotions").select("id")
+        .eq("user_id", biz.userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (promoErr) throw new Error(`[marketplace-seed] seedCgc: promotion lookup failed for ${biz.email}: ${promoErr.message}`);
+      if (!promo) continue; // no promotion for this business — nothing to submit against
+      const promotionId = (promo as { id: string }).id;
+      const submissions = picker.pick([1, 2, 3] as const);
+      for (let i = 0; i < submissions; i++) {
+        const asset = loadSampleAsset(picker, "video");
+        // promotion-videos RLS: anon/authenticated may upload only into a folder named after an
+        // ACTIVE promotion (storage.foldername(name)[1] = promotions.id) — mirrors the real
+        // anonymous /promo/:id CGC upload flow (no bot session involved, hence the anon client).
+        const url = await uploadAsset(anon, {
+          bucket: "promotion-videos",
+          uid: promotionId,
+          subpath: `cgc_${i}${asset.ext}`,
+          bytes: asset.bytes,
+          contentType: asset.contentType,
+        });
+        await submitCgc(anon, {
+          promotionId,
+          customerEmail: `synthetic-guest-${biz.userId.slice(0, 8)}-${i}@synthetic.dragoncandy.test`,
+          videoUrl: url,
+        });
+        count += 1;
+      }
+    }
+    return count;
+  };
+
+  return {
+    readExistingEmails,
+    mintCohort,
+    readCohortRefs,
+    completeProfiles,
+    setupBusinesses,
+    publishCampaigns,
+    runCollaborations,
+    seedMessaging,
+    seedDragonFeed,
+    promoteMultiLocation,
+    seedCgc,
+  };
+}
+
+export interface CmdMarketplaceSeedDeps {
+  serviceClient: () => SupabaseClient;
+  bootGate: (svc: SupabaseClient) => Promise<void>;
+  /** One-shot pre-flight (Codex P2): refuses if a botmk_ cohort already exists on prod. */
+  assertCohortFresh: (svc: SupabaseClient) => Promise<void>;
+  buildSteps: (svc: SupabaseClient, opts: SeedOpts) => SeedSteps;
+  runSeed: (steps: SeedSteps, opts: SeedOpts, log: (m: string) => void) => Promise<SeedReport>;
+}
+
+const DEFAULT_MP_DEPS: CmdMarketplaceSeedDeps = {
+  serviceClient,
+  bootGate,
+  assertCohortFresh: assertMarketplaceCohortFresh,
+  buildSteps: buildDefaultSeedSteps, // real-write glue (implemented above), per Task 7's note
+  runSeed: runMarketplaceSeed,
+};
+
+/**
+ * marketplace-seed: boot-gate, then run the idempotent serial populate. Fail-loud on an incomplete
+ * mint (mirrors cmdBulkSeed). Teardown is `marketplace-purge` (botmk-scoped) — NEVER purge.
+ *
+ * Two prod-protecting guards (Codex P1+P2): the cohort CAP is checked first thing, before any
+ * client/boot-gate work, so a fat-fingered `--businesses`/`--creators` fails before touching prod at
+ * all; the one-shot FRESHNESS check runs after boot-gate but before buildSteps, so a re-run against an
+ * already-seeded botmk_ cohort fails loud instead of duplicating campaigns/discounts/posts.
+ */
+export async function cmdMarketplaceSeed(args: Args, deps: CmdMarketplaceSeedDeps = DEFAULT_MP_DEPS): Promise<void> {
+  assertMarketplaceCohortCap(args.businesses, args.creators);
+  const svc = deps.serviceClient();
+  await deps.bootGate(svc);
+  await deps.assertCohortFresh(svc);
+  const opts: SeedOpts = {
+    businesses: args.businesses,
+    creators: args.creators,
+    seed: args.seed,
+    multiLocation: args.multiLocation,
+    cgc: args.cgc,
+  };
+  const steps = deps.buildSteps(svc, opts);
+  const report = await deps.runSeed(steps, opts, (m) => console.warn(m));
+  console.warn(`[marketplace-seed] ${JSON.stringify(report)}`);
+}
+
+/**
+ * marketplace-purge: boot-gate, then call the botmk-scoped teardown RPC
+ * (purge_synthetic_marketplace_cohort, 20260725120000). Spares the live bot0## daily cohort and the
+ * botla…/botseed_… load cohorts — NEVER purge_synthetic_data() for a routine marketplace-seed reset.
+ * Same fail-loud residual contract as cmdPurge: any non-zero residual_* is a failed teardown.
+ */
+export async function cmdMarketplacePurge(): Promise<void> {
+  const svc = serviceClient();
+  await bootGate(svc);
+  const { data, error } = await svc.rpc("purge_synthetic_marketplace_cohort");
+  if (error) throw new Error(`marketplace purge failed: ${error.message}`);
+  console.warn(`[marketplace-purge] ${JSON.stringify(data)}`);
+  const residuals = nonZeroResiduals((data ?? {}) as Record<string, unknown>);
+  if (residuals.length > 0) {
+    throw new Error(`[marketplace-purge] non-zero residuals: ${residuals.map(([k, v]) => `${k}=${v}`).join(", ")}`);
+  }
+}
+
 export async function main(argv: string[]): Promise<void> {
   const args = parseArgs(argv);
   switch (args.command) {
@@ -536,6 +1028,12 @@ export async function main(argv: string[]): Promise<void> {
       return;
     case "load":
       await cmdLoad(args);
+      return;
+    case "marketplace-seed":
+      await cmdMarketplaceSeed(args);
+      return;
+    case "marketplace-purge":
+      await cmdMarketplacePurge();
       return;
   }
 }

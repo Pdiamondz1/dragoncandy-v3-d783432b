@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { parseArgs, main, nonZeroResiduals, makeBotFor, planLoad, cmdLoad, seedContent, type CmdLoadDeps, type RpcCaller } from "./run";
+import { parseArgs, main, nonZeroResiduals, makeBotFor, planLoad, cmdLoad, seedContent, cmdMarketplaceSeed, type CmdLoadDeps, type RpcCaller, type CmdMarketplaceSeedDeps } from "./run";
 import type { BotRef } from "./types";
 import type { RunLoadDeps, LoadResult } from "./load/driver";
 import { DAU_ACTIONS, DAU_READ_ACTIONS, WRITE_ACTION_NAMES } from "./load/actions-mix";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 describe("parseArgs", () => {
   it("parses a full command line", () => {
@@ -11,6 +12,7 @@ describe("parseArgs", () => {
       ramp: "50/1500/2.5", holdMs: 15000, runLabel: "load",
       shard: 0, shards: 1, concurrency: 0, soakMs: 0,
       withContent: false, campaigns: 50, posts: 200,
+      businesses: 100, creators: 300, multiLocation: false, cgc: false,
     });
   });
   it("applies defaults", () => {
@@ -19,6 +21,7 @@ describe("parseArgs", () => {
       ramp: "50/1500/2.5", holdMs: 15000, runLabel: "load",
       shard: 0, shards: 1, concurrency: 0, soakMs: 0,
       withContent: false, campaigns: 50, posts: 200,
+      businesses: 100, creators: 300, multiLocation: false, cgc: false,
     });
   });
   it("throws on an unknown or missing command", () => {
@@ -36,6 +39,7 @@ describe("parseArgs", () => {
       ramp: "50/1500/2.5", holdMs: 15000, runLabel: "load",
       shard: 0, shards: 1, concurrency: 0, soakMs: 0,
       withContent: false, campaigns: 50, posts: 200,
+      businesses: 100, creators: 300, multiLocation: false, cgc: false,
     });
   });
   it("parses the load flags (--ramp / --hold-ms / --run-label)", () => {
@@ -44,6 +48,7 @@ describe("parseArgs", () => {
       ramp: "50,200,500", holdMs: 8000, runLabel: "micro",
       shard: 0, shards: 1, concurrency: 0, soakMs: 0,
       withContent: false, campaigns: 50, posts: 200,
+      businesses: 100, creators: 300, multiLocation: false, cgc: false,
     });
   });
   it("parses the content flags (--with-content / --campaigns / --posts)", () => {
@@ -275,5 +280,67 @@ describe("main dry-run", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     await expect(main(["dry-run", "--n", "6"])).resolves.toBeUndefined();
     expect(warn).toHaveBeenCalled();
+  });
+});
+
+function mpHarness() {
+  const calls: Record<string, unknown> = {};
+  const svc = {} as SupabaseClient;
+  const deps: CmdMarketplaceSeedDeps = {
+    serviceClient: vi.fn(() => { calls.gotClient = true; return svc; }),
+    bootGate: vi.fn(async () => { calls.booted = true; }),
+    assertCohortFresh: vi.fn(async () => { calls.freshnessChecked = true; }),
+    buildSteps: vi.fn(() => ({}) as never),
+    runSeed: vi.fn(async () => { calls.ran = true; return { minted: 2, skipped: 0, campaigns: 1, collaborations: 1, messages: 1, posts: 1, units: 0, cgcSubmissions: 0 }; }),
+  };
+  return { deps, calls };
+}
+
+describe("cmdMarketplaceSeed", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("boot-gates BEFORE seeding, checks freshness, and passes parsed opts through", async () => {
+    const { deps, calls } = mpHarness();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const args = parseArgs(["marketplace-seed", "--businesses", "3", "--creators", "9", "--multi-location", "--cgc"]);
+    await cmdMarketplaceSeed(args, deps);
+    expect(calls.booted).toBe(true);
+    expect(calls.freshnessChecked).toBe(true);
+    expect(calls.ran).toBe(true);
+    expect(deps.assertCohortFresh).toHaveBeenCalledWith(expect.anything());
+    expect(deps.runSeed).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ businesses: 3, creators: 9, multiLocation: true, cgc: true }), expect.anything());
+    warn.mockRestore();
+  });
+
+  it("parseArgs defaults: 100 businesses / 300 creators, follow-ons off", () => {
+    const a = parseArgs(["marketplace-seed"]);
+    expect(a.businesses).toBe(100);
+    expect(a.creators).toBe(300);
+    expect(a.multiLocation).toBe(false);
+    expect(a.cgc).toBe(false);
+  });
+
+  it("rejects an over-cap arg (Codex P1) BEFORE booting or touching the service client", async () => {
+    const { deps, calls } = mpHarness();
+    const args = parseArgs(["marketplace-seed", "--businesses", "1000", "--creators", "300"]);
+    await expect(cmdMarketplaceSeed(args, deps)).rejects.toThrow(/cohort cap exceeded/);
+    expect(calls.gotClient).toBeUndefined();
+    expect(calls.booted).toBeUndefined();
+    expect(deps.assertCohortFresh).not.toHaveBeenCalled();
+    expect(deps.runSeed).not.toHaveBeenCalled();
+  });
+
+  it("calls assertCohortFresh (Codex P2 one-shot guard) and aborts before seeding when it rejects", async () => {
+    const { deps, calls } = mpHarness();
+    (deps.assertCohortFresh as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+      throw new Error("[marketplace-seed] a botmk_ cohort already exists on prod");
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const args = parseArgs(["marketplace-seed"]);
+    await expect(cmdMarketplaceSeed(args, deps)).rejects.toThrow(/already exists on prod/);
+    expect(calls.booted).toBe(true); // boot-gate ran before the freshness check
+    expect(deps.assertCohortFresh).toHaveBeenCalled();
+    expect(deps.runSeed).not.toHaveBeenCalled(); // never seeds once freshness rejects
+    warn.mockRestore();
   });
 });

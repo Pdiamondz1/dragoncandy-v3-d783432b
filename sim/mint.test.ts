@@ -53,16 +53,20 @@ describe("personaToCreateUser", () => {
 });
 
 describe("readSessionCapableBots (load drives only bots that can hold a JWT)", () => {
-  /** Fake client for the from().select().like().not() → {data,error} chain the loader uses. */
+  /** Fake client for the from().select().like().not().not() → {data,error} chain the loader uses.
+   *  `not` returns the builder itself (chainable any number of times) and the builder is thenable,
+   *  so it resolves however many `.not()` calls the implementation makes. */
   function fakeClient(result: {
     data: unknown;
     error: { message: string } | null;
   }): SupabaseClient {
-    const terminal = Promise.resolve(result);
-    const notNode = { not: () => terminal };
-    const likeNode = { like: () => notNode };
-    const selectNode = { select: () => likeNode };
-    return { from: () => selectNode } as unknown as SupabaseClient;
+    const builder = {
+      select: () => builder,
+      like: () => builder,
+      not: () => builder,
+      then: (resolve: (r: typeof result) => unknown) => resolve(result),
+    };
+    return { from: () => builder } as unknown as SupabaseClient;
   }
 
   it("maps id/email/role to bot refs and, as a belt-and-suspenders guard, drops any depth-pool row", async () => {
@@ -129,6 +133,38 @@ describe("sliceActiveCohort (botla-only, ORDER BY email, disjoint 25-bot slices)
   it("returns [] for an out-of-range shard index (shard >= shards)", () => {
     expect(sliceActiveCohort(activeRows(50), 2, 2)).toEqual([]); // shards=2 → valid shards are 0,1
     expect(sliceActiveCohort(activeRows(50), -1, 2)).toEqual([]);
+  });
+});
+
+describe("readSessionCapableBots excludes the persistent marketplace cohort", () => {
+  /** Fake the profiles query chain: .from().select().like().not("like botseed").not("like botmk") */
+  function fakeAdmin(rows: { id: string; email: string; role: string }[], captured: string[][]): SupabaseClient {
+    const builder = {
+      select: () => builder,
+      like: () => builder,
+      not: (_col: string, _op: string, pattern: string) => {
+        captured.push([pattern]);
+        return builder;
+      },
+      then: (resolve: (r: { data: typeof rows; error: null }) => unknown) => resolve({ data: rows, error: null }),
+    };
+    return { from: () => builder } as unknown as SupabaseClient;
+  }
+
+  it("drops botmk_ rows (and botseed_) while keeping bot0## + botla…", async () => {
+    const captured: string[][] = [];
+    const rows = [
+      { id: "1", email: "bot001@synthetic.dragoncandy.test", role: "business_client" },
+      { id: "2", email: "botla1_1@synthetic.dragoncandy.test", role: "content_creator" },
+      { id: "3", email: "botmk_b_1_1@synthetic.dragoncandy.test", role: "business_client" },
+      { id: "4", email: "botmk_c_1_1@synthetic.dragoncandy.test", role: "content_creator" },
+    ];
+    const bots = await readSessionCapableBots(fakeAdmin(rows, captured));
+    const emails = bots.map((b) => b.email);
+    expect(emails).toEqual(["bot001@synthetic.dragoncandy.test", "botla1_1@synthetic.dragoncandy.test"]);
+    // Both DB-level exclusions were applied (botseed_% and botmk_%).
+    expect(captured.some((c) => c[0].startsWith("botseed_"))).toBe(true);
+    expect(captured.some((c) => c[0].startsWith("botmk_"))).toBe(true);
   });
 });
 

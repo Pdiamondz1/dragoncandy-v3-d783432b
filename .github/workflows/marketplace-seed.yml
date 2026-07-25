@@ -1,0 +1,99 @@
+name: marketplace-seed
+
+# LIVING SYNTHETIC MARKETPLACE (Sub-project A) — the persistent botmk_ cohort seeder/teardown.
+#
+# marketplace-seed stands up a persistent, browsable synthetic marketplace on prod through REAL
+# RLS-enforced flows (bot JWTs): profiles, FREE campaigns, applications->collaborations, uploaded
+# content, DragonFeed posts, messaging, discounts, reviews, and (opt-in) multi-location + CGC.
+# The cohort is @synthetic.dragoncandy.test => is_synthetic() => excluded from founder metrics.
+#
+# SAFETY:
+#   * MANUAL dispatch only (no schedule) — this creates PERSISTENT prod data by design.
+#   * Every run is fail-closed at boot (sim/env.ts): refuses unless the Stripe keys are TEST keys
+#     AND SYNTHETIC_BOTS_ENABLED reads back exactly `true`. Flip that flag OFF to pause.
+#   * Runs in the `synthetic-weight` GitHub Environment (reviewer gate, if configured, + scoped prod
+#     secrets). The prod service-role key here is the inherent exposure surface of a prod harness,
+#     mitigated by the kill switch, this environment gate, and the manual-only trigger.
+#   * TEARDOWN is the SAME workflow with command=marketplace-purge — the botmk_-SCOPED purge
+#     (purge_synthetic_marketplace_cohort), which spares the live bot0## + botla…/botseed_ cohorts.
+#     NEVER use the broad `purge` (purge_synthetic_data) for a marketplace reset.
+#   * Start SMALL (the 2/4 defaults) to exercise the live buildDefaultSeedSteps glue before scaling.
+#
+# marketplace-seed is ONE-SHOT (like bulk-seed): it FAILS FAST if a botmk_ cohort already exists — the
+# downstream phases (campaigns/discounts/posts/messages) are not idempotent, so a second run is blocked
+# to prevent duplicate persistent prod data. RECOVERY after any failed/partial run: run
+# command=marketplace-purge (residual_* must all report 0), then re-dispatch marketplace-seed. The
+# scoped teardown is fast + verified, so purge-then-reseed is the intended, safe retry path.
+
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "marketplace-seed (populate) or marketplace-purge (botmk_-scoped teardown)"
+        type: choice
+        options: [marketplace-seed, marketplace-purge]
+        default: marketplace-seed
+      businesses:
+        description: "Business bots (seed only; start small, then scale to ~100)"
+        default: "2"
+      creators:
+        description: "Creator bots (seed only; start small, then scale to ~300)"
+        default: "4"
+      multi_location:
+        description: "Also promote a subset of businesses to multi-location orgs"
+        type: boolean
+        default: false
+      cgc:
+        description: "Also create CGC promotions + anonymous submissions"
+        type: boolean
+        default: false
+
+# Never overlap two marketplace runs (they share the botmk_ cohort), and never cancel mid-flight — a
+# half-cancelled seed leaves persistent rows the teardown must still clean.
+concurrency:
+  group: marketplace-seed
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    # A large populate is many SERIAL writes (mint is 429-safe by being serial); give it room.
+    timeout-minutes: 350
+    environment: synthetic-weight
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci
+      - name: Run marketplace harness
+        env:
+          SIM_SUPABASE_URL: ${{ secrets.SIM_SUPABASE_URL }}
+          SIM_SUPABASE_ANON_KEY: ${{ secrets.SIM_SUPABASE_ANON_KEY }}
+          SIM_SUPABASE_SECRET_KEY: ${{ secrets.SIM_SUPABASE_SECRET_KEY }}
+          SIM_STRIPE_SECRET_KEY: ${{ secrets.SIM_STRIPE_SECRET_KEY }}
+          SIM_STRIPE_PUBLISHABLE_KEY: ${{ secrets.SIM_STRIPE_PUBLISHABLE_KEY }}
+          # Inputs go through env vars — NEVER interpolated into the run script — so a crafted input
+          # value cannot break out of the shell and reach the secrets above (mirrors synthetic-weight.yml).
+          SIM_COMMAND: ${{ inputs.command || 'marketplace-seed' }}
+          SIM_BUSINESSES: ${{ inputs.businesses || '2' }}
+          SIM_CREATORS: ${{ inputs.creators || '4' }}
+          SIM_MULTI_LOCATION: ${{ inputs.multi_location }}
+          SIM_CGC: ${{ inputs.cgc }}
+        # Build the boolean presence-flags from controlled string comparisons (fixed literals only —
+        # no input is ever interpolated into the flag list), then invoke the LOCAL lockfile-pinned tsx
+        # (installed by `npm ci`) — never `npx --yes tsx`, which would execute an unpinned registry
+        # package in the same step the prod secrets are exported. --businesses/--creators are ignored
+        # by marketplace-purge, so one invocation serves both commands.
+        run: |
+          set -euo pipefail
+          FLAGS=""
+          if [ "$SIM_MULTI_LOCATION" = "true" ]; then FLAGS="$FLAGS --multi-location"; fi
+          if [ "$SIM_CGC" = "true" ]; then FLAGS="$FLAGS --cgc"; fi
+          node_modules/.bin/tsx sim/cli.ts "$SIM_COMMAND" \
+            --businesses "$SIM_BUSINESSES" \
+            --creators "$SIM_CREATORS" \
+            $FLAGS

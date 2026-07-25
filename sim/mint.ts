@@ -21,6 +21,7 @@ import type {
   CollaborationState,
 } from "./types";
 import { DEPTH_POOL_EMAIL_PREFIX, isDepthPoolEmail } from "./seed";
+import { MARKETPLACE_EMAIL_PREFIX, isMarketplaceEmail } from "./marketplace/personas";
 
 const SYNTHETIC_DOMAIN = "@synthetic.dragoncandy.test";
 
@@ -113,7 +114,10 @@ export async function readSessionCapableBots(admin: SupabaseClient): Promise<Bot
     .from("profiles")
     .select("id, email, role")
     .like("email", `%${SYNTHETIC_DOMAIN}`)
-    .not("email", "like", `${DEPTH_POOL_EMAIL_PREFIX}%`);
+    .not("email", "like", `${DEPTH_POOL_EMAIL_PREFIX}%`)
+    // Exclude the PERSISTENT marketplace cohort (botmk_*): it has its own driver + teardown and must
+    // never be swept into the daily crew tick or the single-runner load pre-warm.
+    .not("email", "like", `${MARKETPLACE_EMAIL_PREFIX}%`);
   if (error) throw new Error(`readSessionCapableBots: ${error.message}`);
   return (data ?? [])
     .map((p) => ({
@@ -123,7 +127,7 @@ export async function readSessionCapableBots(admin: SupabaseClient): Promise<Bot
       personaKey: null as PersonaKey | null,
       cohort: null as string | null,
     }))
-    .filter((b) => !isDepthPoolEmail(b.email));
+    .filter((b) => !isDepthPoolEmail(b.email) && !isMarketplaceEmail(b.email));
 }
 
 // ── Matrix shard slice (Phase 1, Task 1.1) ──────────────────────────────────────────────────

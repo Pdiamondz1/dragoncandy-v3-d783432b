@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Drive cmdMint/cmdTick down their fail-loud branches with NO network and NO SIM_* env by mocking
-// the boundary modules. Kept in its own file so run.test.ts's dry-run test can keep proving the
-// dry-run path constructs no client (vi.mock is per-file).
+// Drive cmdMint/cmdTick/cmdMarketplacePurge down their fail-loud branches with NO network and NO
+// SIM_* env by mocking the boundary modules. Kept in its own file so run.test.ts's dry-run test can
+// keep proving the dry-run path constructs no client (vi.mock is per-file).
+const { rpcMock } = vi.hoisted(() => ({ rpcMock: vi.fn() }));
 vi.mock("./clients", () => ({
-  serviceClient: () => ({ __fake: true }),
+  serviceClient: () => ({ __fake: true, rpc: rpcMock }),
   botClient: () => ({ __fake: true }),
 }));
 vi.mock("./env", () => ({
@@ -28,6 +29,7 @@ const FAKE_BOT: BotRef = { userId: "u", email: "bot@synthetic.dragoncandy.test",
 describe("fail-loud harness contract", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    rpcMock.mockReset();
     vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
     vi.mocked(readCohort).mockResolvedValue(EMPTY);
@@ -46,5 +48,43 @@ describe("fail-loud harness contract", () => {
   it("mint RESOLVES when every bot mints", async () => {
     await expect(main(["mint", "--n", "3"])).resolves.toBeUndefined();
     expect(vi.mocked(mintBot)).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("marketplace-purge (botmk-scoped teardown — mirrors cmdPurge's residual contract)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    rpcMock.mockReset();
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  it("THROWS when purge_synthetic_marketplace_cohort reports a non-zero residual", async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: { deleted_users: 3, residual_profiles: 0, residual_organizations: 1, residual_storage: 0 },
+      error: null,
+    });
+    await expect(main(["marketplace-purge"])).rejects.toThrow(/non-zero residuals/);
+    expect(rpcMock).toHaveBeenCalledWith("purge_synthetic_marketplace_cohort");
+  });
+
+  it("RESOLVES cleanly when every residual_* is zero", async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: {
+        deleted_users: 3,
+        residual_profiles: 0,
+        residual_organizations: 0,
+        residual_org_units: 0,
+        residual_promotions: 0,
+        residual_storage: 0,
+      },
+      error: null,
+    });
+    await expect(main(["marketplace-purge"])).resolves.toBeUndefined();
+  });
+
+  it("THROWS when the RPC itself errors", async () => {
+    rpcMock.mockResolvedValueOnce({ data: null, error: { message: "function not found" } });
+    await expect(main(["marketplace-purge"])).rejects.toThrow(/marketplace purge failed/);
   });
 });
