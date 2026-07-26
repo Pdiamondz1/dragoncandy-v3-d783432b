@@ -69,7 +69,7 @@ export function deriveCardModel(stats: PlatformStats, mode: MetricMode): MetricS
   const { users: u, businesses: b, campaigns: c, dragonshare: d, promotions: pr, content: ct, social_connections: sc } = stats;
 
   const creatorsReal = u.by_role['content_creator'] ?? 0;
-  const creatorsAll = u.by_role_all['content_creator'] ?? 0;
+  const creatorsAll = u.by_role_all?.['content_creator'] ?? 0;
   const activeReal = c.by_status['active'] ?? 0;
   const verifiedReal = d.posts_by_status['verified'] ?? 0;
 

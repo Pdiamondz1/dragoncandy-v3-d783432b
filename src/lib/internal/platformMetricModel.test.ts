@@ -114,6 +114,17 @@ describe('degradation — *_all breakdown maps absent', () => {
     expect(c['Campaigns'].sub).toBe('0 active');
     expect(c['Social connections'].sub).toBeUndefined();
   });
+
+  it('real mode tolerates a pre-migration RPC missing by_role_all (no throw)', () => {
+    const preMigration: PlatformStats = {
+      ...STATS,
+      users: { total: 40, total_all: 40, by_role: { content_creator: 17 } },
+    };
+    const c: Record<string, { value: number; sub?: string }> = {};
+    for (const s of deriveCardModel(preMigration, 'real')) for (const k of s.cards) c[k.label] = k;
+    expect(c['Creators'].value).toBe(17);
+    expect(c['Creators'].sub).toBeUndefined();
+  });
 });
 
 describe('syntheticTotalUsers', () => {
