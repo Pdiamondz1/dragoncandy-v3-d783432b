@@ -37,8 +37,10 @@ matters*, and an auto status signal; under a **founder-set narrative headline**.
 - **No LLM-generated phrasing.** All wording is deterministic/templated from the numbers — a
   stakeholder-facing figure must be exact, reproducible, and free (no `donny_cost_ledger` hit,
   no hallucination risk).
-- **No new metrics backend.** All four stories compose existing real-only sources; the only new
-  persisted state is the founder headline (a KV row).
+- **Minimal new backend.** Stories compose existing real-only sources; the only additions are the
+  founder-headline KV row and **one small internal-gated `aios_stakeholder_burn()` RPC** that
+  returns the *aggregate* net-burn number (see §2 Issue-A resolution) — deliberately no
+  per-line-item or per-model cost exposure.
 - **No auto-computed overall "health score."** Pre-revenue makes the §3 kill-switch guardrails
   N/A; an algorithm must not flash a scary verdict before a board meeting. The headline is
   founder-set; only per-story signals are auto (with gentle, stage-appropriate rules).
@@ -64,9 +66,21 @@ matters*, and an auto status signal; under a **founder-set narrative headline**.
 | Story | Sources (all existing) |
 |---|---|
 | Traction & growth | `aios_platform_stats` (real counts) + `platform_weight` daily snapshots for the ~30-day trend (`users_total_real` over time) |
-| Capital efficiency | `useOperatingExpenses` (monthly opex) + `aios_cost_stats` (MTD AI spend) − `aios_revenue_stats` (MTD platform fee) = net burn — the Expenses page's exact math |
-| Scale headroom | `usePlatformWeight` latest `db_bytes` + `DISK_LIMIT_BYTES`/`COMPUTE_TIERS` from `weightThresholds` |
+| Capital efficiency | **Admins:** `useOperatingExpenses` (opex) + `aios_cost_stats` (MTD AI spend) − `aios_revenue_stats` (MTD fee) = net burn (the Expenses page's exact math). **Stakeholders (non-admin):** the new `aios_stakeholder_burn()` RPC returning the same aggregate figure — see Issue-A resolution below. |
+| Scale headroom | `usePlatformWeight` latest `db_bytes` (physical) + `DISK_LIMIT_BYTES`/`COMPUTE_TIERS` from `weightThresholds` |
 | Revenue readiness | static framing + `aios_revenue_stats` MTD + the §8 take-rate ladder (static facts) |
+
+**Issue-A resolution — stakeholder burn visibility.** `operating_expenses` and `aios_cost_stats`
+are **admin-only** (verified: `operating_expenses_admin_all` RLS; `useCostStats` is `enabled: isAdmin`
+and its RPC raises for non-admins), but the page's audience includes non-admin stakeholder-invite
+accounts, and burn is the strongest efficiency story. So add a small **`aios_stakeholder_burn()`**
+SECURITY-DEFINER RPC (STABLE, `search_path=public`, `auth.uid()` + `is_internal_user()` guard,
+`REVOKE` anon/public + `GRANT authenticated`) returning the **aggregate** `{ monthly_opex_cents,
+mtd_ai_spend_usd, mtd_revenue_cents, net_burn_cents }` — the same math the Expenses page does, but as
+a single aggregate with **no line items and no per-model breakdown**. `useScorecardBurn` calls it for
+everyone; the story renders identically for admin and stakeholder. Internal stakeholders (co-founders,
+board) are exactly who *should* see aggregate runway. The `burnCeiling` KV stays as the signal
+threshold.
 
 **Founder headline storage:** `aios_dashboard_settings` is a **key/value** table with an
 existing `aios_dashboard_settings_admin_update` RLS policy (`has_role('admin')`) and
@@ -96,21 +110,36 @@ templating from the numbers. The four stories:
   `multiple = clampFriendly(DISK_LIMIT_BYTES / latest.db_bytes)` (78 MB vs 8 GB → ~100×), derived
   honestly from the snapshot — never a hardcoded "100×". meaning: current usage is a tiny
   fraction of the current plan. **signal:** `green` if `db_bytes < 70% of cap`, else `amber`
-  (the existing `weightThresholds` ratio).
+  (the existing `weightThresholds` ratio). **Note (Issue-B):** `db_bytes` is *physical*
+  (synthetic-inclusive — there is no `db_bytes_real`), which is the **correct** basis for the
+  infra "when do we hit the next tier" question. Because ~4,000 synthetic profiles + content
+  currently sit on disk, this figure is **conservative** (real-only usage is far smaller, so real
+  headroom is even larger). This card is labeled **infrastructure capacity**, and the "real users
+  only" stamp (§4) does NOT cover it — see the framing fix there.
 - **Revenue readiness** — headline `"Pre-revenue by design — the money switch is built, not
   flipped"`. meaning: payment rails (Stripe Connect, the Free 10%→…→2% take-rate ladder,
   DragonShare 80/20) are live in test mode; turning on paid campaigns is a switch, not a build.
   **signal:** `info` always (framing, not a verdict).
 
-A pure `growthLast30Days(snapshots)` helper derives the traction delta from `platform_weight`.
+A pure `growthLast30Days(snapshots)` helper derives the traction delta from `platform_weight`'s
+`users_total_real`. **Two required correctnesses:** (1) `users_total_real` is NULL on pre-2026-07-23
+snapshots (only ~days of real history exist), so the helper must **skip NULL snapshots**, never coerce
+them to 0 — else a NULL→real transition renders a false traction spike; return "no delta" (omit the
+detail) when <2 non-NULL snapshots span the window. (2) `usePlatformWeight`'s `PlatformWeightRow`
+interface currently types only `row_counts_real?` — the implementer must add
+`users_total_real?: number | null` to it (and `WeightSnapshot`) since the select already fetches it.
 
 ### 4. Honesty guardrails (non-negotiable on this surface)
 
-- **Real-only, synthetic-excluded** everywhere (reuse the `is_synthetic`-excluding RPCs — the
-  point of the sub-project-1 real-vs-total work; a stakeholder must never see bot-inflated
-  numbers).
+- **User/traction & revenue metrics are real-only, synthetic-excluded** (reuse the
+  `is_synthetic`-excluding RPCs — the point of the sub-project-1 real-vs-total work; a stakeholder
+  must never see bot-inflated *user* counts). The **scale-headroom** card is the one intentional
+  exception: it reports **physical infrastructure capacity** (synthetic-inclusive `db_bytes`),
+  which is the right basis for a tier-scaling question and is conservative (Issue-B). It is
+  labeled as such so it can't be read as a real-user figure.
 - **Deterministic phrasing** (no LLM) → exact, reproducible.
-- An **"as of {date} · real users only"** stamp on both the page and the export.
+- Stamp: **"as of {date} · real users only"** on the user/traction/revenue cards; the headroom
+  card carries its own **"physical usage incl. test data"** note instead.
 - Founder controls the headline message; signals stay data-driven.
 
 ### 5. Page structure (`InternalScorecard.tsx`)
@@ -139,8 +168,9 @@ headline + date stamp. The button renders it (modal or dedicated print view) and
 
 | File | Change |
 |---|---|
-| `supabase/migrations/<ts>_scorecard_settings.sql` | **New** — seed `scorecard_headline` + `scorecard_burn_ceiling` KV rows (founder-gated apply) |
+| `supabase/migrations/<ts>_scorecard_settings.sql` | **New** — seed `scorecard_headline` + `scorecard_burn_ceiling` KV rows **and** create the `aios_stakeholder_burn()` SECURITY-DEFINER RPC (internal-gated; aggregate only) (founder-gated apply) |
 | `src/hooks/internal/useScorecardSettings.ts` | **New** — read headline/ceiling; admin mutation via `.update()` |
+| `src/hooks/internal/useScorecardBurn.ts` | **New** — calls `aios_stakeholder_burn()` (works for admin + stakeholder) |
 | `src/lib/internal/scorecardModel.ts` (+ `.test.ts`) | **New** — `buildScorecard` + `growthLast30Days` + signal rules (pure) |
 | `src/components/internal/ScorecardStoryCard.tsx` | **New** — one story card |
 | `src/components/internal/ScorecardSnapshot.tsx` | **New** — print-optimized one-pager |
@@ -154,11 +184,13 @@ Reused (unchanged): `usePlatformStats`, `usePlatformWeight`, `useCostStats`, `us
 
 - **Unit** (`scorecardModel.test.ts`): the four stories' headlines/meanings from a fixture;
   every signal rule (traction flat=green / declining=amber; efficiency within/over ceiling +
-  cap; headroom </≥ 70%; revenue always info); `growthLast30Days` (delta, no-history → omit);
+  cap; headroom </≥ 70%; revenue always info); `growthLast30Days` (delta; **NULL snapshots skipped,
+  not zero-coerced — no false spike on a NULL→real transition**; <2 non-NULL in window → omit);
   `multiple` derivation (78 MB/8 GB → ~100×), clamping.
-- **Component** (`InternalScorecard.test.tsx`, jsdom per-file pragma): renders 4 cards + headline;
-  admin sees the editable headline + export button, a non-admin viewer sees them read-only/hidden;
-  a failing data source degrades one card, not the page.
+- **Component** (`InternalScorecard.test.tsx`, jsdom per-file pragma): renders **all 4 cards**
+  (burn card populated for both admin and stakeholder, since it reads the aggregate RPC); the
+  headline is editable + the export button shown **only for admin**, read-only for a non-admin
+  viewer; a failing data source degrades that one card, not the page.
 - Build + lint; then the mandatory Codex second review.
 
 ## Rollout / deploy
@@ -180,4 +212,8 @@ migration at the careful gate** (seeds the two KV rows; the admin-UPDATE policy 
 - Form: **both** — live page + print-optimized export (not Google-Doc for v1).
 - Stories: **all four** (traction, capital efficiency, scale headroom, revenue readiness).
 - Status: **founder-set headline + auto per-story signals** (no auto overall-health verdict).
-- Phrasing: **deterministic/templated, never LLM.** Metrics: **real-only, always.**
+- Phrasing: **deterministic/templated, never LLM.**
+- Metrics: **user/traction & revenue are real-only**; the headroom card is physical infra
+  capacity (conservative), labeled as such (Issue-B).
+- Burn visibility: **a small internal-gated `aios_stakeholder_burn()` aggregate RPC** so
+  non-admin stakeholders see all four stories live — no line items / no per-model breakdown (Issue-A).
