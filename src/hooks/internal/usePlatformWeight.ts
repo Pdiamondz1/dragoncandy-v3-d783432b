@@ -9,6 +9,7 @@ export interface PlatformWeightRow extends WeightSnapshot {
   // above stay synthetic-inclusive by design (real disk/rows drive scaling decisions); these
   // are the real-growth view. See docs/wiki concept "synthetic-weight-engine".
   row_counts_real?: Record<string, number> | null;
+  users_total_real?: number | null;
 }
 
 export function usePlatformWeight() {
