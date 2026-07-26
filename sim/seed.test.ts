@@ -157,4 +157,59 @@ describe("assertActiveNamespaceFree (the pre-flight that prevents a half-seeded 
     const svc = fakeClient({ data: [{ email: "botla1_1@synthetic.dragoncandy.test" }], error: null });
     await expect(assertActiveNamespaceFree(svc, active)).rejects.toThrow(/already present on prod/);
   });
+
+  /**
+   * Records every `.in()` batch the pre-flight issues, so a test can assert the REQUEST SHAPE
+   * (not just the result). `.in()` puts every value in the URL query string, and PostgREST echoes
+   * the request URI back in the `Content-Location` RESPONSE header — so an oversized cohort
+   * overflows Node/undici's 16 KB `maxHeaderSize` and surfaces as `TypeError: fetch failed`.
+   */
+  function recordingClient(existing: string[] = []) {
+    const batches: string[][] = [];
+    const svc = {
+      from: () => ({
+        select: () => ({
+          in: (_col: string, vals: string[]) => {
+            batches.push(vals);
+            return Promise.resolve({
+              data: vals.filter((v) => existing.includes(v)).map((email) => ({ email })),
+              error: null,
+            });
+          },
+        }),
+      }),
+    } as unknown as SupabaseClient;
+    return { svc, batches };
+  }
+
+  /** The PostgREST URL supabase-js builds for one `.in()` batch (what actually hits the wire). */
+  function builtUrlLength(base: string, batch: string[]): number {
+    const url = new URL(`${base}/rest/v1/profiles`);
+    url.searchParams.append("select", "email");
+    url.searchParams.append("email", `in.(${batch.join(",")})`);
+    return url.toString().length;
+  }
+
+  it("chunks a 500-bot cohort so no request URL can overflow undici's 16 KB header limit", async () => {
+    // 500 = the 20-shard matrix cohort (25 x 20) that failed on prod with UND_ERR_HEADERS_OVERFLOW.
+    const big = generateActiveCohort(500, { creators: 0.5 }, 1, "load");
+    const { svc, batches } = recordingClient();
+
+    await expect(assertActiveNamespaceFree(svc, big)).resolves.toBeUndefined();
+
+    expect(batches.length).toBeGreaterThan(1);
+    for (const batch of batches) {
+      expect(builtUrlLength("https://zocahiffooqdybdhguqv.supabase.co", batch)).toBeLessThan(16000);
+    }
+    // Chunking must not lose coverage: every email is still checked, exactly once.
+    expect(batches.flat()).toEqual(big.map((p) => p.email));
+  });
+
+  it("still detects an existing email that falls in a LATER chunk", async () => {
+    const big = generateActiveCohort(500, { creators: 0.5 }, 1, "load");
+    const lastEmail = big[big.length - 1].email;
+    const { svc } = recordingClient([lastEmail]);
+
+    await expect(assertActiveNamespaceFree(svc, big)).rejects.toThrow(/already present on prod/);
+  });
 });
