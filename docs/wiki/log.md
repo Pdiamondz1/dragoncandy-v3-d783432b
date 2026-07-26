@@ -1,5 +1,21 @@
 # Wiki Log
 
+## [2026-07-26] update | Split [[Synthetic Load Proof (Phase A → 200K)]] out of [[Synthetic Weight Engine]]
+**Forced by a real failure, caught by running the sync rather than assuming it.** The ingest below
+grew `concepts/synthetic-weight-engine.md` from 29,458 → 33,789 chars, past OpenAI's
+**8,192-token** embedding ceiling — and because the sync sends a 50-page batch as one `input`
+array, that one page 502'd its **entire batch**: `Invalid 'input[8]'` → **41 unrelated pages never
+reached the RAG** (`inserted=0 updated=50 errors=41`). Two fixes: (1) the load program (Phase A,
+runner matrix Slices 1–2, the 50K/200K runs) split into its own page — 33 KB → 16 KB + 19 KB, both
+fully embedded, and a better structure anyway since the page had been covering two subjects;
+(2) `supabase/scripts/sync-wiki-to-donny.mjs` gained a pre-flight size check that **skips** an
+oversized page (naming it, with a non-zero exit) instead of letting it take 49 others down — wiki
+pages can't use the truncate-embed-store-full trick `sync-internal-docs.mjs` relies on, since the
+edge function rejects `full_content` on non-internal scope. Thresholds calibrated on observed data
+(29,865 chars synced; 33,369 rejected), not theory. Also **corrected a stale claim** the split
+exposed in the spine page's intro — "the kill switch is OFF and there are 0 bots, so both phases
+are inert" had been wrong for two days.
+
 ## [2026-07-26] ingest | The 200K-band load run + the 16 KB header wall (PR #345, run 30202071632)
 Ingested `raw/sessions/2026-07-26-200k-load-run-and-header-overflow.md`. **Compounded** onto
 [[Synthetic Weight Engine]] a "The 200K-band run — cap discovered, DB still idle" section (a
