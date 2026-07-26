@@ -84,6 +84,15 @@ export async function mintBot(admin: SupabaseClient, persona: Persona): Promise<
   };
 }
 
+/**
+ * Max ids per `.in()` request. Every value is serialised into the URL query string, and PostgREST
+ * echoes the request URI back in the `Content-Location` RESPONSE header — so one oversized batch
+ * overflows Node/undici's 16 KB `maxHeaderSize` and surfaces as an opaque `TypeError: fetch failed`
+ * (not a PostgrestError, so it never reaches the `error` branch below). 525 bot UUIDs — the live 25
+ * plus a 20-shard matrix's 500 botla bots — build a ~20 KB URL and crash. 100 UUIDs ≈ 4 KB.
+ */
+const SELECT_IN_CHUNK = 100;
+
 /** Service-role SELECT ... WHERE col IN (ids); empty ids short-circuit (no query, no error). */
 async function selectIn<T>(
   admin: SupabaseClient,
@@ -93,9 +102,14 @@ async function selectIn<T>(
   ids: string[],
 ): Promise<T[]> {
   if (ids.length === 0) return [];
-  const { data, error } = await admin.from(table).select(cols).in(col, ids);
-  if (error) throw new Error(`readCohort ${table}: ${error.message}`);
-  return (data ?? []) as T[];
+  const rows: T[] = [];
+  for (let i = 0; i < ids.length; i += SELECT_IN_CHUNK) {
+    const batch = ids.slice(i, i + SELECT_IN_CHUNK);
+    const { data, error } = await admin.from(table).select(cols).in(col, batch);
+    if (error) throw new Error(`readCohort ${table}: ${error.message}`);
+    rows.push(...((data ?? []) as T[]));
+  }
+  return rows;
 }
 
 /** Reconstruct the full crew-lane cohort state from the DB (service-role reads). */

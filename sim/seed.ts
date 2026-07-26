@@ -82,6 +82,16 @@ export function generateActiveCohort(
 }
 
 /**
+ * Max emails per pre-flight request. `.in()` serialises EVERY value into the URL query string, and
+ * PostgREST echoes the request URI back in the `Content-Location` RESPONSE header — so one oversized
+ * batch overflows Node/undici's 16 KB `maxHeaderSize` and surfaces as an opaque `TypeError: fetch
+ * failed` (NOT a PostgrestError, so it bypasses the `error` branch entirely). That is exactly how the
+ * 20-shard matrix seed (25 x 20 = 500 emails ≈ 21 KB of URL) died on prod while the 2-shard seed
+ * (50 emails ≈ 2 KB) passed. 100 emails ≈ 5 KB — comfortably clear of the limit.
+ */
+const PREFLIGHT_CHUNK = 100;
+
+/**
  * Pre-flight guard: FAIL if any of the active cohort's emails already exist on prod. bulk-seed is a
  * one-shot (purge before re-seeding) — a present namespace means a prior run's rows are still live and
  * the mint loop would otherwise duplicate-email fail-loud mid-way, half-seeded. Uses profiles.email
@@ -91,12 +101,15 @@ export function generateActiveCohort(
 export async function assertActiveNamespaceFree(svc: SupabaseClient, active: Persona[]): Promise<void> {
   if (active.length === 0) return;
   const emails = active.map((p) => p.email);
-  const { data, error } = await svc.from("profiles").select("email").in("email", emails);
-  if (error) throw new Error(`[bulk-seed] active-namespace pre-flight query failed: ${error.message}`);
-  const existing = (data ?? []) as { email: string }[];
-  if (existing.length > 0) {
-    throw new Error(
-      `[bulk-seed] active namespace already present on prod (${existing.length} email(s), e.g. ${existing[0].email}) — purge before re-seeding`,
-    );
+  for (let i = 0; i < emails.length; i += PREFLIGHT_CHUNK) {
+    const batch = emails.slice(i, i + PREFLIGHT_CHUNK);
+    const { data, error } = await svc.from("profiles").select("email").in("email", batch);
+    if (error) throw new Error(`[bulk-seed] active-namespace pre-flight query failed: ${error.message}`);
+    const existing = (data ?? []) as { email: string }[];
+    if (existing.length > 0) {
+      throw new Error(
+        `[bulk-seed] active namespace already present on prod (${existing.length} email(s), e.g. ${existing[0].email}) — purge before re-seeding`,
+      );
+    }
   }
 }

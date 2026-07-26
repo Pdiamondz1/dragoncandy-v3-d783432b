@@ -6,6 +6,7 @@ import {
   readSessionCapableBots,
   sliceActiveCohort,
   readActiveLoadCohort,
+  readCohort,
 } from "./mint";
 import type { Persona } from "./personas";
 
@@ -165,6 +166,72 @@ describe("readSessionCapableBots excludes the persistent marketplace cohort", ()
     // Both DB-level exclusions were applied (botseed_% and botmk_%).
     expect(captured.some((c) => c[0].startsWith("botseed_"))).toBe(true);
     expect(captured.some((c) => c[0].startsWith("botmk_"))).toBe(true);
+  });
+});
+
+describe("readCohort chunks its .in() reads (undici 16 KB header limit)", () => {
+  /**
+   * `.in()` serialises every id into the URL, and PostgREST echoes the request URI back in the
+   * `Content-Location` RESPONSE header — so an oversized id set overflows Node/undici's 16 KB
+   * `maxHeaderSize` as an opaque `TypeError: fetch failed`. A 20-shard matrix leaves 500 botla bots
+   * seeded, so the daily `tick` reads 525 session-capable bots ≈ 20 KB of UUIDs in one request.
+   */
+  function fakeAdmin(
+    profileRows: { id: string; email: string; role: string }[],
+    inBatches: { table: string; vals: string[] }[],
+  ) {
+    const profiles = {
+      select: () => profiles,
+      like: () => profiles,
+      not: () => profiles,
+      then: (resolve: (r: { data: typeof profileRows; error: null }) => unknown) =>
+        resolve({ data: profileRows, error: null }),
+    };
+    const other = (table: string) => {
+      const builder = {
+        select: () => builder,
+        in: (_col: string, vals: string[]) => {
+          inBatches.push({ table, vals });
+          return Promise.resolve({ data: [], error: null });
+        },
+      };
+      return builder;
+    };
+    return {
+      from: (table: string) => (table === "profiles" ? profiles : other(table)),
+    } as unknown as SupabaseClient;
+  }
+
+  /** The PostgREST URL supabase-js builds for one `.in()` batch (what actually hits the wire). */
+  function builtUrlLength(batch: string[]): number {
+    const url = new URL("https://zocahiffooqdybdhguqv.supabase.co/rest/v1/synthetic_users");
+    url.searchParams.append("select", "user_id, cohort, persona");
+    url.searchParams.append("user_id", `in.(${batch.join(",")})`);
+    return url.toString().length;
+  }
+
+  it("never issues an .in() batch that would overflow the header limit", async () => {
+    // 525 = the live bot0## 25 + a 20-shard matrix's 500 botla bots left seeded.
+    const rows = Array.from({ length: 525 }, (_, i) => ({
+      id: `3f2b8c1d-0000-4000-8000-${String(i).padStart(12, "0")}`,
+      email: `botla1_${i + 1}@synthetic.dragoncandy.test`,
+      role: "content_creator",
+    }));
+    const inBatches: { table: string; vals: string[] }[] = [];
+
+    const state = await readCohort(fakeAdmin(rows, inBatches));
+
+    expect(state.bots).toHaveLength(525);
+    expect(inBatches.length).toBeGreaterThan(1);
+    for (const { vals } of inBatches) {
+      expect(builtUrlLength(vals)).toBeLessThan(16000);
+    }
+    // Chunking must not lose ids: each bot-id read still covers every bot exactly once.
+    const ids = rows.map((r) => r.id);
+    for (const table of ["synthetic_users", "creator_groups", "campaigns"]) {
+      const covered = inBatches.filter((b) => b.table === table).flatMap((b) => b.vals);
+      expect(covered).toEqual(ids);
+    }
   });
 });
 
