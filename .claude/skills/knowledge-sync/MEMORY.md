@@ -68,6 +68,36 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-26] The 200K-band load run + the 16 KB header wall (PR #345 merged; paired docs branch `docs/knowledge-sync-200k-run`)
+- **Output:** new `raw/sessions/2026-07-26-200k-load-run-and-header-overflow.md`; **compounded** onto
+  [[Synthetic Weight Engine]] a "The 200K-band run — cap discovered, DB still idle" section + **corrected**
+  its Slice-2 "Not yet applied to prod" line → applied+fixture-verified; NEW concept
+  `concepts/supabase-in-filter-header-overflow.md`; `index.md` (new Sources + Concepts lines, Synthetic
+  entry refreshed built→run, **+6 back-cataloged sessions**); `log.md` top entry; `SHIPPED_LOG.md`
+  prepended; `PROJECT_CONTEXT.md` §5 edited in place (built→shipped-and-run); `DATABASE_SCHEMA.md`
+  migration status corrected. No `DESIGN_SYSTEM`/`CLAUDE.md` change.
+- **Happened:** a **post-merge** sync (PR #345 landed while the founder was asking "where are we on 50K
+  DAUs?") covering three things the knowledge layer had missed: the migration apply, the live 200K-band
+  run, and the header-overflow fix. Ran on a fresh branch off `origin/main` per [scope] — the working
+  worktree was 1 behind (#345 itself).
+- **Worked:** **verified every headline number independently from `sim_load_snapshots`** rather than
+  copying the run summary out of memory — including re-implementing the event sweep in SQL (naive 4,000 ==
+  honest 4,000, `max_concurrent_shards`=20) and confirming the migration's recorded row. That caught a real
+  discrepancy: `db_active_conn_peak` is `max(active_connections)` over **ALL** snap rows (27), not
+  latest-row-per-shard (24) — I'd have published 24 had I replicated the aggregation by eye instead of
+  reading the RPC body. [orphans]-by-path found the synthetic workstream's **6 sessions were never
+  cataloged** (Phase 0/1/A, runner matrix, Slice 2, living marketplace) — back-filled them all.
+  [wikilinks]-exact: grepped `index.md` for all 6 targets before linking.
+- **Failed:** nothing knowledge-side. ~28 older raw sessions remain uncataloged (pre-existing, needs its
+  own pass to describe honestly) — surfaced to the founder rather than silently swept or silently left.
+- **Remember:** **a new concept page is right when the lesson outlives the subsystem that found it.**
+  The `.in()` overflow surfaced inside the load matrix, so compounding it onto [[Synthetic Weight Engine]]
+  was tempting — but it applies to every supabase-js caller in the repo (89 unaudited call sites), so it
+  got its own page and a back-link. Test: would someone hitting this bug in an unrelated feature ever find
+  it on the load-testing page? Also: **when a run's own reported numbers exist, re-derive them from the
+  raw table anyway** — the summary is a lead, and the aggregation window is exactly the kind of detail
+  that differs.
+
 ### [2026-07-24] Synthetic Weight Engine — runner matrix (Slice 1) (branch `feat/synthetic-load-runner-matrix`, PR #337)
 - **Output:** `raw/sessions/2026-07-24-synthetic-load-runner-matrix.md` → compounded onto
   [[Synthetic Weight Engine]] a "Runner matrix (Slice 1)" section; `index.md` Concepts-entry tail; `log.md`

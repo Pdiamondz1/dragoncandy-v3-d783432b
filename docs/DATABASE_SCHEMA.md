@@ -313,7 +313,7 @@ predicate. See `docs/wiki/concepts/synthetic-weight-engine.md`.
 > snapshots into one summed row (Σ concurrency/requests/`media_*`, MAX p95 + DB peaks, latest
 > `platform_weight.storage_bytes`) for the `/internal/simulation` "Matrix run (summed)" card. `sim_load_snapshots.notes`
 > gains `shard`/`media_requests`/`media_bytes` keys in matrix mode. **Slice 2** (migration `20260725140000`,
-> written — NOT yet applied to prod) `create or replace`s this RPC to add an overlap-honest event-sweep
+> **applied to prod 2026-07-26**, recorded under version `20260726024318`) `create or replace`s this RPC to add an overlap-honest event-sweep
 > `honest_peak_concurrency` + `max_concurrent_shards` + `media_errors` + `media_ms_p95_peak` alongside the
 > existing naive Σ `offered_concurrency`, so staggered/queued shards can't inflate the reported peak. See
 > `docs/wiki/concepts/synthetic-weight-engine.md` (Slice 2).

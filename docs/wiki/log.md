@@ -1,5 +1,25 @@
 # Wiki Log
 
+## [2026-07-26] ingest | The 200K-band load run + the 16 KB header wall (PR #345, run 30202071632)
+Ingested `raw/sessions/2026-07-26-200k-load-run-and-header-overflow.md`. **Compounded** onto
+[[Synthetic Weight Engine]] a "The 200K-band run — cap discovered, DB still idle" section (a
+50K-vs-200K comparison table; `honest_peak_concurrency` 4,000 == the naive sum with
+`max_concurrent_shards`=20 ⇒ GitHub really does run 20 shards at once, cap ≥20; 31,000 requests,
+0 breakage / 0 throttled, 369 MB of real Storage egress, **prod DB 27/90 conns (~70% idle) at
+11.40 ms ⇒ not the constraint at 200K**; the knee now client-side at p95 18.4 s, with the skipped
+step-1 knee probe recorded as the cause rather than glossed; teardown to zero + the `DO`-block-`RAISE`
+-rolls-back-your-purge gotcha) and **corrected** its Slice-2 section — migration `20260725140000` is
+**applied to prod**, verified by replaying both fixtures through the deployed function. Every figure
+was re-derived independently from `sim_load_snapshots`, including re-implementing the event sweep in
+SQL. New concept [[Supabase .in() Header Overflow]] — the unbounded-`.in()` 16 KB bomb that presents
+as `TypeError: fetch failed`, with the measured cliff (250 ids OK → 400 overflow), the
+successful-call-earlier-in-the-same-process diagnostic that kills a connectivity theory, and the
+latent `mint.ts`/`tick`-cron variant. `index.md`: new Sources + Concepts lines, the
+[[Synthetic Weight Engine]] entry refreshed built→run. **Orphan sweep by path also cataloged 6
+previously-uncataloged sessions** from this workstream (synthetic Phase 0/1/A, runner matrix,
+Slice 2, living marketplace). ~28 older raw sessions remain uncataloged — pre-existing backlog,
+left for a dedicated pass.
+
 ## [2026-07-25] ingest | Credible 200K-DAU Load Matrix (Slice 2) (feat/synthetic-load-matrix-200k)
 Ingested `raw/sessions/2026-07-25-credible-200k-load-matrix-slice2.md`. **Compounded** onto
 [[Synthetic Weight Engine]] a "Slice 2 — credible 200K (real egress + overlap-honest peak)" section:

@@ -26,6 +26,88 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-07-26] The 200K-band load run + the 16 KB header wall (`fix/sim-preflight-header-overflow`, PR #345)
+
+The session where [[Synthetic Weight Engine]] Slice 2 stopped being *built* and became *run*. Three
+things happened: the migration went to prod, the Slice-2 code got its first live exercise, and a
+four-times-repeated CI failure that looked exactly like a network outage turned out to be our own
+code hitting a Node transport limit. Full session:
+`docs/wiki/raw/sessions/2026-07-26-200k-load-run-and-header-overflow.md`.
+
+**1. Migration applied + validated.** `20260725140000_sim_load_matrix_overlap_summary.sql` applied
+under the careful gate (recorded `20260726024318`) and verified through the **deployed** function,
+not the file: both embedded fixtures replayed against prod — OVERLAP → `offered=400 / honest=400 /
+shards=2 / requests=220`, STAGGER → `offered=400 / honest=200 / shards=1`, i.e. exactly the
+inflation the migration exists to prevent. Both ran inside a `DO` block ending in `RAISE`, which
+surfaces the result *and* rolls the fixture rows back (MCP `execute_sql` returns only the last
+statement's result); `sim_load_snapshots` confirmed zero leaked rows afterwards. The first live
+exercise (`matrix-slice2-val-20260726`, 2 shards × C=200 × 120 s) came back **fully green — all
+four jobs** — which no Slice-1 run ever did (they always went red on dead-GCS media 403s): 400
+concurrency, 25,400 requests, 0 breakage, 0 throttled, **302 MB of real Storage egress with 0 media
+errors**, DB 22/90 at 7.91 ms.
+
+**2. Four dead dispatches, and a wrong theory held for two hours.** Every 20-shard cap-discovery
+attempt (four runs, 09:37–10:11 UTC) died in the **seed** job ~1 s in on
+`[bulk-seed] active-namespace pre-flight query failed: TypeError: fetch failed`, while `npm ci` in
+the same job succeeded. The obvious reading was a GitHub→Supabase network problem, and that is what
+was chased: Supabase network restrictions (off), network bans (zero), status page (operational).
+All negative. **The discriminator was already in the log:** `cmdBulkSeed` runs `bootGate` — a real
+Supabase query — *before* the pre-flight, so the database had answered milliseconds earlier in the
+same process. That one ordering fact makes "this runner cannot reach Supabase" impossible, and it
+was observable from the first failure.
+
+**3. Root cause — an unbounded `.in()` overflows undici's 16 KB header limit.** `.in()` serialises
+every value into the URL query string and PostgREST echoes the request URI back in the
+**`Content-Location` response header**; at 500 emails that header is ~21 KB, blowing Node/undici's
+16 KB `maxHeaderSize` → `UND_ERR_HEADERS_OVERFLOW`. Being transport-layer it is **not** a
+`PostgrestError`, so it never reaches the `error` branch that would have named it. Reproduced
+against prod REST in one process: 250 ids = 10,475 chars OK, **400 = 16,775 OVERFLOW**, 500 =
+20,975 OVERFLOW. Latent until now because Slice 1's `MAX_SHARDS = 10` capped the cohort at 250
+emails, just under the wall; Slice 2's 20 made it 500. PR #345 chunks at 100 ids/request at both
+sites — `seed.ts assertActiveNamespaceFree` (the break) and `mint.ts selectIn` (**latent and
+worse**: `readCohort` passes every session-capable bot id, so live 25 + a 500-bot cohort = 525
+UUIDs = 20,590 chars, which would have broken the **daily `tick` cron** had a matrix cohort been
+left seeded). Ordering and fail-loud semantics unchanged; tests assert the real constraint (the
+built URL stays under 16 KB), not the chunk size. Codex clean on the first pass. See
+[[Supabase .in() Header Overflow]].
+
+**4. The 200K-band run** (`matrix-cap-20260726e-30202071632.1`, 20 shards × C=200 × 120 s, first
+dispatch after the fix). The seed passed — the four prior attempts died there in under 35 s — and
+all 500 bots minted **from one runner IP**, so the per-IP 429 backoff holds at 4× the previous
+125-bot maximum. All 20 load jobs green. Figures below were re-derived independently from
+`sim_load_snapshots`, including re-implementing the event sweep in SQL:
+
+| Metric | Value |
+|-|-|
+| Offered (naive Σ) / **`honest_peak_concurrency`** | 4,000 / **4,000** |
+| **`max_concurrent_shards`** | **20** |
+| Requests / ok / breakage / throttled | 31,000 / 31,000 / **0** / **0** |
+| Media requests / bytes / errors / p95 | 4,669 / **369 MB** / **0** / 975 ms |
+| **DB connections · avg query** | **27 / 90 · 11.40 ms** |
+| Overall p95 | **18,427 ms** |
+
+**Cap discovery answered:** honest peak equals the naive sum *and* `max_concurrent_shards` = 20, so
+GitHub ran all twenty shards genuinely simultaneously — no queuing, no stagger inflation, cap **≥
+20** (bounded from below; 20 is our `MAX_SHARDS`, not GitHub's ceiling). **The headline: at ~4,000
+offered concurrency — the 200K-DAU band — prod Postgres sat at 27 of 90 connections (~70% idle) at
+11.40 ms. The database is not the constraint at 200K.** Across Phase A (91% idle at ~312), the 50K
+run (83% idle at 1,000) and this, the DB has never once been the limiting resource.
+
+**The knee moved decisively to the client:** p95 1,935 ms at 400 concurrency → 18,427 ms at 4,000 —
+Slice 2's predicted effect, since real 206-GET egress lowers the per-shard knee well below Slice 1's
+HEAD-only ~312. Recorded honestly: **the runbook's step-1 knee probe was skipped** (validation →
+straight to 20 shards at the old C=200), so the 18 s p95 is the price of that shortcut, not a prod
+capacity signal. A cleaner 200K profile is more shards at lower per-shard C, which `MAX_SHARDS = 20`
+caps. **Teardown:** `purge_synthetic_load_cohort()` → 500 purged, every `residual_*` = 0, live
+`bot0##` = 25 and the 2,000-profile marketplace cohort untouched, registry back to 2,025. **Gotcha:**
+running that purge inside a `DO` block ending in `RAISE` **rolls it back** — the fixture pattern is
+for read-only assertions only.
+
+**Still open:** `MAX_SHARDS = 20` caps a lower-C/better-latency 200K profile; the Phase-A pre-scale
+advisor list (~231 `multiple_permissive_policies`, ~158 `auth_rls_initplan` on hot tables) is
+untouched and still latent; Phase 6 (realtime WebSocket leg) deferred to its own spec; the app's 89
+`.in()` call sites across 39 files are **unaudited** against the 16 KB ceiling.
+
 ## [2026-07-25] Synthetic Weight Engine — credible 200K-DAU load matrix (Slice 2) (`feat/synthetic-load-matrix-200k`)
 
 An extension of the already-shipped multi-IP runner matrix ([[Synthetic Weight Engine]] Slice 1, PR
