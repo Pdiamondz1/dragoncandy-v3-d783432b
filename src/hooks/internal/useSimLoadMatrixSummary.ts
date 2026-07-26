@@ -9,6 +9,13 @@ export interface SimLoadMatrixSummary {
   shards: number;
   /** Σ per-shard offered concurrency — the whole point of the matrix (a single runner caps ~312). */
   offered_concurrency: number;
+  /** Overlap-honest peak: max over time of summed concurrency among shards actually running at once. */
+  honest_peak_concurrency: number;
+  /** Most shards observed running simultaneously (bounds the honest peak; reveals the GitHub runner cap). */
+  max_concurrent_shards: number;
+  media_errors: number;
+  /** Peak media (fetch-only) p95 latency across shards — the egress-saturation signal. */
+  media_ms_p95_peak: number;
   requests: number;
   ok: number;
   breakage: number;

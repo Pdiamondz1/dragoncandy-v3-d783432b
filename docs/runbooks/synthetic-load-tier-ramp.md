@@ -161,12 +161,21 @@ Only if you intend to wipe **everything synthetic** (including the live cohort) 
 `select public.purge_synthetic_data();` then assert zero residue + `row_counts_real == row_counts` via
 `capture_platform_weight()`.
 
-## 8. Runner matrix (multi-IP fan-out — Slice 1)
+## 8. Runner matrix (multi-IP fan-out — Slice 1; Slice 2 adds real egress + the honest peak)
 
 A single GH runner caps at the ~312-concurrency client-side **egress** wall while prod's DB stays
 ~91% idle (`docs/superpowers/load-findings/2026-07-24.md`). The **runner matrix** breaks that: it fans
 the SAME load driver across N shards — each a separate GH job on its own runner IP — so the *summed*
 offered concurrency pushes prod's DB toward its real ceiling. **The ramp knob is the shard count.**
+
+**`media_fetch` is real egress, not a proxy (Slice 2).** Every `media_fetch` action performs an actual
+Range-capped `GET` against a real public DragonCandy Storage object (`dragonshare-content`/
+`help-screenshots`) — hard-capped per request via `Range: bytes=0-262143` (256 KiB) — so the matrix's
+egress is genuine bandwidth against prod Storage, not a simulated stand-in. Worst-case egress for a run
+is computable up front: **≤ `media_requests` × 256 KiB**. Keep the soak short at scale (the
+credible-200K sequence below uses `soak_ms=120000`, ~2 min) so the per-request cap stays a bounded
+aggregate too. A non-2xx/network failure on that GET is a **media error** (`ok:false`) — tallied apart
+from breakage, never tripping the DB-saturation knee (same "media error ≠ breakage" convention as §3).
 
 **1) Seed at `25 × max_shards` active** (so every shard has a non-empty disjoint `botla…` slice —
 raising the shard count later requires re-seeding; a bigger dispatch over a smaller seed drives empty
@@ -186,25 +195,69 @@ gh workflow run synthetic-load-matrix.yml \
 ```
 - **A matrix needs ≥2 shards** — the workflow rejects `shards<2` (a 1-shard run is the SINGLE-runner
   path, which the summary RPC can't aggregate; use the `load` command / `synthetic-weight.yml` for that).
-- **Ramp = step the shard count** (2 → 5 → 10, capped at the workflow's `MAX_SHARDS`). Keep C per shard
-  at/below the single-IP egress-safe ceiling (~200); the concurrency you're proving is `shards × C`.
+- **Ramp = step the shard count** (2 → 5 → 10 → 20, capped at the workflow's `MAX_SHARDS` — raised to
+  **20**). Keep C per shard at/below the single-IP egress-safe ceiling (~200); the *naive* concurrency
+  you're offering is `shards × C` — see the credible-200K sequence below for the *honest* read.
 - **The effective `run_label` is unique per dispatch** — the workflow suffixes your label with the GH
   run id (`<run_label>-<run_id>.<attempt>`) so a re-used label never mixes two runs in the summary.
 - **Kill switch drains mid-soak:** flip `SYNTHETIC_BOTS_ENABLED` off in prod `feature_flags` and every
   in-flight shard stops within a snapshot cycle (the `isEnabled` re-check) — no `gh run cancel` needed.
 - Each shard uploads its `sim/.load-findings.json` as `findings-shard-<n>`.
 
+**2a) The credible-200K sequence (Slice 2).** Staggered/queued shards (the GitHub concurrent-runner
+cap) make the naive per-shard sum an overestimate — probe the knee, discover the cap, then run, in
+this order:
+1. **Probe the per-shard knee with real media firing**, single-runner (cheaper than a matrix dispatch,
+   and `media_fetch`'s real GET egress makes the knee a real one, not a proxy). Use a **non-`matrix-*`
+   run label**: a single-runner `load` snapshot carries no `notes.shard`, so if it were labelled
+   `matrix-*` the `/internal` "Matrix run (summed)" card — which reads the newest `matrix%` label — would
+   pick it up and render a bogus zero-shard/zero-concurrency summary. `knee-probe-*` keeps it out:
+   ```
+   npx tsx sim/cli.ts load --ramp 50/400/1.6 --hold-ms 15000 --run-label "knee-probe-<date>"
+   ```
+   Read the curve (§3) for the concurrency where media p95 latency / media error rate / transport
+   breakage knees. Record `C_knee`; shade it down one step for the per-shard `C` you dispatch the
+   matrix with — a single runner omits the matrix's ~10% write leg.
+2. **Discover the runner cap** — dispatch a full-`MAX_SHARDS` run with a short soak; queued shards
+   start late and never overlap the others, so this reveals how many GitHub actually runs at once:
+   ```
+   gh workflow run synthetic-load-matrix.yml \
+     -f shards=20 -f concurrency=200 -f soak_ms=120000 -f run_label="matrix-cap-<date>" -f seed=true
+   ```
+   Read `max_concurrent_shards` from `get_sim_load_matrix_summary` (below) — that *is* the GitHub
+   concurrent-runner cap, and it may be well under 20.
+3. **The 200K run** — dispatch `shards = min(16, cap)` (`cap` = `max_concurrent_shards` from step 2),
+   `concurrency = C` (from step 1), `soak_ms=120000`, a fresh `run_label`:
+   ```
+   gh workflow run synthetic-load-matrix.yml \
+     -f shards=<min(16,cap)> -f concurrency=<C> -f soak_ms=120000 -f run_label="matrix-200k-<date>"
+   ```
+   `~16 × C` targets the ~4,000-concurrency / ~200K-DAU band at a `C` near the single-shard
+   egress-safe ceiling; record the worst-case egress up front (`≤ media_requests × 256 KiB`, per above).
+   If the runner cap forces `shards < 16`, that cap-limited ceiling is the credible number — document
+   it plus the path past it (paid plan / self-hosted runners), not a number the cap can't support.
+
 **3) Read the summed result.** `/internal/simulation` renders the summed row ("Matrix run (summed)")
-for the LATEST `matrix-*` run automatically — the simplest read. For SQL, discover this run's effective
-label first (it carries the run-id suffix), then summarize it:
+for the LATEST `matrix-*` run automatically — the simplest read, and now also shows the honest-peak +
+media-error/media-latency StatCards described below. For SQL, discover this run's effective label
+first (it carries the run-id suffix), then summarize it:
 ```sql
 select distinct run_label from sim_load_snapshots where run_label like 'matrix-%' order by run_label desc;
 select public.get_sim_load_matrix_summary('<effective-run-label>');
---  → {shards, offered_concurrency, requests, ok, breakage, throttled, p95_ms,
---     media_requests, media_bytes, storage_bytes, db_active_conn_peak, db_avg_query_ms_peak, max_connections}
+--  → {shards, offered_concurrency, honest_peak_concurrency, max_concurrent_shards, requests, ok,
+--     breakage, throttled, p95_ms, media_requests, media_bytes, media_errors, media_ms_p95_peak,
+--     storage_bytes, db_active_conn_peak, db_avg_query_ms_peak, max_connections}
 ```
-The DB ceiling shows as `db_active_conn_peak` approaching `max_connections` with rising
-`db_avg_query_ms_peak` — that (not the single-IP egress wall) is the number the matrix exists to find.
+**Read `honest_peak_concurrency` + `max_concurrent_shards` — not the naive `offered_concurrency`.**
+`offered_concurrency` is a blind per-shard sum, so staggered/queued shards (exactly what the runner-cap
+probe above finds) inflate it even when those shards never actually ran at the same time.
+`honest_peak_concurrency` is the event-sweep max of concurrency summed only across shards overlapping
+at the same instant, and `max_concurrent_shards` is how many were overlapping at that peak — together
+they're the honest answer to "how much concurrency did this run really prove," bounded by the runner
+cap from step 2 above. The DB ceiling still shows as `db_active_conn_peak` approaching
+`max_connections` with rising `db_avg_query_ms_peak`. `media_ms_p95_peak` + `media_errors` are the
+egress-saturation signals — rising media p95 / error rate at the target concurrency means the Storage
+egress path, not the DB, is the binding ceiling.
 
 **4) Teardown** = §7 (prefer `select public.purge_synthetic_load_cohort();` — it spares the live 25 and
 leaf-deletes the synthetic `push_notifications`/crew/telemetry residue the write legs create). **Never

@@ -143,9 +143,12 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   knee-not-outage load driver + findings, two service-role RPCs, `/internal/simulation` load-curve +
   MODELED-revenue slice) and the **runner matrix (Slice 1)** (multi-IP fan-out — `bulk-seed --with-content`,
   a ~90:10 DAU behavior mix + media-egress proxy, `get_sim_load_matrix_summary`, the `synthetic-load-matrix.yml`
-  workflow, a summed dashboard card; 3 migrations live on prod) shipped; the 2-shard live ramp + Phase 6
-  realtime leg founder-gated/deferred (runbook). Measured revenue / capped Donny = Phase B (separate plan).
-  → `docs/SHIPPED_LOG.md`
+  workflow, a summed dashboard card; 3 migrations live on prod) shipped, plus **Slice 2 — credible 200K**
+  (real Range-capped-GET storage egress replacing the HEAD proxy + an overlap-honest summary RPC —
+  `honest_peak_concurrency`/`max_concurrent_shards` + media-error/latency signals — + `MAX_SHARDS` 10→20)
+  **built**; migration `20260725140000` apply + the live 200K run are founder-gated. The 2-shard live ramp +
+  Phase 6 realtime leg remain founder-gated/deferred (runbook). Measured revenue / capped Donny = Phase B
+  (separate plan). → `docs/SHIPPED_LOG.md`
 - **Durable pending-balance flush ledger** — stage 1 of the wallet-first payout fix ([[Payout Finalization
   & Re-entrancy]]): a durable `pending_balance_flushes` ledger (table + claim/confirm/fail/bump RPCs, a
   `flush_${id}`-keyed shared `executeFlushTransfer`, a `reconcile-pending-flushes` `*/15` cron) makes the

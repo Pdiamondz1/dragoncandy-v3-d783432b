@@ -312,7 +312,11 @@ predicate. See `docs/wiki/concepts/synthetic-weight-engine.md`.
 > bypasses the `sim_load_snapshots` RLS), rolls a multi-shard run's per-shard **latest-`captured_at`**
 > snapshots into one summed row (Σ concurrency/requests/`media_*`, MAX p95 + DB peaks, latest
 > `platform_weight.storage_bytes`) for the `/internal/simulation` "Matrix run (summed)" card. `sim_load_snapshots.notes`
-> gains `shard`/`media_requests`/`media_bytes` keys in matrix mode.
+> gains `shard`/`media_requests`/`media_bytes` keys in matrix mode. **Slice 2** (migration `20260725140000`,
+> written — NOT yet applied to prod) `create or replace`s this RPC to add an overlap-honest event-sweep
+> `honest_peak_concurrency` + `max_concurrent_shards` + `media_errors` + `media_ms_p95_peak` alongside the
+> existing naive Σ `offered_concurrency`, so staggered/queued shards can't inflate the reported peak. See
+> `docs/wiki/concepts/synthetic-weight-engine.md` (Slice 2).
 
 > **Denormalized `is_synthetic boolean default false`** added (nullable) to 5 rootless/telemetry
 > tables — `payment_events`, `analytics_events`, `dragonshare_events`, `pricing_funnel_events`,

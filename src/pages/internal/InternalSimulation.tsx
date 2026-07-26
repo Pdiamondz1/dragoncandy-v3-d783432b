@@ -68,9 +68,15 @@ function MatrixSummaryCard({
       </div>
       <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
+          label="Honest peak concurrency"
+          value={data.honest_peak_concurrency}
+          sub={`${data.max_concurrent_shards} shards overlapped`}
+          accent="pink"
+        />
+        <StatCard
           label="Offered concurrency"
           value={data.offered_concurrency}
-          sub={`Σ across ${data.shards} shards`}
+          sub={`naive Σ across ${data.shards} shards`}
         />
         <StatCard
           label="DB active / max conns"
@@ -85,7 +91,9 @@ function MatrixSummaryCard({
           sub={`${data.ok} ok · ${data.breakage} brk · ${data.throttled} thr`}
         />
         <StatCard label="Media requests" value={data.media_requests} />
-        <StatCard label="Media egress (proxy)" value={fmtBytes(data.media_bytes)} sub="Σ Content-Length" />
+        <StatCard label="Media egress" value={fmtBytes(data.media_bytes)} sub="Σ real bytes (Range-capped GET)" />
+        <StatCard label="Media errors" value={data.media_errors} sub="egress failures (not breakage)" />
+        <StatCard label="Media p95 latency" value={fmtMs(data.media_ms_p95_peak)} sub="peak across shards" />
         <StatCard
           label="Storage bytes"
           value={fmtBytes(data.storage_bytes)}
