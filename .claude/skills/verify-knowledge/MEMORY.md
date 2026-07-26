@@ -34,6 +34,28 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-07-26] 200K-band load run + header-overflow knowledge-sync validation (PRs #345/#347/#348, POST-merge)
+- **Output:** emitted `done:true` (all 3 met), closing the knowledge-sync loop for the 200K-band run
+  + the `.in()` header-overflow fix.
+- **Happened:** validated after BOTH merges — #347 (the sync itself) and #348 (the page split + a new
+  sync-script size guard that #347's own growth made necessary). (a) index-incompleteness sweep over
+  `concepts|entities|analyses` = 0; (b) `RAG_LAST` 17:59:26Z is *newer* than `LAST_WIKI_SYNC` 17:58:29Z,
+  with `Synthetic Load Proof` (4) + `UND_ERR_HEADERS_OVERFLOW` (3) present by `content ilike`; (c) all
+  three session pages in `index.md` + named in `log.md`.
+- **Worked:** the [dated-analysis] lesson applied almost verbatim to a **new** shape — a `content ilike
+  '%kill switch is OFF%'` probe returned 2 hits on `synthetic-weight-engine.md`, which naively reads as
+  the exact contradiction this session corrected. Both were the **quoted old text inside the correction
+  itself** ("This paragraph read '…' until 2026-07-26"), one row per scope (internal + wiki). Reading the
+  surrounding context, not the keyword, is what kept (a) from a false critical.
+- **Failed:** nothing at validation time. Worth recording that the *previous* run of the loop's generate
+  half reported success while the RAG sync had half-failed (`errors=41`) — the validator would have
+  caught it at (b)+(c), but only because someone read the sync log first.
+- **Remember:** **a correction that quotes the text it corrects will match any keyword probe for the old
+  claim.** Generalises [dated-analysis]: a page can contain a false statement *as a quotation of its own
+  history* and still be entirely current. For (a)'s contradiction half, always read ±100 chars of context
+  around a probe hit before calling it critical — the quotation marks and a "read … until <date>" clause
+  are the tell. (Advisory: sharpens how to read (a); does not loosen it.)
+
 ### [2026-07-20] create_counter_offer authorization hardening knowledge-sync validation (PR #323, POST-merge)
 - Output: emitted `done:true` (all 3 met) closing the knowledge-sync loop for the create_counter_offer
   authorization hardening.

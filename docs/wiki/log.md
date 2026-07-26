@@ -1,5 +1,17 @@
 # Wiki Log
 
+## [2026-07-26] update | [[Living Synthetic Marketplace]] status correction — built-and-gated → LIVE at 2,000
+Its `## State` section (and `PROJECT_CONTEXT.md` §5, and the `index.md` entry) still read "offline code
+COMPLETE … **Pending (founder-gated):** merge → dispatch a small 2/4 → … → scale to 100/300". All three
+had been wrong since the 07-25 merges: PRs #339–#342 are in, and the cohort is live on prod at **2,000
+profiles** — verified against the registry, not inferred: 500 business / 1,500 creator, split 24 active
+(`botmk_b_`/`botmk_c_`) + 1,976 depth (`botmk_db_`/`botmk_dc_`). The §5 entry **moved** from "Built —
+awaiting founder go-live" to "Shipped" rather than being edited in place, since the subsection is the
+status claim. The concept page now leads with the live table and states the reason the active/depth
+split exists at all (a session costs an auth; prod rate-limits ~25/IP, so 2,000 browsable profiles are
+unreachable by minting 2,000 sessions). `SHIPPED_LOG.md`'s 07-25 entry is deliberately **untouched** —
+it is an append-only historical snapshot, correct as of when it was written.
+
 ## [2026-07-26] update | Split [[Synthetic Load Proof (Phase A → 200K)]] out of [[Synthetic Weight Engine]]
 **Forced by a real failure, caught by running the sync rather than assuming it.** The ingest below
 grew `concepts/synthetic-weight-engine.md` from 29,458 → 33,789 chars, past OpenAI's

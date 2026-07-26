@@ -116,16 +116,17 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   closed-anon-DML `leads` table and throttled `capture-lead` fn; both live on prod.
   **Pending:** set the `LEADS_NOTIFY_EMAIL` edge secret — without it nobody is notified of a
   captured lead. → `docs/wiki/concepts/landing-lead-capture.md` · `feat/landing-luxe-redesign`
-- **Living Synthetic Marketplace (Sub-project A)** — a persistent, browsable `botmk_` synthetic cohort
-  on prod built through real RLS-enforced flows (US-diverse full profiles excl. social, free campaigns,
-  content, messaging, discounts, reviews, multi-location, CGC), excluded from founder metrics via
-  `is_synthetic`. Offline code complete + reviewed (223 tests, Codex 4 passes); the `botmk_`-scoped
-  teardown RPC is **live + no-op-verified on prod**; a manual `marketplace-seed` workflow exists.
-  **Pending:** merge the branch (GitHub `workflow_dispatch` needs it on `main`), dispatch a small 2/4
-  seed, run the segregation + teardown-to-zero proofs, then scale to 100/300.
-  → `docs/wiki/concepts/living-synthetic-marketplace.md` · `feat/living-marketplace`
 
 ### Shipped
+
+- **Living Synthetic Marketplace (Sub-project A)** — **LIVE on prod at 2,000 profiles** (500 business /
+  1,500 creator, 24 US cities): a persistent, browsable `botmk_` cohort built through real RLS-enforced
+  flows, excluded from founder metrics via `is_synthetic`. The **active/depth split** is what makes it
+  possible — ~24 interactive bots run real flows, ~1,976 depth profiles are bulk-inserted and never
+  authenticate (a session costs an auth, and prod rate-limits those ~25/IP). Segregation held
+  byte-identically across the scale-up; reset via the `botmk_`-scoped `marketplace-purge`. Scaling
+  further = direct `seed_synthetic_marketplace_depth` calls. PRs #339–#342.
+  → `docs/wiki/concepts/living-synthetic-marketplace.md`
 
 - **Wallet-first payout fix (stages 1+2 shipped)** — closes the [[Payout Finalization & Re-entrancy]]
   residuals. Stage 1: a durable `pending_balance_flushes` ledger (table + claim/confirm/fail/bump RPCs,
