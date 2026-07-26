@@ -208,9 +208,12 @@ gh workflow run synthetic-load-matrix.yml \
 cap) make the naive per-shard sum an overestimate — probe the knee, discover the cap, then run, in
 this order:
 1. **Probe the per-shard knee with real media firing**, single-runner (cheaper than a matrix dispatch,
-   and `media_fetch`'s real GET egress makes the knee a real one, not a proxy):
+   and `media_fetch`'s real GET egress makes the knee a real one, not a proxy). Use a **non-`matrix-*`
+   run label**: a single-runner `load` snapshot carries no `notes.shard`, so if it were labelled
+   `matrix-*` the `/internal` "Matrix run (summed)" card — which reads the newest `matrix%` label — would
+   pick it up and render a bogus zero-shard/zero-concurrency summary. `knee-probe-*` keeps it out:
    ```
-   npx tsx sim/cli.ts load --ramp 50/400/1.6 --hold-ms 15000 --run-label "matrix-knee-<date>"
+   npx tsx sim/cli.ts load --ramp 50/400/1.6 --hold-ms 15000 --run-label "knee-probe-<date>"
    ```
    Read the curve (§3) for the concurrency where media p95 latency / media error rate / transport
    breakage knees. Record `C_knee`; shade it down one step for the per-shard `C` you dispatch the
