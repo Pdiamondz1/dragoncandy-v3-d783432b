@@ -1,5 +1,24 @@
 # Wiki Log
 
+## [2026-07-25] ingest | Credible 200K-DAU Load Matrix (Slice 2) (feat/synthetic-load-matrix-200k)
+Ingested `raw/sessions/2026-07-25-credible-200k-load-matrix-slice2.md`. **Compounded** onto
+[[Synthetic Weight Engine]] a "Slice 2 — credible 200K (real egress + overlap-honest peak)" section:
+`media_fetch` is now a real Range-capped GET against public `dragonshare-content` storage (requiring
+exactly `206` to bound egress absolutely — a `200` w/ Range ignored is a capped miss, never downloaded);
+media latency (`media_ms_p50/p95`) tallied in the driver; an overlap-honest `get_sim_load_matrix_summary`
+(migration `20260725140000`, NOT yet applied to prod) adds a bin-width-independent event-sweep
+`honest_peak_concurrency` + `max_concurrent_shards` (the true GitHub concurrent-runner cap) + media-error/
+p95 signals, keeping the naive `offered_concurrency` visible alongside; `/internal` surfaces the new
+figures; `MAX_SHARDS` 10→20; the runbook's §8 gains a probe→discover-cap→200K-run sequence. 5 TDD tasks,
+4 Codex fixes (egress-cap-not-enforced-on-ignored-Range; 200-still-downloads; knee-probe label pollutes
+the matrix card; `media_ms_p95_peak` latest-row vs true-peak) over 5 review passes, SDD per-task reviews
++ whole-branch Opus REVIEW READY-TO-MERGE. `index.md`: refreshed the Concepts entry tail (+ Slice 2).
+`SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5 line amended in place (Slice 2 built, migration apply
++ live run founder-gated). No `DATABASE_SCHEMA.md` change (existing RPC gains fields via
+`create or replace`, no new table/column). Founder-gated remainder: apply migration `20260725140000`;
+the live probe→cap→200K→verify→teardown run (real egress will likely lower the per-shard knee below
+Slice 1's HEAD-only ~312, so the split needs re-probing); post-merge RAG sync.
+
 ## [2026-07-25] ingest | Living Synthetic Marketplace (Sub-project A) — offline build + live teardown (feat/living-marketplace)
 Ingested `raw/sessions/2026-07-25-living-marketplace-phase-a1.md`. New concept page [[Living Synthetic Marketplace]] — Sub-project A: a persistent `botmk_` cohort on prod via real RLS-enforced flows (full US-diverse profiles excl. social, free campaigns, content, messaging, discounts, reviews, multi-location, CGC), the `sim/marketplace/` module + `marketplace-seed`/`-purge` command + `buildDefaultSeedSteps` live glue, the ONE-SHOT cohort-cap + freshness guard (recovery = `marketplace-purge`, not resumable — mirrors bulk-seed), and the FK-graph-grounded `purge_synthetic_marketplace_cohort()` teardown (applied + no-op-verified on prod). Load-bearing decisions: `readSessionCapableBots` excludes `botmk_` (else the daily crew tick + single-runner load sweep it); public free campaigns are explicitly status-flipped published→active→completed (the accept RPC only auto-activates crew campaigns); the synthetic org's `active_campaign_limit` is raised (default 1 aborts multi-publish); profiles exclude ALL social fields; `skills` is the `creator_skill[]` enum + `industry` the `industry_type` enum (display text breaks the update). `index.md`: new Concepts entry. `SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5 "Built — awaiting founder go-live" line added. No `DATABASE_SCHEMA.md` change (new RPC + migration, no tables/columns). 1 migration applied to prod under the careful gate. Reviews: per-task + opus whole-branch (*ready to merge*) + Codex 4 passes (campaign-limit abort; seed-without-teardown; cohort cap; downstream-not-resumable; one-shot doc — all resolved). Founder-gated remainder: merge → small 2/4 seed → segregation + teardown-to-zero proofs → scale 100/300; post-merge RAG sync.
 ## [2026-07-24] ingest | Synthetic Weight Engine — multi-IP load runner matrix (Slice 1) (feat/synthetic-load-runner-matrix)

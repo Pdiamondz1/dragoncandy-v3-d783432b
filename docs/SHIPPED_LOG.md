@@ -26,6 +26,91 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-07-25] Synthetic Weight Engine — credible 200K-DAU load matrix (Slice 2) (`feat/synthetic-load-matrix-200k`)
+
+An extension of the already-shipped multi-IP runner matrix ([[Synthetic Weight Engine]] Slice 1, PR
+#337). Slice 1 proved the shard-count-as-ramp-knob idea but left two gaps between its number and a
+credible "200K DAU" claim: `media_fetch` was a HEAD + Content-Length **proxy** (no real bytes moved),
+and the summary's `offered_concurrency` is a blind per-shard sum that staggered/queued shards (a real
+GitHub concurrent-runner cap) can inflate without ever being simultaneous. Five TDD tasks close both
+gaps and scale the shard ceiling. Spec: `docs/superpowers/specs/2026-07-25-credible-200k-load-matrix-design.md`.
+Plan: `docs/superpowers/plans/2026-07-25-credible-200k-load-matrix.md`.
+
+**1. Real storage egress.** `sim/load/actions-mix.ts`'s `media_fetch` now performs an actual
+Range-capped `GET` (`Range: bytes=0-262143`, 256 KiB) against a real public DragonCandy Storage object
+(`dragonshare-content` — the true serving path; 6 sample URLs, all verified `HTTP 206` against prod
+`zocahiffooqdybdhguqv`, 2026-07-25) instead of a HEAD against a dead third-party GCS URL. Bounded
+egress is **absolute, not best-effort**: the action REQUIRES a `206 Partial Content` response before
+reading any body — a `200` means the host ignored the `Range` header (it would stream the full object,
+possibly chunked with no `Content-Length`) and is treated as a capped MISS (`{bytes:0, ok:false}`),
+never downloaded. This closes the "un-Range-capped host defeats the cap" hole Codex flagged. A
+non-206/network failure is a **media error**, tallied apart from breakage — never trips the
+DB-saturation knee (unchanged convention from Slice 1). Returns `{bytes, ok, ms}`.
+
+**2. Media latency.** The driver (`sim/load/driver.ts`) collects `MediaResult.ms` (fetch-only latency)
+per step and writes `media_ms_p50`/`media_ms_p95` to the snapshot notes (`StepMetrics.mediaMsP50/P95`).
+
+**3. Overlap-honest summary.** New migration `supabase/migrations/20260725140000_sim_load_matrix_overlap_summary.sql`
+`create or replace`s `get_sim_load_matrix_summary` to add a **bin-width-independent event-sweep**
+`honest_peak_concurrency` (max over time of summed concurrency among shards actually overlapping,
+evaluated at every snapshot instant so the true max-overlap instant is always covered — no bin-width
+parameter needed) + `max_concurrent_shards` (how many shards were overlapping at that peak — this
+number **is** the GitHub concurrent-runner cap) + `media_errors` + `media_ms_p95_peak` (a TRUE peak
+across ALL snapshots for the run, not latest-row-per-shard — a Codex P2 catch, since media p95 isn't
+monotonic across a soak the way DB connection counts are). The naive `offered_concurrency` is kept
+alongside so the staggering gap stays visible. Security posture unchanged from `20260724183000`
+(SECURITY DEFINER + in-body `is_internal_user()` guard + anon/public revoke, authenticated grant).
+**Migration is written but NOT applied to prod** — founder-gated (careful skill).
+
+**4. `/internal` surfacing.** `src/hooks/internal/useSimLoadMatrixSummary.ts` gains the 4 new typed
+fields (no `types.ts` regen needed — the hook keeps its hand-typed `rpc` cast); `InternalSimulation.tsx`'s
+`MatrixSummaryCard` adds a "Honest peak concurrency" StatCard (pink accent, "N shards overlapped"
+subtitle), relabels "Offered concurrency" to `naive Σ across N shards`, relabels the media-bytes card
+from "Media egress (proxy)" to "Media egress" / "Σ real bytes (Range-capped GET)", and adds "Media
+errors" + "Media p95 latency" StatCards.
+
+**5. Scale + runbook.** `.github/workflows/synthetic-load-matrix.yml`'s `MAX_SHARDS` raised `10→20`.
+`docs/runbooks/synthetic-load-tier-ramp.md` §8 gains a "credible-200K sequence" (§2a): (1) probe the
+per-shard knee single-runner **with real media firing** (cheaper than a matrix dispatch, and the real
+GET makes the knee a real one, not a proxy), using a **non-`matrix-*` run label** (`knee-probe-<date>`)
+so `/internal`'s "Matrix run (summed)" card — which reads the newest `matrix%` label — can't ingest a
+shard-less single-runner snapshot and render a bogus zero-shard/zero-concurrency summary; (2) discover
+the runner cap via a full-`MAX_SHARDS` dispatch with a short soak (queued shards start late and never
+overlap the others, so `max_concurrent_shards` reveals how many GitHub actually runs at once, which may
+be well under 20); (3) the 200K run: `shards = min(16, cap)` (`cap` from step 2) at the probed knee
+concurrency `C` (from step 1), `soak_ms=120000` (~2 min, keeping the per-request 256 KiB cap a bounded
+aggregate even at scale) — `~16 × C` targets the ~4,000-concurrency / ~200K-DAU band; if the runner cap
+forces `shards < 16`, that cap-limited ceiling is the credible number to report, plus the path past it
+(paid plan / self-hosted runners) — not a number the cap can't support.
+
+**Codex gauntlet (4 real findings fixed, 5th pass clean):** egress cap not enforced when a host ignores
+`Range` (any 2xx was trusted); a `200` (Range-ignored) still silently downloaded up to the cap (tightened
+to require exactly `206` before touching the body at all); the single-runner knee-probe reusing a
+`matrix-*`-prefixed label would let `/internal`'s matrix card ingest it and render a bogus summary
+(fixed with the `knee-probe-*` label convention); `media_ms_p95_peak`'s initial draft reused the
+`per_shard` CTE's latest-row-per-shard value instead of a true cross-snapshot max (fixed to `max(...)`
+across every snapshot in the run). SDD per-task reviews passed for all 5 tasks; the whole-branch Opus
+review returned **READY TO MERGE**.
+
+**Verified facts that shaped the writes (do not re-fabricate):** the six `dragonshare-content` object
+URLs were curl-verified to return `HTTP 206` on a `Range: bytes=0-262143` GET against prod
+`zocahiffooqdybdhguqv`, 2026-07-25; the migration timestamp `20260725140000` was collision-checked via
+`git grep` across worktrees against both `20260724183000` (the Slice 1 summary migration it replaces)
+and the same-day marketplace migrations `20260725120000`/`20260725130000`;
+`docs/superpowers/load-findings/2026-07-24.md` is the source of the "single runner caps ~312
+concurrency on **egress**, not DB (DB 91% idle)" finding that motivates real egress in the first place
+— Slice 1's HEAD proxy could never have surfaced that ceiling honestly.
+
+**Founder-gated, NOT in this branch:** applying migration `20260725140000` to prod; the live
+probe→cap→200K→verify→teardown sequence. **Key insight carried forward:** real egress will very likely
+lower the per-shard knee below Slice 1's HEAD-only ~312 figure, so the shard/concurrency split must be
+re-probed with real media before trusting a 200K number. **Deferred minors:** a few stale `driver.ts`
+comments describing the old proxy behavior; `media_ms_p50` is plumbed through the driver/snapshot but
+not yet surfaced by the summary RPC or `/internal` (only `media_ms_p95_peak` is); `sim/tsconfig.json`'s
+strict typecheck is not wired into CI.
+
+→ `docs/wiki/concepts/synthetic-weight-engine.md` · `docs/wiki/raw/sessions/2026-07-25-credible-200k-load-matrix-slice2.md`
+
 ## [2026-07-25] Living Synthetic Marketplace (Sub-project A) — offline build + live teardown (`feat/living-marketplace`)
 
 Sub-project A of the living-marketplace / 200K-DAU initiative: a **persistent, browsable synthetic
