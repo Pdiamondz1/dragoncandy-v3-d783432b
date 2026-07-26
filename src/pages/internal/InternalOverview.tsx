@@ -3,6 +3,7 @@ import { useRevenueStats } from '@/hooks/internal/useRevenueStats';
 import { useCostStats } from '@/hooks/internal/useCostStats';
 import { useInternalAccess } from '@/hooks/internal/useInternalAccess';
 import { StatCard, SectionHeading, ErrorCard } from '@/components/internal/stats';
+import { PlatformMetricSections } from '@/components/internal/PlatformMetricSections';
 import { PageContainer, PageHeader } from '@/components/internal/layout';
 import { formatCents, formatUsd } from '@/lib/utils';
 import { aiCapStatus } from '@/lib/aiCostCap';
@@ -29,12 +30,6 @@ const InternalOverview = () => {
   const p = platform.data;
   const r = revenue.data;
   const c = cost.data;
-  const activeCampaigns = p.campaigns.by_status['active'] ?? 0;
-  const verifiedPosts = p.dragonshare.posts_by_status['verified'] ?? 0;
-  // Real-vs-total: surface the synthetic gap (all − real) as a per-card sub, only when synthetic exists.
-  const ofTotal = (real: number, all: number) =>
-    all > real ? `of ${all.toLocaleString()} incl. synthetic` : undefined;
-  const withSub = (...parts: (string | undefined)[]) => parts.filter(Boolean).join(' · ') || undefined;
   const syntheticActive = p.users.total_all > p.users.total;
   const topFunction = c ? topEntry(c.mtd_by_function) : undefined;
   const topModel = c ? topEntry(c.mtd_by_model) : undefined;
@@ -69,63 +64,12 @@ const InternalOverview = () => {
         </div>
       )}
 
-      <SectionHeading>Users &amp; businesses</SectionHeading>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Total users" value={p.users.total} sub={ofTotal(p.users.total, p.users.total_all)} />
-        <StatCard
-          label="Creators"
-          value={p.users.by_role['content_creator'] ?? 0}
-          sub={ofTotal(p.users.by_role['content_creator'] ?? 0, p.users.by_role_all['content_creator'] ?? 0)}
-        />
-        <StatCard
-          label="Restaurants"
-          value={p.businesses.restaurants}
-          sub={withSub(`${p.businesses.locations} locations`, ofTotal(p.businesses.restaurants, p.businesses.restaurants_all))}
-        />
-        <StatCard label="Brands" value={p.businesses.brands} sub={ofTotal(p.businesses.brands, p.businesses.brands_all)} />
-      </div>
-
-      <SectionHeading>Activity</SectionHeading>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard
-          label="Campaigns"
-          value={p.campaigns.total}
-          sub={withSub(`${activeCampaigns} active`, ofTotal(p.campaigns.total, p.campaigns.total_all))}
-        />
-        <StatCard
-          label="DragonShare posts"
-          value={p.dragonshare.posts_total}
-          sub={withSub(
-            `${verifiedPosts} verified · ${p.dragonshare.boosts_total} boosts`,
-            ofTotal(p.dragonshare.posts_total, p.dragonshare.posts_total_all),
-          )}
-        />
-        <StatCard label="Promotions" value={p.promotions.total} sub={ofTotal(p.promotions.total, p.promotions.total_all)} />
-        <StatCard
-          label="Social connections"
-          value={p.social_connections.total}
-          sub={withSub(
-            Object.entries(p.social_connections.by_platform)
-              .map(([platform, n]) => `${platform} ${n}`)
-              .join(' · ') || undefined,
-            ofTotal(p.social_connections.total, p.social_connections.total_all),
-          )}
-        />
-      </div>
-
-      <SectionHeading>Content</SectionHeading>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard
-          label="Social posts logged"
-          value={p.content.social_posts_logged}
-          sub={ofTotal(p.content.social_posts_logged, p.content.social_posts_logged_all)}
-        />
-        <StatCard
-          label="Performance-tracked posts"
-          value={p.content.performance_tracked_posts}
-          sub={ofTotal(p.content.performance_tracked_posts, p.content.performance_tracked_posts_all)}
-        />
-      </div>
+      <PlatformMetricSections
+        mode="real"
+        stats={p}
+        isLoading={platform.isLoading}
+        isError={platform.isError}
+      />
 
       <SectionHeading>Revenue</SectionHeading>
       {revenue.isError || !r ? (
