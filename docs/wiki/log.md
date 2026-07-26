@@ -1800,3 +1800,13 @@ state, article-page search box; client-side over `search_vector` for the ~32-art
 Sources: raw/sessions/2026-07-19-help-center-screenshots-and-search.md. Pages updated:
 concepts/help-center-and-guidance.md (Screenshots + Search sections, stale-screenshots issue
 resolved), index.md (Sources + Concepts). RAG sync verified post-merge via the docs/ hook.
+
+## [2026-07-26] ingest | Synthetic metric parity on /internal/simulation
+Ingested `raw/sessions/2026-07-26-synthetic-metric-parity.md`. **New** concept
+`concepts/internal-real-vs-total-metrics.md` — how the AIOS metric surfaces separate real from
+synthetic (Overview real-only + banner/subs; Simulation mirrors the Overview card set 1:1 for the
+bot cohort via a shared pure `deriveCardModel(stats,mode)` + `PlatformMetricSections`; synthetic =
+`total_all − total`; `*_all` fields optional for graceful pre-migration degradation). Completes the
+2026-07-25 "real vs total" Overview theme on the same branch `feat/internal-metrics-real-vs-total`.
+Pages updated: index.md (Concepts), concepts/synthetic-weight-engine.md (See Also backlink). RAG
+sync deferred to the post-merge docs/ hook.

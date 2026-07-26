@@ -116,6 +116,16 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   closed-anon-DML `leads` table and throttled `capture-lead` fn; both live on prod.
   **Pending:** set the `LEADS_NOTIFY_EMAIL` edge secret — without it nobody is notified of a
   captured lead. → `docs/wiki/concepts/landing-lead-capture.md` · `feat/landing-luxe-redesign`
+- **Internal real-vs-total metrics (AIOS scaling dashboard, sub-project 1 of 4)** — the `/internal`
+  Overview is real-only with a **live** "synthetic active" banner + "of N incl. synthetic" subs
+  (shipped, PR #344); the Simulation page now **mirrors the Overview card set 1:1 for the synthetic
+  cohort** (synthetic = `total_all − total` via a shared pure `deriveCardModel`/`PlatformMetricSections`;
+  `*_all` fields optional so the frontend degrades gracefully pre-migration) — built, PR #346.
+  Sub-projects 2 (live infra telemetry + scaling headroom), 3 (cost model + DAU forecast 500K/750K/1M),
+  4 (plain-language stakeholder status) are scoped, not built. **Pending:** merge PR #346, then re-apply
+  migration `20260725150000` at the careful gate to add its three new `*_all` breakdown keys to prod
+  (the `*_all` totals already landed with #344).
+  → `docs/wiki/concepts/internal-real-vs-total-metrics.md` · `feat/internal-metrics-real-vs-total`
 
 ### Shipped
 
