@@ -79,11 +79,37 @@ for (const dir of DIRS) {
   }
 }
 
-console.log(`Found ${pages.length} in-scope wiki pages. Syncing to ${URL} ...`);
+// One oversized page fails its WHOLE batch (the embedding call sends the batch as a single
+// `input` array, so OpenAI's 8,192-token-per-input limit rejects all 50). On 2026-07-26 a
+// 33 KB concepts page did exactly that: "Invalid 'input[8]': maximum input length is 8192
+// tokens" → 41 unrelated pages never reached the RAG. Wiki pages cannot use the
+// truncate-embed-but-store-full trick sync-internal-docs.mjs relies on (the edge function
+// rejects `full_content` on non-internal scope), so the fix is to keep pages small — this
+// check names the offender instead of leaving a 502 to decode.
+// Calibrated empirically, NOT theoretically — the char:token ratio varies with how much code,
+// table pipe and symbol a page carries, so these are the observed data points:
+//   29,865 chars — synced fine (analyses/…dre-full-system-spec.md)
+//   33,369 chars — REJECTED  (concepts/synthetic-weight-engine.md, before its split)
+// The cliff is somewhere between. Re-calibrate here if a page under FAIL_CHARS still 502s.
+const FAIL_CHARS = 31_000;
+const WARN_CHARS = 24_000;
+
+// An oversized page is SKIPPED, never fatal: the other pages still sync and the exit code
+// carries the failure. Blocking the whole run would reproduce the very defect this guards.
+const oversized = pages.filter((p) => p.content.length > FAIL_CHARS);
+for (const p of pages.filter((p) => p.content.length > WARN_CHARS && p.content.length <= FAIL_CHARS)) {
+  console.warn(`WARNING: ${p.source_id} is ${p.content.length} chars — approaching the embedding ceiling. Split it soon.`);
+}
+for (const p of oversized) {
+  console.error(`SKIPPING ${p.source_id} — ${p.content.length} chars exceeds ~${FAIL_CHARS}; it would fail its entire batch. Split it into focused siblings (a page this size is usually covering two subjects) and re-run.`);
+}
+const syncable = pages.filter((p) => p.content.length <= FAIL_CHARS);
+
+console.log(`Found ${pages.length} in-scope wiki pages${oversized.length ? ` (${oversized.length} skipped as oversized)` : ""}. Syncing to ${URL} ...`);
 
 let inserted = 0, updated = 0, errors = 0;
-for (let i = 0; i < pages.length; i += BATCH) {
-  const batch = pages.slice(i, i + BATCH);
+for (let i = 0; i < syncable.length; i += BATCH) {
+  const batch = syncable.slice(i, i + BATCH);
   const resp = await fetch(URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
@@ -101,5 +127,5 @@ for (let i = 0; i < pages.length; i += BATCH) {
   console.log(`Batch ${i / BATCH + 1}: +${json.inserted} inserted, ~${json.updated} updated, ${json.errors} errors`);
 }
 
-console.log(`\nDone. inserted=${inserted} updated=${updated} errors=${errors}`);
-if (errors > 0) process.exit(1);
+console.log(`\nDone. inserted=${inserted} updated=${updated} errors=${errors} skipped=${oversized.length}`);
+if (errors > 0 || oversized.length > 0) process.exit(1);
