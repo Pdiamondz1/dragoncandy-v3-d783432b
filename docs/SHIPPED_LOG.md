@@ -26,6 +26,21 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-07-25] Internal Overview "real vs total" + synthetic-active banner (`feat/internal-metrics-real-vs-total`)
+
+Founder reported the `/internal` Overview metrics "not updating." A read-only diagnosis found the pipeline
+**healthy** — the Overview is a **live, synthetic-excluding** dashboard (`aios_platform_stats` counts every
+entity `WHERE NOT is_synthetic(...)`), so with ~2,025 synthetic bots vs ~40 real users it *correctly* sits
+flat (last real signup 2026-07-20). Not a bug — the segregation working as designed. Fix (this branch):
+`aios_platform_stats` gains purely-additive `*_all` (total incl. synthetic) counts beside every real count
+(migration `20260725150000`, security posture byte-unchanged, **founder-gated apply**); `InternalOverview`
+adds a **"synthetic test data is active" banner** (shown when `users.total_all > users.total`, computing the
+excluded synthetic profiles/businesses/campaigns from the `all − real` gap) and an **"of N incl. synthetic"
+sub on each entity card** (via `ofTotal`/`withSub` helpers — only rendered when the gap is non-zero, so a
+clean prod with no synthetic data is visually unchanged). The Weight + Simulation pages remain the
+synthetic-*inclusive* views. Durable lesson: a flat live-and-synthetic-excluding metric reads as "stale" —
+it isn't; verify the pipeline before assuming a break. Codex clean (1 pass); typecheck + build green.
+
 ## [2026-07-25] Living Synthetic Marketplace (Sub-project A) — offline build + live teardown (`feat/living-marketplace`)
 
 Sub-project A of the living-marketplace / 200K-DAU initiative: a **persistent, browsable synthetic
