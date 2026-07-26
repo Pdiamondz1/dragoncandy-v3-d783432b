@@ -31,8 +31,7 @@ begin
       coalesce((notes->>'media_requests')::bigint, 0)  as media_requests,
       coalesce((notes->>'media_bytes')::bigint, 0)     as media_bytes,
       coalesce((notes->>'media_errors')::bigint, 0)    as media_errors,
-      coalesce((notes->>'p95_ms')::numeric, 0)         as p95_ms,
-      coalesce((notes->>'media_ms_p95')::numeric, 0)   as media_ms_p95
+      coalesce((notes->>'p95_ms')::numeric, 0)         as p95_ms
     from snap
     where notes ? 'shard'
     order by notes->>'shard', captured_at desc
@@ -71,7 +70,7 @@ begin
     'media_requests',          coalesce((select sum(media_requests) from per_shard), 0),
     'media_bytes',             coalesce((select sum(media_bytes) from per_shard), 0),
     'media_errors',            coalesce((select sum(media_errors) from per_shard), 0),
-    'media_ms_p95_peak',       coalesce((select max(media_ms_p95) from per_shard), 0),
+    'media_ms_p95_peak',       coalesce((select max(coalesce((notes->>'media_ms_p95')::numeric, 0)) from snap where notes ? 'shard'), 0),
     'p95_ms',                  coalesce((select max(p95_ms) from per_shard), 0),
     'db_active_conn_peak',     coalesce((select max(active_connections) from snap), 0),
     'db_avg_query_ms_peak',    coalesce((select max(avg_query_ms) from snap), 0),
@@ -91,7 +90,7 @@ grant  execute on function public.get_sim_load_matrix_summary(text) to authentic
 -- One statement per MCP execute_sql call. OVERLAP case (honest == naive):
 --   begin;
 --     insert into sim_load_snapshots (run_label, captured_at, active_connections, max_connections, avg_query_ms, error_rate, notes) values
---       ('m-ovl','2026-07-25 10:00:00+00',40,90,1.0,0,'{"shard":0,"concurrency":200,"count":50,"ok":50,"throttled":0,"breakage":0,"media_requests":5,"media_bytes":2000,"media_errors":0,"media_ms_p95":80,"p95_ms":100}'),
+--       ('m-ovl','2026-07-25 10:00:00+00',40,90,1.0,0,'{"shard":0,"concurrency":200,"count":50,"ok":50,"throttled":0,"breakage":0,"media_requests":5,"media_bytes":2000,"media_errors":0,"media_ms_p95":120,"p95_ms":100}'),
 --       ('m-ovl','2026-07-25 10:00:05+00',45,90,1.1,0,'{"shard":0,"concurrency":200,"count":100,"ok":100,"throttled":0,"breakage":0,"media_requests":10,"media_bytes":4000,"media_errors":1,"media_ms_p95":90,"p95_ms":110}'),
 --       ('m-ovl','2026-07-25 10:00:00+00',50,90,1.2,0,'{"shard":1,"concurrency":200,"count":60,"ok":60,"throttled":0,"breakage":0,"media_requests":6,"media_bytes":2500,"media_errors":0,"media_ms_p95":85,"p95_ms":120}'),
 --       ('m-ovl','2026-07-25 10:00:05+00',55,90,1.3,0,'{"shard":1,"concurrency":200,"count":120,"ok":118,"throttled":2,"breakage":0,"media_requests":12,"media_bytes":5000,"media_errors":2,"media_ms_p95":95,"p95_ms":130}');
@@ -99,7 +98,7 @@ grant  execute on function public.get_sim_load_matrix_summary(text) to authentic
 --     set local role authenticated;
 --     select public.get_sim_load_matrix_summary('m-ovl');
 --       -- expect offered_concurrency=400, honest_peak_concurrency=400, max_concurrent_shards=2,
---       --        requests=220, media_requests=22, media_errors=3, media_ms_p95_peak=95.
+--       --        requests=220, media_requests=22, media_errors=3, media_ms_p95_peak=120.
 --   rollback;
 -- STAGGER case (honest < naive — the bug this migration fixes):
 --   begin;
