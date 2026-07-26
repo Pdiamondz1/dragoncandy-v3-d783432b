@@ -57,9 +57,9 @@ const InternalOverview = () => {
           The metrics below count <span className="font-semibold">real users only</span> — excluding{' '}
           {((p.users.total_all ?? 0) - p.users.total).toLocaleString()} synthetic profiles,{' '}
           {(
-            p.businesses.restaurants_all + p.businesses.brands_all - p.businesses.restaurants - p.businesses.brands
+            (p.businesses.restaurants_all ?? 0) + (p.businesses.brands_all ?? 0) - p.businesses.restaurants - p.businesses.brands
           ).toLocaleString()}{' '}
-          businesses, and {(p.campaigns.total_all - p.campaigns.total).toLocaleString()} campaigns. See the{' '}
+          businesses, and {((p.campaigns.total_all ?? 0) - p.campaigns.total).toLocaleString()} campaigns. See the{' '}
           <span className="font-mono">Simulation</span> page for the synthetic-inclusive view.
         </div>
       )}

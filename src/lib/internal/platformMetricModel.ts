@@ -88,7 +88,7 @@ export function deriveCardModel(stats: PlatformStats, mode: MetricMode): MetricS
         },
         {
           label: 'Creators',
-          value: real ? creatorsReal : Math.max(0, creatorsAll - creatorsReal),
+          value: real ? creatorsReal : synthValue(creatorsReal, creatorsAll),
           sub: real ? ofTotal(creatorsReal, creatorsAll) : undefined,
         },
         {

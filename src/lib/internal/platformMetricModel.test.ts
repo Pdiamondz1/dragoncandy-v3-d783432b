@@ -125,6 +125,17 @@ describe('degradation — *_all breakdown maps absent', () => {
     expect(c['Creators'].value).toBe(17);
     expect(c['Creators'].sub).toBeUndefined();
   });
+
+  it('synthetic mode Creators degrades to 0 (no throw) when by_role_all is absent', () => {
+    const missingByRoleAll: PlatformStats = {
+      ...STATS,
+      users: { total: 40, total_all: 2065, by_role: { content_creator: 17, business_client: 20 } },
+    };
+    const c: Record<string, { value: number; sub?: string }> = {};
+    for (const s of deriveCardModel(missingByRoleAll, 'synthetic')) for (const k of s.cards) c[k.label] = k;
+    expect(c['Total users'].value).toBe(2025);
+    expect(c['Creators'].value).toBe(0);
+  });
 });
 
 describe('syntheticTotalUsers', () => {
