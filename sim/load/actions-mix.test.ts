@@ -168,4 +168,18 @@ describe("buildHotActions — the realistic DAU behavior mix", () => {
     expect(res).toMatchObject({ bytes: 0, ok: false });
     expect(typeof res.ms).toBe("number");
   });
+
+  it("media_fetch caps a 200 with NO Content-Length (chunked, Range ignored) — capped miss, no body download", async () => {
+    let bodyRead = false;
+    const fetchImpl = (async () => ({
+      ok: true,
+      status: 200, // Range ignored, and no Content-Length (chunked)
+      headers: { get: () => null },
+      arrayBuffer: async () => { bodyRead = true; return new ArrayBuffer(9_000_000); },
+    })) as unknown as typeof fetch;
+    const media = buildHotActions({ mediaUrls: ["http://cdn/chunked"], fetchImpl }).find((a) => a.name === "media_fetch")!;
+    const res = (await media.run({} as SupabaseClient, ctx)) as MediaResult;
+    expect(bodyRead).toBe(false);
+    expect(res).toMatchObject({ bytes: 0, ok: false });
+  });
 });

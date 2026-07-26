@@ -117,7 +117,9 @@ export function buildHotActions(opts: BuildMixOptions = {}): HotAction[] {
     {
       // Real storage-egress: a Range-capped GET of a public DragonCandy Storage object (Slice 2).
       // Exercises the true serving path (DNS→TLS→Supabase Storage→S3) with a hard byte cap so cost is
-      // computable. Returns { bytes, ok, ms }; a non-2xx / network error is a media ERROR, never a throw.
+      // computable. Returns { bytes, ok, ms }; only a 206 Partial Content downloads the (cap-bounded)
+      // body — any other status (200 w/ Range ignored, 403/404/416/5xx) or a network error is a media
+      // ERROR, never a throw.
       name: "media_fetch",
       weight: 15,
       run: async (): Promise<MediaResult> => {
@@ -125,17 +127,13 @@ export function buildHotActions(opts: BuildMixOptions = {}): HotAction[] {
         const t0 = now();
         try {
           const res = await fetchImpl(url, { method: "GET", headers: { Range: `bytes=0-${rangeCapBytes - 1}` } });
-          // 200 and 206 (Partial Content) are both res.ok (200–299). 403/404/416/5xx → media error.
-          if (!res.ok) return { bytes: 0, ok: false, ms: now() - t0 };
-          // Bounded-egress guard: if the host IGNORED Range and returns a full body LARGER than the cap
-          // (declared via Content-Length — S3/Supabase Storage always sets it), do NOT download it: treat
-          // it as a capped miss. A 206 partial response declares <= cap, so it passes through.
-          const declaredLen = Number(res.headers?.get?.("content-length") ?? "");
-          if (Number.isFinite(declaredLen) && declaredLen > rangeCapBytes) {
-            return { bytes: 0, ok: false, ms: now() - t0 };
-          }
+          // Bounded egress (absolute): REQUIRE 206 Partial Content — its body is by definition <= the
+          // requested cap. A 200 means the host IGNORED Range and would stream the FULL object (possibly
+          // chunked, with no Content-Length), so treat it — and any non-206 (403/404/416/5xx) — as a capped
+          // MISS: never download it, never throw (media errors are tallied apart from breakage).
+          if (res.status !== 206) return { bytes: 0, ok: false, ms: now() - t0 };
           const buf = await res.arrayBuffer();
-          // Final clamp so tallied egress can never exceed the cap even if a body slipped through.
+          // Clamp is belt-and-suspenders — a 206 body is already <= cap.
           return { bytes: Math.min(buf.byteLength, rangeCapBytes), ok: true, ms: now() - t0 };
         } catch {
           return { bytes: 0, ok: false, ms: now() - t0 };
