@@ -72,7 +72,7 @@ no second migration is created):
 |---|---|---|
 | `campaigns.by_status_all` | Activity | synthetic "N active" |
 | `dragonshare.posts_by_status_all` | Activity | synthetic "N verified" |
-| `social_connections.by_platform_all` | Content/Activity | synthetic "by platform" |
+| `social_connections.by_platform_all` | Activity | synthetic "by platform" |
 
 Each is purely additive — same `create or replace`, same `jsonb_object_agg` pattern as
 the existing real breakdowns but without the `WHERE NOT is_synthetic` filter. The
@@ -97,11 +97,15 @@ pages **cannot drift**:
 
 - **`deriveCardModel(stats: PlatformStats, mode: 'real' | 'synthetic'): Section[]`** — a
   pure function (new file, e.g. `src/lib/internal/platformMetricModel.ts`) returning the
-  section→cards model. In `'real'` mode each card's value is `total` and its sub matches
-  Overview's current output (existing breakdown sub **plus** the "of N incl. synthetic"
-  sub). In `'synthetic'` mode each value is `total_all − total` and each sub is the
-  breakdown diff (`all[k] − real[k]`); the "of N incl. synthetic" affordance is
-  real-mode-only and is omitted. A small `diffBuckets(all, real)` helper computes
+  section→cards model, where
+  `Section = { heading: string; cards: CardModel[] }` and
+  `CardModel = { label: string; value: number; sub?: string; accent?: 'teal' | 'pink' }`.
+  In `'real'` mode each card's value is `total` and its sub matches Overview's current
+  output (existing breakdown sub **plus** the "of N incl. synthetic" sub). In
+  `'synthetic'` mode each value is `total_all − total` and each sub is the breakdown diff
+  (`all[k] − real[k]`); the "of N incl. synthetic" affordance is real-mode-only and is
+  omitted. Synthetic cards use the **default teal** accent (no pink) so the comparison
+  reads apples-to-apples with Overview. A small `diffBuckets(all, real)` helper computes
   per-key differences with clamping (never negative) and handles keys present in `all`
   but not `real`.
 - **`<PlatformMetricSections stats mode />`** — new component (e.g.
@@ -110,13 +114,18 @@ pages **cannot drift**:
   `src/components/internal/stats.tsx`.
 
 **Overview** is refactored to render `<PlatformMetricSections stats={p} mode="real" />`
-in place of its inline three sections — a behavior-preserving refactor; its *Revenue*
-and admin *AI spend* sections stay inline on Overview (they are not part of the shared
-component). Verify the refactor produces byte-identical output to today's Overview.
+in place of its inline three count sections — a behavior-preserving refactor. Its
+*Revenue* section, admin *AI spend* section, **and the `syntheticActive` real-vs-total
+banner** all stay inline on Overview (none is a count section, so none is part of the
+shared component). Verify the refactor produces byte-identical output to today's
+Overview.
 
 ### 3. Simulation page structure
 
-Restructure `InternalSimulation.tsx` to mirror all five Overview sections, then a
+Restructure `InternalSimulation.tsx` to present the five Overview sections in order —
+where only the **three count sections** go through the shared `PlatformMetricSections`
+(synthetic mode), and **Revenue / AI spend are synthetic analogs** (the reused
+Modeled-revenue and Synthetic-AI-spend cards, not shared-component mirrors) — then a
 divider, then the simulation-only internals:
 
 ```
@@ -135,6 +144,14 @@ The page keeps calling **both** `useSimulationStats()` (kill switch, personas, m
 MTD AI spend, `bots_total` registry) **and** `usePlatformStats()` (the parity counts).
 `synthetic_campaigns` stops being its own card — it now appears in the Activity mirror.
 
+**Loading/error isolation (second query).** Adding `usePlatformStats()` introduces a
+second async source. The page's top-level spinner/error stays gated on
+`useSimulationStats` only (as today); the three parity sections render inside
+`PlatformMetricSections`, which **owns its own loading / error / empty states** — matching
+the page's existing per-widget resilience (the Matrix and Load-curve widgets already do
+this). So a platform-stats failure or slow load degrades only the parity block (spinner,
+then an inline error card), never blanking the whole page.
+
 **Registry reconciliation:** the mirror's "Total users (synthetic)" = `all − real`
 *profiles*; the retained `Bots total (registry)` = `synthetic_users` row count. They
 should match; keeping the registry count in the internals zone makes any gap (accounts
@@ -142,9 +159,10 @@ minted without a profile row) visible rather than hidden.
 
 ### 4. Edge cases
 
-- **Kill switch off / no synthetic data** → every synthetic count is 0; the mirror shows
-  zeros (correct — "no cohort"), with a soft "No synthetic cohort active" note above the
-  sections.
+- **Kill switch off / no synthetic data** → every synthetic count is 0. In synthetic
+  mode, when the derived synthetic total-users count is 0, `PlatformMetricSections`
+  renders a soft "No synthetic cohort active" note in place of the zeroed sections (its
+  own empty state). Real mode never shows this note.
 - **RPC one version behind** (the three `*_all` maps absent) → `deriveCardModel` omits
   the affected synthetic sub-lines but still renders the headline counts; no crash.
 - **Bucket diff underflow** → `diffBuckets` clamps at 0.
