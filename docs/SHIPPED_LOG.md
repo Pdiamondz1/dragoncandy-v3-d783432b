@@ -26,6 +26,36 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-07-26] Living Synthetic Marketplace — go-live record + status correction
+
+**Not new work — a record of work that shipped without one, and the correction of three docs that
+still described it as pending.** The [[Living Synthetic Marketplace]] (Sub-project A) went live on
+prod across PRs #339–#342 on 2026-07-25 and was scaled the same day, but the 07-25 `SHIPPED_LOG`
+entry below covers the *offline build + live teardown* only — the go-live itself was never logged,
+so `PROJECT_CONTEXT.md` §5, the wiki concept page's `## State`, and the `index.md` entry all still
+read "offline code complete … **Pending (founder-gated):** merge → dispatch a small 2/4 seed → …
+→ scale to 100/300". §5 is loaded into every session, so that stale line was being read as current
+by every subsequent session for a day.
+
+**Verified live state** (counted from the registry, not inferred): **2,000 `botmk_` profiles — 500
+business / 1,500 creator** across 24 US cities, split into **24 active** (`botmk_b_` 8 /
+`botmk_c_` 16 — interactive, real RLS-enforced flows) and **1,976 depth** (`botmk_db_` 492 /
+`botmk_dc_` 1,484 — bulk-inserted, browse-only, never authenticate).
+
+**Why the split exists** (the durable design point, now stated on the concept page): minting a bot
+session costs a real authentication and prod rate-limits those at roughly 25 per IP, so a browsable
+marketplace of 2,000 profiles is simply unreachable by minting 2,000 sessions. Depth profiles exist
+to be *browsed*, so they skip auth entirely; only the ~24-bot active core runs live flows. Scaling
+further is direct `seed_synthetic_marketplace_depth(<biz>, <creators>, <seed>)` calls (~400 rows
+each) under fresh seeds. Segregation held byte-identically across the scale-up, and the live 25-bot
+`bot0##` Synthetic Weight crew cohort was untouched. Reset is the `botmk_`-scoped
+`marketplace-purge`, never `purge_synthetic_data()`.
+
+Docs corrected: §5 entry **moved** Built-awaiting-go-live → Shipped; the concept page's `## State`
+rewritten with the live table + a dated note of what it used to claim; the `index.md` entry's
+"offline code complete, seed run founder-gated" tail replaced. The 07-25 entry below is deliberately
+left as written — `SHIPPED_LOG` entries are historical snapshots, not current status.
+
 ## [2026-07-26] The 200K-band load run + the 16 KB header wall (`fix/sim-preflight-header-overflow`, PR #345)
 
 The session where [[Synthetic Weight Engine]] Slice 2 stopped being *built* and became *run*. Three

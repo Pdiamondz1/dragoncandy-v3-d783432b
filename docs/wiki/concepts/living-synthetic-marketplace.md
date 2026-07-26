@@ -93,12 +93,31 @@ org_members). Explicit residue: `storage.objects` (botmk uids + botmk promotion 
   limit abort, seed-shipped-without-teardown, the missing cohort cap, downstream-not-resumable, and the
   one-shot/documented-resumable contradiction — all resolved.
 
-## State
+## State — LIVE on prod at 2,000 profiles (2026-07-25/26)
 
-Offline code COMPLETE + reviewed (223 sim tests, tsc+lint clean). Teardown RPC LIVE on prod. **Pending
-(founder-gated):** merge → dispatch a small 2/4 `marketplace-seed` → segregation proof
-(`aios_*`/`platform_weight.*_real` byte-identical across the new surfaces) + teardown-to-zero → scale to
-100/300 (+`--multi-location`/`--cgc`) → optional LLM brief.
+**Shipped and running.** PRs #339–#342 merged; the whole founder-gated sequence below was executed and
+the cohort is live on prod, **scaled well past the original 100/300 target**:
+
+| Lane | Business | Creator | Total |
+|-|-|-|-|
+| **Active** (interactive, `botmk_b_`/`botmk_c_`) | 8 | 16 | 24 |
+| **Depth** (browse-only bulk insert, `botmk_db_`/`botmk_dc_`) | 492 | 1,484 | 1,976 |
+| | **500** | **1,500** | **2,000** |
+
+**The active/depth split is the load-bearing design decision, not an optimisation.** Minting a session
+costs an authentication, and prod rate-limits those per IP at roughly 25 — so a browsable marketplace of
+2,000 profiles is unreachable by minting 2,000 sessions. Depth profiles are bulk-inserted and never
+authenticate (they exist to be *browsed*); only the ~24-bot active core runs real interactive flows.
+Scaling further is direct `seed_synthetic_marketplace_depth(<biz>, <creators>, <seed>)` calls under fresh
+seeds, ~400 rows apiece.
+
+**Segregation held byte-identically** across the scale-up — real founder metrics unchanged, and the live
+25-bot [[Synthetic Weight Engine]] `bot0##` crew cohort untouched. Reset is the `botmk_`-scoped
+`marketplace-purge`, never `purge_synthetic_data()`.
+
+(This section read "Offline code COMPLETE … **Pending (founder-gated):** merge → dispatch a small 2/4 →
+… → scale to 100/300" until 2026-07-26, describing the state at build time — it had been wrong since the
+merges on 07-25.)
 
 ## See Also
 - [[Synthetic Weight Engine]]
