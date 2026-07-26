@@ -30,11 +30,13 @@ begin
     'campaigns', jsonb_build_object(
       'total',(select count(*) from campaigns where not public.is_synthetic(user_id)),
       'total_all',(select count(*) from campaigns),
-      'by_status',(select coalesce(jsonb_object_agg(status,cnt),'{}'::jsonb) from (select status::text as status,count(*) as cnt from campaigns where not public.is_synthetic(user_id) group by status) c)),
+      'by_status',(select coalesce(jsonb_object_agg(status,cnt),'{}'::jsonb) from (select status::text as status,count(*) as cnt from campaigns where not public.is_synthetic(user_id) group by status) c),
+      'by_status_all',(select coalesce(jsonb_object_agg(status,cnt),'{}'::jsonb) from (select status::text as status,count(*) as cnt from campaigns group by status) c_all)),
     'dragonshare', jsonb_build_object(
       'posts_total',(select count(*) from dragonshare_posts where not public.is_synthetic(creator_id)),
       'posts_total_all',(select count(*) from dragonshare_posts),
       'posts_by_status',(select coalesce(jsonb_object_agg(status,cnt),'{}'::jsonb) from (select status,count(*) as cnt from dragonshare_posts where not public.is_synthetic(creator_id) group by status) p),
+      'posts_by_status_all',(select coalesce(jsonb_object_agg(status,cnt),'{}'::jsonb) from (select status,count(*) as cnt from dragonshare_posts group by status) p_all),
       'boosts_total',(select count(*) from dragonshare_boosts b where not (public.is_synthetic(b.boosting_user_id) or public.is_synthetic_org(b.boosting_org_id) or public.is_synthetic((select dp.creator_id from dragonshare_posts dp where dp.id=b.post_id)))),
       'boosts_total_all',(select count(*) from dragonshare_boosts)),
     'promotions', jsonb_build_object(
@@ -49,7 +51,8 @@ begin
     'social_connections', jsonb_build_object(
       'total',(select count(*) from business_outstand_accounts where not public.is_synthetic(user_id)),
       'total_all',(select count(*) from business_outstand_accounts),
-      'by_platform',(select coalesce(jsonb_object_agg(platform,cnt),'{}'::jsonb) from (select platform,count(*) as cnt from business_outstand_accounts where not public.is_synthetic(user_id) group by platform) bp)),
+      'by_platform',(select coalesce(jsonb_object_agg(platform,cnt),'{}'::jsonb) from (select platform,count(*) as cnt from business_outstand_accounts where not public.is_synthetic(user_id) group by platform) bp),
+      'by_platform_all',(select coalesce(jsonb_object_agg(platform,cnt),'{}'::jsonb) from (select platform,count(*) as cnt from business_outstand_accounts group by platform) bp_all)),
     'generated_at', now());
 end; $function$;
 
@@ -62,6 +65,10 @@ end; $function$;
 --     select (aios_platform_stats()->'users'->>'total')::int      as real_users,
 --            (aios_platform_stats()->'users'->>'total_all')::int   as all_users,       -- all >= real
 --            (aios_platform_stats()->'campaigns'->>'total_all')::int as all_campaigns,  -- present
---            (aios_platform_stats()->'businesses'->>'locations_all')::int as all_locations;
+--            (aios_platform_stats()->'businesses'->>'locations_all')::int as all_locations,
+--            (aios_platform_stats()->'campaigns'->'by_status_all') as by_status_all,          -- present
+--            (aios_platform_stats()->'dragonshare'->'posts_by_status_all') as posts_by_status_all, -- present
+--            (aios_platform_stats()->'social_connections'->'by_platform_all') as by_platform_all;  -- present
 --       -- expect all_users >= real_users (the gap = synthetic profiles), every *_all key present.
+--       -- each *_all bucket >= its real bucket (gap = synthetic volume for that status/platform).
 --   rollback;

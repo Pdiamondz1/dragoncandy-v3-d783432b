@@ -10,11 +10,12 @@ export interface PlatformStats {
     brands: number; brands_all: number;
     locations: number; locations_all: number;
   };
-  campaigns: { total: number; total_all: number; by_status: Record<string, number> };
+  campaigns: { total: number; total_all: number; by_status: Record<string, number>; by_status_all?: Record<string, number> };
   dragonshare: {
     posts_total: number;
     posts_total_all: number;
     posts_by_status: Record<string, number>;
+    posts_by_status_all?: Record<string, number>;
     boosts_total: number;
     boosts_total_all: number;
   };
@@ -23,7 +24,7 @@ export interface PlatformStats {
     social_posts_logged: number; social_posts_logged_all: number;
     performance_tracked_posts: number; performance_tracked_posts_all: number;
   };
-  social_connections: { total: number; total_all: number; by_platform: Record<string, number> };
+  social_connections: { total: number; total_all: number; by_platform: Record<string, number>; by_platform_all?: Record<string, number> };
   generated_at: string;
 }
 
