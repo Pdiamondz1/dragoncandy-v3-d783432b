@@ -37,10 +37,10 @@ matters*, and an auto status signal; under a **founder-set narrative headline**.
 - **No LLM-generated phrasing.** All wording is deterministic/templated from the numbers — a
   stakeholder-facing figure must be exact, reproducible, and free (no `donny_cost_ledger` hit,
   no hallucination risk).
-- **Minimal new backend.** Stories compose existing real-only sources; the only additions are the
-  founder-headline KV row and **one small internal-gated `aios_stakeholder_burn()` RPC** that
-  returns the *aggregate* net-burn number (see §2 Issue-A resolution) — deliberately no
-  per-line-item or per-model cost exposure.
+- **Minimal new backend.** Stories compose existing real-only sources; the only additions are two
+  seeded `aios_dashboard_settings` KV rows (`scorecard_headline`, `scorecard_burn_ceiling`) and
+  **one small internal-gated `aios_stakeholder_burn()` RPC** returning the *aggregate* net-burn
+  (see §2 Issue-A resolution) — deliberately no per-line-item or per-model cost exposure.
 - **No auto-computed overall "health score."** Pre-revenue makes the §3 kill-switch guardrails
   N/A; an algorithm must not flash a scary verdict before a board meeting. The headline is
   founder-set; only per-story signals are auto (with gentle, stage-appropriate rules).
@@ -66,7 +66,7 @@ matters*, and an auto status signal; under a **founder-set narrative headline**.
 | Story | Sources (all existing) |
 |---|---|
 | Traction & growth | `aios_platform_stats` (real counts) + `platform_weight` daily snapshots for the ~30-day trend (`users_total_real` over time) |
-| Capital efficiency | **Admins:** `useOperatingExpenses` (opex) + `aios_cost_stats` (MTD AI spend) − `aios_revenue_stats` (MTD fee) = net burn (the Expenses page's exact math). **Stakeholders (non-admin):** the new `aios_stakeholder_burn()` RPC returning the same aggregate figure — see Issue-A resolution below. |
+| Capital efficiency | **Everyone (admin + stakeholder)** reads the new `aios_stakeholder_burn()` RPC, which does the opex + AI-spend − revenue math **server-side** and returns the aggregate. No client-side fork, no admin-only hooks on this page — see Issue-A resolution below. |
 | Scale headroom | `usePlatformWeight` latest `db_bytes` (physical) + `DISK_LIMIT_BYTES`/`COMPUTE_TIERS` from `weightThresholds` |
 | Revenue readiness | static framing + `aios_revenue_stats` MTD + the §8 take-rate ladder (static facts) |
 
@@ -177,8 +177,9 @@ headline + date stamp. The button renders it (modal or dedicated print view) and
 | `src/pages/internal/InternalScorecard.tsx` (+ component test) | **New** — the page |
 | internal shell nav config + `App.tsx` route | Add the `/internal/scorecard` route + Monitor-group nav item |
 
-Reused (unchanged): `usePlatformStats`, `usePlatformWeight`, `useCostStats`, `useRevenueStats`,
-`useOperatingExpenses`, `aiCapStatus`, `weightThresholds`.
+Reused (unchanged): `usePlatformStats`, `usePlatformWeight`, `useRevenueStats`, `aiCapStatus`,
+`weightThresholds`. **Not** used on this page: `useCostStats` / `useOperatingExpenses` (admin-only;
+the burn figure comes from `aios_stakeholder_burn()` instead — do not wire these here).
 
 ## Testing
 
