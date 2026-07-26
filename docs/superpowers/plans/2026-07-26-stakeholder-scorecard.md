@@ -91,6 +91,7 @@ $function$;
 
 revoke execute on function public.aios_stakeholder_burn() from public, anon;
 grant execute on function public.aios_stakeholder_burn() to authenticated;
+grant execute on function public.aios_stakeholder_burn() to service_role;  -- consistency w/ sibling aios_* RPCs
 
 -- ===== VERIFICATION (coordinator runs at the careful gate — NOT applied by this migration) =====
 -- Rollback-free, read-only. Fake an internal (non-admin) caller and confirm aggregate-only output:
@@ -170,6 +171,8 @@ export function useUpdateScorecardHeadline() {
   });
 }
 ```
+
+Note: this is the first *direct client* write to `aios_dashboard_settings` (existing writes go via the `apply_correction` SECURITY DEFINER RPC). The direct `.update()` is permitted by the existing admin-UPDATE RLS and leaves the audit `updated_by` column null — acceptable for this founder-set string (the corrections audit trail doesn't apply here). Don't add a new RPC just for this.
 
 - [ ] **Step 2: `useScorecardBurn.ts`**
 
@@ -263,7 +266,7 @@ describe('buildScorecard', () => {
     expect(s.efficiency.signal).toBe('amber'); // 40200 > 40000 ceiling
   });
   it('headroom: ~100x and green under 70%', () => {
-    expect(s.headroom.headline).toMatch(/~1\d\dx|~100x/); // 8GB / 78MB ≈ 105 → clamped ~100x
+    expect(s.headroom.headline).toMatch(/~1\d\d×|~100×/); // 8GB / 78MB ≈ 105 → clamped ~100× (Unicode ×)
     expect(s.headroom.signal).toBe('green');
   });
   it('revenue: always info', () => {
@@ -428,7 +431,8 @@ git commit -m "feat(internal): scorecard story card + print-optimized snapshot"
 **Files:** Create `src/pages/internal/InternalScorecard.tsx` + `src/pages/internal/InternalScorecard.test.tsx`; modify `src/components/internal/InternalLayout.tsx`, `src/App.tsx`.
 
 - [ ] **Step 1: `InternalScorecard.tsx`** — compose the hooks + model + components:
-  - Hooks: `usePlatformStats` (real counts), `usePlatformWeight` (snapshots), `useScorecardBurn`, `useScorecardHeadline` + `useScorecardBurnCeilingCents`, `useRevenueStats` (for the revenue story facts), `useInternalAccess` (`isAdmin`). Compute `aiUnderCap` via `aiCapStatus(mtd_ai_spend_usd, mtd_revenue_cents/100).status === 'green'` (import from `@/lib/aiCostCap`).
+  - Hooks: `usePlatformStats` (real counts), `usePlatformWeight` (snapshots), `useScorecardBurn`, `useScorecardHeadline` + `useScorecardBurnCeilingCents`, `useInternalAccess` (`isAdmin`). Compute `aiUnderCap` via `aiCapStatus(burn.mtd_ai_spend_usd, burn.mtd_revenue_cents/100).status === 'green'` (import from `@/lib/aiCostCap`). **Do NOT add `useRevenueStats`** — the revenue-readiness story is fully static (no live figure), so it would be an unused hook.
+  - Map `PlatformStats` → model inputs exactly as `InternalOverview.tsx` does: `realUsers = p.users.total`, `realCreators = p.users.by_role['content_creator'] ?? 0`, `realBusinesses = p.businesses.restaurants + p.businesses.brands`, `realCampaigns = p.campaigns.total`, `realPosts = p.dragonshare.posts_total` (all real-only, un-suffixed — NOT `*_all`).
   - Build stories with `buildScorecard(...)` using `DISK_LIMIT_BYTES` from `weightThresholds`.
   - Render: `PageHeader title="How DragonCandy is doing"` with an admin-only **Export snapshot** action; the **founder headline** (admin: inline-editable via `useUpdateScorecardHeadline` + a save; non-admin: read-only text); an **"as of {date} · real users only"** stamp; then `<ScorecardStoryCard>` × 4 in a responsive grid.
   - Each card degrades independently: if a needed hook errored, that card shows a "—" headline (never blank the page); the page-level guard only trips if `platform` itself fails to load (mirror `InternalOverview`'s top guard).
