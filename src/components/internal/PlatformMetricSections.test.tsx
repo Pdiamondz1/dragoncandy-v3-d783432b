@@ -45,4 +45,14 @@ describe('PlatformMetricSections', () => {
     render(<PlatformMetricSections mode="synthetic" stats={base} isLoading={false} isError={false} />);
     expect(screen.getByText('2025')).toBeInTheDocument();
   });
+
+  it('shows a migration-needed state (not a false empty cohort) when total_all is absent', () => {
+    const preMigration: PlatformStats = {
+      ...base,
+      users: { total: 40, by_role: { content_creator: 17 }, by_role_all: { content_creator: 17 } },
+    };
+    render(<PlatformMetricSections mode="synthetic" stats={preMigration} isLoading={false} isError={false} />);
+    expect(screen.getByText(/totals migration/i)).toBeInTheDocument();
+    expect(screen.queryByText(/no synthetic cohort active/i)).not.toBeInTheDocument();
+  });
 });

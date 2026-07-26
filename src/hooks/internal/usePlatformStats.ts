@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface PlatformStats {
   // `*_all` = total INCL. synthetic; the un-suffixed counts are real (synthetic-excluded). The gap
   // (all − real) is the synthetic volume the Overview surfaces as a banner + per-card "of N total".
-  users: { total: number; total_all: number; by_role: Record<string, number>; by_role_all?: Record<string, number> };
+  users: { total: number; total_all?: number; by_role: Record<string, number>; by_role_all?: Record<string, number> };
   businesses: {
     restaurants: number; restaurants_all: number;
     brands: number; brands_all: number;

@@ -30,7 +30,7 @@ const InternalOverview = () => {
   const p = platform.data;
   const r = revenue.data;
   const c = cost.data;
-  const syntheticActive = p.users.total_all > p.users.total;
+  const syntheticActive = (p.users.total_all ?? 0) > p.users.total;
   const topFunction = c ? topEntry(c.mtd_by_function) : undefined;
   const topModel = c ? topEntry(c.mtd_by_model) : undefined;
   // Live cap vs the ledger's MTD runtime spend. Revenue basis is DragonShare's MTD
@@ -55,7 +55,7 @@ const InternalOverview = () => {
         <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
           <span className="font-semibold text-amber-200">Synthetic test data is active.</span>{' '}
           The metrics below count <span className="font-semibold">real users only</span> — excluding{' '}
-          {(p.users.total_all - p.users.total).toLocaleString()} synthetic profiles,{' '}
+          {((p.users.total_all ?? 0) - p.users.total).toLocaleString()} synthetic profiles,{' '}
           {(
             p.businesses.restaurants_all + p.businesses.brands_all - p.businesses.restaurants - p.businesses.brands
           ).toLocaleString()}{' '}

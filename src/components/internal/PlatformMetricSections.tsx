@@ -27,12 +27,21 @@ export function PlatformMetricSections({ mode, stats, isLoading, isError }: Prop
   if (isError || !stats) {
     return <ErrorCard message="Platform stats failed to load — check your internal access." />;
   }
-  if (mode === 'synthetic' && syntheticTotalUsers(stats) <= 0) {
-    return (
-      <div className={`${INLINE_CARD} text-sm text-white/60`}>
-        No synthetic cohort active — turn the kill switch on and seed bots to populate these metrics.
-      </div>
-    );
+  if (mode === 'synthetic') {
+    // Pre-migration RPC: without total_all we can't compute synthetic = all − real, so show a
+    // migration-needed state rather than a false "no cohort" (the registry cards below still show bots).
+    if (stats.users.total_all === undefined) {
+      return (
+        <ErrorCard message="Synthetic parity needs the aios_platform_stats totals migration — apply it to populate this view." />
+      );
+    }
+    if (syntheticTotalUsers(stats) <= 0) {
+      return (
+        <div className={`${INLINE_CARD} text-sm text-white/60`}>
+          No synthetic cohort active — turn the kill switch on and seed bots to populate these metrics.
+        </div>
+      );
+    }
   }
 
   return (
