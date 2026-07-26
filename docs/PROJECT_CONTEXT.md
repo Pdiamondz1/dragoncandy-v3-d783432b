@@ -146,9 +146,14 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   workflow, a summed dashboard card; 3 migrations live on prod) shipped, plus **Slice 2 — credible 200K**
   (real Range-capped-GET storage egress replacing the HEAD proxy + an overlap-honest summary RPC —
   `honest_peak_concurrency`/`max_concurrent_shards` + media-error/latency signals — + `MAX_SHARDS` 10→20)
-  **built**; migration `20260725140000` apply + the live 200K run are founder-gated. The 2-shard live ramp +
-  Phase 6 realtime leg remain founder-gated/deferred (runbook). Measured revenue / capped Donny = Phase B
-  (separate plan). → `docs/SHIPPED_LOG.md`
+  **shipped and RUN**: migration `20260725140000` is live and the **200K-band cap-discovery run passed
+  2026-07-26** — 20 shards genuinely concurrent (honest peak 4,000 == naive; `max_concurrent_shards`=20),
+  31,000 req, 0 breakage/0 throttled, 369 MB real Storage egress, **prod DB 27/90 conns (~70% idle) ⇒ the
+  DB is not the constraint at 200K**; the knee is client-side (p95 18.4 s, step-1 knee probe skipped).
+  Unblocked by PR #345 (an unbounded `.in()` overflowing undici's 16 KB header limit, which read as a
+  network outage and would also have broken the daily `tick` cron). Phase 6 realtime leg still deferred;
+  the pre-scale RLS advisor list (~231 `multiple_permissive_policies` + ~158 `auth_rls_initplan`) is
+  untouched. Measured revenue / capped Donny = Phase B (separate plan). → `docs/SHIPPED_LOG.md`
 - **Durable pending-balance flush ledger** — stage 1 of the wallet-first payout fix ([[Payout Finalization
   & Re-entrancy]]): a durable `pending_balance_flushes` ledger (table + claim/confirm/fail/bump RPCs, a
   `flush_${id}`-keyed shared `executeFlushTransfer`, a `reconcile-pending-flushes` `*/15` cron) makes the

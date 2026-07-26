@@ -2,8 +2,8 @@
 title: Synthetic Weight Engine
 type: concept
 created: 2026-07-23
-updated: 2026-07-25
-sources: [2026-07-23-synthetic-weight-engine-phase-0.md, 2026-07-23-synthetic-weight-engine-phase-1.md, 2026-07-24-synthetic-weight-load-economics-phase-a.md, 2026-07-24-synthetic-load-runner-matrix.md, 2026-07-25-credible-200k-load-matrix-slice2.md]
+updated: 2026-07-26
+sources: [2026-07-23-synthetic-weight-engine-phase-0.md, 2026-07-23-synthetic-weight-engine-phase-1.md, 2026-07-24-synthetic-weight-load-economics-phase-a.md, 2026-07-24-synthetic-load-runner-matrix.md, 2026-07-25-credible-200k-load-matrix-slice2.md, 2026-07-26-200k-load-run-and-header-overflow.md]
 tags: [synthetic, bots, load-testing, segregation, safety-spine, aios, metrics, teardown]
 ---
 # Synthetic Weight Engine
@@ -330,7 +330,9 @@ concurrent-runner cap) can inflate without ever being simultaneous. Slice 2 clos
   latest-row-per-shard — a Codex P2 catch, since media p95 isn't monotonic across a soak the way DB
   connection counts are). The naive `offered_concurrency` is kept alongside so the staggering gap stays
   visible. Security posture unchanged from `20260724183000` (SECURITY DEFINER + in-body
-  `is_internal_user()` + anon/public revoke). **Not yet applied to prod — founder-gated.**
+  `is_internal_user()` + anon/public revoke). **Applied to prod 2026-07-26** (recorded
+  `20260726024318`), verified through the *deployed* function by replaying both embedded fixtures —
+  overlap → `honest=naive=400`, stagger → `honest=200` vs `naive=400`, the exact inflation it fixes.
 - **`/internal` surfacing.** `useSimLoadMatrixSummary.ts` + `InternalSimulation.tsx`'s
   `MatrixSummaryCard` add "Honest peak concurrency" (pink, `N shards overlapped`), relabel "Offered
   concurrency" → `naive Σ`, relabel the media-bytes card to real Range-capped-GET bytes, and add "Media
@@ -350,13 +352,67 @@ concurrent-runner cap) can inflate without ever being simultaneous. Slice 2 clos
 card; `media_ms_p95_peak` computed from latest-row-per-shard instead of a true cross-snapshot max. SDD
 per-task reviews (5 tasks) + whole-branch Opus review (**READY TO MERGE**) both passed.
 
-**Founder-gated / deferred:** applying migration `20260725140000`; the live probe→cap→200K→verify→
-teardown sequence (real egress will very likely **lower** the per-shard knee below Slice 1's HEAD-only
-~312, so the shard/concurrency split must be re-probed with real media before trusting a 200K number);
-a few stale `driver.ts` comments describing the old proxy behavior; `media_ms_p50` plumbed but not yet
-surfaced by the summary RPC; `sim/tsconfig.json`'s strict typecheck not wired into CI.
+## The 200K-band run — cap discovered, DB still idle (2026-07-26)
+
+Slice 2 went live the next day: migration applied, a green 2-shard validation
+(`matrix-slice2-val-20260726` — 400 concurrency, 25,400 requests, 0 breakage, 302 MB of real
+Storage egress, 0 media errors), then the full **20-shard cap-discovery run**
+(`matrix-cap-20260726e-30202071632.1`, 20 × C=200 × 120 s). Full session:
+`raw/sessions/2026-07-26-200k-load-run-and-header-overflow.md`.
+
+| | 50K band (07-24) | 200K band (07-26) |
+|-|-|-|
+| Shards × C | 5 × 200 | **20 × 200** |
+| Offered / honest peak | 1,000 / n-a | **4,000 / 4,000** |
+| `max_concurrent_shards` | n-a | **20** |
+| Requests / breakage / throttled | 34,600 / 1 transient / 0 | **31,000 / 0 / 0** |
+| Real media egress | none (HEAD proxy) | **369 MB, 0 errors** |
+| **DB conns · avg query** | **15/90 · 7.05 ms** | **27/90 · 11.40 ms** |
+| Overall p95 | ~3.4 s | **18.4 s** |
+
+**Cap discovery answered.** `honest_peak_concurrency` came back **equal** to the naive
+`offered_concurrency` with `max_concurrent_shards = 20` — GitHub ran all twenty shards genuinely
+simultaneously, no queuing, no stagger inflation, so the concurrent-runner cap is **≥ 20**. (20 is
+our `MAX_SHARDS`, not GitHub's ceiling; the cap is bounded from below, not discovered from above.)
+The event sweep was independently re-implemented in SQL against the raw snapshots and reproduces
+both figures.
+
+**The headline: at ~4,000 offered concurrency — the 200K-DAU band — prod Postgres sat at 27 of 90
+connections (~70% idle) at 11.40 ms average query time. The database is not the constraint at
+200K.** Combined with Phase A (91% idle at ~312) and the 50K run (83% idle at 1,000), the DB has
+never once been the limiting resource in this program.
+
+**The knee moved to the client, hard.** Overall p95 went 1,935 ms at 400 concurrency → **18,427 ms**
+at 4,000 — exactly Slice 2's predicted effect, since real 206-GET egress lowers the per-shard knee
+well below Slice 1's HEAD-only ~312. Worth recording honestly: **the runbook's step-1 knee probe was
+skipped** (validation → straight to 20 shards at the old C=200), so the 18 s p95 is the price of that
+shortcut, not a prod capacity signal. A cleaner 200K profile is *more shards at lower per-shard C*,
+which `MAX_SHARDS = 20` currently caps.
+
+**Getting there required an unrelated fix.** Four consecutive 20-shard dispatches died in the seed
+job on an opaque `TypeError: fetch failed` that looked exactly like a GitHub→Supabase network
+outage. It was ours: an unbounded `.in()` of 500 bot emails overflowing undici's 16 KB header limit
+— latent until `MAX_SHARDS` 10→20 doubled the cohort past the cliff, and latent *also* in
+`mint.ts`'s `readCohort`, where it would eventually have broken the **daily `tick` cron**. Fixed in
+PR #345; full mechanism, thresholds, and the diagnostic that kills the connectivity theory in
+[[Supabase .in() Header Overflow]]. After the fix the seed minted all 500 bots **from one runner
+IP** — 4× the previous 125-bot maximum, so the per-IP 429 backoff holds at that scale.
+
+**Teardown to zero, again:** `purge_synthetic_load_cohort()` → 500 purged, all `residual_*` = 0,
+live `bot0##` = 25 and the 2,000-profile [[Living Synthetic Marketplace]] cohort untouched, registry
+back to 2,025. **One sharp gotcha:** running the purge inside a `DO` block ending in `RAISE`
+**rolls it back** — that pattern is for read-only fixtures only; a real mutation runs as a plain
+`select purge_synthetic_load_cohort();`.
+
+**Still open / deferred:** `MAX_SHARDS = 20` caps a lower-C, better-latency 200K profile; the Phase-A
+pre-scale advisor list (~231 `multiple_permissive_policies`, ~158 `auth_rls_initplan` on hot tables)
+is untouched and still latent; Phase 6 (the realtime WebSocket leg) remains its own spec; a few stale
+`driver.ts` comments describe the old proxy behavior; `media_ms_p50` is plumbed but not surfaced by
+the summary RPC; `sim/tsconfig.json`'s strict typecheck is not wired into CI.
 
 ## See Also
+- [[Supabase .in() Header Overflow]] — the unbounded-`.in()` 16 KB bomb that blocked the 20-shard
+  seed four times while impersonating a network outage.
 - [[Service-Role Data Exposure]] — the same "re-assert the intended scope server-side" discipline.
 - [[AIOS runtime spend source of truth]] — `donny_cost_ledger` / the 15% AI cap the synthetic
   exclusion protects.
