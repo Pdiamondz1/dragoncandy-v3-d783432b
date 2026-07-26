@@ -127,8 +127,16 @@ export function buildHotActions(opts: BuildMixOptions = {}): HotAction[] {
           const res = await fetchImpl(url, { method: "GET", headers: { Range: `bytes=0-${rangeCapBytes - 1}` } });
           // 200 and 206 (Partial Content) are both res.ok (200–299). 403/404/416/5xx → media error.
           if (!res.ok) return { bytes: 0, ok: false, ms: now() - t0 };
+          // Bounded-egress guard: if the host IGNORED Range and returns a full body LARGER than the cap
+          // (declared via Content-Length — S3/Supabase Storage always sets it), do NOT download it: treat
+          // it as a capped miss. A 206 partial response declares <= cap, so it passes through.
+          const declaredLen = Number(res.headers?.get?.("content-length") ?? "");
+          if (Number.isFinite(declaredLen) && declaredLen > rangeCapBytes) {
+            return { bytes: 0, ok: false, ms: now() - t0 };
+          }
           const buf = await res.arrayBuffer();
-          return { bytes: buf.byteLength, ok: true, ms: now() - t0 };
+          // Final clamp so tallied egress can never exceed the cap even if a body slipped through.
+          return { bytes: Math.min(buf.byteLength, rangeCapBytes), ok: true, ms: now() - t0 };
         } catch {
           return { bytes: 0, ok: false, ms: now() - t0 };
         }

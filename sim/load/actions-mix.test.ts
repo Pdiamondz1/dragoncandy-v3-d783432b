@@ -153,4 +153,19 @@ describe("buildHotActions — the realistic DAU behavior mix", () => {
     expect(res).toMatchObject({ bytes: 0, ok: false });
     expect(typeof res.ms).toBe("number");
   });
+
+  it("media_fetch enforces the egress cap when the host ignores Range (oversized 200) — capped miss, no body download", async () => {
+    let bodyRead = false;
+    const fetchImpl = (async () => ({
+      ok: true,
+      status: 200, // ignored Range → would be a full object
+      headers: { get: (h: string) => (h.toLowerCase() === "content-length" ? "5000000" : null) }, // 5 MB > 256 KiB cap
+      arrayBuffer: async () => { bodyRead = true; return new ArrayBuffer(5_000_000); },
+    })) as unknown as typeof fetch;
+    const media = buildHotActions({ mediaUrls: ["http://cdn/big.mp4"], fetchImpl }).find((a) => a.name === "media_fetch")!;
+    const res = (await media.run({} as SupabaseClient, ctx)) as MediaResult;
+    expect(bodyRead).toBe(false); // never downloaded the oversized body
+    expect(res).toMatchObject({ bytes: 0, ok: false });
+    expect(typeof res.ms).toBe("number");
+  });
 });
