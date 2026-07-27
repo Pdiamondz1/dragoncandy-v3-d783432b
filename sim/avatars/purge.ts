@@ -7,7 +7,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { chunkIds, readRegistryIds } from "./apply";
 
 export const BUCKET = "profile-assets";
-export const POOL_PREFIXES = ["synthetic/faces", "synthetic/logos"] as const;
+export const FACES_PREFIX = "synthetic/faces";
+export const LOGOS_PREFIX = "synthetic/logos";
+export const POOL_PREFIXES = [FACES_PREFIX, LOGOS_PREFIX] as const;
 
 /** Low-quality 1024x1024 per-image rate. Only used for the --dry-run estimate. */
 export const USD_PER_IMAGE = 0.011;
@@ -95,11 +97,16 @@ export async function purgePool(svc: SupabaseClient): Promise<PurgeResult> {
   // delete the whole pool but leave ~1,000 profiles pointing at objects that no longer exist.
   const ids = await readRegistryIds(svc);
 
+  // Only clear values that actually POINT AT THE POOL. Nulling every synthetic avatar would
+  // clobber images this command never created — the marketplace seeder's own uploads, a partial
+  // apply, or anything a future seeder sets. Rollback must undo exactly what it did.
+  // (Codex second review round 3, 2026-07-26.)
   for (const batch of chunkIds(ids)) {
     const { data: c, error: cErr } = await svc
       .from("creator_profiles")
       .update({ avatar_url: null })
       .in("user_id", batch)
+      .like("avatar_url", `%${FACES_PREFIX}%`)
       .select("user_id");
     if (cErr) throw new Error(`purgePool creators: ${cErr.message}`);
     result.creatorsCleared += c?.length ?? 0;
@@ -108,12 +115,20 @@ export async function purgePool(svc: SupabaseClient): Promise<PurgeResult> {
       .from("business_profiles")
       .update({ logo_url: null })
       .in("user_id", batch)
+      .like("logo_url", `%${LOGOS_PREFIX}%`)
       .select("user_id");
     if (bErr) throw new Error(`purgePool businesses: ${bErr.message}`);
     result.businessesCleared += b?.length ?? 0;
 
-    const { error: pErr } = await svc.from("profiles").update({ avatar_url: null }).in("id", batch);
-    if (pErr) throw new Error(`purgePool profiles: ${pErr.message}`);
+    // profiles.avatar_url carries either a face (creators) or a logo (businesses).
+    for (const prefix of [FACES_PREFIX, LOGOS_PREFIX]) {
+      const { error: pErr } = await svc
+        .from("profiles")
+        .update({ avatar_url: null })
+        .in("id", batch)
+        .like("avatar_url", `%${prefix}%`);
+      if (pErr) throw new Error(`purgePool profiles: ${pErr.message}`);
+    }
   }
 
   return result;

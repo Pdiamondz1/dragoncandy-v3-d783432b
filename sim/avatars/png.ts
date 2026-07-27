@@ -7,6 +7,37 @@ import { GLYPHS } from "./glyphs";
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
+export interface ImageType {
+  ext: "png" | "jpg" | "webp";
+  mime: string;
+}
+
+/**
+ * Identifies image bytes from their magic number.
+ *
+ * The image API's output format depends on the model and its default (gpt-image-1 returns PNG
+ * unless asked otherwise), so hardcoding `.jpg` + `image/jpeg` on upload can label a PNG as a
+ * JPEG. Sniffing is more robust than pinning an `output_format` parameter that not every model
+ * accepts — and since assignment now reads the pool's REAL object paths, a mixed-extension pool is
+ * harmless. Unknown bytes throw: an unidentified blob must not enter the pool.
+ * (Codex second review round 3, 2026-07-26.)
+ */
+export function sniffImageType(bytes: Uint8Array): ImageType {
+  if (bytes.length >= 8 && Buffer.from(bytes.subarray(0, 8)).equals(PNG_SIGNATURE)) {
+    return { ext: "png", mime: "image/png" };
+  }
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return { ext: "jpg", mime: "image/jpeg" };
+  }
+  const header = Buffer.from(bytes.subarray(0, 12)).toString("ascii");
+  if (bytes.length >= 12 && header.startsWith("RIFF") && header.slice(8, 12) === "WEBP") {
+    return { ext: "webp", mime: "image/webp" };
+  }
+  throw new Error(
+    `unrecognised image bytes (first 4: ${Array.from(bytes.subarray(0, 4)).map((b) => b.toString(16)).join(" ")})`,
+  );
+}
+
 let CRC_TABLE: number[] | null = null;
 
 function crc32(buf: Buffer): number {

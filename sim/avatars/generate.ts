@@ -2,6 +2,7 @@
 // INJECTED, so the batch loop — checkpointing, resume, refusal handling — is fully testable with
 // zero API spend. See docs/superpowers/specs/2026-07-26-synthetic-avatar-pool-design.md §4.2.
 import { facePath } from "./pool";
+import { sniffImageType } from "./png";
 
 export interface Manifest {
   /** The image model the pool was generated with, so a later top-up can match it. */
@@ -89,9 +90,12 @@ export async function generatePool(
       result.generated++;
     }
 
+    // Label the object by what the bytes ACTUALLY are — the model's output format is its choice.
+    const { ext, mime } = sniffImageType(bytes);
+
     // An upload failure DOES stop the run — it means storage or credentials are wrong, and the
     // cache means the retry costs nothing.
-    await deps.upload(facePath(i), bytes, "image/jpeg");
+    await deps.upload(facePath(i, ext), bytes, mime);
     manifest.entries[i] = { uploaded: true };
     deps.writeManifest(manifest);
   }

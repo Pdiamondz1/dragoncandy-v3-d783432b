@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import { generatePool, facePrompt, type GenerateDeps, type Manifest } from "./generate";
 
-const bytes = (n: number) => new Uint8Array([n, n, n]);
+/** Valid JPEG magic (FF D8 FF) — the upload path sniffs the bytes to label the object. */
+const bytes = (n: number) => new Uint8Array([0xff, 0xd8, 0xff, n]);
 
 function makeDeps(over: Partial<GenerateDeps> = {}): GenerateDeps & { generateImage: ReturnType<typeof vi.fn> } {
   const cache = new Map<number, Uint8Array>();
@@ -93,5 +94,13 @@ describe("generatePool", () => {
     const d = makeDeps();
     await generatePool(1, "model-x", d);
     expect(d.upload).toHaveBeenCalledWith("synthetic/faces/0000.jpg", expect.anything(), "image/jpeg");
+  });
+
+  // The model picks its own output format; the object must be labelled by what it actually is.
+  it("labels a PNG response as .png/image/png rather than forcing .jpg", async () => {
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
+    const d = makeDeps({ generateImage: vi.fn(async () => png) });
+    await generatePool(1, "model-x", d);
+    expect(d.upload).toHaveBeenCalledWith("synthetic/faces/0000.png", expect.anything(), "image/png");
   });
 });

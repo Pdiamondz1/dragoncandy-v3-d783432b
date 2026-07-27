@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { inflateSync } from "node:zlib";
-import { encodePng, renderMonogram } from "./png";
+import { encodePng, renderMonogram, sniffImageType } from "./png";
 
 const SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
@@ -23,6 +23,30 @@ describe("encodePng", () => {
 
   it("rejects a pixel buffer whose length disagrees with the dimensions", () => {
     expect(() => encodePng(2, 2, new Uint8Array(3))).toThrow(/length/);
+  });
+});
+
+// Regression for the Codex round-3 finding: the image model chooses its own output format, so a
+// hardcoded .jpg + image/jpeg upload can label a PNG as a JPEG.
+describe("sniffImageType", () => {
+  it("identifies a PNG produced by our own encoder", () => {
+    expect(sniffImageType(encodePng(1, 1, new Uint8Array(3)))).toEqual({ ext: "png", mime: "image/png" });
+  });
+
+  it("identifies JPEG from its SOI marker", () => {
+    expect(sniffImageType(new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00]))).toEqual({
+      ext: "jpg",
+      mime: "image/jpeg",
+    });
+  });
+
+  it("identifies WEBP from the RIFF....WEBP header", () => {
+    const b = Buffer.concat([Buffer.from("RIFF"), Buffer.alloc(4), Buffer.from("WEBP")]);
+    expect(sniffImageType(new Uint8Array(b))).toEqual({ ext: "webp", mime: "image/webp" });
+  });
+
+  it("throws on unrecognised bytes rather than letting an unknown blob into the pool", () => {
+    expect(() => sniffImageType(new Uint8Array([1, 2, 3, 4]))).toThrow(/unrecognised/);
   });
 });
 

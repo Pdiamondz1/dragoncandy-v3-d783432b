@@ -32,7 +32,8 @@ export function poolIndex(userId: string, poolSize: number): number {
 
 const pad4 = (i: number): string => String(i).padStart(4, "0");
 
-export const facePath = (i: number): string => `synthetic/faces/${pad4(i)}.jpg`;
+/** The extension follows the ACTUAL bytes (see sniffImageType) — a model may return PNG or WEBP. */
+export const facePath = (i: number, ext: string = "jpg"): string => `synthetic/faces/${pad4(i)}.${ext}`;
 
 /**
  * Logo objects are CONTENT-ADDRESSED, not slot-indexed: the path is derived from what is drawn on
