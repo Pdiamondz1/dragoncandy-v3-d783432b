@@ -45,8 +45,15 @@ const InternalForecast = () => {
     );
   }
 
-  if (platformStats.isError || !platformStats.data || assumptionsQuery.isError || !assumptionsQuery.data) {
-    return <ErrorCard message="Forecast failed to load — admin access is required for this page." />;
+  // A weight *error* (not just an empty snapshot set) must surface: forecasting from 0 DB/storage bytes
+  // would silently understate infra cost + inflate margin — an honesty-rail violation. An empty-but-
+  // successful weight legitimately degrades to 0s below (only the measured "Today" column is affected).
+  if (
+    platformStats.isError || !platformStats.data ||
+    assumptionsQuery.isError || !assumptionsQuery.data ||
+    weight.isError
+  ) {
+    return <ErrorCard message="Forecast failed to load — check your internal access and try again." />;
   }
 
   const stats = platformStats.data;
