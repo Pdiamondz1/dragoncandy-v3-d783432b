@@ -94,21 +94,38 @@ export function facePrompt(index: number): string {
 }
 
 /**
- * `uploaded` is a checkpoint against REMOTE storage, so it is only meaningful while the remote pool
- * exists. After `avatars-purge`, a stale manifest would make a regenerate skip every index and
- * upload nothing — leaving `avatars-apply` to fail on an empty pool.
+ * `uploaded` is a checkpoint against REMOTE storage, so it is only true while that object exists.
+ * After `avatars-purge` — or a purge that failed halfway — a stale manifest would make a regenerate
+ * skip those indices and upload nothing, leaving the pool empty or permanently partial.
  *
- * When the remote pool is empty, clear the upload flags so cached bytes re-upload for FREE.
- * `refused` is preserved: the model's verdict on a prompt does not expire with the storage objects.
- * (Codex second review round 7, 2026-07-26.)
+ * Checked PER INDEX against the objects actually present, not against a count: a partial deletion
+ * leaves some objects behind, and a count>0 would wrongly bless every stale flag. A dropped flag
+ * costs nothing — the cached bytes re-upload for FREE. `refused` is always preserved: the model's
+ * verdict on a prompt does not expire with the storage objects.
+ * (Codex second review rounds 7 and 12, 2026-07-26.)
  */
-export function reconcileManifest(manifest: Manifest, remoteObjectCount: number): Manifest {
-  if (remoteObjectCount > 0) return manifest;
+export function reconcileManifest(manifest: Manifest, presentIndices: Set<number>): Manifest {
   const entries: Manifest["entries"] = {};
   for (const [k, v] of Object.entries(manifest.entries)) {
-    if (v.refused) entries[Number(k)] = { uploaded: false, refused: true };
+    const i = Number(k);
+    if (v.refused) {
+      entries[i] = { uploaded: false, refused: true };
+    } else if (v.uploaded && presentIndices.has(i)) {
+      entries[i] = { uploaded: true };
+    }
+    // else: claimed uploaded but the object is gone — drop it so the cached bytes re-upload free.
   }
   return { ...manifest, entries };
+}
+
+/** Extracts pool indices from listed object paths (`…/0007.jpg` -> 7), any extension. */
+export function poolIndicesPresent(objectPaths: string[]): Set<number> {
+  const present = new Set<number>();
+  for (const p of objectPaths) {
+    const m = p.match(/\/(\d+)\.[A-Za-z0-9]+$/);
+    if (m) present.add(Number(m[1]));
+  }
+  return present;
 }
 
 export async function generatePool(

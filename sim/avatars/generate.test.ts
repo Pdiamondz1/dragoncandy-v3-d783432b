@@ -5,6 +5,7 @@ import {
   isContentRefusal,
   assertUsableImageModel,
   reconcileManifest,
+  poolIndicesPresent,
   type GenerateDeps,
   type Manifest,
 } from "./generate";
@@ -55,21 +56,45 @@ describe("reconcileManifest", () => {
   };
 
   it("clears upload flags when the remote pool is gone", () => {
-    const out = reconcileManifest(m, 0);
+    const out = reconcileManifest(m, new Set());
     expect(out.entries[0]).toBeUndefined();
     expect(out.entries[2]).toBeUndefined();
   });
 
   it("keeps refusals — the model's verdict does not expire with the objects", () => {
-    expect(reconcileManifest(m, 0).entries[1]).toEqual({ uploaded: false, refused: true });
+    expect(reconcileManifest(m, new Set()).entries[1]).toEqual({ uploaded: false, refused: true });
   });
 
-  it("leaves the manifest untouched while the pool still exists", () => {
-    expect(reconcileManifest(m, 1500)).toBe(m);
+  it("keeps the flags of objects that are still present", () => {
+    const out = reconcileManifest(m, new Set([0, 2]));
+    expect(out.entries[0]).toEqual({ uploaded: true });
+    expect(out.entries[2]).toEqual({ uploaded: true });
+  });
+
+  // Round 12: a partial deletion leaves SOME objects, so a count>0 would bless every stale flag.
+  it("drops only the flags whose objects went missing in a partial purge", () => {
+    const out = reconcileManifest(m, new Set([0]));
+    expect(out.entries[0]).toEqual({ uploaded: true });
+    expect(out.entries[2]).toBeUndefined();
   });
 
   it("preserves the model so a rebuild matches the original pool", () => {
-    expect(reconcileManifest(m, 0).model).toBe("m");
+    expect(reconcileManifest(m, new Set()).model).toBe("m");
+  });
+});
+
+describe("poolIndicesPresent", () => {
+  it("extracts indices from listed object paths, any extension", () => {
+    const s = poolIndicesPresent(["synthetic/faces/0007.jpg", "synthetic/faces/0012.png"]);
+    expect(s).toEqual(new Set([7, 12]));
+  });
+
+  it("ignores anything that is not an indexed pool object", () => {
+    expect(poolIndicesPresent(["synthetic/faces/notes.txt", "synthetic/logos/ab12cd34.png"])).toEqual(new Set());
+  });
+
+  it("returns empty for an empty pool", () => {
+    expect(poolIndicesPresent([])).toEqual(new Set());
   });
 });
 

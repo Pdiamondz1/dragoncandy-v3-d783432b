@@ -45,6 +45,7 @@ import {
   generatePool,
   assertUsableImageModel,
   reconcileManifest,
+  poolIndicesPresent,
   type GenerateDeps,
   type Manifest,
 } from "./avatars/generate";
@@ -1150,7 +1151,8 @@ export async function cmdAvatarsGenerate(argv: string[]): Promise<void> {
 
   // How many pool objects actually exist right now — the manifest's `uploaded` flags are only
   // meaningful relative to this (a purge invalidates them).
-  const remotePoolCount = (await listPrefix(svc, "synthetic/faces")).length;
+  const remoteFacePaths = await listPrefix(svc, "synthetic/faces");
+  const presentIndices = poolIndicesPresent(remoteFacePaths);
 
   const deps: GenerateDeps = {
     generateImage: (prompt) => openAiImage(prompt, usableModel),
@@ -1164,7 +1166,7 @@ export async function cmdAvatarsGenerate(argv: string[]): Promise<void> {
       if (!existsSync(AVATAR_MANIFEST)) return null;
       const m = JSON.parse(readFileSync(AVATAR_MANIFEST, "utf8")) as Manifest;
       // The manifest checkpoints REMOTE uploads; if the pool was purged, re-upload from cache.
-      return reconcileManifest(m, remotePoolCount);
+      return reconcileManifest(m, presentIndices);
     },
     writeManifest: (m) => writeFileSync(AVATAR_MANIFEST, JSON.stringify(m, null, 2)),
     cacheWrite: (i, bytes) => writeFileSync(join(AVATAR_CACHE_DIR, `${String(i).padStart(4, "0")}.jpg`), bytes),
@@ -1227,7 +1229,7 @@ export async function cmdAvatarsPurge(): Promise<void> {
   if (existsSync(AVATAR_MANIFEST)) {
     const reconciled = reconcileManifest(
       JSON.parse(readFileSync(AVATAR_MANIFEST, "utf8")) as Manifest,
-      0,
+      new Set<number>(), // the pool was just deleted, so no index is present
     );
     refusalsKept = Object.keys(reconciled.entries).length;
     writeFileSync(AVATAR_MANIFEST, JSON.stringify(reconciled, null, 2));
