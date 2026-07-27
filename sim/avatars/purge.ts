@@ -71,6 +71,9 @@ export interface PurgeResult {
   objectsDeleted: number;
   creatorsCleared: number;
   businessesCleared: number;
+  /** Rows the `sync_brand_logo_from_business_profile` trigger propagated a pool URL into. */
+  orgsCleared: number;
+  orgUnitsCleared: number;
 }
 
 /**
@@ -80,7 +83,13 @@ export interface PurgeResult {
  * teardown, which silently left its objects behind).
  */
 export async function purgePool(svc: SupabaseClient): Promise<PurgeResult> {
-  const result: PurgeResult = { objectsDeleted: 0, creatorsCleared: 0, businessesCleared: 0 };
+  const result: PurgeResult = {
+    objectsDeleted: 0,
+    creatorsCleared: 0,
+    businessesCleared: 0,
+    orgsCleared: 0,
+    orgUnitsCleared: 0,
+  };
 
   for (const prefix of POOL_PREFIXES) {
     // Enumerate EVERY page before deleting anything. Deleting as you advance the offset skips
@@ -131,6 +140,31 @@ export async function purgePool(svc: SupabaseClient): Promise<PurgeResult> {
       if (pErr) throw new Error(`purgePool profiles: ${pErr.message}`);
     }
   }
+
+  // `business_profiles.logo_url` does not live alone: the SECURITY DEFINER trigger
+  // `sync_brand_logo_from_business_profile` copies it into `organizations.logo_url` and
+  // `org_units.logo_url` for the owner's org. Nulling the source does NOT undo that — the trigger
+  // returns early when the new value is NULL — so those rows would keep pointing at objects this
+  // command just deleted. Verified against the live function definition on prod.
+  // (Codex second review round 11, 2026-07-26.)
+  //
+  // The `like` on the pool prefix is the scope: only this pool's URLs can match, so no real
+  // organisation's logo is reachable.
+  const { data: orgs, error: oErr } = await svc
+    .from("organizations")
+    .update({ logo_url: null })
+    .like("logo_url", `%${LOGOS_PREFIX}%`)
+    .select("id");
+  if (oErr) throw new Error(`purgePool organizations: ${oErr.message}`);
+  result.orgsCleared = orgs?.length ?? 0;
+
+  const { data: units, error: uErr } = await svc
+    .from("org_units")
+    .update({ logo_url: null })
+    .like("logo_url", `%${LOGOS_PREFIX}%`)
+    .select("id");
+  if (uErr) throw new Error(`purgePool org_units: ${uErr.message}`);
+  result.orgUnitsCleared = units?.length ?? 0;
 
   return result;
 }
