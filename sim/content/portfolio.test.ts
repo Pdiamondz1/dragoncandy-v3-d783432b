@@ -40,6 +40,20 @@ describe("portfolioIndices", () => {
     expect(portfolioIndices(UID, 1)).toEqual([0]);
   });
 
+  // Regression for the Codex round-4 finding: on a small pool the odd stride can share a factor
+  // with poolSize (3 over 6 revisits after two picks), so a documented `--limit 6` smoke pool
+  // handed back 2 samples instead of 3.
+  it("always returns min(count, poolSize) distinct samples, including small smoke pools", () => {
+    for (let poolSize = 1; poolSize <= 24; poolSize++) {
+      for (const uid of ["u1", "u2", "u3", "u4", "u5"]) {
+        const out = portfolioIndices(uid, poolSize);
+        expect(out).toHaveLength(Math.min(3, poolSize));
+        expect(new Set(out).size).toBe(out.length);
+        for (const i of out) expect(i).toBeLessThan(poolSize);
+      }
+    }
+  });
+
   it("throws on a non-positive pool size", () => {
     expect(() => portfolioIndices(UID, 0)).toThrow(/poolSize/);
   });

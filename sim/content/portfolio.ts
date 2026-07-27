@@ -37,5 +37,15 @@ export function portfolioIndices(userId: string, poolSize: number, count: number
     if (!out.includes(cursor)) out.push(cursor);
     cursor = (cursor + stride) % poolSize;
   }
+
+  // The strided walk can cycle before collecting `wanted`: on a small pool the odd stride may share
+  // a factor with poolSize (stride 3 over 6 slots revisits after two picks), so a 6-image smoke pool
+  // would hand back 2 samples instead of 3. Top up from a linear sweep — spacing is a nice-to-have,
+  // filling the portfolio is not. (Codex second review round 4, 2026-07-27.)
+  for (let i = 0; i < poolSize && out.length < wanted; i++) {
+    const candidate = (start + i) % poolSize;
+    if (!out.includes(candidate)) out.push(candidate);
+  }
+
   return out;
 }
