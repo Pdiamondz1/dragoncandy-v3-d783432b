@@ -24,11 +24,14 @@ export function useRestaurantBrowse() {
       const { data, error } = await supabase.rpc('search_restaurants', {
         search_term: debouncedSearch,
         cuisine_filter: filters.cuisine ?? undefined,
-        // 520 restaurants are eligible; the previous 30 was a hard cap that made a populated
-        // marketplace look empty. The sheet has a search box and category chips for narrowing, so
-        // a larger page beats pagination here. (The typeahead in useRestaurantSearch keeps its 8 —
-        // that one is a dropdown, where a long list would be worse.)
-        result_limit: 200,
+        // Was a hard 30, which showed a fraction of the 520 eligible restaurants and made a
+        // populated marketplace look empty. Fetch the eligible set and let the EXISTING client
+        // pager (`usePagedList(restaurants, 12)` + `LoadMoreButton`, in both consumers) control
+        // what renders — so nothing is unreachable, and the sheet still paints 12 cards at a time
+        // rather than 520. Adding server-side paging here would fight that pager, not help it.
+        // The payload is small (~8 scalar columns/row). The typeahead in useRestaurantSearch keeps
+        // its 8 — that one is a dropdown, where a long list would be worse.
+        result_limit: 1000,
       });
       if (error) throw error;
       return (data ?? []) as RestaurantSearchResult[];
