@@ -106,6 +106,7 @@ const InternalScorecard = lazy(() => import("./pages/internal/InternalScorecard"
 const InternalWeight = lazy(() => import("./pages/internal/InternalWeight"));
 const InternalSimulation = lazy(() => import("./pages/internal/InternalSimulation"));
 const InternalExpenses = lazy(() => import("./pages/internal/InternalExpenses"));
+const InternalForecast = lazy(() => import("./pages/internal/InternalForecast"));
 const InternalStrategy = lazy(() => import("./pages/internal/InternalStrategy"));
 const InternalDonny = lazy(() => import("./pages/internal/InternalDonny"));
 const InternalBriefings = lazy(() => import("./pages/internal/InternalBriefings"));
@@ -350,6 +351,7 @@ function AnimatedRoutes() {
             <Route path="workspace" element={<InternalWorkspace />} />
             <Route path="workspace/callback" element={<WorkspaceCallback />} />
             <Route path="expenses" element={<InternalRoute tier="admin"><InternalExpenses /></InternalRoute>} />
+            <Route path="forecast" element={<InternalRoute tier="admin"><InternalForecast /></InternalRoute>} />
             <Route path="donny" element={<InternalRoute tier="admin"><InternalDonny /></InternalRoute>} />
             <Route path="findings" element={<InternalRoute tier="admin"><InternalFindings /></InternalRoute>} />
             <Route path="corrections" element={<InternalRoute tier="admin"><InternalCorrections /></InternalRoute>} />

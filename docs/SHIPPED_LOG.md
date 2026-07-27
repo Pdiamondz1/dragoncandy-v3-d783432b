@@ -53,6 +53,34 @@ tests + build green. **Deploy (load-bearing):** apply migration `20260726173000`
 Wiki: [[Stakeholder Scorecard]]. Sub-projects 2 (live infra telemetry) + 3 (cost model + DAU forecast)
 remain scoped/not-built.
 
+## [2026-07-27] Cost model + DAU forecast — /internal/forecast (`feat/internal-cost-dau-forecast`)
+
+**Sub-project 3 of 4** of the founder ask to make the AIOS dashboard show the app's true weight/cost and how
+it scales (1 = synthetic metric parity, PR #346; 4 = stakeholder scorecard, PR #350; 2 = live infra telemetry,
+still scoped). Adds an **admin-only `/internal/forecast`** page that projects, for **Today / 500K / 750K / 1M
+DAU**: infra footprint → required Supabase tier → total monthly cost → revenue (at the take-rate ladder) →
+**gross margin**. It's a pure, deterministic (no-LLM) `forecastModel.ts` — mirrors `scorecardModel`/`weightThresholds`
+— fed by **measured coefficients** (the 200K load run's DB-conns-per-concurrent + egress-per-request, via
+`useSimLoadMatrixSummary`; current footprint via `usePlatformWeight`; AI/opex/revenue via the existing internal
+hooks) plus **9 founder-editable assumptions** stored in the existing `aios_dashboard_settings` KV table — no new
+RPC/RLS. Honesty rails: every figure tagged measured/derived/assumed; **AI self-caps at 15% of revenue with the
+$250/mo floor**; DB/storage never forecast below today; the load-run coefficient degrades to a documented default
+(guarded on null AND zero denominator) with a visible note; "Today" is measured-only (`—`, never fabricated).
+
+**Key decisions (from two spec-review rounds + two plan-review rounds):** the page is **admin-gated like
+`/internal/expenses`** — its cost inputs (`operating_expenses`, `aios_cost_stats`) are admin-only RLS, so a
+stakeholder-visible version would silently show $0 opex / an inflated margin; the *stakeholder* reach is instead
+the scorecard's one-line margin tie-in (deferred until #350 is on `main`). Since this branch is off `origin/main`
+(no #346/#350), it sources the real registered-user baseline from `usePlatformStats().users.total` (not
+`users_total_real`, which isn't on `PlatformWeightRow`'s type here). There is no DAU tracking in the app, so the
+forecast is explicitly a **what-if capacity/cost model, not a growth projection**.
+
+**Build:** pure `forecastModel` + `useForecastAssumptions` hook + a founder-gated seed migration
+(`20260727120000`, **not applied**) + `ForecastTable` (four-scenario table + cost-vs-revenue chart) +
+`ForecastAssumptionsPanel` (live-tunable) + the page + admin route/Operate-group nav. Subagent-driven (7 tasks),
+17 tests (14 model, 3 component; recharts needs a jsdom `ResizeObserver` stub), typecheck + lint + build green,
+Codex second review. Wiki: [[Cost Model + DAU Forecast]].
+
 ## [2026-07-26] Living Synthetic Marketplace — go-live record + status correction
 
 **Not new work — a record of work that shipped without one, and the correction of three docs that
