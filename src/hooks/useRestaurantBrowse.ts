@@ -24,7 +24,11 @@ export function useRestaurantBrowse() {
       const { data, error } = await supabase.rpc('search_restaurants', {
         search_term: debouncedSearch,
         cuisine_filter: filters.cuisine ?? undefined,
-        result_limit: 30,
+        // 520 restaurants are eligible; the previous 30 was a hard cap that made a populated
+        // marketplace look empty. The sheet has a search box and category chips for narrowing, so
+        // a larger page beats pagination here. (The typeahead in useRestaurantSearch keeps its 8 —
+        // that one is a dropdown, where a long list would be worse.)
+        result_limit: 200,
       });
       if (error) throw error;
       return (data ?? []) as RestaurantSearchResult[];

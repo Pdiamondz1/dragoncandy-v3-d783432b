@@ -53,6 +53,17 @@ import { planAssignments, applyAssignments, readSyntheticProfiles } from "./avat
 import { parseAvatarArgs, purgePool, estimateSpendUsd, listPrefix, BUCKET as AVATAR_BUCKET } from "./avatars/purge";
 import { renderMonogram } from "./avatars/png";
 import { paletteFor } from "./avatars/monogram";
+import { workPath } from "./avatars/pool";
+import { workPrompt } from "./content/prompts";
+import {
+  planPortfolios,
+  applyPortfolios,
+  insertFeedRows,
+  readSyntheticCreatorIds,
+  readSyntheticOrgIds,
+} from "./content/apply-content";
+import { buildFeedRows } from "./content/feed";
+import { purgeContent } from "./content/purge-content";
 
 const COMMANDS = [
   "dry-run",
@@ -66,6 +77,9 @@ const COMMANDS = [
   "avatars-generate",
   "avatars-apply",
   "avatars-purge",
+  "content-generate",
+  "content-apply",
+  "content-purge",
 ] as const;
 type Command = (typeof COMMANDS)[number];
 
@@ -1215,6 +1229,100 @@ export async function cmdAvatarsApply(): Promise<void> {
   );
 }
 
+// ------------------------------------------------------------------
+// content-* — the work-sample pool: creator portfolios + DragonFeed posts.
+// Same machinery as avatars-*: one durable shared pool, referenced by many rows.
+// ------------------------------------------------------------------
+
+const CONTENT_CACHE_DIR = join(process.cwd(), "sim", ".content-cache");
+const CONTENT_MANIFEST = join(CONTENT_CACHE_DIR, "manifest.json");
+const FEED_POST_COUNT = 500;
+
+export async function cmdContentGenerate(argv: string[]): Promise<void> {
+  const a = parseAvatarArgs(argv);
+  const count = a.limit !== null ? Math.min(a.count, a.limit) : a.count;
+  const model = process.env.SIM_IMAGE_MODEL;
+
+  if (a.dryRun) {
+    console.warn(
+      `[content-generate] DRY RUN — would generate ${count} work image(s) with ` +
+        `"${model ?? "<SIM_IMAGE_MODEL unset>"}" for an estimated $${estimateSpendUsd(count).toFixed(2)}. ` +
+        `Nothing was generated or uploaded.`,
+    );
+    return;
+  }
+  const usableModel = assertUsableImageModel(model);
+
+  const svc = serviceClient();
+  await bootGate(svc);
+  mkdirSync(CONTENT_CACHE_DIR, { recursive: true });
+
+  const presentIndices = poolIndicesPresent(await listPrefix(svc, "synthetic/work"));
+
+  const deps: GenerateDeps = {
+    generateImage: (prompt) => openAiImage(prompt, usableModel),
+    upload: async (objectPath, bytes, contentType) => {
+      const { error } = await svc.storage
+        .from(AVATAR_BUCKET)
+        .upload(objectPath, bytes, { contentType, upsert: true });
+      if (error) throw new Error(`upload ${objectPath}: ${error.message}`);
+    },
+    readManifest: () => {
+      if (!existsSync(CONTENT_MANIFEST)) return null;
+      return reconcileManifest(
+        JSON.parse(readFileSync(CONTENT_MANIFEST, "utf8")) as Manifest,
+        presentIndices,
+      );
+    },
+    writeManifest: (m) => writeFileSync(CONTENT_MANIFEST, JSON.stringify(m, null, 2)),
+    cacheWrite: (i, bytes) => writeFileSync(join(CONTENT_CACHE_DIR, `${String(i).padStart(4, "0")}.jpg`), bytes),
+    cacheRead: (i) => {
+      const p = join(CONTENT_CACHE_DIR, `${String(i).padStart(4, "0")}.jpg`);
+      return existsSync(p) ? new Uint8Array(readFileSync(p)) : null;
+    },
+  };
+
+  const r = await generatePool(count, usableModel, deps, { prompt: workPrompt, path: workPath });
+  console.warn(`[content-generate] ${JSON.stringify(r)} (model=${usableModel})`);
+}
+
+export async function cmdContentApply(): Promise<void> {
+  const svc = serviceClient();
+  await bootGate(svc);
+
+  const workPaths = await listPrefix(svc, "synthetic/work");
+  if (workPaths.length === 0) {
+    throw new Error("content-apply: the work pool is empty — run content-generate first");
+  }
+
+  const url = requireEnvUrl();
+  const creatorIds = await readSyntheticCreatorIds(svc);
+  const orgIds = await readSyntheticOrgIds(svc);
+
+  const portfolios = await applyPortfolios(svc, planPortfolios(creatorIds, workPaths, url));
+
+  const rows = buildFeedRows({
+    creatorIds,
+    orgIds,
+    workPaths,
+    supabaseUrl: url,
+    count: FEED_POST_COUNT,
+    nowMs: Date.now(),
+  });
+  const feed = await insertFeedRows(svc, rows);
+
+  console.warn(
+    `[content-apply] ${JSON.stringify({ ...portfolios, ...feed, pool: workPaths.length, creators: creatorIds.length, orgs: orgIds.length })}`,
+  );
+}
+
+export async function cmdContentPurge(): Promise<void> {
+  const svc = serviceClient();
+  await bootGate(svc);
+  const r = await purgeContent(svc);
+  console.warn(`[content-purge] ${JSON.stringify(r)}`);
+}
+
 export async function cmdAvatarsPurge(): Promise<void> {
   const svc = serviceClient();
   await bootGate(svc);
@@ -1278,6 +1386,15 @@ export async function main(argv: string[]): Promise<void> {
       return;
     case "avatars-purge":
       await cmdAvatarsPurge();
+      return;
+    case "content-generate":
+      await cmdContentGenerate(argv);
+      return;
+    case "content-apply":
+      await cmdContentApply();
+      return;
+    case "content-purge":
+      await cmdContentPurge();
       return;
   }
 }

@@ -142,10 +142,21 @@ export function poolIndicesPresent(objectPaths: string[]): Set<number> {
   return present;
 }
 
+/** What KIND of pool is being generated. Defaults to faces, so existing callers are unchanged;
+ *  the work-sample pool passes its own prompt matrix and path builder rather than forking the
+ *  whole batch loop (checkpointing, resume, refusal handling) for a second pool. */
+export interface PoolKind {
+  prompt: (index: number) => string;
+  path: (index: number, ext?: string) => string;
+}
+
+const FACE_POOL: PoolKind = { prompt: facePrompt, path: facePath };
+
 export async function generatePool(
   count: number,
   model: string,
   deps: GenerateDeps,
+  kind: PoolKind = FACE_POOL,
 ): Promise<GenerateResult> {
   const existing = deps.readManifest();
   if (existing && existing.model !== model) {
@@ -174,7 +185,7 @@ export async function generatePool(
     let bytes = deps.cacheRead(i);
     if (!bytes) {
       try {
-        bytes = await deps.generateImage(facePrompt(i));
+        bytes = await deps.generateImage(kind.prompt(i));
       } catch (e) {
         // A content refusal is a skipped index, not a failed run — the pool may land short
         // (spec §4.2). Anything else (bad key, 401/429, network) fails the run immediately.
@@ -206,7 +217,7 @@ export async function generatePool(
 
     // An upload failure DOES stop the run — it means storage or credentials are wrong, and the
     // cache means the retry costs nothing.
-    await deps.upload(facePath(i, ext), bytes, mime);
+    await deps.upload(kind.path(i, ext), bytes, mime);
     manifest.entries[i] = { uploaded: true };
     deps.writeManifest(manifest);
   }

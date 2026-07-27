@@ -9,7 +9,11 @@
 //   npx tsx sim/cli.ts avatars-generate --dry-run          (prints the cost estimate, spends nothing)
 //   npx tsx sim/cli.ts avatars-generate --count 1500       (PAID — needs SIM_OPENAI_API_KEY + SIM_IMAGE_MODEL)
 //   npx tsx sim/cli.ts avatars-apply                       (points synthetic profiles at the pool)
-//   npx tsx sim/cli.ts avatars-purge                       (deletes the pool — NOT part of marketplace-purge)
+//   npx tsx sim/cli.ts avatars-purge                       (deletes the face pool — NOT part of marketplace-purge)
+//   npx tsx sim/cli.ts content-generate --dry-run          (work-sample pool; spends nothing)
+//   npx tsx sim/cli.ts content-generate --count 1800       (PAID — same env as avatars-generate)
+//   npx tsx sim/cli.ts content-apply                       (3 portfolio samples/creator + DragonFeed posts)
+//   npx tsx sim/cli.ts content-purge                       (work pool + portfolios + seeded posts)
 //
 // Kept separate from run.ts so importing the logic (tests) has no side effects.
 import { main } from "./run";
