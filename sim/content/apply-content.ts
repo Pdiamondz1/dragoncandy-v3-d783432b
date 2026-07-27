@@ -28,7 +28,15 @@ export function planPortfolios(
   }));
 }
 
-/** Every synthetic creator id, paged + ordered via the shared registry reader. */
+/**
+ * Every synthetic creator id, paged via the shared registry reader and **sorted**.
+ *
+ * The sort is load-bearing, not tidiness: `buildFeedRows` picks creators by ARRAY POSITION and
+ * derives each post's deterministic id from that pick. An unordered `.in()` can return rows in a
+ * different order on a later run, which would shift every pick, change every id, and make the
+ * upsert append a second set of ~500 posts instead of rewriting the first.
+ * (Codex second review round 2, 2026-07-27.)
+ */
 export async function readSyntheticCreatorIds(svc: SupabaseClient): Promise<string[]> {
   const registry = new Set(await readRegistryIds(svc));
   const ids: string[] = [];
@@ -37,10 +45,11 @@ export async function readSyntheticCreatorIds(svc: SupabaseClient): Promise<stri
     if (error) throw new Error(`readSyntheticCreatorIds: ${error.message}`);
     for (const r of data ?? []) ids.push(r.user_id);
   }
-  return ids;
+  return ids.sort();
 }
 
-/** Every synthetic org id — the NOT NULL `target_org_id` a feed post needs. */
+/** Every synthetic org id — the NOT NULL `target_org_id` a feed post needs. Sorted for the same
+ *  reason as the creator ids above. */
 export async function readSyntheticOrgIds(svc: SupabaseClient): Promise<string[]> {
   const registry = new Set(await readRegistryIds(svc));
   const ids = new Set<string>();
@@ -53,7 +62,7 @@ export async function readSyntheticOrgIds(svc: SupabaseClient): Promise<string[]
     if (error) throw new Error(`readSyntheticOrgIds: ${error.message}`);
     for (const r of data ?? []) ids.add(r.org_id);
   }
-  return [...ids];
+  return [...ids].sort();
 }
 
 export async function applyPortfolios(
