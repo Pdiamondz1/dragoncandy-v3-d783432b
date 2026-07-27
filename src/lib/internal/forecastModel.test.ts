@@ -91,12 +91,15 @@ describe('buildForecast', () => {
     expect(s.aiCapBreached).toBe(false);
   });
 
-  it('selects a compute tier by peak concurrency, and Custom beyond the top tier', () => {
-    // 500K × 0.1% = 500 concurrent ≤ Micro (1 GB × 2000) → smallest tier
+  it('selects a compute tier by peak concurrency, and Custom (a priced floor) beyond the top tier', () => {
+    // 500K × 0.1% = 500 concurrent ≤ Micro (1 GB × 2000) → smallest tier, not a floor
     const low = buildForecast({ measured, assumptions: { ...DEFAULT_ASSUMPTIONS, peak_concurrency_pct: 0.1 } });
     expect(low.scenarios[1].computeTier).toBe('Micro');
-    // default 8% → 500K × 8% = 40,000 > XL ceiling (16 GB × 2000 = 32,000) → Custom
-    expect(buildForecast(input).scenarios[1].computeTier).toMatch(/Custom/);
+    expect(low.scenarios[1].computeCostIsFloor).toBe(false);
+    // default 8% → 500K × 8% = 40,000 > XL ceiling (16 GB × 2000 = 32,000) → Custom, cost is a floor
+    const custom = buildForecast(input).scenarios[1];
+    expect(custom.computeTier).toMatch(/Custom/);
+    expect(custom.computeCostIsFloor).toBe(true);
   });
 
   it('charges disk overage only past the included 8 GB (flat below, higher above)', () => {

@@ -32,6 +32,10 @@ const formatBytes = (bytes: number): string => {
   return gb >= 1024 ? `${(gb / 1024).toFixed(2)} TB` : `${gb.toFixed(2)} GB`;
 };
 
+// Custom-tier scenarios price compute at the XL floor (real dedicated compute costs more), so cost is a
+// floor (≥) and margin an optimistic ceiling (≤). Prefix those cells honestly.
+const floorPrefix = (s: ForecastScenario, sym: '≥' | '≤'): string => (s.computeCostIsFloor ? `${sym} ` : '');
+
 // ---- small tag pills ----
 function Pill({ tone, children }: { tone: 'measured' | 'assumed' | 'cap'; children: ReactNode }) {
   const styles = {
@@ -84,14 +88,23 @@ const GROUPS: Group[] = [
         ),
         render: (s) => s.computeTier,
       },
-      { label: 'Compute cost', render: (s) => usd0(s.computeUsd) },
+      {
+        label: 'Compute cost',
+        render: (s) => (
+          <>
+            {floorPrefix(s, '≥')}
+            {usd0(s.computeUsd)}
+            {s.computeCostIsFloor && <Pill tone="cap">floor</Pill>}
+          </>
+        ),
+      },
       { label: 'Disk', render: (s) => `${s.diskGb.toFixed(2)} GB` },
     ],
   },
   {
     title: 'Cost / mo',
     rows: [
-      { label: 'Supabase', render: (s) => usd0(s.supabaseUsd) },
+      { label: 'Supabase', render: (s) => `${floorPrefix(s, '≥')}${usd0(s.supabaseUsd)}` },
       {
         label: 'AI serving',
         render: (s) => (
@@ -102,7 +115,7 @@ const GROUPS: Group[] = [
         ),
       },
       { label: 'Other opex', render: (s) => usd0(s.otherOpexUsd) },
-      { label: 'Total', render: (s) => usd0(s.totalCostUsd), bold: true },
+      { label: 'Total', render: (s) => `${floorPrefix(s, '≥')}${usd0(s.totalCostUsd)}`, bold: true },
     ],
   },
   {
@@ -113,6 +126,7 @@ const GROUPS: Group[] = [
         label: 'Gross margin',
         render: (s) => (
           <>
+            {floorPrefix(s, '≤')}
             {usd0(s.grossMarginUsd)}
             <span className="ml-1 text-white/40">{s.marginPct == null ? '' : `(${pct(s.marginPct)})`}</span>
           </>
@@ -199,6 +213,14 @@ export function ForecastTable({ model }: { model: ForecastModel }) {
             </p>
           ))}
         </div>
+      )}
+
+      {scenarios.some((s) => s.computeCostIsFloor) && (
+        <p className="mt-3 text-xs text-dc-pink/70">
+          ≥/≤ Beyond the top listed compute tier, these scenarios price compute at the XL{' '}
+          <span className="font-semibold">floor</span> — real dedicated compute costs more, so total cost is a
+          floor and gross margin an optimistic ceiling.
+        </p>
       )}
 
       <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-xs text-white/50">

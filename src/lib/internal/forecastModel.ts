@@ -112,6 +112,10 @@ export interface ForecastScenario {
   grossMarginUsd: number;
   marginPct: number | null;    // null when revenue = 0
   costPerDauUsd: number | null; // null for Today
+  // true when peak concurrency exceeds the top listed tier → compute priced at the XL FLOOR (real
+  // dedicated compute costs more). So supabaseUsd/totalCost are a floor and grossMargin an optimistic
+  // ceiling — the UI must mark these cells. Never true for Today (a real current tier).
+  computeCostIsFloor: boolean;
 }
 
 export interface ForecastModel {
@@ -138,11 +142,13 @@ function deriveCoefficients(m: ForecastMeasured, notes: string[]): DerivedCoeffi
   };
 }
 
-function tierFor(peakConcurrent: number): { name: string; usd: number } {
+function tierFor(peakConcurrent: number): { name: string; usd: number; isFloor: boolean } {
   const tier = COMPUTE_TIERS.find((t) => peakConcurrent <= t.ramGb * PEAK_CONCURRENT_PER_GB);
-  if (tier) return { name: tier.name, usd: tier.monthlyUsd };
+  if (tier) return { name: tier.name, usd: tier.monthlyUsd, isFloor: false };
   const top = COMPUTE_TIERS[COMPUTE_TIERS.length - 1];
-  return { name: 'Custom (contact Supabase)', usd: top.monthlyUsd }; // floor cost; flagged in the UI
+  // Beyond the top listed tier: charge the XL price as a FLOOR (real custom compute costs more) and
+  // flag it so the UI can mark supabaseUsd/total as a floor and margin as an optimistic ceiling.
+  return { name: 'Custom (contact Supabase)', usd: top.monthlyUsd, isFloor: true };
 }
 
 function diskOverageUsd(dbBytes: number): number {
@@ -185,6 +191,7 @@ function buildToday(m: ForecastMeasured): ForecastScenario {
     grossMarginUsd,
     marginPct: marginPct(revenueUsd, grossMarginUsd),
     costPerDauUsd: null,
+    computeCostIsFloor: false,
   };
 }
 
@@ -241,6 +248,7 @@ function buildScenario(
     grossMarginUsd,
     marginPct: marginPct(revenueUsd, grossMarginUsd),
     costPerDauUsd: totalCostUsd / dau,
+    computeCostIsFloor: tier.isFloor,
   };
 }
 

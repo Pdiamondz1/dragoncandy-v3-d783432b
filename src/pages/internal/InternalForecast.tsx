@@ -45,13 +45,14 @@ const InternalForecast = () => {
     );
   }
 
-  // A weight *error* (not just an empty snapshot set) must surface: forecasting from 0 DB/storage bytes
-  // would silently understate infra cost + inflate margin — an honesty-rail violation. An empty-but-
-  // successful weight legitimately degrades to 0s below (only the measured "Today" column is affected).
+  // Any core cost/footprint input that ERRORS must surface — forecasting from a silent $0 (AI spend,
+  // revenue, opex) or 0 bytes (weight) would understate cost / inflate margin, an honesty-rail violation.
+  // (isLoading is fine — those secondary queries fill in; only isError is fatal.) An empty-but-successful
+  // weight legitimately degrades to 0s below (only the measured "Today" column is affected).
   if (
     platformStats.isError || !platformStats.data ||
     assumptionsQuery.isError || !assumptionsQuery.data ||
-    weight.isError
+    weight.isError || cost.isError || revenue.isError || expenses.isError
   ) {
     return <ErrorCard message="Forecast failed to load — check your internal access and try again." />;
   }
