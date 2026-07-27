@@ -27,7 +27,7 @@ export interface ScorecardInput {
   realPosts: number;
   weightSnapshots: WeightPoint[];
   diskLimitBytes: number;
-  burn: { monthly_opex_cents: number; mtd_ai_spend_usd: number; mtd_revenue_cents: number; net_burn_cents: number };
+  burn: { monthly_opex_cents: number; mtd_ai_spend_usd: number; mtd_revenue_cents: number; net_burn_cents: number } | null;
   burnCeilingCents: number;
   aiUnderCap: boolean;
 }
@@ -44,7 +44,11 @@ export function growthLast30Days(snapshots: WeightPoint[]): number | null {
   if (pts.length < 2) return null;
   const last = pts[pts.length - 1];
   const windowStart = last.t - 30 * DAY;
-  const base = pts.find((p) => p.t >= windowStart) ?? pts[0];
+  const prior = pts.slice(0, -1); // never use `last` as its own baseline (P3)
+  // value as of ~30 days ago = the most recent snapshot at/before the window start; if none is that
+  // old (history <30d), fall back to the earliest available snapshot — always a real prior point.
+  const atOrBefore = prior.filter((p) => p.t <= windowStart);
+  const base = atOrBefore.length ? atOrBefore[atOrBefore.length - 1] : prior[0];
   return last.n - base.n;
 }
 
@@ -68,16 +72,24 @@ export function buildScorecard(i: ScorecardInput): ScorecardStory[] {
     detail: delta !== null ? `${delta >= 0 ? '+' : ''}${delta} in the last 30 days` : undefined,
   };
 
-  // Capital efficiency
-  const burnUsd = i.burn.net_burn_cents / 100;
-  const efficiency: ScorecardStory = {
-    key: 'efficiency',
-    title: 'Capital efficiency',
-    headline: `We run the whole platform for ~${fmtUsd0(burnUsd)}/month`,
-    meaning: 'Total cost to operate — infrastructure, AI, and tools — minus any revenue. Lean by design.',
-    signal: i.burn.net_burn_cents <= i.burnCeilingCents && i.aiUnderCap ? 'green' : 'amber',
-    detail: i.aiUnderCap ? undefined : 'AI spend approaching the 15%-of-revenue cap',
-  };
+  // Capital efficiency — show an honest "unavailable" state (info, no $ figure) rather than a false
+  // ~$0/month green card when the burn RPC hasn't loaded or errored (P2).
+  const efficiency: ScorecardStory = i.burn
+    ? {
+        key: 'efficiency',
+        title: 'Capital efficiency',
+        headline: `We run the whole platform for ~${fmtUsd0(i.burn.net_burn_cents / 100)}/month`,
+        meaning: 'Total cost to operate — infrastructure, AI, and tools — minus any revenue. Lean by design.',
+        signal: i.burn.net_burn_cents <= i.burnCeilingCents && i.aiUnderCap ? 'green' : 'amber',
+        detail: i.aiUnderCap ? undefined : 'AI spend approaching the 15%-of-revenue cap',
+      }
+    : {
+        key: 'efficiency',
+        title: 'Capital efficiency',
+        headline: '—',
+        meaning: 'Burn data is unavailable right now.',
+        signal: 'info',
+      };
 
   // Scale headroom — physical infra capacity (synthetic-inclusive db_bytes; conservative). See spec §4.
   const latest = [...i.weightSnapshots].sort(

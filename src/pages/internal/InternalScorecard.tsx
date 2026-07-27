@@ -55,7 +55,7 @@ const InternalScorecard = () => {
     realPosts: p.dragonshare.posts_total,
     weightSnapshots: weight.data ?? [],
     diskLimitBytes: DISK_LIMIT_BYTES,
-    burn: burn.data ?? { monthly_opex_cents: 0, mtd_ai_spend_usd: 0, mtd_revenue_cents: 0, net_burn_cents: 0 },
+    burn: burn.data ?? null, // null → the model renders an honest "unavailable" efficiency card, not a false $0/green (P2)
     burnCeilingCents: ceiling.data ?? 40000,
     aiUnderCap,
   });

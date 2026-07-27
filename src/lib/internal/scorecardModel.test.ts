@@ -33,6 +33,13 @@ describe('growthLast30Days', () => {
     expect(growthLast30Days([{ captured_at: '2026-07-26T00:00:00Z', db_bytes: 1, users_total_real: 40 }])).toBeNull();
     expect(growthLast30Days([])).toBeNull();
   });
+  it('baselines off a prior point, never the latest snapshot itself (sparse >30d history)', () => {
+    // both usable snapshots are >30 days apart → must use the prior point (30), never return +0
+    expect(growthLast30Days([
+      { captured_at: '2026-06-01T00:00:00Z', db_bytes: 1, users_total_real: 30 },
+      { captured_at: '2026-07-26T00:00:00Z', db_bytes: 1, users_total_real: 40 },
+    ])).toBe(10);
+  });
 });
 
 describe('buildScorecard', () => {
@@ -62,5 +69,11 @@ describe('buildScorecard — degradation', () => {
     const traction = s.find((x) => x.key === 'traction')!;
     expect(traction.detail).toBeUndefined();
     expect(traction.signal).toBe('green'); // present users, not declining
+  });
+  it('efficiency shows an unavailable info state (not a false $0/green) when burn is null', () => {
+    const s = buildScorecard({ ...INPUT, burn: null });
+    const eff = s.find((x) => x.key === 'efficiency')!;
+    expect(eff.signal).toBe('info');
+    expect(eff.headline).not.toContain('$');
   });
 });
