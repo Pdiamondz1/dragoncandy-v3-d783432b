@@ -81,6 +81,16 @@ across 4 Codex rounds (final clean), plus an independent Claude spec-review of t
 review (3 Minor consistency findings fixed). typecheck + lint + 16 unit tests + build green. Wiki:
 [[Internal Real-vs-Total Metrics]].
 
+**Follow-up (same PR) — combined-totals panel.** Founder feedback: neither surface showed a single panel
+with the *combined* (real + simulated) totals for everyone to see clearly — the Overview buried the grand
+total in a grey "of N incl. synthetic" sub-line, and Simulation is synthetic-only. Added a **"Platform totals
+— real + simulated" strip at the very top of the Overview**: six headline cards (Total users, Businesses,
+Campaigns, DragonFeed posts, DragonShare boosts, Promotions), each the grand total (`*_all`) with a `N real ·
+N simulated` split sub. A new pure `deriveCombinedTotals(stats)` (same `total = all ?? real` pre-migration
+fallback — never a false 0) + a small `PlatformTotalsPanel`; placed **above** the "real only" banner so its
+"metrics below" stays accurate. Tests extended (deriveCombinedTotals: order, `all − real` split, pre-migration
+fallback); typecheck + lint + build green.
+
 ## [2026-07-26] The 200K-band load run + the 16 KB header wall (`fix/sim-preflight-header-overflow`, PR #345)
 
 The session where [[Synthetic Weight Engine]] Slice 2 stopped being *built* and became *run*. Three

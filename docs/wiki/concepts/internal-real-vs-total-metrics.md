@@ -14,13 +14,16 @@ Built on the [[Synthetic Weight Engine]]'s `is_synthetic(...)` predicate.
 
 ## The three surfaces
 
-- **Overview (`/internal`)** — **real only.** `aios_platform_stats` counts every entity
-  `WHERE NOT is_synthetic(...)`. With ~2,025 synthetic bots vs ~40 real users it *correctly*
-  sits flat — which once read as "metrics not updating" but is the segregation working as
-  designed (durable lesson: **verify the pipeline before assuming a break**). A **"synthetic
-  test data is active" banner** and an **"of N incl. synthetic" per-card sub** surface the
-  excluded volume, computed from the `all − real` gap, and render only when that gap is non-zero
-  (a clean prod with no bots is visually unchanged).
+- **Overview (`/internal`)** — a **"Platform totals — real + simulated" strip at the very top**
+  (the grand total incl. synthetic for each headline entity, with a `N real · N simulated` split
+  sub), then **real-only** breakdown sections below. `aios_platform_stats` counts every entity
+  `WHERE NOT is_synthetic(...)` for the real sections. With ~2,025 synthetic bots vs ~40 real users
+  the real numbers *correctly* sit flat — which once read as "metrics not updating" but is the
+  segregation working as designed (durable lesson: **verify the pipeline before assuming a break**).
+  A **"synthetic test data is active" banner** and an **"of N incl. synthetic" per-card sub** surface
+  the excluded volume, computed from the `all − real` gap, and render only when that gap is non-zero
+  (a clean prod with no bots is visually unchanged). The totals strip sits **above** the banner so the
+  banner's "the metrics below are real only" stays accurate.
 - **Simulation / Synthetic Weight Engine (`/internal/simulation`)** — **synthetic mirror.** As of
   2026-07-26 its top mirrors the Overview card set 1:1, valued with the synthetic cohort, then a
   divider, then simulation-only widgets (registry `Bots total`, personas, matrix run, load curve,
@@ -48,6 +51,14 @@ breakdown maps: `by_status_all` (campaigns), `posts_by_status_all` (dragonshare)
   for both pages and owns its own loading/error/empty. **Keyed `<Fragment>` per section, never a
   wrapping `<div>`** — a div makes every `SectionHeading` a `:first-child`, collapsing `first:mt-0` on
   all three sections.
+- **`deriveCombinedTotals(stats)` + `PlatformTotalsPanel`** (same model file /
+  `src/components/internal/PlatformTotalsPanel.tsx`) — the Overview-only "everything on the platform"
+  strip: six headline cards (Total users, Businesses = restaurants + brands, Campaigns, DragonFeed
+  posts, DragonShare boosts, Promotions), each showing the grand total (`*_all`) with a `real ·
+  simulated` split. Same pre-migration fallback (`total = all ?? real`, so a card never shows a false 0
+  and its split reads 0). "DragonFeed posts" = DragonShare feed posts; "DragonShare boosts" = paid
+  amplifications — the two distinct DragonShare counts, mapped from the founder's "dragon feeds" /
+  "dragon shares" ask.
 
 ## Graceful degradation to the pre-migration RPC
 
