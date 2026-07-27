@@ -39,8 +39,28 @@ import { uploadAsset, loadSampleAsset } from "./marketplace/content";
 import { makePicker, curatedBrief, DISCOUNT_KINDS, MESSAGE_SNIPPETS, CREATOR_BIOS } from "./marketplace/text";
 import { locationAt } from "./marketplace/locations";
 import { buildBusinessProfileFields, buildCreatorProfileFields, buildOrgUnitGeo } from "./marketplace/profile";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { generatePool, type GenerateDeps, type Manifest } from "./avatars/generate";
+import { planAssignments, applyAssignments, readSyntheticProfiles } from "./avatars/apply";
+import { parseAvatarArgs, purgePool, estimateSpendUsd, BUCKET as AVATAR_BUCKET } from "./avatars/purge";
+import { renderMonogram } from "./avatars/png";
+import { initials, paletteFor } from "./avatars/monogram";
+import { logoPath, poolIndex } from "./avatars/pool";
 
-const COMMANDS = ["dry-run", "mint", "tick", "purge", "bulk-seed", "load", "marketplace-seed", "marketplace-purge"] as const;
+const COMMANDS = [
+  "dry-run",
+  "mint",
+  "tick",
+  "purge",
+  "bulk-seed",
+  "load",
+  "marketplace-seed",
+  "marketplace-purge",
+  "avatars-generate",
+  "avatars-apply",
+  "avatars-purge",
+] as const;
 type Command = (typeof COMMANDS)[number];
 
 export interface Args {
@@ -1072,6 +1092,133 @@ export async function cmdMarketplacePurge(): Promise<void> {
   }
 }
 
+// ------------------------------------------------------------------
+// avatars-* — the synthetic avatar pool (spec 2026-07-26-synthetic-avatar-pool-design.md).
+// Faces are generated ONCE into a durable, shared pool; profiles point at pool objects by
+// reference, so nothing per-user is created and a re-seed after a purge costs $0.
+// ------------------------------------------------------------------
+
+const AVATAR_CACHE_DIR = join(process.cwd(), "sim", ".avatar-cache");
+const AVATAR_MANIFEST = join(AVATAR_CACHE_DIR, "manifest.json");
+
+/** Real image-API call. Injected into generatePool, so the batch logic is testable without spend. */
+async function openAiImage(prompt: string, model: string): Promise<Uint8Array> {
+  const key = process.env.SIM_OPENAI_API_KEY;
+  if (!key) throw new Error("Missing SIM_OPENAI_API_KEY (put it in the gitignored .env.sync.local)");
+
+  const resp = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model, prompt, size: "1024x1024", quality: "low", n: 1 }),
+  });
+  if (!resp.ok) throw new Error(`image API ${resp.status}: ${(await resp.text()).slice(0, 300)}`);
+
+  const json = (await resp.json()) as { data?: Array<{ b64_json?: string; url?: string }> };
+  const item = json.data?.[0];
+  if (item?.b64_json) return Uint8Array.from(Buffer.from(item.b64_json, "base64"));
+  if (item?.url) {
+    const img = await fetch(item.url);
+    if (!img.ok) throw new Error(`image fetch ${img.status}`);
+    return new Uint8Array(await img.arrayBuffer());
+  }
+  throw new Error("image API returned neither b64_json nor url");
+}
+
+export async function cmdAvatarsGenerate(argv: string[]): Promise<void> {
+  const a = parseAvatarArgs(argv);
+  const count = a.limit !== null ? Math.min(a.count, a.limit) : a.count;
+  const model = process.env.SIM_IMAGE_MODEL;
+
+  if (a.dryRun) {
+    console.warn(
+      `[avatars-generate] DRY RUN — would generate ${count} face(s) with "${model ?? "<SIM_IMAGE_MODEL unset>"}" ` +
+        `for an estimated $${estimateSpendUsd(count).toFixed(2)}. Nothing was generated or uploaded.`,
+    );
+    return;
+  }
+  if (!model) throw new Error("Missing SIM_IMAGE_MODEL (must NOT be gpt-image-1 — it retires 2026-10-23)");
+
+  const svc = serviceClient();
+  await bootGate(svc);
+  mkdirSync(AVATAR_CACHE_DIR, { recursive: true });
+
+  const deps: GenerateDeps = {
+    generateImage: (prompt) => openAiImage(prompt, model),
+    upload: async (objectPath, bytes, contentType) => {
+      const { error } = await svc.storage
+        .from(AVATAR_BUCKET)
+        .upload(objectPath, bytes, { contentType, upsert: true });
+      if (error) throw new Error(`upload ${objectPath}: ${error.message}`);
+    },
+    readManifest: () => {
+      if (!existsSync(AVATAR_MANIFEST)) return null;
+      return JSON.parse(readFileSync(AVATAR_MANIFEST, "utf8")) as Manifest;
+    },
+    writeManifest: (m) => writeFileSync(AVATAR_MANIFEST, JSON.stringify(m, null, 2)),
+    cacheWrite: (i, bytes) => writeFileSync(join(AVATAR_CACHE_DIR, `${String(i).padStart(4, "0")}.jpg`), bytes),
+    cacheRead: (i) => {
+      const p = join(AVATAR_CACHE_DIR, `${String(i).padStart(4, "0")}.jpg`);
+      return existsSync(p) ? new Uint8Array(readFileSync(p)) : null;
+    },
+  };
+
+  const r = await generatePool(count, model, deps);
+  console.warn(`[avatars-generate] ${JSON.stringify(r)} (model=${model})`);
+}
+
+export async function cmdAvatarsApply(): Promise<void> {
+  const svc = serviceClient();
+  await bootGate(svc);
+
+  const rows = await readSyntheticProfiles(svc);
+  const creators = rows.filter((r) => r.kind === "creator");
+  const businesses = rows.filter((r) => r.kind === "business");
+
+  // The face pool's real size — never assume it equals the cohort (refusals can leave it short).
+  const { data: faceObjects, error: listErr } = await svc.storage
+    .from(AVATAR_BUCKET)
+    .list("synthetic/faces", { limit: 1000 });
+  if (listErr) throw new Error(`avatars-apply: cannot list the face pool: ${listErr.message}`);
+  const faces = (faceObjects ?? []).length;
+  if (faces === 0) throw new Error("avatars-apply: the face pool is empty — run avatars-generate first");
+
+  // Logos are rendered and uploaded on demand: one tile per distinct pool slot, not per business.
+  const logos = Math.max(1, Math.min(businesses.length, 512));
+  const rendered = new Set<number>();
+  for (const b of businesses) {
+    const idx = poolIndex(b.userId, logos);
+    if (rendered.has(idx)) continue;
+    rendered.add(idx);
+    const png = renderMonogram(initialsFor(b.name), paletteFor(b.userId), 256);
+    const { error } = await svc.storage
+      .from(AVATAR_BUCKET)
+      .upload(logoPath(idx), png, { contentType: "image/png", upsert: true });
+    if (error) throw new Error(`avatars-apply: logo upload ${idx}: ${error.message}`);
+  }
+
+  const url = requireEnvUrl();
+  const assignments = planAssignments([...creators, ...businesses], { faces, logos }, url);
+  const result = await applyAssignments(svc, assignments);
+  console.warn(`[avatars-apply] ${JSON.stringify({ ...result, faces, logos })}`);
+}
+
+export async function cmdAvatarsPurge(): Promise<void> {
+  const svc = serviceClient();
+  await bootGate(svc);
+  const r = await purgePool(svc);
+  console.warn(`[avatars-purge] ${JSON.stringify(r)}`);
+}
+
+function initialsFor(name: string | null): string {
+  return initials(name ?? "");
+}
+
+function requireEnvUrl(): string {
+  const u = process.env.SIM_SUPABASE_URL;
+  if (!u) throw new Error("Missing SIM_SUPABASE_URL");
+  return u;
+}
+
 export async function main(argv: string[]): Promise<void> {
   const args = parseArgs(argv);
   switch (args.command) {
@@ -1098,6 +1245,15 @@ export async function main(argv: string[]): Promise<void> {
       return;
     case "marketplace-purge":
       await cmdMarketplacePurge();
+      return;
+    case "avatars-generate":
+      await cmdAvatarsGenerate(argv);
+      return;
+    case "avatars-apply":
+      await cmdAvatarsApply();
+      return;
+    case "avatars-purge":
+      await cmdAvatarsPurge();
       return;
   }
 }

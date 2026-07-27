@@ -156,3 +156,48 @@ workflow; kill switch OFF). Going live is: (1) flip `SYNTHETIC_BOTS_ENABLED` on 
 founder-authorized live smoke (`mint --n 5` → `tick`s → assert `aios_*` metrics unchanged +
 `get_simulation_stats` shows the cohort → `purge` → zero residue); then (2) uncomment the daily
 `schedule` cron. Flip the kill switch back OFF to return prod to inert.
+
+## Avatar pool (`avatars-generate` / `avatars-apply` / `avatars-purge`)
+
+The browsable synthetic marketplace shipped with **no imagery**: 1,484 depth creators rendered
+initials, and the ~24 profiles seeded through the interactive path pointed at a **160-byte 8x8
+solid-colour JPEG** (`generatedImage()` in `marketplace/content.ts` — the fallback used because
+`marketplace/assets/` is empty). Spec:
+`docs/superpowers/specs/2026-07-26-synthetic-avatar-pool-design.md`.
+
+**The pool is shared by reference.** Faces are generated once into `profile-assets/synthetic/faces/`
+and each profile's `avatar_url` points **straight at a pool object** — no per-user copy is ever made.
+Consequences worth knowing before you change any of this:
+
+- **Teardown can't orphan avatars.** There is nothing per-user to delete; the URL dies with the row.
+  This is deliberate — PR #340 was a marketplace teardown that silently left its storage behind.
+- **`marketplace-purge` does NOT delete the pool.** That is on purpose: the pool is a durable asset
+  library, so re-seeding a fresh cohort costs **$0**. Removing it is the separate, explicit
+  `avatars-purge`.
+- **Assignment is blind.** `poolIndex(userId, poolSize)` is an FNV-1a hash of the id only — never a
+  name, city, or any other profile attribute. A business's name is used *only* to derive its
+  monogram text, never to pick an image.
+
+```bash
+npx tsx sim/cli.ts avatars-generate --dry-run           # cost estimate, spends nothing
+npx tsx sim/cli.ts avatars-generate --limit 5           # smoke: eyeball 5 faces before the rest
+npx tsx sim/cli.ts avatars-generate --count 1500        # PAID (~$17 at the low-quality rate)
+npx tsx sim/cli.ts avatars-apply                        # point profiles at the pool
+npx tsx sim/cli.ts avatars-purge                        # delete the pool + null the columns
+```
+
+**Env:** `SIM_OPENAI_API_KEY` and `SIM_IMAGE_MODEL` (in the gitignored `.env.sync.local`, alongside
+the service-role key). `SIM_IMAGE_MODEL` **must not be `gpt-image-1`** — it retires 2026-10-23.
+Verify the model against OpenAI's live model list before a paid run; the chosen model is recorded in
+the cache manifest so a later top-up can match it.
+
+**Generation is checkpointed and resumable.** Images are written to the gitignored
+`sim/.avatar-cache/` *before* upload and a manifest records which indices uploaded, so: a crash
+resumes for free, a failed upload re-uploads from cache without re-generating, and a re-run of a
+completed pool spends nothing. Refusals (image APIs intermittently decline person prompts) are
+counted and skipped — the pool is allowed to land short, and `avatars-apply` reads the pool's real
+size rather than assuming it matches the cohort.
+
+**Businesses get monogram PNGs, not faces** — rendered locally at zero cost by `avatars/png.ts`
+(the bucket's `allowed_mime_types` reject `image/svg+xml`, hence a hand-rolled PNG encoder over
+`node:zlib` rather than an SVG or a new dependency).
