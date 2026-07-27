@@ -158,7 +158,7 @@ For each DAU level `d`:
 
 - Every output cell tagged **MEASURED / DERIVED / ASSUMED**; the page renders a legend and visually
   separates measured columns from assumed ones.
-- AI spend **self-caps at 15% of revenue** — surfaced explicitly.
+- AI spend **self-caps at 15% of revenue (with a $250/mo floor)** — surfaced explicitly.
 - `dbBytes`/`storageBytes` never forecast below today's measured value.
 - Connection headroom shown against the **measured** `max_connections` ceiling, with the 200K-run
   finding noted ("DB was ~30% utilised at 4,000 concurrent — not the binding constraint").
@@ -196,9 +196,11 @@ is directly editable (no read-only variant needed).
 ## 6. Backend — one founder-gated migration, no new RPC/RLS
 
 - `supabase/migrations/<ts>_forecast_assumptions_settings.sql`: `INSERT … ON CONFLICT (key) DO NOTHING`
-  the 8 `forecast_*` rows into `aios_dashboard_settings` with their default jsonb values.
+  the **9** `forecast_*` rows (§4c) into `aios_dashboard_settings` with their default jsonb values.
+  **All nine must be seeded** — the panel edits via `.update().eq('key', …)`, so an unseeded key's edit
+  matches zero rows and silently no-ops (the assumption becomes un-tunable).
 - **No new table, RPC, or policy** — `aios_dashboard_settings` already has internal-SELECT +
-  admin-UPDATE RLS (used by `useCurrentTierIndex` read + `useScorecardSettings` write). The forecast
+  admin-UPDATE RLS (used by `useCurrentTierIndex` for its read). The forecast
   reads current cost/revenue via the same hooks the Expenses page already uses; it does **not** need
   #350's `aios_stakeholder_burn()` RPC.
 - **Careful gate**: applying the migration is founder-gated (matches the project's migration discipline).
@@ -270,11 +272,11 @@ built in this branch (avoids stacking on an unmerged PR).
 |---|---|
 | `src/lib/internal/forecastModel.ts` | pure model + Supabase pricing constants + `FORECAST_KEYS`/defaults |
 | `src/lib/internal/forecastModel.test.ts` | model unit tests (the contract) |
-| `src/hooks/internal/useForecastAssumptions.ts` | read 8 KV assumptions + admin update mutation |
+| `src/hooks/internal/useForecastAssumptions.ts` | read 9 KV assumptions + admin update mutation |
 | `src/components/internal/ForecastTable.tsx` | the four-scenario table (pure render of the model) |
-| `src/components/internal/ForecastAssumptionsPanel.tsx` | admin-editable / read-only assumptions |
+| `src/components/internal/ForecastAssumptionsPanel.tsx` | admin-editable assumptions (page is admin-only) |
 | `src/pages/internal/InternalForecast.tsx` | page: wires hooks → model → table + panel + chart |
-| `supabase/migrations/<ts>_forecast_assumptions_settings.sql` | seed the 8 KV rows (idempotent) |
+| `supabase/migrations/<ts>_forecast_assumptions_settings.sql` | seed all 9 KV rows (idempotent) |
 | `src/App.tsx` · `src/components/internal/InternalLayout.tsx` | route + nav |
 | `docs/wiki/concepts/cost-dau-forecast.md` + SHIPPED_LOG + §5 | knowledge layer |
 
