@@ -39,7 +39,7 @@ import { uploadAsset, loadSampleAsset } from "./marketplace/content";
 import { makePicker, curatedBrief, DISCOUNT_KINDS, MESSAGE_SNIPPETS, CREATOR_BIOS } from "./marketplace/text";
 import { locationAt } from "./marketplace/locations";
 import { buildBusinessProfileFields, buildCreatorProfileFields, buildOrgUnitGeo } from "./marketplace/profile";
-import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   generatePool,
@@ -1217,10 +1217,22 @@ export async function cmdAvatarsPurge(): Promise<void> {
   const svc = serviceClient();
   await bootGate(svc);
   const r = await purgePool(svc);
-  // The manifest checkpoints uploads into a pool that no longer exists — drop it so a later
-  // regenerate re-uploads from the local cache (free) instead of skipping every index.
-  if (existsSync(AVATAR_MANIFEST)) rmSync(AVATAR_MANIFEST);
-  console.warn(`[avatars-purge] ${JSON.stringify({ ...r, manifestCleared: true })}`);
+
+  // The manifest checkpoints uploads into a pool that no longer exists, so the upload flags must
+  // go — but NOT the refusals. Deleting the whole file would make a later regenerate re-pay the
+  // image endpoint for slots the model already declined (and could trip the consecutive-refusal
+  // abort). reconcileManifest keeps exactly the right half. (Codex round 10 — this corrects the
+  // round-7 fix, which had thrown the refusals away.)
+  let refusalsKept = 0;
+  if (existsSync(AVATAR_MANIFEST)) {
+    const reconciled = reconcileManifest(
+      JSON.parse(readFileSync(AVATAR_MANIFEST, "utf8")) as Manifest,
+      0,
+    );
+    refusalsKept = Object.keys(reconciled.entries).length;
+    writeFileSync(AVATAR_MANIFEST, JSON.stringify(reconciled, null, 2));
+  }
+  console.warn(`[avatars-purge] ${JSON.stringify({ ...r, refusalsKept })}`);
 }
 
 function requireEnvUrl(): string {
