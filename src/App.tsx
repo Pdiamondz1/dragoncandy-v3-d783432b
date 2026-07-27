@@ -102,6 +102,7 @@ const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 const HelpBriefDrawer = lazy(() => import("./features/donny/HelpBriefDrawer").then(m => ({ default: m.HelpBriefDrawer })));
 const InternalLayout = lazy(() => import("./components/internal/InternalLayout").then(m => ({ default: m.InternalLayout })));
 const InternalOverview = lazy(() => import("./pages/internal/InternalOverview"));
+const InternalScorecard = lazy(() => import("./pages/internal/InternalScorecard"));
 const InternalWeight = lazy(() => import("./pages/internal/InternalWeight"));
 const InternalSimulation = lazy(() => import("./pages/internal/InternalSimulation"));
 const InternalExpenses = lazy(() => import("./pages/internal/InternalExpenses"));
@@ -342,6 +343,7 @@ function AnimatedRoutes() {
           {/* Internal AIOS surface (internal.dragoncandy.io / /internal) */}
           <Route path="/internal" element={<InternalRoute><InternalLayout /></InternalRoute>}>
             <Route index element={<InternalOverview />} />
+            <Route path="scorecard" element={<InternalScorecard />} />
             <Route path="weight" element={<InternalWeight />} />
             <Route path="strategy" element={<InternalStrategy />} />
             <Route path="briefings" element={<InternalBriefings />} />

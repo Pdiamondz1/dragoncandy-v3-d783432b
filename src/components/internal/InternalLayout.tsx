@@ -13,6 +13,7 @@ import {
   ListChecks,
   LogOut,
   Menu,
+  Presentation,
   Receipt,
   Repeat,
   Sparkles,
@@ -46,6 +47,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Monitor',
     items: [
+      { to: '/internal/scorecard', label: 'Scorecard', icon: Presentation },
       { to: '/internal', label: 'Overview', icon: LayoutDashboard, end: true },
       { to: '/internal/weight', label: 'Weight', icon: Gauge },
       { to: '/internal/briefings', label: 'Briefings', icon: FileText },
