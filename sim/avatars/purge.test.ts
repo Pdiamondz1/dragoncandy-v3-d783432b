@@ -22,6 +22,20 @@ describe("parseAvatarArgs", () => {
     expect(() => parseAvatarArgs(["--count", "0"])).toThrow(/count/);
   });
 
+  // Regression for the Codex round-8 finding: a trailing --count silently became the full paid run.
+  it("rejects a numeric flag given without a value instead of defaulting", () => {
+    expect(() => parseAvatarArgs(["avatars-generate", "--count"])).toThrow(/without a value/);
+    expect(() => parseAvatarArgs(["--limit"])).toThrow(/without a value/);
+  });
+
+  it("rejects a numeric flag immediately followed by another flag", () => {
+    expect(() => parseAvatarArgs(["--count", "--dry-run"])).toThrow(/without a value/);
+  });
+
+  it("still treats an absent flag as the default", () => {
+    expect(parseAvatarArgs(["--dry-run"])).toEqual({ count: 1500, dryRun: true, limit: null });
+  });
+
   it("applies --limit as the effective ceiling on count", () => {
     const a = parseAvatarArgs(["--count", "1500", "--limit", "5"]);
     expect(Math.min(a.count, a.limit ?? a.count)).toBe(5);

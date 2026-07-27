@@ -20,33 +20,34 @@ export interface AvatarArgs {
   limit: number | null;
 }
 
+/**
+ * Reads a numeric flag, distinguishing ABSENT from PRESENT-BUT-EMPTY.
+ *
+ * `--count` as the final argument (or followed by another flag) must not fall back to the default:
+ * on `avatars-generate` that turns a typo into the full 1,500-image PAID run. A flag the operator
+ * typed is a flag they meant to set. (Codex second review round 8, 2026-07-26.)
+ */
+function numericFlag(argv: string[], name: string, fallback: number | null): number | null {
+  const i = argv.indexOf(`--${name}`);
+  if (i === -1) return fallback;
+
+  const raw = argv[i + 1];
+  if (raw === undefined || raw.startsWith("--")) {
+    throw new Error(`--${name} was given without a value`);
+  }
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`--${name} must be a positive integer, got "${raw}"`);
+  }
+  return parsed;
+}
+
 export function parseAvatarArgs(argv: string[]): AvatarArgs {
-  const flag = (name: string): string | undefined => {
-    const i = argv.indexOf(`--${name}`);
-    return i !== -1 ? argv[i + 1] : undefined;
+  return {
+    count: numericFlag(argv, "count", 1500) as number,
+    limit: numericFlag(argv, "limit", null),
+    dryRun: argv.includes("--dry-run"),
   };
-
-  const rawCount = flag("count");
-  let count = 1500;
-  if (rawCount !== undefined) {
-    const parsed = Number(rawCount);
-    if (!Number.isInteger(parsed) || parsed <= 0) {
-      throw new Error(`--count must be a positive integer, got "${rawCount}"`);
-    }
-    count = parsed;
-  }
-
-  const rawLimit = flag("limit");
-  let limit: number | null = null;
-  if (rawLimit !== undefined) {
-    const parsed = Number(rawLimit);
-    if (!Number.isInteger(parsed) || parsed <= 0) {
-      throw new Error(`--limit must be a positive integer, got "${rawLimit}"`);
-    }
-    limit = parsed;
-  }
-
-  return { count, dryRun: argv.includes("--dry-run"), limit };
 }
 
 export function estimateSpendUsd(count: number): number {
