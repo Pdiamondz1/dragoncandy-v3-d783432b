@@ -64,6 +64,39 @@ export function syntheticTotalUsers(stats: PlatformStats): number {
   return synthValue(stats.users.total, stats.users.total_all);
 }
 
+/** One card in the combined-totals strip: the grand total (real + simulated) and its split. */
+export interface CombinedTotalCard {
+  label: string;
+  total: number;
+  real: number;
+  synthetic: number;
+}
+
+/**
+ * The "Platform totals — real + simulated" strip for the top of the Overview: the grand total
+ * (incl. synthetic) for each headline entity, plus its real/synthetic split. Values use the `*_all`
+ * totals; pre-migration (no `*_all`) each falls back to the real count so a card never shows a
+ * false 0 (and its synthetic split reads 0). "DragonFeed posts" = DragonShare feed posts;
+ * "DragonShare boosts" = paid amplifications — the two distinct counts we track.
+ */
+export function deriveCombinedTotals(stats: PlatformStats): CombinedTotalCard[] {
+  const { users: u, businesses: b, campaigns: c, dragonshare: d, promotions: pr } = stats;
+  const card = (label: string, real: number, all: number | undefined): CombinedTotalCard => {
+    const total = all ?? real; // pre-migration fallback — best available, never a false 0
+    return { label, total, real, synthetic: Math.max(0, total - real) };
+  };
+  const bizReal = b.restaurants + b.brands;
+  const bizAll = (b.restaurants_all ?? b.restaurants) + (b.brands_all ?? b.brands);
+  return [
+    card('Total users', u.total, u.total_all),
+    card('Businesses', bizReal, bizAll),
+    card('Campaigns', c.total, c.total_all),
+    card('DragonFeed posts', d.posts_total, d.posts_total_all),
+    card('DragonShare boosts', d.boosts_total, d.boosts_total_all),
+    card('Promotions', pr.total, pr.total_all),
+  ];
+}
+
 export function deriveCardModel(stats: PlatformStats, mode: MetricMode): MetricSection[] {
   const real = mode === 'real';
   const { users: u, businesses: b, campaigns: c, dragonshare: d, promotions: pr, content: ct, social_connections: sc } = stats;

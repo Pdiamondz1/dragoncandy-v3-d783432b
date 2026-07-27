@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deriveCardModel, diffBuckets, syntheticTotalUsers } from './platformMetricModel';
+import { deriveCardModel, deriveCombinedTotals, diffBuckets, syntheticTotalUsers } from './platformMetricModel';
 import type { PlatformStats } from '@/hooks/internal/usePlatformStats';
 
 const STATS: PlatformStats = {
@@ -135,6 +135,51 @@ describe('degradation — *_all breakdown maps absent', () => {
     for (const s of deriveCardModel(missingByRoleAll, 'synthetic')) for (const k of s.cards) c[k.label] = k;
     expect(c['Total users'].value).toBe(2025);
     expect(c['Creators'].value).toBe(0);
+  });
+});
+
+describe('deriveCombinedTotals — grand total (real + simulated) + split', () => {
+  const byLabel = (stats: PlatformStats) =>
+    Object.fromEntries(deriveCombinedTotals(stats).map((c) => [c.label, c]));
+
+  it('has exactly the six headline cards, in order', () => {
+    expect(deriveCombinedTotals(STATS).map((c) => c.label)).toEqual([
+      'Total users',
+      'Businesses',
+      'Campaigns',
+      'DragonFeed posts',
+      'DragonShare boosts',
+      'Promotions',
+    ]);
+  });
+
+  it('total = *_all, and synthetic = all − real', () => {
+    const c = byLabel(STATS);
+    expect(c['Total users']).toEqual({ label: 'Total users', total: 2065, real: 40, synthetic: 2025 });
+    // Businesses = restaurants + brands (11+6 real, 19+9 all)
+    expect(c['Businesses']).toEqual({ label: 'Businesses', total: 28, real: 17, synthetic: 11 });
+    expect(c['Campaigns']).toEqual({ label: 'Campaigns', total: 52, real: 25, synthetic: 27 });
+    expect(c['DragonFeed posts']).toEqual({ label: 'DragonFeed posts', total: 20, real: 10, synthetic: 10 });
+    // boosts_total_all == boosts_total ⇒ no synthetic boosts
+    expect(c['DragonShare boosts']).toEqual({ label: 'DragonShare boosts', total: 7, real: 7, synthetic: 0 });
+    expect(c['Promotions']).toEqual({ label: 'Promotions', total: 2, real: 2, synthetic: 0 });
+  });
+
+  it('pre-migration (no *_all) falls back to the real count — never a false 0, split reads 0', () => {
+    const preMigration: PlatformStats = {
+      ...STATS,
+      users: { total: 40, by_role: STATS.users.by_role },
+      businesses: { restaurants: 11, brands: 6, locations: 1796 },
+      campaigns: { total: 25, by_status: STATS.campaigns.by_status },
+      dragonshare: { posts_total: 10, posts_by_status: {}, boosts_total: 7 },
+      promotions: { total: 2, by_status: {} },
+    };
+    const c = byLabel(preMigration);
+    expect(c['Total users']).toEqual({ label: 'Total users', total: 40, real: 40, synthetic: 0 });
+    expect(c['Businesses']).toEqual({ label: 'Businesses', total: 17, real: 17, synthetic: 0 });
+    expect(c['Campaigns']).toEqual({ label: 'Campaigns', total: 25, real: 25, synthetic: 0 });
+    expect(c['DragonFeed posts'].total).toBe(10);
+    expect(c['DragonFeed posts'].synthetic).toBe(0);
   });
 });
 

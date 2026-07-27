@@ -4,6 +4,7 @@ import { useCostStats } from '@/hooks/internal/useCostStats';
 import { useInternalAccess } from '@/hooks/internal/useInternalAccess';
 import { StatCard, SectionHeading, ErrorCard } from '@/components/internal/stats';
 import { PlatformMetricSections } from '@/components/internal/PlatformMetricSections';
+import { PlatformTotalsPanel } from '@/components/internal/PlatformTotalsPanel';
 import { PageContainer, PageHeader } from '@/components/internal/layout';
 import { formatCents, formatUsd } from '@/lib/utils';
 import { aiCapStatus } from '@/lib/aiCostCap';
@@ -50,6 +51,8 @@ const InternalOverview = () => {
           </p>
         }
       />
+
+      <PlatformTotalsPanel stats={p} />
 
       {syntheticActive && (
         <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
