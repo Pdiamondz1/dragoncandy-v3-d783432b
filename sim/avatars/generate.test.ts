@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { generatePool, facePrompt, type GenerateDeps, type Manifest } from "./generate";
+import { generatePool, facePrompt, isContentRefusal, type GenerateDeps, type Manifest } from "./generate";
 
 /** Valid JPEG magic (FF D8 FF) — the upload path sniffs the bytes to label the object. */
 const bytes = (n: number) => new Uint8Array([0xff, 0xd8, 0xff, n]);
@@ -35,6 +35,30 @@ describe("facePrompt", () => {
 
   it("is deterministic per index", () => {
     expect(facePrompt(42)).toBe(facePrompt(42));
+  });
+});
+
+describe("isContentRefusal", () => {
+  it("treats a moderation decline as a refusal", () => {
+    expect(isContentRefusal(new Error("content_policy_violation"))).toBe(true);
+    expect(isContentRefusal(new Error("Request rejected by safety system"))).toBe(true);
+  });
+
+  it("does NOT treat credential, quota or network failures as refusals", () => {
+    for (const m of [
+      "401 Unauthorized",
+      "429 Too Many Requests",
+      "500 Internal Server Error",
+      "Missing SIM_OPENAI_API_KEY",
+      "TypeError: fetch failed",
+      "connect ETIMEDOUT",
+    ]) {
+      expect(isContentRefusal(new Error(m))).toBe(false);
+    }
+  });
+
+  it("defaults to NOT a refusal for an unrecognised error (fail loud)", () => {
+    expect(isContentRefusal(new Error("something weird happened"))).toBe(false);
   });
 });
 
@@ -82,6 +106,26 @@ describe("generatePool", () => {
     expect(r.refused).toBe(1);
     expect(r.generated).toBe(2);
     expect(d.upload).toHaveBeenCalledTimes(2);
+  });
+
+  // Regression for the Codex round-4 finding: a bad key or a 401 would otherwise be counted as
+  // 1,500 "refusals" and the CLI would exit green with an empty pool.
+  it("aborts on a non-refusal failure instead of counting it as a refusal", async () => {
+    const d = makeDeps({
+      generateImage: vi.fn(async () => {
+        throw new Error("401 Unauthorized: invalid api key");
+      }),
+    });
+    await expect(generatePool(3, "model-x", d)).rejects.toThrow(/non-refusal/);
+  });
+
+  it("aborts after too many consecutive refusals rather than burning the run", async () => {
+    const d = makeDeps({
+      generateImage: vi.fn(async () => {
+        throw new Error("content_policy_violation");
+      }),
+    });
+    await expect(generatePool(50, "model-x", d)).rejects.toThrow(/consecutive refusals/);
   });
 
   it("records the model in the manifest so a later top-up can match it", async () => {

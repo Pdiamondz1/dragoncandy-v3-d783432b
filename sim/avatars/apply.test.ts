@@ -1,5 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
-import { chunkIds, paginate, planAssignments, PAGE, type ProfileRow } from "./apply";
+import {
+  chunkIds,
+  paginate,
+  planAssignments,
+  stripPlaceholderPortfolio,
+  PAGE,
+  type ProfileRow,
+} from "./apply";
 
 const URL_ = "https://x.supabase.co";
 const POOLS = {
@@ -71,6 +78,37 @@ describe("paginate", () => {
       [0, 9],
       [10, 19],
     ]);
+  });
+});
+
+// Regression for the Codex round-4 finding: apply must remove the placeholder it is replacing,
+// and nothing else.
+describe("stripPlaceholderPortfolio", () => {
+  const uid = "b0280bbd-4c11-4a77-98d0-4ef5b494badf";
+  const placeholder = `https://x.supabase.co/storage/v1/object/public/profile-assets/${uid}/avatar.jpg`;
+  const real = "https://x.supabase.co/storage/v1/object/public/creator-portfolios/reel-1.mp4";
+
+  it("removes only the per-user placeholder entry", () => {
+    expect(stripPlaceholderPortfolio([placeholder, real], uid)).toEqual([real]);
+  });
+
+  it("returns null (no write) when there is no placeholder to remove", () => {
+    expect(stripPlaceholderPortfolio([real], uid)).toBeNull();
+  });
+
+  it("returns null for an empty or missing portfolio", () => {
+    expect(stripPlaceholderPortfolio([], uid)).toBeNull();
+    expect(stripPlaceholderPortfolio(null, uid)).toBeNull();
+    expect(stripPlaceholderPortfolio(undefined, uid)).toBeNull();
+  });
+
+  it("never strips another user's placeholder", () => {
+    const other = "https://x.supabase.co/storage/v1/object/public/profile-assets/OTHER/avatar.jpg";
+    expect(stripPlaceholderPortfolio([other], uid)).toBeNull();
+  });
+
+  it("yields an empty array when the placeholder was the only entry", () => {
+    expect(stripPlaceholderPortfolio([placeholder], uid)).toEqual([]);
   });
 });
 

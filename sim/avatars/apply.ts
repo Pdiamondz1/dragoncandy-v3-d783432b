@@ -17,6 +17,22 @@ export interface ProfileRow {
   userId: string;
   kind: ProfileKind;
   name: string | null;
+  /** Creators only — carried so the placeholder entry can be removed WITHOUT touching real media. */
+  portfolioUrls?: string[] | null;
+}
+
+/**
+ * Removes only the old per-user placeholder (`…/<uid>/avatar.jpg`, the 160-byte 8x8 JPEG the
+ * seeder fell back to) from a creator's portfolio. Returns null when nothing changes.
+ *
+ * Blanket-clearing the array would delete real portfolio media this command never created —
+ * marketplace seeding or later synthetic content. Apply must only undo what the placeholder put
+ * there. (Codex second review round 4, 2026-07-26.)
+ */
+export function stripPlaceholderPortfolio(urls: string[] | null | undefined, userId: string): string[] | null {
+  if (!urls || urls.length === 0) return null;
+  const kept = urls.filter((u) => !u.includes(`/${userId}/avatar.`));
+  return kept.length === urls.length ? null : kept;
 }
 
 export interface Assignment {
@@ -27,6 +43,8 @@ export interface Assignment {
   monogram?: string;
   palette?: Palette;
   objectPath?: string;
+  /** Creators only — the current portfolio, so apply can strip just the placeholder entry. */
+  portfolioUrls?: string[] | null;
 }
 
 export interface PoolInputs {
@@ -61,7 +79,12 @@ export function planAssignments(rows: ProfileRow[], pools: PoolInputs, supabaseU
   return rows.map((row) => {
     if (row.kind === "creator") {
       const path = pools.facePaths[poolIndex(row.userId, pools.facePaths.length)];
-      return { userId: row.userId, kind: row.kind, url: poolPublicUrl(supabaseUrl, path) };
+      return {
+        userId: row.userId,
+        kind: row.kind,
+        url: poolPublicUrl(supabaseUrl, path),
+        portfolioUrls: row.portfolioUrls ?? null,
+      };
     }
     const monogram = initials(row.name ?? "");
     const palette = paletteFor(row.userId);
@@ -117,10 +140,12 @@ export async function readSyntheticProfiles(svc: SupabaseClient): Promise<Profil
   for (const batch of chunkIds(ids)) {
     const { data: creators, error: cErr } = await svc
       .from("creator_profiles")
-      .select("user_id")
+      .select("user_id, portfolio_urls")
       .in("user_id", batch);
     if (cErr) throw new Error(`readSyntheticProfiles creators: ${cErr.message}`);
-    for (const c of creators ?? []) rows.push({ userId: c.user_id, kind: "creator", name: null });
+    for (const c of creators ?? []) {
+      rows.push({ userId: c.user_id, kind: "creator", name: null, portfolioUrls: c.portfolio_urls ?? null });
+    }
 
     const { data: businesses, error: bErr } = await svc
       .from("business_profiles")
@@ -158,10 +183,14 @@ export async function applyAssignments(
 
   for (const a of assignments) {
     if (a.kind === "creator") {
-      const { error } = await svc
-        .from("creator_profiles")
-        .update({ avatar_url: a.url, portfolio_urls: [] })
-        .eq("user_id", a.userId);
+      // Only strip the placeholder entry; real portfolio media is left alone.
+      const cleaned = stripPlaceholderPortfolio(a.portfolioUrls, a.userId);
+      const patch: Record<string, unknown> = { avatar_url: a.url };
+      if (cleaned !== null) {
+        patch.portfolio_urls = cleaned;
+        result.placeholdersCleared++;
+      }
+      const { error } = await svc.from("creator_profiles").update(patch).eq("user_id", a.userId);
       if (error) throw new Error(`applyAssignments creator ${a.userId}: ${error.message}`);
       result.creators++;
     } else {

@@ -26,6 +26,25 @@ export interface GenerateResult {
   refused: number;
 }
 
+/** Abort after this many consecutive failures, even if each one looks like a refusal — a run that
+ *  cannot generate anything is an operator error, not a prudish model. */
+export const CONSECUTIVE_FAILURE_LIMIT = 5;
+
+/**
+ * A model declining a person prompt is expected and skippable. A missing key, a 401/429, or a
+ * network outage is NOT — treating those as refusals lets a broken run exit green with an empty
+ * pool, which is exactly the silent-success failure this harness keeps getting bitten by.
+ * (Codex second review round 4, 2026-07-26.)
+ */
+export function isContentRefusal(err: unknown): boolean {
+  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  if (/\b(401|403|429|5\d\d)\b/.test(msg)) return false;
+  if (/api key|apikey|unauthorized|quota|billing|rate limit|fetch failed|timeout|econn|enotfound/.test(msg)) {
+    return false;
+  }
+  return /content[_ ]policy|moderation|safety|rejected|declin|refus|not allowed|violat/.test(msg);
+}
+
 // A demographic matrix, sampled with co-prime strides so consecutive indices differ on several
 // axes at once. The pool has to look like a real US creator population across 24 cities; faces are
 // never matched to a profile's name or city (that mapping is a blind hash — see pool.ts).
@@ -67,6 +86,7 @@ export async function generatePool(
   deps.writeManifest(manifest);
 
   const result: GenerateResult = { generated: 0, skipped: 0, refused: 0 };
+  let consecutiveFailures = 0;
 
   for (let i = 0; i < count; i++) {
     if (manifest.entries[i]?.uploaded) {
@@ -80,12 +100,25 @@ export async function generatePool(
       try {
         bytes = await deps.generateImage(facePrompt(i));
       } catch (e) {
-        // Image APIs intermittently refuse person prompts. A refusal is a skipped index, not a
-        // failed run — the pool is allowed to land short (spec §4.2).
-        console.warn(`[avatars] index ${i} refused/failed: ${e instanceof Error ? e.message : String(e)}`);
+        // A content refusal is a skipped index, not a failed run — the pool may land short
+        // (spec §4.2). Anything else (bad key, 401/429, network) fails the run immediately.
+        if (!isContentRefusal(e)) {
+          throw new Error(
+            `[avatars] index ${i} failed for a non-refusal reason — aborting so the pool is not ` +
+              `silently left empty: ${e instanceof Error ? e.message : String(e)}`,
+          );
+        }
+        console.warn(`[avatars] index ${i} refused: ${e instanceof Error ? e.message : String(e)}`);
         result.refused++;
+        if (++consecutiveFailures >= CONSECUTIVE_FAILURE_LIMIT) {
+          throw new Error(
+            `[avatars] ${consecutiveFailures} consecutive refusals — aborting rather than burning ` +
+              `the run. Check the prompt and the model before retrying.`,
+          );
+        }
         continue;
       }
+      consecutiveFailures = 0;
       deps.cacheWrite(i, bytes);
       result.generated++;
     }
