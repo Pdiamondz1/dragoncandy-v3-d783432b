@@ -1,5 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
-import { generatePool, facePrompt, isContentRefusal, type GenerateDeps, type Manifest } from "./generate";
+import {
+  generatePool,
+  facePrompt,
+  isContentRefusal,
+  assertUsableImageModel,
+  type GenerateDeps,
+  type Manifest,
+} from "./generate";
 
 /** Valid JPEG magic (FF D8 FF) — the upload path sniffs the bytes to label the object. */
 const bytes = (n: number) => new Uint8Array([0xff, 0xd8, 0xff, n]);
@@ -35,6 +42,21 @@ describe("facePrompt", () => {
 
   it("is deterministic per index", () => {
     expect(facePrompt(42)).toBe(facePrompt(42));
+  });
+});
+
+describe("assertUsableImageModel", () => {
+  it("rejects the retired model before any spend", () => {
+    expect(() => assertUsableImageModel("gpt-image-1")).toThrow(/retired/);
+  });
+
+  it("rejects a missing model", () => {
+    expect(() => assertUsableImageModel(undefined)).toThrow(/SIM_IMAGE_MODEL/);
+    expect(() => assertUsableImageModel("")).toThrow(/SIM_IMAGE_MODEL/);
+  });
+
+  it("returns a usable model unchanged", () => {
+    expect(assertUsableImageModel("some-current-image-model")).toBe("some-current-image-model");
   });
 });
 

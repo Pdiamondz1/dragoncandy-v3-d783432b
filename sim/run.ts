@@ -41,7 +41,7 @@ import { locationAt } from "./marketplace/locations";
 import { buildBusinessProfileFields, buildCreatorProfileFields, buildOrgUnitGeo } from "./marketplace/profile";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { generatePool, type GenerateDeps, type Manifest } from "./avatars/generate";
+import { generatePool, assertUsableImageModel, type GenerateDeps, type Manifest } from "./avatars/generate";
 import { planAssignments, applyAssignments, readSyntheticProfiles } from "./avatars/apply";
 import { parseAvatarArgs, purgePool, estimateSpendUsd, listPrefix, BUCKET as AVATAR_BUCKET } from "./avatars/purge";
 import { renderMonogram } from "./avatars/png";
@@ -1135,14 +1135,15 @@ export async function cmdAvatarsGenerate(argv: string[]): Promise<void> {
     );
     return;
   }
-  if (!model) throw new Error("Missing SIM_IMAGE_MODEL (must NOT be gpt-image-1 — it retires 2026-10-23)");
+  // Enforced, not just documented — no paid run on a missing or retired model.
+  const usableModel = assertUsableImageModel(model);
 
   const svc = serviceClient();
   await bootGate(svc);
   mkdirSync(AVATAR_CACHE_DIR, { recursive: true });
 
   const deps: GenerateDeps = {
-    generateImage: (prompt) => openAiImage(prompt, model),
+    generateImage: (prompt) => openAiImage(prompt, usableModel),
     upload: async (objectPath, bytes, contentType) => {
       const { error } = await svc.storage
         .from(AVATAR_BUCKET)
@@ -1161,8 +1162,8 @@ export async function cmdAvatarsGenerate(argv: string[]): Promise<void> {
     },
   };
 
-  const r = await generatePool(count, model, deps);
-  console.warn(`[avatars-generate] ${JSON.stringify(r)} (model=${model})`);
+  const r = await generatePool(count, usableModel, deps);
+  console.warn(`[avatars-generate] ${JSON.stringify(r)} (model=${usableModel})`);
 }
 
 export async function cmdAvatarsApply(): Promise<void> {

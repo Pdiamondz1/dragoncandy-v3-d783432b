@@ -30,6 +30,27 @@ export interface GenerateResult {
  *  cannot generate anything is an operator error, not a prudish model. */
 export const CONSECUTIVE_FAILURE_LIMIT = 5;
 
+/** Retired 2026-10-23. Pinning the pool to it would strand a later top-up on a dead model. */
+export const RETIRED_IMAGE_MODELS = ["gpt-image-1"] as const;
+
+/**
+ * A constraint stated only in prose is not a constraint. The spec and the README both say the
+ * model must not be the retiring one; this enforces it before any spend.
+ * (Codex second review round 5, 2026-07-26.)
+ */
+export function assertUsableImageModel(model: string | undefined): string {
+  if (!model) {
+    throw new Error("Missing SIM_IMAGE_MODEL — set it to a current image model before a paid run.");
+  }
+  if ((RETIRED_IMAGE_MODELS as readonly string[]).includes(model)) {
+    throw new Error(
+      `SIM_IMAGE_MODEL="${model}" is retired (2026-10-23) and must not be used — a pool pinned to ` +
+        `it cannot be topped up later. Pick a current image model.`,
+    );
+  }
+  return model;
+}
+
 /**
  * A model declining a person prompt is expected and skippable. A missing key, a 401/429, or a
  * network outage is NOT — treating those as refusals lets a broken run exit green with an empty
