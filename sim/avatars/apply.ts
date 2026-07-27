@@ -19,6 +19,8 @@ export interface ProfileRow {
   name: string | null;
   /** Creators only — carried so the placeholder entry can be removed WITHOUT touching real media. */
   portfolioUrls?: string[] | null;
+  /** The value being replaced — the placeholder object path is derived from it, not guessed. */
+  currentAvatarUrl?: string | null;
 }
 
 /**
@@ -31,8 +33,25 @@ export interface ProfileRow {
  */
 export function stripPlaceholderPortfolio(urls: string[] | null | undefined, userId: string): string[] | null {
   if (!urls || urls.length === 0) return null;
-  const kept = urls.filter((u) => !u.includes(`/${userId}/avatar.`));
+  const kept = urls.filter((u) => placeholderObjectPath(u, userId) === null);
   return kept.length === urls.length ? null : kept;
+}
+
+/**
+ * If `url` is this user's per-user placeholder object, returns its storage path — otherwise null.
+ *
+ * The extension is taken FROM THE URL, never assumed: the seeder names the object
+ * `<uid>/avatar${asset.ext}`, so a non-JPEG asset in `sim/marketplace/assets/` produces
+ * `avatar.png`. Deleting only `avatar.jpg` would strip such an entry from the portfolio while
+ * orphaning the object in storage. (Codex second review round 6, 2026-07-26.)
+ */
+export function placeholderObjectPath(url: string, userId: string): string | null {
+  const m = url.match(/\/object\/public\/profile-assets\/(.+)$/);
+  if (!m) return null;
+  const objectPath = m[1].split("?")[0];
+  return /^[^/]+\/avatar\.[A-Za-z0-9]+$/.test(objectPath) && objectPath.startsWith(`${userId}/`)
+    ? objectPath
+    : null;
 }
 
 export interface Assignment {
@@ -45,6 +64,8 @@ export interface Assignment {
   objectPath?: string;
   /** Creators only — the current portfolio, so apply can strip just the placeholder entry. */
   portfolioUrls?: string[] | null;
+  /** The URL being replaced, so its storage object is located rather than guessed. */
+  currentAvatarUrl?: string | null;
 }
 
 export interface PoolInputs {
@@ -84,6 +105,7 @@ export function planAssignments(rows: ProfileRow[], pools: PoolInputs, supabaseU
         kind: row.kind,
         url: poolPublicUrl(supabaseUrl, path),
         portfolioUrls: row.portfolioUrls ?? null,
+        currentAvatarUrl: row.currentAvatarUrl ?? null,
       };
     }
     const monogram = initials(row.name ?? "");
@@ -96,6 +118,7 @@ export function planAssignments(rows: ProfileRow[], pools: PoolInputs, supabaseU
       monogram,
       palette,
       objectPath,
+      currentAvatarUrl: row.currentAvatarUrl ?? null,
     };
   });
 }
@@ -140,20 +163,31 @@ export async function readSyntheticProfiles(svc: SupabaseClient): Promise<Profil
   for (const batch of chunkIds(ids)) {
     const { data: creators, error: cErr } = await svc
       .from("creator_profiles")
-      .select("user_id, portfolio_urls")
+      .select("user_id, portfolio_urls, avatar_url")
       .in("user_id", batch);
     if (cErr) throw new Error(`readSyntheticProfiles creators: ${cErr.message}`);
     for (const c of creators ?? []) {
-      rows.push({ userId: c.user_id, kind: "creator", name: null, portfolioUrls: c.portfolio_urls ?? null });
+      rows.push({
+        userId: c.user_id,
+        kind: "creator",
+        name: null,
+        portfolioUrls: c.portfolio_urls ?? null,
+        currentAvatarUrl: c.avatar_url ?? null,
+      });
     }
 
     const { data: businesses, error: bErr } = await svc
       .from("business_profiles")
-      .select("user_id, business_name")
+      .select("user_id, business_name, logo_url")
       .in("user_id", batch);
     if (bErr) throw new Error(`readSyntheticProfiles businesses: ${bErr.message}`);
     for (const b of businesses ?? []) {
-      rows.push({ userId: b.user_id, kind: "business", name: b.business_name ?? null });
+      rows.push({
+        userId: b.user_id,
+        kind: "business",
+        name: b.business_name ?? null,
+        currentAvatarUrl: b.logo_url ?? null,
+      });
     }
   }
   return rows;
@@ -206,9 +240,20 @@ export async function applyAssignments(
     if (pErr) throw new Error(`applyAssignments profile ${a.userId}: ${pErr.message}`);
   }
 
-  // Delete the per-user placeholder objects the old seeder created. Best-effort per object: a
-  // missing object is not an error, and a storage hiccup must not undo the DB work above.
-  const paths = assignments.map((a) => `${a.userId}/avatar.jpg`);
+  // Delete the per-user placeholder objects the old seeder created. Paths are derived from the URLs
+  // that actually referenced them (any extension), never guessed. Best-effort per object: a missing
+  // object is not an error, and a storage hiccup must not undo the DB work above.
+  const paths = [
+    ...new Set(
+      assignments.flatMap((a) =>
+        [a.currentAvatarUrl ?? "", ...(a.portfolioUrls ?? [])]
+          .map((u) => placeholderObjectPath(u, a.userId))
+          .filter((p): p is string => p !== null),
+      ),
+    ),
+  ];
+  if (paths.length === 0) return result;
+
   for (const batch of chunkIds(paths)) {
     const { data, error } = await svc.storage.from("profile-assets").remove(batch);
     if (error) {

@@ -150,6 +150,24 @@ describe("generatePool", () => {
     await expect(generatePool(50, "model-x", d)).rejects.toThrow(/consecutive refusals/);
   });
 
+  // Regression for the Codex round-6 finding: without persisting refusals, every rerun re-pays the
+  // image endpoint for indices the model already declined.
+  it("remembers a refusal so a rerun does not pay to be declined again", async () => {
+    const refuseIdx1 = vi.fn(async (p: string) => {
+      if (p === facePrompt(1)) throw new Error("content_policy_violation");
+      return bytes(1);
+    });
+    const d = makeDeps({ generateImage: refuseIdx1 });
+    await generatePool(3, "model-x", d);
+    expect(d.readManifest()?.entries[1]).toEqual({ uploaded: false, refused: true });
+
+    refuseIdx1.mockClear();
+    const second = await generatePool(3, "model-x", d);
+    expect(refuseIdx1).not.toHaveBeenCalled();
+    expect(second.skipped).toBe(3);
+    expect(second.refused).toBe(0);
+  });
+
   it("records the model in the manifest so a later top-up can match it", async () => {
     const d = makeDeps();
     await generatePool(1, "model-y", d);

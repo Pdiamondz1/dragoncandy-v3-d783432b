@@ -7,7 +7,9 @@ import { sniffImageType } from "./png";
 export interface Manifest {
   /** The image model the pool was generated with, so a later top-up can match it. */
   model: string;
-  entries: Record<number, { uploaded: boolean }>;
+  /** `refused` indices are remembered so a rerun does not pay to be declined again. Delete
+   *  manifest.json to retry them — cached indices then re-upload for free. */
+  entries: Record<number, { uploaded: boolean; refused?: boolean }>;
 }
 
 export interface GenerateDeps {
@@ -110,7 +112,11 @@ export async function generatePool(
   let consecutiveFailures = 0;
 
   for (let i = 0; i < count; i++) {
-    if (manifest.entries[i]?.uploaded) {
+    // Both an uploaded index AND a previously-refused one are settled: re-calling the paid endpoint
+    // for an index the model already declined is spend with no expected return, and it would break
+    // the documented "a rerun of a finished pool costs nothing".
+    // (Codex second review round 6, 2026-07-26.)
+    if (manifest.entries[i]?.uploaded || manifest.entries[i]?.refused) {
       result.skipped++;
       continue;
     }
@@ -131,6 +137,8 @@ export async function generatePool(
         }
         console.warn(`[avatars] index ${i} refused: ${e instanceof Error ? e.message : String(e)}`);
         result.refused++;
+        manifest.entries[i] = { uploaded: false, refused: true };
+        deps.writeManifest(manifest);
         if (++consecutiveFailures >= CONSECUTIVE_FAILURE_LIMIT) {
           throw new Error(
             `[avatars] ${consecutiveFailures} consecutive refusals — aborting rather than burning ` +

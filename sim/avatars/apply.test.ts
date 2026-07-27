@@ -4,6 +4,7 @@ import {
   paginate,
   planAssignments,
   stripPlaceholderPortfolio,
+  placeholderObjectPath,
   PAGE,
   type ProfileRow,
 } from "./apply";
@@ -109,6 +110,36 @@ describe("stripPlaceholderPortfolio", () => {
 
   it("yields an empty array when the placeholder was the only entry", () => {
     expect(stripPlaceholderPortfolio([placeholder], uid)).toEqual([]);
+  });
+
+  it("matches any avatar extension, not just .jpg", () => {
+    const png = `https://x.supabase.co/storage/v1/object/public/profile-assets/${uid}/avatar.png`;
+    expect(stripPlaceholderPortfolio([png, real], uid)).toEqual([real]);
+  });
+});
+
+// The seeder names the object `<uid>/avatar${asset.ext}`, so the deletion path must come from the
+// URL rather than assuming .jpg — otherwise a stripped .png entry orphans its object.
+describe("placeholderObjectPath", () => {
+  const uid = "b0280bbd-4c11-4a77-98d0-4ef5b494badf";
+  const base = "https://x.supabase.co/storage/v1/object/public/profile-assets";
+
+  it("derives the object path with the extension the URL actually carries", () => {
+    expect(placeholderObjectPath(`${base}/${uid}/avatar.png`, uid)).toBe(`${uid}/avatar.png`);
+    expect(placeholderObjectPath(`${base}/${uid}/avatar.jpg`, uid)).toBe(`${uid}/avatar.jpg`);
+  });
+
+  it("ignores pool objects — those are shared and must never be deleted per user", () => {
+    expect(placeholderObjectPath(`${base}/synthetic/faces/0007.jpg`, uid)).toBeNull();
+  });
+
+  it("ignores another user's placeholder and unrelated URLs", () => {
+    expect(placeholderObjectPath(`${base}/OTHER/avatar.jpg`, uid)).toBeNull();
+    expect(placeholderObjectPath("https://example.com/x.jpg", uid)).toBeNull();
+  });
+
+  it("tolerates a query string", () => {
+    expect(placeholderObjectPath(`${base}/${uid}/avatar.jpg?v=2`, uid)).toBe(`${uid}/avatar.jpg`);
   });
 });
 
