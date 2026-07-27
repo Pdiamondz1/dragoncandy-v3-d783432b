@@ -66,6 +66,20 @@ describe("buildFeedRows", () => {
     }
   });
 
+  // Regression for the Codex finding: a plain insert would append another ~500 posts every time
+  // an operator reran content-apply after a partial failure.
+  it("gives every row a deterministic id, stable across runs", () => {
+    const a = buildFeedRows(base);
+    const b = buildFeedRows(base);
+    expect(a.map((r) => r.id)).toEqual(b.map((r) => r.id));
+    for (const r of a) expect(r.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  });
+
+  it("gives distinct rows distinct ids", () => {
+    const rows = buildFeedRows(base);
+    expect(new Set(rows.map((r) => r.id)).size).toBe(rows.length);
+  });
+
   it("returns nothing when there is no pool or no creators", () => {
     expect(buildFeedRows({ ...base, workPaths: [] })).toEqual([]);
     expect(buildFeedRows({ ...base, creatorIds: [] })).toEqual([]);

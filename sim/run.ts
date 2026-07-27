@@ -50,7 +50,14 @@ import {
   type Manifest,
 } from "./avatars/generate";
 import { planAssignments, applyAssignments, readSyntheticProfiles } from "./avatars/apply";
-import { parseAvatarArgs, purgePool, estimateSpendUsd, listPrefix, BUCKET as AVATAR_BUCKET } from "./avatars/purge";
+import {
+  parseAvatarArgs,
+  purgePool,
+  estimateSpendUsd,
+  listPrefix,
+  DEFAULT_WORK_COUNT,
+  BUCKET as AVATAR_BUCKET,
+} from "./avatars/purge";
 import { renderMonogram } from "./avatars/png";
 import { paletteFor } from "./avatars/monogram";
 import { workPath } from "./avatars/pool";
@@ -1239,7 +1246,7 @@ const CONTENT_MANIFEST = join(CONTENT_CACHE_DIR, "manifest.json");
 const FEED_POST_COUNT = 500;
 
 export async function cmdContentGenerate(argv: string[]): Promise<void> {
-  const a = parseAvatarArgs(argv);
+  const a = parseAvatarArgs(argv, DEFAULT_WORK_COUNT);
   const count = a.limit !== null ? Math.min(a.count, a.limit) : a.count;
   const model = process.env.SIM_IMAGE_MODEL;
 

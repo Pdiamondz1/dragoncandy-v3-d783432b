@@ -72,13 +72,18 @@ export async function applyPortfolios(
   return { creators };
 }
 
-/** Inserts in batches. The rows carry no boost fields, so the defaults keep them off the landing. */
+/**
+ * Upserts in batches on the deterministic `id`, so re-running `content-apply` — after a partial
+ * failure, or because an operator ran it twice — rewrites the same rows instead of appending
+ * another full set of posts. A plain insert would grow the feed by ~500 duplicates per run.
+ * The rows carry no boost fields, so the column defaults keep them off the landing hero.
+ */
 export async function insertFeedRows(svc: SupabaseClient, rows: FeedRow[]): Promise<{ posts: number }> {
   let posts = 0;
   const BATCH = 100;
   for (let i = 0; i < rows.length; i += BATCH) {
     const batch = rows.slice(i, i + BATCH);
-    const { error } = await svc.from("dragonshare_posts").insert(batch);
+    const { error } = await svc.from("dragonshare_posts").upsert(batch, { onConflict: "id" });
     if (error) throw new Error(`insertFeedRows batch ${i / BATCH + 1}: ${error.message}`);
     posts += batch.length;
   }

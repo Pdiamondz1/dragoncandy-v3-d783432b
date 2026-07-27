@@ -2,7 +2,16 @@
 // in so the output is fully deterministic and testable.
 //
 // See docs/superpowers/specs/2026-07-27-synthetic-content-pass-design.md §4.4.
+import { createHash } from "node:crypto";
 import { poolIndex, poolPublicUrl } from "../avatars/pool";
+
+/** A stable RFC-4122-shaped v5-style id from an arbitrary key — no dependency, no randomness. */
+export function deterministicUuid(key: string): string {
+  const h = createHash("sha256").update(key).digest("hex");
+  const version = `5${h.slice(13, 16)}`;
+  const variant = ((parseInt(h.slice(16, 17), 16) & 0x3) | 0x8).toString(16) + h.slice(17, 20);
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${version}-${variant}-${h.slice(20, 32)}`;
+}
 
 export interface FeedRowInput {
   creatorIds: string[];
@@ -16,6 +25,11 @@ export interface FeedRowInput {
 }
 
 export interface FeedRow {
+  /** Deterministic, derived from the row's own content. Re-running content-apply upserts the SAME
+   *  rows instead of appending another ~500 posts — the insert is otherwise not idempotent, and an
+   *  operator retrying after a partial failure would silently double the feed.
+   *  (Codex second review, 2026-07-27.) */
+  id: string;
   creator_id: string;
   target_org_id: string;
   content_type: "photo";
@@ -85,6 +99,8 @@ export function buildFeedRows(input: FeedRowInput): FeedRow[] {
     const submittedMs = Math.min(nowMs, nowMs - Math.round(daysBack * DAY_MS) + jitterMs - DAY_MS / 2);
 
     rows.push({
+      // Keyed on the slot, not the clock: the same seed run twice produces the same ids.
+      id: deterministicUuid(`dc:synthetic:feed:${i}:${creator}:${path}`),
       creator_id: creator,
       target_org_id: org,
       content_type: "photo",

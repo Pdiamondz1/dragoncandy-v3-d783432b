@@ -42,9 +42,14 @@ function numericFlag(argv: string[], name: string, fallback: number | null): num
   return parsed;
 }
 
-export function parseAvatarArgs(argv: string[]): AvatarArgs {
+/** Faces default; the work pool passes its own (1,800) so a bare `content-generate --dry-run`
+ *  estimates the pool it will actually build. (Codex second review, 2026-07-27.) */
+export const DEFAULT_FACE_COUNT = 1500;
+export const DEFAULT_WORK_COUNT = 1800;
+
+export function parseAvatarArgs(argv: string[], defaultCount: number = DEFAULT_FACE_COUNT): AvatarArgs {
   return {
-    count: numericFlag(argv, "count", 1500) as number,
+    count: numericFlag(argv, "count", defaultCount) as number,
     limit: numericFlag(argv, "limit", null),
     dryRun: argv.includes("--dry-run"),
   };
