@@ -17,6 +17,7 @@ import {
   Receipt,
   Repeat,
   Sparkles,
+  TrendingUp,
   Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -60,6 +61,7 @@ const NAV_GROUPS: NavGroup[] = [
     admin: true,
     items: [
       { to: '/internal/expenses', label: 'Expenses', icon: Receipt },
+      { to: '/internal/forecast', label: 'Forecast', icon: TrendingUp },
       { to: '/internal/findings', label: 'Findings', icon: Bug },
       { to: '/internal/corrections', label: 'Corrections', icon: ClipboardCheck },
       { to: '/internal/playbooks', label: 'Playbooks', icon: ListChecks },
