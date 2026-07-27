@@ -77,14 +77,41 @@ export function planAssignments(rows: ProfileRow[], pools: PoolInputs, supabaseU
   });
 }
 
+/** PostgREST caps an unbounded select at 1,000 rows — MEASURED against this project, not assumed:
+ *  `GET /rest/v1/public_creator_profiles?select=user_id` returns exactly 1000. The registry holds
+ *  2,025 rows, so an unpaged read would silently assign images to half the cohort and leave the
+ *  rest blank — the same silent-truncation shape as the `.in()` header overflow.
+ *  (Codex second review round 2, 2026-07-26.) */
+export const PAGE = 1000;
+
+/** Pages a range-based reader until a short page comes back. Injected reader keeps this testable. */
+export async function paginate<T>(
+  fetchPage: (from: number, to: number) => Promise<T[]>,
+  pageSize: number = PAGE,
+): Promise<T[]> {
+  const all: T[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const page = await fetchPage(from, from + pageSize - 1);
+    all.push(...page);
+    if (page.length < pageSize) return all;
+  }
+}
+
+/** Every synthetic user id, paged. This is the anchor that makes a real user unreachable. */
+export async function readRegistryIds(svc: SupabaseClient): Promise<string[]> {
+  return paginate(async (from, to) => {
+    const { data, error } = await svc.from("synthetic_users").select("user_id").range(from, to);
+    if (error) throw new Error(`readRegistryIds: ${error.message}`);
+    return (data ?? []).map((r: { user_id: string }) => r.user_id);
+  });
+}
+
 /**
  * Reads the target profiles ANCHORED ON THE REGISTRY — the id list comes from `synthetic_users`,
  * so a real user is unreachable by construction rather than by filter correctness.
  */
 export async function readSyntheticProfiles(svc: SupabaseClient): Promise<ProfileRow[]> {
-  const { data: reg, error: regErr } = await svc.from("synthetic_users").select("user_id");
-  if (regErr) throw new Error(`readSyntheticProfiles registry: ${regErr.message}`);
-  const ids = (reg ?? []).map((r: { user_id: string }) => r.user_id);
+  const ids = await readRegistryIds(svc);
 
   const rows: ProfileRow[] = [];
   for (const batch of chunkIds(ids)) {

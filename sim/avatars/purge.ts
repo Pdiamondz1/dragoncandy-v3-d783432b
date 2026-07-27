@@ -4,7 +4,7 @@
 // reusable asset library, not user data. A cohort purge leaves it in place so re-seeding costs $0.
 // Removing it is a separate, explicit act. See the spec §4.5.
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { chunkIds } from "./apply";
+import { chunkIds, readRegistryIds } from "./apply";
 
 export const BUCKET = "profile-assets";
 export const POOL_PREFIXES = ["synthetic/faces", "synthetic/logos"] as const;
@@ -91,9 +91,9 @@ export async function purgePool(svc: SupabaseClient): Promise<PurgeResult> {
     }
   }
 
-  const { data: reg, error: regErr } = await svc.from("synthetic_users").select("user_id");
-  if (regErr) throw new Error(`purgePool registry: ${regErr.message}`);
-  const ids = (reg ?? []).map((r: { user_id: string }) => r.user_id);
+  // Paged for the same reason apply is: an unbounded select stops at 1,000 rows, which would
+  // delete the whole pool but leave ~1,000 profiles pointing at objects that no longer exist.
+  const ids = await readRegistryIds(svc);
 
   for (const batch of chunkIds(ids)) {
     const { data: c, error: cErr } = await svc

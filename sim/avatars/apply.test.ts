@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { chunkIds, planAssignments, type ProfileRow } from "./apply";
+import { describe, it, expect, vi } from "vitest";
+import { chunkIds, paginate, planAssignments, PAGE, type ProfileRow } from "./apply";
 
 const URL_ = "https://x.supabase.co";
 const POOLS = {
@@ -31,6 +31,46 @@ describe("chunkIds", () => {
       const url = `${URL_}/rest/v1/creator_profiles?user_id=in.(${batch.map((u) => `"${u}"`).join(",")})`;
       expect(url.length).toBeLessThan(16_000);
     }
+  });
+});
+
+// Regression for the Codex round-2 finding. MEASURED, not assumed: an unbounded PostgREST select
+// on this project returns exactly 1000 rows, while the registry holds 2,025 — so an unpaged read
+// would have left ~1,025 synthetic profiles with no image and no error.
+describe("paginate", () => {
+  it("keeps requesting until a short page comes back", async () => {
+    const total = 2025;
+    const fetchPage = vi.fn(async (from: number, to: number) =>
+      Array.from({ length: Math.max(0, Math.min(to, total - 1) - from + 1) }, (_, i) => `id-${from + i}`),
+    );
+    const all = await paginate(fetchPage, PAGE);
+    expect(all).toHaveLength(total);
+    expect(new Set(all).size).toBe(total); // no duplicates across page boundaries
+    expect(fetchPage).toHaveBeenCalledTimes(3);
+  });
+
+  it("stops after one call when the first page is short", async () => {
+    const fetchPage = vi.fn(async () => ["only"]);
+    expect(await paginate(fetchPage, PAGE)).toEqual(["only"]);
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns empty without looping when there are no rows", async () => {
+    const fetchPage = vi.fn(async () => []);
+    expect(await paginate(fetchPage, PAGE)).toEqual([]);
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+  });
+
+  it("requests inclusive ranges that tile without gaps", async () => {
+    const seen: Array<[number, number]> = [];
+    await paginate(async (from, to) => {
+      seen.push([from, to]);
+      return from === 0 ? Array.from({ length: 10 }, (_, i) => i) : [];
+    }, 10);
+    expect(seen).toEqual([
+      [0, 9],
+      [10, 19],
+    ]);
   });
 });
 
