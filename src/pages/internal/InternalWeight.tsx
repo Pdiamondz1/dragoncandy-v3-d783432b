@@ -12,6 +12,8 @@ import {
 } from '@/lib/internal/weightThresholds';
 import { StatCard, SectionHeading, ErrorCard } from '@/components/internal/stats';
 import { PageContainer, PageHeader } from '@/components/internal/layout';
+import { DbHealthSection } from '@/components/internal/DbHealthSection';
+import { useDbHealth } from '@/hooks/internal/useDbHealth';
 import { Spinner } from '@/components/ui/spinner';
 
 const MB = 1024 * 1024;
@@ -28,6 +30,8 @@ const InternalWeight = () => {
   const weight = usePlatformWeight();
   // Live compute tier from the DB (founder-correctable); falls back while loading.
   const { data: tierIndex = DEFAULT_TIER_INDEX } = useCurrentTierIndex();
+  // Live DB health (pg_stat) — the section below owns its own loading/error state.
+  const health = useDbHealth();
 
   if (weight.isLoading) {
     return (
@@ -60,9 +64,11 @@ const InternalWeight = () => {
   return (
     <PageContainer size="xl">
       <PageHeader
-        title="App weight"
+        title="Weight & health"
         subtitle="Daily snapshots of database, storage, and data volume — and when it's time to scale Supabase compute or disk. Row counts are physical totals (they include synthetic rows under an active load run; a 'real' subcount shows the synthetic-excluded value). Real growth KPIs live on Overview & Simulation."
       />
+
+      <DbHealthSection health={health.data} isLoading={health.isLoading} isError={health.isError} />
 
       {alerts.length > 0 && (
         <div className="mb-6 space-y-3">
