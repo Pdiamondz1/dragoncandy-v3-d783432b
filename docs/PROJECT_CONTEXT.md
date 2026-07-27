@@ -119,15 +119,21 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 - **Internal real-vs-total metrics (AIOS scaling dashboard, sub-project 1 of 4)** — the `/internal`
   Overview is real-only with a **live** "synthetic active" banner + "of N incl. synthetic" subs
   (shipped, PR #344) plus a **"Platform totals — real + simulated" top strip** (one panel: the combined
-  real+synthetic count per headline entity, with a `real · simulated` split); the Simulation page now
+  real+synthetic count per headline entity, with a `real · simulated` split); the Simulation page
   **mirrors the Overview card set 1:1 for the synthetic cohort** (synthetic = `total_all − total` via a
   shared pure `deriveCardModel`/`PlatformMetricSections`; `*_all` fields optional so the frontend
-  degrades gracefully pre-migration) — built, PR #346.
-  Sub-projects 2 (live infra telemetry + scaling headroom), 3 (cost model + DAU forecast 500K/750K/1M),
-  4 (plain-language stakeholder status) are scoped, not built. **Pending:** merge PR #346, then re-apply
-  migration `20260725150000` at the careful gate to add its three new `*_all` breakdown keys to prod
-  (the `*_all` totals already landed with #344).
+  degrades gracefully pre-migration) — **merged, PR #346**. **Pending:** apply migration `20260725150000`
+  at the careful gate to add its three new `*_all` breakdown keys to prod (the `*_all` totals already
+  landed with #344).
   → `docs/wiki/concepts/internal-real-vs-total-metrics.md` · `feat/internal-metrics-real-vs-total`
+- **Stakeholder scorecard (AIOS scaling dashboard, sub-project 4 of 4)** — `/internal/scorecard`, a
+  plain-language "How DragonCandy is doing" page (4 stories: traction, capital efficiency, scale
+  headroom, revenue readiness) with auto signals under a founder-set headline, + a print "Export
+  snapshot" one-pager. Deterministic phrasing (no LLM), real-only user metrics; a small internal-gated
+  `aios_stakeholder_burn()` aggregate RPC lets non-admin stakeholders see burn. Built + reviewed
+  (data-exposure PASS, Codex clean). **Pending:** merge PR #350, then **apply migration `20260726173000`
+  at the careful gate** (seeds 2 KV rows + the RPC).
+  → `docs/wiki/concepts/stakeholder-scorecard.md` · `feat/internal-stakeholder-scorecard`
 
 ### Shipped
 

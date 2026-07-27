@@ -1810,3 +1810,11 @@ bot cohort via a shared pure `deriveCardModel(stats,mode)` + `PlatformMetricSect
 2026-07-25 "real vs total" Overview theme on the same branch `feat/internal-metrics-real-vs-total`.
 Pages updated: index.md (Concepts), concepts/synthetic-weight-engine.md (See Also backlink). RAG
 sync deferred to the post-merge docs/ hook.
+
+## [2026-07-26] ingest | Plain-language Stakeholder Scorecard
+Ingested `raw/sessions/2026-07-26-stakeholder-scorecard.md`. **New** concept
+`concepts/stakeholder-scorecard.md` — `/internal/scorecard`, a plain-language 4-story "How DragonCandy is
+doing" page + print export for non-technical stakeholders; deterministic phrasing (no LLM); real-only user
+metrics; internal-gated `aios_stakeholder_burn()` aggregate RPC (data-exposure PASS); headroom = physical
+infra capacity (conservative). Sub-project 4 of 4 of the AIOS scaling dashboard. Pages updated: index.md
+(Concepts). RAG sync deferred to the post-merge docs/ hook.

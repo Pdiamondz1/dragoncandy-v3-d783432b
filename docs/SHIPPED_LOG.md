@@ -26,6 +26,33 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-07-26] Plain-language Stakeholder Scorecard — /internal/scorecard (`feat/internal-stakeholder-scorecard`)
+
+**Sub-project 4 of 4** in the AIOS scaling-dashboard ask. A new `/internal/scorecard` page — "How
+DragonCandy is doing" — translates the raw metrics into four plain-language stories (traction, capital
+efficiency, scale headroom, revenue readiness) a non-technical stakeholder (co-founders, board, advisors
+on AIOS invite accounts) can read and speak to investors about, each with a headline number, a "what it
+means" line, and an auto green/amber/info signal, under a **founder-set headline** (admin-editable KV row).
+Plus a print-optimized **"Export snapshot"** one-pager (light, self-contained, no login). Stage-honest
+framing: pre-revenue by design → traction + capital efficiency + scale readiness, not revenue.
+**Deterministic phrasing (never LLM)** — a stakeholder-facing figure must be exact/reproducible/free. A
+pure `scorecardModel.ts` (`buildScorecard` + `growthLast30Days`) drives every card. **Aggregate-burn RPC:**
+the burn inputs (`operating_expenses`, `donny_cost_ledger`) are admin-only, so `aios_stakeholder_burn()`
+(SECURITY DEFINER, `is_internal_user()`-gated, REVOKE anon/public) returns ONLY the aggregate
+`{opex, ai_spend, revenue, net_burn}` (no line items / no per-model breakdown) — reusing the internal-gated
+`aios_revenue_stats()` for revenue but inlining the ledger sum (never the admin-only `aios_cost_stats()`).
+**Real-only vs physical:** user/traction/revenue are synthetic-excluded; the headroom card is intentionally
+physical `db_bytes` (no `db_bytes_real`) — correct for a tier question, conservative, and labeled "incl.
+test data". Reuses existing hooks; only new backend = the RPC + two `aios_dashboard_settings` KV rows
+(seeded in the migration; admins edit the headline via a direct `.update()` under the existing admin-UPDATE
+RLS). **Reviews:** data-exposure-reviewer PASS (aggregate-only, correct gate); Codex clean after 2 real
+fixes — P2: a failed/loading burn RPC used to feed `net_burn_cents:0` → a false "~$0/month · green" card,
+now an honest "unavailable" info state; P3: `growthLast30Days` could baseline off the latest snapshot itself
+(false "+0"), now always a prior point. spec-reviewed (2 rounds) + plan-reviewed. typecheck + lint + 11
+tests + build green. **Deploy (load-bearing):** apply migration `20260726173000` at the careful gate.
+Wiki: [[Stakeholder Scorecard]]. Sub-projects 2 (live infra telemetry) + 3 (cost model + DAU forecast)
+remain scoped/not-built.
+
 ## [2026-07-26] Living Synthetic Marketplace — go-live record + status correction
 
 **Not new work — a record of work that shipped without one, and the correction of three docs that
