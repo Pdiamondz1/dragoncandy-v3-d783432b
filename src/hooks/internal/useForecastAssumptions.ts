@@ -32,16 +32,28 @@ export function useForecastAssumptions() {
 }
 
 /** Admin update of one assumption (whole number). Writes to the existing admin-UPDATE RLS on
- *  aios_dashboard_settings — same path useCurrentTierIndex reads. */
+ *  aios_dashboard_settings — same path useCurrentTierIndex reads.
+ *
+ *  `.select('key')` is load-bearing: before the seed migration (20260727120000) is applied the row
+ *  doesn't exist, and `aios_dashboard_settings` has no INSERT policy for app users (rows are seeded by
+ *  migrations), so a plain `.update().eq()` matches zero rows — which Supabase reports as SUCCESS. Without
+ *  the returned-row check the admin would see a silent no-op that reverts on invalidation. We surface it
+ *  as an error instead (upsert isn't an option — it needs INSERT privilege the admin lacks). */
 export function useUpdateForecastAssumption() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ key, value }: { key: ForecastKey; value: number }) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('aios_dashboard_settings')
         .update({ value })
-        .eq('key', key);
+        .eq('key', key)
+        .select('key');
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error(
+          'Assumption not saved — apply the forecast settings migration (20260727120000) to seed this row first.',
+        );
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
   });
