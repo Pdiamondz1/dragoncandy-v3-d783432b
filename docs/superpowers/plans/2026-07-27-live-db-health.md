@@ -282,8 +282,9 @@ export function useDbHealth() {
   (the page owns the single `useDbHealth()` call and passes the result — mirrors the internal pattern of a
   section receiving `(data,isLoading,isError)`). Import `computeConnectionAlert`, `connectionHeadroomPct` from
   `weightThresholds`, and `StatCard`/`SectionHeading`/`ErrorCard`, `Spinner`.
-  - `SectionHeading`: "Database health". A subtitle: "Live from the database (`pg_stat`). Connections are
-    pooler-fronted — see the capacity note."
+  - `SectionHeading`: "Database health" (it renders only an `<h2>` — no subtitle prop), followed by a
+    **sibling `<p>`** subtitle: "Live from the database (`pg_stat`). Connections are pooler-fronted — see the
+    capacity note."
   - **Own states:** `isLoading` (no data yet) → a small `Spinner` inside a bordered card; `isError || !health`
     → an `ErrorCard` ("Live health unavailable — apply the db-health migration, or check internal access.").
     Neither breaks the rest of the Weight page (the page renders this section independently).
@@ -294,9 +295,12 @@ export function useDbHealth() {
     `${Math.round(ratio*100)}%`` sub "lifetime"; **Transactions** = `` `${commit.toLocaleString()} / ${rollback.toLocaleString()}` ``
     label "Commits / rollbacks" sub "cumulative since stats reset".
   - **Connection alert:** render `computeConnectionAlert(health.connections).map(...)` as alert banners above
-    the cards, reusing the Weight page's `severityStyles` look (`critical`/`warning`/`info` → pink/pink-soft/teal border+bg).
-  - **CPU / RAM seam:** two dimmed placeholder cards labeled "CPU" / "Memory" with value `—` and sub
-    "coming next — needs the Supabase metrics endpoint".
+    the cards. `severityStyles` in `InternalWeight.tsx` is **not exported** — **re-define the same 3-line map
+    locally** (`critical`/`warning`/`info` → pink / pink-soft / teal border+bg).
+  - **CPU / RAM seam:** two placeholder cards `<StatCard label="CPU"/"Memory" value="—" />`, each wrapped in a
+    `<div className="opacity-50">` (`StatCard` takes no `className`), under **ONE shared caption `<p>`**:
+    "CPU & memory — coming next, needs the Supabase metrics endpoint." (One caption, not a per-card sub — so a
+    `getByText(/coming next/i)` in the test matches exactly one element.)
   - **Live affordance:** a small muted line "live · updated {relative time from `generated_at`}" (a simple
     `Math.round((Date.now() - Date.parse(generated_at))/1000)`s-ago; render "just now" under 5s).
 - [ ] **Step 2: Test** (`DbHealthSection.test.tsx`, jsdom).
@@ -351,7 +355,17 @@ describe('DbHealthSection', () => {
 - [ ] **Step 3:** Mount the section immediately after the `PageHeader` (before the `{alerts.length > 0 && ...}`
   block): `<DbHealthSection health={health.data} isLoading={health.isLoading} isError={health.isError} />`.
   (The existing disk `alerts` array and daily cards stay exactly as they are — the connection alert lives
-  inside `DbHealthSection`.)
+  inside `DbHealthSection`. **Deliberate spec deviation:** §7 phrased the connection alert as wired into
+  `computeWeightAlerts`/`InternalWeight`; putting it in the section is better — it needs the live `health` data
+  and inherits the section's failure isolation.)
+- [ ] **Accepted tradeoff (document, do not refactor):** `InternalWeight` early-returns a `Spinner`/`ErrorCard`
+  for the whole page while `platform_weight` is loading/errored/empty (before the main `return`), so the health
+  section is only reached when weight is present — a transient weight error hides health too. This is the
+  *reverse* of the spec's isolation requirement (§6/§9 only require a *health* failure not hide the *weight*
+  cards, which the section's own error state satisfies), and `platform_weight` is captured daily so `weight.data`
+  is essentially always present on prod. Making health survive a weight error would need extracting the daily
+  body so `PageHeader` + `DbHealthSection` render in every branch — out of the approved spec's scope; leave it a
+  documented follow-up.
 - [ ] **Step 4:** `npm run typecheck && npm run build` → green. **Step 5: Commit.**
   `feat(internal): mount live DbHealthSection atop /internal/weight; retitle "Weight & health"`
 
