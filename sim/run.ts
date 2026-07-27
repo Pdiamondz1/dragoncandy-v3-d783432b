@@ -39,8 +39,34 @@ import { uploadAsset, loadSampleAsset } from "./marketplace/content";
 import { makePicker, curatedBrief, DISCOUNT_KINDS, MESSAGE_SNIPPETS, CREATOR_BIOS } from "./marketplace/text";
 import { locationAt } from "./marketplace/locations";
 import { buildBusinessProfileFields, buildCreatorProfileFields, buildOrgUnitGeo } from "./marketplace/profile";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import {
+  generatePool,
+  assertUsableImageModel,
+  reconcileManifest,
+  poolIndicesPresent,
+  type GenerateDeps,
+  type Manifest,
+} from "./avatars/generate";
+import { planAssignments, applyAssignments, readSyntheticProfiles } from "./avatars/apply";
+import { parseAvatarArgs, purgePool, estimateSpendUsd, listPrefix, BUCKET as AVATAR_BUCKET } from "./avatars/purge";
+import { renderMonogram } from "./avatars/png";
+import { paletteFor } from "./avatars/monogram";
 
-const COMMANDS = ["dry-run", "mint", "tick", "purge", "bulk-seed", "load", "marketplace-seed", "marketplace-purge"] as const;
+const COMMANDS = [
+  "dry-run",
+  "mint",
+  "tick",
+  "purge",
+  "bulk-seed",
+  "load",
+  "marketplace-seed",
+  "marketplace-purge",
+  "avatars-generate",
+  "avatars-apply",
+  "avatars-purge",
+] as const;
 type Command = (typeof COMMANDS)[number];
 
 export interface Args {
@@ -1072,6 +1098,151 @@ export async function cmdMarketplacePurge(): Promise<void> {
   }
 }
 
+// ------------------------------------------------------------------
+// avatars-* — the synthetic avatar pool (spec 2026-07-26-synthetic-avatar-pool-design.md).
+// Faces are generated ONCE into a durable, shared pool; profiles point at pool objects by
+// reference, so nothing per-user is created and a re-seed after a purge costs $0.
+// ------------------------------------------------------------------
+
+const AVATAR_CACHE_DIR = join(process.cwd(), "sim", ".avatar-cache");
+const AVATAR_MANIFEST = join(AVATAR_CACHE_DIR, "manifest.json");
+
+/** Real image-API call. Injected into generatePool, so the batch logic is testable without spend. */
+async function openAiImage(prompt: string, model: string): Promise<Uint8Array> {
+  const key = process.env.SIM_OPENAI_API_KEY;
+  if (!key) throw new Error("Missing SIM_OPENAI_API_KEY (put it in the gitignored .env.sync.local)");
+
+  const resp = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model, prompt, size: "1024x1024", quality: "low", n: 1 }),
+  });
+  if (!resp.ok) throw new Error(`image API ${resp.status}: ${(await resp.text()).slice(0, 300)}`);
+
+  const json = (await resp.json()) as { data?: Array<{ b64_json?: string; url?: string }> };
+  const item = json.data?.[0];
+  if (item?.b64_json) return Uint8Array.from(Buffer.from(item.b64_json, "base64"));
+  if (item?.url) {
+    const img = await fetch(item.url);
+    if (!img.ok) throw new Error(`image fetch ${img.status}`);
+    return new Uint8Array(await img.arrayBuffer());
+  }
+  throw new Error("image API returned neither b64_json nor url");
+}
+
+export async function cmdAvatarsGenerate(argv: string[]): Promise<void> {
+  const a = parseAvatarArgs(argv);
+  const count = a.limit !== null ? Math.min(a.count, a.limit) : a.count;
+  const model = process.env.SIM_IMAGE_MODEL;
+
+  if (a.dryRun) {
+    console.warn(
+      `[avatars-generate] DRY RUN — would generate ${count} face(s) with "${model ?? "<SIM_IMAGE_MODEL unset>"}" ` +
+        `for an estimated $${estimateSpendUsd(count).toFixed(2)}. Nothing was generated or uploaded.`,
+    );
+    return;
+  }
+  // Enforced, not just documented — no paid run on a missing or retired model.
+  const usableModel = assertUsableImageModel(model);
+
+  const svc = serviceClient();
+  await bootGate(svc);
+  mkdirSync(AVATAR_CACHE_DIR, { recursive: true });
+
+  // How many pool objects actually exist right now — the manifest's `uploaded` flags are only
+  // meaningful relative to this (a purge invalidates them).
+  const remoteFacePaths = await listPrefix(svc, "synthetic/faces");
+  const presentIndices = poolIndicesPresent(remoteFacePaths);
+
+  const deps: GenerateDeps = {
+    generateImage: (prompt) => openAiImage(prompt, usableModel),
+    upload: async (objectPath, bytes, contentType) => {
+      const { error } = await svc.storage
+        .from(AVATAR_BUCKET)
+        .upload(objectPath, bytes, { contentType, upsert: true });
+      if (error) throw new Error(`upload ${objectPath}: ${error.message}`);
+    },
+    readManifest: () => {
+      if (!existsSync(AVATAR_MANIFEST)) return null;
+      const m = JSON.parse(readFileSync(AVATAR_MANIFEST, "utf8")) as Manifest;
+      // The manifest checkpoints REMOTE uploads; if the pool was purged, re-upload from cache.
+      return reconcileManifest(m, presentIndices);
+    },
+    writeManifest: (m) => writeFileSync(AVATAR_MANIFEST, JSON.stringify(m, null, 2)),
+    cacheWrite: (i, bytes) => writeFileSync(join(AVATAR_CACHE_DIR, `${String(i).padStart(4, "0")}.jpg`), bytes),
+    cacheRead: (i) => {
+      const p = join(AVATAR_CACHE_DIR, `${String(i).padStart(4, "0")}.jpg`);
+      return existsSync(p) ? new Uint8Array(readFileSync(p)) : null;
+    },
+  };
+
+  const r = await generatePool(count, usableModel, deps);
+  console.warn(`[avatars-generate] ${JSON.stringify(r)} (model=${usableModel})`);
+}
+
+export async function cmdAvatarsApply(): Promise<void> {
+  const svc = serviceClient();
+  await bootGate(svc);
+
+  const rows = await readSyntheticProfiles(svc);
+
+  // The pool's REAL object paths — paged, never a single capped page, and never a bare count:
+  // refusals leave gaps, so index N is not guaranteed to exist.
+  const facePaths = await listPrefix(svc, "synthetic/faces");
+  if (facePaths.length === 0) {
+    throw new Error("avatars-apply: the face pool is empty — run avatars-generate first");
+  }
+
+  const url = requireEnvUrl();
+  const assignments = planAssignments(rows, { facePaths }, url);
+
+  // Render each DISTINCT logo tile once. The path is content-addressed, so two businesses share an
+  // object only when the art is genuinely identical.
+  const renderedPaths = new Set<string>();
+  for (const a of assignments) {
+    if (a.kind !== "business" || !a.objectPath || renderedPaths.has(a.objectPath)) continue;
+    renderedPaths.add(a.objectPath);
+    const png = renderMonogram(a.monogram ?? "DC", a.palette ?? paletteFor(a.userId), 256);
+    const { error } = await svc.storage
+      .from(AVATAR_BUCKET)
+      .upload(a.objectPath, png, { contentType: "image/png", upsert: true });
+    if (error) throw new Error(`avatars-apply: logo upload ${a.objectPath}: ${error.message}`);
+  }
+
+  const result = await applyAssignments(svc, assignments);
+  console.warn(
+    `[avatars-apply] ${JSON.stringify({ ...result, faces: facePaths.length, logoTiles: renderedPaths.size })}`,
+  );
+}
+
+export async function cmdAvatarsPurge(): Promise<void> {
+  const svc = serviceClient();
+  await bootGate(svc);
+  const r = await purgePool(svc);
+
+  // The manifest checkpoints uploads into a pool that no longer exists, so the upload flags must
+  // go — but NOT the refusals. Deleting the whole file would make a later regenerate re-pay the
+  // image endpoint for slots the model already declined (and could trip the consecutive-refusal
+  // abort). reconcileManifest keeps exactly the right half. (Codex round 10 — this corrects the
+  // round-7 fix, which had thrown the refusals away.)
+  let refusalsKept = 0;
+  if (existsSync(AVATAR_MANIFEST)) {
+    const reconciled = reconcileManifest(
+      JSON.parse(readFileSync(AVATAR_MANIFEST, "utf8")) as Manifest,
+      new Set<number>(), // the pool was just deleted, so no index is present
+    );
+    refusalsKept = Object.keys(reconciled.entries).length;
+    writeFileSync(AVATAR_MANIFEST, JSON.stringify(reconciled, null, 2));
+  }
+  console.warn(`[avatars-purge] ${JSON.stringify({ ...r, refusalsKept })}`);
+}
+
+function requireEnvUrl(): string {
+  const u = process.env.SIM_SUPABASE_URL;
+  if (!u) throw new Error("Missing SIM_SUPABASE_URL");
+  return u;
+}
+
 export async function main(argv: string[]): Promise<void> {
   const args = parseArgs(argv);
   switch (args.command) {
@@ -1098,6 +1269,15 @@ export async function main(argv: string[]): Promise<void> {
       return;
     case "marketplace-purge":
       await cmdMarketplacePurge();
+      return;
+    case "avatars-generate":
+      await cmdAvatarsGenerate(argv);
+      return;
+    case "avatars-apply":
+      await cmdAvatarsApply();
+      return;
+    case "avatars-purge":
+      await cmdAvatarsPurge();
       return;
   }
 }

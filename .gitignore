@@ -130,3 +130,6 @@ ios/.DS_Store
 ios/App/build/
 DerivedData/
 deno.lock
+
+# Synthetic avatar generation cache (local only — never commit generated faces)
+sim/.avatar-cache/
