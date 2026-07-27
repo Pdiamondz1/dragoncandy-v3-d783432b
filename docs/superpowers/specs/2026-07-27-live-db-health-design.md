@@ -9,7 +9,7 @@
 ## 1. Goal
 
 Add a **live database-health section** to `/internal/weight` showing real-traffic infra telemetry —
-current connections vs the pool ceiling, query latency, cache-hit ratio, transaction rate, DB size — and
+current connections vs the pool ceiling, query latency, cache-hit ratio, transaction counters, DB size — and
 turn the page's scale-up alerting from disk-only into a **live capacity signal** (a connection-headroom
 alert alongside the existing disk one). So the founder can see, at a glance, how loaded the database is
 right now and get an early warning before it's time to scale Supabase compute.
@@ -41,8 +41,9 @@ verified.
 
 ## 4. The RPC — `aios_db_health()` (live, internal-gated, no new secret)
 
-`SECURITY DEFINER`, `search_path = public`, in-body `is_internal_user()` guard, `REVOKE ... FROM anon`,
-`GRANT EXECUTE ... TO authenticated, service_role` — the **same gating as `aios_platform_stats`** (internal
+`SECURITY DEFINER`, `search_path = public`, in-body `is_internal_user()` guard,
+`REVOKE EXECUTE ... FROM PUBLIC, anon` (new functions default-grant EXECUTE to `PUBLIC` — revoke it, matching
+the proven RPC), `GRANT EXECUTE ... TO authenticated, service_role` — the **same gating as `aios_platform_stats`** (internal
 users, not admin-only; this is ops data, not cost data). Reuses the **exact `pg_stat` pattern proven by
 `capture_sim_load_snapshot`** (migration `20260724170000`), so the privilege model is known-good (that RPC
 already reads `pg_stat_activity` + `pg_stat_statements` under a `SECURITY DEFINER` owner).
@@ -57,8 +58,26 @@ Returns one JSON object (`generated_at = now()`):
   extension is absent — exactly as `capture_sim_load_snapshot` does): `mean_query_ms` (call-weighted
   `sum(mean_exec_time*calls)/sum(calls)`) and `slowest_statement_ms` (`max(mean_exec_time)`).
 - **Throughput / health** — from `pg_stat_database` (current DB): `cache_hit_ratio`
-  (`blks_hit / nullif(blks_hit + blks_read, 0)`), `xact_commit`, `xact_rollback`.
+  (`blks_hit / nullif(blks_hit + blks_read, 0)`), `xact_commit`, `xact_rollback`. **These are cumulative
+  totals since the last stats reset, NOT a per-second rate, and `cache_hit_ratio` is a lifetime figure — the
+  UI must label them as cumulative/lifetime, never render a counter as a "rate" (an honesty-rail violation,
+  §9). A true rate would need a delta across two reads — deferred (YAGNI); labeling is enough.**
 - **Size** — `db_bytes = pg_database_size(current_database())` (a live echo of the daily-snapshot figure).
+
+**Canonical shape (one source of truth for the `jsonb_build_object` keys AND the hook's TS interface — so
+they can't drift):**
+
+```ts
+interface DbHealth {
+  connections: { total: number; active: number; idle: number; idle_in_transaction: number;
+                 max: number; reserved: number };   // usable = max - reserved (computed in the model, guard ≤0)
+  latency: { mean_query_ms: number | null; slowest_statement_ms: number | null }; // null ⇒ pg_stat_statements absent
+  cache_hit_ratio: number | null;                    // lifetime; null when blks_hit+blks_read = 0
+  xact_commit: number; xact_rollback: number;        // cumulative since stats reset
+  db_bytes: number;
+  generated_at: string;
+}
+```
 
 ## 5. The hook — `useDbHealth()`
 
@@ -72,12 +91,15 @@ Extend `InternalWeight.tsx` (it already owns "how big + when to scale"). A **new
 the existing daily size/growth/tier cards:
 - StatCards: **Connections** (`total / usable`, with the headroom % as the sub), **Active queries**,
   **Mean query time** (`—` when `pg_stat_statements` is absent, with a "stat extension not enabled" sub),
-  **Cache hit** (%), plus a small **Transactions** (commit/rollback) readout.
+  **Cache hit** (% — labeled "lifetime"), plus a small **Transactions** readout (commit/rollback, labeled
+  "cumulative since stats reset" — never presented as a rate).
 - A **"live · updated Ns ago"** affordance (from `generated_at`) so it's clear this refreshes.
 - **CPU / RAM placeholder cards** rendered as labeled, dimmed "coming next — needs the Supabase metrics
   endpoint" slots (the deferred seam, visible so the founder knows it's planned).
 - Its own loading/error state scoped to the section (a health-RPC failure degrades only this block; the
-  daily-snapshot cards below still render) — mirroring how `PlatformMetricSections` isolates its failure.
+  daily-snapshot cards below still render) — the section renders an `ErrorCard`/unavailable card in place of
+  its own cards on `useDbHealth` error, the same self-contained degrade the Weight page already does at its
+  top-level `ErrorCard` early-return and that `computeAnalyticsBudgetAlert` does by returning `[]`.
 - Section subtitle sets expectations: "Live from the database (`pg_stat`). Connections are pooler-fronted —
   see the note on the capacity alert."
 
