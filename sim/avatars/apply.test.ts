@@ -2,7 +2,9 @@ import { describe, it, expect } from "vitest";
 import { chunkIds, planAssignments, type ProfileRow } from "./apply";
 
 const URL_ = "https://x.supabase.co";
-const POOLS = { faces: 1500, logos: 509 };
+const POOLS = {
+  facePaths: Array.from({ length: 1500 }, (_, i) => `synthetic/faces/${String(i).padStart(4, "0")}.jpg`),
+};
 
 describe("chunkIds", () => {
   it("chunks at 100 by default", () => {
@@ -41,26 +43,66 @@ describe("planAssignments", () => {
   it("routes creators to faces and businesses to logos", () => {
     const out = planAssignments(rows, POOLS, URL_);
     expect(out.find((a) => a.userId === "u1")!.url).toMatch(/synthetic\/faces\/\d{4}\.jpg$/);
-    expect(out.find((a) => a.userId === "u2")!.url).toMatch(/synthetic\/logos\/\d{4}\.png$/);
+    expect(out.find((a) => a.userId === "u2")!.url).toMatch(/synthetic\/logos\/[0-9a-f]{8}\.png$/);
   });
 
   it("is idempotent — same input, same URLs", () => {
     expect(planAssignments(rows, POOLS, URL_)).toEqual(planAssignments(rows, POOLS, URL_));
   });
 
-  it("never derives the pool index from the name", () => {
-    const a = planAssignments([{ userId: "u2", kind: "business", name: "Joe's Pizza" }], POOLS, URL_);
-    const b = planAssignments([{ userId: "u2", kind: "business", name: "Totally Different" }], POOLS, URL_);
+  // The ethical rule is about FACES: never infer a person's appearance from their name.
+  it("never derives a creator's face from anything but the id", () => {
+    const a = planAssignments([{ userId: "u1", kind: "creator", name: "Aiko Tanaka" }], POOLS, URL_);
+    const b = planAssignments([{ userId: "u1", kind: "creator", name: "John Smith" }], POOLS, URL_);
     expect(a[0].url).toBe(b[0].url);
   });
 
-  it("carries monogram text for businesses only", () => {
+  // A lettermark is the opposite case: the name IS the image, so the path must follow it.
+  it("content-addresses a business logo from its monogram, so two names never share a tile", () => {
+    const joe = planAssignments([{ userId: "u2", kind: "business", name: "Joe's Pizza" }], POOLS, URL_);
+    const mt = planAssignments([{ userId: "u2", kind: "business", name: "Mountain Tap" }], POOLS, URL_);
+    expect(joe[0].url).not.toBe(mt[0].url);
+  });
+
+  // Regression for the Codex finding: slot-indexed logo paths collided, so a business could be
+  // handed a tile carrying ANOTHER business's initials.
+  it("gives every distinct monogram a distinct object path across a realistic cohort", () => {
+    const many: ProfileRow[] = Array.from({ length: 509 }, (_, i) => ({
+      userId: `biz-${i}`,
+      kind: "business",
+      name: `Alpha${i} Bravo${i}`,
+    }));
+    const out = planAssignments(many, POOLS, URL_);
+    const byPath = new Map<string, string>();
+    for (const a of out) {
+      const prev = byPath.get(a.objectPath!);
+      if (prev !== undefined) expect(prev).toBe(a.monogram); // sharing is only ever identical art
+      byPath.set(a.objectPath!, a.monogram!);
+    }
+  });
+
+  it("carries monogram text and palette for businesses only", () => {
     const out = planAssignments(rows, POOLS, URL_);
     expect(out.find((a) => a.userId === "u2")!.monogram).toBe("JP");
+    expect(out.find((a) => a.userId === "u2")!.palette).toBeDefined();
     expect(out.find((a) => a.userId === "u1")!.monogram).toBeUndefined();
   });
 
-  it("throws rather than silently assigning when a pool is empty", () => {
-    expect(() => planAssignments(rows, { faces: 0, logos: 509 }, URL_)).toThrow(/poolSize/);
+  it("throws rather than silently assigning when the face pool is empty", () => {
+    expect(() => planAssignments(rows, { facePaths: [] }, URL_)).toThrow(/face pool is empty/);
+  });
+
+  // Regression: a refusal leaves a gap in the pool, and a count-based pool size would hand out a
+  // URL for an object that was never generated.
+  it("only ever assigns a path that actually exists in the pool", () => {
+    const sparse = { facePaths: ["synthetic/faces/0000.jpg", "synthetic/faces/0002.jpg"] };
+    const out = planAssignments(
+      Array.from({ length: 50 }, (_, i) => ({ userId: `c-${i}`, kind: "creator" as const, name: null })),
+      sparse,
+      URL_,
+    );
+    for (const a of out) {
+      expect(sparse.facePaths.some((p) => a.url.endsWith(p))).toBe(true);
+    }
   });
 });

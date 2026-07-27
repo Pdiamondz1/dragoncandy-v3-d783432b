@@ -43,10 +43,9 @@ import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { generatePool, type GenerateDeps, type Manifest } from "./avatars/generate";
 import { planAssignments, applyAssignments, readSyntheticProfiles } from "./avatars/apply";
-import { parseAvatarArgs, purgePool, estimateSpendUsd, BUCKET as AVATAR_BUCKET } from "./avatars/purge";
+import { parseAvatarArgs, purgePool, estimateSpendUsd, listPrefix, BUCKET as AVATAR_BUCKET } from "./avatars/purge";
 import { renderMonogram } from "./avatars/png";
-import { initials, paletteFor } from "./avatars/monogram";
-import { logoPath, poolIndex } from "./avatars/pool";
+import { paletteFor } from "./avatars/monogram";
 
 const COMMANDS = [
   "dry-run",
@@ -1171,35 +1170,34 @@ export async function cmdAvatarsApply(): Promise<void> {
   await bootGate(svc);
 
   const rows = await readSyntheticProfiles(svc);
-  const creators = rows.filter((r) => r.kind === "creator");
-  const businesses = rows.filter((r) => r.kind === "business");
 
-  // The face pool's real size — never assume it equals the cohort (refusals can leave it short).
-  const { data: faceObjects, error: listErr } = await svc.storage
-    .from(AVATAR_BUCKET)
-    .list("synthetic/faces", { limit: 1000 });
-  if (listErr) throw new Error(`avatars-apply: cannot list the face pool: ${listErr.message}`);
-  const faces = (faceObjects ?? []).length;
-  if (faces === 0) throw new Error("avatars-apply: the face pool is empty — run avatars-generate first");
-
-  // Logos are rendered and uploaded on demand: one tile per distinct pool slot, not per business.
-  const logos = Math.max(1, Math.min(businesses.length, 512));
-  const rendered = new Set<number>();
-  for (const b of businesses) {
-    const idx = poolIndex(b.userId, logos);
-    if (rendered.has(idx)) continue;
-    rendered.add(idx);
-    const png = renderMonogram(initialsFor(b.name), paletteFor(b.userId), 256);
-    const { error } = await svc.storage
-      .from(AVATAR_BUCKET)
-      .upload(logoPath(idx), png, { contentType: "image/png", upsert: true });
-    if (error) throw new Error(`avatars-apply: logo upload ${idx}: ${error.message}`);
+  // The pool's REAL object paths — paged, never a single capped page, and never a bare count:
+  // refusals leave gaps, so index N is not guaranteed to exist.
+  const facePaths = await listPrefix(svc, "synthetic/faces");
+  if (facePaths.length === 0) {
+    throw new Error("avatars-apply: the face pool is empty — run avatars-generate first");
   }
 
   const url = requireEnvUrl();
-  const assignments = planAssignments([...creators, ...businesses], { faces, logos }, url);
+  const assignments = planAssignments(rows, { facePaths }, url);
+
+  // Render each DISTINCT logo tile once. The path is content-addressed, so two businesses share an
+  // object only when the art is genuinely identical.
+  const renderedPaths = new Set<string>();
+  for (const a of assignments) {
+    if (a.kind !== "business" || !a.objectPath || renderedPaths.has(a.objectPath)) continue;
+    renderedPaths.add(a.objectPath);
+    const png = renderMonogram(a.monogram ?? "DC", a.palette ?? paletteFor(a.userId), 256);
+    const { error } = await svc.storage
+      .from(AVATAR_BUCKET)
+      .upload(a.objectPath, png, { contentType: "image/png", upsert: true });
+    if (error) throw new Error(`avatars-apply: logo upload ${a.objectPath}: ${error.message}`);
+  }
+
   const result = await applyAssignments(svc, assignments);
-  console.warn(`[avatars-apply] ${JSON.stringify({ ...result, faces, logos })}`);
+  console.warn(
+    `[avatars-apply] ${JSON.stringify({ ...result, faces: facePaths.length, logoTiles: renderedPaths.size })}`,
+  );
 }
 
 export async function cmdAvatarsPurge(): Promise<void> {
@@ -1207,10 +1205,6 @@ export async function cmdAvatarsPurge(): Promise<void> {
   await bootGate(svc);
   const r = await purgePool(svc);
   console.warn(`[avatars-purge] ${JSON.stringify(r)}`);
-}
-
-function initialsFor(name: string | null): string {
-  return initials(name ?? "");
 }
 
 function requireEnvUrl(): string {

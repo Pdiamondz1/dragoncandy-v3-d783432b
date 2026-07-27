@@ -33,7 +33,20 @@ export function poolIndex(userId: string, poolSize: number): number {
 const pad4 = (i: number): string => String(i).padStart(4, "0");
 
 export const facePath = (i: number): string => `synthetic/faces/${pad4(i)}.jpg`;
-export const logoPath = (i: number): string => `synthetic/logos/${pad4(i)}.png`;
+
+/**
+ * Logo objects are CONTENT-ADDRESSED, not slot-indexed: the path is derived from what is drawn on
+ * the tile (monogram text + palette), so two businesses can never be handed the same object while
+ * expecting different initials.
+ *
+ * A slot-indexed path (`logos/0007.png` chosen by an id hash) collides — with ~509 businesses over
+ * ~512 slots, collisions are near-certain, and the first business to render a slot would win while
+ * every colliding business silently displayed ITS initials. Content addressing makes a collision
+ * mean "identical image", which is correct and dedupes for free. (Codex second review, 2026-07-26.)
+ */
+export function logoObjectPath(monogram: string, paletteKey: string): string {
+  return `synthetic/logos/${fnv1a(`${monogram}|${paletteKey}`).toString(16).padStart(8, "0")}.png`;
+}
 
 export function poolPublicUrl(supabaseUrl: string, objectPath: string): string {
   return `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/public/${BUCKET}/${objectPath}`;

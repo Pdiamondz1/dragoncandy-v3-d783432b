@@ -51,6 +51,19 @@ export function estimateSpendUsd(count: number): number {
   return count * USD_PER_IMAGE;
 }
 
+/** Storage `list()` caps at 1000 rows per call, so every consumer must page. Returns full paths. */
+export async function listPrefix(svc: SupabaseClient, prefix: string): Promise<string[]> {
+  const names: string[] = [];
+  const PAGE = 1000;
+  for (let offset = 0; ; offset += PAGE) {
+    const { data, error } = await svc.storage.from(BUCKET).list(prefix, { limit: PAGE, offset });
+    if (error) throw new Error(`listPrefix ${prefix}: ${error.message}`);
+    const page = data ?? [];
+    for (const o of page) names.push(`${prefix}/${(o as { name: string }).name}`);
+    if (page.length < PAGE) return names;
+  }
+}
+
 export interface PurgeResult {
   objectsDeleted: number;
   creatorsCleared: number;
@@ -67,19 +80,14 @@ export async function purgePool(svc: SupabaseClient): Promise<PurgeResult> {
   const result: PurgeResult = { objectsDeleted: 0, creatorsCleared: 0, businessesCleared: 0 };
 
   for (const prefix of POOL_PREFIXES) {
-    // list() is capped per call; page until a short page comes back.
-    for (let offset = 0; ; offset += 1000) {
-      const { data, error } = await svc.storage.from(BUCKET).list(prefix, { limit: 1000, offset });
-      if (error) throw new Error(`purgePool list ${prefix}: ${error.message}`);
-      const names = (data ?? []).map((o: { name: string }) => `${prefix}/${o.name}`);
-      if (names.length === 0) break;
-
-      for (const batch of chunkIds(names)) {
-        const { data: removed, error: rmErr } = await svc.storage.from(BUCKET).remove(batch);
-        if (rmErr) throw new Error(`purgePool remove ${prefix}: ${rmErr.message}`);
-        result.objectsDeleted += removed?.length ?? 0;
-      }
-      if (names.length < 1000) break;
+    // Enumerate EVERY page before deleting anything. Deleting as you advance the offset skips
+    // objects: the listing shortens under you, so `offset: 1000` on the second pass lands past the
+    // end and leaves ~500 of a 1,500-face pool behind. (Codex second review, 2026-07-26.)
+    const names = await listPrefix(svc, prefix);
+    for (const batch of chunkIds(names)) {
+      const { data: removed, error: rmErr } = await svc.storage.from(BUCKET).remove(batch);
+      if (rmErr) throw new Error(`purgePool remove ${prefix}: ${rmErr.message}`);
+      result.objectsDeleted += removed?.length ?? 0;
     }
   }
 

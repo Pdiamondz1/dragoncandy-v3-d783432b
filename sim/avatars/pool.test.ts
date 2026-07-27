@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { poolIndex, facePath, logoPath, poolPublicUrl } from "./pool";
+import { poolIndex, facePath, logoObjectPath, poolPublicUrl } from "./pool";
 
 describe("poolIndex", () => {
   const id = "b0280bbd-4c11-4a77-98d0-4ef5b494badf";
@@ -31,9 +31,17 @@ describe("poolIndex", () => {
 });
 
 describe("paths", () => {
-  it("zero-pads to 4 digits under the durable prefixes", () => {
+  it("zero-pads face indices to 4 digits under the durable prefix", () => {
     expect(facePath(7)).toBe("synthetic/faces/0007.jpg");
-    expect(logoPath(1499)).toBe("synthetic/logos/1499.png");
+    expect(facePath(1499)).toBe("synthetic/faces/1499.jpg");
+  });
+
+  it("content-addresses logos so identical tiles share, and different tiles never collide", () => {
+    const teal = "0,118,110";
+    expect(logoObjectPath("JP", teal)).toBe(logoObjectPath("JP", teal)); // deterministic
+    expect(logoObjectPath("JP", teal)).not.toBe(logoObjectPath("MT", teal)); // different text
+    expect(logoObjectPath("JP", teal)).not.toBe(logoObjectPath("JP", "219,39,119")); // different palette
+    expect(logoObjectPath("JP", teal)).toMatch(/^synthetic\/logos\/[0-9a-f]{8}\.png$/);
   });
 
   it("builds a public URL for the profile-assets bucket", () => {

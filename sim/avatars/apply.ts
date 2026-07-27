@@ -2,8 +2,8 @@
 // 1,500 creators) never authenticates, so the seeder's existing as-the-bot upload path cannot
 // reach it. See docs/superpowers/specs/2026-07-26-synthetic-avatar-pool-design.md §4.4.
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { facePath, logoPath, poolIndex, poolPublicUrl } from "./pool";
-import { initials } from "./monogram";
+import { logoObjectPath, poolIndex, poolPublicUrl } from "./pool";
+import { initials, paletteFor, type Palette } from "./monogram";
 
 /** An unbounded `.in()` serialises every id into the URL, and PostgREST echoes the URI back in the
  *  Content-Location RESPONSE header — past ~400 ids that overflows undici's 16 KB maxHeaderSize and
@@ -23,13 +23,20 @@ export interface Assignment {
   userId: string;
   kind: ProfileKind;
   url: string;
-  /** Businesses only — the text to rasterise onto the logo tile. */
+  /** Businesses only — what to rasterise, and where. */
   monogram?: string;
+  palette?: Palette;
+  objectPath?: string;
 }
 
-export interface PoolSizes {
-  faces: number;
-  logos: number;
+export interface PoolInputs {
+  /**
+   * The ACTUAL face object paths present in storage — not a count. A count is unsafe on two
+   * counts: a refusal leaves a gap (index 7 may not exist), and a single `list()` page caps at
+   * 1000, so a 1,500-face pool would silently strand a third of the paid images.
+   * (Codex second review, 2026-07-26.)
+   */
+  facePaths: string[];
 }
 
 export function chunkIds(ids: string[], size: number = CHUNK): string[][] {
@@ -38,19 +45,34 @@ export function chunkIds(ids: string[], size: number = CHUNK): string[][] {
   return out;
 }
 
-/** Pure. The name is used ONLY to derive monogram text — never to pick the pool index. */
-export function planAssignments(rows: ProfileRow[], pools: PoolSizes, supabaseUrl: string): Assignment[] {
+/**
+ * Pure.
+ *
+ * Creators: a FACE is chosen by hashing the user id into the list of real pool objects — never
+ * from the name, city, or any other attribute (spec §4.3).
+ *
+ * Businesses: a LOGO is content-addressed from the monogram + palette. Here the name legitimately
+ * determines the image, because the image IS the name's initials — the blind-assignment rule
+ * exists to stop us inferring a person's appearance, which does not apply to a lettermark.
+ */
+export function planAssignments(rows: ProfileRow[], pools: PoolInputs, supabaseUrl: string): Assignment[] {
+  if (pools.facePaths.length === 0) throw new Error("planAssignments: the face pool is empty");
+
   return rows.map((row) => {
     if (row.kind === "creator") {
-      const path = facePath(poolIndex(row.userId, pools.faces));
+      const path = pools.facePaths[poolIndex(row.userId, pools.facePaths.length)];
       return { userId: row.userId, kind: row.kind, url: poolPublicUrl(supabaseUrl, path) };
     }
-    const path = logoPath(poolIndex(row.userId, pools.logos));
+    const monogram = initials(row.name ?? "");
+    const palette = paletteFor(row.userId);
+    const objectPath = logoObjectPath(monogram, palette.bg.join(","));
     return {
       userId: row.userId,
       kind: row.kind,
-      url: poolPublicUrl(supabaseUrl, path),
-      monogram: initials(row.name ?? ""),
+      url: poolPublicUrl(supabaseUrl, objectPath),
+      monogram,
+      palette,
+      objectPath,
     };
   });
 }
