@@ -5,6 +5,7 @@ import {
   planAssignments,
   stripPlaceholderPortfolio,
   placeholderObjectPath,
+  readRegistryIds,
   PAGE,
   type ProfileRow,
 } from "./apply";
@@ -140,6 +141,39 @@ describe("placeholderObjectPath", () => {
 
   it("tolerates a query string", () => {
     expect(placeholderObjectPath(`${base}/${uid}/avatar.jpg?v=2`, uid)).toBe(`${uid}/avatar.jpg`);
+  });
+});
+
+// Regression for the Codex round-9 finding: .range() without .order() leaves page boundaries to
+// the query plan, so pages can overlap or skip ids.
+describe("readRegistryIds", () => {
+  it("orders by a stable column before ranging, and pages to the end", async () => {
+    const ordered: Array<[string, boolean]> = [];
+    const ranges: Array<[number, number]> = [];
+    const total = 1200;
+    const svc = {
+      from: () => ({
+        select: () => ({
+          order: (col: string, opts: { ascending: boolean }) => {
+            ordered.push([col, opts.ascending]);
+            return {
+              range: async (from: number, to: number) => {
+                ranges.push([from, to]);
+                const rows = [];
+                for (let i = from; i <= Math.min(to, total - 1); i++) rows.push({ user_id: `u-${i}` });
+                return { data: rows, error: null };
+              },
+            };
+          },
+        }),
+      }),
+    } as unknown as Parameters<typeof readRegistryIds>[0];
+
+    const ids = await readRegistryIds(svc);
+    expect(ids).toHaveLength(total);
+    expect(new Set(ids).size).toBe(total); // no duplicates across page boundaries
+    expect(ordered.every(([col, asc]) => col === "user_id" && asc)).toBe(true);
+    expect(ranges[0]).toEqual([0, PAGE - 1]);
   });
 });
 

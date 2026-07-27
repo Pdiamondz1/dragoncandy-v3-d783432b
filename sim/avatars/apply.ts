@@ -143,10 +143,21 @@ export async function paginate<T>(
   }
 }
 
-/** Every synthetic user id, paged. This is the anchor that makes a real user unreachable. */
+/**
+ * Every synthetic user id, paged. This is the anchor that makes a real user unreachable.
+ *
+ * `.order()` is REQUIRED, not stylistic: `.range()` without a deterministic sort leaves page
+ * boundaries to the query plan, so pages can overlap or skip — and a skipped id here means a
+ * profile left unassigned by apply, or left pointing at a deleted object by purge.
+ * (Codex second review round 9, 2026-07-26.)
+ */
 export async function readRegistryIds(svc: SupabaseClient): Promise<string[]> {
   return paginate(async (from, to) => {
-    const { data, error } = await svc.from("synthetic_users").select("user_id").range(from, to);
+    const { data, error } = await svc
+      .from("synthetic_users")
+      .select("user_id")
+      .order("user_id", { ascending: true })
+      .range(from, to);
     if (error) throw new Error(`readRegistryIds: ${error.message}`);
     return (data ?? []).map((r: { user_id: string }) => r.user_id);
   });
