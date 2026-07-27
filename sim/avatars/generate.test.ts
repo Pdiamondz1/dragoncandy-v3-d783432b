@@ -135,6 +135,29 @@ describe("isContentRefusal", () => {
   it("defaults to NOT a refusal for an unrecognised error (fail loud)", () => {
     expect(isContentRefusal(new Error("something weird happened"))).toBe(false);
   });
+
+  // Round 13: generic wording appears in ordinary 400s about parameters or model compatibility.
+  // A false refusal is worse than a false abort — it is persisted and skips the slot forever.
+  it("does NOT treat generic 400 wording as a refusal", () => {
+    for (const m of [
+      "400 Bad Request: parameter 'quality' is not allowed for this model",
+      "400 rejected: unsupported size for this model",
+      "Request rejected: invalid parameter combination",
+      "the request violates the schema",
+    ]) {
+      expect(isContentRefusal(new Error(m))).toBe(false);
+    }
+  });
+
+  it("still recognises an explicit content-policy decline", () => {
+    for (const m of [
+      "400 content_policy_violation",
+      "Your request was rejected as a result of our safety system",
+      "moderation_blocked",
+    ]) {
+      expect(isContentRefusal(new Error(m))).toBe(true);
+    }
+  });
 });
 
 describe("generatePool", () => {

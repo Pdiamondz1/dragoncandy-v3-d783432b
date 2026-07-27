@@ -61,11 +61,25 @@ export function assertUsableImageModel(model: string | undefined): string {
  */
 export function isContentRefusal(err: unknown): boolean {
   const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
-  if (/\b(401|403|429|5\d\d)\b/.test(msg)) return false;
+
+  // Transport/credential/quota failures are never refusals.
   if (/api key|apikey|unauthorized|quota|billing|rate limit|fetch failed|timeout|econn|enotfound/.test(msg)) {
     return false;
   }
-  return /content[_ ]policy|moderation|safety|rejected|declin|refus|not allowed|violat/.test(msg);
+
+  // A moderation decline is identified ONLY by an explicit content-policy signal. Generic wording
+  // ("rejected", "not allowed", "violates") also appears in ordinary 400s about a bad parameter or
+  // an incompatible model — and a false refusal is WORSE than a false abort, because it is written
+  // into the manifest and permanently skips that slot on every later run.
+  // (Codex second review round 13, 2026-07-26.)
+  const policySignal =
+    /content[_ ]policy|moderation[_ ]?blocked|safety system|safety[_ ]violation|image_generation_user_error/.test(
+      msg,
+    );
+  if (!policySignal) return false;
+
+  // Even with a policy signal, an auth/rate/server status means the call never reached moderation.
+  return !/\b(401|403|429|5\d\d)\b/.test(msg);
 }
 
 // A demographic matrix, sampled with co-prime strides so consecutive indices differ on several
