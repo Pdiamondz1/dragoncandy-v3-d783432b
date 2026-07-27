@@ -39,9 +39,15 @@ import { uploadAsset, loadSampleAsset } from "./marketplace/content";
 import { makePicker, curatedBrief, DISCOUNT_KINDS, MESSAGE_SNIPPETS, CREATOR_BIOS } from "./marketplace/text";
 import { locationAt } from "./marketplace/locations";
 import { buildBusinessProfileFields, buildCreatorProfileFields, buildOrgUnitGeo } from "./marketplace/profile";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { generatePool, assertUsableImageModel, type GenerateDeps, type Manifest } from "./avatars/generate";
+import {
+  generatePool,
+  assertUsableImageModel,
+  reconcileManifest,
+  type GenerateDeps,
+  type Manifest,
+} from "./avatars/generate";
 import { planAssignments, applyAssignments, readSyntheticProfiles } from "./avatars/apply";
 import { parseAvatarArgs, purgePool, estimateSpendUsd, listPrefix, BUCKET as AVATAR_BUCKET } from "./avatars/purge";
 import { renderMonogram } from "./avatars/png";
@@ -1142,6 +1148,10 @@ export async function cmdAvatarsGenerate(argv: string[]): Promise<void> {
   await bootGate(svc);
   mkdirSync(AVATAR_CACHE_DIR, { recursive: true });
 
+  // How many pool objects actually exist right now — the manifest's `uploaded` flags are only
+  // meaningful relative to this (a purge invalidates them).
+  const remotePoolCount = (await listPrefix(svc, "synthetic/faces")).length;
+
   const deps: GenerateDeps = {
     generateImage: (prompt) => openAiImage(prompt, usableModel),
     upload: async (objectPath, bytes, contentType) => {
@@ -1152,7 +1162,9 @@ export async function cmdAvatarsGenerate(argv: string[]): Promise<void> {
     },
     readManifest: () => {
       if (!existsSync(AVATAR_MANIFEST)) return null;
-      return JSON.parse(readFileSync(AVATAR_MANIFEST, "utf8")) as Manifest;
+      const m = JSON.parse(readFileSync(AVATAR_MANIFEST, "utf8")) as Manifest;
+      // The manifest checkpoints REMOTE uploads; if the pool was purged, re-upload from cache.
+      return reconcileManifest(m, remotePoolCount);
     },
     writeManifest: (m) => writeFileSync(AVATAR_MANIFEST, JSON.stringify(m, null, 2)),
     cacheWrite: (i, bytes) => writeFileSync(join(AVATAR_CACHE_DIR, `${String(i).padStart(4, "0")}.jpg`), bytes),
@@ -1205,7 +1217,10 @@ export async function cmdAvatarsPurge(): Promise<void> {
   const svc = serviceClient();
   await bootGate(svc);
   const r = await purgePool(svc);
-  console.warn(`[avatars-purge] ${JSON.stringify(r)}`);
+  // The manifest checkpoints uploads into a pool that no longer exists — drop it so a later
+  // regenerate re-uploads from the local cache (free) instead of skipping every index.
+  if (existsSync(AVATAR_MANIFEST)) rmSync(AVATAR_MANIFEST);
+  console.warn(`[avatars-purge] ${JSON.stringify({ ...r, manifestCleared: true })}`);
 }
 
 function requireEnvUrl(): string {

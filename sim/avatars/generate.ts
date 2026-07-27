@@ -93,6 +93,24 @@ export function facePrompt(index: number): string {
   );
 }
 
+/**
+ * `uploaded` is a checkpoint against REMOTE storage, so it is only meaningful while the remote pool
+ * exists. After `avatars-purge`, a stale manifest would make a regenerate skip every index and
+ * upload nothing — leaving `avatars-apply` to fail on an empty pool.
+ *
+ * When the remote pool is empty, clear the upload flags so cached bytes re-upload for FREE.
+ * `refused` is preserved: the model's verdict on a prompt does not expire with the storage objects.
+ * (Codex second review round 7, 2026-07-26.)
+ */
+export function reconcileManifest(manifest: Manifest, remoteObjectCount: number): Manifest {
+  if (remoteObjectCount > 0) return manifest;
+  const entries: Manifest["entries"] = {};
+  for (const [k, v] of Object.entries(manifest.entries)) {
+    if (v.refused) entries[Number(k)] = { uploaded: false, refused: true };
+  }
+  return { ...manifest, entries };
+}
+
 export async function generatePool(
   count: number,
   model: string,

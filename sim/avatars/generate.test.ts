@@ -4,6 +4,7 @@ import {
   facePrompt,
   isContentRefusal,
   assertUsableImageModel,
+  reconcileManifest,
   type GenerateDeps,
   type Manifest,
 } from "./generate";
@@ -42,6 +43,33 @@ describe("facePrompt", () => {
 
   it("is deterministic per index", () => {
     expect(facePrompt(42)).toBe(facePrompt(42));
+  });
+});
+
+// Regression for the Codex round-7 finding: after avatars-purge the manifest still claimed every
+// index was uploaded, so a regenerate skipped everything and left storage empty.
+describe("reconcileManifest", () => {
+  const m = {
+    model: "m",
+    entries: { 0: { uploaded: true }, 1: { uploaded: false, refused: true }, 2: { uploaded: true } },
+  };
+
+  it("clears upload flags when the remote pool is gone", () => {
+    const out = reconcileManifest(m, 0);
+    expect(out.entries[0]).toBeUndefined();
+    expect(out.entries[2]).toBeUndefined();
+  });
+
+  it("keeps refusals — the model's verdict does not expire with the objects", () => {
+    expect(reconcileManifest(m, 0).entries[1]).toEqual({ uploaded: false, refused: true });
+  });
+
+  it("leaves the manifest untouched while the pool still exists", () => {
+    expect(reconcileManifest(m, 1500)).toBe(m);
+  });
+
+  it("preserves the model so a rebuild matches the original pool", () => {
+    expect(reconcileManifest(m, 0).model).toBe("m");
   });
 });
 
