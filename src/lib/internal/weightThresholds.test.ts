@@ -6,6 +6,8 @@ import {
   daysUntilDiskAlert,
   computeWeightAlerts,
   computeAnalyticsBudgetAlert,
+  computeConnectionAlert,
+  connectionHeadroomPct,
   ANALYTICS_EVENTS_ROW_BUDGET,
   type WeightSnapshot,
 } from './weightThresholds';
@@ -129,5 +131,35 @@ describe('computeAnalyticsBudgetAlert', () => {
     const alerts = computeAnalyticsBudgetAlert(ANALYTICS_EVENTS_ROW_BUDGET);
     expect(alerts[0].title.toLowerCase()).not.toContain('disk');
     expect(alerts[0].title).toMatch(/analytics/i);
+  });
+});
+
+describe('computeConnectionAlert', () => {
+  const conns = (total: number) => ({ total, max: 100, reserved: 3 }); // usable = 97
+  it('no alert below 70% of usable', () => {
+    expect(computeConnectionAlert(conns(67))).toEqual([]); // 67/97 ≈ 69%
+  });
+  it('warning in [70%, 85%)', () => {
+    const a = computeConnectionAlert(conns(75)); // 75/97 ≈ 77%
+    expect(a).toHaveLength(1);
+    expect(a[0].severity).toBe('warning');
+    expect(a[0].detail).toMatch(/pooler/i); // the honest caveat is present
+  });
+  it('critical at ≥85%', () => {
+    const a = computeConnectionAlert(conns(90)); // 90/97 ≈ 93%
+    expect(a[0].severity).toBe('critical');
+  });
+  it('no alert / no throw when connections null or usable ≤ 0', () => {
+    expect(computeConnectionAlert(null)).toEqual([]);
+    expect(computeConnectionAlert({ total: 5, max: 3, reserved: 3 })).toEqual([]); // usable 0
+  });
+});
+
+describe('connectionHeadroomPct', () => {
+  it('is the inverse of usage, floored at 0', () => {
+    expect(connectionHeadroomPct({ total: 0, max: 100, reserved: 3 })).toBe(100);
+    expect(connectionHeadroomPct({ total: 97, max: 100, reserved: 3 })).toBe(0);
+    expect(connectionHeadroomPct(null)).toBeNull();
+    expect(connectionHeadroomPct({ total: 5, max: 3, reserved: 3 })).toBeNull(); // usable 0
   });
 });

@@ -154,3 +154,55 @@ export function computeAnalyticsBudgetAlert(rowCount: number | undefined): Weigh
   }
   return [];
 }
+
+/** Just the connection fields the alert needs (structural subset of DbHealth['connections']). */
+export interface ConnectionCounts {
+  total: number;
+  max: number;
+  reserved: number;
+}
+
+export const CONN_WARNING_RATIO = 0.7;
+export const CONN_CRITICAL_RATIO = 0.85;
+
+const CONN_CAVEAT =
+  'The Supavisor pooler fronts client connections, and the 200K load run measured the DB at ~30% of ' +
+  'connections at 4,000 concurrent — so connections are not the near-term constraint; the disk/tier alert ' +
+  'remains the primary scale signal.';
+
+/** Usable connections = max − superuser-reserved. null when unknown/≤0. */
+function usableConns(c: ConnectionCounts | null | undefined): number | null {
+  if (!c) return null;
+  const usable = c.max - c.reserved;
+  return usable > 0 ? usable : null;
+}
+
+/** Early-warning alert on live connection usage vs the usable ceiling. Empty when unknown or below warn. */
+export function computeConnectionAlert(c: ConnectionCounts | null | undefined): WeightAlert[] {
+  const usable = usableConns(c);
+  if (usable === null || !c) return [];
+  const ratio = c.total / usable;
+  const pct = Math.round(ratio * 100);
+  if (ratio >= CONN_CRITICAL_RATIO) {
+    return [{
+      severity: 'critical',
+      title: 'Connection capacity high',
+      detail: `Database is using ${pct}% of its ${usable} usable connections — consider scaling compute. ${CONN_CAVEAT}`,
+    }];
+  }
+  if (ratio >= CONN_WARNING_RATIO) {
+    return [{
+      severity: 'warning',
+      title: 'Connection usage climbing',
+      detail: `Database is using ${pct}% of its ${usable} usable connections. ${CONN_CAVEAT}`,
+    }];
+  }
+  return [];
+}
+
+/** Remaining connection headroom as a whole percent (0–100), or null when unknown. */
+export function connectionHeadroomPct(c: ConnectionCounts | null | undefined): number | null {
+  const usable = usableConns(c);
+  if (usable === null || !c) return null;
+  return Math.max(0, Math.round((1 - c.total / usable) * 100));
+}
