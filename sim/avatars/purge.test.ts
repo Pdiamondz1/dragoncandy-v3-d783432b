@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseAvatarArgs, estimateSpendUsd, POOL_PREFIXES } from "./purge";
+import { parseAvatarArgs, estimateSpendUsd, POOL_PREFIXES, DEFAULT_WORK_COUNT } from "./purge";
 
 describe("parseAvatarArgs", () => {
   it("defaults count to 1500, dry-run off, no limit", () => {
@@ -34,6 +34,13 @@ describe("parseAvatarArgs", () => {
 
   it("still treats an absent flag as the default", () => {
     expect(parseAvatarArgs(["--dry-run"])).toEqual({ count: 1500, dryRun: true, limit: null });
+  });
+
+  // Regression: content-generate reused the 1,500 face default, so a bare dry-run under-estimated
+  // the 1,800-image work pool it would actually build.
+  it("accepts a caller-supplied default so each pool estimates its own size", () => {
+    expect(parseAvatarArgs(["--dry-run"], DEFAULT_WORK_COUNT).count).toBe(1800);
+    expect(parseAvatarArgs(["--count", "20"], DEFAULT_WORK_COUNT).count).toBe(20);
   });
 
   it("applies --limit as the effective ceiling on count", () => {

@@ -35,6 +35,10 @@ const pad4 = (i: number): string => String(i).padStart(4, "0");
 /** The extension follows the ACTUAL bytes (see sniffImageType) — a model may return PNG or WEBP. */
 export const facePath = (i: number, ext: string = "jpg"): string => `synthetic/faces/${pad4(i)}.${ext}`;
 
+/** Work-sample pool — creator portfolios and DragonFeed posts both reference these objects, so a
+ *  single image is stored once no matter how many places it appears. Same extension rule as faces. */
+export const workPath = (i: number, ext: string = "jpg"): string => `synthetic/work/${pad4(i)}.${ext}`;
+
 /**
  * Logo objects are CONTENT-ADDRESSED, not slot-indexed: the path is derived from what is drawn on
  * the tile (monogram text + palette), so two businesses can never be handed the same object while

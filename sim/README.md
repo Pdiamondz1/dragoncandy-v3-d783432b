@@ -201,3 +201,35 @@ size rather than assuming it matches the cohort.
 **Businesses get monogram PNGs, not faces** — rendered locally at zero cost by `avatars/png.ts`
 (the bucket's `allowed_mime_types` reject `image/svg+xml`, hence a hand-rolled PNG encoder over
 `node:zlib` rather than an SVG or a new dependency).
+
+## Work-sample pool (`content-generate` / `content-apply` / `content-purge`)
+
+The second pool, on the same machinery as the avatar pool: **creator portfolios and DragonFeed
+posts both reference `profile-assets/synthetic/work/`**, so one image is stored once no matter how
+many places it appears. Spec: `docs/superpowers/specs/2026-07-27-synthetic-content-pass-design.md`.
+
+Why it exists: the marketplace had 2,000 profiles and almost no content — 1,500 creators with empty
+`portfolio_urls`, and a DragonFeed holding 26 posts platform-wide whose 16 synthetic entries pointed
+at 160-byte 8x8 JPEGs (blank cards).
+
+```bash
+npx tsx sim/cli.ts content-generate --dry-run     # cost estimate, spends nothing
+npx tsx sim/cli.ts content-generate --limit 5     # smoke: eyeball 5 before the rest
+npx tsx sim/cli.ts content-generate --count 1800  # PAID (~$20 at the low-quality rate)
+npx tsx sim/cli.ts content-apply                  # 3 samples per creator + ~500 feed posts
+npx tsx sim/cli.ts content-purge                  # pool + portfolios + seeded posts
+```
+
+**Three invariants worth not breaking:**
+
+- **No people in the work pool.** Prompts ask for food and venues and say so explicitly; a test
+  asserts none requests a portrait. A portfolio of generated faces would be a second, unmanaged
+  population of synthetic people outside the faces pool.
+- **Seeded posts can never reach the public landing hero.** `landing-clips` requires
+  `boost_status='boosted'` + `content_type IN ('video','reel')` + a `captured`/`transferred` boost
+  row; seeded rows are photos with no boost fields, so they fail it. `landing-exclusion.test.ts`
+  asserts this — make these rows boosted or video and CI fails rather than synthetic media appearing
+  on the marketing site.
+- **`content-purge` is scoped twice**: registry-scoped AND pool-scoped, so a real post or a
+  synthetic post this pass did not create is never in the delete set. It is not part of
+  `marketplace-purge` — the pool is durable so a re-seed stays free.
