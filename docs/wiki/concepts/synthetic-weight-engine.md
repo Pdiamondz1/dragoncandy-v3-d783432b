@@ -213,6 +213,8 @@ client-side. The teardown rule below (`purge_synthetic_load_cohort()` for load c
 ## See Also
 - [[Supabase .in() Header Overflow]] — the unbounded-`.in()` 16 KB bomb that blocked the 20-shard
   seed four times while impersonating a network outage.
+- [[Internal Real-vs-Total Metrics]] — how the `/internal` metric surfaces present this exclusion:
+  Overview real-only, Simulation mirroring the Overview card set for the synthetic cohort.
 - [[Service-Role Data Exposure]] — the same "re-assert the intended scope server-side" discipline.
 - [[AIOS runtime spend source of truth]] — `donny_cost_ledger` / the 15% AI cap the synthetic
   exclusion protects.

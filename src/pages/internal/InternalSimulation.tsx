@@ -5,8 +5,10 @@ import {
   type SimLoadMatrixSummary,
 } from '@/hooks/internal/useSimLoadMatrixSummary';
 import { computeModeledRevenue } from '@/lib/internal/modeledRevenue';
+import { usePlatformStats } from '@/hooks/internal/usePlatformStats';
 import { StatCard, SectionHeading, ErrorCard } from '@/components/internal/stats';
 import { PageContainer, PageHeader } from '@/components/internal/layout';
+import { PlatformMetricSections } from '@/components/internal/PlatformMetricSections';
 import { formatUsd } from '@/lib/utils';
 import { Spinner } from '@/components/ui/spinner';
 
@@ -223,6 +225,7 @@ const InternalSimulation = () => {
   const simulation = useSimulationStats();
   const loadSnapshots = useSimLoadSnapshots();
   const matrixSummary = useSimLoadMatrixSummary();
+  const platform = usePlatformStats();
 
   if (simulation.isLoading) {
     return (
@@ -268,17 +271,30 @@ const InternalSimulation = () => {
         Kill switch: {s.kill_switch_enabled ? 'ON — bots are being generated' : 'OFF'}
       </div>
 
-      <SectionHeading>Cohort</SectionHeading>
+      <PlatformMetricSections
+        mode="synthetic"
+        stats={platform.data}
+        isLoading={platform.isLoading}
+        isError={platform.isError}
+      />
+
+      <SectionHeading>Revenue (modeled)</SectionHeading>
+      <ModeledRevenueCard syntheticCampaigns={s.synthetic_campaigns} />
+
+      <SectionHeading>AI spend (synthetic)</SectionHeading>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Bots total" value={s.bots_total} />
-        <StatCard label="Synthetic campaigns" value={s.synthetic_campaigns} />
-        <StatCard label="Synthetic messages" value={s.synthetic_messages} />
         <StatCard
           label="Synthetic MTD AI spend"
           value={formatUsd(s.synthetic_ai_spend_mtd_usd)}
           sub="Real cost of the synthetic run"
           accent="pink"
         />
+      </div>
+
+      <SectionHeading>Simulation internals</SectionHeading>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard label="Bots total (registry)" value={s.bots_total} sub="synthetic_users rows" />
+        <StatCard label="Synthetic messages" value={s.synthetic_messages} />
       </div>
 
       <SectionHeading>Bots by persona</SectionHeading>
@@ -314,9 +330,6 @@ const InternalSimulation = () => {
         isError={loadSnapshots.isError}
         rows={loadSnapshots.data ?? []}
       />
-
-      <SectionHeading>Modeled revenue</SectionHeading>
-      <ModeledRevenueCard syntheticCampaigns={s.synthetic_campaigns} />
     </PageContainer>
   );
 };

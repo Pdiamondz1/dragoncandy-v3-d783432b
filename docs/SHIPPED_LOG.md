@@ -56,6 +56,41 @@ rewritten with the live table + a dated note of what it used to claim; the `inde
 "offline code complete, seed run founder-gated" tail replaced. The 07-25 entry below is deliberately
 left as written — `SHIPPED_LOG` entries are historical snapshots, not current status.
 
+## [2026-07-26] Synthetic metric parity — /internal/simulation mirrors the Overview card set (`feat/internal-metrics-real-vs-total`)
+
+Completes the "real vs total" theme (the `/internal` Overview banner + subs shipped separately as PR #344),
+and is **sub-project 1 of 4** in a founder ask to make the AIOS dashboard show the true weight/cost of the
+app and how it scales (2 = live infra telemetry + scaling headroom; 3 = cost model + DAU forecast
+500K/750K/1M; 4 = a **plain-language stakeholder status** layer so non-technical board/investor readers can
+speak to how the app is performing — all deferred to their own design cycles). **The Simulation page
+(Synthetic Weight Engine) top now mirrors the `/internal` Overview card set 1:1**, valued with the synthetic
+cohort, so real vs synthetic compare apples-to-apples; simulation-only widgets (registry `Bots total`,
+personas, matrix run, load curve, modeled revenue) sit below a divider. Key insight: `aios_platform_stats`
+already returns every metric as real (`WHERE NOT is_synthetic`) **and** `total_all` (no filter, from #344),
+so **synthetic = `total_all − total`** using the identical method — the two pages reconcile by construction.
+Migration `20260725150000` was edited to add three additive `*_all` breakdown maps (`by_status_all`,
+`posts_by_status_all`, `by_platform_all`) for synthetic sub-line parity (the `*_all` totals were already
+applied to prod with #344; only these three keys still need the careful-gate apply). A pure
+`deriveCardModel(stats, mode)` (real mode reproduces the old Overview cards **byte-for-byte**, unit-tested as
+the parity contract) + a shared `PlatformMetricSections` (used by BOTH pages; keyed `<Fragment>` per section,
+not a `<div>`, so `SectionHeading`'s `first:mt-0` survives) mean the two surfaces can't drift. **Graceful
+pre-migration degradation:** all `*_all` fields are optional; the Overview banner guards every `*_all` read
+with `?? 0`; Simulation shows a distinct "metrics pending migration" state (not a false "no cohort") when
+`total_all` is absent — two Codex P2s (real-mode `by_role_all` crash; the false-empty synthetic state) fixed
+across 4 Codex rounds (final clean), plus an independent Claude spec-review of the plan + a final whole-diff
+review (3 Minor consistency findings fixed). typecheck + lint + 16 unit tests + build green. Wiki:
+[[Internal Real-vs-Total Metrics]].
+
+**Follow-up (same PR) — combined-totals panel.** Founder feedback: neither surface showed a single panel
+with the *combined* (real + simulated) totals for everyone to see clearly — the Overview buried the grand
+total in a grey "of N incl. synthetic" sub-line, and Simulation is synthetic-only. Added a **"Platform totals
+— real + simulated" strip at the very top of the Overview**: six headline cards (Total users, Businesses,
+Campaigns, DragonFeed posts, DragonShare boosts, Promotions), each the grand total (`*_all`) with a `N real ·
+N simulated` split sub. A new pure `deriveCombinedTotals(stats)` (same `total = all ?? real` pre-migration
+fallback — never a false 0) + a small `PlatformTotalsPanel`; placed **above** the "real only" banner so its
+"metrics below" stays accurate. Tests extended (deriveCombinedTotals: order, `all − real` split, pre-migration
+fallback); typecheck + lint + build green.
+
 ## [2026-07-26] The 200K-band load run + the 16 KB header wall (`fix/sim-preflight-header-overflow`, PR #345)
 
 The session where [[Synthetic Weight Engine]] Slice 2 stopped being *built* and became *run*. Three
