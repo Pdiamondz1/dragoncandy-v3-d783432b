@@ -409,6 +409,30 @@ describe('buildForecast', () => {
     const m = buildForecast(input);
     expect(m.scenarios[3].supabaseUsd).toBeGreaterThan(m.scenarios[1].supabaseUsd);
   });
+
+  it('AI cost = uncapped when demand is under the cap; not flagged', () => {
+    const s = buildForecast(input).scenarios[3]; // 1M — huge revenue ⇒ cap ≫ uncapped ($5k)
+    expect(s.aiUsd).toBeCloseTo(s.aiUncappedUsd!, 6);
+    expect(s.aiCapBreached).toBe(false);
+  });
+
+  it('selects a compute tier by peak concurrency, and Custom beyond the top tier', () => {
+    // 500K × 0.1% = 500 concurrent ≤ Micro (1 GB × 2000) → smallest tier
+    const low = buildForecast({ measured, assumptions: { ...DEFAULT_ASSUMPTIONS, peak_concurrency_pct: 0.1 } });
+    expect(low.scenarios[1].computeTier).toBe('Micro');
+    // default 8% → 500K × 8% = 40,000 > XL ceiling (16 GB × 2000 = 32,000) → Custom
+    expect(buildForecast(input).scenarios[1].computeTier).toMatch(/Custom/);
+  });
+
+  it('charges disk overage only past the included 8 GB (flat below, higher above)', () => {
+    // both keep total DB under 8 GB ⇒ identical Supabase cost (disk overage 0 for both)
+    const a1 = buildForecast({ measured, assumptions: { ...DEFAULT_ASSUMPTIONS, db_kb_per_user: 1 } });
+    const a2 = buildForecast({ measured, assumptions: { ...DEFAULT_ASSUMPTIONS, db_kb_per_user: 2 } });
+    expect(a1.scenarios[1].supabaseUsd).toBe(a2.scenarios[1].supabaseUsd);
+    // 100 KB/user × 2M registered ≫ 8 GB ⇒ positive disk overage
+    const big = buildForecast({ measured, assumptions: { ...DEFAULT_ASSUMPTIONS, db_kb_per_user: 100 } });
+    expect(big.scenarios[1].supabaseUsd).toBeGreaterThan(a1.scenarios[1].supabaseUsd);
+  });
 });
 ```
 
@@ -529,8 +553,13 @@ on conflict (key) do nothing;
   - `model.notes.map(...)` rendered as small muted lines below the table (the degradation note).
   - A recharts `LineChart` of total cost vs revenue across the projected scenarios (reuse the Weight page's
     recharts import + dark tooltip style). Guard: only render the chart when ≥2 projected scenarios exist.
-  - Number formatting: bytes → GB/TB helper; USD → `formatUsd`/`formatCents` from `@/lib/utils` (dollars
-    are plain numbers here — use `` `$${Math.round(n).toLocaleString()}` ``); pct → `` `${Math.round(p*100)}%` ``.
+  - Number formatting: bytes → a local GB/TB helper; **the model's USD fields are dollars** → use
+    `formatUsd(dollars)` (from `@/lib/utils`) or `` `$${Math.round(n).toLocaleString()}` `` — **never
+    `formatCents`** on these (it divides by 100 and would render 1/100th the value); margin% →
+    `` `${Math.round(p*100)}%` `` (guard the `null` case → `—`).
+  - Chart test-safety: render the recharts chart inside `<ResponsiveContainer>` (as `InternalWeight.tsx`
+    does) — it renders empty in jsdom, so scenario labels don't duplicate as axis ticks and the Task-4
+    `getByText('1M')` assertion stays unambiguous.
 - [ ] **Step 2: Write the test.**
 
 ```tsx
@@ -568,11 +597,14 @@ describe('ForecastTable', () => {
 **Files:** Create `src/components/internal/ForecastAssumptionsPanel.tsx`.
 
 - [ ] **Step 1: Implement.** Props: `{ assumptions: ForecastAssumptions; hints?: Partial<Record<keyof ForecastAssumptions,string>> }`.
-  Render one labelled numeric `Input` per assumption (order = `FORECAST_KEYS`), showing the current value and
-  an optional derived hint (e.g. "current data suggests ~X"). On change/blur, call
-  `useUpdateForecastAssumption().mutate({ key: 'forecast_'+field, value })` (parse with `parseFloat`, ignore
-  NaN), toast on error (`sonner`). Use the internal dark styling already used by `InternalExpenses` inputs.
-  The page is admin-only, so there is no read-only branch.
+  Render one labelled numeric `Input` per assumption (iterate `FORECAST_KEYS`; the field name is
+  `key.replace(/^forecast_/, '')`; a small `LABELS`/`UNITS` map in the component supplies the human label +
+  unit suffix — %, KB, ¢, $, ×). Show the current value; render a hint line **only when
+  `hints[field]` is present** (per Task 6, only `business_share_pct` is wired — the rest simply have no
+  hint, which is fine). On blur, call `useUpdateForecastAssumption().mutate({ key, value })` with the full
+  `key` (e.g. `'forecast_business_share_pct'`) and `parseFloat`'d value (ignore `NaN`); toast on error
+  (`sonner`). Use the internal dark input styling from `InternalExpenses`. The page is admin-only → no
+  read-only branch.
 - [ ] **Step 2: Typecheck** → clean.
 - [ ] **Step 3: Commit.** `feat(internal): ForecastAssumptionsPanel — live-tunable forecast assumptions`
 
@@ -583,10 +615,25 @@ describe('ForecastTable', () => {
 **Files:** Create `src/pages/internal/InternalForecast.tsx` (default export — pages use default exports).
 
 - [ ] **Step 1: Implement.** Wire the hooks → measured input → model → table + panel:
-  - Hooks: `usePlatformWeight` (latest snapshot → `dbBytes`/`storageBytes`/`users_total_real`),
-    `useSimLoadMatrixSummary` (→ `loadMatrix` or null), `useCurrentTierIndex` (`currentTierIndex`),
-    `useCostStats` (`mtd_spend_usd`), `useOperatingExpenses` (Σ active/100), `useRevenueStats`
-    (`dragonshare_mtd.platform_fee_cents/100`), `useForecastAssumptions`.
+  - Hooks:
+    - `usePlatformWeight` — returns the **array** of snapshots (ascending). Take the latest as
+      `rows[rows.length - 1]` (the `InternalWeight.tsx` L45 pattern) → `db_bytes` / `storage_bytes`.
+    - `usePlatformStats` — **`users.total`** is the real (synthetic-excluded) registered-user baseline →
+      `registeredUsersReal`. **Do NOT read `users_total_real` off `usePlatformWeight`** — it is fetched
+      by the query but is **not** on `PlatformWeightRow`'s type on this branch (no #350), so it would fail
+      strict typecheck. `usePlatformStats().users.total` is the spec §4a-sanctioned source and is typed.
+    - `useSimLoadMatrixSummary` (→ `loadMatrix` or null), `useCurrentTierIndex` (`currentTierIndex`),
+      `useCostStats` (`mtd_spend_usd`), `useOperatingExpenses` (Σ active `monthly_amount_cents`/100),
+      `useRevenueStats` (`dragonshare_mtd.platform_fee_cents`/100), `useForecastAssumptions`.
+  - **Derived hint (concrete, the only one wired):** `business_share_pct` hint =
+    `` `current: ${Math.round((businesses/total)*100)}% of users are businesses` `` from
+    `usePlatformStats` (businesses = restaurants + brands; total = `users.total`). Pass it as
+    `hints={{ business_share_pct: <that string> }}`. The other assumptions have no clean single-value
+    source, so they get **no** hint (the panel renders a hint only when present) — this is intentional,
+    not a gap.
+  - **Today's Supabase cost includes actual (measured) disk overage** via `diskOverageUsd(m.dbBytes)`,
+    which is **$0** at current DB size (≪ 8 GB) — consistent with spec §4f's "no *modeled* overage"
+    (Today is measured, and the real overage is genuinely zero). No divergence to reconcile.
   - Loading: spinner while the core queries load. Error: `ErrorCard` if platform-weight/assumptions error.
     Build `ForecastMeasured` (guard each source with sensible fallbacks: no weight snapshot → use 0s +
     a note; the model already tolerates a null loadMatrix).
