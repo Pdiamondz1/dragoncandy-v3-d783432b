@@ -126,6 +126,16 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   at the careful gate to add its three new `*_all` breakdown keys to prod (the `*_all` totals already
   landed with #344).
   → `docs/wiki/concepts/internal-real-vs-total-metrics.md` · `feat/internal-metrics-real-vs-total`
+- **Live DB health + scale-up trigger (AIOS scaling dashboard, sub-project 2 of 4 — last)** — a live
+  "Database health" section on `/internal/weight` (retitled "Weight & health"): a `SECURITY DEFINER`
+  `aios_db_health()` live `pg_stat` read (connections vs pool ceiling, call-weighted mean query time,
+  cache-hit + cumulative xact counters, DB size) polled every 20s + a connection-headroom scale alert
+  (warn ≥70% / critical ≥85%, with the pooler caveat). Internal-gated + aggregate-only (data-exposure
+  PASS), no new table/secret; CPU/RAM a labeled "coming next" seam (needs the Supabase metrics endpoint).
+  **Pending:** merge PR #354, then apply the founder-gated migration `20260727170000` at the careful
+  gate; the section degrades to "unavailable" until then. Completes 4 of 4 AIOS scaling sub-projects
+  (with #346/#350/#352); CPU/RAM the remaining follow-up.
+  → `docs/wiki/concepts/live-db-health.md` · `feat/internal-db-health-telemetry`
 - **Cost model + DAU forecast (AIOS scaling dashboard, sub-project 3 of 4)** — an admin-only
   `/internal/forecast` page projecting infra footprint → Supabase tier → total cost → revenue →
   **gross margin** at Today / 500K / 750K / 1M DAU, from a pure tested `forecastModel` (measured

@@ -81,6 +81,35 @@ forecast is explicitly a **what-if capacity/cost model, not a growth projection*
 17 tests (14 model, 3 component; recharts needs a jsdom `ResizeObserver` stub), typecheck + lint + build green,
 Codex second review. Wiki: [[Cost Model + DAU Forecast]].
 
+## [2026-07-27] Live DB health + scale-up trigger — /internal/weight (`feat/internal-db-health-telemetry`)
+
+**Sub-project 2 of 4 — the LAST** of the founder ask to make the AIOS dashboard show the app's true weight/cost
+and how it scales (1 = synthetic parity #346; 3 = cost/DAU forecast #352; 4 = stakeholder scorecard #350). Adds
+a live **"Database health"** section to `/internal/weight` (retitled **"Weight & health"**): real-traffic infra
+telemetry — connections vs the pool ceiling, query latency, cache-hit, transaction counters, DB size — plus a
+**connection-headroom scale-up alert** (warn ≥70% / critical ≥85% of usable connections).
+
+**Backed by one RPC, no new table or secret.** `aios_db_health()` (`SECURITY DEFINER`, `search_path=public`,
+`is_internal_user()`-gated, `REVOKE public/anon` + `GRANT authenticated/service_role`) does a **live `pg_stat`
+read**, reusing the exact pattern proven by `capture_sim_load_snapshot` ([[Synthetic Weight Engine]]) and the
+gating of `aios_platform_stats`. `useDbHealth()` polls it every 20s while the page is open; `DbHealthSection`
+renders the live cards + the connection alert + a "live · updated Ns ago" affordance, owning its own
+loading/error. The scale trigger is `computeConnectionAlert` in `weightThresholds.ts`.
+
+**Scope choice (founder): DB telemetry now, CPU/RAM next.** CPU/RAM aren't in Postgres — they need Supabase's
+privileged metrics endpoint (not wired, possibly a new token), so this ships what `pg_stat` exposes and leaves a
+labeled CPU/RAM "coming next" seam. **Honesty rails:** latency is a call-weighted **mean, not a p95** (Postgres
+exposes no percentiles server-side); `xact`/cache-hit are labeled **cumulative/lifetime** counters, never a
+"rate"; the connection alert carries the caveat that the Supavisor pooler fronts connections and the 200K load
+run measured the DB at ~30% at 4,000 concurrent, so it's early-warning, not the primary signal.
+
+Migration `20260727170000` is **founder-gated (NOT applied)**; the section degrades to an "unavailable" state
+until it lands (the rest of the Weight page is unaffected). **data-exposure-reviewer PASS** (aggregate-only,
+correctly gated, no `pg_stat_activity.query`/`usename`; bounded DEFINER). Subagent-driven build (thresholds +
+component); 28 tests, typecheck + lint + build green, Codex second review. One documented tradeoff (the health
+section is hidden while `platform_weight` itself is loading/errored/empty — the reverse of the spec's isolation,
+which is satisfied; full independence is a follow-up) + the deferred CPU/RAM follow-up. Wiki: [[Live DB Health]].
+
 ## [2026-07-26] Living Synthetic Marketplace — go-live record + status correction
 
 **Not new work — a record of work that shipped without one, and the correction of three docs that

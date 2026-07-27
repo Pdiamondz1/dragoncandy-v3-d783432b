@@ -1827,3 +1827,12 @@ assumptions; what-if capacity/cost model, admin-gated, AI self-caps at 15%/$250-
 [[Internal Real-vs-Total Metrics]], [[Stakeholder Scorecard]], [[Synthetic Weight Engine]], [[AIOS
 Internal Shell]]. index.md: added the concept under the AIOS entries. Also SHIPPED_LOG prepend +
 PROJECT_CONTEXT §5 (Built — awaiting founder go-live). RAG sync deferred to post-merge (docs/ hook).
+
+## [2026-07-27] ingest | Live DB health (/internal/weight, sub-project 2 of 4 — last)
+Ingested raw/sessions/2026-07-27-live-db-health.md. Created concepts/live-db-health.md (the live
+"Database health" section on /internal/weight: `aios_db_health()` SECURITY DEFINER live pg_stat read —
+connections vs pool ceiling, call-weighted mean query time, cache-hit + cumulative xact counters, DB
+size — polled 20s + a connection-headroom scale alert; internal-gated, aggregate-only, CPU/RAM a labeled
+seam). Cross-linked to [[Cost Model + DAU Forecast]], [[Synthetic Weight Engine]], [[AIOS Internal
+Shell]]. index.md: added the concept under the AIOS entries. Also SHIPPED_LOG prepend + PROJECT_CONTEXT
+§5 (Built — awaiting founder go-live). RAG sync deferred to post-merge (docs/ hook).
