@@ -1818,3 +1818,12 @@ doing" page + print export for non-technical stakeholders; deterministic phrasin
 metrics; internal-gated `aios_stakeholder_burn()` aggregate RPC (data-exposure PASS); headroom = physical
 infra capacity (conservative). Sub-project 4 of 4 of the AIOS scaling dashboard. Pages updated: index.md
 (Concepts). RAG sync deferred to the post-merge docs/ hook.
+
+## [2026-07-27] ingest | Cost model + DAU forecast (/internal/forecast, sub-project 3 of 4)
+Ingested raw/sessions/2026-07-27-cost-dau-forecast.md. Created concepts/cost-dau-forecast.md (the
+admin-only `/internal/forecast` page + pure `forecastModel`: infra + full unit-economics at Today/500K/
+750K/1M DAU from measured load-run coefficients + 9 founder-editable `aios_dashboard_settings`
+assumptions; what-if capacity/cost model, admin-gated, AI self-caps at 15%/$250-floor). Cross-linked to
+[[Internal Real-vs-Total Metrics]], [[Stakeholder Scorecard]], [[Synthetic Weight Engine]], [[AIOS
+Internal Shell]]. index.md: added the concept under the AIOS entries. Also SHIPPED_LOG prepend +
+PROJECT_CONTEXT §5 (Built — awaiting founder go-live). RAG sync deferred to post-merge (docs/ hook).

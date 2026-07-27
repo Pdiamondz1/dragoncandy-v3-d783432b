@@ -126,6 +126,15 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   at the careful gate to add its three new `*_all` breakdown keys to prod (the `*_all` totals already
   landed with #344).
   → `docs/wiki/concepts/internal-real-vs-total-metrics.md` · `feat/internal-metrics-real-vs-total`
+- **Cost model + DAU forecast (AIOS scaling dashboard, sub-project 3 of 4)** — an admin-only
+  `/internal/forecast` page projecting infra footprint → Supabase tier → total cost → revenue →
+  **gross margin** at Today / 500K / 750K / 1M DAU, from a pure tested `forecastModel` (measured
+  load-run coefficients + 9 founder-editable assumptions) + the existing internal hooks. No new RPC/RLS;
+  admin-gated like `/internal/expenses` (reads admin-only cost sources). **Pending:** merge PR #352,
+  then apply the founder-gated migration `20260727120000` (seeds the 9 assumption KV rows) at the careful
+  gate; the page degrades to coded defaults until then. Deferred: the one-line margin tie-in into the
+  stakeholder scorecard.
+  → `docs/wiki/concepts/cost-dau-forecast.md` · `feat/internal-cost-dau-forecast`
 - **Stakeholder scorecard (AIOS scaling dashboard, sub-project 4 of 4)** — `/internal/scorecard`, a
   plain-language "How DragonCandy is doing" page (4 stories: traction, capital efficiency, scale
   headroom, revenue readiness) with auto signals under a founder-set headline, + a print "Export
