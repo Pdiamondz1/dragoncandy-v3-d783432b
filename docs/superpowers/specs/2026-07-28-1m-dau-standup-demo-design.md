@@ -100,6 +100,12 @@ badged projection hero sourced from the 1M scenario — the **real query paths a
 - `/internal/scorecard` — reflects the 1M margin line (badged).
 - `/internal/simulation` — unchanged surface; it already shows synthetic openly + the matrix run (§4C).
 
+**Hook wiring (not a CSS-only change):** only `/internal/forecast` currently loads the forecast inputs
+(`useForecastAssumptions` + `platform_weight` + `useSimLoadMatrixSummary`). Overlaying `/internal/`
+`{overview,weight,scorecard}` therefore includes *wiring those inputs there* — extract a shared
+`useForecast()` (composing the existing hooks + `buildForecast`) and consume it on each overlaid page.
+This is a real dependency, not a badge/CSS tweak.
+
 **Invariant:** DEMO overlays are a thin display layer over `forecastModel` output. They never fabricate
 table rows, never mutate the real/synthetic-segregated queries, and are impossible to render on prod.
 
@@ -108,15 +114,25 @@ table rows, never mutate the real/synthetic-segregated queries, and are impossib
 One idempotent orchestrating entrypoint (e.g. `scripts/demo/seed-1m-dau-demo.ts`) run against the
 **branch** DB (service-role), that:
 1. **Hard-guards** on target project ref ≠ prod ref (refuses to run against prod).
-2. Creates two demo logins — a demo **restaurant/business** and a demo **creator** — with known creds.
+2. Creates two demo logins — a demo **restaurant/business** and a demo **creator**. Their credentials
+   are documented in the Phase-3 runbook (Component C), mirroring the existing test-credential
+   reference pattern — **not** hardcoded in the seeder or committed as repo secrets.
 3. Seeds their dashboards: active campaigns, stacks of applications, content-in-flight, payouts,
    DragonShare earnings — so both the paying-customer and supply-side views look active.
 4. Seeds the **consumer feed** (existing DragonFeed synthetic seed) so it scrolls full.
 5. Seeds **marketplace depth** (existing `seed_synthetic_marketplace_depth`-style path) so both sides
    of discovery browse full across cities.
-6. Inserts a `platform_weight` snapshot **and** a `sim_load_matrix_summary` row carrying the **real
-   captured runner-matrix run** (31k requests / 4,000 offered concurrency / 0 breakage / DB ~70% idle)
-   so `/internal/forecast` derives a **measured** ceiling, not default coefficients.
+6. Seeds the **measured load-run ceiling** so `/internal/forecast` derives *measured* (not default)
+   coefficients. **There is no `sim_load_matrix_summary` table** — the ceiling is computed by the
+   `get_sim_load_matrix_summary(p_run_label)` RPC as an **overlap event-sweep** over `sim_load_snapshots`
+   rows (migration `20260725140000`), where `honest_peak_concurrency` = max simultaneously-overlapping
+   shard concurrency. So the seeder must insert **~20 shard-stamped `sim_load_snapshots` rows** — a
+   `matrix%` `run_label`, `notes.shard` set, **overlapping `captured_at` intervals** — that reproduce
+   the captured run (31k requests / honest-peak ≈ 4,000 / 0 breakage / DB ~70% idle); the hook
+   (`useSimLoadMatrixSummary`) consumes the *latest* `matrix%` label. Also insert a `platform_weight`
+   point reading (db/storage bytes). **Trap:** a single/summary row → `honest_peak = 0` → the forecast
+   silently falls back to DEFAULT coefficients ("Measured load-run ceiling unavailable"), gutting the
+   measured leg the whole credibility chain hinges on — seed the overlapping rows, not one row.
 7. Seeds/confirms the `aios_dashboard_settings` forecast assumption rows (so the 1M numbers are stable).
 - All seeded rows tagged `is_synthetic`. Reruns are idempotent (stable keys / fixed seeds → stable
   counts). Exact existing seeder entrypoints/RPC names to be **verified during planning** before use.
@@ -160,8 +176,9 @@ it needs the GitHub Actions runner matrix; this is stated to the audience).
   synthetic row is presented as real; the credibility chain is measured→modeled.
 
 ## 7. Provenance of every displayed number (MEASURED / MODELED / SEEDED)
-- **MEASURED:** the captured runner-matrix ceiling (seeded into the branch) → drives the forecast's
-  connection/egress coefficients.
+- **MEASURED:** the captured runner-matrix ceiling — seeded as overlapping `sim_load_snapshots` rows
+  and derived by the `get_sim_load_matrix_summary` RPC (§4B.6) → drives the forecast's connection/egress
+  coefficients.
 - **MODELED:** all 1M-DAU headline figures (users, peak concurrency, DB/storage footprint, compute
   tier, cost, revenue, margin, cost-per-DAU) — from `forecastModel` + founder-tunable assumptions.
 - **SEEDED (synthetic):** everything browsable on the product surfaces — feed, marketplace, dashboard
@@ -170,7 +187,10 @@ it needs the GitHub Actions runner matrix; this is stated to the audience).
 ## 8. Phased build plan
 - **Phase 1 — `DEMO_SCALE` mode (Component A).** Flag + prod guard + banner + deck projection overlays.
   Independently shippable and prod-safe; demonstrable immediately (renders the 1M hero from the live
-  forecast model even with no seeded world). **Built first.**
+  forecast model even with no seeded world). **Built first.** Caveat: a Phase-1-only demo shows the
+  **modeled** 1M hero but **without the measured-ceiling leg** — with no seeded matrix snapshots the
+  forecast uses DEFAULT coefficients (and shows "Measured load-run ceiling unavailable"); Phase 2
+  completes the measured→modeled chain.
 - **Phase 2 — branch world-seeder (Component B).** The idempotent, prod-guarded seed entrypoint.
 - **Phase 3 — standup/teardown runbook + live-burst (Component C).** Runbook + burst script; validated
   by one full create→seed→deploy→delete dry-run on a real branch, then deleted.
