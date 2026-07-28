@@ -23,10 +23,14 @@ export function useDbHealth() {
   return useQuery({
     queryKey: ['aios', 'db-health'],
     queryFn: async (): Promise<DbHealth> => {
-      const rpc = supabase.rpc as unknown as (
-        fn: 'aios_db_health',
-      ) => Promise<{ data: DbHealth | null; error: { message: string } | null }>;
-      const { data, error } = await rpc('aios_db_health');
+      // Cast the CLIENT and call `.rpc` ON it — extracting `supabase.rpc` into a variable and calling
+      // it detaches the method from its receiver, so supabase-js reads `this.rest` on `undefined`
+      // ("Cannot read properties of undefined (reading 'rest')"). `aios_db_health` isn't in the generated
+      // rpc union until types are regenerated, hence the cast.
+      const client = supabase as unknown as {
+        rpc: (fn: 'aios_db_health') => Promise<{ data: DbHealth | null; error: { message: string } | null }>;
+      };
+      const { data, error } = await client.rpc('aios_db_health');
       if (error) {
         console.error('aios_db_health failed:', error);
         throw error;
