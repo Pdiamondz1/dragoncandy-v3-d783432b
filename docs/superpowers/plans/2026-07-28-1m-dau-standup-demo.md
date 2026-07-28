@@ -39,6 +39,7 @@ before their tasks are pinned down. See "Phases 2 & 3 — outline" at the end.
 - `src/lib/internal/demoScale.ts` — the `isDemoScale()` guard (pure). One responsibility: is DEMO mode on?
 - `src/lib/internal/demoScale.test.ts` — guard unit tests (incl. the hard prod-ref off-switch).
 - `src/lib/internal/demoScaleScenario.ts` — `selectDemoScaleScenario(model)` pure selector (the `1M` row).
+  (Spec §4A/§9 sketched this as `demoScaleForecast.ts`; renamed for clarity — same responsibility.)
 - `src/lib/internal/demoScaleScenario.test.ts` — selector unit tests.
 - `src/hooks/internal/useForecast.ts` — shared hook composing the forecast inputs + `buildForecast`
   (extracted from `InternalForecast.tsx` so the deck pages can compute the model too).
@@ -428,6 +429,9 @@ import { DemoScaleBanner } from '@/components/internal/DemoScaleBanner';
           <DemoScaleBanner />
 ```
 
+Note: `/pitch*` renders outside `AppShell` (`App.tsx:422`), so the global banner has that one exception.
+Irrelevant to the §5 walkthrough (which never visits `/pitch`); mentioned for completeness.
+
 - [ ] **Step 6: Verify build + inert-when-off**
 
 Run: `npm run build`
@@ -574,8 +578,7 @@ page so the 1M headline leads, with the page's real (branch) content following u
 
 - [ ] **Step 1: Add the hero to each page**
 
-In each file, import and render it as the first child inside the page's `<PageContainer>` (after
-`<PageHeader/>`):
+Import and render it as the first element under the page's `<PageHeader/>`:
 
 ```tsx
 import { DemoScaleForecastHero } from '@/components/internal/DemoScaleForecastHero';
@@ -583,7 +586,34 @@ import { DemoScaleForecastHero } from '@/components/internal/DemoScaleForecastHe
       <DemoScaleForecastHero />
 ```
 
-(For `InternalScorecard.tsx`, place it directly under its page header as well; keep all existing content.)
+- `InternalOverview.tsx` and `InternalScorecard.tsx` — straightforward: they render with ~0 real data,
+  so add the hero directly under the page header.
+- **`InternalWeight.tsx` needs care — it early-returns an `ErrorCard` BEFORE `<PageContainer>` when
+  there are no weight snapshots (`InternalWeight.tsx:44-46`).** On a fresh/unseeded branch (0
+  `platform_weight` rows) that path renders, so a hero placed only inside the main `<PageContainer>`
+  would NOT appear — contradicting "the hero renders even with no seeded world." Fix: render the hero
+  above that guard. Restructure the empty case to keep the layout + hero, e.g.:
+
+  ```tsx
+  const noSnapshots = weight.isError || !weight.data || weight.data.length === 0;
+  // ... after the isLoading spinner guard:
+  if (noSnapshots) {
+    return (
+      <PageContainer size="xl">
+        <PageHeader title="Weight & health" />
+        <DemoScaleForecastHero />
+        <ErrorCard message="No weight snapshots yet — the daily capture runs at 08:30 UTC." />
+      </PageContainer>
+    );
+  }
+  // ...main return also renders <DemoScaleForecastHero /> as its first element under <PageHeader/>.
+  ```
+
+**Implementer note (branch-auth dependency):** the hero calls `useForecast()`, which treats a
+cost/revenue/opex/weight *error* as fatal (`model = null` → hero renders nothing). On a branch where the
+demo login isn't an internal/admin user, those internal reads can error and the heroes will silently
+vanish. That's the same fail-closed behaviour `InternalForecast` already has — don't chase it as a bug;
+it's the branch-auth unknown the spec flags for Phase 2/3.
 
 - [ ] **Step 2: Verify build + full internal test suite**
 
@@ -608,14 +638,33 @@ focus. Keep it tiny — a conditional class, not a rewrite.
 
 **Files:**
 - Modify: `src/components/internal/ForecastTable.tsx` (accept an optional `emphasizeLabel?: string`)
+- Modify: `src/components/internal/ForecastTable.test.tsx` (add the emphasis test)
 - Modify: `src/pages/internal/InternalForecast.tsx` (pass `emphasizeLabel={isDemoScale() ? '1M' : undefined}`)
 
-- [ ] **Step 1: Add an optional emphasis prop to ForecastTable**
+- [ ] **Step 1: Write the failing test for the emphasis prop**
+
+Add to `ForecastTable.test.tsx` (follow the file's existing render helper / model fixture):
+
+```tsx
+it('highlights the emphasized column when emphasizeLabel is set', () => {
+  const model = /* the file's existing built/fixture model */;
+  const { container } = render(<ForecastTable model={model} emphasizeLabel="1M" />);
+  // the 1M column header carries the highlight ring; without the prop it does not
+  expect(container.querySelector('.ring-dc-pink\\/50')).not.toBeNull();
+});
+```
+
+- [ ] **Step 2: Run it to verify it fails**
+
+Run: `npm run test -- src/components/internal/ForecastTable.test.tsx`
+Expected: FAIL — no element has the ring class (prop not implemented / not applied).
+
+- [ ] **Step 3: Add the optional emphasis prop to ForecastTable**
 
 Add `emphasizeLabel?: string` to its props; when a scenario's `label === emphasizeLabel`, add a
-highlight class (e.g. `ring-1 ring-dc-pink/50`) to that column's header/cells. Default undefined → no change.
+highlight class (`ring-1 ring-dc-pink/50`) to that column's header/cells. Default undefined → no change.
 
-- [ ] **Step 2: Pass it from the forecast page**
+- [ ] **Step 4: Pass it from the forecast page**
 
 ```tsx
 import { isDemoScale } from '@/lib/internal/demoScale';
@@ -623,12 +672,12 @@ import { isDemoScale } from '@/lib/internal/demoScale';
 <ForecastTable model={model} emphasizeLabel={isDemoScale() ? '1M' : undefined} />
 ```
 
-- [ ] **Step 3: Verify build + ForecastTable test**
+- [ ] **Step 5: Run the test to verify it passes + build**
 
-Run: `npm run build && npm run test -- src/components/internal/ForecastTable.test.tsx`
-Expected: build succeeds; ForecastTable tests pass (default path unchanged).
+Run: `npm run test -- src/components/internal/ForecastTable.test.tsx && npm run build`
+Expected: emphasis test PASS; existing default-path tests still PASS; build succeeds.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add src/components/internal/ForecastTable.tsx src/pages/internal/InternalForecast.tsx
