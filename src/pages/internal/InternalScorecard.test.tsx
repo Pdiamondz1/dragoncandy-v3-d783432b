@@ -21,6 +21,12 @@ vi.mock('@/hooks/internal/useScorecardSettings', () => ({
   useScorecardBurnCeilingCents: mockUseScorecardBurnCeilingCents,
   useUpdateScorecardHeadline: mockUseUpdateScorecardHeadline,
 }));
+// DemoScaleForecastHero (rendered at the top of the page) composes this hook internally; stub it so the
+// page test doesn't need a real QueryClientProvider. DEMO mode is off by default here, so the hero
+// self-gates to null regardless of this value — the mock just needs to not throw.
+vi.mock('@/hooks/internal/useForecast', () => ({
+  useForecast: () => ({ model: null, isLoading: false, isError: false, businessSharePct: 0 }),
+}));
 
 import InternalScorecard from './InternalScorecard';
 

@@ -12,6 +12,7 @@ import {
 } from '@/lib/internal/weightThresholds';
 import { StatCard, SectionHeading, ErrorCard } from '@/components/internal/stats';
 import { PageContainer, PageHeader } from '@/components/internal/layout';
+import { DemoScaleForecastHero } from '@/components/internal/DemoScaleForecastHero';
 import { DbHealthSection } from '@/components/internal/DbHealthSection';
 import { useDbHealth } from '@/hooks/internal/useDbHealth';
 import { Spinner } from '@/components/ui/spinner';
@@ -42,7 +43,12 @@ const InternalWeight = () => {
   }
 
   if (weight.isError || !weight.data || weight.data.length === 0) {
-    return <ErrorCard message="No weight snapshots yet — the daily capture runs at 08:30 UTC." />;
+    return (
+      <>
+        <DemoScaleForecastHero />
+        <ErrorCard message="No weight snapshots yet — the daily capture runs at 08:30 UTC." />
+      </>
+    );
   }
 
   const snapshots = weight.data;
@@ -67,6 +73,8 @@ const InternalWeight = () => {
         title="Weight & health"
         subtitle="Daily snapshots of database, storage, and data volume — and when it's time to scale Supabase compute or disk. Row counts are physical totals (they include synthetic rows under an active load run; a 'real' subcount shows the synthetic-excluded value). Real growth KPIs live on Overview & Simulation."
       />
+
+      <DemoScaleForecastHero />
 
       <DbHealthSection health={health.data} isLoading={health.isLoading} isError={health.isError} />
 

@@ -16,6 +16,7 @@ import { ScorecardStoryCard } from '@/components/internal/ScorecardStoryCard';
 import { ScorecardSnapshot } from '@/components/internal/ScorecardSnapshot';
 import { ErrorCard } from '@/components/internal/stats';
 import { PageContainer, PageHeader } from '@/components/internal/layout';
+import { DemoScaleForecastHero } from '@/components/internal/DemoScaleForecastHero';
 import { Spinner } from '@/components/ui/spinner';
 import { Input } from '@/components/ui/input';
 
@@ -95,6 +96,8 @@ const InternalScorecard = () => {
           ) : undefined
         }
       />
+
+      <DemoScaleForecastHero />
 
       {isAdmin ? (
         <div className="mb-6 flex flex-col gap-2 rounded-2xl border border-dc-teal/25 bg-white/[0.04] p-4 backdrop-blur-sm lg:flex-row lg:items-center">
