@@ -52,13 +52,16 @@ export function useSimLoadMatrixSummary() {
       if (!latest?.run_label) return null;
 
       // get_sim_load_matrix_summary is added to the generated types.ts once the migration is applied
-      // and types are regenerated (Phase 7). Until then, call through a minimal typed view of rpc so
-      // the typecheck gate stays green (the name isn't yet in the typed rpc union).
-      const rpc = supabase.rpc as unknown as (
-        fn: 'get_sim_load_matrix_summary',
-        args: { p_run_label: string },
-      ) => Promise<{ data: SimLoadMatrixSummary | null; error: { message: string } | null }>;
-      const { data, error } = await rpc('get_sim_load_matrix_summary', {
+      // and types are regenerated (Phase 7). Until then, cast the CLIENT and call `.rpc` ON it — an
+      // extracted `const rpc = supabase.rpc` loses its receiver, so supabase-js reads `this.rest` on
+      // `undefined` ("Cannot read properties of undefined (reading 'rest')") and the query always fails.
+      const client = supabase as unknown as {
+        rpc: (
+          fn: 'get_sim_load_matrix_summary',
+          args: { p_run_label: string },
+        ) => Promise<{ data: SimLoadMatrixSummary | null; error: { message: string } | null }>;
+      };
+      const { data, error } = await client.rpc('get_sim_load_matrix_summary', {
         p_run_label: latest.run_label,
       });
       if (error) {
