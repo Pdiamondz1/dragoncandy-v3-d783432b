@@ -4,12 +4,18 @@ import { selectDemoScaleScenario } from '@/lib/internal/demoScaleScenario';
 import { StatCard, SectionHeading } from '@/components/internal/stats';
 import { formatUsd } from '@/lib/utils';
 
-/** Badged "at 1M DAU" projection hero for the internal deck. Reuses the pure forecast model (no forked
- *  math); self-gates on isDemoScale(); returns null off or before the model resolves so real query paths
- *  are never blocked. Every figure is explicitly PROJECTED — it must never read as measured/real. */
+/** Badged "at 1M DAU" projection hero for the internal deck. Self-gates on isDemoScale() BEFORE any
+ *  data hook runs, so off-DEMO it is fully inert — no forecast queries fire and no QueryClient is
+ *  required to render it. Reuses the pure forecast model (no forked math). Every figure is explicitly
+ *  PROJECTED — it must never read as measured/real. */
 export function DemoScaleForecastHero() {
+  if (!isDemoScale()) return null;
+  return <DemoScaleForecastHeroInner />;
+}
+
+function DemoScaleForecastHeroInner() {
   const { model } = useForecast();
-  if (!isDemoScale() || !model) return null;
+  if (!model) return null;
   const s = selectDemoScaleScenario(model);
   if (!s) return null;
 
