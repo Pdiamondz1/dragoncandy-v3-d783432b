@@ -11,6 +11,7 @@ import { ForecastAssumptionsPanel } from '@/components/internal/ForecastAssumpti
 import { PageContainer, PageHeader } from '@/components/internal/layout';
 import { SectionHeading, ErrorCard } from '@/components/internal/stats';
 import { Spinner } from '@/components/ui/spinner';
+import { isDemoScale } from '@/lib/internal/demoScale';
 
 const InternalForecast = () => {
   const { model, isLoading, isError, businessSharePct } = useForecast();
@@ -43,7 +44,7 @@ const InternalForecast = () => {
         subtitle="A what-if capacity + unit-economics model — measured where possible, assumptions elsewhere. Not a growth projection."
       />
 
-      <ForecastTable model={model} />
+      <ForecastTable model={model} emphasizeLabel={isDemoScale() ? '1M' : undefined} />
 
       <SectionHeading>Assumptions</SectionHeading>
       <ForecastAssumptionsPanel

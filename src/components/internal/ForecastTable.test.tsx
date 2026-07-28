@@ -29,4 +29,10 @@ describe('ForecastTable', () => {
     expect(screen.getByText('1M')).toBeInTheDocument();
     expect(screen.getByText(/ceiling unavailable/i)).toBeInTheDocument();
   });
+
+  it('highlights the emphasized column when emphasizeLabel is set', () => {
+    const model = buildForecast({ measured, assumptions: DEFAULT_ASSUMPTIONS });
+    const { container } = render(<ForecastTable model={model} emphasizeLabel="1M" />);
+    expect(container.querySelector('.ring-dc-pink\\/50')).not.toBeNull();
+  });
 });
