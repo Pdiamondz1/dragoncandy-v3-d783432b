@@ -34,6 +34,28 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-08-02] Post-merge verify for PRs #357 + #358 (VerifiedRoute missing-profile fix)
+- Output: verdict `done:true` — all three criteria met, `missing:[]`.
+- Happened: (b) tried to fail exactly as **[freshness-proxy]** predicts. Raw `max(updated_at)` was
+  `2026-07-27`, ~6 days behind `LAST_WIKI_SYNC` (`2026-08-02T09:45:34-04:00`) — a >24h gap that reads
+  as a hard fail. The lesson's two authorities both held: the post-merge hook's sync exited clean
+  (`wiki updated=96 errors=0`, `internal updated=118 errors=0`) and a `content ilike '%route-guard
+  trap%'` probe returned the 2 `internal-only-users.md` rows (internal + consumer scope, 10,950 chars,
+  phrase at offset 5234) carrying this session's new section. ⇒ (b) met.
+- Worked: probing on a **short hyphenated token unique to this session's prose** (`route-guard trap`)
+  rather than a generic identifier. My first probe used `createProfileFromMetadata` — 3 hits, all dated
+  `2026-07-19`, i.e. pre-existing rows that would have "confirmed" freshness while proving nothing.
+  A probe phrase must be new *in this session*, not merely present.
+- Failed: nothing gating. One advisory surfaced and was correctly kept OUT of `missing[]` (that array
+  is strictly the fix input for failed checks): `PROJECT_CONTEXT.md` §5 claimed Living Synthetic
+  Marketplace was "LIVE on prod at 2,000 profiles" when prod had 0 — a core-doc staleness, which this
+  contract makes advisory, not gating. It was corrected in a follow-up PR.
+- Remember: **the validator is structurally blind to prod-state drift that produced no commit.** Check
+  (b) compares the wiki to `git`; the synthetic purge happened by RPC on 2026-07-30 with no commit, so
+  git had nothing to compare and all three checks would pass while a core doc was flatly wrong. When
+  a run touches a claim about what is *live*, spot-check the DB (a `feature_flags` row, a row count)
+  — a green verdict means "the knowledge layer matches git", never "the docs match reality".
+
 ### [2026-07-26] 200K-band load run + header-overflow knowledge-sync validation (PRs #345/#347/#348, POST-merge)
 - **Output:** emitted `done:true` (all 3 met), closing the knowledge-sync loop for the 200K-band run
   + the `.in()` header-overflow fix.

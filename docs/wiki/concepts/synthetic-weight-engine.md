@@ -2,7 +2,7 @@
 title: Synthetic Weight Engine
 type: concept
 created: 2026-07-23
-updated: 2026-07-26
+updated: 2026-08-02
 sources: [2026-07-23-synthetic-weight-engine-phase-0.md, 2026-07-23-synthetic-weight-engine-phase-1.md]
 tags: [synthetic, bots, load-testing, segregation, safety-spine, aios, metrics, teardown]
 ---
@@ -20,13 +20,19 @@ training corpus). One missed surface = permanent contamination. That safety spin
 gates everything else. Phase 0 shipped 2026-07-23 (`feat/synthetic-weight-engine`); **Phase 1** (the
 private-crew behavior engine, below) followed on `feat/synthetic-weight-phase-1`.
 
-**Status (2026-07-26): live.** `SYNTHETIC_BOTS_ENABLED` has been **ON** since 2026-07-24, with a
-25-bot Phase-1 crew cohort (`bot0##`) on a daily cron plus the 2,000-profile browsable
-[[Living Synthetic Marketplace]] cohort (`botmk_`) — 2,025 registered synthetic users. (This
-paragraph read "the kill switch is OFF and there are 0 bots, so both phases are inert" until
-2026-07-26; it described the state at Phase-0 authoring time and had been wrong for two days.
-Load cohorts (`botla`/`botseed_`) are minted per run and torn down to zero afterwards — see
-[[Synthetic Load Proof (Phase A → 200K)]].)
+**Status (2026-08-02): INERT — prod is real-only.** `SYNTHETIC_BOTS_ENABLED` is **`false`**
+(`feature_flags.updated_at = 2026-07-30 18:13:56Z`) and **every** synthetic cohort has been purged:
+the 25-bot Phase-1 crew (`bot0##`) and the 2,000-profile [[Living Synthetic Marketplace]] cohort
+(`botmk_`) alike. Verified against prod 2026-08-02: `synthetic_users` = **0 rows**, 0 profiles on
+`@synthetic.dragoncandy.test`, 42 `auth.users` / 42 `profiles` — all real. The spine and both phases
+remain built and re-runnable; they are simply inert. Load cohorts (`botla`/`botseed_`) were always
+minted per run and torn down to zero afterwards — see [[Synthetic Load Proof (Phase A → 200K)]].
+
+> **This paragraph has now been wrong twice, the same way.** It read "kill switch OFF, 0 bots, both
+> phases inert" until 2026-07-26 (stale by two days), then "live, 2,025 synthetic users" until
+> 2026-08-02 (stale by three). Both times the *prod* state changed without a commit — a flag flip and
+> an RPC purge — so nothing in git recorded it and no automated check could notice. **Read the
+> `feature_flags` row and a `synthetic_users` count before trusting this line.**
 
 ## Architecture — the safety spine
 
@@ -175,6 +181,10 @@ purge (throws on any non-zero residual) made the gap loud instead of silent resi
 snapshot technique the proof used.
 
 ## Phase 1 go-live — N=25 cohort + daily cron (Task 8 second switch), 2026-07-24
+
+> **Historical.** This records the go-live as it happened on 2026-07-24. It was undone on 2026-07-30
+> (cohort purged, flag off) — see the Status block at the top. "Now permanent" below was the intent at
+> the time, not a lasting fact.
 
 After the smoke passed, both go-live switches were thrown: `SYNTHETIC_BOTS_ENABLED` on (now permanent),
 a **persistent 25-bot cohort** minted on prod, the 5 `SIM_*` secrets set in a new **protected
