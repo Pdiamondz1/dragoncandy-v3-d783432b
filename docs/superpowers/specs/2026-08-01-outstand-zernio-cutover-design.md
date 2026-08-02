@@ -84,7 +84,8 @@ order below:
 - Adding Zernio rows *alongside* the 2 live Outstand rows yields a mixed set, which silently pins
   the gateway to Outstand — and 503s once `OUTSTAND_API_KEY` is deleted.
 
-So **connect-and-revoke is the hinge**, and it must land before analytics, Donny tools, or posting.
+So **connect-and-revoke is the hinge**. Connect lands additively in Phase 2; the revoke is the first
+step of Phase 3, atomic with the code that depends on it. Analytics and Donny tools follow both.
 
 ---
 
@@ -131,7 +132,23 @@ The gateway implements 12 ops: `listAccounts`, `getConnectUrl`, `recordConnectio
 ## Phase 2 — Connect flow + webhook (strictly additive; nothing flips yet)
 
 Phase 2 makes Zernio *reachable* without changing which provider the app uses. The row set stays
-mixed on purpose — mixed resolves to `'outstand'`, so every existing path keeps working untouched.
+mixed on purpose — mixed resolves to `'outstand'`, so provider resolution keeps pointing at the
+live integration.
+
+> **Caveat: three readers have no provider filter**, so the *added* row (a second row for a platform
+> the founder already has) can confuse them until Phase 3: `DonnyProvider.tsx` passes **all**
+> non-revoked ids to `outstand-proxy POST /posts/` (Outstand sees an unknown id);
+> `confirm-posting-schedule` builds `platformAccountMap[platform]` last-row-wins;
+> `useDraftPosts` uses `.maybeSingle()` on a `platform`-filtered query. **Run Phase 2 and Phase 3
+> back-to-back**, or connect the second account at the top of Phase 3. Founder-only either way.
+>
+> **Pre-existing bug found while verifying this (fix in Phase 3, not caused by the cutover):**
+> `useDraftPosts` already matches **2 rows** for both founders today (Dame: 2 `instagram`, Joe: 2
+> `youtube` — one `active`, one `error` each), because the query filters `user_id` + `platform` with
+> **no status filter**. `.maybeSingle()` errors on >1 row, the destructure discards `error`, so
+> `data` is null and the code throws *"No active Outstand account … Connect your account in Settings
+> > Social."* at users who **do** have an active account. Phase 3 must filter to the active,
+> Zernio-provider row rather than reproducing this.
 
 - **`Provider.tsx` changes additively.** Keep `DragonCandyOutstandProvider`, `useOutstandConfig` and
   `OUTSTAND_PROXY_BASE_URL` mounted — ~8 Tier-3 consumers plus `useSponsorshipAmplification` resolve
@@ -250,18 +267,22 @@ rows stay as-is. Not worth a backfill. `content-strategy-recommend` needs no cha
 
 ## Phase 7a — Remove Outstand code (reversible)
 
-- Delete `outstand-proxy`, `outstand-webhook`, the Outstand adapter wiring, and the
+- Delete `outstand-proxy`, `outstand-webhook`, `_shared/outstand-webhook-lib.ts` (+ its test, both
+  orphaned by that deletion and caught by neither grep below), the Outstand adapter wiring, and the
   `@outstand-so/ui` dependency. (`outstand-reconcile` already went in Phase 2.)
-- **Retain `OUTSTAND_*` secrets and the subscription** so Phase 3's revert path stays live.
+- **Retain `OUTSTAND_*` secrets and the subscription.** Note this alone does not preserve the revert:
+  7a deletes the functions the revert needs, so post-7a the path is "redeploy the deleted functions
+  from the pre-7a commit + un-revoke rows + retained `OUTSTAND_API_KEY`."
 - **Close the stray-row hole.** Both `outstand-proxy` upserts omit `provider`, so the migration's
   `DEFAULT 'outstand'` applies — until the proxy is gone, any connection recorded through it
   (reachable directly with a user JWT) re-creates an **active** `provider='outstand'` row and
   silently re-mixes the set. Deleting the proxy removes the writer; then
   `ALTER TABLE business_outstand_accounts ALTER COLUMN provider SET DEFAULT 'zernio'` (additive,
   allowed under the never-rename rule) so a future omitted-provider insert cannot recreate it.
-- **Pre-delete gates:** `rg "outstand-proxy|@outstand-so" src supabase/functions` and
-  `rg "OUTSTAND_API_KEY|api\.outstand\.so" src supabase/functions` both return nothing outside the
-  files being deleted; and the distinct-provider query still returns only `zernio`.
+- **Pre-delete gates:** `rg "outstand-proxy|@outstand-so" src supabase/functions`,
+  `rg "OUTSTAND_API_KEY|api\.outstand\.so" src supabase/functions`, and
+  `rg -l outstand supabase/functions/_shared` all return nothing outside the files being deleted;
+  and the distinct-provider query still returns only `zernio`.
 - `outstand-reconcile` is dropped **without replacement** — detecting silently-dropped accounts is
   not covered by `account.token_expired`. With 2 accounts this is deliberate YAGNI, not an oversight.
 
@@ -311,5 +332,10 @@ Outstand" is not real once the subscription is cancelled, so carry no dead dual-
   restaurants — need a contract change later.
 - **`_shared` contract duplication** (`src/integrations/social/contract.ts` ↔
   `supabase/functions/_shared/social-contract.ts`) is hand-synced and can drift.
-- **Mixed-provider rows fail silently**, resolving to Outstand rather than erroring. The Phase 2
-  revoke-all step is what prevents this; verify it rather than assuming it.
+- **Mixed-provider rows fail silently**, resolving to Outstand rather than erroring. The **Phase 3**
+  revoke-all step is what prevents this; verify it rather than assuming it, and re-verify at 7a and
+  post-deploy (see the provider-set invariant under Verification).
+- **Queries lacking a provider/status filter** are the recurring hazard class — `useDraftPosts`,
+  `DonnyProvider`, and `confirm-posting-schedule` all read `business_outstand_accounts` without one,
+  and one of them is already failing on prod today. Audit for this pattern during Phase 3 rather
+  than porting it forward.
