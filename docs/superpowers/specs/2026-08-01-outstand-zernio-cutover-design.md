@@ -46,7 +46,7 @@ wrongly concluded the rest was cosmetic; the proxy tier below is the larger shar
 | Site | Role |
 |---|---|
 | `supabase/functions/outstand-proxy/index.ts` | the gateway everything else calls |
-| `supabase/functions/outstand-reconcile/index.ts` | reconciliation cron |
+| `supabase/functions/outstand-reconcile/index.ts` | reconciliation — **not scheduled** (no pg_cron entry, no GH workflow); admin/externally invoked |
 | `supabase/functions/outstand-webhook/index.ts` | inbound post/account events |
 | `supabase/functions/content-performance-capture/index.ts` | Donny's analytics feed |
 | `supabase/functions/_shared/outstand-mcp.ts` | Donny's social tools (→ `donny-orchestrator`, `donny-auto-pilot`) |
@@ -128,10 +128,22 @@ The gateway implements 12 ops: `listAccounts`, `getConnectUrl`, `recordConnectio
 
 ---
 
-## Phase 2 — Connect flow, webhook, and reconnect (the hinge)
+## Phase 2 — Connect flow + webhook (strictly additive; nothing flips yet)
 
-- Rewrite `src/integrations/outstand/Provider.tsx` and `src/pages/OutstandOAuthCallbackPage.tsx`
-  onto `social-proxy`'s `getConnectUrl` / `recordConnection` ops, writing `provider='zernio'`.
+Phase 2 makes Zernio *reachable* without changing which provider the app uses. The row set stays
+mixed on purpose — mixed resolves to `'outstand'`, so every existing path keeps working untouched.
+
+- **`Provider.tsx` changes additively.** Keep `DragonCandyOutstandProvider`, `useOutstandConfig` and
+  `OUTSTAND_PROXY_BASE_URL` mounted — ~8 Tier-3 consumers plus `useSponsorshipAmplification` resolve
+  through that SDK context and do not move until Phase 3. **Add** the `social-proxy` connect path
+  alongside. Removing the SDK provider here would break the entire social UI for a whole phase.
+- Rewrite `src/pages/OutstandOAuthCallbackPage.tsx` onto `recordConnection`, stamping
+  `provider='zernio'`.
+- **Connect is driven out-of-band this phase.** The in-app entry point is the SDK's
+  `ConnectAccountButtonGroup`, used only in `AccountsTab.tsx` and `ConnectedAccountsList.tsx` —
+  both Phase 3. So: call `getConnectUrl` by hand (console/curl), complete OAuth, and land on the
+  rewritten callback so `recordConnection` writes the row. Connecting in the Zernio *dashboard*
+  writes no DB row at all, which is the exact failure this phase exists to prevent.
 - **Add the Zernio webhook handler now, not at deletion time.** It is the only thing that advances
   `donny_scheduled_posts` from `scheduled` → `published`/`failed`; if it lands after posting moves,
   every post scheduled in the gap sticks at `scheduled` forever. Mirror `outstand-webhook` exactly:
@@ -141,46 +153,63 @@ The gateway implements 12 ops: `listAccounts`, `getConnectUrl`, `recordConnectio
   `verify_jwt = false` entry to `supabase/config.toml`, mirroring `[functions.outstand-webhook]`.
   `donny_scheduled_posts.metadata.outstand_post_id` stays the match key — at least four writers
   depend on it.
-- **Reconnect both founder accounts, and revoke every legacy row in the same step.** Set all
-  non-revoked `business_outstand_accounts` rows to `status='revoked'` so the set is never mixed.
+- **Delete `outstand-reconcile` in this phase**, not at 7a. It selects `status='active'` with **no
+  provider filter** and flags every id absent from Outstand's live list as `status='error'`. The
+  moment an active Zernio row exists, one invocation flips both founder accounts to `error`,
+  breaking `useDraftPosts` (which hard-requires `status='active'`) and firing reconnect prompts. It
+  is already slated for deletion without replacement, so pulling it forward costs nothing.
 
-**Gate:** `select distinct provider from business_outstand_accounts where status <> 'revoked'`
-returns only `zernio`. This also closes the deferred `(user_id, outstand_social_account_id)`
-unique-constraint TODO in `social-proxy/index.ts` — revoking legacy rows means no cross-provider
-id collision, so **no constraint change is needed**.
+**Gate:** a real Zernio webhook is received, signature-verified, and returns 200 — `no_match` is the
+**expected** result, since nothing creates a Zernio-backed `donny_scheduled_posts` row until Phase 3.
 
 ---
 
-## Phase 3 — Move posting off the proxy
+## Phase 3 — Flip to Zernio and move posting off the proxy
 
-Rewrite every Tier-2 caller onto `social-proxy`, plus the Tier-3 runtime SDK surface:
+The flip and the code that depends on it ship together, so there is no window where revoked rows
+face Outstand-only code paths.
 
-- Swap the 4 SDK hooks for the branch's headless hooks (`useSocialAccounts`, `useSocialPost`,
-  `useSocialAnalytics`, `useSocialComments`) — built to match consumed shapes 1:1.
+- **First step: revoke every non-Zernio row.** Set all non-revoked `business_outstand_accounts` rows
+  that aren't `provider='zernio'` to `status='revoked'`, so the set stops being mixed and resolution
+  moves to Zernio. Doing this in Phase 2 would have taken founder posting down for the whole
+  inter-phase window — `useDraftPosts` requires `status='active'`, and every posting path still
+  routed through `outstand-proxy`, which would have handed Zernio ids to the Outstand API.
+- Remove the SDK provider from `Provider.tsx` and swap the 4 SDK hooks for the branch's headless
+  hooks (`useSocialAccounts`, `useSocialPost`, `useSocialAnalytics`, `useSocialComments`) — built to
+  match consumed shapes 1:1.
 - Re-point the ~30 type-only imports to `src/integrations/social/contract.ts`.
 - Rewrite `DonnyProvider.tsx`, `useSponsorshipAmplification.ts`, `useDraftPosts.ts`,
-  `AccountsTab.tsx`, `ConnectedAccountsList.tsx`, and `confirm-posting-schedule/index.ts`.
-  Note `confirm-posting-schedule` builds `platformAccountMap[platform]` last-row-wins — verify it
-  behaves with a single-provider row set.
+  `AccountsTab.tsx`, `ConnectedAccountsList.tsx` (including the 4 `ConnectAccountButtonGroup`
+  usages), and `confirm-posting-schedule/index.ts`. Note `confirm-posting-schedule` builds
+  `platformAccountMap[platform]` last-row-wins — verify it behaves on a single-provider row set.
 
-**Gate:** a post published from the app produces a **fresh `social_post_log` row carrying a Zernio
-post id**. Without this, Phase 6 has no input.
+**Gates:** (a) `select distinct provider from business_outstand_accounts where status <> 'revoked'`
+returns only `zernio`; (b) a post published from the app produces a **fresh `social_post_log` row
+carrying a Zernio post id** — without this, Phase 6 has no input; (c) that post reaches `published`
+via the Zernio webhook.
+
+Gate (a) also closes the deferred `(user_id, outstand_social_account_id)` unique-constraint TODO in
+`social-proxy/index.ts` — no cross-provider id collision is possible, so **no constraint change is
+needed**.
 
 **Revert path:** redeploy the previous frontend commit. Legacy rows were revoked, not deleted, so
-un-revoking them plus restoring `OUTSTAND_API_KEY` returns to the old provider.
+un-revoking them plus the retained `OUTSTAND_API_KEY` returns to the old provider.
 
 ---
 
 ## Phase 4 — Account-level analytics (`social_analytics_cache`)
 
-Wire `useSocialAnalytics` + `cache-map.ts` so AnalyticsTab populates. Preserve the live table
-contract exactly — `metric_type ∈ followers|engagement|reach|posts` (**not** `engagement_rate`), FK
-column `outstand_account_id`, conflict key
+Phase 3 already swaps `useSocialAnalytics` in. **This phase is table-contract preservation and
+verification only** — no new wiring.
+
+Preserve the live contract exactly — `metric_type ∈ followers|engagement|reach|posts` (**not**
+`engagement_rate`), FK column `outstand_account_id`, conflict key
 `user_id,outstand_account_id,metric_type,period_start,period_end`. Emitting `engagement_rate` would
 fail to conflict-match existing rows.
 
-This table is written **client-side** on AnalyticsTab render (`useAccountMetrics.ts`); nothing
-cron-driven writes it. Verify by opening the tab, not by waiting for a cron.
+The table is written **client-side** on AnalyticsTab render. Post-cutover the writer is
+`src/integrations/social/hooks/useSocialAnalytics.ts` (not the legacy `useAccountMetrics.ts`).
+Nothing cron-driven writes it — verify by opening the tab, not by waiting for a cron.
 
 ---
 
@@ -198,7 +227,7 @@ Three of the seven current tools have **no backing gateway op** — decide expli
 | `create_post`, `schedule_post` | → `createPost` (with/without `scheduledAt`) |
 | `get_account_metrics` | → `getAccountAnalytics` |
 | `get_post_analytics` | → resolve posts via `social_post_log`, then `getPostAnalytics(id)`. **Signature mismatch:** `donny-auto-pilot` calls it account-scoped as `{days: 7}`; the op takes a post id. Fix the call site. |
-| `get_optimal_times`, `get_audience_insights`, `list_scheduled` | **no op exists** — drop, or add ops. Do not claim they work. |
+| `get_optimal_times`, `get_audience_insights`, `list_scheduled` | **no backing op exists — DROP all three.** At 2 accounts none earns a new provider op. `list_scheduled` can later be served from `donny_scheduled_posts` with no provider call at all. Do not claim they work. |
 
 Update imports in `donny-orchestrator` and `donny-auto-pilot`.
 
@@ -221,11 +250,18 @@ rows stay as-is. Not worth a backfill. `content-strategy-recommend` needs no cha
 
 ## Phase 7a — Remove Outstand code (reversible)
 
-- Delete `outstand-proxy`, `outstand-reconcile`, `outstand-webhook`, the Outstand adapter wiring,
-  and the `@outstand-so/ui` dependency.
+- Delete `outstand-proxy`, `outstand-webhook`, the Outstand adapter wiring, and the
+  `@outstand-so/ui` dependency. (`outstand-reconcile` already went in Phase 2.)
 - **Retain `OUTSTAND_*` secrets and the subscription** so Phase 3's revert path stays live.
-- **Pre-delete gate:** `rg "outstand-proxy|@outstand-so" src supabase/functions` returns nothing
-  outside the files being deleted.
+- **Close the stray-row hole.** Both `outstand-proxy` upserts omit `provider`, so the migration's
+  `DEFAULT 'outstand'` applies — until the proxy is gone, any connection recorded through it
+  (reachable directly with a user JWT) re-creates an **active** `provider='outstand'` row and
+  silently re-mixes the set. Deleting the proxy removes the writer; then
+  `ALTER TABLE business_outstand_accounts ALTER COLUMN provider SET DEFAULT 'zernio'` (additive,
+  allowed under the never-rename rule) so a future omitted-provider insert cannot recreate it.
+- **Pre-delete gates:** `rg "outstand-proxy|@outstand-so" src supabase/functions` and
+  `rg "OUTSTAND_API_KEY|api\.outstand\.so" src supabase/functions` both return nothing outside the
+  files being deleted; and the distinct-provider query still returns only `zernio`.
 - `outstand-reconcile` is dropped **without replacement** — detecting silently-dropped accounts is
   not covered by `account.token_expired`. With 2 accounts this is deliberate YAGNI, not an oversight.
 
@@ -242,9 +278,13 @@ Outstand" is not real once the subscription is cancelled, so carry no dead dual-
 ## Verification
 
 - **Phase 0 gate:** real post published + real analytics returned through the corrected adapter.
-- **Phase 2 gate:** `select distinct provider from business_outstand_accounts where status <>
-  'revoked'` → only `zernio`. A scheduled post reaches `published` via the Zernio webhook.
-- **Phase 3 gate:** a fresh `social_post_log` row carrying a Zernio post id.
+- **Phase 2 gate:** a real Zernio webhook received, signature-verified, 200 (`no_match` expected).
+- **Phase 3 gates:** `select distinct provider from business_outstand_accounts where status <>
+  'revoked'` → only `zernio`; a fresh `social_post_log` row carrying a Zernio post id; that post
+  reaches `published` via the Zernio webhook.
+- **Provider-set invariant:** re-run the distinct-provider query at Phase 3, at 7a, and post-deploy
+  — it is a point-in-time check, not an invariant, until the proxy is deleted and the column default
+  is flipped.
 - **Parity:** connect, compose, schedule, publish, calendar, engagement/reply work for both founder
   accounts on desktop **and** mobile, console clean.
 - **Account analytics:** open AnalyticsTab as each founder → expect 4 rows per account per 7-day
