@@ -82,7 +82,7 @@ const slideVariants = {
 
 export function OnboardingWizard() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const autoDetect = useAutoDetect();
 
   const role = (user?.user_metadata?.role as UserRole) ?? 'content_creator';
@@ -171,6 +171,20 @@ export function OnboardingWizard() {
         timezone: autoDetect.timezone || null,
       };
 
+      // Guarantee the core profile row exists. handle_new_user normally creates it
+      // at signup, but it deliberately skips account_scope='internal' accounts, so
+      // those reach onboarding without one — and every route guard keys off
+      // profiles.role. ignoreDuplicates keeps this purely additive: an existing
+      // row is never touched, so a real email_verified=false can't be overwritten.
+      const { error: profileError } = await supabase.from('profiles').upsert({
+        id: user.id,
+        email: user.email ?? '',
+        role,
+        full_name: name.trim(),
+        email_verified: !!user.email_confirmed_at,
+      }, { onConflict: 'id', ignoreDuplicates: true });
+      if (profileError) throw profileError;
+
       if (role === 'content_creator') {
         const { error } = await supabase.from('creator_profiles').upsert({
           user_id: user.id,
@@ -186,6 +200,9 @@ export function OnboardingWizard() {
         const { error } = await supabase.from('business_profiles').upsert({
           user_id: user.id,
           business_name: name.trim(),
+          // Explicit: the column defaults to 'restaurant', which would strand a
+          // brand user in BrandRoute when onboarding is the provisioning path.
+          account_type: role === 'brand' ? 'brand' : 'restaurant',
           industry: industry as IndustryType,
           logo_url: avatarUrl,
           ...locationData,
@@ -193,6 +210,12 @@ export function OnboardingWizard() {
         }, { onConflict: 'user_id' });
         if (error) throw error;
       }
+
+      // The provisioning path above can have created the profile row that
+      // AuthContext already resolved as null; without this the dashboards we
+      // navigate to next would read a stale null profile and hang on their
+      // loading state until a full page reload.
+      await refreshProfile();
 
       toast.success('Profile created!');
       // Honor a guest's saved brief (landing "Save this brief — sign up free"):
