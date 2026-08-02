@@ -33,6 +33,12 @@ interface AuthContextType {
   activeOrgUnit: OrgUnit | null;
   switchOrgUnit: (unitId: string | null) => Promise<void>;
   refreshActiveOrgUnit: () => Promise<void>;
+  /**
+   * Re-read the profile without a full auth round-trip. Needed when the app
+   * itself provisions the row (onboarding for a user who reached it without
+   * one) — profile would otherwise stay null until the next auth state change.
+   */
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -247,6 +253,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
 
+  const refreshProfile = async () => {
+    if (!user) return;
+    const profileData = await fetchProfile(user.id);
+    setProfile(profileData);
+    if (profileData?.org_id) {
+      await fetchOrgData(profileData.org_id, profileData.active_org_unit_id);
+    }
+  };
+
   const refreshActiveOrgUnit = async () => {
     if (!activeOrgUnit) return;
     const { data: unit } = await supabase
@@ -437,6 +452,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     activeOrgUnit,
     switchOrgUnit,
     refreshActiveOrgUnit,
+    refreshProfile,
   };
 
   return (
