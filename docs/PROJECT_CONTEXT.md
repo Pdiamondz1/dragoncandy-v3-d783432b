@@ -156,6 +156,11 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **VerifiedRoute missing-profile lockout** — a "can't log in" report was a *false* "verify your
+  email": the guard collapsed "unverified" with "no `profiles` row", bouncing such users off the one
+  page that could provision them. Fix resolves on whether the flag is KNOWN (a fabricated
+  metadata profile carries none); onboarding now provisions the row.
+  → `docs/wiki/concepts/internal-only-users.md` · #357
 - **Living Synthetic Marketplace (Sub-project A)** — **LIVE on prod at 2,000 profiles** (500 business /
   1,500 creator, 24 US cities): a persistent, browsable `botmk_` cohort built through real RLS-enforced
   flows, excluded from founder metrics via `is_synthetic`. The **active/depth split** is what makes it

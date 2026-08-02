@@ -26,6 +26,63 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-02] VerifiedRoute missing-profile lockout — a false "verify your email" (#357)
+
+A founder report — "Adrian Vella is unable to sign-up or login to DragonCandy.io" — with a phone
+video showing the toast *"Please verify your email to continue."* **The report's premise was false
+in every particular.** Prod said he had verified on 2026-06-26 (eight minutes after signup) and had
+signed in **successfully that same morning** (`last_sign_in_at 2026-08-02 11:48:25`). He was
+authenticating fine and being deflected by the email-verification gate, told to do the one thing
+that could not possibly help. *(Diagnostic lesson: for any "can't log in" report, query `auth.users
+LEFT JOIN profiles` and read `last_sign_in_at` first — one query falsifies the premise.)*
+
+**Root cause.** `VerifiedRoute` gated on `profile?.email_verified !== true`, collapsing "email
+genuinely unverified" with "there is no `profiles` row to read". It guards exactly **one** route —
+`/profile/setup`, the onboarding wizard — so a profile-less user was bounced off *the only page
+that could provision them*, and `AuthPage` re-runs `checkProfileCompletion` on `isAuthenticated`,
+closing the loop: `login → !profile → /profile/onboarding → /profile/setup → toast → /auth → ↻`.
+`BusinessRoute`/`BrandRoute` funnel profile-less users to the same place, so they feed the trap;
+`VerifiedRoute` is where it closes.
+
+Two ways in. (1) `handle_new_user` early-returns for `raw_user_meta_data.account_scope='internal'`
+— the AIOS stakeholder-invite flow — so those accounts have **no consumer profile by design**;
+Adrian, an internal `admin` since 2026-06-26, was the first to visit the consumer app. (2) The
+common one: **any** signup whose row is missing but whose metadata carries a `role`, because
+`AuthContext.createProfileFromMetadata()` fabricates a stand-in profile that has **no
+`email_verified` key at all**.
+
+**The lesson worth keeping:** cause (2) defeated the first fix and survived a Codex round. A
+`profile ? profile.email_verified !== true : <fallback>` test takes the *first* branch for the
+fabricated object, where `undefined !== true` rebuilds the identical loop — for the common case,
+not just internal accounts. **"profile is non-null" is not a reliable test for "the row exists."**
+Resolve on whether the flag is *known*: `profile?.email_verified ?? !!user?.email_confirmed_at`
+(`??` preserves a genuinely stored `false`, so real blocking is unchanged).
+
+**Shipped.** `VerifiedRoute` distinguishes the states and routes internal-only accounts to
+`/internal`. `OnboardingWizard` now provisions the `profiles` row it had always assumed existed
+(`ignoreDuplicates`, so an existing row is never touched and a real `email_verified=false` cannot
+be overwritten) and sets `account_type` explicitly rather than inheriting the `'restaurant'`
+default. `AuthContext` gains `refreshProfile()` — it previously had no way to re-read the profile
+outside an auth-state change, so a freshly provisioned user would land on a dashboard still holding
+`profile === null`.
+
+**Review.** Three Codex rounds; rounds 1 and 2 each found a real defect in the branch (the stale
+auth state; the metadata-fabricated-profile gap). 9 unit tests — the **4 covering genuine
+unverified-email blocking pass against both the old and new code**, so the real verification path is
+provably untouched, while the regression tests fail against the old code. Typecheck + build clean,
+542 tests across 76 files pass.
+
+**Prod remediation** (one-time, `careful`-gated, founder-confirmed SQL): created Adrian's missing
+`profiles` (business_client, `email_verified=true` — truthful) and `business_profiles`
+(`restaurant`, `is_completed=false`) rows, and set `raw_user_meta_data.role`. That last statement
+was **required, not cosmetic**: the wizard reads role from metadata and defaults to
+`content_creator`, so without it he'd have hit a *second* loop in the creator flow. His
+`account_scope='internal'` and `user_roles.role='admin'` were left untouched — he keeps `/internal`,
+making him a legitimate dual internal+consumer account. He was the only user on prod without a
+profile row; that count is now **0**.
+
+→ `docs/wiki/concepts/internal-only-users.md` · #357
+
 ## [2026-07-26] Plain-language Stakeholder Scorecard — /internal/scorecard (`feat/internal-stakeholder-scorecard`)
 
 **Sub-project 4 of 4** in the AIOS scaling-dashboard ask. A new `/internal/scorecard` page — "How

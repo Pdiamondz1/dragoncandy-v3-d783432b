@@ -2,8 +2,8 @@
 title: Internal-Only AIOS Users
 type: concept
 created: 2026-06-26
-updated: 2026-06-27
-sources: [raw/sessions/2026-06-26-internal-only-user-fks.md, raw/sessions/2026-06-27-internal-donny-profile-read.md, docs/superpowers/specs/2026-06-26-aios-stakeholder-invite-design.md]
+updated: 2026-08-02
+sources: [raw/sessions/2026-06-26-internal-only-user-fks.md, raw/sessions/2026-06-27-internal-donny-profile-read.md, raw/sessions/2026-08-02-verified-route-missing-profile.md, docs/superpowers/specs/2026-06-26-aios-stakeholder-invite-design.md]
 tags: [aios, auth, identity, supabase, foreign-keys, internal]
 ---
 
@@ -19,6 +19,12 @@ consumer dashboard. AIOS access is purely `user_roles` (`admin` | `stakeholder`)
 
 The design invariant: **"a null profile is tolerated everywhere."** `AuthContext` tolerates
 a null profile; `DashboardRedirect` bounces it to `/auth`.
+
+> **The invariant was aspirational, not true.** Three separate traps have now been found where
+> it did not hold — FK writes (PR #180), caller-profile reads (PR #185), and the **frontend
+> route guards** (PR #357, below). Each was invisible until an internal-only user reached that
+> surface, and each time it was the same person. Treat "a null profile is tolerated here" as a
+> claim to verify, not a property to rely on.
 
 ## The foreign-key trap
 
@@ -89,6 +95,60 @@ whole surface.
 (`functions deploy`, auto-bundles from disk; `--no-verify-jwt` to preserve `verify_jwt=false`).
 See [[Donny AI]].
 
+## The frontend route-guard trap (PR #357) — and a false error message
+
+The third and most user-visible instance. On 2026-08-02 the same user was reported as
+**"unable to sign up or log in"** to dragoncandy.io. He was not: `last_sign_in_at` showed a
+*successful* login that morning, and `email_confirmed_at` had been set on 2026-06-26. He was
+being deflected by the consumer app's email-verification guard and told to verify an email he
+had verified five weeks earlier — advice he could never act on.
+
+`VerifiedRoute` gated on `profile?.email_verified !== true`, collapsing "email unverified"
+with "there is no `profiles` row". Since it guards exactly one route — `/profile/setup`, the
+onboarding wizard — a profile-less user was bounced off **the only page that could provision
+them**, and `AuthPage` re-runs `checkProfileCompletion` on `isAuthenticated`, closing the loop:
+
+```
+login → checkProfileCompletion → !profile → /profile/onboarding
+  → /profile/setup (VerifiedRoute) → toast → /auth?mode=login → ↻
+```
+
+### "profile is null" is NOT a reliable test for "the row is missing"
+
+The sharpest lesson, and one that survived a review round. `AuthContext` **fabricates** a
+profile from user metadata when the row is missing (`createProfileFromMetadata`) — and that
+object carries **no `email_verified` key**. So a `profile ? profile.email_verified !== true :
+<fallback>` test takes the *first* branch for the fabricated object, where `undefined !== true`
+rebuilds the identical loop — and does so for the **common** case (any signup with a missing
+row but a `role` in metadata), not just internal accounts.
+
+Resolve on whether the flag is **known**:
+
+```ts
+const emailNotVerified =
+  settled && (profile?.email_verified ?? !!user?.email_confirmed_at) !== true;
+```
+
+`??` falls back to auth truth only when the flag is absent, so a genuinely stored `false`
+still blocks. Internal-only accounts (no profile + `account_scope='internal'`) route to
+`/internal` instead of being trapped in a consumer flow they have no business in.
+
+Two supporting gaps closed with it: `OnboardingWizard` only ever upserted
+`creator_profiles`/`business_profiles`, so onboarding **could not self-heal a missing core
+row** — it now provisions `profiles` too (`ignoreDuplicates`, so an existing row is never
+touched), and sets `account_type` explicitly rather than inheriting the `'restaurant'` default.
+And `AuthContext` had no `refreshProfile()`; `fetchProfile` ran only on an auth-state change,
+so anything the app provisions mid-session stayed invisible until a reload.
+
+> **Rule of thumb (frontend):** a route guard that reads `profile.<field>` is a latent lockout
+> for anyone without a row. Derive from `auth.users` truth (`email_confirmed_at`) when the
+> app-level flag is absent, and never let a guard bounce a user to a route that routes them
+> straight back.
+
+**Diagnostic lesson:** for any "can't log in" report, query `auth.users LEFT JOIN profiles`
+and read `last_sign_in_at` first — one query falsifies the report's premise and reframes the
+whole investigation.
+
 ## Why the (FK) failure was opaque (a backend error-handling lesson)
 
 The FK violation presented as a meaningless `"internal error"`, not the real DB message,
@@ -107,6 +167,16 @@ plain-object throw) — normalize them. See [[Error Handling Patterns]].
 - Internal-only users get **no consumer profile** (PR #178 keystone) — accommodate them
   rather than back-filling a fake profile row, which would re-pollute the consumer surfaces
   the design deliberately keeps them out of.
+  - **Qualified 2026-08-02:** this forbids fabricating a row to satisfy plumbing; it does not
+    forbid an internal user *legitimately* becoming a consumer user. Adrian was granted a real
+    consumer profile by founder decision (business/restaurant) while keeping his `admin` role —
+    a genuine dual account, not a fake row. `account_scope` is read only by `handle_new_user`
+    at signup, so it is inert afterwards and does not need clearing.
+- Frontend route guards must derive verification from `auth.users` truth when the app-level
+  flag is absent — and must never treat a fabricated (metadata-derived) profile as
+  authoritative for fields it does not carry (PR #357).
+- Onboarding is a **provisioning** path, not just a profile-editing one: it creates the
+  `profiles` row when absent, so a user missing one can self-heal (PR #357).
 - Caller-keyed AIOS tables FK `auth.users(id)`; consumer tables stay on `profiles(id)`.
 - Caller-profile **reads** on the internal surface must tolerate a missing row
   (`.maybeSingle()` + synthesize), never `.single()` + throw (PR #185).
