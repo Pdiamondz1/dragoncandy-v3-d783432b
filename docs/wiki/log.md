@@ -1,5 +1,27 @@
 # Wiki Log
 
+## [2026-08-02] ingest | VerifiedRoute missing-profile lockout (PR #357, merged + live)
+Ingested [[VerifiedRoute Missing-Profile Lockout Session]]. **Compounded** onto
+[[Internal-Only AIOS Users]] rather than creating a new page — this is the third instance of the
+same root pattern that page already documents (internal-only users have no `profiles` row), after
+the FK-write trap (#180) and the caller-profile-read trap (#185). Added a "frontend route-guard
+trap" section, three Key Decisions, and a **qualification of that page's stated invariant**: it
+asserts "a null profile is tolerated everywhere", which three separate traps have now disproved —
+recorded as a claim to verify rather than silently corrected.
+
+Also qualified (not overwritten) its "accommodate, don't back-fill a fake profile" decision: Adrian
+was granted a *real* consumer profile by founder decision, making him a legitimate dual
+internal+consumer account. The original principle — don't fabricate a row merely to satisfy
+plumbing — still stands, and is now stated as such.
+
+Sharpest transferable lesson: **`profile` being non-null does not mean the `profiles` row exists.**
+`AuthContext.createProfileFromMetadata()` fabricates a stand-in with no `email_verified` key, so a
+`profile ? … : …` guard reads the fabricated `undefined` as "unverified". Resolve on whether the
+flag is *known* (`??`), not on whether an object is present. Updated `index.md` (new Sources line +
+refreshed the [[Internal-Only AIOS Users]] Concepts entry), `SHIPPED_LOG.md` (prepended), and
+`PROJECT_CONTEXT.md` §5 (one-line Shipped entry). No `DATABASE_SCHEMA` / `DESIGN_SYSTEM` /
+`CLAUDE.md` change — no schema, token, or workflow change.
+
 ## [2026-07-26] update | [[Living Synthetic Marketplace]] status correction — built-and-gated → LIVE at 2,000
 Its `## State` section (and `PROJECT_CONTEXT.md` §5, and the `index.md` entry) still read "offline code
 COMPLETE … **Pending (founder-gated):** merge → dispatch a small 2/4 → … → scale to 100/300". All three

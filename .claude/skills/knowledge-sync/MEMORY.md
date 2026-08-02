@@ -68,6 +68,32 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-08-02] VerifiedRoute missing-profile lockout (PR #357 → paired docs PR)
+- Output: new `raw/sessions/2026-08-02-verified-route-missing-profile.md`; **compounded** onto
+  `concepts/internal-only-users.md` (new "frontend route-guard trap" section, 3 Key Decisions,
+  frontmatter `sources:`/`updated:`); `index.md` (new Sources line + refreshed the
+  `[[Internal-Only AIOS Users]]` Concepts entry); `log.md` (ingest entry at top);
+  **`SHIPPED_LOG.md` prepended**; **PROJECT_CONTEXT §5** one-line Shipped entry; + THIS entry.
+  No DATABASE_SCHEMA/DESIGN_SYSTEM/CLAUDE.md change — no schema, token, or workflow change.
+- Happened: third instance of a pattern `concepts/internal-only-users.md` already owned (no
+  `profiles` row for internal accounts), after the FK-write and profile-read traps — so this
+  **compounded** rather than starting a new page, per "compound, don't duplicate".
+- Worked: [scope] paid off twice. Branching off `origin/main` and diffing the core docs first
+  showed PROJECT_CONTEXT's `### Shipped` now leads with a *different* entry than the auto-loaded
+  CLAUDE.md copy showed — writing from the session-loaded version would have anchored the edit on
+  a stale line. Also checked `[[Verification Before Reporting]]` before linking it; no such page,
+  so the link was dropped rather than shipped dangling.
+- Failed: nothing blocking. The `git push` env-block recurred (one `timeout 90` attempt, then the
+  blob→tree→commit→ref REST workaround) — so [squash-drift] applies to the code PR: its head is a
+  squash rebased onto `origin/main`, unrelated in SHA to the worktree's 3 commits.
+- Remember: **the wiki page asserted an invariant that was false** ("a null profile is tolerated
+  everywhere"). Three traps have now disproved it. Per "flag contradictions, never silently
+  resolve", it was *qualified in place* with the counter-evidence rather than deleted — and its
+  "accommodate, don't back-fill" decision was likewise **qualified, not overwritten**, because the
+  founder deliberately granted a real dual account. When ingest finds the page's own stated
+  principle contradicted by this session, annotate it as a claim-to-verify; don't quietly rewrite
+  history to match the new fact.
+
 ### [2026-07-26] The 200K-band load run + the 16 KB header wall (PR #345 merged; paired docs branch `docs/knowledge-sync-200k-run`)
 - **Output:** new `raw/sessions/2026-07-26-200k-load-run-and-header-overflow.md`; **compounded** onto
   [[Synthetic Weight Engine]] a "The 200K-band run — cap discovered, DB still idle" section + **corrected**
