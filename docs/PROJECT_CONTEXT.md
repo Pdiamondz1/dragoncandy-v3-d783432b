@@ -161,13 +161,13 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   page that could provision them. Fix resolves on whether the flag is KNOWN (a fabricated
   metadata profile carries none); onboarding now provisions the row.
   → `docs/wiki/concepts/internal-only-users.md` · #357
-- **Living Synthetic Marketplace (Sub-project A)** — **LIVE on prod at 2,000 profiles** (500 business /
-  1,500 creator, 24 US cities): a persistent, browsable `botmk_` cohort built through real RLS-enforced
-  flows, excluded from founder metrics via `is_synthetic`. The **active/depth split** is what makes it
-  possible — ~24 interactive bots run real flows, ~1,976 depth profiles are bulk-inserted and never
-  authenticate (a session costs an auth, and prod rate-limits those ~25/IP). Segregation held
-  byte-identically across the scale-up; reset via the `botmk_`-scoped `marketplace-purge`. Scaling
-  further = direct `seed_synthetic_marketplace_depth` calls. PRs #339–#342.
+- **Living Synthetic Marketplace (Sub-project A)** — **PURGED from prod 2026-07-30; prod is real-only.**
+  The engine shipped and ran at 2,000 `botmk_` profiles (PRs #339–#342), then the whole cohort was torn
+  down and `SYNTHETIC_BOTS_ENABLED` set false. The machinery is retained — **restore = flip that flag
+  back to `true` (the harness is fail-closed without it), then dispatch the `marketplace-seed`
+  workflow**; `seed_synthetic_marketplace_depth` is the inert browse-only depth pool, for scaling
+  *after* that, not for restoring. Verified 2026-08-02:
+  `synthetic_users` = 0 rows, 0 synthetic-email profiles, 42 users all real.
   → `docs/wiki/concepts/living-synthetic-marketplace.md`
 
 - **Wallet-first payout fix (stages 1+2 shipped)** — closes the [[Payout Finalization & Re-entrancy]]
@@ -181,8 +181,9 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   → `docs/wiki/concepts/payout-finalization-consistency.md` · `feat/wallet-first-payout` + `feat/wallet-first-stage2`
 - **Synthetic Weight Engine** — tagged synthetic-user ("bot") safety spine (registry + actor-OR-parent
   metric/moat exclusion + fail-closed `SYNTHETIC_BOTS_ENABLED` + live-mode money guard + `/internal/simulation`
-  + `purge_synthetic_data()`) with Phase 1 (private-crew free-rails behavior engine) **live on prod** (N=25 +
-  daily cron) and **Phase A** (load proof & economics — cross-tick session pool, two-lane bulk-seed, ramped
+  + `purge_synthetic_data()`) with Phase 1 (private-crew free-rails behavior engine) — **shipped, then
+  purged 2026-07-30 with every other synthetic cohort; `SYNTHETIC_BOTS_ENABLED` is false and prod is
+  real-only, so the daily cron is inert** — and **Phase A** (load proof & economics — cross-tick session pool, two-lane bulk-seed, ramped
   knee-not-outage load driver + findings, two service-role RPCs, `/internal/simulation` load-curve +
   MODELED-revenue slice) and the **runner matrix (Slice 1)** (multi-IP fan-out — `bulk-seed --with-content`,
   a ~90:10 DAU behavior mix + media-egress proxy, `get_sim_load_matrix_summary`, the `synthetic-load-matrix.yml`

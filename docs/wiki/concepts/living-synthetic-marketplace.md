@@ -2,7 +2,7 @@
 title: Living Synthetic Marketplace
 type: concept
 created: 2026-07-25
-updated: 2026-07-25
+updated: 2026-08-02
 sources: [2026-07-25-living-marketplace-phase-a1]
 tags: [synthetic, marketplace, seeding, rls, prod, teardown, sim]
 ---
@@ -93,10 +93,42 @@ org_members). Explicit residue: `storage.objects` (botmk uids + botmk promotion 
   limit abort, seed-shipped-without-teardown, the missing cohort cap, downstream-not-resumable, and the
   one-shot/documented-resumable contradiction — all resolved.
 
-## State — LIVE on prod at 2,000 profiles (2026-07-25/26)
+## State — PURGED from prod 2026-07-30; prod is real-only
 
-**Shipped and running.** PRs #339–#342 merged; the whole founder-gated sequence below was executed and
-the cohort is live on prod, **scaled well past the original 100/300 target**:
+**The cohort no longer exists.** It ran as described below, then was torn down completely and the
+master kill switch `SYNTHETIC_BOTS_ENABLED` was set `false` (`feature_flags.updated_at =
+2026-07-30 18:13:56Z` — the flag row is the surviving record of the teardown).
+
+Verified against prod on 2026-08-02: `synthetic_users` = **0 rows**, **0** profiles on
+`@synthetic.dragoncandy.test`, 42 `auth.users` / 42 `profiles` — all real. Nothing `botmk_` remains.
+
+**The engine itself is retained, not deleted.** To restore, in this order:
+
+1. **Set `SYNTHETIC_BOTS_ENABLED` back to `true`.** The purge left it `false`, and every run is
+   fail-closed at boot (`sim/env.ts`): it refuses unless the Stripe keys are TEST keys **and** this
+   flag reads back exactly `true`. Skipping this step fails the restore at the gate.
+2. **Dispatch the `marketplace-seed` workflow** (manual-only by design; runs in the
+   `synthetic-weight` GitHub Environment). This is the harness that builds the cohort through real
+   RLS-enforced flows — profiles, free campaigns, applications→collaborations, content, DragonFeed
+   posts, messaging, discounts, reviews. It is **one-shot**: it fails fast if a `botmk_` cohort
+   already exists, a condition this purge has cleared. Start at the small 2/4 defaults.
+3. **Only then** consider `seed_synthetic_marketplace_depth` — the **inert, browse-only depth pool**
+   (its own migration header calls it "browsable-but-INERT"; those profiles never authenticate). It
+   scales an existing marketplace and **cannot stand one up**.
+
+Teardown remains the same workflow with `command=marketplace-purge` (the `botmk_`-scoped
+`purge_synthetic_marketplace_cohort()`) — never the broad `purge_synthetic_data`.
+
+> **Why this page said otherwise for three days:** the purge was a pure **database** operation — it
+> produced no commit, so nothing in git recorded it and every doc kept asserting "LIVE at 2,000".
+> Prod state that changes without a commit does not reach the knowledge layer on its own. When a
+> teardown happens by RPC or dashboard, write the doc in the same session, and prefer a check against
+> the DB (here, the `feature_flags` row) over trusting any doc's claim of what is live.
+
+### What ran (historical — 2026-07-25/26)
+
+PRs #339–#342 merged; the whole founder-gated sequence below was executed and the cohort reached
+prod, **scaled well past the original 100/300 target**:
 
 | Lane | Business | Creator | Total |
 |-|-|-|-|

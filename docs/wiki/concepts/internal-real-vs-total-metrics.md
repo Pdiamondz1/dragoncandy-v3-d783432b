@@ -18,6 +18,8 @@ Built on the [[Synthetic Weight Engine]]'s `is_synthetic(...)` predicate.
   (the grand total incl. synthetic for each headline entity, with a `N real · N simulated` split
   sub), then **real-only** breakdown sections below. `aios_platform_stats` counts every entity
   `WHERE NOT is_synthetic(...)` for the real sections. With ~2,025 synthetic bots vs ~40 real users
+  (the situation that motivated this split; all synthetic cohorts were purged 2026-07-30, so the two
+  figures now coincide — the exclusion remains correct and is what a re-seed would rely on again)
   the real numbers *correctly* sit flat — which once read as "metrics not updating" but is the
   segregation working as designed (durable lesson: **verify the pipeline before assuming a break**).
   A **"synthetic test data is active" banner** and an **"of N incl. synthetic" per-card sub** surface

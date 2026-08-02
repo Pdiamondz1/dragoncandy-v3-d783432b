@@ -1,5 +1,24 @@
 # Wiki Log
 
+## [2026-08-02] update | [[Living Synthetic Marketplace]] status correction — LIVE at 2,000 → PURGED
+Three documents (`PROJECT_CONTEXT.md` §5, this page's `## State`, and its `index.md` entry) all
+asserted **"LIVE on prod at 2,000 profiles"**. Prod says otherwise: `synthetic_users` = **0 rows**, 0
+profiles on `@synthetic.dragoncandy.test`, 42 `auth.users` / 42 `profiles` — all real. The cohort was
+purged on **2026-07-30**, corroborated from the database rather than from recall:
+`feature_flags.SYNTHETIC_BOTS_ENABLED` is `false` with `updated_at = 2026-07-30 18:13:56Z`.
+
+**The purge produced no commit** — it was a pure DB operation (RPC/dashboard), so nothing in git
+recorded it, `grep -rn "2026-07-30" docs/` returned nothing, and every doc kept asserting the cohort
+was live for three days. This is the generalisable failure: **prod state that changes without a commit
+never reaches the knowledge layer on its own.** The `knowledge-freshness-agent` cannot catch it either
+— it compares the wiki against *git*, and git had nothing to compare against.
+
+Corrected in place per the status-correction rule (§5 is an index of *current* status, so a stale line
+there is read by every future session). The historical account of what ran is **preserved**, demoted
+to a "What ran (historical — 2026-07-25/26)" subsection rather than deleted — same
+edit-in-place-on-supersession discipline used for concept pages. `SHIPPED_LOG.md` was deliberately
+**not** rewritten: it is append-only historical snapshots, and its entries were accurate when written.
+
 ## [2026-08-02] ingest | VerifiedRoute missing-profile lockout (PR #357, merged + live)
 Ingested [[VerifiedRoute Missing-Profile Lockout Session]]. **Compounded** onto
 [[Internal-Only AIOS Users]] rather than creating a new page — this is the third instance of the
