@@ -38,9 +38,12 @@ The real body is an **object** (`{accounts:[...]}`), so `Array.isArray(raw)` is 
 returns `[]` **unconditionally**. It would present as "no accounts connected" rather than as a
 parsing bug. Must read `raw.accounts`.
 
-Audit every other call site for the same assumption — `getPostAnalytics` requests
-`/analytics?postId=…` and hands the whole `{overview, posts, pagination, accounts}` envelope to
-`fromZernioPostAnalytics`, which expects a post-analytics object.
+**CORRECTION:** an earlier revision of this file speculated that `getPostAnalytics` was broken the
+same way. **It is not.** `?postId=` *is* honored and returns a post-scoped object whose metrics nest
+under `analytics` — exactly what `fromZernioPostAnalytics` reads. That mapper is correct as written.
+
+`?accountId=`, by contrast, **is silently ignored** — the filtered and unfiltered bodies are
+byte-identical. Account filtering must happen client-side.
 
 ## Profiles — a real container the contract does not model
 
@@ -91,6 +94,51 @@ a sync must be triggered and how long it takes, or milestone snapshots will reco
 
 Free-credit balance of **$12.00** granted with **no payment method** attached. First 2 connected
 accounts are free. Step 2 of onboarding ("add a payment method for $5 credit") is skippable.
+
+## Account object (live, `GET /v1/accounts`)
+
+Health is **not** `isActive`. On connect: `isActive:true`, `enabled:true`,
+`needsReconnection:false`, `platformStatus:"active"`, `intentionalDisconnectAt:null`,
+`tokenExpiresAt` **~60 days out**. When a token dies Zernio sets `needsReconnection`/`platformStatus`
+and **leaves `isActive` true** — so keying off `isActive` alone reports a dead account as healthy.
+
+Other useful fields: `username`, `displayName`, `profilePicture`, `profileUrl`, `followersCount`,
+`externalPostCount`, `permissions[]`, `platformUserId`, `analyticsLastSyncedAt`,
+`metadata.profileData.extraData.accountType` (`"BUSINESS"`).
+
+**Inconsistency:** `profileId` is an **object** `{_id,name}` on `/accounts` but a **plain string** on
+`/analytics`. Do not assume one shape.
+
+## Post analytics — a superset of both our stores
+
+Real per-post `analytics`:
+
+```
+impressions, reach, likes, comments, shares, saves, clicks, views, follows,
+engagementRate, igReelsAvgWatchTime, igReelsVideoViewTotalTime,
+videoDurationSeconds, lastUpdated
+```
+
+- Contract `PostAnalytics` (impressions/likes/comments/shares/clicks) — all present.
+- `content_performance` (views/likes/comments/shares/saves/reach/engagement_rate) — all present.
+
+Zernio supplies everything both stores need, so no metric is lost either way.
+
+Account-level analytics have **no rollup**: `followers` comes from `accounts[].followersCount`,
+`postsCount` from `overview.publishedPosts`, and reach/engagementRate must be aggregated from
+`posts[].platforms[]`, which carries `accountId` + its own `analytics` per account.
+
+## External post back-fill — relevant to Phase 6
+
+On connect, Zernio ingested **10 pre-existing Instagram posts** (`externalPostCount: 10`) with full
+analytics, flagged `isExternal: true`, including a real DragonCandy campaign post from 2026-06-09
+(`#DragonDashed`) and its Instagram permalink.
+
+**Consequence:** post-level analytics do **not** strictly require a post to originate in Zernio —
+only that we know its Zernio `_id`, obtainable by listing posts and matching on
+`platformPostUrl`/`platformPostId`. The spec's Phase 6 sequencing (after the UI swap) remains correct
+and simpler, and with only 3 legacy `social_post_log` rows a back-match is not worth building. Worth
+knowing that the option exists.
 
 ## Still UNCONFIRMED — do not trust the code's guesses
 
