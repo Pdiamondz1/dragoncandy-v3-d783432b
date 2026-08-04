@@ -18,7 +18,9 @@ CREATE TABLE public.package_orders (
   platform_fee_snapshot      numeric(10,2) NOT NULL DEFAULT 0 CHECK (platform_fee_snapshot >= 0),
   turnaround_days_snapshot   int,
   scope_snapshot             jsonb NOT NULL DEFAULT '{}'::jsonb,
-  -- escrow (mirrors campaigns.escrow_status)
+  -- escrow (mirrors campaigns.escrow_status). Note: the 'refunding' state is added by the forward migration
+  -- 20260804120500 (a durable "refund claimed, Stripe pending" marker) — kept as a separate ALTER so this
+  -- already-committed migration stays immutable for any DB that applied it.
   escrow_status              text NOT NULL DEFAULT 'pending'
                                CHECK (escrow_status IN ('pending','held','releasing','released','refunded')),
   escrow_payment_intent_id   text,

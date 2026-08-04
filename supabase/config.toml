@@ -168,3 +168,22 @@ verify_jwt = false
 # inserts with the service-role key (private leads table), and notifies via Resend.
 [functions.capture-lead]
 verify_jwt = false
+
+# Creator-storefront package-order money rail. The hero buyer is a restaurant with NO
+# DragonCandy account, reached via a shareable link, so there is no Supabase JWT to verify.
+# Each function resolves the caller itself: service-role key (cron), a user JWT (getUser),
+# or an opaque guest bearer token (package_orders.buyer_guest_token). verify_jwt must be off
+# or the gateway would reject the unauthenticated guest — same posture as the campaign escrow
+# functions. refund-package-order deliberately differs from refund-campaign-escrow (which is
+# verify_jwt=true) because package refunds must be guest-reachable.
+[functions.create-package-order-escrow]
+verify_jwt = false
+
+[functions.verify-package-order-escrow]
+verify_jwt = false
+
+[functions.release-package-payout]
+verify_jwt = false
+
+[functions.refund-package-order]
+verify_jwt = false

@@ -84,6 +84,50 @@ serve(async (req) => {
       logStep('Reconciliation sweep failed (non-blocking)', { error: String(sweepErr) });
     }
 
+    // Twin reconciliation sweep for the PACKAGE-ORDER money rail: heal orders whose payout already executed
+    // (money moved, `payout_executed_at` set) but whose finalize didn't complete (`order_status != completed`).
+    // release-package-payout is re-entrant — with the marker set it finalizes ONLY (no re-credit) — so
+    // re-invoking is safe. Same 5-min age guard as the collaboration sweep. Non-blocking.
+    // NOTE: the SLA-based auto-approval of submitted package content lands in v1c alongside the delivery/
+    // dual-approval layer and the transition_package_order_status RPC; only the payout self-heal lives here now.
+    try {
+      const pkgReconcileCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const { data: stuckOrders } = await supabaseClient
+        .from('package_orders')
+        .select('id')
+        .not('payout_executed_at', 'is', null)
+        .lt('payout_executed_at', pkgReconcileCutoff)
+        .neq('order_status', 'completed')
+        .order('payout_executed_at', { ascending: true })
+        .limit(50);
+
+      if (stuckOrders && stuckOrders.length > 0) {
+        logStep('Reconciling stuck package payouts', { count: stuckOrders.length });
+        for (const row of stuckOrders) {
+          try {
+            const resp = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/release-package-payout`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+              },
+              body: JSON.stringify({ orderId: (row as { id: string }).id }),
+            });
+            const result = await resp.json();
+            if (result.finalized || result.success) {
+              logStep('Reconciled stuck package payout', { orderId: (row as { id: string }).id });
+            } else {
+              logStep('Package reconcile did not finalize (will retry next tick)', { orderId: (row as { id: string }).id, error: result.error });
+            }
+          } catch (reconErr) {
+            logStep('Package reconcile fetch failed', { orderId: (row as { id: string }).id, error: String(reconErr) });
+          }
+        }
+      }
+    } catch (sweepErr) {
+      logStep('Package reconciliation sweep failed (non-blocking)', { error: String(sweepErr) });
+    }
+
     // Find all collaborations with content_status='submitted' and their delivery type.
     // Time the review window off `content_submitted_at`, NOT `submitted_at`: the client
     // submit paths (SubmitForReviewButton / useProjectComplete) raw-update content_status

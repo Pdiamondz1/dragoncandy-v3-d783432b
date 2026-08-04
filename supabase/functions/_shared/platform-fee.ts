@@ -3,6 +3,12 @@ import { type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 // Free-tier default from the take-rate ladder: Free 10% / Starter 7% / Growth 5% / Pro 3% / Enterprise 2%
 export const PLATFORM_FEE_RATE = 0.10;
 
+// Creator-storefront package fee. FLAT and decoupled from the business-subscription take-rate ladder:
+// the creator absorbs it (list price = gross, creator nets price × (1 − rate)), so the buyer pays exactly
+// the listed price regardless of who they are. Package payouts pass this to calculatePlatformFee directly
+// and NEVER call getOrgTakeRate. Keep in sync with create_package_order's v_fee_rate (20260804120300).
+export const PACKAGE_FEE_RATE = 0.10;
+
 export function calculatePlatformFee(amountDollars: number, rate?: number): {
   feeCents: number;
   netPayoutDollars: number;
