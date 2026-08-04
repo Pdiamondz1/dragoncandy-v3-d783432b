@@ -110,11 +110,18 @@ serve(async (req: Request) => {
         if (newStatus === "published") {
           patch.published_at = normalized.publishedAt ?? new Date().toISOString();
         }
-        await supabase
+        const { error: updateError } = await supabase
           .from("donny_scheduled_posts")
           .update(patch)
           .eq("id", row.id)
           .neq("status", "published");
+        // Do NOT ack a write that did not happen. Returning 200 here would spend
+        // Zernio's only retry budget on a failure, leaving the post stuck at
+        // `scheduled` forever — the exact outcome this function exists to avoid.
+        if (updateError) {
+          console.error("zernio-webhook: scheduled-post update failed", updateError.message);
+          return json(500, { error: "Update failed" });
+        }
       }
 
       // Idempotency/audit AFTER a successful write; ignore unique-violation.

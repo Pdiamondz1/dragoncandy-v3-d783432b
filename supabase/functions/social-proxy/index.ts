@@ -52,6 +52,14 @@ const ALLOWED_PLATFORMS: ReadonlySet<string> = new Set([
   "youtube",
 ]);
 
+// Ops that legitimately name a provider in their args — the connect flow, where
+// a caller with no rows yet has to be able to choose one.
+const CONNECT_FLOW_OPS: ReadonlySet<string> = new Set([
+  "getConnectUrl",
+  "recordConnection",
+  "syncConnections",
+]);
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function toUuidOrNull(val: string | null | undefined): string | null {
   return val && UUID_RE.test(val) ? val : null;
@@ -344,38 +352,20 @@ async function handleOp(
         return jsonResponse(400, { error: "unsupported_platform", platform });
       }
       if (!redirectUri) return jsonResponse(400, { error: "missing_redirect_uri" });
-      const connectProvider = args?.provider
-        ? resolveProviderId(String(args.provider))
-        : ctx.provider;
-      const connectAdapter = connectProvider === ctx.provider
-        ? adapter
-        : buildAdapter(connectProvider, accountPlatforms);
-      if (connectAdapter instanceof Response) return connectAdapter;
+      // ctx.provider IS the requested provider for connect-flow ops (resolved at
+      // the top level, so the right adapter was built), hence no re-branching.
       // Scope the OAuth handoff to this tenant's own provider profile, so the
       // account lands in their container rather than the shared Default one.
-      const profileId = await resolveProviderProfileId(connectProvider, connectAdapter, ctx);
-      const connectCtx: TenantCtx = {
-        ...ctx,
-        provider: connectProvider,
-        providerProfileId: profileId,
-      };
-      const out = await connectAdapter.getConnectUrl(platform, redirectUri, connectCtx);
+      const profileId = await resolveProviderProfileId(ctx.provider, adapter, ctx);
+      const connectCtx: TenantCtx = { ...ctx, providerProfileId: profileId };
+      const out = await adapter.getConnectUrl(platform, redirectUri, connectCtx);
       return jsonResponse(200, { data: out });
     }
 
     case "recordConnection": {
-      // Stamp the row with the explicitly chosen provider (the account was
-      // connected THROUGH it), falling back to the row-resolved default.
-      const stampProvider = args?.provider
-        ? resolveProviderId(String(args.provider))
-        : ctx.provider;
-      const stampAdapter = stampProvider === ctx.provider
-        ? adapter
-        : buildAdapter(stampProvider, accountPlatforms);
-      if (stampAdapter instanceof Response) return stampAdapter;
       // Re-derived here rather than round-tripped through the browser: the
       // name-keyed lookup returns the same profile getConnectUrl used.
-      const stampProfileId = await resolveProviderProfileId(stampProvider, stampAdapter, ctx);
+      const stampProfileId = await resolveProviderProfileId(ctx.provider, adapter, ctx);
 
       // `accountId` arrives in the request body, and the claim check alone only
       // proves nobody ELSE holds it — so any unrecorded or previously-revoked
@@ -384,9 +374,8 @@ async function handleOp(
       // profiles make it cheap, so do it.
       if (stampProfileId) {
         const wanted = String(args?.accountId ?? "");
-        const inProfile = await stampAdapter.listAccounts({
+        const inProfile = await adapter.listAccounts({
           ...ctx,
-          provider: stampProvider,
           providerProfileId: stampProfileId,
         });
         const isMember = inProfile.some(
@@ -396,7 +385,7 @@ async function handleOp(
           return jsonResponse(403, { error: "account_not_in_tenant_profile" });
         }
       }
-      return await handleRecordConnection(admin, ctx, stampProvider, stampProfileId, args);
+      return await handleRecordConnection(admin, ctx, ctx.provider, stampProfileId, args);
     }
 
     case "syncConnections": {
@@ -411,29 +400,21 @@ async function handleOp(
       // user every other user's connections. resolveProviderProfileId returns
       // null for every non-Zernio provider, and the null check below is what
       // makes that structural rather than a matter of remembering.
-      const syncProvider = args?.provider
-        ? resolveProviderId(String(args.provider))
-        : ctx.provider;
-      const syncAdapter = syncProvider === ctx.provider
-        ? adapter
-        : buildAdapter(syncProvider, accountPlatforms);
-      if (syncAdapter instanceof Response) return syncAdapter;
-      const syncProfileId = await resolveProviderProfileId(syncProvider, syncAdapter, ctx);
+      const syncProfileId = await resolveProviderProfileId(ctx.provider, adapter, ctx);
       if (!syncProfileId) {
-        return jsonResponse(400, { error: "sync_unsupported_for_provider", provider: syncProvider });
+        return jsonResponse(400, {
+          error: "sync_unsupported_for_provider",
+          provider: ctx.provider,
+        });
       }
 
-      const syncCtx: TenantCtx = {
-        ...ctx,
-        provider: syncProvider,
-        providerProfileId: syncProfileId,
-      };
+      const syncCtx: TenantCtx = { ...ctx, providerProfileId: syncProfileId };
       // RE-ASSERT the tenant scoping locally. The `?profileId=` filter is the
       // only cross-tenant gate on this path, and an unhonoured provider filter
       // degrades to "returns everything" rather than erroring — Zernio already
       // silently ignores `?accountId=` on /analytics, so that is a demonstrated
       // failure mode, not a hypothetical one.
-      const returned = await syncAdapter.listAccounts(syncCtx);
+      const returned = await adapter.listAccounts(syncCtx);
       const found = returned.filter((a) => a.providerProfileId === syncProfileId);
       if (found.length !== returned.length) {
         console.error("social-proxy: syncConnections dropped accounts outside the tenant profile", {
@@ -455,7 +436,7 @@ async function handleOp(
           skipped.push(account.platform);
           continue;
         }
-        const res = await handleRecordConnection(admin, ctx, syncProvider, syncProfileId, {
+        const res = await handleRecordConnection(admin, ctx, ctx.provider, syncProfileId, {
           accountId: account.id,
           network: account.platform,
           username: account.handle ?? undefined,
@@ -638,7 +619,24 @@ serve(async (req: Request) => {
   for (const r of rows) {
     accountPlatforms[r.outstand_social_account_id] = r.platform as Platform;
   }
-  const provider = resolveProviderFromRows(rows);
+  // Connect-flow ops may name their target provider explicitly; every other op
+  // uses the provider implied by the caller's existing rows.
+  //
+  // This matters at the top level, not just inside the op: a user with no rows
+  // resolves to 'outstand', and buildAdapter 503s on a missing key BEFORE
+  // dispatch — so once OUTSTAND_API_KEY is removed in Phase 7, every first-time
+  // Zernio connect would fail with `outstand_not_configured`. Resolving the
+  // requested provider here builds the right adapter the first time.
+  //
+  // Restricted to the connect ops on purpose: letting any op override the
+  // provider would send one provider's account ids to another's API. Not a
+  // security hole (ownership is enforced from our own DB either way), just
+  // meaningless traffic and confusing failures.
+  const requestedProvider =
+    CONNECT_FLOW_OPS.has(op) && typeof args.provider === "string"
+      ? resolveProviderId(String(args.provider))
+      : null;
+  const provider = requestedProvider ?? resolveProviderFromRows(rows);
 
   // Build the active (row-resolved default) adapter via the factory, guarding
   // the chosen key. The connect-flow ops may build a different adapter for an

@@ -104,11 +104,22 @@ const OneStepCallback: React.FC<{ accountId: string; username: string | null; ba
  */
 const ZernioCallback: React.FC<{ backPath: string }> = ({ backPath }) => {
   const navigate = useNavigate();
+  const { session, loading } = useAuth();
   const { syncConnections } = useSocialConnect();
   const [error, setError] = useState<string | null>(null);
   const ranOnce = useRef(false);
 
   useEffect(() => {
+    // WAIT for auth to hydrate. This page is reached by a full-page redirect
+    // back from the provider, so on first render the session is often still
+    // loading and the access token is ''. Firing then would send
+    // `Authorization: Bearer `, get a 401, and — because ranOnce is already
+    // set — never retry, silently losing a connection the user did complete.
+    if (loading) return;
+    if (!session?.access_token) {
+      setError('Your session expired during the connection. Please sign in and try again.');
+      return;
+    }
     if (ranOnce.current) return;
     ranOnce.current = true;
 
@@ -135,7 +146,7 @@ const ZernioCallback: React.FC<{ backPath: string }> = ({ backPath }) => {
         setError(message);
         toast.error(`Connection failed: ${message}`);
       });
-  }, [syncConnections, navigate, backPath]);
+  }, [loading, session, syncConnections, navigate, backPath]);
 
   if (error) {
     return (
