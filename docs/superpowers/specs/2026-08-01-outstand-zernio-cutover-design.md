@@ -216,6 +216,31 @@ live integration.
 **Gate:** a real Zernio webhook is received, signature-verified, and returns 200 — `no_match` is the
 **expected** result, since nothing creates a Zernio-backed `donny_scheduled_posts` row until Phase 3.
 
+### Phase 2 status (2026-08-04)
+
+**Done and live on prod.** Migrations `20260804174045` (`zernio_profile_id`) and `20260804174934`
+(column-lock) applied; `social-proxy` redeployed (`verify_jwt=true`, 401 unauthenticated, CORS 200);
+`zernio-webhook` deployed (`verify_jwt=false`, 503 while the secret is unset — fail-closed, verified);
+`outstand-reconcile` deleted from prod (404). 108 tests pass, typecheck/lint/build clean, Codex clean
+on round 3.
+
+**Blocked on the founder — two credential steps Claude must not do:**
+
+1. `ZERNIO_WEBHOOK_SECRET` is not set, so `zernio-webhook` 503s every delivery. Zernio retries 7 times
+   then dead-letters, so **any event delivered before the secret exists is lost permanently.** Set it
+   on Supabase *before* pointing Zernio at the endpoint.
+2. Registering the endpoint needs the Zernio API key, which is not on disk in this worktree (it lives
+   only as a Supabase secret). Registration is `POST https://zernio.com/api/v1/webhooks/settings`
+   with `{name, url, events, secret}` — the same `secret` value as step 1.
+
+**Order matters:** set the Supabase secret → register the webhook → send `POST /v1/webhooks/test` →
+expect HTTP 200 `{"status":"ignored","event":"webhook.test"}`. That 200 IS the gate: it proves the
+signature scheme, the header name and the fail-closed path all agree with the live provider.
+
+**Then** the connect round-trip: call `getConnectUrl` (op `getConnectUrl`, `provider: 'zernio'`),
+complete OAuth, land on `/settings/social/callback`, and confirm `syncConnections` wrote a row with
+`provider='zernio'` and a non-null `zernio_profile_id`.
+
 ---
 
 ## Phase 3 — Flip to Zernio and move posting off the proxy
