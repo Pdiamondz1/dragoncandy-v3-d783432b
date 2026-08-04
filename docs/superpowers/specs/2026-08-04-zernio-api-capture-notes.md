@@ -183,6 +183,105 @@ provision a profile per business, persist the id (additive nullable column), and
 - **Billing is per connected account, not per profile** — profiles appear free. Graduated: 2 free,
   then $6 (3–10) / $3 (11–100) / $1 (101+), with no cap on the $1 tail.
 
+## Pinned from the OpenAPI spec + docs, 2026-08-04 (Phase 2)
+
+The rendered doc pages are JS-only and return navigation when fetched. The
+authoritative sources are `https://docs.zernio.com/api/openapi` (real OpenAPI 3.1,
+~2 MB YAML, `servers:` = `https://zernio.com/api`) and
+`https://docs.zernio.com/llms-full.txt`. `openapi.json` and `/api/openapi.json`
+both return HTML nav shells — useless.
+
+> **Method warning.** A summarizing fetch of these pages *invented* a webhook CRUD
+> surface (`POST /v1/webhooks`, `GET /v1/webhooks/{id}`, …) that does not exist.
+> Every fact below was grepped verbatim out of the downloaded spec. Treat any
+> API detail that was summarized rather than quoted as unverified.
+
+### Connect — corrects a shipped guess
+
+`GET https://zernio.com/api/v1/connect/{platform}?profileId=…&redirect_url=…` → `{ authUrl }`.
+
+The redirect param is **`redirect_url`** (snake_case), not the `redirectUri` the
+adapter guessed, and connect is served from `zernio.com/api/v1`, **not** the
+`api.zernio.com` host used by every other call. Both failures are silent: an
+ignored redirect param does not error, it just returns the dashboard's own
+return URL and strands the user on Zernio.
+
+### Profiles
+
+| | |
+|---|---|
+| Create | `POST /v1/profiles`, body `{name (required), description?, color?}` → **201** `{message, profile:{_id,…}}` |
+| Duplicate name | **409**, code `profile_name_conflict`, with **`details.existingProfileId`** carrying the winner's id — so concurrent creates still converge |
+| Idempotency | optional `Idempotency-Key` header; a retried create replays the original 201 with the same `_id` |
+| Lookup by name | `GET /v1/profiles?name=<exact>` — exact-match, documented as the id-recovery path |
+| **Pagination** | **opt-in only.** Without `limit`/`skip` the full list is returned as one unbounded array with no `total`/`hasMore`. `limit` caps at 1000; `skip` is offset-based, so it skews under concurrent creation |
+
+**Consequence:** never call an unfiltered `GET /profiles`. `ensureTenantProfile`
+uses the `?name=` filter plus an `Idempotency-Key`, which also removes the
+duplicate-profile race the first draft had documented as "accepted".
+
+### Webhooks — registration is an API call, not dashboard-only
+
+The earlier note inferred dashboard-only because `GET /v1/webhooks` returns HTML.
+That was off by a path segment: `/v1/webhooks` is not an endpoint. The three real
+paths are `/v1/webhooks/settings`, `/v1/webhooks/logs`, `/v1/webhooks/test`, with
+full CRUD collapsed onto `/settings` by verb.
+
+`POST /v1/webhooks/settings` — required `name` (1–50 chars), `url`, `events`
+(minItems 1); optional `secret`, `isActive` (default true), `customHeaders`.
+`DELETE` takes the id as a **query** param `?id=`, not a path segment.
+
+**Signature:** header **`X-Zernio-Signature`** (legacy alias `X-Late-Signature` —
+Zernio was formerly Late). Value is the **bare lowercase hex** HMAC-SHA256 of the
+**raw request body**. No timestamp, no `sha256=` prefix, no versioning. Present
+only if a `secret` was configured. Our shared Outstand verifier is a superset of
+this (its prefix strip is a no-op on bare hex), so it is reused rather than
+duplicated.
+
+**Delivery:** at-least-once; 2xx required within **5 seconds**; up to 7 retries on
+backoff (~51 h) then dead-letter. Dedupe on **`X-Zernio-Event-Id`** = `payload.id`.
+
+**Event names** — the contract's guesses were right in two places and the payload
+shape wrong in every place. Real names include `post.published`, **`post.failed`**
+(not `post.error`), `post.partial`, and **`account.disconnected`** (not
+`account.token_expired`), out of 46 subscribable values. `webhook.test` is
+delivered regardless of subscription — a signature-verified 200 on it is the
+endpoint-registration proof.
+
+**Payloads are FLAT, not wrapped in `data`:**
+
+```
+post:    { id, event, post:    { id, content, status, scheduledFor, publishedAt,
+                                 platforms: [{platform,status,accountId,platformPostId,
+                                              publishedUrl,error}] },        timestamp }
+account: { id, event, account: { accountId, profileId, platform, username,
+                                 displayName, disconnectionType, reason },   timestamp }
+```
+
+Two consequences the mapper had wrong: the post id field is **`id`**, not the
+`_id` used by the REST resources; and `normalizeZernioWebhook` read everything
+from `body.data`, which does not exist — so every event yielded a null postId,
+was rejected as "Missing postId", and would have left every scheduled post stuck
+at `scheduled` with nothing logged as an error.
+
+`account.disconnected` carries **`disconnectionType ∈ intentional|unintentional`**.
+Only `unintentional` is a dead token warranting a reconnect prompt; `intentional`
+is the user deliberately unlinking, and now maps to a new `account.revoked`
+normalized type instead of nagging them.
+
+### Unresolved contradictions in Zernio's own docs
+
+1. **Webhook cap:** llms-full says "up to 10 per team"; the OpenAPI says "Maximum
+   50 webhooks per user". Also per-team vs per-user.
+2. **Auto-disable:** the OpenAPI says "Webhooks are automatically disabled after
+   10 consecutive delivery failures" (and `Webhook.failureCount` says "disabled at
+   10"); llms-full says the exact opposite — "never auto-disabled based on failure
+   count". **This one is operational:** if the OpenAPI is right, ten bad deploys
+   silently kill the integration. Worth confirming before relying on the webhook
+   as the sole publish-status path.
+3. `verification.approved` / `verification.failed` are subscribable but have no
+   documented payload.
+
 ## Still UNCONFIRMED — do not trust the code's guesses
 
 - `uploadMedia` — adapter guesses `POST /media` → `{id,url}`. Flagged in code, unobserved.

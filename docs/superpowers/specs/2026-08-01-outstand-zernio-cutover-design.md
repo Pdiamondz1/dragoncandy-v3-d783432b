@@ -166,12 +166,27 @@ live integration.
   of tenants. Add an **additive nullable** `zernio_profile_id` column, create the profile lazily on
   first connect, and thread it through `getConnectUrl` and `listAccounts`. Scoping stays enforced
   server-side in `social-proxy` regardless — the profile is defence in depth, not the only gate.
-- **`Provider.tsx` changes additively.** Keep `DragonCandyOutstandProvider`, `useOutstandConfig` and
-  `OUTSTAND_PROXY_BASE_URL` mounted — ~8 Tier-3 consumers plus `useSponsorshipAmplification` resolve
-  through that SDK context and do not move until Phase 3. **Add** the `social-proxy` connect path
-  alongside. Removing the SDK provider here would break the entire social UI for a whole phase.
-- Rewrite `src/pages/OutstandOAuthCallbackPage.tsx` onto `recordConnection`, stamping
-  `provider='zernio'`.
+- **`Provider.tsx` needs no change at all** (revised during build). The intent was to add the
+  `social-proxy` connect path alongside the SDK context — but the seam's client (`useSocialProxy`)
+  reads `useAuth()` directly and takes no React context, so there is nothing to mount. The SDK
+  provider stays exactly as-is for the ~8 Tier-3 consumers plus `useSponsorshipAmplification` that
+  do not move until Phase 3. Removing it here would break the entire social UI for a whole phase.
+- **Rewrite the OAuth callback onto a param-free `syncConnections`, not `recordConnection`**
+  (revised during build). `recordConnection` needs an `accountId` and `network` lifted off the
+  provider's redirect query params — and Zernio's redirect params are exactly the piece of the
+  round-trip that is undocumented and unverifiable without completing a live OAuth. So Phase 2 adds
+  a `syncConnections` op instead: the gateway derives the tenant's Zernio profile from the session,
+  lists the accounts inside it, and records them. Membership in a server-derived profile IS the
+  ownership proof, so no account id is trusted from the client and the callback page reads nothing
+  from the URL. `src/pages/OutstandOAuthCallbackPage.tsx` treats "neither Outstand shape matched" —
+  previously a dead-end error — as the Zernio return leg.
+  > **Safety property to preserve:** `syncConnections` is hard-gated on a non-null provider profile
+  > id. Outstand's tenancy is FLAT (its `listAccounts` returns every account in the whole org), so
+  > running this against it would hand one user everybody else's connections. The gate is structural
+  > — `resolveProviderProfileId` returns null for every non-Zernio provider — not a matter of
+  > remembering.
+- **Migration `20260804190000_add_zernio_profile_id.sql`** adds the additive nullable
+  `zernio_profile_id`. Apply it BEFORE deploying the new `social-proxy`, which SELECTs the column.
 - **Connect is driven out-of-band this phase.** The in-app entry point is the SDK's
   `ConnectAccountButtonGroup`, used only in `AccountsTab.tsx` and `ConnectedAccountsList.tsx` —
   both Phase 3. So: call `getConnectUrl` by hand (console/curl), complete OAuth, and land on the
@@ -182,10 +197,16 @@ live integration.
   every post scheduled in the gap sticks at `scheduled` forever. Mirror `outstand-webhook` exactly:
   `post.published`/`post.error` → patch `donny_scheduled_posts` + dedup-insert into
   `outstand_webhook_events` (`id = ${event}:${postId}`); `account.token_expired` → set
-  `business_outstand_accounts.status='error'`. Register the URL in the Zernio dashboard and add a
-  `verify_jwt = false` entry to `supabase/config.toml`, mirroring `[functions.outstand-webhook]`.
+  `business_outstand_accounts.status='error'`. Add a `verify_jwt = false` entry to
+  `supabase/config.toml`, mirroring `[functions.outstand-webhook]`.
   `donny_scheduled_posts.metadata.outstand_post_id` stays the match key — at least four writers
   depend on it.
+  > **Registration is an API call, not a dashboard step** (corrected during build):
+  > `POST /v1/webhooks/settings` with `{name, url, events, secret}`. The earlier "dashboard-only"
+  > read came from `GET /v1/webhooks` returning HTML — that path simply isn't an endpoint. Signature
+  > is `X-Zernio-Signature`, **bare lowercase hex** HMAC-SHA256 over the raw body (no `sha256=`
+  > prefix), which the shared Outstand verifier already accepts. Delivery is at-least-once with a
+  > **5-second** response budget; dedupe on `X-Zernio-Event-Id`.
 - **Delete `outstand-reconcile` in this phase**, not at 7a. It selects `status='active'` with **no
   provider filter** and flags every id absent from Outstand's live list as `status='error'`. The
   moment an active Zernio row exists, one invocation flips both founder accounts to `error`,
