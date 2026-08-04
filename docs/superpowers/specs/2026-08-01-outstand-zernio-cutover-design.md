@@ -10,11 +10,39 @@
 > applied (verified: not in `schema_migrations`, column absent), and `ZERNIO_API_KEY` was never set.
 > "Built but dark" was right; "unmerged" was not.
 
+> ## ⚠️ PREMISE RETRACTED 2026-08-04 — read this before acting on anything below
+>
+> **Both stated reasons for leaving Outstand were wrong.** This spec's Context claimed a "hard
+> ~7-connection cap and effectively no analytics". Neither survives checking:
+>
+> 1. **The connection cap was never real.** The phrase appears in exactly one place in this
+>    repo — the paragraph below, which I wrote. No other document records a connection limit,
+>    and Outstand's own docs say the opposite verbatim: *"Connected social accounts are
+>    unlimited and free on every plan."* It was asserted, then cited as if sourced.
+> 2. **"Effectively no analytics" was a false generalization from one post.** It came from
+>    `docs/wiki/entities/outstand.md` (2026-06-11), which observed an empty `metrics_by_account`
+>    on YouTube post `mJuDd` and inferred our posts were "fundamentally unmeasurable". But
+>    `content_performance` holds post **`XDbxe`** captured **2026-06-13**, with **1,388 views
+>    and 5 likes, growing between the 24h and 72h snapshots**. Outstand's pipeline demonstrably
+>    produced real metrics two days after the conclusion was written. Nobody re-checked.
+>
+> **Outstand also re-priced** (verified 2026-08-04): $19/mo including 3,000 posts, $0.007/post
+> to 10k, $0.005 beyond, and a $249/mo Unlimited add-on giving a hard **$268/mo ceiling** — with
+> unlimited free connected accounts. Outstand bills *activity*; Zernio bills *connected
+> accounts*. For a marketplace of many mostly-idle accounts that is 5–25× in Outstand's favour
+> and the gap widens with scale.
+>
+> The provider decision is therefore **reopened**, and gated on a live analytics bake-off rather
+> than on either set of assertions. Phases 0–2 below are still accurate as a record of what was
+> BUILT and shipped, and the provider-agnostic seam is what makes reversing cheap — but do not
+> treat the rationale in this Context as established.
+
 ## Context
 
 DragonCandy's social integration runs on Outstand.so ($67/mo). It has a hard ~7-connection cap
 and effectively no analytics, which starves the one thing the platform is supposed to do: let
 Donny tell a business what content drives traffic and what campaign to run next.
+**(Both claims retracted — see the banner above. Left in place so the retraction has a subject.)**
 
 A replacement provider (Zernio, formerly Late/getlate.dev) was chosen in June 2026 and a
 provider-agnostic seam was built, then stalled. It is **unmerged and undeployed**: `social-proxy`
