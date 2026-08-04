@@ -100,14 +100,17 @@ interface ZernioPostPlatformRaw {
   platformPostUrl?: string;
 }
 
+// Verified against a live `GET /v1/posts/{id}` response 2026-08-04.
 interface ZernioPostRaw {
   _id?: string;
-  status?: string;
+  status?: string; // 'scheduled' | 'published' | 'draft' | … — the real state field
   scheduledFor?: string | null;
   publishedAt?: string | null;
+  /** NOT returned by the API — only accepted on the create body. Kept for that path. */
   isDraft?: boolean;
   createdAt?: string;
   content?: string;
+  mediaItems?: Array<{ type?: string; url?: string; _id?: string }>;
   platforms?: ZernioPostPlatformRaw[];
 }
 
@@ -241,14 +244,35 @@ export function fromZernioPostResult(raw: ZernioPostEnvelope): PostResult {
 /** Zernio get-post response → contract ProviderPost. */
 export function fromZernioPost(raw: ZernioPostEnvelope): ProviderPost {
   const post = raw.post ?? {};
+
+  // VERIFIED 2026-08-04 (GET /v1/posts/{id}): the response carries `status`
+  // ('scheduled' | 'published' | 'draft' | …) and has NO `isDraft` field —
+  // `isDraft` exists only on the CREATE body. Reading it off the response made
+  // isDraft permanently false, so a draft never registered as one.
+  const isDraft = post.isDraft === true || post.status === 'draft';
+
+  // mediaItems ({type,url,_id}) were being dropped, leaving every container
+  // media-less. The contract's MediaRef wants a filename, which Zernio does not
+  // return — derive it from the URL basename.
+  const media = (Array.isArray(post.mediaItems) ? post.mediaItems : [])
+    .filter((m): m is { url?: string; _id?: string } => !!m && typeof m === 'object')
+    .map((m) => {
+      const url = str(m.url) ?? '';
+      return {
+        id: str(m._id) ?? '',
+        url,
+        filename: url.split('?')[0].split('/').pop() ?? '',
+      };
+    });
+
   return {
     id: post._id ?? '',
     publishedAt: post.publishedAt ?? null,
     scheduledAt: post.scheduledFor ?? null,
-    isDraft: post.isDraft === true,
+    isDraft,
     createdAt: post.createdAt ?? '',
     socialAccounts: mapPostPlatforms(post.platforms),
-    containers: [{ content: post.content ?? '' }],
+    containers: [{ content: post.content ?? '', ...(media.length ? { media } : {}) }],
   };
 }
 

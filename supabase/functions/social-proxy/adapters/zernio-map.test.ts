@@ -549,3 +549,64 @@ describe('live-capture regressions', () => {
     });
   });
 });
+
+describe('fromZernioPost against the real GET /posts/{id} response', () => {
+  // Trimmed from a real scheduled post created + read + deleted 2026-08-04.
+  const real = {
+    post: {
+      _id: '6a720ca14cb687d578835afa',
+      status: 'scheduled',
+      scheduledFor: '2027-01-01T12:00:00.000Z',
+      publishedAt: null,
+      createdAt: '2026-08-04T16:00:33.623Z',
+      content: 'DragonCandy integration test.',
+      mediaItems: [
+        {
+          type: 'image',
+          url: 'https://dragoncandy.io/icons/icon-512.png',
+          _id: '6a720ca14cb687d578835afb',
+        },
+      ],
+      platforms: [
+        {
+          platform: 'instagram',
+          // NOTE: accountId arrives POPULATED (an object), not a string.
+          accountId: { _id: '6a7208a1eb10586dad0a13a1', platform: 'instagram' },
+          status: 'scheduled',
+        },
+      ],
+    },
+  };
+
+  it('unwraps the {post:...} envelope and maps the scalars', () => {
+    const p = fromZernioPost(real as never);
+    expect(p.id).toBe('6a720ca14cb687d578835afa');
+    expect(p.scheduledAt).toBe('2027-01-01T12:00:00.000Z');
+    expect(p.publishedAt).toBeNull();
+    expect(p.createdAt).toBe('2026-08-04T16:00:33.623Z');
+  });
+
+  it('carries mediaItems into the container instead of dropping them', () => {
+    const p = fromZernioPost(real as never);
+    expect(p.containers[0].content).toBe('DragonCandy integration test.');
+    expect(p.containers[0].media).toEqual([
+      {
+        id: '6a720ca14cb687d578835afb',
+        url: 'https://dragoncandy.io/icons/icon-512.png',
+        filename: 'icon-512.png',
+      },
+    ]);
+  });
+
+  it('derives isDraft from status, since the API returns no isDraft field', () => {
+    // Reading post.isDraft off the response made this permanently false.
+    expect(fromZernioPost(real as never).isDraft).toBe(false);
+    const draft = { post: { ...real.post, status: 'draft' } };
+    expect(fromZernioPost(draft as never).isDraft).toBe(true);
+  });
+
+  it('resolves a populated accountId object to its id', () => {
+    const p = fromZernioPost(real as never);
+    expect(p.socialAccounts[0].accountId).toBe('6a7208a1eb10586dad0a13a1');
+  });
+});
