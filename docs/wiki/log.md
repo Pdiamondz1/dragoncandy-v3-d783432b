@@ -1877,3 +1877,27 @@ size — polled 20s + a connection-headroom scale alert; internal-gated, aggrega
 seam). Cross-linked to [[Cost Model + DAU Forecast]], [[Synthetic Weight Engine]], [[AIOS Internal
 Shell]]. index.md: added the concept under the AIOS entries. Also SHIPPED_LOG prepend + PROJECT_CONTEXT
 §5 (Built — awaiting founder go-live). RAG sync deferred to post-merge (docs/ hook).
+
+## [2026-08-04] update | Social provider re-decided — STAY on Outstand
+
+A Zernio pricing email prompted a cost check that unwound both justifications for the
+Outstand → Zernio migration, three phases in (Phases 1+2 merged and live, PR #360).
+
+**Corrected:** the "hard ~7-connection cap" was a real number but a **soft, free-to-raise
+quota** (10 included, raised on request at no charge) — and it appeared in exactly one file,
+the spec that used it as justification. **Settled:** [[Outstand]]'s open analytics question,
+answered YES by our own `content_performance` data — post `XDbxe` returned 1,388 views / 5
+likes growing between snapshots, two days *after* the "fundamentally unmeasurable" conclusion
+was written from a single zero-metrics post. Nobody had re-checked.
+
+**Inverted:** with Unlimited Posting, Outstand is flat (~$268/mo at any account count) while
+Zernio bills per connected account, uncapped ($1,218 at 1,000; $20,218 at 20,000) — taxing the
+curve that grows first (sign-ups) against revenue that arrives later.
+
+Pages created: [[Social Provider Decision]]. Pages updated: [[Outstand]] (open question
+settled with an evidence table), `docs/superpowers/specs/2026-08-01-outstand-zernio-cutover-design.md`
+(premise retracted, twice — the first retraction over-swung and claimed the cap "was never
+real"). Runbook added: `docs/runbooks/outstand-quota-request.md`.
+
+Kept from the migration: the `social-proxy` provider-agnostic gateway, a live-verified dormant
+Zernio adapter, and three real bug fixes. Deliberately abandoned: the 37-file SDK removal.
