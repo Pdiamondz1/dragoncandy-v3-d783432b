@@ -15,10 +15,17 @@
 > **Both stated reasons for leaving Outstand were wrong.** This spec's Context claimed a "hard
 > ~7-connection cap and effectively no analytics". Neither survives checking:
 >
-> 1. **The connection cap was never real.** The phrase appears in exactly one place in this
->    repo — the paragraph below, which I wrote. No other document records a connection limit,
->    and Outstand's own docs say the opposite verbatim: *"Connected social accounts are
->    unlimited and free on every plan."* It was asserted, then cited as if sourced.
+> 1. **The connection cap was real but SOFT — not the hard blocker this spec claimed.**
+>    (Corrected again 2026-08-04 after seeing the billing dashboard; my first retraction
+>    over-swung and said it "was never real".) Outstand plans DO carry an included-accounts
+>    number, so the figure was not invented — but the dashboard states verbatim: *"Your plan
+>    includes 10 social media accounts. Additional accounts can be requested via support —
+>    **no additional charge**."* So it is a soft, free-to-raise quota, not a ceiling that
+>    caps the marketplace. Describing it as a "hard cap" without recording where the number
+>    came from is what turned a support ticket into a migration.
+>    **Residual operational risk, and it is genuine:** raising the quota is a *manual,
+>    human-gated* request. There is no self-serve provisioning, so at scale we must stay well
+>    ahead of the number or a user's connect attempt blocks on Outstand's support queue.
 > 2. **"Effectively no analytics" was a false generalization from one post.** It came from
 >    `docs/wiki/entities/outstand.md` (2026-06-11), which observed an empty `metrics_by_account`
 >    on YouTube post `mJuDd` and inferred our posts were "fundamentally unmeasurable". But
@@ -26,11 +33,22 @@
 >    and 5 likes, growing between the 24h and 72h snapshots**. Outstand's pipeline demonstrably
 >    produced real metrics two days after the conclusion was written. Nobody re-checked.
 >
-> **Outstand also re-priced** (verified 2026-08-04): $19/mo including 3,000 posts, $0.007/post
-> to 10k, $0.005 beyond, and a $249/mo Unlimited add-on giving a hard **$268/mo ceiling** — with
-> unlimited free connected accounts. Outstand bills *activity*; Zernio bills *connected
-> accounts*. For a marketplace of many mostly-idle accounts that is 5–25× in Outstand's favour
-> and the gap widens with scale.
+> **Outstand also re-priced, and the founder upgraded** (dashboard verified 2026-08-04):
+> the account now has **Unlimited Posting enabled** — *"posts are never billed per post"* —
+> plus Managed Keys, 10 included accounts with free increases, renewing 2026-09-04.
+>
+> That makes the cost comparison **flat vs. scaling**, which is the whole argument:
+>
+> | connected accounts | Outstand (flat) | Zernio |
+> |---|---|---|
+> | 100 | ~$268 | $318 |
+> | 1,000 | ~$268 | $1,218 |
+> | 5,000 | ~$268 | $5,218 |
+> | 20,000 | ~$268 | $20,218 |
+>
+> Outstand bills *activity* and is now capped; Zernio bills *connected accounts* and is
+> uncapped. For a marketplace whose account count grows with SUPPLY while revenue grows with
+> DEMAND, that difference is structural, not a discount.
 >
 > The provider decision is therefore **reopened**, and gated on a live analytics bake-off rather
 > than on either set of assertions. Phases 0–2 below are still accurate as a record of what was
