@@ -140,6 +140,49 @@ only that we know its Zernio `_id`, obtainable by listing posts and matching on
 and simpler, and with only 3 legacy `social_post_log` rows a back-match is not worth building. Worth
 knowing that the option exists.
 
+## Multi-tenancy — VERIFIED end-to-end 2026-08-04
+
+The question that matters for DragonCandy is not "how many connections" but "can thousands of
+**distinct** businesses and creators each connect their own accounts and read their own analytics."
+Answer: **yes**, via **Profiles**. Proven against the live account, not just read in docs:
+
+| Step | Call | Result |
+|---|---|---|
+| Create a tenant | `POST /v1/profiles {name,color}` | new `_id`, `isDefault:false`, same platform `userId` |
+| Scope a connect | `GET zernio.com/api/v1/connect/{platform}?profileId=X` | `{authUrl, state}` — **the passed profileId is embedded in `state`** |
+| Isolate accounts | `GET /v1/accounts?profileId=X` | Default → 1 account; new profile → **0**. The filter is honored |
+| Delete a tenant | `DELETE /v1/profiles/{id}` | 200 |
+
+Docs (`/guides/multi-tenant`): *"one profile per customer, their connected accounts inside it, and
+your database holding the mapping."* Profiles live **inside your team** — not separate Zernio user
+accounts — and **one API key serves all tenants**. No documented profile cap. Scoped/read-only API
+keys exist for stricter per-tenant isolation.
+
+Note `?profileId=` on `/accounts` **is** honored, in contrast to `?accountId=` on `/analytics`,
+which is silently ignored. Do not assume filter params work — each one needs checking.
+
+### Gap this exposes in our contract
+
+`src/integrations/social/contract.ts`'s `TenantCtx` is `{userId, businessId, orgUnitId, provider}` —
+**no `profileId`** — and `business_outstand_accounts` has no profile column. Outstand's model was
+flat (one org key; accounts distinguished only by id), so nothing in the seam carries a tenant
+container.
+
+Without a profile per customer, **every business's accounts land in the single `Default` profile**.
+That still functions at small scale — `social-proxy` scopes by `user_id` in our own DB — but it
+forfeits Zernio-side isolation and is painful to retrofit at thousands of tenants. Phase 2 must
+provision a profile per business, persist the id (additive nullable column), and thread it through
+`getConnectUrl` + `listAccounts`.
+
+### Scale caveats
+
+- **Rate limits are per BILLING TEAM, not per tenant.** 60 req/min (0–2 accounts) → 600 (3–2,000) →
+  1,200 (2,001+), sliding window; analytics endpoints are per-SECOND (6/10/20 req/s). At thousands
+  of tenants that ceiling is **shared**, so simultaneous bursts contend. Reinforces bulk
+  `/analytics` paging over per-post polling.
+- **Billing is per connected account, not per profile** — profiles appear free. Graduated: 2 free,
+  then $6 (3–10) / $3 (11–100) / $1 (101+), with no cap on the $1 tail.
+
 ## Still UNCONFIRMED — do not trust the code's guesses
 
 - `uploadMedia` — adapter guesses `POST /media` → `{id,url}`. Flagged in code, unobserved.

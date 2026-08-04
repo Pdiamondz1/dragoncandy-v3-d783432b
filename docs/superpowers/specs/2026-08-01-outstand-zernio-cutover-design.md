@@ -155,6 +155,17 @@ live integration.
 > > Social."* at users who **do** have an active account. Phase 3 must filter to the active,
 > Zernio-provider row rather than reproducing this.
 
+- **Provision a Zernio Profile per business — the multi-tenant unit.** Verified 2026-08-04:
+  profiles are the documented tenant boundary ("one profile per customer, their connected accounts
+  inside it, and your database holding the mapping"), `?profileId=` genuinely isolates
+  `GET /accounts`, and the connect flow carries the profileId through OAuth `state`. Our contract
+  has **no** `profileId` — `TenantCtx` is `{userId, businessId, orgUnitId, provider}` and
+  `business_outstand_accounts` has no profile column, because Outstand's model was flat.
+  Without this, every customer's accounts land in the single `Default` profile: workable at 2
+  founder accounts, but it forfeits Zernio-side isolation and is painful to retrofit at thousands
+  of tenants. Add an **additive nullable** `zernio_profile_id` column, create the profile lazily on
+  first connect, and thread it through `getConnectUrl` and `listAccounts`. Scoping stays enforced
+  server-side in `social-proxy` regardless — the profile is defence in depth, not the only gate.
 - **`Provider.tsx` changes additively.** Keep `DragonCandyOutstandProvider`, `useOutstandConfig` and
   `OUTSTAND_PROXY_BASE_URL` mounted — ~8 Tier-3 consumers plus `useSponsorshipAmplification` resolve
   through that SDK context and do not move until Phase 3. **Add** the `social-proxy` connect path
