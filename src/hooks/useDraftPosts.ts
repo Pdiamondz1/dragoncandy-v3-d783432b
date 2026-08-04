@@ -79,19 +79,33 @@ export function useDraftPosts() {
 
       const scheduleTime = scheduledAt || draft.scheduled_at;
 
-      // Validate Outstand account is connected for this platform
-      const { data: outstandAccount } = await supabase
+      // Validate a connected account exists for this platform.
+      //
+      // This previously used .maybeSingle() on (user_id, platform) with NO
+      // status filter. Users accumulate rows per platform over time — a revoked
+      // one plus a live one, say — so the query matched >1 row, .maybeSingle()
+      // errored, the discarded error left `data` null, and the code told people
+      // who DID have a working account to "Connect your account in Settings >
+      // Social." Both founders were hitting this in production.
+      //
+      // Fix: filter to active rows and take the most recent, so extra history
+      // rows are irrelevant rather than fatal.
+      const { data: accountRows, error: accountErr } = await supabase
         .from('business_outstand_accounts')
-        .select('id, status')
+        .select('id, status, provider, connected_at')
         .eq('user_id', user.id)
         .eq('platform', draft.platform)
-        .maybeSingle();
+        .eq('status', 'active')
+        .order('connected_at', { ascending: false })
+        .limit(1);
 
-      if (!outstandAccount) {
-        throw new Error(`No active Outstand account for ${draft.platform}. Connect your account in Settings > Social.`);
+      if (accountErr) {
+        throw new Error(`Could not check your ${draft.platform} connection: ${accountErr.message}`);
       }
-      if (outstandAccount.status !== 'active') {
-        throw new Error(`Your Outstand ${draft.platform} account is disconnected or expired. Reconnect in Settings > Social.`);
+      if (!accountRows || accountRows.length === 0) {
+        throw new Error(
+          `No active ${draft.platform} account. Connect your account in Settings > Social.`,
+        );
       }
 
       let outstandScheduled = false;

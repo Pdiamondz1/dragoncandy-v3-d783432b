@@ -10,6 +10,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { resolveProviderFromRows, resolveProviderId } from '../_shared/social-provider.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -97,10 +98,10 @@ serve(async (req: Request) => {
     // Look up the campaign owner's user_id from the drafts
     const draftOwnerId = (drafts[0] as DraftPost).user_id;
 
-    // Fetch connected Outstand accounts for the campaign owner
+    // Fetch the campaign owner's connected social accounts.
     const { data: accounts, error: accountsError } = await admin
       .from('business_outstand_accounts')
-      .select('outstand_social_account_id, platform')
+      .select('outstand_social_account_id, platform, provider, status')
       .eq('user_id', draftOwnerId)
       .neq('status', 'revoked');
 
@@ -108,8 +109,28 @@ serve(async (req: Request) => {
       console.error('[confirm-posting-schedule] Failed to fetch accounts:', accountsError);
     }
 
+    // Account ids are only opaque WITHIN a provider, so a mixed row set must be
+    // narrowed to ONE provider before mapping platform -> account. This builder
+    // previously took the last row per platform with no provider filter, which
+    // during a cutover window silently picked whichever row the DB happened to
+    // return last — and handed one provider's id to the other's API.
+    //
+    // Uses the SAME resolveProviderFromRows rule as the social-proxy gateway
+    // (now in _shared/, so the two cannot drift into disagreeing about which
+    // provider a user is on) and prefers an active row over an errored one.
+    const rows = (accounts ?? []) as Array<{
+      outstand_social_account_id: string;
+      platform: string;
+      provider: string | null;
+      status: string;
+    }>;
+    const activeProvider = resolveProviderFromRows(rows);
+
     const platformAccountMap: Record<string, string> = {};
-    for (const acct of (accounts ?? [])) {
+    for (const acct of rows) {
+      if (resolveProviderId(acct.provider) !== activeProvider) continue;
+      const incumbent = platformAccountMap[acct.platform];
+      if (incumbent && acct.status !== 'active') continue;
       platformAccountMap[acct.platform] = acct.outstand_social_account_id;
     }
 
