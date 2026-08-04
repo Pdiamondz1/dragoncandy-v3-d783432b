@@ -9,6 +9,7 @@
 // guess. They are reconciled once we have a live Zernio key (Phase 2/3).
 
 import { verifyOutstandSignature } from '../../_shared/outstand-webhook-lib.ts';
+import { normalizeZernioWebhook } from '../../_shared/zernio-webhook-lib.ts';
 import type {
   AccountAnalytics,
   Comment,
@@ -31,27 +32,38 @@ import {
   fromZernioPost,
   fromZernioPostAnalytics,
   fromZernioPostResult,
-  normalizeZernioWebhook,
   toZernioCreatePost,
 } from './zernio-map.ts';
 
 export interface ZernioAdapterDeps {
   apiKey: string;
   baseUrl: string; // e.g. Deno.env ZERNIO_BASE_URL ?? 'https://api.zernio.com/v1'
+  // The OAuth connect flow does NOT live on api.zernio.com — it is served from
+  // zernio.com/api/v1 (verified live 2026-08-04; the docs' multi-tenant guide
+  // uses the same host). Kept as its own dep so the two can drift independently.
+  connectBaseUrl?: string;
   accountPlatforms: Record<string, Platform>; // accountId → platform, supplied by the gateway
   webhookSecret?: string;
   fetchImpl?: typeof fetch; // injectable for tests; default globalThis.fetch
 }
 
+export const ZERNIO_CONNECT_BASE_URL = 'https://zernio.com/api/v1';
+
 export function createZernioAdapter(deps: ZernioAdapterDeps): SocialProvider {
   const fetchImpl = deps.fetchImpl ?? globalThis.fetch;
   const base = deps.baseUrl.replace(/\/$/, '');
+  const connectBase = (deps.connectBaseUrl ?? ZERNIO_CONNECT_BASE_URL).replace(/\/$/, '');
 
   /** Build URL + fetch with bearer; throw on non-2xx; return parsed JSON. */
-  async function request(method: string, path: string, body?: unknown): Promise<unknown> {
+  async function request(
+    method: string,
+    path: string,
+    body?: unknown,
+    origin: string = base,
+  ): Promise<unknown> {
     const headers: Record<string, string> = { Authorization: `Bearer ${deps.apiKey}` };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
-    const res = await fetchImpl(`${base}${path}`, {
+    const res = await fetchImpl(`${origin}${path}`, {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -68,25 +80,105 @@ export function createZernioAdapter(deps: ZernioAdapterDeps): SocialProvider {
   }
 
   return {
-    async getConnectUrl(platform: Platform, redirectUri: string, _ctx: TenantCtx) {
-      // FLAG: connect path + response field unconfirmed. Best guess:
-      //   GET /connect/{zernioPlatform}?redirectUri=... → { url | connectUrl | authUrl }.
+    async ensureTenantProfile(name: string, _ctx: TenantCtx): Promise<string | null> {
+      // Idempotent by NAME, so the gateway re-derives the same profile on both
+      // legs of the OAuth round-trip without persisting anything between them
+      // (there is no account row yet at getConnectUrl time) and without trusting
+      // a client-supplied id.
+      //
+      // `?name=` is an EXACT-MATCH server-side filter (Zernio OpenAPI, verified
+      // 2026-08-04) — documented as the way to recover an id after an ambiguous
+      // create. Filtering server-side matters: an unfiltered GET /profiles
+      // returns every profile in one unbounded array with no pagination cursor,
+      // which at thousands of tenants is a payload we must never request.
+      const raw = await request('GET', `/profiles?name=${encodeURIComponent(name)}`);
+      const list = Array.isArray(raw)
+        ? raw
+        : Array.isArray((raw as Record<string, unknown>)?.profiles)
+        ? ((raw as Record<string, unknown>).profiles as unknown[])
+        : [];
+      // Re-assert the match locally rather than trusting the filter blindly.
+      const found = (list as Array<Record<string, unknown>>).find((p) => p?.name === name);
+      if (found) return String(found._id ?? found.id ?? '') || null;
+
+      // Create. Names are unique per workspace, so a concurrent first-connect
+      // loses with 409 + `details.existingProfileId` — which is the winner's id,
+      // so both callers still converge on one profile. Idempotency-Key makes a
+      // retried create replay the original 201 rather than conflict.
+      const res = await fetchImpl(`${base}/profiles`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${deps.apiKey}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': `profile:${name}`,
+        },
+        body: JSON.stringify({ name, description: 'DragonCandy tenant' }),
+      });
+      const parsed = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+      if (res.status === 409) {
+        const details = (parsed?.details ?? {}) as Record<string, unknown>;
+        const existing = String(details.existingProfileId ?? '');
+        if (existing) return existing;
+        throw new Error(`Zernio profile name conflict with no existingProfileId: ${name}`);
+      }
+      if (!res.ok) {
+        throw new Error(`Zernio POST /profiles failed: ${res.status}`);
+      }
+      const profile = ((parsed?.profile ?? parsed) ?? {}) as Record<string, unknown>;
+      return String(profile._id ?? profile.id ?? '') || null;
+    },
+
+    async getConnectUrl(platform: Platform, redirectUri: string, ctx: TenantCtx) {
+      // VERIFIED 2026-08-04 (live round-trip + docs /guides/multi-tenant):
+      //   GET https://zernio.com/api/v1/connect/{platform}?profileId=…&redirect_url=…
+      //   → { authUrl, state }
+      // Two things the previous guess got wrong: the param is `redirect_url`
+      // (snake_case), NOT `redirectUri` — an ignored param would have silently
+      // returned the DASHBOARD's own return URL, stranding the user on Zernio
+      // instead of our callback — and the connect flow is served from
+      // zernio.com/api/v1, not the api.zernio.com host used everywhere else.
       const zPlatform = PLATFORM_TO_ZERNIO[platform];
-      const q = `?redirectUri=${encodeURIComponent(redirectUri)}`;
-      const raw = (await request('GET', `/connect/${zPlatform}${q}`)) as Record<string, unknown>;
-      const url = (raw?.url ?? raw?.connectUrl ?? raw?.authUrl) as string | undefined;
+      const params = new URLSearchParams({ redirect_url: redirectUri });
+      if (ctx.providerProfileId) params.set('profileId', ctx.providerProfileId);
+      const raw = (await request(
+        'GET',
+        `/connect/${zPlatform}?${params.toString()}`,
+        undefined,
+        connectBase,
+      )) as Record<string, unknown>;
+      const url = (raw?.authUrl ?? raw?.url ?? raw?.connectUrl) as string | undefined;
       return { url: url ?? '' };
     },
 
     finalizeConnection(_params: unknown, _ctx: TenantCtx): Promise<SocialAccount[]> {
-      // FLAG: Zernio OAuth finalize shape unconfirmed; Phase 2 wires the real
-      // callback. For now the connect flow returns accounts via listAccounts.
+      // Intentionally inert for Zernio, and expected to stay that way. The
+      // gateway's `syncConnections` op finalizes a connect by listing the
+      // tenant's own profile instead — which needs no `params` off the redirect,
+      // the least documented part of any OAuth round-trip. Kept only because the
+      // contract requires it and Outstand still implements it meaningfully.
       return Promise.resolve([]);
     },
 
-    async listAccounts(_ctx: TenantCtx): Promise<SocialAccount[]> {
-      const raw = (await request('GET', '/accounts')) as unknown[];
-      return (Array.isArray(raw) ? raw : []).map((a) => fromZernioAccount(a as never));
+    async listAccounts(ctx: TenantCtx): Promise<SocialAccount[]> {
+      // VERIFIED 2026-08-04: the body is an OBJECT — {"accounts":[...],
+      // "hasAnalyticsAccess":true} — not a bare array. The previous
+      // `Array.isArray(raw) ? raw : []` therefore returned [] unconditionally,
+      // which would have surfaced as "no accounts connected" rather than as a
+      // parse bug. Tolerate a bare array too in case the shape ever changes.
+      //
+      // `?profileId=` IS honored here (unlike `?accountId=` on /analytics, which
+      // is silently ignored) — verified by an isolation probe. The gateway still
+      // re-filters against our own DB, so this is defence in depth, not the gate.
+      const q = ctx.providerProfileId
+        ? `?profileId=${encodeURIComponent(ctx.providerProfileId)}`
+        : '';
+      const raw = await request('GET', `/accounts${q}`);
+      const list = Array.isArray(raw)
+        ? raw
+        : Array.isArray((raw as Record<string, unknown>)?.accounts)
+        ? ((raw as Record<string, unknown>).accounts as unknown[])
+        : [];
+      return list.map((a) => fromZernioAccount(a as never));
     },
 
     async disconnect(accountId: string, _ctx: TenantCtx): Promise<void> {
@@ -118,10 +210,14 @@ export function createZernioAdapter(deps: ZernioAdapterDeps): SocialProvider {
     },
 
     async getAccountAnalytics(accountId: string, _ctx: TenantCtx): Promise<AccountAnalytics> {
-      // FLAG: followers source (accountStats) lives on this aggregate shape but
-      // is not yet observed live — fromZernioAccountAnalytics defaults it to 0.
-      const raw = await request('GET', `/analytics?accountId=${encodeURIComponent(accountId)}`);
-      return fromZernioAccountAnalytics(raw);
+      // VERIFIED 2026-08-04: `?accountId=` is IGNORED by Zernio — the filtered
+      // and unfiltered bodies are byte-identical. The account slice must be
+      // selected client-side, which is why accountId is passed to the mapper.
+      // (`?postId=` IS honored and returns a different, post-scoped shape.)
+      // There is no `accountStats` key and no account-level reach/engagement
+      // rollup; the mapper aggregates posts[].platforms[] by accountId.
+      const raw = await request('GET', '/analytics');
+      return fromZernioAccountAnalytics(raw, accountId);
     },
 
     async listComments(providerPostId: string, _ctx: TenantCtx): Promise<Comment[]> {
@@ -147,9 +243,13 @@ export function createZernioAdapter(deps: ZernioAdapterDeps): SocialProvider {
     async verifyWebhook(req: Request): Promise<NormalizedEvent | null> {
       if (!deps.webhookSecret) return null;
       const rawBody = await req.text();
-      // FLAG: Zernio signature header name unconfirmed; mirrors Outstand's
-      // `x-...-signature: sha256=<hex>` HMAC-SHA256 scheme.
-      const sig = req.headers.get('x-zernio-signature');
+      // VERIFIED 2026-08-04 (Zernio docs "Signature verification"): header
+      // `X-Zernio-Signature`, value = lowercase hex HMAC-SHA256 over the RAW
+      // request body, no timestamp and no `sha256=` prefix. That is a subset of
+      // the shared Outstand verifier, whose prefix strip is a no-op on bare hex
+      // — hence the reuse rather than a near-duplicate implementation.
+      // `x-late-signature` is Zernio's own legacy alias (it was formerly Late).
+      const sig = req.headers.get('x-zernio-signature') ?? req.headers.get('x-late-signature');
       const ok = await verifyOutstandSignature(rawBody, sig, deps.webhookSecret);
       if (!ok) return null;
       let parsed: unknown;

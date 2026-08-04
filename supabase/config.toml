@@ -143,6 +143,11 @@ verify_jwt = false
 [functions.outstand-webhook]
 verify_jwt = false
 
+# Same posture as outstand-webhook: called by Zernio with no Supabase JWT, and
+# self-gates on an HMAC-SHA256 signature over the raw body (X-Zernio-Signature).
+[functions.zernio-webhook]
+verify_jwt = false
+
 [functions.content-performance-capture]
 verify_jwt = false
 
@@ -168,3 +173,12 @@ verify_jwt = false
 # inserts with the service-role key (private leads table), and notifies via Resend.
 [functions.capture-lead]
 verify_jwt = false
+
+# Provider-agnostic social gateway (Outstand + Zernio adapters). verify_jwt stays
+# TRUE — unlike the bespoke-auth functions above, the platform's standard Supabase
+# JWT check is exactly what's wanted here, layered UNDER the function's own tenant
+# scoping (resolveTenant -> auth.getUser() -> loadOwnedAccounts WHERE user_id).
+# Stated explicitly rather than relying on the platform default, so this reads as a
+# decision rather than an oversight. Mirrors live outstand-proxy (also verify_jwt=true).
+[functions.social-proxy]
+verify_jwt = true

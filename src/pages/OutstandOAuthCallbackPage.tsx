@@ -10,6 +10,7 @@ import {
   OUTSTAND_PROXY_BASE_URL,
 } from '@/integrations/outstand/Provider';
 import { useOutstandPaths } from '@/hooks/outstand/useOutstandPaths';
+import { useSocialConnect } from '@/integrations/social/hooks/useSocialConnect';
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRole } from '@/types/user';
 import { toast } from 'sonner';
@@ -95,6 +96,69 @@ const OneStepCallback: React.FC<{ accountId: string; username: string | null; ba
   return <p className="text-sm text-gray-600">Recording your connection…</p>;
 };
 
+/**
+ * Zernio's post-OAuth landing. Unlike the Outstand paths above it reads NO query
+ * params: the gateway derives this tenant's Zernio profile from the session and
+ * records whatever accounts are inside it. That keeps the page working whatever
+ * Zernio decides to append to its redirect.
+ */
+const ZernioCallback: React.FC<{ backPath: string }> = ({ backPath }) => {
+  const navigate = useNavigate();
+  const { session, loading } = useAuth();
+  const { syncConnections } = useSocialConnect();
+  const [error, setError] = useState<string | null>(null);
+  const ranOnce = useRef(false);
+
+  useEffect(() => {
+    // WAIT for auth to hydrate. This page is reached by a full-page redirect
+    // back from the provider, so on first render the session is often still
+    // loading and the access token is ''. Firing then would send
+    // `Authorization: Bearer `, get a 401, and — because ranOnce is already
+    // set — never retry, silently losing a connection the user did complete.
+    if (loading) return;
+    if (!session?.access_token) {
+      setError('Your session expired during the connection. Please sign in and try again.');
+      return;
+    }
+    if (ranOnce.current) return;
+    ranOnce.current = true;
+
+    syncConnections('zernio')
+      .then(({ recorded, skipped }) => {
+        if (skipped?.length) {
+          toast.warning(
+            `Not supported yet: ${[...new Set(skipped)].join(', ')}. Those accounts were skipped.`,
+          );
+        }
+        if (recorded.length === 0) {
+          // Not an error: a re-visited callback, or an account another tenant
+          // already holds. Say so plainly instead of claiming success.
+          toast.info('No new accounts to connect.');
+        } else {
+          toast.success(
+            recorded.length === 1 ? 'Account connected.' : `${recorded.length} accounts connected.`,
+          );
+        }
+        navigate(backPath, { replace: true });
+      })
+      .catch((e) => {
+        const message = e instanceof Error ? e.message : 'Connection failed';
+        setError(message);
+        toast.error(`Connection failed: ${message}`);
+      });
+  }, [loading, session, syncConnections, navigate, backPath]);
+
+  if (error) {
+    return (
+      <>
+        <p className="text-sm text-red-600">Could not record connection: {error}</p>
+        <BackToSettings to={backPath} />
+      </>
+    );
+  }
+  return <p className="text-sm text-gray-600">Recording your connection…</p>;
+};
+
 const Inner: React.FC = () => {
   const navigate = useNavigate();
   const { apiKey, baseUrl } = useOutstandConfig();
@@ -139,14 +203,10 @@ const Inner: React.FC = () => {
     return <OneStepCallback accountId={accountId} username={username} backPath={accountsTab} />;
   }
 
-  return (
-    <>
-      <p className="text-sm text-red-600">
-        Unexpected callback parameters. Please retry from the Accounts tab.
-      </p>
-      <BackToSettings to={accountsTab} />
-    </>
-  );
+  // Neither Outstand shape matched. Rather than the old dead-end error, treat
+  // this as the Zernio return leg — it is param-free by design, so "no
+  // recognized params" is exactly what a successful Zernio redirect looks like.
+  return <ZernioCallback backPath={accountsTab} />;
 };
 
 const OutstandOAuthCallbackPage: React.FC = () => {

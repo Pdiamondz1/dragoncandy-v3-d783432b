@@ -52,6 +52,14 @@ const ALLOWED_PLATFORMS: ReadonlySet<string> = new Set([
   "youtube",
 ]);
 
+// Ops that legitimately name a provider in their args — the connect flow, where
+// a caller with no rows yet has to be able to choose one.
+const CONNECT_FLOW_OPS: ReadonlySet<string> = new Set([
+  "getConnectUrl",
+  "recordConnection",
+  "syncConnections",
+]);
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function toUuidOrNull(val: string | null | undefined): string | null {
   return val && UUID_RE.test(val) ? val : null;
@@ -67,6 +75,21 @@ interface OwnedAccountRow {
   outstand_social_account_id: string;
   platform: string;
   provider: string | null;
+  zernio_profile_id: string | null;
+}
+
+// Zernio Profiles are keyed by NAME so the gateway can re-derive the same
+// profile on both legs of the OAuth round-trip without persisting anything
+// in between (there is no account row yet when getConnectUrl runs) and without
+// trusting a client-supplied id.
+//
+// Scoped to userId — NOT businessId — because userId is exactly the boundary
+// loadOwnedAccounts already enforces, and creators connecting their own
+// accounts have no business_profiles row at all. A per-org_unit profile split
+// is deliberately deferred: org units share a user, so they would need their
+// own name segment and a matching read path.
+function zernioProfileName(userId: string): string {
+  return `dc-${userId}`;
 }
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -88,11 +111,16 @@ async function resolveTenant(
   if (userErr || !userData.user) {
     return { error: 401, message: "unauthorized" };
   }
-  const { data: biz } = await admin
+  const { data: biz, error: bizErr } = await admin
     .from("business_profiles")
     .select("id")
     .eq("user_id", userData.user.id)
     .maybeSingle();
+  // Non-fatal (businessId is nullable by design), but a silent null here looks
+  // identical to "user has no business profile" when debugging.
+  if (bizErr) {
+    console.error("social-proxy: business_profiles lookup failed", bizErr);
+  }
   return {
     userId: userData.user.id,
     businessId: (biz?.id as string | undefined) ?? null,
@@ -107,13 +135,19 @@ async function loadOwnedAccounts(
 ): Promise<OwnedAccountRow[]> {
   let query = admin
     .from("business_outstand_accounts")
-    .select("outstand_social_account_id, platform, provider")
+    .select("outstand_social_account_id, platform, provider, zernio_profile_id")
     .eq("user_id", userId)
     .neq("status", "revoked");
   if (orgUnitId) {
     query = query.eq("org_unit_id", orgUnitId);
   }
-  const { data } = await query;
+  const { data, error } = await query;
+  // Fails CLOSED (empty ownedIds ⇒ every ownership-gated op 403s), which is the
+  // safe direction — but log it, because a 403 storm caused by a DB blip is
+  // otherwise indistinguishable from a genuine authorization denial.
+  if (error) {
+    console.error("social-proxy: loadOwnedAccounts failed", error);
+  }
   return (data ?? []) as OwnedAccountRow[];
 }
 
@@ -123,6 +157,7 @@ async function handleRecordConnection(
   admin: SupabaseClient,
   ctx: TenantContext,
   provider: ProviderId,
+  profileId: string | null,
   args: Record<string, unknown>,
 ): Promise<Response> {
   const accountId = args?.accountId ? String(args.accountId) : "";
@@ -145,13 +180,22 @@ async function handleRecordConnection(
   // that function. Cross-provider id collision cannot occur until users hold
   // both providers (Phase 5 cutover), where the constraint transition is done
   // alongside retiring/updating outstand-proxy. See the migration + plan.
-  const { data: existing } = await admin
+  // Surface the error rather than discarding it: this check fails OPEN — a
+  // transient Postgrest failure is indistinguishable from "no conflict", so the
+  // 409 guard would be silently skipped. (Not a cross-tenant leak, since the
+  // upsert's conflict target is still the caller's own row, but a real
+  // data-integrity gap.)
+  const { data: existing, error: existingError } = await admin
     .from("business_outstand_accounts")
     .select("user_id")
     .eq("outstand_social_account_id", accountId)
     .neq("user_id", ctx.userId)
     .neq("status", "revoked")
     .maybeSingle();
+  if (existingError) {
+    console.error("social-proxy: claim check failed", existingError);
+    return jsonResponse(500, { error: "db_error" });
+  }
   if (existing) {
     return jsonResponse(409, { error: "account_already_claimed" });
   }
@@ -165,6 +209,9 @@ async function handleRecordConnection(
       platform: network as Platform,
       platform_handle: username,
       provider,
+      // Server-derived (see resolveProviderProfileId) — never read off `args`,
+      // so a caller cannot file their connection under another tenant's profile.
+      zernio_profile_id: profileId,
       status: "active",
       connected_at: new Date().toISOString(),
       last_seen_at: new Date().toISOString(),
@@ -215,6 +262,37 @@ function buildAdapter(
     baseUrl: Deno.env.get("OUTSTAND_BASE_URL") ?? "https://api.outstand.so/v1",
     webhookSecret: Deno.env.get("OUTSTAND_WEBHOOK_SECRET"),
   });
+}
+
+// Resolve the provider-side tenant container for a connect/record operation.
+// Zernio-only — every other provider is flat and gets null.
+//
+// ALWAYS re-derived from the provider by name; the persisted
+// `zernio_profile_id` is deliberately NOT trusted here. That column is
+// client-writable: `business_outstand_accounts`'s UPDATE policy is
+// `USING (user_id = auth.uid())` with no column restriction, so a user can set
+// their own row's profile id (and provider) straight from the browser. Reading
+// it back as the tenant container would have let them point this gateway at
+// ANOTHER tenant's Zernio profile and then claim its accounts via
+// syncConnections. The column is now audit/debug data only, and the accompanying
+// migration additionally revokes column UPDATE — belt as well as braces.
+//
+// The name lookup is idempotent, so both legs of the OAuth round-trip
+// (getConnectUrl, then syncConnections minutes later) converge on one id with no
+// state carried between them. Concurrent first-connects are safe too: profile
+// names are unique per workspace, so the loser gets a 409 carrying the winner's
+// id (see the adapter's ensureTenantProfile).
+//
+// Cost is one extra provider call, paid only on the three connect-flow ops —
+// never on the hot read paths.
+async function resolveProviderProfileId(
+  providerId: ProviderId,
+  adapter: SocialProvider,
+  ctx: TenantCtx,
+): Promise<string | null> {
+  if (providerId !== "zernio") return null;
+  if (!adapter.ensureTenantProfile) return null;
+  return await adapter.ensureTenantProfile(zernioProfileName(ctx.userId), ctx);
 }
 
 interface OpDeps {
@@ -274,24 +352,107 @@ async function handleOp(
         return jsonResponse(400, { error: "unsupported_platform", platform });
       }
       if (!redirectUri) return jsonResponse(400, { error: "missing_redirect_uri" });
-      const connectProvider = args?.provider
-        ? resolveProviderId(String(args.provider))
-        : ctx.provider;
-      const connectAdapter = connectProvider === ctx.provider
-        ? adapter
-        : buildAdapter(connectProvider, accountPlatforms);
-      if (connectAdapter instanceof Response) return connectAdapter;
-      const out = await connectAdapter.getConnectUrl(platform, redirectUri, ctx);
+      // ctx.provider IS the requested provider for connect-flow ops (resolved at
+      // the top level, so the right adapter was built), hence no re-branching.
+      // Scope the OAuth handoff to this tenant's own provider profile, so the
+      // account lands in their container rather than the shared Default one.
+      const profileId = await resolveProviderProfileId(ctx.provider, adapter, ctx);
+      const connectCtx: TenantCtx = { ...ctx, providerProfileId: profileId };
+      const out = await adapter.getConnectUrl(platform, redirectUri, connectCtx);
       return jsonResponse(200, { data: out });
     }
 
     case "recordConnection": {
-      // Stamp the row with the explicitly chosen provider (the account was
-      // connected THROUGH it), falling back to the row-resolved default.
-      const stampProvider = args?.provider
-        ? resolveProviderId(String(args.provider))
-        : ctx.provider;
-      return await handleRecordConnection(admin, ctx, stampProvider, args);
+      // Re-derived here rather than round-tripped through the browser: the
+      // name-keyed lookup returns the same profile getConnectUrl used.
+      const stampProfileId = await resolveProviderProfileId(ctx.provider, adapter, ctx);
+
+      // `accountId` arrives in the request body, and the claim check alone only
+      // proves nobody ELSE holds it — so any unrecorded or previously-revoked
+      // provider account id would otherwise be claimable by any authenticated
+      // caller. Outstand's flat tenancy made verification impossible; Zernio's
+      // profiles make it cheap, so do it.
+      if (stampProfileId) {
+        const wanted = String(args?.accountId ?? "");
+        const inProfile = await adapter.listAccounts({
+          ...ctx,
+          providerProfileId: stampProfileId,
+        });
+        const isMember = inProfile.some(
+          (a) => a.id === wanted && a.providerProfileId === stampProfileId,
+        );
+        if (!isMember) {
+          return jsonResponse(403, { error: "account_not_in_tenant_profile" });
+        }
+      }
+      return await handleRecordConnection(admin, ctx, ctx.provider, stampProfileId, args);
+    }
+
+    case "syncConnections": {
+      // Post-OAuth claim: record every account sitting in THIS tenant's provider
+      // profile. Membership in a server-derived profile IS the ownership proof,
+      // so nothing is trusted from the client and — critically — the callback
+      // page needs no provider-specific redirect query params to work.
+      //
+      // HARD SAFETY GATE: this is only sound for providers with a real per-tenant
+      // container. Outstand's tenancy is FLAT — its listAccounts returns every
+      // account in the whole org — so running this against it would hand one
+      // user every other user's connections. resolveProviderProfileId returns
+      // null for every non-Zernio provider, and the null check below is what
+      // makes that structural rather than a matter of remembering.
+      const syncProfileId = await resolveProviderProfileId(ctx.provider, adapter, ctx);
+      if (!syncProfileId) {
+        return jsonResponse(400, {
+          error: "sync_unsupported_for_provider",
+          provider: ctx.provider,
+        });
+      }
+
+      const syncCtx: TenantCtx = { ...ctx, providerProfileId: syncProfileId };
+      // RE-ASSERT the tenant scoping locally. The `?profileId=` filter is the
+      // only cross-tenant gate on this path, and an unhonoured provider filter
+      // degrades to "returns everything" rather than erroring — Zernio already
+      // silently ignores `?accountId=` on /analytics, so that is a demonstrated
+      // failure mode, not a hypothetical one.
+      const returned = await adapter.listAccounts(syncCtx);
+      const found = returned.filter((a) => a.providerProfileId === syncProfileId);
+      if (found.length !== returned.length) {
+        console.error("social-proxy: syncConnections dropped accounts outside the tenant profile", {
+          expected: syncProfileId,
+          returned: returned.length,
+          kept: found.length,
+        });
+      }
+
+      const recorded: string[] = [];
+      const skipped: string[] = [];
+      for (const account of found) {
+        // Zernio supports ~15 platforms; the contract models 5, and
+        // toContractPlatform passes an unknown one through as a bare string. Skip
+        // rather than record it under a wrong platform — but say so, or a user
+        // who connected LinkedIn just sees nothing appear and no explanation.
+        if (!ALLOWED_PLATFORMS.has(account.platform)) {
+          console.warn("social-proxy: syncConnections skipping unsupported platform", account.platform);
+          skipped.push(account.platform);
+          continue;
+        }
+        const res = await handleRecordConnection(admin, ctx, ctx.provider, syncProfileId, {
+          accountId: account.id,
+          network: account.platform,
+          username: account.handle ?? undefined,
+        });
+        // A 409 means another tenant already holds it — skip, don't abort the
+        // whole sync, and never surface the other tenant's existence.
+        if (res.status === 200) recorded.push(account.id);
+        else if (res.status !== 409) return res;
+      }
+      // Return ONLY what the caller actually owns. Echoing `found` would leak
+      // the id/handle/avatar of every account the 409 just refused — undoing the
+      // claim check it sits next to.
+      const claimed = new Set([...recorded, ...ownedIds]);
+      return jsonResponse(200, {
+        data: { recorded, skipped, accounts: found.filter((a) => claimed.has(a.id)) },
+      });
     }
 
     case "disconnect": {
@@ -458,7 +619,24 @@ serve(async (req: Request) => {
   for (const r of rows) {
     accountPlatforms[r.outstand_social_account_id] = r.platform as Platform;
   }
-  const provider = resolveProviderFromRows(rows);
+  // Connect-flow ops may name their target provider explicitly; every other op
+  // uses the provider implied by the caller's existing rows.
+  //
+  // This matters at the top level, not just inside the op: a user with no rows
+  // resolves to 'outstand', and buildAdapter 503s on a missing key BEFORE
+  // dispatch — so once OUTSTAND_API_KEY is removed in Phase 7, every first-time
+  // Zernio connect would fail with `outstand_not_configured`. Resolving the
+  // requested provider here builds the right adapter the first time.
+  //
+  // Restricted to the connect ops on purpose: letting any op override the
+  // provider would send one provider's account ids to another's API. Not a
+  // security hole (ownership is enforced from our own DB either way), just
+  // meaningless traffic and confusing failures.
+  const requestedProvider =
+    CONNECT_FLOW_OPS.has(op) && typeof args.provider === "string"
+      ? resolveProviderId(String(args.provider))
+      : null;
+  const provider = requestedProvider ?? resolveProviderFromRows(rows);
 
   // Build the active (row-resolved default) adapter via the factory, guarding
   // the chosen key. The connect-flow ops may build a different adapter for an
@@ -471,6 +649,10 @@ serve(async (req: Request) => {
     businessId: tenant.businessId,
     orgUnitId: tenant.orgUnitId,
     provider,
+    // First non-null wins. Rows for one user share a profile by construction
+    // (resolveProviderProfileId is name-keyed on userId); nulls are Outstand
+    // rows and Zernio rows predating the column.
+    providerProfileId: rows.find((r) => r.zernio_profile_id)?.zernio_profile_id ?? null,
   };
 
   try {

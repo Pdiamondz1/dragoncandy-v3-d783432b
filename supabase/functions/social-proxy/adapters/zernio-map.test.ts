@@ -8,8 +8,8 @@ import {
   fromZernioPostAnalytics,
   fromZernioAccountAnalytics,
   fromZernioComment,
-  normalizeZernioWebhook,
 } from './zernio-map';
+import { normalizeZernioWebhook } from '../../_shared/zernio-webhook-lib.ts';
 import type { PostInput, Platform } from '../../_shared/social-contract.ts';
 
 describe('toZernioCreatePost', () => {
@@ -85,7 +85,23 @@ describe('PLATFORM_ALIASES + fromZernioAccount', () => {
       handle: 'dragoncandy',
       profilePictureUrl: 'https://cdn/pfp.jpg',
       status: 'active',
+      providerProfileId: null,
     });
+  });
+
+  // The gateway re-asserts tenant scoping against this field, so it must survive
+  // BOTH shapes the API uses: an object on /accounts, a bare string on /analytics.
+  it('normalizes profileId from either the object or the string shape', () => {
+    expect(
+      fromZernioAccount({ _id: 'a1', platform: 'instagram', profileId: { _id: 'p1', name: 'dc-u1' } })
+        .providerProfileId,
+    ).toBe('p1');
+    expect(
+      fromZernioAccount({ _id: 'a2', platform: 'instagram', profileId: 'p2' }).providerProfileId,
+    ).toBe('p2');
+    expect(
+      fromZernioAccount({ _id: 'a3', platform: 'instagram' }).providerProfileId,
+    ).toBeNull();
   });
 
   it('passes through known platforms and defaults status to active', () => {
@@ -291,27 +307,12 @@ describe('fromZernioPostAnalytics', () => {
 });
 
 describe('fromZernioAccountAnalytics', () => {
-  it('maps engagementRate + reach and defaults followers/postsCount to 0 when absent', () => {
-    const raw = { analytics: { engagementRate: 0.05, reach: 1200 } };
-    expect(fromZernioAccountAnalytics(raw)).toEqual({
-      followers: 0,
-      engagementRate: 0.05,
-      reach: 1200,
-      postsCount: 0,
-    });
-  });
-
-  it('maps followers/postsCount from accountStats when present', () => {
-    const raw = {
-      accountStats: { followers: 5000, posts_count: 42 },
-      analytics: { engagementRate: 0.1, reach: 9000 },
-    };
-    const out = fromZernioAccountAnalytics(raw);
-    expect(out.followers).toBe(5000);
-    expect(out.postsCount).toBe(42);
-    expect(out.engagementRate).toBe(0.1);
-    expect(out.reach).toBe(9000);
-  });
+  // REMOVED 2026-08-04: two tests here asserted shapes that do not exist in the
+  // real API — a flat `{analytics:{engagementRate,reach}}` account rollup, and
+  // an `accountStats` key. Both were invented before anyone had called Zernio.
+  // They passed against a mapper written to the same fiction, which is exactly
+  // why they proved nothing. The real envelope (overview / accounts[] /
+  // posts[].platforms[]) is covered in 'live-capture regressions' below.
 
   it('defaults all to 0 on empty input', () => {
     expect(fromZernioAccountAnalytics({})).toEqual({
@@ -438,5 +439,207 @@ describe('normalizeZernioWebhook', () => {
     expect(normalizeZernioWebhook(null)).toBeNull();
     expect(normalizeZernioWebhook({})).toBeNull();
     expect(normalizeZernioWebhook({ event: 123 })).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Live-capture regression tests (2026-08-04)
+//
+// Fixtures below are trimmed from REAL responses against a live Zernio account
+// — see docs/superpowers/specs/2026-08-04-zernio-api-capture-notes.md. Every
+// assertion here failed against the pre-capture mappers, which were written
+// from reading docs.
+// ---------------------------------------------------------------------------
+describe('live-capture regressions', () => {
+  const liveAccount = {
+    _id: '6a7208a1eb10586dad0a13a1',
+    platform: 'instagram',
+    username: 'areyouaman',
+    displayName: 'Are You A Man?',
+    profilePicture: 'https://cdn.example/pic.jpg',
+    isActive: true,
+    enabled: true,
+    needsReconnection: false,
+    platformStatus: 'active',
+    intentionalDisconnectAt: null,
+    followersCount: 4,
+  };
+
+  it('maps a real connected account to active', () => {
+    const a = fromZernioAccount(liveAccount as never);
+    expect(a).toMatchObject({
+      id: '6a7208a1eb10586dad0a13a1',
+      provider: 'zernio',
+      platform: 'instagram',
+      handle: 'areyouaman',
+      status: 'active',
+    });
+  });
+
+  it('reports needsReconnection as error even while isActive stays true', () => {
+    // The real failure mode: Zernio leaves isActive true when a token dies, so
+    // keying only off isActive reported a dead account as healthy.
+    const dead = { ...liveAccount, needsReconnection: true };
+    expect(fromZernioAccount(dead as never).status).toBe('error');
+  });
+
+  it('reports a non-active platformStatus as error', () => {
+    const bad = { ...liveAccount, platformStatus: 'expired' };
+    expect(fromZernioAccount(bad as never).status).toBe('error');
+  });
+
+  it('reports an intentional disconnect as revoked, not error', () => {
+    const gone = { ...liveAccount, intentionalDisconnectAt: '2026-08-04T00:00:00Z' };
+    expect(fromZernioAccount(gone as never).status).toBe('revoked');
+  });
+
+  describe('fromZernioAccountAnalytics against the real /analytics envelope', () => {
+    // No accountStats key exists; followers come from accounts[], and
+    // reach/engagementRate must be aggregated from posts[].platforms[].
+    const envelope = {
+      overview: { totalPosts: 2, publishedPosts: 2 },
+      accounts: [
+        { _id: '6a7208a1eb10586dad0a13a1', followersCount: 4 },
+        { _id: 'other-account', followersCount: 999 },
+      ],
+      posts: [
+        {
+          _id: 'p1',
+          platforms: [
+            {
+              accountId: '6a7208a1eb10586dad0a13a1',
+              analytics: { reach: 10, engagementRate: 0.2 },
+            },
+          ],
+        },
+        {
+          _id: 'p2',
+          platforms: [
+            {
+              accountId: '6a7208a1eb10586dad0a13a1',
+              analytics: { reach: 5, engagementRate: 0.4 },
+            },
+          ],
+        },
+        {
+          _id: 'p3',
+          platforms: [{ accountId: 'other-account', analytics: { reach: 500, engagementRate: 9 } }],
+        },
+      ],
+    };
+
+    it('picks followers for the requested account only', () => {
+      expect(fromZernioAccountAnalytics(envelope, '6a7208a1eb10586dad0a13a1').followers).toBe(4);
+    });
+
+    it('sums reach and averages engagementRate across that account only', () => {
+      const r = fromZernioAccountAnalytics(envelope, '6a7208a1eb10586dad0a13a1');
+      expect(r.reach).toBe(15);
+      expect(r.engagementRate).toBeCloseTo(0.3);
+      expect(r.postsCount).toBe(2);
+    });
+
+    // `/analytics` silently ignores ?accountId=, so overview.publishedPosts is a
+    // WORKSPACE total. Falling back to it for a specific account would show one
+    // account another account's post count.
+    it('reports 0 posts for an account with no slices, never the workspace total', () => {
+      const r = fromZernioAccountAnalytics(envelope, 'account-with-no-posts');
+      expect(r.postsCount).toBe(0);
+      expect(r.reach).toBe(0);
+    });
+
+    it('still uses the envelope total when no account was asked about', () => {
+      expect(fromZernioAccountAnalytics({ overview: { publishedPosts: 7 } }).postsCount).toBe(7);
+    });
+
+    it('does not leak another account\'s numbers', () => {
+      const r = fromZernioAccountAnalytics(envelope, '6a7208a1eb10586dad0a13a1');
+      expect(r.reach).not.toBe(515);
+      expect(r.followers).not.toBe(999);
+    });
+
+    // This test previously asserted `.toBe(2)` — it ENCODED the bug rather than
+    // catching it, which is why the mapper shipped misattributing the workspace
+    // total to an individual account. An unknown account has no posts; saying so
+    // is the whole point of asking about one account.
+    it('does NOT fall back to the envelope total for an unknown account', () => {
+      expect(fromZernioAccountAnalytics(envelope, 'unknown-id').postsCount).toBe(0);
+    });
+  });
+
+  it('reads the real post-analytics envelope (analytics nested)', () => {
+    // Confirmed correct pre-capture: ?postId= returns a post-scoped object
+    // whose metrics live under `analytics`.
+    const real = {
+      postId: '6a7208a2eb10586dad0a13da',
+      analytics: {
+        impressions: 3, reach: 1, likes: 0, comments: 0,
+        shares: 0, saves: 0, clicks: 0, views: 3, engagementRate: 0,
+      },
+    };
+    expect(fromZernioPostAnalytics(real)).toEqual({
+      impressions: 3, likes: 0, comments: 0, shares: 0, clicks: 0,
+    });
+  });
+});
+
+describe('fromZernioPost against the real GET /posts/{id} response', () => {
+  // Trimmed from a real scheduled post created + read + deleted 2026-08-04.
+  const real = {
+    post: {
+      _id: '6a720ca14cb687d578835afa',
+      status: 'scheduled',
+      scheduledFor: '2027-01-01T12:00:00.000Z',
+      publishedAt: null,
+      createdAt: '2026-08-04T16:00:33.623Z',
+      content: 'DragonCandy integration test.',
+      mediaItems: [
+        {
+          type: 'image',
+          url: 'https://dragoncandy.io/icons/icon-512.png',
+          _id: '6a720ca14cb687d578835afb',
+        },
+      ],
+      platforms: [
+        {
+          platform: 'instagram',
+          // NOTE: accountId arrives POPULATED (an object), not a string.
+          accountId: { _id: '6a7208a1eb10586dad0a13a1', platform: 'instagram' },
+          status: 'scheduled',
+        },
+      ],
+    },
+  };
+
+  it('unwraps the {post:...} envelope and maps the scalars', () => {
+    const p = fromZernioPost(real as never);
+    expect(p.id).toBe('6a720ca14cb687d578835afa');
+    expect(p.scheduledAt).toBe('2027-01-01T12:00:00.000Z');
+    expect(p.publishedAt).toBeNull();
+    expect(p.createdAt).toBe('2026-08-04T16:00:33.623Z');
+  });
+
+  it('carries mediaItems into the container instead of dropping them', () => {
+    const p = fromZernioPost(real as never);
+    expect(p.containers[0].content).toBe('DragonCandy integration test.');
+    expect(p.containers[0].media).toEqual([
+      {
+        id: '6a720ca14cb687d578835afb',
+        url: 'https://dragoncandy.io/icons/icon-512.png',
+        filename: 'icon-512.png',
+      },
+    ]);
+  });
+
+  it('derives isDraft from status, since the API returns no isDraft field', () => {
+    // Reading post.isDraft off the response made this permanently false.
+    expect(fromZernioPost(real as never).isDraft).toBe(false);
+    const draft = { post: { ...real.post, status: 'draft' } };
+    expect(fromZernioPost(draft as never).isDraft).toBe(true);
+  });
+
+  it('resolves a populated accountId object to its id', () => {
+    const p = fromZernioPost(real as never);
+    expect(p.socialAccounts[0].accountId).toBe('6a7208a1eb10586dad0a13a1');
   });
 });
