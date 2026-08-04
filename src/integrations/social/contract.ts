@@ -71,7 +71,15 @@ export interface Comment {
   parentId?: string;
 }
 
-export type NormalizedEventType = 'post.published' | 'post.error' | 'account.token_expired';
+// `account.token_expired` means "the token died, prompt a reconnect";
+// `account.revoked` means "the user deliberately disconnected, drop the row".
+// Zernio distinguishes these via account.disconnected's `disconnectionType`
+// (unintentional vs intentional); Outstand only ever emits the former.
+export type NormalizedEventType =
+  | 'post.published'
+  | 'post.error'
+  | 'account.token_expired'
+  | 'account.revoked';
 export interface NormalizedEvent {
   type: NormalizedEventType;
   providerPostId: string | null;
@@ -85,6 +93,11 @@ export interface TenantCtx {
   businessId: string | null;
   orgUnitId: string | null;
   provider: ProviderId;
+  // The provider's own per-customer tenant container, when it has one. Zernio
+  // calls these "Profiles" and scopes both the connect flow and GET /accounts to
+  // them; Outstand is flat and leaves this null. Named `providerProfileId` (not
+  // `profileId`) because `profiles` already means something else in this app.
+  providerProfileId: string | null;
 }
 
 export interface MediaUploadInput {
@@ -95,6 +108,10 @@ export interface MediaUploadInput {
 
 export interface SocialProvider {
   // connect flow
+  // Idempotently resolve the provider-side tenant container for `name`,
+  // returning its id. OPTIONAL: providers with a flat tenancy model (Outstand)
+  // omit it entirely, and the gateway then leaves providerProfileId null.
+  ensureTenantProfile?(name: string, ctx: TenantCtx): Promise<string | null>;
   getConnectUrl(platform: Platform, redirectUri: string, ctx: TenantCtx): Promise<{ url: string }>;
   finalizeConnection(params: unknown, ctx: TenantCtx): Promise<SocialAccount[]>;
   listAccounts(ctx: TenantCtx): Promise<SocialAccount[]>;

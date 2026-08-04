@@ -10,7 +10,10 @@ const ctx: TenantCtx = {
   businessId: null,
   orgUnitId: null,
   provider: 'zernio',
+  providerProfileId: null,
 };
+
+const ctxWithProfile: TenantCtx = { ...ctx, providerProfileId: 'p1' };
 
 interface Call {
   url: string;
@@ -92,16 +95,91 @@ describe('createZernioAdapter wiring', () => {
     });
   });
 
-  it('getConnectUrl GETs /connect/{zernioPlatform} and extracts the url', async () => {
-    const { fetchImpl, calls } = mockFetch({ url: 'https://zernio/oauth?x=1' });
-    const adapter = createZernioAdapter(deps(fetchImpl));
+  // Regression for the two live-verified corrections (2026-08-04): the redirect
+  // param is `redirect_url`, not `redirectUri`, and connect is served from
+  // zernio.com/api/v1 rather than the api.zernio.com host. Both were silent —
+  // an ignored redirect param strands the user on Zernio's own dashboard.
+  it('getConnectUrl GETs the connect host with redirect_url and reads authUrl', async () => {
+    const { fetchImpl, calls } = mockFetch({ authUrl: 'https://zernio/oauth?x=1', state: 's' });
+    const adapter = createZernioAdapter({
+      ...deps(fetchImpl),
+      connectBaseUrl: 'https://zernio.test/api/v1',
+    });
 
     const out = await adapter.getConnectUrl('x', 'https://app/cb', ctx);
 
     // contract 'x' → zernio 'twitter'
     expect(calls[0].url).toBe(
-      'https://api.zernio.test/v1/connect/twitter?redirectUri=https%3A%2F%2Fapp%2Fcb',
+      'https://zernio.test/api/v1/connect/twitter?redirect_url=https%3A%2F%2Fapp%2Fcb',
     );
     expect(out).toEqual({ url: 'https://zernio/oauth?x=1' });
+  });
+
+  it('getConnectUrl scopes the handoff to the tenant profile when one is set', async () => {
+    const { fetchImpl, calls } = mockFetch({ authUrl: 'https://zernio/oauth' });
+    const adapter = createZernioAdapter({
+      ...deps(fetchImpl),
+      connectBaseUrl: 'https://zernio.test/api/v1',
+    });
+
+    await adapter.getConnectUrl('instagram', 'https://app/cb', ctxWithProfile);
+
+    expect(calls[0].url).toBe(
+      'https://zernio.test/api/v1/connect/instagram?redirect_url=https%3A%2F%2Fapp%2Fcb&profileId=p1',
+    );
+  });
+
+  it('listAccounts scopes to the tenant profile when one is set', async () => {
+    const { fetchImpl, calls } = mockFetch({ accounts: [] });
+    const adapter = createZernioAdapter(deps(fetchImpl));
+
+    await adapter.listAccounts(ctxWithProfile);
+
+    expect(calls[0].url).toBe('https://api.zernio.test/v1/accounts?profileId=p1');
+  });
+});
+
+describe('ensureTenantProfile', () => {
+  it('reuses an existing profile matched by name instead of creating a duplicate', async () => {
+    const { fetchImpl, calls } = mockFetch({
+      profiles: [
+        { _id: 'other', name: 'Default' },
+        { _id: 'mine', name: 'dc-u1' },
+      ],
+    });
+    const adapter = createZernioAdapter(deps(fetchImpl));
+
+    const id = await adapter.ensureTenantProfile!('dc-u1', ctx);
+
+    expect(id).toBe('mine');
+    // Idempotency is the whole point: no POST on the hit path, so the two legs
+    // of the OAuth round-trip converge on one profile.
+    expect(calls).toHaveLength(1);
+    // Filtered SERVER-side: an unfiltered GET /profiles returns every profile in
+    // one unbounded array with no cursor, which must never be requested once
+    // there are thousands of tenants.
+    expect(calls[0].url).toBe('https://api.zernio.test/v1/profiles?name=dc-u1');
+  });
+
+  it('creates the profile when no name matches', async () => {
+    const calls: Call[] = [];
+    const fetchImpl = (async (url: string | URL | Request, reqInit?: RequestInit) => {
+      calls.push({ url: String(url), init: reqInit });
+      const body = reqInit?.method === 'POST'
+        ? { _id: 'new1', name: 'dc-u1' }
+        : { profiles: [{ _id: 'other', name: 'Default' }] };
+      return new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }) as unknown as typeof fetch;
+    const adapter = createZernioAdapter(deps(fetchImpl));
+
+    const id = await adapter.ensureTenantProfile!('dc-u1', ctx);
+
+    expect(id).toBe('new1');
+    expect(calls).toHaveLength(2);
+    expect(calls[1].init?.method).toBe('POST');
+    expect(JSON.parse(String(calls[1].init?.body))).toMatchObject({ name: 'dc-u1' });
   });
 });

@@ -67,6 +67,21 @@ interface OwnedAccountRow {
   outstand_social_account_id: string;
   platform: string;
   provider: string | null;
+  zernio_profile_id: string | null;
+}
+
+// Zernio Profiles are keyed by NAME so the gateway can re-derive the same
+// profile on both legs of the OAuth round-trip without persisting anything
+// in between (there is no account row yet when getConnectUrl runs) and without
+// trusting a client-supplied id.
+//
+// Scoped to userId — NOT businessId — because userId is exactly the boundary
+// loadOwnedAccounts already enforces, and creators connecting their own
+// accounts have no business_profiles row at all. A per-org_unit profile split
+// is deliberately deferred: org units share a user, so they would need their
+// own name segment and a matching read path.
+function zernioProfileName(userId: string): string {
+  return `dc-${userId}`;
 }
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -112,7 +127,7 @@ async function loadOwnedAccounts(
 ): Promise<OwnedAccountRow[]> {
   let query = admin
     .from("business_outstand_accounts")
-    .select("outstand_social_account_id, platform, provider")
+    .select("outstand_social_account_id, platform, provider, zernio_profile_id")
     .eq("user_id", userId)
     .neq("status", "revoked");
   if (orgUnitId) {
@@ -134,6 +149,7 @@ async function handleRecordConnection(
   admin: SupabaseClient,
   ctx: TenantContext,
   provider: ProviderId,
+  profileId: string | null,
   args: Record<string, unknown>,
 ): Promise<Response> {
   const accountId = args?.accountId ? String(args.accountId) : "";
@@ -185,6 +201,9 @@ async function handleRecordConnection(
       platform: network as Platform,
       platform_handle: username,
       provider,
+      // Server-derived (see resolveProviderProfileId) — never read off `args`,
+      // so a caller cannot file their connection under another tenant's profile.
+      zernio_profile_id: profileId,
       status: "active",
       connected_at: new Date().toISOString(),
       last_seen_at: new Date().toISOString(),
@@ -235,6 +254,29 @@ function buildAdapter(
     baseUrl: Deno.env.get("OUTSTAND_BASE_URL") ?? "https://api.outstand.so/v1",
     webhookSecret: Deno.env.get("OUTSTAND_WEBHOOK_SECRET"),
   });
+}
+
+// Resolve the provider-side tenant container for a connect/record operation.
+// Zernio-only — every other provider is flat and gets null.
+//   1. Reuse the id already persisted on any of the caller's rows. This is the
+//      common path: one DB read, no provider call.
+//   2. Otherwise ask the provider to ensure a profile named dc-<userId>. That
+//      call is idempotent by name, so BOTH legs of the OAuth round-trip
+//      (getConnectUrl, then recordConnection minutes later) converge on the same
+//      id with no state carried between them and nothing trusted from the client.
+//
+// Concurrent first-connects are safe: profile names are unique per workspace, so
+// the loser gets a 409 carrying the winner's id and both converge (see the
+// adapter's ensureTenantProfile).
+async function resolveProviderProfileId(
+  providerId: ProviderId,
+  adapter: SocialProvider,
+  ctx: TenantCtx,
+): Promise<string | null> {
+  if (providerId !== "zernio") return null;
+  if (ctx.providerProfileId) return ctx.providerProfileId;
+  if (!adapter.ensureTenantProfile) return null;
+  return await adapter.ensureTenantProfile(zernioProfileName(ctx.userId), ctx);
 }
 
 interface OpDeps {
@@ -301,7 +343,15 @@ async function handleOp(
         ? adapter
         : buildAdapter(connectProvider, accountPlatforms);
       if (connectAdapter instanceof Response) return connectAdapter;
-      const out = await connectAdapter.getConnectUrl(platform, redirectUri, ctx);
+      // Scope the OAuth handoff to this tenant's own provider profile, so the
+      // account lands in their container rather than the shared Default one.
+      const profileId = await resolveProviderProfileId(connectProvider, connectAdapter, ctx);
+      const connectCtx: TenantCtx = {
+        ...ctx,
+        provider: connectProvider,
+        providerProfileId: profileId,
+      };
+      const out = await connectAdapter.getConnectUrl(platform, redirectUri, connectCtx);
       return jsonResponse(200, { data: out });
     }
 
@@ -311,7 +361,60 @@ async function handleOp(
       const stampProvider = args?.provider
         ? resolveProviderId(String(args.provider))
         : ctx.provider;
-      return await handleRecordConnection(admin, ctx, stampProvider, args);
+      const stampAdapter = stampProvider === ctx.provider
+        ? adapter
+        : buildAdapter(stampProvider, accountPlatforms);
+      if (stampAdapter instanceof Response) return stampAdapter;
+      // Re-derived here rather than round-tripped through the browser: the
+      // name-keyed lookup returns the same profile getConnectUrl used.
+      const stampProfileId = await resolveProviderProfileId(stampProvider, stampAdapter, ctx);
+      return await handleRecordConnection(admin, ctx, stampProvider, stampProfileId, args);
+    }
+
+    case "syncConnections": {
+      // Post-OAuth claim: record every account sitting in THIS tenant's provider
+      // profile. Membership in a server-derived profile IS the ownership proof,
+      // so nothing is trusted from the client and — critically — the callback
+      // page needs no provider-specific redirect query params to work.
+      //
+      // HARD SAFETY GATE: this is only sound for providers with a real per-tenant
+      // container. Outstand's tenancy is FLAT — its listAccounts returns every
+      // account in the whole org — so running this against it would hand one
+      // user every other user's connections. resolveProviderProfileId returns
+      // null for every non-Zernio provider, and the null check below is what
+      // makes that structural rather than a matter of remembering.
+      const syncProvider = args?.provider
+        ? resolveProviderId(String(args.provider))
+        : ctx.provider;
+      const syncAdapter = syncProvider === ctx.provider
+        ? adapter
+        : buildAdapter(syncProvider, accountPlatforms);
+      if (syncAdapter instanceof Response) return syncAdapter;
+      const syncProfileId = await resolveProviderProfileId(syncProvider, syncAdapter, ctx);
+      if (!syncProfileId) {
+        return jsonResponse(400, { error: "sync_unsupported_for_provider", provider: syncProvider });
+      }
+
+      const syncCtx: TenantCtx = {
+        ...ctx,
+        provider: syncProvider,
+        providerProfileId: syncProfileId,
+      };
+      const found = await syncAdapter.listAccounts(syncCtx);
+      const recorded: string[] = [];
+      for (const account of found) {
+        if (!ALLOWED_PLATFORMS.has(account.platform)) continue;
+        const res = await handleRecordConnection(admin, ctx, syncProvider, syncProfileId, {
+          accountId: account.id,
+          network: account.platform,
+          username: account.handle ?? undefined,
+        });
+        // A 409 means another tenant already holds it — skip, don't abort the
+        // whole sync, and never surface the other tenant's existence.
+        if (res.status === 200) recorded.push(account.id);
+        else if (res.status !== 409) return res;
+      }
+      return jsonResponse(200, { data: { recorded, accounts: found } });
     }
 
     case "disconnect": {
@@ -491,6 +594,10 @@ serve(async (req: Request) => {
     businessId: tenant.businessId,
     orgUnitId: tenant.orgUnitId,
     provider,
+    // First non-null wins. Rows for one user share a profile by construction
+    // (resolveProviderProfileId is name-keyed on userId); nulls are Outstand
+    // rows and Zernio rows predating the column.
+    providerProfileId: rows.find((r) => r.zernio_profile_id)?.zernio_profile_id ?? null,
   };
 
   try {
