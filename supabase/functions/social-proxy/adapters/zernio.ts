@@ -85,8 +85,18 @@ export function createZernioAdapter(deps: ZernioAdapterDeps): SocialProvider {
     },
 
     async listAccounts(_ctx: TenantCtx): Promise<SocialAccount[]> {
-      const raw = (await request('GET', '/accounts')) as unknown[];
-      return (Array.isArray(raw) ? raw : []).map((a) => fromZernioAccount(a as never));
+      // VERIFIED 2026-08-04: the body is an OBJECT — {"accounts":[...],
+      // "hasAnalyticsAccess":true} — not a bare array. The previous
+      // `Array.isArray(raw) ? raw : []` therefore returned [] unconditionally,
+      // which would have surfaced as "no accounts connected" rather than as a
+      // parse bug. Tolerate a bare array too in case the shape ever changes.
+      const raw = await request('GET', '/accounts');
+      const list = Array.isArray(raw)
+        ? raw
+        : Array.isArray((raw as Record<string, unknown>)?.accounts)
+        ? ((raw as Record<string, unknown>).accounts as unknown[])
+        : [];
+      return list.map((a) => fromZernioAccount(a as never));
     },
 
     async disconnect(accountId: string, _ctx: TenantCtx): Promise<void> {
@@ -118,10 +128,14 @@ export function createZernioAdapter(deps: ZernioAdapterDeps): SocialProvider {
     },
 
     async getAccountAnalytics(accountId: string, _ctx: TenantCtx): Promise<AccountAnalytics> {
-      // FLAG: followers source (accountStats) lives on this aggregate shape but
-      // is not yet observed live — fromZernioAccountAnalytics defaults it to 0.
-      const raw = await request('GET', `/analytics?accountId=${encodeURIComponent(accountId)}`);
-      return fromZernioAccountAnalytics(raw);
+      // VERIFIED 2026-08-04: `?accountId=` is IGNORED by Zernio — the filtered
+      // and unfiltered bodies are byte-identical. The account slice must be
+      // selected client-side, which is why accountId is passed to the mapper.
+      // (`?postId=` IS honored and returns a different, post-scoped shape.)
+      // There is no `accountStats` key and no account-level reach/engagement
+      // rollup; the mapper aggregates posts[].platforms[] by accountId.
+      const raw = await request('GET', '/analytics');
+      return fromZernioAccountAnalytics(raw, accountId);
     },
 
     async listComments(providerPostId: string, _ctx: TenantCtx): Promise<Comment[]> {

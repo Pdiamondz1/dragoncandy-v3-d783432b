@@ -68,6 +68,8 @@ export interface ZernioCreatePostBody {
   isDraft?: boolean;
 }
 
+// Verified against a live `GET /v1/accounts` response 2026-08-04 — see
+// docs/superpowers/specs/2026-08-04-zernio-api-capture-notes.md.
 interface ZernioAccountRaw {
   _id?: string;
   id?: string;
@@ -76,6 +78,16 @@ interface ZernioAccountRaw {
   displayName?: string;
   isActive?: boolean;
   profilePicture?: string;
+  // Real health signals. `needsReconnection` and `platformStatus` are the
+  // fields Zernio actually sets when a token dies; `isActive` stays true, so
+  // keying only off `isActive` reports a dead account as healthy and the
+  // reconnect prompt never fires. `tokenExpiresAt` is ~60 days out on connect.
+  needsReconnection?: boolean;
+  platformStatus?: string;
+  intentionalDisconnectAt?: unknown;
+  enabled?: boolean;
+  // Defensive: not observed on the live payload, kept because the same mapper
+  // sees older/variant shapes.
   error?: unknown;
   expired?: unknown;
   expiredAt?: unknown;
@@ -185,19 +197,35 @@ export function toZernioCreatePost(
 
 /** Zernio account (list or populated post) → contract SocialAccount. */
 export function fromZernioAccount(raw: ZernioAccountRaw): SocialAccount {
+  // A deliberate disconnect is 'revoked'; anything else unhealthy is 'error'.
+  // Order matters — a revoked account also trips the error predicates.
+  if (raw.intentionalDisconnectAt != null) {
+    return baseAccount(raw, 'revoked');
+  }
+
   const hasError =
+    raw.needsReconnection === true ||
+    (raw.platformStatus != null && raw.platformStatus !== 'active') ||
     raw.isActive === false ||
+    raw.enabled === false ||
     raw.error != null ||
     raw.expired === true ||
     raw.expiredAt != null;
 
+  return baseAccount(raw, hasError ? 'error' : 'active');
+}
+
+function baseAccount(
+  raw: ZernioAccountRaw,
+  status: SocialAccount['status'],
+): SocialAccount {
   return {
     id: raw._id ?? raw.id ?? '',
     provider: 'zernio',
     platform: toContractPlatform(raw.platform),
     handle: str(raw.username) ?? null,
     ...(raw.profilePicture ? { profilePictureUrl: raw.profilePicture } : {}),
-    status: hasError ? 'error' : 'active',
+    status,
   };
 }
 
@@ -250,14 +278,56 @@ export function fromZernioPostAnalytics(raw: unknown): PostAnalytics {
  * present. We map what exists and default the rest to 0. See report: the
  * followers/postsCount path is wired live in Phase 4.
  */
-export function fromZernioAccountAnalytics(raw: unknown): AccountAnalytics {
-  const a = analyticsObj(raw);
-  const stats = isObject(raw) && isObject(raw.accountStats) ? raw.accountStats : {};
+export function fromZernioAccountAnalytics(
+  raw: unknown,
+  accountId?: string,
+): AccountAnalytics {
+  const env = isObject(raw) ? raw : {};
+  const accounts = Array.isArray(env.accounts) ? env.accounts : [];
+  const posts = Array.isArray(env.posts) ? env.posts : [];
+  const overview = isObject(env.overview) ? env.overview : {};
+
+  // followers — the only account-level number Zernio reports directly.
+  const acct = accounts
+    .filter(isObject)
+    .find((a) => !accountId || a._id === accountId || a.id === accountId);
+  const followers = num(acct?.followersCount);
+
+  // reach / engagementRate have NO account-level rollup, so aggregate the
+  // per-account slice of each post: posts[].platforms[] carries accountId plus
+  // its own analytics object.
+  let reach = 0;
+  let rateSum = 0;
+  let rateCount = 0;
+  let postsCount = 0;
+
+  for (const post of posts) {
+    if (!isObject(post)) continue;
+    const platforms = Array.isArray(post.platforms) ? post.platforms : [];
+    const slices = platforms
+      .filter(isObject)
+      .filter((p) => !accountId || p.accountId === accountId);
+    if (slices.length === 0) continue;
+
+    postsCount += 1;
+    for (const slice of slices) {
+      const m = isObject(slice.analytics) ? slice.analytics : {};
+      reach += num(m.reach);
+      if (m.engagementRate != null) {
+        rateSum += num(m.engagementRate);
+        rateCount += 1;
+      }
+    }
+  }
+
   return {
-    followers: num(stats.followers ?? stats.followers_count ?? stats.follower_count),
-    engagementRate: num(a.engagementRate),
-    reach: num(a.reach),
-    postsCount: num(stats.posts_count ?? stats.postsCount ?? stats.media_count),
+    followers,
+    // Mean across the account's posts — Zernio reports engagementRate per post.
+    engagementRate: rateCount > 0 ? rateSum / rateCount : 0,
+    reach,
+    // Prefer the counted posts; fall back to the envelope's own total when no
+    // accountId was supplied and nothing matched.
+    postsCount: postsCount > 0 ? postsCount : num(overview.publishedPosts),
   };
 }
 
