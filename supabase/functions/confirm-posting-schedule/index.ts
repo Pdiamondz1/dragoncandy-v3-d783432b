@@ -73,11 +73,19 @@ serve(async (req: Request) => {
       auth: { persistSession: false },
     });
 
-    // Fetch all draft posts in this plan group
+    // Fetch the caller's draft posts in this plan group.
+    //
+    // SCOPED BY user.id — this uses the service-role client, which bypasses RLS
+    // entirely, so `plan_group_id` alone (a value taken straight from the request
+    // body) was the only thing selecting rows. Any authenticated caller who knew
+    // or guessed another user's plan_group_id could read their drafts, force them
+    // to `failed`, and receive their post ids and platforms back in `failed_posts`.
+    // Only the UUID's secrecy stood in the way, which is not an authorization check.
     const { data: drafts, error: fetchError } = await admin
       .from('donny_scheduled_posts')
       .select('id, user_id, platform, content_type, caption, media_urls, hashtags, scheduled_at, metadata')
       .eq('plan_group_id', plan_group_id)
+      .eq('user_id', user.id)
       .eq('status', 'draft');
 
     if (fetchError) {
@@ -95,8 +103,13 @@ serve(async (req: Request) => {
       );
     }
 
-    // Look up the campaign owner's user_id from the drafts
-    const draftOwnerId = (drafts[0] as DraftPost).user_id;
+    // The drafts query is now scoped to the caller, so this IS the caller. Derive
+    // it from `user` rather than from drafts[0]: `donny_scheduled_posts`'s INSERT
+    // policy is `WITH CHECK (user_id = auth.uid())` with NO constraint on
+    // plan_group_id, so another user can attach a row to someone else's plan
+    // group — and first-row-wins would then have let that row decide whose social
+    // accounts EVERY post in the group was queued against.
+    const draftOwnerId = user.id;
 
     // Fetch the campaign owner's connected social accounts.
     const { data: accounts, error: accountsError } = await admin
@@ -125,6 +138,28 @@ serve(async (req: Request) => {
       status: string;
     }>;
     const activeProvider = resolveProviderFromRows(rows);
+
+    // FAIL CLOSED on a non-Outstand provider. Everything below queues through
+    // `outstand-proxy` unconditionally, so selecting (say) Zernio rows here would
+    // hand Zernio account ids to Outstand's API — the exact cross-provider
+    // confusion the narrowing above exists to prevent, just one layer down.
+    //
+    // This path is Outstand-specific by construction, so it says so rather than
+    // pretending to be provider-agnostic. If we ever route a second provider's
+    // posting through here, dispatch via social-proxy `createPost` instead of
+    // widening this check.
+    if (activeProvider !== 'outstand') {
+      console.error(
+        `[confirm-posting-schedule] refusing to queue: owner resolves to provider '${activeProvider}', but this path posts only via outstand-proxy`,
+      );
+      return new Response(
+        JSON.stringify({
+          error: 'unsupported_provider',
+          detail: `Scheduling through this flow supports Outstand accounts only (owner resolved to '${activeProvider}').`,
+        }),
+        { status: 409, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
+      );
+    }
 
     const platformAccountMap: Record<string, string> = {};
     for (const acct of rows) {
@@ -245,10 +280,15 @@ serve(async (req: Request) => {
         ? 'in_progress'
         : 'scheduled';
 
+    // Scoped to the caller's own campaign. `campaign_id` comes from the request
+    // body and was previously written with the service-role client with no owner
+    // check at all, so any authenticated caller could flip another user's
+    // posting_schedule_status — and campaign ids are discoverable in browse.
     const { error: campaignUpdateError } = await admin
       .from('campaigns')
       .update({ posting_schedule_status: campaignStatus })
-      .eq('id', campaign_id);
+      .eq('id', campaign_id)
+      .eq('user_id', user.id);
 
     if (campaignUpdateError) {
       console.error('[confirm-posting-schedule] Failed to update campaign status:', campaignUpdateError);
