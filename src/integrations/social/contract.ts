@@ -36,7 +36,19 @@ export interface PostResult {
   perAccount: PostSocialAccount[];
 }
 
-export interface MediaRef { id: string; url: string; filename: string; }
+// `contentType` and `size` are NOT decoration: CustomComposeForm gates
+// per-platform media rules on them (image-vs-video mix, image counts, size
+// caps). The SDK's MediaFile carried them and MediaRef did not, so swapping the
+// type without these would have silently disabled that validation — the form
+// would accept combinations the platform rejects, and the failure would surface
+// much later as a publish error. Optional so existing producers stay valid.
+export interface MediaRef {
+  id: string;
+  url: string;
+  filename: string;
+  contentType?: string;
+  size?: number;
+}
 export interface PostContainer { content: string; media?: MediaRef[]; }
 
 // Superset of the @outstand-so/ui Post fields that src/lib/outstandUtils.ts reads.
