@@ -272,9 +272,13 @@ rows stay as-is. Not worth a backfill. `content-strategy-recommend` needs no cha
 
 ## Phase 7a — Remove Outstand code (reversible)
 
-- Delete `outstand-proxy`, `outstand-webhook`, `_shared/outstand-webhook-lib.ts` (+ its test, both
-  orphaned by that deletion and caught by neither grep below), the Outstand adapter wiring, and the
+- Delete `outstand-proxy`, `outstand-webhook`, the Outstand adapter wiring, and the
   `@outstand-so/ui` dependency. (`outstand-reconcile` already went in Phase 2.)
+- **DO NOT delete `_shared/outstand-webhook-lib.ts`.** An earlier revision listed it as orphaned by
+  the `outstand-webhook` deletion — that is **wrong**, and verified so: `adapters/zernio.ts:11`
+  imports `verifyOutstandSignature` from it, and the Zernio adapter is being kept. Removing it
+  breaks the surviving adapter. Either keep the file as-is, or rename the helper to a
+  provider-neutral module in a separate, test-covered step — not as part of a deletion sweep.
 - **Retain `OUTSTAND_*` secrets and the subscription.** Note this alone does not preserve the revert:
   7a deletes the functions the revert needs, so post-7a the path is "redeploy the deleted functions
   from the pre-7a commit + un-revoke rows + retained `OUTSTAND_API_KEY`."

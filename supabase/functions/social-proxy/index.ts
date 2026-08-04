@@ -88,11 +88,16 @@ async function resolveTenant(
   if (userErr || !userData.user) {
     return { error: 401, message: "unauthorized" };
   }
-  const { data: biz } = await admin
+  const { data: biz, error: bizErr } = await admin
     .from("business_profiles")
     .select("id")
     .eq("user_id", userData.user.id)
     .maybeSingle();
+  // Non-fatal (businessId is nullable by design), but a silent null here looks
+  // identical to "user has no business profile" when debugging.
+  if (bizErr) {
+    console.error("social-proxy: business_profiles lookup failed", bizErr);
+  }
   return {
     userId: userData.user.id,
     businessId: (biz?.id as string | undefined) ?? null,
@@ -113,7 +118,13 @@ async function loadOwnedAccounts(
   if (orgUnitId) {
     query = query.eq("org_unit_id", orgUnitId);
   }
-  const { data } = await query;
+  const { data, error } = await query;
+  // Fails CLOSED (empty ownedIds ⇒ every ownership-gated op 403s), which is the
+  // safe direction — but log it, because a 403 storm caused by a DB blip is
+  // otherwise indistinguishable from a genuine authorization denial.
+  if (error) {
+    console.error("social-proxy: loadOwnedAccounts failed", error);
+  }
   return (data ?? []) as OwnedAccountRow[];
 }
 
@@ -145,13 +156,22 @@ async function handleRecordConnection(
   // that function. Cross-provider id collision cannot occur until users hold
   // both providers (Phase 5 cutover), where the constraint transition is done
   // alongside retiring/updating outstand-proxy. See the migration + plan.
-  const { data: existing } = await admin
+  // Surface the error rather than discarding it: this check fails OPEN — a
+  // transient Postgrest failure is indistinguishable from "no conflict", so the
+  // 409 guard would be silently skipped. (Not a cross-tenant leak, since the
+  // upsert's conflict target is still the caller's own row, but a real
+  // data-integrity gap.)
+  const { data: existing, error: existingError } = await admin
     .from("business_outstand_accounts")
     .select("user_id")
     .eq("outstand_social_account_id", accountId)
     .neq("user_id", ctx.userId)
     .neq("status", "revoked")
     .maybeSingle();
+  if (existingError) {
+    console.error("social-proxy: claim check failed", existingError);
+    return jsonResponse(500, { error: "db_error" });
+  }
   if (existing) {
     return jsonResponse(409, { error: "account_already_claimed" });
   }
