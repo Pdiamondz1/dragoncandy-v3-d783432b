@@ -19,7 +19,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyOutstandSignature } from "../_shared/outstand-webhook-lib.ts";
-import { normalizeZernioWebhook } from "../social-proxy/adapters/zernio-map.ts";
+import { normalizeZernioWebhook } from "../_shared/zernio-webhook-lib.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -142,7 +142,12 @@ serve(async (req: Request) => {
           .from("business_outstand_accounts")
           .update({ status, updated_at: new Date().toISOString() })
           .eq("outstand_social_account_id", accountId)
-          .eq("provider", "zernio");
+          .eq("provider", "zernio")
+          // Never resurrect a revoked row. Without this, one legitimate
+          // token-expired event flips a PREVIOUS holder's stale 'revoked' row to
+          // 'error' — and every ownership read gates on `status <> 'revoked'`,
+          // so that silently hands them back an account someone else now holds.
+          .neq("status", "revoked");
         if (updateError) {
           console.error("zernio-webhook: account status update failed", updateError.message);
           return json(500, { error: "Update failed" });

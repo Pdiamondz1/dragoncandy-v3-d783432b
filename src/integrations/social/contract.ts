@@ -10,6 +10,12 @@ export interface SocialAccount {
   handle: string | null;      // username / nickname
   profilePictureUrl?: string;
   status: 'active' | 'error' | 'revoked';
+  // Which provider-side tenant container this account sits in, when the provider
+  // exposes one. Carried so a caller can RE-ASSERT the scoping locally instead
+  // of trusting that the provider honoured a `?profileId=` filter — Zernio is
+  // already known to silently ignore `?accountId=` on /analytics, and an
+  // unhonoured filter degrades to "returns everything", not to an error.
+  providerProfileId?: string | null;
 }
 
 export interface PostInput {

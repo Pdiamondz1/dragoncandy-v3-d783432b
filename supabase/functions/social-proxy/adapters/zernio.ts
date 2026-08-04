@@ -9,6 +9,7 @@
 // guess. They are reconciled once we have a live Zernio key (Phase 2/3).
 
 import { verifyOutstandSignature } from '../../_shared/outstand-webhook-lib.ts';
+import { normalizeZernioWebhook } from '../../_shared/zernio-webhook-lib.ts';
 import type {
   AccountAnalytics,
   Comment,
@@ -31,7 +32,6 @@ import {
   fromZernioPost,
   fromZernioPostAnalytics,
   fromZernioPostResult,
-  normalizeZernioWebhook,
   toZernioCreatePost,
 } from './zernio-map.ts';
 
@@ -151,8 +151,11 @@ export function createZernioAdapter(deps: ZernioAdapterDeps): SocialProvider {
     },
 
     finalizeConnection(_params: unknown, _ctx: TenantCtx): Promise<SocialAccount[]> {
-      // FLAG: Zernio OAuth finalize shape unconfirmed; Phase 2 wires the real
-      // callback. For now the connect flow returns accounts via listAccounts.
+      // Intentionally inert for Zernio, and expected to stay that way. The
+      // gateway's `syncConnections` op finalizes a connect by listing the
+      // tenant's own profile instead — which needs no `params` off the redirect,
+      // the least documented part of any OAuth round-trip. Kept only because the
+      // contract requires it and Outstand still implements it meaningfully.
       return Promise.resolve([]);
     },
 

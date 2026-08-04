@@ -60,7 +60,14 @@ describe('createZernioAdapter wiring', () => {
     );
     // mapped through fromZernioAccount: twitter → x, _id → id
     expect(accounts).toEqual([
-      { id: 'a1', provider: 'zernio', platform: 'x', handle: 'bob', status: 'active' },
+      {
+        id: 'a1',
+        provider: 'zernio',
+        platform: 'x',
+        handle: 'bob',
+        status: 'active',
+        providerProfileId: null,
+      },
     ]);
   });
 

@@ -113,7 +113,12 @@ const ZernioCallback: React.FC<{ backPath: string }> = ({ backPath }) => {
     ranOnce.current = true;
 
     syncConnections('zernio')
-      .then(({ recorded }) => {
+      .then(({ recorded, skipped }) => {
+        if (skipped?.length) {
+          toast.warning(
+            `Not supported yet: ${[...new Set(skipped)].join(', ')}. Those accounts were skipped.`,
+          );
+        }
         if (recorded.length === 0) {
           // Not an error: a re-visited callback, or an account another tenant
           // already holds. Say so plainly instead of claiming success.

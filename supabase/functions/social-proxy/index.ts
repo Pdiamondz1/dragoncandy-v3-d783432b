@@ -258,23 +258,31 @@ function buildAdapter(
 
 // Resolve the provider-side tenant container for a connect/record operation.
 // Zernio-only — every other provider is flat and gets null.
-//   1. Reuse the id already persisted on any of the caller's rows. This is the
-//      common path: one DB read, no provider call.
-//   2. Otherwise ask the provider to ensure a profile named dc-<userId>. That
-//      call is idempotent by name, so BOTH legs of the OAuth round-trip
-//      (getConnectUrl, then recordConnection minutes later) converge on the same
-//      id with no state carried between them and nothing trusted from the client.
 //
-// Concurrent first-connects are safe: profile names are unique per workspace, so
-// the loser gets a 409 carrying the winner's id and both converge (see the
-// adapter's ensureTenantProfile).
+// ALWAYS re-derived from the provider by name; the persisted
+// `zernio_profile_id` is deliberately NOT trusted here. That column is
+// client-writable: `business_outstand_accounts`'s UPDATE policy is
+// `USING (user_id = auth.uid())` with no column restriction, so a user can set
+// their own row's profile id (and provider) straight from the browser. Reading
+// it back as the tenant container would have let them point this gateway at
+// ANOTHER tenant's Zernio profile and then claim its accounts via
+// syncConnections. The column is now audit/debug data only, and the accompanying
+// migration additionally revokes column UPDATE — belt as well as braces.
+//
+// The name lookup is idempotent, so both legs of the OAuth round-trip
+// (getConnectUrl, then syncConnections minutes later) converge on one id with no
+// state carried between them. Concurrent first-connects are safe too: profile
+// names are unique per workspace, so the loser gets a 409 carrying the winner's
+// id (see the adapter's ensureTenantProfile).
+//
+// Cost is one extra provider call, paid only on the three connect-flow ops —
+// never on the hot read paths.
 async function resolveProviderProfileId(
   providerId: ProviderId,
   adapter: SocialProvider,
   ctx: TenantCtx,
 ): Promise<string | null> {
   if (providerId !== "zernio") return null;
-  if (ctx.providerProfileId) return ctx.providerProfileId;
   if (!adapter.ensureTenantProfile) return null;
   return await adapter.ensureTenantProfile(zernioProfileName(ctx.userId), ctx);
 }
@@ -368,6 +376,26 @@ async function handleOp(
       // Re-derived here rather than round-tripped through the browser: the
       // name-keyed lookup returns the same profile getConnectUrl used.
       const stampProfileId = await resolveProviderProfileId(stampProvider, stampAdapter, ctx);
+
+      // `accountId` arrives in the request body, and the claim check alone only
+      // proves nobody ELSE holds it — so any unrecorded or previously-revoked
+      // provider account id would otherwise be claimable by any authenticated
+      // caller. Outstand's flat tenancy made verification impossible; Zernio's
+      // profiles make it cheap, so do it.
+      if (stampProfileId) {
+        const wanted = String(args?.accountId ?? "");
+        const inProfile = await stampAdapter.listAccounts({
+          ...ctx,
+          provider: stampProvider,
+          providerProfileId: stampProfileId,
+        });
+        const isMember = inProfile.some(
+          (a) => a.id === wanted && a.providerProfileId === stampProfileId,
+        );
+        if (!isMember) {
+          return jsonResponse(403, { error: "account_not_in_tenant_profile" });
+        }
+      }
       return await handleRecordConnection(admin, ctx, stampProvider, stampProfileId, args);
     }
 
@@ -400,10 +428,33 @@ async function handleOp(
         provider: syncProvider,
         providerProfileId: syncProfileId,
       };
-      const found = await syncAdapter.listAccounts(syncCtx);
+      // RE-ASSERT the tenant scoping locally. The `?profileId=` filter is the
+      // only cross-tenant gate on this path, and an unhonoured provider filter
+      // degrades to "returns everything" rather than erroring — Zernio already
+      // silently ignores `?accountId=` on /analytics, so that is a demonstrated
+      // failure mode, not a hypothetical one.
+      const returned = await syncAdapter.listAccounts(syncCtx);
+      const found = returned.filter((a) => a.providerProfileId === syncProfileId);
+      if (found.length !== returned.length) {
+        console.error("social-proxy: syncConnections dropped accounts outside the tenant profile", {
+          expected: syncProfileId,
+          returned: returned.length,
+          kept: found.length,
+        });
+      }
+
       const recorded: string[] = [];
+      const skipped: string[] = [];
       for (const account of found) {
-        if (!ALLOWED_PLATFORMS.has(account.platform)) continue;
+        // Zernio supports ~15 platforms; the contract models 5, and
+        // toContractPlatform passes an unknown one through as a bare string. Skip
+        // rather than record it under a wrong platform — but say so, or a user
+        // who connected LinkedIn just sees nothing appear and no explanation.
+        if (!ALLOWED_PLATFORMS.has(account.platform)) {
+          console.warn("social-proxy: syncConnections skipping unsupported platform", account.platform);
+          skipped.push(account.platform);
+          continue;
+        }
         const res = await handleRecordConnection(admin, ctx, syncProvider, syncProfileId, {
           accountId: account.id,
           network: account.platform,
@@ -414,7 +465,13 @@ async function handleOp(
         if (res.status === 200) recorded.push(account.id);
         else if (res.status !== 409) return res;
       }
-      return jsonResponse(200, { data: { recorded, accounts: found } });
+      // Return ONLY what the caller actually owns. Echoing `found` would leak
+      // the id/handle/avatar of every account the 409 just refused — undoing the
+      // claim check it sits next to.
+      const claimed = new Set([...recorded, ...ownedIds]);
+      return jsonResponse(200, {
+        data: { recorded, skipped, accounts: found.filter((a) => claimed.has(a.id)) },
+      });
     }
 
     case "disconnect": {

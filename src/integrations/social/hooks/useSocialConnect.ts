@@ -6,6 +6,8 @@ import type { Platform, ProviderId, SocialAccount } from '@/integrations/social/
 export interface SyncConnectionsResult {
   /** Provider account ids newly recorded (or refreshed) as this user's rows. */
   recorded: string[];
+  /** Platforms present at the provider but outside the 5 the contract models. */
+  skipped: string[];
   /** Everything found in the tenant's provider profile. */
   accounts: SocialAccount[];
 }

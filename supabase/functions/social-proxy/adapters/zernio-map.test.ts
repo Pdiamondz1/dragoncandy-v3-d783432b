@@ -8,8 +8,8 @@ import {
   fromZernioPostAnalytics,
   fromZernioAccountAnalytics,
   fromZernioComment,
-  normalizeZernioWebhook,
 } from './zernio-map';
+import { normalizeZernioWebhook } from '../../_shared/zernio-webhook-lib.ts';
 import type { PostInput, Platform } from '../../_shared/social-contract.ts';
 
 describe('toZernioCreatePost', () => {
@@ -85,7 +85,23 @@ describe('PLATFORM_ALIASES + fromZernioAccount', () => {
       handle: 'dragoncandy',
       profilePictureUrl: 'https://cdn/pfp.jpg',
       status: 'active',
+      providerProfileId: null,
     });
+  });
+
+  // The gateway re-asserts tenant scoping against this field, so it must survive
+  // BOTH shapes the API uses: an object on /accounts, a bare string on /analytics.
+  it('normalizes profileId from either the object or the string shape', () => {
+    expect(
+      fromZernioAccount({ _id: 'a1', platform: 'instagram', profileId: { _id: 'p1', name: 'dc-u1' } })
+        .providerProfileId,
+    ).toBe('p1');
+    expect(
+      fromZernioAccount({ _id: 'a2', platform: 'instagram', profileId: 'p2' }).providerProfileId,
+    ).toBe('p2');
+    expect(
+      fromZernioAccount({ _id: 'a3', platform: 'instagram' }).providerProfileId,
+    ).toBeNull();
   });
 
   it('passes through known platforms and defaults status to active', () => {
