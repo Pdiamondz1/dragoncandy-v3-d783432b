@@ -176,6 +176,11 @@ verify_jwt = false
 # or the gateway would reject the unauthenticated guest — same posture as the campaign escrow
 # functions. refund-package-order deliberately differs from refund-campaign-escrow (which is
 # verify_jwt=true) because package refunds must be guest-reachable.
+# F1 Donny package draft — creator-facing, resolves the creator via their user JWT itself; verify_jwt off
+# to match the rest of the Donny/AI fleet (each self-resolves auth).
+[functions.suggest-package]
+verify_jwt = false
+
 [functions.create-package-order-escrow]
 verify_jwt = false
 

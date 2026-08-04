@@ -23,6 +23,7 @@ import { Spinner } from "@/components/ui/spinner";
 
 import { SiteGateGuard } from "@/components/SiteGateGuard";
 import { Navigate } from "react-router-dom";
+import { PACKAGES_ENABLED } from "@/lib/featureConfig";
 import { CollaborationRedirect } from './components/CollaborationRedirect';
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AuthPage = lazy(() => import("./pages/AuthPage"));
@@ -65,6 +66,7 @@ const BusinessPromotionalTools = lazy(() => import("./pages/BusinessPromotionalT
 const OutstandManager = lazy(() => import("./pages/OutstandManager"));
 const OutstandOAuthCallbackPage = lazy(() => import("./pages/OutstandOAuthCallbackPage"));
 const CreatorEarnings = lazy(() => import("./pages/CreatorEarnings"));
+const CreatorPackages = lazy(() => import("./pages/CreatorPackages"));
 const CreatorBrowse = lazy(() => import("./pages/CreatorBrowse"));
 const CreatorGroupsPage = lazy(() => import("./pages/CreatorGroupsPage"));
 const CreatorGroupDetailPage = lazy(() => import("./pages/CreatorGroupDetailPage"));
@@ -305,6 +307,9 @@ function AnimatedRoutes() {
           <Route path="/dashboard/creator/applications" element={<Navigate to="/dashboard/creator/my-campaigns?tab=applied" replace />} />
           <Route path="/dashboard/creator/projects" element={<Navigate to="/dashboard/creator/my-campaigns?tab=active" replace />} />
           <Route path="/dashboard/creator/earnings" element={<ProtectedRoute><CreatorEarnings /></ProtectedRoute>} />
+
+          {/* Creator Packages (feature-flagged: PACKAGES_ENABLED) */}
+          <Route path="/dashboard/creator/packages" element={<ProtectedRoute>{PACKAGES_ENABLED ? <CreatorPackages /> : <Navigate to="/dashboard/creator" replace />}</ProtectedRoute>} />
 
           {/* Creator Dragon Feed Route */}
           <Route path="/dashboard/creator/dragon-feed" element={<ProtectedRoute><CreatorDragonFeed /></ProtectedRoute>} />
