@@ -2,8 +2,13 @@
 
 > **Status:** approved 2026-08-01; revised after spec review. Supersedes the lost 5-phase design
 > (`~/.claude/plans/let-s-design-this-all-serene-yeti.md`, no longer on disk), of which only
-> Phase 1 was ever built — on `feat/social-provider-seam-zernio`, unmerged and undeployed.
-> Execution branch: `feat/zernio-cutover`.
+> Phase 1 was ever built. Execution branch: `feat/zernio-cutover`.
+>
+> **Correction 2026-08-04:** earlier revisions of this spec said the seam was "unmerged". **It is
+> merged** — `feat/social-provider-seam-zernio` landed on `main` as **PR #175**. What was true is
+> that it is entirely *dark*: `social-proxy` is not deployed, the `provider` migration was never
+> applied (verified: not in `schema_migrations`, column absent), and `ZERNIO_API_KEY` was never set.
+> "Built but dark" was right; "unmerged" was not.
 
 ## Context
 
