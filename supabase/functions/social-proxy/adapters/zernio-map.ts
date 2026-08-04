@@ -361,9 +361,13 @@ export function fromZernioAccountAnalytics(
     // Mean across the account's posts — Zernio reports engagementRate per post.
     engagementRate: rateCount > 0 ? rateSum / rateCount : 0,
     reach,
-    // Prefer the counted posts; fall back to the envelope's own total when no
-    // accountId was supplied and nothing matched.
-    postsCount: postsCount > 0 ? postsCount : num(overview.publishedPosts),
+    // Prefer the counted posts. The envelope total is a WORKSPACE-wide figure —
+    // `/analytics` silently ignores `?accountId=`, so it covers every account —
+    // and may only be used when no account was asked about. An account with zero
+    // posts, or one absent from the payload, must report 0, not everyone else's
+    // total. (The comment here already said "when no accountId was supplied";
+    // the condition was missing from the code. Caught by the Codex pass.)
+    postsCount: postsCount > 0 ? postsCount : accountId ? 0 : num(overview.publishedPosts),
   };
 }
 

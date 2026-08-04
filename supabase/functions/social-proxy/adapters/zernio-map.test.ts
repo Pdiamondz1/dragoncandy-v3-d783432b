@@ -539,14 +539,31 @@ describe('live-capture regressions', () => {
       expect(r.postsCount).toBe(2);
     });
 
+    // `/analytics` silently ignores ?accountId=, so overview.publishedPosts is a
+    // WORKSPACE total. Falling back to it for a specific account would show one
+    // account another account's post count.
+    it('reports 0 posts for an account with no slices, never the workspace total', () => {
+      const r = fromZernioAccountAnalytics(envelope, 'account-with-no-posts');
+      expect(r.postsCount).toBe(0);
+      expect(r.reach).toBe(0);
+    });
+
+    it('still uses the envelope total when no account was asked about', () => {
+      expect(fromZernioAccountAnalytics({ overview: { publishedPosts: 7 } }).postsCount).toBe(7);
+    });
+
     it('does not leak another account\'s numbers', () => {
       const r = fromZernioAccountAnalytics(envelope, '6a7208a1eb10586dad0a13a1');
       expect(r.reach).not.toBe(515);
       expect(r.followers).not.toBe(999);
     });
 
-    it('falls back to the envelope total when nothing matches', () => {
-      expect(fromZernioAccountAnalytics(envelope, 'unknown-id').postsCount).toBe(2);
+    // This test previously asserted `.toBe(2)` — it ENCODED the bug rather than
+    // catching it, which is why the mapper shipped misattributing the workspace
+    // total to an individual account. An unknown account has no posts; saying so
+    // is the whole point of asking about one account.
+    it('does NOT fall back to the envelope total for an unknown account', () => {
+      expect(fromZernioAccountAnalytics(envelope, 'unknown-id').postsCount).toBe(0);
     });
   });
 
