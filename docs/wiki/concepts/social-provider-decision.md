@@ -82,13 +82,41 @@ The work is not wasted — it produced the thing that makes provider choice chea
 **Not done, deliberately:** the 37-file `@outstand-so/ui` SDK removal and the rebuild of seven
 SDK components. That work existed only to escape Outstand. Staying makes it unnecessary.
 
-## Open risk
+## Open risk — ✅ CLOSED 2026-08-04
 
-**Quota raises are manual.** There is no self-serve path to increase the included-accounts
-number — it is a support request. At marketplace scale that puts another company's support
-queue inside our onboarding flow. Mitigation: pre-raise well ahead of demand and monitor
-headroom as a capacity metric. **Confirm the realistic upper bound and turnaround with
-Outstand before scaling creator sign-ups.**
+**Was:** quota raises are manual, with no self-serve path — another company's support queue
+inside our onboarding flow.
+
+**Outstand's reply closed it** (full text in `docs/runbooks/outstand-quota-request.md`):
+**1,000 accounts pre-approved unprompted**, bumps *"within a day"*, **no upper bound that
+"becomes a discussion about price"**, soft enforcement at the limit (hard restraint reserved
+for abuse/DDoS patterns), and a usage endpoint to monitor —
+`GET /v1/account/usage` → `socialAccounts:{current,limit,remaining}`.
+
+**Do:** alert on `socialAccounts.remaining` so headroom is a monitored capacity metric rather
+than something we hope to notice.
+
+## Follow-ups the same reply opened
+
+- **Analytics endpoints do NOT support tenant filtering** (posts and accounts do). Outstand
+  offered to add it *"very soon"* on request. **This is load-bearing for Phase 4/6:** without
+  it the analytics cron needs one call per account, and at 1,000 accounts that is 1,000 calls
+  against a rate limit that itself scales with connected-account count. Ask for a
+  tenant-scoped bulk analytics read.
+- **BYOK for YouTube.** Google's quota is per-app, so on Outstand's shared keys our customers
+  compete with every other Outstand customer for it. Outstand recommends bringing our own
+  YouTube keys to get an isolated quota.
+- **New Business plan, September** — higher post allowance at a lower fixed price, lower
+  overage, SLA, priority support, and higher rate limits *customizable per customer request*.
+  Worth evaluating against the current ~$268/mo.
+- **Slack Connect channel** offered for direct support.
+
+## Residual unknown
+
+Instagram analytics have never been exercised on Outstand (all three measured posts are
+YouTube), and `reach`/`engagement_rate`/`saves` were 0/null even on the working post —
+plausibly because YouTube does not report reach. Confirm with one real Instagram post before
+Phase 4 analytics work is built on the assumption.
 
 Secondary: Instagram analytics have never been exercised on Outstand (all three captured
 posts are YouTube), and `reach`/`engagement_rate`/`saves` were 0/null even on the working

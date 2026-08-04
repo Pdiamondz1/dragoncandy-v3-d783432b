@@ -55,6 +55,40 @@ DragonCandy
 
 ---
 
+## ✅ ANSWERED 2026-08-04 — risk closed
+
+Reply from Outstand support, recorded here rather than left in an inbox (see the warning at
+the foot of this file — that is exactly how the "~7-connection cap" got into the codebase).
+
+| # | Question | Answer |
+|---|---|---|
+| 1 | Realistic upper bound? | *"No upper bound in terms of accounts that becomes a discussion about price."* For YouTube specifically they may recommend **BYOK** — *"Google is very stingy with their quotas, and bringing your own YouTube keys can help you maintain an isolated quota for your customers only."* |
+| 2 | Turnaround on a raise? | *"We're usually quick to bump account limits, within a day."* |
+| 3 | Pre-authorise headroom? | **DONE, unprompted** — *"In this case I've pre-approved now 1k accounts for you."* |
+| 4 | Self-serve usage check? | **Yes** — `GET /v1/account/usage` → `{usage:{socialAccounts:{current,limit,remaining}, posts:{current,limit}, billingPeriod:{start,end}}}` |
+| 5 | Behaviour at the limit? | *"we only apply it softly via the API so far, except in cases where it looks like an abuse/DDoS/spambot where we automatically restrain the authorizations on that org."* |
+| 6 | Tenant filtering coverage? | Posts + accounts **yes**. **Analytics: NOT supported** — but *"if you'd like to have tenant filtering in an endpoint that we don't currently have, let me know and I'll chat with the team to get it out very soon."* |
+| 7 | Rate limits? | *"not rigid numbers… we apply dynamic rate limits."* Authorization requests **never** rate limited; post publishing scales with an org's traffic and connected accounts. |
+
+**Unprompted offers worth taking:** a **new Business plan launching September** (higher post
+allowance at a lower fixed price, lower overage, SLA, priority support, and higher rate limits
+*customizable per customer request*), an early-release page for it, and a **Slack Connect
+channel** for direct support.
+
+### What this changes
+
+- **The manual-quota risk is closed.** 1,000 accounts pre-approved, sub-day bumps, no price
+  cliff, soft enforcement, and a usage endpoint we can alert on. Update
+  `docs/wiki/concepts/social-provider-decision.md` — this was its only open risk.
+- **Build a headroom alert** off `socialAccounts.remaining`. Cheap, and it converts "hope we
+  notice" into a monitored capacity metric.
+- **Analytics tenant filtering is a real gap and an open offer — take it.** Our Phase 4/6
+  analytics cron would otherwise need one call per account; at 1,000 accounts that is 1,000
+  calls against a rate limit that scales with connected accounts. A tenant-scoped bulk
+  analytics read is the difference between a cron that works at scale and one that doesn't.
+- **BYOK for YouTube** is worth scoping. Google's quota is per-app, so on Outstand's shared
+  keys our customers compete with every other Outstand customer for it.
+
 ## What to do with the answers
 
 - **Q1–Q3** decide whether the manual-raise risk is closed. A pre-authorised 1,000 with a
