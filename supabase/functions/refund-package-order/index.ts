@@ -43,7 +43,7 @@ serve(async (req) => {
 
     const { data: order, error: orderErr } = await supabaseClient
       .from("package_orders")
-      .select("id, creator_id, buyer_user_id, buyer_guest_token, escrow_status, escrow_payment_intent_id, payout_executed_at")
+      .select("id, creator_id, buyer_user_id, buyer_guest_token, escrow_status, escrow_payment_intent_id, payout_executed_at, content_submitted_at")
       .eq("id", orderId)
       .single();
     if (orderErr || !order) throw new Error(`Order not found: ${orderErr?.message}`);
@@ -79,6 +79,15 @@ serve(async (req) => {
     }
     if (order.escrow_status !== "held" && order.escrow_status !== "refunding") {
       throw new Error(`Cannot refund: escrow status is '${order.escrow_status}', expected 'held'`);
+    }
+    // Once the creator has DELIVERED (content_submitted_at set), a buyer/guest/creator can no longer self-serve
+    // a refund — otherwise a buyer holding the guest token could POST here after receiving the deliverables and
+    // keep the work for free. Post-delivery, the buyer's only self-serve path is Approve or Request-a-revision;
+    // a genuine dispute is resolved by the PLATFORM (service role), which is deliberately exempt here. Mirrors
+    // the UI, which hides Cancel once content_submitted_at is set (content_submitted_at is never nulled, so a
+    // revision-in-progress order stays protected too).
+    if (!isServiceRole && order.content_submitted_at) {
+      throw new Error("Cannot refund: the creator has already delivered. Approve the work, request a revision, or contact support.");
     }
 
     const refundReason = (typeof reason === "string" && reason.trim()) ? reason.trim() : "Order cancelled";

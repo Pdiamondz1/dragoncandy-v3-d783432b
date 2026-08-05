@@ -140,6 +140,11 @@ serve(async (req) => {
     // release-package-payout (service role), whose delivery gate + held→releasing CAS (now also predicated on
     // content_status) + credit-at-most-once marker mean a manual approve OR a just-requested revision racing
     // this can't double-pay or pay over a revision. Non-blocking.
+    // Escrow filter is IN ('held','releasing'): 'held' is the normal claim path; 'releasing' RESUMES an order
+    // whose payout CAS'd held→releasing then died before writing payout_executed_at (the neither-sweep-catches-it
+    // gap — the reconcile sweep only handles rows WITH the marker). release-package-payout is re-entrant on a
+    // 'releasing' row (finishes crediting), so re-invoking is safe; the 7-day window means we never contend with
+    // a fresh in-flight claim.
     try {
       const pkgAutoApproveCutoff = new Date(Date.now() - PACKAGE_AUTO_APPROVE_HOURS * 60 * 60 * 1000).toISOString();
       const { data: overduePkgs, error: overduePkgErr } = await supabaseClient
@@ -147,7 +152,7 @@ serve(async (req) => {
         .select('id')
         .eq('content_status', 'submitted')
         .eq('order_status', 'submitted')
-        .eq('escrow_status', 'held')
+        .in('escrow_status', ['held', 'releasing'])
         .not('content_submitted_at', 'is', null)
         .lt('content_submitted_at', pkgAutoApproveCutoff)
         .order('content_submitted_at', { ascending: true })
