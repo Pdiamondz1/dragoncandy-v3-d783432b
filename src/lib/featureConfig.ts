@@ -1,8 +1,12 @@
 export const BRAND_ROLE_ENABLED = false;
 export const LANDING_VIDEO_BACKDROP_ENABLED = false;
-// Creator Packages (productized service packages + shareable link). Keep OFF until ALL of:
-//  1. the v1a package-order migrations are applied to prod,
-//  2. the money-rail edge functions (create/verify/release/refund-package-order, suggest-package) are deployed,
-//  3. the v1c public buyer page + route (/p/:creatorSlug/:packageSlug) exists — the shareable link this UI
-//     generates 404s until that route lands, so enabling the flag before v1c would ship dead links.
-export const PACKAGES_ENABLED = false;
+// Creator Packages (productized service packages + shareable link). LIVE as of 2026-08-05.
+// All go-live preconditions met:
+//  1. package-order migrations applied to prod (20260804120000–120900),
+//  2. money-rail + notify edge functions deployed (create/verify/release/refund/notify-package-order,
+//     suggest-package; all verify_jwt=false),
+//  3. public buyer route /p/:creatorSlug/:packageSlug (PublicPackagePage) + /order/:token (GuestOrderPage)
+//     both present in App.tsx — the shareable link resolves, no dead links.
+// Money path validated end-to-end on prod via a test-mode Stripe purchase (escrow → deliver → approve →
+// wallet +90%) plus all three notification emails delivered.
+export const PACKAGES_ENABLED = true;
