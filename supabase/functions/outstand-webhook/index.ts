@@ -40,36 +40,49 @@ async function recordPublishedPost(
   accounts: OutstandSocialAccount[],
   rawAccountCount: number,
 ): Promise<{ outcome: "recorded" | "unmatched" | "failed"; rows: number; dropped: number }> {
-  // Entries parseAccounts discarded as malformed. Carried forward from the Task 4
-  // review: a skip that increments no counter is the failure mode this whole
-  // sub-project exists to remove.
-  const dropped = Math.max(0, rawAccountCount - accounts.length);
+  // Entries parseAccounts discarded as malformed, plus (below) entries that
+  // parsed fine but carry no network. Carried forward from the Task 4 review: a
+  // skip that increments no counter is the failure mode this whole sub-project
+  // exists to remove.
+  let dropped = Math.max(0, rawAccountCount - accounts.length);
 
-  const { data: sched, error: schedErr } = await supabase
+  // No .limit(1).maybeSingle() here — that made the pick framework-arbitrary
+  // whenever more than one schedule row shared an outstand_post_id, silently
+  // applying one row's caption/hashtags/format to every platform in the event.
+  // Fetch every candidate, order deterministically, and surface ambiguity as a
+  // visible number instead of an invisible coin-flip.
+  const { data: schedRows, error: schedErr } = await supabase
     .from("donny_scheduled_posts")
     .select("user_id, campaign_id, platform, caption, hashtags, content_type, scheduled_at, metadata")
     .eq("metadata->>outstand_post_id", postId)
-    .limit(1)
-    .maybeSingle();
+    .order("created_at", { ascending: true });
 
   if (schedErr) {
     console.error("outstand-webhook: schedule lookup failed", schedErr.message);
     return { outcome: "failed", rows: 0, dropped };
   }
-  if (!sched) {
+  if (!schedRows || schedRows.length === 0) {
     // No schedule row: published outside our flow, or Task 1's bug lost it.
     console.warn(`outstand-webhook: no scheduled post for ${postId} — not recorded for measurement`);
     return { outcome: "unmatched", rows: 0, dropped };
   }
+  if (schedRows.length > 1) {
+    console.warn(
+      `outstand-webhook: ${schedRows.length} scheduled posts match ${postId} — using oldest (created_at asc)`,
+    );
+  }
+  const sched = schedRows[0];
 
   // The EVENT is authoritative about what published and where; the schedule row
   // only supplies dimensions. socialAccounts[].network is the platform, one entry
   // per account — exactly the (outstand_post_id, platform) grain Task 2's unique
   // key uses. Fall back to the schedule's own platform only when the event
   // carries none.
-  const networks = Array.from(
-    new Set(accounts.map((a) => a.network).filter((n): n is string => !!n)),
-  );
+  const accountsWithNetwork = accounts.filter((a) => !!a.network);
+  // A parsed-but-networkless entry is silently invisible past this point unless
+  // counted here — same "no skip without a counter" rule as the malformed ones.
+  dropped += accounts.length - accountsWithNetwork.length;
+  const networks = Array.from(new Set(accountsWithNetwork.map((a) => a.network as string)));
   const schedPlatform = typeof sched.platform === "string" ? sched.platform : null;
   const platforms = networks.length > 0 ? networks : (schedPlatform ? [schedPlatform] : []);
 
@@ -136,8 +149,24 @@ serve(async (req: Request) => {
       if (!postId) return json(400, { error: "Missing postId" });
       const newStatus = event === "post.published" ? "published" : "failed";
 
-      // Record for measurement BEFORE the scheduled-post patch, so a post whose
-      // status update finds no row is still measured.
+      // Record ARRIVAL before anything else in this branch, including the
+      // measurement write below. This insert used to run only after a successful
+      // update, so a no_match delivery left no trace and an empty table could not
+      // distinguish "never delivered" from "delivered, matched nothing" — which is
+      // exactly the ambiguity that stalled this work. MUST stay first: if
+      // recordPublishedPost throws at the network level (not a returned
+      // {error}), the outer catch returns 500 before reaching this insert, and
+      // that failure class silently reintroduces the exact gap this insert
+      // exists to close. Do not move the measurement write ahead of it again.
+      const { error: auditErr } = await supabase
+        .from("outstand_webhook_events")
+        .insert({ id: `${event}:${postId}`, event, post_id: postId, payload: body });
+      if (auditErr && auditErr.code !== "23505") {
+        console.warn("outstand-webhook: audit insert failed", auditErr.message);
+      }
+
+      // Record for measurement BEFORE the scheduled-post patch below, so a post
+      // whose status update finds no row is still measured.
       if (event === "post.published") {
         const rawAccountCount = Array.isArray(socialAccounts) ? socialAccounts.length : 0;
         const res = await recordPublishedPost(
@@ -151,17 +180,6 @@ serve(async (req: Request) => {
           `outstand-webhook: measurement record for ${postId}: ${res.outcome} rows=${res.rows}` +
           (res.dropped > 0 ? ` droppedAccounts=${res.dropped}` : ""),
         );
-      }
-
-      // Record ARRIVAL before deciding whether it matched. This insert used to run
-      // only after a successful update, so a no_match delivery left no trace and an
-      // empty table could not distinguish "never delivered" from "delivered, matched
-      // nothing" — which is exactly the ambiguity that stalled this work.
-      const { error: auditErr } = await supabase
-        .from("outstand_webhook_events")
-        .insert({ id: `${event}:${postId}`, event, post_id: postId, payload: body });
-      if (auditErr && auditErr.code !== "23505") {
-        console.warn("outstand-webhook: audit insert failed", auditErr.message);
       }
 
       // Guarded: only advance rows that aren't already published.
