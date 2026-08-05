@@ -69,6 +69,25 @@ established by the server.** Sketch, in dependency order:
 Step 1 is an auth change. Per CLAUDE.md it needs explicit founder confirmation before anyone
 touches it, and it is out of scope for the measurement spine.
 
+## Correction to an earlier proposal (same day)
+
+A `verified_at` gate — a column written only by the webhook, with
+`content-performance-capture` processing only rows that carry it — was first proposed as
+"closing the practical leak". **That was overstated.** Working it through:
+
+- It **does** close blind enumeration and the quota-burn angle completely. A guessed post id that
+  does not exist never produces a signed `post.published`, so the row is never stamped and the
+  capture job never spends an API call on it. That is the only *scalable* version of this attack,
+  and it dies here.
+- It **does not** close the targeted case. If an attacker already knows a real victim post id,
+  they can plant both a `social_post_log` row and a `donny_scheduled_posts` row, and both tables
+  are equally forgeable. The gate hardens this — after the Task 5 fix round the webhook picks the
+  **oldest** matching schedule row, and the victim's genuine row is normally older than a planted
+  one — but that is a race the attacker sometimes wins, not a guarantee.
+
+So the gate is worthwhile defence-in-depth and cheap, but it is **not** a substitute for
+server-established ownership. Only step 1 above actually closes the hole.
+
 ## Status
 
 - Measurement-spine **Task 5 code does not create this** and is not blocked by it.

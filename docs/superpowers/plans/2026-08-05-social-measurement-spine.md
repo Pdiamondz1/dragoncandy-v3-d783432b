@@ -1534,3 +1534,164 @@ reading on at least one account, never by success:true or the absence of
 an error. A genuine zero arrives as an object of zeros and still counts
 as measured. Unmeasured posts are skipped and counted per state.
 ```
+
+---
+
+### Task 10: Only measure posts Outstand actually confirmed published
+
+**Added 2026-08-05.** Defence-in-depth against the cross-tenant metric read recorded in
+`docs/wiki/raw/sessions/2026-08-05-outstand-cross-tenant-metric-read.md`. Do this immediately
+after Task 9 — both change how `content-performance-capture` decides what is real, so they review
+as one coherent idea.
+
+**Be precise about what this does and does not fix.** `social_post_log`'s INSERT policy is
+`with_check (auth.uid() = user_id)`, which constrains only row ownership — `outstand_post_id` is
+unconstrained. So any authenticated user can name any post id, and the capture job will fetch that
+post's analytics with the **org-wide** `OUTSTAND_API_KEY` and file the result under the planter's
+`user_id`, which they can then read own-row.
+
+This task closes the **scalable** half of that: a guessed or fabricated post id never produces a
+signed `post.published`, so it is never stamped, so the capture job never spends an API call on
+it. Blind enumeration and the quota-burn angle both die here. It does **not** close the targeted
+case where an attacker already knows a real victim post id — both `social_post_log` and
+`donny_scheduled_posts` are forgeable, and only server-established provider-account ownership
+fixes that. Do not describe this task as closing the vulnerability.
+
+**Files:**
+- Create: `supabase/migrations/<timestamp>_social_post_log_verified_at.sql`
+- Modify: `supabase/functions/outstand-webhook/index.ts`
+- Modify: `supabase/functions/content-performance-capture/index.ts`
+
+**Interfaces:**
+- Consumes: `recordPublishedPost` from Task 5, `classifyMeasurement` from Task 9.
+- Produces: `social_post_log.verified_at timestamptz` — set **only** by the service-role webhook.
+
+- [ ] **Step 1: The migration**
+
+Pick a timestamp later than `20260805095524`. Additive and nullable, per the standing constraint.
+
+```sql
+-- Rows a signed Outstand post.published event confirmed. The client INSERT policy
+-- on social_post_log constrains only user_id, so outstand_post_id is caller-supplied
+-- and unverified; the webhook's HMAC signature is the one authority in this chain
+-- that a client cannot forge. content-performance-capture measures only stamped rows,
+-- so a fabricated post id never costs an API call against the shared org-wide key.
+--
+-- NOT sufficient on its own: an attacker who already knows a real post id can still
+-- plant rows, because donny_scheduled_posts is equally forgeable. See
+-- docs/wiki/raw/sessions/2026-08-05-outstand-cross-tenant-metric-read.md.
+alter table public.social_post_log
+  add column if not exists verified_at timestamptz;
+
+comment on column public.social_post_log.verified_at is
+  'Set only by outstand-webhook (service role) when a signed post.published confirmed this post. NULL = client-asserted, not measured.';
+
+create index if not exists idx_spl_verified_at
+  on public.social_post_log (verified_at)
+  where verified_at is not null;
+```
+
+Apply it with the Supabase MCP `apply_migration`, then confirm with `execute_sql`:
+
+```sql
+select column_name, is_nullable from information_schema.columns
+where table_schema='public' and table_name='social_post_log' and column_name='verified_at';
+```
+
+- [ ] **Step 2: Stamp it in the webhook**
+
+In `recordPublishedPost` in `supabase/functions/outstand-webhook/index.ts`, add one field to the
+row object built in the `platforms.map(...)`, directly after `published_at`:
+
+```ts
+    // Service-role only. This is what makes the row trustworthy enough to spend an
+    // API call on — see the migration comment.
+    verified_at: new Date().toISOString(),
+```
+
+Change nothing else in that function. The upsert already targets
+`onConflict: "outstand_post_id,platform"`, so a client-written row for a genuinely published post
+is upgraded in place the moment the webhook confirms it — the two writers converge rather than
+conflict.
+
+- [ ] **Step 3: Gate the capture job**
+
+In `supabase/functions/content-performance-capture/index.ts`, find the `social_post_log` select
+(it begins `.select("id, user_id, campaign_id, outstand_post_id, platform, post_type, source_brief_id, created_at")`)
+and add, immediately after `.select(...)`:
+
+```ts
+      // Only measure what a signed Outstand event confirmed. An unstamped row is
+      // client-asserted: its outstand_post_id was never checked by anything, and
+      // fetching it would spend an org-wide-key API call on a post we cannot tie to
+      // this user. Counted below rather than silently dropped.
+      .not("verified_at", "is", null)
+```
+
+- [ ] **Step 4: Count what the gate excludes**
+
+A filter that hides rows without saying so is the failure mode this whole sub-project exists to
+remove. Alongside the existing counters, add a count of unverified rows in the same window and
+report it in the run summary. Query it separately rather than fetching the rows:
+
+```ts
+  const { count: unverifiedCount, error: unverifiedErr } = await admin
+    .from("social_post_log")
+    .select("id", { count: "exact", head: true })
+    .is("verified_at", null)
+    .gte("created_at", windowStart);
+  if (unverifiedErr) {
+    console.warn("[capture] unverified-row count failed", unverifiedErr.message);
+  }
+```
+
+Use whatever variable the existing code already uses for the 8-day window lower bound; do not
+invent a second one. Add `unverified: unverifiedCount ?? null` to the summary object, and
+`console.warn` when it is above zero, naming the number.
+
+- [ ] **Step 5: Verify**
+
+Run: `npx vitest run supabase/functions src/lib` then `npm run typecheck`
+Expected: all pass. No test changes are required — the gate is a query filter, and
+`index.ts` is not import-testable (module-level `serve()`). Say so in your report rather than
+adding a test that asserts nothing.
+
+Then confirm against prod with `execute_sql` that the gate matches reality today:
+
+```sql
+select count(*) filter (where verified_at is not null) as verified,
+       count(*) filter (where verified_at is null)     as unverified
+from public.social_post_log;
+```
+
+Expect `verified = 0` — no webhook-written rows exist yet. That is correct, not a failure: the
+three legacy rows are from 2026-06-11 and are long past every capture milestone.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add supabase/migrations supabase/functions/outstand-webhook/index.ts supabase/functions/content-performance-capture/index.ts
+git commit -m "fix(analytics): only measure posts a signed webhook confirmed"
+```
+
+Use this body:
+
+```
+social_post_log's INSERT policy constrains only user_id, so any
+authenticated user can name any outstand_post_id. content-performance-capture
+then fetches that post's analytics with the ORG-WIDE Outstand key and files
+the result under the planter's user_id, which they can read own-row.
+
+The webhook's HMAC signature is the one authority in this chain a client
+cannot forge, so the webhook now stamps verified_at and the capture job
+measures only stamped rows. A fabricated post id never produces a signed
+event, so it is never stamped and never costs an API call -- which closes
+blind enumeration and the quota-burn angle.
+
+This is NOT a full fix. An attacker who already knows a real post id can
+still plant rows, because donny_scheduled_posts is equally forgeable. That
+needs server-established provider-account ownership, which is an auth change
+and tracked separately.
+
+Excluded rows are counted and reported rather than silently filtered.
+```
