@@ -71,6 +71,32 @@ export function normalizeAnalytics(raw: Record<string, unknown> | null | undefin
   };
 }
 
+export interface RunOutcomeCounters {
+  /** Posts fetched for this run (before any per-post skip). */
+  postsSeen: number;
+  /** Rows actually inserted into content_performance. */
+  inserted: number;
+  /** Posts whose insert failed and were counted rather than silently dropped. */
+  insertErrors: number;
+}
+
+/**
+ * Should this run be reported as a failure to the caller (cron)?
+ *
+ * A run that saw zero due posts is not a failure — "nothing to do" is the
+ * normal, expected steady state and must stay 200. A run that inserted
+ * something is making progress even if some posts also errored. The one
+ * shape that must NOT read as healthy is: posts were there, at least one
+ * insert errored, and NOTHING made it in — the exact signature of deploying
+ * this function ahead of a migration it depends on (every insert rejected
+ * by the DB). Before this predicate that shape returned 200 like any other
+ * quiet run, because the cron's fire-and-forget net.http_post never reads
+ * the response body.
+ */
+export function isCaptureRunFailed(counters: RunOutcomeCounters): boolean {
+  return counters.postsSeen > 0 && counters.inserted === 0 && counters.insertErrors > 0;
+}
+
 export type MeasurementState =
   | 'measured'
   | 'empty_account_list'

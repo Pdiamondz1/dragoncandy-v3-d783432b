@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { milestonesDue, normalizeAnalytics, classifyMeasurement, type Milestone } from './capture';
+import { milestonesDue, normalizeAnalytics, classifyMeasurement, isCaptureRunFailed, type Milestone } from './capture';
 
 const HOURS = 60 * 60 * 1000;
 const at = (h: number) => new Date(Date.UTC(2026, 5, 10, 0, 0, 0) + h * HOURS);
@@ -69,6 +69,27 @@ describe('normalizeAnalytics', () => {
     expect(m.views).toBe(0);
     expect(m.likes).toBe(0);
     expect(m.engagement_rate).toBe(0);
+  });
+});
+
+describe('isCaptureRunFailed', () => {
+  it('a genuinely empty run (nothing due) is NOT a failure', () => {
+    expect(isCaptureRunFailed({ postsSeen: 0, inserted: 0, insertErrors: 0 })).toBe(false);
+  });
+  it('an empty run is not a failure even if insertErrors is somehow nonzero', () => {
+    expect(isCaptureRunFailed({ postsSeen: 0, inserted: 0, insertErrors: 3 })).toBe(false);
+  });
+  it('posts seen, nothing due/erroring (all skipped) is NOT a failure', () => {
+    expect(isCaptureRunFailed({ postsSeen: 10, inserted: 0, insertErrors: 0 })).toBe(false);
+  });
+  it('a healthy run that inserted rows is NOT a failure, even with some errors', () => {
+    expect(isCaptureRunFailed({ postsSeen: 10, inserted: 3, insertErrors: 2 })).toBe(false);
+  });
+  it('posts seen, every insert failed, nothing inserted IS a failure (the migration-not-landed case)', () => {
+    expect(isCaptureRunFailed({ postsSeen: 5, inserted: 0, insertErrors: 5 })).toBe(true);
+  });
+  it('posts seen, one insert failed, nothing inserted IS a failure', () => {
+    expect(isCaptureRunFailed({ postsSeen: 5, inserted: 0, insertErrors: 1 })).toBe(true);
   });
 });
 

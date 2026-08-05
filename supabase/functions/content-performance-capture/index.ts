@@ -11,17 +11,35 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { milestonesDue, normalizeAnalytics, classifyMeasurement, type Milestone } from "./capture.ts";
+import { milestonesDue, normalizeAnalytics, classifyMeasurement, isCaptureRunFailed, type Milestone } from "./capture.ts";
 import { isAuthorizedIngest } from "../_shared/ingest-auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const OUTSTAND_BASE_URL = Deno.env.get("OUTSTAND_BASE_URL") ?? "https://api.outstand.so/v1";
 
+// Each post costs one external call. Bail deliberately with a logged summary
+// rather than being killed mid-run with no record of how far we got — every
+// post is upserted as it succeeds, so an early exit keeps what was captured.
+// Mirrors account-metrics-capture's RUN_BUDGET_MS exactly.
+const RUN_BUDGET_MS = 60_000;
+
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status, headers: { "Content-Type": "application/json" },
   });
+}
+
+interface PostRow {
+  id: string;
+  user_id: string;
+  campaign_id: string | null;
+  outstand_post_id: string;
+  platform: string;
+  post_type: string;
+  format: string | null;
+  source_brief_id: string | null;
+  created_at: string;
 }
 
 serve(async (req: Request) => {
@@ -39,16 +57,32 @@ serve(async (req: Request) => {
 
   // 1. Posts younger than 8 days are still maturing.
   const cutoff = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000).toISOString();
-  const { data: posts, error: postsErr } = await admin
-    .from("social_post_log")
-    .select("id, user_id, campaign_id, outstand_post_id, platform, post_type, format, source_brief_id, created_at")
-    // Only measure what a signed Outstand event confirmed. An unstamped row is
-    // client-asserted: its outstand_post_id was never checked by anything, and
-    // fetching it would spend an org-wide-key API call on a post we cannot tie to
-    // this user. Counted below rather than silently dropped.
-    .not("verified_at", "is", null)
-    .gte("created_at", cutoff);
-  if (postsErr) return json(500, { error: "enumerate_failed", detail: postsErr.message });
+
+  // PAGE the query. PostgREST silently truncates an unbounded .select() at its
+  // default page size, so past that limit the job would quietly measure only
+  // the first page and skip the rest — no error, just posts that never get
+  // metrics. Mirrors account-metrics-capture's pagination exactly.
+  const PAGE = 500;
+  const posts: PostRow[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data: page, error: postsErr } = await admin
+      .from("social_post_log")
+      .select("id, user_id, campaign_id, outstand_post_id, platform, post_type, format, source_brief_id, created_at")
+      // Only measure what a signed Outstand event confirmed. An unstamped row is
+      // client-asserted: its outstand_post_id was never checked by anything, and
+      // fetching it would spend an org-wide-key API call on a post we cannot tie to
+      // this user. Counted below rather than silently dropped.
+      .not("verified_at", "is", null)
+      .gte("created_at", cutoff)
+      .order("id", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (postsErr) {
+      console.error("[capture] social_post_log fetch failed", postsErr.message);
+      return json(500, { error: "db_read_failed" });
+    }
+    posts.push(...((page ?? []) as PostRow[]));
+    if (!page || page.length < PAGE) break;
+  }
 
   // Excluded by the gate above, in the same window. A filter that hides rows
   // without saying so is the failure mode this whole sub-project exists to
@@ -62,15 +96,27 @@ serve(async (req: Request) => {
     console.warn("[capture] unverified-row count failed", unverifiedErr.message);
   }
 
-  let inserted = 0, skipped = 0, fetchErrors = 0, insertErrors = 0;
+  let inserted = 0, skipped = 0, fetchErrors = 0, insertErrors = 0, skippedForTime = 0;
   const unmeasured: Record<string, number> = {};
 
-  for (const p of posts ?? []) {
+  const deadline = Date.now() + RUN_BUDGET_MS;
+  for (const p of posts) {
+    if (Date.now() > deadline) {
+      skippedForTime++;
+      continue;
+    }
+
     // 2. Which milestones already captured for this post?
-    const { data: existing } = await admin
+    const { data: existing, error: existingErr } = await admin
       .from("content_performance")
       .select("milestone")
       .eq("outstand_post_id", p.outstand_post_id);
+    if (existingErr) {
+      // Not fatal — the upsert below is onConflict+ignoreDuplicates, so treating
+      // every milestone as due again just re-fetches Outstand and no-ops on
+      // insert. Logged so a failing read doesn't burn API budget invisibly.
+      console.warn(`[capture] captured-milestones read failed: postId=${p.outstand_post_id}`, existingErr.message);
+    }
     const captured = new Set<Milestone>((existing ?? []).map((r) => r.milestone as Milestone));
 
     const due = milestonesDue(new Date(p.created_at), now, captured);
@@ -156,14 +202,30 @@ serve(async (req: Request) => {
     console.warn(`[capture] ${unverifiedCount} unverified row(s) in window — excluded, never measured`);
   }
 
-  return json(200, {
-    ok: true,
-    posts: posts?.length ?? 0,
+  const summary = {
+    posts: posts.length,
     inserted,
     skipped,
+    skippedForTime,
     fetchErrors,
     insertErrors,
     unmeasured,
     unverified: unverifiedCount ?? null,
-  });
+  };
+
+  // A run that saw posts, had inserts fail, and inserted NOTHING is otherwise
+  // indistinguishable from a clean run to the cron, which fires-and-forgets
+  // net.http_post and reads no response body. That is exactly the shape a
+  // deploy-before-migration mistake produces (every insert rejected). Report
+  // it as a failure so anything that DOES check the response (or the pg_net
+  // response log) can see it — a genuinely empty run still returns 200.
+  if (isCaptureRunFailed({ postsSeen: posts.length, inserted, insertErrors })) {
+    console.error(
+      `[capture] run failed: posts=${posts.length} inserted=0 insertErrors=${insertErrors} ` +
+      `fetchErrors=${fetchErrors} skipped=${skipped} skippedForTime=${skippedForTime}`,
+    );
+    return json(500, { ok: false, ...summary });
+  }
+
+  return json(200, { ok: true, ...summary });
 });
