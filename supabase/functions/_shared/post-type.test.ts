@@ -31,5 +31,9 @@ describe('resolvePostType', () => {
     for (const input of ['campaign_social_hook', 'nonsense', '', null, undefined]) {
       expect(POST_TYPES).toContain(resolvePostType(input as string | null, null));
     }
+    // Explicitly test prototype-colliding keys that would expose the lookup vulnerability
+    for (const protoKey of ['__proto__', 'constructor', 'toString', 'hasOwnProperty', 'valueOf']) {
+      expect(POST_TYPES).toContain(resolvePostType(protoKey, null));
+    }
   });
 });

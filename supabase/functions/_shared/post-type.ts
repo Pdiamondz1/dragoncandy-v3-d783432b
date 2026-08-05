@@ -11,11 +11,11 @@ export const POST_TYPES = [
 export type PostType = (typeof POST_TYPES)[number];
 
 /** Lifted from src/contexts/DonnyProvider.tsx:215-220 — previously the only copy. */
-const SOURCE_TO_POST_TYPE: Record<string, PostType> = {
-  campaign_social_hook: 'campaign',
-  promotion_social_hook: 'ugc_promotion',
-  dragonshare_social_hook: 'dragonshare',
-};
+const SOURCE_TO_POST_TYPE = new Map<string, PostType>([
+  ['campaign_social_hook', 'campaign'],
+  ['promotion_social_hook', 'ugc_promotion'],
+  ['dragonshare_social_hook', 'dragonshare'],
+]);
 
 /**
  * Derive post_type from a scheduled post's `metadata.source`, falling back to the
@@ -27,7 +27,7 @@ export function resolvePostType(
   source: string | null | undefined,
   campaignId: string | null | undefined,
 ): PostType {
-  const mapped = source ? SOURCE_TO_POST_TYPE[source] : undefined;
+  const mapped = source ? SOURCE_TO_POST_TYPE.get(source) : undefined;
   if (mapped) return mapped;
   return campaignId ? 'campaign' : 'standalone';
 }
