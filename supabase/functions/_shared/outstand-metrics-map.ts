@@ -33,7 +33,11 @@
 
 export interface OutstandAccountMetrics {
   followers: number;
-  /** DERIVED, not reported — see below. */
+  /**
+   * DERIVED, not reported by Outstand — see below. Expressed as a PERCENTAGE
+   * (3.02 means 3.02%), because every consumer renders it as `${value}%`.
+   * Emitting the raw ratio showed a real 3% engagement rate as "0.03%".
+   */
   engagementRate: number;
   reach: number;
   postsCount: number;
@@ -71,11 +75,15 @@ export function mapOutstandAccountMetrics(
   if (!hasAnyKnownField) return null;
 
   // Outstand reports no engagement RATE — only absolute counters. Derive the
-  // conventional interactions-per-reach ratio, and be explicit that it is ours:
+  // conventional interactions-per-reach figure, and be explicit that it is ours:
   // if reach is 0 the rate is undefined, and 0 is the honest answer rather than
   // a division artifact.
+  //
+  // Returned as a PERCENTAGE, not a ratio. Consumers render `${value}%`
+  // directly (KpiCards.tsx), and it is also what gets cached — so a raw ratio
+  // would both display and PERSIST 3.02% as 0.03%.
   const interactions = num(engagement.total_interactions);
-  const engagementRate = reach > 0 ? interactions / reach : 0;
+  const engagementRate = reach > 0 ? (interactions / reach) * 100 : 0;
 
   return { followers, engagementRate, reach, postsCount };
 }

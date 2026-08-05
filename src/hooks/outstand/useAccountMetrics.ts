@@ -209,6 +209,12 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
         .from('social_analytics_cache')
         .select('outstand_account_id, metric_type, metric_value')
         .eq('user_id', userId ?? '')
+        // Scoped to the SAME accounts the current totals were computed from.
+        // The tab passes a platform-filtered list, so reading every cached
+        // account here compared a filtered current period against an unfiltered
+        // prior one — every KPI delta wrong whenever a user filters. Harmless
+        // while the table was empty; the nightly cron populates all accounts.
+        .in('outstand_account_id', accounts.map((a) => a.id))
         .eq('period_start', priorStartIso)
         .eq('period_end', priorEndIso);
 

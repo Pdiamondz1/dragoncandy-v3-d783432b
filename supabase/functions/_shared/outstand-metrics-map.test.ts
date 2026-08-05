@@ -24,9 +24,11 @@ describe('mapOutstandAccountMetrics', () => {
     expect(m.reach).toBe(630);
   });
 
-  it('derives an engagement rate, which Outstand does not report', () => {
+  it('derives an engagement rate as a PERCENTAGE, which Outstand does not report', () => {
     const m = mapOutstandAccountMetrics(LIVE_90D)!;
-    expect(m.engagementRate).toBeCloseTo(19 / 630);
+    // Consumers render `${value}%`, so a raw ratio would show 3.02% as 0.03%.
+    expect(m.engagementRate).toBeCloseTo((19 / 630) * 100);
+    expect(m.engagementRate).toBeGreaterThan(1);
   });
 
   it('returns 0 rate rather than dividing by zero reach', () => {
