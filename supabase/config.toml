@@ -192,3 +192,6 @@ verify_jwt = false
 
 [functions.refund-package-order]
 verify_jwt = false
+
+[functions.notify-package-order]
+verify_jwt = false
