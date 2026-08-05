@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { milestonesDue, normalizeAnalytics, type Milestone } from './capture';
+import { milestonesDue, normalizeAnalytics, classifyMeasurement, type Milestone } from './capture';
 
 const HOURS = 60 * 60 * 1000;
 const at = (h: number) => new Date(Date.UTC(2026, 5, 10, 0, 0, 0) + h * HOURS);
@@ -69,5 +69,90 @@ describe('normalizeAnalytics', () => {
     expect(m.views).toBe(0);
     expect(m.likes).toBe(0);
     expect(m.engagement_rate).toBe(0);
+  });
+});
+
+describe('classifyMeasurement', () => {
+  const entry = (metrics: unknown, extra: Record<string, unknown> = {}) => ({
+    account_id: 'a1', network: 'instagram', metrics, ...extra,
+  });
+
+  it('state 2: an empty account list is unmeasured, not zero', () => {
+    const r = classifyMeasurement({
+      success: true,
+      metrics_by_account: [],
+      aggregated_metrics: { total_views: 0, total_likes: 0, total_reach: 0 },
+    });
+    expect(r.measured).toBe(false);
+    expect(r.state).toBe('empty_account_list');
+  });
+
+  it('state 1: null metrics is unmeasured and surfaces metrics_error as the reason', () => {
+    const r = classifyMeasurement({
+      metrics_by_account: [entry(null, { metrics_error: 'token expired' })],
+      aggregated_metrics: { total_views: 0 },
+    });
+    expect(r.measured).toBe(false);
+    expect(r.state).toBe('null_metrics');
+    expect(r.reason).toBe('token expired');
+  });
+
+  it('state 3: an empty metrics object is unmeasured', () => {
+    const r = classifyMeasurement({ metrics_by_account: [entry({})] });
+    expect(r.measured).toBe(false);
+    expect(r.state).toBe('sparse_metrics');
+  });
+
+  it('state 3: all-null LinkedIn fields are unmeasured, and the note becomes the reason', () => {
+    const r = classifyMeasurement({
+      metrics_by_account: [entry({
+        likes: null, comments: null, shares: null,
+        platform_specific: { note: 'Missing account URN for organization' },
+      })],
+    });
+    expect(r.measured).toBe(false);
+    expect(r.state).toBe('sparse_metrics');
+    expect(r.reason).toContain('Missing account URN');
+  });
+
+  it('a genuine zero IS measured — the whole point of the distinction', () => {
+    const r = classifyMeasurement({
+      metrics_by_account: [entry({ likes: 0, comments: 0, shares: 0, views: 0 })],
+      aggregated_metrics: { total_views: 0, total_likes: 0 },
+    });
+    expect(r.measured).toBe(true);
+    expect(r.state).toBe('measured');
+  });
+
+  it('one measured account among several failures still counts as measured', () => {
+    const r = classifyMeasurement({
+      metrics_by_account: [entry(null, { metrics_error: 'x' }), entry({ likes: 12 })],
+    });
+    expect(r.measured).toBe(true);
+  });
+
+  it('a missing or non-array metrics_by_account is unmeasured, never zero', () => {
+    expect(classifyMeasurement({ aggregated_metrics: { total_likes: 0 } }).state)
+      .toBe('empty_account_list');
+    expect(classifyMeasurement({ metrics_by_account: 'nope' }).state)
+      .toBe('empty_account_list');
+  });
+
+  it('a null payload is its own state', () => {
+    expect(classifyMeasurement(null).state).toBe('no_payload');
+    expect(classifyMeasurement(undefined).measured).toBe(false);
+  });
+
+  it('ignores non-numeric and negative values when deciding measured', () => {
+    expect(classifyMeasurement({ metrics_by_account: [entry({ likes: 'many' })] }).measured)
+      .toBe(false);
+    expect(classifyMeasurement({ metrics_by_account: [entry({ likes: -1 })] }).measured)
+      .toBe(false);
+  });
+
+  it('does not treat resolved_platform_post_id as a metric', () => {
+    expect(classifyMeasurement({
+      metrics_by_account: [entry({ resolved_platform_post_id: '123' })],
+    }).measured).toBe(false);
   });
 });

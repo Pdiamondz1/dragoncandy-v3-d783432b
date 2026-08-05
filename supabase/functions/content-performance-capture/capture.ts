@@ -70,3 +70,76 @@ export function normalizeAnalytics(raw: Record<string, unknown> | null | undefin
     engagement_rate: pick(agg, ['average_engagement_rate', 'engagementRate', 'engagement_rate']),
   };
 }
+
+export type MeasurementState =
+  | 'measured'
+  | 'empty_account_list'
+  | 'null_metrics'
+  | 'sparse_metrics'
+  | 'no_payload';
+
+export interface MeasurementVerdict {
+  measured: boolean;
+  state: MeasurementState;
+  reason: string | null;
+}
+
+// Keys that carry an actual reading. `resolved_platform_post_id` is an
+// identifier Outstand mixes into the same object and must NOT count as a metric.
+const METRIC_KEYS = [
+  'views', 'likes', 'comments', 'shares', 'saves', 'reach', 'impressions',
+  'total_views', 'total_likes', 'total_comments', 'total_shares', 'total_saves',
+  'total_reach', 'total_impressions', 'engagement_rate', 'average_engagement_rate',
+];
+
+function hasReading(metrics: unknown): boolean {
+  if (!metrics || typeof metrics !== 'object') return false;
+  const m = metrics as Record<string, unknown>;
+  return METRIC_KEYS.some((k) => {
+    const v = m[k];
+    return typeof v === 'number' && Number.isFinite(v) && v >= 0;
+  });
+}
+
+function reasonFor(e: Record<string, unknown>): string | null {
+  const err = e.metrics_error;
+  if (typeof err === 'string' && err.length > 0) return err;
+  const metrics = (e.metrics ?? {}) as Record<string, unknown>;
+  const ps = metrics.platform_specific;
+  if (ps && typeof ps === 'object') {
+    const note = (ps as Record<string, unknown>).note;
+    if (typeof note === 'string' && note.length > 0) return note;
+  }
+  return null;
+}
+
+/**
+ * Is this analytics payload an actual measurement?
+ *
+ * Outstand support confirmed (2026-08-05) that THREE different states all
+ * surface as all-zero `aggregated_metrics`, and only one of them populates
+ * `metrics_error`. So "measured" must be decided by the presence of a real
+ * reading on at least one account — never by `success: true`, never by the
+ * absence of an error, never by the aggregate alone. A genuine zero arrives as
+ * an OBJECT of zeros and is correctly classified as measured.
+ */
+export function classifyMeasurement(raw: unknown): MeasurementVerdict {
+  if (!raw || typeof raw !== 'object') {
+    return { measured: false, state: 'no_payload', reason: null };
+  }
+  const list = (raw as Record<string, unknown>).metrics_by_account;
+  if (!Array.isArray(list) || list.length === 0) {
+    return { measured: false, state: 'empty_account_list', reason: null };
+  }
+  const entries = list.filter(
+    (e): e is Record<string, unknown> => !!e && typeof e === 'object',
+  );
+  if (entries.some((e) => hasReading(e.metrics))) {
+    return { measured: true, state: 'measured', reason: null };
+  }
+  const reason = entries.map(reasonFor).find((r) => r !== null) ?? null;
+  const state: MeasurementState = entries.every((e) => e.metrics === null)
+    ? 'null_metrics'
+    : 'sparse_metrics';
+  return { measured: false, state, reason };
+}

@@ -11,7 +11,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { milestonesDue, normalizeAnalytics, type Milestone } from "./capture.ts";
+import { milestonesDue, normalizeAnalytics, classifyMeasurement, type Milestone } from "./capture.ts";
 import { isAuthorizedIngest } from "../_shared/ingest-auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -46,6 +46,7 @@ serve(async (req: Request) => {
   if (postsErr) return json(500, { error: "enumerate_failed", detail: postsErr.message });
 
   let inserted = 0, skipped = 0, fetchErrors = 0, insertErrors = 0;
+  const unmeasured: Record<string, number> = {};
 
   for (const p of posts ?? []) {
     // 2. Which milestones already captured for this post?
@@ -79,6 +80,20 @@ serve(async (req: Request) => {
       fetchErrors++; continue;
     }
 
+    // Outstand returns all-zero aggregated_metrics for three DIFFERENT unmeasured
+    // states, only one of which sets metrics_error (spec §0b, vendor-confirmed).
+    // Writing those zeros would be indistinguishable from a real zero-engagement
+    // post and would silently poison every downstream aggregate. Skip and count.
+    const verdict = classifyMeasurement(payload);
+    if (!verdict.measured) {
+      unmeasured[verdict.state] = (unmeasured[verdict.state] ?? 0) + 1;
+      console.warn(
+        `[capture] unmeasured post: postId=${p.outstand_post_id} state=${verdict.state}` +
+        (verdict.reason ? ` reason=${verdict.reason}` : ''),
+      );
+      continue;
+    }
+
     const m = normalizeAnalytics(payload);
     const rows = due.map((milestone) => ({
       social_post_log_id: p.id,
@@ -108,5 +123,5 @@ serve(async (req: Request) => {
     inserted += insRows?.length ?? 0;
   }
 
-  return json(200, { ok: true, posts: posts?.length ?? 0, inserted, skipped, fetchErrors, insertErrors });
+  return json(200, { ok: true, posts: posts?.length ?? 0, inserted, skipped, fetchErrors, insertErrors, unmeasured });
 });
