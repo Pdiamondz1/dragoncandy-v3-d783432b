@@ -289,7 +289,35 @@ complete OAuth, land on `/settings/social/callback`, and confirm `syncConnection
 
 ---
 
-## Phase 3 — Flip to Zernio and move posting off the proxy
+---
+
+> # ⛔ PHASES 3–7 BELOW ARE ABANDONED — DO NOT IMPLEMENT
+>
+> **The decision is to STAY on Outstand** (2026-08-04). See
+> `docs/wiki/concepts/social-provider-decision.md` and the retraction banner at the
+> top of this file.
+>
+> Everything from here down describes a migration that is **not happening**. It is
+> kept only as the record of what was designed and why, and because Phases 0–2 —
+> which DID ship — reference it.
+>
+> **This is not a hypothetical hazard.** An automated reviewer read Phase 4's text
+> ("`social_analytics_cache` is written client-side only… nothing cron-driven writes
+> it") and raised it as a blocking architectural objection to a cron that is now
+> the correct design. Stale plans get acted on. Treat every statement below as
+> historical.
+>
+> What actually happened instead:
+> - **Phase 3** — not done. The 37-file `@outstand-so/ui` removal existed only to
+>   escape Outstand. Three genuine bug fixes discovered while scoping it shipped in
+>   PR #361; the rest was deleted, not deferred.
+> - **Phase 4** — superseded. Account metrics are now captured by the
+>   `account-metrics-capture` cron against Outstand, because client-side-only
+>   population meant Donny could only see accounts a human had browsed.
+> - **Phases 5–7** — moot. Donny's tools already run on Outstand, and there is
+>   nothing to delete.
+
+## Phase 3 — Flip to Zernio and move posting off the proxy *(ABANDONED — see above)*
 
 The flip and the code that depends on it ship together, so there is no window where revoked rows
 face Outstand-only code paths.

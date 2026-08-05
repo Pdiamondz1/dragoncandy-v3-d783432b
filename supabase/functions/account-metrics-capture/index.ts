@@ -34,8 +34,19 @@ const OUTSTAND_BASE_URL = Deno.env.get("OUTSTAND_BASE_URL") ?? "https://api.outs
 const RANGES: TimeRange[] = ["7d", "30d", "90d"];
 
 // Outstand's rate limits are dynamic and scale with connected accounts, so stay
-// modest rather than assuming headroom. content-performance-capture uses 5.
+// modest rather than assuming headroom. NOTE: content-performance-capture is
+// fully sequential, so this job is the first to issue PARALLEL calls on the
+// shared OUTSTAND_API_KEY — if the two ever overlap, that changes the load the
+// key sees. Keep this low, and lower it before raising account volume.
 const CONCURRENCY = 5;
+
+// Hard wall-clock budget. Worst case per unit is the 15s fetch timeout, so at
+// N accounts x 3 ranges / CONCURRENCY the run grows linearly and will eventually
+// exceed the platform's edge-function limit. Each unit upserts as it succeeds
+// rather than batching to the end, so stopping early keeps everything already
+// captured — but bail deliberately with a logged summary instead of being killed
+// mid-run with no record of how far we got.
+const RUN_BUDGET_MS = 60_000;
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -89,18 +100,33 @@ serve(async (req: Request) => {
   // Account ids are only opaque WITHIN a provider, and this job talks to Outstand
   // directly with the org key. Skipping non-Outstand rows keeps us from asking
   // Outstand about an id that was never theirs.
-  const accounts = ((rows ?? []) as AccountRow[]).filter(
-    (r) => resolveProviderId(r.provider) === "outstand",
-  );
+  const allRows = (rows ?? []) as AccountRow[];
+  const accounts = allRows.filter((r) => resolveProviderId(r.provider) === "outstand");
 
+  // Say so when rows are skipped. A silent filter means a whole provider's
+  // accounts could stop being captured with nothing anywhere to notice it —
+  // "no rows appeared" would look identical to "no accounts connected".
+  const skipped = allRows.length - accounts.length;
+  if (skipped > 0) {
+    console.warn(
+      `account-metrics-capture: skipping ${skipped} non-Outstand account(s) — this job talks to Outstand directly and account ids are only opaque within a provider`,
+    );
+  }
+
+  const deadline = Date.now() + RUN_BUDGET_MS;
   let captured = 0;
   let failed = 0;
+  let skippedForTime = 0;
   const errors: Array<{ accountId: string; reason: string }> = [];
 
   await mapWithConcurrency(
     accounts,
     async (account) => {
       for (const range of RANGES) {
+        if (Date.now() > deadline) {
+          skippedForTime++;
+          continue;
+        }
         const { current } = getAnalyticsWindow(range, now);
         const since = Math.floor(current.start.getTime() / 1000);
         const until = Math.floor(current.end.getTime() / 1000);
@@ -127,7 +153,27 @@ serve(async (req: Request) => {
           }
 
           const body = await res.json().catch(() => null);
-          const m = (body?.data ?? body ?? {}) as Record<string, number>;
+          const payload = (body?.data ?? body) as Record<string, unknown> | null | undefined;
+
+          // A 200 with an unparseable or empty body must be a FAILURE, never a
+          // row of zeros. Without this check `{}` flows through the `??` chain
+          // below and every metric silently becomes 0 — fabricated data, written
+          // and counted as captured, in the exact table Donny reasons over.
+          //
+          // This is the same conflation that cost this project weeks: an absent
+          // measurement read as a measured zero. A post with no views IS 0; a
+          // response with no fields is NOT.
+          if (!payload || typeof payload !== "object" || Object.keys(payload).length === 0) {
+            failed++;
+            const reason = "empty_or_unparseable_payload";
+            errors.push({ accountId: account.outstand_social_account_id, reason });
+            console.error(
+              `account-metrics-capture: ${account.outstand_social_account_id} (${range}) ${reason}`,
+            );
+            continue;
+          }
+
+          const m = payload as Record<string, number>;
 
           // Field fallbacks mirror useAccountMetrics so the cron and the browser
           // agree on what a metric means. Outstand's per-network coverage varies
@@ -182,7 +228,8 @@ serve(async (req: Request) => {
   );
 
   console.log(
-    `account-metrics-capture: ${accounts.length} accounts x ${RANGES.length} ranges -> ${captured} captured, ${failed} failed`,
+    `account-metrics-capture: ${accounts.length} accounts x ${RANGES.length} ranges -> ` +
+      `${captured} captured, ${failed} failed, ${skippedForTime} skipped (budget)`,
   );
 
   return json(200, {
@@ -191,6 +238,8 @@ serve(async (req: Request) => {
     ranges: RANGES.length,
     captured,
     failed,
+    skipped_non_outstand: skipped,
+    skipped_for_time: skippedForTime,
     errors: errors.slice(0, 20),
   });
 });
