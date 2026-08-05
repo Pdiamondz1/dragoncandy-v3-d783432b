@@ -2,12 +2,14 @@
 
 Written 2026-08-05 from the whole-branch review of `feat/social-measurement-spine`, updated the
 same day once Task 11 shipped the fix, again once Task 13 closed the amplification leg of the
-`platform`-vocabulary problem, and again once Task 14 corrected two Codex findings on already-shipped
-code. **Read this before deploying `outstand-webhook`.** BLOCKER 1 below was a genuine
-data-correctness defect that no per-task review could see, because it lived in the seam between two
-tasks that each passed — it is now **fixed** (see below, and its three follow-on fix rounds). The
-`donny_scheduled_posts.platform` vs Outstand-network (`twitter` vs `x`) mismatch and the cross-tenant
-read are still open.
+`platform`-vocabulary problem, again once Task 14 corrected two Codex findings on already-shipped
+code, and again once Task 15 fixed a webhook/client race in that same code. **Read this before
+deploying `outstand-webhook`.** BLOCKER 1 below was a genuine data-correctness defect that no
+per-task review could see, because it lived in the seam between two tasks that each passed — it is
+now **fixed** (see below, and its four follow-on fix rounds). **`outstand-webhook` now returns HTTP
+500 on purpose in one case** (Task 15, below) — if you're debugging a 500 from this function, check
+that section before assuming it's a bug. The `donny_scheduled_posts.platform` vs Outstand-network
+(`twitter` vs `x`) mismatch and the cross-tenant read are still open.
 
 ## Required order
 
@@ -167,6 +169,77 @@ correctly keep summing across platforms. Verified the actual consumer: `post_cou
 only as `> 0` predicates — never rendered as a number anywhere in the app (`BriefPerformanceCard.tsx`
 displays `total_views`, not `post_count`). The fix is correct regardless, since a column named
 `post_count` should count posts.
+
+## Fix round 4 (Task 15) — the no-schedule-row race could permanently lose measurement; `outstand-webhook` now 500s on purpose in one case
+
+A third Codex finding on the no-schedule-row path (Task 12/14's `recordPublishedPost`), this one
+[P1]. Partly a Task 12 instruction error: keeping HTTP 200 for the `unmatched` outcome was reasoned
+as correct for a genuinely foreign post (retrying can never help), but `unmatched` also covered a
+second, opposite case that wants the opposite response.
+
+**The race.** For publish paths that create no `donny_scheduled_posts` row
+(`useSponsorshipAmplification.ts`, and `DonnyProvider.tsx`'s DragonShare path), the client publishes
+through Outstand and only *afterward* inserts its own `social_post_log` row. If Outstand's
+`post.published` webhook delivery arrives before that client insert commits, `recordPublishedPost`
+finds no schedule row (there never is one on this path) **and** no pre-existing `social_post_log`
+row to stamp `verified_at` on yet. The old code returned `unmatched` → HTTP 200 → Outstand never
+retries. The client's row then lands moments later with `verified_at` permanently null, and
+`content-performance-capture` (which only selects rows where `verified_at IS NOT NULL`) skips it
+forever. Measurement became a coin-flip on request timing — worse under load, since the client
+round-trip to insert its row competes with webhook delivery latency.
+
+**The fix — split `unmatched` using owner resolution, which Task 14 already computes.**
+`recordPublishedPost` already resolves the post's owner(s) from the event's `accounts[].accountId`
+via `business_outstand_accounts` before it will stamp anything (Task 14's ownership-scoping fix).
+That same resolution is now also used to distinguish the two cases the old `unmatched` conflated:
+
+- **An owner resolves, but the stamp UPDATE touched zero rows** → this is one of *our* posts (an
+  Outstand account we know), so the row is almost certainly still in flight from the client's own
+  insert. New outcome `owner_pending` → **HTTP 500**, so Outstand redelivers (up to 5 attempts,
+  backoff to 5 min) and a later attempt stamps the row once it exists. Logged as `outstand-webhook:
+  owner resolved but no row to stamp for <postId> — requesting retry (client insert likely still in
+  flight)`, distinguishable from the genuine-failure log line
+  (`outstand-webhook: measurement write failed for postId=<postId>`).
+- **No owner resolves** (no account id on the event, or the account id doesn't map to a
+  `business_outstand_accounts` row) → still `unmatched` → **HTTP 200**, unchanged. Genuinely foreign,
+  or an account we don't know; retrying cannot help and would burn five deliveries per foreign post.
+- Rows found and stamped, or a fresh schedule-matched insert → unchanged (`verified_existing` /
+  `recorded`, both HTTP 200).
+
+**If you see `outstand-webhook` returning 500 in the logs**, check the message before treating it as
+an outage: `owner resolved but no row to stamp` is *expected* under load and self-heals on Outstand's
+retry. Only `measurement write failed` (schedule lookup / stamp / upsert DB error) is a real failure
+worth paging on.
+
+**Retry safety, verified by reading the handler end to end.** Every step a redelivery repeats is
+idempotent: the audit insert (`outstand_webhook_events`) ignores Postgres `23505` (unique violation)
+and runs unconditionally before the measurement write, so a retry never re-raises on it; the
+`social_post_log` upsert is keyed on `(outstand_post_id, platform)`, so a retry after a partial write
+just re-applies the same rows; the `verified_at` stamp UPDATE is guarded by `.is('verified_at',
+null)`, so a retry after a partial stamp finds fewer (or zero) rows left and never double-stamps; and
+the `donny_scheduled_posts` status UPDATE below the measurement write is guarded by `.neq('status',
+'published')`, so a retry never re-applies a status transition that already landed. No step required
+a code change to become retry-safe — Task 15 only changed which outcomes trigger a retry, not what a
+retry does.
+
+**One residual cost, accepted rather than engineered around.** A *second* natural delivery of the
+same `post.published` event (not a redelivery of our own 500 — Outstand delivering the same event
+twice for its own reasons) after the row was already stamped by the first delivery will also find
+zero rows left to stamp (`.is('verified_at', null)` now excludes it) and also return `owner_pending`
+→ another 500 → another few redeliveries that all correctly find nothing left to do before Outstand
+gives up. This is wasted work, not wrong behavior — the row is already correctly measured either way
+— and distinguishing "still in flight" from "already done, this is a duplicate delivery" would need
+an extra existence check this fix does not add. Accepted as a bounded, harmless cost against the
+alternative (silently losing real measurement) that this round exists to close.
+
+**Alternative considered and rejected: admit rows on the audit-table signature instead of
+`verified_at`.** Rather than fixing the retry behavior, the capture job could instead treat any row
+with a matching `outstand_webhook_events` audit row as verified, sidestepping the timing race
+entirely. Rejected: `outstand_webhook_events` has no owner/tenant constraint — it is keyed only on
+`event:post_id` — so admitting rows on its presence would readmit exactly the cross-tenant read Task
+14 just closed by scoping the `verified_at` stamp to resolved owners. The race is better closed by
+making the existing owner-scoped stamp retry until it succeeds than by widening what counts as
+"verified" to an unscoped signal.
 
 ## Still open, tracked elsewhere
 

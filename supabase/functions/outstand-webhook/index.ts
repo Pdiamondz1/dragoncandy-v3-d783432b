@@ -30,8 +30,13 @@ const json = (status: number, body: unknown) =>
  * which makes coverage structural rather than something each new path must
  * remember. Same reasoning as create-notification.
  *
- * Returns 'recorded' | 'unmatched' | 'verified_existing' | 'failed' so the caller
- * can count outcomes. An unmatched post is a VISIBLE hole, never a silent one.
+ * Returns 'recorded' | 'unmatched' | 'verified_existing' | 'owner_pending' | 'failed'
+ * so the caller can count outcomes. An unmatched post is a VISIBLE hole, never a
+ * silent one. 'owner_pending' is distinct from 'unmatched': it means this IS one
+ * of our posts (an owner resolved from accounts[].accountId) but no row existed
+ * yet to stamp — almost certainly a race against the client's own
+ * social_post_log insert (see the no-schedule-row branch below) — and the
+ * caller must turn that into a 500 so Outstand redelivers, never a 200.
  */
 async function recordPublishedPost(
   supabase: ReturnType<typeof createClient>,
@@ -39,7 +44,9 @@ async function recordPublishedPost(
   publishedAt: string,
   accounts: OutstandSocialAccount[],
   rawAccountCount: number,
-): Promise<{ outcome: "recorded" | "unmatched" | "verified_existing" | "failed"; rows: number; dropped: number }> {
+): Promise<
+  { outcome: "recorded" | "unmatched" | "verified_existing" | "owner_pending" | "failed"; rows: number; dropped: number }
+> {
   // Entries parseAccounts discarded as malformed, plus (below) entries that
   // parsed fine but carry no network. Carried forward from the Task 4 review: a
   // skip that increments no counter is the failure mode this whole sub-project
@@ -158,11 +165,24 @@ async function recordPublishedPost(
       return { outcome: "verified_existing", rows: stamped.length, dropped };
     }
 
-    // No schedule row AND no pre-existing owner-matched social_post_log row:
-    // published outside our flow, Task 1's bug lost it, or the only matching
-    // row belongs to a user other than the resolved owner(s).
-    console.warn(`outstand-webhook: no scheduled post for ${postId} — not recorded for measurement`);
-    return { outcome: "unmatched", rows: 0, dropped };
+    // Reaching here means an owner DID resolve (the ownerIds.length === 0 case
+    // returned above) but the stamp UPDATE touched zero rows — this is one of
+    // OUR posts, not a foreign one, so 'unmatched' was the wrong outcome for
+    // it (Task 15, Codex P1): a real DragonCandy post would be silently lost
+    // forever whenever Outstand's post.published delivery beat the client's
+    // own social_post_log insert to land — a genuine race, since
+    // useSponsorshipAmplification.ts and DonnyProvider's DragonShare path both
+    // publish through Outstand and only afterward insert their row. It can
+    // also mean the row already exists but was verified by an earlier
+    // delivery of this same event (excluded here by `.is('verified_at',
+    // null)`) — a harmless case that costs a few wasted retries, not a wrong
+    // outcome. Either way the caller must return non-2xx so Outstand
+    // redelivers (up to 5 attempts, backoff to 5 min) and a later attempt can
+    // stamp the row once it exists.
+    console.warn(
+      `outstand-webhook: owner resolved but no row to stamp for ${postId} — requesting retry (client insert likely still in flight)`,
+    );
+    return { outcome: "owner_pending", rows: 0, dropped };
   }
   if (schedRows.length > 1) {
     console.warn(
@@ -278,31 +298,48 @@ serve(async (req: Request) => {
           rawAccountCount,
         );
         // outcome is one of 'recorded' (new row(s) inserted from a schedule
-        // match) / 'unmatched' (no schedule row and nothing pre-existing to
-        // stamp) / 'verified_existing' (no schedule row, but a client-written
-        // social_post_log row for this postId got stamped — see the comment at
-        // the stamp UPDATE) / 'failed'. Kept as one log line, distinguished by
-        // ${res.outcome}, so a count-by-outcome over these logs tells all four
-        // apart without a separate branch per case.
+        // match) / 'unmatched' (no schedule row, and either no account id on
+        // the event or no owner resolved for it — genuinely foreign, or an
+        // account we don't know) / 'verified_existing' (no schedule row, but a
+        // client-written social_post_log row for this postId got stamped —
+        // see the comment at the stamp UPDATE) / 'owner_pending' (no schedule
+        // row, an owner DID resolve — this is OUR post — but no row existed
+        // yet to stamp; see the comment at that return) / 'failed'. Kept as
+        // one log line, distinguished by ${res.outcome}, so a count-by-outcome
+        // over these logs tells all five apart without a separate branch per
+        // case.
         console.log(
           `outstand-webhook: measurement record for ${postId}: ${res.outcome} rows=${res.rows}` +
           (res.dropped > 0 ? ` droppedAccounts=${res.dropped}` : ""),
         );
-        if (res.outcome === "failed") {
-          // recordPublishedPost failed on a transient DB read/write (schedule
-          // lookup error, verified_at stamp error, or social_post_log upsert
-          // error) — not a data-shape problem, so it's worth Outstand's free
-          // retry (up to 5 attempts, backoff) rather than losing the
-          // measurement permanently to a 200.
-          // Safe to retry: the audit insert above ignores 23505 (already ran,
-          // unconditionally, before this branch); the social_post_log upsert is
-          // keyed on (outstand_post_id, platform); the verified_at stamp UPDATE
-          // is guarded by .is('verified_at', null), so a retry after a partial
-          // stamp just finds 0 rows left to stamp (reads as 'unmatched', never
-          // double-applies); and the status update below is guarded by
-          // .neq('status','published') — nothing here double-applies.
-          console.error(`outstand-webhook: measurement write failed for postId=${postId}, returning 500 for retry`);
-          return json(500, { status: "failed", outcome: res.outcome, post_id: postId });
+        if (res.outcome === "failed" || res.outcome === "owner_pending") {
+          // Both ask Outstand to redeliver (500, up to 5 attempts, backoff to
+          // 5 min) rather than losing the measurement permanently to a 200.
+          // 'failed' is a transient DB read/write error (schedule lookup,
+          // verified_at stamp, or social_post_log upsert). 'owner_pending' is
+          // the no-schedule-row race (Task 15, Codex P1): the event's
+          // accounts[].accountId resolved to one of our users, so this is
+          // definitely our post, but publish-then-insert client paths
+          // (useSponsorshipAmplification, DonnyProvider's DragonShare leg) can
+          // have Outstand's post.published delivery beat their own
+          // social_post_log insert — without this branch that row would carry
+          // a permanently null verified_at and content-performance-capture
+          // would skip it forever. Deliberately narrower than the old
+          // 'unmatched' catch-all: a genuinely foreign post (no owner
+          // resolves) still returns 200 below, since retrying that can never
+          // help and would burn five deliveries per foreign post.
+          // Safe to retry either way: the audit insert above ignores 23505
+          // (already ran, unconditionally, before this branch); the
+          // social_post_log upsert is keyed on (outstand_post_id, platform);
+          // the verified_at stamp UPDATE is guarded by .is('verified_at',
+          // null), so a retry after a partial stamp just finds 0 rows left to
+          // stamp (falls back into this same retry, never double-applies);
+          // and the status update below is guarded by .neq('status',
+          // 'published') — nothing here double-applies.
+          console.error(
+            `outstand-webhook: measurement ${res.outcome === "owner_pending" ? "pending (owner resolved, no row yet)" : "write failed"} for postId=${postId}, returning 500 for retry`,
+          );
+          return json(500, { status: res.outcome === "owner_pending" ? "pending" : "failed", outcome: res.outcome, post_id: postId });
         }
       }
 
