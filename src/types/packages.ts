@@ -84,3 +84,53 @@ export interface PackageSuggestion {
   price: number;
   turnaround_days: number;
 }
+
+// ── Orders (v1d delivery layer) ────────────────────────────────────────────────────────────────────
+
+// One delivered asset. For v1d the creator pastes a URL (Drive/Dropbox/YouTube/any public host); a future
+// pass adds direct file upload — both land here as a plain URL, so this shape doesn't change.
+export interface OrderDeliverable {
+  url: string;
+  label?: string;
+  kind?: 'link' | 'file';
+}
+
+// The full lifecycle of a purchase.
+export type PackageOrderStatus =
+  | 'pending_payment'
+  | 'in_progress'
+  | 'submitted'
+  | 'revision_requested'
+  | 'completed'
+  | 'cancelled'
+  | 'refunded'
+  | 'disputed';
+
+export type PackageContentStatus = 'submitted' | 'approved' | 'auto_approved' | 'rejected' | null;
+
+// A purchase as the CREATOR sees it (package_orders, RLS-gated to creator_id = auth.uid()), with the buyer's
+// package + intake answers embedded. Money internals the creator shouldn't act on (guest token, payout marker)
+// are deliberately not selected.
+export interface CreatorOrder {
+  id: string;
+  package_id: string;
+  buyer_email: string | null;
+  buyer_user_id: string | null;
+  price_snapshot: number;
+  platform_fee_snapshot: number;
+  turnaround_days_snapshot: number | null;
+  scope_snapshot: PackageScope;
+  escrow_status: string;
+  order_status: PackageOrderStatus;
+  content_status: PackageContentStatus;
+  content_submitted_at: string | null;
+  revision_count: number;
+  revision_note: string | null;
+  delivery_note: string | null;
+  deliverables: OrderDeliverable[];
+  completed_at: string | null;
+  created_at: string;
+  // Embedded via PostgREST:
+  package: { title: string; slug: string } | null;
+  intake: { answers: Record<string, unknown>; schema_version: number } | null;
+}

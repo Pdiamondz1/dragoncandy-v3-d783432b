@@ -67,6 +67,8 @@ const OutstandManager = lazy(() => import("./pages/OutstandManager"));
 const OutstandOAuthCallbackPage = lazy(() => import("./pages/OutstandOAuthCallbackPage"));
 const CreatorEarnings = lazy(() => import("./pages/CreatorEarnings"));
 const CreatorPackages = lazy(() => import("./pages/CreatorPackages"));
+const PackageOrders = lazy(() => import("./pages/PackageOrders"));
+const PackageOrderDetail = lazy(() => import("./pages/PackageOrderDetail"));
 const PublicPackagePage = lazy(() => import("./pages/PublicPackagePage"));
 const GuestOrderPage = lazy(() => import("./pages/GuestOrderPage"));
 const CreatorBrowse = lazy(() => import("./pages/CreatorBrowse"));
@@ -310,8 +312,10 @@ function AnimatedRoutes() {
           <Route path="/dashboard/creator/projects" element={<Navigate to="/dashboard/creator/my-campaigns?tab=active" replace />} />
           <Route path="/dashboard/creator/earnings" element={<ProtectedRoute><CreatorEarnings /></ProtectedRoute>} />
 
-          {/* Creator Packages (feature-flagged: PACKAGES_ENABLED) */}
+          {/* Creator Packages + package orders (feature-flagged: PACKAGES_ENABLED) */}
           <Route path="/dashboard/creator/packages" element={<ProtectedRoute>{PACKAGES_ENABLED ? <CreatorPackages /> : <Navigate to="/dashboard/creator" replace />}</ProtectedRoute>} />
+          <Route path="/dashboard/creator/orders" element={<ProtectedRoute>{PACKAGES_ENABLED ? <PackageOrders /> : <Navigate to="/dashboard/creator" replace />}</ProtectedRoute>} />
+          <Route path="/dashboard/creator/orders/:orderId" element={<ProtectedRoute>{PACKAGES_ENABLED ? <PackageOrderDetail /> : <Navigate to="/dashboard/creator" replace />}</ProtectedRoute>} />
 
           {/* Creator Dragon Feed Route */}
           <Route path="/dashboard/creator/dragon-feed" element={<ProtectedRoute><CreatorDragonFeed /></ProtectedRoute>} />

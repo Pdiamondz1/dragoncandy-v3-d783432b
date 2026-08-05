@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { OrderDeliverable } from '@/types/packages';
 
 export interface GuestOrderView {
   order: {
@@ -12,6 +13,9 @@ export interface GuestOrderView {
     completed_at: string | null;
     created_at: string;
     price: number;
+    deliverables: OrderDeliverable[];
+    delivery_note: string | null;
+    revision_note: string | null;
   };
   package: { title: string; turnaround_days: number | null; scope: Record<string, unknown> };
   intake: Record<string, unknown> | null;
@@ -31,7 +35,11 @@ export const useGuestOrder = (token?: string) => {
         rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
       }).rpc('get_guest_order_by_token', { p_token: token });
       if (error) throw error;
-      return (data as GuestOrderView | null) ?? null;
+      const view = (data as GuestOrderView | null) ?? null;
+      if (view?.order && !Array.isArray(view.order.deliverables)) {
+        view.order.deliverables = []; // defensive: pre-delivery orders / older rows
+      }
+      return view;
     },
   });
 

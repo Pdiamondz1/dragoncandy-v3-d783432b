@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ShieldCheck, CheckCircle2, Clock, Loader2, PackageCheck, Undo2 } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, Clock, Loader2, PackageCheck, Undo2, RotateCcw, ExternalLink } from 'lucide-react';
 import { PACKAGES_ENABLED } from '@/lib/featureConfig';
 import { useGuestOrder } from '@/hooks/packages/useGuestOrder';
 import { usePackageOrderActions } from '@/hooks/packages/usePackageOrderActions';
@@ -13,8 +14,10 @@ const GuestOrderPage = () => {
   const { token } = useParams<{ token: string }>();
   const [searchParams] = useSearchParams();
   const { order, isLoading, refetch } = useGuestOrder(token);
-  const { verify, approve, cancel } = usePackageOrderActions();
+  const { verify, approve, cancel, requestRevision } = usePackageOrderActions();
   const [verifyStarted, setVerifyStarted] = useState(false);
+  const [revisionOpen, setRevisionOpen] = useState(false);
+  const [revisionNote, setRevisionNote] = useState('');
   const sessionId = searchParams.get('session_id');
 
   // Confirm the payment on return from Stripe. Used by both the auto-run below and a manual retry button, so a
@@ -49,7 +52,9 @@ const GuestOrderPage = () => {
   const awaitingApproval = o?.content_status === 'submitted';
   const isComplete = o?.order_status === 'completed';
   const isRefunded = o?.escrow_status === 'refunded' || o?.order_status === 'refunded';
+  const isRevisionRequested = o?.order_status === 'revision_requested';
   const canCancel = isHeld && !o?.content_submitted_at && !isComplete && !isRefunded;
+  const deliverables = o?.deliverables ?? [];
 
   const onApprove = async () => {
     if (!o) return;
@@ -78,6 +83,23 @@ const GuestOrderPage = () => {
       }
     } catch {
       toast.error('Could not cancel right now. Please try again.');
+    }
+  };
+
+  const onRequestRevision = async () => {
+    if (!o) return;
+    if (revisionNote.trim().length < 3) {
+      toast.error('Tell the creator what you’d like changed.');
+      return;
+    }
+    try {
+      await requestRevision.mutateAsync({ orderId: o.id, guestToken, note: revisionNote });
+      toast.success('Sent — the creator will make your changes.');
+      setRevisionOpen(false);
+      setRevisionNote('');
+      refetch();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not send your revision request. Please try again.');
     }
   };
 
@@ -121,6 +143,10 @@ const GuestOrderPage = () => {
                   <div className="flex items-center gap-2 rounded-xl border border-landing-mint-line bg-landing-mint-soft p-3 text-sm text-landing-mint-ink">
                     <PackageCheck className="h-5 w-5 shrink-0" /> Your content is ready — review it and approve to release payment.
                   </div>
+                ) : isRevisionRequested ? (
+                  <div className="flex items-center gap-2 rounded-xl border border-border bg-landing-lilac p-3 text-sm text-landing-ink">
+                    <RotateCcw className="h-5 w-5 shrink-0" /> Revision requested — the creator is updating your content.
+                  </div>
                 ) : isHeld ? (
                   <div className="flex items-center gap-2 rounded-xl border border-border bg-landing-lilac p-3 text-sm text-landing-ink">
                     <Clock className="h-5 w-5 shrink-0" /> Paid and in progress — {order.package.title} is being worked on.
@@ -132,13 +158,40 @@ const GuestOrderPage = () => {
                 )}
               </div>
 
-              {isHeld && !isComplete && !isRefunded && (
+              {isHeld && !isComplete && !isRefunded && !awaitingApproval && (
                 <div className="mt-4 flex items-start gap-2 rounded-xl border border-landing-mint-line bg-landing-mint-soft p-3 text-sm text-landing-mint-ink">
                   <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
                   <span>Your payment is held safely. It’s only released when you approve the work — refunded if it isn’t delivered.</span>
                 </div>
               )}
             </div>
+
+            {/* Delivered work — the links the creator submitted, shown so the buyer reviews before approving */}
+            {deliverables.length > 0 && (
+              <div className="mt-4 rounded-2xl border border-border bg-card p-5">
+                <h2 className="text-sm font-semibold text-foreground">
+                  {isComplete ? 'Your content' : 'Review your content'}
+                </h2>
+                <ul className="mt-3 space-y-2">
+                  {deliverables.map((d, i) => (
+                    <li key={i}>
+                      <a
+                        href={d.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 break-all text-sm text-primary underline underline-offset-2 hover:opacity-80"
+                      >
+                        {d.label || d.url}
+                        <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+                {o.delivery_note && (
+                  <p className="mt-3 rounded-xl border border-border bg-background p-3 text-sm text-foreground">{o.delivery_note}</p>
+                )}
+              </div>
+            )}
 
             {/* Payment confirmation retry — shown if the buyer returned from Stripe but the order isn't held yet */}
             {sessionId && o.escrow_status === 'pending' && (
@@ -152,10 +205,40 @@ const GuestOrderPage = () => {
             {(awaitingApproval || canCancel) && (
               <div className="mt-4 flex flex-col gap-2">
                 {awaitingApproval && (
-                  <Button onClick={onApprove} disabled={approve.isPending} size="lg" className="gap-2">
-                    {approve.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                    Approve & release payment
-                  </Button>
+                  <>
+                    <Button onClick={onApprove} disabled={approve.isPending} size="lg" className="gap-2">
+                      {approve.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                      Approve & release payment
+                    </Button>
+                    {!revisionOpen ? (
+                      <Button onClick={() => setRevisionOpen(true)} variant="outline" className="gap-2">
+                        <RotateCcw className="h-4 w-4" /> Request a revision
+                      </Button>
+                    ) : (
+                      <div className="rounded-xl border border-border bg-card p-3">
+                        <Textarea
+                          value={revisionNote}
+                          onChange={(e) => setRevisionNote(e.target.value)}
+                          placeholder="What would you like changed? Be specific — the creator gets this note."
+                          rows={3}
+                          autoFocus
+                        />
+                        <div className="mt-2 flex gap-2">
+                          <Button onClick={onRequestRevision} disabled={requestRevision.isPending} className="flex-1 gap-2">
+                            {requestRevision.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                            Send revision request
+                          </Button>
+                          <Button
+                            onClick={() => { setRevisionOpen(false); setRevisionNote(''); }}
+                            variant="outline"
+                            disabled={requestRevision.isPending}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
                 {canCancel && (
                   <Button onClick={onCancel} disabled={cancel.isPending} variant="outline" className="gap-2">

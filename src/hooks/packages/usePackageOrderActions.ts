@@ -1,12 +1,21 @@
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+// The package RPCs aren't in the generated Supabase types (the client is intentionally loosely typed); same
+// rpc cast the other package hooks use (see useGuestOrder).
+const rpc = (fn: string, args: Record<string, unknown>) =>
+  (supabase as unknown as {
+    rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+  }).rpc(fn, args);
+
 /**
- * Buyer-side order actions, all via the guest-capable edge functions (the anon key is auto-attached; the
- * guest bearer token in the body authorizes the buyer):
- *  - verify:  confirm the Stripe payment on return and flip escrow to held
- *  - approve: release the held escrow to the creator (only valid once the creator has delivered)
- *  - cancel:  refund the held escrow to the buyer (pre-delivery, before any payout)
+ * Buyer-side order actions. verify/approve/cancel go via the guest-capable edge functions (the anon key is
+ * auto-attached; the guest bearer token in the body authorizes the buyer). requestRevision goes via the
+ * request_package_revision SECURITY DEFINER RPC (also guest-token authorized):
+ *  - verify:          confirm the Stripe payment on return and flip escrow to held
+ *  - approve:         release the held escrow to the creator (only valid once the creator has delivered)
+ *  - cancel:          refund the held escrow to the buyer (pre-delivery, before any payout)
+ *  - requestRevision: send submitted work back for one more pass (order → revision_requested)
  */
 export const usePackageOrderActions = () => {
   const verify = useMutation({
@@ -33,5 +42,17 @@ export const usePackageOrderActions = () => {
     },
   });
 
-  return { verify, approve, cancel };
+  const requestRevision = useMutation({
+    mutationFn: async ({ orderId, guestToken, note }: { orderId: string; guestToken: string; note: string }) => {
+      const { data, error } = await rpc('request_package_revision', {
+        p_order_id: orderId,
+        p_note: note.trim(),
+        p_guest_token: guestToken,
+      });
+      if (error) throw error;
+      return data as { order_id: string; order_status: string };
+    },
+  });
+
+  return { verify, approve, cancel, requestRevision };
 };
