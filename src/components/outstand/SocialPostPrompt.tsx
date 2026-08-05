@@ -248,6 +248,13 @@ function SocialPostPromptInner({
 
   const syncScheduledPost = async (scheduleTime: string, outstandPostId?: string | null, socialAccountIds?: string[]) => {
     if (!user?.id || !campaignId) return;
+    if (outstandPostId == null) {
+      // useCrossPost couldn't extract an Outstand post id from the response
+      // (useCrossPost.ts:56 returns null). We're about to write
+      // outstand_post_id: null below, which the webhook can never match — the
+      // post is live but permanently unmeasurable, and nothing else says so.
+      console.warn('[SocialPostPrompt] outstand_post_id is null — this post will never be matched by the webhook and will not be measured.');
+    }
     const platforms = accounts
       .filter((a) => selectedAccountIds.includes(a.id))
       .map((a) => a.network ?? 'unknown');
@@ -263,7 +270,7 @@ function SocialPostPromptInner({
       .maybeSingle();
 
     if (existing.data?.id) {
-      await supabase
+      const { error: scheduleError } = await supabase
         .from('donny_scheduled_posts')
         .update({
           status: 'scheduled' as string,
@@ -278,6 +285,19 @@ function SocialPostPromptInner({
           },
         })
         .eq('id', existing.data.id);
+
+      if (scheduleError) {
+        // The post is already live on the platform at this point (crossPost's
+        // onSuccess already fired before syncScheduledPost was called), so a
+        // failure here means published but unrecorded — invisible to
+        // scheduling and to every analytics surface downstream.
+        console.error('[SocialPostPrompt] Failed to record scheduled post:', scheduleError);
+        toast({
+          variant: 'destructive',
+          title: 'Post published, but not recorded',
+          description: 'It went live, but we could not save it for scheduling or analytics.',
+        });
+      }
     } else {
       const { error: scheduleError } = await supabase
         .from('donny_scheduled_posts')
@@ -407,6 +427,13 @@ function SocialPostPromptInner({
           scheduledAt: slot.scheduledAt,
           silent: true,
         });
+
+        if (result?._outstandPostId == null) {
+          // Same unmatchable-null situation as syncScheduledPost above, but this
+          // write path builds its own insert rather than going through
+          // syncScheduledPost.
+          console.warn('[SocialPostPrompt] outstand_post_id is null — this post will never be matched by the webhook and will not be measured.');
+        }
 
         const { error: scheduleError } = await supabase.from('donny_scheduled_posts').insert({
           user_id: user.id,
