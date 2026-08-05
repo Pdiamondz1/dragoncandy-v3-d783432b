@@ -14,10 +14,20 @@ interface AccountStatusRow {
 
 /**
  * Pure selector: a platform needs reconnection when the user has at least one
- * row flagged `status='error'` (a connection wiped upstream by Outstand and
- * marked by the outstand-reconcile sweep) AND no `status='active'` row for that
- * platform. Order/recency is irrelevant — any active row clears the platform,
- * and a user-initiated disconnect (`status='revoked'`) never triggers it.
+ * row flagged `status='error'` AND no `status='active'` row for that platform.
+ * Order/recency is irrelevant — any active row clears the platform, and a
+ * user-initiated disconnect (`status='revoked'`) never triggers it.
+ *
+ * WHO SETS `status='error'` (corrected 2026-08-04): the `account-metrics-capture`
+ * cron. It flags an account only when a metrics call returns 401/403 AND
+ * Outstand's `/health` endpoint — which retries the token refresh before
+ * answering — confirms `healthy:false`. It also CLEARS the flag once metrics
+ * resolve again, so a recovered account stops nagging.
+ *
+ * This docstring previously credited "the outstand-reconcile sweep", which was
+ * deleted and had no cron behind it anyway. Nothing set this flag for a while,
+ * which is why a genuinely dead YouTube token sat as `status='active'` — the UI
+ * faithfully rendered a selector whose input nobody was maintaining.
  */
 export function platformsNeedingReconnect(
   rows: AccountStatusRow[],

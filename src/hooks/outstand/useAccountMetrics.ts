@@ -2,6 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useOutstandApi, type SocialAccount } from '@outstand-so/ui';
 import { useOutstandConfig } from '@/integrations/outstand/Provider';
 import { supabase } from '@/integrations/supabase/client';
+import { getAnalyticsWindow, type TimeRange } from '@/lib/analyticsWindow';
+import { mapOutstandAccountMetrics } from '@/lib/outstandMetricsMap';
+
+const getDateRange = getAnalyticsWindow;
 
 export interface AccountMetrics {
   totalFollowers: number;
@@ -23,30 +27,23 @@ export interface PlatformMetrics {
   engagementRate: number;
 }
 
-type TimeRange = '7d' | '30d' | '90d';
-
 const CONCURRENCY = 5;
 
-const RANGE_DAYS: Record<TimeRange, number> = { '7d': 7, '30d': 30, '90d': 90 };
-
-interface DateRange {
-  start: Date;
-  end: Date;
-}
-
-export function getDateRange(range: TimeRange, now = new Date()): { current: DateRange; prior: DateRange } {
-  const days = RANGE_DAYS[range];
-  const end = new Date(now);
-  const start = new Date(now);
-  start.setUTCDate(start.getUTCDate() - days);
-  const priorEnd = new Date(start);
-  const priorStart = new Date(start);
-  priorStart.setUTCDate(priorStart.getUTCDate() - days);
-  return {
-    current: { start, end },
-    prior: { start: priorStart, end: priorEnd },
-  };
-}
+/**
+ * Re-exported from the shared module so the scheduled `account-metrics-capture`
+ * job and this hook compute BYTE-IDENTICAL `period_start`/`period_end` strings.
+ * Those two strings are part of the `social_analytics_cache` conflict key and are
+ * read back with an exact `.eq()` on each — so any disagreement, even a
+ * millisecond, means the cache silently never hits.
+ *
+ * That was the live bug: the previous local implementation used `now` at full
+ * millisecond precision, so `end` was literally the current instant. Two page
+ * loads a second apart produced different keys, the lookup never matched, and
+ * `social_analytics_cache` was WRITE-ONLY — its 1-hour freshness filter never got
+ * a chance to apply and every visit re-hit the provider. Nothing ever errored.
+ */
+export { getAnalyticsWindow as getDateRange } from '@/lib/analyticsWindow';
+export type { TimeRange, DateRange } from '@/lib/analyticsWindow';
 
 export function computeDelta(current: number, prior: number | null): number | null {
   if (prior === null || prior === 0) return null;
@@ -84,12 +81,29 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
       const periodStartIso = currentRange.start.toISOString();
       const periodEndIso = currentRange.end.toISOString();
 
+      // Explicit owner scoping on BOTH cache reads. RLS already restricts this
+      // table to `auth.uid() = user_id` (verified on prod), so this is defence in
+      // depth — but the cron now fills the table for every account nightly, and a
+      // query whose correctness silently depends on a policy elsewhere is one
+      // policy edit away from summing other tenants' numbers into these totals.
       const { data: cached } = await supabase
         .from('social_analytics_cache')
         .select('outstand_account_id, metric_type, metric_value, period_start, fetched_at')
+        .eq('user_id', userId ?? '')
         .eq('period_start', periodStartIso)
         .eq('period_end', periodEndIso)
-        .gte('fetched_at', new Date(Date.now() - 60 * 60 * 1000).toISOString());
+        // Freshness horizon = the START OF THE WINDOW'S OWN DAY, not a rolling
+        // hour. `periodEndIso` IS start-of-today, so this reads as "captured at
+        // some point today", which is exactly when a row for today's window is
+        // still current.
+        //
+        // The old rolling 1-hour TTL made sense only while windows carried
+        // millisecond precision — every visit computed a new window, so nothing
+        // was reusable anyway. Now that windows are day-stable it actively
+        // defeats the point: the nightly cron writes at 09:30 UTC, so a 1-hour
+        // TTL would hide those rows for the other ~23 hours and send the browser
+        // back to Outstand on almost every visit.
+        .gte('fetched_at', periodEndIso);
 
       const cachedByKey = new Map(
         (cached ?? []).map((row) => [
@@ -132,15 +146,20 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
           try {
             const res = await api.get(`/social-accounts/${account.id}/metrics`);
             if (!res.success || !res.data) return;
-            const m = res.data as Record<string, number>;
-            const followers = m.followers ?? m.followerCount ?? 0;
-            const engagement = m.engagementRate ?? 0;
-            const reach = m.reach ?? m.impressions ?? 0;
+            // Shared mapper — the response uses snake_case counts with `reach`
+            // nested under an `engagement` OBJECT. The old reads
+            // (followers/engagementRate/reach/postsCount) matched nothing, so
+            // this tab rendered zeros for accounts that had real numbers.
+            const mapped = mapOutstandAccountMetrics(res.data);
+            if (!mapped) return;
+            const followers = mapped.followers;
+            const engagement = mapped.engagementRate;
+            const reach = mapped.reach;
 
             totalFollowers += followers;
             totalReach += reach;
             totalEngagement += engagement;
-            postsPublished += m.postsCount ?? 0;
+            postsPublished += mapped.postsCount;
 
             platformMetrics.push({
               platform: account.network ?? 'unknown',
@@ -164,7 +183,7 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
                   { ...cacheBase, metric_type: 'followers', metric_value: followers },
                   { ...cacheBase, metric_type: 'engagement', metric_value: engagement },
                   { ...cacheBase, metric_type: 'reach', metric_value: reach },
-                  { ...cacheBase, metric_type: 'posts', metric_value: m.postsCount ?? 0 },
+                  { ...cacheBase, metric_type: 'posts', metric_value: mapped.postsCount },
                 ],
                 { onConflict: 'user_id,outstand_account_id,metric_type,period_start,period_end' },
               );
@@ -189,6 +208,13 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
       const { data: priorCached } = await supabase
         .from('social_analytics_cache')
         .select('outstand_account_id, metric_type, metric_value')
+        .eq('user_id', userId ?? '')
+        // Scoped to the SAME accounts the current totals were computed from.
+        // The tab passes a platform-filtered list, so reading every cached
+        // account here compared a filtered current period against an unfiltered
+        // prior one — every KPI delta wrong whenever a user filters. Harmless
+        // while the table was empty; the nightly cron populates all accounts.
+        .in('outstand_account_id', accounts.map((a) => a.id))
         .eq('period_start', priorStartIso)
         .eq('period_end', priorEndIso);
 
