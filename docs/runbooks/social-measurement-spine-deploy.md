@@ -1,10 +1,12 @@
 # Social measurement spine — deploy order and hard blockers
 
 Written 2026-08-05 from the whole-branch review of `feat/social-measurement-spine`, updated the
-same day once Task 11 shipped the fix. **Read this before deploying `outstand-webhook`.** BLOCKER 1
-below was a genuine data-correctness defect that no per-task review could see, because it lived in
-the seam between two tasks that each passed — it is now **fixed** (see below, and its two follow-on
-fix rounds). The related `platform`-vocabulary decision and the cross-tenant read are still open.
+same day once Task 11 shipped the fix, and again once Task 13 closed the amplification leg of the
+`platform`-vocabulary problem. **Read this before deploying `outstand-webhook`.** BLOCKER 1 below
+was a genuine data-correctness defect that no per-task review could see, because it lived in the
+seam between two tasks that each passed — it is now **fixed** (see below, and its two follow-on fix
+rounds). The `donny_scheduled_posts.platform` vs Outstand-network (`twitter` vs `x`) mismatch and
+the cross-tenant read are still open.
 
 ## Required order
 
@@ -89,38 +91,51 @@ milestone already marked captured is never re-fetched or corrected retroactively
 writing zero rows are affected (no `social_post_log` row yet carries `verified_at`), but this is
 worth knowing before assuming historical `content_performance` data is trustworthy post-fix.
 
-## Related, same root — decide together
+## Related, same root — the account-id leg is fixed (Task 13); one vocabulary gap remains
 
-**`platform` carries three vocabularies.** `donny_scheduled_posts.platform` has a CHECK of
-`instagram|tiktok|youtube|twitter|facebook`; the webhook now derives platform from Outstand's
-`socialAccounts[].network` (documented values include `threads` and `linkedin`, which the product
-does not model); and `useSponsorshipAmplification.ts:42` writes an Outstand **account id** into the
-same column. Today these coincide only because prod holds just instagram/youtube/facebook — by
-luck, with no mapping layer and no test. If Outstand's network for X is `x` while
-`DonnyProvider.tsx:228` writes `twitter`, the upsert never conflicts and one physical post yields
-two rows, one verified and one not.
+**`platform` carried three vocabularies; the account-id one is now eliminated.**
+`useSponsorshipAmplification.ts:42` used to write an Outstand **account id** into the same
+`platform` column every other writer fills with a network name. **Fixed 2026-08-05 (Task 13):** the
+hook now looks up each `accountId` in `business_outstand_accounts` (own-row RLS, `user_id =
+auth.uid()`) and writes the resolved `platform` string instead — never falling back to the raw
+account id. Two accounts resolving to the same platform (e.g. two Instagram locations amplified in
+one call) collapse to a single `social_post_log` row rather than colliding on the
+`(outstand_post_id, platform)` unique key; an account whose platform can't be resolved has its row
+skipped with a visible `console.warn`, never silently and never with a fabricated value. Zero
+historical rows existed to migrate (verified on prod before this shipped — see below), so this is a
+straight forward-fix with no backfill.
 
-**Amplification rows could never be verified — fixed (Task 12), platform mismatch still open.**
-Because that same line writes an account id where the webhook writes a network name, the webhook's
-row-building upsert (keyed on `outstand_post_id,platform`) can never match an amplification row, so
-`verified_at` was never stamped on it — those rows sat in `content-performance-capture`'s unverified
-count every run for 8 days with no action available, the exact chronic un-actionable warning this
-sub-project exists to prevent. **Fixed** by having `recordPublishedPost`'s no-schedule-row branch
-fall back to stamping `verified_at` on any pre-existing `social_post_log` row matched on
-`outstand_post_id` **alone** (not `(outstand_post_id, platform)` — deliberately, since that's the
-exact pairing an amplification row can never satisfy). This only stamps rows a client already wrote;
-it never inserts one (`user_id` is NOT NULL and unknowable on this path). Same signature-backed
-reasoning as the rest of this gate: a fabricated post id still never produces a signed
-`post.published` event, so blind enumeration/quota-burn still die here.
+**Consequence: amplification rows now measure, not just verify.** Task 12 (already shipped) made
+the webhook stamp `verified_at` on amplification rows, matched on `outstand_post_id` **alone**
+(deliberately not scoped to `platform`, since a schedule-less post can fan out to several platforms
+at once — see the updated comment at `outstand-webhook/index.ts` around `recordPublishedPost`).
+Before Task 13, a stamped row's `platform` was still an account id, so
+`content-performance-capture`'s `metricsForPlatform` could never match it against Outstand's
+`metrics_by_account[].social_account.network`, and every amplification row landed in the
+`no_platform_metrics` bucket forever. With Task 13, `business_outstand_accounts.platform` already
+uses the same vocabulary Outstand's `network` field does (`facebook|instagram|tiktok|x|youtube` —
+confirmed via `_shared/social-contract.ts` and `social-proxy/adapters/outstand-map.test.ts`, which
+both use `'x'`), so a resolved amplification row now matches on the first try, the same as a
+webhook-sourced row.
 
-**Not fully resolved — moves the noise, doesn't remove it.** Once stamped, an amplification row's
-`platform` is still an Outstand account id, not a network name, so `content-performance-capture`'s
-`metricsForPlatform` still can't match it against Outstand's `metrics_by_account[].social_account.network`.
-The row now lands in the `no_platform_metrics` bucket instead of the unverified bucket — still a
-recurring warning every run until its 8-day window closes, just a smaller, more specific one, and one
-that only fires once amplification is actually used (prod currently has zero amplification rows). The
-underlying three-vocabulary `platform` problem above is unchanged; normalizing `platform` at the write
-site (or introducing a platform-alias mapping layer) is the real fix and remains undone.
+**What genuinely remains open: `donny_scheduled_posts.platform` still says `twitter`, not `x`.**
+This is a real, already-confirmed mismatch, unrelated to and untouched by Task 13 (which only
+changed `useSponsorshipAmplification.ts`). `donny_scheduled_posts.platform` has a CHECK of
+`instagram|tiktok|youtube|twitter|facebook` (`20260325000000_donny_scheduling_and_previews.sql:12`),
+but Outstand's real network value for that platform is `x` — confirmed by
+`business_outstand_accounts.platform`'s own CHECK (`facebook|instagram|tiktok|x|youtube`) and by the
+social-proxy adapter layer. `DonnyProvider.tsx`'s scheduled-post publish path writes
+`draft.platform` straight from `donny_scheduled_posts`, so it still writes `'twitter'` into
+`social_post_log.platform` for that network, while an amplified post on the same account now
+(correctly) writes `'x'`. The two flows would fragment the same business's X activity into two
+`content-strategy-recommend` groups instead of one. This exact risk is already called out in-code —
+`content-performance-capture/index.ts` around line 232 has carried this comment since Task 10 ("a
+platform-vocabulary mismatch (`donny_scheduled_posts.platform` allows `'twitter'`; Outstand's
+network is `'x'`) would silently blackout that platform for its whole 8-day measurement window").
+Separately, and still fully unmodeled by any CHECK constraint in the product: Outstand's `network`
+field can also return `threads` or `linkedin`, which nothing here has a vocabulary slot for at all.
+Normalizing `donny_scheduled_posts.platform` (rename the CHECK value, migrate `'twitter'` rows to
+`'x'`) or introducing a platform-alias mapping layer is the fix and remains undone.
 
 ## Still open, tracked elsewhere
 

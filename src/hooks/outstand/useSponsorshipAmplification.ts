@@ -12,6 +12,42 @@ interface AmplifyInput {
   scheduledAt?: string;
 }
 
+export interface ResolvedAmplificationPlatforms {
+  /** Distinct platform names to write into social_post_log, one row per entry. */
+  platforms: string[];
+  /** accountIds with no platform match — never written anywhere, caller must warn. */
+  unresolved: string[];
+}
+
+/**
+ * Maps each amplified accountId to a real platform name via a caller-supplied
+ * lookup (sourced from business_outstand_accounts), deduplicating accounts
+ * that share a platform — e.g. two locations both on Instagram — down to one
+ * entry. This matches social_post_log's `(outstand_post_id, platform)` unique
+ * key: one physical Outstand post fans out to N accounts but should only ever
+ * produce one row per platform, the same grain the webhook and
+ * content-performance-capture already use. An accountId with no match is
+ * reported in `unresolved` rather than coerced into a fabricated platform
+ * value — writing the raw accountId as `platform` was the original bug this
+ * hook exists to fix.
+ */
+export function resolveAmplificationPlatforms(
+  accountIds: string[],
+  platformByAccountId: Map<string, string>,
+): ResolvedAmplificationPlatforms {
+  const platforms = new Set<string>();
+  const unresolved: string[] = [];
+  for (const accountId of accountIds) {
+    const platform = platformByAccountId.get(accountId);
+    if (!platform) {
+      unresolved.push(accountId);
+      continue;
+    }
+    platforms.add(platform);
+  }
+  return { platforms: [...platforms], unresolved };
+}
+
 export function useSponsorshipAmplification() {
   const { apiKey, baseUrl } = useOutstandConfig();
   const { user } = useAuth();
@@ -33,13 +69,49 @@ export function useSponsorshipAmplification() {
       });
       if (!res.ok) throw new Error('Failed to amplify post');
       const data: Record<string, unknown> = await res.json();
+      const outstandPostId = (data.id ?? (data.data as Record<string, unknown>)?.id ?? 'unknown') as string;
 
-      for (const accountId of accountIds) {
+      // social_post_log.platform must carry a real network name (instagram,
+      // youtube, ...), never an Outstand account id — every other writer/reader
+      // of this column assumes that (the (outstand_post_id, platform) unique
+      // key, content-performance-capture's metricsForPlatform, the strategy
+      // recommender's group-by). Resolve accountId -> platform via
+      // business_outstand_accounts (own-row RLS: user_id = auth.uid()) rather
+      // than writing the id directly. This does not change what accountId is
+      // used for above — only what gets recorded for measurement.
+      const platformByAccountId = new Map<string, string>();
+      if (user) {
+        const { data: accounts, error: accountsError } = await supabase
+          .from('business_outstand_accounts')
+          .select('outstand_social_account_id, platform')
+          .eq('user_id', user.id)
+          .in('outstand_social_account_id', accountIds);
+        if (accountsError) {
+          console.error('[useSponsorshipAmplification] Failed to resolve account platforms:', accountsError);
+        } else {
+          for (const row of accounts ?? []) {
+            platformByAccountId.set(row.outstand_social_account_id, row.platform);
+          }
+        }
+      }
+
+      const { platforms, unresolved } = resolveAmplificationPlatforms(accountIds, platformByAccountId);
+      for (const accountId of unresolved) {
+        // Never fall back to writing accountId into `platform` — that is the
+        // exact defect being fixed. The Outstand publish above already
+        // succeeded regardless; skipping only costs this account's
+        // measurement row, never silently — always a visible console.warn.
+        console.warn(
+          `[useSponsorshipAmplification] Could not resolve platform for Outstand account ${accountId} (post ${outstandPostId}); skipping its social_post_log write.`,
+        );
+      }
+
+      for (const platform of platforms) {
         const { error: logError } = await supabase.from('social_post_log').insert({
           user_id: user!.id,
           campaign_id: campaignId,
-          outstand_post_id: (data.id ?? (data.data as Record<string, unknown>)?.id ?? 'unknown') as string,
-          platform: accountId,
+          outstand_post_id: outstandPostId,
+          platform,
           post_type: 'amplification',
         });
         if (logError) console.error('[useSponsorshipAmplification] Failed to log social post:', logError);

@@ -81,12 +81,14 @@ async function recordPublishedPost(
     // separately: docs/wiki/raw/sessions/2026-08-05-outstand-cross-tenant-metric-read.md.
     // Do not read this as a full fix for that.
     //
-    // Matched on outstand_post_id ALONE, deliberately not (outstand_post_id,
-    // platform): useSponsorshipAmplification.ts:42 writes an Outstand ACCOUNT id
-    // into `platform`, while this event's platforms (from
-    // socialAccounts[].network, above) are network names — a platform-scoped
-    // match would never hit the very rows this exists to reach. Known open
-    // item: docs/runbooks/social-measurement-spine-deploy.md.
+    // Matched on outstand_post_id ALONE, not (outstand_post_id, platform):
+    // there is still no schedule row on this path, so there is still no single
+    // network name to scope the match to (an amplify call fans one post out to
+    // however many platforms were selected). useSponsorshipAmplification.ts now
+    // writes real platform names (fixed 2026-08-05, Task 13 —
+    // docs/runbooks/social-measurement-spine-deploy.md), so this simply stamps
+    // every row this webhook event's post produced, whatever platforms those
+    // are.
     const { data: stamped, error: stampErr } = await supabase
       .from("social_post_log")
       .update({ verified_at: new Date().toISOString() })
