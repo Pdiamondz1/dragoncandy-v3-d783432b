@@ -155,4 +155,26 @@ describe('classifyMeasurement', () => {
       metrics_by_account: [entry({ resolved_platform_post_id: '123' })],
     }).measured).toBe(false);
   });
+
+  it('a non-empty account list with no usable entries is empty_account_list, not null_metrics (vacuous every())', () => {
+    const r = classifyMeasurement({ metrics_by_account: [null, null] });
+    expect(r.measured).toBe(false);
+    expect(r.state).toBe('empty_account_list');
+  });
+
+  it('recognizes pick()-equivalent metric-key variants as readings', () => {
+    expect(classifyMeasurement({ metrics_by_account: [entry({ viewCount: 5 })] }).measured).toBe(true);
+    expect(classifyMeasurement({ metrics_by_account: [entry({ video_views: 5 })] }).measured).toBe(true);
+    expect(classifyMeasurement({ metrics_by_account: [entry({ plays: 5 })] }).measured).toBe(true);
+    expect(classifyMeasurement({ metrics_by_account: [entry({ likeCount: 5 })] }).measured).toBe(true);
+    expect(classifyMeasurement({ metrics_by_account: [entry({ like_count: 5 })] }).measured).toBe(true);
+    expect(classifyMeasurement({ metrics_by_account: [entry({ commentCount: 5 })] }).measured).toBe(true);
+    expect(classifyMeasurement({ metrics_by_account: [entry({ comment_count: 5 })] }).measured).toBe(true);
+    expect(classifyMeasurement({ metrics_by_account: [entry({ shareCount: 5 })] }).measured).toBe(true);
+    expect(classifyMeasurement({ metrics_by_account: [entry({ share_count: 5 })] }).measured).toBe(true);
+    expect(classifyMeasurement({ metrics_by_account: [entry({ saveCount: 5 })] }).measured).toBe(true);
+    expect(classifyMeasurement({ metrics_by_account: [entry({ saved: 5 })] }).measured).toBe(true);
+    expect(classifyMeasurement({ metrics_by_account: [entry({ reachCount: 5 })] }).measured).toBe(true);
+    expect(classifyMeasurement({ metrics_by_account: [entry({ engagementRate: 5 })] }).measured).toBe(true);
+  });
 });

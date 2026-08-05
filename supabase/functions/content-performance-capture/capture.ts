@@ -86,10 +86,15 @@ export interface MeasurementVerdict {
 
 // Keys that carry an actual reading. `resolved_platform_post_id` is an
 // identifier Outstand mixes into the same object and must NOT count as a metric.
+// Mirrors every field-name variant `pick()` in normalizeAnalytics accepts, so
+// classification never disagrees with mapping about what counts as a reading.
 const METRIC_KEYS = [
   'views', 'likes', 'comments', 'shares', 'saves', 'reach', 'impressions',
   'total_views', 'total_likes', 'total_comments', 'total_shares', 'total_saves',
   'total_reach', 'total_impressions', 'engagement_rate', 'average_engagement_rate',
+  'viewCount', 'video_views', 'plays', 'likeCount', 'like_count',
+  'commentCount', 'comment_count', 'shareCount', 'share_count',
+  'saveCount', 'saved', 'reachCount', 'engagementRate',
 ];
 
 function hasReading(metrics: unknown): boolean {
@@ -134,6 +139,13 @@ export function classifyMeasurement(raw: unknown): MeasurementVerdict {
   const entries = list.filter(
     (e): e is Record<string, unknown> => !!e && typeof e === 'object',
   );
+  // A non-empty array whose elements are all falsy/non-object (e.g. [null, null])
+  // leaves no usable per-account data — that IS empty_account_list, not
+  // null_metrics. Without this check, `entries.every(...)` below is vacuously
+  // true on an empty `entries` array and mislabels the state.
+  if (entries.length === 0) {
+    return { measured: false, state: 'empty_account_list', reason: null };
+  }
   if (entries.some((e) => hasReading(e.metrics))) {
     return { measured: true, state: 'measured', reason: null };
   }

@@ -95,6 +95,17 @@ serve(async (req: Request) => {
     }
 
     const m = normalizeAnalytics(payload);
+    // Classification reads metrics_by_account; normalizeAnalytics reads
+    // aggregated_metrics. They should agree, but if a payload ever has a real
+    // per-account reading with no usable aggregated_metrics, writing this row
+    // would be all-nulls and marking the milestone captured would permanently
+    // forfeit the retry -- even though a real reading existed in `raw`. Guard it.
+    const allNull = Object.values(m).every((v) => v === null);
+    if (allNull) {
+      unmeasured['measured_but_unmappable'] = (unmeasured['measured_but_unmappable'] ?? 0) + 1;
+      console.warn(`[capture] measured but unmappable: postId=${p.outstand_post_id}`);
+      continue;
+    }
     const rows = due.map((milestone) => ({
       social_post_log_id: p.id,
       user_id: p.user_id,
