@@ -62,6 +62,26 @@ returns **200**. The dashboard shows the returned status code, so:
 
 This is one click and needs no post, no billing, and no code change.
 
+### RUN 2026-08-05 → **"Test successful! Status: 200"**
+
+The 200 is load-bearing, not decorative. `outstand-webhook/index.ts` returns **401 before any
+other branch** if `verifyOutstandSignature` fails, so a 200 can only be reached *after* the HMAC
+verified. It therefore proves four things at once:
+
+1. The endpoint URL is correct and the function is deployed and booting.
+2. `verify_jwt = false` is actually in effect — otherwise Supabase's gateway would have returned
+   401 before our code ran.
+3. `OUTSTAND_WEBHOOK_SECRET` is set **and byte-matches** the dashboard's signing secret. This was
+   the one failure mode invisible from our side, and it is now excluded.
+4. Unknown events degrade correctly (`test` → `ignored`, 200) rather than erroring.
+
+Attempting to corroborate from the Supabase edge-function logs failed (`Failed to get project's
+logs`), so the confirmation is one-sided — but the reasoning above does not depend on the logs.
+
+**What remains unverified after this:** only the real `post.published` body. The transport,
+auth and routing are all now proven; the payload shape is still vendor documentation rather than
+a captured sample.
+
 ## If the test returns 401
 
 Edit the webhook and set the signing secret to the exact value of the `OUTSTAND_WEBHOOK_SECRET`
