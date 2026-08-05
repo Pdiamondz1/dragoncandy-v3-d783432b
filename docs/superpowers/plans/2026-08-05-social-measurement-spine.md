@@ -993,9 +993,27 @@ content-strategy-recommend aggregates content_performance, not social_post_log."
 
 Task 5 grows this job's input. It currently uses an unbounded `.select()`, runs fully sequentially, has no wall-clock budget, and its cron sets no `timeout_milliseconds` — surviving only because it finishes in 1–4s.
 
+**Carried in from the Task 6 review (Important).** This job cannot currently fail visibly. An insert
+error is caught, counted into `insertErrors`, and the loop `continue`s — then the function returns
+`json(200, …)` regardless, and the cron is a fire-and-forget `net.http_post` that inspects no
+response. So a run where **every single insert failed** — the exact symptom of deploying the
+function before its migration lands — is externally indistinguishable from a clean run. That is the
+same silent-hole class this whole sub-project exists to close, sitting in the job that does the
+measuring.
+
+Add a final step to this task: **when a run processed at least one post and inserted nothing while
+`insertErrors > 0`, return a non-2xx status** (500) with the counters in the body, and
+`console.error` a single summary line naming the counts. Keep returning 200 for a genuinely empty
+run — nothing due is not a failure. Do not change the counter names other tasks added
+(`skipped`, `fetchErrors`, `insertErrors`, `unmeasured`, `unverified`); add to the summary, never
+rename.
+
 **Files:**
 - Modify: `supabase/functions/content-performance-capture/index.ts`
-- Create: `supabase/migrations/20260805080000_content_capture_cron_timeout.sql`
+- Create: a cron-timeout migration — pick a timestamp later than `20260805171523` with a
+  distinctive time component, NOT the round `20260805080000` the step below names (that value
+  predates migrations already applied, and concurrent worktrees on this project have collided on
+  round same-day timestamps).
 
 - [ ] **Step 1: Page the post query**
 
