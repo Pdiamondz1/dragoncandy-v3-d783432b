@@ -54,6 +54,46 @@ sends `content` only, so the join is what puts hashtags on the actual published 
 `content_performance.raw` already archives the **entire** provider payload per post, including
 `metrics_by_account[]`, at 24h/72h/7d — with **zero client reads** anywhere in `src/`.
 
+### §0b. VENDOR-CONFIRMED — three states that all look like zero
+
+Outstand support, 2026-08-05, answering our question about telling "published but genuinely zero
+engagement" from "we couldn't retrieve metrics". Their words: *"yes for the per-account failure
+case, no for the literal empty-array case, and those are two different things that both look like
+'no metrics'."* This is the vendor confirming, unprompted, the exact failure class this spec
+exists to close.
+
+| State | Shape | `metrics_error`? | What we currently record |
+|-|-|-|-|
+| 1. Retrieval failed | entry present, `metrics: null` | **always populated** | `0` |
+| 2. No account entries | `metrics_by_account: []`, `success: true` | **none** | `0` |
+| 3. Sparse metrics | entry present, `metrics: {}` or all-null | **none** | `0` |
+
+Their notes on each: genuine zero engagement comes back as *an object* with `likes: 0,
+comments: 0, …` — so `metrics === null` unambiguously means retrieval failed. State 2 is *"almost
+certainly what you're seeing"*: an empty list means their per-account loop never runs, so there is
+nothing to attach an error to, and the caller gets `success: true` with **all-zero
+`aggregated_metrics`**. State 3 they call *"the real ambiguity gap"* — their
+`const { …publicMetrics } = metrics ?? {}` turns a sparse platform response into `{}`: non-null,
+no error, contributes nothing to the aggregate. Instagram hits it when insights return everything
+undefined; LinkedIn returns `{likes: null, comments: null, shares: null, platform_specific:
+{note: 'Missing account URN…'}}` when the URN is missing.
+
+**Consequence for our code, verified by reading it.** `content-performance-capture/index.ts:77`
+guards only `if (!payload)` — a null body. All three states above produce a *truthy* payload with
+an `aggregated_metrics` object of explicit zeros, and `normalizeAnalytics`'s `pick()` accepts
+`v >= 0`. So the capture job records a **fabricated zero** for every unmeasured post, and nothing
+errors. `metrics_error` exists and is never read.
+
+**The rule this forces:** "measured" must be derived from *at least one entry carrying at least
+one finite numeric metric* — never from `success: true`, never from the absence of
+`metrics_error`, and never from `aggregated_metrics` alone. Same discipline as
+`mapOutstandAccountMetrics`, which returns **null** rather than zeros when it recognises no
+fields. Implemented in Task 9.
+
+Two other answers from the same reply: **BYOK changes nothing** about API behaviour, and the
+**bulk tenant-scoped analytics read is backlogged** with an ETA to follow — so the per-post call
+volume that motivated it stands for now. A shared Slack channel is being set up.
+
 ## Decisions taken
 
 - **Hashtags** = correlate ours, honestly labelled, never causal.

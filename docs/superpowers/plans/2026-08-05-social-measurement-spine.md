@@ -1187,3 +1187,285 @@ Then confirm `content_performance` rows appear with non-null metrics and the cop
 - [ ] `npm run typecheck && npm run lint && npm run build && npx vitest run supabase/functions src/lib src/hooks`
 - [ ] `codex review --base main` until clean.
 - [ ] **Deploy both edge functions** — `outstand-webhook` and `content-performance-capture`. Merging does not ship them.
+
+---
+
+### Task 9: Stop recording a fabricated zero for unmeasured posts
+
+**Added 2026-08-05 after Outstand support confirmed the three-state ambiguity — see spec §0b.**
+This is the highest-value correctness fix in the plan: every downstream aggregate (`brief.ts`,
+"do reels beat photos", Donny's consulting) is built on `content_performance` metrics, and today
+an unmeasured post is indistinguishable from one that genuinely got zero engagement. Do this
+before Tasks 6/7/8 — scaling a measurement pipeline that fabricates zeros is exactly the
+"never automate a broken process" trap.
+
+The vendor's three states, all of which currently land as `0`:
+
+1. entry present, `metrics: null` → `metrics_error` **always** populated
+2. `metrics_by_account: []` → **no** `metrics_error` anywhere, `success: true`, all-zero
+   `aggregated_metrics` (their words: *"almost certainly what you're seeing"*)
+3. entry present, `metrics: {}` or all-null → **no** `metrics_error` (*"the real ambiguity gap"*)
+
+`index.ts:77` guards only `if (!payload)`. All three produce a truthy payload, and
+`normalizeAnalytics`'s `pick()` accepts `v >= 0`, so explicit zeros are stored as real readings.
+
+**Files:**
+- Modify: `supabase/functions/content-performance-capture/capture.ts`
+- Modify: `supabase/functions/content-performance-capture/capture.test.ts`
+- Modify: `supabase/functions/content-performance-capture/index.ts`
+
+**Interfaces:**
+- Consumes: nothing from earlier tasks.
+- Produces: `classifyMeasurement(raw)` → `{ measured: boolean; state: MeasurementState; reason: string | null }`,
+  where `MeasurementState = 'measured' | 'empty_account_list' | 'null_metrics' | 'sparse_metrics' | 'no_payload'`.
+  `normalizeAnalytics` is **unchanged** — classification gates the write, it does not alter mapping.
+
+- [ ] **Step 1: Write the failing tests**
+
+Append to `capture.test.ts` (it already runs under Vitest). Add `classifyMeasurement` to the
+existing import at the top of that file.
+
+```ts
+describe('classifyMeasurement', () => {
+  const entry = (metrics: unknown, extra: Record<string, unknown> = {}) => ({
+    account_id: 'a1', network: 'instagram', metrics, ...extra,
+  });
+
+  it('state 2: an empty account list is unmeasured, not zero', () => {
+    const r = classifyMeasurement({
+      success: true,
+      metrics_by_account: [],
+      aggregated_metrics: { total_views: 0, total_likes: 0, total_reach: 0 },
+    });
+    expect(r.measured).toBe(false);
+    expect(r.state).toBe('empty_account_list');
+  });
+
+  it('state 1: null metrics is unmeasured and surfaces metrics_error as the reason', () => {
+    const r = classifyMeasurement({
+      metrics_by_account: [entry(null, { metrics_error: 'token expired' })],
+      aggregated_metrics: { total_views: 0 },
+    });
+    expect(r.measured).toBe(false);
+    expect(r.state).toBe('null_metrics');
+    expect(r.reason).toBe('token expired');
+  });
+
+  it('state 3: an empty metrics object is unmeasured', () => {
+    const r = classifyMeasurement({ metrics_by_account: [entry({})] });
+    expect(r.measured).toBe(false);
+    expect(r.state).toBe('sparse_metrics');
+  });
+
+  it('state 3: all-null LinkedIn fields are unmeasured, and the note becomes the reason', () => {
+    const r = classifyMeasurement({
+      metrics_by_account: [entry({
+        likes: null, comments: null, shares: null,
+        platform_specific: { note: 'Missing account URN for organization' },
+      })],
+    });
+    expect(r.measured).toBe(false);
+    expect(r.state).toBe('sparse_metrics');
+    expect(r.reason).toContain('Missing account URN');
+  });
+
+  it('a genuine zero IS measured — the whole point of the distinction', () => {
+    const r = classifyMeasurement({
+      metrics_by_account: [entry({ likes: 0, comments: 0, shares: 0, views: 0 })],
+      aggregated_metrics: { total_views: 0, total_likes: 0 },
+    });
+    expect(r.measured).toBe(true);
+    expect(r.state).toBe('measured');
+  });
+
+  it('one measured account among several failures still counts as measured', () => {
+    const r = classifyMeasurement({
+      metrics_by_account: [entry(null, { metrics_error: 'x' }), entry({ likes: 12 })],
+    });
+    expect(r.measured).toBe(true);
+  });
+
+  it('a missing or non-array metrics_by_account is unmeasured, never zero', () => {
+    expect(classifyMeasurement({ aggregated_metrics: { total_likes: 0 } }).state)
+      .toBe('empty_account_list');
+    expect(classifyMeasurement({ metrics_by_account: 'nope' }).state)
+      .toBe('empty_account_list');
+  });
+
+  it('a null payload is its own state', () => {
+    expect(classifyMeasurement(null).state).toBe('no_payload');
+    expect(classifyMeasurement(undefined).measured).toBe(false);
+  });
+
+  it('ignores non-numeric and negative values when deciding measured', () => {
+    expect(classifyMeasurement({ metrics_by_account: [entry({ likes: 'many' })] }).measured)
+      .toBe(false);
+    expect(classifyMeasurement({ metrics_by_account: [entry({ likes: -1 })] }).measured)
+      .toBe(false);
+  });
+
+  it('does not treat resolved_platform_post_id as a metric', () => {
+    expect(classifyMeasurement({
+      metrics_by_account: [entry({ resolved_platform_post_id: '123' })],
+    }).measured).toBe(false);
+  });
+});
+```
+
+- [ ] **Step 2: Run them and watch them fail**
+
+Run: `npx vitest run supabase/functions/content-performance-capture/capture.test.ts`
+Expected: FAIL — `classifyMeasurement is not a function`.
+
+- [ ] **Step 3: Implement the classifier**
+
+Append to `capture.ts`:
+
+```ts
+export type MeasurementState =
+  | 'measured'
+  | 'empty_account_list'
+  | 'null_metrics'
+  | 'sparse_metrics'
+  | 'no_payload';
+
+export interface MeasurementVerdict {
+  measured: boolean;
+  state: MeasurementState;
+  reason: string | null;
+}
+
+// Keys that carry an actual reading. `resolved_platform_post_id` is an
+// identifier Outstand mixes into the same object and must NOT count as a metric.
+const METRIC_KEYS = [
+  'views', 'likes', 'comments', 'shares', 'saves', 'reach', 'impressions',
+  'total_views', 'total_likes', 'total_comments', 'total_shares', 'total_saves',
+  'total_reach', 'total_impressions', 'engagement_rate', 'average_engagement_rate',
+];
+
+function hasReading(metrics: unknown): boolean {
+  if (!metrics || typeof metrics !== 'object') return false;
+  const m = metrics as Record<string, unknown>;
+  return METRIC_KEYS.some((k) => {
+    const v = m[k];
+    return typeof v === 'number' && Number.isFinite(v) && v >= 0;
+  });
+}
+
+function reasonFor(e: Record<string, unknown>): string | null {
+  const err = e.metrics_error;
+  if (typeof err === 'string' && err.length > 0) return err;
+  const metrics = (e.metrics ?? {}) as Record<string, unknown>;
+  const ps = metrics.platform_specific;
+  if (ps && typeof ps === 'object') {
+    const note = (ps as Record<string, unknown>).note;
+    if (typeof note === 'string' && note.length > 0) return note;
+  }
+  return null;
+}
+
+/**
+ * Is this analytics payload an actual measurement?
+ *
+ * Outstand support confirmed (2026-08-05) that THREE different states all
+ * surface as all-zero `aggregated_metrics`, and only one of them populates
+ * `metrics_error`. So "measured" must be decided by the presence of a real
+ * reading on at least one account — never by `success: true`, never by the
+ * absence of an error, never by the aggregate alone. A genuine zero arrives as
+ * an OBJECT of zeros and is correctly classified as measured.
+ */
+export function classifyMeasurement(raw: unknown): MeasurementVerdict {
+  if (!raw || typeof raw !== 'object') {
+    return { measured: false, state: 'no_payload', reason: null };
+  }
+  const list = (raw as Record<string, unknown>).metrics_by_account;
+  if (!Array.isArray(list) || list.length === 0) {
+    return { measured: false, state: 'empty_account_list', reason: null };
+  }
+  const entries = list.filter(
+    (e): e is Record<string, unknown> => !!e && typeof e === 'object',
+  );
+  if (entries.some((e) => hasReading(e.metrics))) {
+    return { measured: true, state: 'measured', reason: null };
+  }
+  const reason = entries.map(reasonFor).find((r) => r !== null) ?? null;
+  const state: MeasurementState = entries.every((e) => e.metrics === null)
+    ? 'null_metrics'
+    : 'sparse_metrics';
+  return { measured: false, state, reason };
+}
+```
+
+- [ ] **Step 4: Run the tests to verify they pass**
+
+Run: `npx vitest run supabase/functions/content-performance-capture/capture.test.ts`
+Expected: all PASS, including the pre-existing tests.
+
+- [ ] **Step 5: Gate the write in the edge function**
+
+In `index.ts`, import `classifyMeasurement` alongside the existing `capture.ts` imports. Declare a
+counter beside the existing ones (`skipped`, `fetchErrors`):
+
+```ts
+  const unmeasured: Record<string, number> = {};
+```
+
+Then immediately after the `if (!payload) { … }` block (currently ending at line 80) and **before**
+`const m = normalizeAnalytics(payload);`, insert:
+
+```ts
+    // Outstand returns all-zero aggregated_metrics for three DIFFERENT unmeasured
+    // states, only one of which sets metrics_error (spec §0b, vendor-confirmed).
+    // Writing those zeros would be indistinguishable from a real zero-engagement
+    // post and would silently poison every downstream aggregate. Skip and count.
+    const verdict = classifyMeasurement(payload);
+    if (!verdict.measured) {
+      unmeasured[verdict.state] = (unmeasured[verdict.state] ?? 0) + 1;
+      console.warn(
+        `[capture] unmeasured post: postId=${p.outstand_post_id} state=${verdict.state}` +
+        (verdict.reason ? ` reason=${verdict.reason}` : ''),
+      );
+      continue;
+    }
+```
+
+Skipping leaves the milestone uncaptured, so a transient failure is retried on the next run — and
+`milestonesDue` bounds that to the 8-day window, so it cannot retry forever.
+
+- [ ] **Step 6: Report the counter in the run summary**
+
+Find the function's final summary log/response (the object reporting `skipped` / `fetchErrors` /
+inserted counts) and add `unmeasured` to it, so the per-state counts are visible without reading
+logs. Do not remove or rename any existing field.
+
+- [ ] **Step 7: Verify**
+
+Run: `npx vitest run supabase/functions src/lib` then `npm run typecheck`
+Expected: all pass, no new failures.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add supabase/functions/content-performance-capture/
+git commit -m "fix(analytics): stop recording a fabricated zero for unmeasured posts"
+```
+
+Use this full commit body:
+
+```
+Outstand support confirmed three distinct states that all surface as
+all-zero aggregated_metrics, and only one of them populates
+metrics_error: null per-account metrics, a literal empty
+metrics_by_account, and a sparse metrics object. They expect the empty
+list to be what we are actually hitting.
+
+The capture job guarded only a null payload, so all three were stored as
+real readings of zero -- indistinguishable from a post that genuinely got
+no engagement, and silently poisoning every aggregate built on
+content_performance.
+
+Measurement is now decided by the presence of a finite non-negative
+reading on at least one account, never by success:true or the absence of
+an error. A genuine zero arrives as an object of zeros and still counts
+as measured. Unmeasured posts are skipped and counted per state.
+```
