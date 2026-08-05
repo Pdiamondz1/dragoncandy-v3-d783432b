@@ -56,7 +56,7 @@ const DeliverablesList = ({ deliverables, note }: { deliverables: OrderDeliverab
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 break-all text-sm text-primary underline underline-offset-2 hover:opacity-80"
           >
-            {d.label || d.url}
+            {(typeof d.label === 'string' && d.label) || d.url}
             <ExternalLink className="h-3.5 w-3.5 shrink-0" />
           </a>
         </li>

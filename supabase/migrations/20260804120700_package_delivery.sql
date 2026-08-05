@@ -61,8 +61,11 @@ BEGIN
        OR NOT (d ? 'url')
        OR jsonb_typeof(d->'url') <> 'string'
        OR (d->>'url') !~* '^https?://[^[:space:]]+$'
+       -- a present label must be a string: the order pages render `label || url` as a React child, and a
+       -- non-string (object/array) label would crash that page instead of showing the work.
+       OR (d ? 'label' AND jsonb_typeof(d->'label') <> 'string')
   ) THEN
-    RAISE EXCEPTION 'each deliverable must be an object with a valid http(s) url';
+    RAISE EXCEPTION 'each deliverable must be an object with a valid http(s) url and an optional string label';
   END IF;
 
   -- Row-lock the order so a submit can't race an in-flight approve/refund on the same row.
