@@ -123,10 +123,16 @@ serve(async (req: Request) => {
     if (due.length === 0) { skipped++; continue; }
 
     // 3. Fetch analytics once; reuse for every due milestone this run.
+    // Signal mirrors account-metrics-capture's identical call (15s) — without
+    // it a single hung fetch stalls straight past RUN_BUDGET_MS, since the
+    // deadline is only re-checked BETWEEN posts, never during one. A timeout
+    // throws and lands in the catch below like any other fetch failure —
+    // counted as fetchErrors, never crashing the run.
     let payload: Record<string, unknown> | null = null;
     try {
       const res = await fetch(`${OUTSTAND_BASE_URL}/posts/${p.outstand_post_id}/analytics`, {
         headers: { Authorization: `Bearer ${OUTSTAND_API_KEY}`, Accept: "application/json" },
+        signal: AbortSignal.timeout(15_000),
       });
       if (!res.ok) {
         console.warn(`[capture] Outstand analytics fetch failed: postId=${p.outstand_post_id} status=${res.status}`);
