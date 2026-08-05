@@ -100,11 +100,27 @@ luck, with no mapping layer and no test. If Outstand's network for X is `x` whil
 `DonnyProvider.tsx:228` writes `twitter`, the upsert never conflicts and one physical post yields
 two rows, one verified and one not.
 
-**Amplification rows can never be verified.** Because that same line writes an account id where the
-webhook writes a network name, the webhook's upsert can never match an amplification row, so
-`verified_at` is never stamped on it. Each one is then counted and warned about by the capture job
-every run for 8 days, with no action available. A chronic un-actionable warning is how a real one
-gets ignored — the exact desensitisation this sub-project exists to prevent.
+**Amplification rows could never be verified — fixed (Task 12), platform mismatch still open.**
+Because that same line writes an account id where the webhook writes a network name, the webhook's
+row-building upsert (keyed on `outstand_post_id,platform`) can never match an amplification row, so
+`verified_at` was never stamped on it — those rows sat in `content-performance-capture`'s unverified
+count every run for 8 days with no action available, the exact chronic un-actionable warning this
+sub-project exists to prevent. **Fixed** by having `recordPublishedPost`'s no-schedule-row branch
+fall back to stamping `verified_at` on any pre-existing `social_post_log` row matched on
+`outstand_post_id` **alone** (not `(outstand_post_id, platform)` — deliberately, since that's the
+exact pairing an amplification row can never satisfy). This only stamps rows a client already wrote;
+it never inserts one (`user_id` is NOT NULL and unknowable on this path). Same signature-backed
+reasoning as the rest of this gate: a fabricated post id still never produces a signed
+`post.published` event, so blind enumeration/quota-burn still die here.
+
+**Not fully resolved — moves the noise, doesn't remove it.** Once stamped, an amplification row's
+`platform` is still an Outstand account id, not a network name, so `content-performance-capture`'s
+`metricsForPlatform` still can't match it against Outstand's `metrics_by_account[].social_account.network`.
+The row now lands in the `no_platform_metrics` bucket instead of the unverified bucket — still a
+recurring warning every run until its 8-day window closes, just a smaller, more specific one, and one
+that only fires once amplification is actually used (prod currently has zero amplification rows). The
+underlying three-vocabulary `platform` problem above is unchanged; normalizing `platform` at the write
+site (or introducing a platform-alias mapping layer) is the real fix and remains undone.
 
 ## Still open, tracked elsewhere
 

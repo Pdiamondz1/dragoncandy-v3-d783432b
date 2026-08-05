@@ -30,8 +30,8 @@ const json = (status: number, body: unknown) =>
  * which makes coverage structural rather than something each new path must
  * remember. Same reasoning as create-notification.
  *
- * Returns 'recorded' | 'unmatched' | 'failed' so the caller can count outcomes.
- * An unmatched post is a VISIBLE hole, never a silent one.
+ * Returns 'recorded' | 'unmatched' | 'verified_existing' | 'failed' so the caller
+ * can count outcomes. An unmatched post is a VISIBLE hole, never a silent one.
  */
 async function recordPublishedPost(
   supabase: ReturnType<typeof createClient>,
@@ -39,7 +39,7 @@ async function recordPublishedPost(
   publishedAt: string,
   accounts: OutstandSocialAccount[],
   rawAccountCount: number,
-): Promise<{ outcome: "recorded" | "unmatched" | "failed"; rows: number; dropped: number }> {
+): Promise<{ outcome: "recorded" | "unmatched" | "verified_existing" | "failed"; rows: number; dropped: number }> {
   // Entries parseAccounts discarded as malformed, plus (below) entries that
   // parsed fine but carry no network. Carried forward from the Task 4 review: a
   // skip that increments no counter is the failure mode this whole sub-project
@@ -62,7 +62,48 @@ async function recordPublishedPost(
     return { outcome: "failed", rows: 0, dropped };
   }
   if (!schedRows || schedRows.length === 0) {
-    // No schedule row: published outside our flow, or Task 1's bug lost it.
+    // No schedule row: published outside our flow (e.g.
+    // useSponsorshipAmplification.ts, which writes social_post_log directly and
+    // creates no donny_scheduled_posts row at all — Task 12 finding), or Task 1's
+    // bug lost it. Either way there's no schedule row to source caption/format/
+    // campaign dimensions from, and user_id is NOT NULL and unknowable on this
+    // path, so there is no honest new row to insert here.
+    //
+    // What IS available and safe: stamp verified_at on a social_post_log row a
+    // client ALREADY wrote for this outstand_post_id. That row's
+    // outstand_post_id is client-asserted, but a signed post.published event
+    // proves a post with that id actually published — stamping on that
+    // signature preserves the property this gate was built for (a fabricated
+    // post id never produces a signed event, so blind enumeration and the
+    // quota-burn angle still die here). It does NOT close the targeted case
+    // where an attacker already knows a real post id and planted a row
+    // referencing it — that was never closed by this gate and is tracked
+    // separately: docs/wiki/raw/sessions/2026-08-05-outstand-cross-tenant-metric-read.md.
+    // Do not read this as a full fix for that.
+    //
+    // Matched on outstand_post_id ALONE, deliberately not (outstand_post_id,
+    // platform): useSponsorshipAmplification.ts:42 writes an Outstand ACCOUNT id
+    // into `platform`, while this event's platforms (from
+    // socialAccounts[].network, above) are network names — a platform-scoped
+    // match would never hit the very rows this exists to reach. Known open
+    // item: docs/runbooks/social-measurement-spine-deploy.md.
+    const { data: stamped, error: stampErr } = await supabase
+      .from("social_post_log")
+      .update({ verified_at: new Date().toISOString() })
+      .eq("outstand_post_id", postId)
+      .is("verified_at", null)
+      .select("id");
+
+    if (stampErr) {
+      console.error("outstand-webhook: verified_at stamp failed", stampErr.message);
+      return { outcome: "failed", rows: 0, dropped };
+    }
+    if (stamped && stamped.length > 0) {
+      return { outcome: "verified_existing", rows: stamped.length, dropped };
+    }
+
+    // No schedule row AND no pre-existing social_post_log row: published
+    // outside our flow, or Task 1's bug lost it.
     console.warn(`outstand-webhook: no scheduled post for ${postId} — not recorded for measurement`);
     return { outcome: "unmatched", rows: 0, dropped };
   }
@@ -179,19 +220,30 @@ serve(async (req: Request) => {
           accounts,
           rawAccountCount,
         );
+        // outcome is one of 'recorded' (new row(s) inserted from a schedule
+        // match) / 'unmatched' (no schedule row and nothing pre-existing to
+        // stamp) / 'verified_existing' (no schedule row, but a client-written
+        // social_post_log row for this postId got stamped — see the comment at
+        // the stamp UPDATE) / 'failed'. Kept as one log line, distinguished by
+        // ${res.outcome}, so a count-by-outcome over these logs tells all four
+        // apart without a separate branch per case.
         console.log(
           `outstand-webhook: measurement record for ${postId}: ${res.outcome} rows=${res.rows}` +
           (res.dropped > 0 ? ` droppedAccounts=${res.dropped}` : ""),
         );
         if (res.outcome === "failed") {
           // recordPublishedPost failed on a transient DB read/write (schedule
-          // lookup error or social_post_log upsert error) — not a data-shape
-          // problem, so it's worth Outstand's free retry (up to 5 attempts,
-          // backoff) rather than losing the measurement permanently to a 200.
+          // lookup error, verified_at stamp error, or social_post_log upsert
+          // error) — not a data-shape problem, so it's worth Outstand's free
+          // retry (up to 5 attempts, backoff) rather than losing the
+          // measurement permanently to a 200.
           // Safe to retry: the audit insert above ignores 23505 (already ran,
-          // unconditionally, before this branch), the social_post_log upsert is
-          // keyed on (outstand_post_id, platform), and the status update below
-          // is guarded by .neq('status','published') — nothing here double-applies.
+          // unconditionally, before this branch); the social_post_log upsert is
+          // keyed on (outstand_post_id, platform); the verified_at stamp UPDATE
+          // is guarded by .is('verified_at', null), so a retry after a partial
+          // stamp just finds 0 rows left to stamp (reads as 'unmatched', never
+          // double-applies); and the status update below is guarded by
+          // .neq('status','published') — nothing here double-applies.
           console.error(`outstand-webhook: measurement write failed for postId=${postId}, returning 500 for retry`);
           return json(500, { status: "failed", outcome: res.outcome, post_id: postId });
         }
