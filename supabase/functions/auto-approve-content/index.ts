@@ -142,7 +142,7 @@ serve(async (req) => {
     // this can't double-pay or pay over a revision. Non-blocking.
     try {
       const pkgAutoApproveCutoff = new Date(Date.now() - PACKAGE_AUTO_APPROVE_HOURS * 60 * 60 * 1000).toISOString();
-      const { data: overduePkgs } = await supabaseClient
+      const { data: overduePkgs, error: overduePkgErr } = await supabaseClient
         .from('package_orders')
         .select('id')
         .eq('content_status', 'submitted')
@@ -152,6 +152,12 @@ serve(async (req) => {
         .lt('content_submitted_at', pkgAutoApproveCutoff)
         .order('content_submitted_at', { ascending: true })
         .limit(50);
+
+      // Surface a query failure (e.g. the delivery migrations not yet applied → 42P01) instead of silently
+      // no-opping every tick — a missing-migration deploy is otherwise near-invisible in the logs.
+      if (overduePkgErr) {
+        logStep('Package auto-approval query failed', { error: overduePkgErr.message });
+      }
 
       if (overduePkgs && overduePkgs.length > 0) {
         logStep('Auto-approving overdue package orders', { count: overduePkgs.length });

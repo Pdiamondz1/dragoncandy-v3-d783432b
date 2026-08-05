@@ -52,9 +52,13 @@ BEGIN
   -- directly callable by any authenticated creator, so the client-side check is not trustworthy — without this
   -- a creator could store a javascript:/data: or malformed href that the buyer's order page renders as a
   -- clickable link (stored XSS on the buyer). The label (rendered as text, React-escaped) needs no url check.
+  -- NOTE the explicit `NOT (d ? 'url')` key-presence guard: without it, a `{}` element makes both the typeof
+  -- and regex tests evaluate to NULL (not true), so the EXISTS wouldn't match and an order with no usable link
+  -- would slip through to 'submitted'. The `? 'url'` test returns a real boolean, forcing rejection.
   IF EXISTS (
     SELECT 1 FROM jsonb_array_elements(p_deliverables) AS d
     WHERE jsonb_typeof(d) <> 'object'
+       OR NOT (d ? 'url')
        OR jsonb_typeof(d->'url') <> 'string'
        OR (d->>'url') !~* '^https?://[^[:space:]]+$'
   ) THEN
