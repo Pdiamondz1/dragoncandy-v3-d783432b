@@ -14,6 +14,7 @@ import { ScheduleConfirmation, type ScheduledPostInfo } from './ScheduleConfirma
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { toDbContentType } from '@/lib/contentType';
 
 export interface SocialPostPromptProps {
   open: boolean;
@@ -278,13 +279,13 @@ function SocialPostPromptInner({
         })
         .eq('id', existing.data.id);
     } else {
-      await supabase
+      const { error: scheduleError } = await supabase
         .from('donny_scheduled_posts')
         .insert({
           user_id: user.id,
           campaign_id: campaignId,
           platform: platforms[0] ?? 'instagram',
-          content_type: 'video_reel',
+          content_type: toDbContentType('video_reel'),
           caption,
           hashtags,
           media_urls: mediaUrls,
@@ -297,6 +298,19 @@ function SocialPostPromptInner({
             social_account_ids: socialAccountIds ?? selectedAccountIds,
           },
         });
+
+      if (scheduleError) {
+        // The post is already live on the platform at this point (crossPost's
+        // onSuccess already fired before syncScheduledPost was called), so a
+        // failure here means published but unrecorded — invisible to
+        // scheduling and to every analytics surface downstream.
+        console.error('[SocialPostPrompt] Failed to record scheduled post:', scheduleError);
+        toast({
+          variant: 'destructive',
+          title: 'Post published, but not recorded',
+          description: 'It went live, but we could not save it for scheduling or analytics.',
+        });
+      }
     }
   };
 
@@ -394,11 +408,11 @@ function SocialPostPromptInner({
           silent: true,
         });
 
-        await supabase.from('donny_scheduled_posts').insert({
+        const { error: scheduleError } = await supabase.from('donny_scheduled_posts').insert({
           user_id: user.id,
           campaign_id: campaignId,
           platform: platforms[0] ?? 'instagram',
-          content_type: 'video_reel',
+          content_type: toDbContentType('video_reel'),
           caption,
           hashtags,
           media_urls: [slot.mediaUrl],
@@ -410,6 +424,19 @@ function SocialPostPromptInner({
             social_account_ids: selectedAccountIds,
           },
         });
+
+        if (scheduleError) {
+          // crossPost.mutateAsync above already succeeded, so this slot is
+          // already live on the platform. Don't let this fall into the catch
+          // block below's "failed, retry" path — retrying would re-publish an
+          // already-live post. Surface it and still count the slot as done.
+          console.error('[SocialPostPrompt] Failed to record scheduled post:', scheduleError);
+          toast({
+            variant: 'destructive',
+            title: 'Post published, but not recorded',
+            description: 'It went live, but we could not save it for scheduling or analytics.',
+          });
+        }
 
         succeededUrls.add(slot.mediaUrl);
       }

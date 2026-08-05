@@ -12,6 +12,16 @@ const PLANNER_ALIASES: Record<string, DbContentType> = {
   // content-posting-plan/index.ts:110 returns this for any video/* mime type.
   // It is not in the CHECK, so writing it unmapped fails the insert.
   video_reel: 'reel',
+  // src/types/campaignMedia.ts's ContentType union (also the vocabulary the
+  // donny-campaign-generate prompt asks the LLM to emit, and what
+  // content-posting-plan/index.ts:362 passes through unmapped on the
+  // AI-content-strategy path) includes tiktok/youtube_short. Neither is in the
+  // CHECK. Unlike video_reel, these don't fail the insert — DB_CONTENT_TYPES
+  // doesn't contain them either, so without an explicit alias they'd silently
+  // fall through to 'photo' and mislabel a short-form video row. Both are
+  // short-form vertical video, same as a reel.
+  tiktok: 'reel',
+  youtube_short: 'reel',
 };
 
 /**
