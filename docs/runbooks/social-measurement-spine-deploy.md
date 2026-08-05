@@ -11,48 +11,72 @@ no per-task review could see, because it lives in the seam between two tasks tha
 | 1 | **Merge the branch** | Frontend changes are additive; the applied grant lockdown already covers both client insert paths. |
 | 2 | **Apply** `20260805171523_content_performance_format.sql` | The deployed capture job already writes `format`. Until this lands, any insert it attempts fails on an unknown column. |
 | 3 | **Apply** `20260805194725_content_capture_cron_timeout.sql` | Pins the cron to 90 s. Until then pg_net's 5 s default fires first and Task 7's failure signal is unobservable. |
-| 4 | **Redeploy** `content-performance-capture` | **Prod is one commit behind** — it is running `fbce9168`, which lacks the 15 s fetch abort from `2ebfbd9e`. |
-| 5 | **Fix BLOCKER 1 below** | Must precede step 6, or the first multi-platform post is mis-recorded. |
+| 4 | **Apply** `20260805211734_content_performance_platform_grain.sql` | **Must precede step 5.** Widens the unique key to `(outstand_post_id, platform, milestone)` and fixes `get_creator_brief_performance`'s `distinct on` in the same transaction (BLOCKER 1, now fixed — see below). Deploying the new capture-job code before this applies would 42P10 on its `onConflict: "outstand_post_id,platform,milestone"` target, since that index wouldn't exist yet. |
+| 5 | **Redeploy** `content-performance-capture` | **Prod is one commit behind** — it is running `fbce9168`, which lacks the 15 s fetch abort from `2ebfbd9e`, plus this branch's per-platform fix (Task 11). |
 | 6 | **Deploy `outstand-webhook` LAST** | This is what starts stamping `verified_at`, which is what makes the capture job select anything at all. |
 
 **No ordering causes permanent data loss** — milestones are only marked captured on a successful
 insert, so a wrong order self-heals once corrected. That property is worth preserving in any
 future change here.
 
-## BLOCKER 1 — per-platform rows collapse into one `content_performance` record
+## BLOCKER 1 — per-platform rows collapse into one `content_performance` record (FIXED, Task 11)
 
-**The defect.** Task 5 made `social_post_log` one row per published *account*
-(`UNIQUE (outstand_post_id, platform)`). `content_performance`'s dedupe key is still
+**The defect, as originally found.** Task 5 made `social_post_log` one row per published *account*
+(`UNIQUE (outstand_post_id, platform)`). `content_performance`'s dedupe key was still
 `uniq_content_perf_post_milestone (outstand_post_id, milestone)` — **no platform**.
 
 `PostingPlanReview.tsx` publishes one Outstand post to *every* connected account. So a business
 with Facebook + Instagram + YouTube produces three `social_post_log` rows sharing one
-`outstand_post_id`. The capture job iterates them ordered by `id`:
+`outstand_post_id`. The capture job iterated them ordered by `id`:
 
-- the first inserts `(post, '24h')`, labelled with whichever platform sorted first;
-- the other two find `captured = {'24h'}`, compute `due = []`, and hit
+- the first inserted `(post, '24h')`, labelled with whichever platform sorted first;
+- the other two found `captured = {'24h'}`, computed `due = []`, and hit
   `if (due.length === 0) { skipped++; continue; }` — **the same counter as "nothing due yet"**.
 
-Two platforms vanish into a bucket that means "healthy no-op".
+Two platforms vanished into a bucket that means "healthy no-op".
 
-**It is worse than a drop.** The metrics stored come from `aggregated_metrics`, which Outstand sums
-**across all accounts**. So the surviving row carries the whole post's engagement while claiming a
-single platform. `content-strategy-recommend/index.ts:111` groups by `(platform, post_type)` — it
-will attribute every network's engagement to one, and report the others as having no measured posts
-at all. Per-platform figures do exist in the payload's `metrics_by_account`, and survive only
-inside the untouched `raw` column.
+**It was worse than a drop.** The metrics stored came from `aggregated_metrics`, which Outstand
+sums **across all accounts**. So the surviving row carried the whole post's engagement while
+claiming a single platform. `content-strategy-recommend/index.ts:111` groups by
+`(platform, post_type)` — it would attribute every network's engagement to one, and report the
+others as having no measured posts at all. Per-platform figures existed in the payload's
+`metrics_by_account`, and survived only inside the untouched `raw` column.
 
 **Why no per-task review caught it.** Task 5 (per-platform grain) and Task 6 (`format` passthrough)
-each passed their own gate. The contradiction only exists between them.
+each passed their own gate. The contradiction only existed between them.
 
-**Not yet observed.** Zero `social_post_log` rows currently carry `verified_at`, so this path has
-never executed. It will execute on the first post after step 6.
+**Not yet observed in prod.** Zero `social_post_log` rows currently carry `verified_at`, so this
+path had never executed as of this writing. It will execute on the first post after step 6.
 
-**The fix is a decision, not a patch.** Either extend the `content_performance` unique key to
-include `platform` and store per-account metrics from `metrics_by_account`, or keep one row per
-post and stop labelling it with a platform. The first preserves the question "which platform
-works?"; the second abandons it. This is the same decision as the `platform` dual-meaning below —
-decide once, not twice.
+**What was actually done (Task 11).** Both halves shipped together, since fixing the key alone
+would have converted the silent drop into a silent triple-count:
+
+1. `supabase/migrations/20260805211734_content_performance_platform_grain.sql` replaces
+   `uniq_content_perf_post_milestone` with `uniq_content_perf_post_platform_milestone` on
+   `(outstand_post_id, platform, milestone)`, and in the **same migration** widens
+   `get_creator_brief_performance`'s `distinct on (cp.outstand_post_id)` to
+   `distinct on (cp.outstand_post_id, cp.platform)` (leading `ORDER BY` updated to match) — that
+   RPC's own dedupe depended on the old grain (its own comment said so) and would otherwise have
+   kept exactly one platform's row per post per brief, discarding the rest non-deterministically.
+   Read the live prod definition via `execute_sql` before editing; it matched the migration history
+   exactly, confirming no undocumented drift.
+2. `capture.ts` gained `metricsForPlatform(raw, platform)`: reads a post's own
+   `metrics_by_account[]` entries for that platform (network field verified against 9 real prod
+   `raw` payloads — nested under `social_account.network`), **summing** all matching entries
+   (handles a business with two accounts on one network) rather than the cross-account aggregate,
+   and returns `null` — never zeros — when there is no reading.
+3. `index.ts`: `onConflict` widened to match; a `null` from `metricsForPlatform` increments
+   `unmeasured['no_platform_metrics']` and skips (with the reason, when recoverable); the
+   "already captured milestones" read is now also scoped by `platform` (an unscoped read would
+   have reproduced the identical defect one query earlier); a distinct `console.error` fires when
+   `no_platform_metrics` is non-zero, without folding into the 500-triggering `isCaptureRunFailed`.
+
+**Historical rows are not recaptured.** Any `content_performance` row written under the old code
+path (before this ships) carries the cross-account aggregate mislabeled under a single platform,
+and will remain that way permanently — the capture job only ever fetches a milestone once, and a
+milestone already marked captured is never re-fetched or corrected retroactively. As of this
+writing zero rows are affected (no `social_post_log` row yet carries `verified_at`), but this is
+worth knowing before assuming historical `content_performance` data is trustworthy post-fix.
 
 ## Related, same root — decide together
 

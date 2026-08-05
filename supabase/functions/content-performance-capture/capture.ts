@@ -71,64 +71,107 @@ export function normalizeAnalytics(raw: Record<string, unknown> | null | undefin
   };
 }
 
+// Shared by metricsForPlatform and reasonForPlatform so the two never
+// disagree about which metrics_by_account[] entries belong to a platform.
+// The network-identifying field was verified against the 9 real
+// `content_performance` rows on prod (`raw`, inspected 2026-08-05 via
+// read-only `execute_sql`) — every `metrics_by_account[]` entry nests it
+// under `social_account.network`, e.g.
+//   { metrics: {...}|null, published_at, platform_post_id,
+//     social_account: { id, network, nickname, username } }
+// never a top-level `network`/`platform` key. Matching is exact
+// (case-sensitive): every observed prod value is a lowercase network name,
+// and `social_post_log.platform` (the `platform` argument here) is sourced
+// from that same Outstand `network` field at the webhook choke point
+// (outstand-webhook/index.ts), so the two always share casing — there is no
+// observed data to justify folding case.
+function matchingAccountEntries(
+  raw: Record<string, unknown> | null | undefined,
+  platform: string,
+): Record<string, unknown>[] {
+  if (!raw || typeof raw !== 'object') return [];
+  const list = raw.metrics_by_account;
+  if (!Array.isArray(list)) return [];
+  return list.filter((e) => {
+    if (!e || typeof e !== 'object') return false;
+    const acct = (e as Record<string, unknown>).social_account;
+    if (!acct || typeof acct !== 'object') return false;
+    return (acct as Record<string, unknown>).network === platform;
+  }) as Record<string, unknown>[];
+}
+
 /**
  * Map Outstand's analytics payload to columns for exactly ONE platform,
- * reading that platform's own `metrics_by_account[]` entry instead of the
- * cross-account `aggregated_metrics` (which Outstand sums across every
- * connected account on the post). Using the aggregate per-platform would
- * make every platform's row claim the whole post's engagement.
+ * reading that platform's own `metrics_by_account[]` entry/entries instead
+ * of the cross-account `aggregated_metrics` (which Outstand sums across
+ * every connected account on the post, regardless of platform). Using the
+ * aggregate per-platform would make every platform's row claim the whole
+ * post's engagement.
  *
- * The network-identifying field was verified against the 9 real
- * `content_performance` rows on prod (`raw`, inspected 2026-08-05 via
- * read-only `execute_sql`) — every `metrics_by_account[]` entry nests it
- * under `social_account.network`, e.g.
- *   { metrics: {...}|null, published_at, platform_post_id,
- *     social_account: { id, network, nickname, username } }
- * never a top-level `network`/`platform` key. Matching is exact
- * (case-sensitive): every observed prod value is a lowercase network name,
- * and `social_post_log.platform` (the `platform` argument here) is sourced
- * from that same Outstand `network` field at the webhook choke point
- * (outstand-webhook/index.ts), so the two always share casing — there is no
- * observed data to justify folding case.
+ * A `content_performance` row is per NETWORK, but `metrics_by_account[]` is
+ * per ACCOUNT — a business with two accounts on the same network (currently
+ * latent; arms the moment one connects a second Instagram/etc. account,
+ * since PostingPlanReview publishes to every connected account) produces
+ * two entries sharing one `network`. Fix round 1 (coordinator review):
+ * ALL matching entries are combined, not just the first — a `find()` here
+ * would silently discard the second account's engagement with no counter,
+ * violating "every skip must increment a visible counter". Count-like
+ * fields (views/likes/comments/shares/saves/reach) are SUMMED across
+ * matching entries — each is a true per-account total, so the combined
+ * total is still a true reading. `engagement_rate` is a RATE, not additive;
+ * summing it would fabricate a number nobody could interpret. Deliberate
+ * choice: an unweighted arithmetic mean across accounts that reported one —
+ * the same unweighted-mean simplification `get_creator_brief_performance`
+ * already uses for `avg_engagement_rate` across posts, not a new rule
+ * invented at this layer. This is not silently averaging OR silently
+ * taking the first: it is the documented behavior for the one field where
+ * summing would be wrong.
  *
  * Returns `null` — never zeros — when there is no reading for this
- * platform: no matching entry, a null `metrics` (spec §0b state 1,
- * retrieval failed), or an entry whose `metrics` carries no recognized
- * numeric field at all (state 3, "the real ambiguity gap" — e.g. `{}` or
- * all-null). A genuine zero reading (at least one real 0 among the
- * recognized keys) is returned, not null — same discipline as
- * classifyMeasurement's hasReading().
+ * platform: no matching entry, every matching entry's `metrics` is null
+ * (spec §0b state 1, retrieval failed) or non-object, or no matching entry
+ * carries a recognized numeric field at all (state 3, "the real ambiguity
+ * gap" — e.g. `{}` or all-null). A genuine zero reading (at least one real
+ * 0 among the recognized keys, from any matching entry) is returned, not
+ * null — same discipline as classifyMeasurement's hasReading(). One
+ * matching entry with real data and another with `metrics: null` still
+ * returns the real entry's reading, mirroring classifyMeasurement's "one
+ * measured account among several failures still counts as measured".
  */
 export function metricsForPlatform(
   raw: Record<string, unknown> | null | undefined,
   platform: string,
 ): NormalizedMetrics | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const list = raw.metrics_by_account;
-  if (!Array.isArray(list)) return null;
+  const entries = matchingAccountEntries(raw, platform);
+  if (entries.length === 0) return null;
 
-  const entry = list.find((e) => {
-    if (!e || typeof e !== 'object') return false;
-    const acct = (e as Record<string, unknown>).social_account;
-    if (!acct || typeof acct !== 'object') return false;
-    return (acct as Record<string, unknown>).network === platform;
-  }) as Record<string, unknown> | undefined;
-  if (!entry) return null;
+  // Only entries with a usable metrics object contribute. An entry with
+  // metrics: null (state 1) or a non-object contributes nothing — not a
+  // zero — same as classifyMeasurement treating a null-metrics account as
+  // no reading rather than a failure that poisons the others.
+  const readings = entries
+    .map((e) => e.metrics)
+    .filter((m): m is Record<string, unknown> => !!m && typeof m === 'object');
 
-  const metrics = entry.metrics;
-  if (!metrics || typeof metrics !== 'object') return null; // state 1: retrieval failed
-
-  const m = metrics as Record<string, unknown>;
-  const result: NormalizedMetrics = {
-    views: pick(m, ['total_views', 'views', 'viewCount', 'video_views', 'plays']),
-    likes: pick(m, ['total_likes', 'likes', 'likeCount', 'like_count']),
-    comments: pick(m, ['total_comments', 'comments', 'commentCount', 'comment_count']),
-    shares: pick(m, ['total_shares', 'shares', 'shareCount', 'share_count']),
-    saves: pick(m, ['total_saves', 'saves', 'saveCount', 'saved']),
-    reach: pick(m, ['total_reach', 'reach', 'total_impressions', 'impressions', 'reachCount']),
-    engagement_rate: pick(m, ['average_engagement_rate', 'engagementRate', 'engagement_rate']),
+  const sum = (keys: string[]): number | null => {
+    const values = readings.map((m) => pick(m, keys)).filter((v): v is number => v !== null);
+    return values.length === 0 ? null : values.reduce((a, b) => a + b, 0);
   };
-  // State 3: metrics present but contributes nothing recognizable — the same
+
+  const rateKeys = ['average_engagement_rate', 'engagementRate', 'engagement_rate'];
+  const rates = readings.map((m) => pick(m, rateKeys)).filter((v): v is number => v !== null);
+  const engagement_rate = rates.length === 0 ? null : rates.reduce((a, b) => a + b, 0) / rates.length;
+
+  const result: NormalizedMetrics = {
+    views: sum(['total_views', 'views', 'viewCount', 'video_views', 'plays']),
+    likes: sum(['total_likes', 'likes', 'likeCount', 'like_count']),
+    comments: sum(['total_comments', 'comments', 'commentCount', 'comment_count']),
+    shares: sum(['total_shares', 'shares', 'shareCount', 'share_count']),
+    saves: sum(['total_saves', 'saves', 'saveCount', 'saved']),
+    reach: sum(['total_reach', 'reach', 'total_impressions', 'impressions', 'reachCount']),
+    engagement_rate,
+  };
+  // State 3: no matching entry contributed anything recognizable — the same
   // "no reading" as no entry at all. Never fabricate a zero-filled row.
   const allNull = Object.values(result).every((v) => v === null);
   return allNull ? null : result;
@@ -205,6 +248,25 @@ function reasonFor(e: Record<string, unknown>): string | null {
     if (typeof note === 'string' && note.length > 0) return note;
   }
   return null;
+}
+
+/**
+ * WHY does this platform have no reading? For a `metricsForPlatform(raw,
+ * platform)` that returned `null`, this recovers a human reason the same
+ * way `classifyMeasurement` does for the whole payload — `reasonFor()`
+ * checks each matching entry's `metrics_error` first, else
+ * `metrics.platform_specific.note` — but scoped to entries matching THIS
+ * platform (via the same `matchingAccountEntries` metricsForPlatform uses,
+ * so the two never disagree about which entries belong to the platform).
+ * Lets the capture job's per-post warning name a cause (fix round 1,
+ * coordinator review) instead of just "no reading".
+ */
+export function reasonForPlatform(
+  raw: Record<string, unknown> | null | undefined,
+  platform: string,
+): string | null {
+  const entries = matchingAccountEntries(raw, platform);
+  return entries.map(reasonFor).find((r) => r !== null) ?? null;
 }
 
 /**

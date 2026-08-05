@@ -305,4 +305,54 @@ describe('metricsForPlatform', () => {
     expect(m?.likes).toBe(5);
     expect(m?.views).toBe(1388);
   });
+
+  // Fix round 1 (coordinator review, IMPORTANT): two accounts on the same
+  // network must be SUMMED, not have the second silently discarded by
+  // find()-takes-the-first. Currently latent (no business has two accounts
+  // on one platform today) but arms the moment one connects a second.
+  it('two accounts on the same network are summed, not first-wins', () => {
+    const m = metricsForPlatform({
+      metrics_by_account: [
+        acct('instagram', { likes: 5, views: 100, comments: 1, shares: 0 }),
+        acct('instagram', { likes: 7, views: 200, comments: 2, shares: 1 }),
+      ],
+    }, 'instagram');
+    expect(m).toEqual({
+      views: 300, likes: 12, comments: 3, shares: 1,
+      saves: null, reach: null, engagement_rate: null,
+    });
+  });
+
+  it('engagement_rate across multiple same-network accounts is an unweighted mean, never summed', () => {
+    const m = metricsForPlatform({
+      metrics_by_account: [
+        acct('instagram', { likes: 1, engagement_rate: 4 }),
+        acct('instagram', { likes: 1, engagement_rate: 6 }),
+      ],
+    }, 'instagram');
+    expect(m?.engagement_rate).toBe(5); // mean(4, 6), not 10
+  });
+
+  it('one same-network account with real data and one with metrics: null still sums only the real one', () => {
+    const m = metricsForPlatform({
+      metrics_by_account: [
+        acct('instagram', null, { metrics_error: 'token expired' }),
+        acct('instagram', { likes: 5, views: 100 }),
+      ],
+    }, 'instagram');
+    expect(m).toEqual({
+      views: 100, likes: 5, comments: null, shares: null,
+      saves: null, reach: null, engagement_rate: null,
+    });
+  });
+
+  it('two same-network accounts that both have no usable reading still return null', () => {
+    const m = metricsForPlatform({
+      metrics_by_account: [
+        acct('instagram', null, { metrics_error: 'a' }),
+        acct('instagram', {}),
+      ],
+    }, 'instagram');
+    expect(m).toBeNull();
+  });
 });

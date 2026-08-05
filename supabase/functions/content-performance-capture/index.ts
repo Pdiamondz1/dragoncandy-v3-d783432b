@@ -11,7 +11,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { milestonesDue, classifyMeasurement, isCaptureRunFailed, metricsForPlatform, type Milestone } from "./capture.ts";
+import { milestonesDue, classifyMeasurement, isCaptureRunFailed, metricsForPlatform, reasonForPlatform, type Milestone } from "./capture.ts";
 import { isAuthorizedIngest } from "../_shared/ingest-auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -181,7 +181,16 @@ serve(async (req: Request) => {
     const m = metricsForPlatform(payload, p.platform);
     if (!m) {
       unmeasured['no_platform_metrics'] = (unmeasured['no_platform_metrics'] ?? 0) + 1;
-      console.warn(`[capture] no per-platform metrics: postId=${p.outstand_post_id} platform=${p.platform}`);
+      // classifyMeasurement already said SOME account was measured, so this
+      // is a fixable integration gap (e.g. a platform-vocabulary mismatch
+      // between social_post_log.platform and Outstand's network), not
+      // routine vendor noise -- naming the cause turns the warning from
+      // visible into actionable (fix round 1, coordinator review).
+      const reason = reasonForPlatform(payload, p.platform);
+      console.warn(
+        `[capture] no per-platform metrics: postId=${p.outstand_post_id} platform=${p.platform}` +
+        (reason ? ` reason=${reason}` : ''),
+      );
       continue;
     }
     const rows = due.map((milestone) => ({
@@ -215,6 +224,24 @@ serve(async (req: Request) => {
 
   if ((unverifiedCount ?? 0) > 0) {
     console.warn(`[capture] ${unverifiedCount} unverified row(s) in window — excluded, never measured`);
+  }
+
+  // A total attribution blackout (classifyMeasurement said "measured" but
+  // metricsForPlatform found no reading for THIS platform on every one of
+  // them) is a fixable integration bug, not routine vendor noise -- e.g. a
+  // platform-vocabulary mismatch (donny_scheduled_posts.platform allows
+  // 'twitter'; Outstand's network is 'x') would silently blackout that
+  // platform for its whole 8-day measurement window. isCaptureRunFailed
+  // deliberately does NOT fold this in (fix round 1, coordinator review):
+  // a partial blackout alongside real inserts is still a run that made
+  // progress and must stay 200, but it must not read as clean either.
+  const noPlatformMetricsCount = unmeasured['no_platform_metrics'] ?? 0;
+  if (noPlatformMetricsCount > 0) {
+    console.error(
+      `[capture] ${noPlatformMetricsCount} post(s) had a measured payload but no reading for ` +
+      `their own platform (no_platform_metrics) — check for a platform-vocabulary mismatch ` +
+      `between social_post_log.platform and Outstand's network field`,
+    );
   }
 
   const summary = {
