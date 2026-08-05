@@ -35,13 +35,14 @@ export function useSponsorshipAmplification() {
       const data: Record<string, unknown> = await res.json();
 
       for (const accountId of accountIds) {
-        await supabase.from('social_post_log').insert({
+        const { error: logError } = await supabase.from('social_post_log').insert({
           user_id: user!.id,
           campaign_id: campaignId,
           outstand_post_id: (data.id ?? (data.data as Record<string, unknown>)?.id ?? 'unknown') as string,
           platform: accountId,
           post_type: 'amplification',
         });
+        if (logError) console.error('[useSponsorshipAmplification] Failed to log social post:', logError);
       }
 
       return data;
