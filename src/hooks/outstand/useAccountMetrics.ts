@@ -92,7 +92,18 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
         .eq('user_id', userId ?? '')
         .eq('period_start', periodStartIso)
         .eq('period_end', periodEndIso)
-        .gte('fetched_at', new Date(Date.now() - 60 * 60 * 1000).toISOString());
+        // Freshness horizon = the START OF THE WINDOW'S OWN DAY, not a rolling
+        // hour. `periodEndIso` IS start-of-today, so this reads as "captured at
+        // some point today", which is exactly when a row for today's window is
+        // still current.
+        //
+        // The old rolling 1-hour TTL made sense only while windows carried
+        // millisecond precision — every visit computed a new window, so nothing
+        // was reusable anyway. Now that windows are day-stable it actively
+        // defeats the point: the nightly cron writes at 09:30 UTC, so a 1-hour
+        // TTL would hide those rows for the other ~23 hours and send the browser
+        // back to Outstand on almost every visit.
+        .gte('fetched_at', periodEndIso);
 
       const cachedByKey = new Map(
         (cached ?? []).map((row) => [
