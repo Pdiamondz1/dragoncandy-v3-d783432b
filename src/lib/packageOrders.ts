@@ -30,6 +30,14 @@ export function creatorOrderView(o: Pick<CreatorOrder, 'order_status' | 'content
   }
 }
 
+// What the creator actually nets on an order: the LOCKED snapshots (price − fee, captured at purchase) — the
+// exact figure release-package-payout releases. Never recompute the fee from the current PACKAGE_FEE_RATE here:
+// if the rate ever changed, the displayed "you earn" would diverge from the real payout on already-placed
+// orders. (The pre-purchase editor preview does use the live rate — there is no snapshot yet there.)
+export function orderNetPayout(o: Pick<CreatorOrder, 'price_snapshot' | 'platform_fee_snapshot'>): number {
+  return Math.round((Number(o.price_snapshot) - Number(o.platform_fee_snapshot ?? 0)) * 100) / 100;
+}
+
 // Only let an http(s) link reach an href — defence in depth against a stored javascript:/data: URL (the RPC
 // already rejects these, but never render an untrusted string straight into href).
 export function safeHref(url: string | undefined | null): string {

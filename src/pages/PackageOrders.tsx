@@ -4,8 +4,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Package as PackageIcon, ChevronRight, Clock } from 'lucide-react';
 import { PACKAGES_ENABLED } from '@/lib/featureConfig';
 import { useCreatorOrders } from '@/hooks/packages/useCreatorOrders';
-import { creatorOrderView, orderToneClasses } from '@/lib/packageOrders';
-import { netPayout, formatUsd } from '@/lib/packagePricing';
+import { creatorOrderView, orderToneClasses, orderNetPayout } from '@/lib/packageOrders';
+import { formatUsd } from '@/lib/packagePricing';
 import type { CreatorOrder } from '@/types/packages';
 
 const OrderRow = ({ order }: { order: CreatorOrder }) => {
@@ -26,7 +26,7 @@ const OrderRow = ({ order }: { order: CreatorOrder }) => {
         <p className="mt-0.5 truncate text-sm text-muted-foreground">{buyer}</p>
       </div>
       <div className="shrink-0 text-right">
-        <div className="font-semibold text-foreground">{formatUsd(netPayout(order.price_snapshot))}</div>
+        <div className="font-semibold text-foreground">{formatUsd(orderNetPayout(order))}</div>
         <div className="text-xs text-muted-foreground">you earn</div>
       </div>
       <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />

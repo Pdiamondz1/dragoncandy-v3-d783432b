@@ -8,8 +8,8 @@ import { PACKAGES_ENABLED } from '@/lib/featureConfig';
 import { useCreatorOrder } from '@/hooks/packages/useCreatorOrders';
 import { IntakeSummary } from '@/components/packages/IntakeSummary';
 import { DeliverySubmitForm } from '@/components/packages/DeliverySubmitForm';
-import { creatorOrderView, orderToneClasses, safeHref } from '@/lib/packageOrders';
-import { netPayout, formatUsd } from '@/lib/packagePricing';
+import { creatorOrderView, orderToneClasses, safeHref, orderNetPayout } from '@/lib/packageOrders';
+import { formatUsd } from '@/lib/packagePricing';
 import type { CreatorOrder, OrderDeliverable, PackageScope } from '@/types/packages';
 
 const Section = ({ title, icon, children }: { title: string; icon?: React.ReactNode; children: React.ReactNode }) => (
@@ -81,7 +81,7 @@ const OrderBody = ({ order, refetch }: { order: CreatorOrder; refetch: () => voi
             <p className="mt-0.5 text-sm text-muted-foreground">{buyer}</p>
           </div>
           <div className="shrink-0 text-right">
-            <div className="text-xl font-bold text-primary">{formatUsd(netPayout(order.price_snapshot))}</div>
+            <div className="text-xl font-bold text-primary">{formatUsd(orderNetPayout(order))}</div>
             <div className="text-xs text-muted-foreground">you earn</div>
           </div>
         </div>
@@ -120,7 +120,7 @@ const OrderBody = ({ order, refetch }: { order: CreatorOrder; refetch: () => voi
           <p className="mb-3 flex items-start gap-2 text-sm text-muted-foreground">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-landing-mint-ink" />
             The buyer’s payment is held safely. Add links to the finished work — once they approve, you’re paid
-            {' '}{formatUsd(netPayout(order.price_snapshot))}.
+            {' '}{formatUsd(orderNetPayout(order))}.
           </p>
           <DeliverySubmitForm
             orderId={order.id}
@@ -139,7 +139,7 @@ const OrderBody = ({ order, refetch }: { order: CreatorOrder; refetch: () => voi
       ) : order.order_status === 'completed' ? (
         <Section title="Completed & paid" icon={<CheckCircle2 className="h-4 w-4 text-landing-mint-ink" />}>
           <p className="mb-3 text-sm text-muted-foreground">
-            The buyer approved your work and {formatUsd(netPayout(order.price_snapshot))} was released to your wallet.
+            The buyer approved your work and {formatUsd(orderNetPayout(order))} was released to your wallet.
           </p>
           {hasDeliverables && <DeliverablesList deliverables={order.deliverables} note={order.delivery_note} />}
         </Section>
