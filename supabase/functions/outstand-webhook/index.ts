@@ -183,6 +183,18 @@ serve(async (req: Request) => {
           `outstand-webhook: measurement record for ${postId}: ${res.outcome} rows=${res.rows}` +
           (res.dropped > 0 ? ` droppedAccounts=${res.dropped}` : ""),
         );
+        if (res.outcome === "failed") {
+          // recordPublishedPost failed on a transient DB read/write (schedule
+          // lookup error or social_post_log upsert error) — not a data-shape
+          // problem, so it's worth Outstand's free retry (up to 5 attempts,
+          // backoff) rather than losing the measurement permanently to a 200.
+          // Safe to retry: the audit insert above ignores 23505 (already ran,
+          // unconditionally, before this branch), the social_post_log upsert is
+          // keyed on (outstand_post_id, platform), and the status update below
+          // is guarded by .neq('status','published') — nothing here double-applies.
+          console.error(`outstand-webhook: measurement write failed for postId=${postId}, returning 500 for retry`);
+          return json(500, { status: "failed", outcome: res.outcome, post_id: postId });
+        }
       }
 
       // Guarded: only advance rows that aren't already published.
