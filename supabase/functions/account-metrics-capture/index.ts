@@ -24,6 +24,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isAuthorizedIngest } from "../_shared/ingest-auth.ts";
 import { getAnalyticsWindow, type TimeRange } from "../_shared/analytics-window.ts";
 import { resolveProviderId } from "../_shared/social-provider.ts";
+import { mapOutstandAccountMetrics } from "../_shared/outstand-metrics-map.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -81,6 +82,17 @@ serve(async (req: Request) => {
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
   if (!isAuthorizedIngest(req)) return json(401, { error: "unauthorized" });
 
+  // `{"debug":true}` echoes the RAW provider response shape back in the result.
+  // Console output from an edge function is not reachable through the tooling we
+  // have, and guessing field names is exactly how this project produced
+  // all-zero metrics that looked like real data. Ingest-gated, so only a caller
+  // holding the service key can ask for it.
+  let debug = false;
+  try {
+    const body = await req.json();
+    debug = body?.debug === true;
+  } catch { /* no body is fine */ }
+
   const OUTSTAND_API_KEY = Deno.env.get("OUTSTAND_API_KEY");
   if (!OUTSTAND_API_KEY) return json(503, { error: "outstand_not_configured" });
 
@@ -113,6 +125,7 @@ serve(async (req: Request) => {
     );
   }
 
+  const shapes: Array<Record<string, unknown>> = [];
   const deadline = Date.now() + RUN_BUDGET_MS;
   let captured = 0;
   let failed = 0;
@@ -173,16 +186,32 @@ serve(async (req: Request) => {
             continue;
           }
 
-          const m = payload as Record<string, number>;
+          // Mapping lives in _shared/outstand-metrics-map.ts, derived from a
+          // CAPTURED response — the field names here are snake_case with reach
+          // nested under `engagement`, none of which the previous code read.
+          // A null return means "none of the fields we recognise", which is a
+          // failure, not a set of zeros.
+          const mapped = mapOutstandAccountMetrics(payload);
+          if (!mapped) {
+            failed++;
+            const reason = "unrecognised_payload_shape";
+            errors.push({ accountId: account.outstand_social_account_id, reason });
+            console.error(
+              `account-metrics-capture: ${account.outstand_social_account_id} (${range}) ${reason} keys=[${Object.keys(payload).join(",")}]`,
+            );
+            continue;
+          }
+          const { followers, engagementRate: engagement, reach, postsCount: posts } = mapped;
 
-          // Field fallbacks mirror useAccountMetrics so the cron and the browser
-          // agree on what a metric means. Outstand's per-network coverage varies
-          // (YouTube reports no reach, TikTok no date range), so 0 here can be a
-          // genuine "not reported by this platform" rather than a measured zero.
-          const followers = m.followers ?? m.followerCount ?? 0;
-          const engagement = m.engagementRate ?? 0;
-          const reach = m.reach ?? m.impressions ?? 0;
-          const posts = m.postsCount ?? 0;
+          if (debug && shapes.length < 4) {
+            shapes.push({
+              account: account.outstand_social_account_id,
+              platform: account.platform,
+              range,
+              keys: Object.keys(payload),
+              mapped,
+            });
+          }
 
           const base = {
             user_id: account.user_id,
@@ -241,5 +270,6 @@ serve(async (req: Request) => {
     skipped_non_outstand: skipped,
     skipped_for_time: skippedForTime,
     errors: errors.slice(0, 20),
+    ...(debug ? { shapes } : {}),
   });
 });

@@ -3,6 +3,7 @@ import { useOutstandApi, type SocialAccount } from '@outstand-so/ui';
 import { useOutstandConfig } from '@/integrations/outstand/Provider';
 import { supabase } from '@/integrations/supabase/client';
 import { getAnalyticsWindow, type TimeRange } from '@/lib/analyticsWindow';
+import { mapOutstandAccountMetrics } from '@/lib/outstandMetricsMap';
 
 const getDateRange = getAnalyticsWindow;
 
@@ -128,15 +129,20 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
           try {
             const res = await api.get(`/social-accounts/${account.id}/metrics`);
             if (!res.success || !res.data) return;
-            const m = res.data as Record<string, number>;
-            const followers = m.followers ?? m.followerCount ?? 0;
-            const engagement = m.engagementRate ?? 0;
-            const reach = m.reach ?? m.impressions ?? 0;
+            // Shared mapper — the response uses snake_case counts with `reach`
+            // nested under an `engagement` OBJECT. The old reads
+            // (followers/engagementRate/reach/postsCount) matched nothing, so
+            // this tab rendered zeros for accounts that had real numbers.
+            const mapped = mapOutstandAccountMetrics(res.data);
+            if (!mapped) return;
+            const followers = mapped.followers;
+            const engagement = mapped.engagementRate;
+            const reach = mapped.reach;
 
             totalFollowers += followers;
             totalReach += reach;
             totalEngagement += engagement;
-            postsPublished += m.postsCount ?? 0;
+            postsPublished += mapped.postsCount;
 
             platformMetrics.push({
               platform: account.network ?? 'unknown',
@@ -160,7 +166,7 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
                   { ...cacheBase, metric_type: 'followers', metric_value: followers },
                   { ...cacheBase, metric_type: 'engagement', metric_value: engagement },
                   { ...cacheBase, metric_type: 'reach', metric_value: reach },
-                  { ...cacheBase, metric_type: 'posts', metric_value: m.postsCount ?? 0 },
+                  { ...cacheBase, metric_type: 'posts', metric_value: mapped.postsCount },
                 ],
                 { onConflict: 'user_id,outstand_account_id,metric_type,period_start,period_end' },
               );
