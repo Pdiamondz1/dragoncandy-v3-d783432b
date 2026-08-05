@@ -30,7 +30,7 @@ import type {
 } from "../_shared/social-contract.ts";
 import { createOutstandAdapter } from "./adapters/outstand.ts";
 import { createZernioAdapter } from "./adapters/zernio.ts";
-import { resolveProviderFromRows, resolveProviderId } from "./resolve-provider.ts";
+import { resolveProviderFromRows, resolveProviderId } from "../_shared/social-provider.ts";
 import { assertAccountsOwned, isPostOwned } from "./gateway-guards.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;

@@ -10,11 +10,57 @@
 > applied (verified: not in `schema_migrations`, column absent), and `ZERNIO_API_KEY` was never set.
 > "Built but dark" was right; "unmerged" was not.
 
+> ## ⚠️ PREMISE RETRACTED 2026-08-04 — read this before acting on anything below
+>
+> **Both stated reasons for leaving Outstand were wrong.** This spec's Context claimed a "hard
+> ~7-connection cap and effectively no analytics". Neither survives checking:
+>
+> 1. **The connection cap was real but SOFT — not the hard blocker this spec claimed.**
+>    (Corrected again 2026-08-04 after seeing the billing dashboard; my first retraction
+>    over-swung and said it "was never real".) Outstand plans DO carry an included-accounts
+>    number, so the figure was not invented — but the dashboard states verbatim: *"Your plan
+>    includes 10 social media accounts. Additional accounts can be requested via support —
+>    **no additional charge**."* So it is a soft, free-to-raise quota, not a ceiling that
+>    caps the marketplace. Describing it as a "hard cap" without recording where the number
+>    came from is what turned a support ticket into a migration.
+>    **Residual operational risk, and it is genuine:** raising the quota is a *manual,
+>    human-gated* request. There is no self-serve provisioning, so at scale we must stay well
+>    ahead of the number or a user's connect attempt blocks on Outstand's support queue.
+> 2. **"Effectively no analytics" was a false generalization from one post.** It came from
+>    `docs/wiki/entities/outstand.md` (2026-06-11), which observed an empty `metrics_by_account`
+>    on YouTube post `mJuDd` and inferred our posts were "fundamentally unmeasurable". But
+>    `content_performance` holds post **`XDbxe`** captured **2026-06-13**, with **1,388 views
+>    and 5 likes, growing between the 24h and 72h snapshots**. Outstand's pipeline demonstrably
+>    produced real metrics two days after the conclusion was written. Nobody re-checked.
+>
+> **Outstand also re-priced, and the founder upgraded** (dashboard verified 2026-08-04):
+> the account now has **Unlimited Posting enabled** — *"posts are never billed per post"* —
+> plus Managed Keys, 10 included accounts with free increases, renewing 2026-09-04.
+>
+> That makes the cost comparison **flat vs. scaling**, which is the whole argument:
+>
+> | connected accounts | Outstand (flat) | Zernio |
+> |---|---|---|
+> | 100 | ~$268 | $318 |
+> | 1,000 | ~$268 | $1,218 |
+> | 5,000 | ~$268 | $5,218 |
+> | 20,000 | ~$268 | $20,218 |
+>
+> Outstand bills *activity* and is now capped; Zernio bills *connected accounts* and is
+> uncapped. For a marketplace whose account count grows with SUPPLY while revenue grows with
+> DEMAND, that difference is structural, not a discount.
+>
+> The provider decision is therefore **reopened**, and gated on a live analytics bake-off rather
+> than on either set of assertions. Phases 0–2 below are still accurate as a record of what was
+> BUILT and shipped, and the provider-agnostic seam is what makes reversing cheap — but do not
+> treat the rationale in this Context as established.
+
 ## Context
 
 DragonCandy's social integration runs on Outstand.so ($67/mo). It has a hard ~7-connection cap
 and effectively no analytics, which starves the one thing the platform is supposed to do: let
 Donny tell a business what content drives traffic and what campaign to run next.
+**(Both claims retracted — see the banner above. Left in place so the retraction has a subject.)**
 
 A replacement provider (Zernio, formerly Late/getlate.dev) was chosen in June 2026 and a
 provider-agnostic seam was built, then stalled. It is **unmerged and undeployed**: `social-proxy`

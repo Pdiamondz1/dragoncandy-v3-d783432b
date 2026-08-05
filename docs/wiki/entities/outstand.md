@@ -70,6 +70,38 @@ The `content-performance-capture` cron reads per-post engagement from Outstand's
   pipeline ever produce a populated `metrics_by_account`?* (Settle with a real
   post + an Outstand-side check.)
 
+> ## ✅ OPEN QUESTION SETTLED 2026-08-04 — the answer is YES
+>
+> **"Fundamentally unmeasurable" was a false generalization from a single post, and this page
+> was never corrected.** The conclusion above was written 2026-06-11 from `mJuDd` alone. Two
+> days later, `content_performance` captured YouTube post **`XDbxe`** with **1,388 views and
+> 5 likes at 24h, growing to 1,388 / 5 by 72h and 7d** — real, populated, non-zero metrics
+> from the same publish pipeline and the same account (`coalition.joe@gmail.com`).
+>
+> All three captured posts, for the record:
+>
+> | post | platform | views | likes | verdict |
+> |---|---|---|---|---|
+> | `XDbxe` | youtube | **1,388** | **5** | **measurable — pipeline works** |
+> | `XDb8e` | youtube | 0 | 0 | zeros (posted 9s after `XDbxe`; likely a dud upload) |
+> | `mJuDd` | youtube | 0 | 0 | zeros — the post this page's conclusion was based on |
+>
+> A video with genuinely zero views returns 0. **Zero is not the same as unmeasurable**, and
+> that conflation is what produced the wrong conclusion — the same ambiguity this page itself
+> warns about, two bullets up.
+>
+> **Residual unknowns (do not over-correct):** `reach`, `engagement_rate` and `saves` were
+> 0/null even on the working post — YouTube does not report reach, so partial field coverage
+> may be platform-specific rather than a defect. **Instagram has never been tested on
+> Outstand.** Outstand's current documented response also carries a per-account
+> `metrics_error {code, message}` field absent from the June shape, which would disambiguate
+> future empties directly.
+>
+> **Consequence:** this page's claim was load-bearing — it was cited as a primary reason to
+> migrate off Outstand in
+> `docs/superpowers/specs/2026-08-01-outstand-zernio-cutover-design.md`. That spec's premise
+> is retracted. See [[Social Provider Seam]].
+
 Consequence: the Content Engine treats empty `metrics_by_account` as
 **"metrics unavailable"** rather than a measured 0 (see [[Content Engine]]).
 
