@@ -67,6 +67,8 @@ const OutstandManager = lazy(() => import("./pages/OutstandManager"));
 const OutstandOAuthCallbackPage = lazy(() => import("./pages/OutstandOAuthCallbackPage"));
 const CreatorEarnings = lazy(() => import("./pages/CreatorEarnings"));
 const CreatorPackages = lazy(() => import("./pages/CreatorPackages"));
+const PublicPackagePage = lazy(() => import("./pages/PublicPackagePage"));
+const GuestOrderPage = lazy(() => import("./pages/GuestOrderPage"));
 const CreatorBrowse = lazy(() => import("./pages/CreatorBrowse"));
 const CreatorGroupsPage = lazy(() => import("./pages/CreatorGroupsPage"));
 const CreatorGroupDetailPage = lazy(() => import("./pages/CreatorGroupDetailPage"));
@@ -335,6 +337,10 @@ function AnimatedRoutes() {
           {/* Public Profile Routes */}
           <Route path="/creator/:slug" element={<PublicCreatorProfile />} />
           <Route path="/business/:slug" element={<PublicBusinessProfile />} />
+
+          {/* Public package link + guest order tracking (feature-flagged: PACKAGES_ENABLED) */}
+          <Route path="/p/:creatorSlug/:packageSlug" element={PACKAGES_ENABLED ? <PublicPackagePage /> : <Navigate to="/" replace />} />
+          <Route path="/order/:token" element={PACKAGES_ENABLED ? <GuestOrderPage /> : <Navigate to="/" replace />} />
 
           {/* ROI Dashboard Route */}
           <Route path="/dashboard/analytics" element={<ProtectedRoute><ROIDashboard /></ProtectedRoute>} />
