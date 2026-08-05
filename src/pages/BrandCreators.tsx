@@ -132,14 +132,21 @@ const BrandCreators: React.FC = () => {
     queryKey: ['bulk-social-stats', creatorUserIds],
     queryFn: async () => {
       if (creatorUserIds.length === 0) return [];
-      const { data, error } = await supabase
-        .from('social_analytics_cache')
-        .select('user_id, platform, metric_value')
-        .in('user_id', creatorUserIds)
-        .eq('metric_type', 'followers')
-        .order('fetched_at', { ascending: false });
+      // Reads OTHER creators' cached metrics, which own-row RLS forbids. This
+      // used to work only via a blanket `USING (true)` policy that is gone from
+      // prod — so follower filters have been excluding everyone and follower sort
+      // has been treating every creator as zero. The bulk RPC restores it with a
+      // per-target public-profile gate, returning only platform + followers.
+      const { data, error } = await supabase.rpc('get_public_social_proof_bulk', {
+        p_user_ids: creatorUserIds,
+      });
       if (error) return [];
-      return data ?? [];
+      return ((data ?? []) as Array<{ user_id: string; platform: string; followers: number | string }>)
+        .map((r) => ({
+          user_id: r.user_id,
+          platform: r.platform,
+          metric_value: Number(r.followers ?? 0),
+        }));
     },
     enabled: creatorUserIds.length > 0,
     staleTime: 5 * 60 * 1000,

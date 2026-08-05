@@ -136,20 +136,32 @@ serve(async (req: Request) => {
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
   const now = new Date();
 
-  const { data: rows, error: rowsErr } = await admin
-    .from("business_outstand_accounts")
-    .select("id, user_id, outstand_social_account_id, platform, provider, status")
-    .in("status", ["active", "error"]);
+  // PAGE through the accounts. PostgREST caps an unbounded .select() at its
+  // default page size, so past that limit the nightly run would quietly snapshot
+  // only the first page and skip every remaining connected account — no error,
+  // no partial-run signal, just accounts that stop having data.
+  const PAGE = 500;
+  const rows: AccountRow[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data: page, error: rowsErr } = await admin
+      .from("business_outstand_accounts")
+      .select("id, user_id, outstand_social_account_id, platform, provider, status")
+      .in("status", ["active", "error"])
+      .order("id", { ascending: true })
+      .range(from, from + PAGE - 1);
 
-  if (rowsErr) {
-    console.error("account-metrics-capture: account fetch failed", rowsErr.message);
-    return json(500, { error: "db_read_failed" });
+    if (rowsErr) {
+      console.error("account-metrics-capture: account fetch failed", rowsErr.message);
+      return json(500, { error: "db_read_failed" });
+    }
+    rows.push(...((page ?? []) as AccountRow[]));
+    if (!page || page.length < PAGE) break;
   }
 
   // Account ids are only opaque WITHIN a provider, and this job talks to Outstand
   // directly with the org key. Skipping non-Outstand rows keeps us from asking
   // Outstand about an id that was never theirs.
-  const allRows = (rows ?? []) as AccountRow[];
+  const allRows = rows;
   const accounts = allRows.filter((r) => resolveProviderId(r.provider) === "outstand");
 
   // Say so when rows are skipped. A silent filter means a whole provider's
