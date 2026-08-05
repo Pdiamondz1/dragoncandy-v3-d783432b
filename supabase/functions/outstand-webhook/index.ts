@@ -33,13 +33,24 @@ serve(async (req: Request) => {
     return json(400, { error: "Invalid JSON" });
   }
 
-  const { event, postId, accountId, publishedAt, socialAccounts } = parseOutstandEvent(body);
+  const { event, postId, accountId, publishedAt, timestamp, socialAccounts } = parseOutstandEvent(body);
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   try {
     if (event === "post.published" || event === "post.error") {
       if (!postId) return json(400, { error: "Missing postId" });
       const newStatus = event === "post.published" ? "published" : "failed";
+
+      // Record ARRIVAL before deciding whether it matched. This insert used to run
+      // only after a successful update, so a no_match delivery left no trace and an
+      // empty table could not distinguish "never delivered" from "delivered, matched
+      // nothing" — which is exactly the ambiguity that stalled this work.
+      const { error: auditErr } = await supabase
+        .from("outstand_webhook_events")
+        .insert({ id: `${event}:${postId}`, event, post_id: postId, payload: body });
+      if (auditErr && auditErr.code !== "23505") {
+        console.warn("outstand-webhook: audit insert failed", auditErr.message);
+      }
 
       // Guarded: only advance rows that aren't already published.
       const { data: rows } = await supabase
@@ -60,20 +71,17 @@ serve(async (req: Request) => {
           metadata: { ...meta, publish_result: socialAccounts ?? null },
           updated_at: new Date().toISOString(),
         };
-        if (newStatus === "published") patch.published_at = publishedAt ?? new Date().toISOString();
+        // publishedAt is absent from the documented payload; the event carries a
+        // top-level timestamp. Falling straight to now() recorded when WE processed
+        // the delivery — up to 5 minutes late once retries back off.
+        if (newStatus === "published") {
+          patch.published_at = publishedAt ?? timestamp ?? new Date().toISOString();
+        }
         await supabase
           .from("donny_scheduled_posts")
           .update(patch)
           .eq("id", row.id)
           .neq("status", "published");
-      }
-
-      // Idempotency/audit AFTER a successful write; ignore unique-violation.
-      const { error: auditErr } = await supabase
-        .from("outstand_webhook_events")
-        .insert({ id: `${event}:${postId}`, event, post_id: postId, payload: body });
-      if (auditErr && auditErr.code !== "23505") {
-        console.warn("outstand-webhook: audit insert failed", auditErr.message);
       }
 
       return json(200, { status: "processed", event, post_id: postId });

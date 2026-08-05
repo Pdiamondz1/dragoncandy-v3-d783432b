@@ -27,12 +27,42 @@ export async function verifyOutstandSignature(
   return diff === 0;
 }
 
+export interface OutstandSocialAccount {
+  accountId: string | null;
+  network: string | null;
+  username: string | null;
+  platformPostId: string | null;
+  platformPostUrl: string | null;
+}
+
 export interface OutstandEvent {
   event: string;
   postId: string | null;
   accountId: string | null;
   publishedAt: string | null;
+  /**
+   * Top-level event timestamp. The documented post.published payload has NO
+   * data.publishedAt, so this is the only time the event carries.
+   */
+  timestamp: string | null;
   socialAccounts: unknown;
+  /** One entry per published account; `network` is the platform. */
+  accounts: OutstandSocialAccount[];
+}
+
+function str(v: unknown): string | null {
+  return typeof v === "string" && v.length > 0 ? v : null;
+}
+
+function parseAccounts(raw: unknown): OutstandSocialAccount[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((e): e is Record<string, unknown> => !!e && typeof e === "object").map((e) => ({
+    accountId: str(e.accountId) ?? str(e.account_id) ?? (typeof e.accountId === "number" ? String(e.accountId) : null),
+    network: str(e.network) ?? str(e.platform),
+    username: str(e.username),
+    platformPostId: str(e.platformPostId) ?? str(e.platform_post_id),
+    platformPostUrl: str(e.platformPostUrl) ?? str(e.platform_post_url),
+  }));
 }
 
 // Outstand payload casing/nesting isn't fully pinned (see spec §10); accept the
@@ -45,6 +75,8 @@ export function parseOutstandEvent(body: Record<string, any>): OutstandEvent {
     postId: data?.postId ?? data?.post_id ?? data?.post?.id ?? null,
     accountId: data?.accountId ?? data?.account_id ?? null,
     publishedAt: data?.publishedAt ?? data?.published_at ?? null,
+    timestamp: str(body?.timestamp) ?? str(body?.created_at),
     socialAccounts: data?.socialAccounts ?? data?.social_accounts ?? null,
+    accounts: parseAccounts(data?.socialAccounts ?? data?.social_accounts),
   };
 }
