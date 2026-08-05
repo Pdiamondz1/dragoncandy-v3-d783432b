@@ -107,6 +107,7 @@ async function checkHealth(
 }
 
 interface AccountRow {
+  id: string;
   user_id: string;
   outstand_social_account_id: string;
   platform: string;
@@ -137,7 +138,7 @@ serve(async (req: Request) => {
 
   const { data: rows, error: rowsErr } = await admin
     .from("business_outstand_accounts")
-    .select("user_id, outstand_social_account_id, platform, provider, status")
+    .select("id, user_id, outstand_social_account_id, platform, provider, status")
     .in("status", ["active", "error"]);
 
   if (rowsErr) {
@@ -264,13 +265,16 @@ serve(async (req: Request) => {
           // reconnect an account that recovered. Stale-true and stale-false are
           // both wrong; this reconciles in the direction the evidence points.
           if (account.status === "error") {
-            const { error: restoreErr } = await admin
+            // Same reasoning as the flag path: by primary key, and confirm the
+            // match. Clearing another user's genuine 'error' flag would tell them
+            // their connection is healthy when it is not — the worse direction.
+            const { data: restored, error: restoreErr } = await admin
               .from("business_outstand_accounts")
               .update({ status: "active", updated_at: new Date().toISOString() })
-              .eq("outstand_social_account_id", account.outstand_social_account_id)
-              .eq("provider", "outstand")
-              .eq("status", "error");
-            if (!restoreErr) {
+              .eq("id", account.id)
+              .eq("status", "error")
+              .select("id");
+            if (!restoreErr && restored && restored.length > 0) {
               healthRestored++;
               account.status = "active";
               console.log(

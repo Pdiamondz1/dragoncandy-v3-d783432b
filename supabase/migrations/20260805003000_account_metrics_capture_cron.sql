@@ -27,11 +27,27 @@ begin
     );
   end if;
 
+  -- DERIVE the URL from the sibling job's secret rather than hardcoding one.
+  -- A literal prod URL here would schedule staging and local databases against
+  -- PRODUCTION whenever this migration is applied outside that project — the
+  -- copied bearer comes from the local environment, so such a run would either
+  -- 401 against prod or, worse, if the secrets happened to align, capture into
+  -- the wrong project. Deriving inherits whatever environment the sibling cron
+  -- is already pointed at, which is the per-environment Vault pattern this repo
+  -- already uses.
   if not exists (select 1 from vault.secrets where name = 'account_metrics_capture_url') then
+    if not exists (select 1 from vault.decrypted_secrets where name = 'content_capture_url') then
+      raise exception
+        'content_capture_url is not in Vault — cannot derive the account-metrics-capture URL for this environment. Provision the sibling cron first.';
+    end if;
     perform vault.create_secret(
-      'https://zocahiffooqdybdhguqv.supabase.co/functions/v1/account-metrics-capture',
+      replace(
+        (select decrypted_secret from vault.decrypted_secrets where name = 'content_capture_url'),
+        'content-performance-capture',
+        'account-metrics-capture'
+      ),
       'account_metrics_capture_url',
-      'Invocation URL for the account-metrics-capture cron'
+      'Invocation URL for the account-metrics-capture cron (derived from content_capture_url so it stays environment-correct)'
     );
   end if;
 end $$;

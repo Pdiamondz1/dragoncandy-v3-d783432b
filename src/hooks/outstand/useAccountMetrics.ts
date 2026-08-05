@@ -81,9 +81,15 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
       const periodStartIso = currentRange.start.toISOString();
       const periodEndIso = currentRange.end.toISOString();
 
+      // Explicit owner scoping on BOTH cache reads. RLS already restricts this
+      // table to `auth.uid() = user_id` (verified on prod), so this is defence in
+      // depth — but the cron now fills the table for every account nightly, and a
+      // query whose correctness silently depends on a policy elsewhere is one
+      // policy edit away from summing other tenants' numbers into these totals.
       const { data: cached } = await supabase
         .from('social_analytics_cache')
         .select('outstand_account_id, metric_type, metric_value, period_start, fetched_at')
+        .eq('user_id', userId ?? '')
         .eq('period_start', periodStartIso)
         .eq('period_end', periodEndIso)
         .gte('fetched_at', new Date(Date.now() - 60 * 60 * 1000).toISOString());
@@ -191,6 +197,7 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
       const { data: priorCached } = await supabase
         .from('social_analytics_cache')
         .select('outstand_account_id, metric_type, metric_value')
+        .eq('user_id', userId ?? '')
         .eq('period_start', priorStartIso)
         .eq('period_end', priorEndIso);
 
