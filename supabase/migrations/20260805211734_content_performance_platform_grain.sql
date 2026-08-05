@@ -92,9 +92,16 @@ as $$
     b.used_performance_data,
     b.brief,
     (b.social_post_log_id is not null) as is_posted,
-    count(latest.outstand_post_id)     as post_count,   -- counts non-null only -> 0 when no perf
-    count(latest.outstand_post_id) filter (where latest.measurable)
-                                       as measurable_post_count,  -- 0 when posts exist but none measurable
+    -- Fix round 3: `latest` is now one row per (post, platform), so a plain
+    -- count(latest.outstand_post_id) counts PLACEMENTS, not posts -- a brief
+    -- whose single post fanned out to Instagram + YouTube reported
+    -- post_count=2. count(distinct ...) collapses back to one per post while
+    -- the sums below keep summing across platforms (a post's total engagement
+    -- genuinely is the sum of its placements -- that part is correct and
+    -- unchanged).
+    count(distinct latest.outstand_post_id)     as post_count,   -- distinct POSTS, not platform placements; 0 when no perf
+    count(distinct latest.outstand_post_id) filter (where latest.measurable)
+                                       as measurable_post_count,  -- distinct posts with >=1 measurable platform row
     sum(latest.views)                  as total_views,
     sum(latest.likes)                  as total_likes,
     sum(latest.comments)               as total_comments,

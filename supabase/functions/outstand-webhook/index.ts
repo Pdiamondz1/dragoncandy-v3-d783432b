@@ -69,17 +69,42 @@ async function recordPublishedPost(
     // campaign dimensions from, and user_id is NOT NULL and unknowable on this
     // path, so there is no honest new row to insert here.
     //
-    // What IS available and safe: stamp verified_at on a social_post_log row a
-    // client ALREADY wrote for this outstand_post_id. That row's
-    // outstand_post_id is client-asserted, but a signed post.published event
-    // proves a post with that id actually published — stamping on that
-    // signature preserves the property this gate was built for (a fabricated
-    // post id never produces a signed event, so blind enumeration and the
-    // quota-burn angle still die here). It does NOT close the targeted case
-    // where an attacker already knows a real post id and planted a row
-    // referencing it — that was never closed by this gate and is tracked
-    // separately: docs/wiki/raw/sessions/2026-08-05-outstand-cross-tenant-metric-read.md.
-    // Do not read this as a full fix for that.
+    // What IS available: stamp verified_at on a social_post_log row a client
+    // ALREADY wrote for this outstand_post_id. That row's outstand_post_id is
+    // client-asserted, but a signed post.published event proves a post with
+    // that id actually published — stamping on that signature preserves the
+    // property this gate was built for (a fabricated post id never produces a
+    // signed event, so blind enumeration and the quota-burn angle still die
+    // here).
+    //
+    // CORRECTION (2026-08-05): the first version of this stamp matched on
+    // outstand_post_id alone with no check on who wrote the row, on the theory
+    // that this was "no worse than before". That was wrong — before this stamp
+    // existed, a planted row for a real-but-unscheduled post id could not be
+    // verified through this path at all; an unscoped stamp is a NEW way to get
+    // one verified. An attacker who knows a real Outstand post id with no
+    // schedule row could get their own planted row stamped, and
+    // content-performance-capture would then fetch another tenant's analytics
+    // under the attacker's user_id. Fixed by resolving the post's plausible
+    // owner(s) from the event itself before stamping: accounts[].accountId is
+    // the Outstand-side account id that published, and
+    // business_outstand_accounts maps that id to the user who connected it.
+    // Only rows whose user_id is among those resolved owners get stamped; if no
+    // owner resolves (or the lookup errors), nothing is stamped.
+    //
+    // BE HONEST ABOUT WHAT THIS DOES AND DOES NOT ACHIEVE. It is NOT a full
+    // close. business_outstand_accounts' own INSERT policy
+    // (20260506140000_outstand_account_links.sql) constrains user_id and
+    // business_id to the caller's own identity but does NOT constrain
+    // outstand_social_account_id — a determined attacker can insert their own
+    // business_outstand_accounts row claiming a real victim's account id,
+    // which then resolves to the ATTACKER's own user_id here and passes this
+    // check. What this fix removes is the no-ownership-check-at-all case:
+    // forging a verified row now additionally requires knowing AND claiming
+    // the real Outstand account id, not just the real post id — a required
+    // forgery step, not a closed hole. The actual close is server-established
+    // provider-account ownership (never client-asserted), tracked separately:
+    // docs/wiki/raw/sessions/2026-08-05-outstand-cross-tenant-metric-read.md.
     //
     // Matched on outstand_post_id ALONE, not (outstand_post_id, platform):
     // there is still no schedule row on this path, so there is still no single
@@ -87,12 +112,41 @@ async function recordPublishedPost(
     // however many platforms were selected). useSponsorshipAmplification.ts now
     // writes real platform names (fixed 2026-08-05, Task 13 —
     // docs/runbooks/social-measurement-spine-deploy.md), so this simply stamps
-    // every row this webhook event's post produced, whatever platforms those
-    // are.
+    // every owner-matched row this webhook event's post produced, whatever
+    // platforms those are.
+    const accountIds = Array.from(
+      new Set(accounts.map((a) => a.accountId).filter((id): id is string => !!id)),
+    );
+    if (accountIds.length === 0) {
+      console.warn(`outstand-webhook: no account id on event for ${postId} — not stamping any pre-existing rows`);
+      return { outcome: "unmatched", rows: 0, dropped };
+    }
+
+    const { data: owners, error: ownerErr } = await supabase
+      .from("business_outstand_accounts")
+      .select("user_id")
+      .in("outstand_social_account_id", accountIds);
+
+    if (ownerErr) {
+      // Fail closed: a broken lookup must never fall through to an unscoped
+      // stamp. Better a real post's verification is delayed a retry than a
+      // planted row slips through because ownership resolution errored.
+      console.error("outstand-webhook: account owner lookup failed", ownerErr.message);
+      return { outcome: "failed", rows: 0, dropped };
+    }
+    const ownerIds = Array.from(
+      new Set((owners ?? []).map((o) => o.user_id as string | null).filter((id): id is string => !!id)),
+    );
+    if (ownerIds.length === 0) {
+      console.warn(`outstand-webhook: no account owner resolved for ${postId} — not stamping any pre-existing rows`);
+      return { outcome: "unmatched", rows: 0, dropped };
+    }
+
     const { data: stamped, error: stampErr } = await supabase
       .from("social_post_log")
       .update({ verified_at: new Date().toISOString() })
       .eq("outstand_post_id", postId)
+      .in("user_id", ownerIds)
       .is("verified_at", null)
       .select("id");
 
@@ -104,8 +158,9 @@ async function recordPublishedPost(
       return { outcome: "verified_existing", rows: stamped.length, dropped };
     }
 
-    // No schedule row AND no pre-existing social_post_log row: published
-    // outside our flow, or Task 1's bug lost it.
+    // No schedule row AND no pre-existing owner-matched social_post_log row:
+    // published outside our flow, Task 1's bug lost it, or the only matching
+    // row belongs to a user other than the resolved owner(s).
     console.warn(`outstand-webhook: no scheduled post for ${postId} — not recorded for measurement`);
     return { outcome: "unmatched", rows: 0, dropped };
   }

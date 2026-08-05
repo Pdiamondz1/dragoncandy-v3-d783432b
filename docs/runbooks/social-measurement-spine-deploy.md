@@ -1,12 +1,13 @@
 # Social measurement spine — deploy order and hard blockers
 
 Written 2026-08-05 from the whole-branch review of `feat/social-measurement-spine`, updated the
-same day once Task 11 shipped the fix, and again once Task 13 closed the amplification leg of the
-`platform`-vocabulary problem. **Read this before deploying `outstand-webhook`.** BLOCKER 1 below
-was a genuine data-correctness defect that no per-task review could see, because it lived in the
-seam between two tasks that each passed — it is now **fixed** (see below, and its two follow-on fix
-rounds). The `donny_scheduled_posts.platform` vs Outstand-network (`twitter` vs `x`) mismatch and
-the cross-tenant read are still open.
+same day once Task 11 shipped the fix, again once Task 13 closed the amplification leg of the
+`platform`-vocabulary problem, and again once Task 14 corrected two Codex findings on already-shipped
+code. **Read this before deploying `outstand-webhook`.** BLOCKER 1 below was a genuine
+data-correctness defect that no per-task review could see, because it lived in the seam between two
+tasks that each passed — it is now **fixed** (see below, and its three follow-on fix rounds). The
+`donny_scheduled_posts.platform` vs Outstand-network (`twitter` vs `x`) mismatch and the cross-tenant
+read are still open.
 
 ## Required order
 
@@ -137,10 +138,41 @@ field can also return `threads` or `linkedin`, which nothing here has a vocabula
 Normalizing `donny_scheduled_posts.platform` (rename the CHECK value, migrate `'twitter'` rows to
 `'x'`) or introducing a platform-alias mapping layer is the fix and remains undone.
 
+## Fix round 3 (Task 14) — the no-schedule-row stamp was unscoped, and `post_count` counted placements
+
+Two Codex findings on the already-shipped Task 12/11 code.
+
+**The `verified_at` stamp (Task 12) had no ownership check.** The comment above (before this round)
+argued the unscoped stamp was "no worse than before" — that was wrong. Before Task 12, this path
+stamped nothing, so a planted `social_post_log` row referencing a real-but-unscheduled Outstand
+post id could never be verified. Once the stamp existed unscoped, an attacker who knew such a post
+id got their own planted row stamped, and `content-performance-capture` would fetch another
+tenant's analytics under the attacker's `user_id` — a new avenue, not a pre-existing one. Fixed in
+`recordPublishedPost` (`outstand-webhook/index.ts`) by resolving the post's plausible owner(s) from
+the event's `accounts[].accountId` via `business_outstand_accounts` before stamping, and scoping the
+`UPDATE` to `user_id IN (owners)`; a failed owner lookup stamps nothing (fail closed). **Not a full
+close** — `business_outstand_accounts`' own INSERT policy constrains `user_id`/`business_id` but not
+`outstand_social_account_id`, so an attacker can still insert their own row claiming a real victim's
+account id, which resolves to the attacker's own `user_id` here. This adds a required forgery step,
+not a closed hole; the real close remains server-established provider-account ownership (see below).
+
+**`get_creator_brief_performance`'s `post_count`/`measurable_post_count` counted placements, not
+posts.** BLOCKER 1's fix widened `latest` to one row per `(outstand_post_id, platform)`; the two
+`count(latest.outstand_post_id)` counters were left counting rows, so a brief whose one post fanned
+to Instagram + YouTube reported `post_count = 2`. Fixed by switching both to
+`count(distinct latest.outstand_post_id)`; the metric sums (`total_views` etc.) are unchanged and
+correctly keep summing across platforms. Verified the actual consumer: `post_count` /
+`measurable_post_count` are read in exactly one frontend path
+(`useCreatorBriefPerformance.ts` → `briefStatus.ts`'s `deriveBriefStatus`), which uses both fields
+only as `> 0` predicates — never rendered as a number anywhere in the app (`BriefPerformanceCard.tsx`
+displays `total_views`, not `post_count`). The fix is correct regardless, since a column named
+`post_count` should count posts.
+
 ## Still open, tracked elsewhere
 
 The live cross-tenant metric read — `social_post_log`'s INSERT policy constrains only `user_id`, so
 any authenticated user can name any `outstand_post_id` — is **not** fixed by this branch. The
-`verified_at` gate closes blind enumeration and the quota-burn angle; it does not close the targeted
-case. Only server-established provider-account ownership does.
+`verified_at` gate (rounds 1 and 3 combined) closes blind enumeration, the quota-burn angle, and
+raises the bar on the targeted no-schedule-row case to also require claiming a real account id; it
+does not close the targeted case outright. Only server-established provider-account ownership does.
 → `docs/wiki/raw/sessions/2026-08-05-outstand-cross-tenant-metric-read.md`
