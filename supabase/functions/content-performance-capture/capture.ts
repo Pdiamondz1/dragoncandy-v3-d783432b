@@ -71,6 +71,69 @@ export function normalizeAnalytics(raw: Record<string, unknown> | null | undefin
   };
 }
 
+/**
+ * Map Outstand's analytics payload to columns for exactly ONE platform,
+ * reading that platform's own `metrics_by_account[]` entry instead of the
+ * cross-account `aggregated_metrics` (which Outstand sums across every
+ * connected account on the post). Using the aggregate per-platform would
+ * make every platform's row claim the whole post's engagement.
+ *
+ * The network-identifying field was verified against the 9 real
+ * `content_performance` rows on prod (`raw`, inspected 2026-08-05 via
+ * read-only `execute_sql`) — every `metrics_by_account[]` entry nests it
+ * under `social_account.network`, e.g.
+ *   { metrics: {...}|null, published_at, platform_post_id,
+ *     social_account: { id, network, nickname, username } }
+ * never a top-level `network`/`platform` key. Matching is exact
+ * (case-sensitive): every observed prod value is a lowercase network name,
+ * and `social_post_log.platform` (the `platform` argument here) is sourced
+ * from that same Outstand `network` field at the webhook choke point
+ * (outstand-webhook/index.ts), so the two always share casing — there is no
+ * observed data to justify folding case.
+ *
+ * Returns `null` — never zeros — when there is no reading for this
+ * platform: no matching entry, a null `metrics` (spec §0b state 1,
+ * retrieval failed), or an entry whose `metrics` carries no recognized
+ * numeric field at all (state 3, "the real ambiguity gap" — e.g. `{}` or
+ * all-null). A genuine zero reading (at least one real 0 among the
+ * recognized keys) is returned, not null — same discipline as
+ * classifyMeasurement's hasReading().
+ */
+export function metricsForPlatform(
+  raw: Record<string, unknown> | null | undefined,
+  platform: string,
+): NormalizedMetrics | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const list = raw.metrics_by_account;
+  if (!Array.isArray(list)) return null;
+
+  const entry = list.find((e) => {
+    if (!e || typeof e !== 'object') return false;
+    const acct = (e as Record<string, unknown>).social_account;
+    if (!acct || typeof acct !== 'object') return false;
+    return (acct as Record<string, unknown>).network === platform;
+  }) as Record<string, unknown> | undefined;
+  if (!entry) return null;
+
+  const metrics = entry.metrics;
+  if (!metrics || typeof metrics !== 'object') return null; // state 1: retrieval failed
+
+  const m = metrics as Record<string, unknown>;
+  const result: NormalizedMetrics = {
+    views: pick(m, ['total_views', 'views', 'viewCount', 'video_views', 'plays']),
+    likes: pick(m, ['total_likes', 'likes', 'likeCount', 'like_count']),
+    comments: pick(m, ['total_comments', 'comments', 'commentCount', 'comment_count']),
+    shares: pick(m, ['total_shares', 'shares', 'shareCount', 'share_count']),
+    saves: pick(m, ['total_saves', 'saves', 'saveCount', 'saved']),
+    reach: pick(m, ['total_reach', 'reach', 'total_impressions', 'impressions', 'reachCount']),
+    engagement_rate: pick(m, ['average_engagement_rate', 'engagementRate', 'engagement_rate']),
+  };
+  // State 3: metrics present but contributes nothing recognizable — the same
+  // "no reading" as no entry at all. Never fabricate a zero-filled row.
+  const allNull = Object.values(result).every((v) => v === null);
+  return allNull ? null : result;
+}
+
 export interface RunOutcomeCounters {
   /** Posts fetched for this run (before any per-post skip). */
   postsSeen: number;

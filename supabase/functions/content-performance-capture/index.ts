@@ -11,7 +11,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { milestonesDue, normalizeAnalytics, classifyMeasurement, isCaptureRunFailed, type Milestone } from "./capture.ts";
+import { milestonesDue, classifyMeasurement, isCaptureRunFailed, metricsForPlatform, type Milestone } from "./capture.ts";
 import { isAuthorizedIngest } from "../_shared/ingest-auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -106,16 +106,22 @@ serve(async (req: Request) => {
       continue;
     }
 
-    // 2. Which milestones already captured for this post?
+    // 2. Which milestones already captured for THIS post+platform? Scoped by
+    // platform too, matching the row grain below — an unscoped query would
+    // see platform A's already-inserted '24h' row while processing platform
+    // B's social_post_log row (same outstand_post_id) and wrongly treat B's
+    // '24h' as already captured, reproducing the exact defect this task
+    // fixes one layer down.
     const { data: existing, error: existingErr } = await admin
       .from("content_performance")
       .select("milestone")
-      .eq("outstand_post_id", p.outstand_post_id);
+      .eq("outstand_post_id", p.outstand_post_id)
+      .eq("platform", p.platform);
     if (existingErr) {
       // Not fatal — the upsert below is onConflict+ignoreDuplicates, so treating
       // every milestone as due again just re-fetches Outstand and no-ops on
       // insert. Logged so a failing read doesn't burn API budget invisibly.
-      console.warn(`[capture] captured-milestones read failed: postId=${p.outstand_post_id}`, existingErr.message);
+      console.warn(`[capture] captured-milestones read failed: postId=${p.outstand_post_id} platform=${p.platform}`, existingErr.message);
     }
     const captured = new Set<Milestone>((existing ?? []).map((r) => r.milestone as Milestone));
 
@@ -163,16 +169,19 @@ serve(async (req: Request) => {
       continue;
     }
 
-    const m = normalizeAnalytics(payload);
-    // Classification reads metrics_by_account; normalizeAnalytics reads
-    // aggregated_metrics. They should agree, but if a payload ever has a real
-    // per-account reading with no usable aggregated_metrics, writing this row
-    // would be all-nulls and marking the milestone captured would permanently
-    // forfeit the retry -- even though a real reading existed in `raw`. Guard it.
-    const allNull = Object.values(m).every((v) => v === null);
-    if (allNull) {
-      unmeasured['measured_but_unmappable'] = (unmeasured['measured_but_unmappable'] ?? 0) + 1;
-      console.warn(`[capture] measured but unmappable: postId=${p.outstand_post_id}`);
+    // Read THIS platform's own metrics_by_account[] entry, never the
+    // cross-account aggregated_metrics -- Outstand sums the aggregate across
+    // every connected account on the post, so using it per-platform would
+    // make every fanned-out platform's row claim the whole post's engagement
+    // (the "worse than a drop" half of Task 11). classifyMeasurement already
+    // confirmed SOME account on this post was measured; metricsForPlatform can
+    // still legitimately return null for THIS platform (its own entry is
+    // state 1/3, or classification matched a different account) -- same "no
+    // reading" as any other unmeasured skip, never write a fabricated row.
+    const m = metricsForPlatform(payload, p.platform);
+    if (!m) {
+      unmeasured['no_platform_metrics'] = (unmeasured['no_platform_metrics'] ?? 0) + 1;
+      console.warn(`[capture] no per-platform metrics: postId=${p.outstand_post_id} platform=${p.platform}`);
       continue;
     }
     const rows = due.map((milestone) => ({
@@ -195,7 +204,7 @@ serve(async (req: Request) => {
     // re-run over already-captured milestones correctly reports inserted=0.
     const { data: insRows, error: insErr } = await admin
       .from("content_performance")
-      .upsert(rows, { onConflict: "outstand_post_id,milestone", ignoreDuplicates: true })
+      .upsert(rows, { onConflict: "outstand_post_id,platform,milestone", ignoreDuplicates: true })
       .select("id");
     if (insErr) {
       console.error(`[capture] content_performance insert failed: postId=${p.outstand_post_id}`, insErr.message);

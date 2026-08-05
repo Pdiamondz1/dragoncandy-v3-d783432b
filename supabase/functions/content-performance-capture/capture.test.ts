@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { milestonesDue, normalizeAnalytics, classifyMeasurement, isCaptureRunFailed, type Milestone } from './capture';
+import { milestonesDue, normalizeAnalytics, classifyMeasurement, isCaptureRunFailed, metricsForPlatform, type Milestone } from './capture';
 
 const HOURS = 60 * 60 * 1000;
 const at = (h: number) => new Date(Date.UTC(2026, 5, 10, 0, 0, 0) + h * HOURS);
@@ -197,5 +197,112 @@ describe('classifyMeasurement', () => {
     expect(classifyMeasurement({ metrics_by_account: [entry({ saved: 5 })] }).measured).toBe(true);
     expect(classifyMeasurement({ metrics_by_account: [entry({ reachCount: 5 })] }).measured).toBe(true);
     expect(classifyMeasurement({ metrics_by_account: [entry({ engagementRate: 5 })] }).measured).toBe(true);
+  });
+});
+
+describe('metricsForPlatform', () => {
+  // Real prod shape (content_performance.raw, verified 2026-08-05 via
+  // read-only Supabase execute_sql against the 9 real rows): the network
+  // lives NESTED under `social_account.network`, never top-level. This is
+  // deliberately a DIFFERENT shape from classifyMeasurement's `entry()`
+  // helper above (which puts an unverified top-level `network` on the
+  // object) — classifyMeasurement never reads that field, so it was never
+  // checked against prod; this suite is what actually verified it.
+  const acct = (network: string, metrics: unknown, extra: Record<string, unknown> = {}) => ({
+    metrics,
+    published_at: '2026-06-11T14:09:28.395Z',
+    platform_post_id: 'abc123',
+    social_account: { id: '46966', network, nickname: 'Joe CAST', username: '@josephcastelo149' },
+    ...extra,
+  });
+
+  it('returns the matched platform entry metrics, not the cross-account aggregate', () => {
+    const m = metricsForPlatform({
+      aggregated_metrics: { total_views: 999999, total_likes: 999999 },
+      metrics_by_account: [acct('youtube', { likes: 5, views: 1388, shares: 0, comments: 0 })],
+    }, 'youtube');
+    expect(m).toEqual({
+      views: 1388, likes: 5, comments: 0, shares: 0,
+      saves: null, reach: null, engagement_rate: null,
+    });
+  });
+
+  it('a genuine all-zero entry for the platform returns zeros, NOT null', () => {
+    const m = metricsForPlatform({
+      metrics_by_account: [acct('youtube', { likes: 0, views: 0, shares: 0, comments: 0 })],
+    }, 'youtube');
+    expect(m).not.toBeNull();
+    expect(m).toEqual({
+      views: 0, likes: 0, comments: 0, shares: 0,
+      saves: null, reach: null, engagement_rate: null,
+    });
+  });
+
+  it('no entry for the requested platform returns null', () => {
+    const m = metricsForPlatform({
+      metrics_by_account: [acct('youtube', { likes: 5 })],
+    }, 'instagram');
+    expect(m).toBeNull();
+  });
+
+  it('an entry present but metrics: null returns null (state 1 — retrieval failed)', () => {
+    const m = metricsForPlatform({
+      metrics_by_account: [acct('instagram', null, { metrics_error: 'token expired' })],
+    }, 'instagram');
+    expect(m).toBeNull();
+  });
+
+  it('an entry present with metrics: {} returns null (state 3 — the real ambiguity gap)', () => {
+    const m = metricsForPlatform({
+      metrics_by_account: [acct('linkedin', {})],
+    }, 'linkedin');
+    expect(m).toBeNull();
+  });
+
+  it('an entry present with all-null metrics fields returns null (state 3, LinkedIn shape)', () => {
+    const m = metricsForPlatform({
+      metrics_by_account: [acct('linkedin', {
+        likes: null, comments: null, shares: null,
+        platform_specific: { note: 'Missing account URN for organization' },
+      })],
+    }, 'linkedin');
+    expect(m).toBeNull();
+  });
+
+  it('metrics_by_account absent, empty, or non-array returns null', () => {
+    expect(metricsForPlatform({}, 'youtube')).toBeNull();
+    expect(metricsForPlatform({ metrics_by_account: [] }, 'youtube')).toBeNull();
+    expect(metricsForPlatform({ metrics_by_account: 'nope' }, 'youtube')).toBeNull();
+  });
+
+  it('platform matching is exact and case-sensitive (no observed prod data justifies folding case)', () => {
+    const m = metricsForPlatform({
+      metrics_by_account: [acct('youtube', { likes: 5 })],
+    }, 'YouTube');
+    expect(m).toBeNull();
+  });
+
+  it('an entry present but social_account missing/malformed contributes nothing to the match', () => {
+    const m = metricsForPlatform({
+      metrics_by_account: [{ metrics: { likes: 5 } }],
+    }, 'youtube');
+    expect(m).toBeNull();
+  });
+
+  it('tolerates a null/undefined payload without throwing', () => {
+    expect(metricsForPlatform(null, 'youtube')).toBeNull();
+    expect(metricsForPlatform(undefined, 'youtube')).toBeNull();
+  });
+
+  it('finds the right entry among several other-platform entries', () => {
+    const m = metricsForPlatform({
+      metrics_by_account: [
+        acct('instagram', { likes: 1 }),
+        acct('youtube', { likes: 5, views: 1388 }),
+        acct('tiktok', { likes: 9 }),
+      ],
+    }, 'youtube');
+    expect(m?.likes).toBe(5);
+    expect(m?.views).toBe(1388);
   });
 });
