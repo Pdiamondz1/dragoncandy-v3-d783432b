@@ -41,7 +41,7 @@ serve(async (req: Request) => {
   const cutoff = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000).toISOString();
   const { data: posts, error: postsErr } = await admin
     .from("social_post_log")
-    .select("id, user_id, campaign_id, outstand_post_id, platform, post_type, source_brief_id, created_at")
+    .select("id, user_id, campaign_id, outstand_post_id, platform, post_type, format, source_brief_id, created_at")
     // Only measure what a signed Outstand event confirmed. An unstamped row is
     // client-asserted: its outstand_post_id was never checked by anything, and
     // fetching it would spend an org-wide-key API call on a post we cannot tie to
@@ -131,6 +131,7 @@ serve(async (req: Request) => {
       outstand_post_id: p.outstand_post_id,
       platform: p.platform,
       post_type: p.post_type,
+      format: p.format,
       ...m,
       raw: payload,
       milestone,
