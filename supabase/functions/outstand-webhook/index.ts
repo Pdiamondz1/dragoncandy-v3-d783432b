@@ -111,6 +111,9 @@ async function recordPublishedPost(
     format: sched.content_type ?? null,
     scheduled_at: sched.scheduled_at,
     published_at: publishedAt,
+    // Service-role only. This is what makes the row trustworthy enough to spend an
+    // API call on — see the migration comment.
+    verified_at: new Date().toISOString(),
   }));
 
   const { error: upsertErr } = await supabase

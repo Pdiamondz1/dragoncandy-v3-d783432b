@@ -42,8 +42,25 @@ serve(async (req: Request) => {
   const { data: posts, error: postsErr } = await admin
     .from("social_post_log")
     .select("id, user_id, campaign_id, outstand_post_id, platform, post_type, source_brief_id, created_at")
+    // Only measure what a signed Outstand event confirmed. An unstamped row is
+    // client-asserted: its outstand_post_id was never checked by anything, and
+    // fetching it would spend an org-wide-key API call on a post we cannot tie to
+    // this user. Counted below rather than silently dropped.
+    .not("verified_at", "is", null)
     .gte("created_at", cutoff);
   if (postsErr) return json(500, { error: "enumerate_failed", detail: postsErr.message });
+
+  // Excluded by the gate above, in the same window. A filter that hides rows
+  // without saying so is the failure mode this whole sub-project exists to
+  // remove — queried separately rather than fetched, since we only need the count.
+  const { count: unverifiedCount, error: unverifiedErr } = await admin
+    .from("social_post_log")
+    .select("id", { count: "exact", head: true })
+    .is("verified_at", null)
+    .gte("created_at", cutoff);
+  if (unverifiedErr) {
+    console.warn("[capture] unverified-row count failed", unverifiedErr.message);
+  }
 
   let inserted = 0, skipped = 0, fetchErrors = 0, insertErrors = 0;
   const unmeasured: Record<string, number> = {};
@@ -134,5 +151,18 @@ serve(async (req: Request) => {
     inserted += insRows?.length ?? 0;
   }
 
-  return json(200, { ok: true, posts: posts?.length ?? 0, inserted, skipped, fetchErrors, insertErrors, unmeasured });
+  if ((unverifiedCount ?? 0) > 0) {
+    console.warn(`[capture] ${unverifiedCount} unverified row(s) in window — excluded, never measured`);
+  }
+
+  return json(200, {
+    ok: true,
+    posts: posts?.length ?? 0,
+    inserted,
+    skipped,
+    fetchErrors,
+    insertErrors,
+    unmeasured,
+    unverified: unverifiedCount ?? null,
+  });
 });
