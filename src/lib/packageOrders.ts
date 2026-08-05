@@ -30,6 +30,13 @@ export function creatorOrderView(o: Pick<CreatorOrder, 'order_status' | 'content
   }
 }
 
+// Only let an http(s) link reach an href — defence in depth against a stored javascript:/data: URL (the RPC
+// already rejects these, but never render an untrusted string straight into href).
+export function safeHref(url: string | undefined | null): string {
+  const u = (url ?? '').trim();
+  return /^https?:\/\//i.test(u) ? u : '#';
+}
+
 // Brand palette only (no gray — see the app theme rules). Mirrors the tones GuestOrderPage uses so the buyer
 // and creator see the same colour language.
 export const orderToneClasses: Record<OrderTone, string> = {

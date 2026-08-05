@@ -9,6 +9,7 @@ import { PACKAGES_ENABLED } from '@/lib/featureConfig';
 import { useGuestOrder } from '@/hooks/packages/useGuestOrder';
 import { usePackageOrderActions } from '@/hooks/packages/usePackageOrderActions';
 import { formatUsd } from '@/lib/packagePricing';
+import { safeHref } from '@/lib/packageOrders';
 
 const GuestOrderPage = () => {
   const { token } = useParams<{ token: string }>();
@@ -181,7 +182,7 @@ const GuestOrderPage = () => {
                   {deliverables.map((d, i) => (
                     <li key={i}>
                       <a
-                        href={d.url}
+                        href={safeHref(d.url)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 break-all text-sm text-primary underline underline-offset-2 hover:opacity-80"
@@ -247,6 +248,9 @@ const GuestOrderPage = () => {
                         </div>
                       </div>
                     )}
+                    <p className="text-center text-xs text-muted-foreground">
+                      If you don’t respond, payment is released to the creator automatically after 7 days.
+                    </p>
                   </>
                 )}
                 {canCancel && (

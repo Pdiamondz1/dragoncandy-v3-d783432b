@@ -48,6 +48,19 @@ BEGIN
     RAISE EXCEPTION 'at least one deliverable is required';
   END IF;
 
+  -- Validate EVERY deliverable server-side: an object with a string url that is an http(s) link. This RPC is
+  -- directly callable by any authenticated creator, so the client-side check is not trustworthy — without this
+  -- a creator could store a javascript:/data: or malformed href that the buyer's order page renders as a
+  -- clickable link (stored XSS on the buyer). The label (rendered as text, React-escaped) needs no url check.
+  IF EXISTS (
+    SELECT 1 FROM jsonb_array_elements(p_deliverables) AS d
+    WHERE jsonb_typeof(d) <> 'object'
+       OR jsonb_typeof(d->'url') <> 'string'
+       OR (d->>'url') !~* '^https?://[^[:space:]]+$'
+  ) THEN
+    RAISE EXCEPTION 'each deliverable must be an object with a valid http(s) url';
+  END IF;
+
   -- Row-lock the order so a submit can't race an in-flight approve/refund on the same row.
   SELECT id, creator_id, escrow_status, order_status
   INTO v_order

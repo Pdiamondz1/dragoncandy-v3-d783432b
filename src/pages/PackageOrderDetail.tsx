@@ -8,7 +8,7 @@ import { PACKAGES_ENABLED } from '@/lib/featureConfig';
 import { useCreatorOrder } from '@/hooks/packages/useCreatorOrders';
 import { IntakeSummary } from '@/components/packages/IntakeSummary';
 import { DeliverySubmitForm } from '@/components/packages/DeliverySubmitForm';
-import { creatorOrderView, orderToneClasses } from '@/lib/packageOrders';
+import { creatorOrderView, orderToneClasses, safeHref } from '@/lib/packageOrders';
 import { netPayout, formatUsd } from '@/lib/packagePricing';
 import type { CreatorOrder, OrderDeliverable, PackageScope } from '@/types/packages';
 
@@ -51,7 +51,7 @@ const DeliverablesList = ({ deliverables, note }: { deliverables: OrderDeliverab
       {deliverables.map((d, i) => (
         <li key={i}>
           <a
-            href={d.url}
+            href={safeHref(d.url)}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 break-all text-sm text-primary underline underline-offset-2 hover:opacity-80"
@@ -131,7 +131,8 @@ const OrderBody = ({ order, refetch }: { order: CreatorOrder; refetch: () => voi
       ) : order.order_status === 'submitted' ? (
         <Section title="Delivered — awaiting approval" icon={<Clock className="h-4 w-4 text-primary" />}>
           <p className="mb-3 text-sm text-muted-foreground">
-            The buyer has been notified. When they approve, your payment is released automatically.
+            The buyer can review and approve from their order link. If they don’t respond within 7 days, your
+            payment is released automatically.
           </p>
           {hasDeliverables && <DeliverablesList deliverables={order.deliverables} note={order.delivery_note} />}
         </Section>

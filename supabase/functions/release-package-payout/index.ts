@@ -124,15 +124,21 @@ serve(async (req) => {
     // before crediting (payout_executed_at still null — the marker-set case returned at the re-entry guard
     // above) is RESUMED here, not re-raced; the credit RPC is itself row-locked + credit-at-most-once.
     if (order.escrow_status === "held") {
+      // Fold the delivery gate INTO the CAS predicate. The content_status read above is a non-locked snapshot,
+      // so a request_package_revision (which sets content_status='rejected' while leaving escrow 'held') could
+      // commit between that read and this claim; guarding the CAS on content_status too makes claim-and-gate
+      // atomic — a revised order matches 0 rows here and this payout aborts instead of paying over the buyer's
+      // revision request. Keeps the escrow-column CAS as the single serialization point vs. refund.
       const { data: claimed, error: claimErr } = await supabaseClient
         .from("package_orders")
         .update({ escrow_status: "releasing" })
         .eq("id", orderId)
         .eq("escrow_status", "held")
+        .in("content_status", ["submitted", "approved", "auto_approved"])
         .select("id");
       if (claimErr) throw new Error(`Failed to claim order for payout: ${claimErr.message}`);
       if (!claimed || claimed.length === 0) {
-        throw new Error("Order is no longer releasable (concurrent refund or release)");
+        throw new Error("Order is no longer releasable (concurrent refund, or a revision was requested)");
       }
     } else if (order.escrow_status !== "releasing") {
       throw new Error(`Cannot release payout: escrow status is '${order.escrow_status}', expected 'held' or 'releasing'`);
