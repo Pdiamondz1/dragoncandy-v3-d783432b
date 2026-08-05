@@ -98,15 +98,23 @@ serve(async (req) => {
     // even if the Stripe call or the finalize below fails partway. If the CAS matches 0 rows, another actor
     // moved the order (concurrent release/refund) between our read and here — abort rather than double-act.
     if (order.escrow_status === "held") {
-      const { data: claimed, error: claimErr } = await supabaseClient
+      let claimQuery = supabaseClient
         .from("package_orders")
         .update({ escrow_status: "refunding" })
         .eq("id", orderId)
-        .eq("escrow_status", "held")
-        .select("id");
+        .eq("escrow_status", "held");
+      // Fold the post-delivery guard INTO the CAS for non-service callers: the content_submitted_at check above
+      // is a non-locked read, so a submit_package_deliverables that commits between that read and this claim
+      // would otherwise let a buyer/guest refund delivered work. Requiring content_submitted_at IS NULL in the
+      // claim makes check-and-claim atomic — a delivery that raced in flips this to 0 matched rows and aborts.
+      // Service role (platform dispute resolution) is deliberately exempt and can still refund delivered work.
+      if (!isServiceRole) {
+        claimQuery = claimQuery.is("content_submitted_at", null);
+      }
+      const { data: claimed, error: claimErr } = await claimQuery.select("id");
       if (claimErr) throw new Error(`Failed to claim order for refund: ${claimErr.message}`);
       if (!claimed || claimed.length === 0) {
-        throw new Error("Order is no longer in a refundable state (concurrent operation)");
+        throw new Error("Order is no longer in a refundable state (concurrent delivery or operation)");
       }
     }
 
