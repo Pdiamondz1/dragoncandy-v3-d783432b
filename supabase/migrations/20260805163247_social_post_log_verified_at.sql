@@ -42,22 +42,22 @@ create index if not exists idx_spl_verified_at
 --
 -- The re-granted set is the COMPLETE client INSERT surface for this table
 -- today, `verified_at` deliberately excluded:
---   id                  -> has a default, but generous rather than minimal:
---                          20260805090000_backfill_social_post_log.sql
---                          deliberately set an explicit id on its inserted rows
+--   id                  -> has a default; granted generously rather than
+--                          minimally, so a caller that supplies one explicitly
+--                          does not fail on a privilege rather than a policy
 --   user_id              -> both client paths below (RLS anchor)
 --   campaign_id          -> both client paths below
 --   outstand_post_id     -> both client paths below
 --   platform             -> both client paths below
 --   post_type            -> both client paths below
 --   dragonshare_post_id  -> src/contexts/DonnyProvider.tsx (publishDraft)
---   created_at           -> has a default, but generous rather than minimal:
---                          20260805090000_backfill_social_post_log.sql
---                          deliberately backdates created_at to the post's
+--   created_at           -> has a default; granted generously because Task 8's
+--                          planned backfill backdates created_at to the post's
 --                          original published_at (load-bearing for the capture
---                          job's 8-day window), and a missing grant here would
---                          silently break any future rerun in a way no test
---                          would catch
+--                          job's 8-day window). That backfill is a MIGRATION and
+--                          so bypasses these grants anyway, but any future
+--                          client-side rerun would fail on a privilege in a way
+--                          no test would catch
 -- Client paths: src/contexts/DonnyProvider.tsx (publishDraft) and
 -- src/hooks/outstand/useSponsorshipAmplification.ts. Neither sets
 -- source_brief_id (trigger-derived), hashtags/caption/scheduled_at/
