@@ -10,8 +10,6 @@
 import type {
   AccountAnalytics,
   Comment,
-  NormalizedEvent,
-  NormalizedEventType,
   Platform,
   PostAnalytics,
   PostInput,
@@ -68,6 +66,8 @@ export interface ZernioCreatePostBody {
   isDraft?: boolean;
 }
 
+// Verified against a live `GET /v1/accounts` response 2026-08-04 — see
+// docs/superpowers/specs/2026-08-04-zernio-api-capture-notes.md.
 interface ZernioAccountRaw {
   _id?: string;
   id?: string;
@@ -76,6 +76,18 @@ interface ZernioAccountRaw {
   displayName?: string;
   isActive?: boolean;
   profilePicture?: string;
+  // Real health signals. `needsReconnection` and `platformStatus` are the
+  // fields Zernio actually sets when a token dies; `isActive` stays true, so
+  // keying only off `isActive` reports a dead account as healthy and the
+  // reconnect prompt never fires. `tokenExpiresAt` is ~60 days out on connect.
+  needsReconnection?: boolean;
+  platformStatus?: string;
+  intentionalDisconnectAt?: unknown;
+  enabled?: boolean;
+  /** Object `{_id,name}` on /accounts, plain string on /analytics. */
+  profileId?: unknown;
+  // Defensive: not observed on the live payload, kept because the same mapper
+  // sees older/variant shapes.
   error?: unknown;
   expired?: unknown;
   expiredAt?: unknown;
@@ -88,14 +100,17 @@ interface ZernioPostPlatformRaw {
   platformPostUrl?: string;
 }
 
+// Verified against a live `GET /v1/posts/{id}` response 2026-08-04.
 interface ZernioPostRaw {
   _id?: string;
-  status?: string;
+  status?: string; // 'scheduled' | 'published' | 'draft' | … — the real state field
   scheduledFor?: string | null;
   publishedAt?: string | null;
+  /** NOT returned by the API — only accepted on the create body. Kept for that path. */
   isDraft?: boolean;
   createdAt?: string;
   content?: string;
+  mediaItems?: Array<{ type?: string; url?: string; _id?: string }>;
   platforms?: ZernioPostPlatformRaw[];
 }
 
@@ -185,20 +200,48 @@ export function toZernioCreatePost(
 
 /** Zernio account (list or populated post) → contract SocialAccount. */
 export function fromZernioAccount(raw: ZernioAccountRaw): SocialAccount {
+  // A deliberate disconnect is 'revoked'; anything else unhealthy is 'error'.
+  // Order matters — a revoked account also trips the error predicates.
+  if (raw.intentionalDisconnectAt != null) {
+    return baseAccount(raw, 'revoked');
+  }
+
   const hasError =
+    raw.needsReconnection === true ||
+    (raw.platformStatus != null && raw.platformStatus !== 'active') ||
     raw.isActive === false ||
+    raw.enabled === false ||
     raw.error != null ||
     raw.expired === true ||
     raw.expiredAt != null;
 
+  return baseAccount(raw, hasError ? 'error' : 'active');
+}
+
+function baseAccount(
+  raw: ZernioAccountRaw,
+  status: SocialAccount['status'],
+): SocialAccount {
   return {
     id: raw._id ?? raw.id ?? '',
     provider: 'zernio',
     platform: toContractPlatform(raw.platform),
     handle: str(raw.username) ?? null,
     ...(raw.profilePicture ? { profilePictureUrl: raw.profilePicture } : {}),
-    status: hasError ? 'error' : 'active',
+    status,
+    providerProfileId: bareProfileId(raw.profileId),
   };
+}
+
+/**
+ * `profileId` arrives as an OBJECT `{_id,name}` on /accounts but as a plain
+ * string on /analytics (observed 2026-08-04). Normalize both, so the gateway can
+ * re-assert tenant scoping without caring which endpoint produced the row.
+ */
+function bareProfileId(raw: unknown): string | null {
+  if (typeof raw === 'string') return raw || null;
+  if (isObject(raw)) return str(raw._id) ?? str(raw.id) ?? null;
+  return null;
 }
 
 /** Zernio create-post response → contract PostResult. */
@@ -213,14 +256,35 @@ export function fromZernioPostResult(raw: ZernioPostEnvelope): PostResult {
 /** Zernio get-post response → contract ProviderPost. */
 export function fromZernioPost(raw: ZernioPostEnvelope): ProviderPost {
   const post = raw.post ?? {};
+
+  // VERIFIED 2026-08-04 (GET /v1/posts/{id}): the response carries `status`
+  // ('scheduled' | 'published' | 'draft' | …) and has NO `isDraft` field —
+  // `isDraft` exists only on the CREATE body. Reading it off the response made
+  // isDraft permanently false, so a draft never registered as one.
+  const isDraft = post.isDraft === true || post.status === 'draft';
+
+  // mediaItems ({type,url,_id}) were being dropped, leaving every container
+  // media-less. The contract's MediaRef wants a filename, which Zernio does not
+  // return — derive it from the URL basename.
+  const media = (Array.isArray(post.mediaItems) ? post.mediaItems : [])
+    .filter((m): m is { url?: string; _id?: string } => !!m && typeof m === 'object')
+    .map((m) => {
+      const url = str(m.url) ?? '';
+      return {
+        id: str(m._id) ?? '',
+        url,
+        filename: url.split('?')[0].split('/').pop() ?? '',
+      };
+    });
+
   return {
     id: post._id ?? '',
     publishedAt: post.publishedAt ?? null,
     scheduledAt: post.scheduledFor ?? null,
-    isDraft: post.isDraft === true,
+    isDraft,
     createdAt: post.createdAt ?? '',
     socialAccounts: mapPostPlatforms(post.platforms),
-    containers: [{ content: post.content ?? '' }],
+    containers: [{ content: post.content ?? '', ...(media.length ? { media } : {}) }],
   };
 }
 
@@ -250,14 +314,60 @@ export function fromZernioPostAnalytics(raw: unknown): PostAnalytics {
  * present. We map what exists and default the rest to 0. See report: the
  * followers/postsCount path is wired live in Phase 4.
  */
-export function fromZernioAccountAnalytics(raw: unknown): AccountAnalytics {
-  const a = analyticsObj(raw);
-  const stats = isObject(raw) && isObject(raw.accountStats) ? raw.accountStats : {};
+export function fromZernioAccountAnalytics(
+  raw: unknown,
+  accountId?: string,
+): AccountAnalytics {
+  const env = isObject(raw) ? raw : {};
+  const accounts = Array.isArray(env.accounts) ? env.accounts : [];
+  const posts = Array.isArray(env.posts) ? env.posts : [];
+  const overview = isObject(env.overview) ? env.overview : {};
+
+  // followers — the only account-level number Zernio reports directly.
+  const acct = accounts
+    .filter(isObject)
+    .find((a) => !accountId || a._id === accountId || a.id === accountId);
+  const followers = num(acct?.followersCount);
+
+  // reach / engagementRate have NO account-level rollup, so aggregate the
+  // per-account slice of each post: posts[].platforms[] carries accountId plus
+  // its own analytics object.
+  let reach = 0;
+  let rateSum = 0;
+  let rateCount = 0;
+  let postsCount = 0;
+
+  for (const post of posts) {
+    if (!isObject(post)) continue;
+    const platforms = Array.isArray(post.platforms) ? post.platforms : [];
+    const slices = platforms
+      .filter(isObject)
+      .filter((p) => !accountId || p.accountId === accountId);
+    if (slices.length === 0) continue;
+
+    postsCount += 1;
+    for (const slice of slices) {
+      const m = isObject(slice.analytics) ? slice.analytics : {};
+      reach += num(m.reach);
+      if (m.engagementRate != null) {
+        rateSum += num(m.engagementRate);
+        rateCount += 1;
+      }
+    }
+  }
+
   return {
-    followers: num(stats.followers ?? stats.followers_count ?? stats.follower_count),
-    engagementRate: num(a.engagementRate),
-    reach: num(a.reach),
-    postsCount: num(stats.posts_count ?? stats.postsCount ?? stats.media_count),
+    followers,
+    // Mean across the account's posts — Zernio reports engagementRate per post.
+    engagementRate: rateCount > 0 ? rateSum / rateCount : 0,
+    reach,
+    // Prefer the counted posts. The envelope total is a WORKSPACE-wide figure —
+    // `/analytics` silently ignores `?accountId=`, so it covers every account —
+    // and may only be used when no account was asked about. An account with zero
+    // posts, or one absent from the payload, must report 0, not everyone else's
+    // total. (The comment here already said "when no accountId was supplied";
+    // the condition was missing from the code. Caught by the Codex pass.)
+    postsCount: postsCount > 0 ? postsCount : accountId ? 0 : num(overview.publishedPosts),
   };
 }
 
@@ -277,48 +387,5 @@ export function fromZernioComment(raw: Record<string, unknown>): Comment {
     platform: str(raw.platform) ?? '',
     isReply: Boolean(parentId),
     parentId,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Webhook normalization
-// ---------------------------------------------------------------------------
-
-const EVENT_MAP: Record<string, NormalizedEventType> = {
-  'post.published': 'post.published',
-  'post.failed': 'post.error',
-  'post.partial': 'post.error',
-  'account.disconnected': 'account.token_expired',
-  'account.token_expired': 'account.token_expired',
-};
-
-/**
- * Zernio webhook body → NormalizedEvent, or null for events we don't surface
- * (post.scheduled, post.cancelled, account.connected, comment.received, …).
- */
-export function normalizeZernioWebhook(body: unknown): NormalizedEvent | null {
-  if (!isObject(body)) return null;
-
-  const eventName = str(body.event) ?? str(body.type);
-  if (!eventName) return null;
-
-  const type = EVENT_MAP[eventName];
-  if (!type) return null;
-
-  const data = isObject(body.data) ? body.data : {};
-  const post = isObject(data.post) ? data.post : {};
-
-  const providerPostId =
-    str(post._id) ?? str(data.postId) ?? str(data.post_id) ?? str(data._id) ?? null;
-  const accountId = str(data.accountId) ?? str(data.account_id) ?? null;
-  const publishedAt =
-    str(post.publishedAt) ?? str(data.publishedAt) ?? str(data.published_at) ?? null;
-
-  return {
-    type,
-    providerPostId,
-    accountId,
-    publishedAt,
-    perAccount: data,
   };
 }

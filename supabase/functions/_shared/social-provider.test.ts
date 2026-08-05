@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveProviderId, resolveProviderFromRows, KNOWN_PROVIDERS } from './resolve-provider';
+import { resolveProviderId, resolveProviderFromRows, KNOWN_PROVIDERS } from './social-provider';
 
 describe('resolveProviderId', () => {
   it('defaults to outstand when unset', () => {

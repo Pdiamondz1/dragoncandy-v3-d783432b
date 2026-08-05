@@ -13,19 +13,30 @@ export function useVerifiedStatus(userId: string | undefined): VerifiedStatus {
     queryFn: async () => {
       if (!userId) return { isVerified: false, connectedCount: 0 };
 
-      const { data: accounts, error } = await supabase
-        .from('business_outstand_accounts')
-        .select('id, status')
-        .eq('user_id', userId)
-        .eq('status', 'active');
+      // Reads ANOTHER user's connection state, so it cannot query the table
+      // directly — `business_outstand_accounts` is own-row under RLS. It used to
+      // work only because of a blanket `USING (true)` SELECT policy, which was
+      // removed from prod (leaking every tenant's account ids and metrics) but
+      // never removed from migration history. With the policy gone this query
+      // matched nothing and the badge silently vanished from every profile.
+      //
+      // get_public_social_proof is the narrow replacement: gated on the TARGET
+      // having published a public profile, and returning only a count and
+      // per-platform follower totals.
+      const { data: rows, error } = await supabase.rpc('get_public_social_proof', {
+        p_user_id: userId,
+      });
 
-      if (error || !accounts || accounts.length === 0) {
+      if (error || !rows || rows.length === 0) {
         return { isVerified: false, connectedCount: 0 };
       }
 
+      const connectedCount = Number(
+        (rows as Array<{ connected_count: number | null }>)[0]?.connected_count ?? 0,
+      );
       return {
-        isVerified: true,
-        connectedCount: accounts.length,
+        isVerified: connectedCount > 0,
+        connectedCount,
       };
     },
     enabled: !!userId,

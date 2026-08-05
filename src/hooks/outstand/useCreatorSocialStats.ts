@@ -12,6 +12,18 @@ export interface CreatorSocialStats {
   avgEngagementRate: number | null;
 }
 
+/**
+ * Shape of `get_public_social_proof`. Declared locally because the RPC postdates
+ * the last `supabase gen types` run — regenerating types would sweep in unrelated
+ * schema drift, so the contract is pinned here and kept in step with the
+ * migration that defines it.
+ */
+interface PublicSocialProofRow {
+  connected_count: number | null;
+  platform: string | null;
+  followers: number | string | null;
+}
+
 const MIN_DISPLAY_FOLLOWERS = 100;
 
 export function useCreatorSocialStats(userId: string | undefined) {
@@ -20,44 +32,33 @@ export function useCreatorSocialStats(userId: string | undefined) {
     queryFn: async (): Promise<CreatorSocialStats> => {
       if (!userId) return { platforms: [], totalFollowers: 0, avgEngagementRate: null };
 
-      const { data, error } = await supabase
-        .from('social_analytics_cache')
-        .select('platform, metric_type, metric_value, fetched_at')
-        .eq('user_id', userId)
-        .in('metric_type', ['followers', 'engagement_rate'])
-        .order('fetched_at', { ascending: false });
+      // Same story as useVerifiedStatus: this reads ANOTHER user's cached
+      // metrics, which own-row RLS forbids. It previously relied on a blanket
+      // `USING (true)` policy that is gone from prod, so these stats have been
+      // rendering blank on public profiles and browse cards.
+      //
+      // It also filtered `metric_type` on 'engagement_rate', which this table has
+      // NEVER contained — the live vocabulary is followers|engagement|reach|posts
+      // — so average engagement was null even for your own profile. The RPC
+      // returns followers only; engagement is deliberately not public.
+      const { data: rows, error } = await supabase.rpc('get_public_social_proof', {
+        p_user_id: userId,
+      });
 
-      if (error || !data || data.length === 0) {
+      if (error || !rows || rows.length === 0) {
         return { platforms: [], totalFollowers: 0, avgEngagementRate: null };
       }
 
-      const seenFollowers = new Set<string>();
-      const seenEngagement = new Set<string>();
-      const platforms: CreatorPlatformStat[] = [];
-      let totalFollowers = 0;
-      const engagementRates: number[] = [];
+      const platforms: CreatorPlatformStat[] = (rows as PublicSocialProofRow[])
+        .filter((r) => r.platform !== null)
+        .map((r) => ({ platform: String(r.platform), followers: Number(r.followers ?? 0) }))
+        .filter((p) => p.followers >= MIN_DISPLAY_FOLLOWERS);
 
-      for (const row of data) {
-        if (row.metric_type === 'followers' && !seenFollowers.has(row.platform)) {
-          seenFollowers.add(row.platform);
-          const followers = Number(row.metric_value) || 0;
-          if (followers >= MIN_DISPLAY_FOLLOWERS) {
-            platforms.push({ platform: row.platform, followers });
-            totalFollowers += followers;
-          }
-        } else if (row.metric_type === 'engagement_rate' && !seenEngagement.has(row.platform)) {
-          seenEngagement.add(row.platform);
-          const rate = Number(row.metric_value);
-          if (!isNaN(rate) && rate > 0) engagementRates.push(rate);
-        }
-      }
-
-      const avgEngagementRate =
-        engagementRates.length > 0
-          ? engagementRates.reduce((sum, r) => sum + r, 0) / engagementRates.length
-          : null;
-
-      return { platforms, totalFollowers, avgEngagementRate };
+      return {
+        platforms,
+        totalFollowers: platforms.reduce((sum, p) => sum + p.followers, 0),
+        avgEngagementRate: null,
+      };
     },
     enabled: !!userId,
     staleTime: 5 * 60 * 1000,

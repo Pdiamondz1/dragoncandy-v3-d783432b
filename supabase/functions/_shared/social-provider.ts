@@ -7,7 +7,7 @@
 // existing connection predates the column, so a null/blank/unrecognized value
 // means "the original Outstand integration".
 
-import type { ProviderId } from '../_shared/social-contract.ts';
+import type { ProviderId } from './social-contract.ts';
 
 export const KNOWN_PROVIDERS: readonly ProviderId[] = ['outstand', 'zernio'];
 

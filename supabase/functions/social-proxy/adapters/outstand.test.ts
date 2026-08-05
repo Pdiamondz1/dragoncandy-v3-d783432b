@@ -9,6 +9,7 @@ const ctx: TenantCtx = {
   userId: 'u1',
   businessId: null,
   orgUnitId: null,
+  providerProfileId: null,
   provider: 'outstand',
 };
 
