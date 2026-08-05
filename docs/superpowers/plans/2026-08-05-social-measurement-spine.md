@@ -432,47 +432,292 @@ groups by this column, so a wrong value silently skews every recommendation."
 
 ---
 
-### Task 4: Capture a real `post.published` payload (evidence gate)
+### Task 4: Parse the documented payload, and make the audit table falsifiable
 
-The webhook's foreign-post branch currently rests on an assumption. `parseOutstandEvent` returns `{event, postId, accountId, publishedAt, socialAccounts}` and **no platform**, and the lib's own header says the payload shape "isn't fully pinned". Do not design against a guessed shape — that is exactly what produced four silent defects earlier in this project.
+**The evidence gate this task originally described is already resolved** — see
+`docs/runbooks/outstand-webhook-registration.md`. Summary of what is now known, so you do not
+re-derive it:
+
+- The webhook **is registered and enabled** on Outstand (`DragonCandy_Prod`, prod project-ref URL,
+  subscribed to `post.published` / `post.error` / `account.token_expired`).
+- A dashboard **Send test returned 200**, which is only reachable after `verifyOutstandSignature`
+  passes — so URL, deploy, `verify_jwt=false` and the shared secret are all proven good.
+- `outstand_webhook_events` is empty because **zero** `donny_scheduled_posts` rows carry
+  `metadata->>'outstand_post_id'`, so every delivery hits the `no_match` return at `index.ts:51`,
+  which is *before* the audit insert at `:72`.
+- The `post.published` body is **documented but not captured**; the shape is recorded in the spec.
+
+Two concrete defects follow from that, and this task fixes both. Do not add the
+`social_post_log` write here — that is Task 5.
 
 **Files:**
-- Modify: `docs/superpowers/specs/2026-08-05-social-measurement-spine-design.md` (record the captured payload)
+- Modify: `supabase/functions/_shared/outstand-webhook-lib.ts`
+- Modify: `supabase/functions/outstand-webhook/index.ts`
+- Modify: `supabase/functions/_shared/outstand-webhook-lib.test.ts` (convert Deno → Vitest)
+- Modify: `vite.config.ts` (drop this file from `test.exclude`)
 
-- [ ] **Step 1: Read a real payload from the audit table**
+**Interfaces:**
+- Consumes: nothing from earlier tasks.
+- Produces: `parseOutstandEvent` gains two fields on `OutstandEvent` — `timestamp: string | null`
+  and `accounts: OutstandSocialAccount[]`, where
+  `OutstandSocialAccount = { accountId: string | null; network: string | null; username: string | null; platformPostId: string | null; platformPostUrl: string | null }`.
+  Task 5 consumes `accounts` to derive one `social_post_log` row per entry, using `network` as
+  `platform`. The existing `socialAccounts: unknown` field **stays exactly as it is** —
+  `index.ts:60` writes it raw into `metadata.publish_result` and that must not change.
 
-`outstand-webhook` already archives every event body. Query via Supabase MCP:
+- [ ] **Step 1: Make the existing tests actually run**
 
-```sql
-select event, payload
-from public.outstand_webhook_events
-where event = 'post.published'
-order by received_at desc
-limit 3;
+`vite.config.ts` excludes `supabase/functions/_shared/outstand-webhook-lib.test.ts` because it is
+Deno-style, so its five tests have never run in CI. Convert it to Vitest and remove the exclusion.
+
+In the test file, replace the first two lines:
+
+```ts
+import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { parseOutstandEvent, verifyOutstandSignature } from "./outstand-webhook-lib.ts";
 ```
 
-- [ ] **Step 2: If that returns 0 rows, publish one post to generate one**
+with:
 
-Publish a single real post through any path, wait for the webhook, then re-run the query in Step 1. Do not proceed on an empty result.
+```ts
+import { parseOutstandEvent, verifyOutstandSignature } from "./outstand-webhook-lib";
+```
 
-- [ ] **Step 3: Record the shape verbatim in the spec**
+Then rewrite every `Deno.test("name", fn)` as `it("name", fn)`, and every
+`assertEquals(actual, expected)` as `expect(actual).toEqual(expected)`. `describe`/`it`/`expect`
+are global (`test.globals: true`). Wrap the whole file in
+`describe("outstand-webhook-lib", () => { … })`.
 
-Add a section to the spec titled `## Captured post.published payload (YYYY-MM-DD)` containing the exact JSON, and state explicitly whether `accountId` and any platform identifier are present.
+In `vite.config.ts`, delete this single line from the `exclude` array:
 
-- [ ] **Step 4: Decide the foreign-post branch from the evidence**
+```ts
+      'supabase/functions/_shared/outstand-webhook-lib.test.ts',
+```
 
-If the payload carries an account id, Task 5's fallback resolves `user_id` and `platform` from `business_outstand_accounts` by that id. If it does not, Task 5 handles only posts matchable to a `donny_scheduled_posts` row and counts the rest. Write the chosen behaviour into the spec before implementing.
+- [ ] **Step 2: Run the converted tests**
 
-- [ ] **Step 5: Commit**
+Run: `npx vitest run supabase/functions/_shared/outstand-webhook-lib.test.ts`
+Expected: 5 tests PASS. If any fail, that is a real pre-existing defect — report it, do not paper
+over it.
+
+- [ ] **Step 3: Write the failing tests for the new parsing**
+
+Append these inside the `describe` block:
+
+```ts
+  const DOCUMENTED_PUBLISHED = {
+    event: "post.published",
+    timestamp: "2024-12-29T10:30:00.000Z",
+    data: {
+      postId: "9dyJS",
+      orgId: "org_abc123",
+      socialAccounts: [
+        {
+          accountId: "a1B2c3",
+          network: "threads",
+          username: "@myaccount",
+          platformPostId: "12345678901234567",
+          platformPostUrl: "https://www.threads.net/@myaccount/post/DAbCdEfGhIj",
+        },
+        {
+          accountId: "d4E5f6",
+          network: "linkedin",
+          username: "John Doe",
+          platformPostId: "urn:li:share:7654321",
+          platformPostUrl: "https://www.linkedin.com/feed/update/urn:li:share:7654321",
+        },
+      ],
+    },
+  };
+
+  it("reads the top-level timestamp, which is where the real payload carries it", () => {
+    expect(parseOutstandEvent(DOCUMENTED_PUBLISHED).timestamp).toBe("2024-12-29T10:30:00.000Z");
+  });
+
+  it("still has no data.publishedAt, so publishedAt stays null on this shape", () => {
+    expect(parseOutstandEvent(DOCUMENTED_PUBLISHED).publishedAt).toBeNull();
+  });
+
+  it("extracts one account entry per published account, with network as the platform", () => {
+    const accounts = parseOutstandEvent(DOCUMENTED_PUBLISHED).accounts;
+    expect(accounts).toHaveLength(2);
+    expect(accounts[0]).toEqual({
+      accountId: "a1B2c3",
+      network: "threads",
+      username: "@myaccount",
+      platformPostId: "12345678901234567",
+      platformPostUrl: "https://www.threads.net/@myaccount/post/DAbCdEfGhIj",
+    });
+    expect(accounts[1].network).toBe("linkedin");
+  });
+
+  it("returns an empty accounts array rather than throwing when the key is absent", () => {
+    expect(parseOutstandEvent({ event: "post.published", data: { postId: "x" } }).accounts)
+      .toEqual([]);
+  });
+
+  it("tolerates a non-array socialAccounts without throwing", () => {
+    expect(parseOutstandEvent({ event: "x", data: { socialAccounts: "nope" } }).accounts)
+      .toEqual([]);
+  });
+
+  it("fills missing per-account fields with null instead of undefined", () => {
+    const accounts = parseOutstandEvent({
+      event: "post.published",
+      data: { postId: "x", socialAccounts: [{ network: "instagram" }] },
+    }).accounts;
+    expect(accounts[0]).toEqual({
+      accountId: null,
+      network: "instagram",
+      username: null,
+      platformPostId: null,
+      platformPostUrl: null,
+    });
+  });
+
+  it("preserves the raw socialAccounts field untouched for metadata.publish_result", () => {
+    expect(parseOutstandEvent(DOCUMENTED_PUBLISHED).socialAccounts)
+      .toEqual(DOCUMENTED_PUBLISHED.data.socialAccounts);
+  });
+```
+
+- [ ] **Step 4: Run them and watch them fail**
+
+Run: `npx vitest run supabase/functions/_shared/outstand-webhook-lib.test.ts`
+Expected: the timestamp and accounts tests FAIL (`timestamp`/`accounts` are not returned yet).
+
+- [ ] **Step 5: Implement the parsing**
+
+In `supabase/functions/_shared/outstand-webhook-lib.ts`, add the interface and extend
+`parseOutstandEvent`. Keep every existing field and its fallback chain unchanged:
+
+```ts
+export interface OutstandSocialAccount {
+  accountId: string | null;
+  network: string | null;
+  username: string | null;
+  platformPostId: string | null;
+  platformPostUrl: string | null;
+}
+
+export interface OutstandEvent {
+  event: string;
+  postId: string | null;
+  accountId: string | null;
+  publishedAt: string | null;
+  /**
+   * Top-level event timestamp. The documented post.published payload has NO
+   * data.publishedAt, so this is the only time the event carries.
+   */
+  timestamp: string | null;
+  socialAccounts: unknown;
+  /** One entry per published account; `network` is the platform. */
+  accounts: OutstandSocialAccount[];
+}
+
+function str(v: unknown): string | null {
+  return typeof v === "string" && v.length > 0 ? v : null;
+}
+
+function parseAccounts(raw: unknown): OutstandSocialAccount[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((e): e is Record<string, unknown> => !!e && typeof e === "object").map((e) => ({
+    accountId: str(e.accountId) ?? str(e.account_id) ?? (typeof e.accountId === "number" ? String(e.accountId) : null),
+    network: str(e.network) ?? str(e.platform),
+    username: str(e.username),
+    platformPostId: str(e.platformPostId) ?? str(e.platform_post_id),
+    platformPostUrl: str(e.platformPostUrl) ?? str(e.platform_post_url),
+  }));
+}
+```
+
+Then in the returned object, keep the existing four fields exactly as they are and add:
+
+```ts
+    timestamp: str(body?.timestamp) ?? str(body?.created_at),
+    accounts: parseAccounts(data?.socialAccounts ?? data?.social_accounts),
+```
+
+The `accountId` numeric coercion is deliberate: `account.token_expired` documents `accountId` as
+an integer (`42`) while `socialAccounts` uses strings (`"a1B2c3"`). Do not assume one type.
+
+- [ ] **Step 6: Run the tests to verify they pass**
+
+Run: `npx vitest run supabase/functions/_shared/outstand-webhook-lib.test.ts`
+Expected: all 12 PASS.
+
+- [ ] **Step 7: Use the timestamp in the handler**
+
+In `supabase/functions/outstand-webhook/index.ts`, add `timestamp` to the destructure on line 36,
+then change line 63 from:
+
+```ts
+        if (newStatus === "published") patch.published_at = publishedAt ?? new Date().toISOString();
+```
+
+to:
+
+```ts
+        // publishedAt is absent from the documented payload; the event carries a
+        // top-level timestamp. Falling straight to now() recorded when WE processed
+        // the delivery — up to 5 minutes late once retries back off.
+        if (newStatus === "published") {
+          patch.published_at = publishedAt ?? timestamp ?? new Date().toISOString();
+        }
+```
+
+- [ ] **Step 8: Record arrival before deciding whether it matched**
+
+Still in `index.ts`, move the audit insert (currently lines 72-77, after the update loop) to sit
+**immediately after the `if (!postId)` guard and before the match `select`**. Keep it inside the
+`post.published`/`post.error` branch — do not hoist it above the branch, because `id` is
+`` `${event}:${postId}` `` and a null `postId` on other events would collide and be silently
+dropped by the `23505` ignore.
+
+The inserted block, unchanged except for position:
+
+```ts
+      // Record ARRIVAL before deciding whether it matched. This insert used to run
+      // only after a successful update, so a no_match delivery left no trace and an
+      // empty table could not distinguish "never delivered" from "delivered, matched
+      // nothing" — which is exactly the ambiguity that stalled this work.
+      const { error: auditErr } = await supabase
+        .from("outstand_webhook_events")
+        .insert({ id: `${event}:${postId}`, event, post_id: postId, payload: body });
+      if (auditErr && auditErr.code !== "23505") {
+        console.warn("outstand-webhook: audit insert failed", auditErr.message);
+      }
+```
+
+Leave the `no_match` early return and its `console.log` exactly as they are.
+
+- [ ] **Step 9: Verify the whole suite and types**
+
+Run: `npx vitest run supabase/functions src/lib` then `npm run typecheck`
+Expected: all pass, no new failures.
+
+- [ ] **Step 10: Commit**
 
 ```bash
-git add docs/superpowers/specs/2026-08-05-social-measurement-spine-design.md
-git commit -m "docs(analytics): record the real post.published payload shape
+git add supabase/functions/_shared/outstand-webhook-lib.ts supabase/functions/_shared/outstand-webhook-lib.test.ts supabase/functions/outstand-webhook/index.ts vite.config.ts
+git commit -m "fix(analytics): parse the documented payload, record webhook arrivals
 
-The webhook's foreign-post branch rested on an assumption: parseOutstandEvent
-returns no platform at all, and accountId is only demonstrated on a different
-event branch. Captured the actual payload and pinned the fallback to it, rather
-than designing against a guessed shape."
+parseOutstandEvent read data.publishedAt, which the documented
+post.published body does not contain -- the timestamp is top-level. So
+published_at silently fell back to now(), recording when we processed the
+delivery rather than when the post published; with retries backing off to
+five minutes that can be materially wrong.
+
+It also extracted no platform. socialAccounts[].network is the platform,
+one entry per published account, which is the grain social_post_log keys
+on.
+
+The audit insert ran only after a successful match, so a no_match
+delivery left no trace and an empty table could not distinguish never
+delivered from delivered-and-matched-nothing. Moved it ahead of the match.
+
+Also converts the lib's five Deno-style tests to Vitest and drops the
+config exclusion that stopped them ever running."
 ```
 
 ---
