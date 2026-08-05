@@ -107,8 +107,10 @@ AS $$
 DECLARE
   v_order record;
   v_authorized boolean := false;
+  v_allowed int;
 BEGIN
-  SELECT id, buyer_user_id, buyer_guest_token, content_status, order_status
+  SELECT id, buyer_user_id, buyer_guest_token, content_status, order_status,
+         escrow_status, revision_count, scope_snapshot
   INTO v_order
   FROM package_orders
   WHERE id = p_order_id
@@ -118,8 +120,9 @@ BEGIN
     RAISE EXCEPTION 'package order % not found', p_order_id;
   END IF;
 
-  -- Buyer authorization: the logged-in buyer, OR a guest presenting the exact order token. The token compare
-  -- is length-guarded (a real token is 64 hex chars) so an empty/NULL token can never match.
+  -- Buyer authorization: the logged-in buyer, OR a guest presenting the exact order token. The >=32 floor is a
+  -- triviality reject; the exact equality against the stored token (a 64-hex secret) is what actually
+  -- authorizes, and the buyer_guest_token IS NOT NULL guard stops an empty/NULL token matching a NULL column.
   IF v_order.buyer_user_id IS NOT NULL AND v_order.buyer_user_id = auth.uid() THEN
     v_authorized := true;
   ELSIF p_guest_token IS NOT NULL
@@ -133,10 +136,31 @@ BEGIN
     RAISE EXCEPTION 'not authorized to request a revision on this order';
   END IF;
 
-  -- A revision only makes sense against delivered-but-not-yet-approved work.
-  IF v_order.content_status IS DISTINCT FROM 'submitted' OR v_order.order_status <> 'submitted' THEN
-    RAISE EXCEPTION 'order % has no submitted work to revise (content_status=%, status=%)',
-      p_order_id, v_order.content_status, v_order.order_status;
+  -- A revision only makes sense against delivered work whose escrow is still HELD. The escrow='held' guard is
+  -- what closes the approve-vs-revise race: release-package-payout CAS's this same row's escrow 'held'→
+  -- 'releasing' under its own FOR UPDATE, so if a payout has already claimed the order this locked read sees
+  -- escrow<>'held' and refuses — funds can never be both being-paid and being-revised. (If the revision wins
+  -- the lock first it leaves escrow at 'held'; a racing release then fails its own delivery gate on
+  -- content_status='rejected' before touching escrow, so nothing is ever stranded in 'releasing'.)
+  IF v_order.content_status IS DISTINCT FROM 'submitted'
+     OR v_order.order_status <> 'submitted'
+     OR v_order.escrow_status <> 'held' THEN
+    RAISE EXCEPTION 'order % has no releasable submitted work to revise (content_status=%, status=%, escrow=%)',
+      p_order_id, v_order.content_status, v_order.order_status, v_order.escrow_status;
+  END IF;
+
+  -- Enforce the revisions the buyer actually purchased (scope_snapshot.revisions; default 1 when unspecified).
+  -- Past the allowance the buyer must approve — otherwise they could send work back forever and block payout
+  -- indefinitely without buying more revisions. The cast is wrapped so a malformed scope value falls back to 1
+  -- rather than aborting.
+  BEGIN
+    v_allowed := GREATEST(COALESCE((v_order.scope_snapshot->>'revisions')::int, 1), 0);
+  EXCEPTION WHEN others THEN
+    v_allowed := 1;
+  END;
+  IF v_order.revision_count >= v_allowed THEN
+    RAISE EXCEPTION 'no revisions remaining on order % (used %, included %)',
+      p_order_id, v_order.revision_count, v_allowed;
   END IF;
 
   UPDATE package_orders

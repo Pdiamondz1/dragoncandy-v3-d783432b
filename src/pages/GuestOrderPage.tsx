@@ -55,6 +55,11 @@ const GuestOrderPage = () => {
   const isRevisionRequested = o?.order_status === 'revision_requested';
   const canCancel = isHeld && !o?.content_submitted_at && !isComplete && !isRefunded;
   const deliverables = o?.deliverables ?? [];
+  // Revisions the buyer purchased (scope_snapshot.revisions; default 1) minus those used. Mirrors the
+  // request_package_revision RPC's server-side allowance so we don't offer a button that would just error.
+  const revisionsScope = order?.package?.scope as { revisions?: number } | undefined;
+  const revisionsAllowed = Math.max(0, typeof revisionsScope?.revisions === 'number' ? revisionsScope.revisions : 1);
+  const revisionsRemaining = Math.max(0, revisionsAllowed - (o?.revision_count ?? 0));
 
   const onApprove = async () => {
     if (!o) return;
@@ -210,9 +215,13 @@ const GuestOrderPage = () => {
                       {approve.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                       Approve & release payment
                     </Button>
-                    {!revisionOpen ? (
+                    {revisionsRemaining <= 0 ? (
+                      <p className="text-center text-xs text-muted-foreground">
+                        You’ve used {revisionsAllowed === 0 ? 'the' : `all ${revisionsAllowed}`} included revision{revisionsAllowed === 1 ? '' : 's'} on this order.
+                      </p>
+                    ) : !revisionOpen ? (
                       <Button onClick={() => setRevisionOpen(true)} variant="outline" className="gap-2">
-                        <RotateCcw className="h-4 w-4" /> Request a revision
+                        <RotateCcw className="h-4 w-4" /> Request a revision{revisionsAllowed > 0 ? ` (${revisionsRemaining} left)` : ''}
                       </Button>
                     ) : (
                       <div className="rounded-xl border border-border bg-card p-3">
