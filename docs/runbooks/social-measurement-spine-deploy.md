@@ -3,13 +3,14 @@
 Written 2026-08-05 from the whole-branch review of `feat/social-measurement-spine`, updated the
 same day once Task 11 shipped the fix, again once Task 13 closed the amplification leg of the
 `platform`-vocabulary problem, again once Task 14 corrected two Codex findings on already-shipped
-code, and again once Task 15 fixed a webhook/client race in that same code. **Read this before
-deploying `outstand-webhook`.** BLOCKER 1 below was a genuine data-correctness defect that no
+code, again once Task 15 fixed a webhook/client race in that same code, and again once Task 16
+simplified the no-schedule-row fallback at its root instead of patching it a fifth time. **Read this
+before deploying `outstand-webhook`.** BLOCKER 1 below was a genuine data-correctness defect that no
 per-task review could see, because it lived in the seam between two tasks that each passed — it is
-now **fixed** (see below, and its four follow-on fix rounds). **`outstand-webhook` now returns HTTP
-500 on purpose in one case** (Task 15, below) — if you're debugging a 500 from this function, check
-that section before assuming it's a bug. The `donny_scheduled_posts.platform` vs Outstand-network
-(`twitter` vs `x`) mismatch and the cross-tenant read are still open.
+now **fixed** (see below, and its five follow-on fix rounds). **`outstand-webhook` now returns HTTP
+500 on purpose in one case** (Task 15, narrowed by Task 16 below) — if you're debugging a 500 from
+this function, check that section before assuming it's a bug. The `donny_scheduled_posts.platform`
+vs Outstand-network (`twitter` vs `x`) mismatch and the cross-tenant read are still open.
 
 ## Required order
 
@@ -178,15 +179,25 @@ as correct for a genuinely foreign post (retrying can never help), but `unmatche
 second, opposite case that wants the opposite response.
 
 **The race.** For publish paths that create no `donny_scheduled_posts` row
-(`useSponsorshipAmplification.ts`, and `DonnyProvider.tsx`'s DragonShare path), the client publishes
-through Outstand and only *afterward* inserts its own `social_post_log` row. If Outstand's
-`post.published` webhook delivery arrives before that client insert commits, `recordPublishedPost`
-finds no schedule row (there never is one on this path) **and** no pre-existing `social_post_log`
-row to stamp `verified_at` on yet. The old code returned `unmatched` → HTTP 200 → Outstand never
-retries. The client's row then lands moments later with `verified_at` permanently null, and
-`content-performance-capture` (which only selects rows where `verified_at IS NOT NULL`) skips it
-forever. Measurement became a coin-flip on request timing — worse under load, since the client
-round-trip to insert its row competes with webhook delivery latency.
+(`useSponsorshipAmplification.ts`, and — as understood at the time — `DonnyProvider.tsx`'s
+DragonShare path), the client publishes through Outstand and only *afterward* inserts its own
+`social_post_log` row. If Outstand's `post.published` webhook delivery arrives before that client
+insert commits, `recordPublishedPost` finds no schedule row (there never is one on this path)
+**and** no pre-existing `social_post_log` row to stamp `verified_at` on yet. The old code returned
+`unmatched` → HTTP 200 → Outstand never retries. The client's row then lands moments later with
+`verified_at` permanently null, and `content-performance-capture` (which only selects rows where
+`verified_at IS NOT NULL`) skips it forever. Measurement became a coin-flip on request timing —
+worse under load, since the client round-trip to insert its row competes with webhook delivery
+latency.
+
+> **Correction (Task 16): the premise above was inexact for `DonnyProvider.tsx`.** Its `publishDraft`
+> already reads a `donny_scheduled_posts` row (~line 161) and updates it after publish (~line 218) —
+> it always had one. The actual defect was narrower: that update never wrote `outstand_post_id` into
+> the row's `metadata`, which is the only thing `recordPublishedPost`'s schedule lookup matches on
+> (`metadata->>outstand_post_id`). A schedule row that couldn't be matched behaved indistinguishably
+> from one that never existed, so it fell into this same no-schedule-row path every time — which is
+> why three consecutive rounds (Task 12/14/15) each found and fixed a real defect *in the fallback*
+> without anyone asking why a scheduled post needed a no-schedule fallback at all. See Fix round 5.
 
 **The fix — split `unmatched` using owner resolution, which Task 14 already computes.**
 `recordPublishedPost` already resolves the post's owner(s) from the event's `accounts[].accountId`
@@ -222,15 +233,14 @@ the `donny_scheduled_posts` status UPDATE below the measurement write is guarded
 a code change to become retry-safe — Task 15 only changed which outcomes trigger a retry, not what a
 retry does.
 
-**One residual cost, accepted rather than engineered around.** A *second* natural delivery of the
-same `post.published` event (not a redelivery of our own 500 — Outstand delivering the same event
-twice for its own reasons) after the row was already stamped by the first delivery will also find
-zero rows left to stamp (`.is('verified_at', null)` now excludes it) and also return `owner_pending`
-→ another 500 → another few redeliveries that all correctly find nothing left to do before Outstand
-gives up. This is wasted work, not wrong behavior — the row is already correctly measured either way
-— and distinguishing "still in flight" from "already done, this is a duplicate delivery" would need
-an extra existence check this fix does not add. Accepted as a bounded, harmless cost against the
-alternative (silently losing real measurement) that this round exists to close.
+**One residual cost, accepted at the time — FIXED, Task 16 (Codex finding 2).** A *second* natural
+delivery of the same `post.published` event (not a redelivery of our own 500 — Outstand delivering
+the same event twice for its own reasons) after the row was already stamped by the first delivery
+would also find zero rows left to stamp (`.is('verified_at', null)` excludes it) and also return
+`owner_pending` → another 500 → another few redeliveries that all correctly found nothing left to do
+before Outstand gave up. Wasted work, not wrong behavior — the row was already correctly measured
+either way — but avoidable. Fix round 5 below adds the one extra existence check this round
+originally decided not to add, closing it rather than leaving it accepted.
 
 **Alternative considered and rejected: admit rows on the audit-table signature instead of
 `verified_at`.** Rather than fixing the retry behavior, the capture job could instead treat any row
@@ -240,6 +250,70 @@ entirely. Rejected: `outstand_webhook_events` has no owner/tenant constraint —
 14 just closed by scoping the `verified_at` stamp to resolved owners. The race is better closed by
 making the existing owner-scoped stamp retry until it succeeds than by widening what counts as
 "verified" to an unscoped signal.
+
+## Fix round 5 (Task 16) — simplified at the root instead of patching the fallback a fifth time
+
+Three consecutive rounds (Task 12, 14, 15) each found and fixed a real defect *inside* the
+no-schedule-row fallback. A fifth Codex pass found two more in the same code. Rather than a fourth
+patch, this round fixed the root cause that kept sending a path with a real schedule row into a
+fallback meant for paths that never had one.
+
+**Root cause.** `DonnyProvider.tsx`'s `publishDraft` already reads a `donny_scheduled_posts` row
+(~line 161) and updates it after a successful publish (~line 218) — it always had one for the
+DragonShare/schedule-driven path. That update wrote only `status` and `published_at`. It never wrote
+`outstand_post_id` into the row's `metadata`, and `recordPublishedPost`'s schedule lookup matches
+exclusively on `metadata->>outstand_post_id`. A schedule row the lookup can't match behaves
+identically to one that doesn't exist, so this path fell into the no-schedule-row fallback on every
+publish — which is what made that fallback load-bearing for DragonShare instead of the amplification
+edge case it was designed for, and why fix rounds kept landing there.
+
+**Change 1 — `DonnyProvider.tsx` now records what the webhook matches on.** The `donny_scheduled_posts`
+update merges `outstand_post_id` into the *existing* `metadata` (spreads `draftMetadata`, never
+clobbers it — a DragonShare draft's `source`/`post_id` live in that same object) instead of leaving
+it untouched. The update's error is now captured and logged (previously discarded, the same bug
+class Task 1 fixed twice in a sibling file) — if it fails, the post is still published, just
+unmatchable by the webhook until the no-schedule fallback's owner resolution catches it. **Consequence:**
+the DragonShare path now goes through the normal schedule-matched insert, the same as any other
+scheduled post, instead of the fallback.
+
+**Change 2 — closes Codex finding 1 (brief-linkage loss on a webhook-wins race).** Even with Change 1,
+the webhook can still win the race to *insert* the `social_post_log` row (Outstand's `post.published`
+delivery landing before the client's own insert commits) — the schedule-matched path just means that
+insert now has a schedule row to source dimensions from. `recordPublishedPost`'s schedule-matched
+insert now also derives `dragonshare_post_id` from the schedule row's `metadata` — mirroring
+`DonnyProvider.tsx`'s own derivation exactly (`metadata.post_id` when `metadata.source ===
+'dragonshare_social_hook'`) — so whichever side wins the insert carries the same linkage the client
+would have written itself. Without this, a webhook-won insert carried no `dragonshare_post_id`, the
+`resolve_social_post_log_brief` `BEFORE INSERT` trigger (`20260611150657_content_engine_phase_c_brief_link.sql`)
+had nothing to derive `source_brief_id` from, and the client's own insert then lost the
+`(outstand_post_id, platform)` unique-key race and errored out — permanently dropping brief→outcome
+attribution for that post.
+
+*Residual gap check (the trigger is `BEFORE INSERT` only, so an `UPDATE` never re-derives
+`source_brief_id`):* none found for this race specifically. Both writers now compute
+`dragonshare_post_id` identically from the same underlying schedule-row metadata, so whichever one
+wins the INSERT sets it correctly and fires the trigger; the loser's write becomes an UPDATE carrying
+the *same* value, which needs no re-derivation because the first write already got it right. The only
+case this doesn't cover is a `social_post_log` row that already existed *without* `dragonshare_post_id`
+before this fix shipped (or one written via the no-schedule fallback, which only ever updates
+`verified_at` and was never in the business of setting it) — that class of row will not be
+retroactively backfilled, the same already-documented limitation as BLOCKER 1's "historical rows are
+not recaptured."
+
+**Change 3 — closes Codex finding 2 (duplicate delivery 500s instead of succeeding).** The
+no-schedule fallback's stamp UPDATE (`.is('verified_at', null)`) could not tell "no row exists yet"
+(the genuine race Task 15 fixed) apart from "a row exists and was already verified by an earlier
+delivery of this same event" (a harmless duplicate) — both hit zero updated rows and both returned
+`owner_pending` → 500, so a duplicate delivery after successful processing triggered pointless
+provider retries. Fixed with a single existence read (`select id ... limit 1`) before the conditional
+UPDATE: no row at all → still `owner_pending` → 500 → retry (unchanged); a row exists → `verified_existing`
+→ 200, whether this call did the stamping or an earlier delivery already did.
+
+**What was deliberately left alone.** The no-schedule fallback itself was not removed, and
+`useSponsorshipAmplification.ts` did not gain a `donny_scheduled_posts` insert. Amplification
+genuinely publishes with no schedule row and no user-facing draft — giving it one would surface
+amplification posts in the schedule UI, a product change outside this fix's scope. The fallback is
+smaller in *importance* now (DragonShare no longer depends on it) but stays, correctly, for that path.
 
 ## Still open, tracked elsewhere
 

@@ -149,6 +149,45 @@ async function recordPublishedPost(
       return { outcome: "unmatched", rows: 0, dropped };
     }
 
+    // One read before the conditional update, to tell apart the two zero-match
+    // causes a bare UPDATE...WHERE verified_at IS NULL can't distinguish (Task
+    // 16, Codex finding 2): "no row exists yet" (the genuine race — Outstand's
+    // post.published delivery beat the client's own social_post_log insert)
+    // needs a 500 so Outstand redelivers; "a row exists and is already
+    // verified" (a duplicate delivery of an event this webhook already
+    // processed) is success and must NOT 500 — the old code returned
+    // 'owner_pending' for both, so a duplicate delivery after the row was
+    // already correctly stamped 500'd forever until Outstand's retries ran out,
+    // for no reason (nothing was left to do).
+    const { data: existing, error: existErr } = await supabase
+      .from("social_post_log")
+      .select("id")
+      .eq("outstand_post_id", postId)
+      .in("user_id", ownerIds)
+      .limit(1);
+
+    if (existErr) {
+      console.error("outstand-webhook: existing-row lookup failed", existErr.message);
+      return { outcome: "failed", rows: 0, dropped };
+    }
+
+    if (!existing || existing.length === 0) {
+      // An owner DID resolve (the ownerIds.length === 0 case returned above),
+      // but no row exists at all yet — this is one of OUR posts, not a foreign
+      // one, so 'unmatched' would be the wrong outcome (Task 15, Codex P1): a
+      // real DragonCandy post would be silently lost forever whenever
+      // Outstand's post.published delivery beat the client's own
+      // social_post_log insert to land (useSponsorshipAmplification.ts and
+      // DonnyProvider's DragonShare path both publish through Outstand and only
+      // afterward insert their row). The caller must return non-2xx so
+      // Outstand redelivers (up to 5 attempts, backoff to 5 min) and a later
+      // attempt can stamp the row once it exists.
+      console.warn(
+        `outstand-webhook: owner resolved but no row exists yet for ${postId} — requesting retry (client insert likely still in flight)`,
+      );
+      return { outcome: "owner_pending", rows: 0, dropped };
+    }
+
     const { data: stamped, error: stampErr } = await supabase
       .from("social_post_log")
       .update({ verified_at: new Date().toISOString() })
@@ -161,28 +200,10 @@ async function recordPublishedPost(
       console.error("outstand-webhook: verified_at stamp failed", stampErr.message);
       return { outcome: "failed", rows: 0, dropped };
     }
-    if (stamped && stamped.length > 0) {
-      return { outcome: "verified_existing", rows: stamped.length, dropped };
-    }
-
-    // Reaching here means an owner DID resolve (the ownerIds.length === 0 case
-    // returned above) but the stamp UPDATE touched zero rows — this is one of
-    // OUR posts, not a foreign one, so 'unmatched' was the wrong outcome for
-    // it (Task 15, Codex P1): a real DragonCandy post would be silently lost
-    // forever whenever Outstand's post.published delivery beat the client's
-    // own social_post_log insert to land — a genuine race, since
-    // useSponsorshipAmplification.ts and DonnyProvider's DragonShare path both
-    // publish through Outstand and only afterward insert their row. It can
-    // also mean the row already exists but was verified by an earlier
-    // delivery of this same event (excluded here by `.is('verified_at',
-    // null)`) — a harmless case that costs a few wasted retries, not a wrong
-    // outcome. Either way the caller must return non-2xx so Outstand
-    // redelivers (up to 5 attempts, backoff to 5 min) and a later attempt can
-    // stamp the row once it exists.
-    console.warn(
-      `outstand-webhook: owner resolved but no row to stamp for ${postId} — requesting retry (client insert likely still in flight)`,
-    );
-    return { outcome: "owner_pending", rows: 0, dropped };
+    // A row is confirmed to exist above either way, so a zero-row UPDATE here
+    // means it was already verified by an earlier delivery of this same event
+    // — a harmless duplicate, not a race. Both are success.
+    return { outcome: "verified_existing", rows: stamped?.length ?? 0, dropped };
   }
   if (schedRows.length > 1) {
     console.warn(
@@ -215,6 +236,19 @@ async function recordPublishedPost(
     meta.source as string | null,
     sched.campaign_id as string | null,
   );
+  // Mirrors DonnyProvider.tsx's publishDraft exactly: only DragonShare-sourced
+  // drafts carry a dragonshare_post_id, read from metadata.post_id when
+  // metadata.source is 'dragonshare_social_hook'. Carrying it here closes a race
+  // where the webhook's schedule-matched upsert wins as the INSERT (Outstand's
+  // delivery beats the client's own social_post_log insert): without this, that
+  // insert had no dragonshare_post_id, the BEFORE INSERT trigger
+  // (resolve_social_post_log_brief, 20260611150657) had nothing to derive
+  // source_brief_id from, and the client's own insert then lost the unique-key
+  // race and errored — permanently dropping brief->outcome attribution.
+  const dragonsharePostId =
+    (meta.source as string | null) === "dragonshare_social_hook"
+      ? ((meta.post_id as string | undefined) ?? null)
+      : null;
 
   const rows = platforms.map((platform) => ({
     user_id: sched.user_id,
@@ -229,6 +263,7 @@ async function recordPublishedPost(
     format: sched.content_type ?? null,
     scheduled_at: sched.scheduled_at,
     published_at: publishedAt,
+    dragonshare_post_id: dragonsharePostId,
     // Service-role only. This is what makes the row trustworthy enough to spend an
     // API call on — see the migration comment.
     verified_at: new Date().toISOString(),

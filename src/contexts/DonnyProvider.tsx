@@ -215,10 +215,30 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
       const draftMetadata = (draft.metadata ?? null) as Record<string, unknown> | null;
       const postType = resolvePostType(draftMetadata?.source as string | null, draft.campaign_id);
 
-      await supabase
+      // Merge outstand_post_id into the existing metadata (never clobber — a
+      // DragonShare draft's source/post_id lives here too). outstand-webhook's
+      // recordPublishedPost matches schedule rows on metadata->>outstand_post_id;
+      // without this, a schedule row that DID publish looks identical to one
+      // that never existed, which is what grew the no-schedule-row fallback.
+      const { error: scheduleUpdateError } = await supabase
         .from('donny_scheduled_posts')
-        .update({ status: 'published', published_at: new Date().toISOString() })
+        .update({
+          status: 'published',
+          published_at: new Date().toISOString(),
+          metadata: { ...(draftMetadata ?? {}), outstand_post_id: String(outstandPostId) },
+        })
         .eq('id', scheduledPostId);
+
+      if (scheduleUpdateError) {
+        // The post already published — this only affects whether the webhook
+        // can match this schedule row. Published but unmatchable, not lost: the
+        // direct social_post_log insert below still records it, and the
+        // no-schedule-row fallback can still stamp it if an owner resolves.
+        console.error(
+          '[DonnyProvider] Failed to record outstand_post_id on schedule row (post published but unmatchable by webhook):',
+          scheduleUpdateError,
+        );
+      }
 
       if (session.user) {
         const { error: logError } = await supabase.from('social_post_log').insert({
