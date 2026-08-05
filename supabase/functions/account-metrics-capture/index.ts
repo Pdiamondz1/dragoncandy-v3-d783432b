@@ -71,11 +71,47 @@ async function mapWithConcurrency<T>(
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => next()));
 }
 
+/**
+ * Ask Outstand whether an account's token is actually alive.
+ *
+ * `GET /social-accounts/{id}/health` is authoritative in a way a bare 401 is not:
+ * per Outstand's docs it first ATTEMPTS ONE TOKEN REFRESH and persists the new
+ * tokens, then re-checks. So `healthy:true` after a 401 means the connection
+ * just healed itself, and flagging on the raw 401 alone would have prompted a
+ * user to reconnect something that now works.
+ *
+ * Returns null when health itself is unreachable — unknown is not unhealthy.
+ */
+async function checkHealth(
+  baseUrl: string,
+  apiKey: string,
+  accountId: string,
+): Promise<{ healthy: boolean; errorCode?: string; error?: string } | null> {
+  try {
+    const res = await fetch(`${baseUrl}/social-accounts/${accountId}/health`, {
+      headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return null;
+    const body = await res.json().catch(() => null);
+    const d = (body?.data ?? body) as Record<string, unknown> | null;
+    if (!d || typeof d.healthy !== "boolean") return null;
+    return {
+      healthy: d.healthy as boolean,
+      errorCode: typeof d.errorCode === "string" ? d.errorCode : undefined,
+      error: typeof d.error === "string" ? d.error : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
 interface AccountRow {
   user_id: string;
   outstand_social_account_id: string;
   platform: string;
   provider: string | null;
+  status: string;
 }
 
 serve(async (req: Request) => {
@@ -101,8 +137,8 @@ serve(async (req: Request) => {
 
   const { data: rows, error: rowsErr } = await admin
     .from("business_outstand_accounts")
-    .select("user_id, outstand_social_account_id, platform, provider")
-    .eq("status", "active");
+    .select("user_id, outstand_social_account_id, platform, provider, status")
+    .in("status", ["active", "error"]);
 
   if (rowsErr) {
     console.error("account-metrics-capture: account fetch failed", rowsErr.message);
@@ -130,6 +166,8 @@ serve(async (req: Request) => {
   let captured = 0;
   let failed = 0;
   let skippedForTime = 0;
+  let healthFlagged = 0;
+  let healthRestored = 0;
   const errors: Array<{ accountId: string; reason: string }> = [];
 
   await mapWithConcurrency(
@@ -162,6 +200,36 @@ serve(async (req: Request) => {
             console.error(
               `account-metrics-capture: ${account.outstand_social_account_id} (${range}) failed: ${detail}`,
             );
+
+            // ONLY an auth failure implicates the account's own token. A 5xx or a
+            // timeout is Outstand having a bad moment, and flagging on those would
+            // nag users to reconnect working accounts. Confirm via the health
+            // endpoint, which retries the refresh before answering.
+            if ((res.status === 401 || res.status === 403) && account.status !== "error") {
+              const health = await checkHealth(
+                OUTSTAND_BASE_URL,
+                OUTSTAND_API_KEY,
+                account.outstand_social_account_id,
+              );
+              if (health && health.healthy === false) {
+                const { error: flagErr } = await admin
+                  .from("business_outstand_accounts")
+                  .update({ status: "error", updated_at: new Date().toISOString() })
+                  .eq("outstand_social_account_id", account.outstand_social_account_id)
+                  .eq("provider", "outstand")
+                  // Never resurrect a user-initiated disconnect.
+                  .in("status", ["active", "error"]);
+                if (flagErr) {
+                  console.error("account-metrics-capture: health flag failed", flagErr.message);
+                } else {
+                  healthFlagged++;
+                  account.status = "error";
+                  console.warn(
+                    `account-metrics-capture: flagged ${account.outstand_social_account_id} (${account.platform}) as error — ${health.errorCode ?? "unhealthy"}: ${health.error ?? "token no longer valid"}`,
+                  );
+                }
+              }
+            }
             continue;
           }
 
@@ -191,6 +259,26 @@ serve(async (req: Request) => {
           // nested under `engagement`, none of which the previous code read.
           // A null return means "none of the fields we recognise", which is a
           // failure, not a set of zeros.
+          // Metrics came back, so the token works. If our row still says 'error'
+          // the flag is STALE — clear it, or the user is prompted forever to
+          // reconnect an account that recovered. Stale-true and stale-false are
+          // both wrong; this reconciles in the direction the evidence points.
+          if (account.status === "error") {
+            const { error: restoreErr } = await admin
+              .from("business_outstand_accounts")
+              .update({ status: "active", updated_at: new Date().toISOString() })
+              .eq("outstand_social_account_id", account.outstand_social_account_id)
+              .eq("provider", "outstand")
+              .eq("status", "error");
+            if (!restoreErr) {
+              healthRestored++;
+              account.status = "active";
+              console.log(
+                `account-metrics-capture: restored ${account.outstand_social_account_id} (${account.platform}) to active — metrics are resolving again`,
+              );
+            }
+          }
+
           const mapped = mapOutstandAccountMetrics(payload);
           if (!mapped) {
             failed++;
@@ -258,7 +346,8 @@ serve(async (req: Request) => {
 
   console.log(
     `account-metrics-capture: ${accounts.length} accounts x ${RANGES.length} ranges -> ` +
-      `${captured} captured, ${failed} failed, ${skippedForTime} skipped (budget)`,
+      `${captured} captured, ${failed} failed, ${skippedForTime} skipped (budget), ` +
+      `${healthFlagged} flagged unhealthy, ${healthRestored} restored`,
   );
 
   return json(200, {
@@ -269,6 +358,8 @@ serve(async (req: Request) => {
     failed,
     skipped_non_outstand: skipped,
     skipped_for_time: skippedForTime,
+    health_flagged: healthFlagged,
+    health_restored: healthRestored,
     errors: errors.slice(0, 20),
     ...(debug ? { shapes } : {}),
   });
