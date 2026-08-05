@@ -2,7 +2,10 @@ import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 export interface PaymentEvent {
   event_type: string;
-  entity_type: 'collaboration' | 'sponsorship' | 'rush';
+  // Mirrors payment_events.entity_type CHECK (20260804120200_payment_events_package_order.sql adds
+  // 'package_order' to the DB constraint). The shared wallet-first payout core keys its config on this
+  // union, so the package-order money rail requires the value here to type-check.
+  entity_type: 'collaboration' | 'sponsorship' | 'rush' | 'package_order';
   entity_id: string;
   campaign_id: string | null;
   actor_id?: string;

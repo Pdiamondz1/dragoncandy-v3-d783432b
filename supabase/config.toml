@@ -180,6 +180,33 @@ verify_jwt = false
 [functions.capture-lead]
 verify_jwt = false
 
+# Creator-storefront package-order money rail. The hero buyer is a restaurant with NO
+# DragonCandy account, reached via a shareable link, so there is no Supabase JWT to verify.
+# Each function resolves the caller itself: service-role key (cron), a user JWT (getUser),
+# or an opaque guest bearer token (package_orders.buyer_guest_token). verify_jwt must be off
+# or the gateway would reject the unauthenticated guest — same posture as the campaign escrow
+# functions. refund-package-order deliberately differs from refund-campaign-escrow (which is
+# verify_jwt=true) because package refunds must be guest-reachable.
+# F1 Donny package draft — creator-facing, resolves the creator via their user JWT itself; verify_jwt off
+# to match the rest of the Donny/AI fleet (each self-resolves auth).
+[functions.suggest-package]
+verify_jwt = false
+
+[functions.create-package-order-escrow]
+verify_jwt = false
+
+[functions.verify-package-order-escrow]
+verify_jwt = false
+
+[functions.release-package-payout]
+verify_jwt = false
+
+[functions.refund-package-order]
+verify_jwt = false
+
+[functions.notify-package-order]
+verify_jwt = false
+
 # Provider-agnostic social gateway (Outstand + Zernio adapters). verify_jwt stays
 # TRUE — unlike the bespoke-auth functions above, the platform's standard Supabase
 # JWT check is exactly what's wanted here, layered UNDER the function's own tenant
