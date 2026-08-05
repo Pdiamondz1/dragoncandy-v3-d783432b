@@ -57,7 +57,14 @@ sends `content` only, so the join is what puts hashtags on the actual published 
 ## Decisions taken
 
 - **Hashtags** = correlate ours, honestly labelled, never causal.
-- **Cold start** = build forward; separately ask Outstand about importing existing posts.
+- **Cold start** = build forward. **Revisit: the import exists.** `POST
+  /v1/social-accounts/{id}/imports` (`since`/`until`/`limit` ≤ 1000, async, completion signalled
+  by the `import.completed` / `import.failed` webhook events) fetches and stores a connected
+  account's **pre-existing** posts. Supported on Instagram, TikTok, YouTube, Facebook, Threads,
+  Pinterest, Bluesky and Google Business; **not X**; LinkedIn organisation accounts only.
+  **Each imported post bills as one post.** Whether an imported post's `/posts/{id}/analytics`
+  then returns metrics is the open question and is **not stated in the docs** — verify on one
+  account with a small `limit` before planning any backfill around it.
 - **Delivery** (sub-project C) = weekly push + chat, both over the same precomputed facts.
 
 ## Design
@@ -94,16 +101,56 @@ Only `DonnyProvider` supplies `dragonshare_post_id`. **Do not remove the client 
 the webhook carries that column too, or the Content Engine Phase C brief→outcome link dies
 with no error.
 
-**Foreign posts — capture the payload before designing for it.** `parseOutstandEvent` returns
-`{event, postId, accountId, publishedAt, socialAccounts}` and **no platform**; the lib's own
-header says the payload shape "isn't fully pinned", and `accountId` is only demonstrated on the
-`account.token_expired` branch. So "resolve owner via `business_outstand_accounts`" is
-currently an assumption.
+**The payload shape — DOCUMENTED 2026-08-05, not yet captured.** Read from
+`outstand.so/docs/webhooks`. This is a real improvement on "isn't fully pinned", but it is the
+vendor's own description, and this provider's docs have already diverged from its behaviour
+twice (every account-metrics field name; `?accountId=` silently ignored on `/analytics`).
+**Treat as the design target, verify on first delivery.**
 
-**Gate this on evidence, exactly as the Zernio cutover did:** capture one real
-`post.published` payload first and record it verbatim in this spec. Until then the webhook
-handles only posts it can match to a `donny_scheduled_posts` row, and **logs a counter for
-those it cannot** — a visible hole, never a silent one.
+```json
+{
+  "event": "post.published",
+  "timestamp": "2024-12-29T10:30:00.000Z",
+  "data": {
+    "postId": "9dyJS",
+    "orgId": "org_abc123",
+    "socialAccounts": [
+      { "accountId": "a1B2c3", "network": "threads", "username": "@myaccount",
+        "platformPostId": "12345678901234567",
+        "platformPostUrl": "https://www.threads.net/@myaccount/post/DAbCdEfGhIj" }
+    ]
+  }
+}
+```
+
+Three consequences, all concrete:
+
+1. **`platform` comes from `socialAccounts[].network`** — the event carries one entry per
+   published account. So §2's `UNIQUE (outstand_post_id, platform)` grain is exactly one row per
+   `socialAccounts[]` entry. The vendor's own shape confirms the key chosen in Task 2.
+2. **There is no `data.publishedAt`** — the timestamp is **top-level**. `parseOutstandEvent`
+   reads `data.publishedAt ?? data.published_at`, so on this shape it is always null and
+   `outstand-webhook/index.ts:63` silently falls back to `new Date()`. With retries backing off
+   to 5 minutes, `published_at` can be minutes late and is really "when we processed it". Read
+   `body.timestamp` as the fallback before `new Date()`.
+3. **There is no top-level `data.accountId` on `post.published`** — it exists only per social
+   account, and `account.token_expired` documents it as an integer (`42`) while `socialAccounts`
+   uses strings (`"a1B2c3"`). Do not rely on the id type being consistent across events.
+
+Also documented: the other events are `post.error`, `account.token_expired`, `import.completed`,
+`import.failed`; signature is `X-Outstand-Signature: sha256=<hex>` HMAC-SHA256 over the raw body
+(matches `verifyOutstandSignature`); delivery retries 5× with backoff to 5 min and a 30 s
+timeout, so **the receiver must stay idempotent** — the upsert already is.
+
+**Registration is dashboard-only** (Settings → Webhooks → Add Webhook), with no documented API,
+so it is a manual step that may simply never have been done — the leading explanation for an
+empty `outstand_webhook_events`. The same screen has a **Test** button that posts
+`{"event":"test",…}`; our receiver signature-checks it, ignores the unknown event and returns
+200, which makes it a clean end-to-end reachability proof without publishing anything.
+See `docs/runbooks/outstand-webhook-registration.md`.
+
+Regardless, the webhook handles only posts it can match to a `donny_scheduled_posts` row and
+**logs a counter for those it cannot** — a visible hole, never a silent one.
 
 ### 2. Persist the dimensions
 
@@ -176,7 +223,18 @@ next person does not re-derive the same gap one provider later.
 
 - **The webhook becomes the single point of knowledge that a post published.** If it is
   unregistered or down, posts go unmeasured — the same failure class this spec exists to close.
-  It dedups on a stable event id; add a reconciliation sweep if that proves insufficient.
+  It dedups on a stable event id. **A reconciliation sweep is now cheap and should be planned in,
+  not deferred:** `GET /v1/posts` accepts `created_after` / `scheduled_after` / `social_account_id`
+  with `limit`/`offset` pagination, and `GET /v1/posts/{id}` returns per-account `status`,
+  `platformPostId`, `error` and `publishedAt`. So Outstand can be *asked* what published, with no
+  dependence on inbound delivery at all. That makes the webhook an optimisation over polling
+  rather than the only source of truth.
+- **The audit table cannot detect its own failure.** `outstand_webhook_events` is written only
+  after a successful match (`index.ts:72`), while the `no_match` path returns 200 at `:51`. An
+  empty table therefore means "never delivered" and "delivered, matched nothing" equally — and on
+  prod today it is empty while the webhook is confirmed registered and enabled. Record the
+  delivery **before** deciding whether it matched, or this stays unfalsifiable.
+  → `docs/runbooks/outstand-webhook-registration.md`
 - **Sample-size honesty.** With a handful of posts every correlation is noise. Sub-project C
   must state N and refuse to claim a pattern below a threshold; `brief.ts` sets the precedent
   with `MIN_POSTS_FOR_SIGNAL = 3`.
