@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { useDonny } from '@/hooks/useDonny';
 import { useDonnyNudges } from '@/hooks/useDonnyNudges';
 import { useDonnyQuickChips } from '@/hooks/useDonnyQuickChips';
+import { resolvePostType } from '@/lib/postType';
 import type { DonnyStage, DonnyNudge, NudgeAction, QuickChip } from '@/types/donnyNudge';
 import type { DonnyMessage, DonnyConversation, DonnyAvatarState } from '@/types/donny';
 import type { UserRole } from '@/types/user';
@@ -212,12 +213,7 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
       const outstandPostId = postObj?.id ?? publishData?.id ?? 'unknown';
 
       const draftMetadata = (draft.metadata ?? null) as Record<string, unknown> | null;
-      const sourceToPostType: Record<string, string> = {
-        campaign_social_hook: 'campaign',
-        promotion_social_hook: 'ugc_promotion',
-        dragonshare_social_hook: 'dragonshare',
-      };
-      const postType = sourceToPostType[(draftMetadata?.source as string) ?? ''] || 'standalone';
+      const postType = resolvePostType(draftMetadata?.source as string | null, draft.campaign_id);
 
       await supabase
         .from('donny_scheduled_posts')
