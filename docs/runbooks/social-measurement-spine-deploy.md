@@ -1,8 +1,10 @@
 # Social measurement spine — deploy order and hard blockers
 
-Written 2026-08-05 from the whole-branch review of `feat/social-measurement-spine`. **Read this
-before deploying `outstand-webhook`.** One finding here is a genuine data-correctness blocker that
-no per-task review could see, because it lives in the seam between two tasks that each passed.
+Written 2026-08-05 from the whole-branch review of `feat/social-measurement-spine`, updated the
+same day once Task 11 shipped the fix. **Read this before deploying `outstand-webhook`.** BLOCKER 1
+below was a genuine data-correctness defect that no per-task review could see, because it lived in
+the seam between two tasks that each passed — it is now **fixed** (see below, and its two follow-on
+fix rounds). The related `platform`-vocabulary decision and the cross-tenant read are still open.
 
 ## Required order
 
@@ -70,6 +72,15 @@ would have converted the silent drop into a silent triple-count:
    "already captured milestones" read is now also scoped by `platform` (an unscoped read would
    have reproduced the identical defect one query earlier); a distinct `console.error` fires when
    `no_platform_metrics` is non-zero, without folding into the 500-triggering `isCaptureRunFailed`.
+4. **Fix round 2.** The grain widening has a *third* consumer beyond the RPC and the capture job:
+   `content-strategy-recommend/brief.ts`'s `aggregateCreatorPerformance` gated its
+   `MIN_POSTS_FOR_SIGNAL = 3` sample-size safeguard on settled *row* count. Under the new grain one
+   post fanned to 3 platforms settles as 3 rows, so a single post alone could trip the threshold —
+   `usedPerformanceData` would flip true, persist to `content_briefs.used_performance_data`, and
+   render as "Based on your top-performing **posts**" (plural) from n=1. Fixed by gating (and
+   phrasing the "across N posts" summary) on the count of **distinct** `outstand_post_id`s among the
+   settled rows, not the row count; `PerfRow` and the `content_performance` select in `index.ts`
+   gained `outstand_post_id` to make this possible.
 
 **Historical rows are not recaptured.** Any `content_performance` row written under the old code
 path (before this ships) carries the cross-account aggregate mislabeled under a single platform,
