@@ -35,6 +35,13 @@ describe('toDbContentType', () => {
     for (const input of ['video_reel', 'photo', 'nonsense', '', 'REEL']) {
       expect(DB_CONTENT_TYPES).toContain(toDbContentType(input));
     }
+    // Explicitly test prototype-colliding keys that would expose the lookup
+    // vulnerability if PLANNER_ALIASES were ever a plain object literal again —
+    // each of these resolves to an inherited Object.prototype function on a
+    // plain object, escaping the `?? 'photo'` fallback.
+    for (const protoKey of ['__proto__', 'constructor', 'toString', 'hasOwnProperty', 'valueOf']) {
+      expect(DB_CONTENT_TYPES).toContain(toDbContentType(protoKey));
+    }
   });
 
   it('falls back to photo for an unrecognised value rather than throwing', () => {

@@ -8,10 +8,15 @@ export const DB_CONTENT_TYPES = [
 
 export type DbContentType = (typeof DB_CONTENT_TYPES)[number];
 
-const PLANNER_ALIASES: Record<string, DbContentType> = {
+// A Map, not a plain object literal: an object literal's lookup falls through
+// the prototype chain, so toDbContentType('constructor') / 'toString' /
+// 'valueOf' / 'hasOwnProperty' / '__proto__' would each resolve to an inherited
+// Object.prototype function instead of undefined, escaping the `?? 'photo'`
+// fallback and writing a value outside the CHECK. Same fix as post-type.ts.
+const PLANNER_ALIASES = new Map<string, DbContentType>([
   // content-posting-plan/index.ts:110 returns this for any video/* mime type.
   // It is not in the CHECK, so writing it unmapped fails the insert.
-  video_reel: 'reel',
+  ['video_reel', 'reel'],
   // src/types/campaignMedia.ts's ContentType union (also the vocabulary the
   // donny-campaign-generate prompt asks the LLM to emit, and what
   // content-posting-plan/index.ts:362 passes through unmapped on the
@@ -20,9 +25,9 @@ const PLANNER_ALIASES: Record<string, DbContentType> = {
   // doesn't contain them either, so without an explicit alias they'd silently
   // fall through to 'photo' and mislabel a short-form video row. Both are
   // short-form vertical video, same as a reel.
-  tiktok: 'reel',
-  youtube_short: 'reel',
-};
+  ['tiktok', 'reel'],
+  ['youtube_short', 'reel'],
+]);
 
 /**
  * Map a planner content type onto the DB vocabulary.
@@ -36,5 +41,5 @@ export function toDbContentType(planContentType: string): DbContentType {
   if ((DB_CONTENT_TYPES as readonly string[]).includes(planContentType)) {
     return planContentType as DbContentType;
   }
-  return PLANNER_ALIASES[planContentType] ?? 'photo';
+  return PLANNER_ALIASES.get(planContentType) ?? 'photo';
 }
