@@ -757,8 +757,15 @@ Then add this function above `serve(`:
 async function recordPublishedPost(
   supabase: ReturnType<typeof createClient>,
   postId: string,
-  publishedAt: string | null,
-): Promise<"recorded" | "unmatched" | "failed"> {
+  publishedAt: string,
+  accounts: OutstandSocialAccount[],
+  rawAccountCount: number,
+): Promise<{ outcome: "recorded" | "unmatched" | "failed"; rows: number; dropped: number }> {
+  // Entries parseAccounts discarded as malformed. Carried forward from the Task 4
+  // review: a skip that increments no counter is the failure mode this whole
+  // sub-project exists to remove.
+  const dropped = Math.max(0, rawAccountCount - accounts.length);
+
   const { data: sched, error: schedErr } = await supabase
     .from("donny_scheduled_posts")
     .select("user_id, campaign_id, platform, caption, hashtags, content_type, scheduled_at, metadata")
@@ -768,41 +775,78 @@ async function recordPublishedPost(
 
   if (schedErr) {
     console.error("outstand-webhook: schedule lookup failed", schedErr.message);
-    return "failed";
+    return { outcome: "failed", rows: 0, dropped };
   }
   if (!sched) {
     // No schedule row: published outside our flow, or Task 1's bug lost it.
     console.warn(`outstand-webhook: no scheduled post for ${postId} — not recorded for measurement`);
-    return "unmatched";
+    return { outcome: "unmatched", rows: 0, dropped };
+  }
+
+  // The EVENT is authoritative about what published and where; the schedule row
+  // only supplies dimensions. socialAccounts[].network is the platform, one entry
+  // per account — exactly the (outstand_post_id, platform) grain Task 2's unique
+  // key uses. Fall back to the schedule's own platform only when the event
+  // carries none.
+  const networks = Array.from(
+    new Set(accounts.map((a) => a.network).filter((n): n is string => !!n)),
+  );
+  const schedPlatform = typeof sched.platform === "string" ? sched.platform : null;
+  const platforms = networks.length > 0 ? networks : (schedPlatform ? [schedPlatform] : []);
+
+  if (platforms.length === 0) {
+    // platform is NOT NULL on social_post_log, so there is no honest row to write.
+    console.warn(`outstand-webhook: no platform for ${postId} — not recorded for measurement`);
+    return { outcome: "unmatched", rows: 0, dropped };
   }
 
   const meta = (sched.metadata as Record<string, unknown> | null) ?? {};
-  const row = {
+  const postType = resolvePostType(
+    meta.source as string | null,
+    sched.campaign_id as string | null,
+  );
+
+  const rows = platforms.map((platform) => ({
     user_id: sched.user_id,
     campaign_id: sched.campaign_id,
     outstand_post_id: postId,
-    platform: sched.platform,
-    post_type: resolvePostType(meta.source as string | null, sched.campaign_id as string | null),
+    platform,
+    post_type: postType,
     caption: sched.caption,
     hashtags: sched.hashtags,
     // content_type IS the format vocabulary. Never inferred from a URL: a wrong
     // format is indistinguishable from a real finding downstream.
     format: sched.content_type ?? null,
     scheduled_at: sched.scheduled_at,
-    published_at: publishedAt ?? new Date().toISOString(),
-  };
+    published_at: publishedAt,
+  }));
 
   const { error: upsertErr } = await supabase
     .from("social_post_log")
-    .upsert(row, { onConflict: "outstand_post_id,platform" });
+    .upsert(rows, { onConflict: "outstand_post_id,platform" });
 
   if (upsertErr) {
     console.error("outstand-webhook: social_post_log upsert failed", upsertErr.message);
-    return "failed";
+    return { outcome: "failed", rows: 0, dropped };
   }
-  return "recorded";
+  return { outcome: "recorded", rows: rows.length, dropped };
 }
 ```
+
+`OutstandSocialAccount` comes from Task 4 — extend the existing import:
+
+```ts
+import {
+  parseOutstandEvent,
+  verifyOutstandSignature,
+  type OutstandSocialAccount,
+} from "../_shared/outstand-webhook-lib.ts";
+```
+
+**Prod-verified constraints you must respect:** on `social_post_log`, `user_id`,
+`outstand_post_id`, `platform` and `post_type` are **NOT NULL**; every Task 2 column
+(`hashtags`, `caption`, `scheduled_at`, `published_at`, `creator_id`, `format`) is nullable. So a
+missing platform means *no row*, never a placeholder.
 
 - [ ] **Step 2: Call it on `post.published`**
 
@@ -812,10 +856,25 @@ Inside the existing `if (event === "post.published" || event === "post.error")` 
       // Record for measurement BEFORE the scheduled-post patch, so a post whose
       // status update finds no row is still measured.
       if (event === "post.published") {
-        const outcome = await recordPublishedPost(supabase, postId, publishedAt);
-        console.log(`outstand-webhook: measurement record for ${postId}: ${outcome}`);
+        const rawAccountCount = Array.isArray(socialAccounts) ? socialAccounts.length : 0;
+        const res = await recordPublishedPost(
+          supabase,
+          postId,
+          publishedAt ?? timestamp ?? new Date().toISOString(),
+          accounts,
+          rawAccountCount,
+        );
+        console.log(
+          `outstand-webhook: measurement record for ${postId}: ${res.outcome} rows=${res.rows}` +
+          (res.dropped > 0 ? ` droppedAccounts=${res.dropped}` : ""),
+        );
       }
 ```
+
+This needs `timestamp` and `accounts` in the destructure at the top of `serve` — Task 4 already
+added `timestamp`; add `accounts` alongside it. The `publishedAt ?? timestamp ?? new Date()`
+chain is the same one Task 4 established for `donny_scheduled_posts.published_at`, so both tables
+agree on when a post published.
 
 - [ ] **Step 3: Typecheck and run the shared tests**
 
@@ -828,7 +887,13 @@ Dispatch the `data-exposure-reviewer` subagent on `supabase/functions/outstand-w
 
 Address anything it finds. Then run `codex review --base main` until clean.
 
-- [ ] **Step 5: Deploy and verify against a real post**
+- [ ] **Step 5: Deploy and verify against a real post — FOUNDER-GATED, NOT THE IMPLEMENTER'S STEP**
+
+**Do not run this step.** Deploying an edge function to production and publishing a real post are
+the founder's calls, and this deploy also needs the Task 9 capture fix landed first so the first
+measured posts are not recorded as fabricated zeros. Stop after Step 4 and report.
+
+For whoever does run it later:
 
 ```bash
 "$HOME/AppData/Roaming/npm/supabase.exe" functions deploy outstand-webhook --project-ref zocahiffooqdybdhguqv
