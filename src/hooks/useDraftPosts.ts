@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { composeCaption } from '@/lib/composeCaption';
 
 export interface DraftPost {
   id: string;
@@ -116,7 +117,7 @@ export function useDraftPosts() {
 
       const { data: draft, error: fetchErr } = await supabase
         .from('donny_scheduled_posts')
-        .select('caption, media_urls, platform, content_type, scheduled_at')
+        .select('caption, hashtags, media_urls, platform, content_type, scheduled_at')
         .eq('id', draftId)
         .eq('user_id', user.id)
         .single();
@@ -161,7 +162,11 @@ export function useDraftPosts() {
             path: '/v1/posts',
             method: 'POST',
             payload: {
-              caption: draft.caption,
+              // Same gap as publishDraft: hashtags live in their own column and
+              // were never sent, so every tag on the draft was dropped at
+              // schedule time. composeCaption is the shared join, so scheduling
+              // and posting now produce identical text.
+              caption: composeCaption(draft.caption, draft.hashtags as string[] | null),
               media_urls: draft.media_urls,
               platform: draft.platform,
               content_type: draft.content_type,

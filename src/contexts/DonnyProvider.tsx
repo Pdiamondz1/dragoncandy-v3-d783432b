@@ -11,6 +11,7 @@ import { extractOutstandPostId } from '@/lib/outstandPostId';
 import type { DonnyStage, DonnyNudge, NudgeAction, QuickChip } from '@/types/donnyNudge';
 import type { DonnyMessage, DonnyConversation, DonnyAvatarState } from '@/types/donny';
 import type { UserRole } from '@/types/user';
+import { composeCaption } from '@/lib/composeCaption';
 
 interface DonnyContextValue {
   // UI state
@@ -160,7 +161,7 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
     try {
       const { data: draft, error: draftErr } = await supabase
         .from('donny_scheduled_posts')
-        .select('caption, media_urls, platform, content_type, campaign_id, metadata')
+        .select('caption, hashtags, media_urls, platform, content_type, campaign_id, metadata')
         .eq('id', scheduledPostId)
         .single();
 
@@ -181,7 +182,14 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
       );
       if (accountIds.length === 0) throw new Error('No connected social accounts');
 
-      const container: Record<string, unknown> = { content: draft.caption ?? '' };
+      // Hashtags are stored in their own `text[]` column and were NEVER sent —
+      // this posted `caption` alone, so every tag Donny generated (and now
+      // every tag edited in the Drafts dialog) was silently dropped at publish.
+      // composeCaption is the same join the DragonShare prefill uses, so the
+      // published text matches what the draft card shows.
+      const container: Record<string, unknown> = {
+        content: composeCaption(draft.caption, draft.hashtags as string[] | null),
+      };
       if (draft.media_urls && (draft.media_urls as string[]).length > 0) {
         container.media = (draft.media_urls as string[]).map((url: string, i: number) => ({
           id: `media-${i}`,
