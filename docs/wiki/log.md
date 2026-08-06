@@ -1,5 +1,36 @@
 # Wiki Log
 
+## [2026-08-06] ingest | [[Cross-Tenant Proxy Authorization]] — the proxy IS the tenant boundary
+Ingested [[Outstand Proxy Cross-Tenant Authz Session]] (PR #368). Created a concept page rather than
+compounding onto [[Social Measurement Spine]]: that page is about *measurement*, this is about
+*tenant isolation* — related, now cross-linked both ways, but not the same claim.
+
+**Status correction on [[Social Measurement Spine]].** Its Known Issues listed the body-grant and
+the platform fallback as open; both are fixed. Struck through rather than deleted, with what
+replaced them — a reader who remembers the old claim needs to see it retired, not silently vanish.
+The entry is explicit that the fix is **not deployed**, so the page never reads as safer than prod.
+
+Three defects, all pre-existing and live, all of which ran perfectly: body account ids used as a
+grant (`DELETE /posts/{any_id}` + your own account id ⇒ any post in the org), a platform fallback
+(one Instagram account ⇒ every Instagram post), and a list filter that stripped `data` while
+forwarding an unfiltered `posts` sibling.
+
+**The third was settled by one captured request**, after three review rounds had argued it
+unknowable: `GET /posts` as a single-account user returned 4 other-tenant posts with live Instagram
+permalinks, plus the org-wide `total: 49`. Our own `reconcile-social-posts` already read
+`body.posts` first — one consumer knew what the other still got wrong.
+
+Recorded two review findings **dismissed with evidence** rather than implemented, since a dismissal
+nobody can audit is indistinguishable from an oversight.
+
+**This session's docs also absorbed PR #367.** That PR touched exactly these five files and was
+still unmerged, so cherry-picking it onto this branch avoided a guaranteed five-file conflict; #367
+is superseded, not lost.
+
+Pages: created `concepts/cross-tenant-proxy-authorization.md`; updated
+`concepts/social-measurement-spine.md`, `index.md`, `docs/SHIPPED_LOG.md`,
+`docs/PROJECT_CONTEXT.md` §5.
+
 ## [2026-08-06] update | [[Social Measurement Spine]] — deployed, and the first post ever measured
 Corrects a claim I wrote hours earlier in the ingest below: **"nothing has ever flowed through this
 pipeline"** is no longer true. PR #366 deployed to prod and a real Instagram publish (`ei1xc`) went

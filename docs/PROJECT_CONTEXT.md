@@ -107,6 +107,14 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Built — awaiting founder go-live
 
+- **`outstand-proxy` cross-tenant authorization** — three pre-existing, live holes closed: body
+  account ids used as a **grant** (`DELETE /posts/{any_id}` ⇒ any post in the org), a platform
+  fallback (one Instagram account ⇒ every Instagram post), and a list filter that stripped `data`
+  while forwarding an unfiltered `posts` sibling (**observed on prod**: 4 of 5 posts belonged to
+  another tenant). **Pending:** merge PR #368, then **redeploy `outstand-proxy` + `social-proxy`** —
+  merging ships frontend only, so the holes stay live until then. `/media` remains unscoped
+  (`count: 0` today) and `business_outstand_accounts` INSERT unconstrained — both filed.
+  → `docs/wiki/concepts/cross-tenant-proxy-authorization.md` · #368
 - **AIOS Google Workspace ("Connections")** — per-user Google OAuth, audited proxy, Drive
   hub, Donny exports, metrics→Sheet. The `google-chat-donny` bot ships dark (503).
   **Pending:** register the Chat app, set `GOOGLE_CHAT_PROJECT_NUMBER` +

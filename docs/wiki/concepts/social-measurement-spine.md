@@ -121,11 +121,13 @@ neutralised forgery is not invisible.
   "Connect your social accounts in Settings." `BRAND_ROLE_ENABLED = false` additionally blocks new
   brand signups — note it gates signup/landing/sponsorship UI, **not** the `/dashboard/brand/*`
   routes, so an existing brand account *with* a connection would reach it.
-- **`outstand-proxy` `enforceScope` authorizes PATCH/PUT/DELETE from account ids in the
-  request body**, never checked against the target post — a cross-tenant *modify and delete*,
-  pre-existing and worse than the read hole closed here.
-- **Its platform-level read fallback** grants read access to every post on a platform the
-  caller owns any one account on.
+- ~~**`outstand-proxy` `enforceScope` authorizes PATCH/PUT/DELETE from account ids in the
+  request body**~~ and ~~**its platform-level read fallback**~~ — **both fixed in PR #368**, with a
+  third and larger hole found while confirming them: `GET /posts` was forwarding *every tenant's*
+  posts in an unfiltered sibling array. See [[Cross-Tenant Proxy Authorization]] for the rule that
+  replaced them — a grant may rest only on a fact the client cannot assert. **Fixed but NOT yet
+  deployed:** merging ships frontend only, so the holes stay live on prod until `outstand-proxy`
+  and `social-proxy` are redeployed.
 - **CI type-checks no edge functions.** `tsconfig.app.json`'s `include` is `["src"]`, so all
   80 Deno functions are unchecked. `deno check` works. `outstand-webhook`'s untyped
   `createClient()` resolves row types to `never` (12 such errors on main).
@@ -181,6 +183,8 @@ could not exist without); multi-platform fan-out (the account has one connection
 
 ## See Also
 
+- [[Cross-Tenant Proxy Authorization]] — the proxy holes this work surfaced, and the rule that
+  closed them
 - [[Service-Role Data Exposure]] — the sibling defect class; same "runs perfectly" property
 - [[Outstand]] — the provider this measures through
 - [[Social Provider Decision]] — why Outstand, and what a provider swap would cost here

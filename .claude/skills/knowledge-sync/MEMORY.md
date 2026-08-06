@@ -68,6 +68,28 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-08-06] `outstand-proxy` cross-tenant authorization (PR #368, absorbs #367)
+
+**Output:** `docs/wiki/concepts/cross-tenant-proxy-authorization.md` (new) + the
+`[2026-08-06] ingest | [[Cross-Tenant Proxy Authorization]]` line in `docs/wiki/log.md`.
+
+**Happened.** Three pre-existing live authz holes in `outstand-proxy` closed. Wrote a NEW concept
+page rather than compounding onto [[Social Measurement Spine]] — that page is about *measurement*,
+this about *tenant isolation*. Cross-linked both ways. Struck through (not deleted) the two Known
+Issues on the spine page that this fixed.
+
+**Worked.** Checking for doc collisions BEFORE writing: `git diff --stat origin/main
+origin/<other-branch>` showed PR #367 touched **exactly** the five files I was about to edit and was
+still unmerged. Cherry-picking it onto this branch first, then re-applying my edits on the corrected
+base, turned a guaranteed five-file conflict into a clean fold. Cost: redoing ~5 edits. Worth it.
+
+**Failed.** I wrote all five doc edits BEFORE checking for the collision, so I had to
+`git checkout HEAD --` four of them and redo the work. The check is cheap and belongs first.
+
+**Remember.** When a status-correcting PR for the *same subject area* is open and unmerged, the next
+session's knowledge-sync will collide with it on every file. Fold it in (cherry-pick + supersede)
+rather than writing a third PR that conflicts with both.
+
 ### [2026-08-06] Measurement spine deployed + first measured post — status correction (branch `docs/measurement-spine-live-proof`)
 - **Output:** `PROJECT_CONTEXT.md` §5 entry **moved** Built-awaiting-go-live → **Shipped** and rewritten
   (it asserted "Nothing has yet flowed through the pipeline", false within hours); `concepts/social-measurement-spine.md`

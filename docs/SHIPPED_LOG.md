@@ -26,6 +26,87 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-06] Cross-tenant authorization holes closed in `outstand-proxy` (#368)
+
+**Not deployed at time of writing.** PR #368 open; merging ships frontend only, so `outstand-proxy`
+and `social-proxy` both need redeploying before prod is actually closed.
+
+Reviewing the measurement-spine work surfaced three **pre-existing, live** authorization defects in
+`outstand-proxy`, worse than the read hole #366 closed. The governing fact: **the Outstand API key
+is org-wide** — every tenant's posts, accounts and media sit behind one credential — so the proxy is
+not a convenience layer, it *is* the tenant boundary. All three ran perfectly and returned plausible
+responses.
+
+1. **Request-body account ids were treated as a GRANT.** `enforceScope`'s `/posts/{id}` branch
+   parsed `social_account_ids`/`accounts` from the caller-supplied body and allowed when `.some()`
+   was owned, never checking the path's post against them. `DELETE /posts/{any_post_id}` with a body
+   naming your own account id **modified or deleted any post in the org**.
+2. **A platform-level fallback** allowed when the post's *platform* matched one the caller owned any
+   account on — one Instagram account authorized every Instagram post in the org.
+3. **`filterListBody` filtered one key while the response carried two.** `GET /posts` and
+   `GET /social-accounts` are allowed **unconditionally**, on the promise that this filter strips
+   other tenants' rows.
+
+1 and 2 were **not separable**: fixing 1 alone left the destructive path fully open through 2.
+
+**#3 was settled by capture, not argument** — one `GET /posts` through the proxy using the founder's
+own session (no org key, no secret):
+
+```
+{ success: true, posts: [5 posts], data: [1 post], pagination: { total: 49, count: 5 } }
+```
+
+Four of the five posts in `posts[]` belonged to a **different tenant** — captions, media, live
+Instagram permalinks — while `data[]` was correctly filtered to 1, and `pagination.total` disclosed
+the org-wide count. The filter *looked* like it worked while the full list rode along beside it, and
+the vendor SDK's `usePosts()` reads `.posts` — precisely the leaking key. The tell had been in our
+own code: `reconcile-social-posts` reads `body.posts` **first**, citing the SDK's typing as stronger
+evidence than the vendor's docs.
+
+**The fix.** Two pure tested modules, extracted because `index.ts` calls `serve()` at module load and
+is not import-testable — neither rule may have "we couldn't test it" as a property when it is the
+tenant boundary. `_shared/outstand-post-authz.ts` (22 cases): exactly two things grant, both
+server-established and neither client-assertable — provider-fetched post accounts intersected with
+the caller's, and the `outstand_post_ownership` binding. The platform fallback is **deleted outright
+with its two helpers**, so `decidePostAccess` takes no platform input and cannot be reinstated by an
+argument change; body ids become an `.every()` **constraint** that runs first and outranks both
+grants. `_shared/outstand-list-filter.ts` (23 cases, anchored on the captured envelope): filters
+**every** row array via a bounded, cycle-guarded walk rather than a list of key names someone must
+remember to extend, and rewrites every counter spelling. A row whose account ids cannot be resolved
+is **dropped** — unattributable is not owned.
+
+**Third commit — the review's findings.** `data-exposure-reviewer` found nothing introduced but
+surfaced real pre-existing issues; three were fixed. The sharpest: the account-claim guard **failed
+open** — `.maybeSingle()` returns `{data: null, error}` when **more than one** row matches, i.e.
+exactly when two or more other tenants already claim the id, and the error was discarded so null read
+as "unclaimed". `social-proxy` already had this fix; `outstand-proxy` never got it. Also: list
+filtering was depth-1 only, and counters were sanitized in one spelling out of six.
+
+Two findings were **dismissed with evidence** rather than implemented — grant 1 is not structurally
+empty (`GET /posts/{id}` returns `post.socialAccounts[].id`, captured), and the `String()` coercion
+concern doesn't apply (the SDK types `accounts` as `string[]`). The first also resolved the
+regression tail nobody could quantify: the 3 legacy unbound posts belong to the other tenant and
+*should* be denied.
+
+Also corrected a note in `social-proxy` instructing a future editor to **reinstate**, in Phase 3, the
+platform fallback and the `donny_scheduled_posts` lookup — deleting vulnerable code without deleting
+the note telling someone to bring it back leaves the vulnerability scheduled.
+
+**Gates:** 1240 tests / 113 files (45 new); `typecheck` + `deno check` clean; **Codex clean, run
+twice**. Both of the day's PRs sat un-mergeable through a **GitHub Actions major outage** (from 15:22
+UTC, unresolved at 19:43) — a required check queued 15 minutes and was cancelled, which
+`gh pr checks` reports as `fail`. This PR also **absorbs PR #367** by cherry-pick: that PR touched
+exactly the same five docs files and was still unmerged, so folding it in avoided a guaranteed
+conflict.
+
+**Filed, not fixed:** `/media` is unscoped for every method and any caller, but the SDK's `MediaFile`
+type carries no account/user/org field so there is nothing to filter on — it needs its own ownership
+binding plus a migration, and reads `count: 0` today. `business_outstand_accounts` INSERT is still
+unconstrained for `authenticated` (`20260804174934` revoked UPDATE only) — the substrate under grant
+1. `/social-accounts/pending/{token}/finalize` rests on provider token entropy. Delegated posting
+appears inert (`ownedIds` is keyed on the grantee). Offset paging over a filtered list remains
+incoherent. → `docs/wiki/concepts/cross-tenant-proxy-authorization.md`
+
 ## [2026-08-06] Measurement spine DEPLOYED + the first post ever measured end-to-end
 
 The entry below records what shipped; this records it going live and being **proven**. PR #366 merged,
