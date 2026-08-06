@@ -108,7 +108,7 @@ serve(async (req) => {
     // Creator's OWN performance (graceful)
     const { data: perfRows } = await admin
       .from("content_performance")
-      .select("platform, post_type, engagement_rate, is_settled")
+      .select("outstand_post_id, platform, post_type, engagement_rate, is_settled")
       .eq("user_id", creatorId);
     const perf = aggregateCreatorPerformance((perfRows ?? []) as PerfRow[]);
     const usedPerformanceData = perf.hasSignal;

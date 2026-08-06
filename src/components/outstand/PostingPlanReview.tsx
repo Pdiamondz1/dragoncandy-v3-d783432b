@@ -12,6 +12,7 @@ import { toDatetimeLocal } from '@/lib/dateUtils';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { toDbContentType } from '@/lib/contentType';
 
 export interface PostingPlanMediaItem {
   url: string;
@@ -234,10 +235,12 @@ function PostingPlanReviewInner({
 
         const outstandPostId = result?._outstandPostId ?? null;
 
-        await supabase.from('donny_scheduled_posts').insert({
+        const { error: scheduleError } = await supabase.from('donny_scheduled_posts').insert({
           user_id: user!.id,
           campaign_id: campaignId,
-          content_type: post.content_type,
+          // Planner vocabulary != DB CHECK vocabulary. Unmapped, "video_reel"
+          // failed the CHECK and the post was silently lost.
+          content_type: toDbContentType(post.content_type),
           platform: post.platform,
           caption: post.caption,
           hashtags: post.hashtags,
@@ -251,6 +254,18 @@ function PostingPlanReviewInner({
             social_account_ids: accountIds,
           },
         });
+
+        if (scheduleError) {
+          // NEVER swallow this again. The post is already live on the platform at
+          // this point, so a failure here means it is published but unrecorded —
+          // invisible to scheduling and to every analytics surface downstream.
+          console.error('[PostingPlanReview] Failed to record scheduled post:', scheduleError);
+          toast({
+            variant: 'destructive',
+            title: 'Post published, but not recorded',
+            description: 'It went live, but we could not save it for scheduling or analytics.',
+          });
+        }
       }
 
       setConfirmedPlanId(planGroupId);

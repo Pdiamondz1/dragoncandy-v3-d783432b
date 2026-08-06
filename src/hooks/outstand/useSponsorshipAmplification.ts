@@ -12,6 +12,42 @@ interface AmplifyInput {
   scheduledAt?: string;
 }
 
+export interface ResolvedAmplificationPlatforms {
+  /** Distinct platform names to write into social_post_log, one row per entry. */
+  platforms: string[];
+  /** accountIds with no platform match — never written anywhere, caller must warn. */
+  unresolved: string[];
+}
+
+/**
+ * Maps each amplified accountId to a real platform name via a caller-supplied
+ * lookup (sourced from business_outstand_accounts), deduplicating accounts
+ * that share a platform — e.g. two locations both on Instagram — down to one
+ * entry. This matches social_post_log's `(outstand_post_id, platform)` unique
+ * key: one physical Outstand post fans out to N accounts but should only ever
+ * produce one row per platform, the same grain the webhook and
+ * content-performance-capture already use. An accountId with no match is
+ * reported in `unresolved` rather than coerced into a fabricated platform
+ * value — writing the raw accountId as `platform` was the original bug this
+ * hook exists to fix.
+ */
+export function resolveAmplificationPlatforms(
+  accountIds: string[],
+  platformByAccountId: Map<string, string>,
+): ResolvedAmplificationPlatforms {
+  const platforms = new Set<string>();
+  const unresolved: string[] = [];
+  for (const accountId of accountIds) {
+    const platform = platformByAccountId.get(accountId);
+    if (!platform) {
+      unresolved.push(accountId);
+      continue;
+    }
+    platforms.add(platform);
+  }
+  return { platforms: [...platforms], unresolved };
+}
+
 export function useSponsorshipAmplification() {
   const { apiKey, baseUrl } = useOutstandConfig();
   const { user } = useAuth();
@@ -33,15 +69,90 @@ export function useSponsorshipAmplification() {
       });
       if (!res.ok) throw new Error('Failed to amplify post');
       const data: Record<string, unknown> = await res.json();
+      // No 'unknown' fallback: social_post_log.outstand_post_id is NOT NULL and
+      // carries the UNIQUE (outstand_post_id, platform) key added alongside this
+      // hook. A placeholder string here would leave the first such row
+      // permanently unmatchable by the webhook, AND collide with a second
+      // unresolved response on the same platform -- which, since the insert
+      // below is one atomic array call, would fail the whole batch and silently
+      // lose every platform's measurement row for this post. Null instead, and
+      // skip the write below (mirrors SocialPostPrompt's syncScheduledPost
+      // outstandPostId == null handling) -- the publish itself already
+      // succeeded and must stand regardless.
+      const outstandPostId = (data.id ?? (data.data as Record<string, unknown>)?.id ?? null) as string | null;
 
-      for (const accountId of accountIds) {
-        await supabase.from('social_post_log').insert({
+      // social_post_log.platform must carry a real network name (instagram,
+      // youtube, ...), never an Outstand account id — every other writer/reader
+      // of this column assumes that (the (outstand_post_id, platform) unique
+      // key, content-performance-capture's metricsForPlatform, the strategy
+      // recommender's group-by). Resolve accountId -> platform via
+      // business_outstand_accounts (own-row RLS: user_id = auth.uid()) rather
+      // than writing the id directly. This does not change what accountId is
+      // used for above — only what gets recorded for measurement.
+      const platformByAccountId = new Map<string, string>();
+      if (user) {
+        const { data: accounts, error: accountsError } = await supabase
+          .from('business_outstand_accounts')
+          .select('outstand_social_account_id, platform')
+          .eq('user_id', user.id)
+          .in('outstand_social_account_id', accountIds);
+        if (accountsError) {
+          console.error('[useSponsorshipAmplification] Failed to resolve account platforms:', accountsError);
+        } else {
+          for (const row of accounts ?? []) {
+            platformByAccountId.set(row.outstand_social_account_id, row.platform);
+          }
+        }
+      }
+
+      const { platforms, unresolved } = resolveAmplificationPlatforms(accountIds, platformByAccountId);
+      for (const accountId of unresolved) {
+        // Never fall back to writing accountId into `platform` — that is the
+        // exact defect being fixed. The Outstand publish above already
+        // succeeded regardless; skipping only costs this account's
+        // measurement row, never silently — always a visible console.warn.
+        console.warn(
+          `[useSponsorshipAmplification] Could not resolve platform for Outstand account ${accountId} (post ${outstandPostId}); skipping its social_post_log write.`,
+        );
+      }
+
+      if (outstandPostId == null && platforms.length > 0) {
+        // Could not resolve an Outstand post id from the response shape at all
+        // -- there is no honest row to write for ANY platform, not just the
+        // per-account unresolved ones warned above. Skip the write entirely
+        // (never substitute a placeholder) and say so loudly: the publish
+        // already went out, so this is a measurement loss, not a failed post.
+        console.warn(
+          `[useSponsorshipAmplification] Could not resolve an Outstand post id from the response; skipping social_post_log write for platform(s) [${platforms.join(', ')}].`,
+        );
+      }
+
+      // Insert every platform's row in ONE array call, not a sequential loop.
+      // PostgREST executes a JSON-array insert as a single INSERT statement, so
+      // either every platform row lands or none does -- there is no window where
+      // some rows exist and others don't. A sequential per-platform loop left
+      // exactly that window open: if the Outstand webhook's no-schedule path
+      // (outstand-webhook/index.ts's recordPublishedPost) ran between two
+      // iterations, it would find the first-inserted row, treat that as
+      // sufficient, stamp only that subset, and return 200 -- so Outstand never
+      // retries and the remaining platforms stay permanently unverified and
+      // unmeasured. A single atomic insert removes the window rather than
+      // requiring the webhook to detect and retry against a partial subset.
+      if (outstandPostId != null && platforms.length > 0) {
+        const rows = platforms.map((platform) => ({
           user_id: user!.id,
           campaign_id: campaignId,
-          outstand_post_id: (data.id ?? (data.data as Record<string, unknown>)?.id ?? 'unknown') as string,
-          platform: accountId,
+          outstand_post_id: outstandPostId,
+          platform,
           post_type: 'amplification',
-        });
+        }));
+        const { error: logError } = await supabase.from('social_post_log').insert(rows);
+        if (logError) {
+          console.error(
+            `[useSponsorshipAmplification] Failed to log social post(s) for platforms [${platforms.join(', ')}]:`,
+            logError,
+          );
+        }
       }
 
       return data;

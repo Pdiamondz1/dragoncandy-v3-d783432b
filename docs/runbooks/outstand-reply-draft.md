@@ -4,6 +4,12 @@ Their reply closed the quota risk and opened four things worth taking. This repl
 all four and — critically — **specifies the analytics gap precisely**, because "we'd like tenant
 filtering" would get us the wrong endpoint. Context: `docs/wiki/concepts/social-provider-decision.md`.
 
+Questions 5 and 6 were added 2026-08-05 after reading outstand.so's feature page, which
+advertises two things we do not currently use: webhook events when metrics change, and CSV/JSON
+export endpoints. **Q5 is the one that unblocks work** — Task 4 of the measurement spine is
+stalled because we cannot tell an unregistered webhook from a registered one that has never
+fired, and only Outstand can see their side of that.
+
 ---
 
 **Subject:** Re: Planning for connected-account growth — quota headroom and process
@@ -15,7 +21,7 @@ having to ask twice. That plus the sub-day turnaround and `GET /v1/account/usage
 treat headroom as a monitored metric instead of something we discover the hard way. We'll alert
 on `socialAccounts.remaining`.
 
-Four follow-ups.
+Six follow-ups.
 
 **1. Yes please to tenant filtering on analytics — and here's the specific shape.**
 
@@ -49,6 +55,27 @@ bulk-analytics reason above.
 
 **4. Slack Connect — yes please.** That'll be much easier than email for this kind of thing.
 
+**5. Webhooks — the full event list, and what's registered on our account.**
+
+Your feature page mentions "webhook events the moment numbers change." We currently handle
+`post.published` and `account.token_expired`. Two questions:
+
+- What's the complete list of event types you emit, and is there a metrics-updated event? If
+  there is, we'd rather react to it than poll each post on a fixed 24h/72h/7d schedule — that's
+  a large share of the call volume driving question 1.
+- Could you confirm what webhook endpoint, if any, is currently registered for our account, and
+  whether any deliveries have been attempted or failed? We have a receiver deployed and no
+  recorded deliveries, and from our side we genuinely cannot distinguish "never registered"
+  from "registered but never fired" — those need opposite fixes. A delivery log, or a way to
+  fire a test event on demand, would settle it permanently.
+
+**6. CSV / JSON export — how far back does it reach?**
+
+Your feature page lists CSV/JSON export endpoints. What are they, and do they cover only posts
+published through Outstand, or can they also reach posts that already existed on a social
+account before it was connected? We're deciding whether our historical performance data starts
+from zero or can be backfilled, and that one answer settles it.
+
 One last question while we're here: for `GET /v1/posts/{id}/analytics`, when a post has no
 metrics available, we sometimes see an empty `metrics_by_account`. Is `metrics_error` populated
 in that case, and is there a way to distinguish "published but genuinely zero engagement" from
@@ -68,3 +95,12 @@ DragonCandy
 - The last question matters more than it looks: it is the same ambiguity that produced the
   "fundamentally unmeasurable" conclusion which nearly cost us a provider migration. Getting a
   definitive answer from the vendor closes it for good.
+- **Q5's second half is a live blocker, not a nice-to-have.** Measurement-spine Task 4 cannot
+  proceed until we know whether the webhook is registered; the answer arrives here or not at
+  all. If Outstand is slow, the fallback is to publish one real post and watch
+  `outstand_webhook_events` — cheaper to ask first.
+- Treat every answer as a claim to verify, not a fact. This provider's real payloads have
+  already diverged from their stated shape twice: every field name in the account-metrics
+  response differed from what our code assumed (rendering a dashboard of zeros over an account
+  with 867 views), and `?accountId=` is silently ignored on `/analytics`. Capture a real
+  response before building on any of it.

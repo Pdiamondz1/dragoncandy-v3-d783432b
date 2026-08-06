@@ -4,6 +4,7 @@
 export const MIN_POSTS_FOR_SIGNAL = 3;
 
 export interface PerfRow {
+  outstand_post_id: string | null;
   platform: string | null;
   post_type: string | null;
   engagement_rate: number | null;
@@ -15,10 +16,32 @@ export interface PerfAggregate {
   summary: string | null;
 }
 
-/** Aggregate a creator's OWN settled content_performance into a short signal summary. */
+/**
+ * Aggregate a creator's OWN settled content_performance into a short signal
+ * summary.
+ *
+ * `content_performance` is one row per PLATFORM PLACEMENT, not per post
+ * (Task 11's per-platform grain) — a single post fanned out to Instagram +
+ * YouTube + Facebook settles as 3 rows sharing one `outstand_post_id`.
+ * `MIN_POSTS_FOR_SIGNAL` is a sample-size safeguard against claiming
+ * evidence from too few POSTS (the spec for this sub-project names it as
+ * the precedent to preserve); gating and the "across N posts" wording both
+ * count DISTINCT `outstand_post_id`s among the settled rows, not row count
+ * — otherwise a single fanned-out post alone would trip the threshold and
+ * `usedPerformanceData`/the persisted brief would claim "your top-performing
+ * posts" evidence from n=1 (fix round 2, coordinator review). Rows with no
+ * `outstand_post_id` (should not occur — the column is NOT NULL in prod)
+ * don't count toward the distinct-post total in either direction: they
+ * neither collapse together as one post nor each inflate the count as a
+ * separate one.
+ */
 export function aggregateCreatorPerformance(rows: PerfRow[]): PerfAggregate {
   const settled = rows.filter((r) => r.is_settled === true);
-  if (settled.length < MIN_POSTS_FOR_SIGNAL) return { hasSignal: false, summary: null };
+
+  const distinctPostCount = new Set(
+    settled.map((r) => r.outstand_post_id).filter((id): id is string => !!id),
+  ).size;
+  if (distinctPostCount < MIN_POSTS_FOR_SIGNAL) return { hasSignal: false, summary: null };
 
   const groups = new Map<string, { total: number; count: number; platform: string; post_type: string }>();
   for (const r of settled) {
@@ -30,15 +53,17 @@ export function aggregateCreatorPerformance(rows: PerfRow[]): PerfAggregate {
     g.count += 1;
     groups.set(key, g);
   }
-  let best: { avg: number; platform: string; post_type: string; count: number } | null = null;
+  let best: { avg: number; platform: string; post_type: string } | null = null;
   for (const g of groups.values()) {
     const avg = g.count > 0 ? g.total / g.count : 0;
-    if (!best || avg > best.avg) best = { avg, platform: g.platform, post_type: g.post_type, count: g.count };
+    if (!best || avg > best.avg) best = { avg, platform: g.platform, post_type: g.post_type };
   }
   if (!best) return { hasSignal: false, summary: null };
+  // Use the SAME distinct-post count as the gate above -- not the winning
+  // group's row count -- so the wording ("posts") and the number always agree.
   return {
     hasSignal: true,
-    summary: `Top: ${best.platform} ${best.post_type} (avg engagement ${best.avg.toFixed(1)}%) across ${best.count} posts`,
+    summary: `Top: ${best.platform} ${best.post_type} (avg engagement ${best.avg.toFixed(1)}%) across ${distinctPostCount} posts`,
   };
 }
 
