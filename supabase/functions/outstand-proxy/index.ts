@@ -18,6 +18,11 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { extractCreatedPostId } from "../_shared/outstand-post-ownership.ts";
 import { recordPostOwnership } from "../_shared/outstand-post-ownership-store.ts";
+import {
+  decidePostAccess,
+  extractRequestAccountIds,
+  firstUnownedAccountId,
+} from "../_shared/outstand-post-authz.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -59,6 +64,24 @@ function jsonResponse(status: number, body: unknown): Response {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+// Parse a request body without letting a malformed one throw out of an
+// authorization path. Returns null when it isn't JSON.
+//
+// Null is SAFE here, not permissive: it flows into extractRequestAccountIds,
+// which yields [], which makes the re-targeting constraint vacuous — and a
+// vacuous constraint still leaves the request needing a positive ownership
+// grant. Nothing is allowed by failing to parse. It is logged because a body
+// this proxy cannot read is a body whose account ids it also cannot police, and
+// that should be visible if it ever starts happening.
+function safeParseJson(bodyText: string): unknown {
+  try {
+    return JSON.parse(bodyText);
+  } catch {
+    console.warn("outstand-proxy: request body is not JSON — no account ids extracted from it");
+    return null;
+  }
 }
 
 // Outstand stores the filename verbatim and platforms (Facebook, Instagram,
@@ -146,25 +169,12 @@ async function listOwnedAccountIds(
   return new Set(rows.map((r) => r.outstand_social_account_id));
 }
 
-async function listOwnedPlatforms(
-  admin: SupabaseClient,
-  userId: string,
-  orgUnitId?: string | null,
-): Promise<Set<string>> {
-  let query = admin
-    .from("business_outstand_accounts")
-    .select("platform")
-    .eq("user_id", userId)
-    .neq("status", "revoked");
-
-  if (orgUnitId) {
-    query = query.eq("org_unit_id", orgUnitId);
-  }
-
-  const { data } = await query;
-  const rows = (data ?? []) as Array<{ platform: string }>;
-  return new Set(rows.map((r) => r.platform.toLowerCase()));
-}
+// listOwnedPlatforms() lived here. It existed for exactly one caller: the
+// platform-level fallback in enforceScope that allowed a request when the
+// post's PLATFORM matched one the caller owned any account on — i.e. owning one
+// Instagram account authorized every Instagram post in the org. That fallback
+// was removed (see the /posts/{id} branch), so this and extractPostPlatform()
+// went with it rather than being left as a loaded gun for the next edit.
 
 function extractSocialAccountIds(post: any): string[] {
   if (!post) return [];
@@ -185,32 +195,68 @@ function extractSocialAccountIds(post: any): string[] {
   return [...new Set(ids)];
 }
 
-function extractPostPlatform(post: any): string | null {
-  if (!post) return null;
-  const val = post.platform ?? post.network ?? null;
-  return val ? String(val).toLowerCase() : null;
-}
-
-async function fetchPostAccountIds(
-  postId: string,
-  outstandKey: string,
-): Promise<{ ids: string[]; platform: string | null }> {
-  const res = await fetch(`${OUTSTAND_BASE_URL}/posts/${postId}`, {
-    headers: { Authorization: `Bearer ${outstandKey}` },
-  });
+// Ask the PROVIDER which accounts this post belongs to, with the org key. This
+// is the server-side half of the ownership question — the caller cannot
+// influence the answer, which is exactly why it may grant and the request body
+// may not.
+//
+// Returns [] on EVERY failure (non-2xx, unreachable, unparseable, shape moved).
+// That is the fail-closed contract: decidePostAccess grants only on a non-empty
+// intersection, so an empty array can never widen access, and a post whose
+// accounts we cannot establish is denied rather than waved through. The network
+// throw used to escape to an uncaught 500; catching it turns the same denial
+// into an attributable 403 with a log line instead of a stack trace.
+async function fetchPostAccountIds(postId: string, outstandKey: string): Promise<string[]> {
+  let res: Response;
+  try {
+    res = await fetch(`${OUTSTAND_BASE_URL}/posts/${postId}`, {
+      headers: { Authorization: `Bearer ${outstandKey}` },
+    });
+  } catch (e) {
+    console.error(`outstand-proxy: fetchPostAccountIds unreachable for ${postId}`, e);
+    return [];
+  }
   if (!res.ok) {
     console.warn(`outstand-proxy: fetchPostAccountIds failed for ${postId}: ${res.status}`);
-    return { ids: [], platform: null };
+    return [];
   }
   const body = await res.json().catch(() => null);
   const post = body?.data?.post ?? body?.post ?? body?.data ?? body;
   const ids = extractSocialAccountIds(post);
-  const platform = extractPostPlatform(post);
   if (ids.length === 0) {
     const postKeys = post ? Object.keys(post).join(', ') : 'null';
     console.warn(`outstand-proxy: fetchPostAccountIds returned empty for ${postId}. Post keys: ${postKeys}`);
   }
-  return { ids, platform };
+  return ids;
+}
+
+// The SERVER-ESTABLISHED owner of this post id, or null when there is no
+// binding OR the read failed. Never throws.
+//
+// A read error is deliberately indistinguishable from "no binding" TO THE
+// CALLER of this function, because both mean the same thing to the decision:
+// no positive evidence, therefore no grant. (Contrast outstand-webhook, which
+// needs isBindingTableMissing() to tell the pre-migration window apart from a
+// transient failure — it falls back permissively, so it must know. This proxy
+// never falls back, so it does not need to know.) The error is still logged at
+// console.error, because a binding table that has started failing every read is
+// an outage that would otherwise present only as users mysteriously losing
+// access to their own posts.
+async function readPostOwnerBinding(
+  admin: SupabaseClient,
+  postId: string,
+): Promise<string | null> {
+  const { data, error } = await admin
+    .from("outstand_post_ownership")
+    .select("user_id")
+    .eq("outstand_post_id", postId)
+    .maybeSingle();
+  if (error) {
+    console.error("outstand-proxy: ownership binding lookup failed", error.message);
+    return null;
+  }
+  const userId = (data as { user_id?: unknown } | null)?.user_id;
+  return typeof userId === "string" && userId.length > 0 ? userId : null;
 }
 
 // Default-deny scope check. Returns null on allow, a Response on deny.
@@ -295,20 +341,20 @@ async function enforceScope(args: {
       } catch {
         return jsonResponse(400, { error: "invalid_json" });
       }
-      const refs: string[] = [];
-      const candidates = [body?.accounts, body?.social_account_ids, body?.socialAccountIds];
-      for (const c of candidates) {
-        if (Array.isArray(c)) refs.push(...c.map(String));
-      }
-      if (body?.social_account_id) refs.push(String(body.social_account_id));
-      if (body?.socialAccountId) refs.push(String(body.socialAccountId));
+      // Same reader as the mutating /posts/{id} constraint below — see
+      // extractRequestAccountIds. Creating a post has ALWAYS required every
+      // named account to be owned; that rule is unchanged here, and the
+      // /posts/{id} branch now matches it instead of accepting `.some()`.
+      const refs = extractRequestAccountIds(body);
       if (refs.length === 0) {
         return jsonResponse(400, { error: "missing_social_account_ids" });
       }
-      for (const id of refs) {
-        if (!ownedIds.has(id)) {
-          return jsonResponse(403, { error: "forbidden_account", account_id: id });
-        }
+      const unowned = firstUnownedAccountId(refs, ownedIds);
+      if (unowned !== null) {
+        console.warn(
+          `outstand-proxy: denying POST /posts — body names unowned account ${unowned}`,
+        );
+        return jsonResponse(403, { error: "forbidden_account", account_id: unowned });
       }
       return null;
     }
@@ -319,66 +365,105 @@ async function enforceScope(args: {
     const postId = pathOnly.split("/")[2];
     if (!postId) return jsonResponse(400, { error: "missing_post_id" });
 
-    let allowed = false;
+    // Account ids named by a MUTATING body are a CONSTRAINT, never a grant.
+    //
+    // This branch used to do the opposite: it parsed social_account_ids/accounts
+    // out of the caller's own body and set allowed = true when `.some()` of them
+    // was owned, WITHOUT ever checking the path's post against those accounts.
+    // `DELETE /posts/{any_post_id}` with a body naming your own account id
+    // therefore modified or deleted ANY post in the org — the Outstand key is
+    // org-wide, so that is every tenant's posts. The body states an INTENT; only
+    // the two server-side facts below are evidence of ownership.
+    //
+    // Kept — as a constraint — because it still does real work in that
+    // direction: it stops a caller who legitimately owns a post from
+    // re-targeting it onto an account they do not control. Hence `.every()`
+    // (via firstUnownedAccountId), not the old `.some()`, which let one owned id
+    // escort any number of unowned ones through.
+    //
+    // Applies to POST too, not just PATCH/PUT/DELETE: POST /posts/{id}/comments
+    // is a mutation, and the check is deny-only, so extending it there costs a
+    // legitimate `{text}` comment body nothing (it names no accounts) while
+    // leaving no mutating verb unconstrained. GET/HEAD never reach it because
+    // bodyText is "" for them by construction at the call site.
+    const requestedAccountIds =
+      bodyText && method !== "GET" && method !== "HEAD"
+        ? extractRequestAccountIds(safeParseJson(bodyText))
+        : [];
 
-    // For mutating requests, check body for social_account_ids passed by the client
-    if (bodyText && (method === "PATCH" || method === "PUT" || method === "DELETE")) {
-      try {
-        const body = JSON.parse(bodyText);
-        const bodyIds: string[] = [
-          ...(Array.isArray(body?.social_account_ids) ? body.social_account_ids : []),
-          ...(Array.isArray(body?.accounts) ? body.accounts : []),
-        ].map(String);
-        if (bodyIds.some((id) => ownedIds.has(id))) {
-          allowed = true;
-        }
-      } catch { /* ignore parse errors */ }
+    // Cheap deny FIRST — a request that fails the constraint fails it no matter
+    // what the evidence says, so there is no reason to spend a provider round
+    // trip discovering that. decidePostAccess re-checks this itself, so this is
+    // strictly an IO saving and cannot reach a different verdict.
+    const unownedTarget = firstUnownedAccountId(requestedAccountIds, ownedIds);
+    if (unownedTarget !== null) {
+      console.warn(
+        `outstand-proxy: denying ${method} ${pathOnly} — body names unowned account ${unownedTarget}`,
+      );
+      return jsonResponse(403, { error: "forbidden_account", account_id: unownedTarget });
     }
 
-    if (!allowed) {
-      const { ids: accountIds, platform } = await fetchPostAccountIds(postId, outstandKey);
-      allowed = accountIds.some((id) => ownedIds.has(id));
-      if (!allowed && platform) {
-        const ownedPlatforms = await listOwnedPlatforms(admin, ctx.userId, ctx.orgUnitId);
-        if (ownedPlatforms.has(platform)) {
-          allowed = true;
-        }
-      }
-    }
-    if (!allowed) {
-      // Last-resort ownership check, on the SERVER-ESTABLISHED binding.
-      //
-      // This used to read donny_scheduled_posts and allow when a row whose
-      // metadata->>'outstand_post_id' equalled this path id named ctx.userId —
-      // i.e. it authorized an org-key-backed read of a single post (and, via
-      // the same rule, /posts/{id}/analytics, whose response this proxy does
-      // NOT filter) from the same client-writable source Task 4 exists to
-      // distrust. `authenticated` holds INSERT+UPDATE on every column of that
-      // table (verified on prod), so planting one row was enough to read a
-      // stranger's post and its analytics. Closing that hole in the consumers
-      // while leaving it open here would have moved the leak, not fixed it.
-      // outstand_post_ownership is the same fact, minted server-side and
-      // unwritable by any client — see
-      // supabase/migrations/20260806184500_outstand_post_ownership.sql.
-      //
-      // A read error (including "migration not applied yet") leaves `allowed`
-      // false: this fallback may only ever GRANT on positive evidence. It is
-      // the narrowest of three checks — the account-id and platform checks
-      // above still run first — so a deploy-before-migration window costs at
-      // most this fallback, never a wrongful allow.
-      const { data: binding, error: bindingErr } = await admin
-        .from("outstand_post_ownership")
-        .select("user_id")
-        .eq("outstand_post_id", postId)
-        .maybeSingle();
-      if (bindingErr) {
-        console.error("outstand-proxy: ownership binding lookup failed", bindingErr.message);
-      } else if (binding && binding.user_id === ctx.userId) {
-        allowed = true;
-      }
-    }
-    if (!allowed) {
-      return jsonResponse(403, { error: "forbidden_post" });
+    // The two server-established facts, gathered CONCURRENTLY. Both are read
+    // unconditionally so that no ordering logic lives out here to drift from the
+    // rule in decidePostAccess: this code gathers, that function decides. The
+    // binding read is a primary-key lookup overlapped with an HTTP round trip to
+    // Outstand, so it is effectively free — cheaper than the sequential
+    // last-resort read it replaces.
+    //
+    // Fact 1 — the accounts the PROVIDER says this post has, intersected with
+    // the caller's own. Fact 2 — the SERVER-ESTABLISHED ownership binding.
+    //
+    // On fact 2's history: this replaced a read of donny_scheduled_posts that
+    // allowed when a row whose metadata->>'outstand_post_id' equalled this path
+    // id named ctx.userId — i.e. it authorized an org-key-backed read of a
+    // single post (and, via the same rule, /posts/{id}/analytics, whose response
+    // this proxy does NOT filter) from a client-writable source. `authenticated`
+    // holds INSERT+UPDATE on every column of that table (verified on prod), so
+    // planting one row was enough to read a stranger's post and its analytics.
+    // Closing that hole in the consumers while leaving it open here would have
+    // moved the leak, not fixed it. outstand_post_ownership is the same fact,
+    // minted server-side and unwritable by any client — see
+    // supabase/migrations/20260806184500_outstand_post_ownership.sql (applied to
+    // prod 2026-08-06; the module comment in _shared/outstand-post-ownership.ts
+    // predates that and still describes it as pending).
+    //
+    // AMENDED with the platform-fallback removal: that note used to reassure
+    // that the binding was "the narrowest of three checks — the account-id and
+    // platform checks above still run first". There are now TWO checks, and the
+    // reassurance ran the wrong way round. The platform check allowed a request
+    // whenever the post's PLATFORM was one the caller owned any account on, so
+    // owning a single Instagram account authorized every Instagram post in the
+    // org. It has been deleted outright: platform is a property of a post, not a
+    // relationship to a user, and while it stood, fixing the body-grant above
+    // would have changed nothing — the destructive path stayed open through it.
+    // A read error on EITHER fact still leaves the request denied; that property
+    // is now structural rather than incidental, because both helpers return an
+    // empty value on failure ([] / null) and decidePostAccess grants only on
+    // positive evidence.
+    const [postAccountIds, bindingUserId] = await Promise.all([
+      fetchPostAccountIds(postId, outstandKey),
+      readPostOwnerBinding(admin, postId),
+    ]);
+
+    const decision = decidePostAccess({
+      ownedAccountIds: ownedIds,
+      requestedAccountIds,
+      postAccountIds,
+      bindingUserId,
+      callerUserId: ctx.userId,
+    });
+
+    if (!decision.allowed) {
+      // Never a silent denial: without this line a legitimate user locked out by
+      // a legacy post (no provider account ids AND no binding) is indistinguishable
+      // from an attacker being correctly refused.
+      console.warn(
+        `outstand-proxy: denying ${method} ${pathOnly} for user ${ctx.userId} — ${decision.reason} ` +
+          `(provider accounts: ${postAccountIds.length}, binding: ${bindingUserId ? "present" : "none"})`,
+      );
+      return decision.reason === "unowned_target_account"
+        ? jsonResponse(403, { error: "forbidden_account", account_id: decision.accountId })
+        : jsonResponse(403, { error: "forbidden_post" });
     }
     return null;
   }
