@@ -11,6 +11,13 @@ tags: [security, outstand, edge-functions, multi-tenancy, authorization]
 Why `outstand-proxy` is not a convenience layer but **the tenant boundary itself**, and the rule
 that keeps it one.
 
+**Status: deployed to prod 2026-08-06** — `outstand-proxy` v62, `social-proxy` v8 (PR #368, still
+open behind a GitHub Actions outage, so the repo lags prod). Verified with the same request that
+found the leak: `GET /posts` returned 5 posts (4 another tenant's) and `pagination.total: 49` before,
+and 1 post / `total: 1` after, with no trace of the foreign account id. The foreign post now returns
+`403 forbidden_post`, while the caller's own post and its `/analytics` still return 200 — so the
+boundary tightened without taking legitimate access with it.
+
 ## The governing fact
 
 **The Outstand API key is org-wide.** Every DragonCandy tenant's posts, social accounts and media

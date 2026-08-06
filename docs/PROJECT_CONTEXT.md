@@ -111,8 +111,10 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   account ids used as a **grant** (`DELETE /posts/{any_id}` ⇒ any post in the org), a platform
   fallback (one Instagram account ⇒ every Instagram post), and a list filter that stripped `data`
   while forwarding an unfiltered `posts` sibling (**observed on prod**: 4 of 5 posts belonged to
-  another tenant). **Pending:** merge PR #368, then **redeploy `outstand-proxy` + `social-proxy`** —
-  merging ships frontend only, so the holes stay live until then. `/media` remains unscoped
+  another tenant). **Deployed + prod-verified 2026-08-06** (`outstand-proxy` v62, `social-proxy`
+  v8): the leaking list returns only the caller's own post and a foreign post now 403s, while the
+  caller's own post + `/analytics` still return 200. **Pending:** merge PR #368 (blocked by a
+  GitHub Actions outage, not by review) so the repo matches prod. `/media` remains unscoped
   (`count: 0` today) and `business_outstand_accounts` INSERT unconstrained — both filed.
   → `docs/wiki/concepts/cross-tenant-proxy-authorization.md` · #368
 - **AIOS Google Workspace ("Connections")** — per-user Google OAuth, audited proxy, Drive

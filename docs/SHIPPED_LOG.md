@@ -28,8 +28,18 @@
 
 ## [2026-08-06] Cross-tenant authorization holes closed in `outstand-proxy` (#368)
 
-**Not deployed at time of writing.** PR #368 open; merging ships frontend only, so `outstand-proxy`
-and `social-proxy` both need redeploying before prod is actually closed.
+**Deployed and prod-verified 2026-08-06** — `outstand-proxy` v61 → **v62**, `social-proxy` v7 → **v8**
+(versions and hashes confirmed changed, `verify_jwt` still `true` on both). PR #368 itself is still
+open, blocked by a GitHub Actions outage rather than by review, so the repo currently lags prod.
+
+**The fix was verified with the same request that found the leak.** `GET /posts` as the
+single-account user: `posts[]` went from 5 (four of them another tenant's) to 1; the only account id
+present is the caller's own; `pagination.total` 49 → 1; the response shrank 13,065 → 2,773 bytes with
+no trace of the foreign account id or nickname. Legitimate access is intact and denials are correct:
+the caller's own post returns 200, its `/analytics` returns 200, `/social-accounts` returns 200, and
+the foreign post `bld5T` returns **403 `forbidden_post`** — which also proves defect 2 is gone, since
+that post is on Instagram and the caller owns an Instagram account, exactly the case the platform
+fallback used to wave through.
 
 Reviewing the measurement-spine work surfaced three **pre-existing, live** authorization defects in
 `outstand-proxy`, worse than the read hole #366 closed. The governing fact: **the Outstand API key

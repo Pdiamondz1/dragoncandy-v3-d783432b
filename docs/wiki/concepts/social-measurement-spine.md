@@ -125,9 +125,11 @@ neutralised forgery is not invisible.
   request body**~~ and ~~**its platform-level read fallback**~~ — **both fixed in PR #368**, with a
   third and larger hole found while confirming them: `GET /posts` was forwarding *every tenant's*
   posts in an unfiltered sibling array. See [[Cross-Tenant Proxy Authorization]] for the rule that
-  replaced them — a grant may rest only on a fact the client cannot assert. **Fixed but NOT yet
-  deployed:** merging ships frontend only, so the holes stay live on prod until `outstand-proxy`
-  and `social-proxy` are redeployed.
+  replaced them — a grant may rest only on a fact the client cannot assert. **Deployed to prod
+  2026-08-06** (`outstand-proxy` v62, `social-proxy` v8) and verified with the same request that
+  found the leak: `GET /posts` now returns only the caller's own post, `pagination.total` 49 → 1,
+  and the foreign post returns `403 forbidden_post` while the caller's own post and its
+  `/analytics` still return 200.
 - **CI type-checks no edge functions.** `tsconfig.app.json`'s `include` is `["src"]`, so all
   80 Deno functions are unchecked. `deno check` works. `outstand-webhook`'s untyped
   `createClient()` resolves row types to `never` (12 such errors on main).
