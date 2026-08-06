@@ -49,7 +49,13 @@
 -- `20260804174934` and `20260806184500` both record. Verify against
 -- information_schema afterwards; an ineffective lock is worse than none because
 -- it reads as protection.
-REVOKE INSERT ON public.business_outstand_accounts FROM anon, authenticated;
+-- `public` is in the list on purpose. If the PUBLIC pseudo-role held INSERT,
+-- anon and authenticated would keep it THROUGH PUBLIC and this lock would read
+-- as protection without being one. A grantee sweep on prod 2026-08-06 showed
+-- only `postgres` and `service_role` outside the two named roles — so PUBLIC
+-- holds nothing today and this is belt-and-braces — but it costs nothing and
+-- matches the sibling `20260806184500`, which revokes from all three.
+REVOKE INSERT ON public.business_outstand_accounts FROM public, anon, authenticated;
 
 -- Drop the now-unreachable client INSERT policy.
 --
@@ -62,19 +68,39 @@ REVOKE INSERT ON public.business_outstand_accounts FROM anon, authenticated;
 --
 -- If a legitimate client INSERT path is ever needed, adding a policy back is a
 -- conscious act that gets reviewed — which is exactly what we want.
+--
+-- The name below was read off prod's `pg_policies` on 2026-08-06, not copied
+-- from migration history — `DROP POLICY IF EXISTS` matches on NAME, so against a
+-- renamed policy it would silently no-op and `IF EXISTS` would hide that. This
+-- repo has prior recorded-≠-actual drift, so the name was confirmed live. The
+-- post-apply check below re-confirms the outcome rather than the intent.
 DROP POLICY IF EXISTS "Users can insert their own outstand accounts"
   ON public.business_outstand_accounts;
 
--- Verification. EXPECTED after applying: no INSERT row for anon or
--- authenticated. Any row returned means the revoke did not take — do not trust
--- "the migration succeeded."
+-- Verification — RUN BOTH. Do not trust "the migration succeeded."
+--
+-- (1) EXPECTED: zero rows. Any row means the revoke did not take.
+--     Note there is deliberately NO `grantee in (...)` filter: an earlier draft
+--     of this file filtered to anon/authenticated, which would have reported
+--     PASS while a PUBLIC grant stood — information_schema reports that under
+--     grantee 'PUBLIC'. A check that cannot see the failure it exists to catch
+--     is worse than no check.
 --
 --   select grantee, privilege_type
 --   from information_schema.column_privileges
 --   where table_schema = 'public'
 --     and table_name = 'business_outstand_accounts'
---     and grantee in ('anon', 'authenticated')
---     and privilege_type = 'INSERT';
+--     and privilege_type = 'INSERT'
+--     and grantee not in ('postgres', 'service_role');
+--
+-- (2) EXPECTED: exactly 4 rows — own-row SELECT, own-row UPDATE, own-row
+--     DELETE, and the service_role FOR ALL — and NO row with cmd = 'INSERT'.
+--     This is what proves the policy drop actually matched something.
+--
+--   select policyname, cmd, roles::text
+--   from pg_policies
+--   where schemaname = 'public' and tablename = 'business_outstand_accounts'
+--   order by cmd, policyname;
 --
 -- NOT fixed here, deliberately: the unique index is still per-user, so if a
 -- client INSERT path is ever restored, two users could again claim one account
