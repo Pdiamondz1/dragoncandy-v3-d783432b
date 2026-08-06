@@ -273,7 +273,7 @@ const OutstandManagerInner: React.FC = () => {
             />
           </TabsContent>
           <TabsContent value="drafts">
-            <DraftsTab onSwitchTab={setActiveTab} />
+            <DraftsTab />
           </TabsContent>
           <TabsContent value="calendar">
             <CalendarTab

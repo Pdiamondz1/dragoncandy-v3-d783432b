@@ -64,6 +64,52 @@ export function useDraftPosts() {
     onError: () => { toast.error('Failed to cancel draft'); },
   });
 
+  /** Edit a draft IN PLACE.
+   *
+   * A draft is a `donny_scheduled_posts` row, so editing it is an UPDATE on that
+   * row — not a new post. The Edit button used to switch to the Compose tab and
+   * pass nothing, which both dropped the draft's content on the floor AND left
+   * the original row behind, so finishing the edit would have published a
+   * duplicate and stranded the draft. Compose calls the provider's `createPost`;
+   * it is not, and cannot be, a draft editor.
+   *
+   * Scoped to caption / hashtags / scheduled_at deliberately. Media lives behind
+   * the provider upload flow and editing it needs that whole path, so this does
+   * not pretend to offer it.
+   *
+   * `.eq('user_id', user.id)` matches every other mutation here: RLS already
+   * restricts to own rows, and this makes the intent explicit rather than
+   * resting on the policy alone.
+   */
+  const updateDraft = useMutation({
+    mutationFn: async ({
+      draftId,
+      caption,
+      hashtags,
+      scheduledAt,
+    }: {
+      draftId: string;
+      caption: string | null;
+      hashtags: string[];
+      scheduledAt: string;
+    }) => {
+      if (!user) throw new Error('User not authenticated');
+
+      const { error } = await supabase
+        .from('donny_scheduled_posts')
+        .update({ caption, hashtags, scheduled_at: scheduledAt })
+        .eq('id', draftId)
+        .eq('user_id', user.id)
+        .eq('status', 'draft');
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['draft-posts'] });
+    },
+    onError: (err: Error) => { toast.error(err.message || 'Failed to save draft'); },
+  });
+
   const scheduleDraft = useMutation({
     mutationFn: async ({ draftId, scheduledAt }: { draftId: string; scheduledAt?: string }) => {
       if (!user) throw new Error('User not authenticated');
@@ -171,5 +217,5 @@ export function useDraftPosts() {
     onError: () => { toast.error('Failed to cancel plan'); },
   });
 
-  return { drafts, isLoading, draftCount: drafts.length, cancelDraft, scheduleDraft, scheduleAllDrafts, cancelPlanGroup };
+  return { drafts, isLoading, draftCount: drafts.length, cancelDraft, updateDraft, scheduleDraft, scheduleAllDrafts, cancelPlanGroup };
 }
