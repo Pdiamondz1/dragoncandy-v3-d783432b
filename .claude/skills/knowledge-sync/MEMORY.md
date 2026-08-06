@@ -68,6 +68,43 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-08-06] Social measurement spine + reconciliation + post ownership (PRs #365 merged, #366 open — bundled INTO #366)
+- **Output:** new `raw/sessions/2026-08-06-social-measurement-spine-and-post-ownership.md`; NEW
+  `concepts/social-measurement-spine.md`; `index.md` (**2** new Sources lines — mine + the cataloged
+  2026-08-05 orphan — and a new Concepts line between [[Service-Role Data Exposure]] and
+  [[Stakeholder Scorecard]]); `log.md` top entry; `SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5
+  ONE line under **Built — awaiting founder go-live** with a `**Pending:**` deploy clause;
+  `DATABASE_SCHEMA.md` (`outstand_post_ownership` row + a lockdown blockquote + the widened
+  `donny_scheduled_posts` CHECK + a `social_post_log` no-UPDATE-policy note); + THIS entry. No
+  `DESIGN_SYSTEM`/`CLAUDE.md` change.
+- **Happened:** **[gap-claims] earned its keep in the opposite direction to usual** — I checked for a
+  *prior* sync and found a genuine gap: **PR #365's knowledge-sync never ran.** Verified against
+  `origin/main` (all core docs byte-identical to it, so the worktree WAS authoritative), not asserted:
+  `SHIPPED_LOG.md`'s newest entry was 2026-08-02 (#357), §5 had no measurement entry, and the
+  2026-08-05 raw session was an `index.md` orphan. So this run covers **two** efforts in one source —
+  same call as the 2026-07-18 Phase-4 run — rather than leaving #365 permanently unrecorded.
+- **Worked:** [scope] clean — `origin/main` 0 ahead of base, all 5 core docs SAME, and (per
+  [squash-drift], since PR #366 is OPEN) `git rev-parse HEAD` == `origin/feat/...` confirming no squash
+  divergence, because the normal `git push` succeeded this time rather than the REST workaround.
+  [orphans]-by-path found **7** uncataloged raw sessions; cataloged the one from this workstream and
+  surfaced the other 6 honestly rather than silently sweeping or silently leaving them.
+  [wikilinks]-exact: grepped `index.md` for all 7 targets before linking — zero dangling.
+  [context-tax]: full prose to `SHIPPED_LOG.md`, §5 got one line. NEW page rather than a compound,
+  deliberated: [[Service-Role Data Exposure]] owns the definer/RLS defect *class* and
+  [[Social Provider Decision]] owns the provider choice, but **nothing owned how a post becomes
+  measured** — and the durable subject outlives both.
+- **Failed:** nothing knowledge-side. RAG sync + the [[verify-knowledge]] loop-close are post-merge
+  (PR open; the post-merge hook fires since `docs/` changed) — per [rag-sync].
+- **Remember:** **a knowledge gap can be invisible precisely because the work SHIPPED.** #365 merged
+  and fully deployed, so every signal said "done" — the missing sync left no failing check, and the
+  orphaned raw session looked like a completed ingest to anything not checking `index.md` by path. The
+  cheap tell was the `SHIPPED_LOG.md` date: **if the newest entry predates the last merged PR, a sync
+  was skipped.** Worth running that one-line check at the START of every session, not only when a gap
+  is suspected. Second, non-knowledge but sharp enough to carry: **four reviews can all miss the same
+  defect when they share a question.** A whole-branch review, a data-exposure review, a scoped security
+  review and my own tracing all asked *is the new code correct?*; Codex asked *does it run?* and found
+  the branch's entire purpose inert. Diversity of *question* beats depth of *scrutiny*.
+
 ### [2026-08-02] VerifiedRoute missing-profile lockout (PR #357 → paired docs PR)
 - Output: new `raw/sessions/2026-08-02-verified-route-missing-profile.md`; **compounded** onto
   `concepts/internal-only-users.md` (new "frontend route-guard trap" section, 3 Key Decisions,

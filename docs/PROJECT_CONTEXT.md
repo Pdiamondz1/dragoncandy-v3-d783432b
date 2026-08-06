@@ -107,6 +107,18 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Built — awaiting founder go-live
 
+- **Social measurement spine + reconciliation + server-established post ownership** — the spine
+  shipped and is **live on prod** (#365: video posts no longer silently discarded at publish,
+  unmeasured posts no longer stored as real zeros, the measurement record written at the
+  `outstand-webhook` choke point). #366 adds amplification measurement, an hourly
+  `reconcile-social-posts` sweep, and an `outstand_post_ownership` binding closing a live
+  cross-tenant metric read whose root cause had surfaced **four** times. **Pending:** merge PR #366,
+  then in order — apply `20260806184500` (+ run its grant-verification query), create Vault secrets
+  `reconcile_social_posts_url`/`reconcile_social_posts_key`, deploy `reconcile-social-posts`,
+  redeploy `outstand-proxy` + `social-proxy` + `outstand-webhook` (the last **imports a shared module
+  absent from prod**), then apply `20260806151247` last. **Nothing has yet flowed through the
+  pipeline** — one real publish per path is the only remaining proof.
+  → `docs/wiki/concepts/social-measurement-spine.md` · #365, #366
 - **AIOS Google Workspace ("Connections")** — per-user Google OAuth, audited proxy, Drive
   hub, Donny exports, metrics→Sheet. The `google-chat-donny` bot ships dark (503).
   **Pending:** register the Chat app, set `GOOGLE_CHAT_PROJECT_NUMBER` +

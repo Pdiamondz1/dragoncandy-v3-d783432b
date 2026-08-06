@@ -1,5 +1,31 @@
 # Wiki Log
 
+## [2026-08-06] ingest | [[Social Measurement Spine]] — the spine, the sweep, and server-established ownership
+Ingested [[Social Measurement Spine Session]] (PRs #365 + #366). **Two efforts in one source, because
+PR #365's knowledge-sync never ran** — verified against `origin/main` per the `[gap-claims]` Lesson,
+not from a worktree: `SHIPPED_LOG.md`'s newest entry was 2026-08-02 (#357), §5 had no measurement
+entry, and `raw/sessions/2026-08-05-outstand-cross-tenant-metric-read.md` was an `index.md` **orphan**.
+Both are the same workstream, so they were recorded together rather than as two thin sources; the
+2026-08-05 orphan is now cataloged and points at the concept page that closed it.
+
+New concept page (nothing owned this subject: [[Service-Role Data Exposure]] owns the definer/RLS
+defect *class* and [[Social Provider Decision]] owns the provider choice, but neither owns how a post
+becomes measured). Created rather than compounded because the durable subject — the pipeline plus its
+"an absent measurement must never look like a real zero" invariant — outlives both.
+
+Two findings worth carrying beyond this subsystem. **Codex caught the one defect four prior reviews
+missed**: amplification's post-id parser never checked the `.post.` level, so it resolved `null` every
+call and the branch's entire purpose was inert. The four earlier reviews all asked *is the new code
+correct?* — none asked *does it run?* And the root cause was an instruction of mine to extend an
+existing guard: **reuse-don't-duplicate is right, but it assumes the reused thing works.** Second, the
+security root cause had already surfaced **four times** and every previous response worked *around* it;
+they all went circular because the trust anchor was a client-writable column. Fixing the anchor took
+one table and two call sites — far less than the four workarounds cost.
+
+Also files, deliberately unfixed and with exploit chains: two pre-existing `outstand-proxy` cross-tenant
+defects (one a *modify and delete*), and the discovery that **CI type-checks none of the 80 edge
+functions**.
+
 ## [2026-08-02] update | [[Living Synthetic Marketplace]] status correction — LIVE at 2,000 → PURGED
 Three documents (`PROJECT_CONTEXT.md` §5, this page's `## State`, and its `index.md` entry) all
 asserted **"LIVE on prod at 2,000 profiles"**. Prod says otherwise: `synthetic_users` = **0 rows**, 0
