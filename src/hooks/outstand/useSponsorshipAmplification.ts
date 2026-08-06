@@ -69,7 +69,17 @@ export function useSponsorshipAmplification() {
       });
       if (!res.ok) throw new Error('Failed to amplify post');
       const data: Record<string, unknown> = await res.json();
-      const outstandPostId = (data.id ?? (data.data as Record<string, unknown>)?.id ?? 'unknown') as string;
+      // No 'unknown' fallback: social_post_log.outstand_post_id is NOT NULL and
+      // carries the UNIQUE (outstand_post_id, platform) key added alongside this
+      // hook. A placeholder string here would leave the first such row
+      // permanently unmatchable by the webhook, AND collide with a second
+      // unresolved response on the same platform -- which, since the insert
+      // below is one atomic array call, would fail the whole batch and silently
+      // lose every platform's measurement row for this post. Null instead, and
+      // skip the write below (mirrors SocialPostPrompt's syncScheduledPost
+      // outstandPostId == null handling) -- the publish itself already
+      // succeeded and must stand regardless.
+      const outstandPostId = (data.id ?? (data.data as Record<string, unknown>)?.id ?? null) as string | null;
 
       // social_post_log.platform must carry a real network name (instagram,
       // youtube, ...), never an Outstand account id — every other writer/reader
@@ -106,6 +116,17 @@ export function useSponsorshipAmplification() {
         );
       }
 
+      if (outstandPostId == null && platforms.length > 0) {
+        // Could not resolve an Outstand post id from the response shape at all
+        // -- there is no honest row to write for ANY platform, not just the
+        // per-account unresolved ones warned above. Skip the write entirely
+        // (never substitute a placeholder) and say so loudly: the publish
+        // already went out, so this is a measurement loss, not a failed post.
+        console.warn(
+          `[useSponsorshipAmplification] Could not resolve an Outstand post id from the response; skipping social_post_log write for platform(s) [${platforms.join(', ')}].`,
+        );
+      }
+
       // Insert every platform's row in ONE array call, not a sequential loop.
       // PostgREST executes a JSON-array insert as a single INSERT statement, so
       // either every platform row lands or none does -- there is no window where
@@ -117,7 +138,7 @@ export function useSponsorshipAmplification() {
       // retries and the remaining platforms stay permanently unverified and
       // unmeasured. A single atomic insert removes the window rather than
       // requiring the webhook to detect and retry against a partial subset.
-      if (platforms.length > 0) {
+      if (outstandPostId != null && platforms.length > 0) {
         const rows = platforms.map((platform) => ({
           user_id: user!.id,
           campaign_id: campaignId,
