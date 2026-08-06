@@ -564,13 +564,30 @@ async function handleRecordConnection(
   }
 
   // Refuse if any other tenant already owns this account_id.
-  const { data: existing } = await admin
+  //
+  // The error is checked, NOT discarded. `.maybeSingle()` returns
+  // `{ data: null, error }` when MORE THAN ONE row matches — which here means
+  // two or more other tenants already hold this account id, i.e. exactly the
+  // compromised case — and a null `existing` would read as "unclaimed" and let
+  // the upsert proceed. The guard would fail OPEN precisely when it matters
+  // most, and again on any transient read failure.
+  //
+  // This matters more than it used to: business_outstand_accounts is now the
+  // sole substrate of every grant in enforceScope (the platform fallback that
+  // used to bypass it is gone), so a bad row here is a grant everywhere.
+  // The sibling social-proxy already refuses on this error; outstand-proxy was
+  // not given the same treatment.
+  const { data: existing, error: existingError } = await admin
     .from("business_outstand_accounts")
     .select("user_id")
     .eq("outstand_social_account_id", accountId)
     .neq("user_id", ctx.userId)
     .neq("status", "revoked")
     .maybeSingle();
+  if (existingError) {
+    console.error("outstand-proxy: account claim check failed", existingError.message);
+    return jsonResponse(500, { error: "claim_check_failed" });
+  }
   if (existing) {
     return jsonResponse(409, { error: "account_already_claimed" });
   }

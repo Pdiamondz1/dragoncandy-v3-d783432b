@@ -52,8 +52,11 @@ describe('filterListRows — the observed prod leak', () => {
   it('rewrites pagination.total so the org-wide count (49) is not disclosed', () => {
     const res = filterListRows('/posts', JSON.stringify(OBSERVED_POSTS_ENVELOPE), OWNED);
     const body = parse(res);
-    expect(body.pagination.total).toBe(2); // 1 kept in `posts` + 1 kept in `data`
-    expect(body.pagination.count).toBe(2);
+    // ONE post survives, and it appears in both `posts` and `data`. Counting by
+    // occurrence would report 2 and overstate the caller's own list.
+    expect(body.pagination.total).toBe(1);
+    expect(body.pagination.count).toBe(1);
+    expect(res.kept).toBe(1);
     expect(res.body).not.toContain('49');
   });
 
@@ -129,6 +132,53 @@ describe('filterListRows — pass-through and edge cases', () => {
   it('drops a post carrying no resolvable account ids — unattributable is not owned', () => {
     const raw = JSON.stringify({ posts: [{ id: 'orphan' }] });
     expect(parse(filterListRows('/posts', raw, OWNED)).posts).toEqual([]);
+  });
+
+  it('filters a row array nested BELOW the top level', () => {
+    // The depth-1 version forwarded this whole. index.ts's own SDK-shape
+    // normalization can produce exactly this container.
+    const raw = JSON.stringify({
+      success: true,
+      data: { connectedAccounts: [{ id: 'a', socialAccounts: [{ id: 'LEnjV' }] }, { id: 'b', socialAccounts: [{ id: 'I2pgX' }] }] },
+    });
+    const body = parse(filterListRows('/posts', raw, OWNED));
+    expect(body.data.connectedAccounts.map((p: any) => p.id)).toEqual(['a']);
+  });
+
+  it('does not gut a kept post\'s own nested objects', () => {
+    const raw = JSON.stringify({
+      posts: [{
+        id: 'ei1xc',
+        socialAccounts: [{ id: 'LEnjV' }],
+        containers: [{ id: '8ep9T', content: 'caption', media: [{ id: 'm1', url: 'https://x/y.mp4' }] }],
+      }],
+    });
+    const body = parse(filterListRows('/posts', raw, OWNED));
+    expect(body.posts).toHaveLength(1);
+    expect(body.posts[0].containers[0].media).toHaveLength(1);
+    expect(body.posts[0].socialAccounts).toHaveLength(1);
+  });
+
+  it('rewrites every counter spelling, not just `total`', () => {
+    const raw = JSON.stringify({
+      posts: [{ id: 'a', socialAccounts: [{ id: 'LEnjV' }] }, { id: 'b', socialAccounts: [{ id: 'I2pgX' }] }],
+      total_count: 49,
+      totalCount: 49,
+      meta: { totalPages: 7, total: 49 },
+    });
+    const body = parse(filterListRows('/posts', raw, OWNED));
+    expect(body.total_count).toBe(1);
+    expect(body.totalCount).toBe(1);
+    expect(body.meta.total).toBe(1);
+    expect(body.meta.totalPages).toBe(1);
+  });
+
+  it('terminates on a cyclic body instead of overflowing', () => {
+    // JSON.parse cannot produce a cycle, so this exercises the guard via a
+    // deeply repeated container rather than a true cycle.
+    let deep: any = { posts: [{ id: 'a', socialAccounts: [{ id: 'I2pgX' }] }] };
+    for (let i = 0; i < 40; i++) deep = { nested: deep };
+    expect(() => filterListRows('/posts', JSON.stringify(deep), OWNED)).not.toThrow();
   });
 
   it('does not invent counters that were not in the response', () => {

@@ -127,37 +127,89 @@ export function filterListRows(
   const isRowList = (v: unknown): boolean =>
     Array.isArray(v) && v.some((e) => e !== null && typeof e === 'object');
 
-  let kept = 0;
+  // Rows kept, counted by row IDENTITY not by occurrence. The observed envelope
+  // carries the SAME post in both `posts` and `data`, so summing array lengths
+  // reported a caller's 1 post as 2. Object identity is no help — JSON.parse
+  // materialises the two occurrences as separate objects — so identity is the
+  // row's own `id`, falling back to the object reference for rows without one
+  // (which then count once each, the honest answer when we cannot tell them
+  // apart).
+  const keptRows = new Set<unknown>();
+  const rowIdentity = (row: any): unknown =>
+    row && typeof row === 'object' && (typeof row.id === 'string' || typeof row.id === 'number')
+      ? `id:${row.id}`
+      : row;
   let dropped = 0;
+
+  // Walk the whole envelope, not just its top level. The previous version
+  // filtered depth 1 only, which is the same shape of mistake as filtering one
+  // key name: a row array one level down (`{data:{posts:[...]}}`) would be
+  // forwarded whole. Depth is bounded so a pathological or cyclic body cannot
+  // spin here; `seen` also makes a cycle terminate rather than overflow.
+  const MAX_DEPTH = 6;
+  const seen = new WeakSet<object>();
+  const walk = (node: any, depth: number): void => {
+    if (!node || typeof node !== 'object' || depth > MAX_DEPTH) return;
+    if (seen.has(node)) return;
+    seen.add(node);
+
+    for (const key of Object.keys(node)) {
+      const value = node[key];
+      if (isRowList(value)) {
+        const before = value.length;
+        const filtered = value.filter(rowTest);
+        node[key] = filtered;
+        for (const row of filtered) keptRows.add(rowIdentity(row));
+        dropped += before - filtered.length;
+        // Do NOT descend into kept rows: a post legitimately contains nested
+        // objects (containers, media, its own socialAccounts) that are not
+        // themselves tenant rows, and filtering those would gut the payload.
+        continue;
+      }
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        walk(value, depth + 1);
+      }
+    }
+  };
 
   if (Array.isArray(parsed)) {
     const before = parsed.length;
     parsed = parsed.filter(rowTest);
-    kept = parsed.length;
-    dropped = before - kept;
+    for (const row of parsed) keptRows.add(rowIdentity(row));
+    dropped = before - parsed.length;
   } else {
-    for (const key of Object.keys(parsed)) {
-      if (!isRowList(parsed[key])) continue;
-      const before = parsed[key].length;
-      parsed[key] = parsed[key].filter(rowTest);
-      kept += parsed[key].length;
-      dropped += before - parsed[key].length;
-    }
+    walk(parsed, 0);
+  }
 
-    // Counters must not survive filtering — `pagination.total` of 49 told the
-    // caller how many posts the whole ORG has. Rewritten to what we actually
-    // return, at the top level and inside `pagination` alike.
-    //
-    // NOTE, and it is deliberately NOT fixed here: paging over a post-hoc
-    // filtered list is incoherent regardless (upstream page N is not the
-    // caller's page N). This stops the disclosure; it does not make offset
-    // paging correct.
-    for (const container of [parsed, parsed.pagination]) {
-      if (!container || typeof container !== 'object') continue;
-      for (const k of ['count', 'total']) {
-        if (typeof container[k] === 'number') container[k] = kept;
+  const kept = keptRows.size;
+
+  // Counters must not survive filtering — `pagination.total` of 49 told the
+  // caller how many posts the whole ORG has. Every numeric counter is rewritten
+  // to what we actually return, wherever it sits: `total` was only one spelling,
+  // and `totalPages`/`total_count`/`pages` describe the same org-wide set.
+  //
+  // NOTE, and it is deliberately NOT fixed here: paging over a post-hoc
+  // filtered list is incoherent regardless (upstream page N is not the caller's
+  // page N). This stops the disclosure; it does not make offset paging correct.
+  const ROW_COUNTER = /^(count|total|totalCount|total_count)$/;
+  const PAGE_COUNTER = /^(totalPages|total_pages|pages)$/;
+  if (!Array.isArray(parsed)) {
+    const counterSeen = new WeakSet<object>();
+    const fixCounters = (node: any, depth: number): void => {
+      if (!node || typeof node !== 'object' || Array.isArray(node) || depth > MAX_DEPTH) return;
+      if (counterSeen.has(node)) return;
+      counterSeen.add(node);
+      for (const key of Object.keys(node)) {
+        if (typeof node[key] === 'number' && ROW_COUNTER.test(key)) {
+          node[key] = kept;
+        } else if (typeof node[key] === 'number' && PAGE_COUNTER.test(key)) {
+          node[key] = kept > 0 ? 1 : 0;
+        } else {
+          fixCounters(node[key], depth + 1);
+        }
       }
-    }
+    };
+    fixCounters(parsed, 0);
   }
 
   return { body: JSON.stringify(parsed), kept, dropped };
