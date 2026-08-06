@@ -166,7 +166,14 @@ async function recordPublishedPost(
   if (bindingErr) {
     console.error("outstand-webhook: ownership binding lookup failed", bindingErr.message);
   }
-  const bindingUserId = bindingErr ? null : ((bindingRow?.user_id as string | undefined) ?? null);
+  // Cast rather than a bare property read: this file's createClient() carries no
+  // Database generic, so PostgREST row types resolve to `never` and
+  // `bindingRow.user_id` is a compile error under `deno check` (the same class
+  // of pre-existing error this file already carries on sched.platform and the
+  // social_post_log upsert). Not adding one more.
+  const bindingUserId = bindingErr
+    ? null
+    : ((bindingRow as { user_id?: string } | null)?.user_id ?? null);
 
   // Discard any candidate whose user_id the binding contradicts, keeping the
   // rest in the query's created_at-asc order. A forged row can never survive

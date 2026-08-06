@@ -17,6 +17,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { extractCreatedPostId } from "../_shared/outstand-post-ownership.ts";
+import { recordPostOwnership } from "../_shared/outstand-post-ownership-store.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -566,7 +567,7 @@ async function handleRecordConnection(
  * no-op instead of a 23505. First writer wins, which is correct — Outstand
  * issues each post id once, to whoever created it.
  */
-async function recordPostOwnership(
+async function bindPostOwnershipFromResponse(
   admin: SupabaseClient,
   ctx: TenantContext,
   upstreamText: string,
@@ -594,53 +595,7 @@ async function recordPostOwnership(
     return;
   }
 
-  const { data: inserted, error } = await admin
-    .from("outstand_post_ownership")
-    .upsert(
-      { outstand_post_id: postId, user_id: ctx.userId },
-      { onConflict: "outstand_post_id", ignoreDuplicates: true },
-    )
-    .select("outstand_post_id");
-
-  if (!error && (!inserted || inserted.length === 0)) {
-    // ON CONFLICT DO NOTHING returns no rows, so "nothing inserted" means a
-    // binding for this id ALREADY existed. Normally that is this same user's
-    // retried publish and is exactly the idempotency we want. But if the
-    // existing row names a DIFFERENT user, one user's post has just been
-    // credited to another — a provider id collision or id reuse — and
-    // first-writer-wins would make that permanent and completely invisible.
-    // Only reached on the (rare) conflict path, so it costs nothing on a normal
-    // publish.
-    const { data: existing, error: readBackErr } = await admin
-      .from("outstand_post_ownership")
-      .select("user_id")
-      .eq("outstand_post_id", postId)
-      .maybeSingle();
-    if (readBackErr) {
-      console.error(
-        `outstand-proxy: could not read back the existing ownership binding for postId=${postId}:`,
-        readBackErr.message,
-      );
-    } else if (existing && existing.user_id !== ctx.userId) {
-      console.error(
-        `outstand-proxy: ownership binding collision for postId=${postId} — already bound to ` +
-        `${existing.user_id}, this publish was made by ${ctx.userId}. The binding is NOT being ` +
-        `changed (first writer wins); this post's measurement will be credited to the existing ` +
-        `owner. A provider post id was reused or collided.`,
-      );
-    }
-  }
-
-  if (error) {
-    // Includes the pre-migration case: until
-    // 20260806184500_outstand_post_ownership.sql is applied this table does not
-    // exist, every call lands here, and NOTHING gets a binding. That is why
-    // this line names the table and the consequence explicitly.
-    console.error(
-      `outstand-proxy: failed to write outstand_post_ownership for postId=${postId} — this post will not be measurable by binding (reconcile-social-posts will skip it; outstand-webhook will use its legacy schedule match):`,
-      error.message,
-    );
-  }
+  await recordPostOwnership(admin, postId, ctx.userId, "outstand-proxy");
 }
 
 async function recordDisconnect(
@@ -847,7 +802,7 @@ serve(async (req: Request) => {
     // lockdown, the way 20260804174934 locked UPDATE. This binding neither
     // widens nor fixes it.
     if (req.method === "POST" && pathOnly === "/posts") {
-      await recordPostOwnership(admin, ctx, upstreamText);
+      await bindPostOwnershipFromResponse(admin, ctx, upstreamText);
     }
   }
 
