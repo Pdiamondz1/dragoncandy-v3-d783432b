@@ -11,7 +11,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { milestonesDue, classifyMeasurement, isCaptureRunFailed, metricsForPlatform, reasonForPlatform, type Milestone } from "./capture.ts";
+import { milestonesDue, classifyMeasurement, isCaptureRunFailed, metricsForPlatform, reasonForPlatform, effectivePublishedAt, type Milestone } from "./capture.ts";
 import { isAuthorizedIngest } from "../_shared/ingest-auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -40,6 +40,8 @@ interface PostRow {
   format: string | null;
   source_brief_id: string | null;
   created_at: string;
+  published_at: string | null;
+  verified_at: string | null;
 }
 
 serve(async (req: Request) => {
@@ -55,8 +57,32 @@ serve(async (req: Request) => {
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
   const now = new Date();
 
-  // 1. Posts younger than 8 days are still maturing.
-  const cutoff = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000).toISOString();
+  // 1. Posts younger than 8 days (since they actually PUBLISHED — see
+  // effectivePublishedAt below) are still maturing.
+  //
+  // The filter below is a COARSE PRE-FILTER on `created_at`, not the real
+  // 8-day maturation boundary — the real boundary is enforced per-row in
+  // code (step 2, via effectivePublishedAt + milestonesDue), because
+  // PostgREST has no way to express `coalesce(published_at, verified_at,
+  // created_at)` in a `.gte()` filter without a generated column/migration.
+  // Why `created_at` alone isn't safe as the SQL-side filter:
+  // useSponsorshipAmplification's `scheduledAt` path inserts its
+  // social_post_log row the moment Outstand ACCEPTS the schedule, not when
+  // the post actually goes live — so `created_at` can predate the real
+  // publish by the whole schedule lead time, and a tight `created_at`
+  // cutoff would silently drop a long-lead post out of this query entirely
+  // (never measured, no error, no counter). There is no product-enforced
+  // maximum lead time for amplification's `scheduledAt` specifically; the
+  // nearest documented precedent is the general-compose flow's
+  // `SCHEDULE_MAX_DAYS = 30` (src/components/outstand/CustomComposeForm.tsx).
+  // Reusing that number here widens the floor enough to cover any lead time
+  // the product already allows elsewhere. A post scheduled further out than
+  // that still falls outside this window — a known, bounded gap, not a
+  // silent one — and the per-row check below still correctly no-ops on the
+  // (majority) rows this widening re-fetches that were already fully
+  // settled, at the cost of some wasted reads, never a wrong answer.
+  const SCHEDULE_LEAD_BUFFER_DAYS = 30;
+  const cutoff = new Date(now.getTime() - (8 + SCHEDULE_LEAD_BUFFER_DAYS) * 24 * 60 * 60 * 1000).toISOString();
 
   // PAGE the query. PostgREST silently truncates an unbounded .select() at its
   // default page size, so past that limit the job would quietly measure only
@@ -67,7 +93,7 @@ serve(async (req: Request) => {
   for (let from = 0; ; from += PAGE) {
     const { data: page, error: postsErr } = await admin
       .from("social_post_log")
-      .select("id, user_id, campaign_id, outstand_post_id, platform, post_type, format, source_brief_id, created_at")
+      .select("id, user_id, campaign_id, outstand_post_id, platform, post_type, format, source_brief_id, created_at, published_at, verified_at")
       // Only measure what a signed Outstand event confirmed. An unstamped row is
       // client-asserted: its outstand_post_id was never checked by anything, and
       // fetching it would spend an org-wide-key API call on a post we cannot tie to
@@ -84,9 +110,10 @@ serve(async (req: Request) => {
     if (!page || page.length < PAGE) break;
   }
 
-  // Excluded by the gate above, in the same window. A filter that hides rows
-  // without saying so is the failure mode this whole sub-project exists to
-  // remove — queried separately rather than fetched, since we only need the count.
+  // Excluded by the gate above, in the same (coarse, created_at-based) window.
+  // A filter that hides rows without saying so is the failure mode this whole
+  // sub-project exists to remove — queried separately rather than fetched,
+  // since we only need the count.
   const { count: unverifiedCount, error: unverifiedErr } = await admin
     .from("social_post_log")
     .select("id", { count: "exact", head: true })
@@ -125,7 +152,12 @@ serve(async (req: Request) => {
     }
     const captured = new Set<Milestone>((existing ?? []).map((r) => r.milestone as Milestone));
 
-    const due = milestonesDue(new Date(p.created_at), now, captured);
+    // Age from when the post actually PUBLISHED, not when its social_post_log
+    // row was created — see effectivePublishedAt's doc comment in capture.ts.
+    // For an amplification row scheduled days ahead, created_at is schedule-
+    // ACCEPT time; using it here made the first capture after the real publish
+    // believe the post was already days old and fire every milestone at once.
+    const due = milestonesDue(effectivePublishedAt(p), now, captured);
     if (due.length === 0) { skipped++; continue; }
 
     // 3. Fetch analytics once; reuse for every due milestone this run.

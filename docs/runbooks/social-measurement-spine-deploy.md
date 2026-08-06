@@ -3,9 +3,11 @@
 Written 2026-08-05 from the whole-branch review of `feat/social-measurement-spine`, updated the
 same day once Task 11 shipped the fix, again once Task 13 closed the amplification leg of the
 `platform`-vocabulary problem, again once Task 14 corrected two Codex findings on already-shipped
-code, again once Task 15 fixed a webhook/client race in that same code, and again once Task 16
-simplified the no-schedule-row fallback at its root instead of patching it a fifth time. **Read this
-before deploying `outstand-webhook`.** BLOCKER 1 below was a genuine data-correctness defect that no
+code, again once Task 15 fixed a webhook/client race in that same code, again once Task 16
+simplified the no-schedule-row fallback at its root instead of patching it a fifth time, and again
+once Task 17 closed a sixth variant of the same race (a partial multi-platform insert, this time on
+the *client* side) and fixed `content-performance-capture` measuring post age from row-creation time
+instead of actual publish time. **Read this before deploying `outstand-webhook`.** BLOCKER 1 below was a genuine data-correctness defect that no
 per-task review could see, because it lived in the seam between two tasks that each passed — it is
 now **fixed** (see below, and its five follow-on fix rounds). **`outstand-webhook` now returns HTTP
 500 on purpose in one case** (Task 15, narrowed by Task 16 below) — if you're debugging a 500 from
@@ -314,6 +316,69 @@ UPDATE: no row at all → still `owner_pending` → 500 → retry (unchanged); a
 genuinely publishes with no schedule row and no user-facing draft — giving it one would surface
 amplification posts in the schedule UI, a product change outside this fix's scope. The fallback is
 smaller in *importance* now (DragonShare no longer depends on it) but stays, correctly, for that path.
+
+## Fix round 6 (Task 17) — atomic amplification insert closes a partial-row race; capture now measures from publish time, not row-creation time
+
+Two independent fixes, both removing a problem rather than managing it.
+
+**1. `useSponsorshipAmplification.ts` inserted one `social_post_log` row per platform in a
+sequential loop — Codex found a client-side variant of the same race Task 15/16 fixed
+server-side.** The no-schedule-row stamp path in `recordPublishedPost` (`outstand-webhook/index.ts`)
+matches its existence check and its `verified_at` UPDATE on `outstand_post_id` alone, **not**
+`(outstand_post_id, platform)` — deliberately, since there is still no schedule row on this path to
+source a single platform from (see Task 13's note above `recordPublishedPost`). That means if the
+webhook's `post.published` delivery landed *between* two iterations of the old per-platform loop —
+after the first platform's row committed but before the rest — the existence check would find *that
+one* row, treat the post as "verified_existing," stamp only what existed, and return HTTP 200. Outstand
+never retries a 200. The remaining platforms then inserted moments later with `verified_at` permanently
+`NULL`, and `content-performance-capture` (which only selects `verified_at IS NOT NULL` rows) skipped
+them forever — the same permanent-loss shape as Task 15's race, just triggered by the *client's own*
+multi-row write instead of a client/webhook ordering gap.
+
+**Fix: collect the platform rows and insert them with one `.insert([...])` array call**, not a loop.
+PostgREST executes a JSON-array insert as a single INSERT statement — confirmed by reading the
+Supabase client call site, not assumed — so either every platform row lands or none does, and the
+partial window the webhook could observe disappears by construction. The rejected alternative (matching
+Codex's original suggestion) was to make the webhook's no-schedule-row path compare existing rows
+against the event's networks and retry until every expected platform is present — deliberately **not**
+done: that adds more state to a fallback path that had already produced a real defect across four
+consecutive review rounds (Tasks 12/14/15/16 above). Removing the window in the writer is simpler than
+teaching the reader to tolerate it. No schema change; `unresolved` account handling and its
+`console.warn` are untouched.
+
+**2. `content-performance-capture` computed milestone age (and its enumeration window) from
+`social_post_log.created_at`, not from when the post actually published.** `useSponsorshipAmplification`
+supports `scheduledAt` and writes its row the moment Outstand **accepts** the schedule, not when the
+post goes live — for a post scheduled days ahead, `created_at` predates the real publish by the whole
+lead time. Two consequences: the first capture after the real publish believed the post was already
+days old and fired every milestone (`24h`/`72h`/`7d`) at once against a post that had just gone live;
+and if the lead time was long enough, `created_at` fell outside the enumeration query's `.gte("created_at",
+cutoff)` 8-day window before the post ever published, so it was never measured at all.
+
+**Fix: `capture.ts` gained a pure `effectivePublishedAt(row)` helper** —
+`coalesce(published_at, verified_at, created_at)`, unit-tested in `capture.test.ts` — used for the
+milestone-age computation in `index.ts`. `published_at` is set by `outstand-webhook`'s schedule-matched
+path (Task 5); on the no-schedule-row/amplification path the webhook stamps `verified_at` **only**
+(never `published_at`), so `effectivePublishedAt` correctly falls through to it — that path's real
+publish-time signal was already exactly `verified_at`. `created_at` remains the last-resort fallback for
+legacy rows.
+
+**The enumeration query's `created_at` filter could not be given the same exact fix.** PostgREST has no
+way to express `coalesce(published_at, verified_at, created_at)` in a `.gte()` filter without adding a
+generated column (a migration, out of scope for this fix and not applied). **The `.gte("created_at",
+cutoff)` filter on both the main posts query and the `unverifiedCount` diagnostic query is now a COARSE
+PRE-FILTER, not the real boundary** — the real 8-day-since-publish boundary is enforced per-row, in code,
+by `effectivePublishedAt` + `milestonesDue`. The cutoff was widened from `now - 8d` to `now - (8d +
+SCHEDULE_LEAD_BUFFER_DAYS)`, `SCHEDULE_LEAD_BUFFER_DAYS = 30` — reusing the only documented schedule-lead
+precedent in the codebase, `CustomComposeForm.tsx`'s general-compose `SCHEDULE_MAX_DAYS = 30` (amplification
+itself enforces no maximum lead time today). **This is a bounded, known gap, not a silent one:** an
+amplification post scheduled more than 30 days out would still fall outside the widened `created_at`
+floor and be silently excluded from the query, same failure shape as before just at a much longer lead
+time. Widening the floor also means the query now re-fetches some rows that are already fully settled
+(all three milestones captured) — harmless, since the per-row `milestonesDue` check still correctly
+no-ops on them (`due = []` → `skipped++`), just some extra reads. No migration, no deploy-order change —
+`published_at`/`verified_at` were already load-bearing columns for the already-shipped `outstand-webhook`
+code and were already required to exist before this branch's Step 6.
 
 ## Still open, tracked elsewhere
 

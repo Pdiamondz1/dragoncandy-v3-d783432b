@@ -106,15 +106,32 @@ export function useSponsorshipAmplification() {
         );
       }
 
-      for (const platform of platforms) {
-        const { error: logError } = await supabase.from('social_post_log').insert({
+      // Insert every platform's row in ONE array call, not a sequential loop.
+      // PostgREST executes a JSON-array insert as a single INSERT statement, so
+      // either every platform row lands or none does -- there is no window where
+      // some rows exist and others don't. A sequential per-platform loop left
+      // exactly that window open: if the Outstand webhook's no-schedule path
+      // (outstand-webhook/index.ts's recordPublishedPost) ran between two
+      // iterations, it would find the first-inserted row, treat that as
+      // sufficient, stamp only that subset, and return 200 -- so Outstand never
+      // retries and the remaining platforms stay permanently unverified and
+      // unmeasured. A single atomic insert removes the window rather than
+      // requiring the webhook to detect and retry against a partial subset.
+      if (platforms.length > 0) {
+        const rows = platforms.map((platform) => ({
           user_id: user!.id,
           campaign_id: campaignId,
           outstand_post_id: outstandPostId,
           platform,
           post_type: 'amplification',
-        });
-        if (logError) console.error('[useSponsorshipAmplification] Failed to log social post:', logError);
+        }));
+        const { error: logError } = await supabase.from('social_post_log').insert(rows);
+        if (logError) {
+          console.error(
+            `[useSponsorshipAmplification] Failed to log social post(s) for platforms [${platforms.join(', ')}]:`,
+            logError,
+          );
+        }
       }
 
       return data;

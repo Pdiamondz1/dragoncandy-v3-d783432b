@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { milestonesDue, normalizeAnalytics, classifyMeasurement, isCaptureRunFailed, metricsForPlatform, type Milestone } from './capture';
+import { milestonesDue, normalizeAnalytics, classifyMeasurement, isCaptureRunFailed, metricsForPlatform, effectivePublishedAt, type Milestone } from './capture';
 
 const HOURS = 60 * 60 * 1000;
 const at = (h: number) => new Date(Date.UTC(2026, 5, 10, 0, 0, 0) + h * HOURS);
@@ -22,6 +22,54 @@ describe('milestonesDue', () => {
   });
   it('returns nothing once all milestones are captured', () => {
     expect(milestonesDue(at(0), at(500), new Set<Milestone>(['24h', '72h', '7d']))).toEqual([]);
+  });
+});
+
+describe('effectivePublishedAt', () => {
+  it('prefers published_at over verified_at and created_at (the schedule-matched/webhook-recorded case)', () => {
+    const d = effectivePublishedAt({
+      published_at: '2026-06-10T00:00:00.000Z',
+      verified_at: '2026-06-10T00:00:05.000Z',
+      created_at: '2026-06-01T00:00:00.000Z',
+    });
+    expect(d.toISOString()).toBe('2026-06-10T00:00:00.000Z');
+  });
+
+  it('falls back to verified_at when published_at is null (the no-schedule-row/amplification case)', () => {
+    const d = effectivePublishedAt({
+      published_at: null,
+      verified_at: '2026-06-10T00:00:05.000Z',
+      created_at: '2026-06-01T00:00:00.000Z',
+    });
+    expect(d.toISOString()).toBe('2026-06-10T00:00:05.000Z');
+  });
+
+  it('falls back to created_at only when neither published_at nor verified_at is set (legacy rows)', () => {
+    const d = effectivePublishedAt({
+      published_at: null,
+      verified_at: null,
+      created_at: '2026-06-01T00:00:00.000Z',
+    });
+    expect(d.toISOString()).toBe('2026-06-01T00:00:00.000Z');
+  });
+
+  it('treats an absent (undefined) published_at/verified_at the same as null', () => {
+    const d = effectivePublishedAt({ created_at: '2026-06-01T00:00:00.000Z' });
+    expect(d.toISOString()).toBe('2026-06-01T00:00:00.000Z');
+  });
+
+  it('a post scheduled days ahead of created_at reads as young right after publish, not days old', () => {
+    // useSponsorshipAmplification writes created_at at schedule-ACCEPT time;
+    // the webhook only ever stamps verified_at on this path (never
+    // published_at). A capture running moments after the real publish must
+    // see the post as brand new, not as old as its schedule lead time.
+    const createdAt = '2026-06-01T00:00:00.000Z'; // scheduled 9 days ahead
+    const verifiedAt = '2026-06-10T00:00:00.000Z'; // actually published now
+    const now = new Date('2026-06-10T00:05:00.000Z');
+    const row = { published_at: null, verified_at: verifiedAt, created_at: createdAt };
+    expect(milestonesDue(effectivePublishedAt(row), now, new Set())).toEqual([]);
+    // Using created_at directly would have wrongly fired every milestone at once.
+    expect(milestonesDue(new Date(createdAt), now, new Set())).toEqual(['24h', '72h', '7d']);
   });
 });
 

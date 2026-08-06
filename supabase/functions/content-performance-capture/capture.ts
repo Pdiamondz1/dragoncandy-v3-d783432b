@@ -22,6 +22,34 @@ export function milestonesDue(
   return ORDER.filter((m) => ageHours >= MILESTONE_HOURS[m] && !alreadyCaptured.has(m));
 }
 
+/**
+ * The best available approximation of when a post actually went live, in
+ * priority order: `published_at` (webhook-confirmed, from the Outstand
+ * event's own timestamp) -> `verified_at` (webhook-confirmed processing
+ * time -- the only signal ever set on the no-schedule-row path, since
+ * `outstand-webhook`'s `recordPublishedPost` no-schedule-row branch stamps
+ * ONLY `verified_at`, never `published_at`) -> `created_at` (row-insert
+ * time, last resort for legacy rows written before either column existed).
+ *
+ * NEVER trust `created_at` alone for a row written through
+ * `useSponsorshipAmplification`'s `scheduledAt` path: that hook inserts its
+ * `social_post_log` row the moment Outstand ACCEPTS the schedule, not when
+ * the post actually goes live -- for a post scheduled days out, `created_at`
+ * can predate the real publish by the whole lead time. Using it as the
+ * "age" anchor made the first capture after publish believe the post was
+ * already days old (firing every milestone at once against a post that just
+ * went live), and could push the row's `created_at` past a fixed cutoff so
+ * it was never measured at all -- the exact defect this function exists to
+ * remove.
+ */
+export function effectivePublishedAt(row: {
+  published_at?: string | null;
+  verified_at?: string | null;
+  created_at: string;
+}): Date {
+  return new Date(row.published_at ?? row.verified_at ?? row.created_at);
+}
+
 export interface NormalizedMetrics {
   views: number | null;
   likes: number | null;
