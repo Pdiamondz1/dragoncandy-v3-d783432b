@@ -51,27 +51,34 @@ export interface SocialPostLogRow {
  * DragonShare-sourced drafts carry one, read from metadata.post_id when
  * metadata.source is 'dragonshare_social_hook'.
  *
- * The `meta.post_id` read is an UNCHECKED cast (`as string | undefined`),
- * matching outstand-webhook's live, deployed behaviour exactly — this was
- * deliberately preserved during the extraction that unified this function
- * (2026-08-06), not tightened. A non-string post_id passes through as-is
- * rather than being coerced to null, and would fail the row's uuid-column
- * insert (the whole upsert batch rejected, surfaced as a 500 for Outstand to
- * retry on the webhook path) rather than silently writing a null. Before
- * this extraction, reconcile-social-posts had independently shipped a
- * stricter `typeof === 'string'` guard here — a real, if low-probability,
- * behavioural divergence from the webhook's live code (a malformed post_id
- * would have silently recorded with dragonshare_post_id: null instead of
- * failing loud) — reported and closed by this unification, not silently
- * reconciled. See task-3-report.md's addendum.
+ * The `meta.post_id` read is DELIBERATELY typeof-checked
+ * (`typeof === 'string'`), not an unchecked cast — this is the harder-won of
+ * the two directions this extraction (2026-08-06) could have unified to, and
+ * it was chosen on purpose, not for consistency's sake. Before the
+ * extraction, outstand-webhook's live code used an unchecked
+ * `as string | undefined` cast here; reconcile-social-posts independently
+ * shipped this stricter guard. `social_post_log.dragonshare_post_id` is a
+ * `uuid` column (verified against prod schema) with no CHECK softening a bad
+ * value — a non-string post_id (a number, an object) under the unchecked
+ * cast is passed straight through and fails Postgres's uuid coercion, and
+ * because the upsert writes every platform's row for a post in ONE call, a
+ * single bad row fails the ENTIRE batch: the whole post goes permanently
+ * unrecorded (the webhook path surfaces this as a 500, Outstand retries up
+ * to 5x against the same unfixable data, then gives up). The strict guard
+ * instead writes `dragonshare_post_id: null` for that one row: the upsert
+ * succeeds, the post is measured, and only the brief->outcome attribution
+ * link is missing. Losing one nullable field beats losing the whole
+ * measurement — outstand-webhook inherits this hardening on its next
+ * deploy (required for this branch regardless, since it now imports this
+ * module). See task-3-report.md's addendum for the reasoning trail.
  *
- * `metadata.source` IS typeof-checked (unlike post_id): resolvePostType's
- * `SOURCE_TO_POST_TYPE.get(source)` and the `=== 'dragonshare_social_hook'`
- * comparison both already fail closed on any non-string value exactly the
- * same way a typeof guard would (a Map lookup with a non-string key simply
- * misses; `x === 'literal'` is false for any non-string x) — so checking it
- * explicitly here is observably identical to the webhook's unchecked cast,
- * just clearer to read. Confirmed equivalent for every input, not assumed.
+ * `metadata.source` is typeof-checked too, but that one was never a
+ * divergence: resolvePostType's `SOURCE_TO_POST_TYPE.get(source)` and the
+ * `=== 'dragonshare_social_hook'` comparison both already fail closed on any
+ * non-string value the same way a typeof guard would (a Map lookup with a
+ * non-string key simply misses; `x === 'literal'` is false for any
+ * non-string x) — confirmed observably identical to the webhook's original
+ * unchecked cast for every input, not assumed.
  */
 export function buildSocialPostLogRow(
   postId: string,
@@ -85,7 +92,7 @@ export function buildSocialPostLogRow(
   const postType = resolvePostType(source, sched.campaign_id);
   const dragonsharePostId =
     source === 'dragonshare_social_hook'
-      ? ((meta.post_id as string | undefined) ?? null)
+      ? (typeof meta.post_id === 'string' ? meta.post_id : null)
       : null;
 
   return {

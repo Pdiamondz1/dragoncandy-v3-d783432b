@@ -77,20 +77,21 @@ describe('buildSocialPostLogRow', () => {
     expect(row.post_type).toBe('standalone');
   });
 
-  // Locks in outstand-webhook's live, deployed behaviour exactly (see this
-  // module's header comment): a non-string metadata.post_id passes through
-  // unchanged rather than being coerced to null. A caller upserting this row
-  // into the real uuid-typed dragonshare_post_id column would get a DB
-  // rejection for the whole batch, not a silent null write — that failure
-  // mode is the webhook's actual live behaviour today, not a regression
-  // introduced by this test.
-  it('passes a non-string metadata.post_id through unchanged, matching the webhook\'s unchecked cast', () => {
+  // Locks in the DELIBERATE hardening this module chose (see its header
+  // comment): a non-string metadata.post_id is coerced to null, not passed
+  // through. dragonshare_post_id is a uuid column with no CHECK — passing a
+  // non-string value through would fail Postgres's uuid coercion and error
+  // the WHOLE upsert batch (every platform's row for the post), which is
+  // strictly worse than losing just the brief-attribution link on this one
+  // row. This is a deliberate improvement over outstand-webhook's
+  // pre-extraction unchecked cast, not a preserved quirk.
+  it('coerces a non-string metadata.post_id to null rather than passing it through', () => {
     const sched: ScheduledPostForLogRow = {
       ...baseSched,
       metadata: { source: 'dragonshare_social_hook', post_id: 12345 },
     };
     const row = buildSocialPostLogRow('post-1', 'instagram', 'now', sched, 'now');
-    expect(row.dragonshare_post_id as unknown).toBe(12345);
+    expect(row.dragonshare_post_id).toBeNull();
   });
 
   // A non-string metadata.source must fail closed to the same fallback a

@@ -129,6 +129,17 @@ async function recordPublishedPost(
   // (outstand_post_id, platform) key. verified_at is computed fresh per
   // platform inside this map, preserving this function's exact pre-extraction
   // behavior (each row got its own independent new Date() call).
+  //
+  // ONE DELIBERATE BEHAVIOR CHANGE from this function's pre-extraction code,
+  // everything else is byte-identical: a non-string metadata.post_id used to
+  // pass through via an unchecked cast, which would fail dragonshare_post_id's
+  // uuid-column coercion and error the WHOLE upsert (every platform's row for
+  // this post lost, not just the one field). The shared function now guards
+  // with typeof and writes null instead — the post still gets measured, only
+  // the brief-attribution link is missing. See social-post-log-row.ts's
+  // buildSocialPostLogRow doc comment for the full reasoning. Requires this
+  // function to be redeployed for this branch's change to take effect at all
+  // (it now imports from _shared/social-post-log-row.ts).
   const rows = platforms.map((platform) =>
     buildSocialPostLogRow(postId, platform, publishedAt, sched, new Date().toISOString()),
   );
