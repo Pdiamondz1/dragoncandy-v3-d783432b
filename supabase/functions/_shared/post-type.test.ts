@@ -8,6 +8,18 @@ describe('resolvePostType', () => {
     expect(resolvePostType('campaign_social_hook', null)).toBe('campaign');
     expect(resolvePostType('promotion_social_hook', null)).toBe('ugc_promotion');
     expect(resolvePostType('dragonshare_social_hook', null)).toBe('dragonshare');
+    expect(resolvePostType('sponsorship_amplification', null)).toBe('amplification');
+  });
+
+  // Regression: useSponsorshipAmplification.ts's buildAmplificationScheduleRows
+  // writes this source, and an amplification post ALWAYS carries a campaign_id
+  // (it amplifies a specific sponsored campaign). Before this mapping existed,
+  // the campaignId fallback resolved 'campaign' instead of 'amplification',
+  // and the webhook's upsert silently overwrote the client's correct
+  // 'amplification' row with that wrong value.
+  it('resolves amplification even when a campaign id is present', () => {
+    expect(resolvePostType('sponsorship_amplification', 'c0ffee00-0000-0000-0000-000000000000'))
+      .toBe('amplification');
   });
 
   it('falls back to campaign when a campaign is attached but the source is unknown', () => {
@@ -23,6 +35,23 @@ describe('resolvePostType', () => {
   it('a known source wins over the campaign fallback', () => {
     expect(resolvePostType('dragonshare_social_hook', 'c0ffee00-0000-0000-0000-000000000000'))
       .toBe('dragonshare');
+  });
+
+  // cross_post is part of the live CHECK vocabulary but no publish path has
+  // ever produced it -- no metadata.source maps to it and the fallback branch
+  // never returns it either. Documented here so a future change that removes
+  // it from POST_TYPES notices this test, rather than silently reviving dead
+  // vocabulary nobody depends on.
+  it('never produces cross_post -- no source maps to it and no fallback returns it', () => {
+    const probes: Array<[string | null, string | null]> = [
+      ['cross_post', null],
+      ['cross_post', 'c0ffee00-0000-0000-0000-000000000000'],
+      ['auto_cross_schedule', null],
+      ['auto_cross_schedule', 'c0ffee00-0000-0000-0000-000000000000'],
+    ];
+    for (const [source, campaignId] of probes) {
+      expect(resolvePostType(source, campaignId)).not.toBe('cross_post');
+    }
   });
 
   // social_post_log.post_type is NOT NULL with a CHECK; emitting anything outside

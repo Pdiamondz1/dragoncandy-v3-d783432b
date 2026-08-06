@@ -81,7 +81,7 @@ export interface AmplificationScheduleRow {
   scheduled_at: string;
   published_at: string | null;
   status: 'scheduled' | 'published';
-  metadata: { outstand_post_id: string };
+  metadata: { outstand_post_id: string; source: 'sponsorship_amplification' };
 }
 
 /**
@@ -93,6 +93,15 @@ export interface AmplificationScheduleRow {
  * why its posts were never verified/measured; this removes that special-case
  * status instead of adding a webhook-side fallback (see that function's
  * comment for why a fallback was tried and rejected).
+ *
+ * metadata.source is set to 'sponsorship_amplification', the postType.ts
+ * SOURCE_TO_POST_TYPE key for this flow (not just a stray label): the webhook
+ * derives post_type from THIS metadata via resolvePostType, independent of
+ * what the caller writes into social_post_log.post_type directly below.
+ * Leaving source unset made resolvePostType fall through to the campaignId
+ * fallback -- amplification always carries a campaignId, so that resolved to
+ * 'campaign' and silently overwrote the correct 'amplification' value on the
+ * webhook's upsert.
  *
  * Pure: `now` is a caller-supplied parameter, never read from Date.now()
  * internally, so a missing scheduledAt is testable without faking the clock.
@@ -134,7 +143,13 @@ export function buildAmplificationScheduleRows(
     scheduled_at: effectiveScheduledAt,
     published_at: status === 'published' ? effectiveScheduledAt : null,
     status,
-    metadata: { outstand_post_id: outstandPostId },
+    // source: 'sponsorship_amplification' is the postType.ts SOURCE_TO_POST_TYPE
+    // key for this flow. Without it, outstand-webhook's recordPublishedPost
+    // (which resolves postType from THIS metadata, not from the caller) falls
+    // through to the campaignId fallback and resolves 'campaign' instead of
+    // 'amplification' -- silently overwriting the social_post_log row's
+    // correct post_type on upsert. See the doc comment on this function.
+    metadata: { outstand_post_id: outstandPostId, source: 'sponsorship_amplification' },
   }));
 }
 

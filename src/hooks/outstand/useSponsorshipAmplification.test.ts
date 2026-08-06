@@ -4,6 +4,7 @@ import {
   derivePlannerContentType,
   buildAmplificationScheduleRows,
 } from './useSponsorshipAmplification';
+import { resolvePostType } from '@/lib/postType';
 
 describe('resolveAmplificationPlatforms', () => {
   it('resolves each accountId to its real platform name, never the raw id', () => {
@@ -115,6 +116,45 @@ describe('buildAmplificationScheduleRows', () => {
     for (const row of rows) {
       expect(row.metadata.outstand_post_id).toBe('post-999');
     }
+  });
+
+  it('sets metadata.source to sponsorship_amplification on every row', () => {
+    const rows = buildAmplificationScheduleRows(
+      ['instagram', 'tiktok', 'youtube'],
+      'post-999',
+      'user-1',
+      'caption',
+      [],
+      'campaign-1',
+      null,
+      NOW,
+    );
+    for (const row of rows) {
+      expect(row.metadata.source).toBe('sponsorship_amplification');
+    }
+  });
+
+  // Regression: the webhook derives social_post_log.post_type from THIS
+  // metadata via resolvePostType(metadata.source, campaign_id), independent of
+  // the 'amplification' literal the client writes to social_post_log.post_type
+  // directly. Amplification schedule rows always carry a campaign_id (they
+  // amplify a specific sponsored campaign) -- before metadata.source was set,
+  // resolvePostType fell through to the campaignId fallback and produced
+  // 'campaign', which then silently overwrote the client's correct
+  // 'amplification' value on the webhook's (outstand_post_id, platform)
+  // upsert. This asserts the fix holds with a campaign id present.
+  it('resolves to post_type amplification via resolvePostType even with a campaign id present', () => {
+    const [row] = buildAmplificationScheduleRows(
+      ['instagram'],
+      'post-123',
+      'user-1',
+      'caption',
+      [],
+      'campaign-1',
+      null,
+      NOW,
+    );
+    expect(resolvePostType(row.metadata.source, row.campaign_id)).toBe('amplification');
   });
 
   it('returns an empty array for an empty platform list', () => {

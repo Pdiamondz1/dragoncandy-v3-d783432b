@@ -23,6 +23,8 @@ describe('postType src/edge sibling equivalence', () => {
       'campaign_social_hook',
       'promotion_social_hook',
       'dragonshare_social_hook',
+      'sponsorship_amplification',
+      'auto_cross_schedule',
       'unknown_source',
       'nonsense',
       '',
