@@ -268,47 +268,7 @@ function SocialPostPromptInner({
     // resolved, so scheduleTime IS the publish time in that call.
     const publishedAt = status === 'published' ? scheduleTime : undefined;
 
-    const existing = await supabase
-      .from('donny_scheduled_posts')
-      .select('id')
-      .eq('campaign_id', campaignId)
-      .eq('user_id', user.id)
-      .eq('status', 'draft')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (existing.data?.id) {
-      const { error: scheduleError } = await supabase
-        .from('donny_scheduled_posts')
-        .update({
-          status,
-          scheduled_at: scheduleTime,
-          ...(publishedAt ? { published_at: publishedAt } : {}),
-          caption,
-          hashtags,
-          media_urls: mediaUrls,
-          platform: platforms[0] ?? 'instagram',
-          metadata: {
-            outstand_post_id: outstandPostId ?? null,
-            social_account_ids: socialAccountIds ?? selectedAccountIds,
-          },
-        })
-        .eq('id', existing.data.id);
-
-      if (scheduleError) {
-        // The post is already live on the platform at this point (crossPost's
-        // onSuccess already fired before syncScheduledPost was called), so a
-        // failure here means published but unrecorded — invisible to
-        // scheduling and to every analytics surface downstream.
-        console.error('[SocialPostPrompt] Failed to record scheduled post:', scheduleError);
-        toast({
-          variant: 'destructive',
-          title: 'Post published, but not recorded',
-          description: 'It went live, but we could not save it for scheduling or analytics.',
-        });
-      }
-    } else {
+    const insertNewRow = async () => {
       const { error: scheduleError } = await supabase
         .from('donny_scheduled_posts')
         .insert({
@@ -342,6 +302,62 @@ function SocialPostPromptInner({
           description: 'It went live, but we could not save it for scheduling or analytics.',
         });
       }
+    };
+
+    // Post Now must NEVER adopt an existing draft row: a user with any saved
+    // draft on this campaign who hits Post Now on different content would
+    // otherwise have that unrelated draft silently overwritten with the
+    // just-posted content and marked published — losing the draft, and
+    // attaching the measurement row to the wrong scheduled-post record. Only
+    // the scheduling paths (status === 'scheduled', where the draft
+    // genuinely becomes the scheduled post) may adopt — so Post Now skips the
+    // draft lookup entirely and always inserts a fresh row.
+    if (status === 'published') {
+      await insertNewRow();
+      return;
+    }
+
+    const existing = await supabase
+      .from('donny_scheduled_posts')
+      .select('id')
+      .eq('campaign_id', campaignId)
+      .eq('user_id', user.id)
+      .eq('status', 'draft')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existing.data?.id) {
+      const { error: scheduleError } = await supabase
+        .from('donny_scheduled_posts')
+        .update({
+          status,
+          scheduled_at: scheduleTime,
+          caption,
+          hashtags,
+          media_urls: mediaUrls,
+          platform: platforms[0] ?? 'instagram',
+          metadata: {
+            outstand_post_id: outstandPostId ?? null,
+            social_account_ids: socialAccountIds ?? selectedAccountIds,
+          },
+        })
+        .eq('id', existing.data.id);
+
+      if (scheduleError) {
+        // The post is already live on the platform at this point (crossPost's
+        // onSuccess already fired before syncScheduledPost was called), so a
+        // failure here means published but unrecorded — invisible to
+        // scheduling and to every analytics surface downstream.
+        console.error('[SocialPostPrompt] Failed to record scheduled post:', scheduleError);
+        toast({
+          variant: 'destructive',
+          title: 'Post published, but not recorded',
+          description: 'It went live, but we could not save it for scheduling or analytics.',
+        });
+      }
+    } else {
+      await insertNewRow();
     }
   };
 
