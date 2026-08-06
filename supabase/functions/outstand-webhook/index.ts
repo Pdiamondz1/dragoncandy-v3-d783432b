@@ -30,13 +30,8 @@ const json = (status: number, body: unknown) =>
  * which makes coverage structural rather than something each new path must
  * remember. Same reasoning as create-notification.
  *
- * Returns 'recorded' | 'unmatched' | 'verified_existing' | 'owner_pending' | 'failed'
- * so the caller can count outcomes. An unmatched post is a VISIBLE hole, never a
- * silent one. 'owner_pending' is distinct from 'unmatched': it means this IS one
- * of our posts (an owner resolved from accounts[].accountId) but no row existed
- * yet to stamp — almost certainly a race against the client's own
- * social_post_log insert (see the no-schedule-row branch below) — and the
- * caller must turn that into a 500 so Outstand redelivers, never a 200.
+ * Returns 'recorded' | 'unmatched' | 'failed' so the caller can count outcomes.
+ * An unmatched post is a VISIBLE hole, never a silent one.
  */
 async function recordPublishedPost(
   supabase: ReturnType<typeof createClient>,
@@ -44,9 +39,7 @@ async function recordPublishedPost(
   publishedAt: string,
   accounts: OutstandSocialAccount[],
   rawAccountCount: number,
-): Promise<
-  { outcome: "recorded" | "unmatched" | "verified_existing" | "owner_pending" | "failed"; rows: number; dropped: number }
-> {
+): Promise<{ outcome: "recorded" | "unmatched" | "failed"; rows: number; dropped: number }> {
   // Entries parseAccounts discarded as malformed, plus (below) entries that
   // parsed fine but carry no network. Carried forward from the Task 4 review: a
   // skip that increments no counter is the failure mode this whole sub-project
@@ -69,141 +62,30 @@ async function recordPublishedPost(
     return { outcome: "failed", rows: 0, dropped };
   }
   if (!schedRows || schedRows.length === 0) {
-    // No schedule row: published outside our flow (e.g.
+    // No schedule row: published outside our flow. Since Task 16,
+    // DonnyProvider.tsx's schedule-driven paths (including DragonShare) always
+    // write outstand_post_id into donny_scheduled_posts.metadata before
+    // publishing, so they match above and never reach here — what's left is
     // useSponsorshipAmplification.ts, which writes social_post_log directly and
-    // creates no donny_scheduled_posts row at all — Task 12 finding), or Task 1's
-    // bug lost it. Either way there's no schedule row to source caption/format/
-    // campaign dimensions from, and user_id is NOT NULL and unknowable on this
-    // path, so there is no honest new row to insert here.
+    // creates no donny_scheduled_posts row at all (it has zero rows on prod as
+    // of this writing), plus whatever Task 1's original bug may still lose.
     //
-    // What IS available: stamp verified_at on a social_post_log row a client
-    // ALREADY wrote for this outstand_post_id. That row's outstand_post_id is
-    // client-asserted, but a signed post.published event proves a post with
-    // that id actually published — stamping on that signature preserves the
-    // property this gate was built for (a fabricated post id never produces a
-    // signed event, so blind enumeration and the quota-burn angle still die
-    // here).
-    //
-    // CORRECTION (2026-08-05): the first version of this stamp matched on
-    // outstand_post_id alone with no check on who wrote the row, on the theory
-    // that this was "no worse than before". That was wrong — before this stamp
-    // existed, a planted row for a real-but-unscheduled post id could not be
-    // verified through this path at all; an unscoped stamp is a NEW way to get
-    // one verified. An attacker who knows a real Outstand post id with no
-    // schedule row could get their own planted row stamped, and
-    // content-performance-capture would then fetch another tenant's analytics
-    // under the attacker's user_id. Fixed by resolving the post's plausible
-    // owner(s) from the event itself before stamping: accounts[].accountId is
-    // the Outstand-side account id that published, and
-    // business_outstand_accounts maps that id to the user who connected it.
-    // Only rows whose user_id is among those resolved owners get stamped; if no
-    // owner resolves (or the lookup errors), nothing is stamped.
-    //
-    // BE HONEST ABOUT WHAT THIS DOES AND DOES NOT ACHIEVE. It is NOT a full
-    // close. business_outstand_accounts' own INSERT policy
-    // (20260506140000_outstand_account_links.sql) constrains user_id and
-    // business_id to the caller's own identity but does NOT constrain
-    // outstand_social_account_id — a determined attacker can insert their own
-    // business_outstand_accounts row claiming a real victim's account id,
-    // which then resolves to the ATTACKER's own user_id here and passes this
-    // check. What this fix removes is the no-ownership-check-at-all case:
-    // forging a verified row now additionally requires knowing AND claiming
-    // the real Outstand account id, not just the real post id — a required
-    // forgery step, not a closed hole. The actual close is server-established
-    // provider-account ownership (never client-asserted), tracked separately:
-    // docs/wiki/raw/sessions/2026-08-05-outstand-cross-tenant-metric-read.md.
-    //
-    // Matched on outstand_post_id ALONE, not (outstand_post_id, platform):
-    // there is still no schedule row on this path, so there is still no single
-    // network name to scope the match to (an amplify call fans one post out to
-    // however many platforms were selected). useSponsorshipAmplification.ts now
-    // writes real platform names (fixed 2026-08-05, Task 13 —
-    // docs/runbooks/social-measurement-spine-deploy.md), so this simply stamps
-    // every owner-matched row this webhook event's post produced, whatever
-    // platforms those are.
-    const accountIds = Array.from(
-      new Set(accounts.map((a) => a.accountId).filter((id): id is string => !!id)),
-    );
-    if (accountIds.length === 0) {
-      console.warn(`outstand-webhook: no account id on event for ${postId} — not stamping any pre-existing rows`);
-      return { outcome: "unmatched", rows: 0, dropped };
-    }
-
-    const { data: owners, error: ownerErr } = await supabase
-      .from("business_outstand_accounts")
-      .select("user_id")
-      .in("outstand_social_account_id", accountIds);
-
-    if (ownerErr) {
-      // Fail closed: a broken lookup must never fall through to an unscoped
-      // stamp. Better a real post's verification is delayed a retry than a
-      // planted row slips through because ownership resolution errored.
-      console.error("outstand-webhook: account owner lookup failed", ownerErr.message);
-      return { outcome: "failed", rows: 0, dropped };
-    }
-    const ownerIds = Array.from(
-      new Set((owners ?? []).map((o) => o.user_id as string | null).filter((id): id is string => !!id)),
-    );
-    if (ownerIds.length === 0) {
-      console.warn(`outstand-webhook: no account owner resolved for ${postId} — not stamping any pre-existing rows`);
-      return { outcome: "unmatched", rows: 0, dropped };
-    }
-
-    // One read before the conditional update, to tell apart the two zero-match
-    // causes a bare UPDATE...WHERE verified_at IS NULL can't distinguish (Task
-    // 16, Codex finding 2): "no row exists yet" (the genuine race — Outstand's
-    // post.published delivery beat the client's own social_post_log insert)
-    // needs a 500 so Outstand redelivers; "a row exists and is already
-    // verified" (a duplicate delivery of an event this webhook already
-    // processed) is success and must NOT 500 — the old code returned
-    // 'owner_pending' for both, so a duplicate delivery after the row was
-    // already correctly stamped 500'd forever until Outstand's retries ran out,
-    // for no reason (nothing was left to do).
-    const { data: existing, error: existErr } = await supabase
-      .from("social_post_log")
-      .select("id")
-      .eq("outstand_post_id", postId)
-      .in("user_id", ownerIds)
-      .limit(1);
-
-    if (existErr) {
-      console.error("outstand-webhook: existing-row lookup failed", existErr.message);
-      return { outcome: "failed", rows: 0, dropped };
-    }
-
-    if (!existing || existing.length === 0) {
-      // An owner DID resolve (the ownerIds.length === 0 case returned above),
-      // but no row exists at all yet — this is one of OUR posts, not a foreign
-      // one, so 'unmatched' would be the wrong outcome (Task 15, Codex P1): a
-      // real DragonCandy post would be silently lost forever whenever
-      // Outstand's post.published delivery beat the client's own
-      // social_post_log insert to land (useSponsorshipAmplification.ts and
-      // DonnyProvider's DragonShare path both publish through Outstand and only
-      // afterward insert their row). The caller must return non-2xx so
-      // Outstand redelivers (up to 5 attempts, backoff to 5 min) and a later
-      // attempt can stamp the row once it exists.
-      console.warn(
-        `outstand-webhook: owner resolved but no row exists yet for ${postId} — requesting retry (client insert likely still in flight)`,
-      );
-      return { outcome: "owner_pending", rows: 0, dropped };
-    }
-
-    const { data: stamped, error: stampErr } = await supabase
-      .from("social_post_log")
-      .update({ verified_at: new Date().toISOString() })
-      .eq("outstand_post_id", postId)
-      .in("user_id", ownerIds)
-      .is("verified_at", null)
-      .select("id");
-
-    if (stampErr) {
-      console.error("outstand-webhook: verified_at stamp failed", stampErr.message);
-      return { outcome: "failed", rows: 0, dropped };
-    }
-    // A row is confirmed to exist above either way, so a zero-row UPDATE here
-    // means it was already verified by an earlier delivery of this same event
-    // — a harmless duplicate, not a race. Both are success.
-    return { outcome: "verified_existing", rows: stamped?.length ?? 0, dropped };
+    // A fallback used to live here (Tasks 12/14/15/16) that stamped verified_at
+    // on a pre-existing social_post_log row for this postId, scoped to owners
+    // resolved from accounts[].accountId via business_outstand_accounts.
+    // Removed 2026-08-05 (Task 18, Codex P1): that ownership resolution is
+    // client-asserted, not server-established — business_outstand_accounts'
+    // own INSERT policy constrains user_id/business_id but not
+    // outstand_social_account_id, so any authenticated user can claim any
+    // provider account id, and an attacker who knew a real post id and account
+    // id could get their own planted row stamped and read another tenant's
+    // analytics through it. Four consecutive review rounds each found a real
+    // defect inside that fallback while patching around this hole instead of
+    // closing it. Amplification posts are simply not measured until
+    // provider-account ownership is server-established — see
+    // docs/runbooks/social-measurement-spine-deploy.md.
+    console.warn(`outstand-webhook: no scheduled post for ${postId} — not recorded for measurement`);
+    return { outcome: "unmatched", rows: 0, dropped };
   }
   if (schedRows.length > 1) {
     console.warn(
@@ -332,49 +214,21 @@ serve(async (req: Request) => {
           accounts,
           rawAccountCount,
         );
-        // outcome is one of 'recorded' (new row(s) inserted from a schedule
-        // match) / 'unmatched' (no schedule row, and either no account id on
-        // the event or no owner resolved for it — genuinely foreign, or an
-        // account we don't know) / 'verified_existing' (no schedule row, but a
-        // client-written social_post_log row for this postId got stamped —
-        // see the comment at the stamp UPDATE) / 'owner_pending' (no schedule
-        // row, an owner DID resolve — this is OUR post — but no row existed
-        // yet to stamp; see the comment at that return) / 'failed'. Kept as
-        // one log line, distinguished by ${res.outcome}, so a count-by-outcome
-        // over these logs tells all five apart without a separate branch per
-        // case.
         console.log(
           `outstand-webhook: measurement record for ${postId}: ${res.outcome} rows=${res.rows}` +
           (res.dropped > 0 ? ` droppedAccounts=${res.dropped}` : ""),
         );
-        if (res.outcome === "failed" || res.outcome === "owner_pending") {
-          // Both ask Outstand to redeliver (500, up to 5 attempts, backoff to
-          // 5 min) rather than losing the measurement permanently to a 200.
-          // 'failed' is a transient DB read/write error (schedule lookup,
-          // verified_at stamp, or social_post_log upsert). 'owner_pending' is
-          // the no-schedule-row race (Task 15, Codex P1): the event's
-          // accounts[].accountId resolved to one of our users, so this is
-          // definitely our post, but publish-then-insert client paths
-          // (useSponsorshipAmplification, DonnyProvider's DragonShare leg) can
-          // have Outstand's post.published delivery beat their own
-          // social_post_log insert — without this branch that row would carry
-          // a permanently null verified_at and content-performance-capture
-          // would skip it forever. Deliberately narrower than the old
-          // 'unmatched' catch-all: a genuinely foreign post (no owner
-          // resolves) still returns 200 below, since retrying that can never
-          // help and would burn five deliveries per foreign post.
-          // Safe to retry either way: the audit insert above ignores 23505
-          // (already ran, unconditionally, before this branch); the
-          // social_post_log upsert is keyed on (outstand_post_id, platform);
-          // the verified_at stamp UPDATE is guarded by .is('verified_at',
-          // null), so a retry after a partial stamp just finds 0 rows left to
-          // stamp (falls back into this same retry, never double-applies);
-          // and the status update below is guarded by .neq('status',
-          // 'published') — nothing here double-applies.
-          console.error(
-            `outstand-webhook: measurement ${res.outcome === "owner_pending" ? "pending (owner resolved, no row yet)" : "write failed"} for postId=${postId}, returning 500 for retry`,
-          );
-          return json(500, { status: res.outcome === "owner_pending" ? "pending" : "failed", outcome: res.outcome, post_id: postId });
+        if (res.outcome === "failed") {
+          // recordPublishedPost failed on a transient DB read/write (schedule
+          // lookup error or social_post_log upsert error) — not a data-shape
+          // problem, so it's worth Outstand's free retry (up to 5 attempts,
+          // backoff) rather than losing the measurement permanently to a 200.
+          // Safe to retry: the audit insert above ignores 23505 (already ran,
+          // unconditionally, before this branch), the social_post_log upsert is
+          // keyed on (outstand_post_id, platform), and the status update below
+          // is guarded by .neq('status','published') — nothing here double-applies.
+          console.error(`outstand-webhook: measurement write failed for postId=${postId}, returning 500 for retry`);
+          return json(500, { status: "failed", outcome: res.outcome, post_id: postId });
         }
       }
 

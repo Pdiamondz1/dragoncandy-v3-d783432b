@@ -4,15 +4,19 @@ Written 2026-08-05 from the whole-branch review of `feat/social-measurement-spin
 same day once Task 11 shipped the fix, again once Task 13 closed the amplification leg of the
 `platform`-vocabulary problem, again once Task 14 corrected two Codex findings on already-shipped
 code, again once Task 15 fixed a webhook/client race in that same code, again once Task 16
-simplified the no-schedule-row fallback at its root instead of patching it a fifth time, and again
+simplified the no-schedule-row fallback at its root instead of patching it a fifth time, again
 once Task 17 closed a sixth variant of the same race (a partial multi-platform insert, this time on
 the *client* side) and fixed `content-performance-capture` measuring post age from row-creation time
-instead of actual publish time. **Read this before deploying `outstand-webhook`.** BLOCKER 1 below was a genuine data-correctness defect that no
-per-task review could see, because it lived in the seam between two tasks that each passed — it is
-now **fixed** (see below, and its five follow-on fix rounds). **`outstand-webhook` now returns HTTP
-500 on purpose in one case** (Task 15, narrowed by Task 16 below) — if you're debugging a 500 from
-this function, check that section before assuming it's a bug. The `donny_scheduled_posts.platform`
-vs Outstand-network (`twitter` vs `x`) mismatch and the cross-tenant read are still open.
+instead of actual publish time, and again once Task 18 **removed the no-schedule-row fallback
+outright** after a fifth review pass rated it a P1 (the ownership check it relied on was
+client-asserted, not server-established) — see "Amplification posts are not measured" below.
+**Read this before deploying `outstand-webhook`.** BLOCKER 1 below was a genuine data-correctness
+defect that no per-task review could see, because it lived in the seam between two tasks that each
+passed — it is now **fixed** (see below, and its five follow-on fix rounds). The HTTP 500 behavior
+Task 15 added for the no-schedule-row race is **gone with the fallback that motivated it** —
+`outstand-webhook` now returns 500 only on a genuine transient DB error, the same as before Task 15.
+The `donny_scheduled_posts.platform` vs Outstand-network (`twitter` vs `x`) mismatch and the
+cross-tenant read are still open.
 
 ## Required order
 
@@ -28,6 +32,51 @@ vs Outstand-network (`twitter` vs `x`) mismatch and the cross-tenant read are st
 **No ordering causes permanent data loss** — milestones are only marked captured on a successful
 insert, so a wrong order self-heals once corrected. That property is worth preserving in any
 future change here.
+
+## Amplification posts are not measured (Task 18)
+
+**If you're looking at a DragonShare amplification post with no analytics, this is why — it's
+deliberate, not a bug to chase.** `useSponsorshipAmplification.ts` posts never get `verified_at`
+set on their `social_post_log` row, so `content-performance-capture` (which only reads rows where
+`verified_at IS NOT NULL`) never sees them.
+
+**Why.** Every other publish path (DragonShare-through-schedule, Donny-scheduled posts) writes a
+`donny_scheduled_posts` row and records `outstand_post_id` into its `metadata` before publishing
+(Task 16). `outstand-webhook`'s `post.published` handler matches on that column and, as the service
+role, stamps `verified_at` on its own schedule-matched insert — trustworthy because only the webhook
+can set it, and only in response to a signed Outstand event. Amplification never creates a
+`donny_scheduled_posts` row (no user-facing draft exists for it), so it can never go through that
+path.
+
+A fallback used to cover this gap (Tasks 12/14/15/16): when no schedule row matched, the webhook
+resolved the post's likely owner(s) from the event's `accounts[].accountId` via
+`business_outstand_accounts`, then stamped `verified_at` on a matching pre-existing
+`social_post_log` row. **Removed 2026-08-05 (Task 18):** that ownership resolution is
+client-asserted, not server-established. `business_outstand_accounts`' own INSERT policy
+(`20260506140000_outstand_account_links.sql`) constrains `user_id`/`business_id` to the caller's own
+identity but does **not** constrain `outstand_social_account_id` — any authenticated user can insert
+a row claiming any provider account id. An attacker who knew a real post id and a real account id
+could get their own planted `social_post_log` row stamped through that path, after which
+`content-performance-capture` would fetch another tenant's analytics under the attacker's `user_id`.
+Codex correctly rated this a P1. Four consecutive review rounds (Tasks 12, 14, 15, 16 — see the fix
+rounds below) each found and patched a real defect inside that fallback without closing the
+underlying hole; each patch narrowed who could reach it, none removed the capability. Removing the
+fallback removes the vulnerability by removing the capability, at the cost of amplification posts
+staying unmeasured.
+
+**When this returns.** Once provider-account ownership is established server-side —
+`business_outstand_accounts` rows created/verified by a trusted process (e.g. the OAuth connect
+callback) rather than asserted by whichever authenticated user calls an insert — the no-schedule-row
+path can be reintroduced safely, scoped to that server-established mapping. Tracked at
+`docs/wiki/raw/sessions/2026-08-05-outstand-cross-tenant-metric-read.md`. **Read Fix rounds 3–5
+below before reintroducing anything like the old fallback** — the same defect shape was
+independently rediscovered three times while patching it instead of removing it.
+
+**Current behavior:** the no-schedule-row branch in `recordPublishedPost`
+(`supabase/functions/outstand-webhook/index.ts`) returns the `unmatched` outcome → HTTP 200 for any
+`post.published` event with no matching `donny_scheduled_posts` row. It is counted and logged
+(`outstand-webhook: no scheduled post for <postId> — not recorded for measurement`), never silent —
+exactly the behavior before Task 12 introduced the fallback.
 
 ## BLOCKER 1 — per-platform rows collapse into one `content_performance` record (FIXED, Task 11)
 
@@ -111,18 +160,14 @@ skipped with a visible `console.warn`, never silently and never with a fabricate
 historical rows existed to migrate (verified on prod before this shipped — see below), so this is a
 straight forward-fix with no backfill.
 
-**Consequence: amplification rows now measure, not just verify.** Task 12 (already shipped) made
-the webhook stamp `verified_at` on amplification rows, matched on `outstand_post_id` **alone**
-(deliberately not scoped to `platform`, since a schedule-less post can fan out to several platforms
-at once — see the updated comment at `outstand-webhook/index.ts` around `recordPublishedPost`).
-Before Task 13, a stamped row's `platform` was still an account id, so
-`content-performance-capture`'s `metricsForPlatform` could never match it against Outstand's
-`metrics_by_account[].social_account.network`, and every amplification row landed in the
-`no_platform_metrics` bucket forever. With Task 13, `business_outstand_accounts.platform` already
-uses the same vocabulary Outstand's `network` field does (`facebook|instagram|tiktok|x|youtube` —
-confirmed via `_shared/social-contract.ts` and `social-proxy/adapters/outstand-map.test.ts`, which
-both use `'x'`), so a resolved amplification row now matches on the first try, the same as a
-webhook-sourced row.
+**Consequence at the time, now moot — Task 18 removed amplification measurement entirely.** Task 12
+(shipped, then removed) briefly made the webhook stamp `verified_at` on amplification rows once this
+platform-name fix made them matchable against Outstand's `metrics_by_account[]`. That stamping
+mechanism no longer exists (Task 18 — see "Amplification posts are not measured" above):
+amplification rows never receive `verified_at` at all now, so this platform-name fix is currently
+dormant for that path. It stays correct and load-bearing the moment amplification measurement
+returns (see "When this returns" above) — the fix itself is unrelated to and unaffected by the
+fallback's removal, kept as shipped.
 
 **What genuinely remains open: `donny_scheduled_posts.platform` still says `twitter`, not `x`.**
 This is a real, already-confirmed mismatch, unrelated to and untouched by Task 13 (which only
@@ -147,19 +192,17 @@ Normalizing `donny_scheduled_posts.platform` (rename the CHECK value, migrate `'
 
 Two Codex findings on the already-shipped Task 12/11 code.
 
-**The `verified_at` stamp (Task 12) had no ownership check.** The comment above (before this round)
-argued the unscoped stamp was "no worse than before" — that was wrong. Before Task 12, this path
-stamped nothing, so a planted `social_post_log` row referencing a real-but-unscheduled Outstand
-post id could never be verified. Once the stamp existed unscoped, an attacker who knew such a post
-id got their own planted row stamped, and `content-performance-capture` would fetch another
-tenant's analytics under the attacker's `user_id` — a new avenue, not a pre-existing one. Fixed in
-`recordPublishedPost` (`outstand-webhook/index.ts`) by resolving the post's plausible owner(s) from
-the event's `accounts[].accountId` via `business_outstand_accounts` before stamping, and scoping the
-`UPDATE` to `user_id IN (owners)`; a failed owner lookup stamps nothing (fail closed). **Not a full
-close** — `business_outstand_accounts`' own INSERT policy constrains `user_id`/`business_id` but not
-`outstand_social_account_id`, so an attacker can still insert their own row claiming a real victim's
-account id, which resolves to the attacker's own `user_id` here. This adds a required forgery step,
-not a closed hole; the real close remains server-established provider-account ownership (see below).
+**Finding 1 — the `verified_at` stamp (Task 12) had no ownership check — superseded, Task 18.** The
+comment here (before this round) argued the unscoped stamp was "no worse than before" — that was
+wrong. Before Task 12, this path stamped nothing, so a planted `social_post_log` row referencing a
+real-but-unscheduled Outstand post id could never be verified. Once the stamp existed unscoped, an
+attacker who knew such a post id got their own planted row stamped, and
+`content-performance-capture` would fetch another tenant's analytics under the attacker's
+`user_id`. This round's fix — resolving the post's plausible owner(s) from
+`accounts[].accountId` via `business_outstand_accounts` and scoping the stamp `UPDATE` to
+`user_id IN (owners)` — was itself forgeable (that table's own INSERT policy doesn't constrain
+`outstand_social_account_id`) and was removed along with the whole stamping mechanism in Task 18.
+See "Amplification posts are not measured" above for the full history.
 
 **`get_creator_brief_performance`'s `post_count`/`measurable_post_count` counted placements, not
 posts.** BLOCKER 1's fix widened `latest` to one row per `(outstand_post_id, platform)`; the two
@@ -173,85 +216,25 @@ only as `> 0` predicates — never rendered as a number anywhere in the app (`Br
 displays `total_views`, not `post_count`). The fix is correct regardless, since a column named
 `post_count` should count posts.
 
-## Fix round 4 (Task 15) — the no-schedule-row race could permanently lose measurement; `outstand-webhook` now 500s on purpose in one case
+## Fix round 4 (Task 15) — the no-schedule-row race, superseded by Task 18
 
-A third Codex finding on the no-schedule-row path (Task 12/14's `recordPublishedPost`), this one
-[P1]. Partly a Task 12 instruction error: keeping HTTP 200 for the `unmatched` outcome was reasoned
-as correct for a genuinely foreign post (retrying can never help), but `unmatched` also covered a
-second, opposite case that wants the opposite response.
+A third Codex finding [P1] on the no-schedule-row path (Task 12/14's `recordPublishedPost`): a
+publish-then-insert client race (`useSponsorshipAmplification.ts`, and — as understood at the
+time — `DonnyProvider.tsx`'s DragonShare path) could permanently lose measurement if Outstand's
+webhook delivery arrived before the client's own `social_post_log` insert committed. This round
+split the old `unmatched` outcome using the owner resolution Task 14 added: an owner-resolved post
+with no row to stamp yet became a new `owner_pending` outcome returning **HTTP 500** so Outstand
+would redeliver, while a genuinely foreign post (no owner resolves) stayed `unmatched` → HTTP 200.
+It also documented that the fix was fully retry-safe end to end, and accepted (later closed by Task
+16, Codex finding 2) that a harmless duplicate delivery of an already-stamped event would also cost
+a wasted 500-and-retry cycle.
 
-**The race.** For publish paths that create no `donny_scheduled_posts` row
-(`useSponsorshipAmplification.ts`, and — as understood at the time — `DonnyProvider.tsx`'s
-DragonShare path), the client publishes through Outstand and only *afterward* inserts its own
-`social_post_log` row. If Outstand's `post.published` webhook delivery arrives before that client
-insert commits, `recordPublishedPost` finds no schedule row (there never is one on this path)
-**and** no pre-existing `social_post_log` row to stamp `verified_at` on yet. The old code returned
-`unmatched` → HTTP 200 → Outstand never retries. The client's row then lands moments later with
-`verified_at` permanently null, and `content-performance-capture` (which only selects rows where
-`verified_at IS NOT NULL`) skips it forever. Measurement became a coin-flip on request timing —
-worse under load, since the client round-trip to insert its row competes with webhook delivery
-latency.
-
-> **Correction (Task 16): the premise above was inexact for `DonnyProvider.tsx`.** Its `publishDraft`
-> already reads a `donny_scheduled_posts` row (~line 161) and updates it after publish (~line 218) —
-> it always had one. The actual defect was narrower: that update never wrote `outstand_post_id` into
-> the row's `metadata`, which is the only thing `recordPublishedPost`'s schedule lookup matches on
-> (`metadata->>outstand_post_id`). A schedule row that couldn't be matched behaved indistinguishably
-> from one that never existed, so it fell into this same no-schedule-row path every time — which is
-> why three consecutive rounds (Task 12/14/15) each found and fixed a real defect *in the fallback*
-> without anyone asking why a scheduled post needed a no-schedule fallback at all. See Fix round 5.
-
-**The fix — split `unmatched` using owner resolution, which Task 14 already computes.**
-`recordPublishedPost` already resolves the post's owner(s) from the event's `accounts[].accountId`
-via `business_outstand_accounts` before it will stamp anything (Task 14's ownership-scoping fix).
-That same resolution is now also used to distinguish the two cases the old `unmatched` conflated:
-
-- **An owner resolves, but the stamp UPDATE touched zero rows** → this is one of *our* posts (an
-  Outstand account we know), so the row is almost certainly still in flight from the client's own
-  insert. New outcome `owner_pending` → **HTTP 500**, so Outstand redelivers (up to 5 attempts,
-  backoff to 5 min) and a later attempt stamps the row once it exists. Logged as `outstand-webhook:
-  owner resolved but no row to stamp for <postId> — requesting retry (client insert likely still in
-  flight)`, distinguishable from the genuine-failure log line
-  (`outstand-webhook: measurement write failed for postId=<postId>`).
-- **No owner resolves** (no account id on the event, or the account id doesn't map to a
-  `business_outstand_accounts` row) → still `unmatched` → **HTTP 200**, unchanged. Genuinely foreign,
-  or an account we don't know; retrying cannot help and would burn five deliveries per foreign post.
-- Rows found and stamped, or a fresh schedule-matched insert → unchanged (`verified_existing` /
-  `recorded`, both HTTP 200).
-
-**If you see `outstand-webhook` returning 500 in the logs**, check the message before treating it as
-an outage: `owner resolved but no row to stamp` is *expected* under load and self-heals on Outstand's
-retry. Only `measurement write failed` (schedule lookup / stamp / upsert DB error) is a real failure
-worth paging on.
-
-**Retry safety, verified by reading the handler end to end.** Every step a redelivery repeats is
-idempotent: the audit insert (`outstand_webhook_events`) ignores Postgres `23505` (unique violation)
-and runs unconditionally before the measurement write, so a retry never re-raises on it; the
-`social_post_log` upsert is keyed on `(outstand_post_id, platform)`, so a retry after a partial write
-just re-applies the same rows; the `verified_at` stamp UPDATE is guarded by `.is('verified_at',
-null)`, so a retry after a partial stamp finds fewer (or zero) rows left and never double-stamps; and
-the `donny_scheduled_posts` status UPDATE below the measurement write is guarded by `.neq('status',
-'published')`, so a retry never re-applies a status transition that already landed. No step required
-a code change to become retry-safe — Task 15 only changed which outcomes trigger a retry, not what a
-retry does.
-
-**One residual cost, accepted at the time — FIXED, Task 16 (Codex finding 2).** A *second* natural
-delivery of the same `post.published` event (not a redelivery of our own 500 — Outstand delivering
-the same event twice for its own reasons) after the row was already stamped by the first delivery
-would also find zero rows left to stamp (`.is('verified_at', null)` excludes it) and also return
-`owner_pending` → another 500 → another few redeliveries that all correctly found nothing left to do
-before Outstand gave up. Wasted work, not wrong behavior — the row was already correctly measured
-either way — but avoidable. Fix round 5 below adds the one extra existence check this round
-originally decided not to add, closing it rather than leaving it accepted.
-
-**Alternative considered and rejected: admit rows on the audit-table signature instead of
-`verified_at`.** Rather than fixing the retry behavior, the capture job could instead treat any row
-with a matching `outstand_webhook_events` audit row as verified, sidestepping the timing race
-entirely. Rejected: `outstand_webhook_events` has no owner/tenant constraint — it is keyed only on
-`event:post_id` — so admitting rows on its presence would readmit exactly the cross-tenant read Task
-14 just closed by scoping the `verified_at` stamp to resolved owners. The race is better closed by
-making the existing owner-scoped stamp retry until it succeeds than by widening what counts as
-"verified" to an unscoped signal.
+**All of the above applied entirely to the no-schedule-row fallback, which Task 18 removed
+outright** — see "Amplification posts are not measured" above for why. `outstand-webhook` no longer
+returns `owner_pending` or 500 for a no-schedule-row post at all; it always returns `unmatched` →
+HTTP 200, the same as before Task 12. Kept here only as a historical record of what was tried and
+why three more review rounds each still found a defect in it — read before reintroducing anything
+like it.
 
 ## Fix round 5 (Task 16) — simplified at the root instead of patching the fallback a fifth time
 
@@ -302,22 +285,32 @@ before this fix shipped (or one written via the no-schedule fallback, which only
 retroactively backfilled, the same already-documented limitation as BLOCKER 1's "historical rows are
 not recaptured."
 
-**Change 3 — closes Codex finding 2 (duplicate delivery 500s instead of succeeding).** The
-no-schedule fallback's stamp UPDATE (`.is('verified_at', null)`) could not tell "no row exists yet"
-(the genuine race Task 15 fixed) apart from "a row exists and was already verified by an earlier
-delivery of this same event" (a harmless duplicate) — both hit zero updated rows and both returned
-`owner_pending` → 500, so a duplicate delivery after successful processing triggered pointless
-provider retries. Fixed with a single existence read (`select id ... limit 1`) before the conditional
-UPDATE: no row at all → still `owner_pending` → 500 → retry (unchanged); a row exists → `verified_existing`
-→ 200, whether this call did the stamping or an earlier delivery already did.
+**Change 3 — closed Codex finding 2 (duplicate delivery 500s instead of succeeding) — superseded,
+Task 18.** The no-schedule fallback's stamp UPDATE (`.is('verified_at', null)`) could not tell "no
+row exists yet" (the genuine race Task 15 fixed) apart from "a row exists and was already verified
+by an earlier delivery of this same event" (a harmless duplicate) — both hit zero updated rows and
+both returned `owner_pending` → 500. Fixed at the time with a single existence read before the
+conditional UPDATE. This fix, and the fallback it patched, no longer exist (Task 18) — kept here as
+a historical record only.
 
-**What was deliberately left alone.** The no-schedule fallback itself was not removed, and
-`useSponsorshipAmplification.ts` did not gain a `donny_scheduled_posts` insert. Amplification
-genuinely publishes with no schedule row and no user-facing draft — giving it one would surface
-amplification posts in the schedule UI, a product change outside this fix's scope. The fallback is
-smaller in *importance* now (DragonShare no longer depends on it) but stays, correctly, for that path.
+**What was deliberately left alone, then reversed (Task 18).** At the time, the no-schedule
+fallback was kept rather than removed: DragonShare no longer depended on it after Change 1 above,
+but amplification still did, and giving amplification a `donny_scheduled_posts` row was judged a
+product change (surfacing it in the schedule UI) outside this fix's scope. That reasoning held until
+a fifth review round (Task 18) found the fallback was a genuine, unfixable-by-patching security
+hole (client-asserted ownership) rather than a merely awkward one — see "Amplification posts are not
+measured" above. It was removed outright; amplification did not gain a schedule row either. The
+result is the isolation this round predicted for DragonShare (a path with a real schedule row never
+touches the no-schedule branch) now also holds for amplification, minus the fallback: amplification
+simply goes unmeasured.
 
 ## Fix round 6 (Task 17) — atomic amplification insert closes a partial-row race; capture now measures from publish time, not row-creation time
+
+**Both fixes below are kept, unaffected by Task 18.** Fix 1's motivating race was against the
+no-schedule-row fallback's stamp path, since removed (see "Amplification posts are not measured"
+above) — but the atomic insert is good practice independent of that fallback: it also prevents any
+*other* future reader from ever observing a partial multi-platform amplification write. Fix 2
+(measuring from actual publish time, not row-creation time) is unrelated to the fallback entirely.
 
 Two independent fixes, both removing a problem rather than managing it.
 
@@ -384,7 +377,12 @@ code and were already required to exist before this branch's Step 6.
 
 The live cross-tenant metric read — `social_post_log`'s INSERT policy constrains only `user_id`, so
 any authenticated user can name any `outstand_post_id` — is **not** fixed by this branch. The
-`verified_at` gate (rounds 1 and 3 combined) closes blind enumeration, the quota-burn angle, and
-raises the bar on the targeted no-schedule-row case to also require claiming a real account id; it
-does not close the targeted case outright. Only server-established provider-account ownership does.
+`verified_at` gate closes blind enumeration and the quota-burn angle for every path that still has
+one: a client-inserted row only gets `verified_at` set via the webhook's schedule-matched insert
+(Task 16), which requires a real `donny_scheduled_posts` row that user's own publish flow created.
+**Task 18 removed the one path that let a client-inserted row with no schedule row get stamped at
+all** (the no-schedule-row fallback — see "Amplification posts are not measured" above), rather than
+continuing to narrow who could reach it. The residual, permanent gap is now that amplification posts
+(and any future no-schedule-row publish path) go **unmeasured**, not that they're insecurely
+measured. Only server-established provider-account ownership reopens that path safely.
 → `docs/wiki/raw/sessions/2026-08-05-outstand-cross-tenant-metric-read.md`
