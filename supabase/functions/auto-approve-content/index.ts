@@ -22,6 +22,11 @@ const EXTENSION_HOURS: Record<string, number> = {
   dragonrush: 2,
 };
 
+// Buyer review window for PACKAGE orders before payment auto-releases. Protects the creator from a buyer who
+// never returns to approve — without it, delivered work + held escrow would sit forever. Fixed + generous for
+// v1 (packages have no delivery_type ladder); tune here if it proves too slow/fast.
+const PACKAGE_AUTO_APPROVE_HOURS = 168; // 7 days
+
 serve(async (req) => {
   // Accepts the injected service-role key OR AIOS_INGEST_SECRET (the sb_secret value
   // held in Vault as `aios_ingest_key`), so this can be driven by the same pg_cron +
@@ -82,6 +87,109 @@ serve(async (req) => {
       }
     } catch (sweepErr) {
       logStep('Reconciliation sweep failed (non-blocking)', { error: String(sweepErr) });
+    }
+
+    // Twin reconciliation sweep for the PACKAGE-ORDER money rail: heal orders whose payout already executed
+    // (money moved, `payout_executed_at` set) but whose finalize didn't complete (`order_status != completed`).
+    // release-package-payout is re-entrant — with the marker set it finalizes ONLY (no re-credit) — so
+    // re-invoking is safe. Same 5-min age guard as the collaboration sweep. Non-blocking.
+    // (The SLA-based auto-approval of submitted package content — deferred in v1a — now lives in the sweep
+    // immediately below this one.)
+    try {
+      const pkgReconcileCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const { data: stuckOrders } = await supabaseClient
+        .from('package_orders')
+        .select('id')
+        .not('payout_executed_at', 'is', null)
+        .lt('payout_executed_at', pkgReconcileCutoff)
+        .neq('order_status', 'completed')
+        .order('payout_executed_at', { ascending: true })
+        .limit(50);
+
+      if (stuckOrders && stuckOrders.length > 0) {
+        logStep('Reconciling stuck package payouts', { count: stuckOrders.length });
+        for (const row of stuckOrders) {
+          try {
+            const resp = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/release-package-payout`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+              },
+              body: JSON.stringify({ orderId: (row as { id: string }).id }),
+            });
+            const result = await resp.json();
+            if (result.finalized || result.success) {
+              logStep('Reconciled stuck package payout', { orderId: (row as { id: string }).id });
+            } else {
+              logStep('Package reconcile did not finalize (will retry next tick)', { orderId: (row as { id: string }).id, error: result.error });
+            }
+          } catch (reconErr) {
+            logStep('Package reconcile fetch failed', { orderId: (row as { id: string }).id, error: String(reconErr) });
+          }
+        }
+      }
+    } catch (sweepErr) {
+      logStep('Package reconciliation sweep failed (non-blocking)', { error: String(sweepErr) });
+    }
+
+    // SLA-based AUTO-APPROVAL for the PACKAGE-ORDER rail (the piece deferred in v1a). If a buyer never returns
+    // to approve delivered work, release the creator's payment after the review window so escrowed funds are
+    // never stranded. Packages have no delivery_type/extension — one fixed window keyed off content_submitted_at
+    // (re-stamped on every (re)submission by submit_package_deliverables). Payout goes through
+    // release-package-payout (service role), whose delivery gate + held→releasing CAS (now also predicated on
+    // content_status) + credit-at-most-once marker mean a manual approve OR a just-requested revision racing
+    // this can't double-pay or pay over a revision. Non-blocking.
+    // Escrow filter is IN ('held','releasing'): 'held' is the normal claim path; 'releasing' RESUMES an order
+    // whose payout CAS'd held→releasing then died before writing payout_executed_at (the neither-sweep-catches-it
+    // gap — the reconcile sweep only handles rows WITH the marker). release-package-payout is re-entrant on a
+    // 'releasing' row (finishes crediting), so re-invoking is safe; the 7-day window means we never contend with
+    // a fresh in-flight claim.
+    try {
+      const pkgAutoApproveCutoff = new Date(Date.now() - PACKAGE_AUTO_APPROVE_HOURS * 60 * 60 * 1000).toISOString();
+      const { data: overduePkgs, error: overduePkgErr } = await supabaseClient
+        .from('package_orders')
+        .select('id')
+        .eq('content_status', 'submitted')
+        .eq('order_status', 'submitted')
+        .in('escrow_status', ['held', 'releasing'])
+        .not('content_submitted_at', 'is', null)
+        .lt('content_submitted_at', pkgAutoApproveCutoff)
+        .order('content_submitted_at', { ascending: true })
+        .limit(50);
+
+      // Surface a query failure (e.g. the delivery migrations not yet applied → 42P01) instead of silently
+      // no-opping every tick — a missing-migration deploy is otherwise near-invisible in the logs.
+      if (overduePkgErr) {
+        logStep('Package auto-approval query failed', { error: overduePkgErr.message });
+      }
+
+      if (overduePkgs && overduePkgs.length > 0) {
+        logStep('Auto-approving overdue package orders', { count: overduePkgs.length });
+        for (const row of overduePkgs) {
+          const orderId = (row as { id: string }).id;
+          try {
+            const resp = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/release-package-payout`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+              },
+              body: JSON.stringify({ orderId }),
+            });
+            const result = await resp.json();
+            if (result.error) {
+              logStep('Package auto-approve payout failed (will retry next tick)', { orderId, error: result.error });
+            } else {
+              logStep('Auto-approved overdue package order', { orderId });
+            }
+          } catch (paErr) {
+            logStep('Package auto-approve fetch failed', { orderId, error: String(paErr) });
+          }
+        }
+      }
+    } catch (sweepErr) {
+      logStep('Package auto-approval sweep failed (non-blocking)', { error: String(sweepErr) });
     }
 
     // Find all collaborations with content_status='submitted' and their delivery type.

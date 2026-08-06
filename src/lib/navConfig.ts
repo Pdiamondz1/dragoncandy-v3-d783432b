@@ -23,10 +23,12 @@ import {
   Sparkles,
   MapPin,
   Package,
+  ClipboardList,
   Share2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { UserRole } from '@/types/user';
+import { PACKAGES_ENABLED } from '@/lib/featureConfig';
 
 export interface SidebarNavItem {
   icon: LucideIcon;
@@ -85,6 +87,12 @@ export const creatorSidebarNav: SidebarNavItem[] = [
   { icon: Search, label: 'Browse Campaigns', href: '/dashboard/creator/campaigns' },
   { icon: Target, label: 'My Campaigns', href: '/dashboard/creator/my-campaigns' },
   { icon: DollarSign, label: 'Earnings', href: '/dashboard/creator/earnings' },
+  ...(PACKAGES_ENABLED
+    ? [
+        { icon: Package, label: 'Packages', href: '/dashboard/creator/packages' },
+        { icon: ClipboardList, label: 'Orders', href: '/dashboard/creator/orders' },
+      ]
+    : []),
   { icon: Share2, label: 'Social Media', href: '/dashboard/creator/social' },
   { icon: Sparkles, label: 'DragonShare', href: '/dashboard/creator/dragonshare' },
   { icon: MessageSquare, label: 'Messages', href: '/dashboard/creator/messages' },
@@ -213,6 +221,12 @@ const creatorDrawerMenu: DrawerMenuSection[] = [
       { icon: Search, label: 'Browse Campaigns', href: '/dashboard/creator/campaigns' },
       { icon: Target, label: 'My Campaigns', href: '/dashboard/creator/my-campaigns' },
       { icon: DollarSign, label: 'Earnings', href: '/dashboard/creator/earnings' },
+      ...(PACKAGES_ENABLED
+        ? [
+            { icon: Package, label: 'Packages', href: '/dashboard/creator/packages' },
+            { icon: ClipboardList, label: 'Orders', href: '/dashboard/creator/orders' },
+          ]
+        : []),
       { icon: Image, label: 'Dragon Feed', href: '/dashboard/creator/dragon-feed' },
       { icon: Share2, label: 'Social Media', href: '/dashboard/creator/social' },
       { icon: Sparkles, label: 'DragonShare', href: '/dashboard/creator/dragonshare' },

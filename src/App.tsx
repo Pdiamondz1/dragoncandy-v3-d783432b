@@ -23,6 +23,7 @@ import { Spinner } from "@/components/ui/spinner";
 
 import { SiteGateGuard } from "@/components/SiteGateGuard";
 import { Navigate } from "react-router-dom";
+import { PACKAGES_ENABLED } from "@/lib/featureConfig";
 import { CollaborationRedirect } from './components/CollaborationRedirect';
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AuthPage = lazy(() => import("./pages/AuthPage"));
@@ -65,6 +66,11 @@ const BusinessPromotionalTools = lazy(() => import("./pages/BusinessPromotionalT
 const OutstandManager = lazy(() => import("./pages/OutstandManager"));
 const OutstandOAuthCallbackPage = lazy(() => import("./pages/OutstandOAuthCallbackPage"));
 const CreatorEarnings = lazy(() => import("./pages/CreatorEarnings"));
+const CreatorPackages = lazy(() => import("./pages/CreatorPackages"));
+const PackageOrders = lazy(() => import("./pages/PackageOrders"));
+const PackageOrderDetail = lazy(() => import("./pages/PackageOrderDetail"));
+const PublicPackagePage = lazy(() => import("./pages/PublicPackagePage"));
+const GuestOrderPage = lazy(() => import("./pages/GuestOrderPage"));
 const CreatorBrowse = lazy(() => import("./pages/CreatorBrowse"));
 const CreatorGroupsPage = lazy(() => import("./pages/CreatorGroupsPage"));
 const CreatorGroupDetailPage = lazy(() => import("./pages/CreatorGroupDetailPage"));
@@ -306,6 +312,11 @@ function AnimatedRoutes() {
           <Route path="/dashboard/creator/projects" element={<Navigate to="/dashboard/creator/my-campaigns?tab=active" replace />} />
           <Route path="/dashboard/creator/earnings" element={<ProtectedRoute><CreatorEarnings /></ProtectedRoute>} />
 
+          {/* Creator Packages + package orders (feature-flagged: PACKAGES_ENABLED) */}
+          <Route path="/dashboard/creator/packages" element={<ProtectedRoute>{PACKAGES_ENABLED ? <CreatorPackages /> : <Navigate to="/dashboard/creator" replace />}</ProtectedRoute>} />
+          <Route path="/dashboard/creator/orders" element={<ProtectedRoute>{PACKAGES_ENABLED ? <PackageOrders /> : <Navigate to="/dashboard/creator" replace />}</ProtectedRoute>} />
+          <Route path="/dashboard/creator/orders/:orderId" element={<ProtectedRoute>{PACKAGES_ENABLED ? <PackageOrderDetail /> : <Navigate to="/dashboard/creator" replace />}</ProtectedRoute>} />
+
           {/* Creator Dragon Feed Route */}
           <Route path="/dashboard/creator/dragon-feed" element={<ProtectedRoute><CreatorDragonFeed /></ProtectedRoute>} />
           <Route path="/dashboard/creator/dragonshare" element={<ProtectedRoute><CreatorDragonShare /></ProtectedRoute>} />
@@ -330,6 +341,10 @@ function AnimatedRoutes() {
           {/* Public Profile Routes */}
           <Route path="/creator/:slug" element={<PublicCreatorProfile />} />
           <Route path="/business/:slug" element={<PublicBusinessProfile />} />
+
+          {/* Public package link + guest order tracking (feature-flagged: PACKAGES_ENABLED) */}
+          <Route path="/p/:creatorSlug/:packageSlug" element={PACKAGES_ENABLED ? <PublicPackagePage /> : <Navigate to="/" replace />} />
+          <Route path="/order/:token" element={PACKAGES_ENABLED ? <GuestOrderPage /> : <Navigate to="/" replace />} />
 
           {/* ROI Dashboard Route */}
           <Route path="/dashboard/analytics" element={<ProtectedRoute><ROIDashboard /></ProtectedRoute>} />

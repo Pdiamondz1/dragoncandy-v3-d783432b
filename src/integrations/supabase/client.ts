@@ -9,7 +9,9 @@ import type { Database } from './types';
 // client.ts consistent with the edge-function callers that already read these vars.
 export const SUPABASE_URL =
   import.meta.env.VITE_SUPABASE_URL || "https://zocahiffooqdybdhguqv.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY =
+// Exported so guest-facing surfaces (e.g. the public package checkout) can invoke an edge function AS ANON
+// even when a user is logged in — the public shareable link is a guest-checkout surface by design.
+export const SUPABASE_PUBLISHABLE_KEY =
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvY2FoaWZmb29xZHliZGhndXF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5NzgzMzQsImV4cCI6MjA2NTU1NDMzNH0.bGhT6ft_zTbw-9v2Typi0wxzlfStg3sGiuPOor8Wfz8";
 
