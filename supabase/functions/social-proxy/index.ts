@@ -374,13 +374,25 @@ interface OpDeps {
 // at least one social account with their owned set. Returns null on allow, a
 // Response on deny/error.
 //
-// NOTE (Phase 3 follow-up): the live outstand-proxy additionally falls back to
-// post-platform ownership and a donny_scheduled_posts lookup when a post's
-// /posts/{id} response omits social account ids. We intentionally omit those
-// Outstand-specific fallbacks here: this gateway is provider-agnostic and is
-// DARK in Phase 1 (no UI routes Outstand through social-proxy yet — the SDK
-// still calls outstand-proxy directly). The fallback is reinstated as part of
-// the Phase 3 UI swap, where the cross-provider ownership model is settled.
+// DO NOT ADD A FALLBACK HERE. This note previously said outstand-proxy also
+// fell back to post-PLATFORM ownership and to a donny_scheduled_posts lookup
+// when /posts/{id} omitted social account ids, and that those would be
+// "reinstated as part of the Phase 3 UI swap". Both were vulnerabilities, and
+// both have since been deleted from outstand-proxy:
+//
+//   - platform fallback: owning one Instagram account authorized every
+//     Instagram post in the org. Platform is a property of a post, not a
+//     relationship to a user.
+//   - donny_scheduled_posts lookup: `authenticated` holds INSERT+UPDATE on
+//     every column of that table (verified on prod), so planting one row
+//     naming any post id was enough to reach a stranger's post.
+//
+// The org-wide provider key means either one reaches every tenant. If
+// /posts/{id} omits account ids, the correct answer is DENY — see
+// _shared/outstand-post-authz.ts, which grants only on the provider-fetched
+// post accounts or the server-minted outstand_post_ownership binding, and
+// which this gateway should adopt rather than re-deriving when Phase 3 routes
+// real traffic here.
 async function requirePostOwnership(
   deps: OpDeps,
   providerPostId: string,

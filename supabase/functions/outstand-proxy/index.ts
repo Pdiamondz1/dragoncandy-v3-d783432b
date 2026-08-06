@@ -23,6 +23,7 @@ import {
   extractRequestAccountIds,
   firstUnownedAccountId,
 } from "../_shared/outstand-post-authz.ts";
+import { extractSocialAccountIds, filterListRows } from "../_shared/outstand-list-filter.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -176,24 +177,9 @@ async function listOwnedAccountIds(
 // was removed (see the /posts/{id} branch), so this and extractPostPlatform()
 // went with it rather than being left as a loaded gun for the next edit.
 
-function extractSocialAccountIds(post: any): string[] {
-  if (!post) return [];
-  const ids: string[] = [];
-  const arrayFields = ['socialAccounts', 'social_accounts', 'connectedAccounts', 'accounts'];
-  for (const field of arrayFields) {
-    if (Array.isArray(post[field])) {
-      for (const sa of post[field]) {
-        if (sa?.id) ids.push(String(sa.id));
-        if (sa?.social_account_id) ids.push(String(sa.social_account_id));
-        if (sa?.socialAccountId) ids.push(String(sa.socialAccountId));
-      }
-    }
-  }
-  if (post.social_account_id) ids.push(String(post.social_account_id));
-  if (post.socialAccountId) ids.push(String(post.socialAccountId));
-  if (post.account_id) ids.push(String(post.account_id));
-  return [...new Set(ids)];
-}
+// extractSocialAccountIds() moved to _shared/outstand-list-filter.ts so the
+// ownership fetch below and the list row test share ONE reading of "which
+// accounts is this post on" — see the import at the top of this file.
 
 // Ask the PROVIDER which accounts this post belongs to, with the org key. This
 // is the server-side half of the ownership question — the caller cannot
@@ -473,39 +459,26 @@ async function enforceScope(args: {
 }
 
 // For list endpoints, filter the upstream response to rows owned by the caller.
+//
+// The rule itself lives in _shared/outstand-list-filter.ts, extracted so it can
+// be tested: this file calls serve() at module load and is not import-testable,
+// and this is the ONLY thing standing between a caller and the whole org's post
+// list (enforceScope allows GET /posts and GET /social-accounts
+// unconditionally, on the promise that this strips everyone else's rows). See
+// that module for the observed prod envelope that showed the previous
+// single-key filter forwarding 4 other tenants' posts in a sibling array.
 function filterListBody(
   path: string,
   bodyText: string,
   ownedIds: Set<string>,
 ): { body: string; status?: number } {
-  if (!bodyText) return { body: bodyText };
-
-  let parsed: any;
-  try {
-    parsed = JSON.parse(bodyText);
-  } catch {
-    return { body: bodyText };
+  const result = filterListRows(path, bodyText, ownedIds);
+  if (result.dropped > 0) {
+    console.log(
+      `outstand-proxy: filtered ${result.dropped} unowned row(s) from GET ${path} (kept ${result.kept})`,
+    );
   }
-
-  const filterAccount = (item: any) => {
-    const id = item?.id ?? item?.social_account_id ?? item?.socialAccountId;
-    return id !== undefined && ownedIds.has(String(id));
-  };
-  const filterPost = (item: any) => {
-    const ids = extractSocialAccountIds(item);
-    return ids.some((id) => ownedIds.has(id));
-  };
-
-  if (path === "/social-accounts" && Array.isArray(parsed?.data)) {
-    parsed.data = parsed.data.filter(filterAccount);
-    if (typeof parsed.count === "number") parsed.count = parsed.data.length;
-  }
-  if (path === "/posts" && Array.isArray(parsed?.data)) {
-    parsed.data = parsed.data.filter(filterPost);
-    if (typeof parsed.count === "number") parsed.count = parsed.data.length;
-  }
-
-  return { body: JSON.stringify(parsed) };
+  return { body: result.body };
 }
 
 async function recordConnectionFromAuthResponse(
