@@ -31,6 +31,25 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # `npm run typecheck` is tsc over tsconfig.app.json, whose `include` is
+      # ["src"] — so the 99 Deno edge functions were checked by NOTHING. This
+      # step covers the 66 that currently pass; the rest are listed in
+      # supabase/functions/.typecheck-ignore and printed on every run so the
+      # debt is visible and shrinking rather than silent.
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Cache Deno dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/deno
+          key: deno-${{ runner.os }}-${{ hashFiles('supabase/functions/**/*.ts') }}
+          restore-keys: deno-${{ runner.os }}-
+
+      - name: Typecheck edge functions
+        run: npm run typecheck:functions
+
       - name: Lint
         run: npm run lint
 

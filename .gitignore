@@ -133,3 +133,7 @@ deno.lock
 
 # Synthetic avatar generation cache (local only — never commit generated faces)
 sim/.avatar-cache/
+
+# Deno type-check sandbox — see scripts/check-edge-functions.mjs.
+# The deno.json is committed; the node_modules Deno builds there is not.
+.deno-typecheck/node_modules/

@@ -20,14 +20,23 @@ export async function getOrCreateOrgCustomer(
 
   if (org?.stripe_customer_id) return org.stripe_customer_id;
 
-  let customerId: string | undefined;
+  let existingId: string | undefined;
   if (email) {
     const existing = await stripe.customers.list({ email, limit: 1 });
-    if (existing.data.length > 0) customerId = existing.data[0].id;
+    existingId = existing.data[0]?.id;
   }
+
+  const customerId =
+    existingId ?? (await stripe.customers.create({ email, metadata: { org_id: orgId } })).id;
+
+  // Not defensive noise — this is what the type error was pointing at. The
+  // previous shape left `customerId` as `string | undefined` at the write, so a
+  // missing id would have been PERSISTED as null into the authoritative
+  // `organizations.stripe_customer_id` and returned to payment callers as a
+  // customer id. Failing here is strictly better than writing a hole into the
+  // column this function exists to be authoritative about.
   if (!customerId) {
-    const created = await stripe.customers.create({ email, metadata: { org_id: orgId } });
-    customerId = created.id;
+    throw new Error(`Stripe returned no customer id for org ${orgId}`);
   }
 
   await supabase

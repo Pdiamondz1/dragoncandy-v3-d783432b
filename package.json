@@ -17,6 +17,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "typecheck:functions": "node scripts/check-edge-functions.mjs",
     "docs:scale": "node scripts/update-scale-numbers.mjs",
     "preview:url": "node scripts/preview-url.mjs",
     "pitch:pdf": "vite build && node scripts/export-pitch-pdf.mjs",

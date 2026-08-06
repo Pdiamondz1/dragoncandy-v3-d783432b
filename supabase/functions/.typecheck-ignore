@@ -1,0 +1,47 @@
+# Edge functions NOT yet type-checked in CI — one per line, comments with '#'.
+#
+# This file is DEBT, and it is written down so it can be paid off. Every name
+# here is a function `deno check` currently fails on. The CI gate checks
+# everything NOT listed, so the list only ever shrinks: deleting a line is how
+# you claim a function, and CI will hold you to it from then on.
+#
+# scripts/check-edge-functions.mjs PRINTS this list on every run. That is
+# deliberate — a skip nobody can see is indistinguishable from coverage, which
+# is the exact failure this gate exists to end (`tsconfig.app.json` includes
+# only `src`, so all 99 Deno functions were unchecked and nobody could tell).
+#
+# Adding a name is allowed only for a PRE-EXISTING failure you did not cause.
+# If your change breaks a checked function, fix the change.
+bulk-download-campaign-content
+chat-assistant
+check-creator-payout-status
+check-restaurant-payout-status
+confirm-posting-schedule
+content-posting-plan
+create-campaign-escrow
+create-sponsorship-checkout
+donny-auto-pilot
+donny-campaign-generate
+donny-campaign-preview
+donny-chat
+donny-oauth-token
+donny-orchestrator
+donny-schedule
+dre-award-engine
+expire-social-hooks
+extend-review
+fire-campaign-social-hook
+fire-dragonshare-social-hook
+fire-promotion-social-hook
+generate-campaign-analysis
+get-stripe-dashboard-link
+get-watermarked-preview
+google-workspace-proxy
+match-creators
+outstand-webhook
+reject-content
+release-creator-payout
+release-sponsorship-payout
+resolve-dispute
+social-caption
+verify-campaign-escrow
