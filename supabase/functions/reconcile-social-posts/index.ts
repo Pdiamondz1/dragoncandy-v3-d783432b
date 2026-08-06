@@ -32,11 +32,11 @@ import {
   resolvePublishedAt,
   isWithinActionWindow,
   withoutOwnerConflicts,
-  buildSocialPostLogRow,
   type ProviderPost,
   type ExistingLogRow,
   type ScheduleCandidate,
 } from "./reconcile.ts";
+import { buildSocialPostLogRow } from "../_shared/social-post-log-row.ts";
 import { isAuthorizedIngest } from "../_shared/ingest-auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;

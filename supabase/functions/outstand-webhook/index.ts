@@ -12,7 +12,7 @@ import {
   verifyOutstandSignature,
   type OutstandSocialAccount,
 } from "../_shared/outstand-webhook-lib.ts";
-import { resolvePostType } from "../_shared/post-type.ts";
+import { buildSocialPostLogRow } from "../_shared/social-post-log-row.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -113,43 +113,25 @@ async function recordPublishedPost(
     return { outcome: "unmatched", rows: 0, dropped };
   }
 
-  const meta = (sched.metadata as Record<string, unknown> | null) ?? {};
-  const postType = resolvePostType(
-    meta.source as string | null,
-    sched.campaign_id as string | null,
-  );
-  // Mirrors DonnyProvider.tsx's publishDraft exactly: only DragonShare-sourced
+  // Row construction — post_type resolution, dragonshare_post_id derivation
+  // (mirrors DonnyProvider.tsx's publishDraft: only DragonShare-sourced
   // drafts carry a dragonshare_post_id, read from metadata.post_id when
-  // metadata.source is 'dragonshare_social_hook'. Carrying it here closes a race
-  // where the webhook's schedule-matched upsert wins as the INSERT (Outstand's
-  // delivery beats the client's own social_post_log insert): without this, that
-  // insert had no dragonshare_post_id, the BEFORE INSERT trigger
-  // (resolve_social_post_log_brief, 20260611150657) had nothing to derive
-  // source_brief_id from, and the client's own insert then lost the unique-key
-  // race and errored — permanently dropping brief->outcome attribution.
-  const dragonsharePostId =
-    (meta.source as string | null) === "dragonshare_social_hook"
-      ? ((meta.post_id as string | undefined) ?? null)
-      : null;
-
-  const rows = platforms.map((platform) => ({
-    user_id: sched.user_id,
-    campaign_id: sched.campaign_id,
-    outstand_post_id: postId,
-    platform,
-    post_type: postType,
-    caption: sched.caption,
-    hashtags: sched.hashtags,
-    // content_type IS the format vocabulary. Never inferred from a URL: a wrong
-    // format is indistinguishable from a real finding downstream.
-    format: sched.content_type ?? null,
-    scheduled_at: sched.scheduled_at,
-    published_at: publishedAt,
-    dragonshare_post_id: dragonsharePostId,
-    // Service-role only. This is what makes the row trustworthy enough to spend an
-    // API call on — see the migration comment.
-    verified_at: new Date().toISOString(),
-  }));
+  // metadata.source is 'dragonshare_social_hook'; carrying it here closes a
+  // race where the webhook's schedule-matched upsert wins as the INSERT
+  // (Outstand's delivery beats the client's own social_post_log insert):
+  // without this, that insert had no dragonshare_post_id, the BEFORE INSERT
+  // trigger (resolve_social_post_log_brief, 20260611150657) had nothing to
+  // derive source_brief_id from, and the client's own insert then lost the
+  // unique-key race and errored — permanently dropping brief->outcome
+  // attribution), format mapping — lives in the SHARED buildSocialPostLogRow
+  // (_shared/social-post-log-row.ts), also used by reconcile-social-posts, so
+  // the two writers can never disagree about what belongs at a given
+  // (outstand_post_id, platform) key. verified_at is computed fresh per
+  // platform inside this map, preserving this function's exact pre-extraction
+  // behavior (each row got its own independent new Date() call).
+  const rows = platforms.map((platform) =>
+    buildSocialPostLogRow(postId, platform, publishedAt, sched, new Date().toISOString()),
+  );
 
   const { error: upsertErr } = await supabase
     .from("social_post_log")

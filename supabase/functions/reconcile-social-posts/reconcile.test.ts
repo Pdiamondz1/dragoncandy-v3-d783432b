@@ -6,7 +6,6 @@ import {
   resolvePublishedAt,
   isWithinActionWindow,
   withoutOwnerConflicts,
-  buildSocialPostLogRow,
   type ProviderPost,
   type ExistingLogRow,
   type ScheduleCandidate,
@@ -270,80 +269,7 @@ describe('pickScheduleMatch', () => {
   });
 });
 
-describe('buildSocialPostLogRow', () => {
-  const baseSched: ScheduleCandidate = {
-    user_id: 'user-1',
-    campaign_id: 'campaign-1',
-    caption: 'hello world',
-    hashtags: ['#dragoncandy'],
-    content_type: 'reel',
-    scheduled_at: '2026-08-01T12:00:00.000Z',
-    metadata: null,
-    created_at: '2026-08-01T11:00:00.000Z',
-  };
-
-  it('carries every schedule field through, mapping content_type to format', () => {
-    const row = buildSocialPostLogRow(
-      'post-1',
-      'instagram',
-      '2026-08-01T12:05:00.000Z',
-      baseSched,
-      '2026-08-01T12:06:00.000Z',
-    );
-    expect(row).toEqual({
-      user_id: 'user-1',
-      campaign_id: 'campaign-1',
-      outstand_post_id: 'post-1',
-      platform: 'instagram',
-      post_type: 'campaign',
-      caption: 'hello world',
-      hashtags: ['#dragoncandy'],
-      format: 'reel',
-      scheduled_at: '2026-08-01T12:00:00.000Z',
-      published_at: '2026-08-01T12:05:00.000Z',
-      dragonshare_post_id: null,
-      verified_at: '2026-08-01T12:06:00.000Z',
-    });
-  });
-
-  it('resolves post_type via the shared resolver, matching amplification even with a campaign_id', () => {
-    const sched: ScheduleCandidate = {
-      ...baseSched,
-      metadata: { source: 'sponsorship_amplification' },
-    };
-    const row = buildSocialPostLogRow('post-1', 'tiktok', 'now', sched, 'now');
-    expect(row.post_type).toBe('amplification');
-  });
-
-  it('carries dragonshare_post_id only when metadata.source is dragonshare_social_hook', () => {
-    const sched: ScheduleCandidate = {
-      ...baseSched,
-      campaign_id: null,
-      metadata: { source: 'dragonshare_social_hook', post_id: 'dragonshare-post-9' },
-    };
-    const row = buildSocialPostLogRow('post-1', 'instagram', 'now', sched, 'now');
-    expect(row.dragonshare_post_id).toBe('dragonshare-post-9');
-    expect(row.post_type).toBe('dragonshare');
-  });
-
-  it('omits dragonshare_post_id for a non-dragonshare source even if metadata carries a post_id', () => {
-    const sched: ScheduleCandidate = {
-      ...baseSched,
-      metadata: { source: 'campaign_social_hook', post_id: 'unrelated' },
-    };
-    const row = buildSocialPostLogRow('post-1', 'instagram', 'now', sched, 'now');
-    expect(row.dragonshare_post_id).toBeNull();
-  });
-
-  it('defaults format to null when the schedule row carries no content_type', () => {
-    const sched: ScheduleCandidate = { ...baseSched, content_type: null };
-    const row = buildSocialPostLogRow('post-1', 'instagram', 'now', sched, 'now');
-    expect(row.format).toBeNull();
-  });
-
-  it('falls back to standalone when there is no metadata and no campaign_id', () => {
-    const sched: ScheduleCandidate = { ...baseSched, campaign_id: null, metadata: null };
-    const row = buildSocialPostLogRow('post-1', 'instagram', 'now', sched, 'now');
-    expect(row.post_type).toBe('standalone');
-  });
-});
+// buildSocialPostLogRow's tests moved to
+// supabase/functions/_shared/social-post-log-row.test.ts — it is now a
+// shared module used by both this sweep and outstand-webhook, not
+// reconcile-social-posts-specific logic.

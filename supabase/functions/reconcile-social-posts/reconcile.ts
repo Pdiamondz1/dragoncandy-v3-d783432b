@@ -23,7 +23,7 @@
 // reads an owner off a donny_scheduled_posts row — never off the provider
 // payload.
 
-import { resolvePostType, type PostType } from '../_shared/post-type.ts';
+import type { ScheduledPostForLogRow } from '../_shared/social-post-log-row.ts';
 
 /**
  * One entry of a provider Post's socialAccounts[] — only the fields this
@@ -167,15 +167,15 @@ export function resolvePublishedAt(post: ProviderPost): string | null {
   return accountTimes.length > 0 ? accountTimes[0] : null;
 }
 
-/** The donny_scheduled_posts fields recordPublishedPost reads to build a row. */
-export interface ScheduleCandidate {
-  user_id: string;
-  campaign_id: string | null;
-  caption: string | null;
-  hashtags: string[] | null;
-  content_type: string | null;
-  scheduled_at: string | null;
-  metadata: Record<string, unknown> | null;
+/**
+ * The donny_scheduled_posts fields this sweep needs: everything
+ * ScheduledPostForLogRow (the shared row-builder's input, see
+ * _shared/social-post-log-row.ts) requires to build a row, plus created_at
+ * for this sweep's own ambiguity tiebreak below — the webhook resolves the
+ * identical ambiguity via its DB query's ORDER BY instead of a re-sort, so
+ * created_at isn't part of the shared type.
+ */
+export interface ScheduleCandidate extends ScheduledPostForLogRow {
   created_at: string;
 }
 
@@ -190,62 +190,4 @@ export interface ScheduleCandidate {
 export function pickScheduleMatch(rows: ScheduleCandidate[]): ScheduleCandidate | null {
   if (rows.length === 0) return null;
   return [...rows].sort((a, b) => a.created_at.localeCompare(b.created_at))[0];
-}
-
-/** The exact social_post_log row shape recordPublishedPost writes. */
-export interface SocialPostLogRow {
-  user_id: string;
-  campaign_id: string | null;
-  outstand_post_id: string;
-  platform: string;
-  post_type: PostType;
-  caption: string | null;
-  hashtags: string[] | null;
-  format: string | null;
-  scheduled_at: string | null;
-  published_at: string;
-  dragonshare_post_id: string | null;
-  verified_at: string;
-}
-
-/**
- * Build the social_post_log row for one (postId, platform) pair. Byte-for-byte
- * the same fields recordPublishedPost derives — post_type via the shared
- * resolvePostType, dragonshare_post_id only when metadata.source is
- * 'dragonshare_social_hook' (read from metadata.post_id), format from the
- * schedule's content_type — so the two writers never disagree about what
- * belongs at a given (outstand_post_id, platform) key. This codebase has
- * already been bitten once by exactly that class of bug (Task 2 of this
- * branch: the webhook's own upsert reclassified 'amplification' rows to
- * 'campaign' because resolvePostType had no mapping for that source).
- */
-export function buildSocialPostLogRow(
-  postId: string,
-  platform: string,
-  publishedAt: string,
-  sched: ScheduleCandidate,
-  verifiedAt: string,
-): SocialPostLogRow {
-  const meta = sched.metadata ?? {};
-  const source = typeof meta.source === 'string' ? meta.source : null;
-  const postType = resolvePostType(source, sched.campaign_id);
-  const dragonsharePostId =
-    source === 'dragonshare_social_hook'
-      ? (typeof meta.post_id === 'string' ? meta.post_id : null)
-      : null;
-
-  return {
-    user_id: sched.user_id,
-    campaign_id: sched.campaign_id,
-    outstand_post_id: postId,
-    platform,
-    post_type: postType,
-    caption: sched.caption,
-    hashtags: sched.hashtags,
-    format: sched.content_type ?? null,
-    scheduled_at: sched.scheduled_at,
-    published_at: publishedAt,
-    dragonshare_post_id: dragonsharePostId,
-    verified_at: verifiedAt,
-  };
 }
