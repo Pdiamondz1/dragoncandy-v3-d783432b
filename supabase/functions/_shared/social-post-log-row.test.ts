@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildSocialPostLogRow, type ScheduledPostForLogRow } from './social-post-log-row';
+import { buildSocialPostLogRow, isGenuineScheduleAmbiguity, type ScheduledPostForLogRow } from './social-post-log-row';
 
 describe('buildSocialPostLogRow', () => {
   const baseSched: ScheduledPostForLogRow = {
@@ -108,5 +108,123 @@ describe('buildSocialPostLogRow', () => {
     const row = buildSocialPostLogRow('post-1', 'instagram', 'now', sched, 'now');
     expect(row.post_type).toBe('standalone');
     expect(row.dragonshare_post_id).toBeNull();
+  });
+
+  // useSponsorshipAmplification's URL-extension heuristic sets this flag
+  // when its content_type had no positive evidence (no media, or an
+  // unrecognized extension) -- donny_scheduled_posts.content_type is NOT
+  // NULL so it still wrote SOMETHING, but a guess must never surface as
+  // format: a wrong format is indistinguishable from a real finding
+  // downstream. See this module's buildSocialPostLogRow doc comment.
+  it('nulls out format when metadata.content_type_inferred is true, even though content_type is populated', () => {
+    const sched: ScheduledPostForLogRow = {
+      ...baseSched,
+      content_type: 'photo',
+      metadata: { source: 'sponsorship_amplification', content_type_inferred: true },
+    };
+    const row = buildSocialPostLogRow('post-1', 'instagram', 'now', sched, 'now');
+    expect(row.format).toBeNull();
+  });
+
+  it('trusts content_type as format when content_type_inferred is explicitly false', () => {
+    const sched: ScheduledPostForLogRow = {
+      ...baseSched,
+      content_type: 'video',
+      metadata: { source: 'sponsorship_amplification', content_type_inferred: false },
+    };
+    const row = buildSocialPostLogRow('post-1', 'instagram', 'now', sched, 'now');
+    expect(row.format).toBe('video');
+  });
+
+  // The critical backward-compatibility guarantee: every OTHER publish path
+  // (campaign, promotion, DragonShare, standalone) never sets this key at
+  // all, and their content_type is a real value (not a guess) -- absence
+  // must mean "trust it", identical to this function's behavior before the
+  // flag existed. This is what makes the fix additive, not a regression risk
+  // for anything that doesn't opt in.
+  it('trusts content_type as format when metadata carries no content_type_inferred key at all', () => {
+    const sched: ScheduledPostForLogRow = {
+      ...baseSched,
+      content_type: 'carousel',
+      metadata: { source: 'campaign_social_hook' },
+    };
+    const row = buildSocialPostLogRow('post-1', 'instagram', 'now', sched, 'now');
+    expect(row.format).toBe('carousel');
+  });
+});
+
+describe('isGenuineScheduleAmbiguity', () => {
+  const baseRow: ScheduledPostForLogRow = {
+    user_id: 'user-1',
+    campaign_id: 'campaign-1',
+    caption: 'hello world',
+    hashtags: ['#dragoncandy'],
+    content_type: 'reel',
+    scheduled_at: '2026-08-01T12:00:00.000Z',
+    metadata: { source: 'sponsorship_amplification', outstand_post_id: 'post-1' },
+  };
+
+  it('is false for a single row', () => {
+    expect(isGenuineScheduleAmbiguity([baseRow])).toBe(false);
+  });
+
+  it('is false for an empty list', () => {
+    expect(isGenuineScheduleAmbiguity([])).toBe(false);
+  });
+
+  // The routine amplification fan-out case: buildAmplificationScheduleRows
+  // writes one row per platform, every field identical except platform
+  // itself (which this function deliberately never compares).
+  it('is false for N rows differing only in a field this function does not compare (routine fan-out)', () => {
+    const rows = [baseRow, { ...baseRow }, { ...baseRow }];
+    expect(isGenuineScheduleAmbiguity(rows)).toBe(false);
+  });
+
+  it('is true when rows disagree on user_id', () => {
+    const rows = [baseRow, { ...baseRow, user_id: 'user-2' }];
+    expect(isGenuineScheduleAmbiguity(rows)).toBe(true);
+  });
+
+  it('is true when rows disagree on campaign_id', () => {
+    const rows = [baseRow, { ...baseRow, campaign_id: 'campaign-2' }];
+    expect(isGenuineScheduleAmbiguity(rows)).toBe(true);
+  });
+
+  it('is true when rows disagree on caption', () => {
+    const rows = [baseRow, { ...baseRow, caption: 'different caption' }];
+    expect(isGenuineScheduleAmbiguity(rows)).toBe(true);
+  });
+
+  it('is true when rows disagree on hashtags', () => {
+    const rows = [baseRow, { ...baseRow, hashtags: ['#other'] }];
+    expect(isGenuineScheduleAmbiguity(rows)).toBe(true);
+  });
+
+  it('is true when rows disagree on content_type', () => {
+    const rows = [baseRow, { ...baseRow, content_type: 'photo' }];
+    expect(isGenuineScheduleAmbiguity(rows)).toBe(true);
+  });
+
+  it('is true when rows disagree on scheduled_at', () => {
+    const rows = [baseRow, { ...baseRow, scheduled_at: '2026-08-02T12:00:00.000Z' }];
+    expect(isGenuineScheduleAmbiguity(rows)).toBe(true);
+  });
+
+  it('is true when rows disagree on metadata', () => {
+    const rows = [baseRow, { ...baseRow, metadata: { source: 'campaign_social_hook' } }];
+    expect(isGenuineScheduleAmbiguity(rows)).toBe(true);
+  });
+
+  it('is false when metadata is structurally equal but a different object / key order', () => {
+    const rows = [
+      { ...baseRow, metadata: { source: 'sponsorship_amplification', outstand_post_id: 'post-1' } },
+      { ...baseRow, metadata: { outstand_post_id: 'post-1', source: 'sponsorship_amplification' } },
+    ];
+    expect(isGenuineScheduleAmbiguity(rows)).toBe(false);
+  });
+
+  it('detects a genuine ambiguity even among a larger routine-fan-out group (only one row differs)', () => {
+    const rows = [baseRow, { ...baseRow }, { ...baseRow, user_id: 'attacker' }];
+    expect(isGenuineScheduleAmbiguity(rows)).toBe(true);
   });
 });

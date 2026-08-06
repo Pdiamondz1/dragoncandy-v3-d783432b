@@ -95,6 +95,23 @@ export function buildSocialPostLogRow(
       ? (typeof meta.post_id === 'string' ? meta.post_id : null)
       : null;
 
+  // content_type IS the format vocabulary — EXCEPT when the schedule row
+  // itself says its content_type was a guess, not a finding. Reading .mp4
+  // (or any other real evidence) off a URL and writing 'video' is a
+  // finding; defaulting to 'photo' with nothing recognized is a guess, and
+  // only the guess must never surface here. donny_scheduled_posts.content_type
+  // is NOT NULL, so a writer with no real evidence (currently only
+  // useSponsorshipAmplification's URL-extension heuristic, when no media at
+  // all or an unrecognized/missing extension) still has to write SOMETHING
+  // there — but marks it via metadata.content_type_inferred: true, which is
+  // the ONLY signal this function trusts to null out format instead of
+  // propagating the guess. Absent or false (every other publish path, which
+  // never guesses) means trust content_type exactly as before — this is a
+  // strictly additive carve-out, not a behavior change for anything that
+  // doesn't set the flag.
+  const contentTypeInferred = meta.content_type_inferred === true;
+  const format = contentTypeInferred ? null : (sched.content_type ?? null);
+
   return {
     user_id: sched.user_id,
     campaign_id: sched.campaign_id,
@@ -103,12 +120,67 @@ export function buildSocialPostLogRow(
     post_type: postType,
     caption: sched.caption,
     hashtags: sched.hashtags,
-    // content_type IS the format vocabulary. Never inferred from a URL: a
-    // wrong format is indistinguishable from a real finding downstream.
-    format: sched.content_type ?? null,
+    format,
     scheduled_at: sched.scheduled_at,
     published_at: publishedAt,
     dragonshare_post_id: dragonsharePostId,
     verified_at: verifiedAt,
   };
+}
+
+function deepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.length === b.length && a.every((v, i) => deepEqual(v, b[i]));
+  }
+  const aKeys = Object.keys(a as Record<string, unknown>);
+  const bKeys = Object.keys(b as Record<string, unknown>);
+  return (
+    aKeys.length === bKeys.length &&
+    aKeys.every((k) => deepEqual((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]))
+  );
+}
+
+/**
+ * Are two candidate donny_scheduled_posts rows equivalent for row-building
+ * purposes — i.e. would buildSocialPostLogRow produce the same content
+ * (platform aside) from either one? Compares every field
+ * ScheduledPostForLogRow carries; deliberately does NOT compare `platform`
+ * (buildSocialPostLogRow never reads sched.platform — the caller always
+ * supplies platform separately) or `created_at` (tie-break metadata, not
+ * content).
+ */
+function scheduleRowsEquivalent(a: ScheduledPostForLogRow, b: ScheduledPostForLogRow): boolean {
+  return (
+    a.user_id === b.user_id &&
+    a.campaign_id === b.campaign_id &&
+    a.caption === b.caption &&
+    deepEqual(a.hashtags, b.hashtags) &&
+    a.content_type === b.content_type &&
+    a.scheduled_at === b.scheduled_at &&
+    deepEqual(a.metadata, b.metadata)
+  );
+}
+
+/**
+ * Is more than one donny_scheduled_posts row matching an outstand_post_id a
+ * GENUINE ambiguity, or just routine multi-platform fan-out?
+ *
+ * useSponsorshipAmplification's buildAmplificationScheduleRows writes one
+ * row per platform for a single amplification post, sharing one
+ * outstand_post_id — every field identical except `platform` itself. Before
+ * this function existed, the multi-match warning (added when a genuine
+ * coin-flip between DIFFERENT rows was the only way multiple rows could
+ * share a post id) fired on every one of those deliveries, making a real
+ * ambiguity indistinguishable from routine fan-out on essentially every
+ * healthy amplification run. Returns true only when the candidates disagree
+ * on some field buildSocialPostLogRow actually reads — the case the
+ * original warning existed to catch.
+ */
+export function isGenuineScheduleAmbiguity(rows: ScheduledPostForLogRow[]): boolean {
+  if (rows.length <= 1) return false;
+  const [first, ...rest] = rows;
+  return rest.some((r) => !scheduleRowsEquivalent(first, r));
 }

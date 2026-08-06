@@ -18,7 +18,7 @@
 -- forbidden (CLAUDE.md — never drop or rename, additive only). 'twitter' is
 -- retained for existing data; 'x' is the canonical value going forward.
 alter table public.donny_scheduled_posts
-  drop constraint donny_scheduled_posts_platform_check;
+  drop constraint if exists donny_scheduled_posts_platform_check;
 
 alter table public.donny_scheduled_posts
   add constraint donny_scheduled_posts_platform_check

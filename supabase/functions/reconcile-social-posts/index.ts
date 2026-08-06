@@ -36,7 +36,7 @@ import {
   type ExistingLogRow,
   type ScheduleCandidate,
 } from "./reconcile.ts";
-import { buildSocialPostLogRow } from "../_shared/social-post-log-row.ts";
+import { buildSocialPostLogRow, isGenuineScheduleAmbiguity } from "../_shared/social-post-log-row.ts";
 import { isAuthorizedIngest } from "../_shared/ingest-auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -137,7 +137,18 @@ serve(async (req: Request) => {
     now.getTime() - (RECONCILE_WINDOW_DAYS + SCHEDULE_LEAD_BUFFER_DAYS) * 24 * 60 * 60 * 1000,
   ).toISOString();
 
+  // Unit key for the summary below, since this run mixes three grains and a
+  // reader comparing across them will draw the wrong conclusion otherwise:
+  //   posts:     postsScanned, malformedPosts, noPublishedPlatforms,
+  //              budgetTruncated, ambiguousMatches, postProcessingErrors
+  //   platforms: platformsScanned, droppedAccounts, alreadyRecorded,
+  //              newlyRecorded, unmatched, staleSkipped, scheduleLookupErrors,
+  //              upsertErrors, ownerConflicts
+  //   pages:     pagesFetched, fetchErrors, existingLookupErrors
+  // platformsScanned is the platform-grain denominator (Important 2 review):
+  // compare unmatched/newlyRecorded/etc against IT, never against postsScanned.
   let postsScanned = 0;
+  let platformsScanned = 0;
   let alreadyRecorded = 0;
   let newlyRecorded = 0;
   let unmatched = 0;
@@ -159,6 +170,23 @@ serve(async (req: Request) => {
   // sweep read an owner from anywhere other than a donny_scheduled_posts row.
   let staleSkipped = 0;
   let ownerConflicts = 0;
+  // Provider-response defensiveness (review round 1): a null/non-object
+  // element anywhere in a provider array must never be a silent skip.
+  // malformedPosts: raw page.posts entries filtered out before processing
+  // (null/non-object, or missing a usable string id). droppedAccounts: same
+  // class of entry inside a post's own socialAccounts[], plus a published
+  // account with no usable network (mirrors outstand-webhook's `dropped`).
+  // noPublishedPlatforms: a scanned post that yielded zero published
+  // platforms — routine for a still-pending post, but if Outstand ever
+  // renames a field this number (not the all-zeros summary alone) is what
+  // would reveal a totally broken run instead of a healthy quiet one.
+  // postProcessingErrors: the try/catch safety net below — anything NOT
+  // already anticipated by the guards above still gets counted, never a
+  // silent 500 that kills the whole run with no summary logged.
+  let malformedPosts = 0;
+  let droppedAccounts = 0;
+  let noPublishedPlatforms = 0;
+  let postProcessingErrors = 0;
 
   const deadline = Date.now() + RUN_BUDGET_MS;
   let offset = 0;
@@ -182,14 +210,33 @@ serve(async (req: Request) => {
     pagesFetched++;
     if (page.posts.length === 0) break;
 
-    postsScanned += page.posts.length;
+    // Filter null/non-object entries (or ones missing a usable string id)
+    // BEFORE anything reads .id off them. Critical 1 (review round 1):
+    // Outstand is documented, elsewhere in this codebase, to sometimes
+    // return an array containing a bare null element (capture.ts's
+    // classifyMeasurement comment, outstand-webhook-lib.ts's parseAccounts,
+    // outstand-proxy's extractSocialAccountIds all guard for it) — this
+    // sweep was the one reader of this provider that did not. An unguarded
+    // `page.posts.map((p) => p.id)` throws TypeError on such an element,
+    // and since nothing wraps this loop in a try/catch above this point,
+    // that would kill the ENTIRE run — every later post in this page, every
+    // later page — with no summary logged (the summary is built after this
+    // loop exits normally). Counted, never silent.
+    const rawPosts = page.posts;
+    const posts = rawPosts.filter(
+      (p): p is ProviderPost =>
+        !!p && typeof p === "object" && typeof (p as ProviderPost).id === "string" && (p as ProviderPost).id.length > 0,
+    );
+    malformedPosts += rawPosts.length - posts.length;
+
+    postsScanned += posts.length;
 
     // Batch-read what we already have for this page's posts. A plain-column
     // .in() filter (never a JSON-path expression — see the per-post
     // donny_scheduled_posts lookup below for why that one stays per-post) at
     // PAGE_LIMIT=100 stays under the header-overflow threshold this codebase
     // has hit before with unbounded .in() calls.
-    const pageIds = Array.from(new Set(page.posts.map((p) => p.id).filter(Boolean)));
+    const pageIds = Array.from(new Set(posts.map((p) => p.id)));
     const existingByPost = new Map<string, ExistingLogRow[]>();
     if (pageIds.length > 0) {
       const { data: existingRows, error: existingErr } = await admin
@@ -212,89 +259,122 @@ serve(async (req: Request) => {
       }
     }
 
-    for (const post of page.posts) {
+    for (const post of posts) {
       if (Date.now() > deadline) { budgetTruncated++; continue; }
-      if (!post?.id) continue;
+      // post.id is guaranteed a non-empty string here — filtered above.
 
-      const existingForPost = existingByPost.get(post.id) ?? [];
-      const missing = platformsToReconcile(post, existingForPost);
-      // alreadyRecorded = platforms this post published to that were already
-      // verified — i.e. everything platformsToReconcile did NOT return.
-      const publishedCount = derivePublishedPlatforms(post).length;
-      alreadyRecorded += publishedCount - missing.length;
+      // Belt-and-suspenders beyond the null-element guards already inside
+      // derivePublishedPlatforms/resolvePublishedAt (Critical 1, review
+      // round 1): those close the SPECIFIC, previously-seen failure mode,
+      // but this try/catch is the backstop for anything not yet anticipated
+      // — this provider's docs have diverged from its behavior more than
+      // once elsewhere in this codebase. Converts "whole run dies, no
+      // summary logged" into "this one post is counted and skipped, the run
+      // continues."
+      try {
+        const existingForPost = existingByPost.get(post.id) ?? [];
+        const { platforms: published, droppedAccounts: postDropped } = derivePublishedPlatforms(post);
+        droppedAccounts += postDropped;
+        platformsScanned += published.length;
 
-      if (missing.length === 0) continue;
+        if (published.length === 0) {
+          // Routine for a still-pending post (most of a wide discovery
+          // window's posts haven't published yet) — but see this counter's
+          // declaration comment: it's the number that would reveal a
+          // provider field-rename breaking every post's parse, which
+          // alreadyRecorded/newlyRecorded/unmatched alone cannot.
+          noPublishedPlatforms++;
+          continue;
+        }
 
-      // Bound ACTION (not discovery — see the fetch loop) to a recent window.
-      // Narrows how long a forged donny_scheduled_posts row stays exploitable
-      // through this repeatedly-re-scanning endpoint, and there is no
-      // measurement value past content-performance-capture's own 7d horizon
-      // anyway. See reconcile.ts's isWithinActionWindow.
-      const resolvedPublishedAt = resolvePublishedAt(post);
-      if (!isWithinActionWindow(resolvedPublishedAt, now, RECONCILE_WINDOW_DAYS)) {
-        staleSkipped += missing.length;
-        continue;
+        const missing = platformsToReconcile(post, existingForPost);
+        // alreadyRecorded = platforms this post published to that were
+        // already verified — i.e. everything platformsToReconcile did NOT
+        // return.
+        alreadyRecorded += published.length - missing.length;
+
+        if (missing.length === 0) continue;
+
+        // Bound ACTION (not discovery — see the fetch loop) to a recent
+        // window. Narrows how long a forged donny_scheduled_posts row stays
+        // exploitable through this repeatedly-re-scanning endpoint, and
+        // there is no measurement value past content-performance-capture's
+        // own 7d horizon anyway. See reconcile.ts's isWithinActionWindow.
+        const resolvedPublishedAt = resolvePublishedAt(post);
+        if (!isWithinActionWindow(resolvedPublishedAt, now, RECONCILE_WINDOW_DAYS)) {
+          staleSkipped += missing.length;
+          continue;
+        }
+
+        // Re-drive the SAME schedule lookup recordPublishedPost performs —
+        // the one and only place ownership is read from, and it's always
+        // read off OUR OWN table, never off the provider payload.
+        const { data: schedRows, error: schedErr } = await admin
+          .from("donny_scheduled_posts")
+          .select("user_id, campaign_id, platform, caption, hashtags, content_type, scheduled_at, metadata, created_at")
+          .eq("metadata->>outstand_post_id", post.id)
+          .order("created_at", { ascending: true });
+
+        if (schedErr) {
+          console.error(`[reconcile] schedule lookup failed: postId=${post.id}`, schedErr.message);
+          scheduleLookupErrors += missing.length;
+          continue;
+        }
+        if (!schedRows || schedRows.length === 0) {
+          // No schedule row: same "unmatched" outcome recordPublishedPost
+          // returns for this case. NEVER resolve an owner any other way —
+          // see this file's header comment and reconcile.ts's.
+          unmatched += missing.length;
+          continue;
+        }
+        // Fires only on a GENUINE disagreement between candidates, not
+        // routine multi-platform fan-out (useSponsorshipAmplification
+        // writes one row per platform for a single amplification, identical
+        // apart from `platform`, which isGenuineScheduleAmbiguity
+        // deliberately never compares). Before this check, amplification
+        // tripped this on every delivery.
+        if (schedRows.length > 1 && isGenuineScheduleAmbiguity(schedRows)) {
+          console.warn(`[reconcile] ${schedRows.length} scheduled posts match ${post.id} — using oldest (created_at asc)`);
+          ambiguousMatches++;
+        }
+        const sched = pickScheduleMatch(schedRows as ScheduleCandidate[]);
+        if (!sched) { unmatched += missing.length; continue; }
+
+        // Refuse to silently reassign an existing (unverified) row's owner —
+        // see reconcile.ts's withoutOwnerConflicts.
+        const { safe, conflicts } = withoutOwnerConflicts(missing, existingForPost, sched.user_id);
+        if (conflicts.length > 0) {
+          console.error(
+            `[reconcile] owner conflict: postId=${post.id} platforms=${conflicts.join(",")} — ` +
+            `existing row's owner differs from the matched schedule row's user_id, refusing to overwrite`,
+          );
+          ownerConflicts += conflicts.length;
+        }
+        if (safe.length === 0) continue;
+
+        // Prefer the provider's own timestamp so a post reconciled some time
+        // after it actually published (the whole point of this sweep) still
+        // ages correctly for content-performance-capture's milestone math —
+        // "now" is the last resort, not the first choice. verified_at is
+        // always "now": that column means "when WE confirmed it", matching
+        // outstand-webhook's identical `new Date().toISOString()`.
+        const publishedAt = resolvedPublishedAt ?? now.toISOString();
+        const verifiedAt = now.toISOString();
+        const rows = safe.map((platform) => buildSocialPostLogRow(post.id, platform, publishedAt, sched, verifiedAt));
+
+        const { error: upsertErr } = await admin
+          .from("social_post_log")
+          .upsert(rows, { onConflict: "outstand_post_id,platform" });
+        if (upsertErr) {
+          console.error(`[reconcile] social_post_log upsert failed: postId=${post.id}`, upsertErr.message);
+          upsertErrors += rows.length;
+          continue;
+        }
+        newlyRecorded += rows.length;
+      } catch (e) {
+        console.error(`[reconcile] unexpected error processing postId=${post.id}`, e);
+        postProcessingErrors++;
       }
-
-      // Re-drive the SAME schedule lookup recordPublishedPost performs — the
-      // one and only place ownership is read from, and it's always read off
-      // OUR OWN table, never off the provider payload.
-      const { data: schedRows, error: schedErr } = await admin
-        .from("donny_scheduled_posts")
-        .select("user_id, campaign_id, platform, caption, hashtags, content_type, scheduled_at, metadata, created_at")
-        .eq("metadata->>outstand_post_id", post.id)
-        .order("created_at", { ascending: true });
-
-      if (schedErr) {
-        console.error(`[reconcile] schedule lookup failed: postId=${post.id}`, schedErr.message);
-        scheduleLookupErrors += missing.length;
-        continue;
-      }
-      if (!schedRows || schedRows.length === 0) {
-        // No schedule row: same "unmatched" outcome recordPublishedPost
-        // returns for this case. NEVER resolve an owner any other way — see
-        // this file's header comment and reconcile.ts's.
-        unmatched += missing.length;
-        continue;
-      }
-      if (schedRows.length > 1) {
-        console.warn(`[reconcile] ${schedRows.length} scheduled posts match ${post.id} — using oldest (created_at asc)`);
-        ambiguousMatches++;
-      }
-      const sched = pickScheduleMatch(schedRows as ScheduleCandidate[]);
-      if (!sched) { unmatched += missing.length; continue; }
-
-      // Refuse to silently reassign an existing (unverified) row's owner —
-      // see reconcile.ts's withoutOwnerConflicts.
-      const { safe, conflicts } = withoutOwnerConflicts(missing, existingForPost, sched.user_id);
-      if (conflicts.length > 0) {
-        console.error(
-          `[reconcile] owner conflict: postId=${post.id} platforms=${conflicts.join(",")} — ` +
-          `existing row's owner differs from the matched schedule row's user_id, refusing to overwrite`,
-        );
-        ownerConflicts += conflicts.length;
-      }
-      if (safe.length === 0) continue;
-
-      // Prefer the provider's own timestamp so a post reconciled some time
-      // after it actually published (the whole point of this sweep) still
-      // ages correctly for content-performance-capture's milestone math —
-      // "now" is the last resort, not the first choice. verified_at is
-      // always "now": that column means "when WE confirmed it", matching
-      // outstand-webhook's identical `new Date().toISOString()`.
-      const publishedAt = resolvedPublishedAt ?? now.toISOString();
-      const verifiedAt = now.toISOString();
-      const rows = safe.map((platform) => buildSocialPostLogRow(post.id, platform, publishedAt, sched, verifiedAt));
-
-      const { error: upsertErr } = await admin
-        .from("social_post_log")
-        .upsert(rows, { onConflict: "outstand_post_id,platform" });
-      if (upsertErr) {
-        console.error(`[reconcile] social_post_log upsert failed: postId=${post.id}`, upsertErr.message);
-        upsertErrors += rows.length;
-        continue;
-      }
-      newlyRecorded += rows.length;
     }
 
     if (page.posts.length < PAGE_LIMIT) break; // last page
@@ -309,19 +389,27 @@ serve(async (req: Request) => {
   }
 
   const summary = {
+    // posts
     postsScanned,
+    malformedPosts,
+    noPublishedPlatforms,
+    budgetTruncated,
+    ambiguousMatches,
+    postProcessingErrors,
+    // platforms — compare these against platformsScanned, never postsScanned
+    platformsScanned,
+    droppedAccounts,
     alreadyRecorded,
     newlyRecorded,
     unmatched,
-    fetchErrors,
-    budgetTruncated,
-    scheduleLookupErrors,
-    existingLookupErrors,
-    upsertErrors,
-    ambiguousMatches,
     staleSkipped,
+    scheduleLookupErrors,
+    upsertErrors,
     ownerConflicts,
+    // pages
     pagesFetched,
+    fetchErrors,
+    existingLookupErrors,
     windowStart: cutoff,
   };
 

@@ -12,7 +12,7 @@ import {
 } from './reconcile';
 
 describe('derivePublishedPlatforms', () => {
-  it('returns the network of every published account', () => {
+  it('returns the network of every published account, with droppedAccounts: 0', () => {
     const post: ProviderPost = {
       id: 'p1',
       socialAccounts: [
@@ -20,7 +20,7 @@ describe('derivePublishedPlatforms', () => {
         { network: 'tiktok', status: 'published' },
       ],
     };
-    expect(derivePublishedPlatforms(post)).toEqual(['instagram', 'tiktok']);
+    expect(derivePublishedPlatforms(post)).toEqual({ platforms: ['instagram', 'tiktok'], droppedAccounts: 0 });
   });
 
   it('dedupes when two accounts on the same network both published', () => {
@@ -31,10 +31,10 @@ describe('derivePublishedPlatforms', () => {
         { network: 'instagram', status: 'published' },
       ],
     };
-    expect(derivePublishedPlatforms(post)).toEqual(['instagram']);
+    expect(derivePublishedPlatforms(post)).toEqual({ platforms: ['instagram'], droppedAccounts: 0 });
   });
 
-  it('excludes failed and pending accounts', () => {
+  it('excludes failed and pending accounts without counting them as dropped (not an error, just not published yet)', () => {
     const post: ProviderPost = {
       id: 'p1',
       socialAccounts: [
@@ -43,7 +43,7 @@ describe('derivePublishedPlatforms', () => {
         { network: 'tiktok', status: 'pending' },
       ],
     };
-    expect(derivePublishedPlatforms(post)).toEqual(['instagram']);
+    expect(derivePublishedPlatforms(post)).toEqual({ platforms: ['instagram'], droppedAccounts: 0 });
   });
 
   it('excludes an unrecognized status (e.g. a documented-but-unverified "deleted")', () => {
@@ -51,24 +51,64 @@ describe('derivePublishedPlatforms', () => {
       id: 'p1',
       socialAccounts: [{ network: 'instagram', status: 'deleted' }],
     };
-    expect(derivePublishedPlatforms(post)).toEqual([]);
+    expect(derivePublishedPlatforms(post)).toEqual({ platforms: [], droppedAccounts: 0 });
   });
 
-  it('drops a published account with no network rather than emitting a null platform', () => {
+  // Important 2: outstand-webhook counts precisely this case via its own
+  // `dropped` counter ("a parsed-but-networkless entry is silently invisible
+  // past this point unless counted here") -- this sweep must match, not
+  // silently absorb it into a quiet-looking zero.
+  it('drops a published account with no network rather than emitting a null platform, and counts it', () => {
     const post: ProviderPost = {
       id: 'p1',
       socialAccounts: [{ network: null, status: 'published' }],
     };
-    expect(derivePublishedPlatforms(post)).toEqual([]);
+    expect(derivePublishedPlatforms(post)).toEqual({ platforms: [], droppedAccounts: 1 });
   });
 
-  it('returns [] rather than throwing when socialAccounts is empty', () => {
-    expect(derivePublishedPlatforms({ id: 'p1', socialAccounts: [] })).toEqual([]);
+  it('counts droppedAccounts only for published-but-networkless entries, not pending/failed ones', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: [
+        { network: null, status: 'published' },
+        { network: null, status: 'pending' },
+        { network: 'instagram', status: 'published' },
+      ],
+    };
+    expect(derivePublishedPlatforms(post)).toEqual({ platforms: ['instagram'], droppedAccounts: 1 });
   });
 
-  it('returns [] rather than throwing when socialAccounts is absent', () => {
-    expect(derivePublishedPlatforms({ id: 'p1', socialAccounts: null })).toEqual([]);
-    expect(derivePublishedPlatforms({ id: 'p1', socialAccounts: undefined })).toEqual([]);
+  it('returns platforms: [] with droppedAccounts: 0 rather than throwing when socialAccounts is empty', () => {
+    expect(derivePublishedPlatforms({ id: 'p1', socialAccounts: [] })).toEqual({ platforms: [], droppedAccounts: 0 });
+  });
+
+  it('returns platforms: [] with droppedAccounts: 0 rather than throwing when socialAccounts is absent', () => {
+    expect(derivePublishedPlatforms({ id: 'p1', socialAccounts: null })).toEqual({ platforms: [], droppedAccounts: 0 });
+    expect(derivePublishedPlatforms({ id: 'p1', socialAccounts: undefined })).toEqual({ platforms: [], droppedAccounts: 0 });
+  });
+
+  // Critical 1: Outstand is documented elsewhere in this codebase to
+  // sometimes return a socialAccounts-shaped array containing a bare null
+  // element (capture.ts's classifyMeasurement comment, parseAccounts,
+  // extractSocialAccountIds all guard for it). An unguarded
+  // `.filter((a) => a.status === ...)` throws TypeError on `null`, which —
+  // with no try/catch anywhere in index.ts's serve() body before this fix —
+  // would kill the entire run silently. Node-verified failure mode this
+  // regression-tests: `[null].filter(a => a.status === 'x')` throws.
+  it('does not throw when socialAccounts contains a bare null element, and counts it as dropped', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: [null as unknown as never, { network: 'instagram', status: 'published' }],
+    };
+    expect(derivePublishedPlatforms(post)).toEqual({ platforms: ['instagram'], droppedAccounts: 1 });
+  });
+
+  it('does not throw when socialAccounts contains a non-object primitive element', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: ['garbage' as unknown as never, 42 as unknown as never],
+    };
+    expect(derivePublishedPlatforms(post)).toEqual({ platforms: [], droppedAccounts: 2 });
   });
 });
 
@@ -149,6 +189,14 @@ describe('platformsToReconcile', () => {
     ];
     expect(platformsToReconcile(post, existing)).toEqual(['instagram']);
   });
+
+  it('does not throw when socialAccounts contains a bare null element', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: [null as unknown as never, { network: 'instagram', status: 'published' }],
+    };
+    expect(platformsToReconcile(post, [])).toEqual(['instagram']);
+  });
 });
 
 describe('resolvePublishedAt', () => {
@@ -182,6 +230,14 @@ describe('resolvePublishedAt', () => {
         { network: 'facebook', status: 'failed', publishedAt: '2026-08-01T00:00:00.000Z' },
         { network: 'instagram', status: 'published', publishedAt: '2026-08-01T00:05:00.000Z' },
       ],
+    };
+    expect(resolvePublishedAt(post)).toBe('2026-08-01T00:05:00.000Z');
+  });
+
+  it('does not throw when socialAccounts contains a bare null element', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: [null as unknown as never, { network: 'instagram', status: 'published', publishedAt: '2026-08-01T00:05:00.000Z' }],
     };
     expect(resolvePublishedAt(post)).toBe('2026-08-01T00:05:00.000Z');
   });

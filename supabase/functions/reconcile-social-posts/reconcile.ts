@@ -58,6 +58,21 @@ export interface ExistingLogRow {
   userId: string;
 }
 
+export interface PublishedPlatformsResult {
+  platforms: string[];
+  /**
+   * Accounts dropped rather than counted as published: a null/non-object
+   * socialAccounts[] entry (Outstand is documented, elsewhere in this
+   * codebase, to sometimes return `[null, {...}]` — see capture.ts's
+   * classifyMeasurement comment, outstand-webhook-lib.ts's parseAccounts,
+   * and outstand-proxy's extractSocialAccountIds, all of which guard for
+   * it), OR a status === 'published' entry with no usable network. Mirrors
+   * outstand-webhook's `dropped` counter — a skip with no counter is the
+   * failure mode this whole sub-project exists to remove.
+   */
+  droppedAccounts: number;
+}
+
 /**
  * Platforms this provider post actually published to, mirroring
  * outstand-webhook's recordPublishedPost derivation: one entry per
@@ -66,14 +81,29 @@ export interface ExistingLogRow {
  * publish. Deduped; no case normalization (Outstand's network values are
  * already lowercase in production, matching the webhook exactly — see
  * capture.ts's matchingAccountEntries comment for the same observation). A
- * post with no socialAccounts entries (or none published) yields [] rather
- * than throwing.
+ * post with no socialAccounts entries (or none published) yields
+ * `{platforms: [], droppedAccounts: 0}` rather than throwing.
+ *
+ * Filters null/non-object entries BEFORE reading `.status`/`.network` off
+ * them — an unguarded `.filter((a) => a.status === ...)` throws
+ * TypeError on a null element, which would kill this entire run (every post
+ * after it in the page, and every subsequent page) with no summary logged,
+ * since the throw happens outside any try/catch. See index.ts's per-post
+ * try/catch for the second half of this defense.
  */
-export function derivePublishedPlatforms(post: ProviderPost): string[] {
-  const networks = (post.socialAccounts ?? [])
-    .filter((a) => a.status === 'published' && !!a.network)
-    .map((a) => a.network as string);
-  return Array.from(new Set(networks));
+export function derivePublishedPlatforms(post: ProviderPost): PublishedPlatformsResult {
+  const raw = post.socialAccounts ?? [];
+  const objects = raw.filter(
+    (a): a is ProviderPostAccount => !!a && typeof a === 'object',
+  );
+  const malformed = raw.length - objects.length;
+
+  const published = objects.filter((a) => a.status === 'published');
+  const withNetwork = published.filter((a) => !!a.network);
+  const droppedForNoNetwork = published.length - withNetwork.length;
+
+  const platforms = Array.from(new Set(withNetwork.map((a) => a.network as string)));
+  return { platforms, droppedAccounts: malformed + droppedForNoNetwork };
 }
 
 /**
@@ -88,7 +118,7 @@ export function derivePublishedPlatforms(post: ProviderPost): string[] {
  * outstand-webhook would do if it saw the delivery.
  */
 export function platformsToReconcile(post: ProviderPost, existing: ExistingLogRow[]): string[] {
-  const published = derivePublishedPlatforms(post);
+  const { platforms: published } = derivePublishedPlatforms(post);
   if (published.length === 0) return [];
   const verified = new Set(existing.filter((r) => r.verifiedAt != null).map((r) => r.platform));
   return published.filter((p) => !verified.has(p));
@@ -160,7 +190,11 @@ export function withoutOwnerConflicts(
  */
 export function resolvePublishedAt(post: ProviderPost): string | null {
   if (post.publishedAt) return post.publishedAt;
+  // Same null/non-object guard as derivePublishedPlatforms, and for the same
+  // reason: an unguarded .filter((a) => a.status === ...) throws on a null
+  // element instead of skipping it.
   const accountTimes = (post.socialAccounts ?? [])
+    .filter((a): a is ProviderPostAccount => !!a && typeof a === 'object')
     .filter((a) => a.status === 'published' && !!a.publishedAt)
     .map((a) => a.publishedAt as string)
     .sort();

@@ -12,7 +12,7 @@ import {
   verifyOutstandSignature,
   type OutstandSocialAccount,
 } from "../_shared/outstand-webhook-lib.ts";
-import { buildSocialPostLogRow } from "../_shared/social-post-log-row.ts";
+import { buildSocialPostLogRow, isGenuineScheduleAmbiguity } from "../_shared/social-post-log-row.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -87,7 +87,17 @@ async function recordPublishedPost(
     console.warn(`outstand-webhook: no scheduled post for ${postId} — not recorded for measurement`);
     return { outcome: "unmatched", rows: 0, dropped };
   }
-  if (schedRows.length > 1) {
+  // DELIBERATE BEHAVIOR CHANGE #1 (review round 1): fires only on a GENUINE
+  // disagreement between candidates now, not routine multi-platform fan-out.
+  // This warning predates amplification writing schedule rows at all (zero
+  // rows on prod before this branch's Task 1, per the comment above) — once
+  // useSponsorshipAmplification started writing one row per platform for a
+  // single post (identical apart from `platform`, which
+  // isGenuineScheduleAmbiguity deliberately never compares), the SAME
+  // pre-existing warning logic would have fired on every multi-platform
+  // amplification delivery, making a real ambiguity indistinguishable from
+  // routine operation. Gated here rather than left as noise.
+  if (schedRows.length > 1 && isGenuineScheduleAmbiguity(schedRows)) {
     console.warn(
       `outstand-webhook: ${schedRows.length} scheduled posts match ${postId} — using oldest (created_at asc)`,
     );
@@ -130,15 +140,16 @@ async function recordPublishedPost(
   // platform inside this map, preserving this function's exact pre-extraction
   // behavior (each row got its own independent new Date() call).
   //
-  // ONE DELIBERATE BEHAVIOR CHANGE from this function's pre-extraction code,
-  // everything else is byte-identical: a non-string metadata.post_id used to
+  // DELIBERATE BEHAVIOR CHANGE #2 (2026-08-06 extraction) from this
+  // function's pre-extraction row-construction code — everything else about
+  // row content is byte-identical: a non-string metadata.post_id used to
   // pass through via an unchecked cast, which would fail dragonshare_post_id's
   // uuid-column coercion and error the WHOLE upsert (every platform's row for
   // this post lost, not just the one field). The shared function now guards
   // with typeof and writes null instead — the post still gets measured, only
   // the brief-attribution link is missing. See social-post-log-row.ts's
   // buildSocialPostLogRow doc comment for the full reasoning. Requires this
-  // function to be redeployed for this branch's change to take effect at all
+  // function to be redeployed for this branch's changes to take effect at all
   // (it now imports from _shared/social-post-log-row.ts).
   const rows = platforms.map((platform) =>
     buildSocialPostLogRow(postId, platform, publishedAt, sched, new Date().toISOString()),

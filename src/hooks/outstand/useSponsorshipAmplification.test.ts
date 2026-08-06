@@ -48,20 +48,38 @@ describe('resolveAmplificationPlatforms', () => {
 });
 
 describe('derivePlannerContentType', () => {
-  it('returns photo for an all-image batch', () => {
-    expect(derivePlannerContentType(['https://cdn.example.com/a.jpg', 'https://cdn.example.com/b.png'])).toBe('photo');
+  // 'photo' here is a PLACEHOLDER (donny_scheduled_posts.content_type is NOT
+  // NULL), not a finding -- confident is false whenever no video extension
+  // was recognized, since this function never positively detects a photo,
+  // only the absence of a recognized video. See PlannerContentType's doc
+  // comment and social-post-log-row.ts's content_type_inferred handling.
+  it('returns photo with confident: false for an all-image batch (no positive evidence, just "not video")', () => {
+    expect(derivePlannerContentType(['https://cdn.example.com/a.jpg', 'https://cdn.example.com/b.png']))
+      .toEqual({ contentType: 'photo', confident: false });
   });
 
-  it('returns video when any url in the batch is a video extension', () => {
-    expect(derivePlannerContentType(['https://cdn.example.com/a.jpg', 'https://cdn.example.com/b.mp4'])).toBe('video');
+  it('returns video with confident: true when any url in the batch is a recognized video extension', () => {
+    expect(derivePlannerContentType(['https://cdn.example.com/a.jpg', 'https://cdn.example.com/b.mp4']))
+      .toEqual({ contentType: 'video', confident: true });
   });
 
   it('matches on extension ignoring a query string', () => {
-    expect(derivePlannerContentType(['https://cdn.example.com/clip.mov?token=abc123'])).toBe('video');
+    expect(derivePlannerContentType(['https://cdn.example.com/clip.mov?token=abc123']))
+      .toEqual({ contentType: 'video', confident: true });
   });
 
-  it('returns photo for an empty media list', () => {
-    expect(derivePlannerContentType([])).toBe('photo');
+  it('returns photo with confident: false for an empty media list (no media at all)', () => {
+    expect(derivePlannerContentType([])).toEqual({ contentType: 'photo', confident: false });
+  });
+
+  it('returns photo with confident: false for an unrecognized video extension (a real video, mislabeled)', () => {
+    expect(derivePlannerContentType(['https://cdn.example.com/clip.m4v']))
+      .toEqual({ contentType: 'photo', confident: false });
+  });
+
+  it('returns photo with confident: false for a url with no extension at all', () => {
+    expect(derivePlannerContentType(['https://cdn.example.com/uploads/abcdef123']))
+      .toEqual({ contentType: 'photo', confident: false });
   });
 });
 
@@ -261,5 +279,34 @@ describe('buildAmplificationScheduleRows', () => {
       NOW,
     );
     expect(photoRow.content_type).toBe('photo');
+  });
+
+  // content_type is NOT NULL so a placeholder must be written regardless, but
+  // buildSocialPostLogRow (_shared/social-post-log-row.ts) reads this flag to
+  // decide whether social_post_log.format should trust that placeholder or
+  // null it out. A recognized video extension is real evidence; anything
+  // else is a guess.
+  it('marks content_type_inferred: true when there is no recognized video extension (a guess)', () => {
+    const [emptyMediaRow] = buildAmplificationScheduleRows(
+      ['instagram'], 'post-123', 'user-1', 'caption', [], 'campaign-1', null, NOW,
+    );
+    expect(emptyMediaRow.metadata.content_type_inferred).toBe(true);
+
+    const [unrecognizedExtRow] = buildAmplificationScheduleRows(
+      ['instagram'], 'post-123', 'user-1', 'caption', ['https://cdn.example.com/clip.m4v'], 'campaign-1', null, NOW,
+    );
+    expect(unrecognizedExtRow.metadata.content_type_inferred).toBe(true);
+
+    const [photoRow] = buildAmplificationScheduleRows(
+      ['instagram'], 'post-123', 'user-1', 'caption', ['https://cdn.example.com/a.jpg'], 'campaign-1', null, NOW,
+    );
+    expect(photoRow.metadata.content_type_inferred).toBe(true);
+  });
+
+  it('marks content_type_inferred: false when a recognized video extension was found (real evidence)', () => {
+    const [row] = buildAmplificationScheduleRows(
+      ['instagram'], 'post-123', 'user-1', 'caption', ['https://cdn.example.com/clip.mp4'], 'campaign-1', null, NOW,
+    );
+    expect(row.metadata.content_type_inferred).toBe(false);
   });
 });

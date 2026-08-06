@@ -55,20 +55,41 @@ export function resolveAmplificationPlatforms(
 // URL strings); this mirrors the URL-extension half of it.
 const VIDEO_URL_EXTENSIONS = new Set(['mp4', 'mov', 'webm', 'avi', 'mkv']);
 
+export interface PlannerContentType {
+  contentType: string;
+  /**
+   * True only when a recognized video extension was actually found — real
+   * evidence. False means 'photo' was the fallback with NO positive
+   * evidence: no media at all, a URL with an unrecognized or missing
+   * extension (this function only tests for video extensions; it never
+   * positively detects a photo). `donny_scheduled_posts.content_type` is
+   * NOT NULL, so `contentType` must be written regardless — but a caller
+   * writing this row downstream (social_post_log.format via
+   * buildSocialPostLogRow) must be able to tell "found a video" from
+   * "guessed photo for lack of anything else", since a wrong format is
+   * indistinguishable from a real finding once it lands there. See
+   * metadata.content_type_inferred on the schedule row this feeds.
+   */
+  confident: boolean;
+}
+
 /**
  * Planner-side content type ('video' | 'photo') for the media batch being
- * amplified. Any video URL in the batch marks the whole post 'video' —
- * toDbContentType then maps that through the DB vocabulary exactly like every
- * other write path (it's a no-op pass-through here since both values are
- * already native DB_CONTENT_TYPES, but routing through it keeps a single
- * source of truth for the CHECK vocabulary rather than writing a raw value).
+ * amplified. Any RECOGNIZED video URL in the batch marks the whole post
+ * 'video' with confident: true; anything else (no media, or every URL's
+ * extension unrecognized) falls back to 'photo' with confident: false — a
+ * placeholder, not a finding. Callers still pass `contentType` through
+ * toDbContentType exactly like every other write path (a no-op pass-through
+ * here since both values are already native DB_CONTENT_TYPES, but routing
+ * through it keeps a single source of truth for the CHECK vocabulary rather
+ * than writing a raw value).
  */
-export function derivePlannerContentType(mediaUrls: string[]): string {
+export function derivePlannerContentType(mediaUrls: string[]): PlannerContentType {
   const hasVideo = mediaUrls.some((url) => {
     const ext = url.split('?')[0].split('.').pop()?.toLowerCase() ?? '';
     return VIDEO_URL_EXTENSIONS.has(ext);
   });
-  return hasVideo ? 'video' : 'photo';
+  return hasVideo ? { contentType: 'video', confident: true } : { contentType: 'photo', confident: false };
 }
 
 export interface AmplificationScheduleRow {
@@ -81,7 +102,22 @@ export interface AmplificationScheduleRow {
   scheduled_at: string;
   published_at: string | null;
   status: 'scheduled' | 'published';
-  metadata: { outstand_post_id: string; source: 'sponsorship_amplification' };
+  metadata: {
+    outstand_post_id: string;
+    source: 'sponsorship_amplification';
+    /**
+     * True when content_type above was a URL-extension guess with no
+     * positive evidence (see derivePlannerContentType), not a real finding.
+     * donny_scheduled_posts.content_type is NOT NULL so the column must
+     * carry something regardless — this flag is how buildSocialPostLogRow
+     * (_shared/social-post-log-row.ts) knows to write
+     * social_post_log.format: null instead of propagating the guess. A
+     * wrong format is indistinguishable from a real finding downstream
+     * (content-performance-capture, "do reels beat photos"), so the guess
+     * must stop here, not at content_type.
+     */
+    content_type_inferred: boolean;
+  };
 }
 
 /**
@@ -123,7 +159,8 @@ export function buildAmplificationScheduleRows(
 ): AmplificationScheduleRow[] {
   if (platforms.length === 0) return [];
 
-  const contentType = toDbContentType(derivePlannerContentType(mediaUrls));
+  const { contentType: plannerContentType, confident: contentTypeConfident } = derivePlannerContentType(mediaUrls);
+  const contentType = toDbContentType(plannerContentType);
   const nowMs = new Date(now).getTime();
   // scheduledAt ? new Date(...).getTime() : NaN, and NaN > anything is false
   // in JS — null/missing/unparseable scheduledAt all fall through to
@@ -149,7 +186,11 @@ export function buildAmplificationScheduleRows(
     // through to the campaignId fallback and resolves 'campaign' instead of
     // 'amplification' -- silently overwriting the social_post_log row's
     // correct post_type on upsert. See the doc comment on this function.
-    metadata: { outstand_post_id: outstandPostId, source: 'sponsorship_amplification' },
+    metadata: {
+      outstand_post_id: outstandPostId,
+      source: 'sponsorship_amplification',
+      content_type_inferred: !contentTypeConfident,
+    },
   }));
 }
 
@@ -232,17 +273,23 @@ export function useSponsorshipAmplification() {
         );
       }
 
-      // Insert every platform's row in ONE array call, not a sequential loop.
-      // PostgREST executes a JSON-array insert as a single INSERT statement, so
-      // either every platform row lands or none does -- there is no window where
-      // some rows exist and others don't. A sequential per-platform loop left
-      // exactly that window open: if the Outstand webhook's no-schedule path
+      // Write every platform's row in ONE array call, not a sequential loop.
+      // PostgREST executes a JSON-array insert/upsert as a single statement,
+      // so there is no window where some rows exist and others don't while
+      // this call is in flight. A sequential per-platform loop left exactly
+      // that window open: if the Outstand webhook's no-schedule path
       // (outstand-webhook/index.ts's recordPublishedPost) ran between two
       // iterations, it would find the first-inserted row, treat that as
-      // sufficient, stamp only that subset, and return 200 -- so Outstand never
-      // retries and the remaining platforms stay permanently unverified and
-      // unmeasured. A single atomic insert removes the window rather than
-      // requiring the webhook to detect and retry against a partial subset.
+      // sufficient, stamp only that subset, and return 200 -- so Outstand
+      // never retries and the remaining platforms stay permanently
+      // unverified and unmeasured. A single atomic call removes the window
+      // rather than requiring the webhook to detect and retry against a
+      // partial subset. (The social_post_log write below is an upsert with
+      // ignoreDuplicates, not a plain insert, for an unrelated reason — see
+      // its own comment — which relaxes "all or nothing" to "every
+      // non-conflicting row lands, still in one call, still no partial-loop
+      // window"; the donny_scheduled_posts insert just above stays a plain
+      // insert, so still genuinely all-or-nothing.)
       if (outstandPostId != null && platforms.length > 0) {
         // Give this post a donny_scheduled_posts row — the same schedule-row
         // lookup (metadata->>outstand_post_id) recordPublishedPost already uses
@@ -279,7 +326,23 @@ export function useSponsorshipAmplification() {
           platform,
           post_type: 'amplification',
         }));
-        const { error: logError } = await supabase.from('social_post_log').insert(rows);
+        // upsert + ignoreDuplicates, not a plain insert: the schedule row
+        // above is now written FIRST, which opens a window where a fast
+        // outstand-webhook delivery matches it and upserts its OWN (fuller —
+        // caption/hashtags/format/scheduled_at/published_at/verified_at)
+        // social_post_log row for the same (outstand_post_id, platform) keys
+        // before this insert runs. A plain .insert() would then fail the
+        // whole batch with 23505 on a path that actually succeeded — the
+        // webhook's row is a strict superset and already resolves the same
+        // post_type (Task 2), so nothing is lost, but a benign race would
+        // read as a hard failure to anyone triaging this log. ON CONFLICT DO
+        // NOTHING (ignoreDuplicates: true, not a full upsert) skips only the
+        // rows the webhook already won, without an UPDATE that would need a
+        // privilege this table's RLS doesn't grant clients (INSERT + SELECT
+        // only, verified against prod — no UPDATE policy on social_post_log).
+        const { error: logError } = await supabase
+          .from('social_post_log')
+          .upsert(rows, { onConflict: 'outstand_post_id,platform', ignoreDuplicates: true });
         if (logError) {
           console.error(
             `[useSponsorshipAmplification] Failed to log social post(s) for platforms [${platforms.join(', ')}]:`,
