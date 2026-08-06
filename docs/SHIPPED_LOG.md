@@ -119,8 +119,14 @@ another tenant's posts through the grants this branch had just made load-bearing
 `20260806210000` revokes INSERT outright (the client INSERT surface is **empty** — all three writers
 use the service-role key, which holds its own grant) and drops the now-dead INSERT policy, so a
 future `GRANT INSERT` lands on RLS-with-no-policy rather than silently reopening it. Checked for
-prior exploitation first: 9 rows, every account id held by exactly one user. **Not yet applied —
-founder-gated.** The review also caught that the migration's own verification query filtered
+prior exploitation first: 9 rows, every account id held by exactly one user. **Applied to prod
+2026-08-06 and verified against reality, not against the apply's success return:** zero INSERT grants
+outside `postgres`/`service_role`; exactly 4 policies with no INSERT among them (proving the
+`DROP POLICY IF EXISTS` matched rather than no-opping on a renamed policy); the client's
+`UPDATE (org_unit_id, status)` + own-row `SELECT`/`DELETE` still intact and the Social page still
+renders its one connected account; and a rollback-wrapped insert of the *actual* forgery — a row
+claiming the other tenant's `I2pgX` — as role `authenticated` returned **`42501 permission
+denied`**. The review also caught that the migration's own verification query filtered
 `grantee in ('anon','authenticated')`, which would have reported PASS while a PUBLIC grant stood;
 fixed, along with adding `public` to the revoke.
 

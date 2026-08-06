@@ -101,8 +101,8 @@ A row whose account ids cannot be resolved is **dropped**: unattributable is not
   was accurate rather than lazy. Closing it needs an ownership binding of our own, mirroring
   `outstand_post_ownership`. **`GET /media` currently returns `count: 0`**, so nothing is exposed
   today; it becomes live the moment media is uploaded and retained.
-- ~~**`business_outstand_accounts` INSERT is unconstrained**~~ — **fixed, migration
-  `20260806210000`, awaiting the founder-gated apply.** This was the substrate *under* the
+- ~~**`business_outstand_accounts` INSERT is unconstrained**~~ — **fixed — migration `20260806210000` APPLIED to prod
+  2026-08-06 and verified red→green.** This was the substrate *under* the
   `post_account` grant: `authenticated` **and `anon`** held INSERT on all 14 columns including
   `outstand_social_account_id`; the INSERT policy pinned *who owned the row* but never *which
   account it claimed*; and the unique index is `(user_id, outstand_social_account_id)` — **per-user,
@@ -112,7 +112,13 @@ A row whose account ids cannot be resolved is **dropped**: unattributable is not
   Revoked outright (not a column subset) because the client INSERT surface is **empty** — all three
   writers use the service-role key. The dead INSERT policy is dropped too, so a future `GRANT INSERT`
   lands on RLS-with-no-policy instead of silently reopening it. **No evidence of prior
-  exploitation:** 9 rows, every account id held by exactly one user.
+  exploitation:** 9 rows, every account id held by exactly one user. **Verified after applying, not
+  from the apply's success return:** zero INSERT grants outside `postgres`/`service_role`; exactly 4
+  policies with **no** INSERT among them (which is what proves the `DROP POLICY IF EXISTS` matched
+  rather than silently no-opping on a renamed policy); the client's `UPDATE (org_unit_id, status)`
+  and own-row `SELECT`/`DELETE` intact; and a rollback-wrapped attempt to insert the *actual*
+  forgery — a row claiming the other tenant's `I2pgX` — as role `authenticated` returned
+  **`42501 permission denied`**.
 - **`/social-accounts/pending/{token}[/finalize]`** rests entirely on the provider's token entropy —
   holding another tenant's in-flight session token finalizes their OAuth handoff into your rows.
 - **Offset paging over a post-hoc filtered list is incoherent** (upstream page N is not the caller's
