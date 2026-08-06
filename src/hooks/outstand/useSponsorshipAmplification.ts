@@ -3,6 +3,7 @@ import { useOutstandConfig } from '@/integrations/outstand/Provider';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { toDbContentType, type DbContentType } from '@/lib/contentType';
 
 interface AmplifyInput {
   caption: string;
@@ -46,6 +47,95 @@ export function resolveAmplificationPlatforms(
     platforms.add(platform);
   }
   return { platforms: [...platforms], unresolved };
+}
+
+// Same extension check as MediaPreviewGrid.tsx's isVideoItem — the only other
+// content-type-from-URL derivation in the codebase. That helper also checks a
+// MediaItem's mimeType, which amplification never has (it only carries raw
+// URL strings); this mirrors the URL-extension half of it.
+const VIDEO_URL_EXTENSIONS = new Set(['mp4', 'mov', 'webm', 'avi', 'mkv']);
+
+/**
+ * Planner-side content type ('video' | 'photo') for the media batch being
+ * amplified. Any video URL in the batch marks the whole post 'video' —
+ * toDbContentType then maps that through the DB vocabulary exactly like every
+ * other write path (it's a no-op pass-through here since both values are
+ * already native DB_CONTENT_TYPES, but routing through it keeps a single
+ * source of truth for the CHECK vocabulary rather than writing a raw value).
+ */
+export function derivePlannerContentType(mediaUrls: string[]): string {
+  const hasVideo = mediaUrls.some((url) => {
+    const ext = url.split('?')[0].split('.').pop()?.toLowerCase() ?? '';
+    return VIDEO_URL_EXTENSIONS.has(ext);
+  });
+  return hasVideo ? 'video' : 'photo';
+}
+
+export interface AmplificationScheduleRow {
+  user_id: string;
+  campaign_id: string;
+  platform: string;
+  content_type: DbContentType;
+  caption: string;
+  media_urls: string[];
+  scheduled_at: string;
+  published_at: string | null;
+  status: 'scheduled' | 'published';
+  metadata: { outstand_post_id: string };
+}
+
+/**
+ * Builds one donny_scheduled_posts row per resolved platform for an
+ * amplification post, so it becomes visible to the same schedule-row lookup
+ * (metadata->>outstand_post_id) every other publish path already produces —
+ * see recordPublishedPost in supabase/functions/outstand-webhook/index.ts.
+ * Amplification was the only publish path that skipped this table, which is
+ * why its posts were never verified/measured; this removes that special-case
+ * status instead of adding a webhook-side fallback (see that function's
+ * comment for why a fallback was tried and rejected).
+ *
+ * Pure: `now` is a caller-supplied parameter, never read from Date.now()
+ * internally, so a missing scheduledAt is testable without faking the clock.
+ * scheduledAt present AND in the future (relative to `now`) => a genuinely
+ * scheduled post ('scheduled', no published_at); otherwise (missing, or not
+ * in the future) => already published at effectiveScheduledAt ('published',
+ * published_at = effectiveScheduledAt) — mirrors SocialPostPrompt.tsx's
+ * syncScheduledPost status/published_at pairing.
+ */
+export function buildAmplificationScheduleRows(
+  platforms: string[],
+  outstandPostId: string,
+  userId: string,
+  caption: string,
+  mediaUrls: string[],
+  campaignId: string,
+  scheduledAt: string | null | undefined,
+  now: string,
+): AmplificationScheduleRow[] {
+  if (platforms.length === 0) return [];
+
+  const contentType = toDbContentType(derivePlannerContentType(mediaUrls));
+  const nowMs = new Date(now).getTime();
+  // scheduledAt ? new Date(...).getTime() : NaN, and NaN > anything is false
+  // in JS — null/missing/unparseable scheduledAt all fall through to
+  // 'published' without a separate guard.
+  const scheduledMs = scheduledAt ? new Date(scheduledAt).getTime() : NaN;
+  const isFutureSchedule = scheduledMs > nowMs;
+  const status: 'scheduled' | 'published' = isFutureSchedule ? 'scheduled' : 'published';
+  const effectiveScheduledAt = scheduledAt ?? now;
+
+  return platforms.map((platform) => ({
+    user_id: userId,
+    campaign_id: campaignId,
+    platform,
+    content_type: contentType,
+    caption,
+    media_urls: mediaUrls,
+    scheduled_at: effectiveScheduledAt,
+    published_at: status === 'published' ? effectiveScheduledAt : null,
+    status,
+    metadata: { outstand_post_id: outstandPostId },
+  }));
 }
 
 export function useSponsorshipAmplification() {
@@ -139,6 +229,34 @@ export function useSponsorshipAmplification() {
       // unmeasured. A single atomic insert removes the window rather than
       // requiring the webhook to detect and retry against a partial subset.
       if (outstandPostId != null && platforms.length > 0) {
+        // Give this post a donny_scheduled_posts row — the same schedule-row
+        // lookup (metadata->>outstand_post_id) recordPublishedPost already uses
+        // for every other publish path. Without this, amplification's
+        // social_post_log rows below are written but never matched by the
+        // webhook, so verified_at never gets set and content-performance-capture
+        // never measures them (see that function's comment on why a webhook-side
+        // fallback for this was tried and rejected instead). Same atomic-array
+        // reasoning as the social_post_log insert below: one array insert, not a
+        // sequential loop, so the webhook never sees a partial subset of rows.
+        const now = new Date().toISOString();
+        const scheduleRows = buildAmplificationScheduleRows(
+          platforms,
+          outstandPostId,
+          user!.id,
+          caption,
+          mediaUrls,
+          campaignId,
+          scheduledAt ?? null,
+          now,
+        );
+        const { error: scheduleError } = await supabase.from('donny_scheduled_posts').insert(scheduleRows);
+        if (scheduleError) {
+          console.error(
+            `[useSponsorshipAmplification] Failed to write schedule row(s) for platforms [${platforms.join(', ')}]:`,
+            scheduleError,
+          );
+        }
+
         const rows = platforms.map((platform) => ({
           user_id: user!.id,
           campaign_id: campaignId,
