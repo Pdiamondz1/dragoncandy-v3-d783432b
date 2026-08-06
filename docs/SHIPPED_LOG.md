@@ -26,6 +26,37 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-06] Measurement spine DEPLOYED + the first post ever measured end-to-end
+
+The entry below records what shipped; this records it going live and being **proven**. PR #366 merged,
+then deployed in the order the reviewers required: migration `20260806184500` first (its
+grant-verification query returned **exactly one row, `service_role`** — the check that separates a real
+lockdown from one that reads as protection while providing none), Vault secrets, then
+`reconcile-social-posts` (new, v1), `outstand-proxy` (v61), `social-proxy` (v7), `outstand-webhook`
+(v17→**v18, all 5 required files** — live v17 carried only 3, so a partial bundle would have kept the
+old code serving while every webhook still returned 200), and the cron migration last.
+
+Deploying via the **Supabase CLI rather than the MCP file-list** mattered: it bundles by *import graph*,
+which automatically excluded the `vitest`-importing test files that sit beside `reconcile-social-posts`
+and `social-proxy`. Had those landed in the deployed set, both functions would have failed to boot.
+
+**The first post ever measured** (`ei1xc`, a real Instagram publish through the DragonShare-draft path):
+binding minted 17:58:50 → `social_post_log` written 17:58:51 → published 17:59:10 → **`verified_at`
+stamped by the webhook 1.5 s later**. A follow-up sweep returned `alreadyRecorded 1 · newlyRecorded 0 ·
+unbound 0 · ownerConflicts 0` — the strict gate *found* the binding, and the two independent writers
+agreed on the same key rather than duplicating, which is what extracting the shared row builder was for.
+The hourly cron then fired on its own at 18:00:02.
+
+**Honest limits.** The literal `POST /posts` body was not captured (shape proven only functionally);
+multi-platform fan-out is untested (one connection); and **amplification remains unproven — it is
+brand-only, and all six brand accounts have zero social connections.** So the branch's headline feature
+sits behind a role that cannot currently publish.
+
+Found live en route: the Drafts tab's **Edit** button is `onClick={() => onSwitchTab?.('compose')}` and
+nothing else — it opens an empty composer and silently discards the draft.
+
+→ `docs/wiki/concepts/social-measurement-spine.md`
+
 ## [2026-08-06] Social measurement spine + reconciliation + server-established post ownership (#365, #366)
 
 The founder asked for deeper analytics — per-post performance, hashtags, account stats — so Donny

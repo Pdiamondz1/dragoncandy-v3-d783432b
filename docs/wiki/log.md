@@ -1,5 +1,24 @@
 # Wiki Log
 
+## [2026-08-06] update | [[Social Measurement Spine]] — deployed, and the first post ever measured
+Corrects a claim I wrote hours earlier in the ingest below: **"nothing has ever flowed through this
+pipeline"** is no longer true. PR #366 deployed to prod and a real Instagram publish (`ei1xc`) went
+end-to-end — binding minted, `social_post_log` written, `verified_at` stamped by the webhook 1.5 s
+after publish, and a follow-up sweep reporting `alreadyRecorded 1 · newlyRecorded 0 · unbound 0`
+(the strict gate *found* the binding; the two writers agreed rather than duplicating). Added a
+"The first measured post" section with the observed timeline, and flipped the Known-issues item.
+
+**Two corrections worth carrying**, both from checking rather than assuming. First: I proposed
+amplification as the proof and was wrong twice — it does not use DragonShare posts (it takes campaign
+deliverable files plus a *template-generated* caption), and it is **brand-only** while all six brand
+accounts have zero social connections. So the branch's headline feature cannot be exercised by anyone
+today, and the Known-issues section now says so. Second: a stale-status claim in an always-loaded doc
+decays fast — §5 asserted "nothing has yet flowed" within hours of it becoming false, which is exactly
+the failure mode the `[status-correction]` Lesson exists for.
+
+Also filed from the live session: the Drafts **Edit** button switches tabs and passes no draft data,
+so it opens an empty composer and silently discards the user's intent.
+
 ## [2026-08-06] ingest | [[Social Measurement Spine]] — the spine, the sweep, and server-established ownership
 Ingested [[Social Measurement Spine Session]] (PRs #365 + #366). **Two efforts in one source, because
 PR #365's knowledge-sync never ran** — verified against `origin/main` per the `[gap-claims]` Lesson,

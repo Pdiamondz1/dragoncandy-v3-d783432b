@@ -68,6 +68,31 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-08-06] Measurement spine deployed + first measured post — status correction (branch `docs/measurement-spine-live-proof`)
+- **Output:** `PROJECT_CONTEXT.md` §5 entry **moved** Built-awaiting-go-live → **Shipped** and rewritten
+  (it asserted "Nothing has yet flowed through the pipeline", false within hours); `concepts/social-measurement-spine.md`
+  Known-issues item flipped + a NEW "The first measured post" section with the observed timeline + a new
+  Known-issue recording that amplification is unreachable; `SHIPPED_LOG.md` **prepended** a second same-day
+  entry (append-only — the morning entry was accurate when written, so it was NOT rewritten); `log.md` update
+  entry; + THIS entry.
+- **Happened:** a same-day correction run. I wrote "nothing has ever flowed through this pipeline" into three
+  docs in the morning; by afternoon the branch was deployed and a real post (`ei1xc`) had gone end-to-end.
+- **Worked:** [scope] fresh branch off `origin/main`, all 4 target docs verified byte-identical first.
+  [status-correction] §5 edited **in place and moved between subsections**, while `SHIPPED_LOG` got a *new*
+  entry rather than a rewrite — the two files have opposite update rules and this run exercised both at once.
+  Recorded the proof as an **observed timeline with timestamps**, not a claim, and listed what the run did
+  NOT prove (raw payload uncaptured, no multi-platform fan-out, amplification unexercised).
+- **Failed:** I did not capture the literal `POST /posts` body — the browser network capture started too late
+  and the request was gone. Recorded as functionally-proven-only rather than glossed.
+- **Remember:** **an always-loaded status doc can go stale within hours of being written, and the author is
+  the least likely person to notice.** §5's "Nothing has yet flowed" was true when written and false the same
+  afternoon. When a §5 entry states a *pending condition* ("awaiting X", "nothing has yet Y"), that entry is a
+  liability the moment the condition changes — prefer wording that decays gracefully, and re-check §5 at the
+  END of any session that changed prod state, not only at the start. Second: **verify a feature is reachable
+  before proposing it as a proof.** I proposed amplification as the end-to-end test and was wrong twice — it
+  doesn't use the content I claimed, and it's brand-only with zero connected brand accounts. Both were one
+  grep away (`userRole === 'brand'`, then the call sites), and I only found them after driving the UI.
+
 ### [2026-08-06] Social measurement spine + reconciliation + post ownership (PRs #365 merged, #366 open — bundled INTO #366)
 - **Output:** new `raw/sessions/2026-08-06-social-measurement-spine-and-post-ownership.md`; NEW
   `concepts/social-measurement-spine.md`; `index.md` (**2** new Sources lines — mine + the cataloged
