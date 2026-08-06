@@ -1,0 +1,84 @@
+-- Close the client INSERT path on business_outstand_accounts.
+--
+-- THE HOLE, verified on prod 2026-08-06 (information_schema.column_privileges
+-- + pg_policies + pg_index, not inferred):
+--
+--   * `authenticated` AND `anon` hold INSERT on ALL 14 columns, including
+--     `outstand_social_account_id`.
+--   * The INSERT policy is
+--       WITH CHECK (user_id = auth.uid() AND business_id IN (own businesses))
+--     which pins WHO the row belongs to but says NOTHING about WHICH provider
+--     account it claims.
+--   * The unique index is `(user_id, outstand_social_account_id)` — PER USER,
+--     not global. Two different users may hold the same account id, so the DB
+--     offers no protection against claiming one that is already someone else's.
+--
+-- So any authenticated business user could INSERT a row naming themselves and
+-- ANY `outstand_social_account_id`, straight from the browser via PostgREST.
+--
+-- Why that matters more than it looks: `outstand-proxy.listOwnedAccountIds`
+-- reads exactly this table (`user_id = ctx.userId AND status <> 'revoked'`) to
+-- build `ownedIds`, and `ownedIds` is now the substrate of EVERY surviving grant
+-- in `_shared/outstand-post-authz.ts` — the platform fallback that used to
+-- bypass it was deleted in the same branch. A forged row therefore converts
+-- directly into read/modify/delete on another tenant's posts through the
+-- org-wide provider key. Hardening the authorization rule while leaving its
+-- input forgeable would have moved the hole, not closed it.
+--
+-- `outstand-proxy` does have a claim-check (refuse an id another non-revoked
+-- user already holds), and it was just made fail-closed. It is NOT a mitigation
+-- here: a direct PostgREST INSERT never touches the proxy.
+--
+-- THE FIX: revoke INSERT outright and re-grant nothing.
+--
+-- Unlike the sibling UPDATE lockdown (`20260804174934`), there is no column
+-- subset to preserve — the client write surface for INSERT is EMPTY. Verified:
+-- no `.insert(`/`.upsert(` against this table anywhere in `src/`, and all three
+-- server-side writers use the service-role key, which bypasses grants and RLS
+-- via the existing "Service role has full access" FOR ALL policy:
+--   supabase/functions/outstand-proxy/index.ts:521, :596
+--   supabase/functions/social-proxy/index.ts:205
+--
+-- The client's remaining write surface is unchanged and still works:
+--   UPDATE (org_unit_id, status) -> useAssignAccountLocation / ConnectedAccountsList
+--   DELETE                       -> own-row policy
+--
+-- NOTE ON MECHANISM: this is a TABLE-level revoke, which does take effect. A
+-- column-level `REVOKE INSERT (outstand_social_account_id)` would have been a
+-- documented NO-OP against the ambient table-wide grant — the same trap
+-- `20260804174934` and `20260806184500` both record. Verify against
+-- information_schema afterwards; an ineffective lock is worse than none because
+-- it reads as protection.
+REVOKE INSERT ON public.business_outstand_accounts FROM anon, authenticated;
+
+-- Drop the now-unreachable client INSERT policy.
+--
+-- Deliberate, and the reason is the point: with the grant gone the policy can
+-- never fire, but leaving it means a future `GRANT INSERT` — a careless
+-- migration, or a platform re-apply of ambient grants — silently REOPENS this
+-- hole with no review. With the policy gone, the same accident lands on
+-- RLS-with-no-policy and is still denied. Two independent gates, matching what
+-- `20260806184500` established for `outstand_post_ownership`.
+--
+-- If a legitimate client INSERT path is ever needed, adding a policy back is a
+-- conscious act that gets reviewed — which is exactly what we want.
+DROP POLICY IF EXISTS "Users can insert their own outstand accounts"
+  ON public.business_outstand_accounts;
+
+-- Verification. EXPECTED after applying: no INSERT row for anon or
+-- authenticated. Any row returned means the revoke did not take — do not trust
+-- "the migration succeeded."
+--
+--   select grantee, privilege_type
+--   from information_schema.column_privileges
+--   where table_schema = 'public'
+--     and table_name = 'business_outstand_accounts'
+--     and grantee in ('anon', 'authenticated')
+--     and privilege_type = 'INSERT';
+--
+-- NOT fixed here, deliberately: the unique index is still per-user, so if a
+-- client INSERT path is ever restored, two users could again claim one account
+-- id. A global unique on `outstand_social_account_id` would close that at the
+-- DB level, but it is a behavioural change that could fail on existing rows and
+-- needs its own review of whether one provider account may legitimately be held
+-- by more than one user.
