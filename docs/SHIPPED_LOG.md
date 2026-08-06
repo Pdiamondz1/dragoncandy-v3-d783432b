@@ -26,6 +26,84 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-06] Social measurement spine + reconciliation + server-established post ownership (#365, #366)
+
+The founder asked for deeper analytics — per-post performance, hashtags, account stats — so Donny
+could consult a business on what to post and which creator to hire again. Three of the four outcomes
+wanted turned out to be the same fact (*how did this post perform*) sliced by dimensions we already
+know, so this is one foundation, not four projects. Building it first required fixing the pipe.
+
+**PR #365 — the spine (merged + deployed).** `content-performance-capture` enumerates
+`social_post_log`, but only two of five publishing paths ever wrote it, so analytics would have
+silently analysed a sample excluding most posts. Three live defects, none previously reported:
+
+- **Video posts were silently discarded at publish.** `content-posting-plan` returns `video_reel`;
+  the `donny_scheduled_posts.content_type` CHECK didn't allow it; the insert's error was thrown away.
+  A video published to the provider and vanished — no row, never measured, user shown success. Proven
+  on prod with a rollback-wrapped probe.
+- **Every unmeasured post was stored as a real zero.** Outstand support confirmed that *three*
+  distinct states all return `success: true` with all-zero metrics, and only one sets `metrics_error`.
+  The capture job guarded only the null payload, so all three were written as genuine readings of zero.
+- **The measurement record was never written for most posts** → moved to the `outstand-webhook` choke
+  point, which sees `post.published` regardless of origin, making coverage structural.
+
+Plus `UNIQUE (outstand_post_id, platform)`, nullable dimension columns, `post_type` in twin pure
+modules with a **cross-module equivalence test** (52 input combinations, so drift fails CI rather than
+silently relabelling posts), `content_performance` regrained to `(post, platform, milestone)`,
+`verified_at` set only by the service-role webhook, and five webhook signature tests that had **never
+run in CI**. The `verified_at` lockdown hit a trap the repo had already recorded: a bare
+`REVOKE INSERT (col)` is a **no-op** against Supabase's ambient table-wide GRANT — revoke at table
+level, re-grant explicit columns, and verify against `information_schema`, not a successful apply.
+
+**PR #366 — the three things #365 left open.** Amplification was the only publish path writing no
+schedule row, so its posts were structurally unmeasurable; it now writes them (a webhook-side fallback
+was built over three tasks and **deleted as a Codex P1** — it resolved ownership from a table whose
+INSERT policy doesn't constrain the account id). Tracing that through its consumer found the webhook's
+`post_type` recompute had no `amplification` mapping, and amplification always carries a `campaign_id`
+— so **Task 1 alone would have shipped a correct row into a consumer that corrupted it.** And
+`reconcile-social-posts` (hourly) now re-drives the match, because every path writes its schedule row
+*after* the provider returns: a fast webhook finds nothing, returns 200, and the provider never retries.
+
+**Ownership became server-established.** Two independent reviewers found the sweep would *widen* a live
+cross-tenant hole. Both consumers decided who owns a post by joining `donny_scheduled_posts` on
+`metadata->>'outstand_post_id'` — verified on prod, `authenticated` **and `anon`** hold INSERT and
+UPDATE on **every** column of that table, and the policy constrains only `user_id`. So anyone could
+plant a row claiming any post id, get `verified_at` stamped, and have the capture job spend the
+**org-wide** Outstand key filing another tenant's metrics under their row. Provider ids are 5
+characters and low-entropy (`XDb8e`, `XDbxe` — nine seconds apart, three-character shared prefix), so
+guessing beats knowing. **This root cause had surfaced four times** and every response worked *around*
+it; they all went circular because the trust anchor was client-writable. Fixed with an
+`outstand_post_ownership` binding minted by `outstand-proxy`/`social-proxy` from `auth.getUser()` plus
+the provider's own response id — **no client write path at all**. The sweep is **strict** (no binding,
+no write — it's new, so this costs nothing); the webhook is **permissive**, counting legacy use so that
+population is measurable rather than assumed. Disagreement is rejected **per row, not per post** —
+per-post would let an attacker take a victim's real row down with a planted one, trading a leak for a
+denial-of-measurement.
+
+**Codex found what four reviews missed.** Amplification's id parse was `data.id ?? data.data.id` — it
+never checked the `.post.` level, resolved `null` on every call, and the guard then skipped both writes.
+**The branch's entire purpose was inert**, past a whole-branch review, a data-exposure review, a scoped
+security review, and my own tracing. All four asked *is the new code correct?*; Codex asked *does it
+run?* The cause was an instruction to extend the **existing** guard rather than add a second one — good
+advice that here pointed at broken code. **Reuse-don't-duplicate is right; what was missing was
+verifying the reused thing works.** Fixed as a divergence problem (one tested `src/lib/outstandPostId.ts`,
+three readers routed through it); `DonnyProvider` turned out to be a *third* variant that only worked
+because a normalizer always fires.
+
+**Filed, deliberately unfixed** (exploit chains in the task report): `outstand-proxy`'s `enforceScope`
+authorizes PATCH/PUT/DELETE from account ids in the **request body**, never checked against the target
+post — a cross-tenant *modify and delete*, worse than the read hole closed here; its platform-level read
+fallback exposes every post on a platform the caller owns one account on; and `business_outstand_accounts`
+isn't column-locked, which is why the binding proves who *published* rather than account control. Also
+found: **CI type-checks none of the 80 edge functions** (`tsconfig.app.json` includes only `src`);
+`deno check` works, and `outstand-webhook`'s untyped `createClient()` yields 12 `never`-type errors on main.
+
+**Known gap, not hidden: nothing has ever flowed through this pipeline.** Three `social_post_log` rows
+exist, all from June, none verified. Every guarantee rests on review and tests. One real publish through
+each path is the only proof that counts.
+
+→ `docs/wiki/concepts/social-measurement-spine.md`
+
 ## [2026-08-02] VerifiedRoute missing-profile lockout — a false "verify your email" (#357)
 
 A founder report — "Adrian Vella is unable to sign-up or login to DragonCandy.io" — with a phone

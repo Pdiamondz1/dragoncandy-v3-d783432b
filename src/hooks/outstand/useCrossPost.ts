@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOutstandConfig } from '@/integrations/outstand/Provider';
 import { useToast } from '@/hooks/use-toast';
+import { extractOutstandPostId } from '@/lib/outstandPostId';
 
 interface CrossPostInput {
   caption: string;
@@ -52,7 +53,11 @@ export function useCrossPost(options?: { onPublished?: () => void }) {
         }
         throw new Error(errMsg);
       }
-      const outstandPostId = data?.data?.post?.id ?? data?.post?.id ?? data?.id ?? null;
+      // Routed through the one shared reader (2026-08-06). This call site's own
+      // union was the CORRECT one of the three that existed — it is the proven
+      // production reader, and extractOutstandPostId adopts its exact priority
+      // order, so this is behaviour-preserving here and a fix for the other two.
+      const outstandPostId = extractOutstandPostId(data);
       return { ...data, _outstandPostId: outstandPostId };
     },
     onSuccess: (_data, variables) => {

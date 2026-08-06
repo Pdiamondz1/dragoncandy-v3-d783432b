@@ -1,0 +1,279 @@
+// reconcile-social-posts/reconcile.ts — pure decisions for the reconciliation
+// sweep. No Deno/Supabase/IO here so reconcile.test.ts can exercise it
+// directly; mirrors content-performance-capture/capture.ts's split between a
+// pure module and the Deno-only index.ts that drives it.
+//
+// WHY THIS EXISTS: outstand-webhook is currently the only writer of
+// social_post_log. Every publish path writes its donny_scheduled_posts row
+// AFTER the Outstand publish call returns, so a fast webhook delivery can beat
+// that write, find no matching schedule row, and — since Outstand does not
+// retry a 200 response — the post is permanently unmeasured. This module
+// re-drives EXACTLY the matching logic outstand-webhook's recordPublishedPost
+// already applies (see index.ts, and outstand-webhook/index.ts itself), this
+// time asking Outstand what published instead of waiting for delivery.
+//
+// THE HARD CONSTRAINT: this module does not, and must not, invent an
+// ownership decision. A post with no matching donny_scheduled_posts row is
+// counted (the caller's "unmatched" counter) and skipped — never synthesized
+// from provider data alone. That fallback was tried at the webhook layer over
+// three tasks and deleted as a Codex P1: business_outstand_accounts' own
+// INSERT policy does not constrain outstand_social_account_id, so resolving
+// ownership from it is client-asserted, not server-established. This sweep
+// fixes DELIVERY ORDER, not ownership, and every function below only ever
+// reads an owner off a donny_scheduled_posts row — never off the provider
+// payload.
+//
+// AS OF 2026-08-06 THAT CONSTRAINT GOT STRICTER, not looser. The schedule row
+// is no longer trusted as the ownership authority either: `authenticated` holds
+// INSERT+UPDATE on every column of donny_scheduled_posts (metadata included),
+// so a planted row could name any outstand_post_id. This sweep now REQUIRES a
+// server-established binding from outstand_post_ownership (minted by
+// outstand-proxy from an authenticated ctx.userId + the provider's own response
+// id) before it will write anything, and rejects a schedule row whose user_id
+// disagrees with that binding. The schedule row still supplies every DIMENSION
+// (caption, hashtags, content_type, scheduled_at, campaign_id, metadata) — it
+// just no longer decides WHO. See
+// supabase/migrations/20260806184500_outstand_post_ownership.sql.
+
+import type { ScheduledPostForLogRow } from '../_shared/social-post-log-row.ts';
+
+/**
+ * One entry of a provider Post's socialAccounts[] — only the fields this
+ * sweep reads. Field names match the `@outstand-so/ui` SDK's own
+ * `PostSocialAccount` type (node_modules/@outstand-so/ui/dist/index.d.ts),
+ * which is also what `GET /v1/posts` list items carry directly (verified via
+ * outstand-proxy's filterListBody/extractSocialAccountIds, which already
+ * reads `.socialAccounts` straight off each `/posts` list item in
+ * production) — NOT the webhook event's shape, which uses `accountId`
+ * instead of `id` for the per-account identifier and carries no `status`.
+ * This sweep never reads the account id, only `network` + `status`, so that
+ * naming difference doesn't matter here — call it out anyway because the
+ * brief for this task flags exactly this class of assumption as a repeat bug.
+ */
+export interface ProviderPostAccount {
+  network: string | null | undefined;
+  status: string | null | undefined;
+  publishedAt?: string | null;
+}
+
+/** The subset of a provider Post this sweep needs. */
+export interface ProviderPost {
+  id: string;
+  publishedAt?: string | null;
+  socialAccounts: ProviderPostAccount[] | null | undefined;
+}
+
+/** An existing social_post_log row for one platform of a provider post. */
+export interface ExistingLogRow {
+  platform: string;
+  verifiedAt: string | null;
+  userId: string;
+}
+
+export interface PublishedPlatformsResult {
+  platforms: string[];
+  /**
+   * Accounts dropped rather than counted as published: a null/non-object
+   * socialAccounts[] entry (Outstand is documented, elsewhere in this
+   * codebase, to sometimes return `[null, {...}]` — see capture.ts's
+   * classifyMeasurement comment, outstand-webhook-lib.ts's parseAccounts,
+   * and outstand-proxy's extractSocialAccountIds, all of which guard for
+   * it), OR a status === 'published' entry with no usable network. Mirrors
+   * outstand-webhook's `dropped` counter — a skip with no counter is the
+   * failure mode this whole sub-project exists to remove.
+   */
+  droppedAccounts: number;
+}
+
+/**
+ * Platforms this provider post actually published to, mirroring
+ * outstand-webhook's recordPublishedPost derivation: one entry per
+ * socialAccounts[] item carrying BOTH a truthy network AND
+ * status === 'published' — pending/failed/deleted/anything else is not a
+ * publish. Deduped; no case normalization (Outstand's network values are
+ * already lowercase in production, matching the webhook exactly — see
+ * capture.ts's matchingAccountEntries comment for the same observation). A
+ * post with no socialAccounts entries (or none published) yields
+ * `{platforms: [], droppedAccounts: 0}` rather than throwing.
+ *
+ * Filters null/non-object entries BEFORE reading `.status`/`.network` off
+ * them — an unguarded `.filter((a) => a.status === ...)` throws
+ * TypeError on a null element, which would kill this entire run (every post
+ * after it in the page, and every subsequent page) with no summary logged,
+ * since the throw happens outside any try/catch. See index.ts's per-post
+ * try/catch for the second half of this defense.
+ */
+export function derivePublishedPlatforms(post: ProviderPost): PublishedPlatformsResult {
+  const raw = post.socialAccounts ?? [];
+  const objects = raw.filter(
+    (a): a is ProviderPostAccount => !!a && typeof a === 'object',
+  );
+  const malformed = raw.length - objects.length;
+
+  const published = objects.filter((a) => a.status === 'published');
+  const withNetwork = published.filter((a) => !!a.network);
+  const droppedForNoNetwork = published.length - withNetwork.length;
+
+  const platforms = Array.from(new Set(withNetwork.map((a) => a.network as string)));
+  return { platforms, droppedAccounts: malformed + droppedForNoNetwork };
+}
+
+/**
+ * Which platforms of this post still need a social_post_log write?
+ *
+ * A platform counts as already recorded only when an EXISTING row for it
+ * carries a non-null verifiedAt. A row that exists but was never
+ * webhook/sweep-verified (a client-asserted write predating the measurement
+ * spine — see social_post_log's history) is treated the same as no row at
+ * all: this sweep independently confirmed publication from the provider
+ * itself, so writing over such a row upgrades it to verified, exactly what
+ * outstand-webhook would do if it saw the delivery.
+ */
+export function platformsToReconcile(post: ProviderPost, existing: ExistingLogRow[]): string[] {
+  const { platforms: published } = derivePublishedPlatforms(post);
+  if (published.length === 0) return [];
+  const verified = new Set(existing.filter((r) => r.verifiedAt != null).map((r) => r.platform));
+  return published.filter((p) => !verified.has(p));
+}
+
+/**
+ * Is this post's resolved publish time still within the sweep's effective
+ * action window?
+ *
+ * The provider LIST query (index.ts) uses a much wider `created_after` floor
+ * so it still discovers posts scheduled far ahead of time, but ACTING on a
+ * post -- writing a row for it -- is bounded much tighter: to the same
+ * horizon content-performance-capture actually measures (its last milestone
+ * is 7d). There is no measurement value in recording a post that published a
+ * month ago, and narrowing the action window also shrinks how long a single
+ * (day-of, unambiguous) forged `donny_scheduled_posts` row stays exploitable
+ * through this endpoint -- from the full multi-week discovery window down to
+ * a few days -- since this sweep re-evaluates the same window on every run,
+ * unlike the webhook's one-shot delivery-time match. A post with no
+ * resolvable publish timestamp is NOT treated as stale: absence of a
+ * timestamp is not evidence of age.
+ */
+export function isWithinActionWindow(publishedAt: string | null, now: Date, windowDays: number): boolean {
+  if (publishedAt === null) return true;
+  const ageMs = now.getTime() - new Date(publishedAt).getTime();
+  return ageMs <= windowDays * 24 * 60 * 60 * 1000;
+}
+
+/**
+ * Which of these platforms are safe to write for, and which have an
+ * ownership conflict?
+ *
+ * An existing (unverified) row for a platform whose `userId` differs from the
+ * schedule row this sweep just matched is either a data-integrity bug or a
+ * forged `donny_scheduled_posts` row (see this file's header) -- either way,
+ * this sweep must not resolve the conflict by silently overwriting the
+ * existing row's owner. A platform with no existing row at all has nothing
+ * to conflict with and is always safe.
+ */
+export function withoutOwnerConflicts(
+  platforms: string[],
+  existing: ExistingLogRow[],
+  matchedUserId: string,
+): { safe: string[]; conflicts: string[] } {
+  const ownerByPlatform = new Map(existing.map((r) => [r.platform, r.userId]));
+  const safe: string[] = [];
+  const conflicts: string[] = [];
+  for (const p of platforms) {
+    const existingOwner = ownerByPlatform.get(p);
+    if (existingOwner != null && existingOwner !== matchedUserId) {
+      conflicts.push(p);
+    } else {
+      safe.push(p);
+    }
+  }
+  return { safe, conflicts };
+}
+
+/**
+ * The STRICT ownership gate, evaluated before this sweep spends a schedule
+ * lookup on a post.
+ *
+ * `reason` names the counter the caller must increment — the whole point of
+ * returning it rather than a bare boolean. `bindingUnavailable` and `unbound`
+ * are different facts and must never share a number:
+ *
+ *   bindingUnavailable — the binding READ failed (DB error, or the migration
+ *     not yet applied so the table does not exist). Ownership is UNKNOWN, not
+ *     absent. A strict sweep must refuse here; degrading to "no binding, act
+ *     like before" would silently un-do this entire task the first time a query
+ *     errored, which is exactly the class of workaround the four previous
+ *     attempts at this hole all made.
+ *   unbound — the read succeeded and there is genuinely no binding. Every post
+ *     published before the proxy started minting bindings is permanently in
+ *     this bucket, so a large steady number here is EXPECTED and is the honest
+ *     measure of the legacy population, not an alarm.
+ *
+ * This sweep is strict because it is new: it carries no legacy burden and no
+ * live traffic depends on it recording anything today, so it can demand the
+ * binding from day one. outstand-webhook cannot — it is the deployed choke
+ * point for every live publish, and refusing unbound posts there would stop
+ * measuring the existing population outright. That asymmetry is deliberate.
+ */
+export type StrictBindingGate =
+  | { proceed: true; bindingUserId: string }
+  | { proceed: false; reason: 'bindingUnavailable' | 'unbound' };
+
+export function strictBindingGate(
+  bindingReadFailed: boolean,
+  bindingUserId: string | null | undefined,
+): StrictBindingGate {
+  if (bindingReadFailed) return { proceed: false, reason: 'bindingUnavailable' };
+  if (typeof bindingUserId !== 'string' || bindingUserId.length === 0) {
+    return { proceed: false, reason: 'unbound' };
+  }
+  return { proceed: true, bindingUserId };
+}
+
+/**
+ * The best available publish timestamp for this post, mirroring the priority
+ * order the webhook's caller applies to a webhook event (publishedAt ??
+ * timestamp ?? now — see outstand-webhook/index.ts): the post's own top-level
+ * `publishedAt` first, so every platform recorded for the same post shares
+ * ONE value, exactly like a single webhook delivery covering several
+ * accounts does. Falls back to the earliest `publishedAt` among the post's
+ * own published accounts when the top-level field is absent, else null —
+ * the final "now" fallback is left to the caller, since reading the clock
+ * has no place in a pure function.
+ */
+export function resolvePublishedAt(post: ProviderPost): string | null {
+  if (post.publishedAt) return post.publishedAt;
+  // Same null/non-object guard as derivePublishedPlatforms, and for the same
+  // reason: an unguarded .filter((a) => a.status === ...) throws on a null
+  // element instead of skipping it.
+  const accountTimes = (post.socialAccounts ?? [])
+    .filter((a): a is ProviderPostAccount => !!a && typeof a === 'object')
+    .filter((a) => a.status === 'published' && !!a.publishedAt)
+    .map((a) => a.publishedAt as string)
+    .sort();
+  return accountTimes.length > 0 ? accountTimes[0] : null;
+}
+
+/**
+ * The donny_scheduled_posts fields this sweep needs: everything
+ * ScheduledPostForLogRow (the shared row-builder's input, see
+ * _shared/social-post-log-row.ts) requires to build a row, plus created_at
+ * for this sweep's own ambiguity tiebreak below — the webhook resolves the
+ * identical ambiguity via its DB query's ORDER BY instead of a re-sort, so
+ * created_at isn't part of the shared type.
+ */
+export interface ScheduleCandidate extends ScheduledPostForLogRow {
+  created_at: string;
+}
+
+/**
+ * Resolve ambiguity the same way recordPublishedPost does when more than one
+ * donny_scheduled_posts row shares an outstand_post_id: oldest by
+ * created_at, so a post the webhook already matched (or will later match)
+ * resolves to the identical schedule row rather than a framework-arbitrary
+ * pick. Sorts defensively rather than trusting caller order, so this stays
+ * correct under test without depending on the DB query's own ORDER BY.
+ */
+export function pickScheduleMatch(rows: ScheduleCandidate[]): ScheduleCandidate | null {
+  if (rows.length === 0) return null;
+  return [...rows].sort((a, b) => a.created_at.localeCompare(b.created_at))[0];
+}

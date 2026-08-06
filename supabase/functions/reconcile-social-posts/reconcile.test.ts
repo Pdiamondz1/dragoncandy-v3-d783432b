@@ -1,0 +1,368 @@
+import { describe, it, expect } from 'vitest';
+import {
+  derivePublishedPlatforms,
+  platformsToReconcile,
+  pickScheduleMatch,
+  resolvePublishedAt,
+  isWithinActionWindow,
+  withoutOwnerConflicts,
+  strictBindingGate,
+  type ProviderPost,
+  type ExistingLogRow,
+  type ScheduleCandidate,
+} from './reconcile';
+
+describe('derivePublishedPlatforms', () => {
+  it('returns the network of every published account, with droppedAccounts: 0', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: [
+        { network: 'instagram', status: 'published' },
+        { network: 'tiktok', status: 'published' },
+      ],
+    };
+    expect(derivePublishedPlatforms(post)).toEqual({ platforms: ['instagram', 'tiktok'], droppedAccounts: 0 });
+  });
+
+  it('dedupes when two accounts on the same network both published', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: [
+        { network: 'instagram', status: 'published' },
+        { network: 'instagram', status: 'published' },
+      ],
+    };
+    expect(derivePublishedPlatforms(post)).toEqual({ platforms: ['instagram'], droppedAccounts: 0 });
+  });
+
+  it('excludes failed and pending accounts without counting them as dropped (not an error, just not published yet)', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: [
+        { network: 'instagram', status: 'published' },
+        { network: 'facebook', status: 'failed' },
+        { network: 'tiktok', status: 'pending' },
+      ],
+    };
+    expect(derivePublishedPlatforms(post)).toEqual({ platforms: ['instagram'], droppedAccounts: 0 });
+  });
+
+  it('excludes an unrecognized status (e.g. a documented-but-unverified "deleted")', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: [{ network: 'instagram', status: 'deleted' }],
+    };
+    expect(derivePublishedPlatforms(post)).toEqual({ platforms: [], droppedAccounts: 0 });
+  });
+
+  // Important 2: outstand-webhook counts precisely this case via its own
+  // `dropped` counter ("a parsed-but-networkless entry is silently invisible
+  // past this point unless counted here") -- this sweep must match, not
+  // silently absorb it into a quiet-looking zero.
+  it('drops a published account with no network rather than emitting a null platform, and counts it', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: [{ network: null, status: 'published' }],
+    };
+    expect(derivePublishedPlatforms(post)).toEqual({ platforms: [], droppedAccounts: 1 });
+  });
+
+  it('counts droppedAccounts only for published-but-networkless entries, not pending/failed ones', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: [
+        { network: null, status: 'published' },
+        { network: null, status: 'pending' },
+        { network: 'instagram', status: 'published' },
+      ],
+    };
+    expect(derivePublishedPlatforms(post)).toEqual({ platforms: ['instagram'], droppedAccounts: 1 });
+  });
+
+  it('returns platforms: [] with droppedAccounts: 0 rather than throwing when socialAccounts is empty', () => {
+    expect(derivePublishedPlatforms({ id: 'p1', socialAccounts: [] })).toEqual({ platforms: [], droppedAccounts: 0 });
+  });
+
+  it('returns platforms: [] with droppedAccounts: 0 rather than throwing when socialAccounts is absent', () => {
+    expect(derivePublishedPlatforms({ id: 'p1', socialAccounts: null })).toEqual({ platforms: [], droppedAccounts: 0 });
+    expect(derivePublishedPlatforms({ id: 'p1', socialAccounts: undefined })).toEqual({ platforms: [], droppedAccounts: 0 });
+  });
+
+  // Critical 1: Outstand is documented elsewhere in this codebase to
+  // sometimes return a socialAccounts-shaped array containing a bare null
+  // element (capture.ts's classifyMeasurement comment, parseAccounts,
+  // extractSocialAccountIds all guard for it). An unguarded
+  // `.filter((a) => a.status === ...)` throws TypeError on `null`, which —
+  // with no try/catch anywhere in index.ts's serve() body before this fix —
+  // would kill the entire run silently. Node-verified failure mode this
+  // regression-tests: `[null].filter(a => a.status === 'x')` throws.
+  it('does not throw when socialAccounts contains a bare null element, and counts it as dropped', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: [null as unknown as never, { network: 'instagram', status: 'published' }],
+    };
+    expect(derivePublishedPlatforms(post)).toEqual({ platforms: ['instagram'], droppedAccounts: 1 });
+  });
+
+  it('does not throw when socialAccounts contains a non-object primitive element', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: ['garbage' as unknown as never, 42 as unknown as never],
+    };
+    expect(derivePublishedPlatforms(post)).toEqual({ platforms: [], droppedAccounts: 2 });
+  });
+});
+
+describe('platformsToReconcile', () => {
+  it('yields nothing when every published platform already has a verified row', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: [
+        { network: 'instagram', status: 'published' },
+        { network: 'tiktok', status: 'published' },
+      ],
+    };
+    const existing: ExistingLogRow[] = [
+      { platform: 'instagram', verifiedAt: '2026-08-01T00:00:00.000Z' },
+      { platform: 'tiktok', verifiedAt: '2026-08-01T00:00:01.000Z' },
+    ];
+    expect(platformsToReconcile(post, existing)).toEqual([]);
+  });
+
+  it('yields every published platform when there are no existing rows at all', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: [
+        { network: 'instagram', status: 'published' },
+        { network: 'tiktok', status: 'published' },
+      ],
+    };
+    expect(platformsToReconcile(post, [])).toEqual(['instagram', 'tiktok']);
+  });
+
+  it('yields only the platforms missing a verified row when some are already recorded', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: [
+        { network: 'instagram', status: 'published' },
+        { network: 'tiktok', status: 'published' },
+        { network: 'facebook', status: 'published' },
+      ],
+    };
+    const existing: ExistingLogRow[] = [
+      { platform: 'instagram', verifiedAt: '2026-08-01T00:00:00.000Z' },
+    ];
+    expect(platformsToReconcile(post, existing)).toEqual(['tiktok', 'facebook']);
+  });
+
+  it('treats an existing row with a null verifiedAt the same as no row (upgrades it)', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: [{ network: 'instagram', status: 'published' }],
+    };
+    const existing: ExistingLogRow[] = [{ platform: 'instagram', verifiedAt: null }];
+    expect(platformsToReconcile(post, existing)).toEqual(['instagram']);
+  });
+
+  it('never reconciles a failed or pending account, even with no existing row', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: [
+        { network: 'instagram', status: 'failed' },
+        { network: 'tiktok', status: 'pending' },
+      ],
+    };
+    expect(platformsToReconcile(post, [])).toEqual([]);
+  });
+
+  it('yields nothing rather than throwing for a post with no socialAccounts entries', () => {
+    expect(platformsToReconcile({ id: 'p1', socialAccounts: [] }, [])).toEqual([]);
+    expect(platformsToReconcile({ id: 'p1', socialAccounts: null }, [])).toEqual([]);
+  });
+
+  it('ignores an existing row for a platform the post never published to', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: [{ network: 'instagram', status: 'published' }],
+    };
+    const existing: ExistingLogRow[] = [
+      { platform: 'youtube', verifiedAt: '2026-08-01T00:00:00.000Z' },
+    ];
+    expect(platformsToReconcile(post, existing)).toEqual(['instagram']);
+  });
+
+  it('does not throw when socialAccounts contains a bare null element', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: [null as unknown as never, { network: 'instagram', status: 'published' }],
+    };
+    expect(platformsToReconcile(post, [])).toEqual(['instagram']);
+  });
+});
+
+describe('resolvePublishedAt', () => {
+  it('prefers the post-level publishedAt', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      publishedAt: '2026-08-01T00:00:00.000Z',
+      socialAccounts: [
+        { network: 'instagram', status: 'published', publishedAt: '2026-08-01T00:05:00.000Z' },
+      ],
+    };
+    expect(resolvePublishedAt(post)).toBe('2026-08-01T00:00:00.000Z');
+  });
+
+  it('falls back to the earliest published account timestamp when post-level is absent', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      publishedAt: null,
+      socialAccounts: [
+        { network: 'tiktok', status: 'published', publishedAt: '2026-08-01T00:10:00.000Z' },
+        { network: 'instagram', status: 'published', publishedAt: '2026-08-01T00:02:00.000Z' },
+      ],
+    };
+    expect(resolvePublishedAt(post)).toBe('2026-08-01T00:02:00.000Z');
+  });
+
+  it('ignores a failed account\'s timestamp when picking the account-level fallback', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: [
+        { network: 'facebook', status: 'failed', publishedAt: '2026-08-01T00:00:00.000Z' },
+        { network: 'instagram', status: 'published', publishedAt: '2026-08-01T00:05:00.000Z' },
+      ],
+    };
+    expect(resolvePublishedAt(post)).toBe('2026-08-01T00:05:00.000Z');
+  });
+
+  it('does not throw when socialAccounts contains a bare null element', () => {
+    const post: ProviderPost = {
+      id: 'p1',
+      socialAccounts: [null as unknown as never, { network: 'instagram', status: 'published', publishedAt: '2026-08-01T00:05:00.000Z' }],
+    };
+    expect(resolvePublishedAt(post)).toBe('2026-08-01T00:05:00.000Z');
+  });
+
+  it('returns null (leaving the "now" fallback to the caller) when nothing is available', () => {
+    expect(resolvePublishedAt({ id: 'p1', socialAccounts: [] })).toBeNull();
+    expect(resolvePublishedAt({ id: 'p1', socialAccounts: null })).toBeNull();
+  });
+});
+
+describe('isWithinActionWindow', () => {
+  const now = new Date('2026-08-06T00:00:00.000Z');
+
+  it('is within the window right at publish', () => {
+    expect(isWithinActionWindow('2026-08-06T00:00:00.000Z', now, 8)).toBe(true);
+  });
+
+  it('is within the window at exactly the boundary', () => {
+    expect(isWithinActionWindow('2026-07-29T00:00:00.000Z', now, 8)).toBe(true);
+  });
+
+  it('is outside the window once older than the boundary', () => {
+    expect(isWithinActionWindow('2026-07-28T23:00:00.000Z', now, 8)).toBe(false);
+  });
+
+  it('treats a null timestamp as within the window (absence is not evidence of age)', () => {
+    expect(isWithinActionWindow(null, now, 8)).toBe(true);
+  });
+});
+
+describe('withoutOwnerConflicts', () => {
+  it('treats a platform with no existing row as always safe', () => {
+    const result = withoutOwnerConflicts(['instagram'], [], 'user-1');
+    expect(result).toEqual({ safe: ['instagram'], conflicts: [] });
+  });
+
+  it('is safe when the existing row already belongs to the matched user', () => {
+    const existing: ExistingLogRow[] = [{ platform: 'instagram', verifiedAt: null, userId: 'user-1' }];
+    const result = withoutOwnerConflicts(['instagram'], existing, 'user-1');
+    expect(result).toEqual({ safe: ['instagram'], conflicts: [] });
+  });
+
+  it('flags a conflict when the existing row belongs to a different user', () => {
+    const existing: ExistingLogRow[] = [{ platform: 'instagram', verifiedAt: null, userId: 'attacker' }];
+    const result = withoutOwnerConflicts(['instagram'], existing, 'victim');
+    expect(result).toEqual({ safe: [], conflicts: ['instagram'] });
+  });
+
+  it('splits safe and conflicting platforms independently for the same post', () => {
+    const existing: ExistingLogRow[] = [
+      { platform: 'instagram', verifiedAt: null, userId: 'attacker' },
+      { platform: 'tiktok', verifiedAt: null, userId: 'victim' },
+    ];
+    const result = withoutOwnerConflicts(['instagram', 'tiktok', 'facebook'], existing, 'victim');
+    expect(result).toEqual({ safe: ['tiktok', 'facebook'], conflicts: ['instagram'] });
+  });
+});
+
+describe('pickScheduleMatch', () => {
+  const row = (created_at: string, tag: string): ScheduleCandidate => ({
+    user_id: tag,
+    campaign_id: null,
+    caption: null,
+    hashtags: null,
+    content_type: null,
+    scheduled_at: null,
+    metadata: null,
+    created_at,
+  });
+
+  it('returns null for an empty candidate list', () => {
+    expect(pickScheduleMatch([])).toBeNull();
+  });
+
+  it('returns the single row unchanged', () => {
+    const only = row('2026-08-01T00:00:00.000Z', 'only');
+    expect(pickScheduleMatch([only])).toBe(only);
+  });
+
+  it('picks the oldest by created_at regardless of input order', () => {
+    const oldest = row('2026-08-01T00:00:00.000Z', 'oldest');
+    const newer = row('2026-08-02T00:00:00.000Z', 'newer');
+    expect(pickScheduleMatch([newer, oldest])).toBe(oldest);
+    expect(pickScheduleMatch([oldest, newer])).toBe(oldest);
+  });
+});
+
+describe('strictBindingGate', () => {
+  it('proceeds with the binding when one was read', () => {
+    expect(strictBindingGate(false, 'user-1')).toEqual({ proceed: true, bindingUserId: 'user-1' });
+  });
+
+  it('skips as `unbound` when the read succeeded and found nothing', () => {
+    // The legacy population: every post published before outstand-proxy started
+    // minting bindings. Expected, permanent, and counted separately from errors.
+    expect(strictBindingGate(false, null)).toEqual({ proceed: false, reason: 'unbound' });
+    expect(strictBindingGate(false, undefined)).toEqual({ proceed: false, reason: 'unbound' });
+  });
+
+  it('skips as `bindingUnavailable` when the read FAILED — unknown is not absent', () => {
+    // The whole point of the distinction. A failed read reported as `unbound`
+    // would be indistinguishable from the expected legacy population, hiding a
+    // broken query (or an unapplied migration) behind a normal-looking number.
+    expect(strictBindingGate(true, null)).toEqual({ proceed: false, reason: 'bindingUnavailable' });
+  });
+
+  it('reports the read failure even when a stale binding value is somehow present', () => {
+    // Defensive ordering: if the caller ever passes both, the FAILURE wins.
+    // Acting on a value read by a query that errored is exactly the kind of
+    // "close enough" this task exists to eliminate.
+    expect(strictBindingGate(true, 'user-1')).toEqual({ proceed: false, reason: 'bindingUnavailable' });
+  });
+
+  it('treats a blank binding id as unbound rather than proceeding with it', () => {
+    expect(strictBindingGate(false, '')).toEqual({ proceed: false, reason: 'unbound' });
+  });
+});
+
+// buildSocialPostLogRow's tests moved to
+// supabase/functions/_shared/social-post-log-row.test.ts — it is now a
+// shared module used by both this sweep and outstand-webhook, not
+// reconcile-social-posts-specific logic.
+//
+// applyOwnershipBinding's tests live in
+// supabase/functions/_shared/outstand-post-ownership.test.ts — same reason: the
+// binding-agreement rule is shared with outstand-webhook, and only the STRICT
+// policy over it (strictBindingGate, above) is this sweep's own.

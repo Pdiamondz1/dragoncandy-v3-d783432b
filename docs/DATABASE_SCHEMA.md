@@ -347,9 +347,54 @@ predicate. See `docs/wiki/concepts/synthetic-weight-engine.md`.
 | `business_contexts` | Business context data for AI matching |
 | `creator_automation_preferences` | Creator automation and posting preferences |
 | `delegated_posting_permissions` | Permissions for delegated social posting |
-| `social_post_log` | Log of social media posts |
+| `social_post_log` | Log of social media posts — the enumeration surface `content-performance-capture` measures from. `UNIQUE (outstand_post_id, platform)` + nullable dimension columns (`hashtags`, `caption`, `format`, `scheduled_at`, `published_at`, `creator_id`). **Only rows carrying `verified_at` are measured**, and only server-side code sets it. Has SELECT + INSERT RLS policies and **no UPDATE policy** — so a client upsert must use `ignoreDuplicates` (`ON CONFLICT DO NOTHING`); a `DO UPDATE` branch would need a privilege the client role has never been granted. See [[Social Measurement Spine]]. |
+| `outstand_post_ownership` | **Server-established** binding: Outstand post id → the authenticated user who created it. Written ONLY by `outstand-proxy` / `social-proxy` (service role) on a 2xx `POST /posts`, from `ctx.userId` (`auth.getUser()`) and the **provider's own** response id — neither half client-assertable. Read by `outstand-webhook` + `reconcile-social-posts` to decide `social_post_log.user_id`. See the blockquote below. |
 | `triple_post_sessions` | Multi-platform posting session tracking |
 | `brand_shortlists` | Brand-curated creator shortlists |
+
+> **Server-established post ownership (`outstand_post_ownership`) — 2026-08-06, migration
+> `20260806184500`, [[Social Measurement Spine]].** Both `outstand-webhook` and the new
+> `reconcile-social-posts` sweep used to decide **who owns a published post** by joining
+> `donny_scheduled_posts` on `metadata->>'outstand_post_id'`. **That column is client-writable.**
+> Verified on prod, not assumed: `information_schema.column_privileges` shows `authenticated` **and
+> `anon`** holding INSERT *and* UPDATE on **every** column of `donny_scheduled_posts` (`metadata`
+> included — there is no column-privilege lockdown migration for that table), and `pg_policies` shows
+> the INSERT policy as `WITH CHECK (user_id = auth.uid())` with **nothing constraining `metadata`**.
+> So any authenticated user could plant a row claiming any post id, have `verified_at` stamped on it,
+> and let `content-performance-capture` spend the **org-wide** `OUTSTAND_API_KEY` filing another
+> tenant's metrics under their own row — mis-filing the victim's measurement at the same moment.
+> Provider ids are 5 characters and low-entropy, so guessing beats knowing.
+>
+> Columns: `outstand_post_id text PRIMARY KEY` (text, not uuid — real ids are 5-char opaque strings),
+> `user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE`, `created_at`. Index
+> `idx_outstand_post_ownership_user_id` exists only for the reverse direction (forgery investigation),
+> not either consumer's hot path.
+>
+> **Lockdown — `revoke all on public.outstand_post_ownership from public, anon, authenticated` +
+> `grant all to service_role`, at TABLE level.** A *column-level* REVOKE is a **documented no-op**
+> against Supabase's ambient table-wide GRANT (the same lesson `20260804174854` and `20260805163247`
+> record). Nothing in `src/` reads or writes this table, so the client grant set is **empty**, not
+> merely reduced. RLS is enabled with a `service_role`-only policy and **deliberately no policy for
+> anon/authenticated**, so client statements are denied by grants *and* by RLS-with-no-policy even if
+> a future migration re-grants. The migration ends with an `information_schema.role_table_grants`
+> verification query — expected result is exactly one row (`service_role`); any `anon`/`authenticated`
+> row means the REVOKE did not take. **Verify after applying; never trust "the migration succeeded."**
+>
+> Consumers are asymmetric by design: `reconcile-social-posts` is **strict** (no binding → counter
+> `unbound`, skip — it is new, so this costs nothing), `outstand-webhook` is **permissive** (retains
+> the schedule-row match for the legacy population, counted `ownership=legacy_schedule` so that
+> population is measurable rather than assumed). A binding that cannot be **read** refuses rather than
+> falling back, tolerating only the table-not-yet-existing case — which surfaces as PostgREST
+> **`PGRST205`**, *not* SQLSTATE `42P01`, because PostgREST resolves tables from its own schema cache
+> and 404s before the query reaches Postgres. Binding/schedule-row disagreement is rejected **per row,
+> not per post** (per-post would let a planted row take the victim's real row down with it).
+>
+> **`donny_scheduled_posts_platform_check` widened** (migration `20260806090000`, applied 2026-08-06):
+> adds `'x'` while **keeping** `'twitter'`. The two tables' platform vocabularies were disjoint on
+> exactly that value — `business_outstand_accounts` allows `x`, `donny_scheduled_posts` allowed
+> `twitter` — and Outstand's own network value is `x`, so `donny_scheduled_posts` was the outlier.
+> `twitter` is retained for existing rows (removing a CHECK value is forbidden); `x` is canonical going
+> forward.
 
 ## Help & Support
 

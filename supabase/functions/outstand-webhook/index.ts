@@ -12,7 +12,8 @@ import {
   verifyOutstandSignature,
   type OutstandSocialAccount,
 } from "../_shared/outstand-webhook-lib.ts";
-import { resolvePostType } from "../_shared/post-type.ts";
+import { buildSocialPostLogRow, isGenuineScheduleAmbiguity } from "../_shared/social-post-log-row.ts";
+import { applyOwnershipBinding, isBindingTableMissing } from "../_shared/outstand-post-ownership.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -32,6 +33,64 @@ const json = (status: number, body: unknown) =>
  *
  * Returns 'recorded' | 'unmatched' | 'failed' so the caller can count outcomes.
  * An unmatched post is a VISIBLE hole, never a silent one.
+ *
+ * OWNERSHIP IS PERMISSIVE HERE (Task 4, 2026-08-06) — deliberately, and unlike
+ * reconcile-social-posts, which is strict. This function is the deployed choke
+ * point for every live publish, and every post published before outstand-proxy
+ * started minting outstand_post_ownership bindings has none and never will.
+ * Demanding a binding here would stop measuring that entire existing population
+ * outright. So: PREFER the binding when present (and reject a schedule row that
+ * disagrees with it, exactly as the sweep does), FALL BACK to today's
+ * schedule-row match when genuinely ABSENT — and report which one was used on
+ * every delivery via the `ownership` field, so the legacy population is a
+ * number somebody can count in the logs rather than an assumption. The sweep is
+ * strict because it is brand new: no live traffic depends on it recording
+ * anything, so it can demand the binding from day one without losing coverage
+ * that exists.
+ *
+ * PERMISSIVE IS NOT THE SAME AS FAILING OPEN. "Absent" means the read succeeded
+ * and found nothing, or the table does not exist yet. A read that FAILS for any
+ * other reason is an UNKNOWN owner, and unknown must never resolve to the
+ * client-writable schedule row — that would give any transient DB error the
+ * power to reopen the exact hole this task closes. It refuses instead
+ * (`binding_unreadable`), matching the sweep's `bindingUnavailable` rule. The
+ * distinction is made on the error CODE, verified against prod, not guessed —
+ * see isBindingTableMissing.
+ *
+ * `ownership` values (emitted as `ownership=<v>` in the caller's single summary
+ * log line — greppable, one line per delivery, which is what a per-request
+ * function can offer in place of a run summary):
+ *   binding                       — a server-established binding matched and the
+ *                                   schedule row agreed. Trustworthy.
+ *   legacy_schedule               — no binding exists; user_id came from the
+ *                                   client-writable schedule row. THIS is the
+ *                                   fallback counter: its rate is the legacy
+ *                                   population, and it should trend to zero.
+ *   legacy_schedule_table_missing — outstand_post_ownership does not exist yet
+ *                                   (deployed before migration 20260806184500).
+ *                                   Same fallback, strictly bounded to that
+ *                                   window, and separated so it can never hide
+ *                                   inside the expected number. Self-clearing:
+ *                                   applying the migration ends it, with no
+ *                                   follow-up change to remember.
+ *   binding_unreadable            — the binding read failed for ANY OTHER reason.
+ *                                   REFUSED, nothing recorded. Returned as
+ *                                   `unmatched` (not `failed`) so the scheduled
+ *                                   post's status still advances and Outstand is
+ *                                   not made to retry; reconcile-social-posts
+ *                                   re-drives the measurement within the hour.
+ *   conflict                      — a binding exists and NOT ONE candidate
+ *                                   schedule row agrees with it. Nothing is
+ *                                   recorded.
+ *   not_evaluated                 — returned before ownership was consulted (the
+ *                                   schedule lookup errored, or matched no rows).
+ *
+ * `rejectedScheduleRows` is the second half of the forgery signal, and the more
+ * important one: it counts candidate rows discarded for contradicting the
+ * binding EVEN WHEN a legitimate row survived and the post was recorded
+ * correctly. `conflict` only fires when an attacker's row is the ONLY one;
+ * `rejectedScheduleRows` fires on the far more likely case where the plant was
+ * neutralised, which would otherwise leave no trace at all.
  */
 async function recordPublishedPost(
   supabase: ReturnType<typeof createClient>,
@@ -39,7 +98,19 @@ async function recordPublishedPost(
   publishedAt: string,
   accounts: OutstandSocialAccount[],
   rawAccountCount: number,
-): Promise<{ outcome: "recorded" | "unmatched" | "failed"; rows: number; dropped: number }> {
+): Promise<{
+  outcome: "recorded" | "unmatched" | "failed";
+  rows: number;
+  dropped: number;
+  ownership:
+    | "binding"
+    | "legacy_schedule"
+    | "legacy_schedule_table_missing"
+    | "binding_unreadable"
+    | "conflict"
+    | "not_evaluated";
+  rejectedScheduleRows: number;
+}> {
   // Entries parseAccounts discarded as malformed, plus (below) entries that
   // parsed fine but carry no network. Carried forward from the Task 4 review: a
   // skip that increments no counter is the failure mode this whole sub-project
@@ -59,7 +130,7 @@ async function recordPublishedPost(
 
   if (schedErr) {
     console.error("outstand-webhook: schedule lookup failed", schedErr.message);
-    return { outcome: "failed", rows: 0, dropped };
+    return { outcome: "failed", rows: 0, dropped, ownership: "not_evaluated", rejectedScheduleRows: 0 };
   }
   if (!schedRows || schedRows.length === 0) {
     // No schedule row: published outside our flow. Since Task 16,
@@ -85,14 +156,126 @@ async function recordPublishedPost(
     // provider-account ownership is server-established — see
     // docs/runbooks/social-measurement-spine-deploy.md.
     console.warn(`outstand-webhook: no scheduled post for ${postId} — not recorded for measurement`);
-    return { outcome: "unmatched", rows: 0, dropped };
+    return { outcome: "unmatched", rows: 0, dropped, ownership: "not_evaluated", rejectedScheduleRows: 0 };
   }
-  if (schedRows.length > 1) {
+  // SERVER-ESTABLISHED OWNERSHIP (Task 4). Until now the ONLY thing deciding
+  // which user_id got credited for a published post was
+  // donny_scheduled_posts.metadata->>'outstand_post_id' — and `authenticated`
+  // holds INSERT+UPDATE on every column of that table (verified on prod via
+  // information_schema.column_privileges; its RLS policies constrain user_id
+  // and nothing else). So anyone could plant a row naming any post id, have it
+  // win the `created_at asc` pick below, and get content-performance-capture to
+  // spend the org-wide OUTSTAND_API_KEY fetching a stranger's analytics and
+  // file them under their own user_id. outstand_post_ownership is the fix:
+  // outstand-proxy writes it on a 2xx POST /posts from ctx.userId
+  // (auth.getUser(), not a body field) plus the id in Outstand's own response —
+  // both halves unforgeable by a client.
+  //
+  // A READ ERROR IS NOT AN ABSENT BINDING. Permissive means "fall back when
+  // there is genuinely no binding" — a post published before bindings existed.
+  // It must NOT also mean "fall back when a binding may well exist and we
+  // simply could not read it": that would hand ownership straight back to the
+  // client-writable donny_scheduled_posts row on any transient DB error, which
+  // is the exact hole this task closes. The ONE error worth tolerating is the
+  // table not being there yet (the window between deploying this and applying
+  // migration 20260806184500), and that is distinguishable — see
+  // isBindingTableMissing, whose accepted codes were probed against prod rather
+  // than assumed. Everything else refuses.
+  //
+  // This is a fix-now rule, not a deferred flip: nothing has to be remembered
+  // and re-tightened after the migration lands, because the tolerated case
+  // stops occurring on its own the moment the table exists.
+  const { data: bindingRow, error: bindingErr } = await supabase
+    .from("outstand_post_ownership")
+    .select("user_id")
+    .eq("outstand_post_id", postId)
+    .maybeSingle();
+
+  if (bindingErr && !isBindingTableMissing(bindingErr)) {
+    // Refuse. Nothing is recorded for measurement — but this returns
+    // `unmatched`, NOT `failed`, so the caller still advances the scheduled
+    // post's status and Outstand is not made to retry. Losing the measurement
+    // is not permanent either: reconcile-social-posts re-scans this same post
+    // within the hour and records it STRICTLY once the binding reads cleanly.
+    // That recovery path is precisely why failing closed here costs nothing.
+    console.error(
+      `outstand-webhook: ownership binding lookup failed for ${postId} (code=${bindingErr.code ?? "none"}) — ` +
+      `refusing to fall back to the client-writable schedule row; not recorded for measurement. ` +
+      `reconcile-social-posts will re-drive this post.`,
+      bindingErr.message,
+    );
+    return { outcome: "unmatched", rows: 0, dropped, ownership: "binding_unreadable", rejectedScheduleRows: 0 };
+  }
+  if (bindingErr) {
     console.warn(
-      `outstand-webhook: ${schedRows.length} scheduled posts match ${postId} — using oldest (created_at asc)`,
+      `outstand-webhook: outstand_post_ownership is not present yet (code=${bindingErr.code ?? "none"}) — ` +
+      `falling back to the legacy schedule-row match for ${postId}. Apply migration 20260806184500.`,
     );
   }
-  const sched = schedRows[0];
+  // Cast rather than a bare property read: this file's createClient() carries no
+  // Database generic, so PostgREST row types resolve to `never` and
+  // `bindingRow.user_id` is a compile error under `deno check` (the same class
+  // of pre-existing error this file already carries on sched.platform and the
+  // social_post_log upsert). Not adding one more.
+  const bindingUserId = bindingErr
+    ? null
+    : ((bindingRow as { user_id?: string } | null)?.user_id ?? null);
+
+  // Discard any candidate whose user_id the binding contradicts, keeping the
+  // rest in the query's created_at-asc order. A forged row can never survive
+  // by accident: donny_scheduled_posts' INSERT policy is
+  // WITH CHECK (user_id = auth.uid()) and its UPDATE policy is
+  // USING (user_id = auth.uid()) with no WITH CHECK (Postgres reuses USING for
+  // the new row), so a planted row always carries the planter's own id, which
+  // cannot equal the real creator's binding. And because every survivor
+  // satisfies user_id === bindingUserId, buildSocialPostLogRow keeps reading
+  // sched.user_id and the row's user_id is still server-established, by
+  // construction — the shared row builder needs no new parameter and stays pure.
+  // See _shared/outstand-post-ownership.ts for why rejection is per-ROW, not
+  // per-post.
+  const owner = applyOwnershipBinding(bindingUserId, schedRows);
+  if (owner.rejected > 0) {
+    // Fires even when the attack was neutralised (a legitimate row survived) —
+    // a neutralised forgery that incremented nothing would be invisible.
+    console.error(
+      `outstand-webhook: discarded ${owner.rejected} donny_scheduled_posts row(s) for ${postId} ` +
+      `whose user_id the server-established ownership binding (${bindingUserId}) contradicts`,
+    );
+  }
+  if (owner.kind === "conflict") {
+    // NOT 'failed': returning 500 would make Outstand retry five times against
+    // data that cannot get better. Nothing is recorded, and it is loud.
+    console.error(
+      `outstand-webhook: ownership conflict for ${postId} — no donny_scheduled_posts row agrees ` +
+      `with the server-established binding (${bindingUserId}); refusing to record for measurement`,
+    );
+    return { outcome: "unmatched", rows: 0, dropped, ownership: "conflict", rejectedScheduleRows: owner.rejected };
+  }
+  const ownership = owner.kind === "binding"
+    ? "binding" as const
+    : (bindingErr ? "legacy_schedule_table_missing" as const : "legacy_schedule" as const);
+
+  // DELIBERATE BEHAVIOR CHANGE #1 (review round 1): fires only on a GENUINE
+  // disagreement between candidates now, not routine multi-platform fan-out.
+  // This warning predates amplification writing schedule rows at all (zero
+  // rows on prod before this branch's Task 1, per the comment above) — once
+  // useSponsorshipAmplification started writing one row per platform for a
+  // single post (identical apart from `platform`, which
+  // isGenuineScheduleAmbiguity deliberately never compares), the SAME
+  // pre-existing warning logic would have fired on every multi-platform
+  // amplification delivery, making a real ambiguity indistinguishable from
+  // routine operation. Gated here rather than left as noise.
+  //
+  // Runs over the BINDING-FILTERED candidates (Task 4), not the raw query
+  // result: a planted row is a forgery, already counted above as `rejected` —
+  // reporting it a second time as an "ambiguity" would put a security event in
+  // the wrong bucket and re-noise the warning this gate was added to quiet.
+  if (owner.candidates.length > 1 && isGenuineScheduleAmbiguity(owner.candidates)) {
+    console.warn(
+      `outstand-webhook: ${owner.candidates.length} scheduled posts match ${postId} — using oldest (created_at asc)`,
+    );
+  }
+  const sched = owner.candidates[0];
 
   // The EVENT is authoritative about what published and where; the schedule row
   // only supplies dimensions. socialAccounts[].network is the platform, one entry
@@ -110,46 +293,40 @@ async function recordPublishedPost(
   if (platforms.length === 0) {
     // platform is NOT NULL on social_post_log, so there is no honest row to write.
     console.warn(`outstand-webhook: no platform for ${postId} — not recorded for measurement`);
-    return { outcome: "unmatched", rows: 0, dropped };
+    return { outcome: "unmatched", rows: 0, dropped, ownership, rejectedScheduleRows: owner.rejected };
   }
 
-  const meta = (sched.metadata as Record<string, unknown> | null) ?? {};
-  const postType = resolvePostType(
-    meta.source as string | null,
-    sched.campaign_id as string | null,
-  );
-  // Mirrors DonnyProvider.tsx's publishDraft exactly: only DragonShare-sourced
+  // Row construction — post_type resolution, dragonshare_post_id derivation
+  // (mirrors DonnyProvider.tsx's publishDraft: only DragonShare-sourced
   // drafts carry a dragonshare_post_id, read from metadata.post_id when
-  // metadata.source is 'dragonshare_social_hook'. Carrying it here closes a race
-  // where the webhook's schedule-matched upsert wins as the INSERT (Outstand's
-  // delivery beats the client's own social_post_log insert): without this, that
-  // insert had no dragonshare_post_id, the BEFORE INSERT trigger
-  // (resolve_social_post_log_brief, 20260611150657) had nothing to derive
-  // source_brief_id from, and the client's own insert then lost the unique-key
-  // race and errored — permanently dropping brief->outcome attribution.
-  const dragonsharePostId =
-    (meta.source as string | null) === "dragonshare_social_hook"
-      ? ((meta.post_id as string | undefined) ?? null)
-      : null;
-
-  const rows = platforms.map((platform) => ({
-    user_id: sched.user_id,
-    campaign_id: sched.campaign_id,
-    outstand_post_id: postId,
-    platform,
-    post_type: postType,
-    caption: sched.caption,
-    hashtags: sched.hashtags,
-    // content_type IS the format vocabulary. Never inferred from a URL: a wrong
-    // format is indistinguishable from a real finding downstream.
-    format: sched.content_type ?? null,
-    scheduled_at: sched.scheduled_at,
-    published_at: publishedAt,
-    dragonshare_post_id: dragonsharePostId,
-    // Service-role only. This is what makes the row trustworthy enough to spend an
-    // API call on — see the migration comment.
-    verified_at: new Date().toISOString(),
-  }));
+  // metadata.source is 'dragonshare_social_hook'; carrying it here closes a
+  // race where the webhook's schedule-matched upsert wins as the INSERT
+  // (Outstand's delivery beats the client's own social_post_log insert):
+  // without this, that insert had no dragonshare_post_id, the BEFORE INSERT
+  // trigger (resolve_social_post_log_brief, 20260611150657) had nothing to
+  // derive source_brief_id from, and the client's own insert then lost the
+  // unique-key race and errored — permanently dropping brief->outcome
+  // attribution), format mapping — lives in the SHARED buildSocialPostLogRow
+  // (_shared/social-post-log-row.ts), also used by reconcile-social-posts, so
+  // the two writers can never disagree about what belongs at a given
+  // (outstand_post_id, platform) key. verified_at is computed fresh per
+  // platform inside this map, preserving this function's exact pre-extraction
+  // behavior (each row got its own independent new Date() call).
+  //
+  // DELIBERATE BEHAVIOR CHANGE #2 (2026-08-06 extraction) from this
+  // function's pre-extraction row-construction code — everything else about
+  // row content is byte-identical: a non-string metadata.post_id used to
+  // pass through via an unchecked cast, which would fail dragonshare_post_id's
+  // uuid-column coercion and error the WHOLE upsert (every platform's row for
+  // this post lost, not just the one field). The shared function now guards
+  // with typeof and writes null instead — the post still gets measured, only
+  // the brief-attribution link is missing. See social-post-log-row.ts's
+  // buildSocialPostLogRow doc comment for the full reasoning. Requires this
+  // function to be redeployed for this branch's changes to take effect at all
+  // (it now imports from _shared/social-post-log-row.ts).
+  const rows = platforms.map((platform) =>
+    buildSocialPostLogRow(postId, platform, publishedAt, sched, new Date().toISOString()),
+  );
 
   const { error: upsertErr } = await supabase
     .from("social_post_log")
@@ -157,9 +334,9 @@ async function recordPublishedPost(
 
   if (upsertErr) {
     console.error("outstand-webhook: social_post_log upsert failed", upsertErr.message);
-    return { outcome: "failed", rows: 0, dropped };
+    return { outcome: "failed", rows: 0, dropped, ownership, rejectedScheduleRows: owner.rejected };
   }
-  return { outcome: "recorded", rows: rows.length, dropped };
+  return { outcome: "recorded", rows: rows.length, dropped, ownership, rejectedScheduleRows: owner.rejected };
 }
 
 serve(async (req: Request) => {
@@ -214,8 +391,14 @@ serve(async (req: Request) => {
           accounts,
           rawAccountCount,
         );
+        // `ownership=` is emitted on EVERY delivery, not only the interesting
+        // ones: counting how often the legacy schedule-row fallback is still
+        // load-bearing is only possible if the healthy case prints a value too.
+        // See recordPublishedPost's doc comment for the vocabulary.
         console.log(
           `outstand-webhook: measurement record for ${postId}: ${res.outcome} rows=${res.rows}` +
+          ` ownership=${res.ownership}` +
+          (res.rejectedScheduleRows > 0 ? ` rejectedScheduleRows=${res.rejectedScheduleRows}` : "") +
           (res.dropped > 0 ? ` droppedAccounts=${res.dropped}` : ""),
         );
         if (res.outcome === "failed") {

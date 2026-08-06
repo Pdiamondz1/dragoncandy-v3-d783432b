@@ -32,6 +32,7 @@ import { createOutstandAdapter } from "./adapters/outstand.ts";
 import { createZernioAdapter } from "./adapters/zernio.ts";
 import { resolveProviderFromRows, resolveProviderId } from "../_shared/social-provider.ts";
 import { assertAccountsOwned, isPostOwned } from "./gateway-guards.ts";
+import { recordPostOwnership } from "../_shared/outstand-post-ownership-store.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -236,6 +237,72 @@ async function recordDisconnect(
     .update({ status: "revoked", updated_at: new Date().toISOString() })
     .eq("user_id", ctx.userId)
     .eq("outstand_social_account_id", accountId);
+}
+
+/**
+ * Mint the SERVER-ESTABLISHED ownership binding for a post this caller just
+ * created. Mirrors outstand-proxy's binding on its own POST /posts path — both
+ * go through the same _shared writer, so the two creation gateways cannot
+ * diverge about what the binding means or how it fails.
+ *
+ * WHY THIS FUNCTION HAS TO EXIST HERE TOO. This gateway is a SECOND
+ * post-creation path (verify_jwt = true, so any authenticated caller can reach
+ * `createPost` directly, whether or not a UI routes through it yet), and
+ * reconcile-social-posts is STRICT: a post with no binding is skipped forever
+ * and the sweep still reports a healthy run. A creation path that mints no
+ * binding is therefore a silent measurement gap — precisely the failure mode
+ * this whole sub-project exists to remove.
+ *
+ * The id is read off the adapter's already-normalised `PostResult`, NOT
+ * re-parsed from the raw vendor payload: each adapter's own mapper
+ * (fromOutstandPostResult / fromZernioPostResult) is the single place that
+ * knows its provider's response shape, and a second hand-written extraction
+ * here would be one more thing to keep in sync. `providerPostId` is `''` when
+ * the mapper could not resolve one, which is why the emptiness check below is
+ * on the string, not on null.
+ *
+ * NEVER fails the user's publish: the post already exists at the provider by
+ * the time this runs (the adapter call returned), so a binding problem must
+ * cost measurement, never the publish. The shared writer never throws; this
+ * wrapper adds no path that can.
+ *
+ * OUTSTAND ONLY, deliberately. `outstand_post_ownership` is keyed on a bare
+ * provider post id with NO provider column, and its two consumers
+ * (outstand-webhook, and reconcile-social-posts sweeping OUTSTAND_BASE_URL) are
+ * Outstand-specific. Provider post ids are only opaque WITHIN a provider — the
+ * same caveat this file already records for account ids at
+ * handleRecordConnection — and real Outstand ids are 5 low-entropy characters,
+ * so writing a Zernio id into this first-writer-wins key risks binding a post to
+ * the wrong user via a cross-provider collision. A non-Outstand publish is
+ * logged as unbound rather than mis-bound; giving Zernio a correct binding needs
+ * a provider-qualified key, which belongs with the Zernio measurement work, not
+ * here.
+ */
+async function bindCreatedPostOwnership(
+  admin: SupabaseClient,
+  ctx: TenantContext,
+  provider: ProviderId,
+  result: { providerPostId?: unknown },
+): Promise<void> {
+  const postId = typeof result?.providerPostId === "string" ? result.providerPostId : "";
+  if (provider !== "outstand") {
+    console.warn(
+      `social-proxy: createPost on provider '${provider}' — no ownership binding minted ` +
+      `(outstand_post_ownership is Outstand-keyed); this post will not be measurable by binding`,
+    );
+    return;
+  }
+  if (!postId) {
+    // Loud: a silent miss means no binding, the strict sweep skips the post
+    // forever, and every run still looks healthy. If this fires, the provider's
+    // create-post response shape moved out from under the adapter's mapper.
+    console.error(
+      "social-proxy: createPost returned no providerPostId — no ownership binding minted; " +
+      "this post will not be measurable by binding",
+    );
+    return;
+  }
+  await recordPostOwnership(admin, postId, ctx.userId, "social-proxy");
 }
 
 // Build the adapter for an explicit provider. Guards the chosen provider's key
@@ -485,6 +552,22 @@ async function handleOp(
         },
         ctx,
       );
+      // Record WHO created this post, server-side, before returning. ctx.userId
+      // is from auth.getUser() and out.providerPostId is from the provider's own
+      // response, so neither half of the binding is client-assertable — unlike
+      // donny_scheduled_posts.metadata, which every consumer used to trust.
+      //
+      // try/catch for the same reason as outstand-proxy's identical call site:
+      // the binding path is written never to throw (supabase-js returns errors
+      // as values), so this should be unreachable — but the post already exists
+      // at the provider by this line, and an uncaught throw would surface as a
+      // failed publish for one that actually succeeded. Never let a measurement
+      // concern break a completed publish.
+      try {
+        await bindCreatedPostOwnership(admin, ctx, ctx.provider, out);
+      } catch (e) {
+        console.error("social-proxy: ownership binding threw (publish already succeeded)", e);
+      }
       return jsonResponse(200, { data: out });
     }
 
