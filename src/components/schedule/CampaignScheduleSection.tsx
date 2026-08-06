@@ -1,5 +1,6 @@
 import { CalendarCheck2, CalendarClock, CheckCircle2, Clock } from 'lucide-react';
 import { useScheduledPosts } from '@/hooks/useScheduledPosts';
+import { isAmplificationPost } from '@/lib/postType';
 
 interface CampaignScheduleSectionProps {
   campaignId: string;
@@ -116,9 +117,32 @@ function ScheduledSummary({
 }) {
   const { data: posts = [] } = useScheduledPosts(campaignId);
 
-  const publishedCount = posts.filter(p => p.status === 'published').length;
-  const totalCount = posts.length;
-  const nextPost = posts.find(p => p.status === 'scheduled' && new Date(p.scheduled_at) > new Date());
+  // PROGRESS IS ABOUT DELIVERABLES, NOT EVERY ROW ON THE CAMPAIGN.
+  //
+  // This call intentionally passes no planGroupId, so the query filters on
+  // campaign_id alone — and since this branch's Task 1, amplification posts
+  // write a donny_scheduled_posts row carrying the campaign's real campaign_id.
+  // Those rows belong in the schedule/calendar LISTS (standing decision, see
+  // task-1-brief.md) but not in this readout: "X of Y posted" is a claim about
+  // campaign deliverable progress, and an amplification is not a commissioned
+  // deliverable. Left unfiltered, a 5-post campaign reads "4 of 6" after a
+  // single amplification.
+  //
+  // Filtered HERE rather than inside useScheduledPosts on purpose: the hook is
+  // shared with ScheduleReviewScreen and filtering there would hide these rows
+  // everywhere and reverse that standing decision. Visibility and progress
+  // arithmetic are separate questions, and only the arithmetic is wrong.
+  //
+  // All three derived values use the SAME filtered set. Excluding amplification
+  // from publishedCount but not totalCount would be worse than not filtering at
+  // all (it would under-report progress instead of over-reporting the total),
+  // and nextPost is rendered as part of this same sentence — an amplification
+  // surfacing as "next post" would claim a deliverable is coming when none is.
+  const deliverablePosts = posts.filter(p => !isAmplificationPost(p.metadata));
+
+  const publishedCount = deliverablePosts.filter(p => p.status === 'published').length;
+  const totalCount = deliverablePosts.length;
+  const nextPost = deliverablePosts.find(p => p.status === 'scheduled' && new Date(p.scheduled_at) > new Date());
 
   const nextPostLabel = nextPost
     ? new Date(nextPost.scheduled_at).toLocaleDateString(undefined, {

@@ -45,3 +45,35 @@ export function resolvePostType(
   if (mapped) return mapped;
   return campaignId ? 'campaign' : 'standalone';
 }
+
+/**
+ * Is this `donny_scheduled_posts` row an AMPLIFICATION post rather than a
+ * commissioned campaign deliverable?
+ *
+ * WHY THIS EXISTS. Amplification rows carry a real `campaign_id` (they amplify
+ * a campaign), so every query filtering on `campaign_id` alone returns them
+ * alongside the campaign's actual deliverables. That is correct for LISTS —
+ * the founder's standing decision is that amplification posts DO appear in the
+ * schedule and calendar surfaces — but it is wrong for PROGRESS ARITHMETIC.
+ * "X of Y posted" is a claim about campaign deliverable progress, and an
+ * amplification is not a commissioned deliverable, so counting it changes what
+ * the number means: a 5-post campaign reads "4 of 6" after one amplification.
+ * Visibility and progress are different questions; this predicate is only for
+ * the second. Never use it to hide rows from a list.
+ *
+ * Deliberately defined in terms of the ONE established discriminator
+ * (`SOURCE_TO_POST_TYPE`, whose `'sponsorship_amplification'` key
+ * `buildAmplificationScheduleRows` writes) rather than a second literal
+ * comparison — so if another source ever maps to `'amplification'`, every
+ * progress readout follows automatically instead of drifting. `campaignId` is
+ * passed as `null` on purpose: these rows always have one, and letting the
+ * campaign fallback run would resolve an unmapped source to `'campaign'`, which
+ * is right for post_type but irrelevant here — this must answer only
+ * "is it amplification?", never "is it a campaign post?".
+ */
+export function isAmplificationPost(
+  metadata: Record<string, unknown> | null | undefined,
+): boolean {
+  const source = typeof metadata?.source === 'string' ? metadata.source : null;
+  return resolvePostType(source, null) === 'amplification';
+}
