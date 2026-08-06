@@ -210,41 +210,63 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
       const publishData = await res.json() as Record<string, unknown>;
       const dataObj = publishData?.data as Record<string, unknown> | undefined;
       const postObj = dataObj?.post as Record<string, unknown> | undefined;
-      const outstandPostId = postObj?.id ?? publishData?.id ?? 'unknown';
+      // No 'unknown' fallback: social_post_log.outstand_post_id is NOT NULL and
+      // carries the UNIQUE (outstand_post_id, platform) key -- a placeholder
+      // here would leave the first such row permanently unmatchable by the
+      // webhook, and a later unresolved publish on the same platform would
+      // collide with it. See useSponsorshipAmplification.ts for the same fix.
+      const outstandPostId = (postObj?.id ?? publishData?.id ?? null) as string | null;
 
       const draftMetadata = (draft.metadata ?? null) as Record<string, unknown> | null;
       const postType = resolvePostType(draftMetadata?.source as string | null, draft.campaign_id);
+
+      if (outstandPostId == null) {
+        // Neither write below can honestly happen: donny_scheduled_posts.metadata
+        // would tell outstand-webhook's recordPublishedPost this row is matchable
+        // when it isn't, and social_post_log.outstand_post_id is NOT NULL with no
+        // safe placeholder value. The publish itself already succeeded and the
+        // status/published_at update below still records that -- only the
+        // measurement plumbing is skipped, visibly.
+        console.warn(
+          `[DonnyProvider] Could not resolve an Outstand post id from the response for schedule row ${scheduledPostId} (platform ${draft.platform}); skipping the metadata.outstand_post_id update and the social_post_log write. Post is published but will not be measured.`,
+        );
+      }
 
       // Merge outstand_post_id into the existing metadata (never clobber — a
       // DragonShare draft's source/post_id lives here too). outstand-webhook's
       // recordPublishedPost matches schedule rows on metadata->>outstand_post_id;
       // without this, a schedule row that DID publish looks identical to one
       // that never existed, which is what grew the no-schedule-row fallback.
+      // status/published_at update unconditionally -- the post did publish --
+      // the metadata key is only included when there's a real id to put in it.
       const { error: scheduleUpdateError } = await supabase
         .from('donny_scheduled_posts')
         .update({
           status: 'published',
           published_at: new Date().toISOString(),
-          metadata: { ...(draftMetadata ?? {}), outstand_post_id: String(outstandPostId) },
+          ...(outstandPostId != null
+            ? { metadata: { ...(draftMetadata ?? {}), outstand_post_id: outstandPostId } }
+            : {}),
         })
         .eq('id', scheduledPostId);
 
       if (scheduleUpdateError) {
         // The post already published — this only affects whether the webhook
         // can match this schedule row. Published but unmatchable, not lost: the
-        // direct social_post_log insert below still records it, and the
-        // no-schedule-row fallback can still stamp it if an owner resolves.
+        // direct social_post_log insert below still records it (when an id was
+        // resolved), and the no-schedule-row fallback can still stamp it if an
+        // owner resolves.
         console.error(
           '[DonnyProvider] Failed to record outstand_post_id on schedule row (post published but unmatchable by webhook):',
           scheduleUpdateError,
         );
       }
 
-      if (session.user) {
+      if (session.user && outstandPostId != null) {
         const { error: logError } = await supabase.from('social_post_log').insert({
           user_id: session.user.id,
           campaign_id: draft.campaign_id,
-          outstand_post_id: String(outstandPostId),
+          outstand_post_id: outstandPostId,
           platform: draft.platform,
           post_type: postType,
           dragonshare_post_id:
