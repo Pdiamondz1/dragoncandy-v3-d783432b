@@ -7,9 +7,11 @@ code, again once Task 15 fixed a webhook/client race in that same code, again on
 simplified the no-schedule-row fallback at its root instead of patching it a fifth time, again
 once Task 17 closed a sixth variant of the same race (a partial multi-platform insert, this time on
 the *client* side) and fixed `content-performance-capture` measuring post age from row-creation time
-instead of actual publish time, and again once Task 18 **removed the no-schedule-row fallback
+instead of actual publish time, again once Task 18 **removed the no-schedule-row fallback
 outright** after a fifth review pass rated it a P1 (the ownership check it relied on was
-client-asserted, not server-established) — see "Amplification posts are not measured" below.
+client-asserted, not server-established) — see "Amplification posts are not measured" below — and
+again once Task 19 closed a coverage gap the spec itself had missed: `SocialPostPrompt.tsx`'s "Post
+Now" button — see "Post Now is now measured (Task 19)" below.
 **Read this before deploying `outstand-webhook`.** BLOCKER 1 below was a genuine data-correctness
 defect that no per-task review could see, because it lived in the seam between two tasks that each
 passed — it is now **fixed** (see below, and its five follow-on fix rounds). The HTTP 500 behavior
@@ -77,6 +79,42 @@ independently rediscovered three times while patching it instead of removing it.
 `post.published` event with no matching `donny_scheduled_posts` row. It is counted and logged
 (`outstand-webhook: no scheduled post for <postId> — not recorded for measurement`), never silent —
 exactly the behavior before Task 12 introduced the fallback.
+
+## Post Now is now measured (Task 19)
+
+**Gap found by Codex, not a regression — Post Now was never measured, at any point in this
+branch's history.** `SocialPostPrompt.tsx`'s `handlePostNow` called `crossPost.mutate` and, on
+success, only closed the dialog — it never wrote a `donny_scheduled_posts` row at all. Every other
+publish path in this file (`handleScheduleForBestTime`, `handleScheduleAllDeliverables`) already
+writes one via `syncScheduledPost`, whose `metadata.outstand_post_id` is exactly what
+`outstand-webhook`'s `recordPublishedPost` matches on. Post Now's `post.published` webhook delivery
+therefore always hit the no-schedule-row branch — `unmatched`, uncounted, permanently unmeasured —
+identical in shape to the amplification gap above, just via a different UI entry point the spec
+that scoped this branch's tasks never enumerated.
+
+**Fix: give Post Now the same trusted artifact, not a new fallback.** Reopening any form of
+account-matched fallback in the webhook was explicitly ruled out — that path was just removed as a
+P1 (see "Amplification posts are not measured" above). Instead, `syncScheduledPost` gained a
+`status: 'scheduled' | 'published'` parameter (default `'scheduled'`, so every existing caller is
+byte-identical), and `handlePostNow`'s `onSuccess` now calls it with `status: 'published'` and the
+real Outstand post id, using the already-published-so-scheduled-time-is-now value for both
+`scheduled_at` and `published_at`. This produces the exact `donny_scheduled_posts` row shape the
+webhook already knows how to match and stamp `verified_at` on — no new trust boundary, no new code
+path in the webhook.
+
+**If the Outstand post id comes back null,** `handlePostNow` logs a `console.warn` and skips the
+write entirely, rather than writing an unmatchable row with `outstand_post_id: null` — a stricter
+rule than `syncScheduledPost`'s own null-handling (which still writes the row for the scheduled
+paths, since a schedule row has other uses — the calendar UI — even unmeasured). A `published`-status
+row exists purely to be matched by the webhook; one that can never match is worse than no row at
+all, since it would sit there indefinitely looking like a successfully recorded post.
+
+**Security posture unchanged.** The new row is inserted (or an existing draft row updated) by the
+authenticated user under their own `user_id`, through the same client-side Supabase call every other
+`donny_scheduled_posts` write in this file already makes, gated by the same table RLS. The webhook
+matches and stamps it exactly as it does the pre-existing schedule paths — no new server-side trust
+assumption beyond the one already documented in
+`docs/wiki/raw/sessions/2026-08-05-outstand-cross-tenant-metric-read.md`.
 
 ## BLOCKER 1 — per-platform rows collapse into one `content_performance` record (FIXED, Task 11)
 

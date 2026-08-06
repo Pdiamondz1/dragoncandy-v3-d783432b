@@ -246,7 +246,12 @@ function SocialPostPromptInner({
     ? `${caption}\n\n${hashtags.join(' ')}`
     : caption;
 
-  const syncScheduledPost = async (scheduleTime: string, outstandPostId?: string | null, socialAccountIds?: string[]) => {
+  const syncScheduledPost = async (
+    scheduleTime: string,
+    outstandPostId?: string | null,
+    socialAccountIds?: string[],
+    status: 'scheduled' | 'published' = 'scheduled',
+  ) => {
     if (!user?.id || !campaignId) return;
     if (outstandPostId == null) {
       // useCrossPost couldn't extract an Outstand post id from the response
@@ -258,6 +263,10 @@ function SocialPostPromptInner({
     const platforms = accounts
       .filter((a) => selectedAccountIds.includes(a.id))
       .map((a) => a.network ?? 'unknown');
+
+    // Post Now has no future schedule — it published the instant crossPost
+    // resolved, so scheduleTime IS the publish time in that call.
+    const publishedAt = status === 'published' ? scheduleTime : undefined;
 
     const existing = await supabase
       .from('donny_scheduled_posts')
@@ -273,8 +282,9 @@ function SocialPostPromptInner({
       const { error: scheduleError } = await supabase
         .from('donny_scheduled_posts')
         .update({
-          status: 'scheduled' as string,
+          status,
           scheduled_at: scheduleTime,
+          ...(publishedAt ? { published_at: publishedAt } : {}),
           caption,
           hashtags,
           media_urls: mediaUrls,
@@ -310,9 +320,10 @@ function SocialPostPromptInner({
           hashtags,
           media_urls: mediaUrls,
           scheduled_at: scheduleTime,
-          status: 'scheduled' as string,
-          ai_suggested_time: !!suggestedTime,
-          ai_reasoning: suggestedTime ? 'Donny picked the optimal posting time' : null,
+          ...(publishedAt ? { published_at: publishedAt } : {}),
+          status,
+          ai_suggested_time: status === 'scheduled' && !!suggestedTime,
+          ai_reasoning: status === 'scheduled' && suggestedTime ? 'Donny picked the optimal posting time' : null,
           metadata: {
             outstand_post_id: outstandPostId ?? null,
             social_account_ids: socialAccountIds ?? selectedAccountIds,
@@ -494,7 +505,29 @@ function SocialPostPromptInner({
     if (selectedAccountIds.length === 0) return;
     crossPost.mutate(
       { caption: fullCaption, mediaUrls, accountIds: selectedAccountIds },
-      { onSuccess: () => onOpenChange(false) },
+      {
+        onSuccess: async (data) => {
+          const outstandPostId = data?._outstandPostId ?? null;
+          if (outstandPostId == null) {
+            // Same unmatchable-null situation as syncScheduledPost, but here an
+            // unrecorded row is strictly worse than no row: the webhook's
+            // post.published handler can only ever match on
+            // metadata->>outstand_post_id, so a row with a null id can never be
+            // matched and would just be dead weight sitting in 'published'
+            // status forever. Skip the write entirely.
+            console.warn('[SocialPostPrompt] outstand_post_id is null — this Post Now post will never be matched by the webhook and will not be measured.');
+          } else {
+            // Post Now has no schedule row from an earlier flow to attach to —
+            // mirror syncScheduledPost's own insert-or-update-draft shape so the
+            // webhook has the same trusted artifact (metadata.outstand_post_id)
+            // every other publish path produces. See docs/wiki/raw/sessions/
+            // 2026-08-05-outstand-cross-tenant-metric-read.md for why the webhook
+            // cannot fall back to matching by account instead.
+            await syncScheduledPost(new Date().toISOString(), outstandPostId, selectedAccountIds, 'published');
+          }
+          onOpenChange(false);
+        },
+      },
     );
   };
 
