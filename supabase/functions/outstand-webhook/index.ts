@@ -13,6 +13,7 @@ import {
   type OutstandSocialAccount,
 } from "../_shared/outstand-webhook-lib.ts";
 import { buildSocialPostLogRow, isGenuineScheduleAmbiguity } from "../_shared/social-post-log-row.ts";
+import { applyOwnershipBinding } from "../_shared/outstand-post-ownership.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -32,6 +33,45 @@ const json = (status: number, body: unknown) =>
  *
  * Returns 'recorded' | 'unmatched' | 'failed' so the caller can count outcomes.
  * An unmatched post is a VISIBLE hole, never a silent one.
+ *
+ * OWNERSHIP IS PERMISSIVE HERE (Task 4, 2026-08-06) — deliberately, and unlike
+ * reconcile-social-posts, which is strict. This function is the deployed choke
+ * point for every live publish, and every post published before outstand-proxy
+ * started minting outstand_post_ownership bindings has none and never will.
+ * Demanding a binding here would stop measuring that entire existing population
+ * outright. So: PREFER the binding when present (and reject a schedule row that
+ * disagrees with it, exactly as the sweep does), FALL BACK to today's
+ * schedule-row match when absent — and report which one was used on every
+ * delivery via the `ownership` field, so the legacy population is a number
+ * somebody can count in the logs rather than an assumption. The sweep is strict
+ * because it is brand new: no live traffic depends on it recording anything, so
+ * it can demand the binding from day one without losing coverage that exists.
+ *
+ * `ownership` values (emitted as `ownership=<v>` in the caller's single summary
+ * log line — greppable, one line per delivery, which is what a per-request
+ * function can offer in place of a run summary):
+ *   binding                     — a server-established binding matched and the
+ *                                 schedule row agreed. Trustworthy.
+ *   legacy_schedule             — no binding exists; user_id came from the
+ *                                 client-writable schedule row. THIS is the
+ *                                 fallback counter: its rate is the legacy
+ *                                 population, and it should trend to zero.
+ *   legacy_schedule_unreadable  — the binding READ failed (incl. the migration
+ *                                 not yet applied). Same fallback, but for a
+ *                                 different reason; separated so a broken query
+ *                                 can never hide inside the expected number.
+ *   conflict                    — a binding exists and NOT ONE candidate
+ *                                 schedule row agrees with it. Nothing is
+ *                                 recorded.
+ *   not_evaluated               — returned before ownership was consulted (the
+ *                                 schedule lookup errored, or matched no rows).
+ *
+ * `rejectedScheduleRows` is the second half of the forgery signal, and the more
+ * important one: it counts candidate rows discarded for contradicting the
+ * binding EVEN WHEN a legitimate row survived and the post was recorded
+ * correctly. `conflict` only fires when an attacker's row is the ONLY one;
+ * `rejectedScheduleRows` fires on the far more likely case where the plant was
+ * neutralised, which would otherwise leave no trace at all.
  */
 async function recordPublishedPost(
   supabase: ReturnType<typeof createClient>,
@@ -39,7 +79,18 @@ async function recordPublishedPost(
   publishedAt: string,
   accounts: OutstandSocialAccount[],
   rawAccountCount: number,
-): Promise<{ outcome: "recorded" | "unmatched" | "failed"; rows: number; dropped: number }> {
+): Promise<{
+  outcome: "recorded" | "unmatched" | "failed";
+  rows: number;
+  dropped: number;
+  ownership:
+    | "binding"
+    | "legacy_schedule"
+    | "legacy_schedule_unreadable"
+    | "conflict"
+    | "not_evaluated";
+  rejectedScheduleRows: number;
+}> {
   // Entries parseAccounts discarded as malformed, plus (below) entries that
   // parsed fine but carry no network. Carried forward from the Task 4 review: a
   // skip that increments no counter is the failure mode this whole sub-project
@@ -59,7 +110,7 @@ async function recordPublishedPost(
 
   if (schedErr) {
     console.error("outstand-webhook: schedule lookup failed", schedErr.message);
-    return { outcome: "failed", rows: 0, dropped };
+    return { outcome: "failed", rows: 0, dropped, ownership: "not_evaluated", rejectedScheduleRows: 0 };
   }
   if (!schedRows || schedRows.length === 0) {
     // No schedule row: published outside our flow. Since Task 16,
@@ -85,8 +136,72 @@ async function recordPublishedPost(
     // provider-account ownership is server-established — see
     // docs/runbooks/social-measurement-spine-deploy.md.
     console.warn(`outstand-webhook: no scheduled post for ${postId} — not recorded for measurement`);
-    return { outcome: "unmatched", rows: 0, dropped };
+    return { outcome: "unmatched", rows: 0, dropped, ownership: "not_evaluated", rejectedScheduleRows: 0 };
   }
+  // SERVER-ESTABLISHED OWNERSHIP (Task 4). Until now the ONLY thing deciding
+  // which user_id got credited for a published post was
+  // donny_scheduled_posts.metadata->>'outstand_post_id' — and `authenticated`
+  // holds INSERT+UPDATE on every column of that table (verified on prod via
+  // information_schema.column_privileges; its RLS policies constrain user_id
+  // and nothing else). So anyone could plant a row naming any post id, have it
+  // win the `created_at asc` pick below, and get content-performance-capture to
+  // spend the org-wide OUTSTAND_API_KEY fetching a stranger's analytics and
+  // file them under their own user_id. outstand_post_ownership is the fix:
+  // outstand-proxy writes it on a 2xx POST /posts from ctx.userId
+  // (auth.getUser(), not a body field) plus the id in Outstand's own response —
+  // both halves unforgeable by a client.
+  //
+  // A read error degrades to the legacy fallback rather than failing the
+  // delivery. Deliberate: this is a live path, a 500 here burns Outstand's five
+  // retries, and before migration 20260806184500 is applied this table does not
+  // exist — a hard failure would take measurement from "as good as yesterday"
+  // to "nothing" for the entire window between deploy and migration. The
+  // separate `legacy_schedule_unreadable` label keeps that case from hiding
+  // inside the expected `legacy_schedule` number.
+  const { data: bindingRow, error: bindingErr } = await supabase
+    .from("outstand_post_ownership")
+    .select("user_id")
+    .eq("outstand_post_id", postId)
+    .maybeSingle();
+  if (bindingErr) {
+    console.error("outstand-webhook: ownership binding lookup failed", bindingErr.message);
+  }
+  const bindingUserId = bindingErr ? null : ((bindingRow?.user_id as string | undefined) ?? null);
+
+  // Discard any candidate whose user_id the binding contradicts, keeping the
+  // rest in the query's created_at-asc order. A forged row can never survive
+  // by accident: donny_scheduled_posts' INSERT policy is
+  // WITH CHECK (user_id = auth.uid()) and its UPDATE policy is
+  // USING (user_id = auth.uid()) with no WITH CHECK (Postgres reuses USING for
+  // the new row), so a planted row always carries the planter's own id, which
+  // cannot equal the real creator's binding. And because every survivor
+  // satisfies user_id === bindingUserId, buildSocialPostLogRow keeps reading
+  // sched.user_id and the row's user_id is still server-established, by
+  // construction — the shared row builder needs no new parameter and stays pure.
+  // See _shared/outstand-post-ownership.ts for why rejection is per-ROW, not
+  // per-post.
+  const owner = applyOwnershipBinding(bindingUserId, schedRows);
+  if (owner.rejected > 0) {
+    // Fires even when the attack was neutralised (a legitimate row survived) —
+    // a neutralised forgery that incremented nothing would be invisible.
+    console.error(
+      `outstand-webhook: discarded ${owner.rejected} donny_scheduled_posts row(s) for ${postId} ` +
+      `whose user_id the server-established ownership binding (${bindingUserId}) contradicts`,
+    );
+  }
+  if (owner.kind === "conflict") {
+    // NOT 'failed': returning 500 would make Outstand retry five times against
+    // data that cannot get better. Nothing is recorded, and it is loud.
+    console.error(
+      `outstand-webhook: ownership conflict for ${postId} — no donny_scheduled_posts row agrees ` +
+      `with the server-established binding (${bindingUserId}); refusing to record for measurement`,
+    );
+    return { outcome: "unmatched", rows: 0, dropped, ownership: "conflict", rejectedScheduleRows: owner.rejected };
+  }
+  const ownership = owner.kind === "binding"
+    ? "binding" as const
+    : (bindingErr ? "legacy_schedule_unreadable" as const : "legacy_schedule" as const);
+
   // DELIBERATE BEHAVIOR CHANGE #1 (review round 1): fires only on a GENUINE
   // disagreement between candidates now, not routine multi-platform fan-out.
   // This warning predates amplification writing schedule rows at all (zero
@@ -97,12 +212,17 @@ async function recordPublishedPost(
   // pre-existing warning logic would have fired on every multi-platform
   // amplification delivery, making a real ambiguity indistinguishable from
   // routine operation. Gated here rather than left as noise.
-  if (schedRows.length > 1 && isGenuineScheduleAmbiguity(schedRows)) {
+  //
+  // Runs over the BINDING-FILTERED candidates (Task 4), not the raw query
+  // result: a planted row is a forgery, already counted above as `rejected` —
+  // reporting it a second time as an "ambiguity" would put a security event in
+  // the wrong bucket and re-noise the warning this gate was added to quiet.
+  if (owner.candidates.length > 1 && isGenuineScheduleAmbiguity(owner.candidates)) {
     console.warn(
-      `outstand-webhook: ${schedRows.length} scheduled posts match ${postId} — using oldest (created_at asc)`,
+      `outstand-webhook: ${owner.candidates.length} scheduled posts match ${postId} — using oldest (created_at asc)`,
     );
   }
-  const sched = schedRows[0];
+  const sched = owner.candidates[0];
 
   // The EVENT is authoritative about what published and where; the schedule row
   // only supplies dimensions. socialAccounts[].network is the platform, one entry
@@ -120,7 +240,7 @@ async function recordPublishedPost(
   if (platforms.length === 0) {
     // platform is NOT NULL on social_post_log, so there is no honest row to write.
     console.warn(`outstand-webhook: no platform for ${postId} — not recorded for measurement`);
-    return { outcome: "unmatched", rows: 0, dropped };
+    return { outcome: "unmatched", rows: 0, dropped, ownership, rejectedScheduleRows: owner.rejected };
   }
 
   // Row construction — post_type resolution, dragonshare_post_id derivation
@@ -161,9 +281,9 @@ async function recordPublishedPost(
 
   if (upsertErr) {
     console.error("outstand-webhook: social_post_log upsert failed", upsertErr.message);
-    return { outcome: "failed", rows: 0, dropped };
+    return { outcome: "failed", rows: 0, dropped, ownership, rejectedScheduleRows: owner.rejected };
   }
-  return { outcome: "recorded", rows: rows.length, dropped };
+  return { outcome: "recorded", rows: rows.length, dropped, ownership, rejectedScheduleRows: owner.rejected };
 }
 
 serve(async (req: Request) => {
@@ -218,8 +338,14 @@ serve(async (req: Request) => {
           accounts,
           rawAccountCount,
         );
+        // `ownership=` is emitted on EVERY delivery, not only the interesting
+        // ones: counting how often the legacy schedule-row fallback is still
+        // load-bearing is only possible if the healthy case prints a value too.
+        // See recordPublishedPost's doc comment for the vocabulary.
         console.log(
           `outstand-webhook: measurement record for ${postId}: ${res.outcome} rows=${res.rows}` +
+          ` ownership=${res.ownership}` +
+          (res.rejectedScheduleRows > 0 ? ` rejectedScheduleRows=${res.rejectedScheduleRows}` : "") +
           (res.dropped > 0 ? ` droppedAccounts=${res.dropped}` : ""),
         );
         if (res.outcome === "failed") {

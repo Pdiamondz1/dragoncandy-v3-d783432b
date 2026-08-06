@@ -16,6 +16,27 @@
 // reconcile.ts's header comment and
 // .superpowers/sdd/2026-08-06-amplification-reconciliation/task-3-brief.md.
 //
+// OWNERSHIP IS STRICT HERE (Task 4, 2026-08-06). Every row this sweep writes
+// carries a user_id that came from outstand_post_ownership — a binding minted
+// server-side by outstand-proxy from an authenticated ctx.userId plus the
+// provider's own create-post response id. No binding, no write (`unbound`).
+// Any donny_scheduled_posts row the binding contradicts is discarded and
+// counted (`bindingRejectedRows`) instead of believed, so a planted row cannot
+// deny measurement of the real post it was aimed at; if NONE of the candidates
+// agree there is nothing to vouch for and the post is skipped
+// (`bindingConflicts`). Binding read failed, no write (`bindingUnavailable`) —
+// unknown is not the same as absent.
+//
+// DEPLOY ORDERING MATTERS. Until migration 20260806184500 is applied, the
+// outstand_post_ownership read errors on every page and this sweep records
+// NOTHING, reporting it as bindingLookupErrors + bindingUnavailable in the run
+// summary (a loud, visible zero rather than a quiet one). That is the intended
+// fail-closed behavior; it is not a reason to relax the gate. Apply the
+// migration, then deploy outstand-proxy (so bindings start being minted), then
+// this. Posts published before the proxy change will never have a binding and
+// are permanently outside this sweep's reach by design — outstand-webhook's
+// permissive fallback is what still covers them.
+//
 // Auth: cron passes Bearer <SUPABASE_SERVICE_ROLE_KEY> (the injected service/
 // sb_secret key), exactly like content-performance-capture. verify_jwt=false;
 // we check the bearer ourselves via isAuthorizedIngest.
@@ -32,11 +53,13 @@ import {
   resolvePublishedAt,
   isWithinActionWindow,
   withoutOwnerConflicts,
+  strictBindingGate,
   type ProviderPost,
   type ExistingLogRow,
   type ScheduleCandidate,
 } from "./reconcile.ts";
 import { buildSocialPostLogRow, isGenuineScheduleAmbiguity } from "../_shared/social-post-log-row.ts";
+import { applyOwnershipBinding } from "../_shared/outstand-post-ownership.ts";
 import { isAuthorizedIngest } from "../_shared/ingest-auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -143,8 +166,11 @@ serve(async (req: Request) => {
   //              budgetTruncated, ambiguousMatches, postProcessingErrors
   //   platforms: platformsScanned, droppedAccounts, alreadyRecorded,
   //              newlyRecorded, unmatched, staleSkipped, scheduleLookupErrors,
-  //              upsertErrors, ownerConflicts
-  //   pages:     pagesFetched, fetchErrors, existingLookupErrors
+  //              upsertErrors, ownerConflicts, unbound, bindingConflicts,
+  //              bindingUnavailable
+  //   pages:     pagesFetched, fetchErrors, existingLookupErrors,
+  //              bindingLookupErrors
+  //   schedule rows: bindingRejectedRows
   // platformsScanned is the platform-grain denominator (Important 2 review):
   // compare unmatched/newlyRecorded/etc against IT, never against postsScanned.
   let postsScanned = 0;
@@ -187,6 +213,34 @@ serve(async (req: Request) => {
   let droppedAccounts = 0;
   let noPublishedPlatforms = 0;
   let postProcessingErrors = 0;
+  // STRICT ownership gate (Task 4). Three distinct facts, three distinct
+  // numbers — see reconcile.ts's strictBindingGate for why conflating them
+  // would quietly undo this task:
+  //   unbound            — read succeeded, no outstand_post_ownership row for
+  //                        this post. Every post published before outstand-proxy
+  //                        started minting bindings lands here, permanently, so
+  //                        a large steady value is the honest size of the legacy
+  //                        population — not an alarm.
+  //   bindingConflicts   — a binding exists and NOT ONE matched schedule row
+  //                        agrees with it, so there is nothing the server can
+  //                        vouch for. Refused.
+  //   bindingUnavailable — the binding read itself failed (incl. "migration not
+  //                        applied yet"), so ownership is UNKNOWN. Refused, not
+  //                        assumed absent.
+  //   bindingRejectedRows — SCHEDULE-ROW grain, not platform: individual
+  //                        donny_scheduled_posts rows discarded for
+  //                        contradicting the binding. This is the forgery
+  //                        signal, and the important one — it fires even when a
+  //                        legitimate row survived and the post WAS recorded,
+  //                        i.e. exactly when the attack was neutralised and
+  //                        would otherwise have left no trace. Any non-zero
+  //                        value deserves a look; a rising one is an
+  //                        id-guessing campaign.
+  let unbound = 0;
+  let bindingConflicts = 0;
+  let bindingUnavailable = 0;
+  let bindingRejectedRows = 0;
+  let bindingLookupErrors = 0;
 
   const deadline = Date.now() + RUN_BUDGET_MS;
   let offset = 0;
@@ -259,6 +313,37 @@ serve(async (req: Request) => {
       }
     }
 
+    // Batch-read the SERVER-ESTABLISHED ownership bindings for this page. Same
+    // plain-column .in() shape and the same PAGE_LIMIT=100 bound as the
+    // social_post_log read above (this codebase has been bitten by an unbounded
+    // .in() overflowing undici's 16 KB header limit, which read as a network
+    // outage).
+    //
+    // Unlike that read, a failure here is NOT recoverable by "assume nothing
+    // exists": treating an errored read as "no binding" would make every post
+    // on the page look unbound, which is indistinguishable from the legacy
+    // population and would hide a broken query behind an expected-looking
+    // number. bindingReadFailed routes those posts to their own counter instead.
+    const bindingByPost = new Map<string, string>();
+    let bindingReadFailed = false;
+    if (pageIds.length > 0) {
+      const { data: bindingRows, error: bindingErr } = await admin
+        .from("outstand_post_ownership")
+        .select("outstand_post_id, user_id")
+        .in("outstand_post_id", pageIds);
+      if (bindingErr) {
+        // Also the "migration not applied yet" case — the table simply does not
+        // exist. Loud, because in that state this sweep records nothing at all.
+        console.error("[reconcile] outstand_post_ownership batch read failed", bindingErr.message);
+        bindingLookupErrors++;
+        bindingReadFailed = true;
+      } else {
+        for (const row of (bindingRows ?? []) as Array<{ outstand_post_id: string; user_id: string }>) {
+          bindingByPost.set(row.outstand_post_id, row.user_id);
+        }
+      }
+    }
+
     for (const post of posts) {
       if (Date.now() > deadline) { budgetTruncated++; continue; }
       // post.id is guaranteed a non-empty string here — filtered above.
@@ -306,9 +391,28 @@ serve(async (req: Request) => {
           continue;
         }
 
-        // Re-drive the SAME schedule lookup recordPublishedPost performs —
-        // the one and only place ownership is read from, and it's always
-        // read off OUR OWN table, never off the provider payload.
+        // STRICT ownership gate — evaluated BEFORE the schedule lookup so an
+        // unbound post costs zero extra DB round trips. That is not just
+        // tidiness: an unbound post is never recorded, so it stays "missing"
+        // and is re-scanned on every hourly run forever. Paying a schedule
+        // lookup for each of them, every hour, against RUN_BUDGET_MS would let
+        // the permanently-unbound legacy population crowd out the recent posts
+        // this sweep exists to rescue.
+        const gate = strictBindingGate(bindingReadFailed, bindingByPost.get(post.id) ?? null);
+        if (!gate.proceed) {
+          if (gate.reason === "bindingUnavailable") {
+            bindingUnavailable += missing.length;
+          } else {
+            unbound += missing.length;
+          }
+          continue;
+        }
+
+        // Re-drive the SAME schedule lookup recordPublishedPost performs. Since
+        // Task 4 this supplies DIMENSIONS ONLY (caption, hashtags, content_type,
+        // scheduled_at, campaign_id, metadata) — the owner is `gate.bindingUserId`,
+        // and a schedule row that disagrees with it is rejected below rather
+        // than believed.
         const { data: schedRows, error: schedErr } = await admin
           .from("donny_scheduled_posts")
           .select("user_id, campaign_id, platform, caption, hashtags, content_type, scheduled_at, metadata, created_at")
@@ -327,17 +431,56 @@ serve(async (req: Request) => {
           unmatched += missing.length;
           continue;
         }
+        // THE AGREEMENT CHECK. Discard any candidate whose user_id the binding
+        // contradicts, keeping the rest in the query's created_at-asc order. A
+        // forged row can never survive by accident: donny_scheduled_posts'
+        // INSERT policy is WITH CHECK (user_id = auth.uid()) and its UPDATE
+        // policy is USING (user_id = auth.uid()) with no WITH CHECK (so
+        // Postgres reuses USING for the new row), meaning a planted row ALWAYS
+        // carries the planter's own id — which can never equal the real
+        // creator's binding. Because every survivor satisfies
+        // user_id === gate.bindingUserId, buildSocialPostLogRow can keep reading
+        // sched.user_id and the row's user_id is still server-established, by
+        // construction — which is why the shared row builder needed no new
+        // parameter and stays pure. See _shared/outstand-post-ownership.ts for
+        // why the rejection is per-ROW rather than per-post.
+        const owner = applyOwnershipBinding(gate.bindingUserId, schedRows as ScheduleCandidate[]);
+        if (owner.rejected > 0) {
+          // Fires even when the attack was neutralised (a legitimate row
+          // survived and the post IS recorded) — a neutralised forgery that
+          // incremented nothing would be invisible, and this is the counter
+          // that would reveal an id-guessing campaign in progress.
+          console.error(
+            `[reconcile] discarded ${owner.rejected} donny_scheduled_posts row(s) for postId=${post.id} ` +
+            `whose user_id the server-established binding (${gate.bindingUserId}) contradicts`,
+          );
+          bindingRejectedRows += owner.rejected;
+        }
+        if (owner.kind !== "binding") {
+          console.error(
+            `[reconcile] ownership conflict: postId=${post.id} binding=${gate.bindingUserId} — ` +
+            `no donny_scheduled_posts row agrees with the server-established binding, refusing to record`,
+          );
+          bindingConflicts += missing.length;
+          continue;
+        }
+
         // Fires only on a GENUINE disagreement between candidates, not
         // routine multi-platform fan-out (useSponsorshipAmplification
         // writes one row per platform for a single amplification, identical
         // apart from `platform`, which isGenuineScheduleAmbiguity
         // deliberately never compares). Before this check, amplification
         // tripped this on every delivery.
-        if (schedRows.length > 1 && isGenuineScheduleAmbiguity(schedRows)) {
-          console.warn(`[reconcile] ${schedRows.length} scheduled posts match ${post.id} — using oldest (created_at asc)`);
+        //
+        // Runs over the BINDING-FILTERED candidates: a planted row is a forgery
+        // already counted as bindingRejectedRows above, and re-reporting it as
+        // an "ambiguity" would put a security event in the wrong bucket and
+        // re-noise the warning this gate exists to quiet.
+        if (owner.candidates.length > 1 && isGenuineScheduleAmbiguity(owner.candidates)) {
+          console.warn(`[reconcile] ${owner.candidates.length} scheduled posts match ${post.id} — using oldest (created_at asc)`);
           ambiguousMatches++;
         }
-        const sched = pickScheduleMatch(schedRows as ScheduleCandidate[]);
+        const sched = pickScheduleMatch(owner.candidates);
         if (!sched) { unmatched += missing.length; continue; }
 
         // Refuse to silently reassign an existing (unverified) row's owner —
@@ -406,10 +549,17 @@ serve(async (req: Request) => {
     scheduleLookupErrors,
     upsertErrors,
     ownerConflicts,
+    unbound,
+    bindingConflicts,
+    bindingUnavailable,
     // pages
     pagesFetched,
     fetchErrors,
     existingLookupErrors,
+    bindingLookupErrors,
+    // schedule rows — its own grain; never compare it against the platform or
+    // page numbers above.
+    bindingRejectedRows,
     windowStart: cutoff,
   };
 

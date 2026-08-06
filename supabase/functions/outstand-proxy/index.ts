@@ -16,6 +16,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { extractCreatedPostId } from "../_shared/outstand-post-ownership.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -344,13 +345,34 @@ async function enforceScope(args: {
       }
     }
     if (!allowed) {
-      const { data: localPost } = await admin
-        .from("donny_scheduled_posts")
+      // Last-resort ownership check, on the SERVER-ESTABLISHED binding.
+      //
+      // This used to read donny_scheduled_posts and allow when a row whose
+      // metadata->>'outstand_post_id' equalled this path id named ctx.userId —
+      // i.e. it authorized an org-key-backed read of a single post (and, via
+      // the same rule, /posts/{id}/analytics, whose response this proxy does
+      // NOT filter) from the same client-writable source Task 4 exists to
+      // distrust. `authenticated` holds INSERT+UPDATE on every column of that
+      // table (verified on prod), so planting one row was enough to read a
+      // stranger's post and its analytics. Closing that hole in the consumers
+      // while leaving it open here would have moved the leak, not fixed it.
+      // outstand_post_ownership is the same fact, minted server-side and
+      // unwritable by any client — see
+      // supabase/migrations/20260806184500_outstand_post_ownership.sql.
+      //
+      // A read error (including "migration not applied yet") leaves `allowed`
+      // false: this fallback may only ever GRANT on positive evidence. It is
+      // the narrowest of three checks — the account-id and platform checks
+      // above still run first — so a deploy-before-migration window costs at
+      // most this fallback, never a wrongful allow.
+      const { data: binding, error: bindingErr } = await admin
+        .from("outstand_post_ownership")
         .select("user_id")
-        .eq("metadata->>outstand_post_id", postId)
-        .limit(1)
+        .eq("outstand_post_id", postId)
         .maybeSingle();
-      if (localPost && localPost.user_id === ctx.userId) {
+      if (bindingErr) {
+        console.error("outstand-proxy: ownership binding lookup failed", bindingErr.message);
+      } else if (binding && binding.user_id === ctx.userId) {
         allowed = true;
       }
     }
@@ -514,6 +536,111 @@ async function handleRecordConnection(
     return jsonResponse(500, { error: "db_error", detail: upsertError.message });
   }
   return jsonResponse(200, { success: true });
+}
+
+/**
+ * Record the SERVER-ESTABLISHED owner of a post this caller just created.
+ *
+ * THE POINT. Everything downstream that decides "whose post is this" —
+ * outstand-webhook's recordPublishedPost, reconcile-social-posts' sweep, and
+ * therefore content-performance-capture's org-key analytics fetch — used to
+ * read that answer out of donny_scheduled_posts.metadata, which `authenticated`
+ * can write freely (verified on prod: INSERT+UPDATE on every column, and the
+ * RLS policies constrain only user_id). This function is the one place in the
+ * system that knows the answer WITHOUT asking a client: `ctx.userId` came from
+ * auth.getUser() on the caller's own JWT, and `postId` came from Outstand's own
+ * response to a call this proxy just made with the org key. See
+ * supabase/migrations/20260806184500_outstand_post_ownership.sql.
+ *
+ * NEVER THROWS, and never changes what the caller gets back. By the time this
+ * runs, Outstand has already created the post — the publish SUCCEEDED. Throwing
+ * (or returning a non-2xx) would tell the user their publish failed when it did
+ * not, and would strand a real post with an unrecoverable UI state. A failed
+ * binding write instead costs exactly one thing: that post becomes
+ * unmeasurable-by-binding (the strict sweep will skip it; the webhook will fall
+ * back to its legacy schedule-row match), which is why it is logged at
+ * console.error rather than swallowed.
+ *
+ * Idempotent: `ignoreDuplicates` maps to ON CONFLICT DO NOTHING on the
+ * outstand_post_id primary key, so a retried publish that reuses an id is a
+ * no-op instead of a 23505. First writer wins, which is correct — Outstand
+ * issues each post id once, to whoever created it.
+ */
+async function recordPostOwnership(
+  admin: SupabaseClient,
+  ctx: TenantContext,
+  upstreamText: string,
+): Promise<void> {
+  let parsed: unknown;
+  try {
+    parsed = upstreamText ? JSON.parse(upstreamText) : null;
+  } catch {
+    console.error(
+      "outstand-proxy: POST /posts returned a 2xx with a non-JSON body — no ownership binding written; this post will not be measurable by binding",
+    );
+    return;
+  }
+
+  const postId = extractCreatedPostId(parsed);
+  if (!postId) {
+    // Loud on purpose. A silent miss here is the failure mode this whole task
+    // guards against: no binding is written, the strict sweep skips every post,
+    // and every run still looks healthy. If this ever fires in production it
+    // means the provider's create-post response shape moved.
+    console.error(
+      "outstand-proxy: could not resolve a created post id from a 2xx POST /posts response — no ownership binding written; this post will not be measurable by binding. Response keys:",
+      parsed && typeof parsed === "object" ? Object.keys(parsed as Record<string, unknown>).join(", ") : typeof parsed,
+    );
+    return;
+  }
+
+  const { data: inserted, error } = await admin
+    .from("outstand_post_ownership")
+    .upsert(
+      { outstand_post_id: postId, user_id: ctx.userId },
+      { onConflict: "outstand_post_id", ignoreDuplicates: true },
+    )
+    .select("outstand_post_id");
+
+  if (!error && (!inserted || inserted.length === 0)) {
+    // ON CONFLICT DO NOTHING returns no rows, so "nothing inserted" means a
+    // binding for this id ALREADY existed. Normally that is this same user's
+    // retried publish and is exactly the idempotency we want. But if the
+    // existing row names a DIFFERENT user, one user's post has just been
+    // credited to another — a provider id collision or id reuse — and
+    // first-writer-wins would make that permanent and completely invisible.
+    // Only reached on the (rare) conflict path, so it costs nothing on a normal
+    // publish.
+    const { data: existing, error: readBackErr } = await admin
+      .from("outstand_post_ownership")
+      .select("user_id")
+      .eq("outstand_post_id", postId)
+      .maybeSingle();
+    if (readBackErr) {
+      console.error(
+        `outstand-proxy: could not read back the existing ownership binding for postId=${postId}:`,
+        readBackErr.message,
+      );
+    } else if (existing && existing.user_id !== ctx.userId) {
+      console.error(
+        `outstand-proxy: ownership binding collision for postId=${postId} — already bound to ` +
+        `${existing.user_id}, this publish was made by ${ctx.userId}. The binding is NOT being ` +
+        `changed (first writer wins); this post's measurement will be credited to the existing ` +
+        `owner. A provider post id was reused or collided.`,
+      );
+    }
+  }
+
+  if (error) {
+    // Includes the pre-migration case: until
+    // 20260806184500_outstand_post_ownership.sql is applied this table does not
+    // exist, every call lands here, and NOTHING gets a binding. That is why
+    // this line names the table and the consequence explicitly.
+    console.error(
+      `outstand-proxy: failed to write outstand_post_ownership for postId=${postId} — this post will not be measurable by binding (reconcile-social-posts will skip it; outstand-webhook will use its legacy schedule match):`,
+      error.message,
+    );
+  }
 }
 
 async function recordDisconnect(
@@ -698,6 +825,29 @@ serve(async (req: Request) => {
     if (req.method === "DELETE" && /^\/social-accounts\/[^/]+$/.test(pathOnly)) {
       const id = pathOnly.split("/")[2];
       if (id) await recordDisconnect(admin, ctx, id);
+    }
+    // Post created: record who created it, server-side. Deliberately placed
+    // AFTER the doc/SDK normalization above so `upstreamText` carries both
+    // `post` and `data.post` (extractCreatedPostId accepts either, so the
+    // position is not load-bearing — but reading the normalized text keeps this
+    // reading the same bytes the caller does). `pathOnly` has already had its
+    // trailing slash stripped, so this matches the SDK's `POST /posts/` and
+    // DonnyProvider's `/posts/` as well as `POST /posts`.
+    //
+    // ctx.userId is server-derived (auth.getUser() on the caller's own JWT) and
+    // postId comes from Outstand's own response, so neither half of this
+    // binding is client-assertable. Note what it does and does NOT assert: it
+    // records WHO CALLED POST /posts, which is the right owner for measurement.
+    // It does not certify that the caller legitimately controls the social
+    // accounts they published to — enforceScope checks those against
+    // business_outstand_accounts, whose INSERT policy does not constrain
+    // outstand_social_account_id, so that set is itself client-assertable. That
+    // is a separate, pre-existing hole (an account-id claim lets you publish to
+    // someone else's connected account) needing its own column-privilege
+    // lockdown, the way 20260804174934 locked UPDATE. This binding neither
+    // widens nor fixes it.
+    if (req.method === "POST" && pathOnly === "/posts") {
+      await recordPostOwnership(admin, ctx, upstreamText);
     }
   }
 

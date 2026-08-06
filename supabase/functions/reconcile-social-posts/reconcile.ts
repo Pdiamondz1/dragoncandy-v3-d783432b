@@ -22,6 +22,18 @@
 // fixes DELIVERY ORDER, not ownership, and every function below only ever
 // reads an owner off a donny_scheduled_posts row — never off the provider
 // payload.
+//
+// AS OF 2026-08-06 THAT CONSTRAINT GOT STRICTER, not looser. The schedule row
+// is no longer trusted as the ownership authority either: `authenticated` holds
+// INSERT+UPDATE on every column of donny_scheduled_posts (metadata included),
+// so a planted row could name any outstand_post_id. This sweep now REQUIRES a
+// server-established binding from outstand_post_ownership (minted by
+// outstand-proxy from an authenticated ctx.userId + the provider's own response
+// id) before it will write anything, and rejects a schedule row whose user_id
+// disagrees with that binding. The schedule row still supplies every DIMENSION
+// (caption, hashtags, content_type, scheduled_at, campaign_id, metadata) — it
+// just no longer decides WHO. See
+// supabase/migrations/20260806184500_outstand_post_ownership.sql.
 
 import type { ScheduledPostForLogRow } from '../_shared/social-post-log-row.ts';
 
@@ -175,6 +187,46 @@ export function withoutOwnerConflicts(
     }
   }
   return { safe, conflicts };
+}
+
+/**
+ * The STRICT ownership gate, evaluated before this sweep spends a schedule
+ * lookup on a post.
+ *
+ * `reason` names the counter the caller must increment — the whole point of
+ * returning it rather than a bare boolean. `bindingUnavailable` and `unbound`
+ * are different facts and must never share a number:
+ *
+ *   bindingUnavailable — the binding READ failed (DB error, or the migration
+ *     not yet applied so the table does not exist). Ownership is UNKNOWN, not
+ *     absent. A strict sweep must refuse here; degrading to "no binding, act
+ *     like before" would silently un-do this entire task the first time a query
+ *     errored, which is exactly the class of workaround the four previous
+ *     attempts at this hole all made.
+ *   unbound — the read succeeded and there is genuinely no binding. Every post
+ *     published before the proxy started minting bindings is permanently in
+ *     this bucket, so a large steady number here is EXPECTED and is the honest
+ *     measure of the legacy population, not an alarm.
+ *
+ * This sweep is strict because it is new: it carries no legacy burden and no
+ * live traffic depends on it recording anything today, so it can demand the
+ * binding from day one. outstand-webhook cannot — it is the deployed choke
+ * point for every live publish, and refusing unbound posts there would stop
+ * measuring the existing population outright. That asymmetry is deliberate.
+ */
+export type StrictBindingGate =
+  | { proceed: true; bindingUserId: string }
+  | { proceed: false; reason: 'bindingUnavailable' | 'unbound' };
+
+export function strictBindingGate(
+  bindingReadFailed: boolean,
+  bindingUserId: string | null | undefined,
+): StrictBindingGate {
+  if (bindingReadFailed) return { proceed: false, reason: 'bindingUnavailable' };
+  if (typeof bindingUserId !== 'string' || bindingUserId.length === 0) {
+    return { proceed: false, reason: 'unbound' };
+  }
+  return { proceed: true, bindingUserId };
 }
 
 /**

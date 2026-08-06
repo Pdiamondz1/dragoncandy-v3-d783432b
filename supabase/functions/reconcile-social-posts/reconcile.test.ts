@@ -6,6 +6,7 @@ import {
   resolvePublishedAt,
   isWithinActionWindow,
   withoutOwnerConflicts,
+  strictBindingGate,
   type ProviderPost,
   type ExistingLogRow,
   type ScheduleCandidate,
@@ -325,7 +326,43 @@ describe('pickScheduleMatch', () => {
   });
 });
 
+describe('strictBindingGate', () => {
+  it('proceeds with the binding when one was read', () => {
+    expect(strictBindingGate(false, 'user-1')).toEqual({ proceed: true, bindingUserId: 'user-1' });
+  });
+
+  it('skips as `unbound` when the read succeeded and found nothing', () => {
+    // The legacy population: every post published before outstand-proxy started
+    // minting bindings. Expected, permanent, and counted separately from errors.
+    expect(strictBindingGate(false, null)).toEqual({ proceed: false, reason: 'unbound' });
+    expect(strictBindingGate(false, undefined)).toEqual({ proceed: false, reason: 'unbound' });
+  });
+
+  it('skips as `bindingUnavailable` when the read FAILED — unknown is not absent', () => {
+    // The whole point of the distinction. A failed read reported as `unbound`
+    // would be indistinguishable from the expected legacy population, hiding a
+    // broken query (or an unapplied migration) behind a normal-looking number.
+    expect(strictBindingGate(true, null)).toEqual({ proceed: false, reason: 'bindingUnavailable' });
+  });
+
+  it('reports the read failure even when a stale binding value is somehow present', () => {
+    // Defensive ordering: if the caller ever passes both, the FAILURE wins.
+    // Acting on a value read by a query that errored is exactly the kind of
+    // "close enough" this task exists to eliminate.
+    expect(strictBindingGate(true, 'user-1')).toEqual({ proceed: false, reason: 'bindingUnavailable' });
+  });
+
+  it('treats a blank binding id as unbound rather than proceeding with it', () => {
+    expect(strictBindingGate(false, '')).toEqual({ proceed: false, reason: 'unbound' });
+  });
+});
+
 // buildSocialPostLogRow's tests moved to
 // supabase/functions/_shared/social-post-log-row.test.ts — it is now a
 // shared module used by both this sweep and outstand-webhook, not
 // reconcile-social-posts-specific logic.
+//
+// applyOwnershipBinding's tests live in
+// supabase/functions/_shared/outstand-post-ownership.test.ts — same reason: the
+// binding-agreement rule is shared with outstand-webhook, and only the STRICT
+// policy over it (strictBindingGate, above) is this sweep's own.
