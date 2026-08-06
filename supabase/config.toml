@@ -151,6 +151,14 @@ verify_jwt = false
 [functions.content-performance-capture]
 verify_jwt = false
 
+# Cron worker: asks Outstand what published and re-drives outstand-webhook's own
+# matching logic for anything the webhook missed (delivery-order race or an
+# outage). Same posture as content-performance-capture — invoked by pg_cron
+# with a bearer it checks itself via isAuthorizedIngest, so the gateway JWT
+# check must be off.
+[functions.reconcile-social-posts]
+verify_jwt = false
+
 # Cron worker: snapshots per-account metrics into social_analytics_cache. Same
 # posture as content-performance-capture — invoked by pg_cron with a bearer it
 # checks itself via isAuthorizedIngest, so the gateway JWT check must be off.
