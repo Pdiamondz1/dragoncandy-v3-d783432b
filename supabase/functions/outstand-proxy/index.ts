@@ -802,7 +802,20 @@ serve(async (req: Request) => {
     // lockdown, the way 20260804174934 locked UPDATE. This binding neither
     // widens nor fixes it.
     if (req.method === "POST" && pathOnly === "/posts") {
-      await bindPostOwnershipFromResponse(admin, ctx, upstreamText);
+      // try/catch even though bindPostOwnershipFromResponse is written never to
+      // throw: everything below it returns errors as values (supabase-js hands
+      // back `{ error }` rather than throwing, including on fetch failures), so
+      // this guard should be unreachable. It exists because the cost of being
+      // WRONG about that is telling a user their publish failed when it
+      // succeeded — the post already exists at Outstand by this line, and an
+      // uncaught throw here would escape to a 500 with no way for the caller to
+      // tell the difference. Two lines to stop resting that guarantee on a
+      // library's throwing behaviour.
+      try {
+        await bindPostOwnershipFromResponse(admin, ctx, upstreamText);
+      } catch (e) {
+        console.error("outstand-proxy: ownership binding threw (publish already succeeded)", e);
+      }
     }
   }
 

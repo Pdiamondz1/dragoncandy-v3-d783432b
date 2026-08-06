@@ -13,7 +13,7 @@ import {
   type OutstandSocialAccount,
 } from "../_shared/outstand-webhook-lib.ts";
 import { buildSocialPostLogRow, isGenuineScheduleAmbiguity } from "../_shared/social-post-log-row.ts";
-import { applyOwnershipBinding } from "../_shared/outstand-post-ownership.ts";
+import { applyOwnershipBinding, isBindingTableMissing } from "../_shared/outstand-post-ownership.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -41,30 +41,49 @@ const json = (status: number, body: unknown) =>
  * Demanding a binding here would stop measuring that entire existing population
  * outright. So: PREFER the binding when present (and reject a schedule row that
  * disagrees with it, exactly as the sweep does), FALL BACK to today's
- * schedule-row match when absent — and report which one was used on every
- * delivery via the `ownership` field, so the legacy population is a number
- * somebody can count in the logs rather than an assumption. The sweep is strict
- * because it is brand new: no live traffic depends on it recording anything, so
- * it can demand the binding from day one without losing coverage that exists.
+ * schedule-row match when genuinely ABSENT — and report which one was used on
+ * every delivery via the `ownership` field, so the legacy population is a
+ * number somebody can count in the logs rather than an assumption. The sweep is
+ * strict because it is brand new: no live traffic depends on it recording
+ * anything, so it can demand the binding from day one without losing coverage
+ * that exists.
+ *
+ * PERMISSIVE IS NOT THE SAME AS FAILING OPEN. "Absent" means the read succeeded
+ * and found nothing, or the table does not exist yet. A read that FAILS for any
+ * other reason is an UNKNOWN owner, and unknown must never resolve to the
+ * client-writable schedule row — that would give any transient DB error the
+ * power to reopen the exact hole this task closes. It refuses instead
+ * (`binding_unreadable`), matching the sweep's `bindingUnavailable` rule. The
+ * distinction is made on the error CODE, verified against prod, not guessed —
+ * see isBindingTableMissing.
  *
  * `ownership` values (emitted as `ownership=<v>` in the caller's single summary
  * log line — greppable, one line per delivery, which is what a per-request
  * function can offer in place of a run summary):
- *   binding                     — a server-established binding matched and the
- *                                 schedule row agreed. Trustworthy.
- *   legacy_schedule             — no binding exists; user_id came from the
- *                                 client-writable schedule row. THIS is the
- *                                 fallback counter: its rate is the legacy
- *                                 population, and it should trend to zero.
- *   legacy_schedule_unreadable  — the binding READ failed (incl. the migration
- *                                 not yet applied). Same fallback, but for a
- *                                 different reason; separated so a broken query
- *                                 can never hide inside the expected number.
- *   conflict                    — a binding exists and NOT ONE candidate
- *                                 schedule row agrees with it. Nothing is
- *                                 recorded.
- *   not_evaluated               — returned before ownership was consulted (the
- *                                 schedule lookup errored, or matched no rows).
+ *   binding                       — a server-established binding matched and the
+ *                                   schedule row agreed. Trustworthy.
+ *   legacy_schedule               — no binding exists; user_id came from the
+ *                                   client-writable schedule row. THIS is the
+ *                                   fallback counter: its rate is the legacy
+ *                                   population, and it should trend to zero.
+ *   legacy_schedule_table_missing — outstand_post_ownership does not exist yet
+ *                                   (deployed before migration 20260806184500).
+ *                                   Same fallback, strictly bounded to that
+ *                                   window, and separated so it can never hide
+ *                                   inside the expected number. Self-clearing:
+ *                                   applying the migration ends it, with no
+ *                                   follow-up change to remember.
+ *   binding_unreadable            — the binding read failed for ANY OTHER reason.
+ *                                   REFUSED, nothing recorded. Returned as
+ *                                   `unmatched` (not `failed`) so the scheduled
+ *                                   post's status still advances and Outstand is
+ *                                   not made to retry; reconcile-social-posts
+ *                                   re-drives the measurement within the hour.
+ *   conflict                      — a binding exists and NOT ONE candidate
+ *                                   schedule row agrees with it. Nothing is
+ *                                   recorded.
+ *   not_evaluated                 — returned before ownership was consulted (the
+ *                                   schedule lookup errored, or matched no rows).
  *
  * `rejectedScheduleRows` is the second half of the forgery signal, and the more
  * important one: it counts candidate rows discarded for contradicting the
@@ -86,7 +105,8 @@ async function recordPublishedPost(
   ownership:
     | "binding"
     | "legacy_schedule"
-    | "legacy_schedule_unreadable"
+    | "legacy_schedule_table_missing"
+    | "binding_unreadable"
     | "conflict"
     | "not_evaluated";
   rejectedScheduleRows: number;
@@ -151,20 +171,46 @@ async function recordPublishedPost(
   // (auth.getUser(), not a body field) plus the id in Outstand's own response —
   // both halves unforgeable by a client.
   //
-  // A read error degrades to the legacy fallback rather than failing the
-  // delivery. Deliberate: this is a live path, a 500 here burns Outstand's five
-  // retries, and before migration 20260806184500 is applied this table does not
-  // exist — a hard failure would take measurement from "as good as yesterday"
-  // to "nothing" for the entire window between deploy and migration. The
-  // separate `legacy_schedule_unreadable` label keeps that case from hiding
-  // inside the expected `legacy_schedule` number.
+  // A READ ERROR IS NOT AN ABSENT BINDING. Permissive means "fall back when
+  // there is genuinely no binding" — a post published before bindings existed.
+  // It must NOT also mean "fall back when a binding may well exist and we
+  // simply could not read it": that would hand ownership straight back to the
+  // client-writable donny_scheduled_posts row on any transient DB error, which
+  // is the exact hole this task closes. The ONE error worth tolerating is the
+  // table not being there yet (the window between deploying this and applying
+  // migration 20260806184500), and that is distinguishable — see
+  // isBindingTableMissing, whose accepted codes were probed against prod rather
+  // than assumed. Everything else refuses.
+  //
+  // This is a fix-now rule, not a deferred flip: nothing has to be remembered
+  // and re-tightened after the migration lands, because the tolerated case
+  // stops occurring on its own the moment the table exists.
   const { data: bindingRow, error: bindingErr } = await supabase
     .from("outstand_post_ownership")
     .select("user_id")
     .eq("outstand_post_id", postId)
     .maybeSingle();
+
+  if (bindingErr && !isBindingTableMissing(bindingErr)) {
+    // Refuse. Nothing is recorded for measurement — but this returns
+    // `unmatched`, NOT `failed`, so the caller still advances the scheduled
+    // post's status and Outstand is not made to retry. Losing the measurement
+    // is not permanent either: reconcile-social-posts re-scans this same post
+    // within the hour and records it STRICTLY once the binding reads cleanly.
+    // That recovery path is precisely why failing closed here costs nothing.
+    console.error(
+      `outstand-webhook: ownership binding lookup failed for ${postId} (code=${bindingErr.code ?? "none"}) — ` +
+      `refusing to fall back to the client-writable schedule row; not recorded for measurement. ` +
+      `reconcile-social-posts will re-drive this post.`,
+      bindingErr.message,
+    );
+    return { outcome: "unmatched", rows: 0, dropped, ownership: "binding_unreadable", rejectedScheduleRows: 0 };
+  }
   if (bindingErr) {
-    console.error("outstand-webhook: ownership binding lookup failed", bindingErr.message);
+    console.warn(
+      `outstand-webhook: outstand_post_ownership is not present yet (code=${bindingErr.code ?? "none"}) — ` +
+      `falling back to the legacy schedule-row match for ${postId}. Apply migration 20260806184500.`,
+    );
   }
   // Cast rather than a bare property read: this file's createClient() carries no
   // Database generic, so PostgREST row types resolve to `never` and
@@ -207,7 +253,7 @@ async function recordPublishedPost(
   }
   const ownership = owner.kind === "binding"
     ? "binding" as const
-    : (bindingErr ? "legacy_schedule_unreadable" as const : "legacy_schedule" as const);
+    : (bindingErr ? "legacy_schedule_table_missing" as const : "legacy_schedule" as const);
 
   // DELIBERATE BEHAVIOR CHANGE #1 (review round 1): fires only on a GENUINE
   // disagreement between candidates now, not routine multi-platform fan-out.

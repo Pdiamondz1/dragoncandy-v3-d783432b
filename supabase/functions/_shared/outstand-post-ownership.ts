@@ -49,11 +49,30 @@
  *      'XDb8e' / 'XDbxe' / 'mJuDd', written by client code whose id came off
  *      this chain through this proxy.
  *
- * So this is not a guessed field name — it is the union every existing reader
- * of this exact response already accepts, in the same priority order. Callers
- * inside outstand-proxy should pass the body AFTER the proxy's normalization,
- * where both `post` and `data.post` are present; the order below means either
- * side of the normalizer produces the same id.
+ * So this is not a guessed field name — it is what the evidence establishes.
+ * Callers inside outstand-proxy should pass the body AFTER the proxy's
+ * normalization, where both `post` and `data.post` are present; the order below
+ * means either side of the normalizer produces the same id.
+ *
+ * DELIBERATELY NOT ACCEPTED: a bare top-level `id`. Three of the four readers
+ * listed above carry it as a third, defensive link — but outstand-proxy
+ * forwards the CALLER'S OWN raw JSON body verbatim to the provider, so if a 2xx
+ * `POST /posts` ever echoed a client-supplied top-level `id`, a caller could
+ * mint a binding over another tenant's currently-unbound post id and both
+ * consumers would then credit them. (`ON CONFLICT DO NOTHING` protects
+ * already-bound posts; it does nothing for the legacy population, which is
+ * every post that predates this table.) Nothing in the evidence above supports
+ * that shape — `{success, post}` and `{success, data:{post}}` are what is
+ * actually established, `confirm-posting-schedule/index.ts:216` is a production
+ * reader that has never carried the bare-`id` link at all, and the sibling
+ * analytics endpoint's prod-verified body is `{success, post:{id}}`. So the
+ * third link buys close to nothing while resting this mint's core invariant on
+ * unverified provider behaviour. The failure it costs us is the good one: a
+ * post that mints no binding is logged loudly and skipped visibly, whereas a
+ * mis-minted binding is a silent permanent mis-credit plus an org-key analytics
+ * read. (`social-proxy` is unaffected — it never calls this function; its id
+ * comes from the adapter's normalised PostResult, and it builds its own request
+ * body, so it has no echo path.)
  *
  * Returns null (never a placeholder) when no usable string id is present: a
  * binding row with a wrong/synthetic id is worse than no binding row, because
@@ -69,10 +88,52 @@ export function extractCreatedPostId(body: unknown): string | null {
   const dataPost = asObject(asObject(root.data)?.post);
   const rootPost = asObject(root.post);
 
-  for (const candidate of [dataPost?.id, rootPost?.id, root.id]) {
+  for (const candidate of [dataPost?.id, rootPost?.id]) {
     if (typeof candidate === 'string' && candidate.length > 0) return candidate;
   }
   return null;
+}
+
+/**
+ * Is this binding-table read error the ONE case a permissive consumer may
+ * tolerate — the table not being there yet?
+ *
+ * WHY THIS PREDICATE EXISTS. outstand-webhook falls back to the client-writable
+ * donny_scheduled_posts row when there is no binding. That is correct for a
+ * post published before bindings existed, but it must NOT also apply when a
+ * binding may exist and merely could not be READ: an unknown owner is not an
+ * absent one, and failing open there would let a transient DB error hand
+ * ownership back to the forgeable source this whole task exists to distrust.
+ * The only read error we genuinely must tolerate is the pre-migration window,
+ * where `outstand_post_ownership` does not exist yet. Everything else refuses.
+ *
+ * VERIFIED, NOT ASSUMED — and the obvious guess was wrong. A missing table does
+ * NOT surface as Postgres SQLSTATE `42P01`/`undefined_table`, because PostgREST
+ * resolves tables from its OWN schema cache and 404s before the query ever
+ * reaches Postgres. Probed against prod on 2026-08-06, hitting the real
+ * pre-migration case (this table genuinely does not exist there yet):
+ *
+ *   GET /rest/v1/outstand_post_ownership?select=user_id  ->  HTTP 404
+ *   {"code":"PGRST205","details":null,
+ *    "hint":"Perhaps you meant the table 'public.outstand_webhook_events'",
+ *    "message":"Could not find the table 'public.outstand_post_ownership' in the schema cache"}
+ *
+ * Contrast, same probe run against an existing table with a bogus COLUMN, which
+ * DOES reach Postgres and DOES carry a real SQLSTATE:
+ *
+ *   GET /rest/v1/social_post_log?select=no_such_column  ->  HTTP 400
+ *   {"code":"42703", ... "column social_post_log.no_such_column does not exist"}
+ *
+ * `42P01` is accepted too, for the narrow inverse: a schema cache that still
+ * believes the table exists after it was dropped/rolled back, where the query
+ * does reach Postgres. Matching is on `code` only — never on `message` text,
+ * which is unversioned prose that a provider upgrade can reword. Any other code
+ * (permission denied, connection failure, timeout, a fetch error with no code)
+ * is NOT tolerated.
+ */
+export function isBindingTableMissing(error: { code?: string | null } | null | undefined): boolean {
+  const code = error?.code;
+  return code === 'PGRST205' || code === '42P01';
 }
 
 /**

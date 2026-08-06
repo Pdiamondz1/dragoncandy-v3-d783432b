@@ -555,9 +555,19 @@ async function handleOp(
       // Record WHO created this post, server-side, before returning. ctx.userId
       // is from auth.getUser() and out.providerPostId is from the provider's own
       // response, so neither half of the binding is client-assertable — unlike
-      // donny_scheduled_posts.metadata, which every consumer used to trust. Must
-      // not affect the response: the post already exists upstream.
-      await bindCreatedPostOwnership(admin, ctx, ctx.provider, out);
+      // donny_scheduled_posts.metadata, which every consumer used to trust.
+      //
+      // try/catch for the same reason as outstand-proxy's identical call site:
+      // the binding path is written never to throw (supabase-js returns errors
+      // as values), so this should be unreachable — but the post already exists
+      // at the provider by this line, and an uncaught throw would surface as a
+      // failed publish for one that actually succeeded. Never let a measurement
+      // concern break a completed publish.
+      try {
+        await bindCreatedPostOwnership(admin, ctx, ctx.provider, out);
+      } catch (e) {
+        console.error("social-proxy: ownership binding threw (publish already succeeded)", e);
+      }
       return jsonResponse(200, { data: out });
     }
 

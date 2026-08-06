@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { extractCreatedPostId, applyOwnershipBinding } from './outstand-post-ownership';
+import {
+  extractCreatedPostId,
+  applyOwnershipBinding,
+  isBindingTableMissing,
+} from './outstand-post-ownership';
 
 describe('extractCreatedPostId', () => {
   // The shape outstand-proxy's normalizer PRODUCES (and the shape the SDK's own
@@ -18,8 +22,20 @@ describe('extractCreatedPostId', () => {
     expect(extractCreatedPostId({ success: true, post: { id: 'mJuDd' } })).toBe('mJuDd');
   });
 
-  it('reads a top-level id as the last resort (the third link every existing reader accepts)', () => {
-    expect(extractCreatedPostId({ id: 'XDbxe' })).toBe('XDbxe');
+  it('IGNORES a bare top-level id — outstand-proxy forwards the caller\'s own body verbatim', () => {
+    // The security reason, not a style preference: if a 2xx POST /posts ever
+    // echoed a client-supplied top-level `id`, accepting it would let a caller
+    // mint a binding over another tenant's currently-unbound post id, and both
+    // consumers would then credit the attacker. ON CONFLICT DO NOTHING protects
+    // already-bound posts but not the legacy population. Nothing in the evidence
+    // supports this shape, so the link is not worth the exposure — a post that
+    // mints no binding is loud and visible; a mis-minted one is silent.
+    expect(extractCreatedPostId({ id: 'XDbxe' })).toBeNull();
+    expect(extractCreatedPostId({ success: true, id: 'XDbxe' })).toBeNull();
+  });
+
+  it('still ignores a top-level id even when a real post object is present but id-less', () => {
+    expect(extractCreatedPostId({ success: true, id: 'attacker-chosen', post: {} })).toBeNull();
   });
 
   it('prefers data.post.id over post.id when the normalizer has produced both', () => {
@@ -41,7 +57,7 @@ describe('extractCreatedPostId', () => {
     // differently than the provider's own value would bind the wrong key and be
     // undetectable afterwards.
     expect(extractCreatedPostId({ data: { post: { id: 12345 } } })).toBeNull();
-    expect(extractCreatedPostId({ id: { nested: 'x' } })).toBeNull();
+    expect(extractCreatedPostId({ post: { id: { nested: 'x' } } })).toBeNull();
   });
 
   it('returns null for an empty-string id', () => {
@@ -153,5 +169,59 @@ describe('applyOwnershipBinding', () => {
       candidates: [],
       rejected: 0,
     });
+  });
+});
+
+describe('isBindingTableMissing', () => {
+  it('tolerates PGRST205 — the REAL pre-migration shape, probed against prod', () => {
+    // Verified 2026-08-06 against the actual missing table, not assumed:
+    // GET /rest/v1/outstand_post_ownership -> HTTP 404
+    // {"code":"PGRST205", "message":"Could not find the table
+    //  'public.outstand_post_ownership' in the schema cache", ...}
+    expect(
+      isBindingTableMissing({
+        code: 'PGRST205',
+        message: "Could not find the table 'public.outstand_post_ownership' in the schema cache",
+      } as { code?: string | null }),
+    ).toBe(true);
+  });
+
+  it('tolerates 42P01 — the inverse, where a stale cache lets the query reach Postgres', () => {
+    expect(isBindingTableMissing({ code: '42P01' })).toBe(true);
+  });
+
+  it('REFUSES a permission error — an unknown owner is not an absent one', () => {
+    // The whole point of the predicate. If the table exists but we cannot read
+    // it, a binding may well exist; falling back to the client-writable
+    // donny_scheduled_posts row there would hand ownership straight back to the
+    // forgeable source this task exists to distrust.
+    expect(isBindingTableMissing({ code: '42501' })).toBe(false);
+  });
+
+  it('REFUSES an undefined-column error, which reaches Postgres and is NOT table-missing', () => {
+    // Contrast probed in the same prod run: a bogus column on an existing table
+    // returns 42703 / HTTP 400. Proof that real SQLSTATEs do surface here, and
+    // that PGRST205 is genuinely a different class rather than a stand-in.
+    expect(isBindingTableMissing({ code: '42703' })).toBe(false);
+  });
+
+  it('REFUSES an error with no usable code — e.g. a network failure', () => {
+    // supabase-js surfaces fetch failures as an error object without a
+    // PostgREST/Postgres code. A transient blip must never fail open.
+    expect(isBindingTableMissing({})).toBe(false);
+    expect(isBindingTableMissing({ code: null })).toBe(false);
+    expect(isBindingTableMissing(null)).toBe(false);
+    expect(isBindingTableMissing(undefined)).toBe(false);
+  });
+
+  it('never matches on message prose, only on the code', () => {
+    // Messages are unversioned prose a provider upgrade can reword; a string
+    // match would be a silent time bomb in either direction.
+    expect(
+      isBindingTableMissing({
+        code: '42501',
+        message: "Could not find the table 'public.outstand_post_ownership' in the schema cache",
+      } as { code?: string | null }),
+    ).toBe(false);
   });
 });
