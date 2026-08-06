@@ -101,10 +101,18 @@ A row whose account ids cannot be resolved is **dropped**: unattributable is not
   was accurate rather than lazy. Closing it needs an ownership binding of our own, mirroring
   `outstand_post_ownership`. **`GET /media` currently returns `count: 0`**, so nothing is exposed
   today; it becomes live the moment media is uploaded and retained.
-- **`business_outstand_accounts` INSERT is unconstrained** for `authenticated` (migration
-  `20260804174934` revoked UPDATE only). This is the substrate *under* the `post_account` grant: an
-  arbitrary account id inserted there enters `ownedIds` and grants on every path that consults it.
-  The highest-value remaining item.
+- ~~**`business_outstand_accounts` INSERT is unconstrained**~~ — **fixed, migration
+  `20260806210000`, awaiting the founder-gated apply.** This was the substrate *under* the
+  `post_account` grant: `authenticated` **and `anon`** held INSERT on all 14 columns including
+  `outstand_social_account_id`; the INSERT policy pinned *who owned the row* but never *which
+  account it claimed*; and the unique index is `(user_id, outstand_social_account_id)` — **per-user,
+  not global** — so nothing stopped one user claiming an id another already held. A direct PostgREST
+  insert never touches the proxy, so the claim-check is not a mitigation. Any authenticated business
+  user could therefore mint themselves into `ownedIds` and read/modify/delete another tenant's posts.
+  Revoked outright (not a column subset) because the client INSERT surface is **empty** — all three
+  writers use the service-role key. The dead INSERT policy is dropped too, so a future `GRANT INSERT`
+  lands on RLS-with-no-policy instead of silently reopening it. **No evidence of prior
+  exploitation:** 9 rows, every account id held by exactly one user.
 - **`/social-accounts/pending/{token}[/finalize]`** rests entirely on the provider's token entropy —
   holding another tenant's in-flight session token finalizes their OAuth handoff into your rows.
 - **Offset paging over a post-hoc filtered list is incoherent** (upstream page N is not the caller's

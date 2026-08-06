@@ -114,8 +114,10 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   another tenant). **Deployed + prod-verified 2026-08-06** (`outstand-proxy` v62, `social-proxy`
   v8): the leaking list returns only the caller's own post and a foreign post now 403s, while the
   caller's own post + `/analytics` still return 200. **Pending:** merge PR #368 (blocked by a
-  GitHub Actions outage, not by review) so the repo matches prod. `/media` remains unscoped
-  (`count: 0` today) and `business_outstand_accounts` INSERT unconstrained — both filed.
+  GitHub Actions outage, not by review) so the repo matches prod, and **apply migration
+  `20260806210000`** (revokes the client INSERT that let any business user mint another tenant's
+  account id into `ownedIds` — the substrate under the surviving grants; not yet applied).
+  `/media` remains unscoped (`count: 0` today) — filed.
   → `docs/wiki/concepts/cross-tenant-proxy-authorization.md` · #368
 - **AIOS Google Workspace ("Connections")** — per-user Google OAuth, audited proxy, Drive
   hub, Donny exports, metrics→Sheet. The `google-chat-donny` bot ships dark (503).

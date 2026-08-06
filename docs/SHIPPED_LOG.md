@@ -109,11 +109,24 @@ UTC, unresolved at 19:43) — a required check queued 15 minutes and was cancell
 exactly the same five docs files and was still unmerged, so folding it in avoided a guaranteed
 conflict.
 
+**Follow-up fixed in the same branch — the substrate under grant 1.** `business_outstand_accounts`
+INSERT was unconstrained: `authenticated` **and `anon`** held it on all 14 columns including
+`outstand_social_account_id`; the INSERT policy pinned *who owned the row* but never *which account
+it claimed*; and the unique index is `(user_id, outstand_social_account_id)` — **per-user, not
+global**. A direct PostgREST insert never touches the proxy, so the claim-check above is no
+mitigation. Any authenticated business user could mint themselves into `ownedIds` and thereby reach
+another tenant's posts through the grants this branch had just made load-bearing. Migration
+`20260806210000` revokes INSERT outright (the client INSERT surface is **empty** — all three writers
+use the service-role key, which holds its own grant) and drops the now-dead INSERT policy, so a
+future `GRANT INSERT` lands on RLS-with-no-policy rather than silently reopening it. Checked for
+prior exploitation first: 9 rows, every account id held by exactly one user. **Not yet applied —
+founder-gated.** The review also caught that the migration's own verification query filtered
+`grantee in ('anon','authenticated')`, which would have reported PASS while a PUBLIC grant stood;
+fixed, along with adding `public` to the revoke.
+
 **Filed, not fixed:** `/media` is unscoped for every method and any caller, but the SDK's `MediaFile`
 type carries no account/user/org field so there is nothing to filter on — it needs its own ownership
-binding plus a migration, and reads `count: 0` today. `business_outstand_accounts` INSERT is still
-unconstrained for `authenticated` (`20260804174934` revoked UPDATE only) — the substrate under grant
-1. `/social-accounts/pending/{token}/finalize` rests on provider token entropy. Delegated posting
+binding plus a migration, and reads `count: 0` today. `/social-accounts/pending/{token}/finalize` rests on provider token entropy. Delegated posting
 appears inert (`ownedIds` is keyed on the grantee). Offset paging over a filtered list remains
 incoherent. → `docs/wiki/concepts/cross-tenant-proxy-authorization.md`
 
