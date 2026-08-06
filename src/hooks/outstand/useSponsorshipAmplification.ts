@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { toDbContentType, type DbContentType } from '@/lib/contentType';
+import { extractOutstandPostId } from '@/lib/outstandPostId';
 
 interface AmplifyInput {
   caption: string;
@@ -225,7 +226,17 @@ export function useSponsorshipAmplification() {
       // skip the write below (mirrors SocialPostPrompt's syncScheduledPost
       // outstandPostId == null handling) -- the publish itself already
       // succeeded and must stand regardless.
-      const outstandPostId = (data.id ?? (data.data as Record<string, unknown>)?.id ?? null) as string | null;
+      //
+      // BUG FIXED 2026-08-06 (Codex P1): this read used to be
+      // `data.id ?? data.data.id`, which never checks the `.post` level. Against
+      // the real proxy response ({success, post, data:{post}}) BOTH links are
+      // undefined, so it returned null on EVERY call -- and the guard below then
+      // skipped both the donny_scheduled_posts insert and the social_post_log
+      // write, so amplified posts got no schedule row at all and neither the
+      // webhook nor the reconcile sweep could ever measure them. That made this
+      // branch's Task 1 (which exists to give amplification that row) inert.
+      // Now routed through the one shared, tested reader.
+      const outstandPostId = extractOutstandPostId(data);
 
       // social_post_log.platform must carry a real network name (instagram,
       // youtube, ...), never an Outstand account id — every other writer/reader

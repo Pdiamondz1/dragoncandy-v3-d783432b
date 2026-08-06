@@ -7,6 +7,7 @@ import { useDonny } from '@/hooks/useDonny';
 import { useDonnyNudges } from '@/hooks/useDonnyNudges';
 import { useDonnyQuickChips } from '@/hooks/useDonnyQuickChips';
 import { resolvePostType } from '@/lib/postType';
+import { extractOutstandPostId } from '@/lib/outstandPostId';
 import type { DonnyStage, DonnyNudge, NudgeAction, QuickChip } from '@/types/donnyNudge';
 import type { DonnyMessage, DonnyConversation, DonnyAvatarState } from '@/types/donny';
 import type { UserRole } from '@/types/user';
@@ -208,14 +209,18 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
       }
 
       const publishData = await res.json() as Record<string, unknown>;
-      const dataObj = publishData?.data as Record<string, unknown> | undefined;
-      const postObj = dataObj?.post as Record<string, unknown> | undefined;
       // No 'unknown' fallback: social_post_log.outstand_post_id is NOT NULL and
       // carries the UNIQUE (outstand_post_id, platform) key -- a placeholder
       // here would leave the first such row permanently unmatchable by the
       // webhook, and a later unresolved publish on the same platform would
-      // collide with it. See useSponsorshipAmplification.ts for the same fix.
-      const outstandPostId = (postObj?.id ?? publishData?.id ?? null) as string | null;
+      // collide with it.
+      //
+      // Routed through the one shared reader (2026-08-06). This site's own union
+      // was `data.post.id ?? id` -- it worked, but only because outstand-proxy's
+      // normalizer always produces `data.post`; it carried no link for the RAW
+      // `{success, post}` shape, so it would have broken silently if that
+      // normalizer were ever removed. The shared helper covers both.
+      const outstandPostId = extractOutstandPostId(publishData);
 
       const draftMetadata = (draft.metadata ?? null) as Record<string, unknown> | null;
       const postType = resolvePostType(draftMetadata?.source as string | null, draft.campaign_id);

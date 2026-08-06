@@ -74,6 +74,19 @@
  * comes from the adapter's normalised PostResult, and it builds its own request
  * body, so it has no echo path.)
  *
+ * DO NOT "UNIFY" THIS WITH THE CLIENT-SIDE READER. `src/lib/outstandPostId.ts`
+ * is a near-identical helper that DOES keep the bare top-level `id` link, and
+ * that divergence is deliberate, not drift:
+ *   * Here, the extracted id becomes an ownership BINDING that both consumers
+ *     treat as authoritative for social_post_log.user_id, and the id arrives
+ *     via a body this proxy forwarded verbatim from the caller — so an
+ *     unevidenced link is an attack surface (the echo above).
+ *   * There, the id is read from the caller's OWN publish result and written to
+ *     the caller's OWN rows under RLS pinned to auth.uid(). No other tenant's
+ *     data is reachable through it, so the extra link is free.
+ * Collapsing the two would either reintroduce the mint hole or drop a working
+ * client fallback. Both files carry this note.
+ *
  * Returns null (never a placeholder) when no usable string id is present: a
  * binding row with a wrong/synthetic id is worse than no binding row, because
  * the consumers treat a present binding as authoritative.
