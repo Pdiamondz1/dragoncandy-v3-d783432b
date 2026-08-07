@@ -1179,6 +1179,17 @@ serve(async (req: Request) => {
         ownedTotal = count;
       }
 
+      // ENVELOPE MUST MATCH WHAT THE SDK READS, not just be plausible.
+      // useMediaList returns `pagination: data?.pagination ?? null`, and the
+      // gallery derives its total and page controls from `pagination.total` /
+      // `pagination.count`. An earlier version of this synthesized only
+      // top-level count/total/limit/offset, so a non-empty gallery would have
+      // reported 0 files and lost its next-page control — the response looked
+      // reasonable and drove the UI wrong. Verified against the SDK bundle:
+      // `media: data?.data ?? []` and the two pagination fields above.
+      //
+      // `total` is the caller's OWN media count (exact, from the binding table);
+      // `count` is how many rows this page actually carries.
       upstreamText = JSON.stringify({
         success: true,
         data: windowed.rows,
@@ -1186,6 +1197,12 @@ serve(async (req: Request) => {
         total: ownedTotal,
         limit: reqLimit,
         offset: reqOffset,
+        pagination: {
+          limit: reqLimit,
+          offset: reqOffset,
+          total: ownedTotal,
+          count: windowed.rows.length,
+        },
       });
       if (scanned > windowed.rows.length) {
         console.log(
