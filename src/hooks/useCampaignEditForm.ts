@@ -8,6 +8,7 @@ import type { Campaign } from '@/hooks/useCampaignQueries';
 import type { CreateCampaignData } from '@/hooks/useCampaignMutations';
 import type { Deliverable } from '@/types/campaignMedia';
 import { mapDeliveryType, getTierConfig } from '@/lib/campaignUtils';
+import { normalizeCampaignTags } from '@/lib/campaignAudience';
 
 export interface CampaignEditFormData {
   title: string;
@@ -28,7 +29,8 @@ export interface CampaignEditFormData {
   exclusivity_days: string;
   geographic_scope: string;
   target_creator_count: string;
-  target_creator_personas: string[];
+  target_audience: string;
+  campaign_tags: string[];
   delivery_type: 'standard' | 'expedited' | 'dragonrush';
   style_direction: string;
   key_messages: string[];
@@ -61,7 +63,8 @@ export const useCampaignEditForm = (campaign: Campaign | undefined) => {
     exclusivity_days: '',
     geographic_scope: '',
     target_creator_count: '',
-    target_creator_personas: [],
+    target_audience: '',
+    campaign_tags: [],
     delivery_type: 'standard',
     style_direction: '',
     key_messages: [],
@@ -91,7 +94,8 @@ export const useCampaignEditForm = (campaign: Campaign | undefined) => {
         exclusivity_days: campaign.exclusivity_days?.toString() || '',
         geographic_scope: campaign.geographic_scope || '',
         target_creator_count: campaign.creator_count?.toString() || '',
-        target_creator_personas: campaign.target_creator_personas || [],
+        target_audience: campaign.target_audience || '',
+        campaign_tags: campaign.campaign_tags || [],
         delivery_type: campaign.delivery_type || 'standard',
         style_direction: typeof campaign.style_direction === 'string'
           ? campaign.style_direction
@@ -114,21 +118,11 @@ export const useCampaignEditForm = (campaign: Campaign | undefined) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleArrayChange = (
-    field: 'platforms' | 'deliverables' | 'target_creator_personas',
-    value: string,
-    checked: boolean,
-  ) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: checked
-        ? [...(prev[field] as string[]), value]
-        : (prev[field] as string[]).filter(item => item !== value),
-    }));
-  };
-
-  const handleChipListChange = (field: 'key_messages' | 'hashtags', values: string[]) => {
-    setFormData(prev => ({ ...prev, [field]: values }));
+  const handleChipListChange = (field: 'key_messages' | 'hashtags' | 'campaign_tags', values: string[]) => {
+    // Coerce tags as they're typed so the business sees the deduped, lowercased truth rather
+    // than discovering it changed on save.
+    const next = field === 'campaign_tags' ? normalizeCampaignTags(values) : values;
+    setFormData(prev => ({ ...prev, [field]: next }));
   };
 
   const handleStructuredDeliverablesChange = (deliverables: Deliverable[]) => {
@@ -180,7 +174,18 @@ export const useCampaignEditForm = (campaign: Campaign | undefined) => {
           creator_count: formData.target_creator_count
             ? parseInt(formData.target_creator_count, 10)
             : null,
-          target_creator_personas: formData.target_creator_personas,
+          // The `...existingAnalysis` spread above preserves any legacy target_creator_personas
+          // untouched — an older campaign keeps its personas through an edit.
+          // Trim only — deliberately NOT normalizeAudienceLine. This form loads an existing
+          // campaign's audience unclamped, so slicing on write would silently truncate a legacy
+          // free-text audience mid-word when someone edits an unrelated field. New typing is
+          // bounded by maxLength on the input instead. ("Write short, read tolerant" — the clamp
+          // belongs at the generation boundary, not on a round-trip of existing data.)
+          target_audience: formData.target_audience.trim() || null,
+          // Tags DO normalize: this page's generic ChipListEditor dedupes case-SENSITIVELY and
+          // has no cap, so without this an edit could store "Candlelit" alongside "candlelit",
+          // which every render site then emits as duplicate React keys.
+          campaign_tags: normalizeCampaignTags(formData.campaign_tags),
           hashtags: formData.hashtags,
           hashtag_requirements: formData.hashtags.join(' '),
           key_messages: formData.key_messages,
@@ -249,7 +254,6 @@ export const useCampaignEditForm = (campaign: Campaign | undefined) => {
     isSaving,
     structuredDeliverables,
     handleInputChange,
-    handleArrayChange,
     handleChipListChange,
     handleStructuredDeliverablesChange,
     handleSave,

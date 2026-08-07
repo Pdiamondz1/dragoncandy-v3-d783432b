@@ -8,9 +8,13 @@ interface EditableFieldProps {
   originalValue: string;
   onChange: (value: string) => void;
   multiline?: boolean;
+  /** Shown when the field is empty. "Click to edit" says nothing when there is nothing to edit yet. */
+  placeholder?: string;
 }
 
-export function EditableField({ label, value, originalValue, onChange, multiline = false }: EditableFieldProps) {
+export function EditableField({
+  label, value, originalValue, onChange, multiline = false, placeholder = 'Click to edit',
+}: EditableFieldProps) {
   const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
   const isModified = value !== originalValue;
@@ -26,7 +30,7 @@ export function EditableField({ label, value, originalValue, onChange, multiline
       <button type="button" className="group cursor-pointer w-full text-left" onClick={() => setIsEditing(true)}>
         <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">{label}</label>
         <p className={`mt-1 text-sm ${isModified ? 'text-gray-900' : 'text-teal-600'}`}>
-          {value || <span className="text-gray-400 italic">Click to edit</span>}
+          {value || <span className="text-gray-400 italic">{placeholder}</span>}
         </p>
       </button>
     );
