@@ -159,7 +159,9 @@ serve(async (req) => {
     if (!invitation) {
       const { data: existing } = await supabase
         .from("campaign_invitations")
-        .select("id, status, expires_at")
+        // Same shape as the other two paths, so every response this function
+        // can return matches the client's declared CampaignInvitation type.
+        .select(INVITATION_COLUMNS)
         .eq("campaign_id", campaign_id)
         .eq("creator_id", creator_id)
         .maybeSingle();
