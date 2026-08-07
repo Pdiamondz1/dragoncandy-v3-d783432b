@@ -183,7 +183,12 @@ const CreatorGroupDetailInner: React.FC = () => {
   const confirmRemove = async () => {
     if (!memberToRemove) return;
     try {
-      await removeMember.mutateAsync(memberToRemove.creator_id);
+      await removeMember.mutateAsync({
+        creatorId: memberToRemove.creator_id,
+        // Drives whether the creator gets a "you're no longer in this crew"
+        // bell — rescinding a pending invite must not send one.
+        wasActive: memberToRemove.status === 'active',
+      });
     } catch {
       // Error toast handled in the hook's onError.
     }
@@ -320,7 +325,8 @@ const CreatorGroupDetailInner: React.FC = () => {
               </div>
               <h2 className="mt-4 text-xl font-bold text-dc-text">No members yet</h2>
               <p className="mx-auto mt-2 max-w-md text-sm text-dc-text-muted">
-                Invite creators to build this crew. They'll get a notification to join.
+                Invite creators to build this crew. Each one chooses whether to accept — they'll
+                sit under Pending until they do.
               </p>
               <Button
                 variant="dc-primary"

@@ -21,6 +21,7 @@ type NotificationType =
   | 'new_campaign_for_brands'
   | 'new_campaign_for_creators'
   | 'new_crew_campaign'
+  | 'crew_invitation'
   | 'crew_content_submitted'
   | 'file_uploaded_by_creator'
   | 'file_uploaded_by_restaurant'
@@ -86,6 +87,7 @@ interface NotificationEmailRequest {
     disputeId?: string; // dispute_alert
     reason?: string;    // dispute_alert (amount is in cents)
     orgName?: string;   // org_invite
+    groupName?: string; // crew_invitation
     role?: string;      // org_invite
     orgId?: string;     // org_invite
     inviteeId?: string; // org_invite
@@ -218,6 +220,7 @@ const handler = async (req: Request): Promise<Response> => {
       party: htmlEscape(data.party || ''),
       updateDetails: htmlEscape(data.updateDetails || ''),
       deliveryTime: htmlEscape(data.deliveryTime || ''),
+      groupName: htmlEscape(data.groupName || ''),
     };
     // Build the invitation deep-link here (not inline in the template) so we avoid
     // nested backticks inside the backtick-delimited template.html string, and so no
@@ -547,6 +550,36 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="margin: 8px 0 0 0; color: #065F46; font-size: 14px;">Crew campaigns are shared with your crew before anyone else. Take a look and apply while the spots are open.</p>
               </div>
               <p style="text-align: center; margin-top: 40px;"><a href="${baseUrl}/dashboard/creator/campaigns?crews=1" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">View Crew Campaigns</a></p>
+            </div>
+          </div>
+        `,
+      },
+      // Crew-specific: a business invited this creator to their crew. Previously
+      // bell-only, so a creator who wasn't in the app never learned they'd been
+      // invited. The caller passes { groupName, businessName } via emailData.
+      // String concat (not nested backticks) for the conditional crew name —
+      // Deno-bundle safe, same rationale as crew_content_submitted below.
+      crew_invitation: {
+        subject: `${esc.businessName || 'A business'} invited you to their crew`,
+        html: `
+          <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
+              <img src="https://dragoncandy.io/donny-emblem.webp" alt="DragonCandy" width="48" height="48" style="display: block; margin: 0 auto 12px; border-radius: 50%; object-fit: cover;" />
+              <h1 style="color: white; margin: 0; font-size: 28px;">You're invited to a crew</h1>
+            </div>
+            <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
+              <p style="font-size: 16px; color: #374151;">Hi ${esc.rn},</p>
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;">
+                ${esc.businessName || 'A business'} invited you to join their crew${esc.groupName ? ' "' + esc.groupName + '"' : ''} on DragonCandy.
+              </p>
+              <div style="background: #ECFDF5; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;">
+                <p style="margin: 0; color: #065F46; font-weight: 600;">✨ Your crew gets first look</p>
+                <p style="margin: 8px 0 0 0; color: #065F46; font-size: 14px;">Crew collabs are shared with the crew before they hit the marketplace, and it's one tap to apply. They're free collabs — no budget, no payout — so you're saying yes to first dibs, not to a fee.</p>
+              </div>
+              <p style="font-size: 14px; color: #6B7280; line-height: 1.6;">
+                Accepting adds you to their roster. Applying is always your call, and you can decline this invite with no hard feelings.
+              </p>
+              <p style="text-align: center; margin-top: 40px;"><a href="${baseUrl}/dashboard/creator/campaigns?crews=1" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">View Invite</a></p>
             </div>
           </div>
         `,

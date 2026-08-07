@@ -10,9 +10,12 @@ interface GroupInviteCardProps {
 
 /**
  * A pending crew ("creator group") invitation card for the creator marketplace
- * "Crews" tab. Styled to match the Invitations-tab cards. The crew name is
- * often unavailable (see RLS note in useCreatorGroupInvitations), so it falls
- * back to the inviting business name, then a generic "A crew".
+ * "Crews" tab. Styled to match the Invitations-tab cards.
+ *
+ * The crew name normally resolves: `get_creator_pending_group_invitations()` is
+ * a SECURITY DEFINER RPC that returns the crew name and inviting business past
+ * RLS (see useCreatorGroupInvitations). The fallback chain below is defensive
+ * only.
  */
 export function GroupInviteCard({ invitation, onAccept, onDecline, isPending = false }: GroupInviteCardProps) {
   const crewName = invitation._group_name ?? invitation._business_name ?? 'A crew';
@@ -46,8 +49,24 @@ export function GroupInviteCard({ invitation, onAccept, onDecline, isPending = f
 
       <p className="text-sm text-gray-600 mb-3">
         {businessName
-          ? `${businessName} invited you to join their crew for private campaigns.`
-          : "You've been invited to join a crew for private campaigns."}
+          ? `${businessName} invited you to their crew.`
+          : "You've been invited to join a crew."}
+      </p>
+
+      <div className="rounded-xl bg-dc-teal/[0.04] border border-dc-teal/20 p-3 space-y-1.5 mb-3">
+        <p className="text-xs text-gray-600">
+          <span className="font-semibold text-gray-900">⚡ First look</span> — crew collabs reach
+          the crew before they hit the marketplace, and it's one tap to apply.
+        </p>
+        <p className="text-xs text-gray-600">
+          <span className="font-semibold text-gray-900">🎁 Free collabs</span> — crew campaigns are
+          unpaid, so there's no budget or payment step. You're getting first dibs, not a fee.
+        </p>
+      </div>
+
+      <p className="text-xs text-gray-500 mb-3">
+        Accepting adds you to their roster and shows their crew collabs here. Whether you apply is
+        always up to you.
       </p>
 
       <div className="flex gap-2">
@@ -56,7 +75,7 @@ export function GroupInviteCard({ invitation, onAccept, onDecline, isPending = f
           disabled={isPending}
           className="flex-1 bg-dc-teal text-white font-semibold py-2 rounded-full text-sm hover:bg-dc-teal/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          Accept
+          Accept invite
         </button>
         <button
           onClick={onDecline}

@@ -60,6 +60,8 @@ export function useCreatorGroupInvitations() {
     queryClient.invalidateQueries({ queryKey: ['creator-group-invitations', user?.id] });
     queryClient.invalidateQueries({ queryKey: ['group-campaigns'] });
     queryClient.invalidateQueries({ queryKey: ['creator-groups'] });
+    // Without this, an accepted crew doesn't appear in "Your crews" until a refetch.
+    queryClient.invalidateQueries({ queryKey: ['my-crews', user?.id] });
   };
 
   const accept = useMutation({
