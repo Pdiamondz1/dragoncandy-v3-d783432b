@@ -24,7 +24,7 @@ The Dragon Rewards Engine is **fully live**, not dark:
 | `feature_flags.DRAGON_REWARDS_ENABLED` | `true` (since 2026-06-28) |
 | `dre_config.go_live_at` | `2026-06-28T10:07:57Z` (real cutover, not the sentinel) |
 | `dragon_point_balances` | 26 users, 25,150 points total |
-| `dre_config.point_values` | 24 event types, creator + business |
+| `dre_config.point_values` | 25 event types (12 creator, 13 business) |
 | Most recent award | 2026-08-02, `business.campaign_launched` |
 
 ### What is missing
@@ -167,6 +167,11 @@ campaign."* Both conditions are shown because tiers require **both** a point thr
 an activity milestone — points alone never unlock a tier, and a page that showed only
 points would teach the wrong model. At `legend` (DP-only cap) the block says so instead.
 
+The gap must mirror `_shared/dre-rules.ts` `resolveTier` exactly, including its rating rule:
+a `min_avg_rating` threshold is **unmet when `avg_rating` is null**, so a creator with no
+reviews yet is short of `knight` on rating even at 10 campaigns — the gap line has to say
+"an average rating of 4.5 (no reviews yet)" rather than treating null as passing.
+
 **Block 2 — Your history.** `dragon_point_events` for the caller, newest first, each row
 `{label} · +{points} · {date}`. Own-row RLS already permits this; no new grant. Empty state:
 "You haven't earned any DC Points yet — here's how to start," linking to block 3.
@@ -261,7 +266,7 @@ founder has seen it. Flagged so the decision is deliberate rather than discovere
 
 ## 10. Testing
 
-- **Label coverage** — every key in the seeded `point_values` (all 24) resolves to a label;
+- **Label coverage** — every key in the seeded `point_values` (all 25) resolves to a label;
   an unknown key degrades to a derived label rather than a raw key or a throw.
 - **Cross-side parity** — `src/lib/dragonEvents.ts` and `_shared/dre-events.ts` have
   identical key sets and identical labels.
