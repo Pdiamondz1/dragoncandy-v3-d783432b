@@ -1,5 +1,26 @@
 # Wiki Log
 
+## [2026-08-07] update | [[Cross-Tenant Proxy Authorization]] — /media closed, and what the reviews caught
+Ingested [[Media Scoping and Schedule Completion Session]]. Compounded onto the existing concept
+page rather than creating a new one: this is the same rule (a grant may rest only on a fact the
+client cannot assert) applied to a second resource, so `/media` moved from "where the boundary still
+leaks" to closed, with its remaining pagination limit recorded in the same list.
+
+**The durable lesson is not the fix, it is the review record.** Five Codex rounds plus a
+data-exposure pass, and most of what they found was mine: a cross-tenant WRITE reintroduced through
+a client-writable column that a sibling function had already been hardened against; every media
+upload broken by trusting a .d.ts parameter name as the wire format; a comment asserting the exact
+opposite of the truth about offset paging; and an unbounded safety net that could take down the run
+it protects. All treated as blocking rather than deferred, because "your media is missing and
+nothing says why" and "your campaign is stuck forever while the job reports success" are the
+invisible-failure class this whole area exists to remove.
+
+Also notable: the edge-function typecheck gate added one branch earlier caught one of these BEFORE
+review — the wrong client variable in `reconcile-social-posts`, which sits in the checked set.
+
+Pages: updated `concepts/cross-tenant-proxy-authorization.md`, `index.md`, `docs/SHIPPED_LOG.md`,
+`docs/PROJECT_CONTEXT.md` §5.
+
 ## [2026-08-06] ingest | [[Honest Analytics]] — a claim may not outrun its evidence
 Ingested [[Honest Analytics and Edge Typecheck Session]] (PR #368). New concept page rather than a
 section on [[Social Measurement Spine]]: that page is about producing trustworthy measurements, this

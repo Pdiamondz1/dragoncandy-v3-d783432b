@@ -33,6 +33,8 @@ import { createZernioAdapter } from "./adapters/zernio.ts";
 import { resolveProviderFromRows, resolveProviderId } from "../_shared/social-provider.ts";
 import { assertAccountsOwned, isPostOwned } from "./gateway-guards.ts";
 import { recordPostOwnership } from "../_shared/outstand-post-ownership-store.ts";
+import { recordMediaOwnership } from "../_shared/outstand-media-ownership-store.ts";
+import { extractUploadedMediaId } from "../_shared/outstand-media-authz.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -598,6 +600,43 @@ async function handleOp(
         },
         ctx,
       );
+      // SECOND GATEWAY, SAME BINDING. outstand-proxy mints
+      // outstand_media_ownership on its own upload path, and enforcement is
+      // STRICT — no binding means the uploader is 403'd on confirm/delete and
+      // filtered out of their own list. So this path must mint too, or media
+      // created here is orphaned from the person who created it. Same reasoning
+      // that put post minting in a shared store rather than one gateway.
+      //
+      // OUTSTAND ONLY — the same gate bindCreatedPostOwnership applies, and for
+      // the same reason. This gateway is provider-agnostic, but
+      // outstand_media_ownership is Outstand-KEYED: a bare media id with no
+      // provider column. Provider ids are only opaque WITHIN a provider, so
+      // writing a Zernio media id into it pollutes the Outstand namespace, where
+      // outstand-proxy later trusts it as authorization for Outstand
+      // /media/{id}. A cross-provider collision could then grant or block the
+      // wrong person. A non-Outstand upload is left unbound rather than
+      // mis-bound; binding Zernio media correctly needs a provider-qualified
+      // key, which belongs with the Zernio measurement work.
+      //
+      // Best-effort otherwise: the upload already exists at the provider, so a
+      // mint failure is logged, never surfaced as a failed upload.
+      if (deps.ctx.provider !== "outstand") {
+        console.warn(
+          `social-proxy: uploadMedia on provider '${deps.ctx.provider}' — no ownership binding minted ` +
+            `(outstand_media_ownership is Outstand-keyed); this media will not be reachable via outstand-proxy`,
+        );
+      } else {
+        try {
+          await recordMediaOwnership(
+            deps.admin,
+            extractUploadedMediaId(out) ?? (out as { id?: string } | null)?.id ?? null,
+            deps.ctx.userId,
+          );
+        } catch (e) {
+          console.error("social-proxy: media ownership binding threw (upload already succeeded)", e);
+        }
+      }
+
       return jsonResponse(200, { data: out });
     }
 

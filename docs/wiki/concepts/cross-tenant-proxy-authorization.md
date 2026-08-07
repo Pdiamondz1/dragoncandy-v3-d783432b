@@ -95,12 +95,16 @@ A row whose account ids cannot be resolved is **dropped**: unattributable is not
 
 ## Where the boundary still leaks
 
-- **`/media` is unscoped.** Every method, any authenticated caller. The SDK's `MediaFile` type is
-  `{id, url, filename, contentType, size, status, created_at, expires_at}` — no account, user or org
-  field — so there is nothing to filter on, and the code's "media is org-level in Outstand" comment
-  was accurate rather than lazy. Closing it needs an ownership binding of our own, mirroring
-  `outstand_post_ownership`. **`GET /media` currently returns `count: 0`**, so nothing is exposed
-  today; it becomes live the moment media is uploaded and retained.
+- ~~**`/media` is unscoped**~~ — **closed.** It allowed every method for any authenticated caller,
+  so any user could list every tenant's uploads (filenames + URLs) and **DELETE any of them**; the
+  SDK calls all four media endpoints including `DELETE`. Ownership could not come from the row —
+  `MediaFile` carries no account/user/org field and the provider has no per-tenant scope — so
+  `outstand_media_ownership` mirrors `outstand_post_ownership`: minted by the proxy on a 2xx
+  `POST /media/upload` from `ctx.userId` + the provider's own id, with no client write path.
+  **STRICT from day one** (no binding ⇒ refuse), which is safe here precisely because `GET /media`
+  returned `count: 0` — there was no legacy population to strand, unlike the webhook's. Both
+  gateways that create media mint through one shared store, and the mint is **provider-gated**: a
+  Zernio id must never enter an Outstand-keyed table.
 - ~~**`business_outstand_accounts` INSERT is unconstrained**~~ — **fixed — migration `20260806210000` APPLIED to prod
   2026-08-06 and verified red→green.** This was the substrate *under* the
   `post_account` grant: `authenticated` **and `anon`** held INSERT on all 14 columns including
@@ -121,6 +125,9 @@ A row whose account ids cannot be resolved is **dropped**: unattributable is not
   **`42501 permission denied`**.
 - **`/social-accounts/pending/{token}[/finalize]`** rests entirely on the provider's token entropy —
   holding another tenant's in-flight session token finalizes their OAuth handoff into your rows.
+- **`GET /media` paginates over the ORG pool before filtering**, so once several tenants have
+  uploads a caller can get an empty first page while their own media sits further down. Errs toward
+  showing too *little*, never another tenant's. Fixing it means paging over the caller's own ids.
 - **Offset paging over a post-hoc filtered list is incoherent** (upstream page N is not the caller's
   page N). Filtering stops the disclosure; it does not make paging correct.
 - **Delegated posting appears inert**: `ownedIds` is keyed on the grantee, so the grantor's accounts

@@ -531,6 +531,113 @@ serve(async (req: Request) => {
     console.warn(`[reconcile] stopped paging after a fetch error: offset=${offset} pagesFetched=${pagesFetched}`);
   }
 
+  // Re-drive schedule completion for any campaign still in flight.
+  //
+  // outstand-webhook calls the same RPC when a post publishes, and that is the
+  // fast path. This is the SAFETY NET for the one case the webhook cannot cover
+  // on its own: when the last two posts of a campaign publish concurrently,
+  // both invocations can evaluate before the other's row commits, both decline,
+  // and — since those were the last two — no further webhook ever re-evaluates.
+  // Without a sweep the campaign would sit on "scheduled" permanently.
+  //
+  // The RPC is idempotent (it only transitions from scheduled/in_progress and
+  // returns whether THIS call made the change), so running it over every
+  // in-flight campaign every hour costs one statement each and can never
+  // double-apply.
+  let schedulesCompleted = 0;
+  let scheduleCompletionErrors = 0;
+  let scheduleSweepTruncated = 0;
+  try {
+    // SHARES the run budget with post reconciliation above rather than having
+    // its own. Post processing may already have spent the whole deadline, and
+    // this loop can otherwise issue thousands of sequential RPCs past it —
+    // overrunning the platform timeout means the function returns NOTHING, so
+    // an unbounded safety net would take down the run it was meant to protect.
+    // Truncation is counted and logged; the next hourly run resumes, because
+    // the RPC is idempotent and the set is re-derived from scratch each time.
+    // PAGED, not capped. A bare .limit(500) would evaluate one batch and stop,
+    // so campaigns outside it stay stuck forever while the comment above claims
+    // every in-flight campaign is re-driven — a silent cap presenting as
+    // coverage, which is the failure this whole area keeps producing. Pages
+    // until a short page ends it, with a hard ceiling so a runaway cannot spin,
+    // and the ceiling REPORTS itself rather than truncating quietly.
+    // KEYSET paging, not offset. Offset is wrong here and subtly so: completing
+    // a campaign REMOVES it from the `.in(posting_schedule_status, …)` result
+    // set, so every completion shifts the remaining rows DOWN. With 1000
+    // in-flight and 500 completed on the first page, rows 501-1000 slide to
+    // offsets 0-499 while the next query asks for 500-999 — and evaluates none
+    // of them. An earlier version of this loop advanced by page size and
+    // asserted in a comment that this was safe "because completed rows only
+    // ever drop OUT". That is precisely why it is NOT safe; the claim had the
+    // reasoning backwards.
+    //
+    // Paging by last-seen id is immune: `id > lastId` does not care what left
+    // the set behind it.
+    const PAGE = 500;
+    const MAX_CAMPAIGNS = 20_000;
+    let lastId = "00000000-0000-0000-0000-000000000000";
+    let campaignsScanned = 0;
+    for (;;) {
+      const { data: inFlight, error: inFlightErr } = await admin
+        .from("campaigns")
+        .select("id, user_id")
+        .in("posting_schedule_status", ["scheduled", "in_progress"])
+        .gt("id", lastId)
+        .order("id", { ascending: true })
+        .limit(PAGE);
+
+      if (inFlightErr) {
+        scheduleCompletionErrors += 1;
+        console.error("[reconcile] in-flight campaign lookup failed", inFlightErr.message);
+        break;
+      }
+
+      const batch = (inFlight ?? []) as Array<{ id: string; user_id: string }>;
+      if (batch.length === 0) break;
+
+      for (const row of batch) {
+        if (Date.now() > deadline) {
+          scheduleSweepTruncated = 1;
+          break;
+        }
+        const { data: done, error: rpcErr } = await admin.rpc(
+          "complete_posting_schedule_if_done",
+          { p_campaign_id: row.id, p_user_id: row.user_id },
+        );
+        if (rpcErr) {
+          scheduleCompletionErrors += 1;
+          console.error(`[reconcile] completion rpc failed for campaign ${row.id}`, rpcErr.message);
+        } else if (done === true) {
+          schedulesCompleted += 1;
+          console.log(`[reconcile] campaign ${row.id} posting schedule completed`);
+        }
+      }
+
+      if (scheduleSweepTruncated) {
+        console.warn(
+          `[reconcile] schedule-completion sweep stopped at the run budget after ` +
+            `${campaignsScanned} campaign(s) — the next hourly run resumes`,
+        );
+        break;
+      }
+
+      lastId = batch[batch.length - 1].id;
+      campaignsScanned += batch.length;
+      if (batch.length < PAGE) break;
+      if (campaignsScanned >= MAX_CAMPAIGNS) {
+        scheduleCompletionErrors += 1;
+        console.error(
+          `[reconcile] schedule-completion sweep hit the ${MAX_CAMPAIGNS} ceiling — ` +
+            `campaigns beyond it were NOT evaluated this run`,
+        );
+        break;
+      }
+    }
+  } catch (e) {
+    scheduleCompletionErrors += 1;
+    console.error("[reconcile] schedule-completion sweep threw", e);
+  }
+
   const summary = {
     // posts
     postsScanned,
@@ -549,6 +656,10 @@ serve(async (req: Request) => {
     scheduleLookupErrors,
     upsertErrors,
     ownerConflicts,
+    // schedule completion (safety net for the webhook's concurrent-final-post race)
+    schedulesCompleted,
+    scheduleCompletionErrors,
+    scheduleSweepTruncated,
     unbound,
     bindingConflicts,
     bindingUnavailable,

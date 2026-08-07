@@ -6,6 +6,7 @@ import { useOutstandPaths } from '@/hooks/outstand/useOutstandPaths';
 import { toast } from 'sonner';
 import { BrandGuidelinesEditor } from './BrandGuidelinesEditor';
 import { DelegatedPostingPermissions } from './DelegatedPostingPermissions';
+import { DELEGATED_POSTING_ENABLED } from '@/lib/featureConfig';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrgUnits } from '@/hooks/useOrgData';
 import { useLocationSocialAccounts, useUnassignedSocialAccounts } from '@/hooks/outstand/useLocationSocialAccounts';
@@ -263,11 +264,16 @@ export const AccountsTab: React.FC = () => {
         </AppCard>
       )}
 
-      <AppCard>
-        <h2 className="text-base font-bold text-gray-900 mb-3">Posting Permissions</h2>
-        <p className="text-xs text-gray-500 mb-4">Manage who can post on behalf of your accounts.</p>
-        <DelegatedPostingPermissions />
-      </AppCard>
+      {/* Hidden while delegated posting cannot actually publish — see
+          DELEGATED_POSTING_ENABLED. Offering a grant that silently never works
+          is worse than not offering it. */}
+      {DELEGATED_POSTING_ENABLED && (
+        <AppCard>
+          <h2 className="text-base font-bold text-gray-900 mb-3">Posting Permissions</h2>
+          <p className="text-xs text-gray-500 mb-4">Manage who can post on behalf of your accounts.</p>
+          <DelegatedPostingPermissions />
+        </AppCard>
+      )}
     </div>
   );
 };

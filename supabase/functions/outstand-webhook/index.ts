@@ -416,9 +416,11 @@ serve(async (req: Request) => {
       }
 
       // Guarded: only advance rows that aren't already published.
+      // campaign_id is selected so the schedule-completion check below knows
+      // which campaigns this delivery could have finished.
       const { data: rows } = await supabase
         .from("donny_scheduled_posts")
-        .select("id, metadata")
+        .select("id, metadata, campaign_id, user_id")
         .eq("metadata->>outstand_post_id", postId)
         .neq("status", "published");
 
@@ -445,6 +447,84 @@ serve(async (req: Request) => {
           .update(patch)
           .eq("id", row.id)
           .neq("status", "published");
+      }
+
+      // A campaign's posting schedule can only END here — this is the one place
+      // that learns a post went live. `posting_schedule_status = 'completed'`
+      // has a CHECK value and a rendered UI card ("All Posts Published") and was
+      // written by NOTHING, so a fully-published campaign sat on the "scheduled"
+      // card forever.
+      //
+      // Best-effort by design: the post status above is the load-bearing write
+      // and has already succeeded. A failure here must not turn a delivered
+      // webhook into a non-2xx, because Outstand would retry the whole thing and
+      // the only durable effect would be re-running work that already
+      // succeeded. Logged instead, and self-healing — the next published post on
+      // the same campaign re-evaluates, and a campaign whose LAST post this was
+      // is caught by nothing, which is the known limit recorded in the wiki.
+      if (newStatus === "published") {
+        // (campaign_id, user_id) PAIRS, not bare campaign ids.
+        //
+        // THIS PAIRING IS THE AUTHORIZATION, and the first version of this loop
+        // did not have it. `rows` comes from a match on
+        // `metadata->>outstand_post_id`, which is CLIENT-WRITABLE, and
+        // `donny_scheduled_posts.campaign_id` is a bare nullable uuid with
+        // nothing in the INSERT policy constraining it (the policy only pins
+        // `user_id = auth.uid()`). Campaign ids are discoverable in browse. So a
+        // planted row naming any victim campaign would have had the service-role
+        // update flip THEIR campaign to "All Posts Published" — a cross-tenant
+        // write, through the same client-writable column this whole area keeps
+        // getting burned by. confirm-posting-schedule was already hardened
+        // against exactly this write with `.eq('user_id', user.id)`; the webhook
+        // has no authenticated user to use, so it carries the row's user_id
+        // instead.
+        //
+        // That value IS trustworthy for this purpose: the INSERT policy forces
+        // `user_id = auth.uid()`, so a planted row necessarily names the
+        // ATTACKER. Requiring the campaign's own `user_id` to equal it means a
+        // row can only ever complete a campaign belonging to whoever created the
+        // row. The update below enforces it in the statement rather than in a
+        // separate read, so there is no window between checking and writing.
+        const pairs = new Map<string, { campaignId: string; userId: string }>();
+        for (const r of rows) {
+          const row = r as { campaign_id?: string | null; user_id?: string | null };
+          if (typeof row.campaign_id !== "string" || row.campaign_id.length === 0) continue;
+          if (typeof row.user_id !== "string" || row.user_id.length === 0) continue;
+          pairs.set(`${row.campaign_id}:${row.user_id}`, {
+            campaignId: row.campaign_id,
+            userId: row.user_id,
+          });
+        }
+
+        for (const { campaignId, userId } of pairs.values()) {
+          try {
+            // ONE STATEMENT, not read-then-write. The JS version read the
+            // sibling rows and then updated, which left a window: when the last
+            // TWO posts of a campaign publish concurrently, each webhook could
+            // read the other's row as still pending, both skip, and — since
+            // those were the last two — nothing would ever re-evaluate. The RPC
+            // folds the NOT EXISTS into the UPDATE so the check and the write
+            // share a snapshot, and reconcile-social-posts re-drives the same
+            // call hourly so a campaign that still loses the race self-corrects
+            // instead of sticking forever.
+            //
+            // p_user_id is the cross-tenant guard — see the pairing note above.
+            const { data: completed, error: rpcErr } = await supabase.rpc(
+              "complete_posting_schedule_if_done",
+              { p_campaign_id: campaignId, p_user_id: userId },
+            );
+            if (rpcErr) {
+              console.error(
+                `outstand-webhook: schedule-completion rpc failed for ${campaignId}`,
+                rpcErr.message,
+              );
+            } else if (completed === true) {
+              console.log(`outstand-webhook: campaign ${campaignId} posting schedule completed`);
+            }
+          } catch (e) {
+            console.error(`outstand-webhook: schedule-completion check threw for ${campaignId}`, e);
+          }
+        }
       }
 
       return json(200, { status: "processed", event, post_id: postId });

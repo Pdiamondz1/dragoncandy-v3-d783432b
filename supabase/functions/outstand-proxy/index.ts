@@ -18,12 +18,19 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { extractCreatedPostId } from "../_shared/outstand-post-ownership.ts";
 import { recordPostOwnership } from "../_shared/outstand-post-ownership-store.ts";
+import { recordMediaOwnership } from "../_shared/outstand-media-ownership-store.ts";
 import {
   decidePostAccess,
   extractRequestAccountIds,
   firstUnownedAccountId,
 } from "../_shared/outstand-post-authz.ts";
 import { extractSocialAccountIds, filterListRows } from "../_shared/outstand-list-filter.ts";
+import {
+  collectMediaIds,
+  decideMediaAccess,
+  extractUploadedMediaId,
+  filterMediaList,
+} from "../_shared/outstand-media-authz.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -228,6 +235,74 @@ async function fetchPostAccountIds(postId: string, outstandKey: string): Promise
 // console.error, because a binding table that has started failing every read is
 // an outage that would otherwise present only as users mysteriously losing
 // access to their own posts.
+// The SERVER-ESTABLISHED owner of this media id, or null when there is no
+// binding OR the read failed. Never throws.
+//
+// The two cases collapse deliberately: this consumer is strict, so both mean
+// "no positive evidence, therefore no". The error is still logged, because a
+// binding table failing every read presents to users only as mysteriously
+// losing access to their own uploads.
+async function readMediaOwnerBinding(
+  admin: SupabaseClient,
+  mediaId: string,
+): Promise<string | null> {
+  const { data, error } = await admin
+    .from("outstand_media_ownership")
+    .select("user_id")
+    .eq("outstand_media_id", mediaId)
+    .maybeSingle();
+  if (error) {
+    console.error("outstand-proxy: media ownership lookup failed", error.message);
+    return null;
+  }
+  const userId = (data as { user_id?: unknown } | null)?.user_id;
+  return typeof userId === "string" && userId.length > 0 ? userId : null;
+}
+
+/**
+ * Of the media ids ON THIS PAGE, which does the caller own?
+ *
+ * Asked this way round on purpose. "Give me all my media ids" is an UNBOUNDED
+ * query, and PostgREST silently caps rows — so a user with more uploads than
+ * the cap would have their own media filtered out of their own gallery, and
+ * nothing would say so. The ids present on one page are bounded by the page
+ * size, so this cannot truncate.
+ *
+ * Chunked at 100 because an unbounded `.in()` puts the whole list in the URL,
+ * which lands in the Content-Location response header and overflows undici's
+ * 16 KB header limit — that surfaces as a bare "fetch failed" rather than a
+ * PostgrestError, and it has bitten this codebase before.
+ *
+ * Fails CLOSED: any error yields an empty set, so the list filters to nothing
+ * rather than forwarding the org's media because a read blipped.
+ */
+async function listOwnedMediaIds(
+  admin: SupabaseClient,
+  userId: string,
+  candidateIds: readonly string[],
+): Promise<Set<string>> {
+  const owned = new Set<string>();
+  if (candidateIds.length === 0) return owned;
+
+  const CHUNK = 100;
+  for (let i = 0; i < candidateIds.length; i += CHUNK) {
+    const slice = candidateIds.slice(i, i + CHUNK);
+    const { data, error } = await admin
+      .from("outstand_media_ownership")
+      .select("outstand_media_id")
+      .eq("user_id", userId)
+      .in("outstand_media_id", slice);
+    if (error) {
+      console.error("outstand-proxy: owned-media lookup failed", error.message);
+      return new Set();
+    }
+    for (const row of (data ?? []) as Array<{ outstand_media_id: string }>) {
+      owned.add(row.outstand_media_id);
+    }
+  }
+  return owned;
+}
+
 async function readPostOwnerBinding(
   admin: SupabaseClient,
   postId: string,
@@ -295,12 +370,51 @@ async function enforceScope(args: {
     return null;
   }
 
-  // Media is org-level in Outstand — allow read/write for authenticated users
-  if (
-    pathOnly === "/media" ||
-    pathOnly === "/media/upload" ||
-    /^\/media\/[^/]+(\/confirm)?$/.test(pathOnly)
-  ) {
+  // MEDIA. Was: "Media is org-level in Outstand — allow read/write for
+  // authenticated users", allowing every method for any caller. The premise was
+  // right and the conclusion inverted — the Outstand key is ORG-WIDE, so
+  // "org-level" means every DragonCandy tenant's uploads share one pool, and any
+  // authenticated user could list every tenant's media (filenames + URLs) and
+  // DELETE any of it. The SDK calls all four of these, DELETE included.
+  //
+  // Ownership cannot come from the row: MediaFile carries no account/user/org
+  // field and the provider has no per-tenant scope. It comes from
+  // outstand_media_ownership, minted below on a 2xx POST /media/upload from
+  // ctx.userId + the provider's own id. See _shared/outstand-media-authz.ts.
+
+  // Creating your own upload: nothing to own yet. The binding is minted from the
+  // response, at the same point POST /posts mints its own.
+  if (pathOnly === "/media/upload" && method === "POST") {
+    return null;
+  }
+
+  // The list is allowed here and FILTERED downstream to the caller's own media,
+  // exactly as /posts and /social-accounts are.
+  if (pathOnly === "/media" && method === "GET") {
+    return null;
+  }
+
+  // A specific media item — read, confirm, or delete. Requires the binding.
+  //
+  // STRICT (no binding ⇒ refuse) rather than permissive like outstand-webhook,
+  // and that difference is justified rather than stylistic: `GET /media`
+  // returned count:0 on prod when this shipped, so there is no pre-binding
+  // population to strand. Every media id from here is minted with a binding.
+  const mediaMatch = /^\/media\/([^/]+)(?:\/confirm)?$/.exec(pathOnly);
+  if (mediaMatch) {
+    const mediaId = mediaMatch[1];
+    if (!mediaId) return jsonResponse(400, { error: "missing_media_id" });
+
+    const bindingUserId = await readMediaOwnerBinding(admin, mediaId);
+    const decision = decideMediaAccess(bindingUserId, ctx.userId);
+    if (!decision.allowed) {
+      // Never silent: a legitimate user blocked by a missing binding must be
+      // distinguishable in the logs from an attacker correctly refused.
+      console.warn(
+        `outstand-proxy: denying ${method} ${pathOnly} for user ${ctx.userId} — ${decision.reason}`,
+      );
+      return jsonResponse(403, { error: "forbidden_media" });
+    }
     return null;
   }
 
@@ -778,16 +892,50 @@ serve(async (req: Request) => {
   });
   if (denied) return denied;
 
-  // Sanitize media filename before forwarding. The SDK posts
-  // { filename, contentType, size } to /media/upload; Outstand uses the
-  // filename verbatim in the stored URL.
+  // /media/upload — sanitize the filename AND forward only the fields the SDK
+  // actually sends.
+  //
+  // The filename sanitizing is long-standing: Outstand stores it verbatim in the
+  // URL, and spaces/parens break Graph's URL parser ("Missing or invalid image
+  // file").
+  //
+  // The ALLOW-LIST is new, and it exists because this response now mints an
+  // ownership binding. extractUploadedMediaId reads the media id out of the
+  // provider's reply, so anything that could influence that reply is worth
+  // narrowing. Forwarding the caller's body wholesale made "can a client
+  // pre-claim a media id" depend on whether Outstand ever echoes an unexpected
+  // request field back into its upload response — a vendor assumption, not a
+  // property we control. Sending only { filename, contentType, size } — exactly
+  // what the SDK's getUploadUrl posts — removes the question instead of
+  // answering it.
   let forwardBody = bodyText;
   if (path.split("?")[0].replace(/\/$/, "") === "/media/upload" && req.method === "POST" && bodyText) {
     try {
       const body = JSON.parse(bodyText);
-      if (body && typeof body.filename === "string") {
-        body.filename = sanitizeFilename(body.filename);
-        forwardBody = JSON.stringify(body);
+      if (body && typeof body === "object" && !Array.isArray(body)) {
+        const clean: Record<string, unknown> = {};
+        if (typeof body.filename === "string") clean.filename = sanitizeFilename(body.filename);
+
+        // THE WIRE FIELD IS `content_type`, SNAKE_CASE. Read off the SDK bundle,
+        // not inferred from its TypeScript signature:
+        //   api.post("/media/upload", { filename, content_type: contentType })
+        // The camelCase `contentType` is only the name of useMediaUpload's
+        // ARGUMENT. An allow-list that kept just `contentType` therefore
+        // stripped the MIME type off every real upload — the first version of
+        // this block did exactly that, and Codex caught it. Accept both
+        // spellings and always emit the wire one.
+        const contentType =
+          typeof body.content_type === "string"
+            ? body.content_type
+            : typeof body.contentType === "string"
+              ? body.contentType
+              : null;
+        if (contentType) clean.content_type = contentType;
+
+        // `size` belongs to /media/{id}/confirm rather than upload, but it costs
+        // nothing to pass through if a caller sends it.
+        if (typeof body.size === "number") clean.size = body.size;
+        forwardBody = JSON.stringify(clean);
       }
     } catch {
       // leave body untouched on parse error
@@ -892,12 +1040,74 @@ serve(async (req: Request) => {
         console.error("outstand-proxy: ownership binding threw (publish already succeeded)", e);
       }
     }
+
+    // Mint the MEDIA binding at the same point, and for the same reason: this is
+    // the only moment both facts exist together — the authenticated caller
+    // (ctx.userId) and the provider's own media id from its response. Without
+    // this the uploader could not later confirm or delete their own upload,
+    // because the /media/{id} branch is strict.
+    //
+    // Guarded like its sibling: the upload already exists at Outstand by this
+    // line, so an uncaught throw here would report failure for work that
+    // succeeded.
+    if (req.method === "POST" && pathOnly === "/media/upload") {
+      try {
+        const mediaId = extractUploadedMediaId(
+          upstreamText ? JSON.parse(upstreamText) : null,
+        );
+        if (!mediaId) {
+          // Visible, not silent: no binding means the uploader cannot confirm
+          // or delete this item, which is a support question waiting to happen.
+          console.warn(
+            "outstand-proxy: POST /media/upload returned no recognisable media id — no ownership binding minted",
+          );
+        } else {
+          const res = await recordMediaOwnership(admin, mediaId, ctx.userId);
+          if (!res.minted) {
+            console.error(
+              `outstand-proxy: media ownership not minted for ${mediaId} (${res.reason ?? "unknown"})`,
+            );
+          }
+        }
+      } catch (e) {
+        console.error("outstand-proxy: media binding threw (upload already succeeded)", e);
+      }
+    }
   }
 
   // Filter list responses
   if (upstream.ok && req.method === "GET") {
-    const filtered = filterListBody(pathOnly, upstreamText, ownedIds);
-    upstreamText = filtered.body;
+    if (pathOnly === "/media") {
+      // Media cannot be filtered by anything on the row — see
+      // _shared/outstand-media-authz.ts — so ownership comes from the binding
+      // table. Fails closed: a failed lookup yields an empty set and the list
+      // filters to nothing rather than forwarding the org's media.
+      //
+      // KNOWN LIMIT, stated rather than left to be discovered: Outstand applies
+      // `limit`/`offset` to the ORG-WIDE pool before this filter runs, so once
+      // several tenants have uploads a caller can get an empty first page while
+      // their own media sits further down the org ordering — their gallery looks
+      // empty when it is not. Filtering cannot fix that from here; the list has
+      // to page over the caller's OWN ids, which means driving pagination from
+      // outstand_media_ownership and fetching by id. Deliberately not built now:
+      // `GET /media` returns count:0 on prod, so there is no page to be wrong
+      // about yet, and guessing at the shape of a fix before any media exists is
+      // how the analytics components got written. This is the same defect class
+      // as the offset-paging note on the post list filter.
+      //
+      // It errs toward showing too LITTLE, never another tenant's media.
+      const ownedMedia = await listOwnedMediaIds(admin, ctx.userId, collectMediaIds(upstreamText));
+      const filteredMedia = filterMediaList(upstreamText, ownedMedia);
+      if (filteredMedia.dropped > 0) {
+        console.log(
+          `outstand-proxy: filtered ${filteredMedia.dropped} unowned media row(s) (kept ${filteredMedia.kept})`,
+        );
+      }
+      upstreamText = filteredMedia.body;
+    } else {
+      const filtered = filterListBody(pathOnly, upstreamText, ownedIds);
+      upstreamText = filtered.body;
+    }
   }
 
   const responseHeaders: Record<string, string> = { ...corsHeaders };
