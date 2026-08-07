@@ -26,6 +26,68 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-07] Crews: make the feature explain itself (both sides)
+
+**Merged as `64d74d63` (#379); both edge functions deployed to prod (`send-notification-email`
+v247, `create-notification` v39, verify_jwt preserved on both); Codex second review run and
+clean. Help-article migration `20260807230000` applied to prod. State as of writing.**
+
+A restaurant user landed on `/dashboard/business/groups` and asked *"what is CREWS? I guess I can
+group by different creators?"*, which opened five questions: do creators know they've been grouped,
+what does it unlock, is it free, do they get notified, and can either side understand it.
+
+**The audit inverted the premise.** Every one of those already had a good answer in the product —
+the UI just never said any of them. Creators *must* accept (RLS lets an owner write only
+`invited`/`removed`; only the creator's own `respond_to_group_invitation` sets `active`, so a
+business cannot force anyone into a crew). Crew campaigns *are* free, enforced by the
+`campaigns_group_free` CHECK. Invites *did* fire a bell. None of it was on screen, and there was no
+tour, coachmark, or first-run mention anywhere. Crews wasn't underbuilt; it was unexplained.
+
+**Business side.** New collapsible `CrewsHowItWorks`, rendered whether or not crews exist — the
+"what is this?" question arrives before the first crew. Roster counts on the crew cards via one
+grouped query (`useCreatorGroupMemberCounts`), not N head-counts. Consent language on the index,
+detail page, and invite sheet.
+
+**Creator side.** The real hole: a creator who accepted an invite had **no surface listing their
+crews** — the card vanished and nothing recorded membership. Added `useMyCrews` + `MyCrewsList`,
+working entirely under existing RLS with plain client queries (`cgm_self_select` →
+`cg_member_select` → public `business_profiles`, mirroring `useGroupCampaigns`) — no RPC, no
+migration. The crews-tab empty state no longer claims "no invitations" to someone already in a
+crew, and the invite card leads with the actual value.
+
+**Notifications.** `group_invitation` was absent from `NOTIFICATION_TYPE_TO_EMAIL_TYPE`, so invites
+were bell-only — a creator not in the app never learned. Now mapped to a new `crew_invitation`
+email template. Removing an *active* member notifies them; rescinding a pending invite deliberately
+does not.
+
+**Two corrections worth remembering.**
+
+1. **"First look" was false.** Copy implying crew collabs reach the crew *before the marketplace*
+   implies they later go public. They never do — `usePublicCampaigns` filters
+   `.is('group_id', null)`, the campaigns SELECT policy gates the public branch on
+   `group_id IS NULL`, nothing ever nulls a campaign's `group_id`, and the FK is ON DELETE RESTRICT
+   to prevent it. `CrewsHowItWorks` contradicted itself five lines apart. Reframed around
+   exclusivity across the app, the `crew_invitation` and pre-existing `new_crew_campaign` emails,
+   and the `creator-crews-creator` help article.
+2. **`supabase.functions.invoke` resolves on a non-2xx** — it does not reject, so the existing
+   `.catch(console.error)` was dead code for every 4xx/5xx. Dispatch moved inside `mutationFn`
+   under `Promise.allSettled`, counting both rejections and `value.error`. Same shape still exists
+   in `useCreatorGroupInvitations` and `useCampaignCreator` — follow-up.
+
+**Review.** An adversarial pass found five real defects post-implementation (the false copy, an
+empty state rendering simultaneously with its own loading skeleton, a failed count query asserting
+"No members yet" about full rosters, a toast promising an email that may not send, and a silent
+removal-bell failure) — all fixed before merge. Codex found nothing further. 1912 tests pass.
+
+**Deploy ordering (durable):** `send-notification-email` **before** `create-notification`. The
+reverse doesn't crash — the caller only checks `emailResponse.ok` — but silently drops every invite
+email until both are live.
+
+**Deliberately out of scope:** creator-facing crew detail route; roster visibility between crew
+members (crews stay a private 1:1 roster by product decision); delete-crew UI (the mutation and its
+toasts exist, wired to no button); renaming `/dashboard/business/groups` → `/crews` (stored
+notification `actionUrl`s point at it, so it needs a redirect).
+
 ## [2026-08-07] Campaign target audience replaces creator personas (+ Donny tags)
 
 **Committed on `feat/campaign-target-audience` (`cdf429ae`) — NOT merged, edge function NOT
