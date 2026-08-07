@@ -105,6 +105,7 @@ const PrivacyPolicy = lazy(() => import("./pages/legal/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("./pages/legal/TermsOfService"));
 const ContentCalendar = lazy(() => import("./pages/ContentCalendar"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
+const DcPointsPage = lazy(() => import("./pages/DcPointsPage"));
 const HelpBriefDrawer = lazy(() => import("./features/donny/HelpBriefDrawer").then(m => ({ default: m.HelpBriefDrawer })));
 const InternalLayout = lazy(() => import("./components/internal/InternalLayout").then(m => ({ default: m.InternalLayout })));
 const InternalOverview = lazy(() => import("./pages/internal/InternalOverview"));
@@ -267,6 +268,9 @@ function AnimatedRoutes() {
 
           {/* Notifications — all roles */}
           <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+
+          {/* DC Points — all roles */}
+          <Route path="/rewards" element={<ProtectedRoute><DcPointsPage /></ProtectedRoute>} />
 
           {/* Business Org Routes */}
           <Route path="/dashboard/business/locations" element={<ProtectedRoute><BusinessRoute><OrgUnitsPage /></BusinessRoute></ProtectedRoute>} />
