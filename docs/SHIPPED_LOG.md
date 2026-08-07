@@ -26,6 +26,83 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-07] Campaign target audience replaces creator personas (+ Donny tags)
+
+**Committed on `feat/campaign-target-audience` (`cdf429ae`) — NOT merged, edge function NOT
+deployed, and the mandatory Codex second review NOT run (OpenAI quota exhausted until 2026-08-08
+08:55). State as of writing.**
+
+The founder screenshotted the campaign builder's "Logistics & Targeting" section: the TARGET
+CREATORS chips "have to be more specific — we have to target audiences… make it very obvious that
+we want the content to attract that customer type instead of a bunch of options," plus "provide
+what other tags the campaign can have; maybe Donny can recommend."
+
+**The audit turned a tuning request into a deletion.** `PERSONA_OPTIONS` (`Foodie, Lifestyle,
+Fitness, Beauty, Tech, Travel, Fashion, Parenting, Gaming, Comedy`) was hardcoded in three files in
+three encodings, wrote to `ai_analysis.target_creator_persona`, and was read by **nothing** —
+three display components and no matcher, filter, or notification. Creator matching scores
+`creator_profiles.skills`, a *craft* enum (`photography`, `video_editing`) sharing **zero** values
+with it. Worse, the chips and the generator already contradicted each other: the prompt asked for
+`target_creator_persona` with **no enumerated vocabulary** while `campaign_type`/`platforms`/
+`content_type`/`aspect_ratio`/`tier` all had one, so Donny emitted values like `"Gen Z brunch
+crowd"` that lit up no chip, vanished from the UI, and persisted anyway. A better list of dead
+options is still dead.
+
+**What shipped.** Donny now writes **one** audience — *"Date-night couples, 25–40, who live within
+5 miles of Washington St"* — pre-filled from the business context he already extracted, editable,
+with **two alternates as one-tap swaps** (the swap set is `[primary, ...alternates]` minus the
+current value, so swapping back needs no state). It sits in **Campaign Overview** as the campaign's
+thesis, and **every idea card shows its audience**, so choosing between Donny's three ideas is
+choosing between *customers* rather than titles. Alongside it, 4–6 creative-direction
+`campaign_tags` (`candlelit`, `shared plates`, `golden hour`) ride into the creator's brief, in
+Content Requirements beside style direction. Logistics & Targeting shrinks to timing + geography.
+New: `src/lib/campaignAudience.ts`, `TargetAudienceField`, `CampaignTagsField`. `audience_alternates`
+lives on `CampaignIdea` only — swapping is meaningless once live, and omitting it drops a field
+from four places. `BrandCampaignDetails`'s "Target Audience" heading (which rendered *personas*)
+was renamed to "Target Creators".
+
+**Field order in the prompt is the mechanism.** `target_audience` is emitted **before**
+`style_direction`/`key_messages`/`hashtags`: the model is autoregressive, so ordering does what
+telling it to "derive these from the audience" alone does not.
+
+**Exactly two coercion boundaries** — Zod (`z.unknown().transform(...)`) for generation results and
+`normalizeDraft` for localStorage. The draft path is a bare `JSON.parse` pushed straight into
+state, so a pre-change draft would have reached the editor with `campaign_tags` undefined and
+thrown on `.map` — **invisible in dev**, where localStorage is empty. Verified against the
+installed zod (3.25.76) that a *missing* key still runs the transform and writes the property.
+
+**No migration.** Everything rides in `ai_analysis`. Legacy persona blocks are untouched and
+guarded on `length > 0`, so old campaigns keep rendering them and new ones never set them.
+
+**Review changed the code four times.** Two agents independently caught that the edit-page write
+path bypassed the coercion this change introduced (`ChipListEditor` dedupes case-*sensitively*,
+no cap) → `Candlelit` + `candlelit` both stored → **duplicate React keys** at three sites. The
+instructive one was self-inflicted: `campaignAudience.ts` states "write short, read tolerant —
+truncating an existing audience would be a silent edit," and the edit-save path then truncated it
+to 160 chars, so editing a *title* would have cut a legacy prose audience mid-word (now trims only;
+`maxLength` bounds new typing). A new ordering test **could never fail** — it matched the quoted
+mention in the prompt's prose, which precedes the schema regardless of field order. And a comment
+credited `useAnonymousCampaignWizard.ts` as the legacy writer of `ai_analysis.target_audience`; it
+never touches the campaigns table (the real writer is `useCampaignWizard.ts:156`), and a bad
+citation invites a maintainer to "correct away" a tolerance that is load-bearing.
+
+**Deploy order is load-bearing and the reverse of the first instinct: frontend first, edge function
+second.** The *deployed* `campaignIdeaSchema` has `target_creator_persona` **required**, so
+shipping the function first throws on **every** generation for anyone on the current bundle. The
+function carries a transitional `"target_creator_persona": []` — an empty array satisfies the old
+schema (verified: `origin/main` has plain `z.array(z.string())`, no `.min()`) — because
+`useAppVersion` only *nags* on a new version and never force-reloads, so a user can sit on a stale
+bundle for hours. A follow-up deploy drops that line; a `lib.test.ts` assertion is pinned to it.
+
+**Also learned: `codex review --base main` reviews NOTHING when work is staged-but-uncommitted** —
+HEAD equals main's tip so `git diff main...HEAD` is empty. Use `--uncommitted`, or commit first. A
+returned "clean" verdict would have been false assurance.
+
+typecheck 0 · lint 0 · build ✓ · 39/39 touched · 1859/1859 full suite · `edge-function-reviewer`
+PASS. **The honest test of this feature is whether a creator submits better content having read the
+audience line** — tags feed nothing by design, which is the same shape as the failure it deleted.
+→ `docs/wiki/concepts/campaign-target-audience.md`
+
 ## [2026-08-07] `GET /media` served from our own table
 
 Closes the pagination limit *recorded* rather than fixed when `/media` was first scoped to its owner.

@@ -100,6 +100,13 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   handoff and payment flow; gates production launch. → `docs/SHIPPED_LOG.md`
 - **Outstand social media integration** — IG/TikTok/YouTube linking + delegated posting;
   phases 1–3 complete, phase 4 (analytics dashboard) still in scope. → `docs/SHIPPED_LOG.md`
+- **Campaign target audience (replaces creator personas)** — the builder's "Target Creators" chips
+  fed nothing (matching uses the disjoint `creator_profiles.skills` craft enum); replaced by a
+  Donny-written audience line + 2 swap alternates + creative-direction tags. Committed
+  (`feat/campaign-target-audience`), **not merged**. **Pending:** Codex second review (quota
+  exhausted until 2026-08-08), then merge **frontend BEFORE** deploying `donny-campaign-generate` —
+  the deployed schema still requires the removed field.
+  → `docs/wiki/concepts/campaign-target-audience.md`
 - **Apple App Store (Capacitor)** — iOS shell over the web app. Phase 1 shipped, Phase 2
   (native camera capture) started; next push + share plugins, then TestFlight. Hard
   prerequisite: a macOS/cloud-Mac build + an Apple Developer account ($99/yr).
