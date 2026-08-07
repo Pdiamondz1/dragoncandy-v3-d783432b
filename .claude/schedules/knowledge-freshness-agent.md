@@ -44,16 +44,41 @@ AIOS_INGEST_SECRET missing or invalid in environment Dame_git_claude."
 
 2. RAG STATE (read-only via PostgREST curl; base https://zocahiffooqdybdhguqv.supabase.co/rest/v1 ,
    headers `apikey` + `Authorization: Bearer` with `$AIOS_INGEST_SECRET`; GET only):
+   - GET `/donny_knowledge?select=id&limit=1` → `RAG_EMPTY` = the array is `[]`.
    - GET `/donny_knowledge?select=updated_at&order=updated_at.desc&limit=1` → `RAG_LAST`.
-   - An empty array (`[]`) means `donny_knowledge` is empty → treat `RAG_LAST` as **null**.
+     **`RAG_LAST` is INFORMATIONAL ONLY — never a gate.** `donny_knowledge`'s only trigger is
+     `handle_updated_at()`, which is a **stub** (`-- Function logic here / RETURN NEW;`) that never
+     assigns `NEW.updated_at`. So `updated_at` is frozen at INSERT and does not move on UPDATE:
+     once a stretch passes with no net-new page, `RAG_LAST` falls permanently behind
+     `LAST_WIKI_SYNC` no matter how current the RAG is. Gating on it would make this agent
+     self-heal every single day off a signal that cannot advance.
+   - **Content probe (the real signal).** The token MUST come from text the newest in-scope wiki
+     revision **added** — not merely from the page it touched. Most wiki commits *edit* an
+     existing page, and any token that already lived on that page is already in the RAG, so it
+     would pass the probe while the edit itself was never synced. Derive it from the diff:
+     ```bash
+     SHA=$(git log -1 --format=%H origin/main -- docs/wiki/concepts docs/wiki/entities docs/wiki/analyses)
+     git diff "$SHA^1" "$SHA" -- docs/wiki/concepts docs/wiki/entities docs/wiki/analyses | grep '^+' | grep -v '^+++'
+     ```
+     (First-parent diff, not `git show`: on a merge commit `git show` prints a *combined* diff that
+     often emits no per-file added lines, which would silently walk the probe back to an older
+     revision and skip the very content being verified. `origin/main` is squash-merged today so the
+     two are identical — verified, both yield the same added-line set — but this survives a change
+     in merge strategy.)
+     From those **added** lines pick a short hyphenated/code/identifier token (never a multi-word
+     phrase — it false-negatives across a markdown line-wrap), then GET
+     `/donny_knowledge?select=id&content=ilike.*<token>*&limit=1`. Present ⇒ the RAG carries the
+     newest wiki content. If the newest revision added no probe-worthy token (pure deletion or
+     frontmatter-only), walk back to the previous in-scope commit rather than passing by default.
 
 3. DECIDE which cases apply (they are independent — both can be true):
    - **Case (a) — wiki behind main:** ≥1 substantive (`src/` or `supabase/`) merge on
      `origin/main` whose commit time is newer than `LAST_WIKI` by more than 24h
      (work shipped but never ingested). A human must author a session source + ingest.
-   - **Case (b) — RAG behind wiki:** `RAG_LAST` is null (empty table, first-ever sync), OR
-     `RAG_LAST` is older than `LAST_WIKI_SYNC` by more than 24h (in-scope wiki content updated
-     but RAG never synced). Mechanical — self-heal in step 4.
+   - **Case (b) — RAG behind wiki:** `RAG_EMPTY` (first-ever sync), OR the **content probe** from
+     step 2 does not find the latest changed page's token (in-scope wiki content updated but RAG
+     never synced). Mechanical — self-heal in step 4. **Do NOT decide this from `RAG_LAST`** — see
+     step 2; that timestamp is frozen by a stub trigger and cannot be used as a freshness gate.
    - If NEITHER applies, the knowledge layer is CURRENT — file nothing, run nothing, and
      report "knowledge layer current".
 
