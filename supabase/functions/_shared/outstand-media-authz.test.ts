@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   decideMediaAccess,
   extractUploadedMediaId,
+  collectMediaIds,
   filterMediaList,
 } from './outstand-media-authz.ts';
 
@@ -163,5 +164,31 @@ describe('filterMediaList — shapes that are not arrays', () => {
     const raw = JSON.stringify({ success: true, data: { id: 'a', filename: 'mine.jpg' } });
     const out = JSON.parse(filterMediaList(raw, owned).body);
     expect(out.data.id).toBe('a');
+  });
+});
+
+describe('collectMediaIds', () => {
+  it('collects ids from a normal envelope', () => {
+    const raw = JSON.stringify({ success: true, data: [{ id: 'a' }, { id: 'b' }] });
+    expect(collectMediaIds(raw).sort()).toEqual(['a', 'b']);
+  });
+
+  it('collects from nested containers and id-keyed maps', () => {
+    const raw = JSON.stringify({ result: { items: [{ id: 'a' }] }, media: { k: { id: 'b' } } });
+    expect(collectMediaIds(raw).sort()).toEqual(['a', 'b']);
+  });
+
+  it('collects from a bare top-level array', () => {
+    expect(collectMediaIds(JSON.stringify([{ id: 'a' }]))).toEqual(['a']);
+  });
+
+  it('dedupes and ignores non-string or empty ids', () => {
+    const raw = JSON.stringify({ data: [{ id: 'a' }, { id: 'a' }, { id: 123 }, { id: '' }, {}] });
+    expect(collectMediaIds(raw)).toEqual(['a']);
+  });
+
+  it('returns [] for empty and non-JSON bodies', () => {
+    expect(collectMediaIds('')).toEqual([]);
+    expect(collectMediaIds('not json')).toEqual([]);
   });
 });

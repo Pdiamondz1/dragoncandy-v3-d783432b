@@ -26,6 +26,7 @@ import {
 } from "../_shared/outstand-post-authz.ts";
 import { extractSocialAccountIds, filterListRows } from "../_shared/outstand-list-filter.ts";
 import {
+  collectMediaIds,
   decideMediaAccess,
   extractUploadedMediaId,
   filterMediaList,
@@ -258,21 +259,48 @@ async function readMediaOwnerBinding(
   return typeof userId === "string" && userId.length > 0 ? userId : null;
 }
 
-/** Every media id this caller owns, for filtering GET /media. */
-async function listOwnedMediaIds(admin: SupabaseClient, userId: string): Promise<Set<string>> {
-  const { data, error } = await admin
-    .from("outstand_media_ownership")
-    .select("outstand_media_id")
-    .eq("user_id", userId);
-  if (error) {
-    // Fails CLOSED: an empty set filters the list to nothing rather than
-    // forwarding the org's media because a read blipped.
-    console.error("outstand-proxy: owned-media lookup failed", error.message);
-    return new Set();
+/**
+ * Of the media ids ON THIS PAGE, which does the caller own?
+ *
+ * Asked this way round on purpose. "Give me all my media ids" is an UNBOUNDED
+ * query, and PostgREST silently caps rows — so a user with more uploads than
+ * the cap would have their own media filtered out of their own gallery, and
+ * nothing would say so. The ids present on one page are bounded by the page
+ * size, so this cannot truncate.
+ *
+ * Chunked at 100 because an unbounded `.in()` puts the whole list in the URL,
+ * which lands in the Content-Location response header and overflows undici's
+ * 16 KB header limit — that surfaces as a bare "fetch failed" rather than a
+ * PostgrestError, and it has bitten this codebase before.
+ *
+ * Fails CLOSED: any error yields an empty set, so the list filters to nothing
+ * rather than forwarding the org's media because a read blipped.
+ */
+async function listOwnedMediaIds(
+  admin: SupabaseClient,
+  userId: string,
+  candidateIds: readonly string[],
+): Promise<Set<string>> {
+  const owned = new Set<string>();
+  if (candidateIds.length === 0) return owned;
+
+  const CHUNK = 100;
+  for (let i = 0; i < candidateIds.length; i += CHUNK) {
+    const slice = candidateIds.slice(i, i + CHUNK);
+    const { data, error } = await admin
+      .from("outstand_media_ownership")
+      .select("outstand_media_id")
+      .eq("user_id", userId)
+      .in("outstand_media_id", slice);
+    if (error) {
+      console.error("outstand-proxy: owned-media lookup failed", error.message);
+      return new Set();
+    }
+    for (const row of (data ?? []) as Array<{ outstand_media_id: string }>) {
+      owned.add(row.outstand_media_id);
+    }
   }
-  return new Set(
-    ((data ?? []) as Array<{ outstand_media_id: string }>).map((r) => r.outstand_media_id),
-  );
+  return owned;
 }
 
 async function readPostOwnerBinding(
@@ -1068,7 +1096,7 @@ serve(async (req: Request) => {
       // as the offset-paging note on the post list filter.
       //
       // It errs toward showing too LITTLE, never another tenant's media.
-      const ownedMedia = await listOwnedMediaIds(admin, ctx.userId);
+      const ownedMedia = await listOwnedMediaIds(admin, ctx.userId, collectMediaIds(upstreamText));
       const filteredMedia = filterMediaList(upstreamText, ownedMedia);
       if (filteredMedia.dropped > 0) {
         console.log(

@@ -45,6 +45,43 @@ export function extractUploadedMediaId(body: unknown): string | null {
   return null;
 }
 
+/**
+ * Every media id appearing in a list response, at any depth.
+ *
+ * Used to ask the binding table "which of THESE are mine?" instead of "give me
+ * all my media ids". The difference matters: the caller-owned set is unbounded
+ * and would be silently truncated by PostgREST's default row cap, so a user
+ * with more uploads than the cap would find their own media missing from their
+ * own gallery. The ids on one page are bounded by the page size.
+ */
+export function collectMediaIds(bodyText: string): string[] {
+  if (!bodyText) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(bodyText);
+  } catch {
+    return [];
+  }
+
+  const ids = new Set<string>();
+  const seen = new WeakSet<object>();
+  const walk = (node: unknown, depth: number): void => {
+    if (!node || typeof node !== 'object' || depth > 6) return;
+    if (seen.has(node as object)) return;
+    seen.add(node as object);
+
+    if (Array.isArray(node)) {
+      for (const entry of node) walk(entry, depth + 1);
+      return;
+    }
+    const obj = node as Record<string, unknown>;
+    if (typeof obj.id === 'string' && obj.id.length > 0) ids.add(obj.id);
+    for (const value of Object.values(obj)) walk(value, depth + 1);
+  };
+  walk(parsed, 0);
+  return [...ids];
+}
+
 export type MediaAccessDecision =
   | { allowed: true; grant: 'ownership_binding' }
   | { allowed: false; reason: 'no_binding' | 'not_owner' };

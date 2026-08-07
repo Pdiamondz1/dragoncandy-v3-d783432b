@@ -547,17 +547,32 @@ serve(async (req: Request) => {
   let schedulesCompleted = 0;
   let scheduleCompletionErrors = 0;
   try {
-    const { data: inFlight, error: inFlightErr } = await admin
-      .from("campaigns")
-      .select("id, user_id")
-      .in("posting_schedule_status", ["scheduled", "in_progress"])
-      .limit(500);
+    // PAGED, not capped. A bare .limit(500) would evaluate one batch and stop,
+    // so campaigns outside it stay stuck forever while the comment above claims
+    // every in-flight campaign is re-driven — a silent cap presenting as
+    // coverage, which is the failure this whole area keeps producing. Pages
+    // until a short page ends it, with a hard ceiling so a runaway cannot spin,
+    // and the ceiling REPORTS itself rather than truncating quietly.
+    const PAGE = 500;
+    const MAX_CAMPAIGNS = 20_000;
+    let from = 0;
+    let campaignsScanned = 0;
+    for (;;) {
+      const { data: inFlight, error: inFlightErr } = await admin
+        .from("campaigns")
+        .select("id, user_id")
+        .in("posting_schedule_status", ["scheduled", "in_progress"])
+        .order("id", { ascending: true })
+        .range(from, from + PAGE - 1);
 
-    if (inFlightErr) {
-      scheduleCompletionErrors += 1;
-      console.error("[reconcile] in-flight campaign lookup failed", inFlightErr.message);
-    } else {
-      for (const row of (inFlight ?? []) as Array<{ id: string; user_id: string }>) {
+      if (inFlightErr) {
+        scheduleCompletionErrors += 1;
+        console.error("[reconcile] in-flight campaign lookup failed", inFlightErr.message);
+        break;
+      }
+
+      const batch = (inFlight ?? []) as Array<{ id: string; user_id: string }>;
+      for (const row of batch) {
         const { data: done, error: rpcErr } = await admin.rpc(
           "complete_posting_schedule_if_done",
           { p_campaign_id: row.id, p_user_id: row.user_id },
@@ -569,6 +584,21 @@ serve(async (req: Request) => {
           schedulesCompleted += 1;
           console.log(`[reconcile] campaign ${row.id} posting schedule completed`);
         }
+      }
+
+      campaignsScanned += batch.length;
+      if (batch.length < PAGE) break;
+      // A completed campaign leaves the filtered set, so the window shifts under
+      // us; advancing by the page size is still correct because ordering is by
+      // id and completed rows only ever drop OUT.
+      from += PAGE;
+      if (campaignsScanned >= MAX_CAMPAIGNS) {
+        scheduleCompletionErrors += 1;
+        console.error(
+          `[reconcile] schedule-completion sweep hit the ${MAX_CAMPAIGNS} ceiling — ` +
+            `campaigns beyond it were NOT evaluated this run`,
+        );
+        break;
       }
     }
   } catch (e) {
