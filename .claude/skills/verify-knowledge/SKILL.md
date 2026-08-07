@@ -41,15 +41,27 @@ and an append-only **Run Log**. Full contract: `docs/wiki/concepts/loop-memory-p
 2. **RAG freshness (b).** Compare Donny's RAG to the in-scope wiki, exactly as
    `knowledge-freshness-agent` case (b):
    - `LAST_WIKI_SYNC = git log -1 --format=%cI origin/main -- docs/wiki/concepts docs/wiki/entities docs/wiki/analyses`
-   - `RAG_LAST` = GET `/donny_knowledge?select=updated_at&order=updated_at.desc&limit=1`
-     against prod (`https://zocahiffooqdybdhguqv.supabase.co/rest/v1`, headers `apikey` +
-     `Authorization: Bearer`); an empty array `[]` → `RAG_LAST` is **null**.
-   - `met` = **false** if `RAG_LAST` is null (empty table) OR older than `LAST_WIKI_SYNC` by
-     more than 24h; otherwise **true**.
-   - Do NOT fail on a small `RAG_LAST < LAST_WIKI_SYNC` gap alone — the sync script's exit code
-     is the real success authority (a clean no-op sync legitimately leaves RAG_LAST short). The
-     >24h window is the freshness rule; the remediation for a fail is to RUN the sync and trust
-     its exit code.
+   - **Gate on CONTENT, not on `updated_at`.** Pick a distinctive token from a wiki page this
+     session created/changed (a short hyphenated/code token — never a multi-word phrase, which
+     false-negatives on markdown line-wrap) and GET
+     `/donny_knowledge?select=id&content=ilike.*<token>*&limit=1` against prod
+     (`https://zocahiffooqdybdhguqv.supabase.co/rest/v1`, headers `apikey` +
+     `Authorization: Bearer`).
+   - `met` = **true** if that probe returns a row. If this session changed **no** in-scope wiki
+     page, there is nothing to verify — `met` = **true** as long as `/donny_knowledge?select=id&limit=1`
+     is non-empty. `met` = **false** only if the table is empty, or the probe misses and a sync
+     has not been run.
+   - **`RAG_LAST` (`max(updated_at)`) is ADVISORY ONLY and must never flip `met`.**
+     `donny_knowledge`'s only trigger is `handle_updated_at()`, a **stub**
+     (`-- Function logic here / RETURN NEW;`) that never assigns `NEW.updated_at`. The column is
+     frozen at INSERT, so an update-only sync — the common case once every page exists — can
+     *never* advance it. Gating on it made this check **structurally unpassable**: the content
+     probe in [[knowledge-sync]] step 6 would pass while this validator returned `done:false`
+     forever, so the loop could not close. (This supersedes the raw ">24h window" rule and the
+     `[freshness-proxy]` workaround in MEMORY.md, which described the symptom before the
+     mechanism was known.)
+   - The sync script's `errors=0` is the success authority; the remediation for a fail is to RUN
+     the sync and then re-probe by content.
 
 3. **Index/log currency (c).** For each page created/updated this session under
    `docs/wiki/{concepts,entities,analyses}/`, confirm it is listed in `docs/wiki/index.md` AND
