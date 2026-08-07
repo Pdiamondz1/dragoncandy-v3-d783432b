@@ -201,13 +201,17 @@ const PublicBusinessProfile = () => {
             {profile.business_name}
           </h1>
           <div className="mt-0.5"><DragonTierBadge tier={dragonTier} /></div>
-          {(profile.total_reviews ?? 0) > 0 ? (
+          {(profile.total_reviews ?? 0) > 0 && (
             <InlineRating
               averageRating={profile.average_rating}
               totalReviews={profile.total_reviews}
               onClick={() => reviewsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
             />
-          ) : (profile.cuisines && profile.cuisines.length > 0) ? (
+          )}
+          {/* Cuisine is the primary restaurant signal, so chips render whenever
+              present — even once the restaurant has reviews. Industry stays a
+              last-resort label only when there are neither reviews nor cuisines. */}
+          {profile.cuisines && profile.cuisines.length > 0 ? (
             <div className="mt-0.5 flex flex-wrap items-center gap-1">
               {profile.cuisines.slice(0, 4).map((c) => (
                 <span
@@ -218,7 +222,7 @@ const PublicBusinessProfile = () => {
                 </span>
               ))}
             </div>
-          ) : profile.industry ? (
+          ) : (profile.total_reviews ?? 0) === 0 && profile.industry ? (
             <div className="flex items-center gap-1 text-sm text-dc-pink-accent">
               <Star className="h-3.5 w-3.5 fill-dc-pink-accent" />
               <span className="font-medium uppercase">{profile.industry.replace('_', ' ')}</span>
