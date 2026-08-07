@@ -107,108 +107,75 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Built — awaiting founder go-live
 
-- **DC Points visibility (`/rewards`, chip, honest notification, Donny)** — DC Points had no
-  destination: a bell said "+200 DC Points" with nowhere to click, points showed on two dashboards
-  with no explanation, and even the founder needed a SQL query to answer "what earned that." Ships
-  a `/rewards` page (balance, full-sentence tier gap, human-labeled history, a live
-  `dre_config`-driven earn catalog), an always-visible `DcPointsChip` in both top bars, a
-  caller-scoped `dre_my_standing()` RPC, a bell that names its reason and links to `/rewards`, and
-  a Donny `rewards_agent` answering strictly from the caller's own standing. Deliberately
-  **earn-only, no perk economy** — a tier confers a public badge and nothing else, the same
-  honesty stance as [[Honest Analytics]]. Along the way, closed a leak where two never-built DRE
-  engineering specs (referrals, streaks, redemption) were reachable by consumer Donny via a NULL
-  `donny_knowledge.scope`. **Pending:** implementation complete (10/10 tasks reviewed clean, full
-  suite green) and 3 migrations applied + verified on prod, but the mandatory Codex second review
-  has **not run** (OpenAI quota until 2026-08-08 08:55) — open the PR once it's clean, then deploy
+> **Every `**Pending:**` clause below was re-verified against prod on 2026-08-07** — not against
+> the PR description or this file's own history. Eight entries were found already complete (merged
+> PRs, applied migrations, deployed functions) and moved to Shipped; the two that remained at that
+> sweep are genuinely blocked on founder/external action (entries added since carry their own
+> verification date). **A `**Pending:**` clause is a claim with an expiry
+> date.** Verify it before acting on it — check the object (`pg_proc` / `information_schema` /
+> `pg_indexes`), the PR state, and the function version, because a migration ledger entry is not
+> proof the object exists (see [[Content Delivery State Machine]]) and "recorded ≠ actual" has
+> bitten this project before.
+
+- **DC Points visibility (`/rewards`, chip, honest notification, Donny)** — a bell said
+  "+200 DC Points" with nowhere to click, points showed on two dashboards with no explanation, and
+  even the founder needed a SQL query to answer "what earned that." Ships a `/rewards` page
+  (balance, full-sentence tier gap, labeled history, a live `dre_config`-driven earn catalog), an
+  always-visible chip in both top bars, a caller-scoped `dre_my_standing()` RPC, a bell that names
+  its reason, and a Donny `rewards_agent` answering strictly from the caller's own standing.
+  Deliberately **earn-only** — a tier confers a public badge and nothing else ([[Honest Analytics]]).
+  Also closed a live leak: two never-built DRE engineering specs (referrals, streaks, redemption)
+  were reachable by consumer Donny via a NULL `donny_knowledge.scope`. **Pending (verified
+  2026-08-07):** 3 migrations applied + verified on prod; PR #378 open but the mandatory Codex pass
+  has **not run** (OpenAI quota until 2026-08-08 08:55). Merge only after Codex, then deploy
   `dre-award-engine` (`--no-verify-jwt`) and `donny-orchestrator` (without that flag).
-  → `docs/wiki/concepts/dragon-rewards-engine.md` · `feat/dc-points-visibility`
-- **`outstand-proxy` cross-tenant authorization** — three pre-existing, live holes closed: body
-  account ids used as a **grant** (`DELETE /posts/{any_id}` ⇒ any post in the org), a platform
-  fallback (one Instagram account ⇒ every Instagram post), and a list filter that stripped `data`
-  while forwarding an unfiltered `posts` sibling (**observed on prod**: 4 of 5 posts belonged to
-  another tenant). **Deployed + prod-verified 2026-08-06** (`outstand-proxy` v62, `social-proxy`
-  v8): the leaking list returns only the caller's own post and a foreign post now 403s, while the
-  caller's own post + `/analytics` still return 200. **Pending:** merge PR #368 (blocked by a
-  GitHub Actions outage, not by review) so the repo matches prod, . Migration `20260806210000`
-  (revoking the client INSERT that let any business user mint another tenant's account id into
-  `ownedIds` — the substrate under the surviving grants) is **applied + verified red→green**.
-  `/media` remains unscoped (`count: 0` today) — filed.
-  → `docs/wiki/concepts/cross-tenant-proxy-authorization.md`
-- **`GET /media` served from our own table** — the org-wide list paginates before ownership can be
-  applied, so filtering one page gave callers an empty gallery and scanning until filled left media
-  beyond the cap unreachable. Removed the org read entirely: `POST /media/{id}/confirm` returns the
-  provider's full record, so it is cached and the list comes from Postgres — correct window, exact
-  total, and the leak class becomes unreachable rather than handled. **Pending:** merge the PR, then
-  apply migration `20260807060000` (it STOPS if pre-existing bindings would be stranded) and redeploy
-  `outstand-proxy` + `social-proxy`.
-  → `docs/wiki/concepts/cross-tenant-proxy-authorization.md` · #368
-- **Honest analytics + edge-function typecheck gate** — the analytics tab showed recency as
-  "Top Posts", post volume as "Best Posting Times" (with an *engagement* legend), and absolute
-  counts as "Follower Growth", while `content_performance` had accumulated since June with **zero
-  readers**. Claims are now gated on sample size (`MIN_POSTS_FOR_SIGNAL`), always state N, and
-  `verified_at IS NOT NULL` keeps 6 fabricated all-zero rows off the screen. Also: Drafts "Edit"
-  did nothing and hashtags were **never published** by either path; and CI type-checked **none** of
-  the 99 edge functions (now 66 gated, 33 listed and printed). **Pending:** merge PR #368 — all
-  checks green after the GitHub Actions outage.
-  → `docs/wiki/concepts/honest-analytics.md` · #368
-- **`/media` tenant scoping + atomic schedule completion** — `outstand-proxy` allowed every method
-  on `/media*` to any authenticated caller, so any user could list every tenant's uploads and
-  **DELETE** them; closed with an `outstand_media_ownership` binding (strict, safe because
-  `GET /media` was `count:0`). Also: delegated posting hidden behind a flag (offered, could never
-  publish, zero grants ever), and `posting_schedule_status='completed'` finally written — it had a
-  CHECK value and a rendered card and no writer, so finished campaigns sat on "scheduled" forever.
-  **Pending:** merge the PR, then apply migrations `20260807030000` + `20260807040000` **BEFORE**
-  deploying `outstand-proxy` / `social-proxy` / `outstand-webhook` / `reconcile-social-posts` —
-  reversed, every media path 403s and the completion RPC is missing.
-  → `docs/wiki/concepts/cross-tenant-proxy-authorization.md`
+  → `docs/wiki/concepts/dragon-rewards-engine.md` · #378
 - **AIOS Google Workspace ("Connections")** — per-user Google OAuth, audited proxy, Drive
-  hub, Donny exports, metrics→Sheet. The `google-chat-donny` bot ships dark (503).
+  hub, Donny exports, metrics→Sheet. The `google-chat-donny` bot ships dark — **confirmed still
+  dark 2026-08-07**: a POST to the function returns **HTTP 503**, so this entry is real.
   **Pending:** register the Chat app, set `GOOGLE_CHAT_PROJECT_NUMBER` +
   `GOOGLE_ALLOWED_DOMAIN` — all blocked on creating the DragonCandy Workspace org.
   → `docs/superpowers/specs/2026-06-11-google-workspace-connections-design.md`
 - **Public landing — Dark-Luxe redesign + lead capture** — scoped-`.dark` rebuild + a
   closed-anon-DML `leads` table and throttled `capture-lead` fn; both live on prod.
   **Pending:** set the `LEADS_NOTIFY_EMAIL` edge secret — without it nobody is notified of a
-  captured lead. → `docs/wiki/concepts/landing-lead-capture.md` · `feat/landing-luxe-redesign`
-- **Internal real-vs-total metrics (AIOS scaling dashboard, sub-project 1 of 4)** — the `/internal`
-  Overview is real-only with a **live** "synthetic active" banner + "of N incl. synthetic" subs
-  (shipped, PR #344) plus a **"Platform totals — real + simulated" top strip** (one panel: the combined
-  real+synthetic count per headline entity, with a `real · simulated` split); the Simulation page
-  **mirrors the Overview card set 1:1 for the synthetic cohort** (synthetic = `total_all − total` via a
-  shared pure `deriveCardModel`/`PlatformMetricSections`; `*_all` fields optional so the frontend
-  degrades gracefully pre-migration) — **merged, PR #346**. **Pending:** apply migration `20260725150000`
-  at the careful gate to add its three new `*_all` breakdown keys to prod (the `*_all` totals already
-  landed with #344).
-  → `docs/wiki/concepts/internal-real-vs-total-metrics.md` · `feat/internal-metrics-real-vs-total`
-- **Live DB health + scale-up trigger (AIOS scaling dashboard, sub-project 2 of 4 — last)** — a live
-  "Database health" section on `/internal/weight` (retitled "Weight & health"): a `SECURITY DEFINER`
-  `aios_db_health()` live `pg_stat` read (connections vs pool ceiling, call-weighted mean query time,
-  cache-hit + cumulative xact counters, DB size) polled every 20s + a connection-headroom scale alert
-  (warn ≥70% / critical ≥85%, with the pooler caveat). Internal-gated + aggregate-only (data-exposure
-  PASS), no new table/secret; CPU/RAM a labeled "coming next" seam (needs the Supabase metrics endpoint).
-  **Pending:** merge PR #354, then apply the founder-gated migration `20260727170000` at the careful
-  gate; the section degrades to "unavailable" until then. Completes 4 of 4 AIOS scaling sub-projects
-  (with #346/#350/#352); CPU/RAM the remaining follow-up.
-  → `docs/wiki/concepts/live-db-health.md` · `feat/internal-db-health-telemetry`
-- **Cost model + DAU forecast (AIOS scaling dashboard, sub-project 3 of 4)** — an admin-only
-  `/internal/forecast` page projecting infra footprint → Supabase tier → total cost → revenue →
-  **gross margin** at Today / 500K / 750K / 1M DAU, from a pure tested `forecastModel` (measured
-  load-run coefficients + 9 founder-editable assumptions) + the existing internal hooks. No new RPC/RLS;
-  admin-gated like `/internal/expenses` (reads admin-only cost sources). **Pending:** merge PR #352,
-  then apply the founder-gated migration `20260727120000` (seeds the 9 assumption KV rows) at the careful
-  gate; the page degrades to coded defaults until then. Deferred: the one-line margin tie-in into the
-  stakeholder scorecard.
-  → `docs/wiki/concepts/cost-dau-forecast.md` · `feat/internal-cost-dau-forecast`
-- **Stakeholder scorecard (AIOS scaling dashboard, sub-project 4 of 4)** — `/internal/scorecard`, a
-  plain-language "How DragonCandy is doing" page (4 stories: traction, capital efficiency, scale
-  headroom, revenue readiness) with auto signals under a founder-set headline, + a print "Export
-  snapshot" one-pager. Deterministic phrasing (no LLM), real-only user metrics; a small internal-gated
-  `aios_stakeholder_burn()` aggregate RPC lets non-admin stakeholders see burn. Built + reviewed
-  (data-exposure PASS, Codex clean). **Pending:** merge PR #350, then **apply migration `20260726173000`
-  at the careful gate** (seeds 2 KV rows + the RPC).
-  → `docs/wiki/concepts/stakeholder-scorecard.md` · `feat/internal-stakeholder-scorecard`
+  captured lead. **Not verifiable from the repo or the DB** (edge secrets aren't listable), so this
+  one rests on founder knowledge, not a check — the only way to confirm it is the Supabase
+  dashboard. `leads` held **0 rows** as of 2026-08-07, so nothing has been lost yet; the cost is
+  that the *first* real lead lands silently.
+  → `docs/wiki/concepts/landing-lead-capture.md` · `feat/landing-luxe-redesign`
 
 ### Shipped
+
+- **AIOS scaling dashboard (all 4 sub-projects)** — `/internal` Overview is real-only with a live
+  synthetic banner and a real+simulated totals strip, the Simulation page mirrors the card set for
+  the synthetic cohort (#344, #346); **`/internal/weight`** gained a live `aios_db_health()` pg_stat
+  read + connection-headroom scale alert (#354); **`/internal/forecast`** projects infra → Supabase
+  tier → cost → revenue → gross margin at Today/500K/750K/1M DAU off 9 founder-editable assumptions
+  (#352); **`/internal/scorecard`** is a plain-language status page + print one-pager, with
+  `aios_stakeholder_burn()` letting non-admin stakeholders see burn (#350). All four migrations
+  verified applied on prod 2026-08-07. CPU/RAM is the remaining follow-up (needs the Supabase
+  metrics endpoint).
+  → `docs/wiki/concepts/internal-real-vs-total-metrics.md` · `docs/wiki/concepts/live-db-health.md`
+  · `docs/wiki/concepts/cost-dau-forecast.md` · `docs/wiki/concepts/stakeholder-scorecard.md`
+- **`outstand-proxy` cross-tenant authorization + `/media` scoping** — four live holes closed: body
+  account ids used as a **grant**, a platform fallback (one Instagram account ⇒ every Instagram
+  post), a list filter forwarding an unfiltered `posts` sibling (**observed on prod**: 4 of 5 posts
+  belonged to another tenant), and every method on `/media*` open to any authenticated caller (list
+  **and DELETE** any tenant's uploads). Closed with ownership bindings + migration `20260806210000`
+  revoking the client INSERT underneath them. `posting_schedule_status='completed'` is finally
+  written (it had a CHECK value and a rendered card and no writer).
+  → `docs/wiki/concepts/cross-tenant-proxy-authorization.md` · #368
+- **`GET /media` served from our own table** — the org-wide read **removed** rather than filtered:
+  `POST /media/{id}/confirm` caches the provider's record so the list comes from Postgres with a
+  correct window and exact total, making the leak class unreachable instead of handled.
+  → `docs/wiki/concepts/cross-tenant-proxy-authorization.md` · #368
+- **Honest analytics + edge-function typecheck gate** — recency shown as "Top Posts" and post volume
+  as "Best Posting Times" (under an *engagement* legend) replaced with sample-size-gated claims that
+  always state N; `verified_at IS NOT NULL` keeps 6 fabricated all-zero rows off the screen. Drafts
+  "Edit" did nothing and hashtags were **never published** by either path — both fixed. CI had
+  type-checked **none** of the 99 edge functions; now 66 gated, 33 listed.
+  → `docs/wiki/concepts/honest-analytics.md` · #368
 
 - **Campaign target audience (replaces creator personas)** — the builder's "Target Creators" chips
   fed nothing (matching scores the disjoint `creator_profiles.skills` craft enum), so they were

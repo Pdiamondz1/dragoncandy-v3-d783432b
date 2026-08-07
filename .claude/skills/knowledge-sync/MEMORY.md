@@ -30,6 +30,21 @@
   Contrast with `SHIPPED_LOG.md`, which is **append-only historical snapshots** — never rewrite a
   past entry there to reflect later work; prepend a new one. Same discipline as the standing
   edit-in-place-on-supersession rule for concept pages, applied to the core-doc split.
+  **Corollary (2026-08-07): `**Pending:**` clauses DECAY, and nothing sweeps them.** Each entry is
+  written by the session that built the thing; the session that later merges the PR or applies the
+  migration is usually a *different* one that never revisits §5. A sweep of all 10 "Built — awaiting
+  founder go-live" entries found **8 already complete** — merged PRs, applied migrations, deployed
+  functions — so the always-loaded status doc was telling every session that four live `/internal`
+  pages were still dark. Verify a `**Pending:**` clause against **prod objects** (`pg_proc` /
+  `information_schema` / `pg_indexes` / `pg_indexes`), the **PR state**, and the **function
+  version** — never against the clause itself or the migration ledger (`schema_migrations` records
+  intent, not existence; recorded ≠ actual). Two traps hit during that sweep: the recorded migration
+  *version* does not match the repo filename prefix, and **guessing an object name produces a
+  spectacular false alarm** — I "found" two live prod breaks that were really `complete_posting_schedule`
+  vs the actual `complete_posting_schedule_if_done`, and an `outstand_media_cache` table that the
+  migration never created (it adds columns + an index to `outstand_media_ownership`). Read the
+  migration for the real identifiers before querying for them. Re-sweep whenever the section looks
+  long, or when any entry is older than ~2 weeks.
 - **[gap-claims] Verify a claimed knowledge gap against `origin/main`, never a worktree.** A worktree
   drifts silently — **absence in one proves nothing.** On 2026-07-19 I asserted "PR #288 shipped
   without its knowledge-sync" from a worktree 15 commits behind; PR #290 had already done the sync and
@@ -142,6 +157,32 @@ hook" or equivalent, so a reader (or the 3am freshness agent) doesn't mistake "f
 that a *different* sync mechanism this session touches would falsify, check it explicitly instead
 of assuming the claim was about the mechanism you're currently working on — two sync scripts
 writing the same table is an easy place for "every path" to quietly become false.
+### [2026-08-07] §5 "Built — awaiting founder go-live" verification sweep (`docs/section5-status-sweep`)
+
+**Output:** `PROJECT_CONTEXT.md` §5 — Built 10 → 2 entries, Shipped 79 → 87, −2,557 bytes off the
+always-loaded payload; plus the `[status-correction]` corollary above.
+
+**Happened.** Asked "what's next", I checked §5's `**Pending:**` clauses against prod instead of
+reading them. **8 of 10 were already complete** — every referenced PR (#344/#346/#350/#352/#354/#368)
+merged, every referenced migration applied, every function deployed. Four `/internal` pages the doc
+called dark are live. Only Google Workspace (`google-chat-donny` genuinely returns 503) and
+`LEADS_NOTIFY_EMAIL` survive.
+
+**Worked.** Verifying by **object existence**, not the migration ledger — and it mattered: the
+recorded `schema_migrations` versions don't match repo filename prefixes, so a ledger diff would
+have been noise. Adding a standing note at the top of the Built subsection so the next reader knows
+the clauses are claims with an expiry date, rather than silently inheriting the same trap.
+
+**Failed.** I nearly reported **two live prod breaks that didn't exist**, both from *guessing*
+object names: `complete_posting_schedule` (real name `..._if_done`) and an `outstand_media_cache`
+table the migration never creates (it adds columns + an index to `outstand_media_ownership`). Only
+caught because a "deployed code calls a missing RPC" claim seemed too severe to report unchecked.
+**Read the migration for the real identifiers before querying for them.**
+
+**Remember.** Three retrieval gaps in one session — an unindexed memory file, two skills
+contradicting each other, and this. None was a knowledge gap; every fact already existed somewhere
+unread. That failure mode is invisible until something forces a cross-check, so build the
+cross-check into the routine rather than waiting to trip over it.
 
 ### [2026-08-07] Campaign target audience — status correction after the deploy landed (`docs/campaign-audience-shipped`)
 
