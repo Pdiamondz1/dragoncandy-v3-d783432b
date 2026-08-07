@@ -14,6 +14,7 @@ import {
 } from "../_shared/outstand-webhook-lib.ts";
 import { buildSocialPostLogRow, isGenuineScheduleAmbiguity } from "../_shared/social-post-log-row.ts";
 import { applyOwnershipBinding, isBindingTableMissing } from "../_shared/outstand-post-ownership.ts";
+import { decideScheduleCompletion } from "../_shared/schedule-completion.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -416,9 +417,11 @@ serve(async (req: Request) => {
       }
 
       // Guarded: only advance rows that aren't already published.
+      // campaign_id is selected so the schedule-completion check below knows
+      // which campaigns this delivery could have finished.
       const { data: rows } = await supabase
         .from("donny_scheduled_posts")
-        .select("id, metadata")
+        .select("id, metadata, campaign_id")
         .eq("metadata->>outstand_post_id", postId)
         .neq("status", "published");
 
@@ -445,6 +448,72 @@ serve(async (req: Request) => {
           .update(patch)
           .eq("id", row.id)
           .neq("status", "published");
+      }
+
+      // A campaign's posting schedule can only END here — this is the one place
+      // that learns a post went live. `posting_schedule_status = 'completed'`
+      // has a CHECK value and a rendered UI card ("All Posts Published") and was
+      // written by NOTHING, so a fully-published campaign sat on the "scheduled"
+      // card forever.
+      //
+      // Best-effort by design: the post status above is the load-bearing write
+      // and has already succeeded. A failure here must not turn a delivered
+      // webhook into a non-2xx, because Outstand would retry the whole thing and
+      // the only durable effect would be re-running work that already
+      // succeeded. Logged instead, and self-healing — the next published post on
+      // the same campaign re-evaluates, and a campaign whose LAST post this was
+      // is caught by nothing, which is the known limit recorded in the wiki.
+      if (newStatus === "published") {
+        const campaignIds = [
+          ...new Set(
+            rows
+              .map((r) => (r as { campaign_id?: string | null }).campaign_id)
+              .filter((id): id is string => typeof id === "string" && id.length > 0),
+          ),
+        ];
+
+        for (const campaignId of campaignIds) {
+          try {
+            const [{ data: campaign }, { data: siblings }] = await Promise.all([
+              supabase
+                .from("campaigns")
+                .select("posting_schedule_status")
+                .eq("id", campaignId)
+                .maybeSingle(),
+              supabase
+                .from("donny_scheduled_posts")
+                .select("status")
+                .eq("campaign_id", campaignId),
+            ]);
+
+            const decision = decideScheduleCompletion(
+              (siblings ?? []) as Array<{ status: string | null }>,
+              (campaign as { posting_schedule_status?: string | null } | null)?.posting_schedule_status ?? null,
+            );
+            if (!decision.complete) continue;
+
+            // `.eq('posting_schedule_status', …)` makes the write itself the
+            // race guard: two concurrent published-webhooks for the last two
+            // posts of a campaign both read "all published", and only the first
+            // update matches.
+            const { error: campaignErr } = await supabase
+              .from("campaigns")
+              .update({ posting_schedule_status: "completed" })
+              .eq("id", campaignId)
+              .in("posting_schedule_status", ["scheduled", "in_progress"]);
+
+            if (campaignErr) {
+              console.error(
+                `outstand-webhook: could not mark campaign ${campaignId} schedule completed`,
+                campaignErr.message,
+              );
+            } else {
+              console.log(`outstand-webhook: campaign ${campaignId} posting schedule completed`);
+            }
+          } catch (e) {
+            console.error(`outstand-webhook: schedule-completion check threw for ${campaignId}`, e);
+          }
+        }
       }
 
       return json(200, { status: "processed", event, post_id: postId });
