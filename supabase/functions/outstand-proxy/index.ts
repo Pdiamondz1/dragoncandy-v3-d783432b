@@ -37,6 +37,12 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const OUTSTAND_BASE_URL = Deno.env.get("OUTSTAND_BASE_URL") ?? "https://api.outstand.so/v1";
 
+// Page size used when SCANNING the org media pool for the caller's own rows.
+// GET /media is served by walking the org list and keeping only owned rows, so
+// the upstream request is issued at this width regardless of what the client
+// asked for — see the /media block below.
+const MEDIA_SCAN_PAGE = 100;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -942,8 +948,19 @@ serve(async (req: Request) => {
     }
   }
 
-  // Forward to Outstand
-  const upstreamUrl = `${OUTSTAND_BASE_URL}${path}${search}`;
+  // Forward to Outstand.
+  //
+  // GET /media is special: it is served by scanning the ORG pool for the
+  // caller's own rows, so the upstream request must be a full SCAN page from
+  // offset 0 — not the client's window. Passing the client's `limit=20` through
+  // made the first scan page 20 rows wide, which then looked SHORT against the
+  // scan width and ended the walk at org row 19, reproducing the very
+  // empty-gallery bug the paging exists to fix. Rewriting it here (rather than
+  // discarding the response and re-fetching) also avoids a wasted round trip.
+  const isMediaListGet = req.method === "GET" &&
+    path.split("?")[0].replace(/\/$/, "") === "/media";
+  const effectiveSearch = isMediaListGet ? `?limit=${MEDIA_SCAN_PAGE}&offset=0` : search;
+  const upstreamUrl = `${OUTSTAND_BASE_URL}${path.split("?")[0]}${effectiveSearch}`;
   const upstreamHeaders: Record<string, string> = {
     Authorization: `Bearer ${OUTSTAND_API_KEY}`,
     Accept: "application/json",
@@ -1100,7 +1117,7 @@ serve(async (req: Request) => {
       const reqLimit = Math.min(Math.max(parseInt(reqParams.get("limit") ?? "20", 10) || 20, 1), 100);
       const reqOffset = Math.max(parseInt(reqParams.get("offset") ?? "0", 10) || 0, 0);
 
-      const SCAN_PAGE = 100;
+      const SCAN_PAGE = MEDIA_SCAN_PAGE;
       const MAX_SCAN_PAGES = 20;
       const pages: Record<string, unknown>[][] = [];
       const ownedPerPage: Set<string>[] = [];
@@ -1110,6 +1127,8 @@ serve(async (req: Request) => {
       for (let pageNo = 0; pageNo < MAX_SCAN_PAGES; pageNo++) {
         let pageText: string;
         if (pageNo === 0) {
+          // Safe to reuse ONLY because the upstream request above was rewritten
+          // to limit=MEDIA_SCAN_PAGE&offset=0 for this path.
           pageText = upstreamText;
         } else {
           const url = `${OUTSTAND_BASE_URL}/media?limit=${SCAN_PAGE}&offset=${pageNo * SCAN_PAGE}`;
