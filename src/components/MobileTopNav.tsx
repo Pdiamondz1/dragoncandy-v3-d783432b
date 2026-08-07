@@ -7,6 +7,7 @@ import { useLogout } from '@/hooks/useLogout';
 import type { UserRole } from '@/types/user';
 import { getDrawerMenu } from '@/lib/navConfig';
 import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
+import { DcPointsChip } from '@/components/rewards/DcPointsChip';
 
 interface MobileTopNavProps {
   bgClass?: string;
@@ -57,6 +58,7 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
       )}
 
       <div className="flex items-center gap-1">
+        <DcPointsChip />
         <NotificationDropdown />
 
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>

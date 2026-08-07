@@ -2,7 +2,9 @@
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { StandingCard } from './StandingCard';
+import { DcPointsChip } from './DcPointsChip';
 
 const { mockEnabled, mockCatalog } = vi.hoisted(() => ({
   mockEnabled: vi.fn(),
@@ -70,5 +72,33 @@ describe('StandingCard', () => {
     render(<StandingCard />);
     expect(screen.getByText('350')).toBeInTheDocument();
     expect(screen.queryByText(/top of the ladder/i)).not.toBeInTheDocument();
+  });
+});
+
+const { mockRole } = vi.hoisted(() => ({ mockRole: vi.fn() }));
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({ user: { id: 'u1' }, profile: { role: mockRole() } }),
+}));
+
+describe('DcPointsChip', () => {
+  beforeEach(() => { mockEnabled.mockReset(); mockRole.mockReturnValue('business_client'); });
+
+  it('renders nothing when the launch flag is OFF', () => {
+    mockEnabled.mockReturnValue(false);
+    const { container } = render(<DcPointsChip />, { wrapper: MemoryRouter });
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('renders the balance when the flag is ON', () => {
+    mockEnabled.mockReturnValue(true);
+    render(<DcPointsChip />, { wrapper: MemoryRouter });
+    expect(screen.getByText('1,234')).toBeInTheDocument();
+  });
+
+  it('renders nothing for a brand user (DRE has no brand triggers, so it would sit at 0)', () => {
+    mockEnabled.mockReturnValue(true);
+    mockRole.mockReturnValue('brand');
+    const { container } = render(<DcPointsChip />, { wrapper: MemoryRouter });
+    expect(container).toBeEmptyDOMElement();
   });
 });
