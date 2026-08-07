@@ -56,6 +56,15 @@ derive from the audience; merely *telling* it to derive them does far less. `lib
 this ordering — scoped to the schema block, because searching the whole prompt matches the quoted
 mention in the prose guidance and passes regardless of order.
 
+**Confirmed on prod, not just argued** (2026-08-07, v114, a real generation for a Hoboken
+trattoria). Idea 2's audience — *"After-work professionals, 25-40, within 5 miles who unwind
+before heading home"* — produced style direction *"shot in the last hour of daylight so the patio
+bulbs just start to glow"* and tags `golden hour` · `string lights` · `aperol orange`: the model
+found the 4–6pm aperitivo hour in the input and built the shoot around that specific customer.
+Idea 3's *"chasing hidden-gem, non-crowded spots"* produced `pov walk-in` · `empty dining room` ·
+`whisper caption`. The creative fields track the audience rather than the business generically,
+which is the whole reason the field sits where it sits.
+
 ### Exactly two coercion boundaries
 `src/lib/campaignAudience.ts` owns the rules (trim, lowercase, dedupe, cap). It is applied at
 **Zod** (`z.unknown().transform(...)`, for generation results) and at **`normalizeDraft`** (for
@@ -84,17 +93,38 @@ But it is the **same shape as the failure this change deleted** — the personas
 *because nothing read them*. The honest test is whether a creator submits better content having
 read the audience line, not whether the screen looks better.
 
+## Status (2026-08-07)
+
+**Live on prod, both halves.** Frontend merged as #372 (`ba437571`); `donny-campaign-generate`
+deployed **v113 → v114** (sha `790df37d…` → `565a5fa4…`, `verify_jwt` still `false`) in the
+required order. A real generation returned 3 ideas, 3 genuinely distinct audiences (each with an
+age band + a proximity cue, none a creator job title), exactly 2 alternates apiece, and 6 lowercase
+shootable tags apiece — with `"target_creator_persona": []` present on all three, so stale bundles
+still parse.
+
 ## Known Issues
 
-- **Codex second review was not run** on the shipping commit (`cdf429ae`) — OpenAI quota exhausted
-  until 2026-08-08. Required by `CLAUDE.md` before opening the PR.
-- **Deploy order is load-bearing and counter-intuitive**: **frontend first, edge function second.**
-  The *deployed* `campaignIdeaSchema` has `target_creator_persona` **required**, so shipping the
-  function first throws on every generation for anyone on the current bundle. The function carries
-  a transitional `"target_creator_persona": []` (an empty array satisfies the old schema — verified
-  it has no `.min()`) to protect stale tabs, since `useAppVersion` only nags and never force-reloads.
-  A follow-up deploy drops that line; a `lib.test.ts` assertion is pinned to it so it cannot be
-  forgotten silently.
+- **Codex second review is still outstanding** on this work — OpenAI quota exhausted until
+  2026-08-08 08:55, confirmed by re-running it. `CLAUDE.md` requires it; it ran late here because
+  the founder directed the merge while the gate was blocked. Run `codex review --base main` from a
+  worktree whose merge-base is `530c2172` (the branch `feat/campaign-target-audience` still exists
+  for exactly this).
+- **A transitional line is still in the deployed prompt.** `"target_creator_persona": []` protects
+  browser tabs sitting on the pre-#372 bundle, whose `campaignIdeaSchema` has that field
+  **required** (`useAppVersion` only nags on a new version — it never force-reloads, so a user can
+  sit on a stale bundle for hours). Drop it in a follow-up deploy ~a week out; a pinned
+  `lib.test.ts` assertion means the removal can't be forgotten silently.
+- **Deploy order was load-bearing and counter-intuitive** — recorded so it isn't re-derived wrong:
+  **frontend first, edge function second.** Shipping the function first would have thrown on
+  *every* generation for anyone on the then-current bundle. The reverse skew is merely degraded
+  (empty audience + placeholder), which is why it was the safe window to sit in.
+- **Mobile viewport was never verified at runtime** for this change. `resize_window` resizes the
+  Chrome window but leaves `window.innerWidth` pinned at 1707 (`lg` still active) — reproduced
+  twice — and the user's Chrome has no remote-debugging port, so CDP
+  `Emulation.setDeviceMetricsOverride` is unreachable. What *is* established: no changed file
+  contains viewport-conditional code (`matchMedia` / `innerWidth` / `useIsMobile`), and both new
+  components use `flex-wrap` with `max-w-full … whitespace-normal` swap chips so a long audience
+  line wraps instead of overflowing. Treat as unverified-but-low-risk, not as passing.
 - The `?brief=` / `pendingBrief` landing handoff still passes audience only as free text inside the
   prompt, never as a structured field.
 - Three private chip-list editors now exist (`CampaignTagsField`, `CampaignEditPage`'s
