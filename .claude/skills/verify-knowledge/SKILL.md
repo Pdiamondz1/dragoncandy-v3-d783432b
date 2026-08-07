@@ -41,16 +41,25 @@ and an append-only **Run Log**. Full contract: `docs/wiki/concepts/loop-memory-p
 2. **RAG freshness (b).** Compare Donny's RAG to the in-scope wiki, exactly as
    `knowledge-freshness-agent` case (b):
    - `LAST_WIKI_SYNC = git log -1 --format=%cI origin/main -- docs/wiki/concepts docs/wiki/entities docs/wiki/analyses`
-   - **Gate on CONTENT, not on `updated_at`.** Pick a distinctive token from a wiki page this
-     session created/changed (a short hyphenated/code token — never a multi-word phrase, which
-     false-negatives on markdown line-wrap) and GET
+   - **Gate on CONTENT, not on `updated_at`.** The probe token MUST come from text the newest
+     in-scope wiki revision **added** — not merely from a page it touched, and **not** conditioned
+     on whether *this session* made the change. Two traps this closes: a token that already lived
+     on an edited page is already in the RAG and passes trivially, and a session that changed no
+     wiki page still has to answer "is the RAG current with the wiki?", because an *earlier*
+     sync may have failed. This check compares RAG to the wiki, not RAG to this session.
+     ```bash
+     SHA=$(git log -1 --format=%H origin/main -- docs/wiki/concepts docs/wiki/entities docs/wiki/analyses)
+     git show "$SHA" -- docs/wiki/concepts docs/wiki/entities docs/wiki/analyses | grep '^+' | grep -v '^+++'
+     ```
+     From those **added** lines take a short hyphenated/code token (never a multi-word phrase —
+     it false-negatives across a markdown line-wrap), then GET
      `/donny_knowledge?select=id&content=ilike.*<token>*&limit=1` against prod
      (`https://zocahiffooqdybdhguqv.supabase.co/rest/v1`, headers `apikey` +
      `Authorization: Bearer`).
-   - `met` = **true** if that probe returns a row. If this session changed **no** in-scope wiki
-     page, there is nothing to verify — `met` = **true** as long as `/donny_knowledge?select=id&limit=1`
-     is non-empty. `met` = **false** only if the table is empty, or the probe misses and a sync
-     has not been run.
+   - `met` = **true** if that probe returns a row. `met` = **false** if it misses, or if
+     `/donny_knowledge?select=id&limit=1` is empty. If the newest in-scope revision added no
+     probe-worthy token (pure deletion / frontmatter-only), walk back to the previous in-scope
+     commit — never pass by default just because the table is non-empty.
    - **`RAG_LAST` (`max(updated_at)`) is ADVISORY ONLY and must never flip `met`.**
      `donny_knowledge`'s only trigger is `handle_updated_at()`, a **stub**
      (`-- Function logic here / RETURN NEW;`) that never assigns `NEW.updated_at`. The column is

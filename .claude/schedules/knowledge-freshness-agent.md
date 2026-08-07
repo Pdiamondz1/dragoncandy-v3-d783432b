@@ -52,11 +52,19 @@ AIOS_INGEST_SECRET missing or invalid in environment Dame_git_claude."
      once a stretch passes with no net-new page, `RAG_LAST` falls permanently behind
      `LAST_WIKI_SYNC` no matter how current the RAG is. Gating on it would make this agent
      self-heal every single day off a signal that cannot advance.
-   - **Content probe (the real signal).** Take a distinctive token from the most recently changed
-     in-scope wiki page (a short hyphenated/code token — never a multi-word phrase, which
-     false-negatives on markdown line-wrap) and GET
+   - **Content probe (the real signal).** The token MUST come from text the newest in-scope wiki
+     revision **added** — not merely from the page it touched. Most wiki commits *edit* an
+     existing page, and any token that already lived on that page is already in the RAG, so it
+     would pass the probe while the edit itself was never synced. Derive it from the diff:
+     ```bash
+     SHA=$(git log -1 --format=%H origin/main -- docs/wiki/concepts docs/wiki/entities docs/wiki/analyses)
+     git show "$SHA" -- docs/wiki/concepts docs/wiki/entities docs/wiki/analyses | grep '^+' | grep -v '^+++'
+     ```
+     From those **added** lines pick a short hyphenated/code/identifier token (never a multi-word
+     phrase — it false-negatives across a markdown line-wrap), then GET
      `/donny_knowledge?select=id&content=ilike.*<token>*&limit=1`. Present ⇒ the RAG carries the
-     latest wiki content.
+     newest wiki content. If the newest revision added no probe-worthy token (pure deletion or
+     frontmatter-only), walk back to the previous in-scope commit rather than passing by default.
 
 3. DECIDE which cases apply (they are independent — both can be true):
    - **Case (a) — wiki behind main:** ≥1 substantive (`src/` or `supabase/`) merge on
