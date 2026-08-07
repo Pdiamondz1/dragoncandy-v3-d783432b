@@ -26,10 +26,10 @@ import {
 } from "../_shared/outstand-post-authz.ts";
 import { extractSocialAccountIds, filterListRows } from "../_shared/outstand-list-filter.ts";
 import {
-  collectMediaIds,
+  collectOwnedWindow,
   decideMediaAccess,
+  extractMediaRows,
   extractUploadedMediaId,
-  filterMediaList,
 } from "../_shared/outstand-media-authz.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -1078,32 +1078,103 @@ serve(async (req: Request) => {
   // Filter list responses
   if (upstream.ok && req.method === "GET") {
     if (pathOnly === "/media") {
-      // Media cannot be filtered by anything on the row — see
-      // _shared/outstand-media-authz.ts — so ownership comes from the binding
-      // table. Fails closed: a failed lookup yields an empty set and the list
-      // filters to nothing rather than forwarding the org's media.
+      // PAGE OVER THE CALLER'S OWN MEDIA, not over the org's.
       //
-      // KNOWN LIMIT, stated rather than left to be discovered: Outstand applies
-      // `limit`/`offset` to the ORG-WIDE pool before this filter runs, so once
-      // several tenants have uploads a caller can get an empty first page while
-      // their own media sits further down the org ordering — their gallery looks
-      // empty when it is not. Filtering cannot fix that from here; the list has
-      // to page over the caller's OWN ids, which means driving pagination from
-      // outstand_media_ownership and fetching by id. Deliberately not built now:
-      // `GET /media` returns count:0 on prod, so there is no page to be wrong
-      // about yet, and guessing at the shape of a fix before any media exists is
-      // how the analytics components got written. This is the same defect class
-      // as the offset-paging note on the post list filter.
+      // `GET /media?limit&offset` paginates the ORG-WIDE pool and only then does
+      // ownership filtering happen, so filtering a single page cannot be
+      // correct: the page was chosen before ownership was known. With several
+      // tenants a caller could ask for page 1, get a page made entirely of other
+      // tenants' uploads, and be shown an EMPTY gallery while their own media
+      // sat further down. `offset` has to mean an offset into THEIR media.
       //
-      // It errs toward showing too LITTLE, never another tenant's media.
-      const ownedMedia = await listOwnedMediaIds(admin, ctx.userId, collectMediaIds(upstreamText));
-      const filteredMedia = filterMediaList(upstreamText, ownedMedia);
-      if (filteredMedia.dropped > 0) {
+      // So: walk provider pages, keep only rows the binding table says are
+      // theirs, and stop as soon as the requested window is filled. `total`
+      // comes from the binding table, which is exact and one cheap count —
+      // better than anything derivable from a filtered page.
+      //
+      // Bounded, and the bound REPORTS itself: a caller whose media sits behind
+      // a very large org pool gets a truncated page plus a warning, never a
+      // silent short read. The already-fetched first page is reused as page 0
+      // rather than re-requested.
+      const reqParams = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+      const reqLimit = Math.min(Math.max(parseInt(reqParams.get("limit") ?? "20", 10) || 20, 1), 100);
+      const reqOffset = Math.max(parseInt(reqParams.get("offset") ?? "0", 10) || 0, 0);
+
+      const SCAN_PAGE = 100;
+      const MAX_SCAN_PAGES = 20;
+      const pages: Record<string, unknown>[][] = [];
+      const ownedPerPage: Set<string>[] = [];
+      let scanned = 0;
+      let providerExhausted = false;
+
+      for (let pageNo = 0; pageNo < MAX_SCAN_PAGES; pageNo++) {
+        let pageText: string;
+        if (pageNo === 0) {
+          pageText = upstreamText;
+        } else {
+          const url = `${OUTSTAND_BASE_URL}/media?limit=${SCAN_PAGE}&offset=${pageNo * SCAN_PAGE}`;
+          try {
+            const res = await fetch(url, { headers: upstreamHeaders });
+            if (!res.ok) {
+              console.warn(`outstand-proxy: media page ${pageNo} fetch failed: ${res.status}`);
+              break;
+            }
+            pageText = await res.text();
+          } catch (e) {
+            console.error(`outstand-proxy: media page ${pageNo} unreachable`, e);
+            break;
+          }
+        }
+
+        const rows = extractMediaRows(pageText);
+        if (rows.length === 0) { providerExhausted = true; break; }
+
+        pages.push(rows);
+        ownedPerPage.push(
+          await listOwnedMediaIds(admin, ctx.userId, rows.map((r) => String(r.id ?? ""))),
+        );
+        scanned += rows.length;
+
+        const soFar = collectOwnedWindow(pages, ownedPerPage, 0, reqOffset + reqLimit);
+        if (soFar.rows.length >= reqOffset + reqLimit) break;
+        if (rows.length < SCAN_PAGE) { providerExhausted = true; break; }
+        if (pageNo === MAX_SCAN_PAGES - 1) {
+          console.warn(
+            `outstand-proxy: media scan hit ${MAX_SCAN_PAGES} pages (${scanned} org rows) without ` +
+              `filling the caller's window — returning a short page`,
+          );
+        }
+      }
+
+      const windowed = collectOwnedWindow(pages, ownedPerPage, reqOffset, reqLimit);
+
+      // Exact total from OUR table, not from the org page.
+      let ownedTotal = windowed.rows.length + reqOffset;
+      const { count, error: countErr } = await admin
+        .from("outstand_media_ownership")
+        .select("outstand_media_id", { count: "exact", head: true })
+        .eq("user_id", ctx.userId);
+      if (countErr) {
+        console.error("outstand-proxy: owned-media count failed", countErr.message);
+      } else if (typeof count === "number") {
+        ownedTotal = count;
+      }
+
+      upstreamText = JSON.stringify({
+        success: true,
+        data: windowed.rows,
+        count: windowed.rows.length,
+        total: ownedTotal,
+        limit: reqLimit,
+        offset: reqOffset,
+      });
+      if (scanned > windowed.rows.length) {
         console.log(
-          `outstand-proxy: filtered ${filteredMedia.dropped} unowned media row(s) (kept ${filteredMedia.kept})`,
+          `outstand-proxy: media window ${reqOffset}..${reqOffset + reqLimit} — returned ` +
+            `${windowed.rows.length} of ${ownedTotal} owned after scanning ${scanned} org row(s)` +
+            (providerExhausted ? " (provider exhausted)" : ""),
         );
       }
-      upstreamText = filteredMedia.body;
     } else {
       const filtered = filterListBody(pathOnly, upstreamText, ownedIds);
       upstreamText = filtered.body;

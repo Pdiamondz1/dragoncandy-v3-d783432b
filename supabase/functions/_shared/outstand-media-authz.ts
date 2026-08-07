@@ -45,16 +45,8 @@ export function extractUploadedMediaId(body: unknown): string | null {
   return null;
 }
 
-/**
- * Every media id appearing in a list response, at any depth.
- *
- * Used to ask the binding table "which of THESE are mine?" instead of "give me
- * all my media ids". The difference matters: the caller-owned set is unbounded
- * and would be silently truncated by PostgREST's default row cap, so a user
- * with more uploads than the cap would find their own media missing from their
- * own gallery. The ids on one page are bounded by the page size.
- */
-export function collectMediaIds(bodyText: string): string[] {
+/** The rows of one provider media page, in order, whatever shape carried them. */
+export function extractMediaRows(bodyText: string): Record<string, unknown>[] {
   if (!bodyText) return [];
   let parsed: unknown;
   try {
@@ -62,24 +54,86 @@ export function collectMediaIds(bodyText: string): string[] {
   } catch {
     return [];
   }
+  if (!parsed || typeof parsed !== 'object') return [];
 
-  const ids = new Set<string>();
+  // Prefer a top-level array; otherwise the first array-of-objects found, at any
+  // depth. Same reasoning as the filter: keying on a name silently misses the
+  // array the provider adds or renames next.
+  if (Array.isArray(parsed)) {
+    return parsed.filter((e): e is Record<string, unknown> => !!e && typeof e === 'object');
+  }
+
   const seen = new WeakSet<object>();
-  const walk = (node: unknown, depth: number): void => {
-    if (!node || typeof node !== 'object' || depth > 6) return;
-    if (seen.has(node as object)) return;
-    seen.add(node as object);
-
-    if (Array.isArray(node)) {
-      for (const entry of node) walk(entry, depth + 1);
-      return;
+  const find = (node: Record<string, unknown>, depth: number): Record<string, unknown>[] | null => {
+    if (depth > 6 || seen.has(node)) return null;
+    seen.add(node);
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value) && value.some((e) => e !== null && typeof e === 'object')) {
+        return value.filter((e): e is Record<string, unknown> => !!e && typeof e === 'object');
+      }
     }
-    const obj = node as Record<string, unknown>;
-    if (typeof obj.id === 'string' && obj.id.length > 0) ids.add(obj.id);
-    for (const value of Object.values(obj)) walk(value, depth + 1);
+    for (const value of Object.values(node)) {
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        const found = find(value as Record<string, unknown>, depth + 1);
+        if (found) return found;
+      }
+    }
+    return null;
   };
-  walk(parsed, 0);
-  return [...ids];
+  return find(parsed as Record<string, unknown>, 0) ?? [];
+}
+
+export interface OwnedWindow {
+  /** The rows to return: the caller's own media, sliced to [offset, offset+limit). */
+  rows: Record<string, unknown>[];
+  /** True when the provider was exhausted, so `offset+limit` is genuinely past the end. */
+  exhausted: boolean;
+}
+
+/**
+ * Take the caller's OWN window out of a stream of provider pages.
+ *
+ * WHY THIS EXISTS. `GET /media?limit&offset` paginates over the ORG-WIDE pool,
+ * and only then does ownership filtering happen. So with several tenants a
+ * caller could ask for page 1, receive a page consisting entirely of other
+ * tenants' uploads, and be shown an EMPTY gallery while their own media sat
+ * further down the org ordering. Filtering a single page cannot fix that — the
+ * page was chosen before ownership was known.
+ *
+ * The fix is to page the provider until the caller's own window is filled, and
+ * slice from the owned sequence rather than the org one. `offset` then means
+ * what the caller thinks it means: an offset into THEIR media.
+ *
+ * Pure: the caller supplies pages, this decides when to stop.
+ */
+export function collectOwnedWindow(
+  pages: Iterable<Record<string, unknown>[]>,
+  ownedIdsPerPage: Iterable<ReadonlySet<string>>,
+  offset: number,
+  limit: number,
+): OwnedWindow {
+  const need = Math.max(0, offset) + Math.max(0, limit);
+  const owned: Record<string, unknown>[] = [];
+  const pageIter = pages[Symbol.iterator]();
+  const ownedIter = ownedIdsPerPage[Symbol.iterator]();
+  let exhausted = true;
+
+  for (;;) {
+    const page = pageIter.next();
+    const ids = ownedIter.next();
+    if (page.done || ids.done) break;
+
+    for (const row of page.value) {
+      const id = row.id;
+      if (typeof id === 'string' && (ids.value as ReadonlySet<string>).has(id)) owned.push(row);
+    }
+    if (owned.length >= need) {
+      exhausted = false;
+      break;
+    }
+  }
+
+  return { rows: owned.slice(Math.max(0, offset), need), exhausted };
 }
 
 export type MediaAccessDecision =
@@ -113,131 +167,16 @@ export function decideMediaAccess(
   return { allowed: true, grant: 'ownership_binding' };
 }
 
-/**
- * Filter a `GET /media` list response down to the caller's own media.
- *
- * Separate from _shared/outstand-list-filter.ts on purpose: that module decides
- * ownership from FIELDS ON THE ROW (a post carries its social accounts). A media
- * row carries nothing, so ownership can only come from an id set fetched
- * alongside. Same shape of walk, different evidence.
- *
- * Filters EVERY array of rows, at any depth, for the same reason the post filter
- * does: a name-keyed allow-list silently forwards any array the provider adds or
- * renames, and the response still looks filtered. A row whose id cannot be read
- * is DROPPED — unattributable is not owned.
- */
-export function filterMediaList(bodyText: string, ownedMediaIds: ReadonlySet<string>): {
-  body: string;
-  kept: number;
-  dropped: number;
-} {
-  if (!bodyText) return { body: bodyText, kept: 0, dropped: 0 };
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(bodyText);
-  } catch {
-    return { body: bodyText, kept: 0, dropped: 0 };
-  }
-  if (!parsed || typeof parsed !== 'object') return { body: bodyText, kept: 0, dropped: 0 };
-
-  const isOwned = (item: unknown): boolean => {
-    const id = (item as { id?: unknown } | null)?.id;
-    return typeof id === 'string' && ownedMediaIds.has(id);
-  };
-  const isRowList = (v: unknown): boolean =>
-    Array.isArray(v) && v.some((e) => e !== null && typeof e === 'object');
-
-  const kept = new Set<string>();
-  let dropped = 0;
-  const MAX_DEPTH = 6;
-  const seen = new WeakSet<object>();
-
-  // A collection can also arrive as an OBJECT KEYED BY ID rather than an array
-  // — `{ media: { "abc": {...}, "def": {...} } }`. An array-only filter walks
-  // straight into that and forwards every row untouched, which is the same shape
-  // of miss as filtering `data` while `posts` rode alongside. Detected by: every
-  // value is a non-null object, and at least one carries a string `id`.
-  //
-  // `pagination: { limit, offset, total }` is not mistaken for one, because its
-  // values are numbers rather than objects.
-  const isRowMap = (v: unknown): boolean => {
-    if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
-    const values = Object.values(v as Record<string, unknown>);
-    if (values.length === 0) return false;
-    if (!values.every((e) => e !== null && typeof e === 'object' && !Array.isArray(e))) return false;
-    return values.some((e) => typeof (e as { id?: unknown }).id === 'string');
-  };
-
-  const walk = (node: Record<string, unknown>, depth: number): void => {
-    if (depth > MAX_DEPTH || seen.has(node)) return;
-    seen.add(node);
-    for (const key of Object.keys(node)) {
-      const value = node[key];
-      if (isRowList(value)) {
-        const before = (value as unknown[]).length;
-        const filtered = (value as unknown[]).filter(isOwned);
-        node[key] = filtered;
-        for (const row of filtered) {
-          const id = (row as { id?: unknown }).id;
-          if (typeof id === 'string') kept.add(id);
-        }
-        dropped += before - filtered.length;
-        continue;
-      }
-      if (isRowMap(value)) {
-        const src = value as Record<string, unknown>;
-        const out: Record<string, unknown> = {};
-        for (const [k, row] of Object.entries(src)) {
-          if (isOwned(row)) {
-            out[k] = row;
-            const id = (row as { id?: unknown }).id;
-            if (typeof id === 'string') kept.add(id);
-          } else {
-            dropped += 1;
-          }
-        }
-        node[key] = out;
-        continue;
-      }
-      if (value && typeof value === 'object' && !Array.isArray(value)) {
-        walk(value as Record<string, unknown>, depth + 1);
-      }
-    }
-  };
-
-  if (Array.isArray(parsed)) {
-    const before = parsed.length;
-    const filtered = (parsed as unknown[]).filter(isOwned);
-    dropped = before - filtered.length;
-    for (const row of filtered) {
-      const id = (row as { id?: unknown }).id;
-      if (typeof id === 'string') kept.add(id);
-    }
-    return { body: JSON.stringify(filtered), kept: kept.size, dropped };
-  }
-
-  walk(parsed as Record<string, unknown>, 0);
-
-  // Counters must not survive filtering — `total` would otherwise report the
-  // whole org's media count. Same rule as the post list filter.
-  const ROW_COUNTER = /^(count|total|totalCount|total_count)$/;
-  // Page counters describe the same org-wide set in another spelling, so they
-  // leak the same fact. Missed on the first pass here even though the sibling
-  // post filter already covers them.
-  const PAGE_COUNTER = /^(totalPages|total_pages|pages)$/;
-  const fixCounters = (node: Record<string, unknown>, depth: number): void => {
-    if (depth > MAX_DEPTH) return;
-    for (const key of Object.keys(node)) {
-      const v = node[key];
-      if (typeof v === 'number' && ROW_COUNTER.test(key)) node[key] = kept.size;
-      else if (typeof v === 'number' && PAGE_COUNTER.test(key)) node[key] = kept.size > 0 ? 1 : 0;
-      else if (v && typeof v === 'object' && !Array.isArray(v)) {
-        fixCounters(v as Record<string, unknown>, depth + 1);
-      }
-    }
-  };
-  fixCounters(parsed as Record<string, unknown>, 0);
-
-  return { body: JSON.stringify(parsed), kept: kept.size, dropped };
-}
+// filterMediaList() and collectMediaIds() lived here.
+//
+// They filtered ONE provider page to the caller's own rows, which was the right
+// shape only while the page itself was assumed correct. It is not: `GET /media`
+// paginates the ORG-WIDE pool, so the page is chosen before ownership is known
+// and a caller could receive an empty page while their own media sat further
+// down. The proxy now pages over the OWNED sequence instead
+// (extractMediaRows + collectOwnedWindow above), which makes single-page
+// filtering not merely redundant but misleading — a helper that looks like a
+// safety net while protecting nothing is worse than no helper at all.
+//
+// Same reasoning that deleted _shared/schedule-completion.ts when the rule moved
+// into SQL.
