@@ -49,7 +49,8 @@ export type NotificationType =
   | 'social_account_disconnected'
   | 'account_deletion_requested'
   | 'account_restored'
-  | 'account_purge_warning';
+  | 'account_purge_warning'
+  | 'dragon_points_award';
 
 export interface PushNotification {
   id: string;

@@ -64,6 +64,11 @@ export function getNotificationRoute(notification: PushNotification): string | n
         ? `/dashboard/business/promotions/${data.promotion_id}`
         : '/dashboard/business/promotions';
 
+    // Awards sent before /rewards existed carry no action_url; this fallback
+    // fixes them retroactively (action_url still wins when present).
+    case 'dragon_points_award':
+      return '/rewards';
+
     default:
       return null;
   }

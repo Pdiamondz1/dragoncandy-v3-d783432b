@@ -6,6 +6,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { isAuthorizedIngest } from '../_shared/ingest-auth.ts';
 import { computeAward, resolveTier, type TierThresholds } from '../_shared/dre-rules.ts';
+import { buildAwardNotification } from '../_shared/dre-notification.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -52,7 +53,7 @@ serve(async (req) => {
     const { data: inserted, error: insErr } = await supabase
       .from('dragon_point_events')
       .upsert(rows, { onConflict: 'user_id,event_type,source_id', ignoreDuplicates: true })
-      .select('user_id, points_awarded, occurred_at');
+      .select('user_id, event_type, points_awarded, occurred_at');
     if (insErr) throw insErr;
     const newRows = inserted ?? [];
     const affected = [...new Set(newRows.map((r) => r.user_id))];
@@ -90,11 +91,16 @@ serve(async (req) => {
     // 6. Forward-only, coalesced bell (in-app only: 'dragon_points_award' has no email map)
     let notified = 0;
     for (const uid of affected) {
-      const sum = newRows
-        .filter((r) => r.user_id === uid && new Date(r.occurred_at).getTime() >= goLiveAt)
-        .reduce((s, r) => s + (r.points_awarded ?? 0), 0);
+      const forward = newRows.filter(
+        (r) => r.user_id === uid && new Date(r.occurred_at).getTime() >= goLiveAt,
+      );
+      const sum = forward.reduce((s, r) => s + (r.points_awarded ?? 0), 0);
       if (sum <= 0) continue;
       const tieredUp = (priorTier.get(uid) ?? 'egg') !== newTier.get(uid);
+      const { title, body } = buildAwardNotification(
+        forward.map((r) => ({ eventType: r.event_type, points: r.points_awarded ?? 0 })),
+        tieredUp,
+      );
       await fetch(`${SUPABASE_URL}/functions/v1/create-notification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
@@ -102,10 +108,15 @@ serve(async (req) => {
           recipientId: uid,
           type: 'dragon_points_award',
           category: 'account',
-          title: 'You earned DC Points',
-          body: tieredUp ? `+${sum} DC Points — new tier unlocked!` : `+${sum} DC Points`,
+          title,
+          body,
           icon: 'sparkles',
-          data: { points: sum, tier: newTier.get(uid) },
+          actionUrl: '/rewards',
+          data: {
+            points: sum,
+            tier: newTier.get(uid),
+            events: forward.map((r) => ({ type: r.event_type, points: r.points_awarded ?? 0 })),
+          },
         }),
       }).catch(() => { /* fire-and-forget; never block awarding on a bell */ });
       notified++;

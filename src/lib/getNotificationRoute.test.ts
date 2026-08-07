@@ -37,3 +37,16 @@ describe('getNotificationRoute — DragonShare', () => {
       .toBe('/x');
   });
 });
+
+describe('getNotificationRoute — DC Points', () => {
+  it('routes a points award to /rewards via the type fallback', () => {
+    // Awards sent before /rewards existed carry no action_url.
+    expect(getNotificationRoute(make('dragon_points_award', { points: 200 })))
+      .toBe('/rewards');
+  });
+
+  it('prefers an explicit action_url when the engine set one', () => {
+    const n = { ...make('dragon_points_award', { points: 200 }), action_url: '/rewards' };
+    expect(getNotificationRoute(n)).toBe('/rewards');
+  });
+});
