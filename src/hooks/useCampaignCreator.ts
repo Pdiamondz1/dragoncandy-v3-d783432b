@@ -10,6 +10,7 @@ import { mapDeliveryTierToDb } from '@/lib/campaignUtils';
 import { donnyGenerateResponseSchema, launchValidationSchema } from '@/lib/campaignCreatorValidation';
 import { pollCampaignJob, type CampaignJobRow } from '@/lib/campaignGenerationJob';
 import { saveDraftToStorage, loadDraftFromStorage, clearDraftFromStorage, generateDraftId } from '@/lib/campaignCreatorDraft';
+import { normalizeAudienceLine, normalizeCampaignTags } from '@/lib/campaignAudience';
 import { recordCrewActivity } from '@/lib/crews/recordCrewActivity';
 import type {
   BusinessContext,
@@ -55,7 +56,9 @@ function ideaToEditableCampaign(idea: CampaignIdea): EditableCampaign {
     deadline: deadline.toISOString().split('T')[0],
     delivery_type: mapDeliveryTierToDb(idea.tier) as EditableCampaign['delivery_type'],
     style_direction: idea.style_direction,
-    target_creator_persona: [...idea.target_creator_persona],
+    // Already normalized at whichever boundary produced this idea (Zod or normalizeDraft).
+    target_audience: idea.target_audience,
+    campaign_tags: [...idea.campaign_tags],
     key_messages: [...idea.key_messages],
     hashtags: [...idea.hashtags],
     tier_reasoning: idea.tier_reasoning,
@@ -467,8 +470,9 @@ export function useCampaignCreator() {
           exclusivity_days: editedCampaign.exclusivity_days,
           geographic_scope: editedCampaign.geographic_scope,
           creator_count: editedCampaign.target_creator_count,
-          target_creator_persona: editedCampaign.target_creator_persona,
-          target_creator_personas: editedCampaign.target_creator_persona,
+          // Free-typed in the editor, so clamp here — this is where it enters ai_analysis.
+          target_audience: normalizeAudienceLine(editedCampaign.target_audience) || null,
+          campaign_tags: normalizeCampaignTags(editedCampaign.campaign_tags),
           hashtags: editedCampaign.hashtags,
           hashtag_requirements: editedCampaign.hashtags.join(' '),
           tier_reasoning: editedCampaign.tier_reasoning,
@@ -588,8 +592,9 @@ export function useCampaignCreator() {
           exclusivity_days: editedCampaign.exclusivity_days,
           geographic_scope: editedCampaign.geographic_scope,
           creator_count: editedCampaign.target_creator_count,
-          target_creator_persona: editedCampaign.target_creator_persona,
-          target_creator_personas: editedCampaign.target_creator_persona,
+          // Free-typed in the editor, so clamp here — this is where it enters ai_analysis.
+          target_audience: normalizeAudienceLine(editedCampaign.target_audience) || null,
+          campaign_tags: normalizeCampaignTags(editedCampaign.campaign_tags),
           hashtags: editedCampaign.hashtags,
           hashtag_requirements: editedCampaign.hashtags.join(' '),
           key_messages: editedCampaign.key_messages,

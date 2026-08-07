@@ -38,6 +38,18 @@
   duplicate". Cheap check first: `git fetch origin` then
   `git ls-tree -r --name-only origin/main -- docs/wiki/raw/sessions/ | grep <topic>`. Applies to any
   "X is missing / was never documented" claim, not just knowledge-sync.
+- **[codex-empty-diff] `codex review --base main` reviews NOTHING when the work is
+  staged-but-uncommitted.** On a fresh branch cut from `origin/main`, HEAD *is* main's tip until you
+  commit, so `git diff main...HEAD` is empty and Codex spins on nothing — and a returned "clean"
+  would be **false assurance on an unreviewed diff**, the worst possible failure for a review gate.
+  Confirm the range is non-empty (`git diff main...HEAD --stat`) before trusting any verdict; use
+  `--uncommitted` for staged work, or commit first. Caught 2026-08-07 only because the run hung.
+- **[sync-before-blocked-gate] When a required review gate is blocked, run knowledge-sync anyway,
+  and record the gate as unrun.** The docs then ride in the same PR and go through the second pass
+  with the code (which `CLAUDE.md` requires) instead of becoming a follow-up. State the blocked gate
+  in all three places status lives — §5's `**Pending:**` clause, the concept page's Known Issues,
+  and the SHIPPED_LOG entry's opening note. Corollary to [status-correction]: §5 is *current
+  status*, so an entry that **overstates readiness** is the same defect as one that goes stale.
 - **[runlog-in-pr] Bundle this MEMORY.md Run Log entry INTO the docs PR commit**, not a
   separate follow-up. Forgetting it (as on the #176 run) costs a whole extra PR cycle just to
   persist one bookkeeping line.
@@ -67,6 +79,29 @@
   build the knowledge-sync commit on a fresh local branch off the FETCHED PR head, not the stale one.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-07] Campaign target audience replaces creator personas (`feat/campaign-target-audience`, unmerged)
+
+**Output:** `docs/wiki/concepts/campaign-target-audience.md` (new) + the
+`[2026-08-07] ingest | [[Campaign Target Audience]]` line in `docs/wiki/log.md`.
+
+**Happened.** Ran the sync **before** the PR (and before Codex, which was quota-blocked), so the
+docs ride in the same PR and go through the second pass with the code. Wrote a NEW concept page
+rather than compounding onto [[Campaign Generation Creativity]] — that page is "are the ideas any
+good", this is "what are they for" — but added a dated update section there too, since the change
+edits the same prompt, and cross-linked both ways.
+
+**Worked.** Recording status honestly in three places instead of implying completion: the §5 line
+says "committed, **not merged**" with a `**Pending:**` clause, the concept page's Known Issues
+names the unrun Codex review, and the SHIPPED_LOG entry opens with a bold state-as-of-writing
+note. The Lesson about §5 being *current status* cuts both ways — an entry that overstates
+readiness is the same failure as one that goes stale.
+
+**Failed / nearly.** Dropped the new Sources line above `Campaign Price Anchoring Session` when
+P < T; the section is already non-alphabetical so nothing would have caught it. Moved it.
+
+**Remember.** Two new Lessons promoted below: the codex-empty-diff trap, and running the sync
+pre-PR when a review gate is blocked.
 
 ### [2026-08-06] `outstand-proxy` cross-tenant authorization (PR #368, absorbs #367)
 

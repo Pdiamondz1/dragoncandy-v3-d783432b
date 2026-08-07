@@ -35,6 +35,13 @@ export function IdeaCard({ idea, isSelected, onSelect }: IdeaCardProps) {
         <h3 className="font-bold text-gray-900 truncate">{idea.title}</h3>
         <p className="text-sm text-gray-600 mt-1 line-clamp-2">{idea.description}</p>
       </div>
+      {/* Truthy-guarded, not typed-guarded: a draft-restored idea bypasses Zod. */}
+      {idea.target_audience && (
+        <p className="mt-2 text-xs font-medium text-dc-teal line-clamp-2">
+          <span className="font-normal text-dc-text-muted">Brings in </span>
+          {idea.target_audience}
+        </p>
+      )}
       {idea.is_wildcard && (
         <span className="inline-block mt-2 rounded-full bg-dc-pink/50 px-2 py-1 text-xs font-bold text-dc-pink-accent">
           ✦ Wildcard
