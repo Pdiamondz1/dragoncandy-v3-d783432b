@@ -27,6 +27,30 @@
 -- media record yet. That is also the correct semantic — an unconfirmed upload is
 -- not a media file, and `confirmed_at IS NULL` is exactly what keeps it out of
 -- the gallery.
+-- STRANDING GUARD — runs BEFORE the columns are added.
+--
+-- GET /media is served from these rows and gated on `confirmed_at IS NOT NULL`,
+-- with NO provider fallback. Any binding that already exists was minted by the
+-- previous upload path, before this column or the confirm-cache existed, so it
+-- would be invisible in its owner's gallery from the moment this ships.
+--
+-- Verified zero on prod 2026-08-07 before writing this, which is why no backfill
+-- is included. But "it was empty when I looked" is not a property of the
+-- migration — this makes it one. If rows exist at apply time the migration STOPS
+-- and says so, forcing a conscious choice (backfill the cached fields from the
+-- provider, or accept that those uploads drop out of the gallery) instead of
+-- silently hiding somebody's media.
+do $$
+declare v_existing bigint;
+begin
+  select count(*) into v_existing from public.outstand_media_ownership;
+  if v_existing > 0 then
+    raise exception
+      'outstand_media_ownership already holds % row(s). GET /media will be served only from rows with confirmed_at set, so these would vanish from their owners'' galleries. Backfill filename/url/content_type/size/status/media_created_at/expires_at/confirmed_at for them first, or delete this guard once you have decided the loss is acceptable.',
+      v_existing;
+  end if;
+end $$;
+
 alter table public.outstand_media_ownership
   add column if not exists filename text,
   add column if not exists url text,
