@@ -116,7 +116,10 @@ describe('toMediaFiles', () => {
     }]);
     expect(file).toEqual({
       id: 'm1', filename: 'a.png', url: 'https://cdn/a.png',
-      content_type: 'image/png', size: 10, status: 'active',
+      // BOTH spellings: the wire format is snake, but MediaPreview reads
+      // `media.contentType?.startsWith("video/")`.
+      content_type: 'image/png', contentType: 'image/png',
+      size: 10, status: 'active',
       created_at: '2026-08-07T00:00:00Z', expires_at: null,
     });
     // Serving our own schema would parse fine and render blank.
@@ -176,5 +179,18 @@ describe('buildMediaListResponse — the SDK count/total inversion', () => {
     expect(totalPages).toBe(5);          // not 1 — Next stays available
     expect(body.data).toHaveLength(20);  // and the page itself is still a page
     expect(body.count).toBe(20);         // top-level keeps the provider meaning
+  });
+});
+
+describe('toMediaFiles — MIME type reaches the components', () => {
+  it('a video from the gallery is detectable the way MediaPreview detects it', () => {
+    const [file] = toMediaFiles([{
+      outstand_media_id: 'v1', filename: 'clip', url: 'https://cdn/clip',
+      content_type: 'video/mp4',
+    }]);
+    // Exactly what MediaPreview does. Note the filename has no extension, so
+    // the regex fallback cannot rescue a missing contentType.
+    const isVideo = String(file.contentType ?? '').startsWith('video/');
+    expect(isVideo).toBe(true);
   });
 });

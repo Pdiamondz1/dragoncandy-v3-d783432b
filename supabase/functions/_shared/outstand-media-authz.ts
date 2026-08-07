@@ -168,10 +168,21 @@ export interface StoredMediaRow {
 /**
  * Render stored rows in the shape the SDK expects.
  *
- * Field names are the PROVIDER's, not our column names, because the gallery
- * reads `MediaFile` — `content_type` and `created_at`, not `contentType` and
- * `media_created_at`. Serving our own schema here would produce a response that
+ * Field names are the PROVIDER's, not our column names — `created_at`, not
+ * `media_created_at` — because serving our own schema produces a response that
  * parses fine and renders blank.
+ *
+ * BOTH content-type spellings are emitted, and that is not hedging. The wire
+ * format is snake (`ConfirmUploadResponse.content_type`), but the SDK's
+ * `MediaFile` type is camel and its components read camel:
+ *
+ *     uploadFile:    contentType: confirmedMedia.content_type
+ *     MediaPreview:  media.contentType?.startsWith("video/")
+ *
+ * The upload path does that mapping itself, so media reaching the UI that way
+ * carries `contentType`; media served from this list would not, and video
+ * detection would silently fall back to guessing from the filename extension.
+ * Emitting both means neither consumer is wrong, and costs one key.
  */
 export function toMediaFiles(rows: readonly StoredMediaRow[]): Record<string, unknown>[] {
   return rows.map((r) => ({
@@ -179,6 +190,7 @@ export function toMediaFiles(rows: readonly StoredMediaRow[]): Record<string, un
     filename: r.filename ?? '',
     url: r.url ?? '',
     content_type: r.content_type ?? null,
+    contentType: r.content_type ?? null,
     size: r.size ?? null,
     status: r.status ?? 'active',
     created_at: r.media_created_at ?? null,
