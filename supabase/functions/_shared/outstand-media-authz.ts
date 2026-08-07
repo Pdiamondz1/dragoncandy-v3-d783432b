@@ -45,97 +45,6 @@ export function extractUploadedMediaId(body: unknown): string | null {
   return null;
 }
 
-/** The rows of one provider media page, in order, whatever shape carried them. */
-export function extractMediaRows(bodyText: string): Record<string, unknown>[] {
-  if (!bodyText) return [];
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(bodyText);
-  } catch {
-    return [];
-  }
-  if (!parsed || typeof parsed !== 'object') return [];
-
-  // Prefer a top-level array; otherwise the first array-of-objects found, at any
-  // depth. Same reasoning as the filter: keying on a name silently misses the
-  // array the provider adds or renames next.
-  if (Array.isArray(parsed)) {
-    return parsed.filter((e): e is Record<string, unknown> => !!e && typeof e === 'object');
-  }
-
-  const seen = new WeakSet<object>();
-  const find = (node: Record<string, unknown>, depth: number): Record<string, unknown>[] | null => {
-    if (depth > 6 || seen.has(node)) return null;
-    seen.add(node);
-    for (const value of Object.values(node)) {
-      if (Array.isArray(value) && value.some((e) => e !== null && typeof e === 'object')) {
-        return value.filter((e): e is Record<string, unknown> => !!e && typeof e === 'object');
-      }
-    }
-    for (const value of Object.values(node)) {
-      if (value && typeof value === 'object' && !Array.isArray(value)) {
-        const found = find(value as Record<string, unknown>, depth + 1);
-        if (found) return found;
-      }
-    }
-    return null;
-  };
-  return find(parsed as Record<string, unknown>, 0) ?? [];
-}
-
-export interface OwnedWindow {
-  /** The rows to return: the caller's own media, sliced to [offset, offset+limit). */
-  rows: Record<string, unknown>[];
-  /** True when the provider was exhausted, so `offset+limit` is genuinely past the end. */
-  exhausted: boolean;
-}
-
-/**
- * Take the caller's OWN window out of a stream of provider pages.
- *
- * WHY THIS EXISTS. `GET /media?limit&offset` paginates over the ORG-WIDE pool,
- * and only then does ownership filtering happen. So with several tenants a
- * caller could ask for page 1, receive a page consisting entirely of other
- * tenants' uploads, and be shown an EMPTY gallery while their own media sat
- * further down the org ordering. Filtering a single page cannot fix that — the
- * page was chosen before ownership was known.
- *
- * The fix is to page the provider until the caller's own window is filled, and
- * slice from the owned sequence rather than the org one. `offset` then means
- * what the caller thinks it means: an offset into THEIR media.
- *
- * Pure: the caller supplies pages, this decides when to stop.
- */
-export function collectOwnedWindow(
-  pages: Iterable<Record<string, unknown>[]>,
-  ownedIdsPerPage: Iterable<ReadonlySet<string>>,
-  offset: number,
-  limit: number,
-): OwnedWindow {
-  const need = Math.max(0, offset) + Math.max(0, limit);
-  const owned: Record<string, unknown>[] = [];
-  const pageIter = pages[Symbol.iterator]();
-  const ownedIter = ownedIdsPerPage[Symbol.iterator]();
-  let exhausted = true;
-
-  for (;;) {
-    const page = pageIter.next();
-    const ids = ownedIter.next();
-    if (page.done || ids.done) break;
-
-    for (const row of page.value) {
-      const id = row.id;
-      if (typeof id === 'string' && (ids.value as ReadonlySet<string>).has(id)) owned.push(row);
-    }
-    if (owned.length >= need) {
-      exhausted = false;
-      break;
-    }
-  }
-
-  return { rows: owned.slice(Math.max(0, offset), need), exhausted };
-}
-
 export type MediaAccessDecision =
   | { allowed: true; grant: 'ownership_binding' }
   | { allowed: false; reason: 'no_binding' | 'not_owner' };
@@ -167,16 +76,150 @@ export function decideMediaAccess(
   return { allowed: true, grant: 'ownership_binding' };
 }
 
-// filterMediaList() and collectMediaIds() lived here.
+// filterMediaList(), collectMediaIds(), extractMediaRows() and
+// collectOwnedWindow() lived here.
 //
 // They filtered ONE provider page to the caller's own rows, which was the right
 // shape only while the page itself was assumed correct. It is not: `GET /media`
 // paginates the ORG-WIDE pool, so the page is chosen before ownership is known
 // and a caller could receive an empty page while their own media sat further
-// down. The proxy now pages over the OWNED sequence instead
-// (extractMediaRows + collectOwnedWindow above), which makes single-page
-// filtering not merely redundant but misleading — a helper that looks like a
-// safety net while protecting nothing is worse than no helper at all.
+// down. Scanning the org pool for owned rows replaced it, and failed
+// structurally in turn: a hard scan cap made media beyond it permanently
+// unreachable, and raising the cap only moves the wall.
+//
+// GET /media is now served entirely from outstand_media_ownership, which the
+// confirm step populates with the provider's own record. No org list is read at
+// all, so none of these helpers has anything to filter — and a helper that looks
+// like a safety net while protecting nothing is worse than no helper at all.
 //
 // Same reasoning that deleted _shared/schedule-completion.ts when the rule moved
 // into SQL.
+
+/** The provider's media record, as `POST /media/{id}/confirm` returns it. */
+export interface ConfirmedMedia {
+  filename: string | null;
+  url: string | null;
+  contentType: string | null;
+  size: number | null;
+  status: string | null;
+  mediaCreatedAt: string | null;
+  expiresAt: string | null;
+}
+
+/**
+ * Read the media record out of a confirm response.
+ *
+ * The SDK types this as `ConfirmUploadResponse { id, filename, url,
+ * content_type, size, status, created_at, expires_at }`, usually inside an
+ * `ApiResponse` envelope — so look at the root and under `data`, and nowhere
+ * else, for the same reason extractUploadedMediaId is narrow: what this returns
+ * is persisted and later served as fact.
+ *
+ * Returns null only when there is no recognisable record. Individual missing
+ * fields are kept as null rather than failing the whole read: a confirm that
+ * omits `expires_at` should still produce a usable gallery row.
+ *
+ * NOTE the deliberate rename: the provider's `created_at` becomes
+ * `mediaCreatedAt`, because the row it lands in already has a `created_at`
+ * meaning "when WE minted the binding". Two different times under one name is
+ * how a chart ends up plotting the wrong one.
+ */
+export function extractConfirmedMedia(body: unknown): ConfirmedMedia | null {
+  if (!body || typeof body !== 'object') return null;
+  const root = body as Record<string, unknown>;
+  const asObject = (v: unknown): Record<string, unknown> | null =>
+    v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+
+  const dataObj = asObject(root.data);
+  const rec = asObject(dataObj?.media) ?? dataObj ?? root;
+
+  const str = (v: unknown): string | null =>
+    typeof v === 'string' && v.length > 0 ? v : null;
+  const num = (v: unknown): number | null =>
+    typeof v === 'number' && Number.isFinite(v) ? v : null;
+
+  const media: ConfirmedMedia = {
+    filename: str(rec.filename),
+    url: str(rec.url),
+    contentType: str(rec.content_type) ?? str((rec as { contentType?: unknown }).contentType),
+    size: num(rec.size),
+    status: str(rec.status),
+    mediaCreatedAt: str(rec.created_at),
+    expiresAt: str(rec.expires_at),
+  };
+
+  // A record with no url is not a media file — the gallery has nothing to show
+  // and storing it would put an unrenderable row in someone's list.
+  return media.url ? media : null;
+}
+
+/** One row of outstand_media_ownership, as stored. */
+export interface StoredMediaRow {
+  outstand_media_id: string;
+  filename?: string | null;
+  url?: string | null;
+  content_type?: string | null;
+  size?: number | null;
+  status?: string | null;
+  media_created_at?: string | null;
+  expires_at?: string | null;
+}
+
+/**
+ * Render stored rows in the shape the SDK expects.
+ *
+ * Field names are the PROVIDER's, not our column names, because the gallery
+ * reads `MediaFile` — `content_type` and `created_at`, not `contentType` and
+ * `media_created_at`. Serving our own schema here would produce a response that
+ * parses fine and renders blank.
+ */
+export function toMediaFiles(rows: readonly StoredMediaRow[]): Record<string, unknown>[] {
+  return rows.map((r) => ({
+    id: r.outstand_media_id,
+    filename: r.filename ?? '',
+    url: r.url ?? '',
+    content_type: r.content_type ?? null,
+    size: r.size ?? null,
+    status: r.status ?? 'active',
+    created_at: r.media_created_at ?? null,
+    expires_at: r.expires_at ?? null,
+  }));
+}
+
+/**
+ * The envelope `useMediaList` reads.
+ *
+ * It returns `media: data?.data ?? []` and `pagination: data?.pagination ?? null`,
+ * and the gallery derives its totals and page controls from `pagination.total` /
+ * `pagination.count`. An earlier version omitted `pagination` entirely, which
+ * reported a populated gallery as 0 files and removed its next-page control —
+ * a response that looked reasonable and drove the UI wrong. Both the top-level
+ * fields and the nested block are emitted, matching what the provider itself
+ * returns for /posts.
+ */
+export function buildMediaListResponse(
+  files: readonly Record<string, unknown>[],
+  total: number,
+  limit: number,
+  offset: number,
+): string {
+  return JSON.stringify({
+    success: true,
+    data: files,
+    count: files.length,
+    total,
+    limit,
+    offset,
+    pagination: { limit, offset, total, count: files.length },
+  });
+}
+
+/** Clamp caller-supplied paging to something sane. */
+export function parseMediaPaging(search: string): { limit: number; offset: number } {
+  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  const rawLimit = parseInt(params.get('limit') ?? '', 10);
+  const rawOffset = parseInt(params.get('offset') ?? '', 10);
+  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 100) : 50;
+  const offset = Number.isFinite(rawOffset) ? Math.max(rawOffset, 0) : 0;
+  return { limit, offset };
+}

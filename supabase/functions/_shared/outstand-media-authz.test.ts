@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  collectOwnedWindow,
+  buildMediaListResponse,
   decideMediaAccess,
-  extractMediaRows,
+  extractConfirmedMedia,
   extractUploadedMediaId,
+  parseMediaPaging,
+  toMediaFiles,
 } from './outstand-media-authz.ts';
 
 const MINE = 'user-1';
@@ -52,86 +54,115 @@ describe('decideMediaAccess', () => {
   });
 });
 
-describe('extractMediaRows', () => {
-  it('reads the arrayed envelope', () => {
-    const raw = JSON.stringify({ success: true, data: [{ id: 'a' }, { id: 'b' }] });
-    expect(extractMediaRows(raw).map((r) => r.id)).toEqual(['a', 'b']);
+describe('extractConfirmedMedia', () => {
+  const full = {
+    id: 'm1', filename: 'clip.mp4', url: 'https://cdn/clip.mp4',
+    content_type: 'video/mp4', size: 1234, status: 'active',
+    created_at: '2026-08-07T00:00:00Z', expires_at: '2026-09-07T00:00:00Z',
+  };
+
+  it('reads the ConfirmUploadResponse at the root', () => {
+    expect(extractConfirmedMedia(full)).toEqual({
+      filename: 'clip.mp4', url: 'https://cdn/clip.mp4', contentType: 'video/mp4',
+      size: 1234, status: 'active',
+      mediaCreatedAt: '2026-08-07T00:00:00Z', expiresAt: '2026-09-07T00:00:00Z',
+    });
   });
 
-  it('reads a bare top-level array', () => {
-    expect(extractMediaRows(JSON.stringify([{ id: 'a' }])).map((r) => r.id)).toEqual(['a']);
+  it('reads it inside an ApiResponse envelope and a nested media object', () => {
+    expect(extractConfirmedMedia({ success: true, data: full })?.url).toBe('https://cdn/clip.mp4');
+    expect(extractConfirmedMedia({ data: { media: full } })?.url).toBe('https://cdn/clip.mp4');
   });
 
-  it('finds a row array nested below the top level', () => {
-    const raw = JSON.stringify({ result: { items: [{ id: 'a' }] } });
-    expect(extractMediaRows(raw).map((r) => r.id)).toEqual(['a']);
+  it('renames the provider created_at so it cannot collide with our own', () => {
+    // The row it lands in already has created_at meaning "when WE minted the
+    // binding". Two different times under one name is how the wrong one gets
+    // plotted.
+    const out = extractConfirmedMedia(full)!;
+    expect(out.mediaCreatedAt).toBe('2026-08-07T00:00:00Z');
+    expect((out as Record<string, unknown>).created_at).toBeUndefined();
   });
 
-  it('returns [] for empty, non-JSON and rowless bodies', () => {
-    expect(extractMediaRows('')).toEqual([]);
-    expect(extractMediaRows('not json')).toEqual([]);
-    expect(extractMediaRows(JSON.stringify({ success: true, data: [] }))).toEqual([]);
+  it('REFUSES a record with no url — an unrenderable row must not enter a gallery', () => {
+    expect(extractConfirmedMedia({ ...full, url: '' })).toBeNull();
+    expect(extractConfirmedMedia({ id: 'm1', filename: 'x.png' })).toBeNull();
+  });
+
+  it('keeps individual missing fields as null rather than failing the whole read', () => {
+    const out = extractConfirmedMedia({ url: 'https://cdn/a.png' })!;
+    expect(out.url).toBe('https://cdn/a.png');
+    expect(out.filename).toBeNull();
+    expect(out.size).toBeNull();
+    expect(out.expiresAt).toBeNull();
+  });
+
+  it('accepts camelCase contentType as a fallback', () => {
+    expect(extractConfirmedMedia({ url: 'https://x/a', contentType: 'image/png' })?.contentType)
+      .toBe('image/png');
+  });
+
+  it('returns null for junk', () => {
+    expect(extractConfirmedMedia(null)).toBeNull();
+    expect(extractConfirmedMedia('str')).toBeNull();
   });
 });
 
-describe('collectOwnedWindow', () => {
-  const page = (...ids: string[]) => ids.map((id) => ({ id }));
-
-  it('THE BUG THIS FIXES: an all-foreign first page no longer yields an empty gallery', () => {
-    // Org ordering puts three other tenants' uploads first. Single-page
-    // filtering returned nothing and the user saw an empty gallery; paging over
-    // the OWNED sequence finds their media on page 2.
-    const pages = [page('x1', 'x2', 'x3'), page('mine1', 'x4', 'mine2')];
-    const owned = [new Set<string>(), new Set(['mine1', 'mine2'])];
-    const out = collectOwnedWindow(pages, owned, 0, 10);
-    expect(out.rows.map((r) => r.id)).toEqual(['mine1', 'mine2']);
+describe('toMediaFiles', () => {
+  it('emits the PROVIDER field names the gallery reads, not our column names', () => {
+    const [file] = toMediaFiles([{
+      outstand_media_id: 'm1', filename: 'a.png', url: 'https://cdn/a.png',
+      content_type: 'image/png', size: 10, status: 'active',
+      media_created_at: '2026-08-07T00:00:00Z', expires_at: null,
+    }]);
+    expect(file).toEqual({
+      id: 'm1', filename: 'a.png', url: 'https://cdn/a.png',
+      content_type: 'image/png', size: 10, status: 'active',
+      created_at: '2026-08-07T00:00:00Z', expires_at: null,
+    });
+    // Serving our own schema would parse fine and render blank.
+    expect(file).not.toHaveProperty('media_created_at');
+    expect(file).not.toHaveProperty('outstand_media_id');
   });
 
-  it("offset means an offset into the CALLER's media, not the org's", () => {
-    const pages = [page('x1', 'a', 'x2', 'b'), page('c', 'x3', 'd')];
-    const owned = [new Set(['a', 'b']), new Set(['c', 'd'])];
-    expect(collectOwnedWindow(pages, owned, 1, 2).rows.map((r) => r.id)).toEqual(['b', 'c']);
-    expect(collectOwnedWindow(pages, owned, 3, 2).rows.map((r) => r.id)).toEqual(['d']);
+  it('defaults a missing status to active and never emits undefined', () => {
+    const [file] = toMediaFiles([{ outstand_media_id: 'm2' }]);
+    expect(file.status).toBe('active');
+    expect(file.filename).toBe('');
+    expect(Object.values(file).every((v) => v !== undefined)).toBe(true);
+  });
+});
+
+describe('buildMediaListResponse', () => {
+  it('emits BOTH the top-level fields and the pagination block the SDK reads', () => {
+    const body = JSON.parse(buildMediaListResponse([{ id: 'a' }], 7, 20, 40));
+    expect(body.data).toHaveLength(1);
+    expect(body.count).toBe(1);
+    expect(body.total).toBe(7);
+    // useMediaList returns `pagination: data?.pagination ?? null`, and the
+    // gallery derives totals and page controls from it. Omitting this reported
+    // a populated gallery as 0 files.
+    expect(body.pagination).toEqual({ limit: 20, offset: 40, total: 7, count: 1 });
   });
 
-  it('stops early once the window is filled rather than scanning every page', () => {
-    const pages = [page('a', 'b'), page('c')];
-    const owned = [new Set(['a', 'b']), new Set(['c'])];
-    const out = collectOwnedWindow(pages, owned, 0, 2);
-    expect(out.rows.map((r) => r.id)).toEqual(['a', 'b']);
-    expect(out.exhausted).toBe(false); // did not need the second page
+  it('is coherent when the caller owns nothing', () => {
+    const body = JSON.parse(buildMediaListResponse([], 0, 50, 0));
+    expect(body.data).toEqual([]);
+    expect(body.pagination.total).toBe(0);
+  });
+});
+
+describe('parseMediaPaging', () => {
+  it('reads limit and offset', () => {
+    expect(parseMediaPaging('?limit=20&offset=40')).toEqual({ limit: 20, offset: 40 });
   });
 
-  it('reports exhaustion when the provider ran out before the window filled', () => {
-    const pages = [page('a')];
-    const owned = [new Set(['a'])];
-    const out = collectOwnedWindow(pages, owned, 0, 10);
-    expect(out.rows.map((r) => r.id)).toEqual(['a']);
-    expect(out.exhausted).toBe(true);
+  it('defaults to the SDK default when absent', () => {
+    expect(parseMediaPaging('')).toEqual({ limit: 50, offset: 0 });
   });
 
-  it("never returns another tenant's row, even when it owns nothing", () => {
-    const pages = [page('x1', 'x2')];
-    const owned = [new Set<string>()];
-    expect(collectOwnedWindow(pages, owned, 0, 10).rows).toEqual([]);
-  });
-
-  it('ignores rows whose id is missing or not a string', () => {
-    const pages = [[{ id: 'a' }, { filename: 'no-id.jpg' }, { id: 123 }]];
-    const owned = [new Set(['a'])];
-    expect(collectOwnedWindow(pages, owned, 0, 10).rows.map((r) => r.id)).toEqual(['a']);
-  });
-
-  it('handles an offset past the end without throwing', () => {
-    const pages = [page('a')];
-    const owned = [new Set(['a'])];
-    expect(collectOwnedWindow(pages, owned, 99, 10).rows).toEqual([]);
-  });
-
-  it('tolerates zero and negative paging inputs', () => {
-    const pages = [page('a', 'b')];
-    const owned = [new Set(['a', 'b'])];
-    expect(collectOwnedWindow(pages, owned, 0, 0).rows).toEqual([]);
-    expect(collectOwnedWindow(pages, owned, -5, 2).rows.map((r) => r.id)).toEqual(['a', 'b']);
+  it('clamps hostile values instead of trusting them', () => {
+    expect(parseMediaPaging('?limit=100000&offset=-5')).toEqual({ limit: 100, offset: 0 });
+    expect(parseMediaPaging('?limit=0')).toEqual({ limit: 1, offset: 0 });
+    expect(parseMediaPaging('?limit=abc&offset=xyz')).toEqual({ limit: 50, offset: 0 });
   });
 });
