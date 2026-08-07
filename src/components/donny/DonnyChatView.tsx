@@ -55,7 +55,7 @@ export function DonnyChatView() {
       <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 bg-teal-50/30 space-y-3" role="log" aria-label="Donny conversation" aria-live="polite">
         {messages.length === 0 && !isStreaming && (
           <div className="flex flex-col items-center justify-center h-full text-center px-6">
-            <div className="text-3xl mb-2">🐉</div>
+            <DonnyAvatar size="lg" className="mb-2" />
             <p className="text-sm font-semibold text-dc-text">Hey! I'm Donny</p>
             <p className="text-xs text-dc-text-muted mt-1">Ask me anything — find creators, manage campaigns, check analytics, or just brainstorm ideas.</p>
           </div>

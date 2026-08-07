@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { FirstRunHero } from './FirstRunHero';
 import { MissionChecklist } from './MissionChecklist';
 import type { UserRole, RoleMissions } from '@/types/firstRun';
+import donnyEmblem from '@/assets/donny-emblem.webp';
 
 interface FirstRunDashboardProps {
   role: UserRole;
@@ -62,7 +63,10 @@ export function FirstRunDashboard({ role, missions, onCompleteMission: _onComple
     <div className="min-h-screen bg-white p-4">
       {/* Top bar */}
       <div className="flex justify-between items-center mb-4">
-        <span className="text-sm font-bold text-dc-teal-btn">🐉 DragonCandy</span>
+        <span className="flex items-center gap-1.5 text-sm font-bold text-dc-teal-btn">
+          <img src={donnyEmblem} alt="" className="h-4 w-4 rounded-full object-cover scale-[1.35]" />
+          DragonCandy
+        </span>
         <button
           className="w-7 h-7 rounded-full bg-dc-teal/10 flex items-center justify-center text-xs text-dc-teal-btn"
           aria-label="Help tour"

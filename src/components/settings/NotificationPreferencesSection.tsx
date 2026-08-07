@@ -3,6 +3,7 @@ import { SettingsSection } from './SettingsSection';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { toast } from '@/hooks/use-toast';
 import { CATEGORY_META } from '@/types/notifications';
+import { CategoryIcon } from '@/components/notifications/CategoryIcon';
 import type { NotificationCategory, PreferencesMatrix } from '@/types/notifications';
 
 const CATEGORIES: NotificationCategory[] = ['campaigns', 'messages', 'transactions', 'content', 'dragonshare', 'promotions', 'account'];
@@ -83,7 +84,11 @@ export function NotificationPreferencesSection() {
             >
               {/* Category info */}
               <div className="flex-1 min-w-0 flex items-center gap-2 lg:gap-3">
-                <span className="text-base shrink-0 lg:text-lg">{meta.icon}</span>
+                <CategoryIcon
+                  category={category}
+                  imgClassName="h-5 w-5 shrink-0 lg:h-6 lg:w-6"
+                  emojiClassName="text-base shrink-0 lg:text-lg"
+                />
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-dc-text truncate">{meta.label}</p>
                   <p className="text-[11px] text-dc-text-muted leading-tight mt-0.5 line-clamp-1 lg:text-xs">

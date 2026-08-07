@@ -118,7 +118,7 @@ const handler = async (req: Request): Promise<Response> => {
                   
                   <div style="background: #f8fafc; padding: 20px 30px; text-align: center; border-top: 1px solid #e2e8f0;">
                     <p style="color: #94a3b8; font-size: 12px; margin: 0;">
-                      Powered by DragonCandy • Thank you for being awesome! 🐉
+                      Powered by DragonCandy • Thank you for being awesome! <img src="https://dragoncandy.io/donny-emblem.webp" alt="" width="14" height="14" style="vertical-align: middle; border-radius: 50%; object-fit: cover;" />
                     </p>
                   </div>
                 </div>
@@ -173,7 +173,7 @@ const handler = async (req: Request): Promise<Response> => {
                   
                   <div style="background: #f8fafc; padding: 20px 30px; text-align: center; border-top: 1px solid #e2e8f0;">
                     <p style="color: #94a3b8; font-size: 12px; margin: 0;">
-                      Powered by DragonCandy 🐉
+                      Powered by DragonCandy <img src="https://dragoncandy.io/donny-emblem.webp" alt="" width="14" height="14" style="vertical-align: middle; border-radius: 50%; object-fit: cover;" />
                     </p>
                   </div>
                 </div>
