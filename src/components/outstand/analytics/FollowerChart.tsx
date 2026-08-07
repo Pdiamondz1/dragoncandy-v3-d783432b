@@ -24,6 +24,20 @@ interface FollowerChartProps {
   platforms: PlatformMetrics[];
 }
 
+/**
+ * The bars plot CURRENT follower counts, so the heading says so.
+ *
+ * This was titled "Follower Growth" while `<Bar dataKey="followers">` rendered
+ * absolute size, which made the tallest bar read as the fastest-growing
+ * platform — usually the exact opposite of the truth, since the biggest account
+ * is typically the slowest mover. Growth was present, but demoted to a small
+ * delta badge under the chart where the bar heights drowned it.
+ *
+ * Rather than re-plot deltas (a bar chart of ±small numbers next to a 5-figure
+ * base is its own kind of misleading), the title now matches the geometry and
+ * the per-platform change is stated as an explicit "+N since last check" beside
+ * each row.
+ */
 export const FollowerChart: React.FC<FollowerChartProps> = ({ platforms }) => {
   if (platforms.length === 0) return null;
 
@@ -34,9 +48,16 @@ export const FollowerChart: React.FC<FollowerChartProps> = ({ platforms }) => {
     delta: p.followersDelta,
   }));
 
+  const anyMovement = data.some((d) => typeof d.delta === 'number' && d.delta !== 0);
+
   return (
     <div className="hidden md:block">
-      <div className="text-sm font-bold text-gray-900 mb-3">Follower Growth</div>
+      <div className="flex items-baseline justify-between mb-3">
+        <div className="text-sm font-bold text-gray-900">Followers by Platform</div>
+        <div className="text-[10px] text-dc-text-muted">
+          {anyMovement ? 'change since last check' : 'current totals'}
+        </div>
+      </div>
       <div className="border border-dc-teal/10 rounded-xl p-4">
         <ResponsiveContainer width="100%" height={160}>
           <BarChart data={data}>
