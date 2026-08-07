@@ -26,16 +26,20 @@ import {
 } from "../_shared/outstand-post-authz.ts";
 import { extractSocialAccountIds, filterListRows } from "../_shared/outstand-list-filter.ts";
 import {
-  collectMediaIds,
+  buildMediaListResponse,
   decideMediaAccess,
+  extractConfirmedMedia,
   extractUploadedMediaId,
-  filterMediaList,
+  parseMediaPaging,
+  toMediaFiles,
+  type StoredMediaRow,
 } from "../_shared/outstand-media-authz.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const OUTSTAND_BASE_URL = Deno.env.get("OUTSTAND_BASE_URL") ?? "https://api.outstand.so/v1";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -260,47 +264,42 @@ async function readMediaOwnerBinding(
 }
 
 /**
- * Of the media ids ON THIS PAGE, which does the caller own?
+ * The caller's own media, straight from our table.
  *
- * Asked this way round on purpose. "Give me all my media ids" is an UNBOUNDED
- * query, and PostgREST silently caps rows — so a user with more uploads than
- * the cap would have their own media filtered out of their own gallery, and
- * nothing would say so. The ids present on one page are bounded by the page
- * size, so this cannot truncate.
+ * This REPLACES reading the provider's list. `GET /media` paginates the ORG
+ * pool and only then could ownership be applied, so the page was chosen before
+ * ownership was known — filtering it left callers with empty galleries, and
+ * scanning for owned rows left media beyond the scan cap permanently
+ * unreachable. Serving from our own rows makes the window correct by
+ * construction, and means no org list is read at all, so there is no filter
+ * left to get wrong.
  *
- * Chunked at 100 because an unbounded `.in()` puts the whole list in the URL,
- * which lands in the Content-Location response header and overflows undici's
- * 16 KB header limit — that surfaces as a bare "fetch failed" rather than a
- * PostgrestError, and it has bitten this codebase before.
- *
- * Fails CLOSED: any error yields an empty set, so the list filters to nothing
- * rather than forwarding the org's media because a read blipped.
+ * `confirmed_at is not null` is the gallery gate: a row minted at upload but
+ * never confirmed is a reservation, not a media file, and has no url to render.
  */
-async function listOwnedMediaIds(
+async function readOwnedMedia(
   admin: SupabaseClient,
   userId: string,
-  candidateIds: readonly string[],
-): Promise<Set<string>> {
-  const owned = new Set<string>();
-  if (candidateIds.length === 0) return owned;
+  limit: number,
+  offset: number,
+): Promise<{ rows: StoredMediaRow[]; total: number } | null> {
+  const { data, error, count } = await admin
+    .from("outstand_media_ownership")
+    .select(
+      "outstand_media_id, filename, url, content_type, size, status, media_created_at, expires_at",
+      { count: "exact" },
+    )
+    .eq("user_id", userId)
+    .not("confirmed_at", "is", null)
+    .order("media_created_at", { ascending: false, nullsFirst: false })
+    .order("outstand_media_id", { ascending: false })
+    .range(offset, offset + limit - 1);
 
-  const CHUNK = 100;
-  for (let i = 0; i < candidateIds.length; i += CHUNK) {
-    const slice = candidateIds.slice(i, i + CHUNK);
-    const { data, error } = await admin
-      .from("outstand_media_ownership")
-      .select("outstand_media_id")
-      .eq("user_id", userId)
-      .in("outstand_media_id", slice);
-    if (error) {
-      console.error("outstand-proxy: owned-media lookup failed", error.message);
-      return new Set();
-    }
-    for (const row of (data ?? []) as Array<{ outstand_media_id: string }>) {
-      owned.add(row.outstand_media_id);
-    }
+  if (error) {
+    console.error("outstand-proxy: owned-media read failed", error.message);
+    return null;
   }
-  return owned;
+  return { rows: (data ?? []) as StoredMediaRow[], total: typeof count === "number" ? count : 0 };
 }
 
 async function readPostOwnerBinding(
@@ -892,6 +891,31 @@ serve(async (req: Request) => {
   });
   if (denied) return denied;
 
+  // GET /media is answered from OUR table, before any upstream call.
+  //
+  // The provider's list paginates the ORG-WIDE pool, so ownership could only
+  // ever be applied after the page was chosen — which is why filtering it gave
+  // callers empty galleries and scanning it left media beyond the scan cap
+  // unreachable. Every media record is already ours: POST /media/{id}/confirm
+  // returns the provider's full ConfirmUploadResponse and we cache it below.
+  //
+  // Serving it here means the window is correct by construction, the total is
+  // one exact count, and NO org list is read at all — so the cross-tenant leak
+  // this path kept producing is not handled, it is unreachable.
+  if (req.method === "GET" && path.split("?")[0].replace(/\/$/, "") === "/media") {
+    const { limit, offset } = parseMediaPaging(search);
+    const owned = await readOwnedMedia(admin, ctx.userId, limit, offset);
+    if (!owned) {
+      // Fails CLOSED: a read error returns an error, never a fallback to the
+      // provider's org-wide list.
+      return jsonResponse(503, { error: "media_unavailable" });
+    }
+    return new Response(
+      buildMediaListResponse(toMediaFiles(owned.rows), owned.total, limit, offset),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
   // /media/upload — sanitize the filename AND forward only the fields the SDK
   // actually sends.
   //
@@ -1050,6 +1074,50 @@ serve(async (req: Request) => {
     // Guarded like its sibling: the upload already exists at Outstand by this
     // line, so an uncaught throw here would report failure for work that
     // succeeded.
+    // Cache the provider's own media record on a successful confirm. This is
+    // what makes GET /media servable from Postgres: ConfirmUploadResponse
+    // carries every field the SDK's MediaFile has, and this is the only moment
+    // we see it. Scoped to the caller's own binding, which enforceScope already
+    // proved — belt and braces, and free.
+    const confirmMatch = req.method === "POST"
+      ? /^\/media\/([^/]+)\/confirm$/.exec(pathOnly)
+      : null;
+    if (confirmMatch?.[1]) {
+      try {
+        const media = extractConfirmedMedia(JSON.parse(upstreamText));
+        if (!media) {
+          // Visible: without a cached record the upload never appears in the
+          // caller's gallery, which is a support question waiting to happen.
+          console.warn(
+            `outstand-proxy: confirm for ${confirmMatch[1]} returned no recognisable media record — not cached`,
+          );
+        } else {
+          const { error: cacheErr } = await admin
+            .from("outstand_media_ownership")
+            .update({
+              filename: media.filename,
+              url: media.url,
+              content_type: media.contentType,
+              size: media.size,
+              status: media.status,
+              media_created_at: media.mediaCreatedAt,
+              expires_at: media.expiresAt,
+              confirmed_at: new Date().toISOString(),
+            })
+            .eq("outstand_media_id", confirmMatch[1])
+            .eq("user_id", ctx.userId);
+          if (cacheErr) {
+            console.error(
+              `outstand-proxy: could not cache media record ${confirmMatch[1]}`,
+              cacheErr.message,
+            );
+          }
+        }
+      } catch (e) {
+        console.error("outstand-proxy: media confirm cache threw (confirm already succeeded)", e);
+      }
+    }
+
     if (req.method === "POST" && pathOnly === "/media/upload") {
       try {
         const mediaId = extractUploadedMediaId(
@@ -1075,39 +1143,46 @@ serve(async (req: Request) => {
     }
   }
 
-  // Filter list responses
-  if (upstream.ok && req.method === "GET") {
-    if (pathOnly === "/media") {
-      // Media cannot be filtered by anything on the row — see
-      // _shared/outstand-media-authz.ts — so ownership comes from the binding
-      // table. Fails closed: a failed lookup yields an empty set and the list
-      // filters to nothing rather than forwarding the org's media.
-      //
-      // KNOWN LIMIT, stated rather than left to be discovered: Outstand applies
-      // `limit`/`offset` to the ORG-WIDE pool before this filter runs, so once
-      // several tenants have uploads a caller can get an empty first page while
-      // their own media sits further down the org ordering — their gallery looks
-      // empty when it is not. Filtering cannot fix that from here; the list has
-      // to page over the caller's OWN ids, which means driving pagination from
-      // outstand_media_ownership and fetching by id. Deliberately not built now:
-      // `GET /media` returns count:0 on prod, so there is no page to be wrong
-      // about yet, and guessing at the shape of a fix before any media exists is
-      // how the analytics components got written. This is the same defect class
-      // as the offset-paging note on the post list filter.
-      //
-      // It errs toward showing too LITTLE, never another tenant's media.
-      const ownedMedia = await listOwnedMediaIds(admin, ctx.userId, collectMediaIds(upstreamText));
-      const filteredMedia = filterMediaList(upstreamText, ownedMedia);
-      if (filteredMedia.dropped > 0) {
-        console.log(
-          `outstand-proxy: filtered ${filteredMedia.dropped} unowned media row(s) (kept ${filteredMedia.kept})`,
+  // Guarded by upstream.ok ALONE, deliberately outside the side-effects block
+  // above — that block also requires a non-empty body, and a DELETE commonly
+  // returns 204 with none, which would have skipped the prune entirely and left
+  // the orphaned binding this exists to remove.
+    // A successful DELETE ends the media's life at the provider, so the binding
+  // must go with it. The provider has no FK back into our table and no
+  // cascade, so an orphaned row would linger forever — and since `total` and
+  // `pagination.total` are counted from these bindings, every deletion would
+  // permanently inflate the reported count and grow a phantom trailing page.
+  //
+  // Owner-scoped even though enforceScope already proved ownership before
+  // allowing the DELETE: it costs nothing and means this statement is correct
+  // on its own terms rather than on a guarantee made elsewhere.
+  if (upstream.ok && req.method === "DELETE") {
+    const delMatch = /^\/media\/([^/]+)$/.exec(pathOnly);
+    if (delMatch?.[1]) {
+      const { error: pruneErr } = await admin
+        .from("outstand_media_ownership")
+        .delete()
+        .eq("outstand_media_id", delMatch[1])
+        .eq("user_id", ctx.userId);
+      if (pruneErr) {
+        // Not fatal — the media IS gone at the provider, and the caller's
+        // delete succeeded. Logged because a stale binding inflates their
+        // media count until someone notices.
+        console.error(
+          `outstand-proxy: could not prune media binding ${delMatch[1]}`,
+          pruneErr.message,
         );
       }
-      upstreamText = filteredMedia.body;
-    } else {
-      const filtered = filterListBody(pathOnly, upstreamText, ownedIds);
-      upstreamText = filtered.body;
     }
+  }
+
+
+  // Filter list responses. /media is NOT here — it is served from our own table
+  // before any upstream call (see the early return above), so there is no org
+  // list to filter.
+  if (upstream.ok && req.method === "GET") {
+    const filtered = filterListBody(pathOnly, upstreamText, ownedIds);
+    upstreamText = filtered.body;
   }
 
   const responseHeaders: Record<string, string> = { ...corsHeaders };

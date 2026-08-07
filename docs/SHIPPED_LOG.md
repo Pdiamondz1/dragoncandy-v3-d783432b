@@ -26,6 +26,43 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-07] `GET /media` served from our own table
+
+Closes the pagination limit *recorded* rather than fixed when `/media` was first scoped to its owner.
+
+`GET /media?limit&offset` paginates the **org-wide** pool, so ownership can only be applied after the
+page is already chosen. Two fixes failed structurally before the third worked: filtering one page
+gave a caller an **empty gallery** while their media sat further down the org ordering, and scanning
+pages until the window filled left media beyond the scan cap **permanently unreachable** (raising the
+cap only moves the wall). Both also had to reconcile a provider-derived list against a local total.
+
+Codex found **five successive defects** across those two attempts, and that count was the real
+signal: when review keeps finding a *different* problem in the same place, the design is wrong rather
+than the code.
+
+**The provider already hands us the record.** `POST /media/{id}/confirm` returns
+`ConfirmUploadResponse` — `{ id, filename, url, content_type, size, status, created_at, expires_at }`,
+every field the SDK's `MediaFile` carries — and that call goes through the proxy. So the confirm step
+caches it and `GET /media` is answered from Postgres before any upstream call. **No org list is read
+at all**, which means the cross-tenant leak this path kept producing is *unreachable* rather than
+handled; the window is correct by construction; the total is one exact count.
+
+Four SDK-contract details, each of which would have shipped a broken gallery while looking correct:
+`pagination.count` is consumed by `MediaList` as the **total** (opposite of the provider's own
+convention — a 20-of-100 page would have shown "20 files" and hidden Next); components read camelCase
+`contentType` while the wire format is `content_type`, so gallery videos would have fallen back to
+guessing from the filename; omitting the `pagination` block entirely reported a populated gallery as
+0 files; and serving our column names instead of the provider's parses fine and renders blank.
+
+The migration **asserts its own precondition** — it stops and names the count if pre-existing
+bindings would be stranded by the `confirmed_at` gate, rather than trusting that they were zero when
+I looked.
+
+Also fixed a pre-existing bug found while checking a Codex finding that did **not** hold:
+`social-proxy`'s adapter posted `contentType` to `/media/upload` when the wire field is
+`content_type`, so **that gateway had been uploading with no MIME type at all**. The dismissal is
+recorded with its reasoning alongside it. → `docs/wiki/concepts/cross-tenant-proxy-authorization.md`
+
 ## [2026-08-07] `/media` scoped to its owner, atomic schedule completion, delegation flag
 
 Four queued items after #368 merged.

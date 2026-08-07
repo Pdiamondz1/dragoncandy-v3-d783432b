@@ -45,43 +45,6 @@ export function extractUploadedMediaId(body: unknown): string | null {
   return null;
 }
 
-/**
- * Every media id appearing in a list response, at any depth.
- *
- * Used to ask the binding table "which of THESE are mine?" instead of "give me
- * all my media ids". The difference matters: the caller-owned set is unbounded
- * and would be silently truncated by PostgREST's default row cap, so a user
- * with more uploads than the cap would find their own media missing from their
- * own gallery. The ids on one page are bounded by the page size.
- */
-export function collectMediaIds(bodyText: string): string[] {
-  if (!bodyText) return [];
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(bodyText);
-  } catch {
-    return [];
-  }
-
-  const ids = new Set<string>();
-  const seen = new WeakSet<object>();
-  const walk = (node: unknown, depth: number): void => {
-    if (!node || typeof node !== 'object' || depth > 6) return;
-    if (seen.has(node as object)) return;
-    seen.add(node as object);
-
-    if (Array.isArray(node)) {
-      for (const entry of node) walk(entry, depth + 1);
-      return;
-    }
-    const obj = node as Record<string, unknown>;
-    if (typeof obj.id === 'string' && obj.id.length > 0) ids.add(obj.id);
-    for (const value of Object.values(obj)) walk(value, depth + 1);
-  };
-  walk(parsed, 0);
-  return [...ids];
-}
-
 export type MediaAccessDecision =
   | { allowed: true; grant: 'ownership_binding' }
   | { allowed: false; reason: 'no_binding' | 'not_owner' };
@@ -113,131 +76,175 @@ export function decideMediaAccess(
   return { allowed: true, grant: 'ownership_binding' };
 }
 
+// filterMediaList(), collectMediaIds(), extractMediaRows() and
+// collectOwnedWindow() lived here.
+//
+// They filtered ONE provider page to the caller's own rows, which was the right
+// shape only while the page itself was assumed correct. It is not: `GET /media`
+// paginates the ORG-WIDE pool, so the page is chosen before ownership is known
+// and a caller could receive an empty page while their own media sat further
+// down. Scanning the org pool for owned rows replaced it, and failed
+// structurally in turn: a hard scan cap made media beyond it permanently
+// unreachable, and raising the cap only moves the wall.
+//
+// GET /media is now served entirely from outstand_media_ownership, which the
+// confirm step populates with the provider's own record. No org list is read at
+// all, so none of these helpers has anything to filter — and a helper that looks
+// like a safety net while protecting nothing is worse than no helper at all.
+//
+// Same reasoning that deleted _shared/schedule-completion.ts when the rule moved
+// into SQL.
+
+/** The provider's media record, as `POST /media/{id}/confirm` returns it. */
+export interface ConfirmedMedia {
+  filename: string | null;
+  url: string | null;
+  contentType: string | null;
+  size: number | null;
+  status: string | null;
+  mediaCreatedAt: string | null;
+  expiresAt: string | null;
+}
+
 /**
- * Filter a `GET /media` list response down to the caller's own media.
+ * Read the media record out of a confirm response.
  *
- * Separate from _shared/outstand-list-filter.ts on purpose: that module decides
- * ownership from FIELDS ON THE ROW (a post carries its social accounts). A media
- * row carries nothing, so ownership can only come from an id set fetched
- * alongside. Same shape of walk, different evidence.
+ * The SDK types this as `ConfirmUploadResponse { id, filename, url,
+ * content_type, size, status, created_at, expires_at }`, usually inside an
+ * `ApiResponse` envelope — so look at the root and under `data`, and nowhere
+ * else, for the same reason extractUploadedMediaId is narrow: what this returns
+ * is persisted and later served as fact.
  *
- * Filters EVERY array of rows, at any depth, for the same reason the post filter
- * does: a name-keyed allow-list silently forwards any array the provider adds or
- * renames, and the response still looks filtered. A row whose id cannot be read
- * is DROPPED — unattributable is not owned.
+ * Returns null only when there is no recognisable record. Individual missing
+ * fields are kept as null rather than failing the whole read: a confirm that
+ * omits `expires_at` should still produce a usable gallery row.
+ *
+ * NOTE the deliberate rename: the provider's `created_at` becomes
+ * `mediaCreatedAt`, because the row it lands in already has a `created_at`
+ * meaning "when WE minted the binding". Two different times under one name is
+ * how a chart ends up plotting the wrong one.
  */
-export function filterMediaList(bodyText: string, ownedMediaIds: ReadonlySet<string>): {
-  body: string;
-  kept: number;
-  dropped: number;
-} {
-  if (!bodyText) return { body: bodyText, kept: 0, dropped: 0 };
+export function extractConfirmedMedia(body: unknown): ConfirmedMedia | null {
+  if (!body || typeof body !== 'object') return null;
+  const root = body as Record<string, unknown>;
+  const asObject = (v: unknown): Record<string, unknown> | null =>
+    v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(bodyText);
-  } catch {
-    return { body: bodyText, kept: 0, dropped: 0 };
-  }
-  if (!parsed || typeof parsed !== 'object') return { body: bodyText, kept: 0, dropped: 0 };
+  const dataObj = asObject(root.data);
+  const rec = asObject(dataObj?.media) ?? dataObj ?? root;
 
-  const isOwned = (item: unknown): boolean => {
-    const id = (item as { id?: unknown } | null)?.id;
-    return typeof id === 'string' && ownedMediaIds.has(id);
-  };
-  const isRowList = (v: unknown): boolean =>
-    Array.isArray(v) && v.some((e) => e !== null && typeof e === 'object');
+  const str = (v: unknown): string | null =>
+    typeof v === 'string' && v.length > 0 ? v : null;
+  const num = (v: unknown): number | null =>
+    typeof v === 'number' && Number.isFinite(v) ? v : null;
 
-  const kept = new Set<string>();
-  let dropped = 0;
-  const MAX_DEPTH = 6;
-  const seen = new WeakSet<object>();
-
-  // A collection can also arrive as an OBJECT KEYED BY ID rather than an array
-  // — `{ media: { "abc": {...}, "def": {...} } }`. An array-only filter walks
-  // straight into that and forwards every row untouched, which is the same shape
-  // of miss as filtering `data` while `posts` rode alongside. Detected by: every
-  // value is a non-null object, and at least one carries a string `id`.
-  //
-  // `pagination: { limit, offset, total }` is not mistaken for one, because its
-  // values are numbers rather than objects.
-  const isRowMap = (v: unknown): boolean => {
-    if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
-    const values = Object.values(v as Record<string, unknown>);
-    if (values.length === 0) return false;
-    if (!values.every((e) => e !== null && typeof e === 'object' && !Array.isArray(e))) return false;
-    return values.some((e) => typeof (e as { id?: unknown }).id === 'string');
+  const media: ConfirmedMedia = {
+    filename: str(rec.filename),
+    url: str(rec.url),
+    contentType: str(rec.content_type) ?? str((rec as { contentType?: unknown }).contentType),
+    size: num(rec.size),
+    status: str(rec.status),
+    mediaCreatedAt: str(rec.created_at),
+    expiresAt: str(rec.expires_at),
   };
 
-  const walk = (node: Record<string, unknown>, depth: number): void => {
-    if (depth > MAX_DEPTH || seen.has(node)) return;
-    seen.add(node);
-    for (const key of Object.keys(node)) {
-      const value = node[key];
-      if (isRowList(value)) {
-        const before = (value as unknown[]).length;
-        const filtered = (value as unknown[]).filter(isOwned);
-        node[key] = filtered;
-        for (const row of filtered) {
-          const id = (row as { id?: unknown }).id;
-          if (typeof id === 'string') kept.add(id);
-        }
-        dropped += before - filtered.length;
-        continue;
-      }
-      if (isRowMap(value)) {
-        const src = value as Record<string, unknown>;
-        const out: Record<string, unknown> = {};
-        for (const [k, row] of Object.entries(src)) {
-          if (isOwned(row)) {
-            out[k] = row;
-            const id = (row as { id?: unknown }).id;
-            if (typeof id === 'string') kept.add(id);
-          } else {
-            dropped += 1;
-          }
-        }
-        node[key] = out;
-        continue;
-      }
-      if (value && typeof value === 'object' && !Array.isArray(value)) {
-        walk(value as Record<string, unknown>, depth + 1);
-      }
-    }
-  };
+  // A record with no url is not a media file — the gallery has nothing to show
+  // and storing it would put an unrenderable row in someone's list.
+  return media.url ? media : null;
+}
 
-  if (Array.isArray(parsed)) {
-    const before = parsed.length;
-    const filtered = (parsed as unknown[]).filter(isOwned);
-    dropped = before - filtered.length;
-    for (const row of filtered) {
-      const id = (row as { id?: unknown }).id;
-      if (typeof id === 'string') kept.add(id);
-    }
-    return { body: JSON.stringify(filtered), kept: kept.size, dropped };
-  }
+/** One row of outstand_media_ownership, as stored. */
+export interface StoredMediaRow {
+  outstand_media_id: string;
+  filename?: string | null;
+  url?: string | null;
+  content_type?: string | null;
+  size?: number | null;
+  status?: string | null;
+  media_created_at?: string | null;
+  expires_at?: string | null;
+}
 
-  walk(parsed as Record<string, unknown>, 0);
+/**
+ * Render stored rows in the shape the SDK expects.
+ *
+ * Field names are the PROVIDER's, not our column names — `created_at`, not
+ * `media_created_at` — because serving our own schema produces a response that
+ * parses fine and renders blank.
+ *
+ * BOTH content-type spellings are emitted, and that is not hedging. The wire
+ * format is snake (`ConfirmUploadResponse.content_type`), but the SDK's
+ * `MediaFile` type is camel and its components read camel:
+ *
+ *     uploadFile:    contentType: confirmedMedia.content_type
+ *     MediaPreview:  media.contentType?.startsWith("video/")
+ *
+ * The upload path does that mapping itself, so media reaching the UI that way
+ * carries `contentType`; media served from this list would not, and video
+ * detection would silently fall back to guessing from the filename extension.
+ * Emitting both means neither consumer is wrong, and costs one key.
+ */
+export function toMediaFiles(rows: readonly StoredMediaRow[]): Record<string, unknown>[] {
+  return rows.map((r) => ({
+    id: r.outstand_media_id,
+    filename: r.filename ?? '',
+    url: r.url ?? '',
+    content_type: r.content_type ?? null,
+    contentType: r.content_type ?? null,
+    size: r.size ?? null,
+    status: r.status ?? 'active',
+    created_at: r.media_created_at ?? null,
+    expires_at: r.expires_at ?? null,
+  }));
+}
 
-  // Counters must not survive filtering — `total` would otherwise report the
-  // whole org's media count. Same rule as the post list filter.
-  const ROW_COUNTER = /^(count|total|totalCount|total_count)$/;
-  // Page counters describe the same org-wide set in another spelling, so they
-  // leak the same fact. Missed on the first pass here even though the sibling
-  // post filter already covers them.
-  const PAGE_COUNTER = /^(totalPages|total_pages|pages)$/;
-  const fixCounters = (node: Record<string, unknown>, depth: number): void => {
-    if (depth > MAX_DEPTH) return;
-    for (const key of Object.keys(node)) {
-      const v = node[key];
-      if (typeof v === 'number' && ROW_COUNTER.test(key)) node[key] = kept.size;
-      else if (typeof v === 'number' && PAGE_COUNTER.test(key)) node[key] = kept.size > 0 ? 1 : 0;
-      else if (v && typeof v === 'object' && !Array.isArray(v)) {
-        fixCounters(v as Record<string, unknown>, depth + 1);
-      }
-    }
-  };
-  fixCounters(parsed as Record<string, unknown>, 0);
+/**
+ * The envelope `useMediaList` reads.
+ *
+ * `useMediaList` returns `media: data?.data ?? []` and
+ * `pagination: data?.pagination ?? null`. An earlier version omitted
+ * `pagination` entirely, which reported a populated gallery as 0 files and
+ * removed its next-page control.
+ *
+ * THE TRAP, and it is a real one: `MediaList` reads
+ *
+ *     const totalCount = pagination?.count ?? 0;
+ *     const totalPages = Math.ceil(totalCount / pageSize);
+ *
+ * so `pagination.count` is consumed as the TOTAL, not as this page's length —
+ * the opposite of the provider's own convention, where a /posts response
+ * carries `count: 5` for a 5-row page alongside `total: 49`. Emitting the
+ * honest reading (page length) makes a 20-of-100 gallery display "20 files" and
+ * hide Next. So `pagination.count` carries the total deliberately.
+ *
+ * The top-level `count` keeps the provider's meaning (this page's length);
+ * nothing reads it, and matching the provider there costs nothing. Where the
+ * two conventions disagree, serve what actually renders.
+ */
+export function buildMediaListResponse(
+  files: readonly Record<string, unknown>[],
+  total: number,
+  limit: number,
+  offset: number,
+): string {
+  return JSON.stringify({
+    success: true,
+    data: files,
+    count: files.length,
+    total,
+    limit,
+    offset,
+    // count = total ON PURPOSE — see the note above.
+    pagination: { limit, offset, total, count: total },
+  });
+}
 
-  return { body: JSON.stringify(parsed), kept: kept.size, dropped };
+/** Clamp caller-supplied paging to something sane. */
+export function parseMediaPaging(search: string): { limit: number; offset: number } {
+  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  const rawLimit = parseInt(params.get('limit') ?? '', 10);
+  const rawOffset = parseInt(params.get('offset') ?? '', 10);
+  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 100) : 50;
+  const offset = Number.isFinite(rawOffset) ? Math.max(rawOffset, 0) : 0;
+  return { limit, offset };
 }

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildMediaListResponse,
   decideMediaAccess,
+  extractConfirmedMedia,
   extractUploadedMediaId,
-  collectMediaIds,
-  filterMediaList,
+  parseMediaPaging,
+  toMediaFiles,
 } from './outstand-media-authz.ts';
 
 const MINE = 'user-1';
@@ -52,143 +54,143 @@ describe('decideMediaAccess', () => {
   });
 });
 
-describe('filterMediaList', () => {
-  const envelope = (ids: string[], extra: Record<string, unknown> = {}) =>
-    JSON.stringify({
-      success: true,
-      data: ids.map((id) => ({ id, filename: `${id}.jpg`, url: `https://cdn/${id}` })),
-      total: ids.length,
-      count: ids.length,
-      ...extra,
+describe('extractConfirmedMedia', () => {
+  const full = {
+    id: 'm1', filename: 'clip.mp4', url: 'https://cdn/clip.mp4',
+    content_type: 'video/mp4', size: 1234, status: 'active',
+    created_at: '2026-08-07T00:00:00Z', expires_at: '2026-09-07T00:00:00Z',
+  };
+
+  it('reads the ConfirmUploadResponse at the root', () => {
+    expect(extractConfirmedMedia(full)).toEqual({
+      filename: 'clip.mp4', url: 'https://cdn/clip.mp4', contentType: 'video/mp4',
+      size: 1234, status: 'active',
+      mediaCreatedAt: '2026-08-07T00:00:00Z', expiresAt: '2026-09-07T00:00:00Z',
     });
-
-  const owned = new Set(['a', 'b']);
-
-  it('keeps only the caller\'s own media', () => {
-    const out = JSON.parse(filterMediaList(envelope(['a', 'x', 'b', 'y']), owned).body);
-    expect(out.data.map((m: { id: string }) => m.id)).toEqual(['a', 'b']);
   });
 
-  it('never leaks another tenant\'s filename or url', () => {
-    const res = filterMediaList(envelope(['a', 'secret']), owned);
-    expect(res.body).not.toContain('secret.jpg');
-    expect(res.body).not.toContain('cdn/secret');
-    expect(res.dropped).toBe(1);
+  it('reads it inside an ApiResponse envelope and a nested media object', () => {
+    expect(extractConfirmedMedia({ success: true, data: full })?.url).toBe('https://cdn/clip.mp4');
+    expect(extractConfirmedMedia({ data: { media: full } })?.url).toBe('https://cdn/clip.mp4');
   });
 
-  it('rewrites counters so the org-wide total is not disclosed', () => {
-    const out = JSON.parse(filterMediaList(envelope(['a', 'x', 'y', 'z']), owned).body);
-    expect(out.total).toBe(1);
-    expect(out.count).toBe(1);
+  it('renames the provider created_at so it cannot collide with our own', () => {
+    // The row it lands in already has created_at meaning "when WE minted the
+    // binding". Two different times under one name is how the wrong one gets
+    // plotted.
+    const out = extractConfirmedMedia(full)!;
+    expect(out.mediaCreatedAt).toBe('2026-08-07T00:00:00Z');
+    expect((out as Record<string, unknown>).created_at).toBeUndefined();
   });
 
-  it('drops a row with no readable id — unattributable is not owned', () => {
-    const raw = JSON.stringify({ data: [{ filename: 'orphan.jpg' }, { id: 'a' }] });
-    const out = JSON.parse(filterMediaList(raw, owned).body);
-    expect(out.data.map((m: { id?: string }) => m.id)).toEqual(['a']);
+  it('REFUSES a record with no url — an unrenderable row must not enter a gallery', () => {
+    expect(extractConfirmedMedia({ ...full, url: '' })).toBeNull();
+    expect(extractConfirmedMedia({ id: 'm1', filename: 'x.png' })).toBeNull();
   });
 
-  it('filters an array key the provider might add later, without being told its name', () => {
-    const raw = JSON.stringify({ media: [{ id: 'a' }, { id: 'x' }], data: [{ id: 'b' }] });
-    const out = JSON.parse(filterMediaList(raw, owned).body);
-    expect(out.media.map((m: { id: string }) => m.id)).toEqual(['a']);
-    expect(out.data.map((m: { id: string }) => m.id)).toEqual(['b']);
+  it('keeps individual missing fields as null rather than failing the whole read', () => {
+    const out = extractConfirmedMedia({ url: 'https://cdn/a.png' })!;
+    expect(out.url).toBe('https://cdn/a.png');
+    expect(out.filename).toBeNull();
+    expect(out.size).toBeNull();
+    expect(out.expiresAt).toBeNull();
   });
 
-  it('filters a row array nested below the top level', () => {
-    const raw = JSON.stringify({ result: { items: [{ id: 'a' }, { id: 'x' }] } });
-    const out = JSON.parse(filterMediaList(raw, owned).body);
-    expect(out.result.items.map((m: { id: string }) => m.id)).toEqual(['a']);
+  it('accepts camelCase contentType as a fallback', () => {
+    expect(extractConfirmedMedia({ url: 'https://x/a', contentType: 'image/png' })?.contentType)
+      .toBe('image/png');
   });
 
-  it('keeps nothing when the caller owns nothing — the fail-closed path', () => {
-    // listOwnedMediaIds returns an empty set on a read error, so this is also
-    // what a DB blip produces: an empty list, never the org's media.
-    const out = JSON.parse(filterMediaList(envelope(['a', 'b']), new Set()).body);
-    expect(out.data).toEqual([]);
-    expect(out.total).toBe(0);
-  });
-
-  it('filters a bare top-level array', () => {
-    const raw = JSON.stringify([{ id: 'a' }, { id: 'x' }]);
-    expect(JSON.parse(filterMediaList(raw, owned).body).map((m: { id: string }) => m.id)).toEqual(['a']);
-  });
-
-  it('passes empty, non-JSON and non-object bodies through unchanged', () => {
-    expect(filterMediaList('', owned).body).toBe('');
-    expect(filterMediaList('not json', owned).body).toBe('not json');
-    expect(filterMediaList('"a string"', owned).body).toBe('"a string"');
+  it('returns null for junk', () => {
+    expect(extractConfirmedMedia(null)).toBeNull();
+    expect(extractConfirmedMedia('str')).toBeNull();
   });
 });
 
-describe('filterMediaList — shapes that are not arrays', () => {
-  const owned = new Set(['a', 'b']);
-
-  it('filters a collection keyed BY ID rather than arrayed', () => {
-    // An array-only filter walks into this and forwards every row — the same
-    // shape of miss as filtering `data` while `posts` rode alongside.
-    const raw = JSON.stringify({
-      media: { abc: { id: 'a', filename: 'mine.jpg' }, xyz: { id: 'x', filename: 'theirs.jpg' } },
+describe('toMediaFiles', () => {
+  it('emits the PROVIDER field names the gallery reads, not our column names', () => {
+    const [file] = toMediaFiles([{
+      outstand_media_id: 'm1', filename: 'a.png', url: 'https://cdn/a.png',
+      content_type: 'image/png', size: 10, status: 'active',
+      media_created_at: '2026-08-07T00:00:00Z', expires_at: null,
+    }]);
+    expect(file).toEqual({
+      id: 'm1', filename: 'a.png', url: 'https://cdn/a.png',
+      // BOTH spellings: the wire format is snake, but MediaPreview reads
+      // `media.contentType?.startsWith("video/")`.
+      content_type: 'image/png', contentType: 'image/png',
+      size: 10, status: 'active',
+      created_at: '2026-08-07T00:00:00Z', expires_at: null,
     });
-    const res = filterMediaList(raw, owned);
-    const out = JSON.parse(res.body);
-    expect(Object.keys(out.media)).toEqual(['abc']);
-    expect(res.body).not.toContain('theirs.jpg');
-    expect(res.dropped).toBe(1);
+    // Serving our own schema would parse fine and render blank.
+    expect(file).not.toHaveProperty('media_created_at');
+    expect(file).not.toHaveProperty('outstand_media_id');
   });
 
-  it('does not mistake a pagination block for a row map', () => {
-    const raw = JSON.stringify({ data: [{ id: 'a' }], pagination: { limit: 10, offset: 0, total: 42 } });
-    const out = JSON.parse(filterMediaList(raw, owned).body);
-    expect(out.pagination.limit).toBe(10);
-    expect(out.pagination.offset).toBe(0);
-    expect(out.pagination.total).toBe(1); // counter rewritten, block intact
-  });
-
-  it('rewrites page counters too, not just count/total', () => {
-    const raw = JSON.stringify({ data: [{ id: 'a' }, { id: 'x' }], totalPages: 9, pages: 9, total_count: 99 });
-    const out = JSON.parse(filterMediaList(raw, owned).body);
-    expect(out.totalPages).toBe(1);
-    expect(out.pages).toBe(1);
-    expect(out.total_count).toBe(1);
-  });
-
-  it('zeroes page counters when the caller owns nothing', () => {
-    const raw = JSON.stringify({ data: [{ id: 'x' }], totalPages: 4 });
-    const out = JSON.parse(filterMediaList(raw, new Set()).body);
-    expect(out.data).toEqual([]);
-    expect(out.totalPages).toBe(0);
-  });
-
-  it('leaves a single embedded row object alone rather than treating it as a map', () => {
-    const raw = JSON.stringify({ success: true, data: { id: 'a', filename: 'mine.jpg' } });
-    const out = JSON.parse(filterMediaList(raw, owned).body);
-    expect(out.data.id).toBe('a');
+  it('defaults a missing status to active and never emits undefined', () => {
+    const [file] = toMediaFiles([{ outstand_media_id: 'm2' }]);
+    expect(file.status).toBe('active');
+    expect(file.filename).toBe('');
+    expect(Object.values(file).every((v) => v !== undefined)).toBe(true);
   });
 });
 
-describe('collectMediaIds', () => {
-  it('collects ids from a normal envelope', () => {
-    const raw = JSON.stringify({ success: true, data: [{ id: 'a' }, { id: 'b' }] });
-    expect(collectMediaIds(raw).sort()).toEqual(['a', 'b']);
+describe('buildMediaListResponse', () => {
+  it('emits BOTH the top-level fields and the pagination block the SDK reads', () => {
+    const body = JSON.parse(buildMediaListResponse([{ id: 'a' }], 7, 20, 40));
+    expect(body.data).toHaveLength(1);
+    expect(body.count).toBe(1);
+    expect(body.total).toBe(7);
+    // pagination.count carries the TOTAL, not the page length: MediaList does
+    // `totalPages = Math.ceil((pagination?.count ?? 0) / pageSize)`, so the
+    // honest reading would show "1 file" and hide Next on a 1-of-7 page.
+    expect(body.pagination).toEqual({ limit: 20, offset: 40, total: 7, count: 7 });
   });
 
-  it('collects from nested containers and id-keyed maps', () => {
-    const raw = JSON.stringify({ result: { items: [{ id: 'a' }] }, media: { k: { id: 'b' } } });
-    expect(collectMediaIds(raw).sort()).toEqual(['a', 'b']);
+  it('is coherent when the caller owns nothing', () => {
+    const body = JSON.parse(buildMediaListResponse([], 0, 50, 0));
+    expect(body.data).toEqual([]);
+    expect(body.pagination.total).toBe(0);
+  });
+});
+
+describe('parseMediaPaging', () => {
+  it('reads limit and offset', () => {
+    expect(parseMediaPaging('?limit=20&offset=40')).toEqual({ limit: 20, offset: 40 });
   });
 
-  it('collects from a bare top-level array', () => {
-    expect(collectMediaIds(JSON.stringify([{ id: 'a' }]))).toEqual(['a']);
+  it('defaults to the SDK default when absent', () => {
+    expect(parseMediaPaging('')).toEqual({ limit: 50, offset: 0 });
   });
 
-  it('dedupes and ignores non-string or empty ids', () => {
-    const raw = JSON.stringify({ data: [{ id: 'a' }, { id: 'a' }, { id: 123 }, { id: '' }, {}] });
-    expect(collectMediaIds(raw)).toEqual(['a']);
+  it('clamps hostile values instead of trusting them', () => {
+    expect(parseMediaPaging('?limit=100000&offset=-5')).toEqual({ limit: 100, offset: 0 });
+    expect(parseMediaPaging('?limit=0')).toEqual({ limit: 1, offset: 0 });
+    expect(parseMediaPaging('?limit=abc&offset=xyz')).toEqual({ limit: 50, offset: 0 });
   });
+});
 
-  it('returns [] for empty and non-JSON bodies', () => {
-    expect(collectMediaIds('')).toEqual([]);
-    expect(collectMediaIds('not json')).toEqual([]);
+describe('buildMediaListResponse — the SDK count/total inversion', () => {
+  it('paginates correctly for a 20-of-100 gallery', () => {
+    const page = Array.from({ length: 20 }, (_, i) => ({ id: `m${i}` }));
+    const body = JSON.parse(buildMediaListResponse(page, 100, 20, 0));
+    // What MediaList actually computes:
+    const totalPages = Math.ceil((body.pagination?.count ?? 0) / 20);
+    expect(totalPages).toBe(5);          // not 1 — Next stays available
+    expect(body.data).toHaveLength(20);  // and the page itself is still a page
+    expect(body.count).toBe(20);         // top-level keeps the provider meaning
+  });
+});
+
+describe('toMediaFiles — MIME type reaches the components', () => {
+  it('a video from the gallery is detectable the way MediaPreview detects it', () => {
+    const [file] = toMediaFiles([{
+      outstand_media_id: 'v1', filename: 'clip', url: 'https://cdn/clip',
+      content_type: 'video/mp4',
+    }]);
+    // Exactly what MediaPreview does. Note the filename has no extension, so
+    // the regex fallback cannot rescue a missing contentType.
+    const isVideo = String(file.contentType ?? '').startsWith('video/');
+    expect(isVideo).toBe(true);
   });
 });
