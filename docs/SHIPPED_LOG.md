@@ -26,6 +26,48 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-07] `/media` scoped to its owner, atomic schedule completion, delegation flag
+
+Four queued items after #368 merged.
+
+**`/media` was unscoped across every tenant.** `outstand-proxy` allowed `/media`, `/media/upload`,
+`/media/{id}` and `/media/{id}/confirm` for **every method** to **any** authenticated caller, under
+the comment "Media is org-level in Outstand". The premise was right and the conclusion inverted: the
+Outstand key is org-wide, so every tenant's uploads share one pool — any authenticated user could
+list every tenant's media (filenames + URLs) and **DELETE any of it**, and the SDK calls all four
+including `DELETE`.
+
+Ownership could not come from the row — the SDK's `MediaFile` has no account/user/org field and the
+provider offers no per-tenant scope — so `outstand_media_ownership` records it on our side at the one
+moment both facts exist: the proxy authenticates the caller and proxies the upload, so it sees the
+provider's own id. Mirrors `outstand_post_ownership` exactly. **Strict from day one**, which is safe
+here for a reason rather than by preference: `GET /media` returns `count: 0`, so there is no
+pre-binding population to strand.
+
+**Delegated posting was offered and could not work** — the grant recorded, the post then failing
+because the proxy checks the *grantee's* accounts. Hidden behind `DELEGATED_POSTING_ENABLED` after
+verifying zero rows had ever been granted.
+
+**A finished schedule could never say so.** `posting_schedule_status = 'completed'` had a CHECK value
+and a rendered "All Posts Published" card, and nothing ever wrote it, so a fully-published campaign
+sat on the "scheduled" card forever. Now written at the `outstand-webhook` choke point via an atomic
+SECURITY DEFINER RPC, with an hourly sweep as the safety net.
+
+**The reviews were mostly catching my own mistakes, and all were treated as blocking:**
+(1) I reintroduced a **cross-tenant write** — campaign ids taken from a query matching on the
+client-writable `metadata->>outstand_post_id`, when `confirm-posting-schedule` had already been
+hardened against that identical write; (2) `social-proxy` created media and minted no binding — the
+two-gateway shape the post store exists to prevent, one `case` block away; (3) the binding was not
+provider-gated, so a Zernio id could enter an Outstand-keyed table; (4) I **broke every media
+upload** by keeping `contentType` from the SDK's TypeScript signature when the wire field is
+`content_type`; (5) read-then-write could strand a campaign permanently when its last two posts
+published concurrently; (6) two silent caps, one of which would hide a heavy user's own media from
+their own gallery; (7) a comment of mine asserting the **opposite** of the truth about offset paging;
+(8) an unbounded sweep that could overrun the run budget and return nothing.
+
+The edge-function typecheck gate from #368 caught one of these before review — the first time it paid
+for itself. → `docs/wiki/concepts/cross-tenant-proxy-authorization.md`
+
 ## [2026-08-06] Honest analytics, the drafts editor, and an edge-function typecheck gate (#368)
 
 Three items taken after the proxy security work, all on the same PR because a ~5-hour GitHub Actions

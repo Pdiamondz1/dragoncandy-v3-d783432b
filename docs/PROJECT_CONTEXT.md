@@ -128,6 +128,16 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   the 99 edge functions (now 66 gated, 33 listed and printed). **Pending:** merge PR #368 — all
   checks green after the GitHub Actions outage.
   → `docs/wiki/concepts/honest-analytics.md` · #368
+- **`/media` tenant scoping + atomic schedule completion** — `outstand-proxy` allowed every method
+  on `/media*` to any authenticated caller, so any user could list every tenant's uploads and
+  **DELETE** them; closed with an `outstand_media_ownership` binding (strict, safe because
+  `GET /media` was `count:0`). Also: delegated posting hidden behind a flag (offered, could never
+  publish, zero grants ever), and `posting_schedule_status='completed'` finally written — it had a
+  CHECK value and a rendered card and no writer, so finished campaigns sat on "scheduled" forever.
+  **Pending:** merge the PR, then apply migrations `20260807030000` + `20260807040000` **BEFORE**
+  deploying `outstand-proxy` / `social-proxy` / `outstand-webhook` / `reconcile-social-posts` —
+  reversed, every media path 403s and the completion RPC is missing.
+  → `docs/wiki/concepts/cross-tenant-proxy-authorization.md`
 - **AIOS Google Workspace ("Connections")** — per-user Google OAuth, audited proxy, Drive
   hub, Donny exports, metrics→Sheet. The `google-chat-donny` bot ships dark (503).
   **Pending:** register the Chat app, set `GOOGLE_CHAT_PROJECT_NUMBER` +
