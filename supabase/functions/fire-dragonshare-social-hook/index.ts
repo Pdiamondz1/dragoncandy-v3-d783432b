@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { isAuthorizedIngest } from '../_shared/ingest-auth.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -19,6 +20,28 @@ function getNudgeSummary(role: string, creatorName: string, businessName: string
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders(req) });
+  }
+
+  // Service-role only. The sole caller is _shared/fulfill-boost.ts, which sends the injected
+  // service-role key; there is no browser caller. Without this gate any holder of the
+  // publishable anon key could drive the hook — and because it calls social-caption with the
+  // SERVICE-ROLE bearer, it bypasses that function's own per-user auth and rate limit.
+  //
+  // NOTE ON verify_jwt: unlike the other isAuthorizedIngest users (auto-approve-content,
+  // reconcile-pending-flushes, …) this function is deliberately left at the platform default
+  // verify_jwt = TRUE, so the gateway rejects anonymous callers before this handler runs. The
+  // service-role key is itself a validly-signed project JWT, so the only real caller passes.
+  // Consequence to know about: isAuthorizedIngest's AIOS_INGEST_SECRET branch is INACTIVE here
+  // — that opaque string is not a JWT, so the gateway would 401 it first. If this hook ever
+  // needs to be driven by pg_cron/an external agent with that secret, add
+  // `[functions.fire-dragonshare-social-hook] verify_jwt = false` to supabase/config.toml at
+  // that point. It is not added now because nothing uses that path, and leaving the gateway
+  // check on keeps a second layer in front of a function that spends LLM tokens.
+  if (!isAuthorizedIngest(req)) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+    });
   }
 
   try {

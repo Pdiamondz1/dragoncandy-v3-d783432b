@@ -8,33 +8,97 @@ serve(async (req) => {
   }
 
   try {
+    // This function fans out email to EVERY creator and brand on the platform. It ran with
+    // no caller check at all: the Authorization header was read and never used, and the
+    // service-role client was built regardless — so any holder of the publishable anon key
+    // (it ships in the frontend bundle) could broadcast attacker-supplied text from
+    // notify.dragoncandy.io. Both the recipient list and the copy are now derived from the
+    // authenticated caller and the stored campaign row; nothing in the body is trusted.
     const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+    const token = authHeader.replace("Bearer ", "");
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+    );
+    const { data: { user: caller }, error: authError } = await supabaseAuth.auth.getUser(token);
+    if (authError || !caller) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } },
     );
 
-    const { campaignId, campaignTitle, userId } = await req.json();
-    if (!campaignId || !campaignTitle || !userId) {
+    // `campaignTitle` / `userId` are still accepted from older cached bundles but are
+    // deliberately IGNORED — the title is read from the campaign row (so the email copy
+    // cannot be forged) and the owner is the verified caller.
+    const { campaignId } = await req.json();
+    if (!campaignId) {
       return new Response(
-        JSON.stringify({ error: "campaignId, campaignTitle, and userId are required" }),
+        JSON.stringify({ error: "campaignId is required" }),
         { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
 
-    // Fetch campaign for sponsorship flag + group scope
-    const { data: campaign } = await supabase
+    // Fetch campaign for title, ownership, sponsorship flag + group scope.
+    // maybeSingle(), not single(): a missing row must be an explicit 404, never a null
+    // `campaign` that falls through the group check below and fans out anyway.
+    const { data: campaign, error: campaignError } = await supabase
       .from("campaigns")
-      .select("open_for_sponsorship, group_id")
+      .select("id, title, user_id, status, open_for_sponsorship, group_id")
       .eq("id", campaignId)
-      .single();
+      .maybeSingle();
+
+    if (campaignError) {
+      console.error("[send-campaign-publish-notifications] campaign lookup failed:", campaignError);
+      return new Response(
+        JSON.stringify({ error: "Failed to load campaign" }),
+        { status: 500, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
+      );
+    }
+
+    // Only the campaign's owner may trigger a platform-wide broadcast about it. This is
+    // deliberately NARROWER than evaluateCampaignAccess() in _shared/campaign-access.ts, which
+    // also admits org members and participants — merely being able to SEE a campaign must never
+    // authorize emailing the entire user base about it. Verified safe against org flows: the
+    // ONLY UPDATE policy on `campaigns` is `user_id = auth.uid()`, so a non-owner cannot publish
+    // a campaign in the first place.
+    //
+    // "Not found" and "not yours" deliberately share one 403 so an authenticated caller cannot
+    // use this endpoint to test whether an arbitrary campaign id exists.
+    if (!campaign || campaign.user_id !== caller.id) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+
+    // Only a PUBLISHED campaign may be broadcast. Without this a draft — visible to nobody —
+    // could still be blasted to the whole user base, and the endpoint would work as a general
+    // "email everyone" primitive for any business account.
+    if (campaign.status !== "published") {
+      return new Response(
+        JSON.stringify({ skipped: "not_published" }),
+        { status: 200, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
+      );
+    }
+
+    const campaignTitle = campaign.title;
+    const userId = caller.id;
 
     // Private crew campaigns (group_id set) must NEVER be broadcast to the whole creator /
     // brand base — that would leak the private campaign's title + id to non-members. Crew
     // members are notified separately (group_campaign_posted) at post time. Authoritative
     // server-side guard (the frontend also skips the invoke).
-    if (campaign?.group_id) {
+    if (campaign.group_id) {
       return new Response(
         JSON.stringify({ skipped: "group_campaign" }),
         { status: 200, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
@@ -125,8 +189,13 @@ serve(async (req) => {
 
     await Promise.allSettled(notifications);
 
+    // Deliberately does NOT return notifications.length: that count is 1 + every brand +
+    // every onboarded creator, i.e. a live read on platform headcount, which is internal-only
+    // information. Logged server-side instead.
+    console.log(`[send-campaign-publish-notifications] queued ${notifications.length} sends for campaign ${campaignId}`);
+
     return new Response(
-      JSON.stringify({ ok: true, notifications_sent: notifications.length }),
+      JSON.stringify({ ok: true }),
       { headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
     );
   } catch (error) {

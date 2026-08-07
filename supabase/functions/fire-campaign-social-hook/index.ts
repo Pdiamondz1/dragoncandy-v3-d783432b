@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { checkHourlyRateLimit } from '../_shared/usage-tracker.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -23,10 +24,45 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders(req) });
   }
 
+  // Authenticate before any database work. This hook is browser-invoked (ContentReviewSection,
+  // useJointApproval) and had no caller check at all — yet it calls social-caption with the
+  // SERVICE-ROLE bearer, so it bypasses that function's per-user auth and rate limit. Gating it
+  // at its own entrance is what actually closes the LLM path; the ownership check follows once
+  // the party list is known.
+  const authHeader = req.headers.get('Authorization') ?? '';
+  if (!authHeader) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+    });
+  }
+  const userClient = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY')!, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data: userData, error: authErr } = await userClient.auth.getUser();
+  if (authErr || !userData?.user) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+    });
+  }
+  const callerId = userData.user.id;
+
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const { campaign_id, stage } = (await req.json()) as HookRequest;
+
+    // `stage` is body-supplied AND selects the authorization set below (brands join at >=2,
+    // creators at >=3), so it must be constrained to the five real stages. Unvalidated, a
+    // string "4" satisfies the `>=` comparisons via coercion and `stage: 99` passes every
+    // branch while writing a nonsense value into campaign_social_hooks.stage.
+    if (typeof stage !== 'number' || !Number.isInteger(stage) || stage < 1 || stage > 5) {
+      return new Response(JSON.stringify({ error: 'stage must be an integer between 1 and 5' }), {
+        status: 400,
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+      });
+    }
 
     const { data: campaign } = await supabase
       .from('campaigns')
@@ -82,6 +118,38 @@ serve(async (req) => {
       for (const app of applications ?? []) {
         parties.push({ user_id: app.creator_id, role: 'creator' });
       }
+    }
+
+    // The caller must be a party to this campaign — its owner, an accepted sponsoring brand,
+    // or an accepted creator. `parties` is exactly that set, already resolved above, so this
+    // reuses the function's own notion of who is involved rather than inventing a second one.
+    // Checked before the first write below.
+    if (!parties.some((p) => p.user_id === callerId)) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Bound replay. The campaign_social_hooks upsert is idempotent, but the caption/schedule
+    // loop below re-runs on EVERY invocation — and it calls social-caption with the
+    // service-role bearer, which takes that function's isService branch and so skips its
+    // per-user limit. Without this, any single accepted party could replay this endpoint and
+    // burn one LLM call per party per request. Attributed to the caller, so the cost lands on
+    // whoever is actually driving it.
+    const hookRateCheck = await checkHourlyRateLimit(supabase, callerId);
+    if (!hookRateCheck.allowed) {
+      return new Response(
+        JSON.stringify({ error: 'rate_limited', retry_after: hookRateCheck.retryAfterSeconds }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders(req),
+            'Content-Type': 'application/json',
+            'Retry-After': String(hookRateCheck.retryAfterSeconds),
+          },
+        },
+      );
     }
 
     const rows = parties.map((p) => ({

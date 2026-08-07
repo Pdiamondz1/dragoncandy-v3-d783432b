@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 import { Resend } from "npm:resend@2.0.0";
-import { corsHeaders } from "../_shared/cors.ts";
+import { corsHeaders, isAllowedOrigin } from "../_shared/cors.ts";
 import { htmlEscape } from "../_shared/htmlEscape.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
@@ -10,7 +10,8 @@ const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 interface VerificationEmailRequest {
-  email: string;
+  /** Accepted from existing callers but IGNORED — the recipient is always caller.email. */
+  email?: string;
   name: string;
   userId: string;
 }
@@ -37,12 +38,25 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const { email, name, userId }: VerificationEmailRequest = await req.json();
+    const { name, userId }: VerificationEmailRequest = await req.json();
 
     // Callers can only send verification emails for themselves
     if (userId !== caller.id) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+
+    // The recipient is the VERIFIED caller's own address, never the request body. The old
+    // guard checked `userId` but then sent to a body-supplied `email`, so any authenticated
+    // user could send unlimited DragonCandy-branded mail to any address on the internet —
+    // an email-bomb that costs sender reputation, which cannot be bought back. Deriving the
+    // address is strictly stronger than comparing it (no case/whitespace mismatch possible)
+    // and it removes a field from the trusted input.
+    const email = caller.email;
+    if (!email) {
+      return new Response(JSON.stringify({ error: "Caller has no email address" }), {
+        status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -70,16 +84,14 @@ const handler = async (req: Request): Promise<Response> => {
       throw tokenError;
     }
 
-    // Create verification link
+    // Create verification link.
+    // The origin is only honoured when it is a known first-party origin. This previously fell
+    // back to an origin INFERRED FROM THE REFERER HEADER, so with APP_URL unset an attacker
+    // could make a genuine, correctly-signed DragonCandy email carry a verification link
+    // pointing at their own domain.
     const origin = req.headers.get('origin') ?? '';
-    const referer = req.headers.get('referer') ?? '';
-    let inferredOrigin = '';
-    try {
-      inferredOrigin = origin || (referer ? new URL(referer).origin : '');
-    } catch (_) {
-      inferredOrigin = origin;
-    }
-    const appUrl = Deno.env.get('APP_URL') || inferredOrigin || 'https://dragoncandy.io';
+    const appUrl = Deno.env.get('APP_URL')
+      || (isAllowedOrigin(origin) ? origin : 'https://dragoncandy.io');
     const verificationLink = `${appUrl}/verify-email?token=${token}`;
 
     // Send verification email using Resend

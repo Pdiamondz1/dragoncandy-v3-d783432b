@@ -5,6 +5,16 @@ const ALLOWED = new Set([
   'https://internal.dragoncandy.io',
 ]);
 
+/**
+ * Is this a first-party DragonCandy origin?
+ *
+ * Exported so callers that build user-facing LINKS can reuse the same allow-list the CORS
+ * header uses. A request header (`origin` / `referer`) is attacker-controlled, so it must
+ * never be interpolated into a link inside an email we send — that turns a genuine
+ * DragonCandy message into a phishing carrier.
+ */
+export const isAllowedOrigin = (origin: string) => ALLOWED.has(origin);
+
 export const corsHeaders = (req: Request) => {
   const origin = req.headers.get('origin') ?? '';
   return {
