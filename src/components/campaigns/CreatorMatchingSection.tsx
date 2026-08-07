@@ -37,7 +37,7 @@ import {
 import { WhyExpander } from '@/components/guidance/WhyExpander';
 import { AppStatusBadge } from '@/components/app/AppStatusBadge';
 import { ResolvedAvatar } from '@/components/ui/resolved-avatar';
-import { motion, staggerContainer, staggerItem, useReducedMotion } from '@/lib/motion';
+import { motion, useReducedMotion } from '@/lib/motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { formatSkillLabel } from '@/lib/skillUtils';
@@ -377,17 +377,23 @@ export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({
           ) : matchesLoading ? (
             <MatchCardsSkeleton />
           ) : hasMatches && filteredMatches.length > 0 ? (
-            <motion.div
-              className="grid gap-4 md:grid-cols-2"
-              variants={reducedMotion ? undefined : staggerContainer}
-              initial={reducedMotion ? false : 'initial'}
-              animate="animate"
-            >
+            /* Explicit per-item props rather than a shared `variants` map: variant
+               propagation resolves by label, and if it ever failed to resolve the
+               cards would sit at opacity 0 — invisible matches on the one panel
+               this change exists to fix. Explicit props always resolve. */
+            <div className="grid gap-4 md:grid-cols-2">
               {filteredMatches.map((match, index) => (
                 <motion.div
                   key={match.id}
                   className="relative"
-                  variants={reducedMotion ? undefined : staggerItem}
+                  initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.2,
+                    ease: 'easeOut',
+                    // Capped so a long list doesn't leave the last cards hanging.
+                    delay: Math.min(index * 0.04, 0.3),
+                  }}
                 >
                   {index === 0 && sortBy === 'score' && filterBy === 'all' && (
                     <div className="absolute -top-2 -left-2 z-10">
@@ -406,7 +412,7 @@ export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({
                   />
                 </motion.div>
               ))}
-            </motion.div>
+            </div>
           ) : hasMatches && filteredMatches.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-8">
