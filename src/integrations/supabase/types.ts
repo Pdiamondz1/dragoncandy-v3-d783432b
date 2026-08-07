@@ -711,6 +711,7 @@ export type Database = {
           company_size: string | null
           country: string | null
           created_at: string | null
+          cuisines: string[]
           description: string | null
           disconnected_stripe_account_id: string | null
           employee_count_range: string | null
@@ -755,6 +756,7 @@ export type Database = {
           company_size?: string | null
           country?: string | null
           created_at?: string | null
+          cuisines?: string[] | null
           description?: string | null
           disconnected_stripe_account_id?: string | null
           employee_count_range?: string | null
@@ -799,6 +801,7 @@ export type Database = {
           company_size?: string | null
           country?: string | null
           created_at?: string | null
+          cuisines?: string[] | null
           description?: string | null
           disconnected_stripe_account_id?: string | null
           employee_count_range?: string | null
