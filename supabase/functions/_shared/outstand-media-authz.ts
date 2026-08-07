@@ -189,13 +189,25 @@ export function toMediaFiles(rows: readonly StoredMediaRow[]): Record<string, un
 /**
  * The envelope `useMediaList` reads.
  *
- * It returns `media: data?.data ?? []` and `pagination: data?.pagination ?? null`,
- * and the gallery derives its totals and page controls from `pagination.total` /
- * `pagination.count`. An earlier version omitted `pagination` entirely, which
- * reported a populated gallery as 0 files and removed its next-page control —
- * a response that looked reasonable and drove the UI wrong. Both the top-level
- * fields and the nested block are emitted, matching what the provider itself
- * returns for /posts.
+ * `useMediaList` returns `media: data?.data ?? []` and
+ * `pagination: data?.pagination ?? null`. An earlier version omitted
+ * `pagination` entirely, which reported a populated gallery as 0 files and
+ * removed its next-page control.
+ *
+ * THE TRAP, and it is a real one: `MediaList` reads
+ *
+ *     const totalCount = pagination?.count ?? 0;
+ *     const totalPages = Math.ceil(totalCount / pageSize);
+ *
+ * so `pagination.count` is consumed as the TOTAL, not as this page's length —
+ * the opposite of the provider's own convention, where a /posts response
+ * carries `count: 5` for a 5-row page alongside `total: 49`. Emitting the
+ * honest reading (page length) makes a 20-of-100 gallery display "20 files" and
+ * hide Next. So `pagination.count` carries the total deliberately.
+ *
+ * The top-level `count` keeps the provider's meaning (this page's length);
+ * nothing reads it, and matching the provider there costs nothing. Where the
+ * two conventions disagree, serve what actually renders.
  */
 export function buildMediaListResponse(
   files: readonly Record<string, unknown>[],
@@ -210,7 +222,8 @@ export function buildMediaListResponse(
     total,
     limit,
     offset,
-    pagination: { limit, offset, total, count: files.length },
+    // count = total ON PURPOSE — see the note above.
+    pagination: { limit, offset, total, count: total },
   });
 }
 

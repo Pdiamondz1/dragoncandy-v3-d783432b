@@ -138,10 +138,10 @@ describe('buildMediaListResponse', () => {
     expect(body.data).toHaveLength(1);
     expect(body.count).toBe(1);
     expect(body.total).toBe(7);
-    // useMediaList returns `pagination: data?.pagination ?? null`, and the
-    // gallery derives totals and page controls from it. Omitting this reported
-    // a populated gallery as 0 files.
-    expect(body.pagination).toEqual({ limit: 20, offset: 40, total: 7, count: 1 });
+    // pagination.count carries the TOTAL, not the page length: MediaList does
+    // `totalPages = Math.ceil((pagination?.count ?? 0) / pageSize)`, so the
+    // honest reading would show "1 file" and hide Next on a 1-of-7 page.
+    expect(body.pagination).toEqual({ limit: 20, offset: 40, total: 7, count: 7 });
   });
 
   it('is coherent when the caller owns nothing', () => {
@@ -164,5 +164,17 @@ describe('parseMediaPaging', () => {
     expect(parseMediaPaging('?limit=100000&offset=-5')).toEqual({ limit: 100, offset: 0 });
     expect(parseMediaPaging('?limit=0')).toEqual({ limit: 1, offset: 0 });
     expect(parseMediaPaging('?limit=abc&offset=xyz')).toEqual({ limit: 50, offset: 0 });
+  });
+});
+
+describe('buildMediaListResponse — the SDK count/total inversion', () => {
+  it('paginates correctly for a 20-of-100 gallery', () => {
+    const page = Array.from({ length: 20 }, (_, i) => ({ id: `m${i}` }));
+    const body = JSON.parse(buildMediaListResponse(page, 100, 20, 0));
+    // What MediaList actually computes:
+    const totalPages = Math.ceil((body.pagination?.count ?? 0) / 20);
+    expect(totalPages).toBe(5);          // not 1 — Next stays available
+    expect(body.data).toHaveLength(20);  // and the page itself is still a page
+    expect(body.count).toBe(20);         // top-level keeps the provider meaning
   });
 });
