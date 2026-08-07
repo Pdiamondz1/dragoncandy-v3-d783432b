@@ -133,6 +133,11 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **Crews comprehension pass** — a restaurant user asked "what is CREWS?"; the feature was ~80%
+  built and ~0% explained. Added a business-side explainer + roster counts, the creator's missing
+  "Your crews" roster, and email on crew invites; corrected the false "first look / before the
+  marketplace" framing to exclusivity (crew campaigns never go public) in the app, the invite
+  email, and the help article (#379). → `docs/SHIPPED_LOG.md`
 - **AIOS scaling dashboard (all 4 sub-projects)** — `/internal` Overview is real-only with a live
   synthetic banner and a real+simulated totals strip, the Simulation page mirrors the card set for
   the synthetic cohort (#344, #346); **`/internal/weight`** gained a live `aios_db_health()` pg_stat
