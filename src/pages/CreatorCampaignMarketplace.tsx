@@ -25,8 +25,10 @@ import { useSkippedCampaignIds, useSkipCampaign, useRestoreCampaign } from '@/ho
 import { useCreatorPendingInvitations, useDeclineInvitation } from '@/hooks/useCampaignInvitations';
 import { useCreatorGroupInvitations } from '@/hooks/useCreatorGroupInvitations';
 import { useMyCrewActivity } from '@/hooks/useMyCrewActivity';
+import { useMyCrews } from '@/hooks/useMyCrews';
 import { GroupInviteCard } from '@/components/groups/GroupInviteCard';
 import { CrewActivityFeed } from '@/components/groups/CrewActivityFeed';
+import { MyCrewsList } from '@/components/groups/MyCrewsList';
 import { UndoToast } from '@/components/campaigns/UndoToast';
 import { AppCard } from '@/components/app/AppCard';
 import { Button } from '@/components/ui/button';
@@ -61,6 +63,7 @@ const CreatorCampaignMarketplace = () => {
   const declineInvitation = useDeclineInvitation();
   const {
     invitations: crewInvitations,
+    isLoading: crewInvitationsLoading,
     accept: acceptCrew,
     decline: declineCrew,
   } = useCreatorGroupInvitations();
@@ -69,6 +72,11 @@ const CreatorCampaignMarketplace = () => {
     isLoading: crewActivityLoading,
     isError: crewActivityError,
   } = useMyCrewActivity();
+  const {
+    crews: myCrews,
+    isLoading: myCrewsLoading,
+    isError: myCrewsError,
+  } = useMyCrews();
   const { completeMission } = useFirstRunMissions();
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -506,11 +514,21 @@ const CreatorCampaignMarketplace = () => {
 
         {activeTab === 'crews' && (
           <div className="space-y-3 px-4 md:px-0 py-4">
-            {crewInvitations.length === 0 ? (
+            {/* Only a creator with no invites AND no crews sees the explainer.
+                Gated on both queries settling: while either is loading (or the
+                roster errored) this claimed "you're not in any crews" directly
+                above the roster's own skeleton / error card. */}
+            {!crewInvitationsLoading &&
+            !myCrewsLoading &&
+            !myCrewsError &&
+            crewInvitations.length === 0 &&
+            myCrews.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-gray-900 font-semibold text-lg">No crew invitations right now.</p>
-                <p className="text-gray-500 text-sm mt-1">
-                  When a business invites you to a crew, it'll appear here.
+                <p className="text-gray-900 font-semibold text-lg">You're not in any crews yet.</p>
+                <p className="text-gray-500 text-sm mt-1 max-w-md mx-auto">
+                  A crew is a business's private roster. Their crew collabs never go public — only
+                  members see them, they're free, and it's one tap to apply. When a business
+                  invites you, it'll show up here.
                 </p>
               </div>
             ) : (
@@ -529,6 +547,19 @@ const CreatorCampaignMarketplace = () => {
                 );
               })
             )}
+            {/* The roster of crews this creator has actually joined. Without it,
+                an accepted invite simply vanishes and nothing records membership. */}
+            {(myCrewsLoading || myCrewsError || myCrews.length > 0) && (
+              <div className="pt-2">
+                <h3 className="text-sm font-bold text-gray-900 mb-1 px-1">Your crews</h3>
+                <p className="text-xs text-gray-500 mb-3 px-1">
+                  These collabs never go public — only the crew sees them. They're free, and it's
+                  one tap to apply.
+                </p>
+                <MyCrewsList crews={myCrews} isLoading={myCrewsLoading} isError={myCrewsError} />
+              </div>
+            )}
+
             {/* Group campaign feed — free, private crew collabs (RLS-scoped to this
                 creator's crews). Reuses CampaignDetailModal + CampaignApplyForm via
                 handleViewDetail, exactly like the "All" tab. */}

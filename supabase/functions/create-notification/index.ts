@@ -34,6 +34,11 @@ const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Record<string, string> = {
   // no shared/standard type is remapped. Keep in sync with
   // src/types/notifications.ts.
   group_campaign_posted: 'new_crew_campaign',
+  // Crew-specific: the invite itself. Bell-only until now, which meant a creator
+  // who wasn't in the app when they were invited had no way to learn about it.
+  // `group_invite_accepted` and `group_membership_removed` stay deliberately
+  // unmapped. Keep in sync with src/types/notifications.ts.
+  group_invitation: 'crew_invitation',
   // Crew-specific (Crews Phase 2): the ONE lifecycle gap — when a crew creator submits
   // content for review, no owner notification fired before. Emitted only by the crew
   // recordCrewActivity wrapper (not used by any other flow). The payload pins category

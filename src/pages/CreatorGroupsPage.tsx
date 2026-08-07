@@ -16,16 +16,45 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useCreatorGroups } from '@/hooks/useCreatorGroups';
+import {
+  useCreatorGroupMemberCounts,
+  type GroupMemberCounts,
+} from '@/hooks/useCreatorGroupMemberCounts';
+import { CrewsHowItWorks } from '@/components/groups/CrewsHowItWorks';
+import { AppStatusBadge } from '@/components/app/AppStatusBadge';
 import { Users, Plus, ChevronRight, Loader2 } from 'lucide-react';
+
+/** Roster size on a crew card. Absent counts mean an empty crew, not a gap —
+ *  the grouped query returns no rows for a crew with no members. */
+const CrewCounts: React.FC<{ counts?: GroupMemberCounts }> = ({ counts }) => {
+  const active = counts?.active ?? 0;
+  const invited = counts?.invited ?? 0;
+
+  if (active === 0 && invited === 0) {
+    return <AppStatusBadge tone="teal">No members yet</AppStatusBadge>;
+  }
+
+  return (
+    <>
+      {active > 0 && (
+        <AppStatusBadge tone="teal">
+          {active} {active === 1 ? 'member' : 'members'}
+        </AppStatusBadge>
+      )}
+      {invited > 0 && <AppStatusBadge tone="pink">{invited} pending</AppStatusBadge>}
+    </>
+  );
+};
 
 const EmptyState: React.FC<{ onCreate: () => void }> = ({ onCreate }) => (
   <div className="rounded-3xl border-2 border-dashed border-dc-teal/40 bg-dc-teal/5 p-10 text-center">
     <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-dc-teal/12 text-dc-teal">
       <Users className="h-7 w-7" />
     </div>
-    <h2 className="mt-4 text-xl font-bold text-dc-text">Build a crew</h2>
+    <h2 className="mt-4 text-xl font-bold text-dc-text">Build your first crew</h2>
     <p className="mx-auto mt-2 max-w-md text-sm text-dc-text-muted">
-      Invite creators you trust, then post free collabs just to them.
+      Invite creators you've worked with — or want to. They choose whether to accept, then you
+      can post free collabs only they see.
     </p>
     <Button variant="dc-primary" size="sm" onClick={onCreate} className="mt-6">
       <Plus className="h-4 w-4" /> New crew
@@ -35,6 +64,11 @@ const EmptyState: React.FC<{ onCreate: () => void }> = ({ onCreate }) => (
 
 const CreatorGroupsInner: React.FC = () => {
   const { groups, isLoading, isError, createGroup } = useCreatorGroups();
+  const {
+    counts,
+    isLoading: countsLoading,
+    isError: countsError,
+  } = useCreatorGroupMemberCounts(groups.map((g) => g.id));
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState('');
@@ -68,7 +102,8 @@ const CreatorGroupsInner: React.FC = () => {
             <div>
               <h1 className="text-2xl lg:text-3xl font-bold text-dc-text">Crews</h1>
               <p className="mt-1 text-sm text-dc-text-muted">
-                Standing groups of creators you trust — post free collabs just to them.
+                Your private roster of creators. They accept an invite, then you post free
+                collabs only they can see.
               </p>
             </div>
             <Button
@@ -83,6 +118,12 @@ const CreatorGroupsInner: React.FC = () => {
         </PageHeader>
 
         <div className="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
+          {/* Shown whether or not crews exist — "what is this?" is asked before
+              the first crew, and again by anyone inheriting the account. */}
+          <div className="mb-6">
+            <CrewsHowItWorks />
+          </div>
+
           {isLoading ? (
             <div className="flex items-center justify-center py-20 text-dc-teal">
               <Loader2 className="h-7 w-7 animate-spin" />
@@ -114,6 +155,15 @@ const CreatorGroupsInner: React.FC = () => {
                   ) : (
                     <p className="mt-1 text-sm italic text-dc-text-muted/70">No description</p>
                   )}
+                  {/* Nothing while loading — a skeleton would jitter the grid
+                      for a secondary detail. Nothing on error either: an absent
+                      count is indistinguishable from an empty crew, so showing
+                      it would assert "No members yet" about a full roster. */}
+                  {!countsLoading && !countsError && (
+                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                      <CrewCounts counts={counts.get(group.id)} />
+                    </div>
+                  )}
                 </Link>
               ))}
             </div>
@@ -132,7 +182,8 @@ const CreatorGroupsInner: React.FC = () => {
           <DialogHeader>
             <DialogTitle>New crew</DialogTitle>
             <DialogDescription>
-              Give your crew a name. You can invite creators once it's created.
+              Name your crew, then invite creators. Each one gets an invite to accept — you can
+              add more any time.
             </DialogDescription>
           </DialogHeader>
 
