@@ -116,6 +116,22 @@ export function filterMediaList(bodyText: string, ownedMediaIds: ReadonlySet<str
   const MAX_DEPTH = 6;
   const seen = new WeakSet<object>();
 
+  // A collection can also arrive as an OBJECT KEYED BY ID rather than an array
+  // — `{ media: { "abc": {...}, "def": {...} } }`. An array-only filter walks
+  // straight into that and forwards every row untouched, which is the same shape
+  // of miss as filtering `data` while `posts` rode alongside. Detected by: every
+  // value is a non-null object, and at least one carries a string `id`.
+  //
+  // `pagination: { limit, offset, total }` is not mistaken for one, because its
+  // values are numbers rather than objects.
+  const isRowMap = (v: unknown): boolean => {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
+    const values = Object.values(v as Record<string, unknown>);
+    if (values.length === 0) return false;
+    if (!values.every((e) => e !== null && typeof e === 'object' && !Array.isArray(e))) return false;
+    return values.some((e) => typeof (e as { id?: unknown }).id === 'string');
+  };
+
   const walk = (node: Record<string, unknown>, depth: number): void => {
     if (depth > MAX_DEPTH || seen.has(node)) return;
     seen.add(node);
@@ -130,6 +146,21 @@ export function filterMediaList(bodyText: string, ownedMediaIds: ReadonlySet<str
           if (typeof id === 'string') kept.add(id);
         }
         dropped += before - filtered.length;
+        continue;
+      }
+      if (isRowMap(value)) {
+        const src = value as Record<string, unknown>;
+        const out: Record<string, unknown> = {};
+        for (const [k, row] of Object.entries(src)) {
+          if (isOwned(row)) {
+            out[k] = row;
+            const id = (row as { id?: unknown }).id;
+            if (typeof id === 'string') kept.add(id);
+          } else {
+            dropped += 1;
+          }
+        }
+        node[key] = out;
         continue;
       }
       if (value && typeof value === 'object' && !Array.isArray(value)) {
@@ -154,11 +185,16 @@ export function filterMediaList(bodyText: string, ownedMediaIds: ReadonlySet<str
   // Counters must not survive filtering — `total` would otherwise report the
   // whole org's media count. Same rule as the post list filter.
   const ROW_COUNTER = /^(count|total|totalCount|total_count)$/;
+  // Page counters describe the same org-wide set in another spelling, so they
+  // leak the same fact. Missed on the first pass here even though the sibling
+  // post filter already covers them.
+  const PAGE_COUNTER = /^(totalPages|total_pages|pages)$/;
   const fixCounters = (node: Record<string, unknown>, depth: number): void => {
     if (depth > MAX_DEPTH) return;
     for (const key of Object.keys(node)) {
       const v = node[key];
       if (typeof v === 'number' && ROW_COUNTER.test(key)) node[key] = kept.size;
+      else if (typeof v === 'number' && PAGE_COUNTER.test(key)) node[key] = kept.size > 0 ? 1 : 0;
       else if (v && typeof v === 'object' && !Array.isArray(v)) {
         fixCounters(v as Record<string, unknown>, depth + 1);
       }

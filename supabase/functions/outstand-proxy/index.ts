@@ -864,16 +864,32 @@ serve(async (req: Request) => {
   });
   if (denied) return denied;
 
-  // Sanitize media filename before forwarding. The SDK posts
-  // { filename, contentType, size } to /media/upload; Outstand uses the
-  // filename verbatim in the stored URL.
+  // /media/upload — sanitize the filename AND forward only the fields the SDK
+  // actually sends.
+  //
+  // The filename sanitizing is long-standing: Outstand stores it verbatim in the
+  // URL, and spaces/parens break Graph's URL parser ("Missing or invalid image
+  // file").
+  //
+  // The ALLOW-LIST is new, and it exists because this response now mints an
+  // ownership binding. extractUploadedMediaId reads the media id out of the
+  // provider's reply, so anything that could influence that reply is worth
+  // narrowing. Forwarding the caller's body wholesale made "can a client
+  // pre-claim a media id" depend on whether Outstand ever echoes an unexpected
+  // request field back into its upload response — a vendor assumption, not a
+  // property we control. Sending only { filename, contentType, size } — exactly
+  // what the SDK's getUploadUrl posts — removes the question instead of
+  // answering it.
   let forwardBody = bodyText;
   if (path.split("?")[0].replace(/\/$/, "") === "/media/upload" && req.method === "POST" && bodyText) {
     try {
       const body = JSON.parse(bodyText);
-      if (body && typeof body.filename === "string") {
-        body.filename = sanitizeFilename(body.filename);
-        forwardBody = JSON.stringify(body);
+      if (body && typeof body === "object" && !Array.isArray(body)) {
+        const clean: Record<string, unknown> = {};
+        if (typeof body.filename === "string") clean.filename = sanitizeFilename(body.filename);
+        if (typeof body.contentType === "string") clean.contentType = body.contentType;
+        if (typeof body.size === "number") clean.size = body.size;
+        forwardBody = JSON.stringify(clean);
       }
     } catch {
       // leave body untouched on parse error

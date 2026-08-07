@@ -119,3 +119,49 @@ describe('filterMediaList', () => {
     expect(filterMediaList('"a string"', owned).body).toBe('"a string"');
   });
 });
+
+describe('filterMediaList — shapes that are not arrays', () => {
+  const owned = new Set(['a', 'b']);
+
+  it('filters a collection keyed BY ID rather than arrayed', () => {
+    // An array-only filter walks into this and forwards every row — the same
+    // shape of miss as filtering `data` while `posts` rode alongside.
+    const raw = JSON.stringify({
+      media: { abc: { id: 'a', filename: 'mine.jpg' }, xyz: { id: 'x', filename: 'theirs.jpg' } },
+    });
+    const res = filterMediaList(raw, owned);
+    const out = JSON.parse(res.body);
+    expect(Object.keys(out.media)).toEqual(['abc']);
+    expect(res.body).not.toContain('theirs.jpg');
+    expect(res.dropped).toBe(1);
+  });
+
+  it('does not mistake a pagination block for a row map', () => {
+    const raw = JSON.stringify({ data: [{ id: 'a' }], pagination: { limit: 10, offset: 0, total: 42 } });
+    const out = JSON.parse(filterMediaList(raw, owned).body);
+    expect(out.pagination.limit).toBe(10);
+    expect(out.pagination.offset).toBe(0);
+    expect(out.pagination.total).toBe(1); // counter rewritten, block intact
+  });
+
+  it('rewrites page counters too, not just count/total', () => {
+    const raw = JSON.stringify({ data: [{ id: 'a' }, { id: 'x' }], totalPages: 9, pages: 9, total_count: 99 });
+    const out = JSON.parse(filterMediaList(raw, owned).body);
+    expect(out.totalPages).toBe(1);
+    expect(out.pages).toBe(1);
+    expect(out.total_count).toBe(1);
+  });
+
+  it('zeroes page counters when the caller owns nothing', () => {
+    const raw = JSON.stringify({ data: [{ id: 'x' }], totalPages: 4 });
+    const out = JSON.parse(filterMediaList(raw, new Set()).body);
+    expect(out.data).toEqual([]);
+    expect(out.totalPages).toBe(0);
+  });
+
+  it('leaves a single embedded row object alone rather than treating it as a map', () => {
+    const raw = JSON.stringify({ success: true, data: { id: 'a', filename: 'mine.jpg' } });
+    const out = JSON.parse(filterMediaList(raw, owned).body);
+    expect(out.data.id).toBe('a');
+  });
+});
