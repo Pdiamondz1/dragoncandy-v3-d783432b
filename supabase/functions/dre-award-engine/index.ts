@@ -97,29 +97,39 @@ serve(async (req) => {
       const sum = forward.reduce((s, r) => s + (r.points_awarded ?? 0), 0);
       if (sum <= 0) continue;
       const tieredUp = (priorTier.get(uid) ?? 'egg') !== newTier.get(uid);
-      const { title, body } = buildAwardNotification(
-        forward.map((r) => ({ eventType: r.event_type, points: r.points_awarded ?? 0 })),
-        tieredUp,
-      );
-      await fetch(`${SUPABASE_URL}/functions/v1/create-notification`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
-        body: JSON.stringify({
-          recipientId: uid,
-          type: 'dragon_points_award',
-          category: 'account',
-          title,
-          body,
-          icon: 'sparkles',
-          actionUrl: '/rewards',
-          data: {
-            points: sum,
-            tier: newTier.get(uid),
-            events: forward.map((r) => ({ type: r.event_type, points: r.points_awarded ?? 0 })),
-          },
-        }),
-      }).catch(() => { /* fire-and-forget; never block awarding on a bell */ });
-      notified++;
+      // Per-user bell op is its own try/catch: buildAwardNotification() and the
+      // JSON.stringify() below run synchronously OUTSIDE the fetch's .catch(), so
+      // without this a bad label/serialization would escape the loop, 500 the whole
+      // run, and silently skip every remaining user's bell (awarding already committed
+      // in steps 3+5, so that would be a pure notification loss, not a re-run).
+      try {
+        const { title, body } = buildAwardNotification(
+          forward.map((r) => ({ eventType: r.event_type, points: r.points_awarded ?? 0 })),
+          tieredUp,
+        );
+        await fetch(`${SUPABASE_URL}/functions/v1/create-notification`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+          body: JSON.stringify({
+            recipientId: uid,
+            type: 'dragon_points_award',
+            category: 'account',
+            title,
+            body,
+            icon: 'sparkles',
+            actionUrl: '/rewards',
+            data: {
+              points: sum,
+              tier: newTier.get(uid),
+              events: forward.map((r) => ({ type: r.event_type, points: r.points_awarded ?? 0 })),
+            },
+          }),
+        }).catch(() => { /* fire-and-forget; never block awarding on a bell */ });
+        notified++;
+      } catch (bellError) {
+        // Never block or fail the run on a bell error; the award already landed.
+        console.warn(`dre-award-engine: bell failed for user ${uid}:`, (bellError as Error).message);
+      }
     }
 
     return json(req, 200, { ok: true, awarded: newRows.length, users_updated: affected.length, notified });
