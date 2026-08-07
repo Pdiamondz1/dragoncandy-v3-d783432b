@@ -187,10 +187,10 @@ serve(async (req) => {
       if (shouldCheck("payment_events")) {
         const { data: paymentCampaigns } = await supabaseAdmin
           .from("campaigns")
-          .select("id, title, escrow_status, updated_at")
+          .select("id, title, escrow_status, created_at")
           .eq("user_id", userId)
           .neq("escrow_status", "none")
-          .gte("updated_at", since);
+          .gte("created_at", since);
 
         if (paymentCampaigns) {
           for (const campaign of paymentCampaigns) {
@@ -212,7 +212,7 @@ serve(async (req) => {
               title: label,
               message: `"${campaign.title}" — ${label.toLowerCase()}`,
               campaign_id: campaign.id,
-              created_at: campaign.updated_at,
+              created_at: campaign.created_at,
             });
           }
         }
@@ -227,9 +227,9 @@ serve(async (req) => {
       if (shouldCheck("status_changes")) {
         const { data: collaborations } = await supabaseAdmin
           .from("campaign_collaborations")
-          .select("id, content_status, status, updated_at, campaign_id, campaigns!inner(id, title)")
+          .select("id, content_status, status, created_at, campaign_id, campaigns!inner(id, title)")
           .eq("creator_id", userId)
-          .gte("updated_at", since);
+          .gte("created_at", since);
 
         if (collaborations) {
           for (const collab of collaborations) {
@@ -254,7 +254,7 @@ serve(async (req) => {
               title: label,
               message: `"${campaign?.title ?? "Campaign"}" — ${label.toLowerCase()}`,
               campaign_id: collab.campaign_id,
-              created_at: collab.updated_at,
+              created_at: collab.created_at,
             });
           }
         }
@@ -264,9 +264,9 @@ serve(async (req) => {
       if (shouldCheck("payment_events")) {
         const { data: creatorCollabs } = await supabaseAdmin
           .from("campaign_collaborations")
-          .select("id, campaign_id, updated_at, campaigns!inner(id, title, escrow_status)")
+          .select("id, campaign_id, created_at, campaigns!inner(id, title, escrow_status)")
           .eq("creator_id", userId)
-          .gte("updated_at", since);
+          .gte("created_at", since);
 
         if (creatorCollabs) {
           for (const collab of creatorCollabs) {
@@ -283,7 +283,7 @@ serve(async (req) => {
                   ? `Payment for "${campaign?.title ?? "Campaign"}" has been released`
                   : `Funds for "${campaign?.title ?? "Campaign"}" are held in escrow`,
                 campaign_id: collab.campaign_id,
-                created_at: collab.updated_at,
+                created_at: collab.created_at,
               });
             }
           }
