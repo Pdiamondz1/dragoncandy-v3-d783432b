@@ -202,8 +202,12 @@ cache is already populated by the dashboard card, so it adds no per-page request
 - Renders `null` for the brand role — DRE has no brand triggers, so a brand user would see
   a permanent 0, which is worse than nothing.
 - Renders `null` while loading, so there is no layout jitter as the balance resolves.
-- Value-only on mobile (no label), `flex-shrink-0`; the existing middle block
-  (welcome text / location switcher) already carries `min-w-0 truncate` and yields.
+- Value-only on mobile (no label), `flex-shrink-0`; in `src/components/MobileTopNav.tsx`
+  the welcome-text branch already carries `min-w-0 truncate` and yields, but the
+  `locationSwitcher` branch carries only `flex-1 px-2` — no `min-w-0`, no `truncate` of its
+  own (any truncation there depends on the switcher's own inner markup). The chip still
+  degrades gracefully against it since the chip itself is `flex-shrink-0`; tightening the
+  `locationSwitcher` branch is a layout change and out of scope for this wave.
 - Brand-adjacent styling, never gray (DESIGN_SYSTEM).
 
 ## 7. The notification
@@ -213,11 +217,16 @@ Two changes in `supabase/functions/dre-award-engine/index.ts` (step 6):
 1. **Deep link.** Add `actionUrl: '/rewards'`.
 2. **Name the reason.** The run already holds `newRows` (`user_id`, `points_awarded`,
    `occurred_at`); it currently sums them and drops `event_type`. Carry `event_type`
-   through the `.select()` and build the body from `_shared/dre-events.ts`:
-   - one event → *"Completing your business profile earned you +200 DC Points"*
-   - several → *"+350 DC Points for 2 actions"*, body naming both labels
+   through the `.select()` and build the title/body from `_shared/dre-events.ts` via a
+   pure `buildAwardNotification()` helper (`_shared/dre-notification.ts`):
+   - one event → title *"You earned 200 DC Points"*, body *"Completed your business
+     profile"* (the single event's label).
+   - several → title still *"You earned {total} DC Points"*; body is an Oxford-comma
+     join of every event's label (e.g. *"Completed your business profile, Launched your
+     first campaign, and Received a 5-star review"*), not a count of actions — naming
+     what was done reads better than counting it.
    - `data` additionally carries `events: [{ type, points }]` for future consumers.
-   Tier-up keeps its existing "new tier unlocked" treatment.
+   Tier-up appends "— new standing unlocked" to the body.
 
 Separately, `src/lib/getNotificationRoute.ts` gains a `dragon_points_award` case returning
 `/rewards`. `getNotificationRoute` prefers `action_url` when present, so the new case is a
@@ -314,3 +323,11 @@ Reversed, the page and Donny call a function that does not exist.
   in `src/lib/dragonTierGap.test.ts`). Fixing it properly means recomputing tiers on
   rating change, which would demote real users the first time it runs — a product
   decision, not a display one.
+- **`FORCE_INTERNAL` is keyed on exact filenames.** `supabase/scripts/sync-wiki-to-donny.mjs`
+  matches the two DRE engineering docs to force onto scope `"internal"` by exact
+  `"<dir>/<filename>"` string; a rename or move of either wiki file silently stops the
+  match and re-opens the RAG honesty hole with no error signal. The final review wave
+  added a fail-loud guard (throws if the forced-internal count is not exactly 2), which
+  turns a silent regression into a loud one but does not remove the fragility — a more
+  durable approach (e.g. keying on a stable front-matter field, such as `rag_scope:
+  internal`, rather than a filename) is worth considering later.

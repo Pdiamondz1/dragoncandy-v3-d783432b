@@ -96,6 +96,18 @@ for (const dir of DIRS) {
   }
 }
 
+// Guard on FORCE_INTERNAL itself: it is the sole durable protection on the honesty hole
+// described above, keyed on exact "<dir>/<filename>" strings. If either backing wiki file
+// is ever renamed or moved, the match silently stops firing, the next sync re-inserts that
+// page at scope null, and the hole reopens with NO error signal. Fail loudly instead.
+const forcedInternalCount = pages.filter((p) => p.scope === "internal").length;
+if (forcedInternalCount !== FORCE_INTERNAL.size) {
+  throw new Error(
+    `FORCE_INTERNAL guard failed: expected ${FORCE_INTERNAL.size} pages forced to scope "internal", but found ${forcedInternalCount}. ` +
+    `A wiki file backing FORCE_INTERNAL was probably renamed or moved — update the FORCE_INTERNAL set in supabase/scripts/sync-wiki-to-donny.mjs to match its new "<dir>/<filename>" path.`
+  );
+}
+
 // One oversized page fails its WHOLE batch (the embedding call sends the batch as a single
 // `input` array, so OpenAI's 8,192-token-per-input limit rejects all 50). On 2026-07-26 a
 // 33 KB concepts page did exactly that: "Invalid 'input[8]': maximum input length is 8192

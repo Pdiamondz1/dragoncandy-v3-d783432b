@@ -20,7 +20,7 @@ export default function DcPointsPage() {
       <PageBody maxWidth="4xl">
         {!enabled ? (
           <AppCard pad="6">
-            <p className="text-sm text-dc-text-muted">DC Points are not available yet.</p>
+            <p className="text-sm text-dc-text-muted">DC Points are not available.</p>
           </AppCard>
         ) : (
           <>

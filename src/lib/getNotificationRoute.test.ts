@@ -46,7 +46,7 @@ describe('getNotificationRoute — DC Points', () => {
   });
 
   it('prefers an explicit action_url when the engine set one', () => {
-    const n = { ...make('dragon_points_award', { points: 200 }), action_url: '/rewards' };
-    expect(getNotificationRoute(n)).toBe('/rewards');
+    const n = { ...make('dragon_points_award', { points: 200 }), action_url: '/dashboard/creator' };
+    expect(getNotificationRoute(n)).toBe('/dashboard/creator');
   });
 });
