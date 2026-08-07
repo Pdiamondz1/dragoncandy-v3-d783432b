@@ -1,4 +1,5 @@
 import type { UserRole } from '@/types/firstRun';
+import donnyEmblem from '@/assets/donny-emblem.webp';
 
 interface FirstRunHeroProps {
   name: string;
@@ -15,7 +16,7 @@ const HERO_CONFIG: Record<UserRole, {
 }> = {
   business_client: {
     gradient: 'from-teal-400 via-emerald-400 to-pink-300',
-    emoji: '🐉',
+    emoji: '',
     subtitle: "Let's get creators knocking on your door.\n60 seconds. We'll do the heavy lifting.",
     cta: 'Create Your First Campaign ✨',
     decoration: '✨',
@@ -42,7 +43,15 @@ export function FirstRunHero({ name, role, onCtaClick }: FirstRunHeroProps) {
   return (
     <div className={`bg-gradient-to-br ${config.gradient} rounded-3xl p-6 text-center relative overflow-hidden mb-4`}>
       <div className="absolute top-3 right-4 text-base opacity-50">{config.decoration}</div>
-      <div className="text-3xl mb-2">{config.emoji}</div>
+      {role === 'business_client' ? (
+        <img
+          src={donnyEmblem}
+          alt="Donny"
+          className="w-12 h-12 mx-auto mb-2 rounded-full object-cover scale-[1.35]"
+        />
+      ) : (
+        <div className="text-3xl mb-2">{config.emoji}</div>
+      )}
       <h1 className="text-xl font-bold text-white mb-1">
         Welcome, {name}!
       </h1>

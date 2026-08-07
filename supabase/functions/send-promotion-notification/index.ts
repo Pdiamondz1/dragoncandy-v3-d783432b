@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import { htmlEscape } from "../_shared/htmlEscape.ts";
@@ -118,7 +118,7 @@ const handler = async (req: Request): Promise<Response> => {
                   
                   <div style="background: #f8fafc; padding: 20px 30px; text-align: center; border-top: 1px solid #e2e8f0;">
                     <p style="color: #94a3b8; font-size: 12px; margin: 0;">
-                      Powered by DragonCandy • Thank you for being awesome! 🐉
+                      Powered by DragonCandy • Thank you for being awesome! <img src="https://dragoncandy.io/donny-emblem.webp" alt="" width="14" height="14" style="vertical-align: middle; border-radius: 50%; object-fit: cover;" />
                     </p>
                   </div>
                 </div>
@@ -173,7 +173,7 @@ const handler = async (req: Request): Promise<Response> => {
                   
                   <div style="background: #f8fafc; padding: 20px 30px; text-align: center; border-top: 1px solid #e2e8f0;">
                     <p style="color: #94a3b8; font-size: 12px; margin: 0;">
-                      Powered by DragonCandy 🐉
+                      Powered by DragonCandy <img src="https://dragoncandy.io/donny-emblem.webp" alt="" width="14" height="14" style="vertical-align: middle; border-radius: 50%; object-fit: cover;" />
                     </p>
                   </div>
                 </div>

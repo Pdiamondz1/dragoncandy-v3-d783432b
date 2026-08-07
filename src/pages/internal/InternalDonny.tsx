@@ -67,7 +67,7 @@ const InternalDonny = () => {
         >
           {messages.length === 0 && !isThinking && (
             <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-              <div className="mb-2 text-3xl">🐉</div>
+              <DonnyAvatar size="lg" className="mb-2" />
               <p className="text-sm font-semibold text-white">Founders-only Donny</p>
               <p className="mt-1 text-xs text-white/60">
                 Ask about platform stats, revenue, AI spend, scaling, or anything in the strategy library.

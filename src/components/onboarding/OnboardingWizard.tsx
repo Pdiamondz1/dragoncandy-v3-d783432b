@@ -13,6 +13,7 @@ import { AvatarCropModal } from '@/components/settings/AvatarCropModal';
 import { ArrowLeft, ArrowRight, MapPin } from 'lucide-react';
 import { OnboardingProgress } from './OnboardingProgress';
 import { TapGrid } from './TapGrid';
+import { CUISINE_ITEMS } from '@/lib/cuisines';
 import { IdentityStep } from './steps/IdentityStep';
 import { BioStep } from './steps/BioStep';
 import { WelcomeStep } from './steps/WelcomeStep';
@@ -22,10 +23,10 @@ type UserRole = 'business_client' | 'content_creator' | 'brand';
 type CreatorSkill = Database['public']['Enums']['creator_skill'];
 type IndustryType = Database['public']['Enums']['industry_type'];
 
-type StepId = 'identity' | 'industry' | 'skills' | 'bio' | 'welcome';
+type StepId = 'identity' | 'industry' | 'cuisine' | 'skills' | 'bio' | 'welcome';
 
 const ROLE_STEPS: Record<UserRole, StepId[]> = {
-  business_client: ['identity', 'industry', 'welcome'],
+  business_client: ['identity', 'cuisine', 'welcome'],
   content_creator: ['identity', 'skills', 'bio', 'welcome'],
   brand: ['identity', 'industry', 'welcome'],
 };
@@ -98,7 +99,8 @@ export function OnboardingWizard() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
-  const [industry, setIndustry] = useState<string>(role === 'business_client' ? 'food' : '');
+  const [industry, setIndustry] = useState<string>('');
+  const [cuisines, setCuisines] = useState<string[]>([]);
   const [skills, setSkills] = useState<string[]>([]);
   const [bio, setBio] = useState('');
 
@@ -110,12 +112,13 @@ export function OnboardingWizard() {
     switch (currentStep) {
       case 'identity': return name.trim().length > 0;
       case 'industry': return industry !== '';
+      case 'cuisine': return cuisines.length > 0;
       case 'skills': return skills.length > 0;
       case 'bio': return bio.trim().length > 0;
       case 'welcome': return true;
       default: return false;
     }
-  }, [currentStep, name, industry, skills, bio]);
+  }, [currentStep, name, industry, cuisines, skills, bio]);
 
   const goNext = () => {
     if (currentIndex < steps.length - 1) {
@@ -146,6 +149,12 @@ export function OnboardingWizard() {
   const toggleSkill = (value: string) => {
     setSkills(prev =>
       prev.includes(value) ? prev.filter(s => s !== value) : [...prev, value]
+    );
+  };
+
+  const toggleCuisine = (value: string) => {
+    setCuisines(prev =>
+      prev.includes(value) ? prev.filter(c => c !== value) : [...prev, value]
     );
   };
 
@@ -203,7 +212,8 @@ export function OnboardingWizard() {
           // Explicit: the column defaults to 'restaurant', which would strand a
           // brand user in BrandRoute when onboarding is the provisioning path.
           account_type: role === 'brand' ? 'brand' : 'restaurant',
-          industry: industry as IndustryType,
+          industry: (role === 'brand' ? industry : 'food') as IndustryType,
+          cuisines: role === 'business_client' ? cuisines : [],
           logo_url: avatarUrl,
           ...locationData,
           is_completed: true,
@@ -232,7 +242,9 @@ export function OnboardingWizard() {
   const stepTitle = () => {
     switch (currentStep) {
       case 'industry':
-        return role === 'business_client' ? "What kind of food?" : "What's your industry?";
+        return "What's your industry?";
+      case 'cuisine':
+        return "What kind of food do you serve?";
       case 'skills': return "What do you create?";
       case 'bio': return "Describe yourself";
       default: return '';
@@ -242,6 +254,7 @@ export function OnboardingWizard() {
   const stepSubtitle = () => {
     switch (currentStep) {
       case 'industry': return 'Tap to select';
+      case 'cuisine': return 'Pick all that apply';
       case 'skills': return 'Pick all that apply';
       case 'bio': return 'One catchy line about you';
       default: return '';
@@ -268,6 +281,17 @@ export function OnboardingWizard() {
             selected={industry ? [industry] : []}
             onToggle={(val) => setIndustry(val)}
             mode="single"
+            accentColor={accentColor}
+          />
+        );
+
+      case 'cuisine':
+        return (
+          <TapGrid
+            items={CUISINE_ITEMS}
+            selected={cuisines}
+            onToggle={toggleCuisine}
+            mode="multi"
             accentColor={accentColor}
           />
         );
@@ -425,6 +449,7 @@ export function OnboardingWizard() {
             <p className="text-center text-xs text-landing-ink-soft mt-3">
               {currentStep === 'identity' && 'You can change this later in settings'}
               {currentStep === 'industry' && 'This helps us match you with the right people'}
+              {currentStep === 'cuisine' && 'This helps us match you with the right creators'}
               {currentStep === 'skills' && 'Brands filter by these to find you'}
               {currentStep === 'bio' && 'Keep it short — you can edit anytime'}
             </p>

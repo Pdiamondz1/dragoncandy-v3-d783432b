@@ -193,6 +193,19 @@ export function ContentRequirementsSection({ campaign, campaignId }: ContentRequ
           </div>
         )}
 
+        {campaign.campaign_tags && campaign.campaign_tags.length > 0 && (
+          <div>
+            <span className="text-[11px] text-gray-500 uppercase tracking-wider">Campaign Tags</span>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {campaign.campaign_tags.map((tag) => (
+                <AppStatusBadge key={tag} tone="teal" className="text-xs px-2.5 py-1">
+                  {tag}
+                </AppStatusBadge>
+              ))}
+            </div>
+          </div>
+        )}
+
         {campaign.key_messages && campaign.key_messages.length > 0 && (
           <div>
             <span className="text-[11px] text-gray-500 uppercase tracking-wider">Key Messages</span>

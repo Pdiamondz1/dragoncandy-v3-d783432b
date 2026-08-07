@@ -195,6 +195,16 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **Campaign target audience (replaces creator personas)** — the builder's "Target Creators" chips
+  fed nothing (matching scores the disjoint `creator_profiles.skills` craft enum), so they were
+  deleted rather than tuned: Donny now writes one specific customer line + 2 one-tap swap alternates
+  + 4–6 creative-direction tags. **Live on prod** — frontend #372, `donny-campaign-generate` **v114**
+  deployed 2026-08-07 and verified end-to-end: 3 ideas, 3 genuinely distinct audiences each carrying
+  age band + proximity, 6 shootable tags apiece, and style/tags visibly *derived* from the audience
+  (schema field order, not instruction). Codex second review still outstanding (quota until
+  2026-08-08); a follow-up deploy ~a week out drops the transitional `target_creator_persona: []`
+  that protects stale browser tabs (a pinned `lib.test.ts` assertion prevents forgetting).
+  → `docs/wiki/concepts/campaign-target-audience.md` · #372
 - **Social measurement spine + reconciliation + server-established post ownership** — **deployed and
   PROVEN on prod 2026-08-06.** #365 fixed three live defects (video posts silently discarded at
   publish; every unmeasured post stored as a real zero; the measurement record never written for most

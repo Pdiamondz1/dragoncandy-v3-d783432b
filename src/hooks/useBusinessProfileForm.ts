@@ -7,6 +7,7 @@ type IndustryType = Database['public']['Enums']['industry_type'];
 export interface BusinessProfileFormData {
   business_name: string;
   industry: IndustryType | '';
+  cuisines: string[];
   website_url: string;
   location: string;
   postal_code: string;
@@ -41,6 +42,7 @@ export const useBusinessProfileForm = () => {
   const [formData, setFormData] = useState<BusinessProfileFormData>({
     business_name: '',
     industry: '',
+    cuisines: [],
     website_url: '',
     location: '',
     postal_code: '',
@@ -76,6 +78,7 @@ export const useBusinessProfileForm = () => {
     setFormData({
       business_name: businessProfile.business_name || '',
       industry: businessProfile.industry || '',
+      cuisines: businessProfile.cuisines || [],
       website_url: businessProfile.website_url || '',
       location: businessProfile.location || '',
       postal_code: businessProfile.postal_code || '',
@@ -106,12 +109,17 @@ export const useBusinessProfileForm = () => {
     hasLoadedRef.current = false;
   }, []);
 
+  const handleCuisinesChange = useCallback((cuisines: string[]) => {
+    setFormData(prev => ({ ...prev, cuisines }));
+  }, []);
+
   return {
     formData,
     logoFile,
     handleInputChange,
     setLogoFile,
     setFormDataFromProfile,
-    resetLoaded
+    resetLoaded,
+    handleCuisinesChange
   };
 };

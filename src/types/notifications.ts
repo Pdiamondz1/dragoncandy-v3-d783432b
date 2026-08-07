@@ -101,7 +101,7 @@ export const CATEGORY_META: Record<NotificationCategory, { label: string; icon: 
   transactions: { label: 'Transactions', icon: '💰', description: 'Payments, sponsorships, counter-offers' },
   content:      { label: 'Content',      icon: '❤️', description: 'Likes, file uploads, social posting' },
   account:      { label: 'Account',      icon: '🏢', description: 'Team members, locations, settings, account' },
-  dragonshare:  { label: 'DragonShare',  icon: '🐉', description: 'Submissions, boosts, and payouts' },
+  dragonshare:  { label: 'DragonShare',  icon: '📣', description: 'Submissions, boosts, and payouts' },
   promotions:   { label: 'Promotions',   icon: '🎁', description: 'Customer submissions, codes, redemptions' },
 };
 

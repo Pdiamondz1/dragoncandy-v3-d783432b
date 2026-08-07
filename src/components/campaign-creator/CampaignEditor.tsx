@@ -6,7 +6,9 @@ import { DeliveryScheduleSelector } from './DeliveryScheduleSelector';
 import { EditorSection } from './EditorSection';
 import { PostingPreferencesSection } from './PostingPreferencesSection';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { TargetAudienceField } from './TargetAudienceField';
+import { CampaignTagsField } from './CampaignTagsField';
+import { audienceSwapOptions } from '@/lib/campaignAudience';
 import { CostBreakdown } from '@/components/campaigns/CostBreakdown';
 import { TIER_LIMITS } from '@/types/campaignMedia';
 import { mapDeliveryType, computeCampaignCost } from '@/lib/campaignUtils';
@@ -35,11 +37,6 @@ const GEO_OPTIONS: { value: EditableCampaign['geographic_scope']; label: string 
   { value: 'city', label: 'City' },
   { value: 'region', label: 'Region' },
   { value: 'national', label: 'National' },
-];
-
-const PERSONA_OPTIONS = [
-  'Foodie', 'Lifestyle', 'Fitness', 'Beauty', 'Tech',
-  'Travel', 'Fashion', 'Parenting', 'Gaming', 'Comedy',
 ];
 
 export function CampaignEditor({
@@ -71,6 +68,11 @@ export function CampaignEditor({
           onChange={(v) => updateField('title', v)} />
         <EditableField label="Tagline" value={campaign.tagline} originalValue={originalIdea.tagline ?? ''}
           onChange={(v) => updateField('tagline', v)} />
+        <TargetAudienceField
+          value={campaign.target_audience}
+          options={audienceSwapOptions(originalIdea)}
+          onChange={(v) => updateField('target_audience', v)}
+        />
         <EditableField label="Description" value={campaign.description} originalValue={originalIdea.description}
           onChange={(v) => updateField('description', v)} multiline />
         <div>
@@ -87,6 +89,7 @@ export function CampaignEditor({
         <DeliverablesList deliverables={campaign.deliverables} onChange={(v) => updateField('deliverables', v)} />
         <EditableField label="Style Direction" value={campaign.style_direction} originalValue={originalIdea.style_direction}
           onChange={(v) => updateField('style_direction', v)} />
+        <CampaignTagsField tags={campaign.campaign_tags} onChange={(v) => updateField('campaign_tags', v)} />
         <div>
           <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Key Messages</label>
           <div className="flex flex-wrap gap-1.5 mt-1">
@@ -192,28 +195,6 @@ export function CampaignEditor({
                 {label}
               </AppChip>
             ))}
-          </div>
-        </div>
-        <div>
-          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Target Creators</label>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {PERSONA_OPTIONS.map((persona) => {
-              const key = persona.toLowerCase();
-              const isSelected = campaign.target_creator_persona.includes(key);
-              return (
-                <button key={key} type="button"
-                  onClick={() => {
-                    const next = isSelected
-                      ? campaign.target_creator_persona.filter((p) => p !== key)
-                      : [...campaign.target_creator_persona, key];
-                    updateField('target_creator_persona', next);
-                  }}
-                  className={cn('rounded-full px-3 py-1 text-sm font-medium border transition-colors',
-                    isSelected ? 'bg-pink-300 text-gray-900 border-pink-300' : 'bg-white border-dc-teal/20 text-dc-text-muted hover:bg-dc-teal/5')}>
-                  {persona}
-                </button>
-              );
-            })}
           </div>
         </div>
       </EditorSection>

@@ -2,8 +2,8 @@
 title: Campaign Generation Creativity
 type: concept
 created: 2026-07-16
-updated: 2026-07-16
-sources: [2026-07-16-donny-campaign-creativity]
+updated: 2026-08-07
+sources: [2026-07-16-donny-campaign-creativity, 2026-08-07-campaign-target-audience]
 tags: [donny, campaign-generation, prompt-engineering, model-routing, cost-ledger]
 ---
 # Campaign Generation Creativity
@@ -62,6 +62,23 @@ A more creative prompt raises the odds of an off-menu/empty enum value. The sing
 (coerce off-menu, never throw on empty), the AI tagline is clamped to the 120-char launch cap, and
 the new `creative_concept`/`is_wildcard` are surfaced (Wildcard badge + big-idea line, brand tokens).
 
+### Update 2026-08-07 — the schema gained an audience, and field ORDER became load-bearing
+The one creative field this rework left unconstrained, `target_creator_persona`
+(`'      "target_creator_persona": ["<persona>"],\n'`, no enumerated vocabulary while
+`campaign_type`/`platforms`/`content_type`/`aspect_ratio`/`tier` all had one), turned out to be
+the field nothing read. It was **replaced** by `target_audience` + `audience_alternates` +
+`campaign_tags` — see [[Campaign Target Audience]] for the full reasoning.
+
+Two things worth carrying forward for anyone editing this prompt again:
+
+- **Emit a field before the fields it should drive.** `target_audience` sits ahead of
+  `style_direction`/`key_messages`/`hashtags` in the schema block, because the model is
+  autoregressive — ordering does the work that an instruction alone does not.
+- **`lib.test.ts` constrains this prompt's vocabulary.** It asserts no `/\bMUST\b/`, no
+  `/\bONLY\b/`, no `/Do NOT suggest/i` (the guardrails this very rework removed, now pinned so
+  they cannot creep back), no `linkedin|pinterest|snapchat|x.com`, and no backtick. New guidance
+  must use lowercase imperatives.
+
 ## Known Issues
 - **Shipped on Sonnet (`claude-sonnet-4-6`@8192), not Opus 4.8.** The plan chose Opus ("spend for
   quality"), but Opus access on the prod key was **unverifiable** — headless auth (no-password
@@ -79,3 +96,4 @@ the new `creative_concept`/`is_wildcard` are surfaced (Wildcard badge + big-idea
 - [[Donny AI]] — the intelligence layer this generator belongs to
 - [[AIOS Runtime Spend Source-of-Truth]] — the cost-ledger + ≤15% kill-switch the model tier feeds
 - [[Campaign Generate Async Jobs Session]] — the builder's async job+poll transport
+- [[Campaign Target Audience]] — what the generated ideas are aimed at, and the persona→audience replacement

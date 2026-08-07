@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isDeadlineAcceptable } from '@/lib/deliverySchedule';
+import { normalizeAudienceLine, normalizeCampaignTags } from '@/lib/campaignAudience';
 
 const contentTypeSchema = z.enum(['photo', 'video_reel', 'story', 'carousel', 'tiktok', 'youtube_short']);
 const platformSchema = z.enum(['instagram', 'tiktok', 'facebook', 'youtube', 'google_business', 'multi_platform']);
@@ -59,8 +60,17 @@ export const campaignIdeaSchema = z.object({
   timeline_days: z.number().positive(),
   tier: deliveryTierSchema.catch('standard'),
   tier_reasoning: z.string(),
+  // `z.unknown().transform(...)` rather than `.catch(...)`: the normalizers are total, so this
+  // both absorbs a missing/null/wrong-typed value from an older edge function AND applies the
+  // real coercion rules here, at the network boundary. That makes the parsed CampaignIdea
+  // already-normalized, so nothing downstream has to re-coerce it. The other boundary is
+  // `normalizeDraft` (localStorage, which never sees Zod) — those two are the only ways an idea
+  // reaches state. The legacy `target_creator_persona` field is simply gone: Zod strips unknown
+  // keys, so old payloads carrying it need no shim.
+  target_audience: z.unknown().transform(normalizeAudienceLine),
+  audience_alternates: z.array(z.string()).catch([]),
+  campaign_tags: z.unknown().transform(normalizeCampaignTags),
   style_direction: z.string(),
-  target_creator_persona: z.array(z.string()),
   key_messages: z.array(z.string()),
   hashtags: z.array(z.string()),
 });

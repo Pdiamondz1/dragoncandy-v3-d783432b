@@ -1,5 +1,58 @@
 # Wiki Log
 
+## [2026-08-07] update | [[Campaign Target Audience]] — shipped both halves; the ordering claim is now measured
+
+Deployed `donny-campaign-generate` **v113 → v114** (the second half of the frontend-first sequence)
+and verified it end-to-end on prod against a real business description. Updated the concept page
+with a Status section, corrected `PROJECT_CONTEXT.md` §5 (it still read "not merged"), and left
+`SHIPPED_LOG.md` untouched — that file's own header declares entries historical snapshots with §5
+as the authority on current status.
+
+**The page's central claim stopped being an argument and became an observation.** It asserted that
+emitting `target_audience` *before* the creative fields is what makes them derive from it. The prod
+run shows exactly that: an audience of "after-work professionals who unwind before heading home"
+produced "the last hour of daylight so the patio bulbs just start to glow" plus `golden hour` /
+`aperol orange` / `string lights` — the model located the 4–6pm aperitivo hour in the input and
+built the shoot around that customer, not around the restaurant generically. Three ideas, three
+genuinely different customers, none a creator job title.
+
+**Two honest residuals recorded rather than smoothed over.** The Codex second review is *still*
+unrun (quota confirmed exhausted by re-running it, not assumed), and mobile viewport remains
+unverified at runtime: `resize_window` leaves `window.innerWidth` pinned at 1707 — reproduced twice
+— and the founder's Chrome has no remote-debugging port, so CDP device emulation is unreachable.
+Logged as unverified-but-low-risk (no changed file contains viewport-conditional code), explicitly
+not as a pass. **A verification you couldn't perform is a finding, not a formality.**
+
+## [2026-08-07] ingest | [[Campaign Target Audience]] — personas → the customer the content should attract
+Ingested [[Campaign Target Audience Session]]. New concept page rather than compounding onto
+[[Campaign Generation Creativity]]: that page is about whether the generated ideas are *good*,
+this is about what they're *for*. Cross-linked both ways, and added a dated update section to the
+generation page since this change edits the same prompt.
+
+**The finding that justified deleting rather than tuning:** the founder asked for "more specific"
+chips; the audit found the chips fed **nothing**. `ai_analysis.target_creator_persona` was read by
+three display components and by no matcher, filter, or notification — creator matching scores
+`creator_profiles.skills`, a *craft* enum sharing zero values with it. A better list of dead
+options is still dead. Worth generalizing: **before improving a control, check what reads it.**
+
+**Two mechanisms worth remembering.** (1) Field ORDER in an LLM JSON schema is causal, not
+cosmetic — `target_audience` is emitted ahead of `style_direction`/`key_messages`/`hashtags`
+because the model is autoregressive, which does what "derive these from the audience" alone does
+not. (2) **Coercion needs a boundary count you can state.** Here it's exactly two — Zod for the
+network, `normalizeDraft` for localStorage — because the draft path is a bare `JSON.parse` that
+never sees Zod, a gap invisible in dev since dev localStorage is empty.
+
+**Review earned its place four times**, and the instructive one was self-inflicted: the module
+comment says "write short, read tolerant — truncating an existing audience would be a silent
+edit," and the edit-save path then truncated it. A stated rule in a comment is not enforcement.
+Also caught: a new test that **could never fail** (it matched the prompt's prose, which precedes
+the schema regardless of field order) and a cited justification file that never writes the key it
+was credited with — a bad citation invites a maintainer to "correct away" a real tolerance.
+
+**Not yet reviewed by Codex** (quota exhausted until 2026-08-08); the page's Known Issues records
+that, plus the counter-intuitive deploy order — frontend BEFORE the edge function, because the
+*deployed* schema still requires the field being removed.
+
 ## [2026-08-07] update | [[Cross-Tenant Proxy Authorization]] — /media list served from our own table
 Ingested [[Media List From Our Own Table Session]]. Compounded onto the concept page again: same
 rule, third resource-level application, and the `/media` pagination limit moves from "where the

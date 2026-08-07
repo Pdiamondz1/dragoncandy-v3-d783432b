@@ -75,6 +75,11 @@ export const useBusinessProfileSubmit = () => {
         is_completed: true
       };
 
+      // Restaurants store cuisines; brands keep the industry picker instead.
+      if (!isBrand) {
+        profileData.cuisines = formData.cuisines;
+      }
+
       // Add brand-specific fields if this is a brand profile
       if (isBrand) {
         profileData.brand_category = formData.brandCategory || null;

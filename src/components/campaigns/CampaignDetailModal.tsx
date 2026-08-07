@@ -183,6 +183,14 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                 )}
               </div>
 
+              {/* Target audience — clamped: legacy wizard campaigns store prose here */}
+              {campaign.target_audience && (
+                <div>
+                  <span className="text-[11px] text-gray-500 uppercase tracking-wider">Made to attract</span>
+                  <p className="text-sm text-gray-600 line-clamp-3">{campaign.target_audience}</p>
+                </div>
+              )}
+
               {/* Platforms */}
               {campaign.platforms && campaign.platforms.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
@@ -213,7 +221,18 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                 </div>
               )}
 
-              {/* Target personas */}
+              {/* Campaign tags */}
+              {campaign.campaign_tags && campaign.campaign_tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {campaign.campaign_tags.map((tag) => (
+                    <AppStatusBadge key={tag} tone="teal" className="text-[11px] px-2 py-0.5">
+                      {tag}
+                    </AppStatusBadge>
+                  ))}
+                </div>
+              )}
+
+              {/* Target personas — legacy campaigns only; new ones never set this */}
               {campaign.target_creator_personas && campaign.target_creator_personas.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {campaign.target_creator_personas.map((p, i) => (

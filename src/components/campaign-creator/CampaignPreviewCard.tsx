@@ -32,6 +32,12 @@ export function CampaignPreviewCard({ campaign }: CampaignPreviewCardProps) {
         <div className="p-4 space-y-3">
           <h3 className="font-bold text-lg text-gray-900">{campaign.title || 'Untitled Campaign'}</h3>
           <p className="text-sm text-gray-600 line-clamp-3">{campaign.description || 'No description yet'}</p>
+          {campaign.target_audience && (
+            <p className="text-xs text-gray-500 line-clamp-2">
+              <span className="uppercase tracking-wider text-[10px] text-gray-400">Made to attract </span>
+              {campaign.target_audience}
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
             <span className="bg-teal-50 text-teal-700 rounded-full px-2 py-1 text-xs font-medium">
               ${campaign.fixed_price || 0}
@@ -48,6 +54,14 @@ export function CampaignPreviewCard({ campaign }: CampaignPreviewCardProps) {
               <span key={p} className="text-xs text-gray-500">{PLATFORM_LABELS[p] || p}</span>
             ))}
           </div>
+          {/* Optional-chained: this receives EditableCampaign straight from a possibly-stale draft. */}
+          {campaign.campaign_tags?.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {campaign.campaign_tags.map((tag) => (
+                <AppStatusBadge key={tag} tone="teal">{tag}</AppStatusBadge>
+              ))}
+            </div>
+          )}
           <p className="text-xs text-gray-400">
             {campaign.deliverables.length} deliverable{campaign.deliverables.length !== 1 ? 's' : ''} · Due {campaign.deadline || 'TBD'}
           </p>

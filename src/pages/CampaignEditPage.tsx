@@ -19,6 +19,7 @@ import { toast } from '@/hooks/use-toast';
 import { mapDeliveryType, getTierConfig, computeCampaignCost } from '@/lib/campaignUtils';
 import type { Platform, Deliverable } from '@/types/campaignMedia';
 import { cn } from '@/lib/utils';
+import { MAX_AUDIENCE_CHARS } from '@/lib/campaignAudience';
 
 // ── Geographic scope options ──────────────────────────────────────────────────
 const GEO_OPTIONS: { value: string; label: string }[] = [
@@ -27,13 +28,7 @@ const GEO_OPTIONS: { value: string; label: string }[] = [
   { value: 'national', label: 'National' },
 ];
 
-// ── Creator persona options ───────────────────────────────────────────────────
-const PERSONA_OPTIONS = [
-  'Foodie', 'Lifestyle', 'Fitness', 'Beauty', 'Tech',
-  'Travel', 'Fashion', 'Parenting', 'Gaming', 'Comedy',
-];
-
-// ── Small chip-list editor (key messages / hashtags) ─────────────────────────
+// ── Small chip-list editor (key messages / hashtags / campaign tags) ─────────
 interface ChipListEditorProps {
   label: string;
   values: string[];
@@ -260,6 +255,22 @@ const CampaignEditPage: React.FC = () => {
               />
             </div>
 
+            {/* Target audience. No swap chips post-launch: the alternates are a
+                generation-time affordance and aren't persisted. */}
+            <div>
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Who should this bring in?
+              </label>
+              <Input
+                value={formData.target_audience}
+                onChange={e => handleInputChange('target_audience', e.target.value)}
+                placeholder="Date-night couples, 25-40, within 5 miles of Washington St"
+                // Bounds NEW typing without truncating an existing longer value on save.
+                maxLength={MAX_AUDIENCE_CHARS}
+                className="mt-2 text-sm h-10"
+              />
+            </div>
+
             {/* Description */}
             <div>
               <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -314,6 +325,13 @@ const CampaignEditPage: React.FC = () => {
                 className="mt-2 text-sm min-h-[80px]"
               />
             </div>
+
+            <ChipListEditor
+              label="Campaign Tags"
+              values={formData.campaign_tags}
+              onChange={values => handleChipListChange('campaign_tags', values)}
+              placeholder="candlelit, shared plates… and press Enter"
+            />
 
             <ChipListEditor
               label="Key Messages"
@@ -419,40 +437,6 @@ const CampaignEditPage: React.FC = () => {
                 ))}
               </div>
             </div>
-
-            {/* Creator personas */}
-            <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Target Creator Personas
-              </label>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {PERSONA_OPTIONS.map(persona => {
-                  const lc = persona.toLowerCase();
-                  const active = formData.target_creator_personas.includes(lc);
-                  return (
-                    <button
-                      key={persona}
-                      type="button"
-                      onClick={() => {
-                        const updated = active
-                          ? formData.target_creator_personas.filter(p => p !== lc)
-                          : [...formData.target_creator_personas, lc];
-                        handleInputChange('target_creator_personas', updated);
-                      }}
-                      className={cn(
-                        'rounded-full px-3 py-1 text-sm font-medium transition-colors',
-                        active
-                          ? 'bg-teal-400 text-white'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
-                      )}
-                    >
-                      {persona}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
           </EditorSection>
 
           {/* ── Sponsorship toggle ────────────────────────────────────────── */}
