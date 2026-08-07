@@ -59,6 +59,19 @@
   `fixed-probe` or `82dvh`, not a multi-word sentence) — wrapped prose false-negatives the check.
   Also `inserted=0` in the sync log does NOT mean a new page was missed (upsert counting) — trust
   the ilike probe, not the counters.
+  **Never use `max(updated_at)` as the freshness signal — root cause found 2026-08-07.**
+  `donny_knowledge`'s only trigger is `trg_donny_knowledge_updated_at → handle_updated_at()`, and
+  that shared function is a **stub** (`-- Function logic here / RETURN NEW;`) that never assigns
+  `NEW.updated_at`. So an UPDATE fires the trigger and changes nothing: after a sync reporting
+  `updated=101 errors=0`, the changed page held the new text while `updated_at` **equalled its
+  `created_at`** from 78 minutes earlier. An update-only sync can therefore *never* advance the
+  timestamp — the check was structurally unpassable, not flaky. **~30 tables share this stub**
+  (incl. `campaigns`, `campaign_applications`, `campaign_collaborations`, `conversations`,
+  `internal_docs`), so distrust `updated_at` on any of them without a confirmed second trigger or
+  an explicit app-level set. This upgrades [[verify-knowledge]]'s `[freshness-proxy]` lesson from
+  "not reliably bumped" (empirical) to a known mechanism, and `SKILL.md` step 6 was corrected —
+  it had recommended the broken check while `verify-knowledge` already knew better, and the skill
+  you read *first* was the wrong one.
 - **[context-tax] Session detail goes to `docs/SHIPPED_LOG.md`, NOT `PROJECT_CONTEXT.md` §5.**
   §5 is now a one-line-per-entry index with three subsections — `### In flight`, `### Built —
   awaiting founder go-live` (these carry a `**Pending:**` clause), `### Shipped` — because §5 is
