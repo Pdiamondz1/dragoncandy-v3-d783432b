@@ -278,7 +278,7 @@ Block 1 must say exactly what the next tier needs. The rule has to mirror `_shar
 - Test: `src/lib/dragonTierGap.test.ts`
 
 **Interfaces:**
-- Consumes: `TierThreshold`, `TierThresholds` from `supabase/functions/_shared/dre-rules.ts` (it has no `https://` imports, so the frontend can import it — `src/App.tsx` already lives in the same Vite graph and `dre-rules.ts` is deliberately dependency-free).
+- Consumes: nothing. `TierThreshold` / `TierThresholds` are **redeclared here**, not imported from `supabase/functions/_shared/dre-rules.ts`. No `src/` file imports across that boundary — verified, zero occurrences — and `tsconfig.app.json` is `"include": ["src"]`. The house pattern is a local sibling with a keep-in-sync comment (`src/lib/analyticsWindow.ts`, `src/integrations/social/contract.ts`, `src/lib/outstandMetricsMap.ts`, `src/lib/postType.ts` all do exactly this). Follow it.
 - Produces:
   ```ts
   interface TierGap {
@@ -300,8 +300,7 @@ Create `src/lib/dragonTierGap.test.ts`:
 
 ```ts
 import { describe, it, expect } from 'vitest';
-import { computeTierGap } from './dragonTierGap';
-import type { TierThresholds } from '../../supabase/functions/_shared/dre-rules';
+import { computeTierGap, type TierThresholds } from './dragonTierGap';
 
 // The thresholds seeded on prod.
 const THRESHOLDS: TierThresholds = {
@@ -401,7 +400,20 @@ Expected: FAIL — `Failed to resolve import "./dragonTierGap"`.
 Create `src/lib/dragonTierGap.ts`:
 
 ```ts
-import type { TierThresholds } from '../../supabase/functions/_shared/dre-rules';
+// Sibling: supabase/functions/_shared/dre-rules.ts — keep in sync (src/ never
+// imports across the edge boundary; tsconfig.app.json is include: ["src"]).
+// computeTierGap must mirror that file's resolveTier semantics exactly.
+export interface TierThreshold {
+  key: string;
+  min_dp: number;
+  min_campaigns?: number;
+  min_avg_rating?: number;
+}
+
+export interface TierThresholds {
+  creator: TierThreshold[];
+  business: TierThreshold[];
+}
 
 export interface StandingMetrics {
   balance: number;
@@ -615,7 +627,7 @@ Create `src/hooks/useDcPoints.ts`:
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import type { TierThresholds } from '../../supabase/functions/_shared/dre-rules';
+import type { TierThresholds } from '@/lib/dragonTierGap';
 
 export interface DcStanding {
   role: string;
