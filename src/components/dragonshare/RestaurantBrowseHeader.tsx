@@ -2,6 +2,7 @@
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { AppChip } from '@/components/app/AppChip';
+import { cuisineLabel } from '@/lib/cuisines';
 
 interface Props {
   search: string;
@@ -43,9 +44,8 @@ export function RestaurantBrowseHeader({
             key={cuisine}
             onClick={() => onCuisineChange(activeCuisine === cuisine ? null : cuisine)}
             active={activeCuisine === cuisine}
-            className="capitalize"
           >
-            {cuisine}
+            {cuisineLabel(cuisine)}
           </AppChip>
         ))}
 

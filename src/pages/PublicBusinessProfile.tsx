@@ -14,12 +14,14 @@ import { useResolvedLogoUrl, resolveProfileAssetUrl } from '@/hooks/useSignedUrl
 import { usePublicDragonTier } from '@/hooks/useDragonPoints';
 import { DragonTierBadge } from '@/components/badges/DragonTierBadge';
 import { AppCard } from '@/components/app/AppCard';
+import { cuisineLabel } from '@/lib/cuisines';
 
 interface BusinessProfile {
   id: string;
   user_id: string;
   business_name: string;
   industry: string;
+  cuisines?: string[] | null;
   average_rating?: number | null;
   total_reviews?: number | null;
   website_url?: string;
@@ -63,7 +65,7 @@ const PublicBusinessProfile = () => {
       try {
         const { data, error } = await supabase
           .from('business_profiles')
-          .select('id, user_id, business_name, industry, average_rating, total_reviews, website_url, location, description, company_size, founded_year, employee_count_range, budget_range, preferred_collaboration_style, timezone, logo_url, instagram_url, facebook_url, linkedin_url, x_url, other_social_url, sample_content_urls, created_at')
+          .select('id, user_id, business_name, industry, cuisines, average_rating, total_reviews, website_url, location, description, company_size, founded_year, employee_count_range, budget_range, preferred_collaboration_style, timezone, logo_url, instagram_url, facebook_url, linkedin_url, x_url, other_social_url, sample_content_urls, created_at')
           .eq('profile_slug', slug)
           .eq('profile_visibility', 'public')
           .single();
@@ -199,13 +201,28 @@ const PublicBusinessProfile = () => {
             {profile.business_name}
           </h1>
           <div className="mt-0.5"><DragonTierBadge tier={dragonTier} /></div>
-          {(profile.total_reviews ?? 0) > 0 ? (
+          {(profile.total_reviews ?? 0) > 0 && (
             <InlineRating
               averageRating={profile.average_rating}
               totalReviews={profile.total_reviews}
               onClick={() => reviewsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
             />
-          ) : profile.industry ? (
+          )}
+          {/* Cuisine is the primary restaurant signal, so chips render whenever
+              present — even once the restaurant has reviews. Industry stays a
+              last-resort label only when there are neither reviews nor cuisines. */}
+          {profile.cuisines && profile.cuisines.length > 0 ? (
+            <div className="mt-0.5 flex flex-wrap items-center gap-1">
+              {profile.cuisines.slice(0, 4).map((c) => (
+                <span
+                  key={c}
+                  className="text-xs font-medium uppercase text-dc-pink-accent bg-dc-pink-accent/10 rounded-full px-2 py-0.5"
+                >
+                  {cuisineLabel(c)}
+                </span>
+              ))}
+            </div>
+          ) : (profile.total_reviews ?? 0) === 0 && profile.industry ? (
             <div className="flex items-center gap-1 text-sm text-dc-pink-accent">
               <Star className="h-3.5 w-3.5 fill-dc-pink-accent" />
               <span className="font-medium uppercase">{profile.industry.replace('_', ' ')}</span>
