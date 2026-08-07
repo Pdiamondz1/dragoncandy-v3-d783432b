@@ -84,4 +84,19 @@ describe('computeTierGap', () => {
     );
     expect(gap.nextTierKey).toBe('scout');
   });
+
+  it('trusts the caller\'s stored tier even when the metrics no longer sustain it (cached-tier semantics)', () => {
+    // A creator claims tier 'knight' but has avgRating 4.0, below the 4.5 minimum
+    // knight requires. This can happen because tier recompute only runs when a
+    // user earns new points; a review that lowers their rating but earns no
+    // points leaves the cached tier stale. The gap calculator trusts the stored
+    // tier (the same value rendered in the badge on the public profile) so the
+    // gap card and badge never contradict each other.
+    const gap = computeTierGap(
+      'content_creator',
+      { balance: 5000, campaignsCompleted: 12, avgRating: 4.0, tier: 'knight' },
+      THRESHOLDS,
+    );
+    expect(gap.nextTierKey).toBe('master');
+  });
 });

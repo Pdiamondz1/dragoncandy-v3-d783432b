@@ -34,6 +34,13 @@ export interface TierGap {
  * What the caller still needs for the NEXT tier. Mirrors _shared/dre-rules.ts
  * resolveTier, including its rule that a null avgRating FAILS a min_avg_rating
  * condition — points alone never unlock a tier.
+ *
+ * Trust boundary: standing.tier is taken as authoritative (the same cached
+ * dragon_point_balances.tier the public profile badge renders). It can lag the
+ * metrics because tier recompute only runs when a user earns new points — a
+ * review that lowers avgRating but earns no points leaves the cached tier
+ * stale. This is deliberate: the gap card and the badge show the same cached
+ * value, so they never contradict each other on the user's screen.
  */
 export function computeTierGap(
   role: string,
