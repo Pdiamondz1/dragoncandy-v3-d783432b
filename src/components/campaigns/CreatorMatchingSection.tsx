@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,15 +21,64 @@ import {
   Trophy,
 } from 'lucide-react';
 import { useCampaignMatches, useGenerateMatches, CreatorMatch } from '@/hooks/useCampaignMatches';
-import { useInviteCreator, useCampaignInvitations } from '@/hooks/useCampaignInvitations';
+import {
+  useInviteCreator,
+  useCampaignInvitations,
+  CampaignInvitation,
+} from '@/hooks/useCampaignInvitations';
 import { CreatorMatchCard } from './CreatorMatchCard';
+import { MatchingProgress, MatchCardsSkeleton } from './MatchingProgress';
+import {
+  INVITE_EXPLAINER,
+  INVITE_LABEL,
+  INVITE_PENDING_LABEL,
+  describeInvitation,
+} from './inviteCopy';
+import { WhyExpander } from '@/components/guidance/WhyExpander';
+import { AppStatusBadge } from '@/components/app/AppStatusBadge';
 import { ResolvedAvatar } from '@/components/ui/resolved-avatar';
+import { motion, staggerContainer, staggerItem, useReducedMotion } from '@/lib/motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { formatSkillLabel } from '@/lib/skillUtils';
 
 interface CreatorMatchingSectionProps {
   campaignId: string;
+  /**
+   * Gates the automatic run. A draft campaign can't be invited to at all
+   * (`send-campaign-invitation` requires published/active), so auto-spending an
+   * AI call on one is pure waste.
+   */
+  campaignStatus?: string | null;
+  /** Jump to the applications list on this page. */
+  onViewApplications?: () => void;
+}
+
+/** Statuses for which matching is worth running on its own. */
+const AUTO_MATCH_STATUSES = new Set(['published', 'active']);
+
+/**
+ * Marks a campaign as already auto-matched for this tab, so navigating away and
+ * back doesn't re-run it. Deliberately session-scoped, NOT persistent: if a
+ * campaign still has zero matches in a later session, re-running is the right
+ * behaviour — the creator pool grows over time.
+ */
+const autoMatchKey = (campaignId: string) => `dc:auto-match:${campaignId}`;
+
+function alreadyAutoMatched(campaignId: string): boolean {
+  try {
+    return sessionStorage.getItem(autoMatchKey(campaignId)) !== null;
+  } catch {
+    return false; // private mode / storage disabled — the in-mount ref still guards
+  }
+}
+
+function markAutoMatched(campaignId: string): void {
+  try {
+    sessionStorage.setItem(autoMatchKey(campaignId), '1');
+  } catch {
+    /* non-fatal */
+  }
 }
 
 type SortOption = 'score' | 'platform' | 'budget' | 'skills' | 'geographic' | 'availability' | 'ai_quality';
@@ -66,20 +115,43 @@ function sortMatches(matches: CreatorMatch[], sortBy: SortOption): CreatorMatch[
   });
 }
 
-export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ campaignId }) => {
-  const { data: matches = [], isLoading: matchesLoading, refetch: refetchMatches } = useCampaignMatches(campaignId);
+export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({
+  campaignId,
+  campaignStatus,
+  onViewApplications,
+}) => {
+  const {
+    data: matches = [],
+    isLoading: matchesLoading,
+    isFetched: matchesFetched,
+    refetch: refetchMatches,
+  } = useCampaignMatches(campaignId);
   const generateMatches = useGenerateMatches();
   const [activeTab, setActiveTab] = useState('ai-matches');
   const [sortBy, setSortBy] = useState<SortOption>('score');
   const [filterBy, setFilterBy] = useState<FilterOption>('all');
+  const reducedMotion = useReducedMotion();
 
   const inviteCreator = useInviteCreator();
   const { data: invitations } = useCampaignInvitations(campaignId);
-  const invitedCreatorIds = new Set((invitations || []).map(inv => inv.creator_id));
+
+  // Keyed by status, not membership: a creator who DECLINED used to look
+  // identical to one who accepted, because `status` was fetched and never read.
+  const invitationStatusByCreator = useMemo(
+    () =>
+      new Map<string, CampaignInvitation['status']>(
+        (invitations ?? []).map(inv => [inv.creator_id, inv.status]),
+      ),
+    [invitations],
+  );
 
   const handleInvite = (creatorId: string) => {
     inviteCreator.mutate({ campaignId, creatorId });
   };
+
+  /** Scoped to the creator actually in flight, so one send doesn't freeze every button. */
+  const isInvitingCreator = (creatorId: string) =>
+    inviteCreator.isPending && inviteCreator.variables?.creatorId === creatorId;
 
   const [creatorsPage, setCreatorsPage] = useState(0);
   const CREATORS_PER_PAGE = 10;
@@ -110,12 +182,42 @@ export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ 
 
   const handleGenerateMatches = async () => {
     try {
-      await generateMatches.mutateAsync(campaignId);
+      await generateMatches.mutateAsync({ campaignId });
       await refetchMatches();
     } catch (error) {
       console.error('Failed to generate matches:', error);
     }
   };
+
+  /**
+   * Run matching on its own the first time a campaign has none.
+   *
+   * Matching used to require finding and pressing "Find Perfect Creators", so a
+   * freshly created campaign landed on an empty panel and read as broken. This
+   * fires silently — no toast either way; success shows up as results, and a
+   * failure falls through to the empty state, which still has the manual button.
+   *
+   * Two guards for two different windows: the ref stops a double-fire inside one
+   * mount (the effect re-runs as the mutation flips isPending), sessionStorage
+   * stops a re-fire when the user navigates away and comes back. The ref holds
+   * the campaign id rather than a boolean, so pointing the panel at a different
+   * campaign re-arms it without needing a second reset effect.
+   */
+  const autoRunFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (autoRunFor.current === campaignId) return;
+    if (!matchesFetched || matchesLoading) return;
+    if (matches.length > 0) return;
+    if (!AUTO_MATCH_STATUSES.has(campaignStatus ?? '')) return;
+    if (alreadyAutoMatched(campaignId)) return;
+
+    autoRunFor.current = campaignId;
+    markAutoMatched(campaignId);
+    generateMatches.mutate({ campaignId, silent: true });
+    // `generateMatches` is a stable mutation object; depending on its identity
+    // would re-run this effect and defeat the guards above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignId, campaignStatus, matchesFetched, matchesLoading, matches.length]);
 
   // Apply sorting and filtering
   const filteredMatches = useMemo(() => {
@@ -137,7 +239,11 @@ export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ 
     return { avg, top, excellent, great, total: matches.length };
   }, [matches]);
 
-  const isLoading = matchesLoading || generateMatches.isPending;
+  // Kept apart on purpose. These were one flag, so an ordinary page load on a
+  // campaign that already HAD matches flashed "Analyzing creators…" and hid the
+  // stats and controls — a claim about work that wasn't happening.
+  const isGenerating = generateMatches.isPending;
+  const isBusy = matchesLoading || isGenerating;
   const hasMatches = matches.length > 0;
   const hasAvailableCreators = availableCreators.length > 0;
 
@@ -148,33 +254,41 @@ export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ 
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-dc-teal" />
-            AI-Powered Creator Matching
+            Best creators for this campaign
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Our algorithm scores creators across platform fit, budget, skills, location, availability, and content quality
+            Your campaign is already live in the marketplace — every creator can see it and apply.
+            These are the strongest fits; inviting one sends them a direct heads-up so it doesn't
+            get lost.
           </p>
+          <div className="flex flex-wrap items-center pt-1 text-xs text-muted-foreground">
+            <span>{INVITE_EXPLAINER.title}</span>
+            <WhyExpander
+              expanderKey={INVITE_EXPLAINER.key}
+              title={INVITE_EXPLAINER.title}
+              body={INVITE_EXPLAINER.body}
+            />
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button
             onClick={handleGenerateMatches}
-            disabled={isLoading}
+            disabled={isBusy}
+            isLoading={isGenerating}
             className="w-full bg-teal-600 hover:bg-teal-700 text-white"
           >
-            {isLoading ? (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                Analyzing Creators...
-              </>
+            {isGenerating ? (
+              'Finding creators…'
             ) : (
               <>
                 <Sparkles className="h-4 w-4 mr-2" />
-                {hasMatches ? 'Re-generate Matches' : 'Find Perfect Creators'}
+                {hasMatches ? 'Refresh matches' : 'Find creators'}
               </>
             )}
           </Button>
 
           {/* Match summary stats */}
-          {matchStats && !isLoading && (
+          {matchStats && !isBusy && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="text-center p-2 rounded-lg bg-dc-teal/[0.04]">
                 <div className="text-lg font-bold text-foreground">{matchStats.total}</div>
@@ -213,7 +327,7 @@ export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ 
 
         <TabsContent value="ai-matches" className="space-y-4">
           {/* Sort & Filter controls */}
-          {hasMatches && !isLoading && (
+          {hasMatches && !isBusy && (
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
@@ -258,22 +372,23 @@ export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ 
             </div>
           )}
 
-          {isLoading ? (
-            <Card>
-              <CardContent className="flex items-center justify-center py-8">
-                <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                  <RefreshCw className="h-6 w-6 animate-spin text-teal-500" />
-                  <div className="text-center">
-                    <p className="font-medium">Analyzing creators...</p>
-                    <p className="text-xs mt-1">Scoring platform fit, budget, skills, location & content quality</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          {isGenerating ? (
+            <MatchingProgress />
+          ) : matchesLoading ? (
+            <MatchCardsSkeleton />
           ) : hasMatches && filteredMatches.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2">
+            <motion.div
+              className="grid gap-4 md:grid-cols-2"
+              variants={reducedMotion ? undefined : staggerContainer}
+              initial={reducedMotion ? false : 'initial'}
+              animate="animate"
+            >
               {filteredMatches.map((match, index) => (
-                <div key={match.id} className="relative">
+                <motion.div
+                  key={match.id}
+                  className="relative"
+                  variants={reducedMotion ? undefined : staggerItem}
+                >
                   {index === 0 && sortBy === 'score' && filterBy === 'all' && (
                     <div className="absolute -top-2 -left-2 z-10">
                       <Badge className="bg-yellow-500 text-white text-[10px] gap-1">
@@ -284,12 +399,14 @@ export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ 
                   )}
                   <CreatorMatchCard
                     match={match}
-                    isInvited={invitedCreatorIds.has(match.creator_id)}
+                    invitationStatus={invitationStatusByCreator.get(match.creator_id)}
+                    isInviting={isInvitingCreator(match.creator_id)}
                     onInvite={handleInvite}
+                    onViewApplications={onViewApplications}
                   />
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           ) : hasMatches && filteredMatches.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-8">
@@ -303,23 +420,26 @@ export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ 
               </CardContent>
             </Card>
           ) : (
+            /* Not an error — matching has run and found nobody yet. A red
+               AlertCircle here read as a failure the owner had caused. */
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+                <Users className="h-12 w-12 text-dc-teal/40 mb-4" />
                 <h3 className="text-lg font-semibold mb-2">
-                  No AI matches yet
+                  No matches yet
                 </h3>
                 <p className="text-muted-foreground text-center max-w-md mb-4">
-                  Click "Find Perfect Creators" above to run our AI matching algorithm across all available creators.
+                  We'll keep looking as creators join. Your campaign is already live in the
+                  marketplace, so creators can find it and apply on their own in the meantime.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <Button onClick={handleGenerateMatches} variant="outline" className="w-full sm:w-auto">
                     <RefreshCw className="h-4 w-4 mr-2" />
-                    Generate Matches
+                    Check again
                   </Button>
                   <Button onClick={() => setActiveTab('all-creators')} className="w-full sm:w-auto">
                     <Users className="h-4 w-4 mr-2" />
-                    View All Creators
+                    Browse all creators
                   </Button>
                 </div>
               </CardContent>
@@ -350,7 +470,7 @@ export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ 
           ) : hasAvailableCreators ? (
             <div className="grid gap-4">
               {availableCreators.slice(0, (creatorsPage + 1) * CREATORS_PER_PAGE).map((creator) => {
-                const isInvited = invitedCreatorIds.has(creator.user_id);
+                const outcome = describeInvitation(invitationStatusByCreator.get(creator.user_id));
                 return (
                   <Card key={creator.id} className="border dark:border-border hover:border-teal-300 dark:hover:border-teal-600 transition-colors">
                     <CardContent className="p-6">
@@ -391,15 +511,20 @@ export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ 
                           </div>
                         </div>
                         <div className="shrink-0">
-                          <Button
-                            size="sm"
-                            className="rounded-full"
-                            variant={isInvited ? 'outline' : 'default'}
-                            disabled={isInvited || inviteCreator.isPending}
-                            onClick={() => handleInvite(creator.user_id)}
-                          >
-                            {isInvited ? 'Invited' : 'Invite'}
-                          </Button>
+                          {outcome ? (
+                            <AppStatusBadge tone={outcome.tone}>{outcome.label}</AppStatusBadge>
+                          ) : (
+                            <Button
+                              size="sm"
+                              className="rounded-full"
+                              isLoading={isInvitingCreator(creator.user_id)}
+                              onClick={() => handleInvite(creator.user_id)}
+                            >
+                              {isInvitingCreator(creator.user_id)
+                                ? INVITE_PENDING_LABEL
+                                : INVITE_LABEL}
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -424,7 +549,8 @@ export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ 
                   No creators on the platform yet
                 </h3>
                 <p className="text-muted-foreground text-center max-w-md">
-                  Creators will appear here once they sign up. Use AI Matches to automatically find and invite the best fit for your campaign.
+                  Creators will appear here once they sign up. Your campaign is already live in the
+                  marketplace, so it's waiting for them when they do.
                 </p>
               </CardContent>
             </Card>

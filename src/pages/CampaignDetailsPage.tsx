@@ -525,9 +525,22 @@ const CampaignDetailsPage: React.FC = () => {
                 <ErrorBoundary level="section">
                   <ApplicationsListFixed campaignId={campaign.id} campaign={campaign} />
                 </ErrorBoundary>
-                {(applicationCounts?.accepted ?? 0) === 0 && (
+                {/* Owner-only: matching and inviting both 403 for anyone else
+                    (`match-creators` and `send-campaign-invitation` check
+                    campaign.user_id), and campaigns are publicly readable — so
+                    without this gate another business opening the URL would
+                    render controls it can't use and auto-fire a doomed call. */}
+                {isOwnCampaign && (applicationCounts?.accepted ?? 0) === 0 && (
                   <ErrorBoundary level="section">
-                    <CreatorMatchingSection campaignId={campaign.id} />
+                    <CreatorMatchingSection
+                      campaignId={campaign.id}
+                      campaignStatus={campaign.status}
+                      onViewApplications={() => {
+                        document
+                          .getElementById('applications-section')
+                          ?.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                    />
                   </ErrorBoundary>
                 )}
               </div>
