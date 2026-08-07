@@ -421,7 +421,7 @@ serve(async (req: Request) => {
       // which campaigns this delivery could have finished.
       const { data: rows } = await supabase
         .from("donny_scheduled_posts")
-        .select("id, metadata, campaign_id")
+        .select("id, metadata, campaign_id, user_id")
         .eq("metadata->>outstand_post_id", postId)
         .neq("status", "published");
 
@@ -464,26 +464,53 @@ serve(async (req: Request) => {
       // the same campaign re-evaluates, and a campaign whose LAST post this was
       // is caught by nothing, which is the known limit recorded in the wiki.
       if (newStatus === "published") {
-        const campaignIds = [
-          ...new Set(
-            rows
-              .map((r) => (r as { campaign_id?: string | null }).campaign_id)
-              .filter((id): id is string => typeof id === "string" && id.length > 0),
-          ),
-        ];
+        // (campaign_id, user_id) PAIRS, not bare campaign ids.
+        //
+        // THIS PAIRING IS THE AUTHORIZATION, and the first version of this loop
+        // did not have it. `rows` comes from a match on
+        // `metadata->>outstand_post_id`, which is CLIENT-WRITABLE, and
+        // `donny_scheduled_posts.campaign_id` is a bare nullable uuid with
+        // nothing in the INSERT policy constraining it (the policy only pins
+        // `user_id = auth.uid()`). Campaign ids are discoverable in browse. So a
+        // planted row naming any victim campaign would have had the service-role
+        // update flip THEIR campaign to "All Posts Published" — a cross-tenant
+        // write, through the same client-writable column this whole area keeps
+        // getting burned by. confirm-posting-schedule was already hardened
+        // against exactly this write with `.eq('user_id', user.id)`; the webhook
+        // has no authenticated user to use, so it carries the row's user_id
+        // instead.
+        //
+        // That value IS trustworthy for this purpose: the INSERT policy forces
+        // `user_id = auth.uid()`, so a planted row necessarily names the
+        // ATTACKER. Requiring the campaign's own `user_id` to equal it means a
+        // row can only ever complete a campaign belonging to whoever created the
+        // row. The update below enforces it in the statement rather than in a
+        // separate read, so there is no window between checking and writing.
+        const pairs = new Map<string, { campaignId: string; userId: string }>();
+        for (const r of rows) {
+          const row = r as { campaign_id?: string | null; user_id?: string | null };
+          if (typeof row.campaign_id !== "string" || row.campaign_id.length === 0) continue;
+          if (typeof row.user_id !== "string" || row.user_id.length === 0) continue;
+          pairs.set(`${row.campaign_id}:${row.user_id}`, {
+            campaignId: row.campaign_id,
+            userId: row.user_id,
+          });
+        }
 
-        for (const campaignId of campaignIds) {
+        for (const { campaignId, userId } of pairs.values()) {
           try {
             const [{ data: campaign }, { data: siblings }] = await Promise.all([
               supabase
                 .from("campaigns")
                 .select("posting_schedule_status")
                 .eq("id", campaignId)
+                .eq("user_id", userId)
                 .maybeSingle(),
               supabase
                 .from("donny_scheduled_posts")
                 .select("status")
-                .eq("campaign_id", campaignId),
+                .eq("campaign_id", campaignId)
+                .eq("user_id", userId),
             ]);
 
             const decision = decideScheduleCompletion(
@@ -498,8 +525,12 @@ serve(async (req: Request) => {
             // update matches.
             const { error: campaignErr } = await supabase
               .from("campaigns")
+              // `.eq('user_id', userId)` is the cross-tenant guard — see the
+              // pairing note above. Without it a planted schedule row naming
+              // someone else's campaign would complete THEIR campaign.
               .update({ posting_schedule_status: "completed" })
               .eq("id", campaignId)
+              .eq("user_id", userId)
               .in("posting_schedule_status", ["scheduled", "in_progress"]);
 
             if (campaignErr) {

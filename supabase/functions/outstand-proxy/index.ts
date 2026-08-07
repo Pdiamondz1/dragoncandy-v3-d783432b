@@ -18,6 +18,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { extractCreatedPostId } from "../_shared/outstand-post-ownership.ts";
 import { recordPostOwnership } from "../_shared/outstand-post-ownership-store.ts";
+import { recordMediaOwnership } from "../_shared/outstand-media-ownership-store.ts";
 import {
   decidePostAccess,
   extractRequestAccountIds,
@@ -999,14 +1000,11 @@ serve(async (req: Request) => {
             "outstand-proxy: POST /media/upload returned no recognisable media id — no ownership binding minted",
           );
         } else {
-          const { error: mediaBindErr } = await admin
-            .from("outstand_media_ownership")
-            .upsert({ outstand_media_id: mediaId, user_id: ctx.userId }, {
-              onConflict: "outstand_media_id",
-              ignoreDuplicates: true,
-            });
-          if (mediaBindErr) {
-            console.error("outstand-proxy: media ownership binding failed", mediaBindErr.message);
+          const res = await recordMediaOwnership(admin, mediaId, ctx.userId);
+          if (!res.minted) {
+            console.error(
+              `outstand-proxy: media ownership not minted for ${mediaId} (${res.reason ?? "unknown"})`,
+            );
           }
         }
       } catch (e) {

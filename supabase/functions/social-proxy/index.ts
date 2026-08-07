@@ -33,6 +33,8 @@ import { createZernioAdapter } from "./adapters/zernio.ts";
 import { resolveProviderFromRows, resolveProviderId } from "../_shared/social-provider.ts";
 import { assertAccountsOwned, isPostOwned } from "./gateway-guards.ts";
 import { recordPostOwnership } from "../_shared/outstand-post-ownership-store.ts";
+import { recordMediaOwnership } from "../_shared/outstand-media-ownership-store.ts";
+import { extractUploadedMediaId } from "../_shared/outstand-media-authz.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -598,6 +600,25 @@ async function handleOp(
         },
         ctx,
       );
+      // SECOND GATEWAY, SAME BINDING. outstand-proxy mints
+      // outstand_media_ownership on its own upload path, and enforcement is
+      // STRICT — no binding means the uploader is 403'd on confirm/delete and
+      // filtered out of their own list. So this path must mint too, or media
+      // created here is orphaned from the person who created it. Same reasoning
+      // that put post minting in a shared store rather than one gateway.
+      //
+      // Best-effort: the upload already exists at the provider, so a mint
+      // failure is logged, never surfaced as a failed upload.
+      try {
+        await recordMediaOwnership(
+          deps.admin,
+          extractUploadedMediaId(out) ?? (out as { id?: string } | null)?.id ?? null,
+          deps.ctx.userId,
+        );
+      } catch (e) {
+        console.error("social-proxy: media ownership binding threw (upload already succeeded)", e);
+      }
+
       return jsonResponse(200, { data: out });
     }
 
