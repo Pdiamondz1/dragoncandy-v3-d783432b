@@ -56,6 +56,7 @@ const BusinessSettings = () => {
     handleInputChange: handleBusinessInputChange,
     setLogoFile: setBusinessLogoFile,
     setFormDataFromProfile,
+    handleCuisinesChange: handleBusinessCuisinesChange,
   } = useBusinessProfileForm();
 
   const {
@@ -81,7 +82,7 @@ const BusinessSettings = () => {
       try {
         const { data, error } = await supabase
           .from('business_profiles')
-          .select('business_name, industry, website_url, location, postal_code, city, country, description, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url, logo_url, company_size, founded_year, employee_count_range, budget_range, preferred_collaboration_style, timezone, profile_visibility')
+          .select('business_name, industry, website_url, location, postal_code, city, country, description, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url, logo_url, company_size, founded_year, employee_count_range, budget_range, preferred_collaboration_style, timezone, profile_visibility, cuisines')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -250,6 +251,8 @@ const BusinessSettings = () => {
                 onFieldBlur={handleBusinessFieldBlur}
                 defaultSection={undefined}
                 locationMode
+                isBrand={isBrand}
+                onCuisinesChange={handleBusinessCuisinesChange}
               />
             </>
           ) : (
@@ -262,6 +265,8 @@ const BusinessSettings = () => {
               onFieldBlur={handleBusinessFieldBlur}
               defaultSection={activeSection}
               logoLabel={isBrand ? 'Brand Logo' : 'Business Logo'}
+              isBrand={isBrand}
+              onCuisinesChange={handleBusinessCuisinesChange}
             />
           )}
 

@@ -18,6 +18,7 @@ import { FileUploadSection } from '@/components/business-profile/FileUploadSecti
 import { ToastConnectionCard } from '@/features/settings/ToastConnectionCard';
 import type { BusinessProfileFormData } from '@/hooks/useBusinessProfileForm';
 import type { CompletionResult } from '@/hooks/useProfileCompletion';
+import { CUISINE_ITEMS } from '@/lib/cuisines';
 
 const INDUSTRY_OPTIONS = [
   { value: 'food', label: 'Food & Beverage' },
@@ -64,6 +65,8 @@ interface BusinessSettingsSectionsProps {
   defaultSection?: string;
   locationMode?: boolean;
   logoLabel?: string;
+  isBrand?: boolean;
+  onCuisinesChange?: (cuisines: string[]) => void;
 }
 
 export function BusinessSettingsSections({
@@ -76,6 +79,8 @@ export function BusinessSettingsSections({
   defaultSection,
   locationMode,
   logoLabel,
+  isBrand,
+  onCuisinesChange,
 }: BusinessSettingsSectionsProps) {
   const hasDescription = !!formData.description;
 
@@ -89,6 +94,65 @@ export function BusinessSettingsSections({
     other_social_url: formData.other_social_url,
   };
 
+  const renderCategoryField = () => {
+    if (isBrand) {
+      return (
+        <div>
+          <Label htmlFor="industry">Industry</Label>
+          <Select
+            value={formData.industry}
+            onValueChange={(value) => {
+              onInputChange('industry', value);
+              onFieldBlur();
+            }}
+          >
+            <SelectTrigger id="industry" className="mt-1">
+              <SelectValue placeholder="Select industry" />
+            </SelectTrigger>
+            <SelectContent>
+              {INDUSTRY_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      );
+    }
+    return (
+      <div>
+        <Label>Cuisine</Label>
+        <div className="mt-1 flex flex-wrap gap-2">
+          {CUISINE_ITEMS.map((c) => {
+            const active = formData.cuisines?.includes(c.value) ?? false;
+            return (
+              <button
+                key={c.value}
+                type="button"
+                aria-pressed={active}
+                onClick={() => {
+                  const next = active
+                    ? (formData.cuisines ?? []).filter((v) => v !== c.value)
+                    : [...(formData.cuisines ?? []), c.value];
+                  onCuisinesChange?.(next);
+                  onFieldBlur();
+                }}
+                className={`px-3 py-1.5 rounded-full border text-sm transition-colors ${
+                  active
+                    ? 'bg-dc-pink text-white border-dc-pink'
+                    : 'bg-white text-gray-700 border-gray-200 hover:border-dc-pink/50'
+                }`}
+              >
+                {c.icon} {c.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   if (locationMode) {
     return (
       <Accordion type="single" collapsible defaultValue={defaultSection}>
@@ -98,27 +162,7 @@ export function BusinessSettingsSections({
           title="Business Info"
           subtitle="Industry and collaboration style"
         >
-          <div>
-            <Label htmlFor="industry">Industry</Label>
-            <Select
-              value={formData.industry}
-              onValueChange={(value) => {
-                onInputChange('industry', value);
-                onFieldBlur();
-              }}
-            >
-              <SelectTrigger id="industry" className="mt-1">
-                <SelectValue placeholder="Select industry" />
-              </SelectTrigger>
-              <SelectContent>
-                {INDUSTRY_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {renderCategoryField()}
 
           <div>
             <Label htmlFor="preferred_collaboration_style">Collaboration Style</Label>
@@ -266,27 +310,7 @@ export function BusinessSettingsSections({
           />
         </div>
 
-        <div>
-          <Label htmlFor="industry">Industry</Label>
-          <Select
-            value={formData.industry}
-            onValueChange={(value) => {
-              onInputChange('industry', value);
-              onFieldBlur();
-            }}
-          >
-            <SelectTrigger id="industry" className="mt-1">
-              <SelectValue placeholder="Select industry" />
-            </SelectTrigger>
-            <SelectContent>
-              {INDUSTRY_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {renderCategoryField()}
 
         <div className="grid grid-cols-2 gap-3">
           <div>
