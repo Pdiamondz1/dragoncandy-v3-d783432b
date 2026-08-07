@@ -49,8 +49,13 @@ and an append-only **Run Log**. Full contract: `docs/wiki/concepts/loop-memory-p
      sync may have failed. This check compares RAG to the wiki, not RAG to this session.
      ```bash
      SHA=$(git log -1 --format=%H origin/main -- docs/wiki/concepts docs/wiki/entities docs/wiki/analyses)
-     git show "$SHA" -- docs/wiki/concepts docs/wiki/entities docs/wiki/analyses | grep '^+' | grep -v '^+++'
+     git diff "$SHA^1" "$SHA" -- docs/wiki/concepts docs/wiki/entities docs/wiki/analyses | grep '^+' | grep -v '^+++'
      ```
+     (First-parent diff, not `git show`: on a merge commit `git show` prints a *combined* diff that
+     often emits no per-file added lines, which would silently walk the probe back to an older
+     revision and skip the very content being verified. `origin/main` is squash-merged today so the
+     two are identical — verified, both yield the same added-line set — but this survives a change
+     in merge strategy.)
      From those **added** lines take a short hyphenated/code token (never a multi-word phrase —
      it false-negatives across a markdown line-wrap), then GET
      `/donny_knowledge?select=id&content=ilike.*<token>*&limit=1` against prod

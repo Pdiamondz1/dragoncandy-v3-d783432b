@@ -58,8 +58,13 @@ AIOS_INGEST_SECRET missing or invalid in environment Dame_git_claude."
      would pass the probe while the edit itself was never synced. Derive it from the diff:
      ```bash
      SHA=$(git log -1 --format=%H origin/main -- docs/wiki/concepts docs/wiki/entities docs/wiki/analyses)
-     git show "$SHA" -- docs/wiki/concepts docs/wiki/entities docs/wiki/analyses | grep '^+' | grep -v '^+++'
+     git diff "$SHA^1" "$SHA" -- docs/wiki/concepts docs/wiki/entities docs/wiki/analyses | grep '^+' | grep -v '^+++'
      ```
+     (First-parent diff, not `git show`: on a merge commit `git show` prints a *combined* diff that
+     often emits no per-file added lines, which would silently walk the probe back to an older
+     revision and skip the very content being verified. `origin/main` is squash-merged today so the
+     two are identical — verified, both yield the same added-line set — but this survives a change
+     in merge strategy.)
      From those **added** lines pick a short hyphenated/code/identifier token (never a multi-word
      phrase — it false-negatives across a markdown line-wrap), then GET
      `/donny_knowledge?select=id&content=ilike.*<token>*&limit=1`. Present ⇒ the RAG carries the
