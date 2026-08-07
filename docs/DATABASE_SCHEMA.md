@@ -7,6 +7,22 @@
 * `conversations` + `conversation_participants` + `messages` power the chat system
 * `file_uploads` are the primary content deliverable mechanism between creators and brands
 
+> **`updated_at` is NOT trustworthy on ~30 tables — `handle_updated_at()` is a stub.** The shared
+> trigger function's entire body is `-- Function logic here` / `RETURN NEW;`. It never assigns
+> `NEW.updated_at`, so every trigger wired to it fires and changes nothing. Confirmed on prod
+> 2026-08-07 by direct observation: a `donny_knowledge` row's content was replaced while its
+> `updated_at` stayed **equal to its `created_at`** from 78 minutes earlier. Affected tables
+> include `campaigns`, `campaign_applications`, `campaign_collaborations`, `conversations`,
+> `internal_docs`, `donny_knowledge`, `organizations`, `org_units`, `creator_groups`,
+> `package_orders`, `user_presence` and the `aios_*` set. **Never use `updated_at` (or
+> `max(updated_at)`) as a freshness/recency signal on these** — verify by content, or use a
+> purpose-built anchor column stamped by its own trigger, the way
+> `campaign_collaborations.content_submitted_at` exists precisely because this one is a no-op
+> (see the Creator Groups Phase 2 note below). A table listed here may still have a *second*,
+> working trigger or an explicit application-level set — confirm before relying on it either way.
+> Enumerate the affected set with:
+> `select c.relname, t.tgname from pg_trigger t join pg_class c on c.oid=t.tgrelid join pg_proc p on p.oid=t.tgfoid where p.proname='handle_updated_at' and not t.tgisinternal;`
+
 ## User & Auth
 
 | Table | Purpose |
