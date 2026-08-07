@@ -303,3 +303,14 @@ Reversed, the page and Donny call a function that does not exist.
   gives block 4 a different answer.
 - Review engineering-wiki presence in the consumer RAG generally (§8).
 - Decide whether `business.campaign_launched` should stay uncapped (§9).
+- **Stale cached tiers.** `dragon_point_balances.tier` is recomputed only for users who
+  earn new points in a run (`dre-award-engine` step 5). A creator's average rating can
+  fall below the threshold that earned their tier without generating any ledger event —
+  `dre_pending_events` gates `creator.five_star` on `rv.rating = 5`, so a 2-star review
+  fires nothing — leaving a tier that the engine would no longer grant. This is
+  **pre-existing and system-wide**: `DragonTierBadge` has rendered the same cached value
+  on public profiles since June. The `/rewards` page deliberately trusts it too, so the
+  gap line and the badge never contradict each other (ruled 2026-08-07; pinned by a test
+  in `src/lib/dragonTierGap.test.ts`). Fixing it properly means recomputing tiers on
+  rating change, which would demote real users the first time it runs — a product
+  decision, not a display one.
