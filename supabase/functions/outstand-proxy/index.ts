@@ -887,7 +887,25 @@ serve(async (req: Request) => {
       if (body && typeof body === "object" && !Array.isArray(body)) {
         const clean: Record<string, unknown> = {};
         if (typeof body.filename === "string") clean.filename = sanitizeFilename(body.filename);
-        if (typeof body.contentType === "string") clean.contentType = body.contentType;
+
+        // THE WIRE FIELD IS `content_type`, SNAKE_CASE. Read off the SDK bundle,
+        // not inferred from its TypeScript signature:
+        //   api.post("/media/upload", { filename, content_type: contentType })
+        // The camelCase `contentType` is only the name of useMediaUpload's
+        // ARGUMENT. An allow-list that kept just `contentType` therefore
+        // stripped the MIME type off every real upload — the first version of
+        // this block did exactly that, and Codex caught it. Accept both
+        // spellings and always emit the wire one.
+        const contentType =
+          typeof body.content_type === "string"
+            ? body.content_type
+            : typeof body.contentType === "string"
+              ? body.contentType
+              : null;
+        if (contentType) clean.content_type = contentType;
+
+        // `size` belongs to /media/{id}/confirm rather than upload, but it costs
+        // nothing to pass through if a caller sends it.
         if (typeof body.size === "number") clean.size = body.size;
         forwardBody = JSON.stringify(clean);
       }
@@ -1036,6 +1054,20 @@ serve(async (req: Request) => {
       // _shared/outstand-media-authz.ts — so ownership comes from the binding
       // table. Fails closed: a failed lookup yields an empty set and the list
       // filters to nothing rather than forwarding the org's media.
+      //
+      // KNOWN LIMIT, stated rather than left to be discovered: Outstand applies
+      // `limit`/`offset` to the ORG-WIDE pool before this filter runs, so once
+      // several tenants have uploads a caller can get an empty first page while
+      // their own media sits further down the org ordering — their gallery looks
+      // empty when it is not. Filtering cannot fix that from here; the list has
+      // to page over the caller's OWN ids, which means driving pagination from
+      // outstand_media_ownership and fetching by id. Deliberately not built now:
+      // `GET /media` returns count:0 on prod, so there is no page to be wrong
+      // about yet, and guessing at the shape of a fix before any media exists is
+      // how the analytics components got written. This is the same defect class
+      // as the offset-paging note on the post list filter.
+      //
+      // It errs toward showing too LITTLE, never another tenant's media.
       const ownedMedia = await listOwnedMediaIds(admin, ctx.userId);
       const filteredMedia = filterMediaList(upstreamText, ownedMedia);
       if (filteredMedia.dropped > 0) {
