@@ -531,6 +531,51 @@ serve(async (req: Request) => {
     console.warn(`[reconcile] stopped paging after a fetch error: offset=${offset} pagesFetched=${pagesFetched}`);
   }
 
+  // Re-drive schedule completion for any campaign still in flight.
+  //
+  // outstand-webhook calls the same RPC when a post publishes, and that is the
+  // fast path. This is the SAFETY NET for the one case the webhook cannot cover
+  // on its own: when the last two posts of a campaign publish concurrently,
+  // both invocations can evaluate before the other's row commits, both decline,
+  // and — since those were the last two — no further webhook ever re-evaluates.
+  // Without a sweep the campaign would sit on "scheduled" permanently.
+  //
+  // The RPC is idempotent (it only transitions from scheduled/in_progress and
+  // returns whether THIS call made the change), so running it over every
+  // in-flight campaign every hour costs one statement each and can never
+  // double-apply.
+  let schedulesCompleted = 0;
+  let scheduleCompletionErrors = 0;
+  try {
+    const { data: inFlight, error: inFlightErr } = await admin
+      .from("campaigns")
+      .select("id, user_id")
+      .in("posting_schedule_status", ["scheduled", "in_progress"])
+      .limit(500);
+
+    if (inFlightErr) {
+      scheduleCompletionErrors += 1;
+      console.error("[reconcile] in-flight campaign lookup failed", inFlightErr.message);
+    } else {
+      for (const row of (inFlight ?? []) as Array<{ id: string; user_id: string }>) {
+        const { data: done, error: rpcErr } = await admin.rpc(
+          "complete_posting_schedule_if_done",
+          { p_campaign_id: row.id, p_user_id: row.user_id },
+        );
+        if (rpcErr) {
+          scheduleCompletionErrors += 1;
+          console.error(`[reconcile] completion rpc failed for campaign ${row.id}`, rpcErr.message);
+        } else if (done === true) {
+          schedulesCompleted += 1;
+          console.log(`[reconcile] campaign ${row.id} posting schedule completed`);
+        }
+      }
+    }
+  } catch (e) {
+    scheduleCompletionErrors += 1;
+    console.error("[reconcile] schedule-completion sweep threw", e);
+  }
+
   const summary = {
     // posts
     postsScanned,
@@ -549,6 +594,9 @@ serve(async (req: Request) => {
     scheduleLookupErrors,
     upsertErrors,
     ownerConflicts,
+    // schedule completion (safety net for the webhook's concurrent-final-post race)
+    schedulesCompleted,
+    scheduleCompletionErrors,
     unbound,
     bindingConflicts,
     bindingUnavailable,

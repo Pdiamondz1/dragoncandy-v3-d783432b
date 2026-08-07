@@ -14,7 +14,6 @@ import {
 } from "../_shared/outstand-webhook-lib.ts";
 import { buildSocialPostLogRow, isGenuineScheduleAmbiguity } from "../_shared/social-post-log-row.ts";
 import { applyOwnershipBinding, isBindingTableMissing } from "../_shared/outstand-post-ownership.ts";
-import { decideScheduleCompletion } from "../_shared/schedule-completion.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -499,46 +498,27 @@ serve(async (req: Request) => {
 
         for (const { campaignId, userId } of pairs.values()) {
           try {
-            const [{ data: campaign }, { data: siblings }] = await Promise.all([
-              supabase
-                .from("campaigns")
-                .select("posting_schedule_status")
-                .eq("id", campaignId)
-                .eq("user_id", userId)
-                .maybeSingle(),
-              supabase
-                .from("donny_scheduled_posts")
-                .select("status")
-                .eq("campaign_id", campaignId)
-                .eq("user_id", userId),
-            ]);
-
-            const decision = decideScheduleCompletion(
-              (siblings ?? []) as Array<{ status: string | null }>,
-              (campaign as { posting_schedule_status?: string | null } | null)?.posting_schedule_status ?? null,
+            // ONE STATEMENT, not read-then-write. The JS version read the
+            // sibling rows and then updated, which left a window: when the last
+            // TWO posts of a campaign publish concurrently, each webhook could
+            // read the other's row as still pending, both skip, and — since
+            // those were the last two — nothing would ever re-evaluate. The RPC
+            // folds the NOT EXISTS into the UPDATE so the check and the write
+            // share a snapshot, and reconcile-social-posts re-drives the same
+            // call hourly so a campaign that still loses the race self-corrects
+            // instead of sticking forever.
+            //
+            // p_user_id is the cross-tenant guard — see the pairing note above.
+            const { data: completed, error: rpcErr } = await supabase.rpc(
+              "complete_posting_schedule_if_done",
+              { p_campaign_id: campaignId, p_user_id: userId },
             );
-            if (!decision.complete) continue;
-
-            // `.eq('posting_schedule_status', …)` makes the write itself the
-            // race guard: two concurrent published-webhooks for the last two
-            // posts of a campaign both read "all published", and only the first
-            // update matches.
-            const { error: campaignErr } = await supabase
-              .from("campaigns")
-              // `.eq('user_id', userId)` is the cross-tenant guard — see the
-              // pairing note above. Without it a planted schedule row naming
-              // someone else's campaign would complete THEIR campaign.
-              .update({ posting_schedule_status: "completed" })
-              .eq("id", campaignId)
-              .eq("user_id", userId)
-              .in("posting_schedule_status", ["scheduled", "in_progress"]);
-
-            if (campaignErr) {
+            if (rpcErr) {
               console.error(
-                `outstand-webhook: could not mark campaign ${campaignId} schedule completed`,
-                campaignErr.message,
+                `outstand-webhook: schedule-completion rpc failed for ${campaignId}`,
+                rpcErr.message,
               );
-            } else {
+            } else if (completed === true) {
               console.log(`outstand-webhook: campaign ${campaignId} posting schedule completed`);
             }
           } catch (e) {
