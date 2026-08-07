@@ -113,9 +113,15 @@ export function createOutstandAdapter(deps: OutstandAdapterDeps): SocialProvider
     async uploadMedia(file: MediaUploadInput, _ctx: TenantCtx): Promise<{ id: string; url: string }> {
       // Sanitize the filename before upload — Outstand stores it verbatim in the
       // media URL and unsafe chars break Facebook/Instagram Graph publishing.
+      // `content_type`, SNAKE_CASE — the WIRE field, read off the SDK bundle
+      // (`api.post("/media/upload", { filename, content_type: contentType })`).
+      // The camelCase spelling is only the name of the SDK's argument, and
+      // sending it means Outstand receives NO MIME type at all. Pre-existing
+      // here; the identical mistake was made and fixed in outstand-proxy's
+      // upload allow-list, which is what surfaced this one.
       const body = {
         filename: sanitizeFilename(file.filename),
-        contentType: file.contentType,
+        content_type: file.contentType,
         size: file.size,
       };
       const raw = (await request('POST', '/media/upload', body)) as Record<string, unknown>;
