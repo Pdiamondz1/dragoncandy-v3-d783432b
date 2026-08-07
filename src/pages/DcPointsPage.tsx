@@ -14,11 +14,17 @@ export default function DcPointsPage() {
   // Same shell derivation NotificationsPage uses — an all-roles page inside
   // DashboardLayout, which owns page padding and mounts the nav (and the chip).
   const userRole = (profile?.role as UserRole) || 'business_client';
+  // Brand has no DRE triggers, so a brand balance would be permanently 0 —
+  // same reasoning DcPointsChip.tsx:17-21 uses to hide the chip for brand.
+  // Without this guard a brand user landing on /rewards directly would see
+  // EarnCatalog's business-flavored catalog, which their account type can
+  // never actually earn from. Keep this in lockstep with the chip's check.
+  const isBrand = profile?.role === 'brand';
 
   return (
     <DashboardLayout userRole={userRole}>
       <PageBody maxWidth="4xl">
-        {!enabled ? (
+        {!enabled || isBrand ? (
           <AppCard pad="6">
             <p className="text-sm text-dc-text-muted">DC Points are not available.</p>
           </AppCard>

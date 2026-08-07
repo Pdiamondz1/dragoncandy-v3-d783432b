@@ -18,7 +18,20 @@ export function EarnCatalog() {
   // "still loading". Either way there is no role to filter by; never guess one.
   if (!standing) return null;
 
-  const prefix = standing.role === 'content_creator' ? 'creator.' : 'business.';
+  // Resolve the prefix explicitly per known role rather than defaulting any
+  // non-creator role to business — that default previously mapped brand (which
+  // has no DRE triggers and can never earn) onto the business catalog. A role
+  // this component doesn't know how to catalog renders nothing, so it stays
+  // correct on its own even if a future caller renders it outside the page's
+  // brand guard (DcPointsPage.tsx).
+  const prefix =
+    standing.role === 'content_creator'
+      ? 'creator.'
+      : standing.role === 'business_client'
+        ? 'business.'
+        : null;
+  if (!prefix) return null;
+
   const earnedKeys = new Set((entries ?? []).map((e) => e.eventType));
 
   const rows = Object.entries(catalog.pointValues)

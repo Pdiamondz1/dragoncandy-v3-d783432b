@@ -5,6 +5,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { StandingCard } from './StandingCard';
 import { DcPointsChip } from './DcPointsChip';
+import DcPointsPage from '@/pages/DcPointsPage';
+
+// DcPointsPage is not under test here — only its enabled/brand guard is. Stub the
+// shell so the brand-guard test doesn't have to also satisfy DashboardLayout's own
+// hook dependencies (org role, presence, Donny context, etc.), none of which the
+// guard's behavior depends on.
+vi.mock('@/components/DashboardLayout', () => ({
+  DashboardLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}));
 
 const { mockEnabled, mockCatalog, mockLoading } = vi.hoisted(() => ({
   mockEnabled: vi.fn(),
@@ -116,5 +125,21 @@ describe('DcPointsChip', () => {
     mockLoading.mockReturnValue(true);
     const { container } = render(<DcPointsChip />, { wrapper: MemoryRouter });
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe('DcPointsPage', () => {
+  beforeEach(() => {
+    mockEnabled.mockReset();
+    mockRole.mockReturnValue('business_client');
+  });
+
+  it('shows the unavailable card for a brand user, not the earn catalog (brand has no DRE triggers, same guard as the chip)', () => {
+    mockEnabled.mockReturnValue(true); // flag ON — proves this is the role guard, not the launch guard
+    mockRole.mockReturnValue('brand');
+    render(<DcPointsPage />, { wrapper: MemoryRouter });
+    expect(screen.getByText('DC Points are not available.')).toBeInTheDocument();
+    // EarnCatalog's heading — must not render for a brand user.
+    expect(screen.queryByText('How to earn')).not.toBeInTheDocument();
   });
 });
