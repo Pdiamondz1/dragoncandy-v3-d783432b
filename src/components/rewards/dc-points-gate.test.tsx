@@ -4,7 +4,22 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { StandingCard } from './StandingCard';
 
-const { mockEnabled } = vi.hoisted(() => ({ mockEnabled: vi.fn() }));
+const { mockEnabled, mockCatalog } = vi.hoisted(() => ({
+  mockEnabled: vi.fn(),
+  mockCatalog: vi.fn(),
+}));
+
+const RESOLVED_CATALOG = {
+  data: {
+    pointValues: { 'business.profile_completed': 200 },
+    thresholds: {
+      creator: [{ key: 'egg', min_dp: 0 }],
+      business: [{ key: 'egg', min_dp: 0 }, { key: 'scout', min_dp: 500, min_campaigns: 3 }],
+    },
+  },
+  isLoading: false, isError: false,
+};
+
 vi.mock('@/hooks/useDragonPoints', () => ({
   useDragonRewardsEnabled: () => mockEnabled(),
   useDragonPoints: () => ({ data: { balance: 1234, tier: 'scout' }, isLoading: false }),
@@ -15,20 +30,17 @@ vi.mock('@/hooks/useDcPoints', () => ({
     isLoading: false, isError: false,
   }),
   useDcLedger: () => ({ data: [], isLoading: false, isError: false }),
-  useDcCatalog: () => ({
-    data: {
-      pointValues: { 'business.profile_completed': 200 },
-      thresholds: {
-        creator: [{ key: 'egg', min_dp: 0 }],
-        business: [{ key: 'egg', min_dp: 0 }, { key: 'scout', min_dp: 500, min_campaigns: 3 }],
-      },
-    },
-    isLoading: false, isError: false,
-  }),
+  // Controllable per-test so we can exercise the catalog-not-resolved-yet branch
+  // (Finding 1) without duplicating the whole mock module per test.
+  useDcCatalog: () => mockCatalog(),
 }));
 
 describe('StandingCard', () => {
-  beforeEach(() => mockEnabled.mockReset());
+  beforeEach(() => {
+    mockEnabled.mockReset();
+    mockCatalog.mockReset();
+    mockCatalog.mockReturnValue(RESOLVED_CATALOG);
+  });
 
   it('states both unmet conditions for the next tier', () => {
     mockEnabled.mockReturnValue(true);
@@ -42,6 +54,21 @@ describe('StandingCard', () => {
   it('never claims points buy anything', () => {
     mockEnabled.mockReturnValue(true);
     const { container } = render(<StandingCard />);
-    expect(container.textContent).not.toMatch(/redeem|discount|cash out|coming soon/i);
+    expect(container.textContent).not.toMatch(
+      /redeem|discount|cash out|coming soon|unlock|reward|perk|spend|convert/i,
+    );
+  });
+
+  it('does not claim "top of the ladder" while the catalog has not resolved yet', () => {
+    // On a cold load, useDcStanding and useDcCatalog are separate queries that
+    // rarely settle in the same tick — standing here has resolved, but catalog
+    // has not (isLoading: true, data: undefined). Until we actually have the
+    // catalog we cannot know whether there is a next tier, so the component must
+    // stay silent (or show a skeleton) rather than assert the user is maxed out.
+    mockEnabled.mockReturnValue(true);
+    mockCatalog.mockReturnValue({ data: undefined, isLoading: true, isError: false });
+    render(<StandingCard />);
+    expect(screen.getByText('350')).toBeInTheDocument();
+    expect(screen.queryByText(/top of the ladder/i)).not.toBeInTheDocument();
   });
 });

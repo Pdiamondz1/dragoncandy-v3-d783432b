@@ -6,15 +6,19 @@ import { useDcCatalog, useDcLedger, useDcStanding } from '@/hooks/useDcPoints';
 /** Block 3 — the live earn catalog, rendered from dre_config so retuning needs no deploy. */
 export function EarnCatalog() {
   const { data: catalog, isLoading, isError } = useDcCatalog();
-  const { data: standing } = useDcStanding();
+  const { data: standing, isLoading: standingLoading } = useDcStanding();
   const { data: entries } = useDcLedger();
 
-  if (isLoading) {
+  if (isLoading || standingLoading) {
     return <AppCard><div className="h-40 animate-pulse rounded-xl bg-dc-teal/[0.06]" /></AppCard>;
   }
   if (isError || !catalog) return null;
+  // standing resolved to null is a real, permanent case (internal-only accounts
+  // have no profiles row, so dre_my_standing() returns zero rows) — not just
+  // "still loading". Either way there is no role to filter by; never guess one.
+  if (!standing) return null;
 
-  const prefix = standing?.role === 'content_creator' ? 'creator.' : 'business.';
+  const prefix = standing.role === 'content_creator' ? 'creator.' : 'business.';
   const earnedKeys = new Set((entries ?? []).map((e) => e.eventType));
 
   const rows = Object.entries(catalog.pointValues)

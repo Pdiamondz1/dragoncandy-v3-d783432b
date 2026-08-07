@@ -31,6 +31,10 @@ export function StandingCard() {
     );
   }
 
+  // catalog resolves on its own query and frequently has not settled yet when
+  // standing already has (or, on a catalog error, never settles). Until we
+  // actually have it, the gap is UNKNOWN — that is a different state from "there
+  // is no next tier", and must never be collapsed into the latter.
   const gap = catalog
     ? computeTierGap(standing.role, standing, catalog.thresholds)
     : null;
@@ -51,19 +55,22 @@ export function StandingCard() {
       <p className="mt-1 text-4xl font-bold text-dc-text">{standing.balance.toLocaleString()}</p>
       <div className="mt-2"><DragonTierBadge tier={standing.tier} /></div>
 
-      {nextLabel && needs.length > 0 && (
+      {!gap && (
+        <div className="mt-4 h-4 w-2/3 animate-pulse rounded bg-dc-teal/[0.06]" />
+      )}
+      {gap && gap.nextTierKey === null && (
+        <p className="mt-4 text-sm text-dc-text-muted">
+          You are at the top of the ladder.
+        </p>
+      )}
+      {gap && gap.nextTierKey !== null && needs.length > 0 && (
         <p className="mt-4 text-sm text-dc-text-muted">
           {nextLabel} needs {needs.join(' and ')}.
         </p>
       )}
-      {nextLabel && needs.length === 0 && (
+      {gap && gap.nextTierKey !== null && needs.length === 0 && (
         <p className="mt-4 text-sm text-dc-text-muted">
           You have met everything {nextLabel} requires — it applies on the next update.
-        </p>
-      )}
-      {!nextLabel && (
-        <p className="mt-4 text-sm text-dc-text-muted">
-          You are at the top of the ladder.
         </p>
       )}
     </AppCard>
