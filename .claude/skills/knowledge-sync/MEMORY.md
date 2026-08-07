@@ -93,6 +93,56 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-08-07] DC Points visibility (branch `feat/dc-points-visibility`, docs bundled into the same branch)
+
+**Output:** new `raw/sessions/2026-08-07-dc-points-visibility.md`; **compounded** onto
+`concepts/dragon-rewards-engine.md` (new "DC Points visibility" section + 2 new Known Issues +
+2 new See Also links; frontmatter `updated`/`sources` bumped); **qualified** (not overwrote)
+`concepts/self-improving-app.md`'s Known Issues claim that internal-scoped rows stay invisible
+to consumer Donny "on every path" — true only for the `sync-internal-docs.mjs` path it was
+verified against, not the separate `sync-wiki-to-donny.mjs` consumer path this session's RAG-leak
+finding disproves it on; short content-refresh note added to
+`concepts/help-center-and-guidance.md`'s existing naming-drift bullet; `index.md` (refreshed
+`[[Dragon Rewards Engine (DRE)]]` Concepts entry in place + 1 new Sources line); `log.md` ingest
+entry at top; `SHIPPED_LOG.md` **prepended** with a bold state-as-of-writing note;
+`PROJECT_CONTEXT.md` §5 one line under **Built — awaiting founder go-live** with a `**Pending:**`
+clause; `DATABASE_SCHEMA.md` (`dre_my_standing()` RPC blockquote appended to the existing DRE
+section). No `DESIGN_SYSTEM.md`/`CLAUDE.md` change — grepped the new components for off-palette
+classes first; all `dc-*`. + THIS entry.
+
+**Happened:** ran under an explicit constraint this run had never seen before — do the files only,
+no database operation of any kind, not even the read-only `verify-knowledge` loop-close if it would
+touch the DB, and no `sync:wiki`/`sync:internal` (RAG sync deferred to the post-merge hook, since
+this is pre-merge and per [rag-sync] that's the normal flow anyway). Ran on the SAME branch as the
+code (`feat/dc-points-visibility`), not a paired docs branch — the branch was already fully caught
+up with `origin/main` (`merge-base HEAD origin/main` == `origin/main`'s tip, confirmed before
+editing any core doc), so no [scope] risk from a stale worktree.
+
+**Worked:** compounding onto the existing DRE concept page rather than a new page — this is the
+*same subsystem* gaining a visibility layer, and the page already had the exact "sub-project gets
+its own raw session, all compounding onto one page" pattern from the UI-launch-gate and rename
+sub-projects. [status-correction]-adjacent: qualified self-improving-app.md's over-broad "every
+path" claim in place with dated counter-evidence rather than silently leaving it wrong, per the
+wiki's own "flag contradictions, never silently resolve" rule — found by asking whether the DRE
+RAG-leak session actually was covered by that page's own "verified with sentinel tests" line (it
+wasn't; two different sync scripts, only one was tested). [sync-before-blocked-gate]: recorded the
+unrun Codex gate in all three places status lives (§5, the concept page, SHIPPED_LOG's opening
+note) — mirrors the exact treatment the SAME-DAY campaign-target-audience run gave its own
+quota-blocked Codex gate, confirmed by reading that run's Lessons/entries first.
+
+**Failed:** nothing knowledge-side. Deliberately did not run [[verify-knowledge]]'s loop-close
+(it queries `donny_knowledge`, which the task explicitly scoped out) or attempt any `sync:*` npm
+script — both are correctly deferred to post-merge per the task's own instructions, not a gap.
+
+**Remember:** **a scope constraint that forbids the DB doesn't mean skip the loop-close
+discipline — it means the loop closes later, and the docs should say so explicitly rather than
+imply the RAG is current.** Every doc this run touched states "RAG sync deferred to the post-merge
+hook" or equivalent, so a reader (or the 3am freshness agent) doesn't mistake "files written" for
+"Donny already knows this." Second: when a page's Known Issues makes a claim ("on every path")
+that a *different* sync mechanism this session touches would falsify, check it explicitly instead
+of assuming the claim was about the mechanism you're currently working on — two sync scripts
+writing the same table is an easy place for "every path" to quietly become false.
+
 ### [2026-08-07] Campaign target audience — status correction after the deploy landed (`docs/campaign-audience-shipped`)
 
 **Output:** the `[2026-08-07] update | [[Campaign Target Audience]]` line in `docs/wiki/log.md`, a

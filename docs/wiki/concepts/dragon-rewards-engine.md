@@ -2,8 +2,8 @@
 title: Dragon Rewards Engine (DRE)
 type: concept
 created: 2026-06-27
-updated: 2026-06-28
-sources: [2026-06-27-dre-engine-tiers-badges.md, 2026-06-28-dre-go-live-runbook.md, 2026-06-28-dre-rename-creator-standing.md]
+updated: 2026-08-07
+sources: [2026-06-27-dre-engine-tiers-badges.md, 2026-06-28-dre-go-live-runbook.md, 2026-06-28-dre-rename-creator-standing.md, 2026-08-07-dc-points-visibility.md]
 tags: [gamification, rewards, growth, edge-functions, rls, cron]
 ---
 # Dragon Rewards Engine (DRE)
@@ -77,6 +77,66 @@ so **no email**. `go_live_at` seeds to a far-future sentinel (`2099-01-01`) so t
 historical **backfill is silent**; the founder sets the real cutover at go-live to enable
 forward bells.
 
+## DC Points visibility (2026-08-07)
+
+v1 built the ledger, the tiers, and the badge but never gave a user anywhere to go: a
+bell said "+200 DC Points" and clicking it went nowhere, points showed on two
+dashboards with no explanation behind them, and even the founder needed a SQL query
+against `dragon_point_events` to answer "what was that for." Branch
+`feat/dc-points-visibility` (10 tasks, 22 commits) closed that gap as **honest,
+earn-only transparency** — reaching a tier confers a public profile badge and
+**nothing else**, the same stance [[Honest Analytics]] took on the analytics tab two
+days earlier, chosen explicitly over designing a perk economy the platform doesn't
+have.
+
+- **`/rewards` page** — balance, the gap to the next tier stated as a full sentence
+  ("Established needs 500 points and 3 completed campaigns"), human-labeled award
+  history, and the earn catalog rendered **live from `dre_config.point_values`** so
+  retuning the economy needs no deploy and no doc edit.
+- **`DcPointsChip`** — always-visible in both top bars (`DashboardLayout` desktop
+  header + `MobileTopNav`, mutually exclusive by viewport). Gates: launch flag → brand
+  role (brand has no DRE triggers, so its chip would read a permanent 0) → loading
+  (renders nothing so the bar doesn't jitter).
+- **`dre_my_standing()`** (migration `20260807120000`) — a caller-scoped
+  `SECURITY DEFINER` RPC wrapping the service-role-only `dre_user_aggregates`, taking
+  **no arguments**; identity comes only from `auth.uid()`, raising if it's null.
+  Explicit `revoke ... from public, anon` + `grant ... to authenticated` (the
+  Supabase default-privilege gotcha this page already documents below).
+- **The bell now names its reason.** `dre-award-engine` carries `event_type` through
+  into `_shared/dre-notification.ts`'s `buildAwardNotification(events, tieredUp)`:
+  one event → the event's label as the body; multiple → an Oxford-comma join of every
+  label; a tier-up appends `" — new standing unlocked"`. Every award sets
+  `actionUrl: '/rewards'`, and `getNotificationRoute` gained a `dragon_points_award`
+  case that retroactively fixes bells already sent without one.
+- **A Donny `rewards_agent`** answers "how many points do I have" / "what did I earn
+  that for" / "what do I need for the next tier" strictly from `userContext.user_id`
+  — never from tool `input`, since the orchestrator's client is service-role and
+  bypasses RLS. It deliberately does **not** call `dre_my_standing()`: that RPC
+  derives identity from `auth.uid()`, which is null under a service-role client, so it
+  builds the same context directly from `dre_user_aggregates` /
+  `dragon_point_balances` / `dragon_point_events` / `dre_config`. Its context string
+  carries the same "do not convert to money... never promise redemption, referrals,
+  streaks, or perks" line the frontend copy carries, so the two surfaces can't drift
+  apart on the honesty stance.
+- **Two mirrored pure modules**, not imported across the frontend/edge boundary
+  (house pattern — see [[Musk's Algorithm]] applied as "no cross-boundary imports"):
+  `src/lib/dragonEvents.ts` / `supabase/functions/_shared/dre-events.ts`
+  (event_type → human label, 25 entries, parity-tested) and
+  `src/lib/dragonTierGap.ts` (next-tier gap; mirrors `resolveTier`, including that a
+  `null avg_rating` FAILS a rating threshold rather than being exempted from one).
+- **RAG honesty fix** — two DRE *engineering* wiki docs (a six-phase spec describing
+  never-built referrals/streaks/"Hype Weeks"/redemption) were reachable by consumer
+  Donny via a `NULL` `scope` column on `donny_knowledge`, so a user asking Donny about
+  rewards could get unbuilt-roadmap content back as if it were real. See "RAG scope
+  leak" under Known Issues.
+
+**State as of writing (2026-08-07):** 3 migrations (`dre_my_standing`, the help-article
+rewrite, the `donny_knowledge` scope fix) are **applied and verified on prod**. The 2
+edge functions (`dre-award-engine`, `donny-orchestrator`) are **not yet deployed**, the
+PR is **not yet open**, and the CLAUDE.md-mandated Codex second review has **not run**
+(`codex review --base main` hit an OpenAI usage limit, resets 2026-08-08 08:55). None of
+this is user-visible on prod yet.
+
 ## Key Decisions
 
 - **FK `profiles.id`, not `auth.users.id`** — DRE is a consumer feature; the `auth.users`
@@ -95,6 +155,47 @@ forward bells.
 - `campaign_launched` uses `status <> 'draft'` (ever-left-draft), not `= 'published'`
   (`campaign_status` progresses past `published`). Creator-completion `occurred_at` uses
   `COALESCE(completed_at, updated_at)`; the `campaigns` table has no `completed_at`.
+  **Confirmed still true and now user-visible (2026-08-07):** `business.campaign_launched`
+  pays 150 points on **every** campaign launch, not just the first — one prod business
+  has collected it 7 times. The earn catalog on `/rewards` and Donny's `rewards_agent`
+  now surface this publicly. Left unchanged deliberately; retuning is a `dre_config`
+  JSONB edit, a product decision rather than a bug fix.
+- **Stale cached tier (found 2026-08-07, pre-existing and system-wide, not fixed).**
+  `dragon_point_balances.tier` is recomputed only when a user earns a new ledger event
+  (`dre-award-engine` step 5); `dre_pending_events()` gates `creator.five_star` on
+  `rv.rating = 5` exactly, so a sub-5-star review lowers a creator's `avg_rating`
+  without firing any event — the cached tier outlives the rating that earned it.
+  `DragonTierBadge` on public profiles has rendered that same cached value since June.
+  `/rewards`'s tier-gap calculator (`dragonTierGap.ts`) deliberately **trusts** the
+  cached tier rather than re-deriving it — re-deriving would create a *visible*
+  contradiction with the public badge on the same cached data, trading a quiet
+  inconsistency for a loud one — pinned by a trust-boundary test. Root-cause fix
+  (recompute `tier` on rating change, not only on a new ledger event) is filed as a
+  follow-up against `dre-award-engine`, out of scope for a UI-visibility branch.
+- **RAG scope leak (found + fixed 2026-08-07).** Two DRE *engineering* wiki docs —
+  including a 29,810-char six-phase spec describing referrals, streaks, "Hype Weeks,"
+  and redemption that were **never built** — carried `scope` NULL in `donny_knowledge`,
+  and `match_donny_knowledge`'s consumer filter (`scope IS NULL OR scope <> 'internal'`)
+  treats NULL as consumer-visible. So a user asking consumer Donny about DC Points
+  could retrieve unbuilt-roadmap content and get it back as if it were real — the exact
+  failure mode this branch's honesty stance exists to avoid, just via the knowledge
+  layer instead of the UI. Root cause: `donny-knowledge-sync/index.ts` rebuilds `scope`
+  from the sync payload on **every** call including updates, so a one-off
+  `UPDATE donny_knowledge SET scope='internal'` (migration `20260807120200`) would have
+  been silently reverted by the committed `post-merge` hook's `npm run sync:wiki` the
+  moment this PR (which touches `docs/` heavily) merged. Fixed in both halves: the
+  migration corrects the rows now, and `FORCE_INTERNAL` in
+  `supabase/scripts/sync-wiki-to-donny.mjs` — an unconditional `Set` of exact
+  `"<dir>/<filename>"` strings, with a fail-loud count-assertion guard added in the
+  final fix wave — forces `scope: 'internal'` for those 2 files on every future sync.
+  **Structural gap, not closed:** `FORCE_INTERNAL` is filename-keyed, so renaming
+  either backing file drops it out of the set; the guard turns that into a loud sync
+  failure rather than a silent one, but a more durable fix (e.g. a `rag_scope: internal`
+  frontmatter field on the wiki page itself) is still worth doing. See
+  [[Self-Improving App]], whose Known Issues previously claimed internal-scoped rows
+  stay invisible to consumer Donny "on every path" — true for the `sync-internal-docs.mjs`
+  strategy-library path that claim was verified against, not for this consumer
+  `sync-wiki-to-donny.mjs` path, which this incident is the counterexample to.
 - **Supabase default-privilege gotcha (caught by the live advisor on prod apply):**
   Supabase grants `EXECUTE` to `anon`/`authenticated` via `ALTER DEFAULT PRIVILEGES`, so
   `revoke … from public` does NOT lock down a `SECURITY DEFINER` function — you must
@@ -175,3 +276,7 @@ events stay silent (their `occurred_at` < cutover) — the intended "no retroact
 - [[Notification Delivery]] — the bell choke point.
 - [[Data Flywheel]] — DRE feeds the moat.
 - [[Supabase]] — RLS, pg_cron, Vault patterns reused.
+- [[Honest Analytics]] — the same "a claim may not outrun its evidence" stance the
+  2026-08-07 visibility work applied to points/tiers/perks.
+- [[Self-Improving App]] — owns the `donny_knowledge` scope mechanism the 2026-08-07
+  RAG leak was found in.

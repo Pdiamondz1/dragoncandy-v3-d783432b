@@ -1,5 +1,31 @@
 # Wiki Log
 
+## [2026-08-07] ingest | [[Dragon Rewards Engine (DRE)]] — DC Points visibility
+
+New raw session `raw/sessions/2026-08-07-dc-points-visibility.md`; compounded a "DC Points
+visibility (2026-08-07)" section onto `concepts/dragon-rewards-engine.md` (frontmatter
+`updated`/`sources` bumped) plus two new Known Issues entries (a confirmed
+`campaign_launched` repeat-payment now user-visible, and a documented-not-fixed
+stale-cached-tier trust boundary) and two new See Also links. Qualified — did not
+silently overwrite — `concepts/self-improving-app.md`'s Known Issues claim that
+internal-scoped rows stay invisible to consumer Donny "on every path": true for the
+`sync-internal-docs.mjs` strategy-library path it was verified against, not for the
+separate consumer `sync-wiki-to-donny.mjs` path, which this session's RAG-leak finding
+is the counterexample to. Added a short content-refresh note to
+`concepts/help-center-and-guidance.md`'s existing naming-drift bullet (the dragon-rewards
+article's body was rewritten with real numbers; the naming drift itself is unaffected).
+`index.md` — refreshed the `[[Dragon Rewards Engine (DRE)]]` Concepts entry in place, one
+new Sources line. No new concept page — compounded onto the page that already owns the
+DRE subsystem, per "compound, don't duplicate."
+
+State as of writing: implementation complete (10/10 tasks reviewed clean, full suite
+green), 3 migrations applied+verified on prod, but the 2 edge functions are not deployed,
+the PR is not yet open, and the mandatory Codex second review has not run (OpenAI quota
+exhausted until 2026-08-08 08:55). Recorded honestly in all three places status lives —
+this page's new section, `PROJECT_CONTEXT.md` §5, and `SHIPPED_LOG.md`'s opening note —
+rather than represented as shipped. RAG sync deferred to the post-merge hook, per
+[[Knowledge-Sync Automation]].
+
 ## [2026-08-07] update | [[Campaign Target Audience]] — shipped both halves; the ordering claim is now measured
 
 Deployed `donny-campaign-generate` **v113 → v114** (the second half of the frontend-first sequence)

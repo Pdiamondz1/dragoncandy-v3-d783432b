@@ -107,6 +107,21 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Built — awaiting founder go-live
 
+- **DC Points visibility (`/rewards`, chip, honest notification, Donny)** — DC Points had no
+  destination: a bell said "+200 DC Points" with nowhere to click, points showed on two dashboards
+  with no explanation, and even the founder needed a SQL query to answer "what earned that." Ships
+  a `/rewards` page (balance, full-sentence tier gap, human-labeled history, a live
+  `dre_config`-driven earn catalog), an always-visible `DcPointsChip` in both top bars, a
+  caller-scoped `dre_my_standing()` RPC, a bell that names its reason and links to `/rewards`, and
+  a Donny `rewards_agent` answering strictly from the caller's own standing. Deliberately
+  **earn-only, no perk economy** — a tier confers a public badge and nothing else, the same
+  honesty stance as [[Honest Analytics]]. Along the way, closed a leak where two never-built DRE
+  engineering specs (referrals, streaks, redemption) were reachable by consumer Donny via a NULL
+  `donny_knowledge.scope`. **Pending:** implementation complete (10/10 tasks reviewed clean, full
+  suite green) and 3 migrations applied + verified on prod, but the mandatory Codex second review
+  has **not run** (OpenAI quota until 2026-08-08 08:55) — open the PR once it's clean, then deploy
+  `dre-award-engine` (`--no-verify-jwt`) and `donny-orchestrator` (without that flag).
+  → `docs/wiki/concepts/dragon-rewards-engine.md` · `feat/dc-points-visibility`
 - **`outstand-proxy` cross-tenant authorization** — three pre-existing, live holes closed: body
   account ids used as a **grant** (`DELETE /posts/{any_id}` ⇒ any post in the org), a platform
   fallback (one Instagram account ⇒ every Instagram post), and a list filter that stripped `data`
