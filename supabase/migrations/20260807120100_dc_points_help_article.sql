@@ -6,6 +6,8 @@ set title = 'DC Points & Creator Standing',
     body = $body$
 <p>You earn <strong>DC Points</strong> for real activity on DragonCandy. Your balance and full history are on your <a href="/rewards">DC Points page</a>, which also lists every way to earn.</p>
 
+<img src="https://zocahiffooqdybdhguqv.supabase.co/storage/v1/object/public/help-screenshots/help-dragon-rewards.png" class="rounded-xl shadow-md my-4 max-w-full" alt="The creator dashboard showing the DC Points balance and current standing tier" />
+
 <h3>How creators earn</h3>
 <ul>
   <li>Complete your creator profile — 250</li>

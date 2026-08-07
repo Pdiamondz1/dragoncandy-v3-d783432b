@@ -10,9 +10,10 @@
 -- only on insert and preserved on update (in which case this one-off UPDATE holds)?
 --
 -- FINDING: scope is NOT preserved on update — it is recomputed from the request
--- payload on every call, including updates, and the wiki consumer sync never sends
--- scope for these two pages. This UPDATE WILL BE REVERTED by the next docs-touching
--- merge to main. Evidence:
+-- payload on every call, including updates. At the time this migration was first
+-- written, the wiki consumer sync never sent scope for these two pages, so this
+-- UPDATE would have been reverted by the very next docs-touching merge to main
+-- (this PR touches docs/ heavily, so that would have meant its own merge). Evidence:
 --
 --   1. supabase/functions/donny-knowledge-sync/index.ts:160-166 builds `row` fresh
 --      from the request payload on every invocation:
@@ -50,15 +51,20 @@
 --      will silently flip both rows' scope back to NULL and re-expose the fabricated
 --      six-phase rewards spec to consumer Donny.
 --
--- CONCLUSION: this migration is still applied as a correct point-in-time fix (it
--- closes the hole the instant it runs), but per the brief it is NOT sufficient on
--- its own. The durable fix belongs in sync-wiki-to-donny.mjs's scope assignment
--- (e.g. a small FORCE_INTERNAL set of slugs, applied unconditionally — not gated
--- behind SYNC_CURATE=1, since the automated post-merge hook never sets that var —
--- that sets `scope: "internal"` on the pushed page object for these two paths,
--- mirroring how sync-internal-docs.mjs already always sets scope: "internal").
--- That script-side change is a deliberate scope decision left to the controller and
--- is NOT made by this migration.
+-- FIX (now implemented): supabase/scripts/sync-wiki-to-donny.mjs gained a
+-- FORCE_INTERNAL set (unconditional — not gated behind SYNC_CURATE) that sends
+-- `scope: "internal"` on the pushed page object for exactly these two paths,
+-- keyed on the exact "<dir>/<filename>" pair so it cannot loosely match an
+-- unrelated future page. See that file's FORCE_INTERNAL comment for the full
+-- rationale. donny-knowledge-sync/index.ts itself was left unchanged — its
+-- payload-driven scope behavior is relied on by other callers (e.g.
+-- sync-internal-docs.mjs), so the fix belongs on the sending side, not there.
+--
+-- This migration remains necessary as the point-in-time half of the fix: it
+-- corrects the rows already sitting in prod today. Without it, prod stays wrong
+-- until the next sync run (now correct) actually executes; with it, prod is
+-- correct immediately on apply, and the sync-side fix keeps it that way forever
+-- after.
 update public.donny_knowledge
 set scope = 'internal', updated_at = now()
 where metadata->>'path' in (
