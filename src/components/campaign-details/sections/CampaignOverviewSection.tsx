@@ -23,6 +23,16 @@ export function CampaignOverviewSection({ campaign }: CampaignOverviewSectionPro
           )}
         </div>
 
+        {/* line-clamp is load-bearing: legacy-wizard campaigns store free-text prose under this
+            same key (see MAX_AUDIENCE_CHARS in src/lib/campaignAudience.ts), so it can run to a
+            paragraph rather than the one line Donny now generates. */}
+        {campaign.target_audience && (
+          <div>
+            <span className="text-[11px] text-gray-500 uppercase tracking-wider">Made to attract</span>
+            <p className="text-sm text-gray-700 line-clamp-3">{campaign.target_audience}</p>
+          </div>
+        )}
+
         {campaign.description && (
           <div>
             <span className="text-[11px] text-gray-500 uppercase tracking-wider">Description</span>

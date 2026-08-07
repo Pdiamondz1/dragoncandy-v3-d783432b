@@ -1,5 +1,35 @@
 # Wiki Log
 
+## [2026-08-07] ingest | [[Campaign Target Audience]] — personas → the customer the content should attract
+Ingested [[Campaign Target Audience Session]]. New concept page rather than compounding onto
+[[Campaign Generation Creativity]]: that page is about whether the generated ideas are *good*,
+this is about what they're *for*. Cross-linked both ways, and added a dated update section to the
+generation page since this change edits the same prompt.
+
+**The finding that justified deleting rather than tuning:** the founder asked for "more specific"
+chips; the audit found the chips fed **nothing**. `ai_analysis.target_creator_persona` was read by
+three display components and by no matcher, filter, or notification — creator matching scores
+`creator_profiles.skills`, a *craft* enum sharing zero values with it. A better list of dead
+options is still dead. Worth generalizing: **before improving a control, check what reads it.**
+
+**Two mechanisms worth remembering.** (1) Field ORDER in an LLM JSON schema is causal, not
+cosmetic — `target_audience` is emitted ahead of `style_direction`/`key_messages`/`hashtags`
+because the model is autoregressive, which does what "derive these from the audience" alone does
+not. (2) **Coercion needs a boundary count you can state.** Here it's exactly two — Zod for the
+network, `normalizeDraft` for localStorage — because the draft path is a bare `JSON.parse` that
+never sees Zod, a gap invisible in dev since dev localStorage is empty.
+
+**Review earned its place four times**, and the instructive one was self-inflicted: the module
+comment says "write short, read tolerant — truncating an existing audience would be a silent
+edit," and the edit-save path then truncated it. A stated rule in a comment is not enforcement.
+Also caught: a new test that **could never fail** (it matched the prompt's prose, which precedes
+the schema regardless of field order) and a cited justification file that never writes the key it
+was credited with — a bad citation invites a maintainer to "correct away" a real tolerance.
+
+**Not yet reviewed by Codex** (quota exhausted until 2026-08-08); the page's Known Issues records
+that, plus the counter-intuitive deploy order — frontend BEFORE the edge function, because the
+*deployed* schema still requires the field being removed.
+
 ## [2026-08-07] update | [[Cross-Tenant Proxy Authorization]] — /media list served from our own table
 Ingested [[Media List From Our Own Table Session]]. Compounded onto the concept page again: same
 rule, third resource-level application, and the `/media` pagination limit moves from "where the

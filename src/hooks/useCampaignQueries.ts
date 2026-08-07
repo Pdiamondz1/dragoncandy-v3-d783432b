@@ -17,9 +17,19 @@ export function hydrateCampaignFromAnalysis<T extends Campaign>(campaign: T): T 
     exclusivity_days: campaign.exclusivity_days ?? (ai.exclusivity_days as number) ?? undefined,
     geographic_scope: campaign.geographic_scope || (ai.geographic_scope as Campaign['geographic_scope']) || undefined,
     creator_count: campaign.creator_count ?? (ai.creator_count as number) ?? undefined,
+    // Legacy: campaigns launched before the audience change. Left intact so their existing
+    // "Target Creators" block keeps rendering; new campaigns simply never set it.
     target_creator_personas: campaign.target_creator_personas?.length
       ? campaign.target_creator_personas
       : (ai.target_creator_personas as string[]) || (ai.target_creator_persona as string[]) || undefined,
+    // ai_analysis is the only home for these two — there is no campaigns column for either, so
+    // unlike the fields above there is no column branch to fall back from. The key is shared with
+    // the legacy campaign wizard (`useCampaignWizard.ts:156` stores the whole
+    // generate-campaign-analysis blob, whose target_audience is free-text prose); the semantics
+    // match, so those campaigns light up the audience block for free — but render sites must
+    // clamp, because this is not guaranteed to be one short line.
+    target_audience: (ai.target_audience as string) || undefined,
+    campaign_tags: (ai.campaign_tags as string[]) || undefined,
     hashtag_requirements: campaign.hashtag_requirements
       || (Array.isArray(ai.hashtags) ? (ai.hashtags as string[]).join(' ') : (ai.hashtag_requirements as string))
       || undefined,
@@ -76,6 +86,10 @@ export interface Campaign {
   key_messages?: string[];
   style_direction?: string | StyleDirection;
   tier_reasoning?: string;
+  /** Who the content should attract. May be legacy free-text prose — clamp on render. */
+  target_audience?: string;
+  /** Creative-direction cues shown on the creator's brief. */
+  campaign_tags?: string[];
   created_at: string;
   updated_at: string;
   // Collaboration + creator enrichment (optional, populated by useCampaignsList)

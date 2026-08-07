@@ -36,6 +36,33 @@ describe('buildDonnyFirstSystemPrompt', () => {
     expect(withPlatforms).toMatch(/suggested_price_min/);
     expect(withPlatforms).toMatch(/suggested_price_max/);
   });
+  it('asks for an audience and creative-direction tags', () => {
+    expect(withPlatforms).toMatch(/target_audience/);
+    expect(withPlatforms).toMatch(/audience_alternates/);
+    expect(withPlatforms).toMatch(/campaign_tags/);
+  });
+  it('emits target_audience before the creative fields it should drive', () => {
+    // The model is autoregressive: schema order is what makes style/messages derive from the
+    // audience rather than being written independently of it.
+    //
+    // Scoped to the JSON schema block on purpose. Searching the whole prompt matches the quoted
+    // mention inside audienceGuidance()'s prose, which sits ahead of the schema no matter how the
+    // schema is ordered — so the assertion would pass even with the fields in the wrong order.
+    const schema = withPlatforms.slice(withPlatforms.indexOf('Output only raw JSON'));
+    const audienceAt = schema.indexOf('"target_audience"');
+    expect(audienceAt).toBeGreaterThan(-1);
+    expect(audienceAt).toBeLessThan(schema.indexOf('"style_direction"'));
+    expect(audienceAt).toBeLessThan(schema.indexOf('"key_messages"'));
+    expect(audienceAt).toBeLessThan(schema.indexOf('"hashtags"'));
+  });
+  it('rules out creator job titles as an audience answer', () => {
+    expect(withPlatforms).toMatch(/never the person who films it/i);
+  });
+  it('keeps target_creator_persona only as the transitional empty array', () => {
+    // Phase A: browser bundles deployed before this change still REQUIRE the key, so it ships
+    // as []. Delete the prompt line and flip this to .not.toMatch once those have aged out.
+    expect(withPlatforms).toMatch(/"target_creator_persona": \[\]/);
+  });
   it('has no stray backtick (Deno bundle hygiene)', () => {
     expect(withPlatforms.includes(String.fromCharCode(96))).toBe(false);
     expect(buildDonnyFirstSystemPrompt().includes(String.fromCharCode(96))).toBe(false);

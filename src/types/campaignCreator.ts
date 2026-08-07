@@ -48,7 +48,16 @@ export interface CampaignIdea {
   tier: DeliveryTier;
   tier_reasoning: string;
   style_direction: string;
-  target_creator_persona: string[];
+  /** Who the content should ATTRACT — the business's customer, in one line. Never a creator job title. */
+  target_audience: string;
+  /**
+   * Two other customers this campaign could credibly chase. Generation-time swap options
+   * only — deliberately absent from EditableCampaign and ai_analysis, since "swap to an
+   * alternate" is meaningless once the campaign is live.
+   */
+  audience_alternates: string[];
+  /** 4-6 concrete creative-direction cues the creator reads on the brief. */
+  campaign_tags: string[];
   key_messages: string[];
   hashtags: string[];
   content_strategy?: ContentStrategy | null;
@@ -77,7 +86,8 @@ export interface EditableCampaign {
   geographic_scope: 'city' | 'region' | 'national';
   target_creator_count: number;
   style_direction: string;
-  target_creator_persona: string[];
+  target_audience: string;
+  campaign_tags: string[];
   key_messages: string[];
   hashtags: string[];
   tier_reasoning: string;

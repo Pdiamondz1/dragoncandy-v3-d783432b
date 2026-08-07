@@ -242,13 +242,27 @@ const BrandCampaignDetails = () => {
             </div>
           )}
 
-          {/* Target Audience */}
+          {/* Made to attract — clamped: legacy wizard campaigns store prose under this key */}
+          {campaign.target_audience && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Target className="h-4 w-4 text-dc-teal" aria-hidden="true" />
+                <span className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Made to attract
+                </span>
+              </div>
+              <p className="text-sm text-gray-700 line-clamp-3">{campaign.target_audience}</p>
+            </div>
+          )}
+
+          {/* Target creators — this list is creator personas, not an audience. The heading
+              said "Target Audience", which is now a separate and genuinely different field. */}
           {campaign.target_creator_personas && campaign.target_creator_personas.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Target className="h-4 w-4 text-dc-teal" aria-hidden="true" />
                 <span className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  Target Audience
+                  Target Creators
                 </span>
               </div>
               <div className="flex flex-wrap gap-2">
