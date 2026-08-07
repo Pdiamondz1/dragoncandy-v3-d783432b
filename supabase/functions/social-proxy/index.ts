@@ -607,16 +607,34 @@ async function handleOp(
       // created here is orphaned from the person who created it. Same reasoning
       // that put post minting in a shared store rather than one gateway.
       //
-      // Best-effort: the upload already exists at the provider, so a mint
-      // failure is logged, never surfaced as a failed upload.
-      try {
-        await recordMediaOwnership(
-          deps.admin,
-          extractUploadedMediaId(out) ?? (out as { id?: string } | null)?.id ?? null,
-          deps.ctx.userId,
+      // OUTSTAND ONLY — the same gate bindCreatedPostOwnership applies, and for
+      // the same reason. This gateway is provider-agnostic, but
+      // outstand_media_ownership is Outstand-KEYED: a bare media id with no
+      // provider column. Provider ids are only opaque WITHIN a provider, so
+      // writing a Zernio media id into it pollutes the Outstand namespace, where
+      // outstand-proxy later trusts it as authorization for Outstand
+      // /media/{id}. A cross-provider collision could then grant or block the
+      // wrong person. A non-Outstand upload is left unbound rather than
+      // mis-bound; binding Zernio media correctly needs a provider-qualified
+      // key, which belongs with the Zernio measurement work.
+      //
+      // Best-effort otherwise: the upload already exists at the provider, so a
+      // mint failure is logged, never surfaced as a failed upload.
+      if (deps.ctx.provider !== "outstand") {
+        console.warn(
+          `social-proxy: uploadMedia on provider '${deps.ctx.provider}' — no ownership binding minted ` +
+            `(outstand_media_ownership is Outstand-keyed); this media will not be reachable via outstand-proxy`,
         );
-      } catch (e) {
-        console.error("social-proxy: media ownership binding threw (upload already succeeded)", e);
+      } else {
+        try {
+          await recordMediaOwnership(
+            deps.admin,
+            extractUploadedMediaId(out) ?? (out as { id?: string } | null)?.id ?? null,
+            deps.ctx.userId,
+          );
+        } catch (e) {
+          console.error("social-proxy: media ownership binding threw (upload already succeeded)", e);
+        }
       }
 
       return jsonResponse(200, { data: out });
