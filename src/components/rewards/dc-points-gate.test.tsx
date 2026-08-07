@@ -6,9 +6,10 @@ import { MemoryRouter } from 'react-router-dom';
 import { StandingCard } from './StandingCard';
 import { DcPointsChip } from './DcPointsChip';
 
-const { mockEnabled, mockCatalog } = vi.hoisted(() => ({
+const { mockEnabled, mockCatalog, mockLoading } = vi.hoisted(() => ({
   mockEnabled: vi.fn(),
   mockCatalog: vi.fn(),
+  mockLoading: vi.fn(),
 }));
 
 const RESOLVED_CATALOG = {
@@ -24,7 +25,10 @@ const RESOLVED_CATALOG = {
 
 vi.mock('@/hooks/useDragonPoints', () => ({
   useDragonRewardsEnabled: () => mockEnabled(),
-  useDragonPoints: () => ({ data: { balance: 1234, tier: 'scout' }, isLoading: false }),
+  // Controllable per-test (default false, see the DcPointsChip beforeEach) so the
+  // chip's loading-gate branch can be exercised without weakening the fixed
+  // balance/tier the other tests assert against.
+  useDragonPoints: () => ({ data: { balance: 1234, tier: 'scout' }, isLoading: mockLoading() }),
 }));
 vi.mock('@/hooks/useDcPoints', () => ({
   useDcStanding: () => ({
@@ -81,7 +85,12 @@ vi.mock('@/hooks/useAuth', () => ({
 }));
 
 describe('DcPointsChip', () => {
-  beforeEach(() => { mockEnabled.mockReset(); mockRole.mockReturnValue('business_client'); });
+  beforeEach(() => {
+    mockEnabled.mockReset();
+    mockRole.mockReturnValue('business_client');
+    mockLoading.mockReset();
+    mockLoading.mockReturnValue(false);
+  });
 
   it('renders nothing when the launch flag is OFF', () => {
     mockEnabled.mockReturnValue(false);
@@ -98,6 +107,13 @@ describe('DcPointsChip', () => {
   it('renders nothing for a brand user (DRE has no brand triggers, so it would sit at 0)', () => {
     mockEnabled.mockReturnValue(true);
     mockRole.mockReturnValue('brand');
+    const { container } = render(<DcPointsChip />, { wrapper: MemoryRouter });
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('renders nothing while the balance is still loading (avoids top-bar jitter)', () => {
+    mockEnabled.mockReturnValue(true);
+    mockLoading.mockReturnValue(true);
     const { container } = render(<DcPointsChip />, { wrapper: MemoryRouter });
     expect(container).toBeEmptyDOMElement();
   });
