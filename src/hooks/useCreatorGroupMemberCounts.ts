@@ -45,5 +45,9 @@ export function useCreatorGroupMemberCounts(groupIds: string[]) {
   return {
     counts: query.data ?? new Map<string, GroupMemberCounts>(),
     isLoading: query.isLoading,
+    // Callers MUST check this before rendering a count. On error react-query
+    // reports isLoading=false with undefined data, so an absent entry would
+    // otherwise read as a confident "no members" on a crew that has plenty.
+    isError: query.isError,
   };
 }

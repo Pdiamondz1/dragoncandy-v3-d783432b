@@ -573,8 +573,8 @@ const handler = async (req: Request): Promise<Response> => {
                 ${esc.businessName || 'A business'} invited you to join their crew${esc.groupName ? ' "' + esc.groupName + '"' : ''} on DragonCandy.
               </p>
               <div style="background: #ECFDF5; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;">
-                <p style="margin: 0; color: #065F46; font-weight: 600;">✨ Your crew gets first look</p>
-                <p style="margin: 8px 0 0 0; color: #065F46; font-size: 14px;">Crew collabs are shared with the crew before they hit the marketplace, and it's one tap to apply. They're free collabs — no budget, no payout — so you're saying yes to first dibs, not to a fee.</p>
+                <p style="margin: 0; color: #065F46; font-weight: 600;">✨ Crew-only collabs</p>
+                <p style="margin: 8px 0 0 0; color: #065F46; font-size: 14px;">Crew collabs never go public — only the crew sees them, so you're not competing with the whole marketplace, and it's one tap to apply. They're free collabs — no budget, no payout — so you're saying yes to the invite, not to a fee.</p>
               </div>
               <p style="font-size: 14px; color: #6B7280; line-height: 1.6;">
                 Accepting adds you to their roster. Applying is always your call, and you can decline this invite with no hard feelings.

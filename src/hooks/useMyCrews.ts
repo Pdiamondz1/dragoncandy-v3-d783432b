@@ -7,7 +7,6 @@ export interface MyCrew {
   group_id: string;
   name: string;
   owner_id: string;
-  joined_at: string | null;
   /** Best-effort — null when the owner's business profile isn't public. */
   business_name: string | null;
   logo_url: string | null;
@@ -74,7 +73,6 @@ export function useMyCrews() {
           group_id: group.id,
           name: group.name,
           owner_id: group.owner_id,
-          joined_at: m.responded_at,
           business_name: business?.business_name ?? null,
           logo_url: business?.logo_url ?? null,
         }];

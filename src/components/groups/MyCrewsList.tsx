@@ -78,7 +78,7 @@ export function MyCrewsList({ crews, isLoading, isError }: MyCrewsListProps) {
               )}
             </div>
             <AppStatusBadge tone="teal" className="shrink-0">
-              First look
+              Crew-only
             </AppStatusBadge>
           </li>
         );

@@ -55,8 +55,8 @@ export function GroupInviteCard({ invitation, onAccept, onDecline, isPending = f
 
       <div className="rounded-xl bg-dc-teal/[0.04] border border-dc-teal/20 p-3 space-y-1.5 mb-3">
         <p className="text-xs text-gray-600">
-          <span className="font-semibold text-gray-900">⚡ First look</span> — crew collabs reach
-          the crew before they hit the marketplace, and it's one tap to apply.
+          <span className="font-semibold text-gray-900">⚡ Crew-only</span> — these collabs never
+          go public, so you're not competing with the whole marketplace. One tap to apply.
         </p>
         <p className="text-xs text-gray-600">
           <span className="font-semibold text-gray-900">🎁 Free collabs</span> — crew campaigns are

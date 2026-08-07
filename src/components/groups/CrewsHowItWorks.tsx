@@ -18,9 +18,9 @@ const STEPS: Step[] = [
       'Crew campaigns are unpaid and private: no budget, no Stripe, and nobody outside the crew ever sees them.',
   },
   {
-    title: 'Your crew gets first look',
+    title: 'They apply in one tap',
     description:
-      'Crew collabs reach your roster before the marketplace, and they apply in one tap. Review, approvals, and delivery work like any other campaign.',
+      "No bidding and no Stripe — and because the collab never goes public, your roster isn't competing with the whole marketplace for it. Review, approvals, and delivery work like any other campaign.",
   },
 ];
 

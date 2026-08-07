@@ -14,14 +14,22 @@ import {
  * business profile, so neither lookup is RLS-sensitive here.
  */
 async function fetchCrewIdentity(groupId: string, ownerId: string) {
-  const [{ data: group }, { data: business }] = await Promise.all([
-    supabase.from('creator_groups').select('name').eq('id', groupId).maybeSingle(),
-    supabase.from('business_profiles').select('business_name').eq('user_id', ownerId).maybeSingle(),
-  ]);
-  return {
-    groupName: group?.name ?? 'a crew',
-    businessName: business?.business_name ?? null,
-  };
+  // Never throws. Both callers run this AFTER their write has already
+  // committed, so a rejected lookup must not fail the mutation and show
+  // "Failed to invite" for work that actually succeeded.
+  try {
+    const [{ data: group }, { data: business }] = await Promise.all([
+      supabase.from('creator_groups').select('name').eq('id', groupId).maybeSingle(),
+      supabase.from('business_profiles').select('business_name').eq('user_id', ownerId).maybeSingle(),
+    ]);
+    return {
+      groupName: group?.name ?? 'a crew',
+      businessName: business?.business_name ?? null,
+    };
+  } catch (err) {
+    console.error('Failed to resolve crew identity for notification:', err);
+    return { groupName: 'a crew', businessName: null };
+  }
 }
 
 /**
@@ -185,10 +193,13 @@ export function useCreatorGroupMembers(groupId: string) {
         return;
       }
 
+      // Deliberately does not name the channel: create-notification returns 200
+      // with emailSent:false when the recipient has campaign emails switched
+      // off, so promising "and email" here would sometimes be a lie.
       toast({
         title: 'Creators invited',
         description:
-          "They'll get a notification and email inviting them to join. You'll see them under Pending until they accept.",
+          "They'll be notified and can accept from their Crews tab. You'll see them under Pending until they do.",
       });
     },
     onError: () => {
@@ -215,8 +226,10 @@ export function useCreatorGroupMembers(groupId: string) {
       // removal itself has already succeeded, so a failed bell must not throw.
       if (wasActive) {
         const { groupName, businessName } = await fetchCrewIdentity(groupId, user!.id);
-        await supabase.functions
-          .invoke('create-notification', {
+        try {
+          // invoke resolves (not rejects) on a non-2xx, so the error has to be
+          // read off the result — a bare .catch() here would log nothing at all.
+          const { error: notifyError } = await supabase.functions.invoke('create-notification', {
             body: buildGroupRemovalNotification({
               creatorId,
               groupName,
@@ -224,8 +237,13 @@ export function useCreatorGroupMembers(groupId: string) {
               actorId: user!.id,
               businessName,
             }),
-          })
-          .catch((err: unknown) => console.error('Failed to send crew removal notification:', err));
+          });
+          if (notifyError) {
+            console.error('Failed to send crew removal notification:', notifyError);
+          }
+        } catch (err) {
+          console.error('Failed to send crew removal notification:', err);
+        }
       }
 
       return creatorId;

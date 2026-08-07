@@ -64,9 +64,11 @@ const EmptyState: React.FC<{ onCreate: () => void }> = ({ onCreate }) => (
 
 const CreatorGroupsInner: React.FC = () => {
   const { groups, isLoading, isError, createGroup } = useCreatorGroups();
-  const { counts, isLoading: countsLoading } = useCreatorGroupMemberCounts(
-    groups.map((g) => g.id),
-  );
+  const {
+    counts,
+    isLoading: countsLoading,
+    isError: countsError,
+  } = useCreatorGroupMemberCounts(groups.map((g) => g.id));
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState('');
@@ -154,8 +156,10 @@ const CreatorGroupsInner: React.FC = () => {
                     <p className="mt-1 text-sm italic text-dc-text-muted/70">No description</p>
                   )}
                   {/* Nothing while loading — a skeleton would jitter the grid
-                      for a secondary detail. */}
-                  {!countsLoading && (
+                      for a secondary detail. Nothing on error either: an absent
+                      count is indistinguishable from an empty crew, so showing
+                      it would assert "No members yet" about a full roster. */}
+                  {!countsLoading && !countsError && (
                     <div className="mt-3 flex flex-wrap items-center gap-1.5">
                       <CrewCounts counts={counts.get(group.id)} />
                     </div>
