@@ -546,7 +546,15 @@ serve(async (req: Request) => {
   // double-apply.
   let schedulesCompleted = 0;
   let scheduleCompletionErrors = 0;
+  let scheduleSweepTruncated = 0;
   try {
+    // SHARES the run budget with post reconciliation above rather than having
+    // its own. Post processing may already have spent the whole deadline, and
+    // this loop can otherwise issue thousands of sequential RPCs past it —
+    // overrunning the platform timeout means the function returns NOTHING, so
+    // an unbounded safety net would take down the run it was meant to protect.
+    // Truncation is counted and logged; the next hourly run resumes, because
+    // the RPC is idempotent and the set is re-derived from scratch each time.
     // PAGED, not capped. A bare .limit(500) would evaluate one batch and stop,
     // so campaigns outside it stay stuck forever while the comment above claims
     // every in-flight campaign is re-driven — a silent cap presenting as
@@ -588,6 +596,10 @@ serve(async (req: Request) => {
       if (batch.length === 0) break;
 
       for (const row of batch) {
+        if (Date.now() > deadline) {
+          scheduleSweepTruncated = 1;
+          break;
+        }
         const { data: done, error: rpcErr } = await admin.rpc(
           "complete_posting_schedule_if_done",
           { p_campaign_id: row.id, p_user_id: row.user_id },
@@ -599,6 +611,14 @@ serve(async (req: Request) => {
           schedulesCompleted += 1;
           console.log(`[reconcile] campaign ${row.id} posting schedule completed`);
         }
+      }
+
+      if (scheduleSweepTruncated) {
+        console.warn(
+          `[reconcile] schedule-completion sweep stopped at the run budget after ` +
+            `${campaignsScanned} campaign(s) — the next hourly run resumes`,
+        );
+        break;
       }
 
       lastId = batch[batch.length - 1].id;
@@ -639,6 +659,7 @@ serve(async (req: Request) => {
     // schedule completion (safety net for the webhook's concurrent-final-post race)
     schedulesCompleted,
     scheduleCompletionErrors,
+    scheduleSweepTruncated,
     unbound,
     bindingConflicts,
     bindingUnavailable,
