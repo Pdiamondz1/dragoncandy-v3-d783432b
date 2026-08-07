@@ -5,6 +5,7 @@ import {
   latestPerPost,
   rankByEngagement,
   signalVerdict,
+  signalForVisible,
   type PerformanceRow,
 } from './postPerformance';
 
@@ -57,6 +58,40 @@ describe('latestPerPost', () => {
       row({ outstand_post_id: 'a', captured_at: '2026-06-09T00:00:00Z', likes: 7 }),
     ];
     expect(latestPerPost(rows)[0].likes).toBe(7);
+  });
+
+  it('SUMS across platforms — a cross-posted hit must not lose its other platforms', () => {
+    // The unique key is (post, platform, milestone), so a fanned-out post has a
+    // row per platform. Keying only on post id kept one and discarded the rest.
+    const rows = [
+      row({ outstand_post_id: 'fanned', platform: 'instagram', likes: 10, views: 100 }),
+      row({ outstand_post_id: 'fanned', platform: 'youtube', likes: 20, views: 900 }),
+      row({ outstand_post_id: 'fanned', platform: 'tiktok', likes: 5, views: 40 }),
+    ];
+    const out = latestPerPost(rows);
+    expect(out).toHaveLength(1);
+    expect(out[0].interactions).toBe(35);
+    expect(out[0].views).toBe(1040);
+    expect(out[0].platforms).toEqual(['instagram', 'tiktok', 'youtube']);
+  });
+
+  it('collapses milestones WITHIN a platform before summing across them', () => {
+    const rows = [
+      row({ outstand_post_id: 'p', platform: 'instagram', milestone: '24h', captured_at: '2026-06-01T00:00:00Z', likes: 1 }),
+      row({ outstand_post_id: 'p', platform: 'instagram', milestone: '7d', captured_at: '2026-06-08T00:00:00Z', likes: 4 }),
+      row({ outstand_post_id: 'p', platform: 'youtube', milestone: '24h', captured_at: '2026-06-01T00:00:00Z', likes: 2 }),
+    ];
+    // 4 (latest instagram) + 2 (youtube) — NOT 1+4+2.
+    expect(latestPerPost(rows)[0].interactions).toBe(6);
+  });
+
+  it('a cross-posted post outranks a single-platform post with fewer total interactions', () => {
+    const posts = latestPerPost([
+      row({ outstand_post_id: 'single', platform: 'youtube', likes: 25 }),
+      row({ outstand_post_id: 'fanned', platform: 'instagram', likes: 15 }),
+      row({ outstand_post_id: 'fanned', platform: 'tiktok', likes: 15 }),
+    ]);
+    expect(rankByEngagement(posts)[0].outstandPostId).toBe('fanned');
   });
 
   it('keeps distinct posts separate', () => {
@@ -135,5 +170,33 @@ describe('signalVerdict', () => {
 
   it('today\'s real prod state — 1 verified post, no metrics — yields no signal', () => {
     expect(signalVerdict(latestPerPost([]).length)).toEqual({ hasSignal: false, n: 0, needed: 3 });
+  });
+});
+
+describe('signalForVisible', () => {
+  const measured = new Set(['a', 'b', 'c', 'd']);
+
+  it('counts only the posts on screen, not the whole account', () => {
+    // The bug: 4 measured posts account-wide, but the platform filter shows two
+    // unmeasured ones. An account-wide verdict would flip the UI into "ranked"
+    // mode and then render nothing.
+    expect(signalForVisible(['x', 'y'], measured)).toEqual({ hasSignal: false, n: 0, needed: 3 });
+  });
+
+  it('grants signal when enough of the VISIBLE posts are measured', () => {
+    expect(signalForVisible(['a', 'b', 'c'], measured)).toEqual({ hasSignal: true, n: 3 });
+  });
+
+  it('counts a mixed view correctly', () => {
+    expect(signalForVisible(['a', 'x', 'b'], measured)).toEqual({ hasSignal: false, n: 2, needed: 1 });
+  });
+
+  it('does not double-count a repeated id', () => {
+    expect(signalForVisible(['a', 'a', 'a'], measured)).toEqual({ hasSignal: false, n: 1, needed: 2 });
+  });
+
+  it('handles an empty view and empty measurements', () => {
+    expect(signalForVisible([], measured)).toEqual({ hasSignal: false, n: 0, needed: 3 });
+    expect(signalForVisible(['a'], new Set())).toEqual({ hasSignal: false, n: 0, needed: 3 });
   });
 });

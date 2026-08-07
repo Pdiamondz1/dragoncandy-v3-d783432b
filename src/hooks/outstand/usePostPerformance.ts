@@ -38,7 +38,14 @@ import {
 export interface PostPerformanceResult {
   /** Ranked best-first by interactions. Empty until measured posts exist. */
   posts: PostPerformance[];
-  /** Whether there are enough measured posts to present a pattern, plus N. */
+  /** Lookup by Outstand post id, for joining against the SDK's post list. */
+  byId: Map<string, PostPerformance>;
+  /**
+   * Account-wide verdict. Components rendering a FILTERED subset must not use
+   * this — they call `signalForVisible` with the ids they are actually showing,
+   * or a platform filter can flip them into ranked mode over posts that have no
+   * measurements at all. Kept for callers that render everything.
+   */
   signal: SignalVerdict;
   isLoading: boolean;
   error: Error | null;
@@ -73,8 +80,10 @@ export function usePostPerformance(): PostPerformanceResult {
   });
 
   const posts = data ?? [];
+  const byId = new Map(posts.map((p) => [p.outstandPostId, p]));
   return {
     posts,
+    byId,
     signal: signalVerdict(posts.length),
     isLoading,
     error: (error as Error) ?? null,

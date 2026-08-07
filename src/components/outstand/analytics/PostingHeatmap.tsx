@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import type { Post } from '@outstand-so/ui';
 import { isInPublishedFeed } from '@/lib/outstandUtils';
 import { usePostPerformance } from '@/hooks/outstand/usePostPerformance';
+import { signalForVisible } from '@/lib/postPerformance';
 
 const TIME_SLOTS = ['9a', '12p', '3p', '6p'];
 const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -36,16 +37,24 @@ interface PostingHeatmapProps {
  * "When You Post", a volume map, labelled as one.
  */
 export const PostingHeatmap: React.FC<PostingHeatmapProps> = ({ posts }) => {
-  const { posts: measured, signal } = usePostPerformance();
-  const weighted = signal.hasSignal;
+  const { byId } = usePostPerformance();
 
-  const byId = useMemo(() => new Map(measured.map((m) => [m.outstandPostId, m])), [measured]);
+  const published = useMemo(() => posts.filter(isInPublishedFeed), [posts]);
+
+  // Scoped to what this grid actually draws. `posts` arrives platform-filtered
+  // from AnalyticsTab, so an account-wide verdict could title an all-zero grid
+  // "Best Posting Times" when the selected platform has no measurements.
+  const signal = useMemo(
+    () => signalForVisible(published.map((p) => p.id), new Set(byId.keys())),
+    [published, byId],
+  );
+  const weighted = signal.hasSignal;
 
   const grid = useMemo(() => {
     const cells: number[][] = Array.from({ length: 4 }, () => Array(7).fill(0));
     let max = 0;
 
-    posts.filter(isInPublishedFeed).forEach((post) => {
+    published.forEach((post) => {
       const stamp = post.publishedAt ?? post.createdAt;
       if (!stamp) return;
       const d = new Date(stamp);
@@ -61,7 +70,7 @@ export const PostingHeatmap: React.FC<PostingHeatmapProps> = ({ posts }) => {
     });
 
     return { cells, max };
-  }, [posts, byId, weighted]);
+  }, [published, byId, weighted]);
 
   function intensityClass(value: number): string {
     if (grid.max === 0 || value === 0) return TEAL_SHADES[0];

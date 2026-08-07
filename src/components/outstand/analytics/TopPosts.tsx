@@ -3,6 +3,7 @@ import type { Post } from '@outstand-so/ui';
 import { getCaption, getUniqueNetworks } from '../postUtils';
 import { isInPublishedFeed } from '@/lib/outstandUtils';
 import { usePostPerformance } from '@/hooks/outstand/usePostPerformance';
+import { signalForVisible } from '@/lib/postPerformance';
 import { formatCompactNumber } from '@/lib/utils';
 
 const NETWORK_COLORS: Record<string, { bg: string; label: string }> = {
@@ -32,14 +33,18 @@ interface TopPostsProps {
  * heading always matches the sort.
  */
 export const TopPosts: React.FC<TopPostsProps> = ({ posts }) => {
-  const { posts: measured, signal } = usePostPerformance();
-
-  const byId = useMemo(
-    () => new Map(measured.map((m) => [m.outstandPostId, m])),
-    [measured],
-  );
+  const { byId } = usePostPerformance();
 
   const published = useMemo(() => posts.filter(isInPublishedFeed), [posts]);
+
+  // Gate on the posts ON SCREEN, not on the account. `posts` is already
+  // platform-filtered by AnalyticsTab, so an account-wide verdict would let a
+  // filter showing only unmeasured posts flip this into ranked mode — which
+  // then discards every row and renders an empty "Top Posts".
+  const signal = useMemo(
+    () => signalForVisible(published.map((p) => p.id), new Set(byId.keys())),
+    [published, byId],
+  );
 
   // Rank on real engagement only when there is enough of it to mean anything.
   // One measured post is a fact, not a ranking.
