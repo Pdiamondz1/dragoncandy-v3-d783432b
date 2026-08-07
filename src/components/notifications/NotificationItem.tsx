@@ -1,8 +1,8 @@
 import React from 'react';
 import { Trash2 } from 'lucide-react';
 import type { PushNotification, NotificationCategory } from '@/types/notifications';
-import { CATEGORY_META } from '@/types/notifications';
 import { cn } from '@/lib/utils';
+import { CategoryIcon } from './CategoryIcon';
 
 interface NotificationItemProps {
   notification: PushNotification;
@@ -48,9 +48,6 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
   const isUnread = !notification.read_at;
   const category = notification.category as NotificationCategory | 'legacy';
   const iconBg = CATEGORY_BG[category] ?? 'bg-dc-teal';
-  const emoji = category !== 'legacy' && CATEGORY_META[category as NotificationCategory]
-    ? CATEGORY_META[category as NotificationCategory].icon
-    : '🔔';
 
   return (
     <button
@@ -70,7 +67,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
           iconBg,
         )}
       >
-        <span role="img" aria-hidden="true">{emoji}</span>
+        <CategoryIcon category={category} imgClassName="h-full w-full" />
       </div>
 
       {/* Content */}
