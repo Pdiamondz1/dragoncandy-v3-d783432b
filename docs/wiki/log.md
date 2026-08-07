@@ -1,5 +1,31 @@
 # Wiki Log
 
+## [2026-08-07] update | [[Cross-Tenant Proxy Authorization]] — /media list served from our own table
+Ingested [[Media List From Our Own Table Session]]. Compounded onto the concept page again: same
+rule, third resource-level application, and the `/media` pagination limit moves from "where the
+boundary still leaks" to closed.
+
+**The lesson is about review, not media.** Codex found FIVE successive defects across two attempts
+at this — filter-one-page, then scan-until-filled — and each fix was individually reasonable. The
+count was the signal: when review keeps finding a DIFFERENT problem in one place, question the
+design rather than the code. The third approach (cache the provider's own record at confirm, serve
+the list from Postgres) removed the whole class instead of handling it — no org list is read, so
+there is no filter left to get wrong.
+
+Recorded three SDK-contract traps that would each have shipped a broken gallery while looking
+correct: `pagination.count` is consumed as the TOTAL (opposite of the provider's own convention, and
+it WILL look like a bug to the next reader — pinned with a test that computes what MediaList
+computes), components read camelCase `contentType` while the wire is `content_type`, and omitting
+`pagination` reports a populated gallery as 0 files.
+
+Also: the migration asserts its own precondition rather than trusting that I checked. And a
+pre-existing bug surfaced by chasing a finding that did NOT hold — `social-proxy`'s adapter had been
+uploading with no MIME type at all. The dismissal is recorded with its reasoning, because a
+dismissal nobody can audit is indistinguishable from an oversight.
+
+Pages: updated `concepts/cross-tenant-proxy-authorization.md`, `index.md`, `docs/SHIPPED_LOG.md`,
+`docs/PROJECT_CONTEXT.md` §5.
+
 ## [2026-08-07] update | [[Cross-Tenant Proxy Authorization]] — /media closed, and what the reviews caught
 Ingested [[Media Scoping and Schedule Completion Session]]. Compounded onto the existing concept
 page rather than creating a new one: this is the same rule (a grant may rest only on a fact the

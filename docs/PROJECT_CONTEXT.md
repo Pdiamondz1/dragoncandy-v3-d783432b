@@ -118,6 +118,14 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   (revoking the client INSERT that let any business user mint another tenant's account id into
   `ownedIds` — the substrate under the surviving grants) is **applied + verified red→green**.
   `/media` remains unscoped (`count: 0` today) — filed.
+  → `docs/wiki/concepts/cross-tenant-proxy-authorization.md`
+- **`GET /media` served from our own table** — the org-wide list paginates before ownership can be
+  applied, so filtering one page gave callers an empty gallery and scanning until filled left media
+  beyond the cap unreachable. Removed the org read entirely: `POST /media/{id}/confirm` returns the
+  provider's full record, so it is cached and the list comes from Postgres — correct window, exact
+  total, and the leak class becomes unreachable rather than handled. **Pending:** merge the PR, then
+  apply migration `20260807060000` (it STOPS if pre-existing bindings would be stranded) and redeploy
+  `outstand-proxy` + `social-proxy`.
   → `docs/wiki/concepts/cross-tenant-proxy-authorization.md` · #368
 - **Honest analytics + edge-function typecheck gate** — the analytics tab showed recency as
   "Top Posts", post volume as "Best Posting Times" (with an *engagement* legend), and absolute

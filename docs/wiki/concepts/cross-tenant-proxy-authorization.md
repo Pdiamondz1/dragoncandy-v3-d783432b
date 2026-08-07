@@ -125,9 +125,15 @@ A row whose account ids cannot be resolved is **dropped**: unattributable is not
   **`42501 permission denied`**.
 - **`/social-accounts/pending/{token}[/finalize]`** rests entirely on the provider's token entropy —
   holding another tenant's in-flight session token finalizes their OAuth handoff into your rows.
-- **`GET /media` paginates over the ORG pool before filtering**, so once several tenants have
-  uploads a caller can get an empty first page while their own media sits further down. Errs toward
-  showing too *little*, never another tenant's. Fixing it means paging over the caller's own ids.
+- ~~**`GET /media` paginates over the ORG pool before filtering**~~ — **closed, and by removing the
+  org read entirely.** Two fixes failed structurally first: filtering one page gave callers an empty
+  gallery while their media sat further down, and scanning pages until the window filled left media
+  beyond the scan cap permanently unreachable. `POST /media/{id}/confirm` returns the provider's full
+  record — every field `MediaFile` has — so the confirm step caches it and `GET /media` is answered
+  from Postgres before any upstream call. **No org list is read at all**, which is the point: the
+  leak this path kept producing is now unreachable rather than handled, and the window is correct by
+  construction. Five successive review findings across the two failed attempts were the signal that
+  the design, not the code, was wrong.
 - **Offset paging over a post-hoc filtered list is incoherent** (upstream page N is not the caller's
   page N). Filtering stops the disclosure; it does not make paging correct.
 - **Delegated posting appears inert**: `ownedIds` is keyed on the grantee, so the grantor's accounts
