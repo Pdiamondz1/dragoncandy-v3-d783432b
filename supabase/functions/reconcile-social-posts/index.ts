@@ -553,17 +553,30 @@ serve(async (req: Request) => {
     // coverage, which is the failure this whole area keeps producing. Pages
     // until a short page ends it, with a hard ceiling so a runaway cannot spin,
     // and the ceiling REPORTS itself rather than truncating quietly.
+    // KEYSET paging, not offset. Offset is wrong here and subtly so: completing
+    // a campaign REMOVES it from the `.in(posting_schedule_status, …)` result
+    // set, so every completion shifts the remaining rows DOWN. With 1000
+    // in-flight and 500 completed on the first page, rows 501-1000 slide to
+    // offsets 0-499 while the next query asks for 500-999 — and evaluates none
+    // of them. An earlier version of this loop advanced by page size and
+    // asserted in a comment that this was safe "because completed rows only
+    // ever drop OUT". That is precisely why it is NOT safe; the claim had the
+    // reasoning backwards.
+    //
+    // Paging by last-seen id is immune: `id > lastId` does not care what left
+    // the set behind it.
     const PAGE = 500;
     const MAX_CAMPAIGNS = 20_000;
-    let from = 0;
+    let lastId = "00000000-0000-0000-0000-000000000000";
     let campaignsScanned = 0;
     for (;;) {
       const { data: inFlight, error: inFlightErr } = await admin
         .from("campaigns")
         .select("id, user_id")
         .in("posting_schedule_status", ["scheduled", "in_progress"])
+        .gt("id", lastId)
         .order("id", { ascending: true })
-        .range(from, from + PAGE - 1);
+        .limit(PAGE);
 
       if (inFlightErr) {
         scheduleCompletionErrors += 1;
@@ -572,6 +585,8 @@ serve(async (req: Request) => {
       }
 
       const batch = (inFlight ?? []) as Array<{ id: string; user_id: string }>;
+      if (batch.length === 0) break;
+
       for (const row of batch) {
         const { data: done, error: rpcErr } = await admin.rpc(
           "complete_posting_schedule_if_done",
@@ -586,12 +601,9 @@ serve(async (req: Request) => {
         }
       }
 
+      lastId = batch[batch.length - 1].id;
       campaignsScanned += batch.length;
       if (batch.length < PAGE) break;
-      // A completed campaign leaves the filtered set, so the window shifts under
-      // us; advancing by the page size is still correct because ordering is by
-      // id and completed rows only ever drop OUT.
-      from += PAGE;
       if (campaignsScanned >= MAX_CAMPAIGNS) {
         scheduleCompletionErrors += 1;
         console.error(
