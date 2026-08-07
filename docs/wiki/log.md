@@ -1,5 +1,25 @@
 # Wiki Log
 
+## [2026-08-06] ingest | [[Honest Analytics]] — a claim may not outrun its evidence
+Ingested [[Honest Analytics and Edge Typecheck Session]] (PR #368). New concept page rather than a
+section on [[Social Measurement Spine]]: that page is about producing trustworthy measurements, this
+is about what you are entitled to CLAIM from them — related, cross-linked, different rule.
+
+The finding worth carrying: **a real metric is not by itself the fix.** The analytics tab's three
+components were confidently wrong (recency sold as "Top Posts"; post volume sold as "Best Posting
+Times" with an engagement legend; absolute counts sold as "Follower Growth"), but swapping in a true
+number computed over one post repeats the mistake in a new costume — the number true, the conclusion
+still worthless. Hence gating on N, stating N, and saying how many more posts are needed rather than
+going blank, because a silent empty state and a genuine absence of data look identical.
+
+Also records the prod data state honestly: 9 `content_performance` rows, **6 of them fabricated
+all-zeros** the spine fix stopped writing but never removed, and ZERO posts with trustworthy metrics
+today. Founder chose exclusion in code (`verified_at IS NOT NULL`) over prod deletion, so the rows
+survive as evidence of the old defect and can never render.
+
+Pages: created `concepts/honest-analytics.md`; updated `index.md`, `docs/SHIPPED_LOG.md`,
+`docs/PROJECT_CONTEXT.md` §5.
+
 ## [2026-08-06] ingest | [[Cross-Tenant Proxy Authorization]] — the proxy IS the tenant boundary
 Ingested [[Outstand Proxy Cross-Tenant Authz Session]] (PR #368). Created a concept page rather than
 compounding onto [[Social Measurement Spine]]: that page is about *measurement*, this is about

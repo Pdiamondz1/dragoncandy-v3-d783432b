@@ -119,6 +119,15 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `ownedIds` — the substrate under the surviving grants) is **applied + verified red→green**.
   `/media` remains unscoped (`count: 0` today) — filed.
   → `docs/wiki/concepts/cross-tenant-proxy-authorization.md` · #368
+- **Honest analytics + edge-function typecheck gate** — the analytics tab showed recency as
+  "Top Posts", post volume as "Best Posting Times" (with an *engagement* legend), and absolute
+  counts as "Follower Growth", while `content_performance` had accumulated since June with **zero
+  readers**. Claims are now gated on sample size (`MIN_POSTS_FOR_SIGNAL`), always state N, and
+  `verified_at IS NOT NULL` keeps 6 fabricated all-zero rows off the screen. Also: Drafts "Edit"
+  did nothing and hashtags were **never published** by either path; and CI type-checked **none** of
+  the 99 edge functions (now 66 gated, 33 listed and printed). **Pending:** merge PR #368 — all
+  checks green after the GitHub Actions outage.
+  → `docs/wiki/concepts/honest-analytics.md` · #368
 - **AIOS Google Workspace ("Connections")** — per-user Google OAuth, audited proxy, Drive
   hub, Donny exports, metrics→Sheet. The `google-chat-donny` bot ships dark (503).
   **Pending:** register the Chat app, set `GOOGLE_CHAT_PROJECT_NUMBER` +

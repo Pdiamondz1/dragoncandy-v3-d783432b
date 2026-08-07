@@ -26,6 +26,72 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-06] Honest analytics, the drafts editor, and an edge-function typecheck gate (#368)
+
+Three items taken after the proxy security work, all on the same PR because a ~5-hour GitHub Actions
+outage blocked everything from merging.
+
+**Drafts "Edit" did nothing.** The button called `onSwitchTab('compose')` and nothing else: it
+dropped the draft's content on the floor — you landed on an EMPTY compose form — and left the
+original row behind, so finishing the edit would have published a duplicate and stranded the draft.
+Loading the draft into Compose would not have fixed it either, because Compose publishes a NEW
+provider post via `createPost` and cannot be a draft editor. A draft is a `donny_scheduled_posts`
+row, so it now edits in place (caption / hashtags / scheduled_at). Hashtag parsing became a tested
+pure function placed beside its inverse `composeCaption`, because a round-trip that disagrees with
+itself is how an edit mangles what it meant to preserve; it emits the leading `#` (verified against
+prod rows) and avoids `\w`, since `#CaféLife` is a real value an ASCII class truncates to `#Caf`.
+
+**And underneath it, hashtags were never published at all** — pre-existing, found by Codex.
+`publishDraft` and `scheduleDraft` both selected `caption` and omitted `hashtags`, so every tag
+Donny has ever generated was dropped at publish while the draft card displayed it. The new dialog
+merely started *promising* otherwise. Both paths now compose through `composeCaption`.
+
+**CI type-checked none of the 99 edge functions.** `npm run typecheck` is `tsc -p
+tsconfig.app.json`, whose `include` is `["src"]`, so every Deno function was unchecked for the life
+of the project; `deno check` finds **128** real errors. Checking everything fails today and a gate
+that cannot pass gets disabled within a week, so the gate checks the **66** that pass, lists the
+**33** that do not in `supabase/functions/.typecheck-ignore`, and PRINTS that list on every run — a
+skip nobody can see is indistinguishable from coverage, which is the exact failure being fixed. It
+also fails if the list names a function that no longer exists. Added inside the existing `verify`
+job so it inherits branch protection; confirmed passing in CI.
+
+Three errors were fixed to reach a passing gate and all three were real, the sharpest being
+`_shared/stripe-customer.ts`, where `customerId` was `string | undefined` at the write — a missing
+id would have been **persisted** into the authoritative `organizations.stripe_customer_id` and
+returned to payment callers as a customer id.
+
+**Trap worth remembering:** `deno check --node-modules-dir=auto` from the repo root makes Deno take
+over the project's `node_modules`, installing its own tree and pruning what it does not recognise.
+It deleted `@types/node` and broke typecheck, lint and tests until `npm ci`. Hit locally; in CI it
+would have silently poisoned every step after it. Deno now runs from an isolated `.deno-typecheck/`.
+
+**The analytics tab was showing three things that carried no information** — `TopPosts` sorted by
+recency with no metric read anywhere, `PostingHeatmap` titled "Best Posting Times" with a Low→High
+*engagement* legend while counting post *volume*, and `FollowerChart` titled "Follower Growth" while
+plotting absolute counts. The heatmap was the most harmful: unlike a mislabelled chart it drove a
+decision, and a circular one. Meanwhile `content_performance` had accumulated since June with **zero
+readers anywhere in `src/`**.
+
+Each heading now matches what is computed, and real engagement drives the ranking once there is
+enough of it — but **the threshold is the substance, not decoration**: a true number computed over
+one post repeats the mistake in a new costume. Claims are gated on `MIN_POSTS_FOR_SIGNAL` (3), always
+state N, and say how many more posts are needed rather than going blank. Ranking uses interactions
+and excludes views, because a view is delivery and not response.
+
+**Prod data state, checked before designing:** 9 `content_performance` rows across 3 posts, all
+pre-fix and unverified, **6 of them fabricated all-zeros** the spine fix stopped writing but never
+removed — so a naive reader would average real 1,388-view data against fakes. Founder chose exclusion
+in code (`verified_at IS NOT NULL`, the pipeline's own rule) over prod deletion. Consequence stated
+plainly in the UI: **zero measured posts today**, because the only verified post published that
+afternoon and its first milestone had not elapsed.
+
+Codex ran three rounds and every finding was treated as blocking: cross-posted posts **lost their
+other platforms** (the key is `(post, platform, milestone)`, so collapsing to post id discarded the
+rest and a fanned-out hit could rank below a weaker single-platform post); the threshold was computed
+**account-wide while the view is platform-filtered**, which would have titled an all-zero grid "Best
+Posting Times"; and a **literal NUL byte** in a composite key made `src/lib/postPerformance.ts`
+**binary to git**, silently breaking future diffs of it. 807 tests. → `docs/wiki/concepts/honest-analytics.md`
+
 ## [2026-08-06] Cross-tenant authorization holes closed in `outstand-proxy` (#368)
 
 **Deployed and prod-verified 2026-08-06** — `outstand-proxy` v61 → **v62**, `social-proxy` v7 → **v8**
