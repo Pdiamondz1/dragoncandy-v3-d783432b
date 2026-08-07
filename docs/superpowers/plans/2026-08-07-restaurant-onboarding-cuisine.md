@@ -16,6 +16,7 @@
 - **Brand path unchanged:** the `brand` role keeps the `industry` picker in onboarding and settings. Only `business_client` (restaurant, `account_type='restaurant'`, `isBrand===false`) sees cuisines.
 - **`industry` retained:** restaurants get `industry='food'` set automatically; nothing that reads `industry` may break.
 - **Cuisine storage:** `text[]` of slugs from `src/lib/cuisines.ts` (app-owned list, not a DB enum).
+- **Unify (added 2026-08-07):** `business_profiles.cuisines` is the single source of truth for cuisine. The existing DragonShare browse functions `list_restaurant_cuisines()` and `search_restaurants()` (prod-only DB drift, previously reading `org_units.brand_category`) are repointed to read `business_profiles.cuisines` and brought into the repo (Task 5B). Their **signatures and RETURNS shapes must be preserved verbatim** so `types.ts` needs no change. Clean cutover — no backfill (prod has effectively no cuisine data).
 - **Vitest:** `npm run test` runs `vitest run`. Global env is `node`; any RTL test file MUST start with `// @vitest-environment jsdom` then `import '@testing-library/jest-dom';` as the first two lines. Trust the "N passed, N failed" summary, not the process exit code.
 - **Typecheck:** `npm run typecheck` = `tsc --noEmit -p tsconfig.app.json`.
 
@@ -36,6 +37,8 @@
 | `src/pages/BusinessSettings.tsx` | Load `cuisines`; pass `isBrand` + cuisines setter to the section | Modify |
 | `src/components/settings/BusinessSettingsSections.tsx` | Restaurant: cuisines chip group; brand: industry Select | Modify |
 | `src/pages/PublicBusinessProfile.tsx` | Show cuisine chips for restaurants; fall back to industry label | Modify |
+| `supabase/migrations/20260807164000_unify_restaurant_cuisine_functions.sql` | Repoint `list_restaurant_cuisines`/`search_restaurants` at `business_profiles.cuisines` (into repo) | Create |
+| `src/components/dragonshare/RestaurantBrowseHeader.tsx` | Display `cuisineLabel(slug)` in the browse cuisine pills | Modify |
 
 ---
 
@@ -677,6 +680,114 @@ git commit -m "feat: show cuisine chips on public restaurant profile"
 
 ---
 
+## Task 5B: Unify DragonShare browse cuisine with `business_profiles.cuisines`
+
+**Files:**
+- Create: `supabase/migrations/20260807164000_unify_restaurant_cuisine_functions.sql`
+- Modify: `src/components/dragonshare/RestaurantBrowseHeader.tsx`
+
+**Interfaces:**
+- Consumes: `business_profiles.cuisines` (Task 2); `cuisineLabel` from `@/lib/cuisines` (Task 1).
+- Produces: `list_restaurant_cuisines()` returns cuisine slugs from `business_profiles.cuisines`; `search_restaurants(...)` filters `cuisine_filter = ANY(bp.cuisines)`. **Signatures/return shapes unchanged** → no `types.ts` change.
+
+**Context:** These two functions currently read `org_units.brand_category` (free text) and exist ONLY in prod (DB drift — not in the repo). This task repoints them at the canonical `business_profiles.cuisines` and brings them under version control. There is no local database, so the SQL is verified by review here and by a smoke query at deploy (Task 7); the only locally-testable change is the UI label mapping (typecheck).
+
+- [ ] **Step 1: Create the functions migration**
+
+Create `supabase/migrations/20260807164000_unify_restaurant_cuisine_functions.sql` (verbatim — the two `CREATE OR REPLACE` bodies below preserve the exact signatures/RETURNS of the live functions, changing only the cuisine source):
+
+```sql
+-- Unify restaurant cuisine on business_profiles.cuisines (Phase 1).
+-- These two functions previously read org_units.brand_category (free text) and
+-- existed only in prod (drift). Repoint them at the canonical slug array and
+-- bring them under version control. Signatures/RETURNS are unchanged.
+
+create or replace function public.list_restaurant_cuisines()
+ returns table(cuisine text)
+ language sql
+ stable security definer
+ set search_path to 'public'
+as $function$
+  select distinct c as cuisine
+  from business_profiles bp
+  join org_members om on om.user_id = bp.user_id and om.invitation_status = 'active'
+  join organizations o on o.id = om.org_id and o.deleted_at is null
+  cross join lateral unnest(bp.cuisines) as c
+  where bp.account_type = 'restaurant'
+    and c is not null and c <> ''
+  order by cuisine;
+$function$;
+
+create or replace function public.search_restaurants(
+  search_term text default ''::text,
+  cuisine_filter text default null::text,
+  result_limit integer default 30
+)
+ returns table(id uuid, name text, logo_url text, org_type text, address text, brand_category text, average_rating numeric, total_reviews integer)
+ language sql
+ stable security definer
+ set search_path to 'public'
+as $function$
+  select distinct on (o.id)
+    o.id,
+    bp.business_name as name,
+    coalesce(nullif(bp.logo_url, ''), o.logo_url) as logo_url,
+    o.org_type,
+    ou.address,
+    ou.brand_category,
+    bp.average_rating,
+    bp.total_reviews
+  from business_profiles bp
+  join org_members om on om.user_id = bp.user_id and om.invitation_status = 'active'
+  join organizations o on o.id = om.org_id and o.deleted_at is null
+  left join org_units ou on ou.org_id = o.id and ou.is_primary = true and ou.deleted_at is null
+  where bp.account_type = 'restaurant'
+    and (search_term = '' or bp.business_name ilike '%' || search_term || '%'
+         or coalesce(ou.address, '') ilike '%' || search_term || '%')
+    and (cuisine_filter is null or cuisine_filter = any(bp.cuisines))
+  order by o.id, bp.business_name
+  limit result_limit;
+$function$;
+```
+
+- [ ] **Step 2: Map slug → label in the browse UI**
+
+In `src/components/dragonshare/RestaurantBrowseHeader.tsx`:
+
+Add the import:
+
+```tsx
+import { cuisineLabel } from '@/lib/cuisines';
+```
+
+The cuisine pills currently render the raw value. Change the pill body from `{cuisine}` to `{cuisineLabel(cuisine)}`, and remove the now-unnecessary `className="capitalize"` on that `AppChip` (labels are already formatted). The `onClick` MUST keep passing the raw `cuisine` slug (it is the filter value sent to `search_restaurants`), so only the displayed text changes:
+
+```tsx
+        {cuisines.map((cuisine) => (
+          <AppChip
+            key={cuisine}
+            onClick={() => onCuisineChange(activeCuisine === cuisine ? null : cuisine)}
+            active={activeCuisine === cuisine}
+          >
+            {cuisineLabel(cuisine)}
+          </AppChip>
+        ))}
+```
+
+- [ ] **Step 3: Typecheck**
+
+Run: `npm run typecheck`
+Expected: PASS.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add supabase/migrations/20260807164000_unify_restaurant_cuisine_functions.sql src/components/dragonshare/RestaurantBrowseHeader.tsx
+git commit -m "feat: unify DragonShare browse cuisine on business_profiles.cuisines"
+```
+
+---
+
 ## Task 6: Full verification pass
 
 **Files:** none (verification only).
@@ -693,7 +804,9 @@ Expected: both succeed.
 
 - [ ] **Step 3: Manual end-to-end (both viewports)**
 
-With `npm run dev`: complete a fresh restaurant signup → the second step is "What kind of food do you serve?" with a multi-select grid; Continue is disabled until ≥1 pick; finishing lands on the dashboard. Settings shows the cuisine chip group. The public profile shows cuisine chips. Verify desktop and mobile widths.
+With `npm run dev`: complete a fresh restaurant signup → the second step is "What kind of food do you serve?" with a multi-select grid; Continue is disabled until ≥1 pick; finishing lands on the dashboard. Settings shows the cuisine chip group. The public profile shows cuisine chips. The DragonShare browse page (`/dashboard/creator/dragonshare/browse`) shows cuisine pills as human labels (not slugs), and selecting one filters the list. Verify desktop and mobile widths.
+
+> Note: the browse cuisine filter is powered by the Task 5B prod functions, so it only reflects real data AFTER Task 7's prod apply. Locally it will use whatever the linked DB returns.
 
 ---
 
@@ -701,9 +814,13 @@ With `npm run dev`: complete a fresh restaurant signup → the second step is "W
 
 **Files:** none (deploy actions).
 
-- [ ] **Step 1: Apply the migration to PROD first**
+- [ ] **Step 1: Apply BOTH migrations to PROD first (in order)**
 
-Invoke the `careful` skill (DROP/RENAME-free, but it's a prod schema write). Apply `supabase/migrations/20260807163000_business_profiles_cuisines.sql` to prod via the Supabase MCP `apply_migration`. Verify with `verify-db-schema`: `business_profiles.cuisines` exists as `text[]` NOT NULL default `{}`.
+Invoke the `careful` skill (prod schema write + function replace). Apply, in this order, via the Supabase MCP `apply_migration`:
+1. `supabase/migrations/20260807163000_business_profiles_cuisines.sql` (the column — must exist before the functions reference it).
+2. `supabase/migrations/20260807164000_unify_restaurant_cuisine_functions.sql` (repoints `list_restaurant_cuisines`/`search_restaurants`).
+
+Verify: `business_profiles.cuisines` exists as `text[]` NOT NULL default `{}` (`verify-db-schema`); and a smoke query confirms the functions were replaced and run — e.g. `select * from list_restaurant_cuisines();` returns without error, and `select count(*) from search_restaurants('', 'italian', 10);` runs (0 rows is fine pre-data). Confirm `pg_get_functiondef` for both now reads `business_profiles.cuisines` (not `ou.brand_category` for the cuisine clause).
 
 - [ ] **Step 2: Merge the frontend**
 
@@ -723,6 +840,7 @@ Use `verify-prod`: load dragoncandy.io, spot-check restaurant onboarding shows t
 - `industry='food'` retained for restaurants; brand keeps industry → Tasks 3 (onboarding) + 4 (settings). ✓
 - Settings editable cuisines → Task 4. ✓
 - Public profile cuisine chips w/ industry fallback → Task 5. ✓
+- Unify DragonShare browse cuisine on `business_profiles.cuisines` (repoint 2 prod functions + browse UI label mapping) → Task 5B. ✓
 - Shared constant + types + form wiring → Tasks 1, 2, 4. ✓
 - Deploy ordering hazard → Task 7 + Global Constraints. ✓
 - Tests → Tasks 1, 3 + verification Task 6. ✓

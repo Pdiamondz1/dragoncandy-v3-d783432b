@@ -83,6 +83,23 @@ alter table public.business_profiles
 - `not null default '{}'` so reads never hit null. Existing rows get `{}`.
 - `industry` column is **retained**. Restaurants get `industry = 'food'` set automatically (no UI); brand keeps its picker. Nothing that reads `industry` breaks.
 
+## Existing cuisine system — unify (discovered during implementation, 2026-08-07)
+
+**Correction to an earlier assumption.** A cuisine concept already exists in production. The DragonShare "Browse Restaurants" page (`/dashboard/creator/dragonshare/browse`, live) filters restaurants by cuisine using two prod-only DB functions (not in the repo — DB drift):
+
+- `list_restaurant_cuisines()` → `SELECT DISTINCT ou.brand_category` of each restaurant's primary `org_units` row.
+- `search_restaurants(search_term, cuisine_filter, result_limit)` → filters `ou.brand_category ILIKE cuisine_filter`.
+
+So the pre-existing "cuisine" is the primary location's free-text `org_units.brand_category`. Left alone, the new `business_profiles.cuisines` would be a **disconnected parallel store** the browse filter ignores.
+
+**Decision: unify on `business_profiles.cuisines`** (user-approved 2026-08-07). It becomes the single source of truth; both functions are repointed to read it and brought into the repo as a migration (fixing the drift):
+
+- `list_restaurant_cuisines()` → distinct `unnest(bp.cuisines)` for active restaurants (returns slugs).
+- `search_restaurants(...)` → cuisine clause becomes `cuisine_filter IS NULL OR cuisine_filter = ANY(bp.cuisines)`. **Signature and return shape are preserved** — the generated RPC types are unchanged.
+- Browse UI (`RestaurantBrowseHeader`) displays `cuisineLabel(slug)` instead of the raw value; the selected slug is still passed as the filter value.
+
+**Clean cutover — no backfill/fallback.** Prod check (2026-08-07): of 12 restaurant primary units, 10 have `brand_category = NULL`, plus one "Diner" and one "Events" — effectively no existing cuisine data to preserve. Restaurants with empty `cuisines` simply won't appear under a specific cuisine filter (they still appear unfiltered); onboarding + settings fill the data going forward.
+
 ## Components & files
 
 ### New
