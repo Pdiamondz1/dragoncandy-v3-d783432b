@@ -202,7 +202,13 @@ async function handleList(req: Request, admin: Any): Promise<Response> {
   const authMap = new Map(authUsers.map((u) => [u.id, u]));
 
   const { data: profs } = await admin.from("profiles").select("id, full_name").in("id", ids);
-  const nameMap = new Map((profs ?? []).map((p: Any) => [p.id, p.full_name as string | null]));
+  // Typed explicitly: `.map()` over an `Any` row yields `any[][]`, not tuples,
+  // so `new Map(...)` inferred `Map<unknown, unknown>` and `nameMap.get()` came
+  // back as `unknown` — which widened `full_name` to `{}` and made the whole
+  // row fail to satisfy InternalUserRow.
+  const nameMap = new Map<string, string | null>(
+    (profs ?? []).map((p: Any) => [p.id as string, (p.full_name as string | null) ?? null]),
+  );
 
   const users: InternalUserRow[] = ids.map((id) => {
     const roles = (byUser.get(id) ?? []).filter(

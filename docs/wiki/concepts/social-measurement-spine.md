@@ -112,21 +112,59 @@ neutralised forgery is not invisible.
 
 ## Known issues
 
-- **Nothing has ever flowed through this pipeline.** Three `social_post_log` rows exist, all
-  from June 2026, none verified. Every guarantee here rests on review and tests, not on a
-  post being measured end to end. One real publish through each path is the only thing that
-  closes this — an instance of [[Verify Before Reporting]].
-- **`outstand-proxy` `enforceScope` authorizes PATCH/PUT/DELETE from account ids in the
-  request body**, never checked against the target post — a cross-tenant *modify and delete*,
-  pre-existing and worse than the read hole closed here.
-- **Its platform-level read fallback** grants read access to every post on a platform the
-  caller owns any one account on.
+- ~~**Nothing has ever flowed through this pipeline.**~~ **CLOSED 2026-08-06** — see "The first
+  measured post" below.
+- **Amplification cannot currently be exercised by anyone**, so its schedule-row and `post_type`
+  work is correct-by-review but unproven in prod. `SponsorshipAmplificationPrompt` renders only
+  under `userRole === 'brand'`, and its other call site sits behind `BrandRoute`. Six brand
+  accounts exist and **every one has zero active social connections**, so the prompt can only say
+  "Connect your social accounts in Settings." `BRAND_ROLE_ENABLED = false` additionally blocks new
+  brand signups — note it gates signup/landing/sponsorship UI, **not** the `/dashboard/brand/*`
+  routes, so an existing brand account *with* a connection would reach it.
+- ~~**`outstand-proxy` `enforceScope` authorizes PATCH/PUT/DELETE from account ids in the
+  request body**~~ and ~~**its platform-level read fallback**~~ — **both fixed in PR #368**, with a
+  third and larger hole found while confirming them: `GET /posts` was forwarding *every tenant's*
+  posts in an unfiltered sibling array. See [[Cross-Tenant Proxy Authorization]] for the rule that
+  replaced them — a grant may rest only on a fact the client cannot assert. **Deployed to prod
+  2026-08-06** (`outstand-proxy` v62, `social-proxy` v8) and verified with the same request that
+  found the leak: `GET /posts` now returns only the caller's own post, `pagination.total` 49 → 1,
+  and the foreign post returns `403 forbidden_post` while the caller's own post and its
+  `/analytics` still return 200.
 - **CI type-checks no edge functions.** `tsconfig.app.json`'s `include` is `["src"]`, so all
   80 Deno functions are unchecked. `deno check` works. `outstand-webhook`'s untyped
   `createClient()` resolves row types to `never` (12 such errors on main).
 - **`posting_schedule_status = 'completed'` is a dead branch** — the CHECK permits it, no
   writer produces it, so its UI copy can never render. Same recorded-vs-reachable gap
   [[Content Delivery State Machine]] documents.
+
+## The first measured post (2026-08-06)
+
+Deployed to prod and proven with a real Instagram publish through the DragonShare-draft path
+(`DraftsTab` → `publishDraft`) on the Harbormill account. Post id **`ei1xc`**. Every link observed in
+the database, not inferred:
+
+| t | event |
+|---|---|
+| 17:58:50.664 | `outstand_post_ownership` binding minted by `outstand-proxy` (v61) |
+| 17:58:51.378 | `social_post_log` row written by the client |
+| 17:59:10.611 | provider published |
+| 17:59:12.159 | **`outstand-webhook` stamped `verified_at`** — 1.5 s after publish |
+| 18:00:02 | hourly cron fired `reconcile-social-posts` (v1) on its own |
+
+Row: `post_type = dragonshare`, `format = photo`, `dragonshare_post_id` = a clean uuid from
+`metadata.post_id`, `verified_at` set, and the binding's `user_id` **equal to** the log row's.
+
+A follow-up sweep run returned `postsScanned 3 · platformsScanned 1 · alreadyRecorded 1 ·
+newlyRecorded 0 · unbound 0 · bindingConflicts 0 · ownerConflicts 0 · upsertErrors 0`. Two things
+worth reading off that: **`unbound: 0`** means the strict gate *found the binding* rather than
+skipping, and **`alreadyRecorded 1 / newlyRecorded 0`** means the sweep recognised the webhook's row
+and changed nothing — the two independent writers agree on the same `(outstand_post_id, platform)`
+key, which is exactly what extracting the shared row builder was meant to guarantee.
+
+**Not proven by this run:** the literal `POST /posts` response body was not captured (the shape is
+established only *functionally* — two independent extractors resolved the same id, which the binding
+could not exist without); multi-platform fan-out (the account has one connection); and amplification
+(see Known issues).
 
 ## Traps this cost us
 
@@ -147,6 +185,8 @@ neutralised forgery is not invisible.
 
 ## See Also
 
+- [[Cross-Tenant Proxy Authorization]] — the proxy holes this work surfaced, and the rule that
+  closed them
 - [[Service-Role Data Exposure]] — the sibling defect class; same "runs perfectly" property
 - [[Outstand]] — the provider this measures through
 - [[Social Provider Decision]] — why Outstand, and what a provider swap would cost here

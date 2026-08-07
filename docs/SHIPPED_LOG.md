@@ -26,6 +26,213 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-06] Honest analytics, the drafts editor, and an edge-function typecheck gate (#368)
+
+Three items taken after the proxy security work, all on the same PR because a ~5-hour GitHub Actions
+outage blocked everything from merging.
+
+**Drafts "Edit" did nothing.** The button called `onSwitchTab('compose')` and nothing else: it
+dropped the draft's content on the floor — you landed on an EMPTY compose form — and left the
+original row behind, so finishing the edit would have published a duplicate and stranded the draft.
+Loading the draft into Compose would not have fixed it either, because Compose publishes a NEW
+provider post via `createPost` and cannot be a draft editor. A draft is a `donny_scheduled_posts`
+row, so it now edits in place (caption / hashtags / scheduled_at). Hashtag parsing became a tested
+pure function placed beside its inverse `composeCaption`, because a round-trip that disagrees with
+itself is how an edit mangles what it meant to preserve; it emits the leading `#` (verified against
+prod rows) and avoids `\w`, since `#CaféLife` is a real value an ASCII class truncates to `#Caf`.
+
+**And underneath it, hashtags were never published at all** — pre-existing, found by Codex.
+`publishDraft` and `scheduleDraft` both selected `caption` and omitted `hashtags`, so every tag
+Donny has ever generated was dropped at publish while the draft card displayed it. The new dialog
+merely started *promising* otherwise. Both paths now compose through `composeCaption`.
+
+**CI type-checked none of the 99 edge functions.** `npm run typecheck` is `tsc -p
+tsconfig.app.json`, whose `include` is `["src"]`, so every Deno function was unchecked for the life
+of the project; `deno check` finds **128** real errors. Checking everything fails today and a gate
+that cannot pass gets disabled within a week, so the gate checks the **66** that pass, lists the
+**33** that do not in `supabase/functions/.typecheck-ignore`, and PRINTS that list on every run — a
+skip nobody can see is indistinguishable from coverage, which is the exact failure being fixed. It
+also fails if the list names a function that no longer exists. Added inside the existing `verify`
+job so it inherits branch protection; confirmed passing in CI.
+
+Three errors were fixed to reach a passing gate and all three were real, the sharpest being
+`_shared/stripe-customer.ts`, where `customerId` was `string | undefined` at the write — a missing
+id would have been **persisted** into the authoritative `organizations.stripe_customer_id` and
+returned to payment callers as a customer id.
+
+**Trap worth remembering:** `deno check --node-modules-dir=auto` from the repo root makes Deno take
+over the project's `node_modules`, installing its own tree and pruning what it does not recognise.
+It deleted `@types/node` and broke typecheck, lint and tests until `npm ci`. Hit locally; in CI it
+would have silently poisoned every step after it. Deno now runs from an isolated `.deno-typecheck/`.
+
+**The analytics tab was showing three things that carried no information** — `TopPosts` sorted by
+recency with no metric read anywhere, `PostingHeatmap` titled "Best Posting Times" with a Low→High
+*engagement* legend while counting post *volume*, and `FollowerChart` titled "Follower Growth" while
+plotting absolute counts. The heatmap was the most harmful: unlike a mislabelled chart it drove a
+decision, and a circular one. Meanwhile `content_performance` had accumulated since June with **zero
+readers anywhere in `src/`**.
+
+Each heading now matches what is computed, and real engagement drives the ranking once there is
+enough of it — but **the threshold is the substance, not decoration**: a true number computed over
+one post repeats the mistake in a new costume. Claims are gated on `MIN_POSTS_FOR_SIGNAL` (3), always
+state N, and say how many more posts are needed rather than going blank. Ranking uses interactions
+and excludes views, because a view is delivery and not response.
+
+**Prod data state, checked before designing:** 9 `content_performance` rows across 3 posts, all
+pre-fix and unverified, **6 of them fabricated all-zeros** the spine fix stopped writing but never
+removed — so a naive reader would average real 1,388-view data against fakes. Founder chose exclusion
+in code (`verified_at IS NOT NULL`, the pipeline's own rule) over prod deletion. Consequence stated
+plainly in the UI: **zero measured posts today**, because the only verified post published that
+afternoon and its first milestone had not elapsed.
+
+Codex ran three rounds and every finding was treated as blocking: cross-posted posts **lost their
+other platforms** (the key is `(post, platform, milestone)`, so collapsing to post id discarded the
+rest and a fanned-out hit could rank below a weaker single-platform post); the threshold was computed
+**account-wide while the view is platform-filtered**, which would have titled an all-zero grid "Best
+Posting Times"; and a **literal NUL byte** in a composite key made `src/lib/postPerformance.ts`
+**binary to git**, silently breaking future diffs of it. 807 tests. → `docs/wiki/concepts/honest-analytics.md`
+
+## [2026-08-06] Cross-tenant authorization holes closed in `outstand-proxy` (#368)
+
+**Deployed and prod-verified 2026-08-06** — `outstand-proxy` v61 → **v62**, `social-proxy` v7 → **v8**
+(versions and hashes confirmed changed, `verify_jwt` still `true` on both). PR #368 itself is still
+open, blocked by a GitHub Actions outage rather than by review, so the repo currently lags prod.
+
+**The fix was verified with the same request that found the leak.** `GET /posts` as the
+single-account user: `posts[]` went from 5 (four of them another tenant's) to 1; the only account id
+present is the caller's own; `pagination.total` 49 → 1; the response shrank 13,065 → 2,773 bytes with
+no trace of the foreign account id or nickname. Legitimate access is intact and denials are correct:
+the caller's own post returns 200, its `/analytics` returns 200, `/social-accounts` returns 200, and
+the foreign post `bld5T` returns **403 `forbidden_post`** — which also proves defect 2 is gone, since
+that post is on Instagram and the caller owns an Instagram account, exactly the case the platform
+fallback used to wave through.
+
+Reviewing the measurement-spine work surfaced three **pre-existing, live** authorization defects in
+`outstand-proxy`, worse than the read hole #366 closed. The governing fact: **the Outstand API key
+is org-wide** — every tenant's posts, accounts and media sit behind one credential — so the proxy is
+not a convenience layer, it *is* the tenant boundary. All three ran perfectly and returned plausible
+responses.
+
+1. **Request-body account ids were treated as a GRANT.** `enforceScope`'s `/posts/{id}` branch
+   parsed `social_account_ids`/`accounts` from the caller-supplied body and allowed when `.some()`
+   was owned, never checking the path's post against them. `DELETE /posts/{any_post_id}` with a body
+   naming your own account id **modified or deleted any post in the org**.
+2. **A platform-level fallback** allowed when the post's *platform* matched one the caller owned any
+   account on — one Instagram account authorized every Instagram post in the org.
+3. **`filterListBody` filtered one key while the response carried two.** `GET /posts` and
+   `GET /social-accounts` are allowed **unconditionally**, on the promise that this filter strips
+   other tenants' rows.
+
+1 and 2 were **not separable**: fixing 1 alone left the destructive path fully open through 2.
+
+**#3 was settled by capture, not argument** — one `GET /posts` through the proxy using the founder's
+own session (no org key, no secret):
+
+```
+{ success: true, posts: [5 posts], data: [1 post], pagination: { total: 49, count: 5 } }
+```
+
+Four of the five posts in `posts[]` belonged to a **different tenant** — captions, media, live
+Instagram permalinks — while `data[]` was correctly filtered to 1, and `pagination.total` disclosed
+the org-wide count. The filter *looked* like it worked while the full list rode along beside it, and
+the vendor SDK's `usePosts()` reads `.posts` — precisely the leaking key. The tell had been in our
+own code: `reconcile-social-posts` reads `body.posts` **first**, citing the SDK's typing as stronger
+evidence than the vendor's docs.
+
+**The fix.** Two pure tested modules, extracted because `index.ts` calls `serve()` at module load and
+is not import-testable — neither rule may have "we couldn't test it" as a property when it is the
+tenant boundary. `_shared/outstand-post-authz.ts` (22 cases): exactly two things grant, both
+server-established and neither client-assertable — provider-fetched post accounts intersected with
+the caller's, and the `outstand_post_ownership` binding. The platform fallback is **deleted outright
+with its two helpers**, so `decidePostAccess` takes no platform input and cannot be reinstated by an
+argument change; body ids become an `.every()` **constraint** that runs first and outranks both
+grants. `_shared/outstand-list-filter.ts` (23 cases, anchored on the captured envelope): filters
+**every** row array via a bounded, cycle-guarded walk rather than a list of key names someone must
+remember to extend, and rewrites every counter spelling. A row whose account ids cannot be resolved
+is **dropped** — unattributable is not owned.
+
+**Third commit — the review's findings.** `data-exposure-reviewer` found nothing introduced but
+surfaced real pre-existing issues; three were fixed. The sharpest: the account-claim guard **failed
+open** — `.maybeSingle()` returns `{data: null, error}` when **more than one** row matches, i.e.
+exactly when two or more other tenants already claim the id, and the error was discarded so null read
+as "unclaimed". `social-proxy` already had this fix; `outstand-proxy` never got it. Also: list
+filtering was depth-1 only, and counters were sanitized in one spelling out of six.
+
+Two findings were **dismissed with evidence** rather than implemented — grant 1 is not structurally
+empty (`GET /posts/{id}` returns `post.socialAccounts[].id`, captured), and the `String()` coercion
+concern doesn't apply (the SDK types `accounts` as `string[]`). The first also resolved the
+regression tail nobody could quantify: the 3 legacy unbound posts belong to the other tenant and
+*should* be denied.
+
+Also corrected a note in `social-proxy` instructing a future editor to **reinstate**, in Phase 3, the
+platform fallback and the `donny_scheduled_posts` lookup — deleting vulnerable code without deleting
+the note telling someone to bring it back leaves the vulnerability scheduled.
+
+**Gates:** 1240 tests / 113 files (45 new); `typecheck` + `deno check` clean; **Codex clean, run
+twice**. Both of the day's PRs sat un-mergeable through a **GitHub Actions major outage** (from 15:22
+UTC, unresolved at 19:43) — a required check queued 15 minutes and was cancelled, which
+`gh pr checks` reports as `fail`. This PR also **absorbs PR #367** by cherry-pick: that PR touched
+exactly the same five docs files and was still unmerged, so folding it in avoided a guaranteed
+conflict.
+
+**Follow-up fixed in the same branch — the substrate under grant 1.** `business_outstand_accounts`
+INSERT was unconstrained: `authenticated` **and `anon`** held it on all 14 columns including
+`outstand_social_account_id`; the INSERT policy pinned *who owned the row* but never *which account
+it claimed*; and the unique index is `(user_id, outstand_social_account_id)` — **per-user, not
+global**. A direct PostgREST insert never touches the proxy, so the claim-check above is no
+mitigation. Any authenticated business user could mint themselves into `ownedIds` and thereby reach
+another tenant's posts through the grants this branch had just made load-bearing. Migration
+`20260806210000` revokes INSERT outright (the client INSERT surface is **empty** — all three writers
+use the service-role key, which holds its own grant) and drops the now-dead INSERT policy, so a
+future `GRANT INSERT` lands on RLS-with-no-policy rather than silently reopening it. Checked for
+prior exploitation first: 9 rows, every account id held by exactly one user. **Applied to prod
+2026-08-06 and verified against reality, not against the apply's success return:** zero INSERT grants
+outside `postgres`/`service_role`; exactly 4 policies with no INSERT among them (proving the
+`DROP POLICY IF EXISTS` matched rather than no-opping on a renamed policy); the client's
+`UPDATE (org_unit_id, status)` + own-row `SELECT`/`DELETE` still intact and the Social page still
+renders its one connected account; and a rollback-wrapped insert of the *actual* forgery — a row
+claiming the other tenant's `I2pgX` — as role `authenticated` returned **`42501 permission
+denied`**. The review also caught that the migration's own verification query filtered
+`grantee in ('anon','authenticated')`, which would have reported PASS while a PUBLIC grant stood;
+fixed, along with adding `public` to the revoke.
+
+**Filed, not fixed:** `/media` is unscoped for every method and any caller, but the SDK's `MediaFile`
+type carries no account/user/org field so there is nothing to filter on — it needs its own ownership
+binding plus a migration, and reads `count: 0` today. `/social-accounts/pending/{token}/finalize` rests on provider token entropy. Delegated posting
+appears inert (`ownedIds` is keyed on the grantee). Offset paging over a filtered list remains
+incoherent. → `docs/wiki/concepts/cross-tenant-proxy-authorization.md`
+
+## [2026-08-06] Measurement spine DEPLOYED + the first post ever measured end-to-end
+
+The entry below records what shipped; this records it going live and being **proven**. PR #366 merged,
+then deployed in the order the reviewers required: migration `20260806184500` first (its
+grant-verification query returned **exactly one row, `service_role`** — the check that separates a real
+lockdown from one that reads as protection while providing none), Vault secrets, then
+`reconcile-social-posts` (new, v1), `outstand-proxy` (v61), `social-proxy` (v7), `outstand-webhook`
+(v17→**v18, all 5 required files** — live v17 carried only 3, so a partial bundle would have kept the
+old code serving while every webhook still returned 200), and the cron migration last.
+
+Deploying via the **Supabase CLI rather than the MCP file-list** mattered: it bundles by *import graph*,
+which automatically excluded the `vitest`-importing test files that sit beside `reconcile-social-posts`
+and `social-proxy`. Had those landed in the deployed set, both functions would have failed to boot.
+
+**The first post ever measured** (`ei1xc`, a real Instagram publish through the DragonShare-draft path):
+binding minted 17:58:50 → `social_post_log` written 17:58:51 → published 17:59:10 → **`verified_at`
+stamped by the webhook 1.5 s later**. A follow-up sweep returned `alreadyRecorded 1 · newlyRecorded 0 ·
+unbound 0 · ownerConflicts 0` — the strict gate *found* the binding, and the two independent writers
+agreed on the same key rather than duplicating, which is what extracting the shared row builder was for.
+The hourly cron then fired on its own at 18:00:02.
+
+**Honest limits.** The literal `POST /posts` body was not captured (shape proven only functionally);
+multi-platform fan-out is untested (one connection); and **amplification remains unproven — it is
+brand-only, and all six brand accounts have zero social connections.** So the branch's headline feature
+sits behind a role that cannot currently publish.
+
+Found live en route: the Drafts tab's **Edit** button is `onClick={() => onSwitchTab?.('compose')}` and
+nothing else — it opens an empty composer and silently discards the draft.
+
+→ `docs/wiki/concepts/social-measurement-spine.md`
+
 ## [2026-08-06] Social measurement spine + reconciliation + server-established post ownership (#365, #366)
 
 The founder asked for deeper analytics — per-post performance, hashtags, account stats — so Donny

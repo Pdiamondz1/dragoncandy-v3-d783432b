@@ -1,5 +1,75 @@
 # Wiki Log
 
+## [2026-08-06] ingest | [[Honest Analytics]] — a claim may not outrun its evidence
+Ingested [[Honest Analytics and Edge Typecheck Session]] (PR #368). New concept page rather than a
+section on [[Social Measurement Spine]]: that page is about producing trustworthy measurements, this
+is about what you are entitled to CLAIM from them — related, cross-linked, different rule.
+
+The finding worth carrying: **a real metric is not by itself the fix.** The analytics tab's three
+components were confidently wrong (recency sold as "Top Posts"; post volume sold as "Best Posting
+Times" with an engagement legend; absolute counts sold as "Follower Growth"), but swapping in a true
+number computed over one post repeats the mistake in a new costume — the number true, the conclusion
+still worthless. Hence gating on N, stating N, and saying how many more posts are needed rather than
+going blank, because a silent empty state and a genuine absence of data look identical.
+
+Also records the prod data state honestly: 9 `content_performance` rows, **6 of them fabricated
+all-zeros** the spine fix stopped writing but never removed, and ZERO posts with trustworthy metrics
+today. Founder chose exclusion in code (`verified_at IS NOT NULL`) over prod deletion, so the rows
+survive as evidence of the old defect and can never render.
+
+Pages: created `concepts/honest-analytics.md`; updated `index.md`, `docs/SHIPPED_LOG.md`,
+`docs/PROJECT_CONTEXT.md` §5.
+
+## [2026-08-06] ingest | [[Cross-Tenant Proxy Authorization]] — the proxy IS the tenant boundary
+Ingested [[Outstand Proxy Cross-Tenant Authz Session]] (PR #368). Created a concept page rather than
+compounding onto [[Social Measurement Spine]]: that page is about *measurement*, this is about
+*tenant isolation* — related, now cross-linked both ways, but not the same claim.
+
+**Status correction on [[Social Measurement Spine]].** Its Known Issues listed the body-grant and
+the platform fallback as open; both are fixed. Struck through rather than deleted, with what
+replaced them — a reader who remembers the old claim needs to see it retired, not silently vanish.
+The entry is explicit that the fix is **not deployed**, so the page never reads as safer than prod.
+
+Three defects, all pre-existing and live, all of which ran perfectly: body account ids used as a
+grant (`DELETE /posts/{any_id}` + your own account id ⇒ any post in the org), a platform fallback
+(one Instagram account ⇒ every Instagram post), and a list filter that stripped `data` while
+forwarding an unfiltered `posts` sibling.
+
+**The third was settled by one captured request**, after three review rounds had argued it
+unknowable: `GET /posts` as a single-account user returned 4 other-tenant posts with live Instagram
+permalinks, plus the org-wide `total: 49`. Our own `reconcile-social-posts` already read
+`body.posts` first — one consumer knew what the other still got wrong.
+
+Recorded two review findings **dismissed with evidence** rather than implemented, since a dismissal
+nobody can audit is indistinguishable from an oversight.
+
+**This session's docs also absorbed PR #367.** That PR touched exactly these five files and was
+still unmerged, so cherry-picking it onto this branch avoided a guaranteed five-file conflict; #367
+is superseded, not lost.
+
+Pages: created `concepts/cross-tenant-proxy-authorization.md`; updated
+`concepts/social-measurement-spine.md`, `index.md`, `docs/SHIPPED_LOG.md`,
+`docs/PROJECT_CONTEXT.md` §5.
+
+## [2026-08-06] update | [[Social Measurement Spine]] — deployed, and the first post ever measured
+Corrects a claim I wrote hours earlier in the ingest below: **"nothing has ever flowed through this
+pipeline"** is no longer true. PR #366 deployed to prod and a real Instagram publish (`ei1xc`) went
+end-to-end — binding minted, `social_post_log` written, `verified_at` stamped by the webhook 1.5 s
+after publish, and a follow-up sweep reporting `alreadyRecorded 1 · newlyRecorded 0 · unbound 0`
+(the strict gate *found* the binding; the two writers agreed rather than duplicating). Added a
+"The first measured post" section with the observed timeline, and flipped the Known-issues item.
+
+**Two corrections worth carrying**, both from checking rather than assuming. First: I proposed
+amplification as the proof and was wrong twice — it does not use DragonShare posts (it takes campaign
+deliverable files plus a *template-generated* caption), and it is **brand-only** while all six brand
+accounts have zero social connections. So the branch's headline feature cannot be exercised by anyone
+today, and the Known-issues section now says so. Second: a stale-status claim in an always-loaded doc
+decays fast — §5 asserted "nothing has yet flowed" within hours of it becoming false, which is exactly
+the failure mode the `[status-correction]` Lesson exists for.
+
+Also filed from the live session: the Drafts **Edit** button switches tabs and passes no draft data,
+so it opens an empty composer and silently discards the user's intent.
+
 ## [2026-08-06] ingest | [[Social Measurement Spine]] — the spine, the sweep, and server-established ownership
 Ingested [[Social Measurement Spine Session]] (PRs #365 + #366). **Two efforts in one source, because
 PR #365's knowledge-sync never ran** — verified against `origin/main` per the `[gap-claims]` Lesson,

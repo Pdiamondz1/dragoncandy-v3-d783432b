@@ -107,18 +107,27 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Built — awaiting founder go-live
 
-- **Social measurement spine + reconciliation + server-established post ownership** — the spine
-  shipped and is **live on prod** (#365: video posts no longer silently discarded at publish,
-  unmeasured posts no longer stored as real zeros, the measurement record written at the
-  `outstand-webhook` choke point). #366 adds amplification measurement, an hourly
-  `reconcile-social-posts` sweep, and an `outstand_post_ownership` binding closing a live
-  cross-tenant metric read whose root cause had surfaced **four** times. **Pending:** merge PR #366,
-  then in order — apply `20260806184500` (+ run its grant-verification query), create Vault secrets
-  `reconcile_social_posts_url`/`reconcile_social_posts_key`, deploy `reconcile-social-posts`,
-  redeploy `outstand-proxy` + `social-proxy` + `outstand-webhook` (the last **imports a shared module
-  absent from prod**), then apply `20260806151247` last. **Nothing has yet flowed through the
-  pipeline** — one real publish per path is the only remaining proof.
-  → `docs/wiki/concepts/social-measurement-spine.md` · #365, #366
+- **`outstand-proxy` cross-tenant authorization** — three pre-existing, live holes closed: body
+  account ids used as a **grant** (`DELETE /posts/{any_id}` ⇒ any post in the org), a platform
+  fallback (one Instagram account ⇒ every Instagram post), and a list filter that stripped `data`
+  while forwarding an unfiltered `posts` sibling (**observed on prod**: 4 of 5 posts belonged to
+  another tenant). **Deployed + prod-verified 2026-08-06** (`outstand-proxy` v62, `social-proxy`
+  v8): the leaking list returns only the caller's own post and a foreign post now 403s, while the
+  caller's own post + `/analytics` still return 200. **Pending:** merge PR #368 (blocked by a
+  GitHub Actions outage, not by review) so the repo matches prod, . Migration `20260806210000`
+  (revoking the client INSERT that let any business user mint another tenant's account id into
+  `ownedIds` — the substrate under the surviving grants) is **applied + verified red→green**.
+  `/media` remains unscoped (`count: 0` today) — filed.
+  → `docs/wiki/concepts/cross-tenant-proxy-authorization.md` · #368
+- **Honest analytics + edge-function typecheck gate** — the analytics tab showed recency as
+  "Top Posts", post volume as "Best Posting Times" (with an *engagement* legend), and absolute
+  counts as "Follower Growth", while `content_performance` had accumulated since June with **zero
+  readers**. Claims are now gated on sample size (`MIN_POSTS_FOR_SIGNAL`), always state N, and
+  `verified_at IS NOT NULL` keeps 6 fabricated all-zero rows off the screen. Also: Drafts "Edit"
+  did nothing and hashtags were **never published** by either path; and CI type-checked **none** of
+  the 99 edge functions (now 66 gated, 33 listed and printed). **Pending:** merge PR #368 — all
+  checks green after the GitHub Actions outage.
+  → `docs/wiki/concepts/honest-analytics.md` · #368
 - **AIOS Google Workspace ("Connections")** — per-user Google OAuth, audited proxy, Drive
   hub, Donny exports, metrics→Sheet. The `google-chat-donny` bot ships dark (503).
   **Pending:** register the Chat app, set `GOOGLE_CHAT_PROJECT_NUMBER` +
@@ -168,6 +177,17 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **Social measurement spine + reconciliation + server-established post ownership** — **deployed and
+  PROVEN on prod 2026-08-06.** #365 fixed three live defects (video posts silently discarded at
+  publish; every unmeasured post stored as a real zero; the measurement record never written for most
+  posts → moved to the `outstand-webhook` choke point). #366 added amplification schedule rows, the
+  hourly `reconcile-social-posts` sweep, and an `outstand_post_ownership` binding closing a live
+  cross-tenant metric read whose root cause had surfaced **four** times. **First post ever measured
+  end-to-end** (`ei1xc`, 2026-08-06): binding minted → `outstand_post_id` resolved → `social_post_log`
+  written → webhook stamped `verified_at` **1.5s** after publish → the sweep found it, verified the
+  binding (`unbound: 0`) and correctly changed nothing (`alreadyRecorded: 1, newlyRecorded: 0`).
+  Amplification itself is still unproven — it is brand-only and no brand account has a social
+  connection. → `docs/wiki/concepts/social-measurement-spine.md` · #365, #366
 - **VerifiedRoute missing-profile lockout** — a "can't log in" report was a *false* "verify your
   email": the guard collapsed "unverified" with "no `profiles` row", bouncing such users off the one
   page that could provision them. Fix resolves on whether the flag is KNOWN (a fabricated

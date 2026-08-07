@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { composeCaption } from '@/lib/composeCaption';
 
 export interface DraftPost {
   id: string;
@@ -64,13 +65,59 @@ export function useDraftPosts() {
     onError: () => { toast.error('Failed to cancel draft'); },
   });
 
+  /** Edit a draft IN PLACE.
+   *
+   * A draft is a `donny_scheduled_posts` row, so editing it is an UPDATE on that
+   * row — not a new post. The Edit button used to switch to the Compose tab and
+   * pass nothing, which both dropped the draft's content on the floor AND left
+   * the original row behind, so finishing the edit would have published a
+   * duplicate and stranded the draft. Compose calls the provider's `createPost`;
+   * it is not, and cannot be, a draft editor.
+   *
+   * Scoped to caption / hashtags / scheduled_at deliberately. Media lives behind
+   * the provider upload flow and editing it needs that whole path, so this does
+   * not pretend to offer it.
+   *
+   * `.eq('user_id', user.id)` matches every other mutation here: RLS already
+   * restricts to own rows, and this makes the intent explicit rather than
+   * resting on the policy alone.
+   */
+  const updateDraft = useMutation({
+    mutationFn: async ({
+      draftId,
+      caption,
+      hashtags,
+      scheduledAt,
+    }: {
+      draftId: string;
+      caption: string | null;
+      hashtags: string[];
+      scheduledAt: string;
+    }) => {
+      if (!user) throw new Error('User not authenticated');
+
+      const { error } = await supabase
+        .from('donny_scheduled_posts')
+        .update({ caption, hashtags, scheduled_at: scheduledAt })
+        .eq('id', draftId)
+        .eq('user_id', user.id)
+        .eq('status', 'draft');
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['draft-posts'] });
+    },
+    onError: (err: Error) => { toast.error(err.message || 'Failed to save draft'); },
+  });
+
   const scheduleDraft = useMutation({
     mutationFn: async ({ draftId, scheduledAt }: { draftId: string; scheduledAt?: string }) => {
       if (!user) throw new Error('User not authenticated');
 
       const { data: draft, error: fetchErr } = await supabase
         .from('donny_scheduled_posts')
-        .select('caption, media_urls, platform, content_type, scheduled_at')
+        .select('caption, hashtags, media_urls, platform, content_type, scheduled_at')
         .eq('id', draftId)
         .eq('user_id', user.id)
         .single();
@@ -115,7 +162,11 @@ export function useDraftPosts() {
             path: '/v1/posts',
             method: 'POST',
             payload: {
-              caption: draft.caption,
+              // Same gap as publishDraft: hashtags live in their own column and
+              // were never sent, so every tag on the draft was dropped at
+              // schedule time. composeCaption is the shared join, so scheduling
+              // and posting now produce identical text.
+              caption: composeCaption(draft.caption, draft.hashtags as string[] | null),
               media_urls: draft.media_urls,
               platform: draft.platform,
               content_type: draft.content_type,
@@ -171,5 +222,5 @@ export function useDraftPosts() {
     onError: () => { toast.error('Failed to cancel plan'); },
   });
 
-  return { drafts, isLoading, draftCount: drafts.length, cancelDraft, scheduleDraft, scheduleAllDrafts, cancelPlanGroup };
+  return { drafts, isLoading, draftCount: drafts.length, cancelDraft, updateDraft, scheduleDraft, scheduleAllDrafts, cancelPlanGroup };
 }

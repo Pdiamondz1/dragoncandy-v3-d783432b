@@ -220,9 +220,23 @@ serve(async (req) => {
     if (ANTHROPIC_API_KEY) {
       const contentTypes =
         deliverables?.map((d: { content_type: string }) => d.content_type).join(", ") || "content";
+      // `campaigns(title)` is a to-one embed, which PostgREST returns as an
+      // OBJECT — but supabase-js's select-parser widens it to an ARRAY because
+      // it cannot prove cardinality from the string. The old annotation asserted
+      // the object shape and lost the argument with the inferred type, and if
+      // the array shape is what actually arrives then `p.campaigns?.title` is
+      // `undefined` for every row and this silently degrades to "none yet" —
+      // the pitch prompt quietly losing the creator's track record.
+      //
+      // Read both shapes rather than bet on one. Costs nothing and cannot be
+      // wrong in either direction.
+      type EmbeddedCampaign = { title?: string | null };
       const pastTitles =
-        pastWork
-          ?.map((p: { campaigns: { title: string } | null }) => p.campaigns?.title)
+        (pastWork ?? [])
+          .map((p) => {
+            const c = (p as { campaigns?: EmbeddedCampaign | EmbeddedCampaign[] | null }).campaigns;
+            return Array.isArray(c) ? c[0]?.title : c?.title;
+          })
           .filter(Boolean)
           .join(", ") || "none yet";
 

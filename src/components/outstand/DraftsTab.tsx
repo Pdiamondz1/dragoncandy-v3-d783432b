@@ -8,6 +8,12 @@ import { useDonnyContext } from '@/contexts/DonnyProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { AppCard } from '@/components/app/AppCard';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { parseHashtagInput } from '@/lib/composeCaption';
+import { toDatetimeLocal, fromDatetimeLocal } from '@/lib/dateUtils';
 
 const SOURCE_BADGES: Record<string, { label: string; className: string }> = {
   campaign_social_hook: { label: 'Campaign', className: 'bg-dc-teal/20 text-dc-teal' },
@@ -32,16 +38,51 @@ function SourceBadge({ source }: { source: string | undefined }) {
   );
 }
 
-interface DraftsTabProps {
-  onSwitchTab?: (tab: string) => void;
-}
-
-export const DraftsTab: React.FC<DraftsTabProps> = ({ onSwitchTab }) => {
-  const { drafts, isLoading, cancelDraft, scheduleDraft, scheduleAllDrafts } = useDraftPosts();
+export const DraftsTab: React.FC = () => {
+  const { drafts, isLoading, cancelDraft, updateDraft, scheduleDraft, scheduleAllDrafts } = useDraftPosts();
   const { publishDraft } = useDonnyContext();
   const queryClient = useQueryClient();
   const [publishingId, setPublishingId] = useState<string | null>(null);
   const [schedulingId, setSchedulingId] = useState<string | null>(null);
+
+  // The draft currently open in the edit dialog, plus its working copy. Held as
+  // one object so opening a different draft cannot leave stale field state
+  // behind from the previous one.
+  const [editing, setEditing] = useState<
+    { draft: DraftPost; caption: string; hashtags: string; scheduledLocal: string } | null
+  >(null);
+
+  const openEditor = (draft: DraftPost) => {
+    setEditing({
+      draft,
+      caption: draft.caption ?? '',
+      hashtags: (draft.hashtags ?? []).join(' '),
+      scheduledLocal: toDatetimeLocal(new Date(draft.scheduled_at)),
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editing) return;
+    const when = fromDatetimeLocal(editing.scheduledLocal);
+    if (!when) {
+      toast.error('Enter a valid date and time');
+      return;
+    }
+    try {
+      await updateDraft.mutateAsync({
+        draftId: editing.draft.id,
+        caption: editing.caption.trim() || null,
+        hashtags: parseHashtagInput(editing.hashtags),
+        scheduledAt: when.toISOString(),
+      });
+      toast.success('Draft saved');
+      setEditing(null);
+    } catch (err) {
+      // updateDraft's onError already surfaces the message; keep the dialog
+      // open so the edit is not silently lost.
+      console.error('[DraftsTab] Save failed:', err);
+    }
+  };
 
   const handlePostNow = async (draft: DraftPost) => {
     setPublishingId(draft.id);
@@ -178,7 +219,7 @@ export const DraftsTab: React.FC<DraftsTabProps> = ({ onSwitchTab }) => {
                 <Button
                   variant="dc-outline"
                   size="sm"
-                  onClick={() => onSwitchTab?.('compose')}
+                  onClick={() => openEditor(draft)}
                   className="rounded-full border-dc-teal text-dc-teal hover:bg-dc-teal/10"
                 >
                   Edit
@@ -198,6 +239,81 @@ export const DraftsTab: React.FC<DraftsTabProps> = ({ onSwitchTab }) => {
           </AppCard>
         );
       })}
+
+      <Dialog open={editing !== null} onOpenChange={(open) => { if (!open) setEditing(null); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit draft</DialogTitle>
+          </DialogHeader>
+
+          {editing && (
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="draft-caption">Caption</Label>
+                <Textarea
+                  id="draft-caption"
+                  value={editing.caption}
+                  onChange={(e) => setEditing({ ...editing, caption: e.target.value })}
+                  rows={6}
+                  className="border-dc-teal/20 bg-white"
+                  placeholder="What should this post say?"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="draft-hashtags">Hashtags</Label>
+                <Input
+                  id="draft-hashtags"
+                  value={editing.hashtags}
+                  onChange={(e) => setEditing({ ...editing, hashtags: e.target.value })}
+                  className="border-dc-teal/20 bg-white"
+                  placeholder="#HobokenEats #SupportLocal"
+                />
+                <p className="text-xs text-dc-text-muted">
+                  Separate with spaces or commas. The # is added for you.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="draft-scheduled">Scheduled for</Label>
+                <Input
+                  id="draft-scheduled"
+                  type="datetime-local"
+                  value={editing.scheduledLocal}
+                  onChange={(e) => setEditing({ ...editing, scheduledLocal: e.target.value })}
+                  className="border-dc-teal/20 bg-white"
+                />
+              </div>
+
+              {/* Said plainly rather than left for someone to discover: media is
+                  behind the provider upload flow and this dialog does not touch it. */}
+              {editing.draft.media_urls?.length ? (
+                <p className="text-xs text-dc-text-muted">
+                  Media stays as it is — it can’t be changed here.
+                </p>
+              ) : null}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="dc-secondary"
+              onClick={() => setEditing(null)}
+              disabled={updateDraft.isPending}
+              className="rounded-full"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={updateDraft.isPending}
+              className="rounded-full bg-dc-teal-btn text-white font-bold hover:bg-dc-teal-btn-hover"
+            >
+              {updateDraft.isPending ? 'Saving…' : 'Save changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
