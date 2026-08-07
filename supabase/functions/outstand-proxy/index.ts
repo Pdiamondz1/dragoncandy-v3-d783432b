@@ -1092,6 +1092,40 @@ serve(async (req: Request) => {
     }
   }
 
+  // Guarded by upstream.ok ALONE, deliberately outside the side-effects block
+  // above — that block also requires a non-empty body, and a DELETE commonly
+  // returns 204 with none, which would have skipped the prune entirely and left
+  // the orphaned binding this exists to remove.
+    // A successful DELETE ends the media's life at the provider, so the binding
+  // must go with it. The provider has no FK back into our table and no
+  // cascade, so an orphaned row would linger forever — and since `total` and
+  // `pagination.total` are counted from these bindings, every deletion would
+  // permanently inflate the reported count and grow a phantom trailing page.
+  //
+  // Owner-scoped even though enforceScope already proved ownership before
+  // allowing the DELETE: it costs nothing and means this statement is correct
+  // on its own terms rather than on a guarantee made elsewhere.
+  if (upstream.ok && req.method === "DELETE") {
+    const delMatch = /^\/media\/([^/]+)$/.exec(pathOnly);
+    if (delMatch?.[1]) {
+      const { error: pruneErr } = await admin
+        .from("outstand_media_ownership")
+        .delete()
+        .eq("outstand_media_id", delMatch[1])
+        .eq("user_id", ctx.userId);
+      if (pruneErr) {
+        // Not fatal — the media IS gone at the provider, and the caller's
+        // delete succeeded. Logged because a stale binding inflates their
+        // media count until someone notices.
+        console.error(
+          `outstand-proxy: could not prune media binding ${delMatch[1]}`,
+          pruneErr.message,
+        );
+      }
+    }
+  }
+
+
   // Filter list responses
   if (upstream.ok && req.method === "GET") {
     if (pathOnly === "/media") {
