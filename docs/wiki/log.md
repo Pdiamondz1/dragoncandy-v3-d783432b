@@ -1,5 +1,42 @@
 # Wiki Log
 
+## [2026-08-08] update | The deploy that closed the anon-key holes — plus a dead authorization arm and a session collision
+
+Ingested `raw/sessions/2026-08-08-anon-key-deploy-and-embed-fix.md`. #402 and #399 were merged but
+inert; this is the deploy that actually closed them. **7 functions deployed and probe-verified, of
+which 6 were closed** — each of those flipped 200/404/400 → **401** with the public anon key, with
+before/after baselines captured using payloads that stop short of any side effect.
+`fire-campaign-social-hook` now returns an identical 401 for a real and a bogus campaign id, so the
+existence oracle is closed rather than narrowed. The 7th, `landing-clips`, is a legitimate anonymous
+endpoint and **deliberately still answers 200** — it was hardened (both media URLs origin-pinned),
+not closed, and is deliberately not counted among the six. The `donny-dragonshare-score` undeploy was
+re-confirmed (absent from `list_edge_functions`).
+
+Two findings surfaced by the deploy itself, both compounded onto
+[[verify_jwt Is Not Authorization]] rather than given new pages — they are consequences of that
+page's subject, not separate ideas:
+
+**An ambiguous PostgREST embed made an authorization arm dead code.** `campaign_sponsorships` has two
+FKs into `business_profiles`, so `business_profiles!inner(user_id)` answers **300 PGRST201**.
+supabase-js returns that as `{data:null}` rather than throwing, and the call site's nullish fallback
+turned it into a confident empty list — the brand arm never evaluated. It failed **closed**, so it
+never weakened the gate, and it was still worth fixing: that arm exists because its future caller
+swallows errors, so it would have produced exactly the silent absence it was written to prevent.
+**Two independent close reads of the file missed it** — a two-FK table is invisible in query text.
+
+**A parallel Claude session edited the same function within hours** (#403), surfaced only by an
+out-of-date merge rejection. The artifact about to ship was therefore a version no review had seen
+whole, so `edge-function-reviewer` was re-dispatched on the merged file (PASS). Recorded as a rule: a
+pre-deploy review binds to a commit; if the branch moves, run it again. The collision pattern is
+recorded in project memory as `project_concurrent_lovable_pr_collisions` — a memory file, not a wiki
+page, so deliberately not written as a `[[wikilink]]`.
+
+Pages updated: [[verify_jwt Is Not Authorization]] (new "Closed on prod" section + two gotchas —
+embed hints are load-bearing, and supabase-js does not throw on HTTP error statuses), `index.md`
+(entry rewritten to deployed status), `docs/SHIPPED_LOG.md` (new entry prepended),
+`docs/PROJECT_CONTEXT.md` §5 (both entries moved from "Built — awaiting founder go-live" to
+"Shipped"). No new pages, no schema change, no migration.
+
 ## [2026-08-08] ingest | [[verify_jwt Is Not Authorization]] — a new page, not a section on its sibling
 
 Deliberately a **new concept page** rather than compounding onto [[Service-Role Data Exposure]],

@@ -3,7 +3,7 @@ title: verify_jwt Is Not Authorization
 type: concept
 created: 2026-08-08
 updated: 2026-08-08
-sources: [2026-08-08-anon-key-reachable-edge-functions.md]
+sources: [2026-08-08-anon-key-reachable-edge-functions.md, 2026-08-08-anon-key-deploy-and-embed-fix.md]
 tags: [security, edge-functions, authorization, service-role, anon-key, gotcha]
 ---
 # verify_jwt Is Not Authorization
@@ -103,8 +103,73 @@ predicate anyway; duplicating two clauses is cheaper than an unowned write.
   distinguish 404 from 403. Resolve the caller first; return one status for "missing" and "not
   yours".
 
+## Closed on prod — and what the pre-deploy gate caught on the way (2026-08-08)
+
+Seven functions deployed, and they split into two groups — **do not collapse them into one count**.
+
+**Six were closed**, each flipping from reachable to refused with the public anon key:
+`dragonshare-notify` 200 → 401; `fire-dragonshare-social-hook`, `toast-discount-push` and
+`fire-promotion-social-hook` from reaching their lookups → 401; `social-caption` 400 → 401;
+`fire-campaign-social-hook` 404 → 401. That last one returns an **identical 401 for a real and a bogus
+campaign id**, so the existence oracle is closed rather than narrowed.
+
+**The seventh, `landing-clips`, was hardened and deliberately still answers 200** — it is a legitimate
+anonymous endpoint (one of the 4 the sweep cleared). What changed is that both media URLs are now
+origin-pinned to our own bucket, in the query *and* in `buildClips`. Counting it among the "now 401"
+functions would misreport the platform's security status, which is why the count here is six.
+
+**The two 401s are the whole lesson in one response pair.** No credentials returns the platform's
+`{"code":"UNAUTHORIZED_NO_AUTH_HEADER"}`; the anon key returns the function's own
+`{"error":"Unauthorized"}`. Before this work only the first existed, which is exactly why the
+functions looked protected.
+
+### An ambiguous PostgREST embed made an authorization arm dead code
+
+`edge-function-reviewer` flagged it before deploy; a live probe confirmed it.
+`campaign_sponsorships` has **two** FKs into `business_profiles` (`brand_id`, `restaurant_id`), so a
+bare `business_profiles!inner(user_id)` cannot resolve:
+
+| Form | Result |
+|---|---|
+| `business_profiles!inner(user_id)` | **300 `PGRST201`** |
+| `business_profiles!brand_id(user_id)` | 200 |
+| `business_profiles!brand_id!inner(user_id)` | 200 ← taken |
+
+supabase-js returns a 300 as `{ data: null }` **rather than throwing**, and the call site read
+`sponsorRes.data ?? []` — so the sponsor list was permanently empty and `isActiveSponsorBrand`
+permanently `false`.
+
+It **failed closed**, so it never widened access — it denied a party the gate was written to allow.
+That is what made it easy to ship and worth catching anyway: the arm exists *because* its future
+caller swallows errors with `.catch(console.error)`, so the silent-absence failure it was written to
+prevent is the one it would have produced.
+
+**Two independent close reads missed it.** The parallel session behind #403 found four other defects
+in this same file; my own re-read found none. A two-FK table does not appear in the query text, only
+in the schema — and `verify-sponsorship-payment` already used the disambiguated form one hop away.
+
+### Two sessions edited the same function within hours
+
+The #404 merge was rejected as out-of-date because **#403 had landed on the same file from a parallel
+session**, adding `stage` validation, a bound `campaignError`, an idempotency guard on the draft
+insert, and a redacted catch-all — and claiming the function **off** `.typecheck-ignore`. The artifact
+about to be deployed was therefore a version *no review had seen whole*, so it went back through
+`edge-function-reviewer` (PASS) before shipping. Only the merge rejection surfaced the collision — the
+collision pattern itself is recorded in project memory as `project_concurrent_lovable_pr_collisions`
+(a memory file, not a wiki page, so it is deliberately not a `[[wikilink]]`).
+
+**A pre-deploy review binds to a commit.** If the branch moves under you, the earlier PASS describes
+bytes you are no longer shipping — re-run the gate rather than carrying the verdict forward.
+
 ## Gotchas
 
+- **A read gate is not a write gate, and an embed hint is not styling.** `!brand_id` was load-bearing;
+  without it the query 300s and the guard silently degrades. When a table has more than one FK to the
+  same target, PostgREST **requires** the disambiguating hint — check `pg_constraint` before writing
+  an embed, and probe the query rather than re-reading it.
+- **supabase-js does not throw on HTTP error statuses.** A 300/400/500 arrives as
+  `{ data: null, error }`. Any `?? []` or `?? {}` fallback on that result turns a broken query into a
+  confident empty answer. Bind and check `error` on anything an authorization decision reads.
 - **A doc shorthand is not a signature.** `DATABASE_SCHEMA.md` writes
   `is_active_group_member(group_id, creator_id)`; prod is `(p_group_id, p_creator_id)`. Read
   `pg_proc`.
