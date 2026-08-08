@@ -84,7 +84,7 @@ Left open deliberately: `toast-token-refresh`'s cross-tenant browser button (a p
 `dragonshare-notify` residuals. **All six are inert until deployed.**
 ## [2026-08-08] Three authorization holes the invite-clarity work walked into
 
-> **State as of writing:** migrations `20260808010000`, `20260808020000` and `20260808030000`
+> **State as of writing:** migrations `20260808010000`, `20260808020001` and `20260808030000`
 > are **applied to prod**; `create-notification` is deployed at **v47** and **boot-verified**
 > (an anon-key POST returns the *function's own* `{"error":"Unauthorized"}`, not the platform's,
 > proving the module loaded and `_shared/cors.ts` bundled — nothing written, no mail sent).

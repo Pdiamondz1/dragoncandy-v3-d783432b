@@ -85,7 +85,7 @@
 | `campaign_invitations` | Direct invites from brands to creators. **A creator's UPDATE is decline-only (2026-08-08).** See the invitation-integrity note below. |
 | `campaign_matches` | Matched brand/creator pairings |
 | `campaign_sponsorships` | Sponsorship arrangements within campaigns |
-> **Invitation & application integrity — migrations `20260808010000` + `20260808020000`, applied
+> **Invitation & application integrity — migrations `20260808010000` + `20260808020001`, applied
 > and proven red→green on prod 2026-08-08.** Two live holes, both demonstrated by impersonating a
 > real user inside a rolled-back transaction (never assumed):
 >
