@@ -2350,7 +2350,7 @@ swallows errors, so it would have produced exactly the silent absence it was wri
 out-of-date merge rejection. The artifact about to ship was therefore a version no review had seen
 whole, so `edge-function-reviewer` was re-dispatched on the merged file (PASS). Recorded as a rule: a
 pre-deploy review binds to a commit; if the branch moves, run it again. Links to
-[[Concurrent Lovable PR Collisions]].
+[[project_concurrent_lovable_pr_collisions]].
 
 Pages updated: [[verify_jwt Is Not Authorization]] (new "Closed on prod" section + two gotchas —
 embed hints are load-bearing, and supabase-js does not throw on HTTP error statuses), `index.md`

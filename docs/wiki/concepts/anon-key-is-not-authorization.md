@@ -149,7 +149,10 @@ session**, adding `stage` validation, a bound `campaignError`, an idempotency gu
 insert, and a redacted catch-all — and claiming the function **off** `.typecheck-ignore`. The artifact
 about to be deployed was therefore a version *no review had seen whole*, so it went back through
 `edge-function-reviewer` (PASS) before shipping. Only the merge rejection surfaced the collision; see
-[[Concurrent Lovable PR Collisions]].
+[[project_concurrent_lovable_pr_collisions]].
+
+**A pre-deploy review binds to a commit.** If the branch moves under you, the earlier PASS describes
+bytes you are no longer shipping — re-run the gate rather than carrying the verdict forward.
 
 ## Gotchas
 
