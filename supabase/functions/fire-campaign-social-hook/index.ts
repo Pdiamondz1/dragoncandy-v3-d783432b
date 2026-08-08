@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { authorizeCampaignHook } from './authz.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -28,18 +29,74 @@ serve(async (req) => {
 
     const { campaign_id, stage } = (await req.json()) as HookRequest;
 
-    const { data: campaign } = await supabase
-      .from('campaigns')
-      .select('id, title, description, goals, user_id, status, org_unit_id, delivery_type, platforms, posting_preferences')
-      .eq('id', campaign_id)
-      .single();
-
-    if (!campaign) {
-      return new Response(JSON.stringify({ error: 'Campaign not found' }), {
-        status: 404,
+    // --- Authorization -------------------------------------------------------
+    // Service-role function acting on a body-supplied `campaign_id`, with no caller check before
+    // this change — and `verify_jwt=true` does not gate it, because the anon key is a valid JWT
+    // that ships in the frontend bundle. With `stage: 4` on someone else's campaign it minted
+    // 1-hour signed Storage URLs over THAT campaign's private deliverables and persisted them into
+    // `donny_scheduled_posts.media_urls` for every party, behind a "Post Now" nudge — content the
+    // owner never approved, one tap from a live social account. See [[Service-Role Data Exposure]].
+    //
+    // Identity is resolved FIRST, before the campaign is ever read, so an anonymous caller cannot
+    // use 404-vs-403 as an existence oracle on a campaign id (a private crew campaign id in
+    // particular), and cannot make us run a service-role query on an id of their choosing.
+    // Rules live in ./authz.ts (pure + unit-tested) — and deliberately NOT in
+    // `_shared/campaign-access.ts`, which answers a READ question; see that file's header.
+    const unauthorized = (status: 401 | 403) =>
+      new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status,
         headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
+
+    const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
+    let callerId: string | null = null;
+    if (token) {
+      const anon = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY') ?? '');
+      const { data: userData } = await anon.auth.getUser(token);
+      callerId = userData?.user?.id ?? null;
     }
+    if (!callerId) return unauthorized(401);
+
+    const { data: campaign } = await supabase
+      .from('campaigns')
+      .select('id, title, description, goals, user_id, org_id, group_id, status, org_unit_id, delivery_type, platforms, posting_preferences')
+      .eq('id', campaign_id)
+      .maybeSingle();
+
+    const [orgRes, sponsorRes] = await Promise.all([
+      supabase.from('org_members').select('org_id')
+        .eq('user_id', callerId).eq('invitation_status', 'active'),
+      // Active sponsoring brand: campaign_sponsorships.brand_id → business_profiles.user_id,
+      // the same hop `fire-dragonshare-social-hook` already uses to resolve its brand party.
+      campaign
+        ? supabase.from('campaign_sponsorships')
+            .select('brand_id, business_profiles!inner(user_id)')
+            .eq('campaign_id', campaign.id)
+            .in('status', ['active', 'accepted'])
+        : Promise.resolve({ data: [] as unknown[] }),
+    ]);
+
+    const sponsorUserIds = ((sponsorRes.data ?? []) as Array<{
+      business_profiles?: { user_id?: string } | Array<{ user_id?: string }>;
+    }>).flatMap((s) => {
+      const bp = s.business_profiles;
+      const rows = Array.isArray(bp) ? bp : bp ? [bp] : [];
+      return rows.map((r) => r.user_id).filter((v): v is string => !!v);
+    });
+
+    const access = authorizeCampaignHook({
+      campaign: campaign ? { user_id: campaign.user_id, org_id: campaign.org_id ?? null } : null,
+      callerId,
+      callerOrgIds: (orgRes.data ?? []).map((m: { org_id: string }) => m.org_id),
+      isActiveSponsorBrand: sponsorUserIds.includes(callerId),
+    });
+
+    if (!access.ok) {
+      console.warn(`[fire-campaign-social-hook] denied campaign=${campaign_id} status=${access.status}`);
+      return unauthorized(access.status);
+    }
+    if (!campaign) return unauthorized(403); // unreachable — narrows the type for the code below
+    // --- end authorization ---------------------------------------------------
 
     const { data: businessProfile } = await supabase
       .from('business_profiles')

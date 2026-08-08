@@ -52,12 +52,30 @@ serve(async (req) => {
       });
     }
 
-    // 2. Fetch submission
+    // AUTHORIZATION. The function authenticated the caller above but never checked they OWN this
+    // promotion — authenticating is not authorizing. Any signed-in user could drive a draft and a
+    // high-priority nudge into the promotion owner's account carrying that submission's
+    // `video_url` and `customer_name`, and bill the caption to the owner's `donny_cost_ledger`.
+    // `promotions` has no `org_id` (only `user_id` and `business_id`), so ownership is the whole
+    // predicate here. See [[Service-Role Data Exposure]].
+    if (promotion.user_id !== user.id) {
+      console.warn(`[fire-promotion-social-hook] denied promotion=${promotion_id}`);
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 403,
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+      });
+    }
+
+    // 2. Fetch submission — PINNED to this promotion. Fetching by `submission_id` alone left the
+    // two ids unpaired, so an owner could pull a DIFFERENT promotion's submission (its customer
+    // name and video) into their own draft. Same defect shape as the boost/post pair in
+    // `fire-dragonshare-social-hook`.
     const { data: submission } = await supabase
       .from('promotion_submissions')
       .select('id, video_url, customer_name, social_handles')
       .eq('id', submission_id)
-      .single();
+      .eq('promotion_id', promotion_id)
+      .maybeSingle();
 
     if (!submission) {
       return new Response(JSON.stringify({ error: 'Submission not found' }), {

@@ -117,6 +117,23 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 > proof the object exists (see [[Content Delivery State Machine]]) and "recorded ≠ actual" has
 > bitten this project before.
 
+- **`verify_jwt=true` is not authorization — 6 anon-key-reachable service-role edge functions** —
+  the anon key **is** a valid JWT and ships in the frontend bundle, so the platform default only
+  rejects a *missing* header and never establishes a user; any service-role function skipping
+  `auth.getUser()` answered **anyone on the internet** (proven on prod: 401 with no header, **200
+  with the public anon key**). A 100-function sweep found 18 candidates → 4 legitimately public,
+  8 authorized another way, **6 exposed**; both money functions (`resolve-dispute`,
+  `verify-package-order-escrow`) came back clean. Fixed per caller shape, not with one guard:
+  ingest gates, JWT-derived ids (`social-caption` fed `donny_cost_ledger`, the AI kill-switch's own
+  ledger), ownership assertions, and a per-event split for `dragonshare-notify` (browser-called
+  twice — a blanket guard would have broken submission and decline). Two unpaired-id defects fixed;
+  a read gate (`evaluateCampaignAccess`) replaced with a purpose-built write gate after review
+  caught a rejected applicant could mint signed URLs over private deliverables. The sweep's own
+  blind spot is the lesson — `fire-promotion-social-hook` was cleared by the regex because it calls
+  `getUser` and never checks ownership. **Pending (verified 2026-08-08):** merge PR, then **deploy
+  all 6** — they are code changes and inert until deployed. Also found: **zero Toast tables exist on
+  prod**, so §10's "Active integrations: Toast POS" is aspirational.
+  → `docs/wiki/concepts/anon-key-is-not-authorization.md` · #402
 - **`donny-dragonshare-score` UNDEPLOYED — an unauthorized cross-tenant service-role write** — the
   authenticated caller was validated then **never used again**, so a body-supplied `post_id` reached
   a service-role read *and* write of any tenant's post, with the audit row stamped to the **victim**;
@@ -133,10 +150,11 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   lead was **checked and refuted** (real consumer behind a deliberately-off flag) and kept — but
   confirming that found a **real** defect: both its media URLs are creator-writable free text, so a
   boosted creator could aim the anonymous homepage at any URL; `buildClips` plus the query now
-  origin-pin them to the public bucket. Two new pre-existing `[med]` write/forgery leads filed and
-  **not fixed** (`fire-dragonshare-social-hook`, `dragonshare-notify` — body id + service role + no
-  caller resolution). **Pending (verified 2026-08-08):** merge PR #399, then **deploy the hardened
-  `landing-clips`** — that half is a code change and is inert until deployed. The undeploy is done.
+  origin-pin them to the public bucket. Two new pre-existing `[med]` write/forgery leads were filed
+  here (`fire-dragonshare-social-hook`, `dragonshare-notify`) and are **now fixed in #402**, which
+  also found they were reachable with the *public anon key*, not merely by an authenticated user.
+  **PR #399 is MERGED and the undeploy is done. Pending (verified 2026-08-08):** deploy the hardened
+  `landing-clips` — that half is a code change and is inert until deployed.
   → `docs/wiki/concepts/service-role-data-exposure.md` · #399
 - **DC Points visibility (`/rewards`, chip, honest notification, Donny)** — a bell said
   "+200 DC Points" with nowhere to click, points showed on two dashboards with no explanation, and

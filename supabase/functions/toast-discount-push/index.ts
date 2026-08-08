@@ -16,6 +16,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { isAuthorizedIngest } from "../_shared/ingest-auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -23,6 +24,20 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders(req) });
+  }
+
+  // Service-role only. Today this has NO caller anywhere (no `functions.invoke` in `src/`, no
+  // server-to-server fetch, no cron) yet answered anyone — `verify_jwt=true` is not a gate, since
+  // the anon key is a valid JWT shipped in the frontend bundle. As a stub the damage is an
+  // unauthenticated INSERT of arbitrary JSON into `toast_sync_events` plus a "does this business
+  // have Toast connected" oracle. The point of gating it NOW is the header comment above: when
+  // partner tier lands and the stub becomes a real POST to a restaurant's live discount config,
+  // this would silently graduate into an unauthenticated write to their POS.
+  if (!isAuthorizedIngest(req)) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+    });
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
