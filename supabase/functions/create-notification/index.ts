@@ -63,26 +63,26 @@ const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Record<string, string> = {
   dragonshare_declined: 'dragonshare_declined',
 };
 
-// Email templates a USER-authenticated caller may select explicitly via `emailType`,
-// keyed BY NOTIFICATION TYPE.
+// Email templates a USER-authenticated caller may select explicitly via `emailType`.
 //
-// A flat list of template names was not enough: it let an authorized caller pair any
-// permitted template with any notification type — `type: 'content_liked'` with
-// `emailType: 'sponsorship_completed'` — producing a transactional email for an event
-// that never happened. Template choice has to be bound to the flow that justifies it.
+// These flows genuinely need it: their notification type has no
+// NOTIFICATION_TYPE_TO_EMAIL_TYPE entry to derive from, so ignoring `emailType` silently
+// kills the email. But a bare list of permitted template NAMES is not enough — it let an
+// authorized caller pair any permitted template with any notification type
+// (`type: 'content_liked'` + `emailType: 'sponsorship_completed'`), producing a
+// transactional email for an event that never happened.
 //
-// These are exactly the pairs real client code already sends, and whose notification type
-// has no NOTIFICATION_TYPE_TO_EMAIL_TYPE entry to derive from. Every one is
-// `type === emailType` except `file_uploaded`, which legitimately splits by uploader role.
-// Keep in sync with the `emailType:` literals in src/.
-const CLIENT_ALLOWED_EMAIL_TYPES: Record<string, readonly string[]> = {
-  sponsorship_completed: ['sponsorship_completed'],
-  sponsorship_completion_request: ['sponsorship_completion_request'],
-  approval_pending: ['approval_pending'],
-  completion_request: ['completion_request'],
-  content_started: ['content_started'],
-  file_uploaded: ['file_uploaded_by_creator', 'file_uploaded_by_restaurant'],
-};
+// So the template is bound to the flow that justifies it: a client may name a template
+// ONLY for the notification type of the same name. That identity rule is the whole policy
+// — anything needing a different template than its type is derived server-side instead
+// (see `file_uploaded` below). Keep in sync with the `emailType:` literals in src/.
+const CLIENT_SELF_NAMED_EMAIL_TYPES = new Set([
+  'sponsorship_completed',
+  'sponsorship_completion_request',
+  'approval_pending',
+  'completion_request',
+  'content_started',
+]);
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -185,6 +185,8 @@ const handler = async (req: Request): Promise<Response> => {
     let templatedBody: string | null = null;
     let templatedActionUrl: string | null = null;
     let templatedEmailData: Record<string, unknown> | null = null;
+    // Email template resolved from database facts rather than from the request.
+    let derivedEmailType: string | null = null;
 
     if (!isService && callerId) {
       let permitted = false;
@@ -238,6 +240,53 @@ const handler = async (req: Request): Promise<Response> => {
           status: 403,
           headers: { ...corsHeaders(req), "Content-Type": "application/json" },
         });
+      }
+
+      // `file_uploaded` is one notification type with two role-specific emails: the
+      // creator's upload reads "New Deliverables … ready for review", the restaurant's
+      // reads "New Campaign Files". Which one fires used to come from the request, so
+      // either party in a real collaboration could send the other the email that claims
+      // the WRONG uploader. Binding the type is not enough when the type itself carries a
+      // role, so the role is read from the collaboration — a database fact, not an
+      // assertion. Both sides are checked explicitly rather than inferring "not the
+      // creator ⇒ the business": several people can pass the relationship gate on one
+      // campaign, and only these two are parties to this collaboration.
+      if (type === "file_uploaded") {
+        const collaborationId = (data as Record<string, unknown> | undefined)?.collaboration_id;
+        if (typeof collaborationId === "string") {
+          const { data: collab, error: collabError } = await admin
+            .from("campaign_collaborations")
+            .select("creator_id, campaign_id")
+            .eq("id", collaborationId)
+            .maybeSingle();
+          // Capture the error rather than only the row: without this a genuine DB fault
+          // is indistinguishable from "this caller is neither party", and both land on
+          // the same generic warn below with nothing to debug from.
+          if (collabError) console.error("file_uploaded: collaboration lookup failed:", collabError);
+
+          if (collab?.creator_id === callerId) {
+            derivedEmailType = "file_uploaded_by_creator";
+          } else if (collab) {
+            const { data: campaign, error: campaignError } = await admin
+              .from("campaigns")
+              .select("user_id")
+              .eq("id", collab.campaign_id)
+              .maybeSingle();
+            if (campaignError) console.error("file_uploaded: campaign lookup failed:", campaignError);
+            if (campaign?.user_id === callerId) {
+              derivedEmailType = "file_uploaded_by_restaurant";
+            }
+          }
+        }
+        // Undetermined role falls through to NOTIFICATION_TYPE_TO_EMAIL_TYPE's
+        // `file_uploaded_by_creator` — the same email this type has always sent when no
+        // `emailType` was supplied, so this is not a new behaviour, and it is one fixed
+        // template rather than a caller's choice of two. The only caller always sends
+        // `collaboration_id` (it early-returns without an active collaboration), so this
+        // should not fire in practice; log it if it does.
+        if (!derivedEmailType) {
+          console.warn(`file_uploaded: uploader role undetermined for actor=${callerId}`);
+        }
       }
     }
 
@@ -305,14 +354,18 @@ const handler = async (req: Request): Promise<Response> => {
       //
       // But it cannot simply be ignored either: several real flows legitimately depend on
       // it because their notification type has no mapping entry. Dropping it silently
-      // killed those emails — a regression caught in review. So it is allow-listed rather
-      // than discarded: exactly the templates clients already send, nothing more.
+      // killed those emails — a regression caught in review. So a client may name only the
+      // template matching its own notification type; anything else is server-derived.
+      //
+      // Precedence: server-derived beats client-named beats the type map. A value the
+      // server established from the database is never overridden by the request.
       const requestedEmailType = isService
         ? emailType
-        : (emailType && CLIENT_ALLOWED_EMAIL_TYPES[type]?.includes(emailType)
+        : (emailType && emailType === type && CLIENT_SELF_NAMED_EMAIL_TYPES.has(emailType)
             ? emailType
             : undefined);
-      const resolvedEmailType = requestedEmailType ?? NOTIFICATION_TYPE_TO_EMAIL_TYPE[type];
+      const resolvedEmailType =
+        derivedEmailType ?? requestedEmailType ?? NOTIFICATION_TYPE_TO_EMAIL_TYPE[type];
       if (resolvedEmailType) {
         // Synthetic Weight Engine: never send real email to bot accounts (protects sender
         // reputation). The in-app notification row above is still created for bots — only the
