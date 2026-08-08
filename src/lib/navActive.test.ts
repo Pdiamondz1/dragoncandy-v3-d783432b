@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { activeNavHref } from './navActive';
-import { businessSidebarNav, creatorSidebarNav, getBottomNav } from './navConfig';
+import {
+  businessSidebarNav,
+  brandSidebarNav,
+  creatorSidebarNav,
+  getBottomNav,
+} from './navConfig';
 
 const businessHrefs = businessSidebarNav.map((i) => i.href);
 const creatorHrefs = creatorSidebarNav.map((i) => i.href);
@@ -27,30 +32,36 @@ describe('activeNavHref', () => {
     expect(activeNavHref('/dashboard/business', businessHrefs)).toBe('/dashboard/business');
   });
 
-  it('returns exactly one active href for every business child route', () => {
-    const childRoutes = [
-      '/dashboard/business/dragon-feed',
-      '/dashboard/business/activity',
-      '/dashboard/business/creators',
-      '/dashboard/business/groups',
-      '/dashboard/business/promotions',
-      '/dashboard/business/social',
-      '/dashboard/business/dragonshare',
-      '/dashboard/business/messages',
-      '/dashboard/business/locations',
-      '/dashboard/business/team',
-      '/dashboard/business/billing',
-      '/dashboard/business/settings',
-    ];
-    for (const route of childRoutes) {
-      const active = activeNavHref(route, businessHrefs);
-      expect(active, `expected a match for ${route}`).toBe(route);
-      // And it is genuinely one item, not the root tying with the child.
-      const allMatches = businessHrefs.filter(
-        (h) => route === h || route.startsWith(h + '/'),
-      );
-      expect(allMatches.length, `${route} matches >1 href; longest must win`).toBeGreaterThan(0);
+  it('resolves every nav item to itself, for all three roles', () => {
+    // Derived from navConfig, never hardcoded: a literal route list silently rots the moment a
+    // route is renamed. That is not hypothetical — PR #383 renamed Crews
+    // /dashboard/business/groups → /crews, and the hardcoded version of this test failed on CI
+    // (only) because the PR merge commit picked up the rename.
+    const roles = [businessSidebarNav, brandSidebarNav, creatorSidebarNav];
+    for (const nav of roles) {
+      const hrefs = nav.map((i) => i.href);
+      for (const href of hrefs) {
+        if (href.startsWith('#')) continue; // the Donny placeholder is not a route
+        expect(activeNavHref(href, hrefs), `nav item ${href} should be active on its own path`)
+          .toBe(href);
+      }
     }
+  });
+
+  it('never lets a role root win over a more specific sibling', () => {
+    // The reported bug, generalized: for every nav item nested under the role root, the root must
+    // lose. Derived, so a renamed or newly-nested route stays covered automatically.
+    const roots = ['/dashboard/business', '/dashboard/brand', '/dashboard/creator'];
+    const navs = [businessSidebarNav, brandSidebarNav, creatorSidebarNav];
+    navs.forEach((nav, i) => {
+      const hrefs = nav.map((n) => n.href);
+      const root = roots[i];
+      const children = hrefs.filter((h) => h !== root && h.startsWith(root + '/'));
+      expect(children.length, `${root} should have child nav items`).toBeGreaterThan(0);
+      for (const child of children) {
+        expect(activeNavHref(child, hrefs), `${root} must not win over ${child}`).not.toBe(root);
+      }
+    });
   });
 
   it('does not confuse sibling routes that share a prefix word', () => {
