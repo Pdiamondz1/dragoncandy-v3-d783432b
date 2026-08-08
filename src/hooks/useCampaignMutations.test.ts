@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { countInviteDispatch } from './useCampaignMutations';
+import { countInviteDispatch, didBroadcast } from './useCampaignMutations';
 
 /** Shorthand for what `supabase.functions.invoke` resolves to. */
 const ok = (): PromiseSettledResult<{ error: unknown } | null> => ({
@@ -57,5 +57,30 @@ describe('countInviteDispatch', () => {
       value: null,
     };
     expect(countInviteDispatch([nullValue], 1)).toEqual({ sentCount: 1, failedCount: 0 });
+  });
+});
+
+describe('didBroadcast', () => {
+  it('is true for a delivered broadcast', () => {
+    expect(didBroadcast({ ok: true, allDelivered: true })).toBe(true);
+  });
+
+  // A 2xx only means the function RAN. If every send bounced, the business must not be
+  // told "Creators and brands have been notified!" — that is the same false claim the
+  // dead creator leg made for months, just in a narrower window.
+  it('is false when the function ran but nothing was delivered', () => {
+    expect(didBroadcast({ ok: true, allDelivered: false })).toBe(false);
+  });
+
+  // Deploy-window compatibility: the previously-live function returns
+  // { ok, notifications_sent } and has no allDelivered field. The client must not start
+  // reporting failure against a version that simply predates the field.
+  it('is true when the deployed function predates the allDelivered field', () => {
+    expect(didBroadcast({ ok: true, notifications_sent: 14 })).toBe(true);
+  });
+
+  it('is true for a null or undefined body rather than reporting a false failure', () => {
+    expect(didBroadcast(null)).toBe(true);
+    expect(didBroadcast(undefined)).toBe(true);
   });
 });

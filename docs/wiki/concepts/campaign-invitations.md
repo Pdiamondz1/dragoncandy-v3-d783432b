@@ -35,10 +35,27 @@ which says "apply if you're interested."
 | Claim | Where it's enforced |
 |---|---|
 | A published campaign is already in the marketplace for everyone | `usePublicCampaigns.ts` filters **only** `status='published'` + `group_id IS NULL` + already-taken exclusion. **No invitation filter exists.** |
-| Every onboarded creator is emailed at publish anyway | `send-campaign-publish-notifications` mails all `onboarding_complete=true` creators |
+| Every onboarded creator is emailed at publish anyway | `send-campaign-publish-notifications` mails all creators with a completed profile — **but see the correction below: this leg was dead in production until 2026-08-08** |
 | There is no "Accept" button | Accepting **is** applying — `apply_to_campaign` flips a pending invitation to `accepted` as a side effect |
 | An invite grants no priority | The result is an ordinary `campaign_applications` row the business must review |
 | The one real privilege | `useCreateApplication.ts` (+ RLS) lets an **invited** creator apply once the campaign is no longer `published` |
+
+### Correction (2026-08-08): the "emailed at publish anyway" row was false
+
+The second row above was written from the code's *intent*, not its behaviour. The function
+filtered `creator_profiles` on `onboarding_complete`, a column that has never existed on that
+table. PostgREST returned `42703` on every call, the error was discarded (`const { data: creators }`
+with no `error` binding), the list came back `null`, and the whole creator fan-out was skipped —
+while the function still returned `ok: true` and the business was told "Creators and brands have
+been notified!". **No creator has ever received a new-campaign email in production.** Owner and
+brand emails were unaffected, which is why it looked like it worked. Fixed 2026-08-08
+(`is_completed`, error bound and reported).
+
+**The conclusion in this doc still stands, but it now rests on one pillar instead of two.** An
+invite confers no priority because the campaign is genuinely already in the marketplace for every
+creator — `usePublicCampaigns` has no invitation filter, and that was verified directly. The email
+claim was never a load-bearing part of that argument, but it was quoted as supporting evidence in
+the #382 write-up and in `SHIPPED_LOG`, so treat those two mentions as inaccurate for their date.
 
 Design intent is on the record — the 2026-04-26 invitations spec chose "the creator 'accepts' by
 applying; 'declines' by doing nothing… no separate accept/decline UI flow" deliberately, to avoid
