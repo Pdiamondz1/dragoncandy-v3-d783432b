@@ -131,27 +131,6 @@ serve(async (req) => {
       });
     }
 
-    // Bound replay. The campaign_social_hooks upsert is idempotent, but the caption/schedule
-    // loop below re-runs on EVERY invocation — and it calls social-caption with the
-    // service-role bearer, which takes that function's isService branch and so skips its
-    // per-user limit. Without this, any single accepted party could replay this endpoint and
-    // burn one LLM call per party per request. Attributed to the caller, so the cost lands on
-    // whoever is actually driving it.
-    const hookRateCheck = await checkHourlyRateLimit(supabase, callerId);
-    if (!hookRateCheck.allowed) {
-      return new Response(
-        JSON.stringify({ error: 'rate_limited', retry_after: hookRateCheck.retryAfterSeconds }),
-        {
-          status: 429,
-          headers: {
-            ...corsHeaders(req),
-            'Content-Type': 'application/json',
-            'Retry-After': String(hookRateCheck.retryAfterSeconds),
-          },
-        },
-      );
-    }
-
     const rows = parties.map((p) => ({
       campaign_id,
       stage,
@@ -189,8 +168,33 @@ serve(async (req) => {
       }
     }
 
-    // --- Stage 4 auto-draft: create scheduled post drafts + nudges ---
+    // Bound replay of the LLM leg. The campaign_social_hooks upsert above is idempotent, but the
+    // auto-draft loop below re-runs on EVERY invocation — and it calls social-caption with the
+    // service-role bearer, which takes that function's isService branch and so skips its per-user
+    // limit. Without this, any single accepted party could replay stage 4 and burn one LLM call
+    // per party per request. Attributed to the caller, so the cost lands on whoever drives it.
+    //
+    // Scoped to stage 4, and placed AFTER the hook upsert, deliberately. checkHourlyRateLimit
+    // check-AND-increments (usage-tracker.ts:179), so running it unconditionally — as this first
+    // did — charged stages 1/2/3/5 against llm_hourly_usage even though only stage 4 ever reaches
+    // social-caption, and would eventually have 429'd hook creation itself. Hook rows are this
+    // function's contract; drafting is best-effort enrichment (the caption and schedule calls
+    // below already degrade with a warn), so an exhausted limit skips the draft instead of
+    // failing the call.
+    let draftSkipped: string | null = null;
     if (stage === 4) {
+      const hookRateCheck = await checkHourlyRateLimit(supabase, callerId);
+      if (!hookRateCheck.allowed) {
+        draftSkipped = 'rate_limited';
+        console.warn(
+          `[fire-campaign-social-hook] Auto-draft skipped for ${callerId}: hourly LLM limit reached ` +
+          `(retry in ${hookRateCheck.retryAfterSeconds}s)`,
+        );
+      }
+    }
+
+    // --- Stage 4 auto-draft: create scheduled post drafts + nudges ---
+    if (stage === 4 && !draftSkipped) {
       const hasAutoSchedule = campaign.posting_preferences?.auto_schedule_on_approval === true;
       for (const party of parties) {
         if (hasAutoSchedule && party.role === 'restaurant') continue;
@@ -386,7 +390,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, hooks_created: rows.length, stage }),
+      JSON.stringify({ ok: true, hooks_created: rows.length, stage, draft_skipped: draftSkipped }),
       { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
     );
   } catch (error) {
