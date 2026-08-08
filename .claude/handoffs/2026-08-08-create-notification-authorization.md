@@ -128,7 +128,35 @@ worthwhile future refactor, not a security blocker.
 
 ## State at handoff
 
+**This work is now BUILT and DEPLOYED — the handoff above records the design reasoning, which is
+still the reason the code looks the way it does. Read it before changing the clause set.**
+
 - PR #387 open, all gates green (Codex clean, data-exposure findings closed), migrations
-  `20260808010000` + `20260808020000` **already applied to prod** and verified red→green.
-- Branch `fix/invitation-integrity`, worktree `.claude/worktrees/dc-improvements-17`.
-- Nothing of the `create-notification` work is written yet.
+  `20260808010000` + `20260808020000` applied to prod and verified red→green.
+- Branch **`fix/notification-authorization`**, commit **`d0e3020f`**, worktree
+  `.claude/worktrees/dc-improvements-17`.
+- **Live on prod:** `create-notification` **v42** (deployed, boot-checked) and migration
+  `20260808030000_can_notify_user` (applied).
+- **Proven on prod after deploy:** unrelated pair → `false`; a real historical actor/recipient pair
+  → `true`; across every user pair, **1,692 blocked / 30 allowed**.
+- `edge-function-reviewer`: PASS. Its two corrections were applied — a stale comment claiming an
+  "open type" branch that does not exist, and my miscount of "6 edge-function callers" (there are
+  **2**: `dre-award-engine`, `dragonshare-notify`).
+
+### NOT done — pick this up here
+
+1. **Codex second review has NOT produced a verdict.** It was started three times and killed each
+   time before output. It is a required gate; do not record it as passed. Run:
+   `codex review --base main --title "create-notification recipient authorization"`
+2. **Branch not pushed, PR not opened.** `git push -u origin fix/notification-authorization`
+   (the pre-push hook runs typecheck + build, ~10 min — run it where it won't be interrupted).
+3. **`knowledge-sync`** for this workstream (wiki page + SHIPPED_LOG + §5).
+4. **Follow-up, not a blocker:** `title`/`body`/`actionUrl` are still free text for callers who DO
+   have a relationship. Far smaller than the stranger-phishing surface now closed; wants a
+   server-side templating pass across the 32 call sites.
+
+### Environment note
+
+Every background task in the originating session was killed within seconds (4 in a row: Codex ×2,
+push ×2), and the machine had been pinned at 100% CPU by concurrent worktree dev servers. Both
+remaining steps exceed the 10-minute foreground cap, so run them from a normal terminal.
