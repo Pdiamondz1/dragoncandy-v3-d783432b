@@ -109,13 +109,29 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 > **Every `**Pending:**` clause below was re-verified against prod on 2026-08-07** — not against
 > the PR description or this file's own history. Eight entries were found already complete (merged
-> PRs, applied migrations, deployed functions) and moved to Shipped; the two that remain are
-> genuinely blocked on founder/external action. **A `**Pending:**` clause is a claim with an expiry
+> PRs, applied migrations, deployed functions) and moved to Shipped; the two that remained at that
+> sweep are genuinely blocked on founder/external action (entries added since carry their own
+> verification date). **A `**Pending:**` clause is a claim with an expiry
 > date.** Verify it before acting on it — check the object (`pg_proc` / `information_schema` /
 > `pg_indexes`), the PR state, and the function version, because a migration ledger entry is not
 > proof the object exists (see [[Content Delivery State Machine]]) and "recorded ≠ actual" has
 > bitten this project before.
 
+- **DC Points visibility (`/rewards`, chip, honest notification, Donny)** — a bell said
+  "+200 DC Points" with nowhere to click, points showed on two dashboards with no explanation, and
+  even the founder needed a SQL query to answer "what earned that." Ships a `/rewards` page
+  (balance, full-sentence tier gap, labeled history, a live `dre_config`-driven earn catalog), an
+  always-visible chip in both top bars, a caller-scoped `dre_my_standing()` RPC, a bell that names
+  its reason, and a Donny `rewards_agent` answering strictly from the caller's own standing.
+  Deliberately **earn-only** — a tier confers a public badge and nothing else ([[Honest Analytics]]).
+  Also closed a live leak: two never-built DRE engineering specs (referrals, streaks, redemption)
+  were reachable by consumer Donny via a NULL `donny_knowledge.scope`. **Pending (verified
+  2026-08-08):** 3 migrations applied + verified on prod; PR #378 open, and the mandatory Codex pass
+  is now **clean** — it took 3 rounds, two of which caught the same defect (a non-creator role
+  falling back to the business branch) in two different places, the second inside Donny's generated
+  prose where no UI review could see it. Awaiting the founder's merge, then deploy
+  `dre-award-engine` (`--no-verify-jwt`) and `donny-orchestrator` (without that flag).
+  → `docs/wiki/concepts/dragon-rewards-engine.md` · #378
 - **DragonFeed uplift + sidebar double-active fix** — the "double-clicked button" was a
   **specificity** bug (each role's bare-root Dashboard href prefixed all ~26 child routes, in three
   copy-pasted navs) → one shared longest-match-wins `activeNavHref()`. The feed's four complaints

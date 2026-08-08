@@ -2,8 +2,8 @@
 title: Self-Improving App
 type: concept
 created: 2026-06-10
-updated: 2026-06-20
-sources: [autoresearch/program.md, autoresearch/README.md, docs/PROJECT_CONTEXT.md, docs/superpowers/specs/2026-06-11-dragoncandy-aios-design.md, 2026-06-18-wiki-commit-pr.md, 2026-06-18-donny-answer-to-wiki.md, 2026-06-18-aios-ingest-secret-rotation.md, 2026-06-19-aios-loop-automation.md, 2026-06-20-loop-scout-first-run-builds.md, 2026-06-19-aios-founder-playbooks.md]
+updated: 2026-08-07
+sources: [autoresearch/program.md, autoresearch/README.md, docs/PROJECT_CONTEXT.md, docs/superpowers/specs/2026-06-11-dragoncandy-aios-design.md, 2026-06-18-wiki-commit-pr.md, 2026-06-18-donny-answer-to-wiki.md, 2026-06-18-aios-ingest-secret-rotation.md, 2026-06-19-aios-loop-automation.md, 2026-06-20-loop-scout-first-run-builds.md, 2026-06-19-aios-founder-playbooks.md, 2026-08-07-dc-points-visibility.md]
 tags: [architecture, strategy, ai, moat, autoresearch, donny, automation]
 ---
 
@@ -284,12 +284,27 @@ code and money changes human-gated.
   scope-aware RLS, 3-arg `match_donny_knowledge`) keeps internal rows invisible to consumer Donny on
   every path — verified with sentinel tests in prod. Internal Donny at `/internal/donny` retrieves
   the internal scope through admin-verified donny-chat.
+- **Qualified (2026-08-07) — "every path" was true for the `sync-internal-docs.mjs` strategy-library
+  path, not for the separate consumer `sync-wiki-to-donny.mjs` path.** That script (which syncs
+  `concepts/`/`entities`/`analyses` — the pages this wiki file itself lives in) never sets `scope`,
+  so any wiki page lands at `scope` NULL by default, and `match_donny_knowledge`'s consumer filter
+  (`scope IS NULL OR scope <> 'internal'`) treats NULL as consumer-visible. Found via the [[Dragon
+  Rewards Engine (DRE)]] page: two DRE *engineering* docs (a six-phase spec of never-built
+  referrals/streaks/redemption) were reachable by consumer Donny for as long as this claim stood
+  unqualified. Fixed for that instance with a migration + an unconditional filename-keyed
+  `FORCE_INTERNAL` set in `sync-wiki-to-donny.mjs` (with a fail-loud count-assertion guard so a
+  future rename fails the sync instead of silently reopening the leak) — **not** a systematic fix.
+  Any *other* consumer wiki page containing internal-only engineering detail has the same exposure
+  and would need its own `FORCE_INTERNAL` entry (or the durable fix: a `rag_scope: internal`
+  frontmatter field checked by the sync itself, rather than a maintained list of exact filenames).
 
 ## See Also
 
 - [[Content Engine]]
 - [[Data Flywheel]]
 - [[Donny AI]]
+- [[Dragon Rewards Engine (DRE)]] — the 2026-08-07 incident that qualified the
+  scope-invisibility claim above.
 - [[DragonCandy Platform]]
 - [[Founder Playbooks]]
 - [[In-UI Knowledge Merge]] (how knowledge PRs reach Donny's RAG without leaving the app)

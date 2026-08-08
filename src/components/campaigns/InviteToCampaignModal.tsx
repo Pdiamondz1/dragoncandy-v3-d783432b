@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useInviteCreator } from '@/hooks/useCampaignInvitations';
+import { formatBudget } from '@/lib/campaignUtils';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,9 +36,16 @@ export function InviteToCampaignModal({
       if (!user) return [];
       const { data, error } = await supabase
         .from('campaigns')
-        .select('id, title, status, budget, deadline, ai_analysis, delivery_type')
+        // `budget` is not a column on campaigns (it is budget_min / budget_max), so this
+        // select used to fail with 42703 and the throw below emptied the whole list — this
+        // sheet showed "No published campaigns found." for every business, always.
+        // Crew campaigns are excluded because send-campaign-invitation hard-rejects them
+        // (trg_reject_group_campaign_invitation); offering one here is an action the DB
+        // will always refuse.
+        .select('id, title, status, fixed_price, budget_min, budget_max, deadline, ai_analysis, delivery_type')
         .eq('user_id', user.id)
         .eq('status', 'published')
+        .is('group_id', null)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -135,11 +143,9 @@ export function InviteToCampaignModal({
                             {campaign.title}
                           </p>
                           <div className="flex flex-wrap gap-1 mt-1">
-                            {campaign.budget != null && (
-                              <span className="text-xs bg-teal-100 text-teal-800 rounded-full px-2 py-0.5 font-medium">
-                                ${campaign.budget}
-                              </span>
-                            )}
+                            <span className="text-xs bg-teal-100 text-teal-800 rounded-full px-2 py-0.5 font-medium">
+                              {formatBudget(campaign)}
+                            </span>
                             {campaign.delivery_type && (
                               <span className="text-xs bg-pink-100 text-dc-pink-accent rounded-full px-2 py-0.5 font-medium capitalize">
                                 {campaign.delivery_type}
