@@ -257,6 +257,29 @@ export const useDeleteCampaign = () => {
   });
 };
 
+/**
+ * Counts how many invite dispatches actually landed.
+ *
+ * `supabase.functions.invoke` RESOLVES on a non-2xx — it returns `{ data: null, error }`
+ * rather than throwing (the same trap is documented at useCampaignCreator.ts and
+ * useCreatorGroupInvitations.ts). So `Promise.allSettled` marks a 400 as **fulfilled**, and
+ * counting fulfilled promises reported every rejection as "sent": send-campaign-invitation
+ * refuses a missing profiles row, a self-invite, a non-published campaign, a non-owner and
+ * any crew campaign, and the business was told those creators had been invited.
+ *
+ * `total` is passed in rather than derived from `results.length` so a promise that rejected
+ * outright (a genuine network failure) is still attributed to failed.
+ *
+ * Exported for tests.
+ */
+export function countInviteDispatch(
+  results: PromiseSettledResult<{ error: unknown } | null | undefined>[],
+  total: number,
+): { sentCount: number; failedCount: number } {
+  const sentCount = results.filter((r) => r.status === 'fulfilled' && !r.value?.error).length;
+  return { sentCount, failedCount: total - sentCount };
+}
+
 export const useDuplicateCampaign = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -269,7 +292,20 @@ export const useDuplicateCampaign = () => {
         // where the launch wizard actually writes deliverables — useCampaignQueries reads
         // it back as the source of truth. Omitting it here is why a duplicate arrived with
         // no content requirements even when the source clearly had them.
-        .select('title, description, goals, deliverables, campaign_deliverables, platforms, budget_min, budget_max, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, ai_analysis, org_unit_id')
+        // group_id MUST be carried through. Omitting it silently turned a duplicated crew
+        // campaign PUBLIC while keeping the crew's forced fixed_price of 0 — a public $0
+        // campaign, and publishing it fired send-campaign-publish-notifications to every
+        // onboarded creator. Note that BOTH gates were defeated, not just the client one:
+        // the edge function re-asserts the guard itself, but it reads group_id off the
+        // row, and the row had already been made to lie. Defence-in-depth does not help
+        // when the defect is in the data. That breaks the promise made in the
+        // crew-invitation email and both help articles that crew collabs never go public.
+        // Preserving it is also the better behaviour: re-launching a crew collab should
+        // give you another crew collab. It is safe — fixed_price 0 travels with it, which
+        // is exactly what campaigns_group_free requires, and
+        // trg_enforce_campaign_group_ownership passes because the duplicate keeps the same
+        // owner. Do NOT "clean this up" by dropping group_id.
+        .select('title, description, goals, deliverables, campaign_deliverables, platforms, budget_min, budget_max, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, ai_analysis, org_unit_id, group_id')
         .eq('id', sourceCampaignId)
         .single();
 
@@ -401,19 +437,49 @@ export const useRelaunchWithCreators = () => {
     }) => {
       const { data: source, error: fetchError } = await supabase
         .from('campaigns')
-        .select('title, description, goals, deliverables, platforms, budget_min, budget_max, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, ai_analysis, org_unit_id')
+        // group_id is selected to REJECT crew campaigns below, and campaign_deliverables
+        // (the JSONB column) because that is where the launch wizard actually writes
+        // deliverables — omitting it produced a re-hire with no content requirements.
+        .select('title, description, goals, deliverables, campaign_deliverables, platforms, budget_min, budget_max, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, ai_analysis, org_unit_id, group_id')
         .eq('id', sourceCampaignId)
         .single();
 
       if (fetchError || !source) throw fetchError ?? new Error('Campaign not found');
 
+      // Re-hire does not apply to a crew campaign, and quietly copying one was actively
+      // harmful: group_id was never selected, so `...source` produced a PUBLIC campaign
+      // carrying the crew's forced fixed_price of 0 — a private crew collab relisted live
+      // at $0 on the public board (usePublicCampaigns returns any published, group-less
+      // row). That breaks the promise made in the crew-invitation email and both help
+      // articles, that crew collabs never go public. To be precise, this path did NOT
+      // itself email anyone — send-campaign-publish-notifications is not called here; the
+      // leak was marketplace visibility. The duplicate path is the one that broadcasts.
+      //
+      // Preserving group_id is not the alternative: trg_reject_group_campaign_invitation
+      // (20260709120021) raises on ANY campaign_invitations insert for a crew campaign, so
+      // the invite fan-out below — the entire point of this action — cannot run. Re-hiring
+      // a crew is simply a different gesture: post a new crew campaign, which the crew
+      // already sees.
+      const { group_id: sourceGroupId, ...copyable } = source;
+      if (sourceGroupId !== null) {
+        throw new Error('CREW_CAMPAIGN_NOT_ELIGIBLE');
+      }
+
       const { data: newCampaign, error: insertError } = await supabase
         .from('campaigns')
         .insert({
-          ...source,
+          ...copyable,
           title: source.title.replace(/ \(Copy\)$/, ''),
           status: 'published',
-          escrow_status: 'pending',
+          // escrow_status is deliberately NOT set — the column defaults to 'none'.
+          // 'pending' means "the business clicked Publish and is heading to Stripe", so on
+          // a campaign this inserts as ALREADY published it rendered the contradictory
+          // "Payment Required to Publish" banner and a "Pay & Publish →" card CTA.
+          // Escrow is paid AFTER hire, not before listing (see usePublicCampaigns), and
+          // the launch wizard likewise publishes with no escrow_status at all. Note the
+          // older CampaignFinalizeStep flow is the deliberate exception — it keeps the
+          // campaign a DRAFT and sets 'pending' precisely because it is sending the
+          // business to checkout first. Don't reconcile the two; they are different flows.
           deadline: null,
           user_id: user!.id,
           duplicated_from: sourceCampaignId,
@@ -436,17 +502,45 @@ export const useRelaunchWithCreators = () => {
         )
       );
 
-      const sentCount = inviteResults.filter((r) => r.status === 'fulfilled').length;
-      return { id: newCampaign!.id, sentCount };
+      const { sentCount, failedCount } = countInviteDispatch(inviteResults, reinviteCreatorIds.length);
+      return { id: newCampaign!.id, sentCount, failedCount };
     },
     onSuccess: (_data) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      const plural = (n: number) => `${n} creator${n !== 1 ? 's' : ''}`;
+      // Don't report an invite as sent when it wasn't — the campaign is live either way,
+      // so the business needs to know who to chase rather than a reassuring total.
       toast({
         title: 'Campaign relaunched!',
-        description: `Published and ${_data.sentCount} creator${_data.sentCount !== 1 ? 's' : ''} invited.`,
+        description: _data.failedCount > 0
+          ? `Published, and ${plural(_data.sentCount)} invited. ${plural(_data.failedCount)} couldn't be reached — invite them from the campaign page.`
+          : `Published and ${plural(_data.sentCount)} invited.`,
       });
     },
-    onError: () => {
+    onError: (error) => {
+      // Say the real reason for the one refusal we raise ourselves, rather than sending
+      // the business round a "try again" loop on something that will never succeed.
+      if (error instanceof Error && error.message === 'CREW_CAMPAIGN_NOT_ELIGIBLE') {
+        toast({
+          title: 'Re-hire is for marketplace campaigns',
+          description: 'Crew collabs stay private to your crew. Post a new crew campaign — your crew already sees it.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      // The other deterministic refusal: enforce_active_campaign_limit fires on this
+      // INSERT (OLD is NULL, so its "not already published" guard is true) because the
+      // relaunch inserts straight to 'published'. "Please try again" would send the
+      // business round a loop that can never succeed — the fix is to finish or cancel a
+      // live campaign, which only they can decide.
+      if (error instanceof Error && /Active campaign limit reached/i.test(error.message)) {
+        toast({
+          title: 'You are at your active campaign limit',
+          description: 'Re-launching publishes immediately, so it needs a free slot. Complete or cancel a live campaign, then try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
       toast({ title: 'Failed to relaunch campaign', description: 'Please try again.', variant: 'destructive' });
     },
   });
