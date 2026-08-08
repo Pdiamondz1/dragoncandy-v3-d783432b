@@ -154,8 +154,9 @@ The #404 merge was rejected as out-of-date because **#403 had landed on the same
 session**, adding `stage` validation, a bound `campaignError`, an idempotency guard on the draft
 insert, and a redacted catch-all — and claiming the function **off** `.typecheck-ignore`. The artifact
 about to be deployed was therefore a version *no review had seen whole*, so it went back through
-`edge-function-reviewer` (PASS) before shipping. Only the merge rejection surfaced the collision; see
-[[project_concurrent_lovable_pr_collisions]].
+`edge-function-reviewer` (PASS) before shipping. Only the merge rejection surfaced the collision — the
+collision pattern itself is recorded in project memory as `project_concurrent_lovable_pr_collisions`
+(a memory file, not a wiki page, so it is deliberately not a `[[wikilink]]`).
 
 **A pre-deploy review binds to a commit.** If the branch moves under you, the earlier PASS describes
 bytes you are no longer shipping — re-run the gate rather than carrying the verdict forward.

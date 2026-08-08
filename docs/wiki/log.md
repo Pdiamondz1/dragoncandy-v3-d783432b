@@ -27,8 +27,9 @@ swallows errors, so it would have produced exactly the silent absence it was wri
 **A parallel Claude session edited the same function within hours** (#403), surfaced only by an
 out-of-date merge rejection. The artifact about to ship was therefore a version no review had seen
 whole, so `edge-function-reviewer` was re-dispatched on the merged file (PASS). Recorded as a rule: a
-pre-deploy review binds to a commit; if the branch moves, run it again. Links to
-[[project_concurrent_lovable_pr_collisions]].
+pre-deploy review binds to a commit; if the branch moves, run it again. The collision pattern is
+recorded in project memory as `project_concurrent_lovable_pr_collisions` — a memory file, not a wiki
+page, so deliberately not written as a `[[wikilink]]`.
 
 Pages updated: [[verify_jwt Is Not Authorization]] (new "Closed on prod" section + two gotchas —
 embed hints are load-bearing, and supabase-js does not throw on HTTP error statuses), `index.md`
