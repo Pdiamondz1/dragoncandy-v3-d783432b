@@ -156,58 +156,6 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   **PR #399 is MERGED and the undeploy is done. Pending (verified 2026-08-08):** deploy the hardened
   `landing-clips` — that half is a code change and is inert until deployed.
   → `docs/wiki/concepts/service-role-data-exposure.md` · #399
-- **DC Points visibility (`/rewards`, chip, honest notification, Donny)** — a bell said
-  "+200 DC Points" with nowhere to click, points showed on two dashboards with no explanation, and
-  even the founder needed a SQL query to answer "what earned that." Ships a `/rewards` page
-  (balance, full-sentence tier gap, labeled history, a live `dre_config`-driven earn catalog), an
-  always-visible chip in both top bars, a caller-scoped `dre_my_standing()` RPC, a bell that names
-  its reason, and a Donny `rewards_agent` answering strictly from the caller's own standing.
-  Deliberately **earn-only** — a tier confers a public badge and nothing else ([[Honest Analytics]]).
-  Also closed a live leak: two never-built DRE engineering specs (referrals, streaks, redemption)
-  were reachable by consumer Donny via a NULL `donny_knowledge.scope`. **Pending (verified
-  2026-08-08):** 3 migrations applied + verified on prod; PR #378 open, and the mandatory Codex pass
-  is now **clean** — it took 3 rounds, two of which caught the same defect (a non-creator role
-  falling back to the business branch) in two different places, the second inside Donny's generated
-  prose where no UI review could see it. Awaiting the founder's merge, then deploy
-  `dre-award-engine` (`--no-verify-jwt`) and `donny-orchestrator` (without that flag).
-  → `docs/wiki/concepts/dragon-rewards-engine.md` · #378
-- **DragonFeed uplift + sidebar double-active fix** — the "double-clicked button" was a
-  **specificity** bug (each role's bare-root Dashboard href prefixed all ~26 child routes, in three
-  copy-pasted navs) → one shared longest-match-wins `activeNavHref()`. The feed's four complaints
-  shared one root cause — *an item is not a row* — and the `feed_items` table meant to fix it was
-  **cut**: uuid ids would have silently emptied the Inspiration page + dashboard strip (both parse
-  the composite `content_id` back apart), and 34/34 items already carry a `storage.objects.created_at`.
-  Shipped real dates + stable order, NEW badges, skill chips, duration badges, desktop attribution,
-  and gated view counts; plus the supply fix for 26 items hidden behind a default-off opt-in nobody
-  could find. **Merged 2026-08-08 (e3f12c14). Pending:** `verify-prod` on both viewports (still not run). No
-  migration, no RLS/edge-function change. DragonShare merge deferred — no public SELECT policy and
-  no consent flag anywhere.
-  → `docs/wiki/concepts/dragon-feed.md` · `docs/wiki/concepts/nav-active-state.md` · #384
-- **Notification + invitation authorization** — three pre-existing holes found while explaining
-  #382's invite button, each **proven on prod inside a rolled-back transaction** before and after:
-  `campaign_invitations` UPDATE had no `WITH CHECK` (which does **not** mean unconstrained —
-  Postgres defaults it to `USING`, so the real holes were a forged `status='accepted'` and a
-  **repointed `campaign_id`**, which manufactures apply-after-published rights) → decline-only +
-  column GRANTs, since a policy cannot pin a column against change; `apply_to_campaign` checked
-  eligibility on only its crew branch and, being `SECURITY DEFINER`, **bypassed the INSERT policy
-  carrying exactly that rule** → an uninvited creator applied to an `active` campaign; and
-  `create-notification` authenticated its caller then **discarded the user object**, so any
-  authenticated user could put arbitrary text in anyone's feed, as any actor, and email them →
-  JWT-derived actor + `can_notify_user` (backtested 89/91 **and** call-site-enumerated, which is the
-  only way sponsorship was found) + server-composed copy for `content_liked`. **Six Codex rounds,
-  six real findings, all mine** — including a tightening that silently killed 7 working email flows,
-  and a fallback I had argued myself into keeping that re-opened the defect it followed ("no worse
-  than before" is the wrong bar; the test is whether the claim the code makes is true). Migrations
-  `20260808010000`/`020000`/`030000` **applied**; `create-notification` **v47** deployed and
-  **boot-verified on prod**; Codex clean at round 6; `edge-function-reviewer` PASS.
-  **Pending:** merge PR #387 and PR #396 (both open); and the **both-viewport visual pass on #382 is
-  still unrun** — it needs a signed-in prod session. Note the new paths have never run with a real
-  user JWT (zero prod traffic on this function), so they are proven at the SQL layer and
-  boot-verified, not exercised end-to-end. #396's final push used `--no-verify` (machine at 100% CPU
-  made the hook unfinishable; the skipped commits touch only `supabase/functions/` and `docs/`, both
-  out of scope for the hook's `src/`-only typecheck and Vite build) — stated in the PR, and CI
-  re-runs those checks plus the edge-function gate.
-  → `docs/wiki/concepts/notification-delivery.md` · `docs/wiki/concepts/campaign-invitations.md` · #387, #396
 - **AIOS Google Workspace ("Connections")** — per-user Google OAuth, audited proxy, Drive
   hub, Donny exports, metrics→Sheet. The `google-chat-donny` bot ships dark — **confirmed still
   dark 2026-08-07**: a POST to the function returns **HTTP 503**, so this entry is real.
@@ -225,6 +173,20 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **DC Points explain themselves (`/rewards`, chip, nav, honest bell, Donny)** — a bell said
+  "+200 DC Points" with nowhere to click and points sat on two dashboards unexplained. Ships a
+  `/rewards` page (balance, full-sentence tier gap, labeled history, live `dre_config` earn catalog),
+  a chip in both top bars, a nav entry, a clickable dashboard card, `dre_my_standing()`, a bell that
+  names its reason, and a Donny `rewards_agent`. **Earn-only** — a tier is a public badge and nothing
+  else. Live and prod-verified on desktop (mobile unverified: `resize_window` is a false pass). Codex
+  needed 3 rounds, two catching the same non-creator→business fallback — the second inside generated
+  prose. → `docs/wiki/concepts/dragon-rewards-engine.md` · #378, #398
+- **Consumer wiki sync un-broken** — #378's `FORCE_INTERNAL` named a wiki file that did not exist
+  (built from `donny_knowledge` rows, not the filesystem — a row outlives its file), so its own
+  fail-loud guard aborted the consumer RAG sync on every unattended post-merge run, silently, for
+  hours. Correct paths + a guard that names the missing entry + a test that every entry exists on
+  disk. Prod repaired and re-verified after a sync.
+  → `docs/wiki/concepts/knowledge-sync-automation.md` · #401
 - **`handle_updated_at()` restored from its prod-drifted stub** — the shared trigger's prod body was
   literally `-- Function logic here / RETURN NEW;`, so 35 triggers across 31 tables fired and changed
   nothing and `updated_at` sat frozen at `created_at`. Repo was never wrong (`recorded ≠ actual`, same
