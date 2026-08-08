@@ -205,13 +205,25 @@ export const useCampaignEditForm = (campaign: Campaign | undefined) => {
 
       await updateCampaign.mutateAsync({ id: campaign.id, updates: updates as Partial<CreateCampaignData> });
 
-      if (structuredDeliverables.length > 0) {
-        await supabase
-          .from('campaign_deliverables')
-          .delete()
-          .eq('campaign_id', campaign.id);
+      // This block used to be unreachable: the editor only ever seeded from the
+      // campaign_deliverables TABLE, which is empty for every campaign created by the
+      // launch wizard (it writes the JSONB column instead). Now that the editor seeds
+      // from the JSONB too, this runs on a real save — so both statements must have
+      // their errors checked. supabase-js does NOT throw; discarding `error` here meant
+      // a failed write still returned true, still toasted "Campaign published!", and
+      // still navigated away, while the untouched JSONB re-rendered the ORIGINAL
+      // deliverables. The business's edit vanished and the UI reported success.
+      //
+      // The delete runs unconditionally: guarding it on `length > 0` made "remove every
+      // deliverable" a silent no-op, since an empty editor skipped the whole block.
+      const { error: deleteErr } = await supabase
+        .from('campaign_deliverables')
+        .delete()
+        .eq('campaign_id', campaign.id);
+      if (deleteErr) throw deleteErr;
 
-        await supabase
+      if (structuredDeliverables.length > 0) {
+        const { error: insertErr } = await supabase
           .from('campaign_deliverables')
           .insert(
             structuredDeliverables.map((d, i) => ({
@@ -224,9 +236,10 @@ export const useCampaignEditForm = (campaign: Campaign | undefined) => {
               sort_order: i,
             })),
           );
-
-        queryClient.invalidateQueries({ queryKey: ['campaign_deliverables', campaign.id] });
+        if (insertErr) throw insertErr;
       }
+
+      queryClient.invalidateQueries({ queryKey: ['campaign_deliverables', campaign.id] });
 
       toast({
         title: saveStatus === 'published' ? 'Campaign published!' : 'Campaign saved!',
