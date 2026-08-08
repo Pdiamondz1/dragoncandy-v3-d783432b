@@ -301,15 +301,23 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
                 <RefreshCw className="h-3 w-3 mr-1" />
                 Re-Launch
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 rounded-full text-xs"
-                onClick={() => setShowReHireModal(true)}
-              >
-                <UserPlus className="h-3 w-3 mr-1" />
-                Re-Hire Creators
-              </Button>
+              {/* Re-hire works by sending campaign invitations, which the DB forbids for a
+                  crew campaign (trg_reject_group_campaign_invitation), so the action can
+                  never succeed here. It also used to produce a PUBLIC $0 copy of a private
+                  crew collab. The mutation refuses it too; this just avoids offering a
+                  button that cannot work. Posting a new crew campaign is the equivalent
+                  gesture — the crew already sees it. */}
+              {!campaign.group_id && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 rounded-full text-xs"
+                  onClick={() => setShowReHireModal(true)}
+                >
+                  <UserPlus className="h-3 w-3 mr-1" />
+                  Re-Hire Creators
+                </Button>
+              )}
             </div>
             <ReHireCreatorsModal
               open={showReHireModal}

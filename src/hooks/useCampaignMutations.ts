@@ -401,19 +401,42 @@ export const useRelaunchWithCreators = () => {
     }) => {
       const { data: source, error: fetchError } = await supabase
         .from('campaigns')
-        .select('title, description, goals, deliverables, platforms, budget_min, budget_max, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, ai_analysis, org_unit_id')
+        // group_id is selected to REJECT crew campaigns below, and campaign_deliverables
+        // (the JSONB column) because that is where the launch wizard actually writes
+        // deliverables — omitting it produced a re-hire with no content requirements.
+        .select('title, description, goals, deliverables, campaign_deliverables, platforms, budget_min, budget_max, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, ai_analysis, org_unit_id, group_id')
         .eq('id', sourceCampaignId)
         .single();
 
       if (fetchError || !source) throw fetchError ?? new Error('Campaign not found');
 
+      // Re-hire does not apply to a crew campaign, and quietly copying one was actively
+      // harmful: group_id was never selected, so `...source` produced a PUBLIC campaign
+      // carrying the crew's forced fixed_price of 0 — published live at $0 and broadcast
+      // to every creator. That breaks the promise made in the crew-invitation email and
+      // both help articles, that crew collabs never go public.
+      //
+      // Preserving group_id is not the alternative: trg_reject_group_campaign_invitation
+      // (20260709120021) raises on ANY campaign_invitations insert for a crew campaign, so
+      // the invite fan-out below — the entire point of this action — cannot run. Re-hiring
+      // a crew is simply a different gesture: post a new crew campaign, which the crew
+      // already sees.
+      const { group_id: sourceGroupId, ...copyable } = source;
+      if (sourceGroupId !== null) {
+        throw new Error('CREW_CAMPAIGN_NOT_ELIGIBLE');
+      }
+
       const { data: newCampaign, error: insertError } = await supabase
         .from('campaigns')
         .insert({
-          ...source,
+          ...copyable,
           title: source.title.replace(/ \(Copy\)$/, ''),
           status: 'published',
-          escrow_status: 'pending',
+          // escrow_status is deliberately NOT set — the column defaults to 'none'.
+          // 'pending' means "the business clicked Publish and is heading to Stripe", so on
+          // a campaign this inserts as ALREADY published it rendered the contradictory
+          // "Payment Required to Publish" banner and a "Pay & Publish →" card CTA. Payment
+          // is collected at accept time, as with any normally-created campaign.
           deadline: null,
           user_id: user!.id,
           duplicated_from: sourceCampaignId,
@@ -446,7 +469,17 @@ export const useRelaunchWithCreators = () => {
         description: `Published and ${_data.sentCount} creator${_data.sentCount !== 1 ? 's' : ''} invited.`,
       });
     },
-    onError: () => {
+    onError: (error) => {
+      // Say the real reason for the one refusal we raise ourselves, rather than sending
+      // the business round a "try again" loop on something that will never succeed.
+      if (error instanceof Error && error.message === 'CREW_CAMPAIGN_NOT_ELIGIBLE') {
+        toast({
+          title: 'Re-hire is for marketplace campaigns',
+          description: 'Crew collabs stay private to your crew. Post a new crew campaign — your crew already sees it.',
+          variant: 'destructive',
+        });
+        return;
+      }
       toast({ title: 'Failed to relaunch campaign', description: 'Please try again.', variant: 'destructive' });
     },
   });
