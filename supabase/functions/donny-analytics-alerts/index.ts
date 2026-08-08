@@ -185,23 +185,42 @@ serve(async (req) => {
 
       // --- payment_events (business) ---
       if (shouldCheck("payment_events")) {
-        // Windowed on created_at, NOT updated_at — a deliberate founder decision (2026-08-07),
-        // not an oversight. `handle_updated_at()` was a no-op stub on prod, so this filter has
-        // ALWAYS behaved as "created in the window"; migration 20260807233200 restores the trigger,
-        // and leaving `updated_at` here would have silently converted it into "modified in the
-        // window" — firing "Payment released"/"Revision requested" for rows whose status never
-        // changed, because updated_at moves on ANY write. Chosen: preserve existing behaviour.
-        // KNOWN LIMITATION (Codex raised it; recorded rather than re-litigated): a real status or
-        // escrow change on a row created BEFORE the window is not alerted. That is the status quo,
-        // not a regression. The correct fix is a change-specific anchor (a status_changed_at
-        // stamped by its own narrow trigger, like campaigns.completed_at in 20260807233000) — not
-        // updated_at, which cannot distinguish a status change from a title edit.
-        const { data: paymentCampaigns } = await supabaseAdmin
+        // Windowed on `escrow_status_changed_at` (migration 20260808020000) — the anchor that actually
+        // answers the question this alert asks: "did the escrow status change recently?"
+        //
+        // History, so this is not re-litigated a third time. `updated_at` was a no-op stub on prod,
+        // so this filter silently meant "created in the window". 20260807233200 restored the
+        // trigger, which would have converted it to "modified in the window" — firing "Payment
+        // released" off a title edit, because updated_at moves on ANY write. #385 fell back to
+        // `created_at` (correct as far as it went, and the safe choice at the time) and recorded
+        // the gap: a real escrow change on a row created BEFORE the window never alerted.
+        //
+        // Codex flagged that gap and was MORE right than it was credited: post-merge measurement
+        // showed ~1 in 16 historical collaboration status changes fell outside the created_at
+        // window. `escrow_status_changed_at` closes it without reintroducing the title-edit false
+        // positive, because its trigger stamps ONLY on a status/escrow transition.
+        //
+        // NULL means "predates 20260808020000 and hasn't changed since" — `.gte()` excludes NULL,
+        // which is the intended conservative behaviour (see the migration's no-backfill note).
+        const { data: paymentCampaigns, error: paymentCampaignsError } = await supabaseAdmin
           .from("campaigns")
-          .select("id, title, escrow_status, created_at")
+          .select("id, title, escrow_status, escrow_status_changed_at")
           .eq("user_id", userId)
           .neq("escrow_status", "none")
-          .gte("created_at", since);
+          .gte("escrow_status_changed_at", since);
+
+        // Surface the error instead of silently returning no alerts. This block gated only on
+        // `if (data)`, so a failed query was indistinguishable from "nothing to report" — and the
+        // most likely cause of failure is deploying this version BEFORE migration 20260808020000,
+        // which makes escrow_status_changed_at a missing column. Silent degradation is the worst possible
+        // outcome for a deploy-ordering mistake: it looks like a quiet day.
+        if (paymentCampaignsError) {
+          console.error(
+            "[donny-analytics-alerts] payment_events(business) query failed — if this says " +
+              "escrow_status_changed_at does not exist, migration 20260808020000 has not been applied:",
+            paymentCampaignsError.message,
+          );
+        }
 
         if (paymentCampaigns) {
           for (const campaign of paymentCampaigns) {
@@ -223,7 +242,8 @@ serve(async (req) => {
               title: label,
               message: `"${campaign.title}" — ${label.toLowerCase()}`,
               campaign_id: campaign.id,
-              created_at: campaign.created_at,
+              // Dated by WHEN ESCROW CHANGED, not when the campaign was created.
+              created_at: campaign.escrow_status_changed_at,
             });
           }
         }
@@ -236,12 +256,24 @@ serve(async (req) => {
     if (!isBusiness) {
       // --- status_changes ---
       if (shouldCheck("status_changes")) {
-        // created_at window — see the note on the paymentCampaigns query above.
-        const { data: collaborations } = await supabaseAdmin
+        // status_changed_at window — see the note on the paymentCampaigns query above.
+        // This is the block the ~1-in-16 measurement came from: `useProjectComplete.ts` writes
+        // campaign_collaborations.updated_at on the completion path, so the pre-#385 filter was
+        // partially functional, and the created_at fallback dropped the changes that landed more
+        // than a window after the row was created. Both are fixed by anchoring on the transition.
+        const { data: collaborations, error: collaborationsError } = await supabaseAdmin
           .from("campaign_collaborations")
-          .select("id, content_status, status, created_at, campaign_id, campaigns!inner(id, title)")
+          .select("id, content_status, status, status_changed_at, campaign_id, campaigns!inner(id, title)")
           .eq("creator_id", userId)
-          .gte("created_at", since);
+          .gte("status_changed_at", since);
+
+        if (collaborationsError) {
+          console.error(
+            "[donny-analytics-alerts] status_changes query failed — if this says status_changed_at " +
+              "does not exist, migration 20260808020000 has not been applied:",
+            collaborationsError.message,
+          );
+        }
 
         if (collaborations) {
           for (const collab of collaborations) {
@@ -266,7 +298,7 @@ serve(async (req) => {
               title: label,
               message: `"${campaign?.title ?? "Campaign"}" — ${label.toLowerCase()}`,
               campaign_id: collab.campaign_id,
-              created_at: collab.created_at,
+              created_at: collab.status_changed_at,
             });
           }
         }
@@ -274,12 +306,25 @@ serve(async (req) => {
 
       // --- payment_events (creator) ---
       if (shouldCheck("payment_events")) {
-        // created_at window — see the note on the paymentCampaigns query above.
-        const { data: creatorCollabs } = await supabaseAdmin
+        // Windowed on the CAMPAIGN's escrow_status_changed_at, not the collaboration's, because the event
+        // being reported here is the campaign's escrow status changing — the collaboration is only
+        // how we find which creator to tell. Filtering on the collaboration (as this did before)
+        // asked "was this collaboration created recently?", which is a different question and
+        // missed every escrow release on an older collaboration. Dot-notation filtering on an
+        // embedded resource requires the `!inner` join, which is already present.
+        const { data: creatorCollabs, error: creatorCollabsError } = await supabaseAdmin
           .from("campaign_collaborations")
-          .select("id, campaign_id, created_at, campaigns!inner(id, title, escrow_status)")
+          .select("id, campaign_id, campaigns!inner(id, title, escrow_status, escrow_status_changed_at)")
           .eq("creator_id", userId)
-          .gte("created_at", since);
+          .gte("campaigns.escrow_status_changed_at", since);
+
+        if (creatorCollabsError) {
+          console.error(
+            "[donny-analytics-alerts] payment_events(creator) query failed — if this says " +
+              "escrow_status_changed_at does not exist, migration 20260808020000 has not been applied:",
+            creatorCollabsError.message,
+          );
+        }
 
         if (creatorCollabs) {
           for (const collab of creatorCollabs) {
@@ -296,7 +341,10 @@ serve(async (req) => {
                   ? `Payment for "${campaign?.title ?? "Campaign"}" has been released`
                   : `Funds for "${campaign?.title ?? "Campaign"}" are held in escrow`,
                 campaign_id: collab.campaign_id,
-                created_at: collab.created_at,
+                // The campaign's escrow change is the event, so it dates the alert. (Must not read
+                // collab.created_at — it is no longer selected, and would be undefined here, which
+                // the localeCompare sort below would throw on.)
+                created_at: campaign?.escrow_status_changed_at,
               });
             }
           }
@@ -350,8 +398,12 @@ serve(async (req) => {
       const severityDiff =
         (severityOrder[a.severity] ?? 2) - (severityOrder[b.severity] ?? 2);
       if (severityDiff !== 0) return severityDiff;
-      // Descending by created_at
-      return b.created_at.localeCompare(a.created_at);
+      // Descending by created_at. Coalesced because these timestamps now come from nullable
+      // anchor columns (status_changed_at / escrow_status_changed_at): every row reaching here matched
+      // a .gte() so it cannot
+      // be NULL today, but an unguarded .localeCompare on a null would throw out of the whole
+      // handler and return zero alerts — a bad failure mode for a sort tiebreak.
+      return (b.created_at ?? "").localeCompare(a.created_at ?? "");
     });
 
     const urgentCount = alerts.filter((a) => a.severity === "urgent").length;
