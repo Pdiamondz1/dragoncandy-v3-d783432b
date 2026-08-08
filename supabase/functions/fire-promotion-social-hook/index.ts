@@ -52,12 +52,29 @@ serve(async (req) => {
       });
     }
 
-    // 2. Fetch submission
+    // The caller must OWN this promotion. Authenticating alone was not enough: every write
+    // below is attributed to `promotion.user_id`, so without this any authenticated user could
+    // name another business's promotion and drive drafts, nudges and LLM spend into that
+    // business's account — and, because this hook calls social-caption with the SERVICE-ROLE
+    // bearer, do it around social-caption's own per-user auth and rate limit.
+    if (promotion.user_id !== user.id) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+      });
+    }
+
+    // 2. Fetch submission — scoped to this promotion. `promotion_id` and `submission_id` were
+    // previously never joined, so a caller could pair their own promotion with ANOTHER
+    // business's submission and pull that business's customer PII (name, social handles, video)
+    // into their own drafts. promotion_submissions SELECT is owner-only, so the service-role
+    // read here has to re-assert what RLS would have enforced.
     const { data: submission } = await supabase
       .from('promotion_submissions')
       .select('id, video_url, customer_name, social_handles')
       .eq('id', submission_id)
-      .single();
+      .eq('promotion_id', promotion_id)
+      .maybeSingle();
 
     if (!submission) {
       return new Response(JSON.stringify({ error: 'Submission not found' }), {

@@ -4,6 +4,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
 import { getModelConfig } from "../_shared/model-routing.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
+import { checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -68,19 +69,83 @@ serve(async (req) => {
   }
 
   try {
+    // This endpoint had NO caller check and took `user_id` verbatim from the body, using it
+    // for cost attribution. Two consequences, both worse than the raw token spend: an attacker
+    // could bill Anthropic usage to an arbitrary victim in donny_cost_ledger — the same ledger
+    // donny-cost-rollup uses to enforce the 15%-of-revenue AI cap — and, now that a per-user
+    // limit exists below, exhaust a *chosen* user's hourly quota. The identity is therefore
+    // derived from the verified token, and the body's `user_id` is ignored.
+    //
+    // Dual-mode: fire-campaign-social-hook / fire-dragonshare-social-hook legitimately call
+    // this server-side with the service-role key on behalf of another user, mirroring
+    // send-notification-email and create-notification.
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const isService = authHeader === `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
+
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
     const body = (await req.json()) as CaptionRequest;
     const {
       campaign_title, campaign_description, content_type, party_role, platform,
-      user_id, source, context, business_name, business_location,
+      user_id: bodyUserId, source, context, business_name, business_location,
       business_category, deliverable_types, campaign_goals, deliverable_descriptions,
       deliverable_number, total_deliverables, filename,
     } = body;
 
-    if (!party_role || !platform || !user_id) {
+    let user_id: string;
+    if (isService) {
+      // Trusted internal caller: it supplies the user the caption is generated for.
+      if (!bodyUserId) {
+        return new Response(
+          JSON.stringify({ error: "Missing required fields" }),
+          { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
+        );
+      }
+      user_id = bodyUserId;
+    } else {
+      const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: userData, error: userErr } = await userClient.auth.getUser();
+      if (userErr || !userData?.user) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
+        );
+      }
+      user_id = userData.user.id;
+    }
+
+    // Validate BEFORE charging quota. checkHourlyRateLimit check-AND-increments
+    // (usage-tracker.ts:179), so leaving this below it billed the caller for a request that
+    // returns 400 and never reaches Anthropic — a client bug or a retry loop on a malformed
+    // payload could rate-limit someone who never generated a caption. Still placed AFTER auth,
+    // so an unauthenticated caller gets 401 and cannot probe validation behaviour.
+    if (!party_role || !platform) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
         { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
+    }
+
+    // Per-user hourly cap, matching the ten sibling Donny functions. Service callers are
+    // exempt: they are already gated at their own entrance and act for a user who has
+    // passed their own limit.
+    if (!isService) {
+      const hourlyCheck = await checkHourlyRateLimit(supabaseAdmin, user_id);
+      if (!hourlyCheck.allowed) {
+        return new Response(
+          JSON.stringify({ error: "rate_limited", retry_after: hourlyCheck.retryAfterSeconds }),
+          {
+            status: 429,
+            headers: {
+              ...corsHeaders(req),
+              "Content-Type": "application/json",
+              "Retry-After": String(hourlyCheck.retryAfterSeconds),
+            },
+          },
+        );
+      }
     }
 
     const config = getModelConfig("social-caption");
@@ -182,7 +247,7 @@ Respond in JSON: {"caption": "...", "hashtags": ["#tag1", "#tag2"]}`,
       hashtags.push("#DragonDashed");
     }
 
-    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    // supabaseAdmin is created once at the top of the handler (used for the rate-limit check).
     await logCost(supabaseAdmin, {
       userId: user_id,
       edgeFunction: "social-caption",

@@ -284,6 +284,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
 
+        // A recovery link mints a REAL session, so without this branch it is indistinguishable
+        // from an ordinary sign-in: we'd set the user, load the profile, and land them on their
+        // dashboard with the password they came to change still in place. That is what happened
+        // on prod (2026-08-07) — the visible symptom was "reset password logged me straight in".
+        //
+        // The Redirect-URL allow-list fix addresses the happy path, but only the happy path: any
+        // future config drift, a link opened on another host, or a redirect we haven't
+        // allow-listed silently degrades back to a plain login. This makes the destination a
+        // property of the EVENT rather than of the configuration.
+        //
+        // window.location, not useNavigate: AuthProvider sits ABOVE BrowserRouter in the
+        // provider hierarchy, so router hooks are not available at this layer. replace() so the
+        // token-bearing URL does not survive in history.
+        if (event === 'PASSWORD_RECOVERY' && session) {
+          if (window.location.pathname !== '/auth/update-password') {
+            window.location.replace('/auth/update-password');
+            return;
+          }
+        }
+
         try {
           setSession(session);
           setUser(session?.user ?? null);
