@@ -63,20 +63,26 @@ const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Record<string, string> = {
   dragonshare_declined: 'dragonshare_declined',
 };
 
-// Email templates a USER-authenticated caller may select explicitly via `emailType`.
-// These are the ones real client flows already send whose notification type has no entry
-// in NOTIFICATION_TYPE_TO_EMAIL_TYPE, so they cannot be derived. Anything outside this set
-// (e.g. `payment_received`) is ignored for non-service callers and falls back to the
-// mapping. Keep in sync with the `emailType:` literals in src/.
-const CLIENT_ALLOWED_EMAIL_TYPES = new Set([
-  'sponsorship_completed',
-  'sponsorship_completion_request',
-  'approval_pending',
-  'completion_request',
-  'content_started',
-  'file_uploaded_by_creator',
-  'file_uploaded_by_restaurant',
-]);
+// Email templates a USER-authenticated caller may select explicitly via `emailType`,
+// keyed BY NOTIFICATION TYPE.
+//
+// A flat list of template names was not enough: it let an authorized caller pair any
+// permitted template with any notification type — `type: 'content_liked'` with
+// `emailType: 'sponsorship_completed'` — producing a transactional email for an event
+// that never happened. Template choice has to be bound to the flow that justifies it.
+//
+// These are exactly the pairs real client code already sends, and whose notification type
+// has no NOTIFICATION_TYPE_TO_EMAIL_TYPE entry to derive from. Every one is
+// `type === emailType` except `file_uploaded`, which legitimately splits by uploader role.
+// Keep in sync with the `emailType:` literals in src/.
+const CLIENT_ALLOWED_EMAIL_TYPES: Record<string, readonly string[]> = {
+  sponsorship_completed: ['sponsorship_completed'],
+  sponsorship_completion_request: ['sponsorship_completion_request'],
+  approval_pending: ['approval_pending'],
+  completion_request: ['completion_request'],
+  content_started: ['content_started'],
+  file_uploaded: ['file_uploaded_by_creator', 'file_uploaded_by_restaurant'],
+};
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -303,7 +309,9 @@ const handler = async (req: Request): Promise<Response> => {
       // than discarded: exactly the templates clients already send, nothing more.
       const requestedEmailType = isService
         ? emailType
-        : (emailType && CLIENT_ALLOWED_EMAIL_TYPES.has(emailType) ? emailType : undefined);
+        : (emailType && CLIENT_ALLOWED_EMAIL_TYPES[type]?.includes(emailType)
+            ? emailType
+            : undefined);
       const resolvedEmailType = requestedEmailType ?? NOTIFICATION_TYPE_TO_EMAIL_TYPE[type];
       if (resolvedEmailType) {
         // Synthetic Weight Engine: never send real email to bot accounts (protects sender
