@@ -326,12 +326,22 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
               campaignTitle={campaign.title}
               isLoading={relaunchWithCreators.isPending}
               onConfirm={async (creatorIds) => {
-                const result = await relaunchWithCreators.mutateAsync({
-                  sourceCampaignId: campaign.id,
-                  reinviteCreatorIds: creatorIds,
-                });
-                setShowReHireModal(false);
-                if (result?.id) navigate(`/dashboard/business/campaigns/${result.id}`);
+                // The modal invokes onConfirm fire-and-forget (its prop is typed `=> void`),
+                // so a rejection here never reached it: the sheet stayed open with a
+                // re-enabled button, and the unhandled rejection was logged as an
+                // `unhandled_promise_rejection` analytics event. Close on failure too and
+                // let the mutation's own onError toast carry the message.
+                try {
+                  const result = await relaunchWithCreators.mutateAsync({
+                    sourceCampaignId: campaign.id,
+                    reinviteCreatorIds: creatorIds,
+                  });
+                  if (result?.id) navigate(`/dashboard/business/campaigns/${result.id}`);
+                } catch {
+                  // Reported by useRelaunchWithCreators.onError — nothing to add here.
+                } finally {
+                  setShowReHireModal(false);
+                }
               }}
             />
           </>
