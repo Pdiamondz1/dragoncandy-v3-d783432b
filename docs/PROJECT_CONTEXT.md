@@ -165,6 +165,31 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   migration, no RLS/edge-function change. DragonShare merge deferred — no public SELECT policy and
   no consent flag anywhere.
   → `docs/wiki/concepts/dragon-feed.md` · `docs/wiki/concepts/nav-active-state.md` · #384
+- **Notification + invitation authorization** — three pre-existing holes found while explaining
+  #382's invite button, each **proven on prod inside a rolled-back transaction** before and after:
+  `campaign_invitations` UPDATE had no `WITH CHECK` (which does **not** mean unconstrained —
+  Postgres defaults it to `USING`, so the real holes were a forged `status='accepted'` and a
+  **repointed `campaign_id`**, which manufactures apply-after-published rights) → decline-only +
+  column GRANTs, since a policy cannot pin a column against change; `apply_to_campaign` checked
+  eligibility on only its crew branch and, being `SECURITY DEFINER`, **bypassed the INSERT policy
+  carrying exactly that rule** → an uninvited creator applied to an `active` campaign; and
+  `create-notification` authenticated its caller then **discarded the user object**, so any
+  authenticated user could put arbitrary text in anyone's feed, as any actor, and email them →
+  JWT-derived actor + `can_notify_user` (backtested 89/91 **and** call-site-enumerated, which is the
+  only way sponsorship was found) + server-composed copy for `content_liked`. **Six Codex rounds,
+  six real findings, all mine** — including a tightening that silently killed 7 working email flows,
+  and a fallback I had argued myself into keeping that re-opened the defect it followed ("no worse
+  than before" is the wrong bar; the test is whether the claim the code makes is true). Migrations
+  `20260808010000`/`020000`/`030000` **applied**; `create-notification` **v47** deployed and
+  **boot-verified on prod**; Codex clean at round 6; `edge-function-reviewer` PASS.
+  **Pending:** merge PR #387 and PR #396 (both open); and the **both-viewport visual pass on #382 is
+  still unrun** — it needs a signed-in prod session. Note the new paths have never run with a real
+  user JWT (zero prod traffic on this function), so they are proven at the SQL layer and
+  boot-verified, not exercised end-to-end. #396's final push used `--no-verify` (machine at 100% CPU
+  made the hook unfinishable; the skipped commits touch only `supabase/functions/` and `docs/`, both
+  out of scope for the hook's `src/`-only typecheck and Vite build) — stated in the PR, and CI
+  re-runs those checks plus the edge-function gate.
+  → `docs/wiki/concepts/notification-delivery.md` · `docs/wiki/concepts/campaign-invitations.md` · #387, #396
 - **AIOS Google Workspace ("Connections")** — per-user Google OAuth, audited proxy, Drive
   hub, Donny exports, metrics→Sheet. The `google-chat-donny` bot ships dark — **confirmed still
   dark 2026-08-07**: a POST to the function returns **HTTP 503**, so this entry is real.

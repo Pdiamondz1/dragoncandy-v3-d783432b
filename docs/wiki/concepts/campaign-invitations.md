@@ -2,8 +2,8 @@
 title: Campaign Invitations
 type: concept
 created: 2026-08-07
-updated: 2026-08-07
-sources: [2026-08-07-creator-match-autorun-and-invite-clarity.md]
+updated: 2026-08-08
+sources: [2026-08-07-creator-match-autorun-and-invite-clarity.md, 2026-08-08-notification-and-invitation-authorization.md]
 tags: [campaigns, invitations, marketplace, ux, edge-functions]
 ---
 # Campaign Invitations
@@ -95,6 +95,59 @@ Showing the outcome answers "what happens after I invite?" better than any copy 
 used the global `isPending` and froze *every* button. Deliberately **not optimistic**: the
 function has real failure modes (403 non-owner, not published, crew rejection), and showing
 "Invited" for three seconds before snapping back is worse than an honest spinner.
+
+## Invitation & application integrity (PR #387, 2026-08-08)
+
+Explaining the invite in #382 meant reading its data path closely, and that surfaced two live
+holes. Both were **proven on prod by impersonating a real user inside a rolled-back
+transaction**, then re-proven closed. Migrations `20260808010000` + `20260808020000`.
+
+### The `campaign_invitations` UPDATE policy
+
+`USING (auth.uid() = creator_id)` with **no `WITH CHECK`**.
+
+The first diagnosis was wrong and is worth recording: I claimed `creator_id` was rewritable.
+It was not — **Postgres defaults an omitted `WITH CHECK` on UPDATE to the `USING`
+expression**, so that column *was* pinned. Everything else on the row was not:
+
+- **Forged `status='accepted'`** with no application behind it — which makes the owner's
+  match card read "Applied — review them" (the badge #382 had just added) pointing at nothing.
+- **Repointed `campaign_id`** — and this one manufactures the very privilege the table above
+  calls "the one real privilege": an *invited* creator may apply to a campaign that has left
+  `published`.
+
+Now decline-only: `USING (creator AND status='pending')` /
+`WITH CHECK (creator AND status='declined')`, **plus** column privileges —
+`revoke update … from authenticated, anon` then `grant update (status) to authenticated`.
+
+> **A policy cannot pin a column against change.** `WITH CHECK` sees only the NEW row — there
+> is no `OLD` in a policy — so "`campaign_id` must not change" is *inexpressible* as RLS.
+> Column-level GRANTs are the correct tool for that class, and the two are complementary, not
+> alternatives.
+
+The migration self-asserts the resulting grant set, and its filter includes **`PUBLIC`** — a
+table-wide `GRANT … TO PUBLIC` is recorded under that grantee, so omitting it would have made
+the assertion unfailable. `useDeclineInvitation` still works.
+
+### `apply_to_campaign` skipped its own policy
+
+The RPC checked eligibility **only** on its crew (`group_id IS NOT NULL`) branch. An ordinary
+campaign fell through to the INSERT with no status and no role check — and being
+`SECURITY DEFINER` it bypassed the `campaign_applications` INSERT policy that carries exactly
+those rules via `can_create_application`. Proven: a creator with no invitation applied to an
+**`active`** campaign that already had someone hired.
+
+The fix calls **the policy's own predicate** rather than re-implementing it — two copies of an
+authorization rule drift, one does not — OR-ed with "already holds a non-`rejected`
+application", because the RPC is an upsert and that is how counter-offers amend a row.
+
+> **A `SECURITY DEFINER` RPC silently opts out of the RLS policy protecting the table it
+> writes.** The policy here was correct the whole time; the function never consulted it.
+
+### Bulk and single invites now share one notifier
+
+Bulk invite sent the email but fired **no in-app bell** — the two paths had drifted. Both now
+route through `src/lib/invitationNotify.ts`, so they cannot drift again.
 
 ## Known issues / gotchas
 
