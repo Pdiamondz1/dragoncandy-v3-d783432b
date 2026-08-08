@@ -12,6 +12,14 @@ interface InvitationRequest {
   invitation_message?: string;
 }
 
+/**
+ * Exactly the columns the client's `CampaignInvitation` type declares. Enumerated
+ * rather than a bare `.select()` so a column added to `campaign_invitations`
+ * later isn't silently returned to the browser.
+ */
+const INVITATION_COLUMNS =
+  "id, campaign_id, creator_id, invited_by, status, invitation_message, expires_at, created_at, updated_at";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders(req) });
@@ -58,7 +66,7 @@ serve(async (req) => {
     // Check campaign exists and is published
     const { data: campaign, error: campaignError } = await supabase
       .from("campaigns")
-      .select("id, title, user_id, status, budget_min, budget_max, deadline, description, delivery_type, ai_analysis")
+      .select("id, title, user_id, status, group_id, budget_min, budget_max, deadline, description, delivery_type, ai_analysis")
       .eq("id", campaign_id)
       .single();
 
@@ -83,6 +91,19 @@ serve(async (req) => {
       );
     }
 
+    // Private crew campaigns are members-only and are never invited to. The DB
+    // trigger `trg_reject_group_campaign_invitation` covers the INSERT path but
+    // is BEFORE INSERT only (despite its comment claiming otherwise), so it does
+    // NOT cover the revive-UPDATE below. Re-assert it here, the way the sibling
+    // `send-campaign-publish-notifications` does, so the fan-out can never mail a
+    // private campaign's title, budget and deadline to a non-member.
+    if (campaign.group_id) {
+      return new Response(
+        JSON.stringify({ error: "Campaign invitations are not allowed for private crew campaigns" }),
+        { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
+      );
+    }
+
     // Check creator exists
     const { data: creator, error: creatorError } = await supabase
       .from("profiles")
@@ -98,6 +119,8 @@ serve(async (req) => {
     }
 
     // Atomic upsert — UNIQUE(campaign_id, creator_id) prevents duplicates at the DB layer
+    // Columns are enumerated rather than `select()`-all so a future column added
+    // to campaign_invitations isn't silently returned to the browser.
     const ttlDays = parseInt(Deno.env.get("INVITATION_TTL_DAYS") ?? "7", 10);
     const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000).toISOString();
 
@@ -114,7 +137,7 @@ serve(async (req) => {
         },
         { onConflict: "campaign_id,creator_id", ignoreDuplicates: true },
       )
-      .select();
+      .select(INVITATION_COLUMNS);
 
     if (upsertError) {
       console.error("Error upserting invitation:", upsertError);
@@ -124,22 +147,62 @@ serve(async (req) => {
       );
     }
 
-    // No row returned means the conflict was hit — fetch the existing invitation
-    if (!upsertRows || upsertRows.length === 0) {
+    // No row returned means the conflict was hit. Distinguish a LIVE invitation
+    // (nothing to do) from an EXPIRED pending one, which was previously a silent
+    // dead end: the client's invitation query hides rows past `expires_at`, so
+    // the button flips back to "Invite to apply" — but `ignoreDuplicates` meant
+    // the row was never refreshed and no email, bell, or Donny message ever
+    // fired again. The owner clicked, saw "Already invited", and nothing
+    // happened, permanently.
+    let invitation = upsertRows?.[0] ?? null;
+
+    if (!invitation) {
       const { data: existing } = await supabase
         .from("campaign_invitations")
-        .select("id, status")
+        // Same shape as the other two paths, so every response this function
+        // can return matches the client's declared CampaignInvitation type.
+        .select(INVITATION_COLUMNS)
         .eq("campaign_id", campaign_id)
         .eq("creator_id", creator_id)
         .maybeSingle();
 
-      return new Response(
-        JSON.stringify({ invitation: existing, already_invited: true }),
-        { status: 200, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
-      );
-    }
+      const isExpiredPending = existing?.status === "pending" &&
+        !!existing.expires_at &&
+        new Date(existing.expires_at).getTime() <= Date.now();
 
-    const invitation = upsertRows[0];
+      if (!isExpiredPending) {
+        return new Response(
+          JSON.stringify({ invitation: existing, already_invited: true }),
+          { status: 200, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
+        );
+      }
+
+      // Revive it with a fresh window, then fall through to the normal
+      // notification fan-out. Re-asserting `status = 'pending'` in the filter
+      // keeps a concurrent accept/decline from being clobbered.
+      const { data: revived, error: reviveError } = await supabase
+        .from("campaign_invitations")
+        .update({
+          invited_by,
+          invitation_message: invitation_message || null,
+          expires_at: expiresAt,
+        })
+        .eq("id", existing!.id)
+        .eq("status", "pending")
+        .select(INVITATION_COLUMNS)
+        .maybeSingle();
+
+      if (reviveError || !revived) {
+        // Lost the race — the creator responded between the read and the write.
+        console.error("Could not revive expired invitation:", reviveError);
+        return new Response(
+          JSON.stringify({ invitation: existing, already_invited: true }),
+          { status: 200, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
+        );
+      }
+
+      invitation = revived;
+    }
 
     // --- Get business name ---
     const { data: businessProfile } = await supabase

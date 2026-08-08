@@ -107,11 +107,23 @@ export const useCampaignMatches = (campaignId: string) => {
   });
 };
 
+export interface GenerateMatchesArgs {
+  campaignId: string;
+  /**
+   * Suppress both toasts. Set for the automatic run that fires when a campaign
+   * has no matches yet: an unprompted "Matches generated successfully!" on page
+   * load is noise, and a red failure toast for something the user never asked
+   * for is worse — a silent failure falls through to the empty state, which
+   * still offers the manual button.
+   */
+  silent?: boolean;
+}
+
 export const useGenerateMatches = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (campaignId: string) => {
+    mutationFn: async ({ campaignId }: GenerateMatchesArgs) => {
       const { data, error } = await supabase.functions.invoke('match-creators', {
         body: { campaignId }
       });
@@ -123,15 +135,17 @@ export const useGenerateMatches = () => {
 
       return data;
     },
-    onSuccess: (data, campaignId) => {
+    onSuccess: (data, { campaignId, silent }) => {
       queryClient.invalidateQueries({ queryKey: ['campaign-matches', campaignId] });
+      if (silent) return;
       toast({
         title: 'Matches generated successfully!',
         description: `Found ${data.matches?.length || 0} potential creators for your campaign.`,
       });
     },
-    onError: (error) => {
+    onError: (error, { silent }) => {
       console.error('Match generation failed:', error);
+      if (silent) return;
       toast({
         title: 'Failed to generate matches',
         description: 'Please try again later.',
