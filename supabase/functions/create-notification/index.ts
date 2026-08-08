@@ -278,14 +278,11 @@ const handler = async (req: Request): Promise<Response> => {
             }
           }
         }
-        // Undetermined role falls through to NOTIFICATION_TYPE_TO_EMAIL_TYPE's
-        // `file_uploaded_by_creator` — the same email this type has always sent when no
-        // `emailType` was supplied, so this is not a new behaviour, and it is one fixed
-        // template rather than a caller's choice of two. The only caller always sends
-        // `collaboration_id` (it early-returns without an active collaboration), so this
-        // should not fire in practice; log it if it does.
+        // An undetermined role SUPPRESSES the email entirely (see the resolution below) —
+        // it does not fall back to a template. The bell still fires. The only caller always
+        // sends `collaboration_id`, so this should not happen in practice; log it if it does.
         if (!derivedEmailType) {
-          console.warn(`file_uploaded: uploader role undetermined for actor=${callerId}`);
+          console.warn(`file_uploaded: uploader role undetermined for actor=${callerId} — email suppressed`);
         }
       }
     }
@@ -364,8 +361,19 @@ const handler = async (req: Request): Promise<Response> => {
         : (emailType && emailType === type && CLIENT_SELF_NAMED_EMAIL_TYPES.has(emailType)
             ? emailType
             : undefined);
-      const resolvedEmailType =
-        derivedEmailType ?? requestedEmailType ?? NOTIFICATION_TYPE_TO_EMAIL_TYPE[type];
+      //
+      // `file_uploaded` needs one more guard: its templates name the uploader's ROLE, so an
+      // UNVERIFIED role must not select one. Falling back to the type map here would let any
+      // authorized caller opt OUT of the derivation just by omitting `data.collaboration_id`
+      // and still force the creator-worded email — the exact defect, by a shorter route.
+      // Suppressing only the email is the proportionate response: the in-app bell is already
+      // written above, so the recipient still learns about the upload; and the one real
+      // caller always sends `collaboration_id` (it early-returns without an active
+      // collaboration), so no legitimate flow loses its mail.
+      const roleUnverified = !isService && type === "file_uploaded" && !derivedEmailType;
+      const resolvedEmailType = roleUnverified
+        ? undefined
+        : (derivedEmailType ?? requestedEmailType ?? NOTIFICATION_TYPE_TO_EMAIL_TYPE[type]);
       if (resolvedEmailType) {
         // Synthetic Weight Engine: never send real email to bot accounts (protects sender
         // reputation). The in-app notification row above is still created for bots — only the
