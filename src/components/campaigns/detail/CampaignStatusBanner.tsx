@@ -188,10 +188,23 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
   // crew-only, so short of deleting it the business is stuck waiting. Deliberately NOT
   // folded into canRelaunch — that duplicates a finished campaign, whereas this re-targets
   // this one in place.
-  // Excluded on purpose: drafts (nothing has been offered to anyone yet — just edit it),
-  // and anything with an accepted creator (it IS filled, so there is nothing to rescue).
+  //
+  // Gate on status === 'published' specifically, NOT on `!== 'draft'` plus
+  // hasAcceptedCreator. hasAcceptedCreator comes from an application-count query that is
+  // undefined while in flight, so it reads false on first paint — which briefly offered
+  // this action on an already-filled campaign, where clicking it would have reset a live
+  // collaboration to an unlinked draft. `status` carries no such race: it is on the
+  // campaign row the banner already renders from, and
+  // accept_application_with_collaboration flips a crew campaign to 'active' the moment an
+  // application is accepted (crew campaigns are free, so there is no escrow to wait on).
+  // Deriving from phase would NOT have fixed this — deriveCampaignPhase also returns
+  // 'pre_hire' whenever its collaboration argument is still loading.
+  //
+  // So: 'published' = live and unclaimed. 'draft' (never offered — just edit it),
+  // 'active' (filled), 'completed' and 'cancelled' are all excluded. hasAcceptedCreator
+  // stays as a secondary guard; it can only ever withhold the action, never grant it.
   const canOpenToMarketplace =
-    !!campaign.group_id && campaign.status !== 'draft' && !hasAcceptedCreator;
+    !!campaign.group_id && campaign.status === 'published' && !hasAcceptedCreator;
   const showMenu = canEdit || canDelete || canRelaunch || canOpenToMarketplace;
 
   const renderHeadline = (): string => {
