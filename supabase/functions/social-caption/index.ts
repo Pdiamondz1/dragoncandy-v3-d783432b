@@ -114,10 +114,24 @@ serve(async (req) => {
         );
       }
       user_id = userData.user.id;
+    }
 
-      // Per-user hourly cap, matching the ten sibling Donny functions. Service callers are
-      // exempt: they are already gated at their own entrance and act for a user who has
-      // passed their own limit.
+    // Validate BEFORE charging quota. checkHourlyRateLimit check-AND-increments
+    // (usage-tracker.ts:179), so leaving this below it billed the caller for a request that
+    // returns 400 and never reaches Anthropic — a client bug or a retry loop on a malformed
+    // payload could rate-limit someone who never generated a caption. Still placed AFTER auth,
+    // so an unauthenticated caller gets 401 and cannot probe validation behaviour.
+    if (!party_role || !platform) {
+      return new Response(
+        JSON.stringify({ error: "Missing required fields" }),
+        { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
+      );
+    }
+
+    // Per-user hourly cap, matching the ten sibling Donny functions. Service callers are
+    // exempt: they are already gated at their own entrance and act for a user who has
+    // passed their own limit.
+    if (!isService) {
       const hourlyCheck = await checkHourlyRateLimit(supabaseAdmin, user_id);
       if (!hourlyCheck.allowed) {
         return new Response(
@@ -132,13 +146,6 @@ serve(async (req) => {
           },
         );
       }
-    }
-
-    if (!party_role || !platform) {
-      return new Response(
-        JSON.stringify({ error: "Missing required fields" }),
-        { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
-      );
     }
 
     const config = getModelConfig("social-caption");
