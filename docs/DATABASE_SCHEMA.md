@@ -249,8 +249,41 @@ active members, who one-tap apply with no payment (free `fixed_price=0`). See
 | `messages_with_profiles` | View joining messages with sender profile data |
 | `message_reactions` | Emoji reactions on messages |
 | `user_presence` | Online/offline status (realtime) |
-| `push_notifications` | Push notification records |
+| `push_notifications` | Push notification records. Written **only** by the service role, via `create-notification` — which until 2026-08-08 performed **zero authorization** (see below). |
 | `notification_preferences` | Per-user notification settings |
+
+> **`can_notify_user(p_actor, p_recipient)` — migration `20260808030000`, applied to prod
+> 2026-08-08.** `create-notification` inserts `push_notifications` with the **service role**, so RLS
+> never applied to it — and the function authenticated its caller with `auth.getUser()` and then
+> **never referenced the `user` object again**. Every field written, `recipientId` and `actorId`
+> included, came from the request body, and for types in `NOTIFICATION_TYPE_TO_EMAIL_TYPE` it also
+> sent a real email. Any authenticated user could put arbitrary text and an arbitrary in-app link
+> into **any** other user's feed, attributed to **any** actor.
+>
+> `can_notify_user` is `SECURITY DEFINER`, `language sql stable`, `search_path=public`, **service-role
+> only** (`revoke execute … from public, anon, authenticated`; `grant … to service_role`). It returns
+> true when actor and recipient share one of six **live** relationships: self, campaign (owner ↔
+> applicant/collaborator/invitee, either direction), conversation (`left_at IS NULL` on both sides),
+> crew, org (`invitation_status='active'` on both sides), or **sponsorship**.
+>
+> **The sponsorship clause carries a trap worth reading before editing it:**
+> `campaign_sponsorships.brand_id` / `.restaurant_id` are FKs to **`business_profiles.id`, NOT
+> `auth.users`** — they must be resolved through `business_profiles.user_id`, which is what the call
+> sites actually notify. Comparing the raw columns to a user id never matches, and fails *silently*
+> as a 403 nobody can explain.
+>
+> The clause set is not guessed. It was **backtested** against all 91 actor-bearing
+> `push_notifications` rows (18 types, May–Aug 2026) → 89/91, **and** cross-checked by enumerating
+> all 32 client call sites — which is the only reason sponsorship is in the list, since no
+> sponsorship notification has ever fired on prod. The 2 backtest misses are `content_liked`, which
+> the edge function authorizes against the **referenced `dragonshare_posts` row** instead (a liker
+> legitimately has no prior tie to the poster) and for which the server composes the copy.
+>
+> Cold contact from a public profile needs **no** exemption: `ContactCreatorModal` /
+> `ContactRestaurantModal` both `await` conversation creation *before* notifying, so the
+> `conversation_participants` rows already exist. There is deliberately **no "open type" branch** —
+> but that rests on an **ordering dependency**, so if the sequencing is ever inverted, cold contact
+> starts silently 403ing and this is where to look.
 
 ## File Management
 

@@ -106,7 +106,58 @@
   local branch's file-set is disjoint from what changed since the merge-base (so nothing is lost), then
   build the knowledge-sync commit on a fresh local branch off the FETCHED PR head, not the stale one.
 
+- **[doc-documents-the-bug] When the page you're compounding onto describes the defect as a
+  FEATURE, the edit is a retraction, not an append — and it must read as one.** On 2026-08-08
+  [[Notification Delivery]] said `create-notification` "resolves the email type as
+  `emailType ?? map[type]`, so a caller can target **any** template" — accurate, approving, and a
+  precise description of the hole being closed. Deleting the line would erase the evidence that the
+  guidance was ever given; a reader who acted on it needs to see it *withdrawn*. Quote the old text,
+  mark it corrected with a date, say why it was wrong, and point at what replaced it (same
+  discipline as the struck-through Known Issue). Ask on every compound: **does this page currently
+  recommend the thing I just fixed?** — a page can be entirely accurate and still be wrong about
+  whether the behaviour is desirable.
+- **[scope-ordering] Run the [scope] check before the FIRST doc edit, not after the last.** On
+  2026-08-08 I edited three core docs, *then* checked, and found `origin/main` 7 ahead with all four
+  moved — conflicting in exactly the three I'd touched. The check is **one command**
+  (`git log --oneline HEAD..origin/main -- <core docs>`) and it is worth running even when the branch
+  is "only a few" commits behind and the session isn't doc-focused, because the core docs are the
+  most-edited files in the repo and every knowledge-sync touches the same four. Corollary: **do the
+  `origin/main` merge before starting any long-running background `git push`** — a push in flight
+  pins the branch, so the merge has to wait it out.
+
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-08] Notification + invitation authorization (`fix/notification-authorization`, PR #387)
+
+**Output:** new `raw/sessions/2026-08-08-notification-and-invitation-authorization.md`;
+**compounded** onto `concepts/notification-delivery.md` (new "Who may notify whom" section + the
+`emailType` correction + 2 new residuals + the bulk-invite Known Issue flipped) and
+`concepts/campaign-invitations.md` (new "Invitation & application integrity" section); `index.md`
+(new Sources line + **both** Concepts entries corrected); `log.md` top entry; `SHIPPED_LOG.md`
+prepended; `PROJECT_CONTEXT.md` §5 one Built entry with a `**Pending:**` clause;
+`DATABASE_SCHEMA.md` (`can_notify_user` blockquote + a `push_notifications` row note); + THIS entry.
+
+**Happened.** Covered **two** efforts, because #387's sync had never run — no raw session, and
+`SHIPPED_LOG.md`'s newest entry predated it. Both compounds are *reframes*: each page stated
+something this work made false, and on [[Notification Delivery]] the false statement **was the
+vulnerability** (`emailType ?? map[type]` — "a caller can target any template" — written approvingly).
+
+**Worked.** Struck-and-explained that line rather than deleting it, per "flag contradictions, never
+silently overwrite" — a reader who remembers the old guidance needs to see it retracted, not vanish.
+Choosing compound over new pages was easy once I asked which page would have to be *wrong* for the
+new page to be right: both would.
+
+**Failed — and it cost real work.** I edited `SHIPPED_LOG.md`, `index.md` and `log.md` **before**
+running the [scope] check, then found `origin/main` 7 ahead with all four core docs moved. The merge
+conflicted in exactly those three files. Nothing was lost, but the check is **one command** and I ran
+it after the last edit instead of before the first. Compounded by starting a long `git push`
+beforehand, which pinned the branch and forced the merge to wait ~20 min.
+
+**Remember.** Two new Lessons promoted: [doc-documents-the-bug] and the [scope] ordering corollary.
+Also worth carrying: `handle_updated_at()` was **restored** upstream (migration `20260807233200`,
+PR #385) — the "it's a stub, `updated_at` is untrustworthy on ~30 tables" warning still in older
+session context is now **stale**. A worktree 7 commits behind serves stale *facts*, not just stale
+files.
 
 ### [2026-08-08] `status_changed_at` anchor (`feat/status-changed-at-anchor`, PR #391)
 

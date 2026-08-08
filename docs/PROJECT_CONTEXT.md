@@ -128,6 +128,23 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   migration, no RLS/edge-function change. DragonShare merge deferred — no public SELECT policy and
   no consent flag anywhere.
   → `docs/wiki/concepts/dragon-feed.md` · `docs/wiki/concepts/nav-active-state.md` · #384
+- **Notification + invitation authorization** — three pre-existing holes found while explaining
+  #382's invite button, each **proven on prod inside a rolled-back transaction** before and after:
+  `campaign_invitations` UPDATE had no `WITH CHECK` (which does **not** mean unconstrained —
+  Postgres defaults it to `USING`, so the real holes were a forged `status='accepted'` and a
+  **repointed `campaign_id`**, which manufactures apply-after-published rights) → decline-only +
+  column GRANTs, since a policy cannot pin a column against change; `apply_to_campaign` checked
+  eligibility on only its crew branch and, being `SECURITY DEFINER`, **bypassed the INSERT policy
+  carrying exactly that rule** → an uninvited creator applied to an `active` campaign; and
+  `create-notification` authenticated its caller then **discarded the user object**, so any
+  authenticated user could put arbitrary text in anyone's feed, as any actor, and email them →
+  JWT-derived actor + `can_notify_user` (backtested 89/91 **and** call-site-enumerated, which is the
+  only way sponsorship was found) + server-composed copy for `content_liked`. Five Codex rounds,
+  five real findings, all mine — including a tightening that silently killed 7 working email flows.
+  Migrations `20260808010000`/`020000`/`030000` **applied**; `create-notification` **v46** deployed.
+  **Pending:** merge PR #387; open the PR for `fix/notification-authorization` (pushed); and the
+  **both-viewport visual pass on #382 is still unrun** — it needs a signed-in prod session.
+  → `docs/wiki/concepts/notification-delivery.md` · `docs/wiki/concepts/campaign-invitations.md` · #387
 - **AIOS Google Workspace ("Connections")** — per-user Google OAuth, audited proxy, Drive
   hub, Donny exports, metrics→Sheet. The `google-chat-donny` bot ships dark — **confirmed still
   dark 2026-08-07**: a POST to the function returns **HTTP 503**, so this entry is real.
