@@ -255,6 +255,21 @@ single-character wildcard and would otherwise *loosen* the filter it exists to t
 are kept on purpose: SQL so the window can't be starved, in-code because that is what covers
 `screenshot_url` and what protects any future caller of the pure helper.
 
+**Chasing that finding showed it was the second instance, not the first.** The 2026-07-17
+backdrop-adapter design (`…-backdrop-adapter-design.md:51-56`) specified the *extension* guard as a
+**query-level** predicate — `content_file_path ~* '\.(mp4|webm|mov)$'` — explicitly "mirrored in
+`buildClips` too — belt and suspenders". Only the mirror was ever built; the query half never
+shipped. So the extension guard is starvable by exactly Codex's argument, and has been since
+2026-07-17. **Left as a documented follow-up rather than fixed blind:** the fix needs a PostgREST
+regex/`or()` filter that cannot be exercised without deploying, and getting it wrong returns zero
+clips through the endpoint's own catch-all — silent breakage of the kind this page keeps recording.
+The `.like()` prefix filter that *was* added is a single core operator with no such ambiguity.
+
+**The pattern worth naming:** "mirrored in X too — belt and suspenders" is a design note that decays
+into a single point of failure the moment one belt is dropped, because the surviving layer still
+produces correct output and nothing fails. Whenever a spec says a predicate lives in two places,
+**verify both shipped** — the redundancy is the only thing making the weaker placement safe.
+
 **The generalizable bit:** a row-level eligibility filter is not a content filter. Whenever a
 service-role endpoint echoes a **URL** that any user can write, the origin must be pinned separately
 from whatever decides the row is allowed.
@@ -266,6 +281,24 @@ it is explicitly removed from Supabase — so the repo and the live attack surfa
 repo is the one everybody greps. An orphaned deployed function is the worst case of this class: live,
 authenticated-reachable, and owned by no feature, so no test, no user report, and no code review path
 ever touches it again. Audit the *deployed* function list against the repo, not the repo alone.
+
+**Codex raised this as a `[P1]` against the deletion itself** — correctly — and proposed a
+**tombstone**: keep the directory with a stub that errors, so a normal deploy neutralizes the live
+endpoint. Worth recording why the answer here was *undeploy* instead:
+
+- **A tombstone does not self-neutralize in this repo either.** Nothing auto-deploys edge functions —
+  a push to `main` deploys only the frontend (see [[Lovable Edge-Function Deploy Gap]]). A tombstone
+  still needs the same manual deploy the undeploy needs, so it buys no automation, only a *second*
+  chance if someone later runs a bulk deploy.
+- **It institutionalizes the exact anti-pattern above** — a permanently deployed, feature-less
+  endpoint in the function list, which is what made this defect invisible for months.
+- The undeploy is **reversible** (the source is in git history) and removes the endpoint outright.
+
+So the tombstone is the right advice for a repo whose CI deploys functions, and the wrong one here.
+**The residual risk Codex is pointing at is real and unmitigated by the PR**: the fix depends on a
+manual prod step, and this project's own record is that `**Pending:**` clauses decay — a 2026-08-07
+sweep found **8 of 10** already stale. That is precisely why this entry sits under *Built — awaiting
+founder go-live* in §5 rather than *Shipped*, and why the PR body leads with it instead of burying it.
 
 ## The remediation (PR #308 — shipped + deployed)
 
