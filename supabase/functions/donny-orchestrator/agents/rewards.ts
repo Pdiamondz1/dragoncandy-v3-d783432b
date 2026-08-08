@@ -43,6 +43,26 @@ export async function execute(
     if (cfgRes.error) throw cfgRes.error;
 
     const agg = (aggRes.data ?? [])[0] ?? null;
+    const role = agg?.role;
+
+    // Brand has no DRE triggers — same reasoning DcPointsChip.tsx:17-21 and
+    // DcPointsPage.tsx use to hide the chip/page for brand, now enforced here
+    // too so all four guards read as one decision. Resolve the prefix
+    // explicitly per known role rather than by fallback: defaulting any
+    // non-creator role to "business." previously handed a brand user (or an
+    // absent/unrecognized role) the entire business earn catalog. Since this
+    // is generated prose, not a UI element a reviewer can spot, Donny needs
+    // to be told plainly there is nothing to earn rather than improvise one.
+    if (role !== "content_creator" && role !== "business_client") {
+      return {
+        context: JSON.stringify({
+          standing: null,
+          ways_to_earn: [],
+          truth: "DC Points are not available for this account type — there is nothing for this user to earn. Do not describe ways to earn points or suggest visiting the DC Points page.",
+        }),
+      };
+    }
+
     const cfg = Object.fromEntries(
       (cfgRes.data ?? []).map((r: { config_key: string; config_value: unknown }) => [
         r.config_key,
@@ -50,7 +70,7 @@ export async function execute(
       ]),
     );
     const pointValues = (cfg.point_values ?? {}) as Record<string, number>;
-    const prefix = agg?.role === "content_creator" ? "creator." : "business.";
+    const prefix = role === "content_creator" ? "creator." : "business.";
 
     const context = JSON.stringify({
       standing: agg
