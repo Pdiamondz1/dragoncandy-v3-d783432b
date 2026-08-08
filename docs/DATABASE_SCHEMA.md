@@ -7,21 +7,59 @@
 * `conversations` + `conversation_participants` + `messages` power the chat system
 * `file_uploads` are the primary content deliverable mechanism between creators and brands
 
-> **`updated_at` is NOT trustworthy on ~30 tables — `handle_updated_at()` is a stub.** The shared
-> trigger function's entire body is `-- Function logic here` / `RETURN NEW;`. It never assigns
-> `NEW.updated_at`, so every trigger wired to it fires and changes nothing. Confirmed on prod
-> 2026-08-07 by direct observation: a `donny_knowledge` row's content was replaced while its
-> `updated_at` stayed **equal to its `created_at`** from 78 minutes earlier. Affected tables
-> include `campaigns`, `campaign_applications`, `campaign_collaborations`, `conversations`,
-> `internal_docs`, `donny_knowledge`, `organizations`, `org_units`, `creator_groups`,
-> `package_orders`, `user_presence` and the `aios_*` set. **Never use `updated_at` (or
-> `max(updated_at)`) as a freshness/recency signal on these** — verify by content, or use a
-> purpose-built anchor column stamped by its own trigger, the way
-> `campaign_collaborations.content_submitted_at` exists precisely because this one is a no-op
-> (see the Creator Groups Phase 2 note below). A table listed here may still have a *second*,
-> working trigger or an explicit application-level set — confirm before relying on it either way.
-> Enumerate the affected set with:
+> **`updated_at` now works — `handle_updated_at()` was a no-op stub on prod until 2026-08-07.**
+> **RESOLVED** (PR #385, migration `20260807233200`). For years the shared trigger function's entire
+> body on prod was `-- Function logic here` / `RETURN NEW;` — it never assigned `NEW.updated_at`, so
+> all **35 triggers across 31 tables** fired and changed nothing. This was **prod drift, not repo
+> state**: both repo definitions (`20250616011059`, `20250617123640`) always said
+> `NEW.updated_at = now()`. Same "recorded ≠ actual" class as the collaboration state machine
+> ([[Content Delivery State Machine]], PR #325). Restored and proven by a rollback-wrapped live
+> round-trip on `feature_flags`: `updated_at` moved to `now()`.
+>
+> **What this means for you now:** `updated_at` is a valid *modification* timestamp on these tables
+> going forward. It is **still not a status/completion signal** — it moves on *any* write, so a title
+> edit is indistinguishable from a status change. For "when did this happen", use a purpose-built
+> anchor stamped by its own narrow trigger. The full set:
+>
+> | Anchor | Table | Stamped on |
+> |---|---|---|
+> | `content_submitted_at` | `campaign_collaborations` | transition into `content_status='submitted'` |
+> | `payout_executed_at` | `campaign_collaborations` | the instant money moves |
+> | `status_changed_at` | `campaign_collaborations` | transition of `status` **or** `content_status` (`20260808020000`) |
+> | `completed_at` | `campaigns` | transition into `status='completed'` (`20260807233000`) |
+> | `escrow_status_changed_at` | `campaigns` | transition of `escrow_status` **only** (`20260808020000`) |
+>
+> **Why `campaigns` has an escrow-specific anchor and `campaign_collaborations` has a combined one
+> is not an inconsistency — it is driven by the consumer.** `donny-analytics-alerts` reports escrow
+> state for campaigns, so an anchor that also moved on a `status` change would announce an escrow
+> event that never happened (Codex caught exactly that in review). The collaborations alert labels
+> `content_status || status`, so either transition is an event it genuinely reports. **The test for
+> a new anchor is never "how many columns" — it is "does every column this stamps on produce an
+> event the reader actually reports".** See [[Updated-At Trigger Drift]].
+>
+> Both `20260808020000` columns are **nullable with no backfill**: `NULL` means "predates the
+> migration and hasn't changed since", and `.gte()` excludes NULL, which is the intended
+> conservative behaviour. The backfill was deliberately omitted because an `UPDATE` on these tables
+> fires `handle_updated_at` (live again) plus `enforce_single_slot_campaign`, which can `RAISE`.
+> Note also that `DEFAULT now()` is set **after** `ADD COLUMN` in that migration — putting a
+> volatile default inside `ADD COLUMN` evaluates it for every existing row.
+>
+> **Legacy `updated_at` is unreliable in BOTH directions — don't infer history from it.** A
+> pre-2026-08-07 row where `updated_at == created_at` means *"no explicit writer touched it"*, **not**
+> "never modified" — the stub swallowed every trigger-driven touch. But the converse doesn't hold
+> either: tables with an application-level writer moved anyway. Measured on prod 2026-08-08:
+> `campaign_collaborations` has **10 of 16** pre-Aug-7 rows with `updated_at != created_at` (written
+> by `useProjectComplete.ts` on the completion path — note the 3-digit-millisecond JS timestamps
+> versus `now()`'s microseconds), and `organizations` **7 of 24**; `campaigns` and `conversations`
+> are **0**. And any legacy row updated *after* the restore now moves normally. So a backfill or
+> "stale rows" sweep spanning that date can be wrong either way — verify per table before relying on
+> it.
+>
+> Enumerate the trigger set with:
 > `select c.relname, t.tgname from pg_trigger t join pg_class c on c.oid=t.tgrelid join pg_proc p on p.oid=t.tgfoid where p.proname='handle_updated_at' and not t.tgisinternal;`
+> (Four tables — `beta_feedback`, `feature_flags`, `onboarding_steps`, `user_onboarding_progress` —
+> carry *two* triggers bound to this function; both assign the same `now()` in one transaction, so
+> the duplication is idempotent.) See [[Updated-At Trigger Drift]].
 
 ## User & Auth
 
@@ -180,8 +218,10 @@ active members, who one-tap apply with no payment (free `fixed_price=0`). See
 > is the **only** writer of `crew_activity`: a per-event authz matrix on `auth.uid()`, server-derived
 > `participant_id`/`visibility`/metadata, no-op (NULL) off the crew path. Idempotency is server-side —
 > a **cycle anchor** `campaign_collaborations.content_submitted_at` (nullable; stamped by trigger
-> `trg_set_content_submitted_at` **only on the transition into `content_status='submitted'`**, since the
-> table's `handle_updated_at` trigger is a no-op so client `updated_at` is untrustworthy) suppresses a
+> `trg_set_content_submitted_at` **only on the transition into `content_status='submitted'`**, because
+> `updated_at` moves on *any* write and so cannot mark a state transition — originally because the
+> table's `handle_updated_at` trigger was a no-op stub, and still true now that it is restored)
+> suppresses a
 > replayed `content_submitted` while allowing a resubmit-after-revision; **one-shot** dedup covers
 > `campaign_posted`/`application_received`/`hired`/`completed`; a `pg_advisory_xact_lock` on
 > `(campaign, event, participant)` makes each check-and-insert **atomic**. `completed` additionally

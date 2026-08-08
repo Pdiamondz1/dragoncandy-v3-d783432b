@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
 import type { UserRole } from '@/types/user';
 import { getBottomNav } from '@/lib/navConfig';
+import { activeNavHref } from '@/lib/navActive';
 import { DonnyNavButton } from './donny/DonnyNavButton';
 import { DonnyMobileSheet } from './donny/DonnyMobileSheet';
 import { useTotalUnreadCount } from '@/hooks/useUnreadCounts';
@@ -15,8 +16,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
   const location = useLocation();
   const items = getBottomNav(userRole);
 
-  const isActive = (href: string) =>
-    location.pathname === href || location.pathname.startsWith(href + '/');
+  // Longest match wins — a per-item prefix test also lit "Home" (the bare role root) alongside
+  // Campaigns / Messages / Profile. See src/lib/navActive.ts.
+  const activeHref = activeNavHref(location.pathname, items.map((i) => i.href));
 
   const unreadCount = useTotalUnreadCount();
 
@@ -39,7 +41,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
         <div className="flex items-end justify-around px-1 pt-1 pb-2">
           {items.map((item) => {
             const Icon = item.icon;
-            const active = isActive(item.href);
+            const active = item.href === activeHref;
 
             if (item.isDonny) {
               return (

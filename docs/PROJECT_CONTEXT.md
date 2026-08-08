@@ -116,22 +116,18 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 > proof the object exists (see [[Content Delivery State Machine]]) and "recorded ≠ actual" has
 > bitten this project before.
 
-- **AI Creator Match auto-run + invitation clarity** — a founder screenshot produced three
-  structural findings: `match-creators` had **no automatic trigger anywhere** (two buttons only —
-  no creation/publish path, no DB trigger), so every new campaign opened on a red "No AI matches
-  yet"; the invite had **zero explanatory copy on the entire platform** while the campaign is
-  already visible to every creator (`usePublicCampaigns` filters only `status='published'` +
-  `group_id IS NULL`, and publish already mails all onboarded creators), so users read "Invite" as
-  "make them do the work"; and the match card had **no pending state at all** behind six serial
-  edge-function steps. Shipped a twice-guarded silent auto-run, stepped progress UI, "Invite to
-  apply" + a `campaign_invite` expander, and real invitation status (`status` had always been
-  fetched and never read, so a **declined** creator looked identical to an accepted one). Two live
-  defects closed en route: the panel rendered for **non-owners**, and an **expired invitation was
-  permanently un-resendable, silently**. `send-campaign-invitation` **deployed v62 → v63** and
-  boot-verified. **Pending:** merge PR #382 (frontend); and the **both-viewport visual pass was
-  not run** — the dev machine sat at 100% CPU, so verify via `verify-prod` after merge. No
-  migration, no schema/RLS change.
-  → `docs/wiki/concepts/campaign-invitations.md` · #382
+- **DragonFeed uplift + sidebar double-active fix** — the "double-clicked button" was a
+  **specificity** bug (each role's bare-root Dashboard href prefixed all ~26 child routes, in three
+  copy-pasted navs) → one shared longest-match-wins `activeNavHref()`. The feed's four complaints
+  shared one root cause — *an item is not a row* — and the `feed_items` table meant to fix it was
+  **cut**: uuid ids would have silently emptied the Inspiration page + dashboard strip (both parse
+  the composite `content_id` back apart), and 34/34 items already carry a `storage.objects.created_at`.
+  Shipped real dates + stable order, NEW badges, skill chips, duration badges, desktop attribution,
+  and gated view counts; plus the supply fix for 26 items hidden behind a default-off opt-in nobody
+  could find. **Merged 2026-08-08 (e3f12c14). Pending:** `verify-prod` on both viewports (still not run). No
+  migration, no RLS/edge-function change. DragonShare merge deferred — no public SELECT policy and
+  no consent flag anywhere.
+  → `docs/wiki/concepts/dragon-feed.md` · `docs/wiki/concepts/nav-active-state.md` · #384
 - **AIOS Google Workspace ("Connections")** — per-user Google OAuth, audited proxy, Drive
   hub, Donny exports, metrics→Sheet. The `google-chat-donny` bot ships dark — **confirmed still
   dark 2026-08-07**: a POST to the function returns **HTTP 503**, so this entry is real.
@@ -149,6 +145,27 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **`handle_updated_at()` restored from its prod-drifted stub** — the shared trigger's prod body was
+  literally `-- Function logic here / RETURN NEW;`, so 35 triggers across 31 tables fired and changed
+  nothing and `updated_at` sat frozen at `created_at`. Repo was never wrong (`recorded ≠ actual`, same
+  class as #325). Restored only after fixing the two consumers that had adapted to it —
+  `donny-analytics-alerts` (a frozen-column filter silently means "created in 24h") and DRE
+  `occurred_at` (false recency ⇒ retroactive "You earned DC Points") — plus a new `campaigns.completed_at`
+  anchor. **`updated_at` is a modification stamp, never a status signal**, and legacy values are
+  unreliable BOTH ways (`== created_at` means "no explicit writer touched it", not "never modified").
+  Post-merge, a Codex P2 on the docs falsified #385's own audit claim that
+  `campaign_collaborations.updated_at` has no explicit writer — it has one, so the `created_at` repoint
+  cost ~1-in-16 historical status alerts. **Closed by #391**: `campaigns.escrow_status_changed_at`
+  (escrow only) + `campaign_collaborations.status_changed_at` (status/content_status), each stamped by
+  its own transition-only trigger; migration `20260808020000` applied + behaviourally verified, fn v97.
+  The escrow anchor deliberately ignores a `status` change — Codex caught the symmetric draft
+  announcing escrow events that never happened.
+  → `docs/wiki/concepts/updated-at-trigger-drift.md`
+- **AI Creator Match auto-run + invitation clarity** — `match-creators` had **no automatic trigger
+  anywhere**, so every new campaign opened on a red "No AI matches yet"; the invite had zero
+  explanatory copy; the match card had no pending state. Merged 2026-08-07 (#382). Its
+  both-viewport visual pass was never run — fold it into the next `verify-prod`.
+  → `docs/wiki/concepts/campaign-invitations.md` · #382
 - **Crews comprehension pass** — a restaurant user asked "what is CREWS?"; the feature was ~80%
   built and ~0% explained. Added a business-side explainer + roster counts, the creator's missing
   "Your crews" roster, and email on crew invites; corrected the false "first look / before the

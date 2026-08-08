@@ -109,6 +109,235 @@ behaviour change and needs the same "what does this break?" pass as a feature.
 Also fixed en route: bulk invite sent the email but fired **no in-app bell** — the two invite
 paths had drifted, and both now route through one shared `notifyInvitedCreator()`; and the
 applications list now marks applicants the business had invited.
+## [2026-08-08] `status_changed_at` — the analytics alerts finally get a change-anchor
+
+Closes the gap #385 recorded, Codex flagged, and post-merge measurement showed was **bigger than
+#385 credited**. `donny-analytics-alerts` asks "did this row's status change recently?" and never
+had a column that answers it — `updated_at` was a stub (so the filter meant "created in the
+window"), and after the restore it would have meant "modified in the window", firing "Payment
+released" off a title edit. #385 fell back to `created_at` and wrote the gap down.
+
+**Two anchors, deliberately asymmetric** (migration `20260808020000`, fn **v97**):
+
+| Column | Watches | Consumer |
+|---|---|---|
+| `campaigns.escrow_status_changed_at` | `escrow_status` **only** | payment_events |
+| `campaign_collaborations.status_changed_at` | `status` + `content_status` | status_changes |
+
+**Codex round 1 caught the first draft** giving `campaigns` a symmetric two-column anchor: a
+campaign going `active → completed` with escrow unchanged at `held` would stamp it and announce
+"Funds held in escrow" for an escrow event that never happened — re-creating the exact
+false-positive class the change exists to remove. Collaborations legitimately watch both, because
+their alert labels `content_status || status`. **The test is never "how many columns", it is "does
+every column this stamps on produce an event the reader actually reports".** Symmetry between two
+tables is not evidence of correctness; the consumer is. Round 2 came back clean.
+
+**Two traps designed around**, both recorded in the migration header so they aren't "fixed" back in:
+*no backfill* (an `UPDATE` here fires `handle_updated_at`, live again, stamping `updated_at` across
+both core tables and flattening the three `.order('updated_at')` sites — and
+`enforce_single_slot_campaign` re-evaluates on a no-op UPDATE and can `RAISE`, aborting the
+migration; cost of skipping is a one-time ≤24h gap that self-heals), and *`DEFAULT now()` set AFTER
+`ADD COLUMN`* (a volatile default inside `ADD COLUMN` is evaluated for every existing row, which
+would make the whole table look like it just changed).
+
+**`edge-function-reviewer` caught a silent-failure mode:** the three queries gated only on
+`if (data)` and never checked `error`, so an out-of-order deploy would have skipped the alert blocks
+with no exception and no signal — *it would have looked like a quiet day*. Now logged, naming the
+migration by number. It also confirmed `.gte("campaigns.escrow_status_changed_at", since)` is a real
+`WHERE` on the parent rows **only because** `campaigns!inner` is present.
+
+**Verified on prod, not argued.** A `RAISE`-aborted (atomically rolled back) probe: a no-op edit and
+a **status-only** change both left `escrow_status_changed_at` NULL; a real escrow transition stamped
+it. Structural: both columns present with `DEFAULT now()`, all 42 existing rows NULL, both triggers
+live, and post-rollback 11 approved collabs / 6 held campaigns untouched. Deploy order was reversed
+from #385 (migration first — this reads NEW columns); fn v97 boot-checked.
+
+Two self-inflicted bugs caught mid-change, both the same shape: a payload reading a column removed
+from its `.select()`, invisible to TypeScript because the embedded object is cast `as any`. The cast
+is the hazard, not the typos.
+
+PR #391 · migration `20260808020000` · `donny-analytics-alerts` v97 ·
+→ `docs/wiki/concepts/updated-at-trigger-drift.md`
+
+## [2026-08-07] `handle_updated_at()` restored from its prod-drifted stub, hazards fixed first
+
+`public.handle_updated_at()` on prod had a body of literally `-- Function logic here` /
+`RETURN NEW;`. It never assigned `NEW.updated_at`, so all **35 triggers across 31 tables** bound to
+it fired and changed nothing — `updated_at` sat frozen equal to `created_at` on every affected row.
+**Prod drift, not repo state:** both repo definitions (`20250616011059`, `20250617123640`) have
+always said `NEW.updated_at = now()`. Same `recorded ≠ actual` class as the collaboration state
+machine restored in PR #325.
+
+**It surfaced as a contradiction, never as an error.** A `knowledge-sync` verification step keyed
+on `max(updated_at)` reported Donny's RAG as stale while the row's *content* was demonstrably the
+new revision. That mismatch — content fresh, timestamp frozen — was the only symptom this defect
+ever produced in years of running.
+
+The repair is one `CREATE OR REPLACE`. The work was everything that had quietly come to depend on
+the column never moving. Two subagents audited the blast radius in parallel: **34 explicit
+`updated_at` writers and the entire frontend came back safe** (32 writers are SQL `updated_at =
+now()` inside RPCs, and `now()` is `transaction_timestamp()` — the trigger's `now()` in the same
+transaction is the *identical* value, not a clobber; the 2 edge-function writers merely upgrade
+from an edge clock to the DB clock; no frontend site treats `updated_at` as stable or keys a cache
+on it). Two genuine hazards had to land **first**:
+
+- **`donny-analytics-alerts`** filtered `.gte("updated_at", since)` on `campaigns` and
+  `campaign_collaborations`. Against a frozen column that is a *"created in the last 24h"* filter;
+  restoring the trigger would have silently reinterpreted it as *"modified in the last 24h"* and
+  emitted "Payment released" / "Revision requested" for rows whose status never changed. Repointed
+  to `created_at` (v96).
+- **DRE `occurred_at`** derived milestone timestamps from `updated_at`. Once the column moves, an
+  edit to an old campaign dates an old milestone as fresh, clears `dre-award-engine`'s
+  forward-only `go_live_at` gate, and fires "You earned DC Points" for months-old activity. The
+  *awards* were never at risk (`dragon_point_events` has `UNIQUE(user_id, event_type, source_id)`
+  and freezes `occurred_at`); **who gets notified** was.
+
+**A recommendation was made, then withdrawn.** The founder chose "keep milestones suppressed", and
+the option shown to them swapped the DRE anchors to bare `created_at`. Reading the SQL afterwards
+showed that preview was wrong: bare `created_at` suppresses retroactive firing but *also*
+suppresses legitimate **future** milestones — a business completing its 5th campaign next week on
+months-old campaigns gets a months-old `occurred_at`, lands before `go_live_at`, and is never told.
+The real cause was that `campaigns` had **no completion anchor at all**, which is exactly why the
+original DRE migration reached for `updated_at` and said so in a comment
+(`-- ... campaigns has no completed_at`). So one was added: `campaigns.completed_at`, stamped only
+on the *transition* into `completed`, copying the `content_submitted_at` pattern.
+
+**Codex dissent held, not complied with.** Codex flagged (P2) that post-restore `updated_at` would
+be a usable status signal, so a real escrow change on an older row won't alert. Factually right,
+but measured against a state that has never been live, and the implied alternative is the option
+the founder declined — `updated_at` moves on any write, so "alert on modification" fires "Payment
+released" off a title edit. All three call sites were annotated with the rationale, the limitation,
+and the genuinely correct fix (a `status_changed_at` on its own narrow trigger — **still open**).
+The `edge-function-reviewer` separately corrected an overstatement of mine that the repoint
+"preserves today's behavior exactly": `campaigns.updated_at` has one explicit writer
+(`accept_application_with_collaboration`), so a few older escrow-held campaigns stop alerting.
+Since an UPDATE can never predate its own INSERT, it is a **pure narrowing** — no row newly
+appears.
+
+**Post-merge correction — the writer audit undercounted, and the Codex dissent was stronger than
+credited.** After merge, a Codex P2 about a *documentation* over-claim prompted a check against
+real rows, which falsified the audit's load-bearing claim that
+`campaign_collaborations.updated_at` has **zero** explicit writers.
+`src/hooks/useProjectComplete.ts:52` writes it on the completion path, and prod shows **10 of 16**
+pre-restore rows with a moved `updated_at` (JS 3-digit-millisecond timestamps, versus `now()`'s
+microseconds — the tell). So that alert block was **partially functional**, not inert. Quantified
+against the live 24h window: **1 of 16** collaborations moved more than 24h after creation, so the
+repoint costs roughly 1-in-16 historical status alerts rather than none. The conclusion holds — it
+is still a pure narrowing and still small — but "exactly equivalent" was wrong, and the deployed
+comment's "That is the status quo, not a regression" is likewise not quite true for that table
+(comment-only defect; fold into the `status_changed_at` change rather than redeploy for a comment).
+The general audit undercount is worth noting on its own: a grep for
+`updated_at: new Date().toISOString()` alone returns ~20 edge-function sites against the 2 reported.
+
+**Ordering was load-bearing** (merge → deploy v96 → `20260807233000` → `20260807233100` →
+`20260807233200`); reversed, there is a window where alerts misfire and milestones fire
+retroactively. `20260807233100` is `language sql`, so Postgres validates its body at `CREATE` time
+and rejects it if `completed_at` is absent — half the ordering enforces itself.
+
+**Verified on prod, not assumed:** stub confirmed live pre-change (`pg_get_functiondef ... ilike
+'%NEW.updated_at%'` → false); 31-vs-35 reconciled as four double-bound tables, not an audit gap;
+`dre_pending_events()` retains `security definer` / `search_path=public` / `service_role`+`postgres`
+grants only; rollback-wrapped live round-trip on `feature_flags` shows `updated_at` moving to
+`now()`; **`dre_pending_events()` returns 0 pending events**, so the restore fires nothing
+retroactively. Prod had **0** completed campaigns and all 11 completed collaborations already
+carried `completed_at` — the DRE half is future-proofing; the live repair was the analytics alerts.
+
+**Carry forward:** rows written before 2026-08-07 have a frozen `updated_at` equal to
+`created_at` — any recency sweep spanning that date reads them as never-modified. And the rule that
+outlives the fix: `updated_at` is a *modification* stamp, never a status signal.
+
+PR #385 · migrations `20260807233000` / `20260807233100` / `20260807233200` ·
+`donny-analytics-alerts` v96 · → `docs/wiki/concepts/updated-at-trigger-drift.md`
+## [2026-08-07] DragonFeed uplift + the sidebar that highlighted two things at once
+
+> State as of writing: **PR #384 open**, all checks green, Codex second review clean. No migration,
+> no RLS/policy change, no edge-function deploy — it ships on merge. Prod verification (both
+> viewports + console) is **not yet run**; it happens after merge.
+
+Two founder reports from the business dashboard, shipped together.
+
+**The nav bug was on every page, not one.** `DashboardLayout.tsx:63` evaluated, per item,
+`pathname === href || pathname.startsWith(href + '/')`. Each role's Dashboard item points at the
+bare role root (`/dashboard/business`), which is a prefix of **all ~26** of that role's child
+routes — so Dashboard rendered active everywhere; Dragon Feed was just where it was noticed. The
+identical expression was copy-pasted into `MobileBottomNav.tsx:18` and `MobileTopNav.tsx:31` with
+no shared helper and no test, so the drawer double-highlighted and the bottom nav lit "Home"
+alongside Campaigns / Messages / Profile.
+
+Fixed with one pure `activeNavHref()` (`src/lib/navActive.ts`) using **longest match wins**, adopted
+by all three. Exact matching would have been the opposite regression — "My Campaigns" must stay lit
+on `/campaigns/:id` — so the requirement is *specificity*, not equality. It is also
+self-maintaining: nesting a new route later needs no `exact` flag. 9 unit tests. Flagged but not
+fixed: the Analytics item points at `/dashboard/analytics` for all three roles while a separate
+`/dashboard/brand/analytics` route exists — that needs a founder call on the intended target.
+
+**Every DragonFeed complaint had one root cause: a feed item is not a row.** The feed reads
+`creator_profiles.portfolio_urls`, a bare `text[]`, so an item is a *string in an array* — no id,
+no timestamp, no counters, nowhere to put a tag. Order was `sort(() => Math.random() - 0.5)`,
+reshuffled every mount, so nothing could be "new" relative to anything.
+
+A `feed_items` table was designed and then **cut**, which is the durable part of this session:
+
+1. **It would have silently broken two live surfaces.** The item id is the composite
+   `${creator.id}-${url}`, persisted as `analytics_events.event_data.content_id` by `useFeedLike`.
+   Two consumers decode it by string-stripping the creator-id prefix to recover the URL —
+   `useBusinessActivity.ts:82` (the Inspiration page) and `useInspirationStrip.ts:66` (the dashboard
+   strip). A uuid id makes their lookup return `undefined` and the item is **dropped with no error**.
+2. **No lifecycle contract.** `portfolio_urls` is rewritten as a whole array on every profile save,
+   so nothing would delete a feed row when a creator removed an item — removed work would stay live
+   forever, a consent regression inside a consent-motivated change.
+3. **Not needed.** Verified on prod: **34 of 34** items resolve to a `storage.objects` row with a
+   real `created_at` (0 external URLs). The per-item timestamp already existed.
+
+Shipped instead, with no new table, no id change and nothing broken: real dates and stable
+newest-first ordering (pure `feedOrdering.ts`); NEW badges + "N new since your last visit" against a
+per-device marker, with a first-ever visit badging nothing; skill filter chips from
+`creator_profiles.skills` (`feedSkills.ts`) — data already fetched and rendered but never used as a
+filter, so zero new storage; a video duration badge from the browser's own `loadedmetadata`, no
+server probe and no new column; creator attribution on desktop tiles, which previously rendered
+*nothing*; and view counting keyed by the **same** `content_id` likes use, deduped per user/item/day.
+
+Ordering deliberately uses the **server-assigned** `storage.objects.created_at`, not the
+`Date.now()` that `uploadProfileAsset` bakes into every filename — that value is client-supplied,
+and a creator writing to their own folder could craft a future timestamp to pin their work to the
+top of the feed permanently.
+
+View counts are **instrumented now, displayed when significant**: `content_performance` holds **3**
+measured posts platform-wide, so any social-sourced number would be fabricated — the rule PR #368
+exists to enforce. "Hot" was **deferred rather than faked**, because its draft formula included
+boost dollars, which are structurally zero for portfolio items (boosts attach only to
+`dragonshare_posts`).
+
+**Supply turned out to be the real bottleneck.** The feed showed 2 creators / 8 items; three more
+creators holding **26 more items** were completed, public, and blocked *only* by
+`allow_portfolio_in_feed = false` — a flag defaulting off whose sole UI was a switch inside a
+collapsed Settings accordion filed under *Privacy*, never asked at onboarding. 11 of 15 creators
+never saw it, so absence from the feed was almost never a decision. Onboarding now asks it
+(defaulted Yes, on the existing bio step, so it costs no extra tap); the switch moved Privacy →
+Portfolio and was relabelled to the feed's real name; and a self-limiting dashboard card prompts
+creators who have work but are opted out — `shouldPrompt` requires the flag to still be false, so
+opting in removes it permanently with no dismissal state to store.
+
+Two things deliberately **not** done. `useCreatorProfileForm`'s default was left at `false`:
+`CreatorSettings.tsx:44` submits the entire `formData` on any field blur with no `isLoaded` guard,
+so flipping it would let an existing creator's stored `false` be silently overwritten. And the
+DragonShare merge was deferred — `dragonshare_posts` has no public SELECT policy and a post is made
+for one specific business, so merging as-is shows Business A's paid content to Business B. Two
+verified facts shape the eventual fix: the media file is *already* world-readable
+(`dragonshare-content` is a `public=true` bucket), so what would be newly exposed is the
+**association**, not the bytes; and **no consent flag exists anywhere**. Founder decision recorded:
+creator opts in, business can veto, default off, asked at boost time.
+
+45 new unit tests; build, typecheck and lint clean. A failing `OnboardingWizard.test.tsx` was
+verified as a cold-cache timing artifact (import alone took 63s against a 5s test timeout), not a
+regression — confirmed by reverting only the two touched files, re-running, and restoring.
+
+Unverified leads filed for separate checking: `donny-dragonshare-score/index.ts:44-48` appears to
+read a post by id with the service-role key without checking caller membership in `target_org_id`;
+`donny-orchestrator/agents/dragonshare.ts:71-76` appears to omit `status='verified'`;
+`landing-clips` is publicly callable but orphaned behind a false flag; and Creator Settings appears
+to save stale form state over stored values.
+→ `docs/wiki/concepts/dragon-feed.md` · `docs/wiki/concepts/nav-active-state.md` · #384
 
 ## [2026-08-07] AI Creator Match: run it automatically, explain the invite, kill the dead click
 

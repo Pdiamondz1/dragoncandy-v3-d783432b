@@ -108,6 +108,128 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-08-08] `status_changed_at` anchor (`feat/status-changed-at-anchor`, PR #391)
+
+**Output:** the "The follow-up: `status_changed_at`" section + extended anchor table on
+`concepts/updated-at-trigger-drift.md` (compounded, no new page); `log.md` entry
+`[2026-08-08] update | [[Updated-At Trigger Drift]]`; `index.md` concept line rewritten;
+`DATABASE_SCHEMA.md` both new columns + the anchor-scope rule; `SHIPPED_LOG.md` prepend;
+`PROJECT_CONTEXT.md` §5 (2 in-place corrections).
+
+**Worked — compounding beat creating.** #391 closes the open issue #385 left, so it belongs on the
+same page; a new page would have separated a defect from its fix. Better still, it let me **close
+two "Known Issues" in place** rather than leave a page advertising problems that no longer exist.
+A concept page's Known Issues section is a decaying claim just like a §5 `**Pending:**` clause — the
+session that fixes the issue is the only one positioned to notice.
+
+**Worked — the decay lesson caught a live one.** #384's §5 line said "**Pending:** merge PR #384";
+it merged (e3f12c14) *while this session was running*. Corrected to keep only the genuinely
+outstanding half (`verify-prod` still not run). This is the second consecutive session where a
+`**Pending:**` clause decayed under me, which is evidence the pattern is structural, not a one-off.
+
+**Remember — two bugs of identical shape in one change.** Twice I removed a column from a
+`.select()` and left a payload reading it. Invisible to TypeScript because the embedded object is
+cast `as any`; it would have been `undefined` at runtime and thrown out of the sort. **When a change
+renames a selected column, grep every read of the old name — the `as any` cast means the compiler is
+not a safety net here.** Both were caught by re-grepping after the edit, not by review.
+
+**Remember — reviewers found what I could not.** `edge-function-reviewer` caught that the queries
+never checked `error` (so an out-of-order deploy fails *silently* — "it looks like a quiet day"),
+and Codex caught a design error I would have defended: a symmetric two-column anchor that *looked*
+consistent and would have announced escrow events that never happened. **Symmetry is not evidence
+of correctness. The consumer decides an anchor's scope.**
+
+### [2026-08-07] `handle_updated_at()` restore (`docs/knowledge-sync-updated-at-restore`, PR #385 work)
+
+**Output:** `docs/wiki/concepts/updated-at-trigger-drift.md` (new) +
+`raw/sessions/2026-08-07-handle-updated-at-restore.md`; `log.md` entry
+`[2026-08-07] ingest | [[Updated-At Trigger Drift]]`; `index.md` ×2 (concept + raw session);
+`SHIPPED_LOG.md` prepend; §5 "Shipped" entry; **`DATABASE_SCHEMA.md` ×2 corrections**.
+
+**Happened.** Ran as the branch-finish step for the trigger-restore work, but on a *fresh* branch
+off `origin/main` — the work branch had already been squash-merged, so per the [scope] lesson there
+was nothing to join. The distinguishing feature of this run: it had to **falsify a core doc I had
+written earlier the same day**.
+
+**Worked.** The DATABASE_SCHEMA warning ("`handle_updated_at()` **is** a stub, `updated_at` is NOT
+trustworthy on ~30 tables") was accurate when written and became false the moment the migration
+applied. Because that file is auto-loaded into every session, a stale claim there is the most
+expensive kind of staleness there is. Rewrote it **in place** per the [status-correction] lesson —
+and, critically, preserved the *reason* behind the anchor pattern rather than deleting the whole
+block: `updated_at` moves on any write, so it could never mark a state transition, stub or no stub.
+Grepping for a second reference caught the Crews Phase 2 note carrying the same now-false "is a
+no-op" clause. **One correction is rarely one edit — grep the claim, not the section.**
+
+**Failed.** Two of six `[[wikilinks]]` I wrote didn't resolve (`[[Dragon Rewards Engine]]` — real
+name is `[[Dragon Rewards Engine (DRE)]]`; `[[Knowledge Sync]]` — no such page at all). Caught by
+grepping each display name against `index.md` *before* commit, which cost one command. Writing
+links from memory of a page's subject rather than its catalogued display name is the recurring
+failure mode.
+
+**Remember.** A `**Pending:**`-style claim is not the only kind that decays — a **negative**
+finding ("X is broken", "Y is untrustworthy") decays the instant someone fixes X. The session that
+fixes it is the only one positioned to notice, because every later session just reads the stale
+warning and believes it. When a session's work *invalidates a doc that session wrote*, correcting
+it is part of the work, not follow-up.
+
+**Also failed — and this one was the real find.** Codex returned a P2 against the *documentation*
+(the "rows before 2026-08-07 are frozen" blanket claim — correctly flagged as overbroad). Checking
+it against real rows falsified something much bigger than the doc: the pre-merge audit's claim that
+`campaign_collaborations.updated_at` has **zero** explicit writers, which was the whole basis for
+calling that alert filter "exactly equivalent". It has one (`useProjectComplete.ts:52`), and 10 of
+16 prod rows prove it. **A documentation review found a code defect, because the doc restated a
+code claim in a form that was checkable against data.** Writing the claim down is what made it
+falsifiable. Don't treat doc review as cosmetic.
+
+**Method, promoted to a Lesson:** the original audit was done by reading code, and verified by
+*more reading*. One `count(*) filter (where updated_at is distinct from created_at)` broke it in
+seconds. **A universal negative — "nothing writes X", "no caller does Y" — is cheap to falsify with
+data and expensive to establish by reading. Query first.** The 3-digit-millisecond JS timestamp
+versus `now()`'s 6-digit microseconds identified the writer's *language* before the grep found the
+file.
+### [2026-08-07] DragonFeed uplift + nav active-state (`worktree-dc-improvements-16`, PR #384)
+
+**Output:** NEW `concepts/nav-active-state.md`; **compounded** three sections + rewritten Key
+Decisions + 6 new Known Issues onto `concepts/dragon-feed.md`; `index.md` (new Concepts line, new
+Sources line, refreshed Dragon Feed entry); `log.md` top entry; `SHIPPED_LOG.md` prepend;
+`PROJECT_CONTEXT.md` §5 one Built entry **plus an in-place correction of #382's** (see below).
+
+**Happened.** Ran the sync as the branch-finish step with PR #384 already open, so the docs join it
+rather than becoming a follow-up. Split by *subject*, not by session: the nav fix got its own page
+because the lesson outlives Dragon Feed entirely (it was reported there but affects all three navs
+and all three roles, and nothing owned "which nav item is current"); the feed work compounded onto
+the page that already owns the feed.
+
+**Worked.** [status-correction]'s decay corollary paid off immediately and unprompted: #382's §5
+entry still read `**Pending:** merge PR #382` while #382 was **already merged** — I only noticed
+because I merged `origin/main` into the branch first ([scope]) and saw its commit go by. Verified
+against `origin/main` (`380065e7`) rather than assuming, then moved it Built → Shipped as a
+one-liner, preserving the genuinely-unrun both-viewport pass rather than quietly dropping it. Also
+[orphans]-by-path (clean, via PowerShell — the bash one-liner tripped the worktree-isolation guard,
+worth remembering) and [wikilinks]-exact: grepped all four targets against `index.md` before
+linking, zero dangling.
+
+**Failed.** Nothing knowledge-side. RAG sync is post-merge per [rag-sync] — PR open, and `docs/`
+changed so the post-merge hook will fire on the main fast-forward.
+
+**Remember.** Two durable lessons from the work itself, both worth generalizing:
+**(1) A composite id that other code PARSES is a public contract.** `${creator.id}-${url}` looked
+like an implementation detail; it is persisted into `analytics_events.content_id` and
+string-stripped back apart by two live surfaces, so the planned uuid migration would have emptied
+the Inspiration page and dashboard strip **with no error**. Grep for consumers before changing any
+id scheme, however internal it looks — and note the failure mode was *silent*, which is why the
+spec reviewer catching it mattered more than any test would have.
+**(2) When a value drives ranking, prefer the one the client cannot author.** The upload timestamp
+was available two ways: parsed free from the filename (`${kind}-${Date.now()}`) or fetched from
+`storage.objects.created_at`. The free one is client-supplied — a creator writing to their own
+folder could craft a future timestamp and pin their work to the top of the feed permanently. Took
+the paid one.
+Process note: the spec reviewer returned **8 issues, most of them real**, on a spec I'd have
+otherwise implemented as written — including the id break and three features with no producer
+(poster frames, "Donny auto-tags", a "hot" term that was structurally zero). Verifying its two
+sharpest claims directly, rather than accepting or dismissing them, is what turned a table-plus-
+migration design into a no-schema one. **Review the spec, not just the code.**
+
 ### [2026-08-07] AI Creator Match auto-run + invite clarity (`worktree-dc-improvements-17`, PR #382)
 
 **Output:** `docs/wiki/concepts/campaign-invitations.md` (new) + the "The trigger" / "Showing the

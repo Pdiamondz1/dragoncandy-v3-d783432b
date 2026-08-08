@@ -31,6 +31,77 @@ of the RLS policy protecting the table it writes; a history-only backtest can on
 has already happened, so enumerate the call sites too; and **ignoring an untrusted input is
 not automatically safe** — dropping `emailType` silently killed 7 working email flows.
 
+## [2026-08-08] update | [[Updated-At Trigger Drift]] — the follow-up anchor, and why it is asymmetric
+
+Compounded onto the existing concept page rather than creating a new one: this is the same thread
+(PR #391 closes the open issue PR #385 left), and splitting it would have separated a defect from
+its fix. Added a "The follow-up: `status_changed_at`" section, extended the anchor table with both
+new columns, and **closed two Known Issues in place** — the `status_changed_at` item and the
+"deployed comment overstates the case" item, which was fixed as planned during the v97 redeploy
+rather than as a standalone comment deploy.
+
+Core docs: `DATABASE_SCHEMA.md` gains both columns plus the rule that decides anchor scope (the
+consumer, not symmetry); `PROJECT_CONTEXT.md` §5 had its existing line **edited in place** per the
+status-correction lesson, never appended to.
+
+Also corrected a `**Pending:**` clause that decayed mid-session: #384's said "merge PR #384", but it
+merged (e3f12c14) while this work was in flight. Exactly the decay pattern the 2026-08-07 sweep
+recorded — the session that merges a PR is rarely the one that wrote its §5 line.
+
+Pages: updated `concepts/updated-at-trigger-drift.md`, `index.md`, `docs/DATABASE_SCHEMA.md`,
+`docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §5 (2 corrections).
+
+## [2026-08-07] ingest | [[Updated-At Trigger Drift]] — the column that never moved, and the two readers that had adapted
+
+Ingested [[Handle-Updated-At Restore Session]] (PR #385). New concept page
+`concepts/updated-at-trigger-drift.md` rather than a section on an existing one: this is a
+schema-wide invariant touching 31 tables, and the two pages it most resembles —
+[[Content Delivery State Machine]] (the sibling `recorded ≠ actual` drift) and
+[[Dragon Rewards Engine (DRE)]] (one of the two affected consumers) — would each have owned only a
+slice of it. Cross-linked both ways, plus [[Payout Finalization & Re-entrancy]] and
+[[Creator Groups (Crews)]] for the narrow-anchor pattern (`payout_executed_at`,
+`content_submitted_at`) this change extends with `campaigns.completed_at`.
+
+**Contradicted and corrected an always-loaded core doc.** `DATABASE_SCHEMA.md` carried a prominent
+warning that `handle_updated_at()` *is* a stub and `updated_at` is untrustworthy on ~30 tables.
+That was true when written (2026-08-07, earlier the same day) and is now false. Rewritten in place
+rather than appended to — a stale claim in an auto-loaded file misleads every future session — and
+the second stale reference further down (the Crews Phase 2 note, "since the table's
+`handle_updated_at` trigger is a no-op") was corrected too. Per the standing status-correction
+lesson, the *reason* the anchor exists was preserved rather than deleted: `updated_at` moves on any
+write, so it could never mark a transition, stub or no stub.
+
+Pages: created `concepts/updated-at-trigger-drift.md`,
+`raw/sessions/2026-08-07-handle-updated-at-restore.md`. Updated `index.md` (2 entries),
+`docs/DATABASE_SCHEMA.md` (2 corrections), `docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §5.
+## [2026-08-07] ingest | [[Dragon Feed]] + [[Nav Active State]] — the table that got cut
+
+Ingested [[DragonFeed Uplift & Nav Active-State Session]] (PR #384), two founder reports that
+shipped together.
+
+**New page** `concepts/nav-active-state.md`. The lesson outlives the subsystem that found it: the
+"double-clicked button" was reported on Dragon Feed, but the defect was every role's bare-root
+Dashboard href prefix-matching all ~26 of its child routes, across three separate nav components.
+Nothing owned "which nav item is current", and [[Mobile Viewport & Fixed Positioning]] owns
+*positioning* and z-layering, not state — so a compound there would have buried it.
+
+**Compounded** onto [[Dragon Feed]] rather than starting a second feed page: three new sections
+(the root cause + the cut table, supply, the deferred DragonShare merge), a corrected "browse mode"
+line (type-filtered → type **and skill**), rewritten Key Decisions, and six new Known Issues. The
+page previously described a feed with no ordering story at all, which is precisely what the founder
+was reacting to.
+
+The durable content is mostly what did **not** happen. A `feed_items` table was specced and cut
+once verification showed (1) the composite item id `${creator.id}-${url}` is persisted as
+`analytics_events.content_id` and **parsed back apart** by two live surfaces, so uuid ids would
+have emptied them silently; (2) a mirror table had no lifecycle contract against whole-array
+rewrites; and (3) 34/34 items already carried a real `storage.objects.created_at`. Recorded as
+**derive, don't duplicate**, plus the ranking rule that fell out of it — prefer the timestamp the
+client cannot author. Also recorded: why the profile-form default was left alone (a whole-form
+blur write would retroactively flip stored consent) and why the DragonShare merge is deferred
+(no public SELECT policy, no consent flag anywhere, and the media file is *already* world-readable
+so what would be newly exposed is the **association**).
+
 ## [2026-08-07] ingest | [[Campaign Invitations]] — a feature nobody could explain, and a matcher nobody triggered
 
 Ingested [[Creator Match Auto-Run & Invite Clarity Session]] (PR #382). New concept page
