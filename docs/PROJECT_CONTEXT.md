@@ -149,6 +149,15 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **`handle_updated_at()` restored from its prod-drifted stub** — the shared trigger's prod body was
+  literally `-- Function logic here / RETURN NEW;`, so 35 triggers across 31 tables fired and changed
+  nothing and `updated_at` sat frozen at `created_at`. Repo was never wrong (`recorded ≠ actual`, same
+  class as #325). Restored only after fixing the two consumers that had adapted to it —
+  `donny-analytics-alerts` (a frozen-column filter silently means "created in 24h") and DRE
+  `occurred_at` (false recency ⇒ retroactive "You earned DC Points") — plus a new `campaigns.completed_at`
+  anchor. **`updated_at` is a modification stamp, never a status signal; rows before 2026-08-07 are
+  frozen.** Open: a `status_changed_at` for the alert windows (#385).
+  → `docs/wiki/concepts/updated-at-trigger-drift.md`
 - **Crews comprehension pass** — a restaurant user asked "what is CREWS?"; the feature was ~80%
   built and ~0% explained. Added a business-side explainer + roster counts, the creator's missing
   "Your crews" roster, and email on crew invites; corrected the false "first look / before the

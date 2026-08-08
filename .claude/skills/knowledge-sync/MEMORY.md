@@ -108,6 +108,55 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-08-07] `handle_updated_at()` restore (`docs/knowledge-sync-updated-at-restore`, PR #385 work)
+
+**Output:** `docs/wiki/concepts/updated-at-trigger-drift.md` (new) +
+`raw/sessions/2026-08-07-handle-updated-at-restore.md`; `log.md` entry
+`[2026-08-07] ingest | [[Updated-At Trigger Drift]]`; `index.md` ×2 (concept + raw session);
+`SHIPPED_LOG.md` prepend; §5 "Shipped" entry; **`DATABASE_SCHEMA.md` ×2 corrections**.
+
+**Happened.** Ran as the branch-finish step for the trigger-restore work, but on a *fresh* branch
+off `origin/main` — the work branch had already been squash-merged, so per the [scope] lesson there
+was nothing to join. The distinguishing feature of this run: it had to **falsify a core doc I had
+written earlier the same day**.
+
+**Worked.** The DATABASE_SCHEMA warning ("`handle_updated_at()` **is** a stub, `updated_at` is NOT
+trustworthy on ~30 tables") was accurate when written and became false the moment the migration
+applied. Because that file is auto-loaded into every session, a stale claim there is the most
+expensive kind of staleness there is. Rewrote it **in place** per the [status-correction] lesson —
+and, critically, preserved the *reason* behind the anchor pattern rather than deleting the whole
+block: `updated_at` moves on any write, so it could never mark a state transition, stub or no stub.
+Grepping for a second reference caught the Crews Phase 2 note carrying the same now-false "is a
+no-op" clause. **One correction is rarely one edit — grep the claim, not the section.**
+
+**Failed.** Two of six `[[wikilinks]]` I wrote didn't resolve (`[[Dragon Rewards Engine]]` — real
+name is `[[Dragon Rewards Engine (DRE)]]`; `[[Knowledge Sync]]` — no such page at all). Caught by
+grepping each display name against `index.md` *before* commit, which cost one command. Writing
+links from memory of a page's subject rather than its catalogued display name is the recurring
+failure mode.
+
+**Remember.** A `**Pending:**`-style claim is not the only kind that decays — a **negative**
+finding ("X is broken", "Y is untrustworthy") decays the instant someone fixes X. The session that
+fixes it is the only one positioned to notice, because every later session just reads the stale
+warning and believes it. When a session's work *invalidates a doc that session wrote*, correcting
+it is part of the work, not follow-up.
+
+**Also failed — and this one was the real find.** Codex returned a P2 against the *documentation*
+(the "rows before 2026-08-07 are frozen" blanket claim — correctly flagged as overbroad). Checking
+it against real rows falsified something much bigger than the doc: the pre-merge audit's claim that
+`campaign_collaborations.updated_at` has **zero** explicit writers, which was the whole basis for
+calling that alert filter "exactly equivalent". It has one (`useProjectComplete.ts:52`), and 10 of
+16 prod rows prove it. **A documentation review found a code defect, because the doc restated a
+code claim in a form that was checkable against data.** Writing the claim down is what made it
+falsifiable. Don't treat doc review as cosmetic.
+
+**Method, promoted to a Lesson:** the original audit was done by reading code, and verified by
+*more reading*. One `count(*) filter (where updated_at is distinct from created_at)` broke it in
+seconds. **A universal negative — "nothing writes X", "no caller does Y" — is cheap to falsify with
+data and expensive to establish by reading. Query first.** The 3-digit-millisecond JS timestamp
+versus `now()`'s 6-digit microseconds identified the writer's *language* before the grep found the
+file.
+
 ### [2026-08-07] AI Creator Match auto-run + invite clarity (`worktree-dc-improvements-17`, PR #382)
 
 **Output:** `docs/wiki/concepts/campaign-invitations.md` (new) + the "The trigger" / "Showing the
