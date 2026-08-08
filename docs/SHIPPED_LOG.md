@@ -26,6 +26,98 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-08] The deploy that actually closed them — 7 functions live, plus what the gate caught on the way
+
+The entry below this one ends with "all six are inert until deployed." This is that deploy. Seven
+functions (the six from #402 plus the hardened `landing-clips` from #399) are on prod and
+probe-verified. **Merging closed nothing; deploying did.**
+
+### Before and after, with the public anon key
+
+Baselines were captured *before* the deploy using payloads that stop before any side effect — an
+event string matching no branch, zeroed uuids that fail their lookup. **Prove reachability, never
+impact.**
+
+| Function | Before | After | Version |
+|---|---|---|---|
+| `dragonshare-notify` | **200** | 401 | 19 → 20 |
+| `fire-dragonshare-social-hook` | `{"error":"Boost not found"}` | 401 | 44 → 45 |
+| `fire-promotion-social-hook` | reached its lookup | 401 | 43 → 44 |
+| `social-caption` | **400** (auth passed, fields failed) | 401 | 44 → 45 |
+| `toast-discount-push` | reached its lookup | 401 | 60 → 61 |
+| `fire-campaign-social-hook` | **404 "Campaign not found"** | 401 | 50 → 51 |
+| `landing-clips` | 200, unpinned URLs | 200, own-bucket URLs only | 6 → 7 |
+
+`fire-campaign-social-hook` was additionally probed with a **real** published campaign id and a bogus
+one: both now return byte-identical `401`, so the existence oracle is closed rather than merely
+narrowed.
+
+Worth keeping: the no-credential request returns the platform's `{"code":"UNAUTHORIZED_NO_AUTH_HEADER"}`,
+while an anon-key request returns the function's own `{"error":"Unauthorized"}`. **Two different 401s
+from two different layers — and the gap between them was the entire vulnerability.**
+
+### The pre-deploy gate earned its place (#404)
+
+`edge-function-reviewer` returned ISSUES on `fire-campaign-social-hook` before it shipped:
+`campaign_sponsorships` has **two** FKs into `business_profiles` (`brand_id`, `restaurant_id`), so
+#402's `business_profiles!inner(user_id)` is ambiguous. Confirmed live rather than reasoned about:
+
+```
+business_profiles!inner(user_id)           -> HTTP 300  PGRST201
+business_profiles!brand_id(user_id)        -> HTTP 200
+business_profiles!brand_id!inner(user_id)  -> HTTP 200   <- taken
+```
+
+supabase-js surfaces a 300 as `{ data: null }` rather than throwing, and the call site reads
+`sponsorRes.data ?? []` — so `isActiveSponsorBrand` was permanently `false`. **The authorization arm
+was dead code.**
+
+It **fails closed**, so it never weakened the gate; it denies a party the gate meant to allow, and is
+inert today with `BRAND_ROLE_ENABLED` off. It still had to be fixed before shipping, because that arm
+exists *precisely* because its future caller swallows errors with `.catch(console.error)` — the
+failure mode it was written to prevent is exactly the one it would have caused.
+
+**Two independent close reads of this file missed it.** The parallel session behind #403 found four
+separate defects here and not this one; neither did my own re-read. A two-FK table is invisible in
+the query text and visible only in the schema. `verify-sponsorship-payment` already used the
+disambiguated form one hop away.
+
+### A collision, caught by the merge and not by me (#403)
+
+The merge of #404 was rejected as out-of-date: **#403 had landed on the same file from a parallel
+session** while my PR was open. It fixed four things #402 did not — unvalidated `stage` (checked
+*after* authorization, so an unauthorized caller still learns nothing), a discarded `campaignError`
+(the fail-closed 403 is unchanged; only the log improves), a non-idempotent `donny_scheduled_posts`
+insert under a retrying caller, and a leaked raw `error.message`. It also claimed the function **off**
+`.typecheck-ignore` (65 → 66 checked).
+
+So the deployed artifact was a version **no review had ever seen as a whole**. It went back to
+`edge-function-reviewer` before shipping — PASS, including explicit checks that #403's `campaignError`
+binding does not race the `Promise.all` #404 touched, and that the new `stage` check sits after both
+authorization exits. `deno check` on the merged file: **clean**, where the pre-rebase branch had four.
+
+**Re-fetch before assuming your branch is the only one touching a file.** Two Claude sessions edited
+the same function within hours; only the out-of-date merge rejection surfaced it.
+
+### Verification
+
+Live prod probes (before + after, all 7) · `pg_constraint` FK enumeration · 42 unit tests · `deno check`
+clean · `npm run typecheck` + `npm run build` via pre-push hook · `codex review --base main` clean ·
+`edge-function-reviewer` PASS on the final merged artifact · CLI deploy output confirming every
+transitive `_shared/*` bundled and every `*.test.ts` excluded.
+
+The failing `Supabase Preview` check on #404 is **pre-existing and unrelated** — a three-month-old
+migration (`20260509051132`) whose `ALTER TABLE realtime.messages ENABLE ROW LEVEL SECURITY` fails
+with *must be owner of table messages* on a fresh preview branch. #404 contains zero migrations.
+
+### Still open
+
+`toast-token-refresh`'s browser caller refreshes every tenant's tokens (a product decision, inert —
+zero Toast tables exist on prod); `fire-campaign-social-hook`'s per-party `file_uploads` scoping;
+`dragonshare-notify`'s replay bound on `submission` and owner/admin mirror on `declined`;
+`donny-oauth-token:50-55`'s module-scope `req` reference turning every OAuth 4xx into a 500; and
+`PROJECT_CONTEXT.md` §10 still lists Toast POS under "Active integrations".
+
 ## [2026-08-08] `verify_jwt=true` is not authorization — 6 anon-key-reachable service-role functions
 
 Follow-on from the `donny-dragonshare-score` removal the same day, which filed two `[med]` leads.

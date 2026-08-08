@@ -117,45 +117,6 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 > proof the object exists (see [[Content Delivery State Machine]]) and "recorded ≠ actual" has
 > bitten this project before.
 
-- **`verify_jwt=true` is not authorization — 6 anon-key-reachable service-role edge functions** —
-  the anon key **is** a valid JWT and ships in the frontend bundle, so the platform default only
-  rejects a *missing* header and never establishes a user; any service-role function skipping
-  `auth.getUser()` answered **anyone on the internet** (proven on prod: 401 with no header, **200
-  with the public anon key**). A 100-function sweep found 18 candidates → 4 legitimately public,
-  8 authorized another way, **6 exposed**; both money functions (`resolve-dispute`,
-  `verify-package-order-escrow`) came back clean. Fixed per caller shape, not with one guard:
-  ingest gates, JWT-derived ids (`social-caption` fed `donny_cost_ledger`, the AI kill-switch's own
-  ledger), ownership assertions, and a per-event split for `dragonshare-notify` (browser-called
-  twice — a blanket guard would have broken submission and decline). Two unpaired-id defects fixed;
-  a read gate (`evaluateCampaignAccess`) replaced with a purpose-built write gate after review
-  caught a rejected applicant could mint signed URLs over private deliverables. The sweep's own
-  blind spot is the lesson — `fire-promotion-social-hook` was cleared by the regex because it calls
-  `getUser` and never checks ownership. **Pending (verified 2026-08-08):** merge PR, then **deploy
-  all 6** — they are code changes and inert until deployed. Also found: **zero Toast tables exist on
-  prod**, so §10's "Active integrations: Toast POS" is aspirational.
-  → `docs/wiki/concepts/anon-key-is-not-authorization.md` · #402
-- **`donny-dragonshare-score` UNDEPLOYED — an unauthorized cross-tenant service-role write** — the
-  authenticated caller was validated then **never used again**, so a body-supplied `post_id` reached
-  a service-role read *and* write of any tenant's post, with the audit row stamped to the **victim**;
-  `matchQuality` plus a plaintext `creatorPostCount` in `rationale` also made the target org's boost
-  count solvable. It was the hole in the DB's own guard (`trg_ds_posts_block_self_verify` blocks
-  authenticated non-admins from those exact columns, then waves through the service role). **Deleted,
-  not patched** — zero callers, webhook never wired (checked on prod: no cron, no `pg_proc`, no
-  `http_request` trigger), and it never ran once (`with_score=0, score_events=0`). **The hole is
-  CLOSED on prod (2026-08-08):** `supabase functions delete` run and verified two ways —
-  `get_edge_function` returns *Function not found* and a live POST to the endpoint returns **404**.
-  Codex raised deleting-source-alone as a `[P1]` and proposed a tombstone; undeploy was chosen
-  instead because nothing auto-deploys edge functions here, so a tombstone needs the same manual
-  deploy while *institutionalizing* the orphaned-endpoint anti-pattern. The sibling `landing-clips`
-  lead was **checked and refuted** (real consumer behind a deliberately-off flag) and kept — but
-  confirming that found a **real** defect: both its media URLs are creator-writable free text, so a
-  boosted creator could aim the anonymous homepage at any URL; `buildClips` plus the query now
-  origin-pin them to the public bucket. Two new pre-existing `[med]` write/forgery leads were filed
-  here (`fire-dragonshare-social-hook`, `dragonshare-notify`) and are **now fixed in #402**, which
-  also found they were reachable with the *public anon key*, not merely by an authenticated user.
-  **PR #399 is MERGED and the undeploy is done. Pending (verified 2026-08-08):** deploy the hardened
-  `landing-clips` — that half is a code change and is inert until deployed.
-  → `docs/wiki/concepts/service-role-data-exposure.md` · #399
 - **DC Points visibility (`/rewards`, chip, honest notification, Donny)** — a bell said
   "+200 DC Points" with nowhere to click, points showed on two dashboards with no explanation, and
   even the founder needed a SQL query to answer "what earned that." Ships a `/rewards` page
@@ -225,6 +186,21 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **`verify_jwt=true` is not authorization — 7 edge functions closed on prod** — the anon key **is** a
+  valid JWT and ships in the frontend bundle, so the platform default rejects only a *missing* header
+  and never establishes a user. A 100-function sweep found 6 genuinely exposed (both money functions
+  came back clean); each was fixed by caller shape, not one blanket guard. **All 7 deployed and
+  probe-verified 2026-08-08** — every one flipped 200/404/400 → **401** with the public anon key, and
+  `fire-campaign-social-hook` returns an identical 401 for a real and a bogus campaign id (existence
+  oracle closed). Includes the pre-deploy gate's own catch (#404: a two-FK PostgREST embed that made
+  the sponsor-brand authorization arm dead code) and a parallel session's hardening (#403).
+  → `docs/wiki/concepts/anon-key-is-not-authorization.md` · #402, #403, #404
+- **`donny-dragonshare-score` undeployed; hardened `landing-clips` deployed** — an unauthorized
+  cross-tenant service-role write, deleted rather than patched (zero callers, never executed once);
+  endpoint now 404s. Its sibling lead was **refuted** but the check found a real defect — creator-
+  writable media URLs aimed the anonymous homepage anywhere — now origin-pinned in both the query and
+  `buildClips`, **deployed 2026-08-08** (v7, verified serving only own-bucket URLs).
+  → `docs/wiki/concepts/service-role-data-exposure.md` · #399
 - **`handle_updated_at()` restored from its prod-drifted stub** — the shared trigger's prod body was
   literally `-- Function logic here / RETURN NEW;`, so 35 triggers across 31 tables fired and changed
   nothing and `updated_at` sat frozen at `created_at`. Repo was never wrong (`recorded ≠ actual`, same
