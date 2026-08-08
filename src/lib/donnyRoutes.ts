@@ -94,6 +94,44 @@ const ROUTE_TEMPLATES: string[] = [
   "/dashboard/creator/messages/campaign/:id",
 ];
 
+/** Role → dashboard path slug. Mirrors roleSlug() in the server allow-list. */
+export function roleSlug(role: string | undefined): "business" | "brand" | "creator" {
+  if (role === "brand") return "brand";
+  if (role === "content_creator") return "creator";
+  return "business";
+}
+
+/**
+ * Subscription/billing page. Role-scoped.
+ *
+ * There is NO top-level `/settings/*` route in this app, yet `/settings/billing`
+ * was hardcoded in 8 places — every "Upgrade" CTA 404'd. Creators have no
+ * subscription-billing page (tiers are an org/business concept), so they land on
+ * their own money surface instead of a dead link.
+ */
+export function billingRoute(role: string | undefined): string {
+  switch (roleSlug(role)) {
+    case "brand":
+      return "/dashboard/brand/billing";
+    case "creator":
+      return "/dashboard/creator/earnings";
+    default:
+      return "/dashboard/business/billing";
+  }
+}
+
+/** Social-account connection manager (OutstandManager). Role-scoped. */
+export function socialRoute(role: string | undefined): string {
+  switch (roleSlug(role)) {
+    case "brand":
+      return "/dashboard/brand/social";
+    case "creator":
+      return "/dashboard/creator/social";
+    default:
+      return "/dashboard/business/social";
+  }
+}
+
 function compileTemplate(template: string): RegExp {
   const body = template
     .split("/")

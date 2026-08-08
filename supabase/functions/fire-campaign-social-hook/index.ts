@@ -286,7 +286,10 @@ serve(async (req) => {
                     label: 'Connect Outstand',
                     variant: 'primary',
                     action: 'navigate',
-                    payload: { route: '/settings/social' },
+                    // Was '/settings/social' — not a route (no top-level /settings/*
+                    // exists), so this primary CTA 404'd while the secondary button
+                    // below role-scoped correctly. Same shape as that one.
+                    payload: { route: party.role === 'creator' ? '/dashboard/creator/social' : '/dashboard/business/social' },
                   },
                   {
                     label: 'Review Draft',

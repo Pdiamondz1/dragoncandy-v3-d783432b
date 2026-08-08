@@ -4,9 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { WebOnly } from '@/components/platform/WebOnly';
+import { billingRoute } from '@/lib/donnyRoutes';
 
 export const DonnyWeeklyPlanner: React.FC = () => {
-  const { user, activeOrg } = useAuth();
+  const { user, activeOrg, profile } = useAuth();
   const [isGenerating, setIsGenerating] = useState(false);
   const orgTier = activeOrg?.subscription_tier ?? 'free';
   const isLocked = orgTier === 'free';
@@ -40,7 +41,7 @@ export const DonnyWeeklyPlanner: React.FC = () => {
           <Sparkles className="h-4 w-4 text-gray-300" />
         </div>
         <h3 className="font-semibold text-sm text-gray-400">Weekly Content Plan</h3>
-        <p className="text-xs text-gray-300 mt-1">Requires Starter plan or higher. <WebOnly><a href="/settings/billing" className="underline text-dc-teal">Upgrade</a></WebOnly></p>
+        <p className="text-xs text-gray-300 mt-1">Requires Starter plan or higher. <WebOnly><a href={billingRoute(profile?.role)} className="underline text-dc-teal">Upgrade</a></WebOnly></p>
       </div>
     );
   }

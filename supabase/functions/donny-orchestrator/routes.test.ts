@@ -7,6 +7,8 @@ import {
   campaignDetailRoute,
   browseCreatorsRoute,
   dragonshareRoute,
+  billingRoute,
+  socialRoute,
 } from "./routes.ts";
 
 describe("isKnownRoute", () => {
@@ -102,6 +104,42 @@ describe("role-aware route builders", () => {
       expect(isKnownRoute(campaignDetailRoute(role, "id123")), role).toBe(true);
       expect(isKnownRoute(browseCreatorsRoute(role)), role).toBe(true);
       expect(isKnownRoute(dragonshareRoute(role)), role).toBe(true);
+      expect(isKnownRoute(billingRoute(role)), role).toBe(true);
+      expect(isKnownRoute(socialRoute(role)), role).toBe(true);
     }
+  });
+});
+
+describe("billing/social routes — the /settings/* 404 regression", () => {
+  // `/settings/billing` and `/settings/social` were hardcoded in 12 places across
+  // 10 files (agent prompts, nudge CTAs, and live UI links). There is no
+  // top-level `/settings/*` route in src/App.tsx, so every one of them hit the
+  // catch-all 404 — including the "Upgrade" CTA gating the paid Weekly Content
+  // Plan, and the primary "Connect Outstand" button on a high-priority nudge.
+  //
+  // isKnownRoute never caught them: it guards routes the LLM *invents*, and
+  // these were hardcoded in source. That is the blind spot this suite closes.
+  it("rejects the dead /settings/* paths that shipped", () => {
+    for (const dead of [
+      "/settings/billing",
+      "/settings/billing/upgrade", // dead twice over — no /upgrade sub-route either
+      "/settings/social",
+    ]) {
+      expect(isKnownRoute(dead), dead).toBe(false);
+    }
+  });
+
+  it("routes billing per role, and never to a creator billing page (none exists)", () => {
+    expect(billingRoute("business_client")).toBe("/dashboard/business/billing");
+    expect(billingRoute("brand")).toBe("/dashboard/brand/billing");
+    // Subscription tiers are an org/business concept; creators have no billing
+    // page, so they get their own money surface rather than a dead link.
+    expect(billingRoute("content_creator")).toBe("/dashboard/creator/earnings");
+  });
+
+  it("routes social account connection per role", () => {
+    expect(socialRoute("business_client")).toBe("/dashboard/business/social");
+    expect(socialRoute("brand")).toBe("/dashboard/brand/social");
+    expect(socialRoute("content_creator")).toBe("/dashboard/creator/social");
   });
 });
