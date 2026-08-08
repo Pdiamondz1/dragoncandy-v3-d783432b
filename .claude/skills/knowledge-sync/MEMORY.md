@@ -108,6 +108,40 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-08-07] AI Creator Match auto-run + invite clarity (`worktree-dc-improvements-17`, PR #382)
+
+**Output:** `docs/wiki/concepts/campaign-invitations.md` (new) + the "The trigger" / "Showing the
+work" sections on `concepts/ai-creator-matching.md`; `log.md` entry
+`[2026-08-07] ingest | [[Campaign Invitations]]`; `SHIPPED_LOG.md` prepend; §5 "Built — awaiting
+founder go-live" entry.
+
+**Happened.** Ran knowledge-sync as the branch-finish step **after** the PR was already open, so
+the docs commit lands on the same branch and joins #382 rather than becoming a follow-up. Wrote
+the raw session source, ingested it as one new concept page plus a compound onto the existing
+matching page, then refreshed both core docs.
+
+**Worked.** The [scope] pre-check paid off in one command: `git rev-list --count HEAD..origin/main`
+= 0 and `git diff --stat origin/main -- <core docs>` empty, so editing was safe with no rebase —
+worth doing every time given how often `origin/main` restructures these files. Splitting new vs
+compound by *subject* rather than by session was the right call: "what an invitation is" had no
+home anywhere (Campaign Lifecycle = application state machine, Creator Groups = the *other*
+invitation type), while the auto-run is plainly a property of the matcher and belonged on its
+page. Correcting that page's Pipeline line ("Button →" is no longer true) mattered as much as the
+new sections — a compound that only appends leaves the old claim standing.
+
+**Failed.** Nothing in the sync itself. The RAG sync (step 6) is **not run** — it happens on the
+post-merge hook when main fast-forwards, per [rag-sync]; #382 is unmerged.
+
+**Remember.** Per [sync-before-blocked-gate], one gate was genuinely unrun this session (the
+both-viewport visual pass — machine at 100% CPU, and browser sessions don't cross dev-server
+ports), so it is stated in **all three** status places: §5's `**Pending:**` clause, the
+SHIPPED_LOG entry's opening `>` note, and the session source's "Not verified" section. New
+durable lesson from the work itself, worth generalizing beyond this run: **a doc comment is not
+the contract.** `trg_reject_group_campaign_invitation`'s migration comment claims it "fires for
+every write path (incl. service-role)" while its `CREATE TRIGGER` clause says `BEFORE INSERT` —
+the comment was true when written and silently wrong the moment an UPDATE path appeared. When a
+wiki page records a guarantee, cite the clause, never the comment.
+
 ### [2026-08-07] §5 "Built — awaiting founder go-live" verification sweep (`docs/section5-status-sweep`)
 
 **Output:** `PROJECT_CONTEXT.md` §5 — Built 10 → 2 entries, Shipped 79 → 87, −2,557 bytes off the
