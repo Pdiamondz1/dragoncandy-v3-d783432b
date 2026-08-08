@@ -107,22 +107,54 @@ const CampaignEditPage: React.FC = () => {
     handleSave,
   } = useCampaignEditForm(campaign);
 
-  // Seed structured deliverables from DB on first load
+  // Seed structured deliverables from DB on first load.
+  //
+  // Two stores hold deliverables: the `campaign_deliverables` TABLE and the
+  // `campaigns.campaign_deliverables` JSONB column. The launch wizard
+  // (useCampaignCreator) writes ONLY the JSONB — nothing populates the table until
+  // someone saves this editor — so in practice every campaign is JSONB-only and this
+  // editor used to seed from the table alone and render an EMPTY deliverables list.
+  // Worse, deliverableCount below then fell back to 1, so CostBreakdown priced one
+  // deliverable instead of N.
+  //
+  // Table first, JSONB as fallback — the same precedence ContentRequirementsSection
+  // already uses, so the editor and the details page agree.
   const seededRef = useRef(false);
   useEffect(() => {
-    if (savedDeliverables && savedDeliverables.length > 0 && !seededRef.current) {
+    if (seededRef.current) return;
+    // Undefined means the table query hasn't settled; falling back now would seed from
+    // the JSONB and then be stuck with it even if table rows do exist.
+    if (savedDeliverables === undefined) return;
+
+    if (savedDeliverables.length > 0) {
       seededRef.current = true;
-      const mapped: Deliverable[] = savedDeliverables.map(d => ({
+      handleStructuredDeliverablesChange(savedDeliverables.map(d => ({
         id: d.id,
         content_type: d.content_type,
         platform: d.platform,
         aspect_ratio: d.aspect_ratio,
         max_duration_seconds: d.max_duration_seconds,
         description: d.description,
-      }));
-      handleStructuredDeliverablesChange(mapped);
+      })));
+      return;
     }
-  }, [savedDeliverables, handleStructuredDeliverablesChange]);
+
+    const jsonbDeliverables = campaign?.campaign_deliverables;
+    if (jsonbDeliverables?.length) {
+      seededRef.current = true;
+      // These rows carry no id — the column is written as a plain 5-field map. The
+      // synthetic key is display-only and never persisted: handleSave's table insert
+      // builds its own payload and does not pass `id` through.
+      handleStructuredDeliverablesChange(jsonbDeliverables.map((d, i) => ({
+        id: `jsonb-${i}`,
+        content_type: d.content_type,
+        platform: d.platform,
+        aspect_ratio: d.aspect_ratio,
+        max_duration_seconds: d.max_duration_seconds ?? undefined,
+        description: d.description ?? undefined,
+      } as Deliverable)));
+    }
+  }, [savedDeliverables, campaign, handleStructuredDeliverablesChange]);
 
   // Ownership check — redirect if not owner
   useEffect(() => {
