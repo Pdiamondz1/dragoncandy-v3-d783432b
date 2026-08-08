@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { resolveOwnedOrgUnit } from "../_shared/org-unit-access.ts";
 
 const logStep = (step: string, details?: unknown) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -41,19 +42,34 @@ serve(async (req) => {
     let sourceTable: 'org_units' | 'business_profiles' | 'creator_profiles' = 'business_profiles';
     let sourceFilter: Record<string, string> = {};
 
-    // Check org_units first (location-scoped)
+    // `org_unit_id` is body-supplied and this runs on the SERVICE-ROLE client, so `org_units`'
+    // active-member RLS never applies. `sourceFilter` is then set to that same unowned id and
+    // used for the UPDATE below — so before this gate, any authenticated user could null
+    // another tenant's `stripe_account_id` / `stripe_onboarding_complete` and silently disable
+    // their payouts. A destructive cross-tenant write, with no read to give it away.
+    //
+    // Proven on prod 2026-08-08 in a rolled-back transaction. See `_shared/org-unit-access.ts`.
     if (org_unit_id) {
-      const { data: orgUnit } = await supabaseClient
-        .from('org_units')
-        .select('stripe_account_id, pending_balance')
-        .eq('id', org_unit_id)
-        .single();
+      const access = await resolveOwnedOrgUnit(supabaseClient, org_unit_id, user.id);
+      if (!access.ok && access.reason === "lookup_failed") {
+        return new Response(JSON.stringify({ error: "Authorization check unavailable" }), {
+          status: 503,
+          headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      if (!access.ok && access.reason !== "not_found") {
+        logStep("Blocked org_unit access", { org_unit_id, userId: user.id, reason: access.reason });
+        return new Response(JSON.stringify({ error: "Not permitted for this location" }), {
+          status: 403,
+          headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
 
-      if (orgUnit?.stripe_account_id) {
-        stripeAccountId = orgUnit.stripe_account_id;
-        pendingBalance = orgUnit.pending_balance ?? 0;
+      if (access.ok && access.unit.stripe_account_id) {
+        stripeAccountId = access.unit.stripe_account_id;
+        pendingBalance = access.unit.pending_balance ?? 0;
         sourceTable = 'org_units';
-        sourceFilter = { id: org_unit_id };
+        sourceFilter = { id: access.unit.id };
         logStep("Found account in org_units", { stripeAccountId });
       }
     }

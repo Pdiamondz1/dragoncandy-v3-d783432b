@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { resolveOwnedOrgUnit } from "../_shared/org-unit-access.ts";
 import { isTestKey } from "../_shared/stripe-mode.ts";
 import { createTestModeEnabledAccount } from "../_shared/test-mode-connect.ts";
 
@@ -57,14 +58,44 @@ serve(async (req) => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const origin = req.headers.get("origin") || "https://dragoncandy.io";
 
+    // `org_unit_id` is body-supplied and everything below runs on the SERVICE-ROLE client, so
+    // `org_units`' active-member RLS never applies. This is the highest-blast-radius instance
+    // of that gap: naming another tenant's unit returned their connected-account id, and the
+    // `account_onboarding` link minted further down is issued FOR THAT ACCOUNT — whoever holds
+    // it can complete or alter the account's onboarding, including payout bank details. That
+    // is a payout-hijack primitive, not merely a read.
+    //
+    // Proven on prod 2026-08-08 in a rolled-back transaction: 0 rows under RLS for an
+    // unrelated restaurant user, 1 row via the service-role client. See
+    // `_shared/org-unit-access.ts`. A unit that doesn't exist degrades to the profile
+    // fallback; a unit that exists and isn't yours is refused.
+    let ownedOrgUnitId: string | null = null;
+    if (org_unit_id) {
+      const access = await resolveOwnedOrgUnit(supabaseClient, org_unit_id, user.id);
+      if (access.ok) {
+        ownedOrgUnitId = access.unit.id;
+      } else if (access.reason === "lookup_failed") {
+        return new Response(JSON.stringify({ error: "Authorization check unavailable" }), {
+          status: 503,
+          headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+        });
+      } else if (access.reason !== "not_found") {
+        logStep("Blocked org_unit access", { org_unit_id, userId: user.id, reason: access.reason });
+        return new Response(JSON.stringify({ error: "Not permitted for this location" }), {
+          status: 403,
+          headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // Resolve existing Stripe account: org_units first, then business_profiles
     let accountId: string | null = null;
 
-    if (org_unit_id) {
+    if (ownedOrgUnitId) {
       const { data: orgUnit } = await supabaseClient
         .from('org_units')
         .select('stripe_account_id, stripe_onboarding_complete')
-        .eq('id', org_unit_id)
+        .eq('id', ownedOrgUnitId)
         .single();
 
       accountId = orgUnit?.stripe_account_id ?? null;
@@ -78,12 +109,12 @@ serve(async (req) => {
       if (accountId) {
         logStep("Found existing account in business_profiles", { accountId });
 
-        if (org_unit_id) {
+        if (ownedOrgUnitId) {
           await supabaseClient
             .from('org_units')
             .update({ stripe_account_id: accountId })
-            .eq('id', org_unit_id);
-          logStep("Synced stripe_account_id to org_units", { org_unit_id });
+            .eq('id', ownedOrgUnitId);
+          logStep("Synced stripe_account_id to org_units", { org_unit_id: ownedOrgUnitId });
         }
       }
     }
@@ -100,11 +131,11 @@ serve(async (req) => {
           .eq('user_id', user.id)
           .eq('account_type', 'restaurant');
 
-        if (org_unit_id) {
+        if (ownedOrgUnitId) {
           await supabaseClient
             .from('org_units')
             .update({ stripe_onboarding_complete: true })
-            .eq('id', org_unit_id);
+            .eq('id', ownedOrgUnitId);
         }
 
         return new Response(JSON.stringify({ alreadyComplete: true, accountId }), {
@@ -126,7 +157,7 @@ serve(async (req) => {
         email: user.email,
         businessName: businessProfile?.business_name || undefined,
         productDescription: "Restaurant business receiving sponsorship payments via DragonCandy marketplace",
-        metadata: { user_id: user.id, platform: "dragoncandy", account_type: "restaurant", org_unit_id: org_unit_id ?? "" },
+        metadata: { user_id: user.id, platform: "dragoncandy", account_type: "restaurant", org_unit_id: ownedOrgUnitId ?? "" },
         requestIp,
       });
       await supabaseClient
@@ -134,11 +165,11 @@ serve(async (req) => {
         .update({ stripe_account_id: acct.id, stripe_onboarding_complete: true })
         .eq('user_id', user.id)
         .eq('account_type', 'restaurant');
-      if (org_unit_id) {
+      if (ownedOrgUnitId) {
         await supabaseClient
           .from('org_units')
           .update({ stripe_account_id: acct.id, stripe_onboarding_complete: true })
-          .eq('id', org_unit_id);
+          .eq('id', ownedOrgUnitId);
       }
       logStep("Test account enabled", { accountId: acct.id, charges: acct.charges_enabled, payouts: acct.payouts_enabled });
       return new Response(JSON.stringify({ alreadyComplete: true, accountId: acct.id }), {
@@ -151,11 +182,11 @@ serve(async (req) => {
     if (!accountId) {
       let disconnectedId: string | null = null;
 
-      if (org_unit_id) {
+      if (ownedOrgUnitId) {
         const { data: ou } = await supabaseClient
           .from('org_units')
           .select('disconnected_stripe_account_id')
-          .eq('id', org_unit_id)
+          .eq('id', ownedOrgUnitId)
           .single();
         disconnectedId = ou?.disconnected_stripe_account_id ?? null;
       }
@@ -203,7 +234,7 @@ serve(async (req) => {
               .eq('user_id', user.id)
               .eq('account_type', 'restaurant');
 
-            if (org_unit_id) {
+            if (ownedOrgUnitId) {
               await supabaseClient
                 .from('org_units')
                 .update({
@@ -211,7 +242,7 @@ serve(async (req) => {
                   stripe_onboarding_complete: isComplete,
                   disconnected_stripe_account_id: null,
                 })
-                .eq('id', org_unit_id);
+                .eq('id', ownedOrgUnitId);
             }
 
             if (isComplete) {
@@ -229,11 +260,11 @@ serve(async (req) => {
               .update({ disconnected_stripe_account_id: null })
               .eq('user_id', user.id)
               .eq('account_type', 'restaurant');
-            if (org_unit_id) {
+            if (ownedOrgUnitId) {
               await supabaseClient
                 .from('org_units')
                 .update({ disconnected_stripe_account_id: null })
-                .eq('id', org_unit_id);
+                .eq('id', ownedOrgUnitId);
             }
           }
         } catch (prevErr: any) {
@@ -245,11 +276,11 @@ serve(async (req) => {
             .update({ disconnected_stripe_account_id: null })
             .eq('user_id', user.id)
             .eq('account_type', 'restaurant');
-          if (org_unit_id) {
+          if (ownedOrgUnitId) {
             await supabaseClient
               .from('org_units')
               .update({ disconnected_stripe_account_id: null })
-              .eq('id', org_unit_id);
+              .eq('id', ownedOrgUnitId);
           }
         }
       }
@@ -266,7 +297,7 @@ serve(async (req) => {
           user_id: user.id,
           platform: 'dragoncandy',
           account_type: 'restaurant',
-          org_unit_id: org_unit_id ?? '',
+          org_unit_id: ownedOrgUnitId ?? '',
         },
         capabilities: {
           card_payments: { requested: true },
@@ -287,11 +318,11 @@ serve(async (req) => {
         .eq('user_id', user.id)
         .eq('account_type', 'restaurant');
 
-      if (org_unit_id) {
+      if (ownedOrgUnitId) {
         await supabaseClient
           .from('org_units')
           .update({ stripe_account_id: accountId })
-          .eq('id', org_unit_id);
+          .eq('id', ownedOrgUnitId);
       }
     }
 

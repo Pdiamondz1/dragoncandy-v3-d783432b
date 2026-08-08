@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { resolveOwnedOrgUnit } from "../_shared/org-unit-access.ts";
 import { isTestKey } from "../_shared/stripe-mode.ts";
 
 const logStep = (step: string, details?: any) => {
@@ -35,16 +36,36 @@ serve(async (req) => {
 
     let stripeAccountId: string | null = null;
 
-    // Check org_units first (location-scoped)
+    // `org_unit_id` is caller-supplied and this runs on the SERVICE-ROLE client, so `org_units`'
+    // active-member RLS never applies. The resolved account is handed to
+    // `stripe.accounts.createLoginLink` — a session into that account's Stripe Express
+    // dashboard.
+    //
+    // This one is INERT TODAY and that is exactly why it is being fixed now: prod runs
+    // test-mode keys with Custom accounts, for which `createLoginLink` throws for every
+    // account, so the handler falls through to its "not available for test accounts" branch
+    // and nothing leaks. The day live keys are used (Express accounts), the same unchanged
+    // code becomes connected-account takeover. Don't wait for the flag flip to close it.
+    //
+    // Proven on prod 2026-08-08 in a rolled-back transaction. See `_shared/org-unit-access.ts`.
     if (orgUnitId) {
-      const { data: orgUnit } = await supabaseClient
-        .from('org_units')
-        .select('stripe_account_id, stripe_onboarding_complete')
-        .eq('id', orgUnitId)
-        .single();
+      const access = await resolveOwnedOrgUnit(supabaseClient, orgUnitId, user.id);
+      if (!access.ok && access.reason === "lookup_failed") {
+        return new Response(JSON.stringify({ error: 'Authorization check unavailable' }), {
+          status: 503,
+          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+        });
+      }
+      if (!access.ok && access.reason !== "not_found") {
+        logStep('Blocked org_unit access', { orgUnitId, userId: user.id, reason: access.reason });
+        return new Response(JSON.stringify({ error: 'Not permitted for this location' }), {
+          status: 403,
+          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+        });
+      }
 
-      if (orgUnit?.stripe_account_id && orgUnit?.stripe_onboarding_complete) {
-        stripeAccountId = orgUnit.stripe_account_id;
+      if (access.ok && access.unit.stripe_account_id && access.unit.stripe_onboarding_complete) {
+        stripeAccountId = access.unit.stripe_account_id;
         logStep('Found Stripe account in org_units', { accountId: stripeAccountId });
       }
     }
