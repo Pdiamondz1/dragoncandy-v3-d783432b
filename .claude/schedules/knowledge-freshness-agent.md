@@ -46,12 +46,15 @@ AIOS_INGEST_SECRET missing or invalid in environment Dame_git_claude."
    headers `apikey` + `Authorization: Bearer` with `$AIOS_INGEST_SECRET`; GET only):
    - GET `/donny_knowledge?select=id&limit=1` → `RAG_EMPTY` = the array is `[]`.
    - GET `/donny_knowledge?select=updated_at&order=updated_at.desc&limit=1` → `RAG_LAST`.
-     **`RAG_LAST` is INFORMATIONAL ONLY — never a gate.** `donny_knowledge`'s only trigger is
-     `handle_updated_at()`, which is a **stub** (`-- Function logic here / RETURN NEW;`) that never
-     assigns `NEW.updated_at`. So `updated_at` is frozen at INSERT and does not move on UPDATE:
-     once a stretch passes with no net-new page, `RAG_LAST` falls permanently behind
-     `LAST_WIKI_SYNC` no matter how current the RAG is. Gating on it would make this agent
-     self-heal every single day off a signal that cannot advance.
+     **`RAG_LAST` is INFORMATIONAL ONLY — never a gate.** *Originally* because it could not move:
+     `handle_updated_at()` was a **stub** (`-- Function logic here / RETURN NEW;`) that never
+     assigned `NEW.updated_at`, so once a stretch passed with no net-new page, `RAG_LAST` fell
+     permanently behind `LAST_WIKI_SYNC` however current the RAG was — gating on it would have made
+     this agent self-heal every single day off a signal that could not advance.
+     **The stub was restored 2026-08-07** (PR #385); `updated_at` moves again (measured 2026-08-08:
+     231 of 237 rows have `updated_at > created_at`). **Keep it out of the gate regardless** — a
+     moved timestamp proves only that *something* was written, whereas the content probe below
+     proves the newest wiki text is actually retrievable. Do not "restore" a timestamp gate here.
    - **Content probe (the real signal).** The token MUST come from text the newest in-scope wiki
      revision **added** — not merely from the page it touched. Most wiki commits *edit* an
      existing page, and any token that already lived on that page is already in the RAG, so it

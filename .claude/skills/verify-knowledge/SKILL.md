@@ -66,14 +66,19 @@ and an append-only **Run Log**. Full contract: `docs/wiki/concepts/loop-memory-p
      probe-worthy token (pure deletion / frontmatter-only), walk back to the previous in-scope
      commit — never pass by default just because the table is non-empty.
    - **`RAG_LAST` (`max(updated_at)`) is ADVISORY ONLY and must never flip `met`.**
-     `donny_knowledge`'s only trigger is `handle_updated_at()`, a **stub**
-     (`-- Function logic here / RETURN NEW;`) that never assigns `NEW.updated_at`. The column is
-     frozen at INSERT, so an update-only sync — the common case once every page exists — can
-     *never* advance it. Gating on it made this check **structurally unpassable**: the content
-     probe in [[knowledge-sync]] step 6 would pass while this validator returned `done:false`
-     forever, so the loop could not close. (This supersedes the raw ">24h window" rule and the
-     `[freshness-proxy]` workaround in MEMORY.md, which described the symptom before the
-     mechanism was known.)
+     *Originally* because the column could not move: `donny_knowledge`'s trigger
+     `handle_updated_at()` was a **stub** (`-- Function logic here / RETURN NEW;`) that never
+     assigned `NEW.updated_at`, so an update-only sync — the common case once every page exists —
+     could never advance it, making a timestamp gate **structurally unpassable** (the content probe
+     in [[knowledge-sync]] step 6 would pass while this validator returned `done:false` forever).
+
+     **The stub was restored 2026-08-07** (PR #385, migration `20260807233200`), and `updated_at`
+     does move now — measured 2026-08-08, **231 of 237** rows have `updated_at > created_at`. **The
+     rule is unchanged, on stronger grounds:** a moved timestamp proves only that *something* was
+     written, while the content probe proves *the specific new text* is retrievable. Timestamp
+     stays advisory; content stays the gate. (This supersedes the raw ">24h window" rule and the
+     `[freshness-proxy]` workaround in MEMORY.md, which described the symptom before the mechanism
+     was known — and which is now doubly superseded, since its stated cause no longer exists.)
    - The sync script's `errors=0` is the success authority; the remediation for a fail is to RUN
      the sync and then re-probe by content.
 

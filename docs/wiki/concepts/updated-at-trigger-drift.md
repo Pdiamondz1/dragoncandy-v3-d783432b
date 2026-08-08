@@ -154,6 +154,18 @@ blocks *silently*, with no exception and no signal. It would have looked like a 
 - ~~The deployed `donny-analytics-alerts` comment overstates the case.~~ **Fixed in PR #391** — the comment was rewritten with the measurement when the function was redeployed (v97) for the anchor change, exactly as planned rather than as a standalone comment deploy.
 - **Legacy `updated_at` is unreliable in both directions.** A pre-2026-08-07 row with `updated_at == created_at` means "no explicit writer touched it", not "never modified". But tables with an application-level writer moved anyway (`campaign_collaborations` 10/16, `organizations` 7/24; `campaigns` and `conversations` 0/26 and 0/13). And any legacy row updated after the restore moves normally. Verify per table; don't generalize.
 - Four tables (`beta_feedback`, `feature_flags`, `onboarding_steps`, `user_onboarding_progress`) carry **two** triggers bound to this function. Both assign the same `now()` in one transaction, so the duplication is idempotent — but it is why a trigger count (35) and a table count (31) disagree.
+- **The fix rotted every doc that explained the bug.** Found 2026-08-08 during the post-merge
+  `verify-knowledge` run: four files still described the stub in the **present tense** as live prod
+  behaviour — `knowledge-sync/SKILL.md` ("*~30 tables are wired to this same stub — treat
+  `updated_at` as untrustworthy on any of them*"), its `MEMORY.md`, `verify-knowledge/SKILL.md`'s
+  own gating rationale, and the **live daily** `knowledge-freshness-agent.md`. Each had demoted
+  `max(updated_at)` to advisory *because the column could not move*; measured on prod that day,
+  **231 of 237** `donny_knowledge` rows have `updated_at > created_at` — it moves. Every decision
+  was still right, so only the stated reasons were rewritten (and date-stamped). Two lessons:
+  **(1)** all three validator checks stayed green throughout, because none of these files live under
+  `docs/wiki/` — the knowledge layer is wider than the wiki. **(2)** the tell is a doc asserting prod
+  behaviour in the present tense with a confirmation date; **that date is an expiry, not a
+  warranty**. When a change alters prod behaviour, grep the repo for the *claim*, not the subsystem.
 
 ## See Also
 
