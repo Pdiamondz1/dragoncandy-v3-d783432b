@@ -3,17 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { Play, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Spinner } from '@/components/ui/spinner';
+import { formatDuration } from '@/lib/formatDuration';
 import type { PortfolioMedia } from '@/hooks/useUniqueCreatorPortfolio';
 
 interface FeedPostProps {
   media: PortfolioMedia;
   onOpen: () => void;
+  /** Uploaded since the viewer's last visit. */
+  isNew?: boolean;
 }
 
-export const FeedPost: React.FC<FeedPostProps> = ({ media, onOpen }) => {
+export const FeedPost: React.FC<FeedPostProps> = ({ media, onOpen, isNew = false }) => {
   const navigate = useNavigate();
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
+  const [duration, setDuration] = useState<number | null>(null);
 
   const goToProfile = () => navigate(`/creator/${media.creatorSlug || media.creatorId}`);
 
@@ -33,6 +37,11 @@ export const FeedPost: React.FC<FeedPostProps> = ({ media, onOpen }) => {
           </AvatarFallback>
         </Avatar>
         <span className="truncate text-sm font-semibold text-dc-text">{media.creatorName}</span>
+        {isNew && (
+          <span className="ml-auto flex-shrink-0 rounded-full bg-dc-teal px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+            New
+          </span>
+        )}
       </button>
 
       {/* Media → lightbox */}
@@ -58,6 +67,7 @@ export const FeedPost: React.FC<FeedPostProps> = ({ media, onOpen }) => {
             aria-label={`Video by ${media.creatorName}`}
             className="h-full w-full object-cover"
             onLoadedData={() => setLoaded(true)}
+            onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
             onError={() => setError(true)}
             muted
             playsInline
@@ -75,7 +85,10 @@ export const FeedPost: React.FC<FeedPostProps> = ({ media, onOpen }) => {
         )}
 
         {media.type === 'video' && !error && (
-          <Play className="absolute top-2 right-2 h-5 w-5 text-white fill-white drop-shadow" />
+          <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">
+            <Play className="h-3 w-3 fill-white" aria-hidden />
+            {formatDuration(duration) ?? 'Video'}
+          </span>
         )}
       </button>
     </article>

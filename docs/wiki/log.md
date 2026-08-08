@@ -23,6 +23,33 @@ write, so it could never mark a transition, stub or no stub.
 Pages: created `concepts/updated-at-trigger-drift.md`,
 `raw/sessions/2026-08-07-handle-updated-at-restore.md`. Updated `index.md` (2 entries),
 `docs/DATABASE_SCHEMA.md` (2 corrections), `docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §5.
+## [2026-08-07] ingest | [[Dragon Feed]] + [[Nav Active State]] — the table that got cut
+
+Ingested [[DragonFeed Uplift & Nav Active-State Session]] (PR #384), two founder reports that
+shipped together.
+
+**New page** `concepts/nav-active-state.md`. The lesson outlives the subsystem that found it: the
+"double-clicked button" was reported on Dragon Feed, but the defect was every role's bare-root
+Dashboard href prefix-matching all ~26 of its child routes, across three separate nav components.
+Nothing owned "which nav item is current", and [[Mobile Viewport & Fixed Positioning]] owns
+*positioning* and z-layering, not state — so a compound there would have buried it.
+
+**Compounded** onto [[Dragon Feed]] rather than starting a second feed page: three new sections
+(the root cause + the cut table, supply, the deferred DragonShare merge), a corrected "browse mode"
+line (type-filtered → type **and skill**), rewritten Key Decisions, and six new Known Issues. The
+page previously described a feed with no ordering story at all, which is precisely what the founder
+was reacting to.
+
+The durable content is mostly what did **not** happen. A `feed_items` table was specced and cut
+once verification showed (1) the composite item id `${creator.id}-${url}` is persisted as
+`analytics_events.content_id` and **parsed back apart** by two live surfaces, so uuid ids would
+have emptied them silently; (2) a mirror table had no lifecycle contract against whole-array
+rewrites; and (3) 34/34 items already carried a real `storage.objects.created_at`. Recorded as
+**derive, don't duplicate**, plus the ranking rule that fell out of it — prefer the timestamp the
+client cannot author. Also recorded: why the profile-form default was left alone (a whole-form
+blur write would retroactively flip stored consent) and why the DragonShare merge is deferred
+(no public SELECT policy, no consent flag anywhere, and the media file is *already* world-readable
+so what would be newly exposed is the **association**).
 
 ## [2026-08-07] ingest | [[Campaign Invitations]] — a feature nobody could explain, and a matcher nobody triggered
 

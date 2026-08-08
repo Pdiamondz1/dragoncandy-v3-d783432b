@@ -6,6 +6,7 @@ import { Dialog, DialogPortal, DialogOverlay } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Heart, MessageSquare, X, ChevronLeft, ChevronRight, User } from 'lucide-react';
 import { useFeedLike } from '@/hooks/useFeedLike';
+import { useRecordFeedView } from '@/hooks/useRecordFeedView';
 import { useMessageCreator } from '@/hooks/useMessageCreator';
 import type { PortfolioMedia } from '@/hooks/useUniqueCreatorPortfolio';
 
@@ -21,7 +22,14 @@ export const FeedViewer: React.FC<FeedViewerProps> = ({ items, index, onIndexCha
   const activeItem = items[index] ?? null;
   const { liked, toggleLike } = useFeedLike(activeItem);
   const { messageCreator } = useMessageCreator();
+  const recordView = useRecordFeedView();
   const videoRefs = useRef(new Map<number, HTMLVideoElement>());
+
+  // A "view" is an item reaching the lightbox — including each one swiped to. Deduped per
+  // user/item/day inside the hook, and fire-and-forget so analytics never blocks browsing.
+  useEffect(() => {
+    void recordView(activeItem);
+  }, [activeItem?.id, activeItem, recordView]);
 
   const [emblaRef, emblaApi] = useEmblaCarousel({ startIndex: index, loop: false });
 

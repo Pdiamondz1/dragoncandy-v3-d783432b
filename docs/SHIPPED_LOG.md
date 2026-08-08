@@ -115,6 +115,96 @@ outlives the fix: `updated_at` is a *modification* stamp, never a status signal.
 
 PR #385 · migrations `20260807233000` / `20260807233100` / `20260807233200` ·
 `donny-analytics-alerts` v96 · → `docs/wiki/concepts/updated-at-trigger-drift.md`
+## [2026-08-07] DragonFeed uplift + the sidebar that highlighted two things at once
+
+> State as of writing: **PR #384 open**, all checks green, Codex second review clean. No migration,
+> no RLS/policy change, no edge-function deploy — it ships on merge. Prod verification (both
+> viewports + console) is **not yet run**; it happens after merge.
+
+Two founder reports from the business dashboard, shipped together.
+
+**The nav bug was on every page, not one.** `DashboardLayout.tsx:63` evaluated, per item,
+`pathname === href || pathname.startsWith(href + '/')`. Each role's Dashboard item points at the
+bare role root (`/dashboard/business`), which is a prefix of **all ~26** of that role's child
+routes — so Dashboard rendered active everywhere; Dragon Feed was just where it was noticed. The
+identical expression was copy-pasted into `MobileBottomNav.tsx:18` and `MobileTopNav.tsx:31` with
+no shared helper and no test, so the drawer double-highlighted and the bottom nav lit "Home"
+alongside Campaigns / Messages / Profile.
+
+Fixed with one pure `activeNavHref()` (`src/lib/navActive.ts`) using **longest match wins**, adopted
+by all three. Exact matching would have been the opposite regression — "My Campaigns" must stay lit
+on `/campaigns/:id` — so the requirement is *specificity*, not equality. It is also
+self-maintaining: nesting a new route later needs no `exact` flag. 9 unit tests. Flagged but not
+fixed: the Analytics item points at `/dashboard/analytics` for all three roles while a separate
+`/dashboard/brand/analytics` route exists — that needs a founder call on the intended target.
+
+**Every DragonFeed complaint had one root cause: a feed item is not a row.** The feed reads
+`creator_profiles.portfolio_urls`, a bare `text[]`, so an item is a *string in an array* — no id,
+no timestamp, no counters, nowhere to put a tag. Order was `sort(() => Math.random() - 0.5)`,
+reshuffled every mount, so nothing could be "new" relative to anything.
+
+A `feed_items` table was designed and then **cut**, which is the durable part of this session:
+
+1. **It would have silently broken two live surfaces.** The item id is the composite
+   `${creator.id}-${url}`, persisted as `analytics_events.event_data.content_id` by `useFeedLike`.
+   Two consumers decode it by string-stripping the creator-id prefix to recover the URL —
+   `useBusinessActivity.ts:82` (the Inspiration page) and `useInspirationStrip.ts:66` (the dashboard
+   strip). A uuid id makes their lookup return `undefined` and the item is **dropped with no error**.
+2. **No lifecycle contract.** `portfolio_urls` is rewritten as a whole array on every profile save,
+   so nothing would delete a feed row when a creator removed an item — removed work would stay live
+   forever, a consent regression inside a consent-motivated change.
+3. **Not needed.** Verified on prod: **34 of 34** items resolve to a `storage.objects` row with a
+   real `created_at` (0 external URLs). The per-item timestamp already existed.
+
+Shipped instead, with no new table, no id change and nothing broken: real dates and stable
+newest-first ordering (pure `feedOrdering.ts`); NEW badges + "N new since your last visit" against a
+per-device marker, with a first-ever visit badging nothing; skill filter chips from
+`creator_profiles.skills` (`feedSkills.ts`) — data already fetched and rendered but never used as a
+filter, so zero new storage; a video duration badge from the browser's own `loadedmetadata`, no
+server probe and no new column; creator attribution on desktop tiles, which previously rendered
+*nothing*; and view counting keyed by the **same** `content_id` likes use, deduped per user/item/day.
+
+Ordering deliberately uses the **server-assigned** `storage.objects.created_at`, not the
+`Date.now()` that `uploadProfileAsset` bakes into every filename — that value is client-supplied,
+and a creator writing to their own folder could craft a future timestamp to pin their work to the
+top of the feed permanently.
+
+View counts are **instrumented now, displayed when significant**: `content_performance` holds **3**
+measured posts platform-wide, so any social-sourced number would be fabricated — the rule PR #368
+exists to enforce. "Hot" was **deferred rather than faked**, because its draft formula included
+boost dollars, which are structurally zero for portfolio items (boosts attach only to
+`dragonshare_posts`).
+
+**Supply turned out to be the real bottleneck.** The feed showed 2 creators / 8 items; three more
+creators holding **26 more items** were completed, public, and blocked *only* by
+`allow_portfolio_in_feed = false` — a flag defaulting off whose sole UI was a switch inside a
+collapsed Settings accordion filed under *Privacy*, never asked at onboarding. 11 of 15 creators
+never saw it, so absence from the feed was almost never a decision. Onboarding now asks it
+(defaulted Yes, on the existing bio step, so it costs no extra tap); the switch moved Privacy →
+Portfolio and was relabelled to the feed's real name; and a self-limiting dashboard card prompts
+creators who have work but are opted out — `shouldPrompt` requires the flag to still be false, so
+opting in removes it permanently with no dismissal state to store.
+
+Two things deliberately **not** done. `useCreatorProfileForm`'s default was left at `false`:
+`CreatorSettings.tsx:44` submits the entire `formData` on any field blur with no `isLoaded` guard,
+so flipping it would let an existing creator's stored `false` be silently overwritten. And the
+DragonShare merge was deferred — `dragonshare_posts` has no public SELECT policy and a post is made
+for one specific business, so merging as-is shows Business A's paid content to Business B. Two
+verified facts shape the eventual fix: the media file is *already* world-readable
+(`dragonshare-content` is a `public=true` bucket), so what would be newly exposed is the
+**association**, not the bytes; and **no consent flag exists anywhere**. Founder decision recorded:
+creator opts in, business can veto, default off, asked at boost time.
+
+45 new unit tests; build, typecheck and lint clean. A failing `OnboardingWizard.test.tsx` was
+verified as a cold-cache timing artifact (import alone took 63s against a 5s test timeout), not a
+regression — confirmed by reverting only the two touched files, re-running, and restoring.
+
+Unverified leads filed for separate checking: `donny-dragonshare-score/index.ts:44-48` appears to
+read a post by id with the service-role key without checking caller membership in `target_org_id`;
+`donny-orchestrator/agents/dragonshare.ts:71-76` appears to omit `status='verified'`;
+`landing-clips` is publicly callable but orphaned behind a false flag; and Creator Settings appears
+to save stale form state over stored values.
+→ `docs/wiki/concepts/dragon-feed.md` · `docs/wiki/concepts/nav-active-state.md` · #384
 
 ## [2026-08-07] AI Creator Match: run it automatically, explain the invite, kill the dead click
 
