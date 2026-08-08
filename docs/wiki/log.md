@@ -1,5 +1,28 @@
 # Wiki Log
 
+## [2026-08-07] ingest | [[Updated-At Trigger Drift]] — the column that never moved, and the two readers that had adapted
+
+Ingested [[Handle-Updated-At Restore Session]] (PR #385). New concept page
+`concepts/updated-at-trigger-drift.md` rather than a section on an existing one: this is a
+schema-wide invariant touching 31 tables, and the two pages it most resembles —
+[[Content Delivery State Machine]] (the sibling `recorded ≠ actual` drift) and
+[[Dragon Rewards Engine (DRE)]] (one of the two affected consumers) — would each have owned only a
+slice of it. Cross-linked both ways, plus [[Payout Finalization & Re-entrancy]] and
+[[Creator Groups (Crews)]] for the narrow-anchor pattern (`payout_executed_at`,
+`content_submitted_at`) this change extends with `campaigns.completed_at`.
+
+**Contradicted and corrected an always-loaded core doc.** `DATABASE_SCHEMA.md` carried a prominent
+warning that `handle_updated_at()` *is* a stub and `updated_at` is untrustworthy on ~30 tables.
+That was true when written (2026-08-07, earlier the same day) and is now false. Rewritten in place
+rather than appended to — a stale claim in an auto-loaded file misleads every future session — and
+the second stale reference further down (the Crews Phase 2 note, "since the table's
+`handle_updated_at` trigger is a no-op") was corrected too. Per the standing status-correction
+lesson, the *reason* the anchor exists was preserved rather than deleted: `updated_at` moves on any
+write, so it could never mark a transition, stub or no stub.
+
+Pages: created `concepts/updated-at-trigger-drift.md`,
+`raw/sessions/2026-08-07-handle-updated-at-restore.md`. Updated `index.md` (2 entries),
+`docs/DATABASE_SCHEMA.md` (2 corrections), `docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §5.
 ## [2026-08-07] ingest | [[Dragon Feed]] + [[Nav Active State]] — the table that got cut
 
 Ingested [[DragonFeed Uplift & Nav Active-State Session]] (PR #384), two founder reports that

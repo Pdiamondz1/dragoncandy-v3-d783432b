@@ -145,6 +145,18 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **`handle_updated_at()` restored from its prod-drifted stub** — the shared trigger's prod body was
+  literally `-- Function logic here / RETURN NEW;`, so 35 triggers across 31 tables fired and changed
+  nothing and `updated_at` sat frozen at `created_at`. Repo was never wrong (`recorded ≠ actual`, same
+  class as #325). Restored only after fixing the two consumers that had adapted to it —
+  `donny-analytics-alerts` (a frozen-column filter silently means "created in 24h") and DRE
+  `occurred_at` (false recency ⇒ retroactive "You earned DC Points") — plus a new `campaigns.completed_at`
+  anchor. **`updated_at` is a modification stamp, never a status signal**, and legacy values are
+  unreliable BOTH ways (`== created_at` means "no explicit writer touched it", not "never modified").
+  Post-merge, a Codex P2 on the docs falsified #385's own audit claim that
+  `campaign_collaborations.updated_at` has no explicit writer — it has one, so the alert repoint costs
+  ~1-in-16 historical status alerts, not zero. Open: a `status_changed_at` for the alert windows (#385).
+  → `docs/wiki/concepts/updated-at-trigger-drift.md`
 - **AI Creator Match auto-run + invitation clarity** — `match-creators` had **no automatic trigger
   anywhere**, so every new campaign opened on a red "No AI matches yet"; the invite had zero
   explanatory copy; the match card had no pending state. Merged 2026-08-07 (#382). Its

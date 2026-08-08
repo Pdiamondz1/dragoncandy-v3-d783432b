@@ -26,6 +26,95 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-07] `handle_updated_at()` restored from its prod-drifted stub, hazards fixed first
+
+`public.handle_updated_at()` on prod had a body of literally `-- Function logic here` /
+`RETURN NEW;`. It never assigned `NEW.updated_at`, so all **35 triggers across 31 tables** bound to
+it fired and changed nothing — `updated_at` sat frozen equal to `created_at` on every affected row.
+**Prod drift, not repo state:** both repo definitions (`20250616011059`, `20250617123640`) have
+always said `NEW.updated_at = now()`. Same `recorded ≠ actual` class as the collaboration state
+machine restored in PR #325.
+
+**It surfaced as a contradiction, never as an error.** A `knowledge-sync` verification step keyed
+on `max(updated_at)` reported Donny's RAG as stale while the row's *content* was demonstrably the
+new revision. That mismatch — content fresh, timestamp frozen — was the only symptom this defect
+ever produced in years of running.
+
+The repair is one `CREATE OR REPLACE`. The work was everything that had quietly come to depend on
+the column never moving. Two subagents audited the blast radius in parallel: **34 explicit
+`updated_at` writers and the entire frontend came back safe** (32 writers are SQL `updated_at =
+now()` inside RPCs, and `now()` is `transaction_timestamp()` — the trigger's `now()` in the same
+transaction is the *identical* value, not a clobber; the 2 edge-function writers merely upgrade
+from an edge clock to the DB clock; no frontend site treats `updated_at` as stable or keys a cache
+on it). Two genuine hazards had to land **first**:
+
+- **`donny-analytics-alerts`** filtered `.gte("updated_at", since)` on `campaigns` and
+  `campaign_collaborations`. Against a frozen column that is a *"created in the last 24h"* filter;
+  restoring the trigger would have silently reinterpreted it as *"modified in the last 24h"* and
+  emitted "Payment released" / "Revision requested" for rows whose status never changed. Repointed
+  to `created_at` (v96).
+- **DRE `occurred_at`** derived milestone timestamps from `updated_at`. Once the column moves, an
+  edit to an old campaign dates an old milestone as fresh, clears `dre-award-engine`'s
+  forward-only `go_live_at` gate, and fires "You earned DC Points" for months-old activity. The
+  *awards* were never at risk (`dragon_point_events` has `UNIQUE(user_id, event_type, source_id)`
+  and freezes `occurred_at`); **who gets notified** was.
+
+**A recommendation was made, then withdrawn.** The founder chose "keep milestones suppressed", and
+the option shown to them swapped the DRE anchors to bare `created_at`. Reading the SQL afterwards
+showed that preview was wrong: bare `created_at` suppresses retroactive firing but *also*
+suppresses legitimate **future** milestones — a business completing its 5th campaign next week on
+months-old campaigns gets a months-old `occurred_at`, lands before `go_live_at`, and is never told.
+The real cause was that `campaigns` had **no completion anchor at all**, which is exactly why the
+original DRE migration reached for `updated_at` and said so in a comment
+(`-- ... campaigns has no completed_at`). So one was added: `campaigns.completed_at`, stamped only
+on the *transition* into `completed`, copying the `content_submitted_at` pattern.
+
+**Codex dissent held, not complied with.** Codex flagged (P2) that post-restore `updated_at` would
+be a usable status signal, so a real escrow change on an older row won't alert. Factually right,
+but measured against a state that has never been live, and the implied alternative is the option
+the founder declined — `updated_at` moves on any write, so "alert on modification" fires "Payment
+released" off a title edit. All three call sites were annotated with the rationale, the limitation,
+and the genuinely correct fix (a `status_changed_at` on its own narrow trigger — **still open**).
+The `edge-function-reviewer` separately corrected an overstatement of mine that the repoint
+"preserves today's behavior exactly": `campaigns.updated_at` has one explicit writer
+(`accept_application_with_collaboration`), so a few older escrow-held campaigns stop alerting.
+Since an UPDATE can never predate its own INSERT, it is a **pure narrowing** — no row newly
+appears.
+
+**Post-merge correction — the writer audit undercounted, and the Codex dissent was stronger than
+credited.** After merge, a Codex P2 about a *documentation* over-claim prompted a check against
+real rows, which falsified the audit's load-bearing claim that
+`campaign_collaborations.updated_at` has **zero** explicit writers.
+`src/hooks/useProjectComplete.ts:52` writes it on the completion path, and prod shows **10 of 16**
+pre-restore rows with a moved `updated_at` (JS 3-digit-millisecond timestamps, versus `now()`'s
+microseconds — the tell). So that alert block was **partially functional**, not inert. Quantified
+against the live 24h window: **1 of 16** collaborations moved more than 24h after creation, so the
+repoint costs roughly 1-in-16 historical status alerts rather than none. The conclusion holds — it
+is still a pure narrowing and still small — but "exactly equivalent" was wrong, and the deployed
+comment's "That is the status quo, not a regression" is likewise not quite true for that table
+(comment-only defect; fold into the `status_changed_at` change rather than redeploy for a comment).
+The general audit undercount is worth noting on its own: a grep for
+`updated_at: new Date().toISOString()` alone returns ~20 edge-function sites against the 2 reported.
+
+**Ordering was load-bearing** (merge → deploy v96 → `20260807233000` → `20260807233100` →
+`20260807233200`); reversed, there is a window where alerts misfire and milestones fire
+retroactively. `20260807233100` is `language sql`, so Postgres validates its body at `CREATE` time
+and rejects it if `completed_at` is absent — half the ordering enforces itself.
+
+**Verified on prod, not assumed:** stub confirmed live pre-change (`pg_get_functiondef ... ilike
+'%NEW.updated_at%'` → false); 31-vs-35 reconciled as four double-bound tables, not an audit gap;
+`dre_pending_events()` retains `security definer` / `search_path=public` / `service_role`+`postgres`
+grants only; rollback-wrapped live round-trip on `feature_flags` shows `updated_at` moving to
+`now()`; **`dre_pending_events()` returns 0 pending events**, so the restore fires nothing
+retroactively. Prod had **0** completed campaigns and all 11 completed collaborations already
+carried `completed_at` — the DRE half is future-proofing; the live repair was the analytics alerts.
+
+**Carry forward:** rows written before 2026-08-07 have a frozen `updated_at` equal to
+`created_at` — any recency sweep spanning that date reads them as never-modified. And the rule that
+outlives the fix: `updated_at` is a *modification* stamp, never a status signal.
+
+PR #385 · migrations `20260807233000` / `20260807233100` / `20260807233200` ·
+`donny-analytics-alerts` v96 · → `docs/wiki/concepts/updated-at-trigger-drift.md`
 ## [2026-08-07] DragonFeed uplift + the sidebar that highlighted two things at once
 
 > State as of writing: **PR #384 open**, all checks green, Codex second review clean. No migration,
