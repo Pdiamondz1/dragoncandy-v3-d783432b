@@ -79,9 +79,14 @@ serve(async (req) => {
         .eq('user_id', callerId).eq('invitation_status', 'active'),
       // Active sponsoring brand: campaign_sponsorships.brand_id → business_profiles.user_id,
       // the same hop `fire-dragonshare-social-hook` already uses to resolve its brand party.
+      // The `!brand_id` hint is REQUIRED, not stylistic: campaign_sponsorships has two FKs into
+      // business_profiles (brand_id and restaurant_id), so a bare `business_profiles!inner`
+      // is ambiguous and PostgREST answers 300/PGRST201. supabase-js surfaces that as
+      // `{ data: null }` rather than throwing, so the arm would fail closed and silently —
+      // this whole branch would be dead the day BRAND_ROLE_ENABLED flips on.
       campaign
         ? supabase.from('campaign_sponsorships')
-            .select('brand_id, business_profiles!inner(user_id)')
+            .select('brand_id, business_profiles!brand_id!inner(user_id)')
             .eq('campaign_id', campaign.id)
             .in('status', ['active', 'accepted'])
         : Promise.resolve({ data: [] as unknown[] }),
