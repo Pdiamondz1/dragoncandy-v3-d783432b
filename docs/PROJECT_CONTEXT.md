@@ -145,6 +145,17 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **`donny-dragonshare-score` deleted — an unauthorized cross-tenant service-role write** — the
+  authenticated caller was validated then **never used again**, so a body-supplied `post_id` reached
+  a service-role read *and* write of any tenant's post, with the audit row stamped to the **victim**;
+  `matchQuality` plus a plaintext `creatorPostCount` in `rationale` also made the target org's boost
+  count solvable. It was the hole in the DB's own guard (`trg_ds_posts_block_self_verify` blocks
+  authenticated non-admins from those exact columns, then waves through the service role). **Deleted,
+  not patched** — zero callers, webhook never wired, and prod confirms it never ran once
+  (`with_score=0, score_events=0`). The sibling `landing-clips` lead was **checked and refuted**
+  (real consumer behind a deliberately-off flag) and kept. **Deleting source ≠ undeploying:** the
+  live function must still be removed from Supabase.
+  → `docs/wiki/concepts/service-role-data-exposure.md`
 - **`handle_updated_at()` restored from its prod-drifted stub** — the shared trigger's prod body was
   literally `-- Function logic here / RETURN NEW;`, so 35 triggers across 31 tables fired and changed
   nothing and `updated_at` sat frozen at `created_at`. Repo was never wrong (`recorded ≠ actual`, same

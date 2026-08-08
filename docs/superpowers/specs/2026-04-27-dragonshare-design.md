@@ -122,6 +122,13 @@ Inputs: p_post_id, p_boosting_org_id, p_amount_cents, p_tier. Validates post is 
 
 ### Edge Function — `donny-dragonshare-score`
 
+> **REMOVED 2026-08-08 — do not rebuild from this section.** The function shipped without an
+> authorization check (the authenticated caller was validated then never used, so a body-supplied
+> `post_id` reached a service-role read *and write* of any tenant's post), and the INSERT webhook
+> below was never wired, so it never ran once on prod. If post scoring is wanted later, it needs a
+> caller→`target_org_id` membership check and a caller-attributed audit row. See
+> [[Service-Role Data Exposure]].
+
 - Path: `supabase/functions/donny-dragonshare-score/index.ts`
 - Triggered on dragonshare_posts INSERT (via webhook or called after insert)
 - Pulls creator engagement averages, target org boost history, content_type, platform

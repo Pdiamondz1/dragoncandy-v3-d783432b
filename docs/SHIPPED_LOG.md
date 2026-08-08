@@ -26,6 +26,57 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-08] `donny-dragonshare-score` removed — an unauthorized service-role write, orphaned
+
+One of four unverified leads filed by the 2026-08-07 DragonFeed session, checked and closed. The
+lead was right; a claim I made about a *sibling* lead was wrong, and both are recorded here.
+
+**The defect.** The authenticated `caller` was bound on line 32 (`auth.getUser(token)`, 401 on
+failure) and **never referenced again**. Everything after ran on the service-role client keyed only
+on a body-supplied `post_id`. That gave any authenticated user, against any tenant's post: a write
+(`donny_recommended_tier`/`donny_score`/`donny_reach_estimate`), a `select("*")` read, and an audit
+row stamped `actor_user_id: post.creator_id` — the **victim** — so the victim sees a phantom event
+(`ds_events_select` is `actor_user_id = auth.uid()`) and the caller is untraceable. The response also
+made a private aggregate solvable: `matchQuality = min(100, 50 + orgBoostCount×5 +
+creatorPostCount×3)` with `creatorPostCount` stated in plain text in `rationale` is one equation in
+one unknown, yielding the target org's total boost count — restricted by `ds_boosts_org_select` to
+org members.
+
+**It was the hole in the DB's own guard.** `trg_ds_posts_block_self_verify` (`20260601160000`)
+forbids an authenticated non-admin from changing exactly those three columns, then returns early for
+`auth.uid() is null` — the service role, which `boost-payment` legitimately needs. A service-role
+function with no authorization of its own reopened a path the DB had deliberately closed.
+
+**Deleted rather than patched** (Musk's algorithm step 2 before step 3): zero callers anywhere
+(`src/`, other functions, `config.toml`, CI gate, scripts — only docs), the `dragonshare_posts`
+INSERT webhook the 2026-04-27 plan specified was **never wired**, and prod confirms on two
+consecutive days that it never ran once — `posts=10, with_tier=0, with_score=0, with_reach=0,
+score_events=0`. Nothing reads the columns either; they are kept (never drop a column) and stay null.
+
+**Severity scoped honestly.** `post_id` is a uuid and RLS blocks listing foreign ids, so a
+cross-tenant call needed an id obtained out of band. But one variant needed no foreign id: a creator
+calling it on their *own* post still solves for the target business's boost count. Hard to aim ≠
+closed. The write was not demonstrated against prod on purpose — the code reads unambiguously.
+
+**The `landing-clips` correction.** The same lead list called it "deployed and publicly callable but
+orphaned", and I had recommended deleting both together. The orphaned half is **false**: it has a
+wired consumer (`useLandingBackdropPlaylist` → `HeroVideoBackdrop`) lazy-loaded behind
+`LANDING_VIDEO_BACKDROP_ENABLED`, whose `false` value is deliberate preservation —
+`DESIGN_SYSTEM.md` promises the flag re-enables video "with zero other code changes". Deleting it
+would have broken that **silently**, since the fetcher swallows all errors and returns `[]`. It is
+also not an exposure surface: it returns only boosted/verified/unflagged video URLs from a bucket
+that is already `public = true` with unconditional read. **Kept.** Its real open question is consent,
+which is the DragonFeed spec's phase-3b decision.
+
+**Deleting source is not undeploying.** This PR removes the function from the repo; the deployed
+function keeps serving until it is explicitly removed from Supabase. Until then the repo and the live
+attack surface disagree, and the repo is what everyone greps. Audit the *deployed* function list
+against the repo, not the repo alone.
+
+Still open from that lead list: `donny-orchestrator/agents/dragonshare.ts:71-76` (possible missing
+`status='verified'`, same-tenant, unverified) and `CreatorSettings.tsx:44` (possible stale-form
+save, observed in code, not reproduced).
+
 ## [2026-08-08] `status_changed_at` — the analytics alerts finally get a change-anchor
 
 Closes the gap #385 recorded, Codex flagged, and post-merge measurement showed was **bigger than
@@ -249,7 +300,10 @@ creator opts in, business can veto, default off, asked at boost time.
 verified as a cold-cache timing artifact (import alone took 63s against a 5s test timeout), not a
 regression — confirmed by reverting only the two touched files, re-running, and restoring.
 
-Unverified leads filed for separate checking: `donny-dragonshare-score/index.ts:44-48` appears to
+Unverified leads filed for separate checking *(two closed 2026-08-08 — see the entry at the top of
+this file: the `donny-dragonshare-score` lead was **confirmed** and the function deleted; the
+`landing-clips` "orphaned" claim was **wrong** and it was kept)*:
+`donny-dragonshare-score/index.ts:44-48` appears to
 read a post by id with the service-role key without checking caller membership in `target_org_id`;
 `donny-orchestrator/agents/dragonshare.ts:71-76` appears to omit `status='verified'`;
 `landing-clips` is publicly callable but orphaned behind a false flag; and Creator Settings appears

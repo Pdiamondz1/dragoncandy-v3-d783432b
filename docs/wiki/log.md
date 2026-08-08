@@ -1,5 +1,28 @@
 # Wiki Log
 
+## [2026-08-08] update | [[Service-Role Data Exposure]] — a lead checked, confirmed, and closed by deletion
+
+Compounded onto the class page rather than a new one: `donny-dragonshare-score` is a textbook
+instance of it (check 2 — record-level ownership assertion — missing outright, plus check 7's
+`select('*')`), so it belongs beside the other instances, not beside them in a thin sibling.
+
+Two things were worth writing down beyond the instance itself. First, the function was the hole in
+the DB's *own* guard: `trg_ds_posts_block_self_verify` blocks an authenticated non-admin from
+changing exactly those columns, then waves through the service role — so defense-in-depth at the DB
+protects only against credentials it can see. Second, and the reason the page now ends on it:
+**deleting source is not undeploying.** The merged deletion leaves the deployed function serving,
+so the repo and the live attack surface disagree, and the repo is the artifact everybody greps.
+
+Also recorded a **correction**: the sibling lead calling `landing-clips` "orphaned" was wrong — it
+has a wired consumer behind a deliberately-false flag, and deleting it would have broken a
+documented promise silently. Filed in the spec's §7 as a checked-and-refuted lead rather than
+quietly dropped, since a wrong lead left standing is what gets acted on later.
+
+Pages: `concepts/service-role-data-exposure.md` (updated). Source:
+`raw/sessions/2026-08-08-dragonshare-score-removal.md`. Core docs: `SHIPPED_LOG.md` (prepended, plus
+a pointer on the now-stale lead list in the 2026-08-07 entry), `PROJECT_CONTEXT.md` §5, and removal
+notes on the two 2026-04-27 DragonShare planning docs.
+
 ## [2026-08-08] update | [[Updated-At Trigger Drift]] — the follow-up anchor, and why it is asymmetric
 
 Compounded onto the existing concept page rather than creating a new one: this is the same thread

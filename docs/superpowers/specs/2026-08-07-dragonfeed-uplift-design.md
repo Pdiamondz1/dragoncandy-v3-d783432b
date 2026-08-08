@@ -231,12 +231,23 @@ that predicate is business-consent-based and will **not** generalize from the po
 
 **None of these were verified**; each needs its own check before anyone acts on it.
 
-- `donny-dragonshare-score/index.ts:44-48` reads a post by `post_id` with the service-role key and
-  *appears* not to check the caller's membership in `target_org_id` — IDOR-shaped.
+- ~~`donny-dragonshare-score/index.ts:44-48` reads a post by `post_id` with the service-role key and
+  *appears* not to check the caller's membership in `target_org_id` — IDOR-shaped.~~
+  **CHECKED 2026-08-08 → confirmed, and resolved by deleting the function.** `caller` was validated
+  then never used again; the function was also orphaned (zero callers, webhook never wired, never
+  executed on prod). See [[Service-Role Data Exposure]].
 - `donny-orchestrator/agents/dragonshare.ts:71-76` *appears* to omit `status='verified'`, unlike the
   `donny-chat` equivalent. Same-tenant only, so not a leak, but a divergence from the RLS contract.
-- `landing-clips` is deployed and publicly callable but orphaned — its only consumer sits behind
-  `LANDING_VIDEO_BACKDROP_ENABLED = false`.
+  **Still unverified.**
+- ~~`landing-clips` is deployed and publicly callable but orphaned~~ — **CHECKED 2026-08-08 → the
+  "orphaned" half was wrong.** It has a real wired consumer (`useLandingBackdropPlaylist` →
+  `HeroVideoBackdrop`), lazy-loaded behind `LANDING_VIDEO_BACKDROP_ENABLED = false` **by design**:
+  `DESIGN_SYSTEM.md` promises the flag re-enables the video experience "with zero other code
+  changes". It is also not a data-exposure surface — it returns only boosted/verified/unflagged
+  video URLs from the `dragonshare-content` bucket, which is `public = true` with unconditional
+  public read, for an anonymous marketing homepage. **Do not delete it.** The open question there is
+  *consent* (neither creator nor business is asked before their video fronts the homepage), which is
+  §6's phase-3b decision, not a vulnerability.
 - **Creator Settings saves stale form state.** `CreatorSettings.tsx:44` `handleFieldBlur` submits
   the whole `formData` on any blur with no `isLoaded` guard, while `useCreatorProfileForm` seeds
   every field with empty-string/false defaults and `setFormDataFromProfile` fills them

@@ -2,8 +2,8 @@
 title: Service-Role Data Exposure
 type: concept
 created: 2026-07-19
-updated: 2026-07-20
-sources: [2026-07-19-data-exposure-reviewer.md, 2026-07-19-service-role-remediation.md, 2026-07-20-counter-offer-authz.md]
+updated: 2026-08-08
+sources: [2026-07-19-data-exposure-reviewer.md, 2026-07-19-service-role-remediation.md, 2026-07-20-counter-offer-authz.md, 2026-08-08-dragonshare-score-removal.md]
 tags: [security, rls, service-role, edge-functions, subagents, review, privacy, gotcha]
 ---
 # Service-Role Data Exposure
@@ -164,6 +164,62 @@ to fake `auth.uid()`; `SET LOCAL ROLE authenticated` for the RLS path): the forg
 call **succeeded pre-fix** and now **raises**; anon, identity-spoof, and role-forge all raise;
 real creator + owner still succeed; the RLS pin accepts the correct role and rejects a forged one.
 See [[Counter-Offer Authorization Session]].
+
+## Resolved by deletion — `donny-dragonshare-score` (found 2026-08-07, removed 2026-08-08)
+
+Filed as an **unverified lead** during the DragonFeed uplift and checked the next day, as
+[[Verify Before Reporting]] requires. The lead was right, and the remedy was still *delete*, not fix.
+
+**The hole.** `caller` was bound on line 32 (`supabaseAnon.auth.getUser(token)` → 401 on failure) and
+**never referenced again**. Everything after ran on the service-role client, keyed only on a
+body-supplied `post_id` — check 2 (record-level ownership assertion) missing outright:
+
+- **Cross-tenant read.** `select("*")` on any `dragonshare_posts` row (also check 7). The response
+  leaked the victim post's `platform`, `content_type`, and — stated in plain text in `rationale` —
+  the creator's verified post count.
+- **A solvable aggregate.** `matchQuality = min(100, 50 + orgBoostCount×5 + creatorPostCount×3)`,
+  with `creatorPostCount` disclosed in the same response, is one equation in one unknown. That
+  yields the target org's **total captured/transferred boost count** — which `ds_boosts_org_select`
+  restricts to org members and `ds_boosts_creator_select` restricts to a creator's own posts. It
+  saturates at 100 and is a count, not an amount.
+- **Cross-tenant write.** Overwrote `donny_recommended_tier` / `donny_score` /
+  `donny_reach_estimate` on the victim's post.
+- **Audit misattribution.** The `dragonshare_events` row was stamped
+  `actor_user_id: post.creator_id` — the **victim**. Since `ds_events_select` is
+  `actor_user_id = auth.uid()`, the victim sees a phantom event they didn't cause and the real
+  caller leaves no trace anywhere.
+
+**It was the hole in the DB's own guard.** `trg_ds_posts_block_self_verify` (migration
+`20260601160000`) explicitly forbids an authenticated non-admin from changing exactly those three
+`donny_*` columns — then waves through `auth.uid() is null`, i.e. the service role, because the
+boost-payment function legitimately needs that. A service-role function with no authorization of its
+own therefore converted a *closed* client path into an open one. **Defense-in-depth at the DB
+protects you only from the credentials it can see.**
+
+**Why deletion, not an org-membership check** (Musk's algorithm step 2 before step 3):
+
+- **Zero callers.** Nothing in `src/`, no other edge function, no `config.toml` entry, no CI gate,
+  no script. The `dragonshare_posts` INSERT webhook the 2026-04-27 plan specified was **never
+  wired** — `trg_ds_post_submitted_fn` only inserts an event row.
+- **Never executed.** Confirmed on prod twice (2026-08-07 and 2026-08-08): 10 posts, `0` with a
+  tier, `0` with a score, `0` with a reach estimate, `0` `donny_score_generated` events.
+- Nothing reads the three columns either — they appear only in `types.ts` and the guard trigger.
+
+Reachability was genuinely limited: `post_id` is a uuid and RLS blocks listing foreign post ids, so
+cross-tenant use needed an id obtained out of band. But **one variant needed no foreign id at all** —
+a creator calling it on their *own* post still solves for the target business's boost count. Being
+hard to aim is not the same as being closed.
+
+Columns kept (never drop a column); the two historical DragonShare planning docs now carry a
+removal note so nobody rebuilds it from the old spec.
+
+### The durable lesson: deleting source is not undeploying
+
+A merged deletion removes the function from the repo. **The deployed function keeps serving** until
+it is explicitly removed from Supabase — so the repo and the live attack surface disagree, and the
+repo is the one everybody greps. An orphaned deployed function is the worst case of this class: live,
+authenticated-reachable, and owned by no feature, so no test, no user report, and no code review path
+ever touches it again. Audit the *deployed* function list against the repo, not the repo alone.
 
 ## The remediation (PR #308 — shipped + deployed)
 
