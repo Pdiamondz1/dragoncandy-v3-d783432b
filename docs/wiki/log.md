@@ -2328,11 +2328,14 @@ Zernio adapter, and three real bug fixes. Deliberately abandoned: the 37-file SD
 ## [2026-08-08] update | The deploy that closed the anon-key holes — plus a dead authorization arm and a session collision
 
 Ingested `raw/sessions/2026-08-08-anon-key-deploy-and-embed-fix.md`. #402 and #399 were merged but
-inert; this is the deploy that actually closed them. **7 functions live and probe-verified** — each
-flipped 200/404/400 → **401** with the public anon key, with before/after baselines captured using
-payloads that stop short of any side effect. `fire-campaign-social-hook` now returns an identical 401
-for a real and a bogus campaign id, so the existence oracle is closed rather than narrowed. The
-`donny-dragonshare-score` undeploy was re-confirmed (absent from `list_edge_functions`).
+inert; this is the deploy that actually closed them. **7 functions deployed and probe-verified, of
+which 6 were closed** — each of those flipped 200/404/400 → **401** with the public anon key, with
+before/after baselines captured using payloads that stop short of any side effect.
+`fire-campaign-social-hook` now returns an identical 401 for a real and a bogus campaign id, so the
+existence oracle is closed rather than narrowed. The 7th, `landing-clips`, is a legitimate anonymous
+endpoint and **deliberately still answers 200** — it was hardened (both media URLs origin-pinned),
+not closed, and is deliberately not counted among the six. The `donny-dragonshare-score` undeploy was
+re-confirmed (absent from `list_edge_functions`).
 
 Two findings surfaced by the deploy itself, both compounded onto
 [[verify_jwt Is Not Authorization]] rather than given new pages — they are consequences of that

@@ -105,12 +105,18 @@ predicate anyway; duplicating two clauses is cheaper than an unowned write.
 
 ## Closed on prod — and what the pre-deploy gate caught on the way (2026-08-08)
 
-All 7 functions are deployed and probe-verified. Every one flipped from reachable to refused with the
-public anon key: `dragonshare-notify` 200 → 401, `fire-dragonshare-social-hook` and
-`toast-discount-push` and `fire-promotion-social-hook` from reaching their lookups → 401,
-`social-caption` 400 → 401, `fire-campaign-social-hook` 404 → 401, and `landing-clips` still 200 but
-serving only own-bucket URLs. `fire-campaign-social-hook` returns an **identical 401 for a real and a
-bogus campaign id**, so the existence oracle is closed rather than narrowed.
+Seven functions deployed, and they split into two groups — **do not collapse them into one count**.
+
+**Six were closed**, each flipping from reachable to refused with the public anon key:
+`dragonshare-notify` 200 → 401; `fire-dragonshare-social-hook`, `toast-discount-push` and
+`fire-promotion-social-hook` from reaching their lookups → 401; `social-caption` 400 → 401;
+`fire-campaign-social-hook` 404 → 401. That last one returns an **identical 401 for a real and a bogus
+campaign id**, so the existence oracle is closed rather than narrowed.
+
+**The seventh, `landing-clips`, was hardened and deliberately still answers 200** — it is a legitimate
+anonymous endpoint (one of the 4 the sweep cleared). What changed is that both media URLs are now
+origin-pinned to our own bucket, in the query *and* in `buildClips`. Counting it among the "now 401"
+functions would misreport the platform's security status, which is why the count here is six.
 
 **The two 401s are the whole lesson in one response pair.** No credentials returns the platform's
 `{"code":"UNAUTHORIZED_NO_AUTH_HEADER"}`; the anon key returns the function's own
