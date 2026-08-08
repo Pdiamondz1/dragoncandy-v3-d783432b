@@ -2,8 +2,8 @@
 title: Dragon Rewards Engine (DRE)
 type: concept
 created: 2026-06-27
-updated: 2026-08-07
-sources: [2026-06-27-dre-engine-tiers-badges.md, 2026-06-28-dre-go-live-runbook.md, 2026-06-28-dre-rename-creator-standing.md, 2026-08-07-dc-points-visibility.md]
+updated: 2026-08-08
+sources: [2026-06-27-dre-engine-tiers-badges.md, 2026-06-28-dre-go-live-runbook.md, 2026-06-28-dre-rename-creator-standing.md, 2026-08-07-dc-points-visibility.md, 2026-08-08-dc-points-discoverability-and-sync-break.md]
 tags: [gamification, rewards, growth, edge-functions, rls, cron]
 ---
 # Dragon Rewards Engine (DRE)
@@ -130,12 +130,46 @@ have.
   rewards could get unbuilt-roadmap content back as if it were real. See "RAG scope
   leak" under Known Issues.
 
-**State as of writing (2026-08-07):** 3 migrations (`dre_my_standing`, the help-article
-rewrite, the `donny_knowledge` scope fix) are **applied and verified on prod**. The 2
-edge functions (`dre-award-engine`, `donny-orchestrator`) are **not yet deployed**, the
-PR is **not yet open**, and the CLAUDE.md-mandated Codex second review has **not run**
-(`codex review --base main` hit an OpenAI usage limit, resets 2026-08-08 08:55). None of
-this is user-visible on prod yet.
+**State: SHIPPED AND LIVE (updated 2026-08-08).** Superseding the 2026-08-07 "not yet
+deployed / PR not open / Codex not run" snapshot this paragraph used to carry. #378 merged
+(`859e8b25`); 3 migrations applied and verified; both edge functions deployed and
+boot-checked against `list_edge_functions` with **different flags** —
+`dre-award-engine` v9 (`verify_jwt=false`, cron-invoked) and `donny-orchestrator` v74
+(`verify_jwt=true`, consumer surface). Prod-verified desktop: balance **4,300 / Rising**,
+tier gap as a sentence, labeled history, 0 console errors. Mobile viewport unverified —
+`resize_window` leaves `innerWidth` at desktop, so it is a false pass; real emulation
+needs CDP `setDeviceMetricsOverride`.
+
+**Codex took 3 rounds, and two of them were the same bug.** Round 1: `/rewards` reachable by
+a brand account. Round 2: the identical defect one layer down in
+`donny-orchestrator/agents/rewards.ts`, where
+`agg?.role === "content_creator" ? "creator." : "business."` handed a brand user the entire
+business earn catalog **through generated prose** — a place no UI review can see. One root
+cause behind both: a two-way fallback silently absorbing a third role. Brand has no DRE
+triggers, so the honest answer is "nothing to earn here," not a catalog. **A `? :` fallback
+on a role enum should name every branch it intends to serve.**
+
+## Discoverability follow-up (2026-08-08, PR #398)
+
+Founder report minutes after #378 shipped: *"On the dashboard the DC points section is not
+clickable and there's no page for it in the navigation panel."* Both real — #378 built the
+page, chip, notification and Donny agent but left the two dashboard cards inert. **A balance
+with nowhere to click is the same dead end as the "+200 DC Points" bell that started this
+whole thread**; it had just moved one screen over.
+
+- `DragonPointsCard` is now a `Link` to `/rewards`. Business and creator dashboards share the
+  component, so one change closed the "points on two dashboards with no explanation" half of
+  the original complaint.
+- "DC Points" added to the business + creator **sidebar nav** and **drawer menu** (not the
+  mobile bottom nav — 5 slots, full). Brand excluded: the **5th** place that decision is
+  written down, now with a test asserting it.
+- **Two gates, not one.** Role lives in the static nav arrays; the `DRAGON_REWARDS_ENABLED`
+  launch flag is a hook, so it is applied at both render sites via `withDcPointsGate()`.
+  Without the second gate, turning the flag off would leave a nav entry pointing at a page
+  rendering "DC Points are not available." — recreating the dead end being fixed.
+
+Prod-verified: three routes to `/rewards` (sidebar item, chip `aria-label="4,300 DC Points"`,
+card `aria-label="View your DC Points"`), 0 console errors on a cold load.
 
 ## Key Decisions
 

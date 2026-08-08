@@ -1,5 +1,32 @@
 # Wiki Log
 
+## [2026-08-08] ingest | [[Knowledge-Sync Automation]] + [[Dragon Rewards Engine (DRE)]] — the sync that failed loudly into a log nobody reads
+
+New raw session `raw/sessions/2026-08-08-dc-points-discoverability-and-sync-break.md`. **Compounded onto
+two existing pages, no new page** — each half belongs to a subsystem that already has an owner.
+
+`concepts/knowledge-sync-automation.md` gains "An unattended sync fails silently" (PR #401): #378's
+`FORCE_INTERNAL` set named a wiki file that **does not exist**, because I built the list from
+`donny_knowledge` rows instead of the filesystem — **a row outlives its file**, so the DB looked
+authoritative. Its own guard then correctly aborted the consumer sync on every unattended post-merge
+run, silently. Recorded three durable lessons (never key a path list off the DB; a fail-loud guard is
+only as loud as its consumer; the two `source_id` namespaces per path are BY DESIGN, which is what
+produced two wrong diagnoses before the right one) plus the cheap orphan check — after a full sync,
+rows the sync did not touch are exactly the orphans.
+
+`concepts/dragon-rewards-engine.md`: **edited the stale "State as of writing (2026-08-07)" block in
+place** rather than appending beside it — concept pages carry the edit-on-supersession rule, unlike
+this log. It claimed not-deployed / PR-not-open / Codex-not-run; all three are now false. Added the
+#398 discoverability section and the Codex lesson worth keeping: a `? :` fallback on a role enum
+should name every branch it intends to serve — two of three Codex rounds caught the same fallback in
+two different places, the second inside generated prose.
+
+`index.md` — found **corrupted on main**, not by this work: 123 mojibake lines and the catalog
+duplicated (79 repeated link targets), introduced today by #399/#396/#402. Repaired here under a
+no-loss check (226 link targets before and after, 0 lost), since leaving a file I am editing in a
+known-broken state is worse than the scope creep. Also refreshed the DRE entry and added the new
+Sources line.
+
 ## [2026-08-08] ingest | [[verify_jwt Is Not Authorization]] — a new page, not a section on its sibling
 
 Deliberately a **new concept page** rather than compounding onto [[Service-Role Data Exposure]],

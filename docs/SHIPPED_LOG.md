@@ -26,6 +26,76 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-08] DC Points gets a way in — and the guard that killed the wiki sync
+
+Three things: #378 shipped, the founder immediately found the hole it left (#398), and testing a
+suspected design flaw in it uncovered that the consumer wiki sync had been dead for hours (#401).
+
+**#378 shipped.** Merged `859e8b25`; both edge functions deployed and boot-checked against
+`list_edge_functions` with **deliberately different flags** — `dre-award-engine` v8→v9
+(`verify_jwt=false`, cron-invoked) and `donny-orchestrator` v73→v74 (`verify_jwt=true`, consumer
+surface). Prod-verified on desktop with a real business account: balance 4,300 / Rising, the tier gap
+as a sentence ("Established needs 3 more completed campaigns."), labeled history, 0 console errors on
+a cold load with a cleared buffer.
+
+**The Codex gate took 3 rounds and two of them were the same bug.** Round 1: `/rewards` reachable by
+a brand account. Round 2: the identical defect one layer down in
+`donny-orchestrator/agents/rewards.ts`, where `agg?.role === "content_creator" ? "creator." :
+"business."` handed a brand user the entire business earn catalog **through generated prose** —
+somewhere no amount of looking at the UI would reveal it. One root cause: a two-way fallback silently
+absorbing a third role. **A `? :` fallback on a role enum should name every branch it intends to
+serve.** The guard is now stated in five places, each cross-referencing the others.
+
+**#398 — the founder's report.** *"On the dashboard the DC points section is not clickable and there's
+no page for it in the navigation panel."* Both real: #378 built the page, chip, notification and Donny
+agent but left the two dashboard cards inert. **A balance with nowhere to click is the same dead end
+as the "+200 DC Points" bell that started this work** — it had just moved one screen over. Fixed by
+making `DragonPointsCard` a `Link` (business and creator dashboards share it, so one change covers
+both) and adding "DC Points" to the sidebar nav and drawer menu. Gated **twice**: role lives in the
+static nav arrays, and the `DRAGON_REWARDS_ENABLED` flag is applied at both render sites via
+`withDcPointsGate()` — without it, turning the flag off leaves a nav entry pointing at a page that
+reads "DC Points are not available.", recreating the dead end being fixed.
+
+**#401 — the bigger find, and it was mine.** Asked to fix a suspected flaw in #378's `FORCE_INTERNAL`,
+I tested the mechanism before redesigning it, and was wrong twice before being right. Wrong once:
+"two rows per wiki path = the leak" — false, `donny_knowledge` holds two `source_id` namespaces per
+path by design (`wiki:` consumer, `internal-` internal). Wrong twice: "`FORCE_INTERNAL` strands the
+consumer row" — false, it targets that row's own id.
+
+The actual cause: the set named `analyses/dragoncandy-dragon-rewards-engine-dre-full-system-spec.md`,
+**a file that does not exist** — already split into two `dre-part-*` pages. I had built the list from
+the `donny_knowledge` rows instead of the filesystem, and a stale orphan row still carried the deleted
+path. **A row outlives its file, which is exactly why the DB looked authoritative.** The guard #378
+added for this case fired correctly and aborted — but `sync:wiki` runs unattended from the post-merge
+hook into a background log, so *"throws an error"* and *"fails silently"* were the same event. Every
+docs-touching merge after #378 skipped the consumer sync. The #378 migration targeted that same
+non-existent path, so it "succeeded" against an orphan while never covering the two pages that
+actually leaked — `dre-part-2` carries "Leaderboards & Community Mechanics" and point redemption,
+none of it built.
+
+Aborting the whole sync is **kept** deliberately: a renamed page is still in the scan under its new
+name, so continuing would publish it at `scope null`. The fix is a louder message (name the missing
+entries — a bare count says a path is wrong but not which), not a softer guard.
+
+**Prod repaired:** 3 rows re-scoped to internal, corrected sync run (106 pages, 0 errors), leak
+re-checked **after** a sync since a sync is what used to revert it — 0 consumer-reachable DRE rows,
+the first time that has held through the real code path rather than a manual `UPDATE`. Two orphan rows
+deleted (files gone, content covered by their split replacements), found by a general check: after a
+full sync, rows the sync did not touch are exactly the orphans.
+
+**Also repaired:** `docs/wiki/index.md` was duplicated and mojibake-corrupted on `main` — 123 bad
+lines, 79 repeated link targets — introduced today by #399/#396/#402, not by this work. Fixed under a
+no-loss assertion (226 link targets before and after).
+
+**Not fixed, flagged:** a cold load of a lazy route after a deploy fails with
+`Failed to fetch dynamically imported module`, because Vercel's SPA rewrite serves `200 text/html` for
+a missing asset. Affects **every** lazy route, not this feature; wants a chunk-load-error auto-reload.
+Mobile viewport remains unverified — `resize_window` reports success but leaves `innerWidth` at
+desktop, so using it would be a false pass.
+
+typecheck 0 · lint 0 · build ✓ · Codex clean on both PRs · 2013 tests passing. →
+`docs/wiki/concepts/dragon-rewards-engine.md` · `docs/wiki/concepts/knowledge-sync-automation.md` · #398, #401
+
 ## [2026-08-08] `verify_jwt=true` is not authorization — 6 anon-key-reachable service-role functions
 
 Follow-on from the `donny-dragonshare-score` removal the same day, which filed two `[med]` leads.
