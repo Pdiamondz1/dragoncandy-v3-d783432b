@@ -108,6 +108,49 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-08-07] DragonFeed uplift + nav active-state (`worktree-dc-improvements-16`, PR #384)
+
+**Output:** NEW `concepts/nav-active-state.md`; **compounded** three sections + rewritten Key
+Decisions + 6 new Known Issues onto `concepts/dragon-feed.md`; `index.md` (new Concepts line, new
+Sources line, refreshed Dragon Feed entry); `log.md` top entry; `SHIPPED_LOG.md` prepend;
+`PROJECT_CONTEXT.md` §5 one Built entry **plus an in-place correction of #382's** (see below).
+
+**Happened.** Ran the sync as the branch-finish step with PR #384 already open, so the docs join it
+rather than becoming a follow-up. Split by *subject*, not by session: the nav fix got its own page
+because the lesson outlives Dragon Feed entirely (it was reported there but affects all three navs
+and all three roles, and nothing owned "which nav item is current"); the feed work compounded onto
+the page that already owns the feed.
+
+**Worked.** [status-correction]'s decay corollary paid off immediately and unprompted: #382's §5
+entry still read `**Pending:** merge PR #382` while #382 was **already merged** — I only noticed
+because I merged `origin/main` into the branch first ([scope]) and saw its commit go by. Verified
+against `origin/main` (`380065e7`) rather than assuming, then moved it Built → Shipped as a
+one-liner, preserving the genuinely-unrun both-viewport pass rather than quietly dropping it. Also
+[orphans]-by-path (clean, via PowerShell — the bash one-liner tripped the worktree-isolation guard,
+worth remembering) and [wikilinks]-exact: grepped all four targets against `index.md` before
+linking, zero dangling.
+
+**Failed.** Nothing knowledge-side. RAG sync is post-merge per [rag-sync] — PR open, and `docs/`
+changed so the post-merge hook will fire on the main fast-forward.
+
+**Remember.** Two durable lessons from the work itself, both worth generalizing:
+**(1) A composite id that other code PARSES is a public contract.** `${creator.id}-${url}` looked
+like an implementation detail; it is persisted into `analytics_events.content_id` and
+string-stripped back apart by two live surfaces, so the planned uuid migration would have emptied
+the Inspiration page and dashboard strip **with no error**. Grep for consumers before changing any
+id scheme, however internal it looks — and note the failure mode was *silent*, which is why the
+spec reviewer catching it mattered more than any test would have.
+**(2) When a value drives ranking, prefer the one the client cannot author.** The upload timestamp
+was available two ways: parsed free from the filename (`${kind}-${Date.now()}`) or fetched from
+`storage.objects.created_at`. The free one is client-supplied — a creator writing to their own
+folder could craft a future timestamp and pin their work to the top of the feed permanently. Took
+the paid one.
+Process note: the spec reviewer returned **8 issues, most of them real**, on a spec I'd have
+otherwise implemented as written — including the id break and three features with no producer
+(poster frames, "Donny auto-tags", a "hot" term that was structurally zero). Verifying its two
+sharpest claims directly, rather than accepting or dismissing them, is what turned a table-plus-
+migration design into a no-schema one. **Review the spec, not just the code.**
+
 ### [2026-08-07] AI Creator Match auto-run + invite clarity (`worktree-dc-improvements-17`, PR #382)
 
 **Output:** `docs/wiki/concepts/campaign-invitations.md` (new) + the "The trigger" / "Showing the

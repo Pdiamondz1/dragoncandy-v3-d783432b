@@ -2,11 +2,15 @@ import { useState } from 'react';
 import { motion } from '@/lib/motion';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Sparkles } from 'lucide-react';
 
 interface BioStepProps {
   bio: string;
   onBioChange: (bio: string) => void;
+  /** Whether this creator's portfolio appears in the Dragon Feed. */
+  showInFeed: boolean;
+  onShowInFeedChange: (value: boolean) => void;
 }
 
 const SUGGESTIONS = [
@@ -17,7 +21,7 @@ const SUGGESTIONS = [
   "Social media wizard for small businesses",
 ];
 
-export function BioStep({ bio, onBioChange }: BioStepProps) {
+export function BioStep({ bio, onBioChange, showInFeed, onShowInFeedChange }: BioStepProps) {
   const [showSuggestions, setShowSuggestions] = useState(!bio);
 
   return (
@@ -76,6 +80,31 @@ export function BioStep({ bio, onBioChange }: BioStepProps) {
           ))}
         </motion.div>
       )}
+
+      {/* Dragon Feed opt-in. Deliberately ASKED here rather than defaulted silently in the DB:
+          publishing a creator's work is a consent decision. It rides on this step instead of
+          getting its own so it costs no extra tap for the (expected) yes. */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35 }}
+        className="flex w-full items-center justify-between gap-4 rounded-2xl border border-landing-line bg-white px-4 py-3"
+      >
+        <div className="min-w-0">
+          <Label htmlFor="show-in-feed" className="text-sm font-semibold text-landing-ink">
+            Show my work in the Dragon Feed
+          </Label>
+          <p className="mt-0.5 text-xs text-landing-ink-soft">
+            This is how businesses discover you. You can change it anytime in Settings.
+          </p>
+        </div>
+        <Switch
+          id="show-in-feed"
+          checked={showInFeed}
+          onCheckedChange={onShowInFeedChange}
+          className="flex-shrink-0"
+        />
+      </motion.div>
     </div>
   );
 }

@@ -32,6 +32,7 @@ import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTil
 import { DragonPointsCard } from '@/components/dragonshare/DragonPointsCard';
 import { DragonShareActivityCard } from '@/components/dragonshare/DragonShareActivityCard';
 import { SocialMediaManagerTile } from '@/components/dashboard/SocialMediaManagerTile';
+import { FeedOptInCard } from '@/components/dragon-feed/FeedOptInCard';
 import { useCreatorDragonShareEarnings } from '@/hooks/useDragonShare';
 import { useCreatorDragonShareActivity } from '@/hooks/useCreatorDragonShareActivity';
 import { UpcomingPostsWidget } from '@/components/outstand/UpcomingPostsWidget';
@@ -170,6 +171,10 @@ const CreatorDashboard = () => {
                 />
               </div>
             </div>
+
+            {/* Renders only for a creator with portfolio work who is opted OUT of the feed —
+                self-limiting, so opting in removes it for good. */}
+            <FeedOptInCard />
 
             {/* Ratings to leave + upcoming deadlines, one quiet frame */}
             <NeedsAttentionSection>

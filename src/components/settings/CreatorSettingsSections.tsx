@@ -217,7 +217,7 @@ export function CreatorSettingsSections({
         value="portfolio"
         icon="🎨"
         title="Portfolio"
-        subtitle="Work samples and past projects"
+        subtitle="Work samples and where they appear"
         nudge={hasPortfolio ? undefined : 'Upload work samples to stand out →'}
       >
         <PortfolioUpload
@@ -227,6 +227,28 @@ export function CreatorSettingsSections({
             onFieldBlur();
           }}
         />
+
+        {/* Moved here from "Privacy". It was filed as a privacy toggle, but for a creator this is
+            a discovery decision — and buried under Privacy is why most creators never found it
+            and stayed invisible in the feed by default rather than by choice. */}
+        <div className="mt-4 flex items-center justify-between gap-4 border-t border-dc-teal/15 pt-4">
+          <div className="min-w-0">
+            <Label htmlFor="allow_portfolio_in_feed" className="text-sm font-medium">
+              Show my work in the Dragon Feed
+            </Label>
+            <p className="mt-0.5 text-xs text-dc-text-muted">
+              This is how businesses browse creators' work to decide who to hire.
+            </p>
+          </div>
+          <Switch
+            id="allow_portfolio_in_feed"
+            checked={formData.allow_portfolio_in_feed}
+            onCheckedChange={(checked) => {
+              onInputChange('allow_portfolio_in_feed', checked);
+              onFieldBlur();
+            }}
+          />
+        </div>
       </SettingsSection>
 
       {/* 4. Social Media */}
@@ -289,25 +311,8 @@ export function CreatorSettingsSections({
             </SelectContent>
           </Select>
         </div>
-
-        <div className="flex items-center justify-between">
-          <div>
-            <Label htmlFor="allow_portfolio_in_feed" className="text-sm font-medium">
-              Show portfolio in discover feed
-            </Label>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Let brands browse your work in the public feed
-            </p>
-          </div>
-          <Switch
-            id="allow_portfolio_in_feed"
-            checked={formData.allow_portfolio_in_feed}
-            onCheckedChange={(checked) => {
-              onInputChange('allow_portfolio_in_feed', checked);
-              onFieldBlur();
-            }}
-          />
-        </div>
+        {/* "Show my work in the Dragon Feed" moved to the Portfolio section — it is a discovery
+            decision, and burying it here is why creators never found it. */}
       </SettingsSection>
     </Accordion>
   );

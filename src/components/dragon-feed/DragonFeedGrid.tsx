@@ -4,6 +4,10 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { RADIUS_OPTIONS } from '@/lib/creatorLocationFilter';
 import { feedCreatorsFromMedia } from '@/lib/feedCreators';
 import { useFeedCreatorSearch } from '@/hooks/useFeedCreatorSearch';
+import { useFeedLastVisit } from '@/hooks/useFeedLastVisit';
+import { availableSkills, filterBySkill } from '@/lib/feedSkills';
+import { isNewSince, countNewSince } from '@/lib/feedOrdering';
+import { AppChip } from '@/components/app/AppChip';
 import { FeedTile } from './FeedTile';
 import { FeedPost } from './FeedPost';
 import { FeedViewer } from './FeedViewer';
@@ -26,31 +30,44 @@ export const DragonFeedGrid: React.FC<DragonFeedGridProps> = ({ browseAllHref })
   // All control state is owned here; only the rendered tree branches on searchActive.
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [skillFilter, setSkillFilter] = useState<string | null>(null);
   const [locationQuery, setLocationQuery] = useState('');
   const [radiusMiles, setRadiusMiles] = useState<number | null>(25);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+
+  const { lastVisit } = useFeedLastVisit();
 
   const feedCreators = useMemo(() => feedCreatorsFromMedia(portfolioMedia), [portfolioMedia]);
   const search = useFeedCreatorSearch(feedCreators, searchTerm, locationQuery, radiusMiles);
 
   const searchActive = searchTerm.trim() !== '' || locationQuery.trim() !== '';
   const locationSet = locationQuery.trim() !== '';
-  const anyFilter = searchActive || typeFilter !== 'all';
+  const anyFilter = searchActive || typeFilter !== 'all' || skillFilter !== null;
+
+  // Chips come from the skills actually present in the feed, so none of them can match nothing.
+  const skillOptions = useMemo(() => availableSkills(portfolioMedia), [portfolioMedia]);
+  const newCount = useMemo(() => countNewSince(portfolioMedia, lastVisit), [portfolioMedia, lastVisit]);
 
   // Leave browse mode → close any open lightbox so it can't re-pop when the search later clears.
   useEffect(() => {
     if (searchActive) setViewerIndex(null);
   }, [searchActive]);
 
-  // Browse-mode media: type filter only (a location query would be searchActive, not browse).
+  // Browse-mode media: type + skill (a location query would be searchActive, not browse).
+  // Already sorted newest-first by useUniqueCreatorPortfolio; filtering preserves that order.
   const browseMedia = useMemo(
-    () => portfolioMedia.filter(item => typeFilter === 'all' || item.type === typeFilter),
-    [portfolioMedia, typeFilter],
+    () =>
+      filterBySkill(
+        portfolioMedia.filter(item => typeFilter === 'all' || item.type === typeFilter),
+        skillFilter,
+      ),
+    [portfolioMedia, typeFilter, skillFilter],
   );
 
   const clearFilters = () => {
     setSearchTerm('');
     setTypeFilter('all');
+    setSkillFilter(null);
     setLocationQuery('');
     setRadiusMiles(25);
     setViewerIndex(null);
@@ -155,14 +172,38 @@ export const DragonFeedGrid: React.FC<DragonFeedGridProps> = ({ browseAllHref })
           )}
         </div>
 
+        {/* Skill chips — hidden in search mode, matching how the type filter already behaves
+            (search swaps the media grid for a creator list, which these don't apply to). */}
+        {!searchActive && skillOptions.length > 1 && (
+          <div className="flex flex-wrap gap-2">
+            <AppChip active={skillFilter === null} onClick={() => setSkillFilter(null)}>
+              All work
+            </AppChip>
+            {skillOptions.map((skill) => (
+              <AppChip
+                key={skill.value}
+                active={skillFilter === skill.value}
+                onClick={() => setSkillFilter(skillFilter === skill.value ? null : skill.value)}
+              >
+                {skill.label}
+              </AppChip>
+            ))}
+          </div>
+        )}
+
         {locationSet && search.status === 'failed' && (
           <p className="text-sm text-dc-pink-accent">Couldn't find that location — try another.</p>
         )}
       </div>
 
       {/* Results Count */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">{countLine}</p>
+        {!searchActive && newCount > 0 && (
+          <span className="rounded-full bg-dc-teal/10 px-2.5 py-0.5 text-xs font-semibold text-dc-teal-btn">
+            {newCount} new since your last visit
+          </span>
+        )}
       </div>
 
       {/* Feed / Search results */}
@@ -188,13 +229,23 @@ export const DragonFeedGrid: React.FC<DragonFeedGridProps> = ({ browseAllHref })
       ) : isMobile ? (
         <div className="space-y-4">
           {browseMedia.map((media, i) => (
-            <FeedPost key={media.id} media={media} onOpen={() => setViewerIndex(i)} />
+            <FeedPost
+              key={media.id}
+              media={media}
+              isNew={isNewSince(media, lastVisit)}
+              onOpen={() => setViewerIndex(i)}
+            />
           ))}
         </div>
       ) : (
         <div className="-mx-4 grid grid-cols-3 gap-0.5 lg:mx-0 lg:grid-cols-4 lg:gap-1 xl:grid-cols-5">
           {browseMedia.map((media, i) => (
-            <FeedTile key={media.id} media={media} onOpen={() => setViewerIndex(i)} />
+            <FeedTile
+              key={media.id}
+              media={media}
+              isNew={isNewSince(media, lastVisit)}
+              onOpen={() => setViewerIndex(i)}
+            />
           ))}
         </div>
       )}
