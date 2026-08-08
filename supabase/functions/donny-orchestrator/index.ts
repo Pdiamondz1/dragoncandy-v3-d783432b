@@ -326,7 +326,9 @@ serve(async (req) => {
     // NB: body.org_id is intentionally NOT read — the org is resolved server-side
     // from the profile below (a client org_id must never scope service-role reads).
     const body = (await req.json()) as OrchestratorInput;
-    const { query, page_path, page_context, user_role, conversation_history } = body;
+    // NB: body.user_role is intentionally NOT destructured — the role is resolved
+    // server-side from the profile below, same rule as body.org_id above.
+    const { query, page_path, page_context, conversation_history } = body;
 
     if (!query || !page_path) {
       return new Response(
@@ -370,7 +372,14 @@ serve(async (req) => {
 
     const userContext: UserContext = {
       user_id: userId,
-      user_role: profile?.role ?? user_role ?? "unknown",
+      // Server-derived only. The client-supplied `user_role` fallback was dropped:
+      // `profiles.role` is NOT NULL, so a profile row always carries a role, and
+      // this field now decides which role's surface a user is NAVIGATED to
+      // (billingRoute/socialRoute) — not just how an agent phrases an answer.
+      // Callers do send the field (DonnyWeeklyPlanner posts `user_role: 'business'`,
+      // which isn't even a valid profiles.role value), so letting it win was a
+      // client-steerable identity input for no benefit.
+      user_role: profile?.role ?? "unknown",
       org_id: resolvedOrgId,
       org_tier: orgTier,
       full_name: profile?.full_name ?? undefined,
