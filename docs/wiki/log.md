@@ -1,5 +1,36 @@
 # Wiki Log
 
+## [2026-08-08] ingest | Notification & invitation authorization — three holes the invite UX walked into
+
+Ingested [[Notification & Invitation Authorization Session]] (PR #387 + branch
+`fix/notification-authorization`). **Compounded, not new** — both subjects already had owning
+pages, and each compound is a *reframe* rather than an append, because in both cases the page
+stated something now false:
+
+- **[[Notification Delivery]]** — new "Who may notify whom" section. The page described
+  `send-notification-email`'s self-only gate as existing *to prevent email enumeration*, then
+  told all frontend code to route around it through `create-notification` — which had no gate
+  of its own. It also documented `emailType ?? map[type]` ("a caller can target **any**
+  template") as a **feature**; that line is the vulnerability, and it is now struck and
+  explained rather than deleted, per "flag contradictions, never silently overwrite." The
+  bulk-invite Known Issue flipped to fixed; two new residuals filed (free-text
+  `title`/`body`/`actionUrl` for related callers; cold contact resting on an ordering
+  dependency nothing enforces).
+- **[[Campaign Invitations]]** — new "Invitation & application integrity" section. Its
+  mechanics table already named "applying after the campaign leaves `published`" as *the one
+  real privilege*; the `campaign_id`-repointing hole manufactured exactly that, so the fix
+  belongs on the page that defines the privilege.
+
+Also corrected both `index.md` entries: the Campaign Invitations line ended with
+"`bulk-invite` skips the in-app bell", now fixed.
+
+Durable lessons carried onto the pages: a policy **cannot** pin a column against change
+(`WITH CHECK` sees no `OLD`) — that is what column GRANTs are for; an omitted `WITH CHECK`
+defaults to `USING` and is **not** unconstrained; a `SECURITY DEFINER` RPC silently opts out
+of the RLS policy protecting the table it writes; a history-only backtest can only see what
+has already happened, so enumerate the call sites too; and **ignoring an untrusted input is
+not automatically safe** — dropping `emailType` silently killed 7 working email flows.
+
 ## [2026-08-07] ingest | [[Campaign Invitations]] — a feature nobody could explain, and a matcher nobody triggered
 
 Ingested [[Creator Match Auto-Run & Invite Clarity Session]] (PR #382). New concept page
