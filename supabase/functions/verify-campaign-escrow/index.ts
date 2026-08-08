@@ -97,14 +97,44 @@ serve(async (req) => {
     let actualPaymentIntentId: string | null = null;
     let chargedAmountCents: number | null = null;
 
-    // Priority 1: sessionId from URL
+    // Priority 1: sessionId from the request.
+    //
+    // `sessionId` is caller-supplied and, until this binding existed, the ONLY test was
+    // `payment_status === 'paid'` — the session was never tied to THIS campaign. Campaign
+    // ownership is checked above, so the caller owns the campaign; what they did not have to
+    // own was the payment. A business could pay once for something cheap (their own $5
+    // campaign, or a package order — the session id is handed to them in their own success
+    // URL) and then POST that same `sessionId` against an expensive campaign. It would flip to
+    // `escrow_status='held'`, publish→active, create the collaboration, and overwrite
+    // `escrow_payment_intent_id` with the unrelated payment — so a later refund would refund
+    // the wrong charge, and the platform would pay the creator out of its own balance for a
+    // campaign nobody funded. One paid session, unlimited campaigns.
+    //
+    // `create-campaign-escrow` already stamps `metadata.campaign_id` + `metadata.type` on the
+    // session, so the binding was available all along and simply never consulted. Priority 3
+    // below was already correctly scoped by `metadata['campaign_id']` — this makes Priority 1
+    // agree with it.
     if (sessionId) {
       try {
         const session = await stripe.checkout.sessions.retrieve(sessionId);
-        if (session.payment_status === 'paid') {
+        const sessionCampaignId = session.metadata?.campaign_id;
+        const sessionType = session.metadata?.type;
+        const boundToThisCampaign =
+          sessionCampaignId === campaignId && sessionType === 'campaign_escrow';
+
+        if (session.payment_status === 'paid' && boundToThisCampaign) {
           paymentSucceeded = true;
           actualPaymentIntentId = session.payment_intent as string;
           chargedAmountCents = session.amount_total ?? null;
+        } else if (session.payment_status === 'paid') {
+          // Paid, but for something else. Do NOT accept it — and say so loudly, because the
+          // only way to reach here is to present a session that isn't this campaign's.
+          logStep("REJECTED session: paid but not bound to this campaign", {
+            campaignId,
+            sessionCampaignId: sessionCampaignId ?? null,
+            sessionType: sessionType ?? null,
+            userId: user.id,
+          });
         }
       } catch (e) {
         logStep("Session retrieval failed", { error: String(e) });

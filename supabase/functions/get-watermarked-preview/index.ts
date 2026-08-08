@@ -183,12 +183,48 @@ serve(async (req) => {
       });
     }
 
+    // Bind the FILE to the collaboration that was just authorized.
+    //
+    // Everything above authorizes `collaboration_id`; the object signed below came from
+    // `file_path` + `bucket_name`, and until this check nothing ever joined the two. Anyone
+    // holding one collaboration of their own in an approved state could name ANY object in any
+    // private bucket and get a signed download URL for it — and `campaign-deliverables` is
+    // service-role-only for SELECT (migration `20260425000000`), so RLS is no second control
+    // here. It also defeated two rules this function exists to enforce: the preview-vs-download
+    // ladder, and the `dispute_outcome='refund'` access revocation, both of which could be
+    // sidestepped by re-presenting a known path under a different, still-approved collaboration.
+    //
+    // Resolve the file from `file_uploads` scoped to THIS collaboration's campaign, and sign
+    // only what that lookup returns — never the caller's strings.
+    const { data: fileRow, error: fileError } = await adminClient
+      .from('file_uploads')
+      .select('file_path, bucket_name')
+      .eq('campaign_id', collab.campaign_id)
+      .eq('file_path', file_path)
+      .eq('bucket_name', bucket_name)
+      .maybeSingle();
+
+    if (fileError) {
+      console.error('[get-watermarked-preview] file lookup failed:', fileError.message);
+      return new Response(JSON.stringify({ error: 'Authorization check unavailable' }), {
+        status: 503, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+      });
+    }
+    if (!fileRow) {
+      console.warn('[get-watermarked-preview] file not part of this collaboration', {
+        userId, collaboration_id, bucket_name,
+      });
+      return new Response(JSON.stringify({ error: 'File not found for this collaboration' }), {
+        status: 403, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+      });
+    }
+
     // Generate signed URL with appropriate expiry
     const expirySeconds = canDownload ? 3600 : 900;
     const signOptions = canDownload ? { download: true } : {};
     const { data: signedData, error: signError } = await adminClient.storage
-      .from(bucket_name)
-      .createSignedUrl(file_path, expirySeconds, signOptions);
+      .from(fileRow.bucket_name)
+      .createSignedUrl(fileRow.file_path, expirySeconds, signOptions);
 
     if (signError) {
       return new Response(JSON.stringify({ error: 'Failed to generate URL' }), {

@@ -45,6 +45,54 @@ const handler = async (req: Request): Promise<Response> => {
     const data: PromotionNotificationRequest = await req.json();
     console.log("Received notification request:", { ...data, customerPhone: "***" });
 
+    // Bind the RECIPIENT to a submission on a promotion this caller owns.
+    //
+    // `caller` was verified above and then never used again: recipient address, phone, name and
+    // every line of copy came from the request body. This function sends a Resend email from
+    // `onboarding@notify.dragoncandy.io` and a Twilio SMS from the org number — so any
+    // authenticated user could send branded DragonCandy mail and texts to arbitrary strangers,
+    // burning sender reputation and org-wide Twilio credit. That is a phishing carrier, not a
+    // notification endpoint.
+    //
+    // The contact details are re-read from `promotion_submissions` and the body's values are
+    // discarded, so the caller can only reach someone who actually submitted to THEIR promotion.
+    // Deliberately keyed off the existing `customerEmail` field rather than a new `submissionId`:
+    // it closes the hole without a request-contract change, so there is no window where a
+    // not-yet-deployed frontend and a deployed function disagree.
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      { auth: { persistSession: false } },
+    );
+
+    const { data: submission, error: submissionError } = await admin
+      .from("promotion_submissions")
+      .select("customer_email, customer_phone, customer_name, promotions!inner(user_id)")
+      .eq("customer_email", data.customerEmail)
+      .eq("promotions.user_id", caller.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (submissionError) {
+      console.error("[send-promotion-notification] submission lookup failed:", submissionError.message);
+      return new Response(JSON.stringify({ error: "Authorization check unavailable" }), {
+        status: 503, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+    if (!submission) {
+      console.warn("[send-promotion-notification] BLOCKED: recipient has no submission on a promotion owned by this caller", {
+        callerId: caller.id,
+      });
+      return new Response(JSON.stringify({ error: "Not permitted to notify this recipient" }), {
+        status: 403, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+
+    // Server-resolved contact details win over anything the request supplied.
+    data.customerEmail = submission.customer_email;
+    data.customerPhone = submission.customer_phone ?? undefined;
+    data.customerName = submission.customer_name ?? data.customerName;
+
     const displayName = data.customerName || 'there';
     const esc = {
       customerName: htmlEscape(displayName),
