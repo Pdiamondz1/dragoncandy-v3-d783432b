@@ -31,6 +31,22 @@ export interface CreateCampaignData {
   org_unit_id?: string | null;
 }
 
+/**
+ * Did the publish broadcast actually deliver?
+ *
+ * A 2xx only means the edge function ran — it can still return `allDelivered: false`
+ * when every recipient list built fine but the sends themselves bounced. Claiming
+ * "Creators and brands have been notified!" on that is the same lie as claiming it on a
+ * leg that mailed nobody, just in a narrower window.
+ *
+ * Absent `allDelivered` is treated as delivered ON PURPOSE: during the deploy window the
+ * previously-live function returns `{ ok, notifications_sent }` with no such field, and
+ * the client must not start reporting failure against a version that simply predates it.
+ */
+export function didBroadcast(result: unknown): boolean {
+  return (result as { allDelivered?: boolean } | null)?.allDelivered !== false;
+}
+
 export const useCreateCampaign = () => {
   const { user, activeOrgUnit } = useAuth();
   const queryClient = useQueryClient();
@@ -65,11 +81,12 @@ export const useCreateCampaign = () => {
         try {
           // invoke resolves on a non-2xx — read the error off the result, don't rely on
           // the catch (see useUpdateCampaign for the same trap).
-          const { error } = await supabase.functions.invoke('send-campaign-publish-notifications', {
-            body: { campaignId: data.id, campaignTitle: data.title, userId: user!.id },
-          });
+          const { data: result, error } = await supabase.functions.invoke(
+            'send-campaign-publish-notifications',
+            { body: { campaignId: data.id, campaignTitle: data.title, userId: user!.id } },
+          );
           if (error) console.error('Failed to send publish notifications:', error);
-          else broadcastSucceeded = true;
+          else broadcastSucceeded = didBroadcast(result);
         } catch (error) {
           console.error('Failed to send publish notifications:', error);
         }
@@ -158,11 +175,12 @@ export const useUpdateCampaign = () => {
           // invoke RESOLVES on a non-2xx (returns { data: null, error }), so the error has
           // to be read off the result — the bare try/catch here was dead code for every
           // 4xx/5xx and reported a total failure to notify as success.
-          const { error } = await supabase.functions.invoke('send-campaign-publish-notifications', {
-            body: { campaignId: data.id, campaignTitle: data.title, userId: user!.id },
-          });
+          const { data: result, error } = await supabase.functions.invoke(
+            'send-campaign-publish-notifications',
+            { body: { campaignId: data.id, campaignTitle: data.title, userId: user!.id } },
+          );
           if (error) console.error('Failed to send publish notifications:', error);
-          else broadcastSucceeded = true;
+          else broadcastSucceeded = didBroadcast(result);
         } catch (error) {
           console.error('Failed to send publish notifications:', error);
         }
