@@ -63,6 +63,21 @@ const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Record<string, string> = {
   dragonshare_declined: 'dragonshare_declined',
 };
 
+// Email templates a USER-authenticated caller may select explicitly via `emailType`.
+// These are the ones real client flows already send whose notification type has no entry
+// in NOTIFICATION_TYPE_TO_EMAIL_TYPE, so they cannot be derived. Anything outside this set
+// (e.g. `payment_received`) is ignored for non-service callers and falls back to the
+// mapping. Keep in sync with the `emailType:` literals in src/.
+const CLIENT_ALLOWED_EMAIL_TYPES = new Set([
+  'sponsorship_completed',
+  'sponsorship_completion_request',
+  'approval_pending',
+  'completion_request',
+  'content_started',
+  'file_uploaded_by_creator',
+  'file_uploaded_by_restaurant',
+]);
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders(req) });
@@ -278,14 +293,18 @@ const handler = async (req: Request): Promise<Response> => {
     // 3. Send email if enabled (or forced)
     let emailSent = false;
     if (forceDelivery || categoryPrefs.email) {
-      // A user-authenticated caller does NOT get to choose which email template fires:
-      // `emailType` is an arbitrary template selector, so honouring it would let someone
-      // send a recipient any transactional email in the catalogue (a payment receipt, a
-      // hire confirmation) regardless of what actually happened. Non-service callers are
-      // pinned to the type→template mapping; the service role keeps the override.
-      const resolvedEmailType = isService
-        ? (emailType ?? NOTIFICATION_TYPE_TO_EMAIL_TYPE[type])
-        : NOTIFICATION_TYPE_TO_EMAIL_TYPE[type];
+      // `emailType` is a raw template selector, so honouring it unchecked would let a user
+      // send a recipient ANY transactional email in the catalogue — a payment receipt, a
+      // hire confirmation — regardless of what actually happened.
+      //
+      // But it cannot simply be ignored either: several real flows legitimately depend on
+      // it because their notification type has no mapping entry. Dropping it silently
+      // killed those emails — a regression caught in review. So it is allow-listed rather
+      // than discarded: exactly the templates clients already send, nothing more.
+      const requestedEmailType = isService
+        ? emailType
+        : (emailType && CLIENT_ALLOWED_EMAIL_TYPES.has(emailType) ? emailType : undefined);
+      const resolvedEmailType = requestedEmailType ?? NOTIFICATION_TYPE_TO_EMAIL_TYPE[type];
       if (resolvedEmailType) {
         // Synthetic Weight Engine: never send real email to bot accounts (protects sender
         // reputation). The in-app notification row above is still created for bots — only the
@@ -314,10 +333,13 @@ const handler = async (req: Request): Promise<Response> => {
                   type: resolvedEmailType,
                   data: {
                     recipientUserId: recipientId,
-                    // Server-composed for templated types (content_liked), so the caller
-                    // cannot put chosen text or a chosen link into an outbound email.
-                    ...(templatedEmailData ?? emailData),
+                    ...(emailData ?? {}),
                     ...(data ?? {}),
+                    // LAST on purpose. Server-composed fields must win: spread earlier,
+                    // a caller could put `likerName`/`contentUrl` in `data` and overwrite
+                    // the templated values, which defeated the whole point of templating
+                    // this type. Null for every non-templated type, so a no-op there.
+                    ...(templatedEmailData ?? {}),
                   },
                 }),
               }
