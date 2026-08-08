@@ -124,7 +124,7 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   the composite `content_id` back apart), and 34/34 items already carry a `storage.objects.created_at`.
   Shipped real dates + stable order, NEW badges, skill chips, duration badges, desktop attribution,
   and gated view counts; plus the supply fix for 26 items hidden behind a default-off opt-in nobody
-  could find. **Pending:** merge PR #384, then `verify-prod` on both viewports (not yet run). No
+  could find. **Merged 2026-08-08 (e3f12c14). Pending:** `verify-prod` on both viewports (still not run). No
   migration, no RLS/edge-function change. DragonShare merge deferred — no public SELECT policy and
   no consent flag anywhere.
   → `docs/wiki/concepts/dragon-feed.md` · `docs/wiki/concepts/nav-active-state.md` · #384
@@ -154,8 +154,12 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   anchor. **`updated_at` is a modification stamp, never a status signal**, and legacy values are
   unreliable BOTH ways (`== created_at` means "no explicit writer touched it", not "never modified").
   Post-merge, a Codex P2 on the docs falsified #385's own audit claim that
-  `campaign_collaborations.updated_at` has no explicit writer — it has one, so the alert repoint costs
-  ~1-in-16 historical status alerts, not zero. Open: a `status_changed_at` for the alert windows (#385).
+  `campaign_collaborations.updated_at` has no explicit writer — it has one, so the `created_at` repoint
+  cost ~1-in-16 historical status alerts. **Closed by #391**: `campaigns.escrow_status_changed_at`
+  (escrow only) + `campaign_collaborations.status_changed_at` (status/content_status), each stamped by
+  its own transition-only trigger; migration `20260808020000` applied + behaviourally verified, fn v97.
+  The escrow anchor deliberately ignores a `status` change — Codex caught the symmetric draft
+  announcing escrow events that never happened.
   → `docs/wiki/concepts/updated-at-trigger-drift.md`
 - **AI Creator Match auto-run + invitation clarity** — `match-creators` had **no automatic trigger
   anywhere**, so every new campaign opened on a red "No AI matches yet"; the invite had zero

@@ -1,5 +1,25 @@
 # Wiki Log
 
+## [2026-08-08] update | [[Updated-At Trigger Drift]] — the follow-up anchor, and why it is asymmetric
+
+Compounded onto the existing concept page rather than creating a new one: this is the same thread
+(PR #391 closes the open issue PR #385 left), and splitting it would have separated a defect from
+its fix. Added a "The follow-up: `status_changed_at`" section, extended the anchor table with both
+new columns, and **closed two Known Issues in place** — the `status_changed_at` item and the
+"deployed comment overstates the case" item, which was fixed as planned during the v97 redeploy
+rather than as a standalone comment deploy.
+
+Core docs: `DATABASE_SCHEMA.md` gains both columns plus the rule that decides anchor scope (the
+consumer, not symmetry); `PROJECT_CONTEXT.md` §5 had its existing line **edited in place** per the
+status-correction lesson, never appended to.
+
+Also corrected a `**Pending:**` clause that decayed mid-session: #384's said "merge PR #384", but it
+merged (e3f12c14) while this work was in flight. Exactly the decay pattern the 2026-08-07 sweep
+recorded — the session that merges a PR is rarely the one that wrote its §5 line.
+
+Pages: updated `concepts/updated-at-trigger-drift.md`, `index.md`, `docs/DATABASE_SCHEMA.md`,
+`docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §5 (2 corrections).
+
 ## [2026-08-07] ingest | [[Updated-At Trigger Drift]] — the column that never moved, and the two readers that had adapted
 
 Ingested [[Handle-Updated-At Restore Session]] (PR #385). New concept page
