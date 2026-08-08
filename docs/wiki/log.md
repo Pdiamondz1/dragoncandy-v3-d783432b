@@ -1,5 +1,35 @@
 # Wiki Log
 
+## [2026-08-08] ingest | [[verify_jwt Is Not Authorization]] — a new page, not a section on its sibling
+
+Deliberately a **new concept page** rather than compounding onto [[Service-Role Data Exposure]],
+which is the standing rule. The two are distinct mechanisms: that page is about a *credential* that
+bypasses RLS once you are inside; this is about a *platform gate* that never let anyone be
+identified in the first place. They compound rather than overlap, and a reader hunting "why did
+`verify_jwt:true` not stop this" will not find it under a service-role heading. Cross-linked both
+ways.
+
+The load-bearing fact, verified on prod rather than reasoned about: the anon key is a valid JWT and
+ships in the frontend bundle, so `dragonshare-notify` returned **401 with no header and 200 with the
+public anon key**. The 401 is what made it look protected.
+
+Three things I wanted preserved beyond the instance list. **The sweep's own blind spot** — a
+mechanical scan can only find a missing *signal*, and `fire-promotion-social-hook` was cleared
+because it calls `getUser` while never checking ownership. **A read gate is not a write gate** — I
+reused `evaluateCampaignAccess` (documented as "can this actor SEE") to guard a write, importing an
+applicant arm that let a rejected applicant mint signed URLs over private deliverables; the review
+caught it. And **the CI gate skipped 4 of the 6 functions I changed** (`.typecheck-ignore`), so
+"66 clean" was not evidence — the real check was a hand-run before/after `deno check` (16 → 16, all
+pre-existing).
+
+Recorded a correction too: I told the founder both DragonShare hooks were service-role-only. The
+browser calls `dragonshare-notify` twice; a blanket guard would have broken submission and decline.
+The grep that disproved it took thirty seconds and I ran it after making the claim.
+
+Pages: `concepts/anon-key-is-not-authorization.md` (new). Source:
+`raw/sessions/2026-08-08-anon-key-reachable-edge-functions.md`. Core docs: `SHIPPED_LOG.md`
+prepended, `PROJECT_CONTEXT.md` §5, `index.md`.
+
 ## [2026-08-08] update | [[Dragon Rewards Engine (DRE)]] — DC Points visibility cleared its review gate
 
 Status-only follow-up to the 2026-08-07 ingest below, which is left as written (a dated

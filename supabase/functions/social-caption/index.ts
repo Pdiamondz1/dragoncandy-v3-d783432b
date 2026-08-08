@@ -4,6 +4,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
 import { getModelConfig } from "../_shared/model-routing.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
+import { isAuthorizedIngest } from "../_shared/ingest-auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -76,12 +77,52 @@ serve(async (req) => {
       deliverable_number, total_deliverables, filename,
     } = body;
 
-    if (!party_role || !platform || !user_id) {
+    if (!party_role || !platform) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
         { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
+
+    // --- Authorization -------------------------------------------------------
+    // This is an uncapped Claude proxy on the platform's ANTHROPIC_API_KEY that also writes
+    // `donny_cost_ledger` — the source of truth for the ≤15%-of-revenue AI kill-switch. It
+    // previously read no Authorization header, and `verify_jwt=true` is not a gate because the
+    // anon key is a valid JWT shipped in the frontend bundle. Worse, `user_id` came from the
+    // BODY, so spend could be attributed to an arbitrary victim, poisoning the very signal
+    // `aios_cost_stats()` reports. See [[Service-Role Data Exposure]] check 4 (server-derived ids).
+    //
+    // Two legitimate caller shapes, so two accepted credentials:
+    //   - service role — the three server hooks (fire-campaign / fire-dragonshare /
+    //     fire-promotion -social-hook), which pass a `user_id` for a party that is not the caller.
+    //   - a signed-in user — three browser call sites, whose id must come from the JWT, never
+    //     the body.
+    const isIngest = isAuthorizedIngest(req);
+    let resolvedUserId: string | null = null;
+
+    if (isIngest) {
+      if (!user_id) {
+        return new Response(
+          JSON.stringify({ error: "Missing required fields" }),
+          { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
+        );
+      }
+      resolvedUserId = user_id; // trusted backend attributing spend to the party it is drafting for
+    } else {
+      const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+      if (token) {
+        const anon = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") ?? "");
+        const { data: userData } = await anon.auth.getUser(token);
+        resolvedUserId = userData?.user?.id ?? null; // the anon key yields no user — that is the point
+      }
+      if (!resolvedUserId) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
+        );
+      }
+    }
+    // --- end authorization ---------------------------------------------------
 
     const config = getModelConfig("social-caption");
     const platformCfg = PLATFORM_CONFIG[platform.toLowerCase()] ?? DEFAULT_PLATFORM_CONFIG;
@@ -184,7 +225,7 @@ Respond in JSON: {"caption": "...", "hashtags": ["#tag1", "#tag2"]}`,
 
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     await logCost(supabaseAdmin, {
-      userId: user_id,
+      userId: resolvedUserId, // JWT-derived for browser callers; body value only on the service-role path
       edgeFunction: "social-caption",
       model: config.model,
       tier: config.tier,

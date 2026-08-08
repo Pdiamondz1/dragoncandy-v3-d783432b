@@ -117,6 +117,23 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 > proof the object exists (see [[Content Delivery State Machine]]) and "recorded ≠ actual" has
 > bitten this project before.
 
+- **`verify_jwt=true` is not authorization — 6 anon-key-reachable service-role edge functions** —
+  the anon key **is** a valid JWT and ships in the frontend bundle, so the platform default only
+  rejects a *missing* header and never establishes a user; any service-role function skipping
+  `auth.getUser()` answered **anyone on the internet** (proven on prod: 401 with no header, **200
+  with the public anon key**). A 100-function sweep found 18 candidates → 4 legitimately public,
+  8 authorized another way, **6 exposed**; both money functions (`resolve-dispute`,
+  `verify-package-order-escrow`) came back clean. Fixed per caller shape, not with one guard:
+  ingest gates, JWT-derived ids (`social-caption` fed `donny_cost_ledger`, the AI kill-switch's own
+  ledger), ownership assertions, and a per-event split for `dragonshare-notify` (browser-called
+  twice — a blanket guard would have broken submission and decline). Two unpaired-id defects fixed;
+  a read gate (`evaluateCampaignAccess`) replaced with a purpose-built write gate after review
+  caught a rejected applicant could mint signed URLs over private deliverables. The sweep's own
+  blind spot is the lesson — `fire-promotion-social-hook` was cleared by the regex because it calls
+  `getUser` and never checks ownership. **Pending (verified 2026-08-08):** merge PR, then **deploy
+  all 6** — they are code changes and inert until deployed. Also found: **zero Toast tables exist on
+  prod**, so §10's "Active integrations: Toast POS" is aspirational.
+  → `docs/wiki/concepts/anon-key-is-not-authorization.md`
 - **DC Points visibility (`/rewards`, chip, honest notification, Donny)** — a bell said
   "+200 DC Points" with nowhere to click, points showed on two dashboards with no explanation, and
   even the founder needed a SQL query to answer "what earned that." Ships a `/rewards` page

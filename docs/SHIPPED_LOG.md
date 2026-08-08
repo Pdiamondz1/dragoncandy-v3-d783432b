@@ -26,6 +26,63 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-08] `verify_jwt=true` is not authorization — 6 anon-key-reachable service-role functions
+
+Follow-on from the `donny-dragonshare-score` removal the same day, which filed two `[med]` leads.
+Checking them found something larger than either.
+
+**The anon key is a valid JWT and ships in the frontend bundle.** So `verify_jwt: true` — the default
+for any function with no `config.toml` entry — only rejects a *missing* header; it never establishes
+a user. Any service-role function that skips `auth.getUser()` answers **anyone on the internet**, not
+merely "any authenticated user" as I first described it. Proven on prod: `dragonshare-notify` → 401
+with no header, **200 with the public anon key**; `fire-dragonshare-social-hook` reached its DB
+lookup. Neither probe fired a side effect (an `event` matching no branch; a zeroed uuid that 404s
+before any write) — prove reachability, never impact.
+
+A sweep of all 100 functions produced 18 candidates → **4 legitimately public** (`capture-lead`,
+`generate-anonymous-brief`, `landing-clips`, and `verify-package-order-escrow`, which is correctly
+guest-reachable because its abuse control is the Stripe binding, not a token), **8 authorized by a
+mechanism the regex missed**, and **6 genuinely exposed**. Both money functions came back **clean** —
+`resolve-dispute` does an exact service-role compare.
+
+**One guard does not fit**; the fix is decided by who legitimately calls each function, which is a
+`src/` grep. `fire-dragonshare-social-hook` and `toast-discount-push` → `isAuthorizedIngest`.
+`social-caption` → `auth.getUser` with `user_id` derived from the JWT (it fed `donny_cost_ledger`,
+the AI kill-switch's own source of truth, so spend was attributable to an arbitrary victim).
+`fire-campaign-social-hook` and `fire-promotion-social-hook` → `getUser` + record-level ownership.
+`dragonshare-notify` → a per-event split, because **I was wrong that it was service-role only**: the
+browser calls it twice, and a blanket ingest guard would have broken post submission and decline.
+Its `boost_paid` also stopped trusting body `creator_id`/`creator_payout_cents` — an anonymous caller
+could otherwise make the platform's own AI say "$N is on the way" to any user.
+
+Two **unpaired-id** defects fixed en route, the same shape twice: `boost_id`+`post_id` were never
+cross-checked (any boost paired with any post), and `submission_id` was fetched without
+`promotion_id`.
+
+**The review caught a conceptual error.** I first gated `fire-campaign-social-hook` with the shared
+`evaluateCampaignAccess` — documented as *"can this actor **SEE** this campaign"*, a **read** gate —
+to guard a write that mints 1-hour signed URLs over private deliverables. Its
+`hasApplication && published` arm let a pending or rejected applicant fire it. Replaced with a
+purpose-built gate (owner ∨ active org member ∨ active sponsoring brand). **A read gate is not a
+write gate**, even when most clauses match.
+
+**The sweep's own method fell short**, which is the durable lesson: `fire-promotion-social-hook` was
+never a candidate because the regex saw `auth.getUser` and cleared it — it authenticates and never
+checks ownership. *Calling `getUser` is not authorizing.*
+
+Two prod checks changed answers: **zero `%toast%` tables exist**, so `toast-token-refresh` cannot
+disconnect a POS and `toast-discount-push`'s "unauthenticated INSERT" was never possible (the guard
+still lands before the tables do) — and that also makes `PROJECT_CONTEXT.md`'s "Active integrations:
+Toast POS" line aspirational. And `is_active_group_member` really is `(p_group_id, p_creator_id)`;
+`DATABASE_SCHEMA.md`'s shorthand drops the prefixes.
+
+26 new unit tests across two pure `authz.ts` modules. **The CI edge gate covers only 2 of the 6
+changed functions** — the other 4 sit in `.typecheck-ignore`, so "66 clean" said nothing about them;
+verified by hand with the gate's own `deno check`, 16 errors → 16, all pre-existing `TS18046`.
+Left open deliberately: `toast-token-refresh`'s cross-tenant browser button (a product decision),
+`fire-campaign-social-hook`'s per-party `file_uploads` scoping (pre-existing), and two
+`dragonshare-notify` residuals. **All six are inert until deployed.**
+
 ## [2026-08-08] `status_changed_at` — the analytics alerts finally get a change-anchor
 
 Closes the gap #385 recorded, Codex flagged, and post-merge measurement showed was **bigger than
