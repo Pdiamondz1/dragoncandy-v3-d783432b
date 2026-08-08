@@ -11,6 +11,8 @@ interface HookRequest {
   stage: number;
 }
 
+const errMessage = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
 const STAGE_TEMPLATES: Record<number, string> = {
   1: 'New campaign live! {title} — share with your followers',
   2: 'Sponsorship confirmed! {brand} is backing {title}',
@@ -57,11 +59,20 @@ serve(async (req) => {
     }
     if (!callerId) return unauthorized(401);
 
-    const { data: campaign } = await supabase
+    // Error BOUND, not discarded. A failed lookup still resolves to `campaign = null` and is
+    // answered 403 by the gate below — that fail-closed shape is deliberate and unchanged. But an
+    // unbound error makes "this campaign does not exist" and "the query itself failed" identical in
+    // the log too, which is exactly how a nonexistent-column 42703 hid for months in
+    // send-campaign-publish-notifications (#400). The response stays silent; the log does not.
+    const { data: campaign, error: campaignError } = await supabase
       .from('campaigns')
       .select('id, title, description, goals, user_id, org_id, group_id, status, org_unit_id, delivery_type, platforms, posting_preferences')
       .eq('id', campaign_id)
       .maybeSingle();
+
+    if (campaignError) {
+      console.error('[fire-campaign-social-hook] campaign lookup failed:', campaignError);
+    }
 
     const [orgRes, sponsorRes] = await Promise.all([
       supabase.from('org_members').select('org_id')
@@ -97,6 +108,17 @@ serve(async (req) => {
     }
     if (!campaign) return unauthorized(403); // unreachable — narrows the type for the code below
     // --- end authorization ---------------------------------------------------
+
+    // `stage` indexes STAGE_TEMPLATES and is written straight into the row, but was never
+    // validated: `STAGE_TEMPLATES[stage] ?? ''` silently accepted `stage: 99` and wrote hook rows
+    // with an empty template. Checked AFTER authorization on purpose — an unauthenticated caller
+    // should learn nothing from us, not even that their body was malformed.
+    if (!Number.isInteger(stage) || stage < 1 || stage > 5) {
+      return new Response(JSON.stringify({ error: 'stage must be an integer from 1 to 5' }), {
+        status: 400,
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+      });
+    }
 
     const { data: businessProfile } = await supabase
       .from('business_profiles')
@@ -260,7 +282,7 @@ serve(async (req) => {
               hashtags = captionData.hashtags || [];
             }
           } catch (captionErr) {
-            console.warn('[fire-campaign-social-hook] Caption generation failed, using template:', captionErr.message);
+            console.warn('[fire-campaign-social-hook] Caption generation failed, using template:', errMessage(captionErr));
           }
 
           let scheduledAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -290,29 +312,61 @@ serve(async (req) => {
               }
             }
           } catch (schedErr) {
-            console.warn('[fire-campaign-social-hook] Time suggestion failed, using +24h default:', schedErr.message);
+            console.warn('[fire-campaign-social-hook] Time suggestion failed, using +24h default:', errMessage(schedErr));
           }
 
-          const { data: scheduledPost } = await supabase
+          // Every other write in this function is an upsert; this one is an INSERT.
+          // `ContentReviewSection` retries the whole invoke once on failure, so a partial failure
+          // AFTER the draft landed stacked a second identical draft on the retry. Latent rather
+          // than live — prod currently holds 10 hook-sourced drafts across 10 distinct
+          // (campaign, user) pairs, zero duplicates — but the retry that causes it is real code.
+          const { data: existingDraft, error: existingDraftError } = await supabase
             .from('donny_scheduled_posts')
-            .insert({
-              user_id: party.user_id,
-              campaign_id,
-              platform,
-              content_type: contentType,
-              caption,
-              media_urls: mediaUrls,
-              hashtags,
-              scheduled_at: scheduledAt,
-              status: 'draft',
-              ai_suggested_time: true,
-              ai_reasoning: scheduledAt !== new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-                ? 'Donny picked the optimal posting time for your audience'
-                : 'Auto-drafted by campaign social hook (stage 4)',
-              metadata: { source: 'campaign_social_hook', stage: 4, outstand_connected: outstandConnected },
-            })
             .select('id')
-            .single();
+            .eq('campaign_id', campaign_id)
+            .eq('user_id', party.user_id)
+            .eq('metadata->>source', 'campaign_social_hook')
+            .limit(1)
+            .maybeSingle();
+
+          // Bound and logged, deliberately NOT thrown: if this lookup ever breaks, falling through
+          // to the insert restores the old behaviour (a possible duplicate draft), whereas throwing
+          // would skip this party's draft entirely. A duplicate is the lesser failure — this guard
+          // is an optimisation, not a gate.
+          if (existingDraftError) {
+            console.warn(
+              `[fire-campaign-social-hook] existing-draft check failed for ${party.user_id}, inserting anyway:`,
+              existingDraftError,
+            );
+          }
+
+          let scheduledPostId: string | null = existingDraft?.id ?? null;
+
+          if (!scheduledPostId) {
+            const { data: scheduledPost, error: draftError } = await supabase
+              .from('donny_scheduled_posts')
+              .insert({
+                user_id: party.user_id,
+                campaign_id,
+                platform,
+                content_type: contentType,
+                caption,
+                media_urls: mediaUrls,
+                hashtags,
+                scheduled_at: scheduledAt,
+                status: 'draft',
+                ai_suggested_time: true,
+                ai_reasoning: scheduledAt !== new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+                  ? 'Donny picked the optimal posting time for your audience'
+                  : 'Auto-drafted by campaign social hook (stage 4)',
+                metadata: { source: 'campaign_social_hook', stage: 4, outstand_connected: outstandConnected },
+              })
+              .select('id')
+              .single();
+
+            if (draftError) throw draftError;
+            scheduledPostId = scheduledPost?.id ?? null;
+          }
 
           const { data: hookRow } = await supabase
             .from('campaign_social_hooks')
@@ -329,7 +383,7 @@ serve(async (req) => {
                     label: 'Post Now',
                     variant: 'primary',
                     action: 'post_now',
-                    payload: { scheduled_post_id: scheduledPost?.id ?? null, campaign_id },
+                    payload: { scheduled_post_id: scheduledPostId, campaign_id },
                   },
                   {
                     label: 'Review Draft',
@@ -369,7 +423,7 @@ serve(async (req) => {
             );
           }
         } catch (autoDraftErr) {
-          console.warn(`[fire-campaign-social-hook] Auto-draft failed for ${party.user_id}:`, autoDraftErr.message);
+          console.warn(`[fire-campaign-social-hook] Auto-draft failed for ${party.user_id}:`, errMessage(autoDraftErr));
         }
       }
     }
@@ -379,8 +433,11 @@ serve(async (req) => {
       { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
     );
   } catch (error) {
+    // Logged in full, answered generically. `error.message` here is raw Postgres/runtime text —
+    // the same class of string that hands a caller the schema ("column X does not exist").
+    console.error('[fire-campaign-social-hook] Error:', errMessage(error), error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: 'Failed to fire campaign social hook' }),
       { status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
     );
   }
