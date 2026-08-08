@@ -159,6 +159,12 @@ const handler = async (req: Request): Promise<Response> => {
     // are exactly the `content_liked` rows handled here) AND cross-checked by enumerating
     // all 32 client call sites — which is what surfaced the sponsorship relationship, since
     // no sponsorship notification has ever fired on prod.
+    // Server-composed copy, used where the caller must not be able to choose the words.
+    let templatedTitle: string | null = null;
+    let templatedBody: string | null = null;
+    let templatedActionUrl: string | null = null;
+    let templatedEmailData: Record<string, unknown> | null = null;
+
     if (!isService && callerId) {
       let permitted = false;
 
@@ -167,10 +173,27 @@ const handler = async (req: Request): Promise<Response> => {
         if (typeof contentId === "string") {
           const { data: post } = await admin
             .from("dragonshare_posts")
-            .select("creator_id")
+            .select("creator_id, content_file_path, post_url")
             .eq("id", contentId)
             .maybeSingle();
           permitted = !!post && post.creator_id === recipientId;
+
+          if (permitted) {
+            // `content_liked` is the ONE type reachable without a prior relationship —
+            // anyone may like a public post. Ownership of the post is therefore the only
+            // check, which would leave `title`/`body`/`actionUrl`/`emailData` as free text
+            // an attacker could aim at any post owner they can find. That is precisely the
+            // stranger-phishing vector this whole change exists to close, so for this type
+            // the server writes the copy and the caller's values are discarded.
+            const liker = effectiveActorName ?? "Someone";
+            templatedTitle = "New like";
+            templatedBody = `${liker} liked your content`;
+            templatedActionUrl = "/dragon-feed";
+            templatedEmailData = {
+              likerName: liker,
+              contentUrl: post!.post_url ?? post!.content_file_path ?? null,
+            };
+          }
         }
       } else {
         const { data: allowed, error: relError } = await admin
@@ -204,9 +227,9 @@ const handler = async (req: Request): Promise<Response> => {
         user_id: recipientId,
         type,
         category,
-        title,
-        body: notifBody,
-        action_url: actionUrl ?? null,
+        title: templatedTitle ?? title,
+        body: templatedBody ?? notifBody,
+        action_url: templatedActionUrl ?? actionUrl ?? null,
         actor_id: effectiveActorId,
         actor_name: effectiveActorName,
         icon: icon ?? "default",
@@ -255,7 +278,14 @@ const handler = async (req: Request): Promise<Response> => {
     // 3. Send email if enabled (or forced)
     let emailSent = false;
     if (forceDelivery || categoryPrefs.email) {
-      const resolvedEmailType = emailType ?? NOTIFICATION_TYPE_TO_EMAIL_TYPE[type];
+      // A user-authenticated caller does NOT get to choose which email template fires:
+      // `emailType` is an arbitrary template selector, so honouring it would let someone
+      // send a recipient any transactional email in the catalogue (a payment receipt, a
+      // hire confirmation) regardless of what actually happened. Non-service callers are
+      // pinned to the type→template mapping; the service role keeps the override.
+      const resolvedEmailType = isService
+        ? (emailType ?? NOTIFICATION_TYPE_TO_EMAIL_TYPE[type])
+        : NOTIFICATION_TYPE_TO_EMAIL_TYPE[type];
       if (resolvedEmailType) {
         // Synthetic Weight Engine: never send real email to bot accounts (protects sender
         // reputation). The in-app notification row above is still created for bots — only the
@@ -284,7 +314,9 @@ const handler = async (req: Request): Promise<Response> => {
                   type: resolvedEmailType,
                   data: {
                     recipientUserId: recipientId,
-                    ...emailData,
+                    // Server-composed for templated types (content_liked), so the caller
+                    // cannot put chosen text or a chosen link into an outbound email.
+                    ...(templatedEmailData ?? emailData),
                     ...(data ?? {}),
                   },
                 }),
