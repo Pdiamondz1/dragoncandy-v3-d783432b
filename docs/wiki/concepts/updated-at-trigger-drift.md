@@ -166,6 +166,17 @@ blocks *silently*, with no exception and no signal. It would have looked like a 
   `docs/wiki/` — the knowledge layer is wider than the wiki. **(2)** the tell is a doc asserting prod
   behaviour in the present tense with a confirmation date; **that date is an expiry, not a
   warranty**. When a change alters prod behaviour, grep the repo for the *claim*, not the subsystem.
+- **The same sweep caught `recorded ≠ actual` running backwards — in this session's own migration.**
+  `20260807233100`'s committed copy still carried `-- … campaigns has no completed_at` two lines
+  above `coalesce(ca.completed_at, ca.created_at)`; prod's live body reads
+  `-- … anchored on completed_at (added 20260807233000)`. The comment was fixed in the SQL applied
+  via MCP `apply_migration` but not in the file that got committed. **That is the standing hazard of
+  the MCP apply path: the statement you execute and the file you commit are two artifacts, and
+  nothing reconciles them.** Note the direction — prod correct, *repo* wrong — which is worse than
+  the usual case, because the repo is what people read. Editing an applied migration is normally
+  forbidden, but that rule exists to keep the file faithful to what ran, so here fidelity *required*
+  it. Confirmed it was the only drift by diffing the repo body against `pg_get_functiondef`:
+  5/5 comments verbatim, `union all` 18=18, `coalesce(` 7=7, `completed_at` 7=7, `updated_at` 3=3.
 
 ## See Also
 
