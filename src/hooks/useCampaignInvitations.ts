@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { notifyInvitedCreator } from '@/lib/invitationNotify';
 
 export interface CampaignInvitation {
   id: string;
@@ -71,34 +72,14 @@ export const useInviteCreator = () => {
     onSuccess: async (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['campaign-invitations', variables.campaignId] });
 
-      // Send notification to the creator (only for new invitations)
+      // Send the in-app bell to the creator (only for new invitations). Shared with
+      // the bulk path so the two cannot drift apart again — bulk used to skip it.
       if (!data.already_invited) {
-        try {
-          const { data: campaign } = await supabase
-            .from('campaigns')
-            .select('title')
-            .eq('id', variables.campaignId)
-            .single();
-
-          const campaignTitle = campaign?.title || 'a campaign';
-
-          supabase.functions.invoke('create-notification', {
-            body: {
-              recipientId: variables.creatorId,
-              type: 'campaign_invitation',
-              category: 'campaigns',
-              title: 'Campaign Invitation',
-              body: `You've been invited to "${campaignTitle}"`,
-              actionUrl: `/dashboard/creator/campaigns/${variables.campaignId}?invited=true`,
-              actorId: user!.id,
-              icon: 'invitation',
-              data: { campaign_id: variables.campaignId },
-              emailData: { campaignTitle, campaignId: variables.campaignId },
-            },
-          }).catch((err: unknown) => console.error('Failed to send notification:', err));
-        } catch (error) {
-          console.error('Failed to prepare invitation notification:', error);
-        }
+        await notifyInvitedCreator({
+          campaignId: variables.campaignId,
+          creatorId: variables.creatorId,
+          actorId: user!.id,
+        });
       }
 
       toast({

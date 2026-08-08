@@ -44,9 +44,42 @@
 | `campaigns` | Brand-created campaigns seeking creators |
 | `campaign_applications` | Creator applications to campaigns |
 | `campaign_collaborations` | Active collaborations between brands and creators |
-| `campaign_invitations` | Direct invites from brands to creators |
+| `campaign_invitations` | Direct invites from brands to creators. **A creator's UPDATE is decline-only (2026-08-08).** See the invitation-integrity note below. |
 | `campaign_matches` | Matched brand/creator pairings |
 | `campaign_sponsorships` | Sponsorship arrangements within campaigns |
+> **Invitation & application integrity — migrations `20260808010000` + `20260808020000`, applied
+> and proven red→green on prod 2026-08-08.** Two live holes, both demonstrated by impersonating a
+> real user inside a rolled-back transaction (never assumed):
+>
+> 1. **`campaign_invitations` UPDATE had `USING (auth.uid() = creator_id)` and NO `WITH CHECK`.**
+>    Postgres defaults an omitted `WITH CHECK` to the `USING` expression, so `creator_id` *was*
+>    pinned (reassignment blocked — verified) — but nothing else was. A creator could **forge
+>    `status='accepted'`** without applying (making the owner's card read "Applied — review them"
+>    with no application behind it) and could **repoint the row at another `campaign_id`**, which
+>    manufactures apply rights because an *invited* creator may apply to a campaign that has left
+>    `published`. Now: policy `USING (creator AND status='pending')` / `WITH CHECK (creator AND
+>    status='declined')`, **plus** `revoke update … from authenticated, anon` then
+>    `grant update (status) to authenticated` — because RLS `WITH CHECK` sees only the NEW row
+>    (there is no `OLD` in a policy), so "campaign_id must not change" is inexpressible as a policy
+>    and column privileges are the correct tool. The migration self-asserts the resulting grant set
+>    is exactly `authenticated:status`, and the filter includes **`PUBLIC`** — a table-wide
+>    `GRANT … TO PUBLIC` is recorded under that grantee, so omitting it would make the assertion
+>    unfailable. The one legitimate client write, `useDeclineInvitation`, still works.
+> 2. **`apply_to_campaign` checked eligibility ONLY on the `group_id IS NOT NULL` branch.** For an
+>    ordinary campaign it fell through to the INSERT with no status and no role check, and being
+>    `SECURITY DEFINER` it bypassed the `campaign_applications` INSERT policy that carries exactly
+>    those rules via `can_create_application`. Proven: a creator with no invitation applied to an
+>    **`active`** campaign. The non-group branch now calls `can_create_application` itself — the
+>    same predicate as the policy, not a re-invented one — OR-ed with "an existing non-`rejected`
+>    application", because the RPC is an upsert and that is how counter-offers amend a row the
+>    creator already legitimately holds. `anon` EXECUTE revoked (it was already stopped by the
+>    `auth.uid()` guard). Verified after: applying to a closed campaign now raises *"Not eligible
+>    to apply to this campaign"*, applying to a published one still succeeds.
+>
+> **Lesson worth keeping: a `SECURITY DEFINER` RPC silently opts out of the RLS policy protecting
+> the table it writes.** Whenever one exists, check that it re-asserts the policy's predicate —
+> here the policy was correct the whole time and the RPC simply never consulted it.
+
 | `application_counter_offers` | Negotiation counter-offers on applications. Written via the `create_counter_offer` SECURITY DEFINER RPC (authorization-hardened 2026-07-20: identity + participant + role-integrity guards, writes the server-derived `sender_id`/`sender_role`, `anon` EXECUTE revoked) or the direct-insert apply-time path; the INSERT RLS policy pins `sender_role` to the caller's derived role. See [[Service-Role Data Exposure]]. |
 | `content_disputes` | Dispute record opened when a business rejects content after max revisions (`reject-content` inserts `collaboration_id`/`initiated_by`/`reason`, `status=open`) and resolved by `resolve-dispute` (`status=resolved`, `outcome ∈ refund/partial_payment/approved`). Participant-SELECT RLS (creator or campaign owner) + a service-role FOR-ALL policy. **Restored to prod 2026-07-23 (PR #325)** — it, and the whole collaboration state machine, were recorded in `schema_migrations` but MISSING from prod (see below). |
 
