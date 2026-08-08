@@ -20,6 +20,7 @@ import { mapDeliveryType, getTierConfig, computeCampaignCost } from '@/lib/campa
 import type { Platform, Deliverable } from '@/types/campaignMedia';
 import { cn } from '@/lib/utils';
 import { MAX_AUDIENCE_CHARS } from '@/lib/campaignAudience';
+import { MIN_CAMPAIGN_PRICE } from '@/lib/campaignPricing';
 
 // ── Geographic scope options ──────────────────────────────────────────────────
 const GEO_OPTIONS: { value: string; label: string }[] = [
@@ -197,6 +198,13 @@ const CampaignEditPage: React.FC = () => {
     tier,
     deliverableCount
   );
+
+  // A marketplace campaign can't go public without a real price. Crew campaigns are exempt
+  // — free by the campaigns_group_free CHECK, and they render no price input at all below.
+  // This matters most for a crew campaign just re-targeted via "Open to the marketplace":
+  // it arrives as a draft with the price deliberately blanked, and without this it could be
+  // published at no price. Saving a DRAFT stays unrestricted; only Publish is gated.
+  const canPublishPrice = !!campaign?.group_id || budgetMax >= MIN_CAMPAIGN_PRICE;
 
   // ── Loading state ──────────────────────────────────────────────────────────
   if (isLoading) {
@@ -505,12 +513,21 @@ const CampaignEditPage: React.FC = () => {
             )}
             <button
               onClick={() => handleSaveWithNavigation('published')}
-              disabled={isSaving || !formData.title.trim() || deliverablesUnavailable}
+              disabled={isSaving || !formData.title.trim() || deliverablesUnavailable || !canPublishPrice}
               className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3 flex items-center justify-center gap-2 disabled:opacity-60"
             >
               <Save className="h-4 w-4" aria-hidden="true" />
               {isSaving ? 'Publishing…' : 'Publish Campaign'}
             </button>
+            {!canPublishPrice && (
+              /* Say why the button is dead. The price field sits well above it, so a
+                 silently disabled CTA reads as broken — especially on a campaign that
+                 just arrived here from "Open to the marketplace" with no price set. */
+              <p className="text-sm text-dc-text-muted text-center">
+                Set a campaign price of ${MIN_CAMPAIGN_PRICE} or more to publish. You can save a draft
+                in the meantime.
+              </p>
+            )}
             <button
               onClick={() => handleSaveWithNavigation('draft')}
               disabled={isSaving || !formData.title.trim() || deliverablesUnavailable}

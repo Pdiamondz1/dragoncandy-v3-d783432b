@@ -37,7 +37,7 @@ import { SponsorshipCard } from '@/components/campaigns/detail/SponsorshipCard';
 import { BRAND_ROLE_ENABLED } from '@/lib/featureConfig';
 import { useCampaignProject } from '@/hooks/useCampaignProject';
 import { useProjectComplete } from '@/hooks/useProjectComplete';
-import { useDeleteCampaign, useDuplicateCampaign } from '@/hooks/useCampaigns';
+import { useDeleteCampaign, useDuplicateCampaign, useOpenCrewCampaignToMarketplace } from '@/hooks/useCampaigns';
 import { RatingModal } from '@/components/reviews/RatingModal';
 import { useHasReviewedCollaboration } from '@/hooks/useHasReviewedCollaboration';
 import { useCampaignApplicationsCount } from '@/hooks/useCampaignApplicationsCount';
@@ -113,6 +113,7 @@ const CampaignDetailsPage: React.FC = () => {
   const { requestCompletion } = useProjectComplete();
   const deleteCampaign = useDeleteCampaign();
   const duplicateCampaign = useDuplicateCampaign();
+  const openToMarketplace = useOpenCrewCampaignToMarketplace();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -222,6 +223,14 @@ const CampaignDetailsPage: React.FC = () => {
       onSuccess: (newCampaign) => {
         if (newCampaign?.id) navigate(`/dashboard/business/campaigns/${newCampaign.id}/edit`);
       },
+    });
+  };
+
+  // Same campaign, re-targeted — so we land on ITS editor, not a copy's.
+  const handleOpenToMarketplace = () => {
+    if (!campaign) return;
+    openToMarketplace.mutate(campaign.id, {
+      onSuccess: () => navigate(`/dashboard/business/campaigns/${campaign.id}/edit`),
     });
   };
 
@@ -472,6 +481,7 @@ const CampaignDetailsPage: React.FC = () => {
           onEdit={() => navigate(`/dashboard/business/campaigns/${id}/edit`)}
           onDelete={handleDelete}
           onRelaunch={handleRelaunch}
+          onOpenToMarketplace={handleOpenToMarketplace}
           onPayEscrow={handlePayEscrow}
           onReviewApplications={() => {
             const el = document.getElementById('applications-section');

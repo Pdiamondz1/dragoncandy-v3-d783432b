@@ -5,6 +5,7 @@ import {
   useDeleteCampaign,
   useDuplicateCampaign,
   useRelaunchWithCreators,
+  useOpenCrewCampaignToMarketplace,
 } from './useCampaignMutations';
 
 // Re-export types for backward compatibility
@@ -18,6 +19,7 @@ export {
   useDeleteCampaign,
   useDuplicateCampaign,
   useRelaunchWithCreators,
+  useOpenCrewCampaignToMarketplace,
 };
 
 export const useCampaigns = (filterByOwnership: boolean = true, orgUnitId?: string | null) => {

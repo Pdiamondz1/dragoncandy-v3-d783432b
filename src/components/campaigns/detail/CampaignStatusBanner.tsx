@@ -76,6 +76,8 @@ interface CampaignStatusBannerProps {
   onEdit: () => void;
   onDelete: () => void;
   onRelaunch: () => void;
+  /** Optional: re-target an unfilled crew campaign at the open marketplace, in place. */
+  onOpenToMarketplace?: () => void;
   onPayEscrow: () => void;
   onReviewApplications: () => void;
   onReviewContent: () => void;
@@ -150,6 +152,7 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
   onEdit,
   onDelete,
   onRelaunch,
+  onOpenToMarketplace,
   onPayEscrow,
   onReviewApplications,
   onReviewContent,
@@ -181,7 +184,15 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
   const canDelete = (phase === 'pre_hire' || phase === 'cancelled') && campaign.escrow_status !== 'held';
   const canEdit = phase === 'pre_hire';
   const canRelaunch = phase === 'completed' || phase === 'cancelled';
-  const showMenu = canEdit || canDelete || canRelaunch;
+  // A live crew campaign that nobody has taken has no way out otherwise: it is free and
+  // crew-only, so short of deleting it the business is stuck waiting. Deliberately NOT
+  // folded into canRelaunch — that duplicates a finished campaign, whereas this re-targets
+  // this one in place.
+  // Excluded on purpose: drafts (nothing has been offered to anyone yet — just edit it),
+  // and anything with an accepted creator (it IS filled, so there is nothing to rescue).
+  const canOpenToMarketplace =
+    !!campaign.group_id && campaign.status !== 'draft' && !hasAcceptedCreator;
+  const showMenu = canEdit || canDelete || canRelaunch || canOpenToMarketplace;
 
   const renderHeadline = (): string => {
     switch (state) {
@@ -351,6 +362,9 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
                       </DropdownMenuItem>
                     )}
                     {canRelaunch && <DropdownMenuItem onClick={onRelaunch}>Re-Launch Campaign</DropdownMenuItem>}
+                    {canOpenToMarketplace && onOpenToMarketplace && (
+                      <DropdownMenuItem onClick={onOpenToMarketplace}>Open to the marketplace</DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}

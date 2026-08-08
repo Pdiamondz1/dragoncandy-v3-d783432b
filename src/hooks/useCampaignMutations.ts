@@ -387,6 +387,63 @@ export const useDuplicateCampaign = () => {
   });
 };
 
+/**
+ * Re-target an unfilled crew campaign at the open marketplace, IN PLACE.
+ *
+ * Deliberately not a duplicate. The `campaigns_group_free` CHECK only binds while
+ * `group_id IS NOT NULL`, so clearing it frees the price on the same row — which means
+ * the campaign keeps its id, its deliverables, and its media instead of relying on the
+ * copy path to carry them. It also means there is only ever ONE campaign: duplicating
+ * would leave the free crew version live alongside the paid one, and a crew member could
+ * be accepted on the free copy while marketplace creators applied to the paid one,
+ * committing the business twice for a single piece of work.
+ *
+ * Reverting to `draft` is what pulls it out of the crew's view; the business then prices
+ * it in the editor and publishes it like any marketplace campaign. Money fields are
+ * blanked rather than left at the crew-forced 0 so nothing can publish at $0.
+ */
+export const useOpenCrewCampaignToMarketplace = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (campaignId: string) => {
+      const { data, error } = await supabase
+        .from('campaigns')
+        .update({
+          group_id: null,
+          status: 'draft',
+          fixed_price: null,
+          delivery_fee: null,
+        } as unknown as Database['public']['Tables']['campaigns']['Update'])
+        .eq('id', campaignId)
+        // Belt and braces alongside RLS — never let this rewrite someone else's campaign.
+        .eq('user_id', user!.id)
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['campaign', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['group-campaigns'] });
+      toast({
+        title: 'Now a marketplace draft',
+        description: 'Set a price, then publish. Your crew can still apply once it is live.',
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Couldn't open this to the marketplace",
+        description: 'Please try again.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
 export const useRelaunchWithCreators = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
