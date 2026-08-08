@@ -82,6 +82,105 @@ verified by hand with the gate's own `deno check`, 16 errors → 16, all pre-exi
 Left open deliberately: `toast-token-refresh`'s cross-tenant browser button (a product decision),
 `fire-campaign-social-hook`'s per-party `file_uploads` scoping (pre-existing), and two
 `dragonshare-notify` residuals. **All six are inert until deployed.**
+## [2026-08-08] Three authorization holes the invite-clarity work walked into
+
+> **State as of writing:** migrations `20260808010000`, `20260808020000` and `20260808030000`
+> are **applied to prod**; `create-notification` is deployed at **v47** and **boot-verified**
+> (an anon-key POST returns the *function's own* `{"error":"Unauthorized"}`, not the platform's,
+> proving the module loaded and `_shared/cors.ts` bundled — nothing written, no mail sent).
+> Codex clean at round 6; `edge-function-reviewer` PASS. PR #387 is open;
+> `fix/notification-authorization` is pushed but its PR is not yet opened.
+> **The both-viewport visual pass on PR #382's UI has NOT been run** — it needs a signed-in
+> prod session. Recorded as unrun, not passed. And the new paths have never run with a real
+> user JWT (this function has had zero prod traffic in 24h), so they are proven at the SQL
+> layer and boot-verified — not exercised end-to-end.
+
+Explaining what the "Invite" button does (PR #382) meant reading the invitation data path
+closely, and it kept turning up things that had nothing to do with copy. Three pre-existing
+authorization holes, none introduced by #382, each **proven on prod by impersonating a real
+user inside a rolled-back transaction** — before the fix and again after.
+
+**1. `campaign_invitations` UPDATE — forged status, repointed campaign.** The policy was
+`USING (auth.uid() = creator_id)` with no `WITH CHECK`. My first diagnosis was wrong and the
+correction is the useful part: **Postgres defaults an omitted `WITH CHECK` on UPDATE to the
+`USING` expression**, so `creator_id` *was* pinned. What wasn't: a creator could forge
+`status='accepted'` with no application behind it — making the owner's card read "Applied —
+review them", the badge #382 had just added, pointing at nothing — and could **repoint
+`campaign_id`**, which manufactures apply rights, because an invited creator may apply to a
+campaign that has left `published`. Now decline-only (`USING … status='pending'` /
+`WITH CHECK … status='declined'`) **plus column privileges**, because a policy cannot pin a
+column against change at all: `WITH CHECK` sees only the NEW row — there is no `OLD` in a
+policy — so "`campaign_id` must not change" is inexpressible as RLS. The migration
+self-asserts the resulting grant set, and its filter includes `PUBLIC`, since a table-wide
+`GRANT … TO PUBLIC` is recorded under that grantee and omitting it would make the assertion
+unfailable.
+
+**2. `apply_to_campaign` skipped its own policy.** The RPC checked eligibility only on its
+crew branch; an ordinary campaign fell through to the INSERT with no status and no role check
+— and being `SECURITY DEFINER` it bypassed the `campaign_applications` INSERT policy carrying
+exactly those rules. Proven: a creator with no invitation applied to an **`active`** campaign
+that already had someone hired. The fix calls **the policy's own predicate**
+(`can_create_application`) rather than re-implementing it — two copies of an authorization
+rule drift, one does not — OR-ed with "already holds a non-`rejected` application", since the
+RPC is an upsert and that is how counter-offers amend a row. The durable lesson:
+**a `SECURITY DEFINER` RPC silently opts out of the RLS policy protecting the table it
+writes.** The policy was correct the whole time; the function never consulted it.
+
+**3. `create-notification` authenticated its caller and then discarded it.** It called
+`auth.getUser()` and never referenced the `user` object again — every field written,
+including `recipientId` and `actorId`, came from the request body and was inserted with the
+service role, and for mapped types it sent a real email. Any authenticated user could put
+arbitrary text and an arbitrary in-app link into anyone's feed, as any actor, and email them.
+Sharper in context: [[Notification Delivery]] documents `send-notification-email`'s self-only
+gate as existing *to prevent email enumeration*, and instructs all frontend code to route
+around it through `create-notification` — the recommended path around the guard had no guard.
+
+Closed in three layers. The actor is now derived from the JWT (verified safe first: every
+`actorId` in `src/` was already the caller's own id). The recipient must pass
+`can_notify_user` — six live relationships (self, campaign, conversation, crew, org,
+sponsorship), with membership clauses requiring `left_at IS NULL` / `invitation_status =
+'active'`, because a stale tie is not a current one. And `content_liked`, the one type
+legitimately reachable with no prior relationship, is authorized against the **referenced
+post** instead, with the server composing the copy — ownership being the only check would
+otherwise leave free text aimed at any post owner, the exact vector being closed.
+
+The clause set was derived **two independent ways and cross-checked**, which is the method
+worth reusing: backtested against all 91 actor-bearing `push_notifications` rows (89/91), and
+enumerated across all 32 client call sites. Only the enumeration found **sponsorship** — no
+sponsorship notification has ever fired on prod, so history could not have revealed it. It
+also corrected my own design: I had flagged cold contact from a public profile as needing an
+exemption, and it does not — both contact modals `await` conversation creation before
+notifying, so the conversation clause covers them. Result: 89/89 real notifications still
+pass, and across every user pair 30 allowed / 1,692 blocked.
+
+**Six Codex rounds, six real findings, every one mine** (round 6 came back clean). Round 1:
+`content_liked` was still a stranger-phishing vector, and `left_at`/`invitation_status` were
+ignored. Round 2: the templating was bypassable (`data` spread *after* the server's values),
+and — worse — my "ignore `emailType`" tightening had **silently killed 7 legitimate email
+flows** whose type has no map entry. Round 3: a flat template allow-list permitted
+type/template confusion. Round 4: `file_uploaded` still let the client choose the **role**
+variant, because that one type carries two role-worded emails, so binding the template to the
+type wasn't enough; it is now derived from the collaboration, checking both parties explicitly
+rather than inferring "not the creator ⇒ the business".
+
+Round 5 is the one worth keeping, because **I had considered that exact case and argued myself
+out of it**: I let an underivable role fall through to the type map, reasoning it was "the same
+email this type has always sent, so not a regression." True, and irrelevant — since the client
+no longer supplies `emailType`, omitting `data.collaboration_id` had become the *only*
+remaining way to force the wrong role-worded email. Same defect, shorter route. The email is
+now suppressed instead (the bell still fires), so we decline to send mail asserting a role we
+could not verify.
+
+The through-line across 1–4: I kept answering *"is this value allowed?"* when the question was
+*"allowed **for what**?"* — each fix correct as far as it went, and leaving the next gap open.
+Two second-order lessons: **ignoring an untrusted input is not automatically safe** (a
+tightening is a behaviour change and needs the same "what does this break?" pass as a feature),
+and **"no worse than before" is the wrong bar for a fix** — the test is whether the claim the
+code now makes is actually true.
+
+Also fixed en route: bulk invite sent the email but fired **no in-app bell** — the two invite
+paths had drifted, and both now route through one shared `notifyInvitedCreator()`; and the
+applications list now marks applicants the business had invited.
 ## [2026-08-08] `donny-dragonshare-score` removed — an unauthorized service-role write, orphaned
 
 One of four unverified leads filed by the 2026-08-07 DragonFeed session, checked and closed. The
