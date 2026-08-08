@@ -283,10 +283,17 @@ export const useDuplicateCampaign = () => {
           status: 'draft',
           // escrow_status is deliberately NOT set — the column defaults to 'none'.
           // Setting 'pending' here meant "the business clicked Publish and is on their way
-          // to Stripe" (the only place that value is written: CampaignFinalizeStep, gated on
-          // wantToPublish). A duplicate is a draft nobody has asked to publish, so 'pending'
-          // made CampaignStatusBanner render "Payment Required to Publish" — and
-          // CampaignCard show "Pay & Publish →" — for a campaign that owes nothing.
+          // to Stripe" (the only other place that value is written: CampaignFinalizeStep,
+          // gated on wantToPublish). A duplicate is a draft nobody has asked to publish.
+          // The visible symptom was on CampaignCard: getCtaLabel checks escrow BEFORE the
+          // draft check, so a fresh duplicate showed "Pay & Publish →" for a campaign that
+          // owed nothing. The detail banner was NOT affected — deriveBannerState returns
+          // 'draft' before it ever reaches the escrow branch. Don't "fix" that ordering on
+          // the assumption the banner was broken too; it wasn't.
+          // Consequence of this change: a duplicate now follows publish-then-pay like every
+          // normally-created campaign (which also start at 'none'), instead of the
+          // pay-then-publish path the stray 'pending' put it on. Payment is still collected
+          // — at accept time, via the payment_pending_project branch.
           deadline: null,
           user_id: user!.id,
           duplicated_from: sourceCampaignId,
@@ -327,8 +334,13 @@ export const useDuplicateCampaign = () => {
         }
       }
 
-      // Media rows point at already-uploaded storage objects, so copying the row is enough
-      // — file_url/file_name are both NOT NULL and must be carried, not regenerated.
+      // Media rows point at already-uploaded storage objects — file_url/file_name are both
+      // NOT NULL and are carried, not regenerated. NOTE the copy therefore SHARES storage
+      // objects with the source campaign, and cleanupCampaignMedia (imported above, run when
+      // a campaign hits completed/cancelled) deletes by resolving file_url to a storage path.
+      // Terminating either campaign would strip the other's files. Latent today — the only
+      // caller of updateCampaign passes 'draft'|'published' — but duplicate the storage
+      // objects here before wiring any UI that can move a campaign to completed/cancelled.
       const { data: sourceMedia, error: mediaFetchErr } = await supabase
         .from('campaign_media')
         .select('media_type, file_url, file_name, file_size_bytes, mime_type, duration_seconds, thumbnail_url, sort_order')
