@@ -185,6 +185,17 @@ serve(async (req) => {
 
       // --- payment_events (business) ---
       if (shouldCheck("payment_events")) {
+        // Windowed on created_at, NOT updated_at — a deliberate founder decision (2026-08-07),
+        // not an oversight. `handle_updated_at()` was a no-op stub on prod, so this filter has
+        // ALWAYS behaved as "created in the window"; migration 20260807233200 restores the trigger,
+        // and leaving `updated_at` here would have silently converted it into "modified in the
+        // window" — firing "Payment released"/"Revision requested" for rows whose status never
+        // changed, because updated_at moves on ANY write. Chosen: preserve existing behaviour.
+        // KNOWN LIMITATION (Codex raised it; recorded rather than re-litigated): a real status or
+        // escrow change on a row created BEFORE the window is not alerted. That is the status quo,
+        // not a regression. The correct fix is a change-specific anchor (a status_changed_at
+        // stamped by its own narrow trigger, like campaigns.completed_at in 20260807233000) — not
+        // updated_at, which cannot distinguish a status change from a title edit.
         const { data: paymentCampaigns } = await supabaseAdmin
           .from("campaigns")
           .select("id, title, escrow_status, created_at")
@@ -225,6 +236,7 @@ serve(async (req) => {
     if (!isBusiness) {
       // --- status_changes ---
       if (shouldCheck("status_changes")) {
+        // created_at window — see the note on the paymentCampaigns query above.
         const { data: collaborations } = await supabaseAdmin
           .from("campaign_collaborations")
           .select("id, content_status, status, created_at, campaign_id, campaigns!inner(id, title)")
@@ -262,6 +274,7 @@ serve(async (req) => {
 
       // --- payment_events (creator) ---
       if (shouldCheck("payment_events")) {
+        // created_at window — see the note on the paymentCampaigns query above.
         const { data: creatorCollabs } = await supabaseAdmin
           .from("campaign_collaborations")
           .select("id, campaign_id, created_at, campaigns!inner(id, title, escrow_status)")
