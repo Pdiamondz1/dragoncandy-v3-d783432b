@@ -139,11 +139,16 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `create-notification` authenticated its caller then **discarded the user object**, so any
   authenticated user could put arbitrary text in anyone's feed, as any actor, and email them →
   JWT-derived actor + `can_notify_user` (backtested 89/91 **and** call-site-enumerated, which is the
-  only way sponsorship was found) + server-composed copy for `content_liked`. Five Codex rounds,
-  five real findings, all mine — including a tightening that silently killed 7 working email flows.
-  Migrations `20260808010000`/`020000`/`030000` **applied**; `create-notification` **v46** deployed.
+  only way sponsorship was found) + server-composed copy for `content_liked`. **Six Codex rounds,
+  six real findings, all mine** — including a tightening that silently killed 7 working email flows,
+  and a fallback I had argued myself into keeping that re-opened the defect it followed ("no worse
+  than before" is the wrong bar; the test is whether the claim the code makes is true). Migrations
+  `20260808010000`/`020000`/`030000` **applied**; `create-notification` **v47** deployed and
+  **boot-verified on prod**; Codex clean at round 6; `edge-function-reviewer` PASS.
   **Pending:** merge PR #387; open the PR for `fix/notification-authorization` (pushed); and the
-  **both-viewport visual pass on #382 is still unrun** — it needs a signed-in prod session.
+  **both-viewport visual pass on #382 is still unrun** — it needs a signed-in prod session. Note the
+  new paths have never run with a real user JWT (zero prod traffic on this function), so they are
+  proven at the SQL layer and boot-verified, not exercised end-to-end.
   → `docs/wiki/concepts/notification-delivery.md` · `docs/wiki/concepts/campaign-invitations.md` · #387
 - **AIOS Google Workspace ("Connections")** — per-user Google OAuth, audited proxy, Drive
   hub, Donny exports, metrics→Sheet. The `google-chat-donny` bot ships dark — **confirmed still

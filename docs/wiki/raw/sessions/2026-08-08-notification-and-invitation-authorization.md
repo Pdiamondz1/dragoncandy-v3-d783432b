@@ -118,10 +118,10 @@ Result: 89/89 real notifications still pass, 0 blocked. Across every user pair, 
 
 ---
 
-## The Codex loop — five rounds, five real findings, all mine
+## The Codex loop — six rounds, six real findings, all mine
 
-Every round found something genuine in my own work. Recording them because the *pattern* is
-the lesson, not any single defect.
+Every round found something genuine in my own work; round 6 came back clean. Recording them
+because the *pattern* is the lesson, not any single defect.
 
 | Round | Finding | Why it mattered |
 |---|---|---|
@@ -131,6 +131,25 @@ the lesson, not any single defect.
 | 2 | Ignoring `emailType` **killed 7 legitimate email flows** | A regression I introduced |
 | 3 | Flat allow-list permitted **template confusion** | `type: content_liked` + `emailType: sponsorship_completed` |
 | 4 | `file_uploaded` still let the client pick the **role** variant | Type bound; role inside it not |
+| 5 | The undetermined-role **fallback** re-opened round 4 | Omitting `collaboration_id` forced the creator template |
+| 6 | — clean — | |
+
+**Round 5 is the most instructive, because I had considered that exact case and argued myself
+out of it.** I let an underivable role fall through to the type map's `file_uploaded_by_creator`,
+reasoning it was "the same email this type has always sent when no `emailType` was supplied, so
+not a regression." True, and irrelevant: because the client no longer sends `emailType`, omitting
+`data.collaboration_id` had become the *only* remaining way to choose the wrong role-worded
+email — a shorter route to the defect round 4 closed.
+
+> **"No worse than before" is the wrong bar.** The test is whether the claim the code now makes
+> — that this variant comes from database facts — is actually true. A fallback that lets the
+> caller opt out of a derivation defeats the derivation, however defensible it looked in
+> isolation.
+
+The fix suppresses the **email only**; the bell row is already written, so the recipient still
+learns about the upload, and we simply decline to send mail asserting a role we could not
+verify. Checked (not assumed) that no legitimate flow loses mail — that check is exactly what
+round 2 caught me skipping.
 
 **The through-line: I kept answering "is this value allowed?" when the question was "allowed
 *for what*?"** Each fix was correct as far as it went and left the next gap open. Round 3
@@ -152,11 +171,24 @@ the keyed map collapsed to a Set plus an identity check.
 broke 7 working email flows. Ignoring an untrusted input is not automatically safe — it is a
 behaviour change, and it needs the same "what does this break?" pass as any other.
 
-## Not verified
+## Verified / not verified
 
-- **The both-viewport visual pass on PR #382's UI has NOT been run.** Not a code concern —
-  it needs a signed-in prod session. Recorded as unrun, not passed.
-- Codex round 5 (on the round-4 fix) was still in flight when this was written.
+**Verified.** Migrations `20260808010000`/`020000`/`030000` applied and each hole re-proven
+closed. `create-notification` **boot-checked on prod after the final deploy** — an anon-key POST
+returned the *function's own* `{"error":"Unauthorized"}` (not the platform's `{"code":401,…}`),
+proving the module loaded and `_shared/cors.ts` bundled, with nothing written and no mail sent.
+The `file_uploaded` derivation was checked against **all 16 real collaborations** on prod: every
+one resolves a definite role on both sides, 0 ambiguous, 0 orphan campaigns. Codex clean at
+round 6; `edge-function-reviewer` PASS.
+
+**Not verified.**
+
+- **The both-viewport visual pass on PR #382's UI has NOT been run.** Not a code concern — it
+  needs a signed-in prod session, and the tab sat on `/auth` throughout. Unrun, not passed.
+- No `create-notification` request has exercised the new paths with a **real user JWT** — prod
+  has had zero traffic on this function in 24h (pre-revenue). The authorization logic is proven
+  at the SQL layer (`can_notify_user`: 89/89 historical rows pass, 1,692/1,722 cross-user pairs
+  refused) and the function boots, but the end-to-end path is unexercised.
 
 ## See Also
 

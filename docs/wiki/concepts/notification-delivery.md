@@ -130,6 +130,16 @@ campaign's `user_id`. Both sides are checked explicitly rather than inferring "n
 ⇒ the business", since several people can pass the relationship gate on one campaign while
 only two are parties to that collaboration.
 
+And when the role **cannot** be derived, the email is **suppressed** rather than defaulted —
+the bell still fires. A fallback to the type map looked harmless ("the same mail this type
+always sent") and was not: with the client no longer supplying `emailType`, omitting
+`data.collaboration_id` had become the only remaining way to force the wrong role-worded
+email.
+
+> **"No worse than before" is the wrong bar for a fix.** The test is whether the claim the code
+> now makes — this variant comes from database facts — is true. A fallback the caller can
+> trigger at will defeats the derivation it falls back from.
+
 > **Ignoring an untrusted input is not automatically safe.** The first attempt at this
 > dropped `emailType` outright and **silently killed 7 working email flows** whose
 > notification type has no map entry. A tightening is a behaviour change and needs the same

@@ -29,10 +29,15 @@
 ## [2026-08-08] Three authorization holes the invite-clarity work walked into
 
 > **State as of writing:** migrations `20260808010000`, `20260808020000` and `20260808030000`
-> are **applied to prod**; `create-notification` is deployed at **v46**. PR #387 is open;
-> `fix/notification-authorization` is committed and pushed but its PR is not yet opened.
+> are **applied to prod**; `create-notification` is deployed at **v47** and **boot-verified**
+> (an anon-key POST returns the *function's own* `{"error":"Unauthorized"}`, not the platform's,
+> proving the module loaded and `_shared/cors.ts` bundled — nothing written, no mail sent).
+> Codex clean at round 6; `edge-function-reviewer` PASS. PR #387 is open;
+> `fix/notification-authorization` is pushed but its PR is not yet opened.
 > **The both-viewport visual pass on PR #382's UI has NOT been run** — it needs a signed-in
-> prod session. Recorded as unrun, not passed.
+> prod session. Recorded as unrun, not passed. And the new paths have never run with a real
+> user JWT (this function has had zero prod traffic in 24h), so they are proven at the SQL
+> layer and boot-verified — not exercised end-to-end.
 
 Explaining what the "Invite" button does (PR #382) meant reading the invitation data path
 closely, and it kept turning up things that had nothing to do with copy. Three pre-existing
@@ -92,19 +97,30 @@ exemption, and it does not — both contact modals `await` conversation creation
 notifying, so the conversation clause covers them. Result: 89/89 real notifications still
 pass, and across every user pair 30 allowed / 1,692 blocked.
 
-**Five Codex rounds, five real findings, every one mine.** Round 1: `content_liked` was still
-a stranger-phishing vector, and `left_at`/`invitation_status` were ignored. Round 2: the
-templating was bypassable (`data` spread *after* the server's values), and — worse — my
-"ignore `emailType`" tightening had **silently killed 7 legitimate email flows** whose type
-has no map entry. Round 3: a flat template allow-list permitted type/template confusion.
-Round 4: `file_uploaded` still let the client choose the **role** variant, because that one
-type carries two role-worded emails, so binding the template to the type wasn't enough; it is
-now derived from the collaboration, checking both parties explicitly rather than inferring
-"not the creator ⇒ the business". The through-line: I kept answering *"is this value
-allowed?"* when the question was *"allowed **for what**?"* — each fix correct as far as it
-went, and leaving the next gap open. The second-order lesson from round 2 is the one to
-carry: **ignoring an untrusted input is not automatically safe** — a tightening is a
-behaviour change and needs the same "what does this break?" pass as a feature.
+**Six Codex rounds, six real findings, every one mine** (round 6 came back clean). Round 1:
+`content_liked` was still a stranger-phishing vector, and `left_at`/`invitation_status` were
+ignored. Round 2: the templating was bypassable (`data` spread *after* the server's values),
+and — worse — my "ignore `emailType`" tightening had **silently killed 7 legitimate email
+flows** whose type has no map entry. Round 3: a flat template allow-list permitted
+type/template confusion. Round 4: `file_uploaded` still let the client choose the **role**
+variant, because that one type carries two role-worded emails, so binding the template to the
+type wasn't enough; it is now derived from the collaboration, checking both parties explicitly
+rather than inferring "not the creator ⇒ the business".
+
+Round 5 is the one worth keeping, because **I had considered that exact case and argued myself
+out of it**: I let an underivable role fall through to the type map, reasoning it was "the same
+email this type has always sent, so not a regression." True, and irrelevant — since the client
+no longer supplies `emailType`, omitting `data.collaboration_id` had become the *only*
+remaining way to force the wrong role-worded email. Same defect, shorter route. The email is
+now suppressed instead (the bell still fires), so we decline to send mail asserting a role we
+could not verify.
+
+The through-line across 1–4: I kept answering *"is this value allowed?"* when the question was
+*"allowed **for what**?"* — each fix correct as far as it went, and leaving the next gap open.
+Two second-order lessons: **ignoring an untrusted input is not automatically safe** (a
+tightening is a behaviour change and needs the same "what does this break?" pass as a feature),
+and **"no worse than before" is the wrong bar for a fix** — the test is whether the claim the
+code now makes is actually true.
 
 Also fixed en route: bulk invite sent the email but fired **no in-app bell** — the two invite
 paths had drifted, and both now route through one shared `notifyInvitedCreator()`; and the
