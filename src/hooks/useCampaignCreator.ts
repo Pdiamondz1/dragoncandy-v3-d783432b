@@ -12,6 +12,7 @@ import { pollCampaignJob, type CampaignJobRow } from '@/lib/campaignGenerationJo
 import { saveDraftToStorage, loadDraftFromStorage, clearDraftFromStorage, generateDraftId } from '@/lib/campaignCreatorDraft';
 import { normalizeAudienceLine, normalizeCampaignTags } from '@/lib/campaignAudience';
 import { recordCrewActivity } from '@/lib/crews/recordCrewActivity';
+import { dispatchNotifications } from '@/lib/notifications/dispatch';
 import type {
   BusinessContext,
   CampaignIdea,
@@ -524,22 +525,26 @@ export function useCampaignCreator() {
             .eq('group_id', groupId)
             .eq('status', 'active');
           const actorName = profile?.business_name ?? 'A business';
-          for (const member of members ?? []) {
-            supabase.functions.invoke('create-notification', {
-              body: {
-                recipientId: member.creator_id,
-                type: 'group_campaign_posted',
-                category: 'campaigns',
-                title: 'New crew campaign',
-                body: `${actorName} posted a new campaign`,
-                actionUrl: '/dashboard/creator/campaigns?crews=1',
-                actorId: user.id,
-                actorName,
-                icon: 'campaign',
-                data: { campaign_id: data.id, group_id: groupId },
-                emailData: { campaignTitle: editedCampaign?.title ?? 'a new campaign', businessName: actorName },
-              },
-            }).catch((err: unknown) => console.error('Failed to send crew campaign notification:', err));
+          // dispatchNotifications reads the error off the result — invoke resolves
+          // (not rejects) on a non-2xx, so the old `.catch()` here logged nothing
+          // when a member's notification actually failed.
+          const { failed } = await dispatchNotifications(
+            (members ?? []).map((member) => ({
+              recipientId: member.creator_id,
+              type: 'group_campaign_posted',
+              category: 'campaigns',
+              title: 'New crew campaign',
+              body: `${actorName} posted a new campaign`,
+              actionUrl: '/dashboard/creator/campaigns?crews=1',
+              actorId: user.id,
+              actorName,
+              icon: 'campaign',
+              data: { campaign_id: data.id, group_id: groupId },
+              emailData: { campaignTitle: editedCampaign?.title ?? 'a new campaign', businessName: actorName },
+            })),
+          );
+          if (failed > 0) {
+            console.error(`Crew campaign notification failed for ${failed} member(s)`);
           }
         } catch (err) {
           console.error('Failed to prepare crew campaign notifications:', err);

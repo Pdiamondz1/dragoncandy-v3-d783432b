@@ -140,7 +140,7 @@ const CreatorGroupsInner: React.FC = () => {
               {groups.map((group) => (
                 <Link
                   key={group.id}
-                  to={`/dashboard/business/groups/${group.id}`}
+                  to={`/dashboard/business/crews/${group.id}`}
                   className="group block rounded-2xl border-2 border-dc-teal/40 bg-dc-card p-6 shadow-sm transition-all hover:border-dc-teal hover:shadow-md"
                 >
                   <div className="flex items-start justify-between gap-3">
