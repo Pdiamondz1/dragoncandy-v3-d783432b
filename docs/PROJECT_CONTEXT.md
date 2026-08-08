@@ -133,7 +133,29 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `getUser` and never checks ownership. **Pending (verified 2026-08-08):** merge PR, then **deploy
   all 6** — they are code changes and inert until deployed. Also found: **zero Toast tables exist on
   prod**, so §10's "Active integrations: Toast POS" is aspirational.
-  → `docs/wiki/concepts/anon-key-is-not-authorization.md`
+  → `docs/wiki/concepts/anon-key-is-not-authorization.md` · #402
+- **`donny-dragonshare-score` UNDEPLOYED — an unauthorized cross-tenant service-role write** — the
+  authenticated caller was validated then **never used again**, so a body-supplied `post_id` reached
+  a service-role read *and* write of any tenant's post, with the audit row stamped to the **victim**;
+  `matchQuality` plus a plaintext `creatorPostCount` in `rationale` also made the target org's boost
+  count solvable. It was the hole in the DB's own guard (`trg_ds_posts_block_self_verify` blocks
+  authenticated non-admins from those exact columns, then waves through the service role). **Deleted,
+  not patched** — zero callers, webhook never wired (checked on prod: no cron, no `pg_proc`, no
+  `http_request` trigger), and it never ran once (`with_score=0, score_events=0`). **The hole is
+  CLOSED on prod (2026-08-08):** `supabase functions delete` run and verified two ways —
+  `get_edge_function` returns *Function not found* and a live POST to the endpoint returns **404**.
+  Codex raised deleting-source-alone as a `[P1]` and proposed a tombstone; undeploy was chosen
+  instead because nothing auto-deploys edge functions here, so a tombstone needs the same manual
+  deploy while *institutionalizing* the orphaned-endpoint anti-pattern. The sibling `landing-clips`
+  lead was **checked and refuted** (real consumer behind a deliberately-off flag) and kept — but
+  confirming that found a **real** defect: both its media URLs are creator-writable free text, so a
+  boosted creator could aim the anonymous homepage at any URL; `buildClips` plus the query now
+  origin-pin them to the public bucket. Two new pre-existing `[med]` write/forgery leads were filed
+  here (`fire-dragonshare-social-hook`, `dragonshare-notify`) and are **now fixed in #402**, which
+  also found they were reachable with the *public anon key*, not merely by an authenticated user.
+  **PR #399 is MERGED and the undeploy is done. Pending (verified 2026-08-08):** deploy the hardened
+  `landing-clips` — that half is a code change and is inert until deployed.
+  → `docs/wiki/concepts/service-role-data-exposure.md` · #399
 - **DC Points visibility (`/rewards`, chip, honest notification, Donny)** — a bell said
   "+200 DC Points" with nowhere to click, points showed on two dashboards with no explanation, and
   even the founder needed a SQL query to answer "what earned that." Ships a `/rewards` page
