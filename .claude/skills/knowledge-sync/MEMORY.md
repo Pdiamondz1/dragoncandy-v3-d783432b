@@ -158,6 +158,45 @@ Also worth carrying: `handle_updated_at()` was **restored** upstream (migration 
 PR #385) — the "it's a stub, `updated_at` is untrustworthy on ~30 tables" warning still in older
 session context is now **stale**. A worktree 7 commits behind serves stale *facts*, not just stale
 files.
+### [2026-08-08] `donny-dragonshare-score` removal (`chore/remove-orphaned-dragonshare-score`)
+
+**Output:** "Resolved by deletion", "Found while confirming the sibling lead", "Open instances" and
+"deleting source is not undeploying" sections on `concepts/service-role-data-exposure.md`
+(compounded, no new page); source `raw/sessions/2026-08-08-dragonshare-score-removal.md`; `log.md`
+entry `[2026-08-08] update | [[Service-Role Data Exposure]]`; `index.md` concept line extended;
+`SHIPPED_LOG.md` prepend **plus a pointer inserted into the now-stale lead list of the 2026-08-07
+entry**; `PROJECT_CONTEXT.md` §5 (Built — awaiting founder go-live); removal notes on the two
+2026-04-27 DragonShare planning docs.
+
+**Happened.** Checked two of the four unverified leads the 2026-08-07 session filed. One was real
+(deleted the function); **one of my own claims about the other was wrong** and had already reached a
+recommendation to the founder.
+
+**Worked — closing a lead in the doc that filed it, in BOTH directions.** I struck the confirmed lead
+*and* the refuted one in the spec's §7, rather than deleting the refuted bullet. A wrong lead left
+standing is what gets acted on later; a lead silently removed looks like it was never checked. Both
+now carry `CHECKED <date> →` and the outcome.
+
+**Failed — "orphaned" was asserted from a grep of runtime call sites.** `landing-clips` reaches its
+consumer through `lazy(() => import("./HeroVideoBackdrop"))` behind a flag that is `false` **by
+design** (`DESIGN_SYSTEM.md` promises the flag re-enables it "with zero other code changes"). A lazy
+dynamic import behind a false flag is indistinguishable from dead code to that grep, and deleting the
+function would have broken the promise **silently** — the fetcher swallows all errors and returns
+`[]`. I had already recommended deleting it before checking.
+
+**Remember (promote if it recurs):**
+- **[dead-code] "Orphaned" is a claim about the whole consumer chain, flag-gated links included.**
+  Trace `lazy()`/dynamic `import()` and feature flags before calling anything dead. A flag that is
+  off by design is preservation, not abandonment — check whether a doc *promises* it can be flipped.
+- **[deploy-gap] Deleting source is NOT undeploying.** A merged deletion leaves the function serving,
+  so the repo and the live attack surface disagree — and the repo is what everyone greps. Any
+  "removed the function" entry must carry the undeploy as an explicit `**Pending:**`, which is why
+  this entry went to *Built — awaiting founder go-live*, not *Shipped*.
+- **[reviewer-scope] A reviewer finding can be too SMALL.** `data-exposure-reviewer` flagged
+  `screenshot_url`; the same policy left `content_file_path` unconstrained too. Verifying a finding
+  means re-deriving its reasoning, not just confirming the line it points at — check whether the
+  cause covers siblings the reviewer didn't name. (Mirror of the existing verify-before-accepting
+  rule, in the under-reporting direction.)
 
 ### [2026-08-08] `status_changed_at` anchor (`feat/status-changed-at-anchor`, PR #391)
 
