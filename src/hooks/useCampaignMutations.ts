@@ -257,6 +257,29 @@ export const useDeleteCampaign = () => {
   });
 };
 
+/**
+ * Counts how many invite dispatches actually landed.
+ *
+ * `supabase.functions.invoke` RESOLVES on a non-2xx — it returns `{ data: null, error }`
+ * rather than throwing (the same trap is documented at useCampaignCreator.ts and
+ * useCreatorGroupInvitations.ts). So `Promise.allSettled` marks a 400 as **fulfilled**, and
+ * counting fulfilled promises reported every rejection as "sent": send-campaign-invitation
+ * refuses a missing profiles row, a self-invite, a non-published campaign, a non-owner and
+ * any crew campaign, and the business was told those creators had been invited.
+ *
+ * `total` is passed in rather than derived from `results.length` so a promise that rejected
+ * outright (a genuine network failure) is still attributed to failed.
+ *
+ * Exported for tests.
+ */
+export function countInviteDispatch(
+  results: PromiseSettledResult<{ error: unknown } | null | undefined>[],
+  total: number,
+): { sentCount: number; failedCount: number } {
+  const sentCount = results.filter((r) => r.status === 'fulfilled' && !r.value?.error).length;
+  return { sentCount, failedCount: total - sentCount };
+}
+
 export const useDuplicateCampaign = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -271,8 +294,11 @@ export const useDuplicateCampaign = () => {
         // no content requirements even when the source clearly had them.
         // group_id MUST be carried through. Omitting it silently turned a duplicated crew
         // campaign PUBLIC while keeping the crew's forced fixed_price of 0 — a public $0
-        // campaign, and publishing it fired send-campaign-publish-notifications (gated on
-        // !group_id) to every onboarded creator. That breaks the promise made in the
+        // campaign, and publishing it fired send-campaign-publish-notifications to every
+        // onboarded creator. Note that BOTH gates were defeated, not just the client one:
+        // the edge function re-asserts the guard itself, but it reads group_id off the
+        // row, and the row had already been made to lie. Defence-in-depth does not help
+        // when the defect is in the data. That breaks the promise made in the
         // crew-invitation email and both help articles that crew collabs never go public.
         // Preserving it is also the better behaviour: re-launching a crew collab should
         // give you another crew collab. It is safe — fixed_price 0 travels with it, which
@@ -476,16 +502,7 @@ export const useRelaunchWithCreators = () => {
         )
       );
 
-      // functions.invoke RESOLVES on a non-2xx — it returns { data: null, error } rather
-      // than throwing (documented elsewhere in this codebase at useCampaignCreator.ts and
-      // useCreatorGroupInvitations.ts). Counting fulfilled promises therefore reported
-      // every 400/403 as "sent": send-campaign-invitation rejects a missing profiles row,
-      // a self-invite, a non-published campaign and a non-owner, and the business was told
-      // those creators had been invited. Count only invites that actually succeeded.
-      const sentCount = inviteResults.filter(
-        (r) => r.status === 'fulfilled' && !r.value?.error,
-      ).length;
-      const failedCount = reinviteCreatorIds.length - sentCount;
+      const { sentCount, failedCount } = countInviteDispatch(inviteResults, reinviteCreatorIds.length);
       return { id: newCampaign!.id, sentCount, failedCount };
     },
     onSuccess: (_data) => {
@@ -507,6 +524,19 @@ export const useRelaunchWithCreators = () => {
         toast({
           title: 'Re-hire is for marketplace campaigns',
           description: 'Crew collabs stay private to your crew. Post a new crew campaign — your crew already sees it.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      // The other deterministic refusal: enforce_active_campaign_limit fires on this
+      // INSERT (OLD is NULL, so its "not already published" guard is true) because the
+      // relaunch inserts straight to 'published'. "Please try again" would send the
+      // business round a loop that can never succeed — the fix is to finish or cancel a
+      // live campaign, which only they can decide.
+      if (error instanceof Error && /Active campaign limit reached/i.test(error.message)) {
+        toast({
+          title: 'You are at your active campaign limit',
+          description: 'Re-launching publishes immediately, so it needs a free slot. Complete or cancel a live campaign, then try again.',
           variant: 'destructive',
         });
         return;
