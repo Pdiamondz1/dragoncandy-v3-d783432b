@@ -243,8 +243,17 @@ browser — an IP/UA beacon on the marketing page.
 control invites omission) derived from `SUPABASE_URL`, and pins both fields to the public
 `dragonshare-content` prefix. An off-bucket **poster is dropped but the clip is kept** — the video
 still plays, it just loses its still frame. All 9 real rows already carry the prefix, so behaviour is
-unchanged today. 14 tests, including a prefix-lookalike host, a sibling public bucket, and a
+unchanged today. 16 tests, including a prefix-lookalike host, a sibling public bucket, and a
 non-http scheme.
+
+**Codex caught that in-code filtering alone was starvable** — a genuine second-model catch. The query
+takes the newest 20 eligible rows and `buildClips` filtered *after* that, so enough recent off-bucket
+boosted rows would push every valid clip out of the window and the hero would silently lose its
+dynamic clips. The predicate now runs **in the query too**
+(`.like("content_file_path", likePrefixPattern(prefix))`), with `\ % _` escaped — `_` is a LIKE
+single-character wildcard and would otherwise *loosen* the filter it exists to tighten. Both layers
+are kept on purpose: SQL so the window can't be starved, in-code because that is what covers
+`screenshot_url` and what protects any future caller of the pure helper.
 
 **The generalizable bit:** a row-level eligibility filter is not a content filter. Whenever a
 service-role endpoint echoes a **URL** that any user can write, the origin must be pinned separately

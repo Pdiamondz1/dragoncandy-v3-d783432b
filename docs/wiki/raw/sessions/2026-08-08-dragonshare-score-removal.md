@@ -110,9 +110,20 @@ is kept** (the video plays, it just loses its still frame). All 9 real rows alre
 (`with_screenshot = 0`, and every `content_file_path` matches), so behaviour is unchanged today.
 14 tests, including a prefix-lookalike host, a sibling public bucket, and a non-http scheme.
 
+**Codex then caught that the in-code filter alone was starvable** — the second-model pass earning its
+place. The query takes the newest 20 eligible rows and `buildClips` filtered *after* the limit, so
+enough recent off-bucket boosted rows would evict every valid clip from the window and the hero would
+silently lose its dynamic clips (bounded: the static playlist still renders, since
+`mergeBackdropPlaylist` merges dynamic *into* static). Fixed by pushing the predicate into the query
+— `.like("content_file_path", likePrefixPattern(prefix))` — escaping `\ % _`, since `_` is a LIKE
+single-char wildcard that would *loosen* the filter it exists to tighten. **Both layers kept**: SQL so
+the window can't be starved, in-code because that covers `screenshot_url` and any future caller of the
+pure helper. 16 tests.
+
 **Generalizable:** a row-level eligibility filter is not a content filter. When a service-role
 endpoint echoes a **URL that any user can write**, pin the origin separately from whatever decides
-the row is allowed.
+the row is allowed — and pin it **where the rows are selected**, not only where they are mapped, or
+the filter is starvable by construction.
 
 Note this half **needs an edge-function deploy** — unlike the deletion, it is a code change.
 

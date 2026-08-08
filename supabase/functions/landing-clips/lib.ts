@@ -25,6 +25,17 @@ export function allowedMediaPrefix(supabaseUrl: string): string {
 }
 
 /**
+ * The same prefix as a SQL LIKE pattern, so the origin filter runs in the QUERY and not only in
+ * `buildClips`. Filtering only afterwards is starvable: the query takes the newest 20 eligible rows,
+ * so enough recent off-bucket rows push every valid clip out of the window and the hero silently
+ * loses its dynamic clips. Escapes `\ % _` so the prefix matches literally — `_` in particular is a
+ * LIKE single-character wildcard, and would otherwise loosen the very filter this exists to tighten.
+ */
+export function likePrefixPattern(prefix: string): string {
+  return `${prefix.replace(/([\\%_])/g, "\\$1")}%`;
+}
+
+/**
  * Map eligible DragonShare rows to the response shape. Belt-and-suspenders over the SQL filter:
  * drops rows without a `content_file_path` or whose file isn't a playable video extension (a
  * mislabeled image `src` would never fire `onEnded` and would stall the rotation), de-dupes by

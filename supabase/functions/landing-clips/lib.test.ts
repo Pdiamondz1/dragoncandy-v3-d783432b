@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { allowedMediaPrefix, buildClips, type LandingClipRow } from "./lib";
+import {
+  allowedMediaPrefix,
+  buildClips,
+  likePrefixPattern,
+  type LandingClipRow,
+} from "./lib";
 
 // The real shape: `${SUPABASE_URL}/storage/v1/object/public/dragonshare-content/<uid>/<uuid>.<ext>`
 const PREFIX = allowedMediaPrefix("https://zocahiffooqdybdhguqv.supabase.co");
@@ -20,6 +25,17 @@ describe("allowedMediaPrefix", () => {
       "https://x.supabase.co/storage/v1/object/public/dragonshare-content/";
     expect(allowedMediaPrefix("https://x.supabase.co")).toBe(expected);
     expect(allowedMediaPrefix("https://x.supabase.co/")).toBe(expected);
+  });
+});
+
+describe("likePrefixPattern", () => {
+  it("appends the wildcard so the prefix anchors the match", () => {
+    expect(likePrefixPattern("https://x.co/a/")).toBe("https://x.co/a/%");
+  });
+
+  it("escapes LIKE metacharacters so the prefix matches literally", () => {
+    // `_` is a single-char wildcard and would LOOSEN the very filter this tightens.
+    expect(likePrefixPattern("a_b%c\\d/")).toBe("a\\_b\\%c\\\\d/%");
   });
 });
 
