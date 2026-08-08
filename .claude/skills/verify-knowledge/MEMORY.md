@@ -9,15 +9,17 @@
 
 ## Lessons (read FIRST every run; curated — rewrite/prune as they evolve)
 
-- **[freshness-proxy] When (b)'s raw `max(updated_at)` reads >24h stale but the sync just ran
-  clean AND `content ilike` finds this session's new text in `donny_knowledge`, (b) is met.**
-  `donny_knowledge.updated_at` is NOT reliably bumped on UPDATE (and a content-only re-embed of
-  an existing page won't move `max(updated_at)`), so a knowledge-sync that only *changed* pages
-  (no net-new page) can leave `RAG_LAST` pinned to an older insert date even though the RAG is
-  current. The rule's authority is the **sync exit code** + **direct content presence**, not the
-  timestamp — verify with `content ilike '%<distinctive new phrase>%'` and trust that. (Advisory:
-  this clarifies how to *read* check (b)'s signal; it doesn't loosen the >24h rule for a genuinely
-  un-synced RAG, which content-ilike would also reveal as absent.)
+- **[freshness-proxy] (b)'s authority is content presence, never `max(updated_at)` — and the
+  original reason for that has EXPIRED, so don't re-derive it from the timestamp's behaviour.**
+  This lesson used to read "`donny_knowledge.updated_at` is NOT reliably bumped on UPDATE", because
+  the shared `handle_updated_at()` was a no-op stub on prod. **PR #385 restored it (2026-08-07)**;
+  measured 2026-08-08, **231 of 237** rows have `updated_at > created_at`, so an update-only sync
+  now *does* advance the timestamp. **The rule is unchanged on better grounds:** a moved timestamp
+  proves only that *something* was written, whereas `content ilike '%<token the newest revision
+  added>%'` proves the specific new text is retrievable. So a fresh-looking `RAG_LAST` is NOT
+  evidence (b) is met — it is now capable of moving without the content being right, which is
+  strictly *more* misleading than when it was frozen. Keep probing content. (Advisory: clarifies how
+  to *read* (b); does not loosen it.) See [[Updated-At Trigger Drift]].
 
 - **[unmerged-branch] Validating a PRE-merge branch is legitimate — and (b) must stay anchored to
   `origin/main`.** `LAST_WIKI_SYNC` is defined on `origin/main`, so a branch's un-merged pages are
@@ -25,6 +27,16 @@
   **expected** result, not a fail. Do not "fix" it by running the sync — the RAG tracks `origin/main`,
   and the post-merge hook propagates merged content. Only (c) covers the branch's own pages
   (are they in `index.md` + `log.md`). (Advisory: clarifies scope; does not loosen the >24h rule.)
+- **[claim-decay] A fix rots every doc that explained the bug — and the gated checks won't see it.**
+  When a run's subject is a *prod behaviour change*, sweep the whole repo for the **claim**, not the
+  subsystem: `git grep` a distinctive phrase from the old behaviour. PR #385 restoring
+  `handle_updated_at()` falsified four files in one stroke — `knowledge-sync/SKILL.md`, its
+  `MEMORY.md`, this skill's own gating rationale, and the live daily `knowledge-freshness-agent.md`
+  — and all three checks stayed green because none of them live under `docs/wiki/`. The tell is a
+  doc stating prod behaviour in the **present tense** with a confirmation date: that date is an
+  expiry, not a warranty. Report it as advisory (it is out of (a)'s scope — do NOT put it in
+  `missing[]`), then fix it as the caller. Distinct from [dated-analysis]: that one says a
+  *historical* record is fine; this one says a *present-tense* claim is a liability.
 - **[dated-analysis] A dated analysis page is not a contradiction just because reality moved on.**
   `claude-subagents-audit.md` still reads "zero custom `.claude/agents/`" and lists
   `rls-migration-reviewer` as deferred — both correct **as of its cycle**, and its own text says
@@ -33,6 +45,26 @@
   conflicting **current** state, not on keyword staleness — a naive grep false-flags these critical.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-08] Post-merge verify for PRs #385/#388/#391/#394 (handle_updated_at restore + status_changed_at anchors)
+- Output: verdict `done:true` — all three criteria met, `missing:[]`.
+- Happened: (a) 0 orphans / 106 pages; the three `log.md` hits for "handle_updated_at is a no-op"
+  are historical append-only entries, not competing current-state claims ([dated-analysis]).
+  (b) probed on tokens the newest in-scope revision (`17dac8e3`) **added**: `20260808020000` = 5
+  rows, `escrow_status_changed_at` = 5, the consumer-rule sentence = 3 — all text created
+  2026-08-08, so none could pass trivially. (c) `updated-at-trigger-drift.md` in `index.md`, both a
+  `[2026-08-08] update` and `[2026-08-07] ingest` entry in `log.md`, raw session catalogued.
+- Worked: the contradiction half of (a) paid off in an unexpected direction. Sweeping for pages
+  still asserting the stub as *current* found none in the wiki — but four files **outside** (a)'s
+  scope did: `knowledge-sync/SKILL.md`, `knowledge-sync/MEMORY.md`, this skill's own `SKILL.md`,
+  and the live `knowledge-freshness-agent.md`. All fixed as the caller, after the verdict.
+- Failed: nothing gating. The advisory was correctly kept OUT of `missing[]` (empty when `done:true`).
+- Remember: **a fix silently rots every doc that explained the bug.** #385 restored the trigger and
+  in doing so falsified four files at once — including this skill's own gating rationale and a daily
+  cloud routine's. The tell is a doc that states prod behaviour in the **present tense** with a
+  confirmation date; that date is an expiry, not a warranty. When a session changes prod behaviour,
+  grep the whole repo for the *claim*, not just the subsystem — and note the checks stayed green
+  throughout, because none of it lives under `docs/wiki/`. → promoted to Lessons as [claim-decay].
 
 ### [2026-08-02] Post-merge verify for PRs #357 + #358 (VerifiedRoute missing-profile fix)
 - Output: verdict `done:true` — all three criteria met, `missing:[]`.
