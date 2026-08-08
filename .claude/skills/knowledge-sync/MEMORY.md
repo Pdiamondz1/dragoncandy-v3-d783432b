@@ -108,6 +108,37 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-08-08] `status_changed_at` anchor (`feat/status-changed-at-anchor`, PR #391)
+
+**Output:** the "The follow-up: `status_changed_at`" section + extended anchor table on
+`concepts/updated-at-trigger-drift.md` (compounded, no new page); `log.md` entry
+`[2026-08-08] update | [[Updated-At Trigger Drift]]`; `index.md` concept line rewritten;
+`DATABASE_SCHEMA.md` both new columns + the anchor-scope rule; `SHIPPED_LOG.md` prepend;
+`PROJECT_CONTEXT.md` §5 (2 in-place corrections).
+
+**Worked — compounding beat creating.** #391 closes the open issue #385 left, so it belongs on the
+same page; a new page would have separated a defect from its fix. Better still, it let me **close
+two "Known Issues" in place** rather than leave a page advertising problems that no longer exist.
+A concept page's Known Issues section is a decaying claim just like a §5 `**Pending:**` clause — the
+session that fixes the issue is the only one positioned to notice.
+
+**Worked — the decay lesson caught a live one.** #384's §5 line said "**Pending:** merge PR #384";
+it merged (e3f12c14) *while this session was running*. Corrected to keep only the genuinely
+outstanding half (`verify-prod` still not run). This is the second consecutive session where a
+`**Pending:**` clause decayed under me, which is evidence the pattern is structural, not a one-off.
+
+**Remember — two bugs of identical shape in one change.** Twice I removed a column from a
+`.select()` and left a payload reading it. Invisible to TypeScript because the embedded object is
+cast `as any`; it would have been `undefined` at runtime and thrown out of the sort. **When a change
+renames a selected column, grep every read of the old name — the `as any` cast means the compiler is
+not a safety net here.** Both were caught by re-grepping after the edit, not by review.
+
+**Remember — reviewers found what I could not.** `edge-function-reviewer` caught that the queries
+never checked `error` (so an out-of-order deploy fails *silently* — "it looks like a quiet day"),
+and Codex caught a design error I would have defended: a symmetric two-column anchor that *looked*
+consistent and would have announced escrow events that never happened. **Symmetry is not evidence
+of correctness. The consumer decides an anchor's scope.**
+
 ### [2026-08-07] `handle_updated_at()` restore (`docs/knowledge-sync-updated-at-restore`, PR #385 work)
 
 **Output:** `docs/wiki/concepts/updated-at-trigger-drift.md` (new) +

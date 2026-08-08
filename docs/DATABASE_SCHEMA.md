@@ -18,10 +18,31 @@
 >
 > **What this means for you now:** `updated_at` is a valid *modification* timestamp on these tables
 > going forward. It is **still not a status/completion signal** — it moves on *any* write, so a title
-> edit is indistinguishable from a status change. For "when did this finish", use a purpose-built
-> anchor stamped by its own narrow trigger: `campaign_collaborations.content_submitted_at`,
-> `campaign_collaborations.payout_executed_at`, or `campaigns.completed_at` (added by
-> `20260807233000` for exactly this reason).
+> edit is indistinguishable from a status change. For "when did this happen", use a purpose-built
+> anchor stamped by its own narrow trigger. The full set:
+>
+> | Anchor | Table | Stamped on |
+> |---|---|---|
+> | `content_submitted_at` | `campaign_collaborations` | transition into `content_status='submitted'` |
+> | `payout_executed_at` | `campaign_collaborations` | the instant money moves |
+> | `status_changed_at` | `campaign_collaborations` | transition of `status` **or** `content_status` (`20260808020000`) |
+> | `completed_at` | `campaigns` | transition into `status='completed'` (`20260807233000`) |
+> | `escrow_status_changed_at` | `campaigns` | transition of `escrow_status` **only** (`20260808020000`) |
+>
+> **Why `campaigns` has an escrow-specific anchor and `campaign_collaborations` has a combined one
+> is not an inconsistency — it is driven by the consumer.** `donny-analytics-alerts` reports escrow
+> state for campaigns, so an anchor that also moved on a `status` change would announce an escrow
+> event that never happened (Codex caught exactly that in review). The collaborations alert labels
+> `content_status || status`, so either transition is an event it genuinely reports. **The test for
+> a new anchor is never "how many columns" — it is "does every column this stamps on produce an
+> event the reader actually reports".** See [[Updated-At Trigger Drift]].
+>
+> Both `20260808020000` columns are **nullable with no backfill**: `NULL` means "predates the
+> migration and hasn't changed since", and `.gte()` excludes NULL, which is the intended
+> conservative behaviour. The backfill was deliberately omitted because an `UPDATE` on these tables
+> fires `handle_updated_at` (live again) plus `enforce_single_slot_campaign`, which can `RAISE`.
+> Note also that `DEFAULT now()` is set **after** `ADD COLUMN` in that migration — putting a
+> volatile default inside `ADD COLUMN` evaluates it for every existing row.
 >
 > **Legacy `updated_at` is unreliable in BOTH directions — don't infer history from it.** A
 > pre-2026-08-07 row where `updated_at == created_at` means *"no explicit writer touched it"*, **not**

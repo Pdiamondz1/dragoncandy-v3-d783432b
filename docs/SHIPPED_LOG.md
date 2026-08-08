@@ -26,6 +26,56 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-08] `status_changed_at` — the analytics alerts finally get a change-anchor
+
+Closes the gap #385 recorded, Codex flagged, and post-merge measurement showed was **bigger than
+#385 credited**. `donny-analytics-alerts` asks "did this row's status change recently?" and never
+had a column that answers it — `updated_at` was a stub (so the filter meant "created in the
+window"), and after the restore it would have meant "modified in the window", firing "Payment
+released" off a title edit. #385 fell back to `created_at` and wrote the gap down.
+
+**Two anchors, deliberately asymmetric** (migration `20260808020000`, fn **v97**):
+
+| Column | Watches | Consumer |
+|---|---|---|
+| `campaigns.escrow_status_changed_at` | `escrow_status` **only** | payment_events |
+| `campaign_collaborations.status_changed_at` | `status` + `content_status` | status_changes |
+
+**Codex round 1 caught the first draft** giving `campaigns` a symmetric two-column anchor: a
+campaign going `active → completed` with escrow unchanged at `held` would stamp it and announce
+"Funds held in escrow" for an escrow event that never happened — re-creating the exact
+false-positive class the change exists to remove. Collaborations legitimately watch both, because
+their alert labels `content_status || status`. **The test is never "how many columns", it is "does
+every column this stamps on produce an event the reader actually reports".** Symmetry between two
+tables is not evidence of correctness; the consumer is. Round 2 came back clean.
+
+**Two traps designed around**, both recorded in the migration header so they aren't "fixed" back in:
+*no backfill* (an `UPDATE` here fires `handle_updated_at`, live again, stamping `updated_at` across
+both core tables and flattening the three `.order('updated_at')` sites — and
+`enforce_single_slot_campaign` re-evaluates on a no-op UPDATE and can `RAISE`, aborting the
+migration; cost of skipping is a one-time ≤24h gap that self-heals), and *`DEFAULT now()` set AFTER
+`ADD COLUMN`* (a volatile default inside `ADD COLUMN` is evaluated for every existing row, which
+would make the whole table look like it just changed).
+
+**`edge-function-reviewer` caught a silent-failure mode:** the three queries gated only on
+`if (data)` and never checked `error`, so an out-of-order deploy would have skipped the alert blocks
+with no exception and no signal — *it would have looked like a quiet day*. Now logged, naming the
+migration by number. It also confirmed `.gte("campaigns.escrow_status_changed_at", since)` is a real
+`WHERE` on the parent rows **only because** `campaigns!inner` is present.
+
+**Verified on prod, not argued.** A `RAISE`-aborted (atomically rolled back) probe: a no-op edit and
+a **status-only** change both left `escrow_status_changed_at` NULL; a real escrow transition stamped
+it. Structural: both columns present with `DEFAULT now()`, all 42 existing rows NULL, both triggers
+live, and post-rollback 11 approved collabs / 6 held campaigns untouched. Deploy order was reversed
+from #385 (migration first — this reads NEW columns); fn v97 boot-checked.
+
+Two self-inflicted bugs caught mid-change, both the same shape: a payload reading a column removed
+from its `.select()`, invisible to TypeScript because the embedded object is cast `as any`. The cast
+is the hazard, not the typos.
+
+PR #391 · migration `20260808020000` · `donny-analytics-alerts` v97 ·
+→ `docs/wiki/concepts/updated-at-trigger-drift.md`
+
 ## [2026-08-07] `handle_updated_at()` restored from its prod-drifted stub, hazards fixed first
 
 `public.handle_updated_at()` on prod had a body of literally `-- Function logic here` /
