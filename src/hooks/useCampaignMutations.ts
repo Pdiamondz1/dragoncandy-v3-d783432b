@@ -265,7 +265,11 @@ export const useDuplicateCampaign = () => {
     mutationFn: async (sourceCampaignId: string) => {
       const { data: source, error: fetchError } = await supabase
         .from('campaigns')
-        .select('title, description, goals, deliverables, platforms, budget_min, budget_max, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, ai_analysis, org_unit_id')
+        // `campaign_deliverables` (the JSONB column, not the table of the same name) is
+        // where the launch wizard actually writes deliverables — useCampaignQueries reads
+        // it back as the source of truth. Omitting it here is why a duplicate arrived with
+        // no content requirements even when the source clearly had them.
+        .select('title, description, goals, deliverables, campaign_deliverables, platforms, budget_min, budget_max, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, ai_analysis, org_unit_id')
         .eq('id', sourceCampaignId)
         .single();
 
@@ -277,7 +281,12 @@ export const useDuplicateCampaign = () => {
           ...source,
           title: `${source.title} (Copy)`,
           status: 'draft',
-          escrow_status: 'pending',
+          // escrow_status is deliberately NOT set — the column defaults to 'none'.
+          // Setting 'pending' here meant "the business clicked Publish and is on their way
+          // to Stripe" (the only place that value is written: CampaignFinalizeStep, gated on
+          // wantToPublish). A duplicate is a draft nobody has asked to publish, so 'pending'
+          // made CampaignStatusBanner render "Payment Required to Publish" — and
+          // CampaignCard show "Pay & Publish →" — for a campaign that owes nothing.
           deadline: null,
           user_id: user!.id,
           duplicated_from: sourceCampaignId,
@@ -287,11 +296,22 @@ export const useDuplicateCampaign = () => {
 
       if (insertError) throw insertError;
 
-      // Copy deliverables with status reset
-      const { data: sourceDeliverables } = await supabase
+      // Both content copies below previously selected columns that do not exist
+      // (`quantity` on campaign_deliverables; `media_url`/`caption` on campaign_media).
+      // PostgREST returned 42703, the error was discarded, `data` came back null, and the
+      // `if (…?.length)` guard skipped the copy — so every duplicate silently lost its
+      // deliverables and media. Read the errors so this cannot fail quietly again.
+      let contentCopyFailed = false;
+
+      const { data: sourceDeliverables, error: delivFetchErr } = await supabase
         .from('campaign_deliverables')
-        .select('content_type, platform, aspect_ratio, description, quantity')
+        .select('content_type, platform, aspect_ratio, description, max_duration_seconds, sort_order')
         .eq('campaign_id', sourceCampaignId);
+
+      if (delivFetchErr) {
+        contentCopyFailed = true;
+        console.error('Failed to read deliverables to copy:', delivFetchErr);
+      }
 
       if (sourceDeliverables?.length) {
         const { error: delivErr } = await supabase
@@ -301,14 +321,23 @@ export const useDuplicateCampaign = () => {
             campaign_id: newCampaign.id,
             status: 'pending',
           })));
-        if (delivErr) console.error('Failed to copy deliverables:', delivErr);
+        if (delivErr) {
+          contentCopyFailed = true;
+          console.error('Failed to copy deliverables:', delivErr);
+        }
       }
 
-      // Copy media assets
-      const { data: sourceMedia } = await supabase
+      // Media rows point at already-uploaded storage objects, so copying the row is enough
+      // — file_url/file_name are both NOT NULL and must be carried, not regenerated.
+      const { data: sourceMedia, error: mediaFetchErr } = await supabase
         .from('campaign_media')
-        .select('media_type, media_url, caption, sort_order')
+        .select('media_type, file_url, file_name, file_size_bytes, mime_type, duration_seconds, thumbnail_url, sort_order')
         .eq('campaign_id', sourceCampaignId);
+
+      if (mediaFetchErr) {
+        contentCopyFailed = true;
+        console.error('Failed to read media to copy:', mediaFetchErr);
+      }
 
       if (sourceMedia?.length) {
         const { error: mediaErr } = await supabase
@@ -318,14 +347,27 @@ export const useDuplicateCampaign = () => {
             campaign_id: newCampaign.id,
             uploaded_by: user!.id,
           })));
-        if (mediaErr) console.error('Failed to copy media:', mediaErr);
+        if (mediaErr) {
+          contentCopyFailed = true;
+          console.error('Failed to copy media:', mediaErr);
+        }
       }
 
-      return newCampaign;
+      return { ...newCampaign, contentCopyFailed };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-      toast({ title: 'Campaign duplicated!', description: 'Edit the draft to customize and publish.' });
+      // Don't claim a clean copy when the content didn't come across — the business would
+      // otherwise discover the empty deliverables list only after publishing.
+      toast(
+        result.contentCopyFailed
+          ? {
+              title: 'Campaign duplicated, but not everything copied',
+              description: 'Check the deliverables and media on the draft before you publish.',
+              variant: 'destructive',
+            }
+          : { title: 'Campaign duplicated!', description: 'Edit the draft to customize and publish.' },
+      );
     },
     onError: () => {
       toast({ title: 'Failed to duplicate campaign', description: 'Please try again.', variant: 'destructive' });
