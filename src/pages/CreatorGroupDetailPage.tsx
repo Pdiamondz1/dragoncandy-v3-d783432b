@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -25,7 +25,7 @@ import {
 } from '@/hooks/useCreatorGroupMembers';
 import { partitionMembers } from '@/lib/groups/groupMembers';
 import { resolveProfileAssetUrl } from '@/hooks/useSignedUrl';
-import { ArrowLeft, Check, Loader2, Pencil, UserPlus, Users, X } from 'lucide-react';
+import { ArrowLeft, Check, Loader2, Pencil, Trash2, UserPlus, Users, X } from 'lucide-react';
 
 const StatusPill: React.FC<{ status: CreatorGroupMember['status'] }> = ({ status }) => {
   const label =
@@ -132,7 +132,8 @@ const CreatorGroupDetailInner: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const groupId = id ?? '';
 
-  const { groups, isLoading: groupsLoading, renameGroup } = useCreatorGroups();
+  const navigate = useNavigate();
+  const { groups, isLoading: groupsLoading, renameGroup, deleteGroup } = useCreatorGroups();
   const group = groups.find((g) => g.id === groupId);
 
   const {
@@ -153,6 +154,7 @@ const CreatorGroupDetailInner: React.FC = () => {
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftName, setDraftName] = useState('');
   const [memberToRemove, setMemberToRemove] = useState<CreatorGroupMember | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const { active, invited } = partitionMembers(members);
 
@@ -195,6 +197,19 @@ const CreatorGroupDetailInner: React.FC = () => {
     setMemberToRemove(null);
   };
 
+  const confirmDelete = async () => {
+    if (!groupId) return;
+    try {
+      await deleteGroup.mutateAsync(groupId);
+      navigate('/dashboard/business/crews');
+    } catch {
+      // Error toast handled in the hook's onError — including the ON DELETE
+      // RESTRICT case, where the crew still owns campaigns ("Cannot delete this
+      // crew — remove or reassign this crew's campaigns first").
+    }
+    setDeleteOpen(false);
+  };
+
   // Group list still loading and not yet found.
   if (groupsLoading && !group) {
     return (
@@ -215,7 +230,7 @@ const CreatorGroupDetailInner: React.FC = () => {
             <p className="text-lg font-bold text-dc-text">Crew not found</p>
             <p className="mt-1 text-sm text-dc-text-muted">It may have been deleted.</p>
             <Button asChild variant="dc-outline" size="sm" className="mt-6">
-              <Link to="/dashboard/business/groups">Back to crews</Link>
+              <Link to="/dashboard/business/crews">Back to crews</Link>
             </Button>
           </div>
         </div>
@@ -229,7 +244,7 @@ const CreatorGroupDetailInner: React.FC = () => {
         <PageHeader>
           <div className="mx-auto max-w-3xl">
             <Link
-              to="/dashboard/business/groups"
+              to="/dashboard/business/crews"
               className="inline-flex items-center gap-1.5 text-sm font-semibold text-dc-text-muted transition-colors hover:text-dc-teal"
             >
               <ArrowLeft className="h-4 w-4" /> Crews
@@ -286,6 +301,14 @@ const CreatorGroupDetailInner: React.FC = () => {
                       className="shrink-0 rounded-full p-1.5 text-dc-text-muted transition-colors hover:bg-dc-teal/10 hover:text-dc-teal"
                     >
                       <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteOpen(true)}
+                      aria-label="Delete crew"
+                      className="shrink-0 rounded-full p-1.5 text-dc-text-muted transition-colors hover:bg-dc-pink/20 hover:text-dc-pink-accent"
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                   {group.description && (
@@ -397,6 +420,39 @@ const CreatorGroupDetailInner: React.FC = () => {
               className="rounded-full bg-dc-pink-accent-btn text-white hover:bg-dc-pink-accent-btn-hover"
             >
               Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this crew?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {active.length > 0 || invited.length > 0 ? (
+                <>
+                  {active.length + invited.length}{' '}
+                  {active.length + invited.length === 1 ? 'creator' : 'creators'} will lose access
+                  to this crew. They aren't notified, and this can't be undone. A crew that still
+                  has campaigns can't be deleted — reassign or remove those first.
+                </>
+              ) : (
+                <>
+                  This can't be undone. A crew that still has campaigns can't be deleted — reassign
+                  or remove those first.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleteGroup.isPending}
+              className="rounded-full bg-dc-pink-accent-btn text-white hover:bg-dc-pink-accent-btn-hover"
+            >
+              Delete crew
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -7,6 +7,7 @@ import {
   buildGroupRemovalNotification,
   type GroupMemberStatus,
 } from '@/lib/groups/groupMembers';
+import { dispatchNotification, dispatchNotifications } from '@/lib/notifications/dispatch';
 
 /**
  * The crew's display identity, needed by both the invite and removal
@@ -30,19 +31,6 @@ async function fetchCrewIdentity(groupId: string, ownerId: string) {
     console.error('Failed to resolve crew identity for notification:', err);
     return { groupName: 'a crew', businessName: null };
   }
-}
-
-/**
- * `supabase.functions.invoke` RESOLVES with `{ data, error }` on a non-2xx — it
- * does not reject. A bare `.catch()` therefore swallows every 4xx/5xx silently,
- * so failures must be counted from both the settled state and `value.error`.
- */
-function countFailedDispatches(
-  results: PromiseSettledResult<{ error: unknown }>[],
-): number {
-  return results.filter(
-    (r) => r.status === 'rejected' || (r.status === 'fulfilled' && !!r.value.error),
-  ).length;
 }
 
 export interface CreatorGroupMember {
@@ -160,21 +148,19 @@ export function useCreatorGroupMembers(groupId: string) {
 
       const { groupName, businessName } = await fetchCrewIdentity(groupId, user!.id);
 
-      const results = await Promise.allSettled(
+      const { failed } = await dispatchNotifications(
         invitedIds.map((creatorId) =>
-          supabase.functions.invoke('create-notification', {
-            body: buildGroupInviteNotification({
-              creatorId,
-              groupName,
-              groupId,
-              actorId: user!.id,
-              businessName,
-            }),
+          buildGroupInviteNotification({
+            creatorId,
+            groupName,
+            groupId,
+            actorId: user!.id,
+            businessName,
           }),
         ),
       );
 
-      return { invitedIds, failed: countFailedDispatches(results) };
+      return { invitedIds, failed };
     },
     onSuccess: ({ invitedIds, failed }) => {
       queryClient.invalidateQueries({ queryKey: ['creator-group-members', groupId] });
@@ -226,24 +212,15 @@ export function useCreatorGroupMembers(groupId: string) {
       // removal itself has already succeeded, so a failed bell must not throw.
       if (wasActive) {
         const { groupName, businessName } = await fetchCrewIdentity(groupId, user!.id);
-        try {
-          // invoke resolves (not rejects) on a non-2xx, so the error has to be
-          // read off the result — a bare .catch() here would log nothing at all.
-          const { error: notifyError } = await supabase.functions.invoke('create-notification', {
-            body: buildGroupRemovalNotification({
-              creatorId,
-              groupName,
-              groupId,
-              actorId: user!.id,
-              businessName,
-            }),
-          });
-          if (notifyError) {
-            console.error('Failed to send crew removal notification:', notifyError);
-          }
-        } catch (err) {
-          console.error('Failed to send crew removal notification:', err);
-        }
+        await dispatchNotification(
+          buildGroupRemovalNotification({
+            creatorId,
+            groupName,
+            groupId,
+            actorId: user!.id,
+            businessName,
+          }),
+        );
       }
 
       return creatorId;

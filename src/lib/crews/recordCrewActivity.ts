@@ -16,6 +16,7 @@ import {
   type CrewActivityFacts,
   type CrewEventType,
 } from '@/lib/crews/crewActivityNotifications';
+import { dispatchNotifications } from '@/lib/notifications/dispatch';
 
 export async function recordCrewActivity(
   campaignId: string,
@@ -32,11 +33,10 @@ export async function recordCrewActivity(
     if (error || !data) return;
 
     const facts = data as unknown as CrewActivityFacts;
-    for (const payload of crewActivityNotifications(facts)) {
-      supabase.functions
-        .invoke('create-notification', { body: payload })
-        .catch((e) => console.error('crew notify failed:', e));
-    }
+    // dispatchNotifications reads the error off the result — invoke resolves
+    // rather than rejects on a non-2xx, so the old `.catch()` here was dead
+    // code for every 4xx/5xx and a failed owner notification logged nothing.
+    await dispatchNotifications(crewActivityNotifications(facts));
   } catch (e) {
     // Never disrupt the lifecycle action that triggered this.
     console.error('recordCrewActivity failed:', e);

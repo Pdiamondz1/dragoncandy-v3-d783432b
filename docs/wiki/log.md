@@ -1,5 +1,27 @@
 # Wiki Log
 
+## [2026-08-07] ingest | [[Campaign Invitations]] — a feature nobody could explain, and a matcher nobody triggered
+
+Ingested [[Creator Match Auto-Run & Invite Clarity Session]] (PR #382). New concept page
+`concepts/campaign-invitations.md` rather than a section elsewhere: "what an invitation actually
+is" is load-bearing product knowledge with no existing home — [[Campaign Lifecycle]] covers the
+application state machine, [[Creator Groups (Crews)]] covers the *other* invitation type, and
+[[AI Creator Matching]] covers the panel, not the verb.
+
+Compounded the auto-run + progress UI onto [[AI Creator Matching]] (new "The trigger" and
+"Showing the work" sections + a Pipeline correction: it said "Button →", which is no longer true).
+
+The finding worth carrying forward: **the invitation model was never wrong, it was never
+explained.** The 2026-04-26 spec deliberately chose "the creator accepts by applying" to avoid a
+parallel workflow — a sound call that shipped with no copy attached, so every user invented their
+own (wrong) model of it. Also recorded two documentation-trust lessons: a trigger's **comment**
+claimed it "fires for every write path" while its `CREATE TRIGGER` clause says `BEFORE INSERT`
+only (read the clause, never the comment), and a shared motion variant with no consumers is not
+"available" — it's untested, and this one's failure mode was invisible content.
+
+Pages created: `concepts/campaign-invitations.md`.
+Pages updated: `concepts/ai-creator-matching.md`, `index.md`.
+
 ## [2026-08-07] update | [[Campaign Target Audience]] — shipped both halves; the ordering claim is now measured
 
 Deployed `donny-campaign-generate` **v113 → v114** (the second half of the frontend-first sequence)

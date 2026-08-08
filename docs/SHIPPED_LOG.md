@@ -26,6 +26,93 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-07] AI Creator Match: run it automatically, explain the invite, kill the dead click
+
+> **Gate not run at time of writing:** the both-viewport visual pass on a live signed-in session.
+> The dev machine sat at 100% CPU (many concurrent worktree dev servers + a `codex` process + the
+> pre-push build across 8 logical cores), so the authenticated page never reached `document_idle`
+> for browser automation, and browser sessions do not cross dev-server ports. Intended path is
+> `verify-prod` on dragoncandy.io after merge. Every other gate passed.
+
+A founder screenshot of `/dashboard/business/campaigns/:id` carried three complaints, and all
+three turned out to be structural rather than cosmetic.
+
+**Matching had no automatic trigger anywhere.** `match-creators` was invoked from exactly two
+places, both buttons in `CreatorMatchingSection.tsx`. Neither campaign-creation path
+(`useCampaignCreator.ts`'s launch, which inserts `status: 'published'` and navigates straight to
+the detail page) nor either publish path (`useCampaignMutations.ts`) called it, and no DB trigger
+creates matches — the only other `campaign_matches` writes in SQL are the table DDL and
+`donny_nudge_on_match`, which *reacts* to matches. So a brand-new campaign always landed on a red
+`AlertCircle` + "No AI matches yet". Now a guarded effect fires it once when the query settles
+empty on a `published`/`active` campaign, silently: an unprompted success toast on page load is
+noise, and a red failure toast for something the user never asked for is worse — a silent failure
+falls through to the empty state, which keeps the manual button. Two guards cover two windows (a
+`useRef` holding the campaign id for the mount, `sessionStorage` for navigate-away-and-back), and
+the flag is **deliberately session-scoped, not persistent**: a campaign still empty in a later
+session *should* re-run, because the creator pool grows.
+
+**Nobody knew what "Invite" did — and the audit showed why.** There was no tooltip, no help text,
+and no `help_articles` row about campaign invitations anywhere on the platform. The founder's
+model was correct and verified against code: `usePublicCampaigns` filters **only** on
+`status='published'` and `group_id IS NULL` (there is no invitation filter), and
+`send-campaign-publish-notifications` already emails every onboarded creator at publish — so the
+campaign is already in front of everyone. The invite adds a notification burst plus the right to
+apply after the campaign leaves `published`; it confers **no priority**. There is no "Accept"
+button at all: accepting *is* applying, and `apply_to_campaign` flips the invitation as a side
+effect. That is now said out loud — header copy, the button relabelled **"Invite to apply"** (it
+names the ask, which is what killed the "make them do the work" reading), and a `campaign_invite`
+`WhyExpander` for the detail, all sourced from one `inviteCopy.ts`.
+
+**Post-invite state was lying.** `useCampaignInvitations` had always SELECTed `status` and never
+read it, so a creator who **declined** rendered identically to one who **accepted** — a disabled
+"Invited ✓" with a green check, permanently. Now `describeInvitation()` → `AppStatusBadge`:
+Invited · waiting (amber) / Applied — review them (teal, scrolls to the applications list) /
+Declined (neutral). Showing the outcome answers "what happens after I invite?" better than copy
+describing it.
+
+**The 3-4 second dead click was structural.** The match card had **no pending state at all**,
+while `send-campaign-invitation` runs campaign lookup → creator lookup → upsert → Resend email →
+Donny conversation find-or-create → Donny message insert, serially, before the toast. Pending is
+now derived from the mutation's own `variables.creatorId` and scoped to the creator in flight
+(the All Creators tab had used the global `isPending` and froze *every* button). Deliberately not
+optimistic — the function has real failure modes, and showing "Invited" for three seconds before
+snapping back is worse than an honest spinner. Alongside it, `MatchingProgress` shows stepped
+progress plus placeholder cards, and `matchesLoading`/`isPending` were split: they were one flag,
+so an ordinary load of a campaign that already *had* matches flashed "Analyzing creators…" and
+hid its own stats and controls.
+
+**Two live defects found in the flow being changed.** The panel rendered for any `business_client`
+viewing the page — both edge functions 403 non-owners so nothing leaked, but another business
+opening the URL would now have auto-fired a doomed AI call; gated on `isOwnCampaign`. And an
+**expired invitation was permanently un-resendable, silently**: the client query hides `pending`
+rows past `expires_at` so the button reverted to "Invite", but `ignoreDuplicates: true` meant the
+row was never refreshed — no email, bell, or Donny message ever fired again, and `expires_at`
+stayed in the past, which also kept it hidden from the creator's own query. The owner clicked, got
+"Already invited", and nothing happened, for good. `send-campaign-invitation` now revives an
+expired `pending` row (UPDATE filtered on `id` + `status='pending'`, so a concurrent
+accept/decline isn't clobbered) and falls through to the normal fan-out.
+
+**What the reviews changed.** `data-exposure-reviewer` flagged that the revive is the **first-ever
+UPDATE path** on `campaign_invitations`, while `trg_reject_group_campaign_invitation` — the guard
+keeping private crew campaigns out of the invitation fan-out — is **`BEFORE INSERT` only**,
+despite its own migration comment claiming it "fires for every write path (incl. service-role)".
+Verified independently before accepting (no later redefinition; nothing in `src/` sets `group_id`
+on an existing campaign), so a gap rather than a live incident; closed by re-asserting
+`group_id IS NULL` in code after the owner 403, mirroring `send-campaign-publish-notifications`.
+Also enumerated the returned columns on all three response paths. Self-caught during the work: the
+results grid was first written with the shared `staggerContainer`/`staggerItem` variants, which a
+grep showed would have been their **first consumer anywhere in `src/`** — dead code whose failure
+mode (variant labels not resolving) is children stuck at opacity 0, i.e. **invisible match cards
+on the exact panel this branch existed to fix**. Replaced with explicit per-item props.
+
+`send-campaign-invitation` deployed to prod **v62 → v63** (`verify_jwt: true` preserved,
+`_shared/cors.ts` bundled, served source verified, boot-checked); additive and
+frontend-independent, so deploying ahead of the frontend merge is safe. No migration, no schema
+change, no RLS change. Gates: typecheck · build · ESLint · 11 new unit tests ·
+`typecheck:functions` (66 gated) · `edge-function-reviewer` PASS · `data-exposure-reviewer` PASS ·
+Codex clean. → `docs/wiki/concepts/campaign-invitations.md` ·
+`docs/wiki/concepts/ai-creator-matching.md` · #382
+
 ## [2026-08-07] Crews: make the feature explain itself (both sides)
 
 **Merged as `64d74d63` (#379); both edge functions deployed to prod (`send-notification-email`

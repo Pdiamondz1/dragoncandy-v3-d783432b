@@ -19,13 +19,21 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { CreatorMatch, ScoreBreakdown } from '@/hooks/useCampaignMatches';
+import { CampaignInvitation } from '@/hooks/useCampaignInvitations';
 import { WhyExpander } from '@/components/guidance/WhyExpander';
+import { AppStatusBadge } from '@/components/app/AppStatusBadge';
+import { INVITE_LABEL, INVITE_PENDING_LABEL, describeInvitation } from './inviteCopy';
 import { formatSkillLabel } from '@/lib/skillUtils';
 
 interface CreatorMatchCardProps {
   match: CreatorMatch;
-  isInvited?: boolean;
+  /** Undefined when this creator has never been invited to this campaign. */
+  invitationStatus?: CampaignInvitation['status'];
+  /** True only while THIS creator's invite is in flight — never a global flag. */
+  isInviting?: boolean;
   onInvite?: (creatorId: string) => void;
+  /** Jump to the applications list; offered once an invited creator has applied. */
+  onViewApplications?: () => void;
 }
 
 const SCORE_LABELS: Record<keyof ScoreBreakdown, { label: string; icon: React.ElementType }> = {
@@ -85,12 +93,19 @@ const ScoreBar: React.FC<{ label: string; score: number; icon: React.ElementType
   </div>
 );
 
-export const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({ match, isInvited, onInvite }) => {
+export const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({
+  match,
+  invitationStatus,
+  isInviting,
+  onInvite,
+  onViewApplications,
+}) => {
   const [showBreakdown, setShowBreakdown] = useState(false);
   const resolvedAvatarUrl = useResolvedAvatarUrl(match.creator_profile.avatar_url);
 
   const breakdown = match.match_reasons.score_breakdown;
   const hasBreakdown = breakdown && Object.keys(breakdown).length > 0;
+  const outcome = describeInvitation(invitationStatus);
 
   const creatorPlatforms = [
     match.creator_profile.instagram_url ? 'Instagram' : null,
@@ -228,22 +243,33 @@ export const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({ match, isInv
           </div>
         )}
 
-        {/* Action button (business invites the matched creator) */}
-        <div className="flex pt-2 border-t dark:border-border">
-          {isInvited ? (
-            <Button size="sm" variant="outline" className="flex-1 min-w-0" disabled>
-              <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-              Invited
-            </Button>
+        {/* Action row. Once invited this becomes the OUTCOME, not a dead button:
+            pending / applied / declined were previously all one disabled "Invited ✓". */}
+        <div className="pt-2 border-t dark:border-border space-y-2">
+          {outcome ? (
+            <div className="flex items-center justify-between gap-2">
+              <AppStatusBadge tone={outcome.tone}>{outcome.label}</AppStatusBadge>
+              {outcome.actionable && onViewApplications && (
+                <Button
+                  onClick={onViewApplications}
+                  size="sm"
+                  variant="dc-secondary"
+                  className="h-8 px-3 text-xs"
+                >
+                  View application
+                </Button>
+              )}
+            </div>
           ) : (
             onInvite && (
               <Button
                 onClick={() => onInvite(match.creator_id)}
                 size="sm"
-                className="flex-1 min-w-0 bg-teal-600 hover:bg-teal-700 text-white"
+                isLoading={isInviting}
+                className="w-full min-w-0 bg-teal-600 hover:bg-teal-700 text-white"
               >
-                <UserPlus className="h-3.5 w-3.5 mr-1.5" />
-                Invite
+                {!isInviting && <UserPlus className="h-3.5 w-3.5 mr-1.5" />}
+                {isInviting ? INVITE_PENDING_LABEL : INVITE_LABEL}
               </Button>
             )
           )}
