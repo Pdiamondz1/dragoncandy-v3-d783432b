@@ -180,7 +180,16 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
 
   const canDelete = (phase === 'pre_hire' || phase === 'cancelled') && campaign.escrow_status !== 'held';
   const canEdit = phase === 'pre_hire';
-  const canRelaunch = phase === 'completed' || phase === 'cancelled';
+  const isCrewCampaign = !!campaign.group_id;
+  // A crew campaign can be re-opened to the marketplace while it is still live:
+  // it is free and crew-only, so an unfilled one has no exit otherwise — the
+  // business would have to cancel it first just to reach Re-Launch. Once a crew
+  // member is accepted it IS filled, so the escape hatch closes.
+  const canRelaunch =
+    phase === 'completed' || phase === 'cancelled' || (isCrewCampaign && !hasAcceptedCreator);
+  // Duplicating always drops group_id, so for a crew campaign this action is
+  // literally "publish it to the marketplace instead" — name it that.
+  const relaunchLabel = isCrewCampaign ? 'Open to the marketplace' : 'Re-Launch Campaign';
   const showMenu = canEdit || canDelete || canRelaunch;
 
   const renderHeadline = (): string => {
@@ -301,7 +310,7 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
         return (
           <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
             <Button onClick={onRelaunch} className="rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold w-full sm:flex-1 lg:flex-none">
-              Re-Launch Campaign
+              {relaunchLabel}
             </Button>
             {canDelete && (
               <Button onClick={() => setShowDeleteConfirm(true)} variant="outline" className="rounded-full border-red-300 text-red-600 hover:bg-red-50 font-semibold w-full sm:flex-1 lg:flex-none">
@@ -350,7 +359,7 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
                         Delete Campaign
                       </DropdownMenuItem>
                     )}
-                    {canRelaunch && <DropdownMenuItem onClick={onRelaunch}>Re-Launch Campaign</DropdownMenuItem>}
+                    {canRelaunch && <DropdownMenuItem onClick={onRelaunch}>{relaunchLabel}</DropdownMenuItem>}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}

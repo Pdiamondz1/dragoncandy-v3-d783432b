@@ -59,9 +59,21 @@ export function GroupTargetSelect({ value, onChange }: GroupTargetSelectProps) {
       </Select>
 
       {selectedGroup ? (
-        <p className="mt-2 text-xs font-semibold text-dc-teal-dark">
-          Free collab — only this crew sees it. No payment.
-        </p>
+        <div className="mt-2 space-y-1">
+          <p className="text-xs font-semibold text-dc-teal-dark">
+            Free collab — only this crew sees it. No payment.
+          </p>
+          {/* The exit matters as much as the offer: a crew campaign is free and
+              private, so "what if nobody takes it?" is the obvious hesitation.
+              Say the answer up front. This describes a real control — the
+              campaign's ⋯ menu carries "Open to the marketplace" for any
+              unfilled crew campaign. Do not soften it into a promise the
+              product keeps automatically; nothing reposts on its own. */}
+          <p className="text-xs text-dc-text-muted">
+            Not locked in — if nobody takes it, you can open it to the marketplace
+            as a paid campaign from the campaign's menu.
+          </p>
+        </div>
       ) : groups.length === 0 ? (
         <p className="mt-2 text-xs text-dc-text-muted">
           Want a private, no-payment collab?{' '}

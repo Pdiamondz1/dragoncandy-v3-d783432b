@@ -265,22 +265,34 @@ export const useDuplicateCampaign = () => {
     mutationFn: async (sourceCampaignId: string) => {
       const { data: source, error: fetchError } = await supabase
         .from('campaigns')
-        .select('title, description, goals, deliverables, platforms, budget_min, budget_max, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, ai_analysis, org_unit_id')
+        .select('title, description, goals, deliverables, platforms, budget_min, budget_max, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, ai_analysis, org_unit_id, group_id')
         .eq('id', sourceCampaignId)
         .single();
 
       if (fetchError || !source) throw fetchError ?? new Error('Campaign not found');
 
+      // A copy is ALWAYS a marketplace campaign — `group_id` is deliberately
+      // destructured off rather than left in `source`, because `...source` below
+      // would otherwise spread it straight back in and silently recreate a crew
+      // campaign. It is selected only so we can tell where the copy came from.
+      const { group_id: sourceGroupId, ...copyable } = source;
+      const wasCrewCampaign = sourceGroupId !== null;
+
       const { data: newCampaign, error: insertError } = await supabase
         .from('campaigns')
         .insert({
-          ...source,
+          ...copyable,
           title: `${source.title} (Copy)`,
           status: 'draft',
           escrow_status: 'pending',
           deadline: null,
           user_id: user!.id,
           duplicated_from: sourceCampaignId,
+          // Crew campaigns are free by DB constraint (campaigns_group_free forces
+          // fixed_price = 0). Carrying that 0 into a marketplace copy would land
+          // the business on a $0 paid campaign, so blank the money fields and let
+          // them price it in the editor like any new campaign.
+          ...(wasCrewCampaign ? { fixed_price: null, delivery_fee: null } : {}),
         } as unknown as Database['public']['Tables']['campaigns']['Insert'])
         .select('id')
         .single();
@@ -321,11 +333,20 @@ export const useDuplicateCampaign = () => {
         if (mediaErr) console.error('Failed to copy media:', mediaErr);
       }
 
-      return newCampaign;
+      return { ...newCampaign, wasCrewCampaign };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-      toast({ title: 'Campaign duplicated!', description: 'Edit the draft to customize and publish.' });
+      // Say the true next step: a copy of a crew campaign has no price yet,
+      // because the crew version was free and we blanked the money fields.
+      toast(
+        result.wasCrewCampaign
+          ? {
+              title: 'Draft ready for the marketplace',
+              description: 'Set a price, then publish. You pay when you accept a creator.',
+            }
+          : { title: 'Campaign duplicated!', description: 'Edit the draft to customize and publish.' },
+      );
     },
     onError: () => {
       toast({ title: 'Failed to duplicate campaign', description: 'Please try again.', variant: 'destructive' });
