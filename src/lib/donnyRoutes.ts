@@ -38,6 +38,14 @@ const ROUTE_TEMPLATES: string[] = [
   "/dashboard/business/campaigns/:id/proposals",
   "/dashboard/business/campaigns/:id/details",
   "/dashboard/business/creators",
+  "/dashboard/business/crews",
+  "/dashboard/business/crews/:id",
+  // Legacy Crews URLs. App.tsx still serves these as redirects to /crews, so a
+  // route persisted before the rename is still valid to navigate to — dropping
+  // them here would silently hide the pill (DonnyMessage filters unknown routes
+  // out entirely) rather than let the redirect do its job. Do NOT mirror these
+  // into donny-orchestrator/routes.ts: that list is what Donny may *generate*,
+  // and it should only ever emit the new path.
   "/dashboard/business/groups",
   "/dashboard/business/groups/:id",
   "/dashboard/business/dragon-feed",

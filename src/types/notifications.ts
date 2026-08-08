@@ -9,6 +9,9 @@ export type NotificationType =
   | 'campaign_published'
   | 'campaign_cancelled'
   | 'group_campaign_posted'
+  | 'group_invitation'
+  | 'group_invite_accepted'
+  | 'group_membership_removed'
   | 'content_submitted'
   | 'revision_requested'
   | 'cgc_submission_received'
@@ -121,6 +124,12 @@ export const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Partial<Record<NotificationType, s
   // no shared/standard type is remapped. Keep in sync with
   // supabase/functions/create-notification/index.ts.
   group_campaign_posted: 'new_crew_campaign',
+  // Crew-specific: the invite itself. Bell-only until now, which meant a creator
+  // who wasn't in the app when they were invited had no way to learn about it.
+  // `group_invite_accepted` and `group_membership_removed` stay deliberately
+  // unmapped — the owner is in-app for the former, and the latter doesn't warrant
+  // an email. Keep in sync with supabase/functions/create-notification/index.ts.
+  group_invitation: 'crew_invitation',
   // Crew-specific (Crews Phase 2): the ONE lifecycle gap — when a crew creator submits
   // content for review, no owner notification fired before. Emitted only by the crew
   // recordCrewActivity wrapper (not used by any other flow), so mapping it adds email for

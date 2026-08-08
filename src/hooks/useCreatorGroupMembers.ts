@@ -2,7 +2,36 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { buildGroupInviteNotification, type GroupMemberStatus } from '@/lib/groups/groupMembers';
+import {
+  buildGroupInviteNotification,
+  buildGroupRemovalNotification,
+  type GroupMemberStatus,
+} from '@/lib/groups/groupMembers';
+import { dispatchNotification, dispatchNotifications } from '@/lib/notifications/dispatch';
+
+/**
+ * The crew's display identity, needed by both the invite and removal
+ * notifications. The owner can always read their own crew row and their own
+ * business profile, so neither lookup is RLS-sensitive here.
+ */
+async function fetchCrewIdentity(groupId: string, ownerId: string) {
+  // Never throws. Both callers run this AFTER their write has already
+  // committed, so a rejected lookup must not fail the mutation and show
+  // "Failed to invite" for work that actually succeeded.
+  try {
+    const [{ data: group }, { data: business }] = await Promise.all([
+      supabase.from('creator_groups').select('name').eq('id', groupId).maybeSingle(),
+      supabase.from('business_profiles').select('business_name').eq('user_id', ownerId).maybeSingle(),
+    ]);
+    return {
+      groupName: group?.name ?? 'a crew',
+      businessName: business?.business_name ?? null,
+    };
+  } catch (err) {
+    console.error('Failed to resolve crew identity for notification:', err);
+    return { groupName: 'a crew', businessName: null };
+  }
+}
 
 export interface CreatorGroupMember {
   id: string;
@@ -110,42 +139,53 @@ export function useCreatorGroupMembers(groupId: string) {
         if (reactivateError) throw reactivateError;
       }
 
-      // Notify everyone freshly invited or re-invited.
+      // Notify everyone freshly invited or re-invited. Dispatched here rather
+      // than fire-and-forget in onSuccess so the mutation stays pending until
+      // it settles — closing the tab mid-flight used to leave a creator in the
+      // crew having never been told.
       const invitedIds = [...toInsert, ...toReactivate];
-      return invitedIds;
+      if (invitedIds.length === 0) return { invitedIds, failed: 0 };
+
+      const { groupName, businessName } = await fetchCrewIdentity(groupId, user!.id);
+
+      const { failed } = await dispatchNotifications(
+        invitedIds.map((creatorId) =>
+          buildGroupInviteNotification({
+            creatorId,
+            groupName,
+            groupId,
+            actorId: user!.id,
+            businessName,
+          }),
+        ),
+      );
+
+      return { invitedIds, failed };
     },
-    onSuccess: async (invitedIds) => {
+    onSuccess: ({ invitedIds, failed }) => {
       queryClient.invalidateQueries({ queryKey: ['creator-group-members', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['creator-group-member-counts'] });
 
-      if (invitedIds.length > 0) {
-        const { data: group } = await supabase
-          .from('creator_groups')
-          .select('name')
-          .eq('id', groupId)
-          .single();
-
-        const groupName = group?.name ?? 'a crew';
-
-        for (const creatorId of invitedIds) {
-          supabase.functions
-            .invoke('create-notification', {
-              body: buildGroupInviteNotification({
-                creatorId,
-                groupName,
-                groupId,
-                actorId: user!.id,
-              }),
-            })
-            .catch((err: unknown) => console.error('Failed to send group invite notification:', err));
-        }
+      if (invitedIds.length === 0) {
+        toast({ title: 'No new invites', description: 'Those creators are already in this crew.' });
+        return;
       }
 
+      if (failed > 0) {
+        toast({
+          title: "Invited, but some notifications didn't send",
+          description: `${failed} creator(s) may not have been alerted. They'll still see the invite next time they open Crews.`,
+        });
+        return;
+      }
+
+      // Deliberately does not name the channel: create-notification returns 200
+      // with emailSent:false when the recipient has campaign emails switched
+      // off, so promising "and email" here would sometimes be a lie.
       toast({
-        title: invitedIds.length > 0 ? 'Creators invited' : 'No new invites',
+        title: 'Creators invited',
         description:
-          invitedIds.length > 0
-            ? 'The creators will get an in-app notification to join your crew.'
-            : 'Those creators are already in this crew.',
+          "They'll be notified and can accept from their Crews tab. You'll see them under Pending until they do.",
       });
     },
     onError: () => {
@@ -158,7 +198,7 @@ export function useCreatorGroupMembers(groupId: string) {
   });
 
   const removeMember = useMutation({
-    mutationFn: async (creatorId: string) => {
+    mutationFn: async ({ creatorId, wasActive }: { creatorId: string; wasActive: boolean }) => {
       const { error } = await supabase
         .from('creator_group_members')
         .update({ status: 'removed' })
@@ -166,10 +206,28 @@ export function useCreatorGroupMembers(groupId: string) {
         .eq('creator_id', creatorId);
 
       if (error) throw error;
+
+      // Only tell someone they've left a crew they actually joined —
+      // rescinding a still-pending invite is not a removal. Best-effort: the
+      // removal itself has already succeeded, so a failed bell must not throw.
+      if (wasActive) {
+        const { groupName, businessName } = await fetchCrewIdentity(groupId, user!.id);
+        await dispatchNotification(
+          buildGroupRemovalNotification({
+            creatorId,
+            groupName,
+            groupId,
+            actorId: user!.id,
+            businessName,
+          }),
+        );
+      }
+
       return creatorId;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['creator-group-members', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['creator-group-member-counts'] });
       toast({ title: 'Creator removed from crew' });
     },
     onError: () => {

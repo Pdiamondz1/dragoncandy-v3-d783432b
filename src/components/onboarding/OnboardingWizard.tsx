@@ -103,6 +103,9 @@ export function OnboardingWizard() {
   const [cuisines, setCuisines] = useState<string[]>([]);
   const [skills, setSkills] = useState<string[]>([]);
   const [bio, setBio] = useState('');
+  // Defaults on, but the creator SEES it on the bio step and can turn it off before finishing —
+  // a visible choice, not a silent database default. Nothing back-fills existing creators.
+  const [showInFeed, setShowInFeed] = useState(true);
 
   const currentStep = steps[currentIndex];
   const isWelcome = currentStep === 'welcome';
@@ -201,6 +204,9 @@ export function OnboardingWizard() {
           bio: bio.trim(),
           skills: skills as CreatorSkill[],
           avatar_url: avatarUrl,
+          // Written explicitly: this wizard upserts creator_profiles directly and never goes
+          // through useCreatorProfileForm, so that hook's default does not reach onboarding.
+          allow_portfolio_in_feed: showInFeed,
           ...locationData,
           is_completed: true,
         }, { onConflict: 'user_id' });
@@ -308,7 +314,14 @@ export function OnboardingWizard() {
         );
 
       case 'bio':
-        return <BioStep bio={bio} onBioChange={setBio} />;
+        return (
+          <BioStep
+            bio={bio}
+            onBioChange={setBio}
+            showInFeed={showInFeed}
+            onShowInFeedChange={setShowInFeed}
+          />
+        );
 
       case 'welcome':
         return (

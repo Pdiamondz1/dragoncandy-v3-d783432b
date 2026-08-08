@@ -95,7 +95,11 @@ const CampaignEditPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { campaign, isLoading, error } = useCampaign(id!);
-  const { data: savedDeliverables } = useCampaignDeliverables(id);
+  const {
+    data: savedDeliverables,
+    isPending: deliverablesPending,
+    isError: deliverablesError,
+  } = useCampaignDeliverables(id);
 
   const {
     formData,
@@ -107,22 +111,62 @@ const CampaignEditPage: React.FC = () => {
     handleSave,
   } = useCampaignEditForm(campaign);
 
-  // Seed structured deliverables from DB on first load
+  // Seed structured deliverables from DB on first load.
+  //
+  // Two stores hold deliverables: the `campaign_deliverables` TABLE and the
+  // `campaigns.campaign_deliverables` JSONB column. The launch wizard
+  // (useCampaignCreator) writes ONLY the JSONB — nothing populates the table until
+  // someone saves this editor — so in practice every campaign is JSONB-only and this
+  // editor used to seed from the table alone and render an EMPTY deliverables list.
+  // Worse, deliverableCount below then fell back to 1, so CostBreakdown priced one
+  // deliverable instead of N.
+  //
+  // Table first, JSONB as fallback — the same precedence ContentRequirementsSection
+  // already uses, so the editor and the details page agree.
   const seededRef = useRef(false);
   useEffect(() => {
-    if (savedDeliverables && savedDeliverables.length > 0 && !seededRef.current) {
+    if (seededRef.current) return;
+    // Gate on isPending, NOT on `data === undefined`: react-query leaves `data`
+    // undefined permanently after a failed query, so the undefined check could not tell
+    // "still loading" from "errored" and would silently fall back to the JSONB — or, on
+    // an error, seed nothing at all and reproduce the exact bug this fix is for.
+    // deliverablesError is handled separately below by blocking save entirely.
+    if (deliverablesPending || deliverablesError || !savedDeliverables) return;
+
+    if (savedDeliverables.length > 0) {
       seededRef.current = true;
-      const mapped: Deliverable[] = savedDeliverables.map(d => ({
+      handleStructuredDeliverablesChange(savedDeliverables.map(d => ({
         id: d.id,
         content_type: d.content_type,
         platform: d.platform,
         aspect_ratio: d.aspect_ratio,
         max_duration_seconds: d.max_duration_seconds,
         description: d.description,
-      }));
-      handleStructuredDeliverablesChange(mapped);
+      })));
+      return;
     }
-  }, [savedDeliverables, handleStructuredDeliverablesChange]);
+
+    const jsonbDeliverables = campaign?.campaign_deliverables;
+    if (jsonbDeliverables?.length) {
+      seededRef.current = true;
+      // These rows carry no id — the column is written as a plain 5-field map. The
+      // synthetic key is display-only and never persisted: handleSave's table insert
+      // builds its own payload and does not pass `id` through.
+      handleStructuredDeliverablesChange(jsonbDeliverables.map((d, i) => ({
+        id: `jsonb-${i}`,
+        content_type: d.content_type,
+        platform: d.platform,
+        aspect_ratio: d.aspect_ratio,
+        max_duration_seconds: d.max_duration_seconds ?? undefined,
+        description: d.description ?? undefined,
+      } as Deliverable)));
+    }
+  }, [savedDeliverables, deliverablesPending, deliverablesError, campaign, handleStructuredDeliverablesChange]);
+
+  // If we could not read the existing deliverables, we must not let a save proceed:
+  // handleSave clears the deliverables table and rewrites it from the editor, so saving
+  // with an editor that failed to seed would delete the real ones.
+  const deliverablesUnavailable = deliverablesError;
 
   // Ownership check — redirect if not owner
   useEffect(() => {
@@ -447,9 +491,21 @@ const CampaignEditPage: React.FC = () => {
 
           {/* ── Action buttons ────────────────────────────────────────────── */}
           <div className="space-y-3 pt-2">
+            {deliverablesUnavailable && (
+              /* Saving rewrites the deliverables table from whatever the editor holds, so
+                 an editor that failed to load them would wipe the real ones. Block the
+                 save and say why rather than letting it destroy data. */
+              <div className="rounded-xl border-2 border-amber-400 bg-amber-50 px-3 py-2">
+                <p className="text-sm font-semibold text-amber-900">Couldn't load this campaign's deliverables</p>
+                <p className="text-xs text-amber-800 mt-0.5">
+                  Saving is disabled so your existing content requirements aren't overwritten.
+                  Refresh the page to try again.
+                </p>
+              </div>
+            )}
             <button
               onClick={() => handleSaveWithNavigation('published')}
-              disabled={isSaving || !formData.title.trim()}
+              disabled={isSaving || !formData.title.trim() || deliverablesUnavailable}
               className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3 flex items-center justify-center gap-2 disabled:opacity-60"
             >
               <Save className="h-4 w-4" aria-hidden="true" />
@@ -457,7 +513,7 @@ const CampaignEditPage: React.FC = () => {
             </button>
             <button
               onClick={() => handleSaveWithNavigation('draft')}
-              disabled={isSaving || !formData.title.trim()}
+              disabled={isSaving || !formData.title.trim() || deliverablesUnavailable}
               className="w-full rounded-full border-2 border-gray-300 text-gray-700 font-bold py-3 flex items-center justify-center gap-2 disabled:opacity-60"
             >
               <Save className="h-4 w-4" aria-hidden="true" />

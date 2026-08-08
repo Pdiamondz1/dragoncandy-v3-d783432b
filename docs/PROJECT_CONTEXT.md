@@ -126,10 +126,24 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   Deliberately **earn-only** — a tier confers a public badge and nothing else ([[Honest Analytics]]).
   Also closed a live leak: two never-built DRE engineering specs (referrals, streaks, redemption)
   were reachable by consumer Donny via a NULL `donny_knowledge.scope`. **Pending (verified
-  2026-08-07):** 3 migrations applied + verified on prod; PR #378 open but the mandatory Codex pass
-  has **not run** (OpenAI quota until 2026-08-08 08:55). Merge only after Codex, then deploy
+  2026-08-08):** 3 migrations applied + verified on prod; PR #378 open, and the mandatory Codex pass
+  is now **clean** — it took 3 rounds, two of which caught the same defect (a non-creator role
+  falling back to the business branch) in two different places, the second inside Donny's generated
+  prose where no UI review could see it. Awaiting the founder's merge, then deploy
   `dre-award-engine` (`--no-verify-jwt`) and `donny-orchestrator` (without that flag).
   → `docs/wiki/concepts/dragon-rewards-engine.md` · #378
+- **DragonFeed uplift + sidebar double-active fix** — the "double-clicked button" was a
+  **specificity** bug (each role's bare-root Dashboard href prefixed all ~26 child routes, in three
+  copy-pasted navs) → one shared longest-match-wins `activeNavHref()`. The feed's four complaints
+  shared one root cause — *an item is not a row* — and the `feed_items` table meant to fix it was
+  **cut**: uuid ids would have silently emptied the Inspiration page + dashboard strip (both parse
+  the composite `content_id` back apart), and 34/34 items already carry a `storage.objects.created_at`.
+  Shipped real dates + stable order, NEW badges, skill chips, duration badges, desktop attribution,
+  and gated view counts; plus the supply fix for 26 items hidden behind a default-off opt-in nobody
+  could find. **Merged 2026-08-08 (e3f12c14). Pending:** `verify-prod` on both viewports (still not run). No
+  migration, no RLS/edge-function change. DragonShare merge deferred — no public SELECT policy and
+  no consent flag anywhere.
+  → `docs/wiki/concepts/dragon-feed.md` · `docs/wiki/concepts/nav-active-state.md` · #384
 - **AIOS Google Workspace ("Connections")** — per-user Google OAuth, audited proxy, Drive
   hub, Donny exports, metrics→Sheet. The `google-chat-donny` bot ships dark — **confirmed still
   dark 2026-08-07**: a POST to the function returns **HTTP 503**, so this entry is real.
@@ -147,6 +161,32 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **`handle_updated_at()` restored from its prod-drifted stub** — the shared trigger's prod body was
+  literally `-- Function logic here / RETURN NEW;`, so 35 triggers across 31 tables fired and changed
+  nothing and `updated_at` sat frozen at `created_at`. Repo was never wrong (`recorded ≠ actual`, same
+  class as #325). Restored only after fixing the two consumers that had adapted to it —
+  `donny-analytics-alerts` (a frozen-column filter silently means "created in 24h") and DRE
+  `occurred_at` (false recency ⇒ retroactive "You earned DC Points") — plus a new `campaigns.completed_at`
+  anchor. **`updated_at` is a modification stamp, never a status signal**, and legacy values are
+  unreliable BOTH ways (`== created_at` means "no explicit writer touched it", not "never modified").
+  Post-merge, a Codex P2 on the docs falsified #385's own audit claim that
+  `campaign_collaborations.updated_at` has no explicit writer — it has one, so the `created_at` repoint
+  cost ~1-in-16 historical status alerts. **Closed by #391**: `campaigns.escrow_status_changed_at`
+  (escrow only) + `campaign_collaborations.status_changed_at` (status/content_status), each stamped by
+  its own transition-only trigger; migration `20260808020000` applied + behaviourally verified, fn v97.
+  The escrow anchor deliberately ignores a `status` change — Codex caught the symmetric draft
+  announcing escrow events that never happened.
+  → `docs/wiki/concepts/updated-at-trigger-drift.md`
+- **AI Creator Match auto-run + invitation clarity** — `match-creators` had **no automatic trigger
+  anywhere**, so every new campaign opened on a red "No AI matches yet"; the invite had zero
+  explanatory copy; the match card had no pending state. Merged 2026-08-07 (#382). Its
+  both-viewport visual pass was never run — fold it into the next `verify-prod`.
+  → `docs/wiki/concepts/campaign-invitations.md` · #382
+- **Crews comprehension pass** — a restaurant user asked "what is CREWS?"; the feature was ~80%
+  built and ~0% explained. Added a business-side explainer + roster counts, the creator's missing
+  "Your crews" roster, and email on crew invites; corrected the false "first look / before the
+  marketplace" framing to exclusivity (crew campaigns never go public) in the app, the invite
+  email, and the help article (#379). → `docs/SHIPPED_LOG.md`
 - **AIOS scaling dashboard (all 4 sub-projects)** — `/internal` Overview is real-only with a live
   synthetic banner and a real+simulated totals strip, the Simulation page mirrors the card set for
   the synthetic cohort (#344, #346); **`/internal/weight`** gained a live `aios_db_health()` pg_stat

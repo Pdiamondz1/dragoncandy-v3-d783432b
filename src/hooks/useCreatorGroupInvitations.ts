@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { dispatchNotification } from '@/lib/notifications/dispatch';
 import type { Database } from '@/integrations/supabase/types';
 
 type PendingInviteRow =
@@ -60,6 +61,8 @@ export function useCreatorGroupInvitations() {
     queryClient.invalidateQueries({ queryKey: ['creator-group-invitations', user?.id] });
     queryClient.invalidateQueries({ queryKey: ['group-campaigns'] });
     queryClient.invalidateQueries({ queryKey: ['creator-groups'] });
+    // Without this, an accepted crew doesn't appear in "Your crews" until a refetch.
+    queryClient.invalidateQueries({ queryKey: ['my-crews', user?.id] });
   };
 
   const accept = useMutation({
@@ -87,22 +90,20 @@ export function useCreatorGroupInvitations() {
 
       const creatorName = creatorProfile?.full_name ?? 'A creator';
 
-      supabase.functions
-        .invoke('create-notification', {
-          body: {
-            recipientId: ownerId,
-            type: 'group_invite_accepted',
-            category: 'campaigns',
-            title: 'Crew invite accepted',
-            body: `${creatorName} joined your crew`,
-            actionUrl: `/dashboard/business/groups/${groupId}`,
-            actorId: user!.id,
-            actorName: creatorName,
-            icon: 'invitation',
-            data: { group_id: groupId },
-          },
-        })
-        .catch((err: unknown) => console.error('Failed to send crew-accept notification:', err));
+      // Best-effort: the creator has already joined. dispatchNotification reads
+      // the error off the result (invoke resolves on a non-2xx) and never throws.
+      void dispatchNotification({
+        recipientId: ownerId,
+        type: 'group_invite_accepted',
+        category: 'campaigns',
+        title: 'Crew invite accepted',
+        body: `${creatorName} joined your crew`,
+        actionUrl: `/dashboard/business/crews/${groupId}`,
+        actorId: user!.id,
+        actorName: creatorName,
+        icon: 'invitation',
+        data: { group_id: groupId },
+      });
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Please try again.';

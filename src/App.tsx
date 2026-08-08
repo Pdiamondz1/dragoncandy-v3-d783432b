@@ -163,6 +163,16 @@ function ProjectRedirect() {
   return <Navigate to={`/dashboard/business/campaigns/${id}`} replace />;
 }
 
+/**
+ * The Crews pages moved from /dashboard/business/groups to .../crews so the URL
+ * matches the label everywhere else. Stored push_notifications.action_url rows
+ * (and any bookmark) still point at the old path, so both forms keep resolving.
+ */
+function LegacyCrewDetailRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/dashboard/business/crews/${id}`} replace />;
+}
+
 function AnimatedRoutes() {
   const location = useLocation();
 
@@ -243,8 +253,11 @@ function AnimatedRoutes() {
 
           {/* Business Browse / Feed / Activity Routes */}
           <Route path="/dashboard/business/creators" element={<ProtectedRoute><BusinessRoute><CreatorBrowse /></BusinessRoute></ProtectedRoute>} />
-          <Route path="/dashboard/business/groups" element={<ProtectedRoute><BusinessRoute><CreatorGroupsPage /></BusinessRoute></ProtectedRoute>} />
-          <Route path="/dashboard/business/groups/:id" element={<ProtectedRoute><BusinessRoute><CreatorGroupDetailPage /></BusinessRoute></ProtectedRoute>} />
+          <Route path="/dashboard/business/crews" element={<ProtectedRoute><BusinessRoute><CreatorGroupsPage /></BusinessRoute></ProtectedRoute>} />
+          <Route path="/dashboard/business/crews/:id" element={<ProtectedRoute><BusinessRoute><CreatorGroupDetailPage /></BusinessRoute></ProtectedRoute>} />
+          {/* Legacy /groups paths — keep resolving for stored notification links and bookmarks. */}
+          <Route path="/dashboard/business/groups" element={<Navigate to="/dashboard/business/crews" replace />} />
+          <Route path="/dashboard/business/groups/:id" element={<LegacyCrewDetailRedirect />} />
           <Route path="/dashboard/business/dragon-feed" element={<ProtectedRoute><BusinessRoute><BusinessDragonFeed /></BusinessRoute></ProtectedRoute>} />
           <Route path="/dashboard/business/activity" element={<ProtectedRoute><BusinessRoute><BusinessActivity /></BusinessRoute></ProtectedRoute>} />
           <Route path="/dashboard/business/sponsorships" element={<Navigate to="/dashboard/business/campaigns" replace />} />

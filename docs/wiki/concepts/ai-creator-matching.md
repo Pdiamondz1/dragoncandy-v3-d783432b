@@ -2,9 +2,9 @@
 title: AI Creator Matching
 type: concept
 created: 2026-07-16
-updated: 2026-07-16
-sources: [2026-07-16-fix-ai-creator-matching-location.md, 2026-07-16-donny-chat-matcher-fix.md, 2026-07-16-donny-orchestrator-find-creators.md]
-tags: [matching, campaigns, edge-functions, geo, geocoding, distance, donny, orchestrator, gotcha]
+updated: 2026-08-07
+sources: [2026-07-16-fix-ai-creator-matching-location.md, 2026-07-16-donny-chat-matcher-fix.md, 2026-07-16-donny-orchestrator-find-creators.md, 2026-08-07-creator-match-autorun-and-invite-clarity.md]
+tags: [matching, campaigns, edge-functions, geo, geocoding, distance, donny, orchestrator, ux, gotcha]
 ---
 # AI Creator Matching
 
@@ -15,14 +15,76 @@ radius filter) — though it now **reuses the same geo stack**.
 
 ## Pipeline
 
-Button → `useGenerateMatches` (`src/hooks/useCampaignMatches.ts`) → edge function
+Trigger → `useGenerateMatches` (`src/hooks/useCampaignMatches.ts`) → edge function
 `match-creators` → scores every completed creator → INSERTs into `campaign_matches` → returns the
-rows → toast "Found N potential creators". The card reads `campaign_matches` back via
-`useCampaignMatches` and renders `CreatorMatchCard`s.
+rows. The card reads `campaign_matches` back via `useCampaignMatches` and renders
+`CreatorMatchCard`s.
 
 Scoring is deterministic sub-scores + one batched OpenAI content-quality score, weighted. As of
 2026-07-16 the weights are **platform 20 / budget 15 / skills 20 / geographic 20 / availability 5 /
 ai_quality 20** (sum 100). Final score `Math.round`ed then clamped to `[20,100]`, stored 0–100.
+
+## The trigger: automatic since 2026-08-07 (PR #382)
+
+Until PR #382, **the only trigger was a human pressing a button.** `match-creators` was invoked
+from exactly two places, both in `CreatorMatchingSection.tsx`. Neither campaign-creation path
+(`useCampaignCreator.ts`'s launch) nor either publish path (`useCampaignMutations.ts`) called it,
+and no DB trigger creates matches — the only other `campaign_matches` writes in SQL are the table
+DDL and `donny_nudge_on_match`, which *reacts* to matches. So a brand-new campaign always landed
+on a red `AlertCircle` + "No AI matches yet", which read as broken at the moment the app should
+feel most capable.
+
+Now a guarded effect fires `mutate({ campaignId, silent: true })` once when **all** hold: the
+query has settled (`isFetched && !isLoading`), returned zero matches, the campaign is
+`published`/`active`, and no attempt is recorded.
+
+Design points worth preserving:
+
+- **Two guards, two windows.** A `useRef` holding the campaign id stops a double-fire within one
+  mount (the effect re-runs as the mutation flips `isPending`); a `sessionStorage` key
+  `dc:auto-match:<id>` stops a re-fire on navigate-away-and-back. Holding the *id* rather than a
+  boolean re-arms the effect for a different campaign without a second reset effect.
+- **Session-scoped on purpose, not persistent.** A campaign still empty in a later session
+  *should* re-run — the creator pool grows over time. Persisting the flag would freeze a campaign
+  at "no matches" forever.
+- **Drafts excluded.** `send-campaign-invitation` requires `published`/`active`, so a draft
+  campaign can't be invited to at all; auto-spending an OpenAI call on one is pure waste.
+- **Silent both ways.** The new `silent` flag on `useGenerateMatches` suppresses both toasts. An
+  unprompted "Matches generated successfully!" on page load is noise, and a red failure toast for
+  something the user never asked for is worse — a silent failure falls through to the empty state,
+  which still offers the manual button.
+- **Owner-gated at the mount.** `CreatorMatchingSection` now renders only when `isOwnCampaign`.
+  Campaigns are publicly readable and `match-creators` 403s non-owners, so nothing leaked before —
+  but without the gate another business opening the URL would auto-fire a doomed call.
+
+`match-creators` itself is unchanged, and manual re-run ("Refresh matches") still works. Note it
+**DELETEs all existing rows for the campaign before re-inserting**, so a failed re-run wipes the
+previous match set — a reason not to auto-run when matches already exist.
+
+## Showing the work while it runs
+
+`MatchingProgress.tsx` (+ `matchingSteps.ts`) renders four timer-advanced steps
+(done / current / pending) plus placeholder cards in the real grid layout, modelled on
+`landing/BriefGeneratorPreview.tsx`. The edge function reports no intermediate progress, so the
+steps are paced rather than driven — and **the last step never ticks over to "done"**, because the
+run finishing is what unmounts the component. Never claim a completion you cannot observe.
+
+Two related fixes landed with it:
+
+- **`matchesLoading` and `isPending` were one flag.** So an ordinary load of a campaign that
+  already *had* matches flashed "Analyzing creators…" and hid its own stat row and sort/filter
+  controls — a claim about work that wasn't happening. Now separate: fetch → skeletons,
+  generate → progress.
+- **The empty state dropped its red `AlertCircle`.** Matching having found nobody yet is not an
+  error the owner caused.
+
+**Motion gotcha:** the results grid was first written with the shared
+`staggerContainer`/`staggerItem` variants from `src/lib/motion.tsx` — a grep showed this would
+have been their **first consumer anywhere in `src/`**. Variant propagation resolves by label
+through the parent, and its failure mode is children stuck at `initial` opacity 0: invisible match
+cards. Replaced with explicit per-item `initial`/`animate`/`transition` props (index-derived
+delay, capped 300ms), whose worst case is "no animation" rather than "no content". Prefer explicit
+props over a shared variants map when the failure mode is invisible content.
 
 ## The "Found 0 potential creators" bug (2026-07-16) — a swallowed INSERT, not a logic bug
 
@@ -159,6 +221,7 @@ render. Reuses the existing `creator_profile` `DonnyRichCard`.
   are private-profile-safe.
 
 ## See Also
+- [[Campaign Invitations]] (what the Invite button on each match card actually does)
 - [[Creator Location Search]] (shared geo stack — the source-of-truth `src/lib` helpers)
 - [[Notification Delivery]] (the `notify_donny_nudge` trigger the write-bug lived in)
 - [[Donny AI]] (the conversational `match_creators` tool lives in the `donny-chat` edge fn)

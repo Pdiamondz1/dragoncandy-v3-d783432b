@@ -2,7 +2,7 @@
 title: Creator Groups (Crews)
 type: concept
 created: 2026-07-09
-updated: 2026-07-10
+updated: 2026-08-07
 sources: [docs/superpowers/specs/2026-07-09-creator-groups-private-campaigns-design.md, docs/superpowers/plans/2026-07-09-creator-groups-private-campaigns.md, 2026-07-09-creator-groups.md, docs/superpowers/specs/2026-07-10-crews-phase2-activity-design.md, docs/superpowers/plans/2026-07-10-crews-phase2-activity.md]
 tags: [campaigns, creators, rls, private-visibility, groups, marketplace, notifications, activity-feed]
 ---
@@ -149,6 +149,50 @@ quickly and are notified on requests / content updates in a team-oriented way."
   (content_submitted), `ContentReviewSection` (content_approved / revision_requested),
   `useProjectComplete` (completed), `useCampaignCreator` (campaign_posted).
 
+## Phase 3 — Comprehension pass (#379, 2026-08-07)
+
+A restaurant user on `/dashboard/business/groups` asked *"what is CREWS? I guess I can group by
+different creators?"* The audit found the feature was ~80% built and ~0% explained: every question
+a user had already had a good answer in the schema, and none of them were on screen.
+
+- **`CrewsHowItWorks`** (`src/components/groups/CrewsHowItWorks.tsx`) — collapsible business-side
+  explainer, rendered whether or not crews exist (the "what is this?" question arrives *before* the
+  first crew). Covers consent, cost, and what a crew unlocks.
+- **`useMyCrews` + `MyCrewsList`** — the creator's own crew roster, which did not exist: accepting
+  an invite made the card vanish with nothing recording membership. Needs **no RPC and no
+  migration** — `cgm_self_select` → `cg_member_select` → public `business_profiles`, the same batch
+  pattern `useGroupCampaigns` already uses. Remember to invalidate `['my-crews', userId]` in
+  `useCreatorGroupInvitations.invalidateAll()` or an accepted crew won't appear until a refetch.
+- **`useCreatorGroupMemberCounts`** — roster sizes on the crew cards via one grouped query, not N
+  head-counts (`cgm_owner_select` spans all the owner's crews). It returns `isError` on purpose:
+  react-query reports `isLoading=false` with undefined data on error, so an absent map entry would
+  otherwise render as a confident "No members yet" about a full roster.
+
+### Crew campaigns are EXCLUSIVE, never EARLY — do not reintroduce "first look"
+
+The original v1 copy (and the `new_crew_campaign` email) framed the creator perk as getting a
+"first look" *before the marketplace*. **That is false.** A crew campaign never becomes public:
+
+- `usePublicCampaigns` filters `.is('group_id', null)`
+- the campaigns SELECT policy gates the public branch on `group_id IS NULL`
+- nothing in `src/` or `supabase/` ever nulls a campaign's `group_id`, and the FK is
+  **ON DELETE RESTRICT** (`20260709120010`) specifically so it can't happen
+
+There is no marketplace debut to be early to — a creator who passed on a crew collab intending to
+grab it off the public board later would never find it. The correct (and stronger) framing is
+**exclusivity**: these collabs never go public, so the crew isn't competing with the whole
+marketplace. #379 corrected this in `CrewsHowItWorks`, `GroupInviteCard`, the crews-tab empty
+state, the roster subline, the `MyCrewsList` badge, and the `crew_invitation` email; migration
+`20260807230000` fixed the same claim in the `creator-crews-creator` help article.
+
+### `supabase.functions.invoke` resolves on non-2xx
+
+It returns `{ data, error }` rather than rejecting, so `invoke(...).catch(...)` is **dead code for
+every 4xx/5xx** — a failed dispatch logged nothing. Read `error` off the result; for a fan-out use
+`Promise.allSettled` and count `r.status === 'rejected' || r.value.error`. #379 fixed the invite
+and removal paths; the same shape still exists in `useCreatorGroupInvitations` (crew accept) and
+`useCampaignCreator` (crew campaign posted).
+
 ## Known Issues / gotchas
 
 - **`create-notification` is `verify_jwt=TRUE` on prod** (not false) — redeploy it **without**
@@ -164,9 +208,12 @@ quickly and are notified on requests / content updates in a team-oriented way."
   escrow flow.
 - **`saveDraft` needs the crew overrides too** — else a crew campaign saved as a draft reverts to a
   paid public draft.
-- **`create-notification` only emails mapped types.** `group_invitation` isn't in
-  `NOTIFICATION_TYPE_TO_EMAIL_TYPE`, so invited creators get the in-app bell only (email is a
-  deferred enhancement); copy must not over-promise.
+- **`create-notification` only emails mapped types.** As of #379 `group_invitation` **is** mapped
+  (→ `crew_invitation`), so a crew invite now sends bell **+** email. `group_invite_accepted` and
+  `group_membership_removed` remain deliberately unmapped (bell-only). Keep the two copies of
+  `NOTIFICATION_TYPE_TO_EMAIL_TYPE` in sync, and **deploy `send-notification-email` before
+  `create-notification`** — the reverse order doesn't crash (the caller only checks
+  `emailResponse.ok`) but silently drops every invite email until both are live.
 - **Grant asymmetry:** `is_active_group_member` must stay anon-executable (it's in the
   anon-reachable campaigns SELECT policy); `is_creator_group_owner`, `respond_to_group_invitation`,
   `get_creator_pending_group_invitations` are revoked from anon.

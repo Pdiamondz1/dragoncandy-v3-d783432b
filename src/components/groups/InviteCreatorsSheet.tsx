@@ -141,7 +141,8 @@ export const InviteCreatorsSheet: React.FC<InviteCreatorsSheetProps> = ({
         <SheetHeader className="border-b border-dc-teal/15 px-5 pb-4 pt-5">
           <SheetTitle className="text-left text-dc-text">Invite creators</SheetTitle>
           <SheetDescription className="text-left">
-            Search and tap creators to add them to this crew.
+            Search and tap creators to invite. They choose whether to accept — nobody joins
+            automatically.
           </SheetDescription>
         </SheetHeader>
 

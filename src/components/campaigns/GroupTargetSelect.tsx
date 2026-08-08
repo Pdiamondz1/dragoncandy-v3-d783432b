@@ -66,7 +66,7 @@ export function GroupTargetSelect({ value, onChange }: GroupTargetSelectProps) {
         <p className="mt-2 text-xs text-dc-text-muted">
           Want a private, no-payment collab?{' '}
           <Link
-            to="/dashboard/business/groups"
+            to="/dashboard/business/crews"
             className="font-semibold text-dc-teal-dark hover:underline"
           >
             Build a crew
