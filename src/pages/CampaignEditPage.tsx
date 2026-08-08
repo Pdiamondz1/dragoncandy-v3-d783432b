@@ -20,6 +20,7 @@ import { mapDeliveryType, getTierConfig, computeCampaignCost } from '@/lib/campa
 import type { Platform, Deliverable } from '@/types/campaignMedia';
 import { cn } from '@/lib/utils';
 import { MAX_AUDIENCE_CHARS } from '@/lib/campaignAudience';
+import { MIN_CAMPAIGN_PRICE } from '@/lib/campaignPricing';
 
 // ── Geographic scope options ──────────────────────────────────────────────────
 const GEO_OPTIONS: { value: string; label: string }[] = [
@@ -153,6 +154,14 @@ const CampaignEditPage: React.FC = () => {
     tier,
     deliverableCount
   );
+
+  // A marketplace campaign can't go public without a real price. Crew campaigns are
+  // exempt: they're free by DB constraint (campaigns_group_free) and get no price
+  // input at all above. This gate exists because "Open to the marketplace" hands the
+  // business a draft with the price deliberately blanked — the crew original was
+  // forced to 0, and carrying that through would publish a $0 paid campaign. Saving
+  // a DRAFT stays unrestricted; only Publish is gated.
+  const canPublishPrice = !!campaign?.group_id || budgetMax >= MIN_CAMPAIGN_PRICE;
 
   // ── Loading state ──────────────────────────────────────────────────────────
   if (isLoading) {
@@ -449,12 +458,21 @@ const CampaignEditPage: React.FC = () => {
           <div className="space-y-3 pt-2">
             <button
               onClick={() => handleSaveWithNavigation('published')}
-              disabled={isSaving || !formData.title.trim()}
+              disabled={isSaving || !formData.title.trim() || !canPublishPrice}
               className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3 flex items-center justify-center gap-2 disabled:opacity-60"
             >
               <Save className="h-4 w-4" aria-hidden="true" />
               {isSaving ? 'Publishing…' : 'Publish Campaign'}
             </button>
+            {!canPublishPrice && (
+              /* Say why the button is dead. Without this the draft handed over by
+                 "Open to the marketplace" looks broken: it arrives with no price,
+                 and the price field is further up the page than the button. */
+              <p className="text-sm text-dc-text-muted text-center">
+                Set a campaign price of ${MIN_CAMPAIGN_PRICE} or more to publish. You can save a draft
+                in the meantime.
+              </p>
+            )}
             <button
               onClick={() => handleSaveWithNavigation('draft')}
               disabled={isSaving || !formData.title.trim()}
