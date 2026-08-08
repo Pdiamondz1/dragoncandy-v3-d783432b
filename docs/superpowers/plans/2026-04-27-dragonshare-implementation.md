@@ -1421,6 +1421,10 @@ git commit -m "feat(dragonshare): 4-step creator submit sheet"
 
 ## Task 8: Donny DragonShare Score Edge Function (P3.2)
 
+> **REMOVED 2026-08-08 — the code below is a historical record, not a template.** As built it had no
+> caller authorization (see the design doc's note and [[Service-Role Data Exposure]]), and its
+> `dragonshare_posts` INSERT webhook was never wired, so it never executed on prod.
+
 **Files:**
 - Create: `supabase/functions/donny-dragonshare-score/index.ts`
 
