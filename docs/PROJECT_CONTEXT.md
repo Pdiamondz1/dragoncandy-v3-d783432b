@@ -116,6 +116,23 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 > proof the object exists (see [[Content Delivery State Machine]]) and "recorded ≠ actual" has
 > bitten this project before.
 
+- **`donny-dragonshare-score` deleted — an unauthorized cross-tenant service-role write** — the
+  authenticated caller was validated then **never used again**, so a body-supplied `post_id` reached
+  a service-role read *and* write of any tenant's post, with the audit row stamped to the **victim**;
+  `matchQuality` plus a plaintext `creatorPostCount` in `rationale` also made the target org's boost
+  count solvable. It was the hole in the DB's own guard (`trg_ds_posts_block_self_verify` blocks
+  authenticated non-admins from those exact columns, then waves through the service role). **Deleted,
+  not patched** — zero callers, webhook never wired (checked on prod: no cron, no `pg_proc`, no
+  `http_request` trigger), and it never ran once (`with_score=0, score_events=0`). The sibling
+  `landing-clips` lead was **checked and refuted** (real consumer behind a deliberately-off flag) and
+  kept — but confirming that found a **real** defect, fixed here: both its media URLs are
+  creator-writable free text, so a boosted creator could aim the anonymous homepage at any URL;
+  `buildClips` now origin-pins them to the public bucket. Two new pre-existing `[med]` write/forgery
+  leads filed and **not fixed** (`fire-dragonshare-social-hook`, `dragonshare-notify` — body id +
+  service role + no caller resolution). **Pending:** merge the PR, then **undeploy
+  `donny-dragonshare-score`** from Supabase — *deleting source is not undeploying, so until that step
+  runs the hole is still open in prod* — and **deploy** the hardened `landing-clips`.
+  → `docs/wiki/concepts/service-role-data-exposure.md`
 - **DragonFeed uplift + sidebar double-active fix** — the "double-clicked button" was a
   **specificity** bug (each role's bare-root Dashboard href prefixed all ~26 child routes, in three
   copy-pasted navs) → one shared longest-match-wins `activeNavHref()`. The feed's four complaints
@@ -145,17 +162,6 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
-- **`donny-dragonshare-score` deleted — an unauthorized cross-tenant service-role write** — the
-  authenticated caller was validated then **never used again**, so a body-supplied `post_id` reached
-  a service-role read *and* write of any tenant's post, with the audit row stamped to the **victim**;
-  `matchQuality` plus a plaintext `creatorPostCount` in `rationale` also made the target org's boost
-  count solvable. It was the hole in the DB's own guard (`trg_ds_posts_block_self_verify` blocks
-  authenticated non-admins from those exact columns, then waves through the service role). **Deleted,
-  not patched** — zero callers, webhook never wired, and prod confirms it never ran once
-  (`with_score=0, score_events=0`). The sibling `landing-clips` lead was **checked and refuted**
-  (real consumer behind a deliberately-off flag) and kept. **Deleting source ≠ undeploying:** the
-  live function must still be removed from Supabase.
-  → `docs/wiki/concepts/service-role-data-exposure.md`
 - **`handle_updated_at()` restored from its prod-drifted stub** — the shared trigger's prod body was
   literally `-- Function logic here / RETURN NEW;`, so 35 triggers across 31 tables fired and changed
   nothing and `updated_at` sat frozen at `created_at`. Repo was never wrong (`recorded ≠ actual`, same

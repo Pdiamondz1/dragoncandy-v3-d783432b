@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { buildClips, type LandingClipRow } from "./lib.ts";
+import { allowedMediaPrefix, buildClips, type LandingClipRow } from "./lib.ts";
 
 // Anonymous read: returns public URLs of BOOSTED, verified, unflagged DragonShare VIDEO content.
 // verify_jwt=true (platform default — no config.toml entry). Never throws to the client: any
@@ -18,8 +18,9 @@ serve(async (req) => {
     });
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
+      supabaseUrl,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
@@ -41,7 +42,11 @@ serve(async (req) => {
       .limit(20); // over-fetch; buildClips applies the ext-guard + de-dupe + cap(4)
 
     if (error) throw error;
-    return json({ clips: buildClips((data ?? []) as LandingClipRow[]) });
+    // Origin-pin both media URLs to the public dragonshare-content bucket: they are
+    // creator-writable free text, and this response is served to anonymous visitors. See lib.ts.
+    return json({
+      clips: buildClips((data ?? []) as LandingClipRow[], allowedMediaPrefix(supabaseUrl)),
+    });
   } catch (_e) {
     return json({ clips: [] }); // never break the hero
   }

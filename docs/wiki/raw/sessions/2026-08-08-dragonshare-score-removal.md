@@ -40,8 +40,12 @@ closed. Defense-in-depth at the DB only protects against the credentials it can 
 
 - **Zero callers.** Nothing in `src/`, no other edge function, no `config.toml` entry, no CI
   typecheck-gate entry, no script. Only docs mention it.
-- **The trigger was never wired.** The 2026-04-27 plan specified a `dragonshare_posts` INSERT
-  webhook; `trg_ds_post_submitted_fn` only inserts an event row. No HTTP call anywhere.
+- **The trigger was never wired — verified against prod, not the repo.** The 2026-04-27 plan
+  specified a `dragonshare_posts` INSERT webhook. On prod: no `cron.job` command mentions
+  dragonshare, no `pg_proc` body mentions `dragonshare-score`, and all four triggers on
+  `dragonshare_posts` (`ds_posts_block_self_verify`, `trg_ds_post_submitted`,
+  `trg_ds_post_verified`, `trg_ds_posts_updated_at`) call local plpgsql functions — none is a
+  `supabase_functions.http_request` webhook.
 - **Never executed.** Confirmed on prod on two consecutive days (2026-08-07, 2026-08-08):
   `posts=10, with_tier=0, with_score=0, with_reach=0, score_events=0`.
 - **Nothing reads the columns.** They appear only in generated `types.ts` and the guard trigger.
@@ -84,6 +88,60 @@ before their video fronts the public homepage. That is the DragonFeed spec's pha
 flag-gated ones, and a lazy dynamic `import()` behind a false flag looks exactly like dead code to a
 grep of runtime call sites. Check the chain, not the flag.
 
+### …but confirming that turned up a real defect, fixed in the same PR
+
+`data-exposure-reviewer` raised `screenshot_url` as `[low]`. Verifying it showed the same reasoning
+covers `content_file_path` too, which the reviewer missed — so the finding was **bigger than
+flagged**, not smaller.
+
+Both columns are **creator-writable free text**. Read from prod `pg_policies`:
+`ds_posts_creator_insert` is `WITH CHECK (creator_id = auth.uid())` and `ds_posts_creator_update` is
+`USING/WITH CHECK (creator_id = auth.uid())` — **no column constraint on either** — and
+`trg_ds_posts_block_self_verify` lists status/boost/verification/`donny_*`/`creator_id`/
+`target_org_id`, **neither media column**. The SQL filter (boosted + verified + unflagged) decides
+*whose row is eligible*; it says nothing about *where the bytes come from*, and `VIDEO_EXT` checks
+only the suffix. So a creator whose post got boosted could point the anonymous homepage at any URL —
+an IP/UA beacon fired from every visitor's browser.
+
+Fix: `buildClips` now takes a **required** `allowedPrefix` (required, not optional — an optional
+security control invites omission) built by `allowedMediaPrefix(SUPABASE_URL)`, and pins both fields
+to `…/storage/v1/object/public/dragonshare-content/`. An off-bucket **poster is dropped but the clip
+is kept** (the video plays, it just loses its still frame). All 9 real rows already carry the prefix
+(`with_screenshot = 0`, and every `content_file_path` matches), so behaviour is unchanged today.
+14 tests, including a prefix-lookalike host, a sibling public bucket, and a non-http scheme.
+
+**Generalizable:** a row-level eligibility filter is not a content filter. When a service-role
+endpoint echoes a **URL that any user can write**, pin the origin separately from whatever decides
+the row is allowed.
+
+Note this half **needs an edge-function deploy** — unlike the deletion, it is a code change.
+
+## Two new leads, both pre-existing, NOT fixed
+
+Fanning the reviewer across all 90 functions surfaced two more instances of the same shape.
+Corroborated mechanically — `grep -c "getUser\|isAuthorizedIngest"` returns **0** for both — but
+**not reproduced end-to-end**, so they are leads.
+
+- `fire-dragonshare-social-hook/index.ts:26-54` — body `boost_id`/`post_id`, service role, no caller
+  resolution. Appears to let any valid-JWT holder plant `donny_scheduled_posts` drafts +
+  `donny_nudges` into three other users' accounts.
+- `dragonshare-notify/index.ts:346-361` — identical shape; notifications, nudges, a Donny chat
+  message, into arbitrary accounts by id.
+
+Neither returns victim data, so both are cross-user **write/forgery**, not read leaks. Each has
+exactly one real caller (`_shared/fulfill-boost.ts`, service-role→service-role), so
+`isAuthorizedIngest` — the pattern `auto-approve-content` uses — is the likely fix.
+
+The earlier `donny-orchestrator/agents/dragonshare.ts` lead is also **worse than filed**: beyond the
+missing `status='verified'`, it scopes on the denormalized `profiles.org_id` cache with no
+`invitation_status='active'` qualifier.
+
+**One reviewer false negative worth keeping.** `agents/billing.ts:80` reads
+`(input.org_id) ?? userContext.org_id` where `org_id` is a declared LLM tool argument — textbook
+check-4 shape, and **not** a hole: `donny-orchestrator/index.ts:491-499` builds `enrichedInput` as
+`{ ...toolInput, org_id: userContext.org_id }`, overwriting it server-side. The fallback is dead
+code. Check the call site before believing a tool-argument finding.
+
 ## The durable lesson: deleting source is not undeploying
 
 Merging this PR removes the function from the repo. **The deployed function keeps serving requests**
@@ -97,7 +155,10 @@ The remedy is to audit the **deployed** function list against the repo, not the 
 ## Changed
 
 - Deleted `supabase/functions/donny-dragonshare-score/index.ts` (the whole function; single file, no
-  `_shared` imports beyond the standard two, no `config.toml` entry, no CI-gate entry).
+  `_shared` imports beyond the standard two, no `config.toml` entry, no CI-gate entry). The CI
+  edge-typecheck count drops 66 → **65 clean**, exactly as predicted.
+- Hardened `supabase/functions/landing-clips/{index,lib,lib.test}.ts` — origin-pinned both media
+  URLs (**needs a deploy**).
 - `docs/wiki/concepts/service-role-data-exposure.md` — new "Resolved by deletion" section + the
   source-vs-deploy lesson.
 - `docs/superpowers/specs/2026-08-07-dragonfeed-uplift-design.md` §7 — both leads marked checked,
@@ -108,9 +169,12 @@ The remedy is to audit the **deployed** function list against the repo, not the 
 
 ## Still open
 
-- `donny-orchestrator/agents/dragonshare.ts:71-76` may omit `status='verified'`. Same-tenant, so not
-  a leak, but a divergence from the RLS contract. **Unverified.**
+- `donny-orchestrator/agents/dragonshare.ts:69-87` — missing `status='verified'` **and** missing
+  `invitation_status='active'` on a denormalized org cache. **Unverified.**
+- `fire-dragonshare-social-hook` and `dragonshare-notify` — the two new `[med]` write/forgery leads
+  above. **Not reproduced.**
 - `CreatorSettings.tsx:44` may save stale form state over stored values. **Observed in code, not
   reproduced.**
 - **Undeploying** `donny-dragonshare-score` from Supabase — a separate prod action, not done by this
-  PR.
+  PR. Until it happens the hole is still open in production.
+- **Deploying** the hardened `landing-clips` — also a separate prod action.

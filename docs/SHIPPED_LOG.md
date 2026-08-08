@@ -68,6 +68,30 @@ also not an exposure surface: it returns only boosted/verified/unflagged video U
 that is already `public = true` with unconditional read. **Kept.** Its real open question is consent,
 which is the DragonFeed spec's phase-3b decision.
 
+**But confirming that turned up a real defect, fixed here.** `data-exposure-reviewer` flagged
+`screenshot_url`; the same reasoning covers `content_file_path`, which it missed. Both are
+**creator-writable free text** — `ds_posts_creator_insert`/`_update` gate only on
+`creator_id = auth.uid()` with no column constraint, and `trg_ds_posts_block_self_verify` lists
+neither — so a boosted creator could make the anonymous homepage fetch an arbitrary third-party URL
+from every visitor's browser. The SQL filter decides *whose row is eligible*; it says nothing about
+*where the bytes come from*, and the extension guard checks only the suffix. `buildClips` now takes a
+**required** `allowedPrefix` (required, not optional — an optional security control invites
+omission) and pins both fields to the public bucket. An off-bucket **poster is dropped, the clip
+kept**. All 9 real rows already match, so behaviour is unchanged today; 14 tests, incl. a
+prefix-lookalike host, a sibling public bucket, and a non-http scheme. **This one needs a deploy** —
+`landing-clips` is a code change, unlike the deletion.
+
+**Two new `[med]` leads filed, both pre-existing and NOT fixed:**
+`fire-dragonshare-social-hook/index.ts:26-54` and `dragonshare-notify/index.ts:346-361` each take a
+body-supplied id, run as service role, and have **no caller resolution at all**
+(`grep -c "getUser\|isAuthorizedIngest"` = 0 for both). Neither returns victim data, so they are
+cross-user **write/forgery** — planting scheduled-post drafts, nudges, notifications and a Donny
+chat message into other accounts by id — not read leaks. Each has one real caller
+(`_shared/fulfill-boost.ts`, service-role→service-role), so `isAuthorizedIngest` is the likely fix.
+Also recorded a reviewer **false negative** worth keeping: `agents/billing.ts:80`'s
+`(input.org_id) ?? userContext.org_id` looks like an LLM-controlled tenant id and is not one —
+`donny-orchestrator/index.ts:491-499` overwrites it server-side. Check the call site.
+
 **Deleting source is not undeploying.** This PR removes the function from the repo; the deployed
 function keeps serving until it is explicitly removed from Supabase. Until then the repo and the live
 attack surface disagree, and the repo is what everyone greps. Audit the *deployed* function list
