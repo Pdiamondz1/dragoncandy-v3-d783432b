@@ -31,6 +31,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLogout } from '@/hooks/useLogout';
 import { useProfileData } from '@/hooks/useProfileData';
 import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
+import { DcPointsChip } from '@/components/rewards/DcPointsChip';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { MobileTopNav } from '@/components/MobileTopNav';
@@ -225,6 +226,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
                       }}
                     />
                   )}
+                  <DcPointsChip />
                   <NotificationDropdown />
 
                   <button

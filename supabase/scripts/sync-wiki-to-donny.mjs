@@ -39,6 +39,20 @@ const EXCLUDE = new Set([
   "content-engine-data-audit", "claude-skills-framework-audit", "claude-subagents-audit",
 ]);
 
+// Forced-internal (unconditional — NOT gated behind SYNC_CURATE, unlike EXCLUDE above):
+// these two pages are DRE ENGINEERING docs describing phases that were never built
+// (referrals, streaks, "Hype Weeks", point redemption). If consumer Donny can retrieve
+// them, he promises users rewards that don't exist. donny-knowledge-sync recomputes
+// `scope` from this script's payload on EVERY sync, insert or update (it does not
+// preserve whatever is already in the DB), so a one-off DB fix does not hold — this
+// script must always send scope: "internal" for these paths, including on the
+// unattended post-merge sync. Keyed on the exact "<dir>/<filename>" pair (not a slug
+// substring) so an unrelated future page can never be swallowed by a loose match.
+const FORCE_INTERNAL = new Set([
+  "concepts/dragon-rewards-engine.md",
+  "analyses/dragoncandy-dragon-rewards-engine-dre-full-system-spec.md",
+]);
+
 if (!URL || !KEY) {
   console.error("Set DONNY_SYNC_URL and SUPABASE_SECRET_KEY (the sb_secret_… key).");
   process.exit(1);
@@ -71,12 +85,27 @@ for (const dir of DIRS) {
     const raw = readFileSync(join(WIKI_ROOT, dir, name), "utf8");
     const { fm, body } = parseFrontmatter(raw);
     const title = fm.title ?? slug;
-    pages.push({
+    const page = {
       source_id: `wiki:${dir}/${slug}`,
       content: `${title}\n\n${body}`,
       metadata: { title, type: fm.type ?? dir, path: `${WIKI_ROOT}/${dir}/${name}`, tags: fm.tags ?? "" },
-    });
+    };
+    // Unconditional — see FORCE_INTERNAL above. donny-knowledge-sync reads page.scope.
+    if (FORCE_INTERNAL.has(`${dir}/${name}`)) page.scope = "internal";
+    pages.push(page);
   }
+}
+
+// Guard on FORCE_INTERNAL itself: it is the sole durable protection on the honesty hole
+// described above, keyed on exact "<dir>/<filename>" strings. If either backing wiki file
+// is ever renamed or moved, the match silently stops firing, the next sync re-inserts that
+// page at scope null, and the hole reopens with NO error signal. Fail loudly instead.
+const forcedInternalCount = pages.filter((p) => p.scope === "internal").length;
+if (forcedInternalCount !== FORCE_INTERNAL.size) {
+  throw new Error(
+    `FORCE_INTERNAL guard failed: expected ${FORCE_INTERNAL.size} pages forced to scope "internal", but found ${forcedInternalCount}. ` +
+    `A wiki file backing FORCE_INTERNAL was probably renamed or moved — update the FORCE_INTERNAL set in supabase/scripts/sync-wiki-to-donny.mjs to match its new "<dir>/<filename>" path.`
+  );
 }
 
 // One oversized page fails its WHOLE batch (the embedding call sends the batch as a single
