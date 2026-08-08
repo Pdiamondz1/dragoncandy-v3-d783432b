@@ -82,6 +82,12 @@ const handler = async (req: Request): Promise<Response> => {
     const authHeader = req.headers.get("Authorization") || "";
     const isService = authHeader === `Bearer ${serviceKey}`;
 
+    // The verified caller, for non-service requests. This used to be authenticated
+    // and then THROWN AWAY — the `user` object was never referenced again, so every
+    // field below (including who the notification claims to be from) came from the
+    // request body. Keep it: it is the only trustworthy identity in the request.
+    let callerId: string | null = null;
+
     if (!isService) {
       const anonKey = Deno.env.get("SUPABASE_ANON_KEY") as string;
       const userClient = createClient(supabaseUrl, anonKey, {
@@ -94,6 +100,7 @@ const handler = async (req: Request): Promise<Response> => {
           headers: { ...corsHeaders(req), "Content-Type": "application/json" },
         });
       }
+      callerId = user.id;
     }
 
     const payload: CreateNotificationRequest = await req.json();
@@ -111,6 +118,85 @@ const handler = async (req: Request): Promise<Response> => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
+    // Who the notification is attributed to. For a user-authenticated call this is
+    // ALWAYS the verified caller — a client-supplied `actorId` is ignored outright,
+    // because trusting it let any authenticated user post a notification that appeared
+    // to come from someone else. Verified safe: every `actorId` passed anywhere in
+    // `src/` is already the caller's own id, so no legitimate call site changes
+    // behaviour. Service-role callers act on behalf of the system and keep passing an
+    // explicit actor (`dre-award-engine` passes none at all, which stays null).
+    const effectiveActorId = isService ? (actorId ?? null) : callerId;
+
+    // Same reasoning for the display name: a caller-supplied `actorName` is what makes
+    // a spoofed notification look convincing, so resolve it from the actor id instead.
+    let effectiveActorName: string | null = isService ? (actorName ?? null) : null;
+    if (!isService && effectiveActorId) {
+      const { data: actorProfile } = await admin
+        .from("profiles")
+        .select("full_name")
+        .eq("id", effectiveActorId)
+        .maybeSingle();
+      effectiveActorName = actorProfile?.full_name ?? null;
+    }
+
+    // --- Recipient authorization (user-authenticated callers only) ---
+    //
+    // Service-role callers are the system acting on its own behalf and are trusted; the
+    // 2 edge-function call sites (`dre-award-engine`, `dragonshare-notify`) are unaffected.
+    // For a user, the recipient must be someone they can legitimately reach.
+    //
+    // Cold contact from a public profile needs no exemption: both contact modals `await`
+    // conversation creation before sending, so the shared-conversation clause already
+    // covers them by the time the notify fires.
+    //
+    // `content_liked` is the one type with no prior relationship by design — anyone may
+    // like a public post — so it is authorized against the REFERENCED POST instead: the
+    // recipient must actually own the content being liked. That fact comes from the
+    // database, not the request, so it is not client-assertable.
+    //
+    // Everything else goes through `can_notify_user`, whose clause set was backtested
+    // against all 91 actor-bearing rows in `push_notifications` (89 pass; the 2 that don't
+    // are exactly the `content_liked` rows handled here) AND cross-checked by enumerating
+    // all 32 client call sites — which is what surfaced the sponsorship relationship, since
+    // no sponsorship notification has ever fired on prod.
+    if (!isService && callerId) {
+      let permitted = false;
+
+      if (type === "content_liked") {
+        const contentId = (data as Record<string, unknown> | undefined)?.content_id;
+        if (typeof contentId === "string") {
+          const { data: post } = await admin
+            .from("dragonshare_posts")
+            .select("creator_id")
+            .eq("id", contentId)
+            .maybeSingle();
+          permitted = !!post && post.creator_id === recipientId;
+        }
+      } else {
+        const { data: allowed, error: relError } = await admin
+          .rpc("can_notify_user", { p_actor: callerId, p_recipient: recipientId });
+        if (relError) {
+          // Fail closed: an unavailable authorization check is not permission.
+          console.error("can_notify_user failed:", relError);
+          return new Response(JSON.stringify({ error: "Authorization check unavailable" }), {
+            status: 503,
+            headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+          });
+        }
+        permitted = allowed === true;
+      }
+
+      if (!permitted) {
+        console.warn(
+          `Blocked notification: actor=${callerId} recipient=${recipientId} type=${type}`,
+        );
+        return new Response(JSON.stringify({ error: "Not permitted to notify this user" }), {
+          status: 403,
+          headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // 1. INSERT notification (always, regardless of preferences)
     const { data: notification, error: insertError } = await admin
       .from("push_notifications")
@@ -121,8 +207,8 @@ const handler = async (req: Request): Promise<Response> => {
         title,
         body: notifBody,
         action_url: actionUrl ?? null,
-        actor_id: actorId ?? null,
-        actor_name: actorName ?? null,
+        actor_id: effectiveActorId,
+        actor_name: effectiveActorName,
         icon: icon ?? "default",
         data: data ?? null,
         sent_at: new Date().toISOString(),
