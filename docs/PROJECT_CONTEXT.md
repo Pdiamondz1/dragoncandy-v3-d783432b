@@ -116,6 +116,22 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 > proof the object exists (see [[Content Delivery State Machine]]) and "recorded ≠ actual" has
 > bitten this project before.
 
+- **AI Creator Match auto-run + invitation clarity** — a founder screenshot produced three
+  structural findings: `match-creators` had **no automatic trigger anywhere** (two buttons only —
+  no creation/publish path, no DB trigger), so every new campaign opened on a red "No AI matches
+  yet"; the invite had **zero explanatory copy on the entire platform** while the campaign is
+  already visible to every creator (`usePublicCampaigns` filters only `status='published'` +
+  `group_id IS NULL`, and publish already mails all onboarded creators), so users read "Invite" as
+  "make them do the work"; and the match card had **no pending state at all** behind six serial
+  edge-function steps. Shipped a twice-guarded silent auto-run, stepped progress UI, "Invite to
+  apply" + a `campaign_invite` expander, and real invitation status (`status` had always been
+  fetched and never read, so a **declined** creator looked identical to an accepted one). Two live
+  defects closed en route: the panel rendered for **non-owners**, and an **expired invitation was
+  permanently un-resendable, silently**. `send-campaign-invitation` **deployed v62 → v63** and
+  boot-verified. **Pending:** merge PR #382 (frontend); and the **both-viewport visual pass was
+  not run** — the dev machine sat at 100% CPU, so verify via `verify-prod` after merge. No
+  migration, no schema/RLS change.
+  → `docs/wiki/concepts/campaign-invitations.md` · #382
 - **AIOS Google Workspace ("Connections")** — per-user Google OAuth, audited proxy, Drive
   hub, Donny exports, metrics→Sheet. The `google-chat-donny` bot ships dark — **confirmed still
   dark 2026-08-07**: a POST to the function returns **HTTP 503**, so this entry is real.
