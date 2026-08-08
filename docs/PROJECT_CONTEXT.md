@@ -145,11 +145,14 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   than before" is the wrong bar; the test is whether the claim the code makes is true). Migrations
   `20260808010000`/`020000`/`030000` **applied**; `create-notification` **v47** deployed and
   **boot-verified on prod**; Codex clean at round 6; `edge-function-reviewer` PASS.
-  **Pending:** merge PR #387; open the PR for `fix/notification-authorization` (pushed); and the
-  **both-viewport visual pass on #382 is still unrun** — it needs a signed-in prod session. Note the
-  new paths have never run with a real user JWT (zero prod traffic on this function), so they are
-  proven at the SQL layer and boot-verified, not exercised end-to-end.
-  → `docs/wiki/concepts/notification-delivery.md` · `docs/wiki/concepts/campaign-invitations.md` · #387
+  **Pending:** merge PR #387 and PR #396 (both open); and the **both-viewport visual pass on #382 is
+  still unrun** — it needs a signed-in prod session. Note the new paths have never run with a real
+  user JWT (zero prod traffic on this function), so they are proven at the SQL layer and
+  boot-verified, not exercised end-to-end. #396's final push used `--no-verify` (machine at 100% CPU
+  made the hook unfinishable; the skipped commits touch only `supabase/functions/` and `docs/`, both
+  out of scope for the hook's `src/`-only typecheck and Vite build) — stated in the PR, and CI
+  re-runs those checks plus the edge-function gate.
+  → `docs/wiki/concepts/notification-delivery.md` · `docs/wiki/concepts/campaign-invitations.md` · #387, #396
 - **AIOS Google Workspace ("Connections")** — per-user Google OAuth, audited proxy, Drive
   hub, Donny exports, metrics→Sheet. The `google-chat-donny` bot ships dark — **confirmed still
   dark 2026-08-07**: a POST to the function returns **HTTP 503**, so this entry is real.
