@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, LogOut } from 'lucide-react';
 import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.webp';
@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useLogout } from '@/hooks/useLogout';
 import type { UserRole } from '@/types/user';
 import { getDrawerMenu } from '@/lib/navConfig';
+import { activeNavHref } from '@/lib/navActive';
 import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 
 interface MobileTopNavProps {
@@ -25,11 +26,15 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
 }) => {
   const logout = useLogout();
   const location = useLocation();
-  const sections = userRole ? getDrawerMenu(userRole) : [];
+  const sections = useMemo(() => (userRole ? getDrawerMenu(userRole) : []), [userRole]);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const isActive = (href: string) =>
-    location.pathname === href || location.pathname.startsWith(href + '/');
+  // Longest match wins, across ALL drawer sections (the role root lives in one section and its
+  // children in others, so a per-section match would still double-light). See lib/navActive.ts.
+  const activeHref = useMemo(
+    () => activeNavHref(location.pathname, sections.flatMap((s) => s.items.map((i) => i.href))),
+    [location.pathname, sections],
+  );
 
   // z-40 (NOT z-50): app chrome sits BELOW the Radix modal layer (dialogs/sheets are z-50),
   // so a full-screen dialog's overlay dims this bar instead of it poking through. The nav's
@@ -82,14 +87,12 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
                       to={item.href}
                       onClick={() => setSheetOpen(false)}
                       className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                        isActive(item.href)
+                        item.href === activeHref
                           ? 'bg-dc-teal/12 text-dc-teal font-semibold'
                           : 'hover:bg-dc-teal/10 text-foreground'
                       }`}
                     >
-                      <item.icon className={`h-5 w-5 flex-shrink-0 ${
-                        isActive(item.href) ? 'text-dc-teal' : 'text-dc-teal'
-                      }`} />
+                      <item.icon className="h-5 w-5 flex-shrink-0 text-dc-teal" />
                       {item.label}
                     </Link>
                   ))}

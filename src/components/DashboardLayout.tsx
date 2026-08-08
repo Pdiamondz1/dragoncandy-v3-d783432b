@@ -41,6 +41,7 @@ import { useMyOrgRole } from '@/hooks/useOrgData';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import type { UserRole } from '@/types/user';
 import { getSidebarNav, getSettingsHref, getDashboardLabel } from '@/lib/navConfig';
+import { activeNavHref } from '@/lib/navActive';
 import { useTotalUnreadCount } from '@/hooks/useUnreadCounts';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 
@@ -60,8 +61,9 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ userRole }) => {
   const navItems = getSidebarNav(userRole);
   const unreadCount = useTotalUnreadCount();
 
-  const isActiveRoute = (href: string) =>
-    location.pathname === href || location.pathname.startsWith(href + '/');
+  // Longest match wins — a per-item prefix test lights the role-root "Dashboard" item on every
+  // child route too. See src/lib/navActive.ts.
+  const activeHref = activeNavHref(location.pathname, navItems.map((i) => i.href));
 
   return (
     <Sidebar className={collapsed ? 'w-14' : 'w-60'} collapsible="icon">
@@ -85,7 +87,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ userRole }) => {
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => {
-                const isActive = isActiveRoute(item.href);
+                const isActive = item.href === activeHref;
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
