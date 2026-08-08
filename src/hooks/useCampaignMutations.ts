@@ -60,23 +60,33 @@ export const useCreateCampaign = () => {
       // Batched publish notifications via single edge function call.
       // NEVER broadcast a private crew campaign (group_id set) to the whole creator/brand
       // base — that would leak the private campaign's title+id to non-members.
+      let broadcastSucceeded = false;
       if (data.status === 'published' && !data.group_id) {
         try {
-          await supabase.functions.invoke('send-campaign-publish-notifications', {
+          // invoke resolves on a non-2xx — read the error off the result, don't rely on
+          // the catch (see useUpdateCampaign for the same trap).
+          const { error } = await supabase.functions.invoke('send-campaign-publish-notifications', {
             body: { campaignId: data.id, campaignTitle: data.title, userId: user!.id },
           });
+          if (error) console.error('Failed to send publish notifications:', error);
+          else broadcastSucceeded = true;
         } catch (error) {
           console.error('Failed to send publish notifications:', error);
         }
       }
-      
+
+      // Only claim a notification that actually went out — a crew campaign is never
+      // broadcast, and a failed dispatch is not a notification.
+      const notice = data.status !== 'published'
+        ? ''
+        : data.group_id
+          ? ' Your crew can see it now.'
+          : broadcastSucceeded
+            ? ' Creators and brands have been notified!'
+            : '';
       toast({
         title: 'Campaign created successfully!',
-        description: `"${data.title}" has been ${data.status === 'published' ? 'published' : 'saved as draft'}.${
-          data.status === 'published' 
-            ? ' Creators and brands have been notified!' 
-            : ''
-        }`,
+        description: `"${data.title}" has been ${data.status === 'published' ? 'published' : 'saved as draft'}.${notice}`,
       });
     },
     onError: (error) => {
@@ -96,6 +106,23 @@ export const useUpdateCampaign = () => {
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<CreateCampaignData> }) => {
+      // Read the status BEFORE the write. Publishing is a TRANSITION, not a property of
+      // the resulting row, and CampaignEditPage renders its "Publish Campaign" button
+      // unconditionally — including on an already-live campaign. Without this, every edit
+      // of a published campaign re-invoked the broadcast and re-mailed the entire creator
+      // and brand base.
+      const { data: prior, error: priorError } = await supabase
+        .from('campaigns')
+        .select('status')
+        .eq('id', id)
+        .eq('user_id', user!.id)
+        .single();
+
+      if (priorError) {
+        console.error('Error reading campaign before update:', priorError);
+        throw priorError;
+      }
+
       const { data, error } = await supabase
         .from('campaigns')
         .update(updates as unknown as Database['public']['Tables']['campaigns']['Update'])
@@ -109,18 +136,33 @@ export const useUpdateCampaign = () => {
         throw error;
       }
 
-      return data as unknown as Campaign;
+      return {
+        ...(data as unknown as Campaign),
+        wasAlreadyPublished: prior.status === 'published',
+      };
     },
     onSuccess: async (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-      
+
+      // Only on the draft → published transition. See wasAlreadyPublished above.
+      const becamePublished =
+        variables.updates.status === 'published' &&
+        data.status === 'published' &&
+        !data.wasAlreadyPublished;
+
       // Batched publish notifications via single edge function call.
       // NEVER broadcast a private crew campaign (group_id set) to the whole creator/brand base.
-      if (variables.updates.status === 'published' && data.status === 'published' && !data.group_id) {
+      let broadcastSucceeded = false;
+      if (becamePublished && !data.group_id) {
         try {
-          await supabase.functions.invoke('send-campaign-publish-notifications', {
+          // invoke RESOLVES on a non-2xx (returns { data: null, error }), so the error has
+          // to be read off the result — the bare try/catch here was dead code for every
+          // 4xx/5xx and reported a total failure to notify as success.
+          const { error } = await supabase.functions.invoke('send-campaign-publish-notifications', {
             body: { campaignId: data.id, campaignTitle: data.title, userId: user!.id },
           });
+          if (error) console.error('Failed to send publish notifications:', error);
+          else broadcastSucceeded = true;
         } catch (error) {
           console.error('Failed to send publish notifications:', error);
         }
@@ -133,13 +175,18 @@ export const useUpdateCampaign = () => {
         });
       }
 
+      // Claim a notification only when one actually went out. This said "Creators and
+      // brands have been notified!" on every published save — including crew campaigns,
+      // which are deliberately never broadcast, and including the years in which the
+      // creator leg of the edge function was silently mailing nobody at all.
+      const notice = data.group_id
+        ? ' Your crew can see it now.'
+        : broadcastSucceeded
+          ? ' Creators and brands have been notified!'
+          : '';
       toast({
         title: 'Campaign updated successfully!',
-        description: `"${data.title}" has been updated.${
-          data.status === 'published'
-            ? ' Creators and brands have been notified!' 
-            : ''
-        }`,
+        description: `"${data.title}" has been updated.${notice}`,
       });
     },
     onError: (error) => {
