@@ -119,6 +119,18 @@ export const SUB_AGENT_TOOLS = [
     },
   },
   {
+    name: "rewards_agent",
+    description:
+      "Use when the user asks about DC Points, their points balance, why they earned points, their standing or tier, or how to earn more. Returns the ASKING user's own balance, recent awards with what earned them, the tier thresholds, and every way to earn. Refer to the user's level using the `standing` string; name other levels from the ladder Rising, Established, Pro, Elite, Icon — never the internal `key` values in tier_thresholds. DC Points do not convert to money or discounts — never promise perks, redemption, referrals, or streaks.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query: { type: "string", description: "The user's question" },
+      },
+      required: ["query"],
+    },
+  },
+  {
     name: "general_agent",
     description:
       "Use for greetings, off-topic questions, or when no other agent applies.",

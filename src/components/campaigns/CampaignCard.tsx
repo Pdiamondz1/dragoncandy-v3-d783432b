@@ -301,15 +301,23 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
                 <RefreshCw className="h-3 w-3 mr-1" />
                 Re-Launch
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 rounded-full text-xs"
-                onClick={() => setShowReHireModal(true)}
-              >
-                <UserPlus className="h-3 w-3 mr-1" />
-                Re-Hire Creators
-              </Button>
+              {/* Re-hire works by sending campaign invitations, which the DB forbids for a
+                  crew campaign (trg_reject_group_campaign_invitation), so the action can
+                  never succeed here. It also used to produce a PUBLIC $0 copy of a private
+                  crew collab. The mutation refuses it too; this just avoids offering a
+                  button that cannot work. Posting a new crew campaign is the equivalent
+                  gesture — the crew already sees it. */}
+              {!campaign.group_id && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 rounded-full text-xs"
+                  onClick={() => setShowReHireModal(true)}
+                >
+                  <UserPlus className="h-3 w-3 mr-1" />
+                  Re-Hire Creators
+                </Button>
+              )}
             </div>
             <ReHireCreatorsModal
               open={showReHireModal}
@@ -318,12 +326,22 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
               campaignTitle={campaign.title}
               isLoading={relaunchWithCreators.isPending}
               onConfirm={async (creatorIds) => {
-                const result = await relaunchWithCreators.mutateAsync({
-                  sourceCampaignId: campaign.id,
-                  reinviteCreatorIds: creatorIds,
-                });
-                setShowReHireModal(false);
-                if (result?.id) navigate(`/dashboard/business/campaigns/${result.id}`);
+                // The modal invokes onConfirm fire-and-forget (its prop is typed `=> void`),
+                // so a rejection here never reached it: the sheet stayed open with a
+                // re-enabled button, and the unhandled rejection was logged as an
+                // `unhandled_promise_rejection` analytics event. Close on failure too and
+                // let the mutation's own onError toast carry the message.
+                try {
+                  const result = await relaunchWithCreators.mutateAsync({
+                    sourceCampaignId: campaign.id,
+                    reinviteCreatorIds: creatorIds,
+                  });
+                  if (result?.id) navigate(`/dashboard/business/campaigns/${result.id}`);
+                } catch {
+                  // Reported by useRelaunchWithCreators.onError — nothing to add here.
+                } finally {
+                  setShowReHireModal(false);
+                }
               }}
             />
           </>

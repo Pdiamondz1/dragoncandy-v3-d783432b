@@ -109,30 +109,50 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 > **Every `**Pending:**` clause below was re-verified against prod on 2026-08-07** — not against
 > the PR description or this file's own history. Eight entries were found already complete (merged
-> PRs, applied migrations, deployed functions) and moved to Shipped; the two that remain are
-> genuinely blocked on founder/external action. **A `**Pending:**` clause is a claim with an expiry
+> PRs, applied migrations, deployed functions) and moved to Shipped; the two that remained at that
+> sweep are genuinely blocked on founder/external action (entries added since carry their own
+> verification date). **A `**Pending:**` clause is a claim with an expiry
 > date.** Verify it before acting on it — check the object (`pg_proc` / `information_schema` /
 > `pg_indexes`), the PR state, and the function version, because a migration ledger entry is not
 > proof the object exists (see [[Content Delivery State Machine]]) and "recorded ≠ actual" has
 > bitten this project before.
 
-- **`donny-dragonshare-score` deleted — an unauthorized cross-tenant service-role write** — the
+- **`donny-dragonshare-score` UNDEPLOYED — an unauthorized cross-tenant service-role write** — the
   authenticated caller was validated then **never used again**, so a body-supplied `post_id` reached
   a service-role read *and* write of any tenant's post, with the audit row stamped to the **victim**;
   `matchQuality` plus a plaintext `creatorPostCount` in `rationale` also made the target org's boost
   count solvable. It was the hole in the DB's own guard (`trg_ds_posts_block_self_verify` blocks
   authenticated non-admins from those exact columns, then waves through the service role). **Deleted,
   not patched** — zero callers, webhook never wired (checked on prod: no cron, no `pg_proc`, no
-  `http_request` trigger), and it never ran once (`with_score=0, score_events=0`). The sibling
-  `landing-clips` lead was **checked and refuted** (real consumer behind a deliberately-off flag) and
-  kept — but confirming that found a **real** defect, fixed here: both its media URLs are
-  creator-writable free text, so a boosted creator could aim the anonymous homepage at any URL;
-  `buildClips` now origin-pins them to the public bucket. Two new pre-existing `[med]` write/forgery
-  leads filed and **not fixed** (`fire-dragonshare-social-hook`, `dragonshare-notify` — body id +
-  service role + no caller resolution). **Pending:** merge the PR, then **undeploy
-  `donny-dragonshare-score`** from Supabase — *deleting source is not undeploying, so until that step
-  runs the hole is still open in prod* — and **deploy** the hardened `landing-clips`.
-  → `docs/wiki/concepts/service-role-data-exposure.md`
+  `http_request` trigger), and it never ran once (`with_score=0, score_events=0`). **The hole is
+  CLOSED on prod (2026-08-08):** `supabase functions delete` run and verified two ways —
+  `get_edge_function` returns *Function not found* and a live POST to the endpoint returns **404**.
+  Codex raised deleting-source-alone as a `[P1]` and proposed a tombstone; undeploy was chosen
+  instead because nothing auto-deploys edge functions here, so a tombstone needs the same manual
+  deploy while *institutionalizing* the orphaned-endpoint anti-pattern. The sibling `landing-clips`
+  lead was **checked and refuted** (real consumer behind a deliberately-off flag) and kept — but
+  confirming that found a **real** defect: both its media URLs are creator-writable free text, so a
+  boosted creator could aim the anonymous homepage at any URL; `buildClips` plus the query now
+  origin-pin them to the public bucket. Two new pre-existing `[med]` write/forgery leads filed and
+  **not fixed** (`fire-dragonshare-social-hook`, `dragonshare-notify` — body id + service role + no
+  caller resolution). **Pending (verified 2026-08-08):** merge PR #399, then **deploy the hardened
+  `landing-clips`** — that half is a code change and is inert until deployed. The undeploy is done.
+  → `docs/wiki/concepts/service-role-data-exposure.md` · #399
+- **DC Points visibility (`/rewards`, chip, honest notification, Donny)** — a bell said
+  "+200 DC Points" with nowhere to click, points showed on two dashboards with no explanation, and
+  even the founder needed a SQL query to answer "what earned that." Ships a `/rewards` page
+  (balance, full-sentence tier gap, labeled history, a live `dre_config`-driven earn catalog), an
+  always-visible chip in both top bars, a caller-scoped `dre_my_standing()` RPC, a bell that names
+  its reason, and a Donny `rewards_agent` answering strictly from the caller's own standing.
+  Deliberately **earn-only** — a tier confers a public badge and nothing else ([[Honest Analytics]]).
+  Also closed a live leak: two never-built DRE engineering specs (referrals, streaks, redemption)
+  were reachable by consumer Donny via a NULL `donny_knowledge.scope`. **Pending (verified
+  2026-08-08):** 3 migrations applied + verified on prod; PR #378 open, and the mandatory Codex pass
+  is now **clean** — it took 3 rounds, two of which caught the same defect (a non-creator role
+  falling back to the business branch) in two different places, the second inside Donny's generated
+  prose where no UI review could see it. Awaiting the founder's merge, then deploy
+  `dre-award-engine` (`--no-verify-jwt`) and `donny-orchestrator` (without that flag).
+  → `docs/wiki/concepts/dragon-rewards-engine.md` · #378
 - **DragonFeed uplift + sidebar double-active fix** — the "double-clicked button" was a
   **specificity** bug (each role's bare-root Dashboard href prefixed all ~26 child routes, in three
   copy-pasted navs) → one shared longest-match-wins `activeNavHref()`. The feed's four complaints

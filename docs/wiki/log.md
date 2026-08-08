@@ -10,18 +10,45 @@ Two things were worth writing down beyond the instance itself. First, the functi
 the DB's *own* guard: `trg_ds_posts_block_self_verify` blocks an authenticated non-admin from
 changing exactly those columns, then waves through the service role — so defense-in-depth at the DB
 protects only against credentials it can see. Second, and the reason the page now ends on it:
-**deleting source is not undeploying.** The merged deletion leaves the deployed function serving,
-so the repo and the live attack surface disagree, and the repo is the artifact everybody greps.
+**deleting source is not undeploying.** A merged deletion leaves the deployed function serving, so
+the repo and the live attack surface disagree, and the repo is the artifact everybody greps. Codex
+raised exactly that as a `[P1]` and proposed a tombstone; the page records why undeploy won here
+(nothing auto-deploys functions in this repo, so a tombstone needs the same manual deploy while
+institutionalizing the orphaned-endpoint anti-pattern). **The undeploy was then actually run and
+verified two ways** — `get_edge_function` → *Function not found*, live POST → **404**.
 
 Also recorded a **correction**: the sibling lead calling `landing-clips` "orphaned" was wrong — it
 has a wired consumer behind a deliberately-false flag, and deleting it would have broken a
 documented promise silently. Filed in the spec's §7 as a checked-and-refuted lead rather than
-quietly dropped, since a wrong lead left standing is what gets acted on later.
+quietly dropped, since a wrong lead left standing is what gets acted on later. Confirming it turned
+up a **real** defect in the kept function (both media URLs creator-writable free text → an
+arbitrary-URL beacon on the anonymous homepage), and chasing Codex's follow-up `[P3]` showed the
+2026-07-17 design had specified the *extension* guard at the query level "mirrored in `buildClips`
+too" — only the mirror ever shipped. Hence the new pattern note: **"belt and suspenders" decays into
+a single point of failure the moment one belt is dropped**, because the survivor still produces
+correct output and nothing fails.
 
 Pages: `concepts/service-role-data-exposure.md` (updated). Source:
 `raw/sessions/2026-08-08-dragonshare-score-removal.md`. Core docs: `SHIPPED_LOG.md` (prepended, plus
 a pointer on the now-stale lead list in the 2026-08-07 entry), `PROJECT_CONTEXT.md` §5, and removal
 notes on the two 2026-04-27 DragonShare planning docs.
+
+## [2026-08-08] update | [[Dragon Rewards Engine (DRE)]] — DC Points visibility cleared its review gate
+
+Status-only follow-up to the 2026-08-07 ingest below, which is left as written (a dated
+snapshot, not a claim about now). The mandatory Codex second review ran once the OpenAI
+quota reset and came back **clean** on its third round. Rounds 1 and 2 each found one
+instance of the same defect — a non-creator role falling back to the business branch —
+first making `/rewards` reachable by a brand, then handing a brand the entire business
+earn catalog through Donny's generated prose in `rewards_agent`. The second instance is
+the more interesting one: it lived in *generated prose*, where no reviewer looking at UI
+can see it. Both are fixed; the guard is now stated explicitly in all four places that
+make the decision (chip, page, catalog, sub-agent), each cross-referencing the others,
+because a fallback that silently absorbs an unknown role is what produced the bug twice.
+
+PR #378 is open and mergeable-pending-founder. The two edge functions are still
+**not deployed** — they follow the merge, and they take different flags
+(`dre-award-engine --no-verify-jwt`, `donny-orchestrator` without it).
 
 ## [2026-08-08] update | [[Updated-At Trigger Drift]] — the follow-up anchor, and why it is asymmetric
 
@@ -115,6 +142,31 @@ only (read the clause, never the comment), and a shared motion variant with no c
 
 Pages created: `concepts/campaign-invitations.md`.
 Pages updated: `concepts/ai-creator-matching.md`, `index.md`.
+## [2026-08-07] ingest | [[Dragon Rewards Engine (DRE)]] — DC Points visibility
+
+New raw session `raw/sessions/2026-08-07-dc-points-visibility.md`; compounded a "DC Points
+visibility (2026-08-07)" section onto `concepts/dragon-rewards-engine.md` (frontmatter
+`updated`/`sources` bumped) plus two new Known Issues entries (a confirmed
+`campaign_launched` repeat-payment now user-visible, and a documented-not-fixed
+stale-cached-tier trust boundary) and two new See Also links. Qualified — did not
+silently overwrite — `concepts/self-improving-app.md`'s Known Issues claim that
+internal-scoped rows stay invisible to consumer Donny "on every path": true for the
+`sync-internal-docs.mjs` strategy-library path it was verified against, not for the
+separate consumer `sync-wiki-to-donny.mjs` path, which this session's RAG-leak finding
+is the counterexample to. Added a short content-refresh note to
+`concepts/help-center-and-guidance.md`'s existing naming-drift bullet (the dragon-rewards
+article's body was rewritten with real numbers; the naming drift itself is unaffected).
+`index.md` — refreshed the `[[Dragon Rewards Engine (DRE)]]` Concepts entry in place, one
+new Sources line. No new concept page — compounded onto the page that already owns the
+DRE subsystem, per "compound, don't duplicate."
+
+State as of writing: implementation complete (10/10 tasks reviewed clean, full suite
+green), 3 migrations applied+verified on prod, but the 2 edge functions are not deployed,
+the PR is not yet open, and the mandatory Codex second review has not run (OpenAI quota
+exhausted until 2026-08-08 08:55). Recorded honestly in all three places status lives —
+this page's new section, `PROJECT_CONTEXT.md` §5, and `SHIPPED_LOG.md`'s opening note —
+rather than represented as shipped. RAG sync deferred to the post-merge hook, per
+[[Knowledge-Sync Automation]].
 
 ## [2026-08-07] update | [[Campaign Target Audience]] — shipped both halves; the ordering claim is now measured
 

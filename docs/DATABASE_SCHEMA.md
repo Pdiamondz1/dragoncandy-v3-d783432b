@@ -305,6 +305,15 @@ clients read their own rows (`auth.uid() = user_id`).
 > RPCs (SECURITY DEFINER, `service_role`-only): `dre_pending_events()` (anti-join — source rows
 > lacking a ledger row) and `dre_user_aggregates(uuid[])` (balance + completed-campaign count +
 > avg rating for tier resolution).
+>
+> **`dre_my_standing()`** (migration `20260807120000`, [[Dragon Rewards Engine (DRE)]] — DC
+> Points visibility) — a **caller-scoped** SECURITY DEFINER RPC wrapping `dre_user_aggregates`,
+> for the `/rewards` page and Donny's `rewards_agent`. Takes **no arguments**; identity comes
+> only from `auth.uid()`, and it `raise`s `forbidden: authentication required` if that's null —
+> so there is no parameter an id could ever be pointed at. `revoke ... from public, anon` +
+> `grant ... to authenticated` (the Supabase default-privilege gotcha above — a bare `revoke
+> from public` does not lock down a definer function). Applied + verified on prod: impersonated
+> creator returns exactly 1 own row; empty `auth.uid()` raises the forbidden exception.
 
 ## Payments & Revenue
 

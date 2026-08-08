@@ -86,6 +86,7 @@ const ROUTE_TEMPLATES: string[] = [
   "/help/:slug",
   "/calendar",
   "/notifications",
+  "/rewards",
   "/reviews",
   "/messages",
   "/messages/direct/:id",
