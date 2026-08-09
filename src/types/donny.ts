@@ -10,7 +10,8 @@ export type DonnyRichCardType =
   | 'campaign_summary'
   | 'payment_confirmation'
   | 'application_summary'
-  | 'onboarding_step';
+  | 'onboarding_step'
+  | 'social_post_draft';
 
 export interface DonnyRichCardCreatorProfile {
   type: 'creator_profile';
@@ -72,12 +73,27 @@ export interface DonnyRichCardOnboardingStep {
   };
 }
 
+export interface DonnyRichCardSocialPostDraft {
+  type: 'social_post_draft';
+  data: {
+    /** "@areyouaman · Instagram". The only account text a user ever sees. */
+    account_label: string;
+    /** For the publish call only — never rendered. */
+    account_id: string;
+    platform: string;
+    caption: string;
+    media_urls: string[];
+    scheduled_at: string | null;
+  };
+}
+
 export type DonnyRichCard =
   | DonnyRichCardCreatorProfile
   | DonnyRichCardCampaignSummary
   | DonnyRichCardPaymentConfirmation
   | DonnyRichCardApplicationSummary
-  | DonnyRichCardOnboardingStep;
+  | DonnyRichCardOnboardingStep
+  | DonnyRichCardSocialPostDraft;
 
 // Tool call from GPT-4o
 export interface DonnyToolCall {
