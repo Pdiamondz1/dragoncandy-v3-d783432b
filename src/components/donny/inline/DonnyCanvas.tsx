@@ -129,10 +129,22 @@ export function DonnyCanvas({ suggestions, onSuggestionTap, onPromptSubmit, chil
       {/* The composer sits at one fixed position in the element tree in both
           states — never in a ternary — so React never remounts it across the
           resting<->thread transition. A remount here would drop half-typed
-          text, focus, and any in-flight IME composition. */}
+          text, focus, and any in-flight IME composition.
+
+          The mobile offset is NOT optional. A sticky inset resolves against the
+          scrollport's padding box, and the scrollport here is
+          `#main-content` (App.tsx: `flex-1 overflow-auto`), which has NO
+          padding — DashboardLayout's `pb-24` sits on an inner div, well inside
+          it. So a bare `bottom-0` pins the composer to the viewport bottom,
+          underneath MobileBottomNav (`fixed bottom-0 z-40`, opaque, portaled to
+          <body> — a z-10 in here cannot beat it). Same shape and same 6rem as
+          StickyApplyCTA, per docs/DESIGN_SYSTEM.md; the offset absorbs the
+          safe-area inset, so no separate padding is needed. Desktop has no
+          bottom nav, so `md:` resets it flush. */}
       <div
         className={cn(
-          mode === 'thread' && 'sticky bottom-0 z-10 bg-white pb-[env(safe-area-inset-bottom)] pt-3'
+          mode === 'thread' &&
+            'sticky bottom-[calc(6rem+env(safe-area-inset-bottom))] md:bottom-0 z-10 bg-white pt-3'
         )}
       >
         <DonnyComposer

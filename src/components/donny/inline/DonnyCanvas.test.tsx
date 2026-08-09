@@ -182,6 +182,32 @@ describe('DonnyCanvas — suggestion chips', () => {
   });
 });
 
+describe('DonnyCanvas — the sticky composer must clear the mobile bottom nav', () => {
+  it('offsets the thread-state composer above the nav on mobile and resets it flush on desktop', () => {
+    const { container } = renderCanvas();
+    const wrapperClass = () =>
+      container.querySelector("[data-tour='brief-generator']")!.parentElement!.className;
+
+    // Resting: it sits in the normal flow, not stuck to anything.
+    expect(wrapperClass()).not.toContain('sticky');
+
+    const field = screen.getByRole('textbox', { name: /ask donny/i });
+    fireEvent.change(field, { target: { value: 'hi' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+
+    const cls = wrapperClass();
+    expect(cls).toContain('sticky');
+    // A sticky inset resolves against #main-content's padding box, and that
+    // element carries no padding — so a bare `bottom-0` would park the send
+    // button underneath MobileBottomNav (fixed bottom-0 z-40, opaque, portaled
+    // to <body>). 6rem mirrors the content area's pb-24 nav clearance.
+    expect(cls).toContain('bottom-[calc(6rem+env(safe-area-inset-bottom))]');
+    expect(cls).toContain('md:bottom-0');
+    // The offset already absorbs the safe area; a second pad would double it.
+    expect(cls).not.toContain('pb-[env(safe-area-inset-bottom)]');
+  });
+});
+
 describe('DonnyCanvas — back link', () => {
   it('shows no "Dashboard" link while resting', () => {
     renderCanvas();
