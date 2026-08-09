@@ -246,6 +246,20 @@ design does not add gateway surface.
 has rows in `business_outstand_accounts`, which a creator would not. Confirm this in
 planning; if it holds, no work is needed and no separate workstream should be opened.
 
+> **BOTH CHECKS RAN 2026-08-09 AND BOTH CAME BACK AGAINST THE TEXT ABOVE.** Do not act on
+> this section without reading the "Spec deltas" block at the top of
+> `docs/superpowers/plans/2026-08-09-donny-social-tools-repair.md`, which governs.
+> In short: (1) creators **can** hold `business_outstand_accounts` rows — the connect UI at
+> `/dashboard/creator/social` is live with no role wrapper and no insert site checks a role,
+> so the paragraph above is empirically true today and structurally false; no gate is added,
+> but lookups must key on `user_id`, never the NULL-for-creators `business_id`.
+> (2) `get_account_metrics` has a route (`GET /social-accounts/{id}`); `get_post_analytics`
+> does **not** — the only analytics route is per-post and this tool has no post id, so it
+> reads our own `content_performance` instead (no gateway surface added). A third hazard
+> surfaced that neither this spec nor the audit caught: `donny-orchestrator` has **dual
+> auth**, and on its OAuth-token branch there is no Supabase JWT to forward, so the bridge is
+> built on the session branch only.
+
 ## 9. Relationship to the Zernio cutover
 
 `2026-08-01-outstand-zernio-cutover-design.md` calls for rewriting this bridge as
