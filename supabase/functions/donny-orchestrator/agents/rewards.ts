@@ -1,4 +1,4 @@
-import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { SubAgentResult, UserContext } from "../types.ts";
 import { getDragonEvent, DRAGON_TIER_LABELS } from "../../_shared/dre-events.ts";
 

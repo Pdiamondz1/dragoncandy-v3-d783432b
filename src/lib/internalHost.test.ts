@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { isInternalHost, isAllowedOnInternalHost } from './internalHost';
 
 describe('isInternalHost', () => {
-  it('matches the production internal subdomain', () => {
+  it('matches the production internal subdomain on both TLDs', () => {
+    expect(isInternalHost('internal.dragoncandy.com')).toBe(true);
     expect(isInternalHost('internal.dragoncandy.io')).toBe(true);
   });
 
@@ -10,7 +11,9 @@ describe('isInternalHost', () => {
     expect(isInternalHost('internal.localhost')).toBe(true);
   });
 
-  it('rejects the main domain and www', () => {
+  it('rejects the main domain and www on both TLDs', () => {
+    expect(isInternalHost('dragoncandy.com')).toBe(false);
+    expect(isInternalHost('www.dragoncandy.com')).toBe(false);
     expect(isInternalHost('dragoncandy.io')).toBe(false);
     expect(isInternalHost('www.dragoncandy.io')).toBe(false);
   });
@@ -22,6 +25,7 @@ describe('isInternalHost', () => {
   });
 
   it('rejects hosts that merely contain "internal"', () => {
+    expect(isInternalHost('notinternal.dragoncandy.com')).toBe(false);
     expect(isInternalHost('notinternal.dragoncandy.io')).toBe(false);
   });
 });

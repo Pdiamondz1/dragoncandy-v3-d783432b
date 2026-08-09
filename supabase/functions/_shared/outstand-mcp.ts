@@ -1,5 +1,5 @@
 import { createMcpClient, type McpClient, type McpToolDefinition, type McpToolResult } from "./mcp-client.ts";
-import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { SupabaseClient } from "npm:@supabase/supabase-js@2.57.2";
 import {
   SOCIAL_TOOLS,
   filterToolsByTier,

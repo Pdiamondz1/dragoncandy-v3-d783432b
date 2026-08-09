@@ -139,9 +139,12 @@ try {
 } catch {
   die(`--base is not a valid URL: ${baseArg}`);
 }
-if (/(^|\.)dragoncandy\.io$/i.test(base.hostname)) {
+// Both production TLDs. dragoncandy.com is the new canonical host and .io now
+// 301s to it; if this guard matched only .io it would silently stop protecting
+// the moment the migration completed.
+if (/(^|\.)dragoncandy\.(io|com)$/i.test(base.hostname)) {
   die(
-    "Refusing to target production (dragoncandy.io).\n" +
+    "Refusing to target production (dragoncandy.com / dragoncandy.io).\n" +
       "  This mints STAGING sessions only — they would not authenticate on prod anyway."
   );
 }

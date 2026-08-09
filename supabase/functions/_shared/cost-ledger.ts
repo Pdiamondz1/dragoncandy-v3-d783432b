@@ -3,7 +3,7 @@
  * Called after each API response with token usage data.
  */
 
-import { type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { type ModelTier } from "./model-routing.ts";
 
 // Per-token costs in USD (approximate, as of May 2026)

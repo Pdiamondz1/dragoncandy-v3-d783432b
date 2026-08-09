@@ -20,7 +20,7 @@
 // Their id SOURCES differ; the write, and every property that makes it
 // trustworthy, must not. Hence one function.
 
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 /**
  * Record the server-established owner of a just-created provider post.

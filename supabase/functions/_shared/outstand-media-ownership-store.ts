@@ -12,7 +12,7 @@
 // Keeping it here means "a gateway that creates media" and "a gateway that
 // records who owns it" cannot drift apart silently.
 
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 export interface MediaOwnershipResult {
   minted: boolean;
