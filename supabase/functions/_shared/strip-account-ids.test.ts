@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { stripAccountIds } from './strip-account-ids';
+import { stripAccountIds, stripAccountIdsFromMcpContent } from './strip-account-ids';
 
 describe('stripAccountIds', () => {
   it('removes a top-level account_id', () => {
@@ -89,5 +89,47 @@ describe('stripAccountIds', () => {
     const input = { account_id: 'x', v: 1 };
     stripAccountIds(input);
     expect(input).toEqual({ account_id: 'x', v: 1 });
+  });
+});
+
+describe('stripAccountIdsFromMcpContent', () => {
+  it('strips an account_id serialized inside a JSON content[].text string', () => {
+    const content = [
+      { type: 'text', text: JSON.stringify({ account_id: 'LEnjV', followers_count: 4 }) },
+    ];
+    const result = stripAccountIdsFromMcpContent(content);
+    expect(JSON.parse(result[0].text as string)).toEqual({ followers_count: 4 });
+  });
+
+  it('leaves non-JSON prose in content[].text byte-identical', () => {
+    const content = [{ type: 'text', text: 'Tool call failed (500): upstream unavailable' }];
+    const result = stripAccountIdsFromMcpContent(content);
+    expect(result[0].text).toBe('Tool call failed (500): upstream unavailable');
+  });
+
+  it('strips ids from every entry independently across a multi-entry content array', () => {
+    const content = [
+      { type: 'text', text: JSON.stringify({ account_id: 'a', v: 1 }) },
+      { type: 'text', text: 'plain prose, not JSON' },
+      { type: 'text', text: JSON.stringify({ social_account_id: 'b', v: 2 }) },
+    ];
+    const result = stripAccountIdsFromMcpContent(content);
+    expect(JSON.parse(result[0].text as string)).toEqual({ v: 1 });
+    expect(result[1].text).toBe('plain prose, not JSON');
+    expect(JSON.parse(result[2].text as string)).toEqual({ v: 2 });
+  });
+
+  it('leaves an entry with no text field untouched (same reference)', () => {
+    const entry = { type: 'image', data: { url: 'x' } };
+    const content = [entry];
+    const result = stripAccountIdsFromMcpContent(content);
+    expect(result[0]).toBe(entry);
+  });
+
+  it('does not mutate its input array or entries', () => {
+    const content = [{ type: 'text', text: JSON.stringify({ account_id: 'x', v: 1 }) }];
+    const original = JSON.parse(JSON.stringify(content));
+    stripAccountIdsFromMcpContent(content);
+    expect(content).toEqual(original);
   });
 });

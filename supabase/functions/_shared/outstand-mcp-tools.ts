@@ -105,3 +105,55 @@ export function filterToolsByTier(
 export function namespaceTools(tools: McpToolDefinition[]): McpToolDefinition[] {
   return tools.map((t) => ({ ...t, name: `social_${t.name}` }));
 }
+
+/**
+ * The request forwarded to the MCP client for `toolName` — an ALLOW-LIST,
+ * not a spread of the model's raw args. Only keys the tool's OWN schema
+ * declares (this tool's `inputSchema.properties` above) are forwarded, plus
+ * the server-resolved `account_id`, which always wins regardless of what the
+ * model sent under that key or any other name.
+ *
+ * WHY an allow-list here (unlike the response-shaping blocklist in
+ * strip-account-ids.ts): this is a REQUEST we wrote. The schema is ours, so
+ * "the fields we accept" is a fact, not a guess, the way "the fields a
+ * provider's response contains" is on the response side. Provider account
+ * ids are 5-character, low-entropy strings (see outstand-accounts.ts), so a
+ * model-supplied alternate selector — `social_account_id`, `socialAccountId`,
+ * `accounts`, `social_account_ids` (the exact key set
+ * outstand-post-authz.ts's `extractRequestAccountIds` documents the provider
+ * ecosystem treats as account selectors) — must never reach an org-wide-
+ * authenticated upstream call. Spreading `...args` before overriding only
+ * the literal key `account_id` lets every one of those alternates pass
+ * straight through; this closes the whole class by construction instead of
+ * naming each key.
+ *
+ * Derived from SOCIAL_TOOLS rather than a second hardcoded key list, so a
+ * schema change can never drift out of sync with what gets forwarded.
+ * Accepts either the namespaced (`social_x`) or raw tool name. An unknown
+ * tool name forwards nothing from `args` — only `account_id` — rather than
+ * throwing, since the caller (outstand-mcp.ts) already treats an unmatched
+ * tool as `unsupported_tool` elsewhere.
+ */
+export function buildForwardedArgs(
+  toolName: string,
+  args: Record<string, unknown>,
+  accountId: string,
+): Record<string, unknown> {
+  const rawName = toolName.replace(/^social_/, '');
+  const tool = SOCIAL_TOOLS.find((t) => t.name === rawName);
+  const props = tool
+    ? ((tool.inputSchema as { properties?: Record<string, unknown> }).properties ?? {})
+    : {};
+
+  const forwarded: Record<string, unknown> = {};
+  for (const key of Object.keys(props)) {
+    if (Object.prototype.hasOwnProperty.call(args, key)) {
+      forwarded[key] = args[key];
+    }
+  }
+  // Server-resolved, always last: no schema declares a property named
+  // account_id (see the file header), so this can never be shadowed by an
+  // allow-listed field.
+  forwarded.account_id = accountId;
+  return forwarded;
+}

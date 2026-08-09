@@ -4,6 +4,7 @@ import {
   SOCIAL_TOOLS,
   filterToolsByTier,
   namespaceTools,
+  buildForwardedArgs,
 } from './outstand-mcp-tools.ts';
 import { proxyRequestFor } from './outstand-mcp-paths.ts';
 import { fetchActiveAccounts, resolveAccount } from './outstand-accounts.ts';
@@ -17,7 +18,7 @@ import {
 } from './social-draft.ts';
 import { summarizePerformance, type PerfRow } from './social-analytics.ts';
 import { assessSignal } from './social-signal.ts';
-import { stripAccountIds } from './strip-account-ids.ts';
+import { stripAccountIds, stripAccountIdsFromMcpContent } from './strip-account-ids.ts';
 
 interface OutstandMcpConfig {
   userId: string;
@@ -263,22 +264,49 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
 
         let raw: unknown;
         if (client) {
+          // Model-supplied args are forwarded through an ALLOW-LIST derived
+          // from this tool's own schema (buildForwardedArgs), never a raw
+          // `...args` spread. This is a request WE wrote, so "the accepted
+          // fields" is a fact, not a guess, the way the response shape below
+          // is the provider's. account_id is always the server-resolved
+          // one; no schema declares that key, so it can never be shadowed
+          // by an allow-listed field or by a model-emitted alternate
+          // selector (social_account_id, socialAccountId, accounts,
+          // social_account_ids — see outstand-post-authz.ts's
+          // extractRequestAccountIds for the exact set the provider
+          // ecosystem treats as account selectors) reaching this org-wide-
+          // authenticated upstream call.
+          const forwardedArgs = buildForwardedArgs(rawName, args, accountId);
+          const clientResult = await client.callTool(rawName, forwardedArgs);
+
+          // Strip BEFORE branching on isError, and strip the CONTENT, not
+          // just top-level keys: the standard MCP shape (mcp-client.ts) puts
+          // the actual payload as a JSON-encoded STRING inside
+          // content[].text, and stripAccountIds only removes object keys —
+          // it walks past that string without parsing it, so an id
+          // serialized inside would survive untouched. stripAccountIdsFromMcpContent
+          // parses each text field as JSON, strips it, and re-serializes;
+          // text that isn't JSON (plain prose) is returned byte-identical.
+          const sanitized: McpToolResult = {
+            ...clientResult,
+            content: stripAccountIdsFromMcpContent(clientResult.content),
+          };
+
           // Mirror the proxy branch's early-return-on-error below: an
           // upstream error must keep isError:true at the OUTER result so
           // donny-orchestrator's status=mcpResult.isError ? 'error' : 'success'
           // audit log stays correct, rather than getting buried inside the
           // gate-wrapped `data` field of a result that reads as success.
           //
-          // Still stripped, not returned verbatim: mcp-client.ts's own error
-          // path forwards the upstream res.text() BODY straight into
-          // content[0].text, so an error result can echo the same raw
+          // Still key-stripped too, not returned verbatim: mcp-client.ts's
+          // own error path forwards the upstream res.text() BODY straight
+          // into content[0].text, so an error result can echo the same raw
           // provider payload — and the same account id — as a success one.
           // Unlike the REST branch's error return (safeReason(), a fully
           // synthetic string with nothing to leak), this one carries real
           // upstream content and must go through the same blocklist walk.
-          const clientResult = await client.callTool(rawName, { ...args, account_id: accountId });
-          if (clientResult.isError) return stripAccountIds(clientResult) as McpToolResult;
-          raw = clientResult;
+          if (sanitized.isError) return stripAccountIds(sanitized) as McpToolResult;
+          raw = sanitized;
         } else {
           const req = proxyRequestFor(rawName, accountId);
           if (!req) {

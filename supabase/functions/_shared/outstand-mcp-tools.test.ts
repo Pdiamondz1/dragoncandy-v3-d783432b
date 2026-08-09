@@ -4,6 +4,7 @@ import {
   ANALYTICS_ONLY_TOOLS,
   filterToolsByTier,
   namespaceTools,
+  buildForwardedArgs,
 } from './outstand-mcp-tools';
 
 const DROPPED = ['get_optimal_times', 'get_audience_insights', 'list_scheduled'];
@@ -95,5 +96,62 @@ describe('namespaceTools', () => {
 
   it('leaves the schema untouched', () => {
     expect(namespaceTools(SOCIAL_TOOLS)[0].inputSchema).toBe(SOCIAL_TOOLS[0].inputSchema);
+  });
+});
+
+describe('buildForwardedArgs', () => {
+  it('forwards a schema-declared field (platform) for get_account_metrics', () => {
+    const forwarded = buildForwardedArgs('get_account_metrics', { platform: 'instagram' }, 'real-id');
+    expect(forwarded.platform).toBe('instagram');
+  });
+
+  it('always sets account_id to the server-resolved id, never the caller-supplied one', () => {
+    const forwarded = buildForwardedArgs(
+      'get_account_metrics',
+      { platform: 'instagram', account_id: 'attacker-supplied' },
+      'real-id',
+    );
+    expect(forwarded.account_id).toBe('real-id');
+  });
+
+  it('drops a model-supplied alternate account selector — social_account_id', () => {
+    const forwarded = buildForwardedArgs(
+      'get_account_metrics',
+      { platform: 'instagram', social_account_id: 'guessed-5char' },
+      'real-id',
+    );
+    expect(forwarded).toEqual({ platform: 'instagram', account_id: 'real-id' });
+  });
+
+  it('drops every alternate selector name the provider ecosystem recognizes', () => {
+    const alternates = {
+      socialAccountId: 'a',
+      accounts: ['b'],
+      social_account_ids: ['c'],
+    };
+    const forwarded = buildForwardedArgs('get_account_metrics', alternates, 'real-id');
+    expect(forwarded).toEqual({ account_id: 'real-id' });
+  });
+
+  it('accepts the namespaced tool name (social_get_account_metrics) identically to the raw name', () => {
+    const namespaced = buildForwardedArgs('social_get_account_metrics', { platform: 'tiktok' }, 'real-id');
+    const raw = buildForwardedArgs('get_account_metrics', { platform: 'tiktok' }, 'real-id');
+    expect(namespaced).toEqual(raw);
+  });
+
+  it('forwards nothing from args for an unknown tool name, only account_id', () => {
+    const forwarded = buildForwardedArgs('not_a_real_tool', { platform: 'instagram', anything: 1 }, 'real-id');
+    expect(forwarded).toEqual({ account_id: 'real-id' });
+  });
+
+  it('does not forward a field the tool schema does not declare (create_post has no platform-adjacent decoy)', () => {
+    // create_post's schema declares caption/platform/media_urls — a field
+    // outside that set must not pass through even though it's present in args.
+    const forwarded = buildForwardedArgs(
+      'create_post',
+      { caption: 'hello', platform: 'instagram', media_urls: ['x'], extra_field: 'nope' },
+      'real-id',
+    );
+    expect(forwarded).toEqual({ caption: 'hello', platform: 'instagram', media_urls: ['x'], account_id: 'real-id' });
   });
 });

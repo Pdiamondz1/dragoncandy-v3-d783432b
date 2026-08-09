@@ -37,3 +37,48 @@ export function stripAccountIds(value: unknown): unknown {
   }
   return value;
 }
+
+/**
+ * A minimal structural shape for one MCP `content[]` entry — deliberately
+ * NOT imported from mcp-client.ts's McpToolResult, to keep this module free
+ * of any dependency (type-only or otherwise) per the file-level "pure and
+ * dependency-free" contract above. Callers pass their own McpToolResult
+ * content array; TypeScript structurally accepts it.
+ */
+interface McpContentEntry {
+  type: string;
+  text?: string;
+  data?: unknown;
+}
+
+/**
+ * Strips account ids serialized INSIDE an MCP content[] envelope's `text`
+ * field — not just object keys.
+ *
+ * stripAccountIds only removes object KEYS. The standard MCP result shape
+ * (see mcp-client.ts's callTool, and the raw-upstream-body error path there
+ * too) puts the actual tool payload as a JSON-encoded STRING inside
+ * content[].text, so calling stripAccountIds on the outer envelope walks
+ * past that string without ever parsing it — an `account_id` serialized
+ * inside survives byte-for-byte. This walks each content entry and, where
+ * `text` parses as JSON, strips it and re-serializes. An entry whose `text`
+ * does NOT parse as JSON is returned untouched — that is plain prose (or a
+ * synthetic non-JSON string), not a payload, and must never be mangled.
+ *
+ * Does not mutate its input; entries with no `text` field pass through
+ * unchanged (same object reference).
+ */
+export function stripAccountIdsFromMcpContent<T extends McpContentEntry>(
+  content: readonly T[],
+): T[] {
+  return content.map((entry) => {
+    if (typeof entry.text !== 'string') return entry;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(entry.text);
+    } catch {
+      return entry;
+    }
+    return { ...entry, text: JSON.stringify(stripAccountIds(parsed)) };
+  });
+}
