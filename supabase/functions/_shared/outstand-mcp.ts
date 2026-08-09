@@ -1,5 +1,10 @@
 import { createMcpClient, type McpClient, type McpToolDefinition, type McpToolResult } from "./mcp-client.ts";
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import {
+  SOCIAL_TOOLS,
+  filterToolsByTier,
+  namespaceTools,
+} from './outstand-mcp-tools.ts';
 
 interface OutstandMcpConfig {
   userId: string;
@@ -8,18 +13,6 @@ interface OutstandMcpConfig {
   supabase: SupabaseClient;
 }
 
-const REST_FALLBACK_TOOLS: McpToolDefinition[] = [
-  { name: "create_post", description: "Create and publish a social media post", inputSchema: { type: "object", properties: { account_id: { type: "string" }, caption: { type: "string" }, platforms: { type: "array", items: { type: "string" } }, media_urls: { type: "array", items: { type: "string" } } }, required: ["account_id", "caption"] } },
-  { name: "schedule_post", description: "Schedule a post for a future time", inputSchema: { type: "object", properties: { account_id: { type: "string" }, caption: { type: "string" }, scheduled_at: { type: "string" }, platforms: { type: "array", items: { type: "string" } } }, required: ["account_id", "caption", "scheduled_at"] } },
-  { name: "get_post_analytics", description: "Get analytics for recent posts", inputSchema: { type: "object", properties: { account_id: { type: "string" }, days: { type: "number" } }, required: ["account_id"] } },
-  { name: "get_account_metrics", description: "Get account-level metrics (followers, engagement rate)", inputSchema: { type: "object", properties: { account_id: { type: "string" } }, required: ["account_id"] } },
-  { name: "get_optimal_times", description: "Get optimal posting times based on audience activity", inputSchema: { type: "object", properties: { account_id: { type: "string" } }, required: ["account_id"] } },
-  { name: "get_audience_insights", description: "Get audience demographic and behavior insights", inputSchema: { type: "object", properties: { account_id: { type: "string" } }, required: ["account_id"] } },
-  { name: "list_scheduled", description: "List scheduled posts", inputSchema: { type: "object", properties: { account_id: { type: "string" } }, required: ["account_id"] } },
-];
-
-const ANALYTICS_ONLY_TOOLS = new Set(["get_post_analytics", "get_account_metrics", "get_audience_insights"]);
-
 async function getUserAccountIds(supabase: SupabaseClient, userId: string): Promise<string[]> {
   const { data } = await supabase
     .from("business_outstand_accounts")
@@ -27,13 +20,6 @@ async function getUserAccountIds(supabase: SupabaseClient, userId: string): Prom
     .eq("user_id", userId)
     .neq("status", "revoked");
   return (data ?? []).map((r: { outstand_social_account_id: string }) => r.outstand_social_account_id);
-}
-
-function filterToolsByTier(tools: McpToolDefinition[], tier?: string): McpToolDefinition[] {
-  if (!tier || tier === "free") {
-    return tools.filter((t) => ANALYTICS_ONLY_TOOLS.has(t.name));
-  }
-  return tools;
 }
 
 export interface OutstandMcpBridge {
@@ -58,20 +44,14 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
       client = await createMcpClient(mcpUrl, apiKey);
       rawTools = await client.listTools();
     } catch {
-      console.log("[outstand-mcp] MCP server unavailable, using REST fallback");
-      rawTools = REST_FALLBACK_TOOLS;
+      console.warn('[outstand-mcp] MCP server unavailable, using REST fallback');
+      rawTools = SOCIAL_TOOLS;
     }
   } else {
-    rawTools = REST_FALLBACK_TOOLS;
+    rawTools = SOCIAL_TOOLS;
   }
 
-  const filtered = filterToolsByTier(rawTools, config.orgTier);
-
-  // Namespace tools with social_ prefix for Claude
-  const namespacedTools = filtered.map((t) => ({
-    ...t,
-    name: `social_${t.name}`,
-  }));
+  const namespacedTools = namespaceTools(filterToolsByTier(rawTools, config.orgTier));
 
   const proxyUrl = Deno.env.get("SUPABASE_URL") + "/functions/v1/outstand-proxy";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
