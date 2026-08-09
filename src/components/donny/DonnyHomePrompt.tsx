@@ -29,7 +29,7 @@ export function DonnyHomePrompt({
   return (
     // RESTAURANT_TOUR step 2 targets this anchor. It used to live on
     // HeroPrimaryAction, which this body replaces.
-    <div data-tour="brief-generator" className="space-y-3">
+    <div data-tour="brief-generator" className="space-y-4">
       <form onSubmit={handleSubmit} className="relative">
         <input
           type="text"
@@ -37,19 +37,25 @@ export function DonnyHomePrompt({
           onChange={(e) => setText(e.target.value)}
           aria-label="Ask Donny"
           placeholder="Ask Donny anything…"
-          className="w-full rounded-full border border-dc-teal/20 bg-white py-3.5 pl-5 pr-14 text-base text-dc-text placeholder:text-dc-text-muted focus:border-dc-teal focus:outline-none focus:ring-2 focus:ring-dc-teal/30"
+          // The page's primary control, so it is sized and weighted like one:
+          // a 2px teal border and a soft teal fill instead of a hairline on
+          // white, which left it flat against the page ground.
+          className="w-full rounded-full border-2 border-dc-teal bg-dc-teal/[0.06] py-5 pl-6 pr-16 text-base lg:text-lg text-dc-text shadow-dc-sm placeholder:text-dc-text/60 focus:border-dc-teal-dark focus:outline-none focus:ring-2 focus:ring-dc-teal/40"
         />
         <button
           type="submit"
           aria-label="Send to Donny"
           disabled={!text.trim()}
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-dc-teal-btn text-white transition-colors hover:bg-dc-teal-btn-hover disabled:opacity-40"
+          // opacity-70 (not 40) when empty: the field starts empty, so a
+          // heavily dimmed button meant the one saturated element on the
+          // dashboard rendered greyed-out before the user touched anything.
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full bg-dc-teal-btn text-white transition-colors hover:bg-dc-teal-btn-hover disabled:opacity-70"
         >
-          <ArrowUp className="h-4 w-4" />
+          <ArrowUp className="h-5 w-5" />
         </button>
       </form>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap justify-center gap-2">
         {suggestions.map((s) => (
           <AppChip
             key={s.message}
