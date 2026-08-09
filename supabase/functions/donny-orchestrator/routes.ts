@@ -112,7 +112,8 @@ export function socialRoute(role: string | undefined): string {
 // --- Route allow-list ---------------------------------------------------------
 // Templates mirror src/App.tsx. `:seg` matches a single dynamic path segment.
 // A route only needs to be listed if Donny could plausibly navigate to it.
-const ROUTE_TEMPLATES: string[] = [
+/** Exported so `src/lib/donnyRoutes.parity.test.ts` can diff this against the client mirror. */
+export const ROUTE_TEMPLATES: string[] = [
   "/",
   "/home",
   "/landing",
