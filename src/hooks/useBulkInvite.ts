@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { notifyInvitedCreator } from '@/lib/invitationNotify';
 
 interface BulkInviteParams {
   campaignId: string;
@@ -22,6 +23,15 @@ export function useBulkInvite() {
   return useMutation({
     mutationFn: async ({ campaignId, creatorIds, message }: BulkInviteParams): Promise<BulkInviteResult> => {
       const results = { sent: 0, duplicates: 0, errors: 0 };
+
+      // Resolved once rather than per-creator: the notify helper would otherwise
+      // re-query the same campaign title on every iteration of the loop.
+      const { data: campaign } = await supabase
+        .from('campaigns')
+        .select('title')
+        .eq('id', campaignId)
+        .maybeSingle();
+      const campaignTitle = campaign?.title ?? 'a campaign';
 
       for (const creatorId of creatorIds) {
         try {
@@ -44,6 +54,15 @@ export function useBulkInvite() {
             results.duplicates++;
           } else {
             results.sent++;
+            // Only for genuinely new invitations — a duplicate re-notifies nobody,
+            // matching the single-invite path. Bulk previously skipped this entirely,
+            // so bulk-invited creators got email + Donny but never an in-app bell.
+            await notifyInvitedCreator({
+              campaignId,
+              creatorId,
+              actorId: user!.id,
+              campaignTitle,
+            });
           }
         } catch {
           results.errors++;

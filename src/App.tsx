@@ -41,6 +41,7 @@ const LandingPage = lazy(() => import("./pages/LandingPage"));
 const PitchDeck = lazy(() => import("./pitch/PitchDeck"));
 const ProfileSetup = lazy(() => import("./pages/ProfileSetup"));
 const BusinessDashboard = lazy(() => import("./pages/BusinessDashboard"));
+const BusinessOverview = lazy(() => import("./pages/BusinessOverview"));
 const BrandDashboard = lazy(() => import("./pages/BrandDashboard"));
 const BrandSponsorships = lazy(() => import("./pages/BrandSponsorships"));
 const BrandCreators = lazy(() => import("./pages/BrandCreators"));
@@ -105,6 +106,7 @@ const PrivacyPolicy = lazy(() => import("./pages/legal/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("./pages/legal/TermsOfService"));
 const ContentCalendar = lazy(() => import("./pages/ContentCalendar"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
+const DcPointsPage = lazy(() => import("./pages/DcPointsPage"));
 const HelpBriefDrawer = lazy(() => import("./features/donny/HelpBriefDrawer").then(m => ({ default: m.HelpBriefDrawer })));
 const InternalLayout = lazy(() => import("./components/internal/InternalLayout").then(m => ({ default: m.InternalLayout })));
 const InternalOverview = lazy(() => import("./pages/internal/InternalOverview"));
@@ -235,6 +237,8 @@ function AnimatedRoutes() {
           <Route path="/dashboard/brand" element={<ProtectedRoute><BrandRoute><BrandDashboard /></BrandRoute></ProtectedRoute>} />
           <Route path="/dashboard/creator" element={<ProtectedRoute><CreatorDashboard /></ProtectedRoute>} />
           <Route path="/dashboard/business/settings" element={<ProtectedRoute><BusinessRoute><BusinessSettings /></BusinessRoute></ProtectedRoute>} />
+          {/* Today's dashboard body, kept reachable when the Donny-first body is on. */}
+          <Route path="/dashboard/business/overview" element={<ProtectedRoute><BusinessRoute><BusinessOverview /></BusinessRoute></ProtectedRoute>} />
           <Route path="/dashboard/creator/settings" element={<ProtectedRoute><CreatorSettings /></ProtectedRoute>} />
 
           {/* Campaign Routes */}
@@ -280,6 +284,9 @@ function AnimatedRoutes() {
 
           {/* Notifications — all roles */}
           <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+
+          {/* DC Points — all roles */}
+          <Route path="/rewards" element={<ProtectedRoute><DcPointsPage /></ProtectedRoute>} />
 
           {/* Business Org Routes */}
           <Route path="/dashboard/business/locations" element={<ProtectedRoute><BusinessRoute><OrgUnitsPage /></BusinessRoute></ProtectedRoute>} />

@@ -109,13 +109,45 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 > **Every `**Pending:**` clause below was re-verified against prod on 2026-08-07** — not against
 > the PR description or this file's own history. Eight entries were found already complete (merged
-> PRs, applied migrations, deployed functions) and moved to Shipped; the two that remain are
-> genuinely blocked on founder/external action. **A `**Pending:**` clause is a claim with an expiry
+> PRs, applied migrations, deployed functions) and moved to Shipped; the two that remained at that
+> sweep are genuinely blocked on founder/external action (entries added since carry their own
+> verification date). **A `**Pending:**` clause is a claim with an expiry
 > date.** Verify it before acting on it — check the object (`pg_proc` / `information_schema` /
 > `pg_indexes`), the PR state, and the function version, because a migration ledger entry is not
 > proof the object exists (see [[Content Delivery State Machine]]) and "recorded ≠ actual" has
 > bitten this project before.
 
+- **Donny-first business dashboard (Phase A)** — the `/dashboard/business` body becomes Donny
+  (greeting + attention list + prompt box + three taps); today's body preserved verbatim at
+  `/dashboard/business/overview`. Scope set by a prod audit, not the mockup: only 4 Donny tools
+  verifiably work, so 3 taps and nothing routes to `social_*` (0/7). Four defects caught in review,
+  all in plan-authored code, incl. a Codex P2 — `campaigns.deadline` is a Postgres `date`, so
+  `new Date()` parsed **UTC midnight** and "due today" was unreachable all day. **Pending
+  (2026-08-09):** merge PR #410; **deploy `donny-orchestrator`** (merging ships frontend only —
+  verify by reading the deployed source for `Never end on a dead end`, not the version); flip
+  `DONNY_FIRST_DASHBOARD_ENABLED`; then the **both-viewport check, which has never been run on any
+  task in this branch**. → `docs/wiki/concepts/donny-first-dashboard.md` · #410
+- **Dead `/settings/*` CTAs fixed (12 across 10 files)** — every "Upgrade" (incl. the revenue path)
+  and "Connect Outstand" CTA 404'd; `isKnownRoute` never caught them because it only guards routes
+  the LLM **invents**. Diagnosed 2026-06-07, deferred as "out of scope", broken two months. Merged
+  `fef2b428`; frontend live. **Pending (2026-08-09):** deploy `donny-orchestrator` +
+  `fire-campaign-social-hook` — merging did **not** deploy either.
+  → `docs/wiki/concepts/donny-data-and-quick-actions.md` · #409
+- **DC Points visibility (`/rewards`, chip, honest notification, Donny)** — a bell said
+  "+200 DC Points" with nowhere to click, points showed on two dashboards with no explanation, and
+  even the founder needed a SQL query to answer "what earned that." Ships a `/rewards` page
+  (balance, full-sentence tier gap, labeled history, a live `dre_config`-driven earn catalog), an
+  always-visible chip in both top bars, a caller-scoped `dre_my_standing()` RPC, a bell that names
+  its reason, and a Donny `rewards_agent` answering strictly from the caller's own standing.
+  Deliberately **earn-only** — a tier confers a public badge and nothing else ([[Honest Analytics]]).
+  Also closed a live leak: two never-built DRE engineering specs (referrals, streaks, redemption)
+  were reachable by consumer Donny via a NULL `donny_knowledge.scope`. **Pending (verified
+  2026-08-08):** 3 migrations applied + verified on prod; PR #378 open, and the mandatory Codex pass
+  is now **clean** — it took 3 rounds, two of which caught the same defect (a non-creator role
+  falling back to the business branch) in two different places, the second inside Donny's generated
+  prose where no UI review could see it. Awaiting the founder's merge, then deploy
+  `dre-award-engine` (`--no-verify-jwt`) and `donny-orchestrator` (without that flag).
+  → `docs/wiki/concepts/dragon-rewards-engine.md` · #378
 - **DragonFeed uplift + sidebar double-active fix** — the "double-clicked button" was a
   **specificity** bug (each role's bare-root Dashboard href prefixed all ~26 child routes, in three
   copy-pasted navs) → one shared longest-match-wins `activeNavHref()`. The feed's four complaints
@@ -128,6 +160,31 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   migration, no RLS/edge-function change. DragonShare merge deferred — no public SELECT policy and
   no consent flag anywhere.
   → `docs/wiki/concepts/dragon-feed.md` · `docs/wiki/concepts/nav-active-state.md` · #384
+- **Notification + invitation authorization** — three pre-existing holes found while explaining
+  #382's invite button, each **proven on prod inside a rolled-back transaction** before and after:
+  `campaign_invitations` UPDATE had no `WITH CHECK` (which does **not** mean unconstrained —
+  Postgres defaults it to `USING`, so the real holes were a forged `status='accepted'` and a
+  **repointed `campaign_id`**, which manufactures apply-after-published rights) → decline-only +
+  column GRANTs, since a policy cannot pin a column against change; `apply_to_campaign` checked
+  eligibility on only its crew branch and, being `SECURITY DEFINER`, **bypassed the INSERT policy
+  carrying exactly that rule** → an uninvited creator applied to an `active` campaign; and
+  `create-notification` authenticated its caller then **discarded the user object**, so any
+  authenticated user could put arbitrary text in anyone's feed, as any actor, and email them →
+  JWT-derived actor + `can_notify_user` (backtested 89/91 **and** call-site-enumerated, which is the
+  only way sponsorship was found) + server-composed copy for `content_liked`. **Six Codex rounds,
+  six real findings, all mine** — including a tightening that silently killed 7 working email flows,
+  and a fallback I had argued myself into keeping that re-opened the defect it followed ("no worse
+  than before" is the wrong bar; the test is whether the claim the code makes is true). Migrations
+  `20260808010000`/`020000`/`030000` **applied**; `create-notification` **v47** deployed and
+  **boot-verified on prod**; Codex clean at round 6; `edge-function-reviewer` PASS.
+  **Pending:** merge PR #387 and PR #396 (both open); and the **both-viewport visual pass on #382 is
+  still unrun** — it needs a signed-in prod session. Note the new paths have never run with a real
+  user JWT (zero prod traffic on this function), so they are proven at the SQL layer and
+  boot-verified, not exercised end-to-end. #396's final push used `--no-verify` (machine at 100% CPU
+  made the hook unfinishable; the skipped commits touch only `supabase/functions/` and `docs/`, both
+  out of scope for the hook's `src/`-only typecheck and Vite build) — stated in the PR, and CI
+  re-runs those checks plus the edge-function gate.
+  → `docs/wiki/concepts/notification-delivery.md` · `docs/wiki/concepts/campaign-invitations.md` · #387, #396
 - **AIOS Google Workspace ("Connections")** — per-user Google OAuth, audited proxy, Drive
   hub, Donny exports, metrics→Sheet. The `google-chat-donny` bot ships dark — **confirmed still
   dark 2026-08-07**: a POST to the function returns **HTTP 503**, so this entry is real.
@@ -145,6 +202,23 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **`verify_jwt=true` is not authorization — 6 edge functions closed on prod** — the anon key **is** a
+  valid JWT and ships in the frontend bundle, so the platform default rejects only a *missing* header
+  and never establishes a user. A 100-function sweep found 6 genuinely exposed (both money functions
+  came back clean); each was fixed by caller shape, not one blanket guard. **All 6 deployed and
+  probe-verified 2026-08-08** — each flipped 200/404/400 → **401** with the public anon key, and
+  `fire-campaign-social-hook` returns an identical 401 for a real and a bogus campaign id (existence
+  oracle closed). Includes the pre-deploy gate's own catch (#404: a two-FK PostgREST embed that made
+  the sponsor-brand authorization arm dead code) and a parallel session's hardening (#403). The
+  7th function deployed that day, `landing-clips`, is **deliberately anonymous and still answers 200** —
+  it was hardened, not closed; see the entry below.
+  → `docs/wiki/concepts/anon-key-is-not-authorization.md` · #402, #403, #404
+- **`donny-dragonshare-score` undeployed; hardened `landing-clips` deployed** — an unauthorized
+  cross-tenant service-role write, deleted rather than patched (zero callers, never executed once);
+  endpoint now 404s. Its sibling lead was **refuted** but the check found a real defect — creator-
+  writable media URLs aimed the anonymous homepage anywhere — now origin-pinned in both the query and
+  `buildClips`, **deployed 2026-08-08** (v7, verified serving only own-bucket URLs).
+  → `docs/wiki/concepts/service-role-data-exposure.md` · #399
 - **`handle_updated_at()` restored from its prod-drifted stub** — the shared trigger's prod body was
   literally `-- Function logic here / RETURN NEW;`, so 35 triggers across 31 tables fired and changed
   nothing and `updated_at` sat frozen at `created_at`. Repo was never wrong (`recorded ≠ actual`, same

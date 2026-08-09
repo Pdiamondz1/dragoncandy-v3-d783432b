@@ -2,8 +2,8 @@
 title: Help Center & Donny Guidance
 type: concept
 created: 2026-07-17
-updated: 2026-07-19
-sources: [2026-07-17-help-center-refresh-donny-guidance.md, 2026-07-19-help-center-screenshots-and-search.md]
+updated: 2026-08-07
+sources: [2026-07-17-help-center-refresh-donny-guidance.md, 2026-07-19-help-center-screenshots-and-search.md, 2026-08-07-dc-points-visibility.md]
 tags: [help, donny, guidance, full-text-search, help_articles, schema-contract, screenshots, search]
 ---
 # Help Center & Donny Guidance
@@ -105,6 +105,10 @@ partial matching.
 - **Naming drift:** the `dragon-rewards` article uses the live UI's **"DC Points"** label, while
   PROJECT_CONTEXT documents a rename to **"Reputation (Rep)"** that never reached `DragonPointsCard.tsx`.
   Copy matches the live UI; align if the product decides on "Rep". See [[Dragon Rewards Engine (DRE)]].
+  **Content refreshed 2026-08-07** (migration `20260807120100`, part of the `/rewards` visibility
+  branch): the article's body was rewritten from stale/roadmap language to the real 25-entry earn
+  catalog and real tier thresholds, verified against the prod `dre_config` seed with zero mismatches;
+  the naming drift itself (DC Points vs. Reputation) is unaffected and still open.
 - **HTML-in-tsvector noise:** `search_vector` indexes raw HTML `body` (tag tokens, embedded image-URL
   path fragments). Acceptable for v1; a strip-before-`to_tsvector` pass would sharpen relevance.
 - **Stale screenshots — resolved 2026-07-19 (PR #306).** The `signup-*` landing shot was refreshed and 7

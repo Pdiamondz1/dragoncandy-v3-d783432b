@@ -7,6 +7,7 @@ import { Check, X, Clock, DollarSign, User, ArrowRightLeft, Eye, ImageIcon } fro
 import { useManageApplication } from '@/hooks/useManageApplication';
 import { CampaignApplication } from '@/types/applications';
 import { ApplicationStatusBadge } from './ApplicationStatusBadge';
+import { AppStatusBadge } from '@/components/app/AppStatusBadge';
 import { JointApprovalCard } from './JointApprovalCard';
 import { CounterOfferModal } from './CounterOfferModal';
 import { CounterOfferThread } from './CounterOfferThread';
@@ -25,6 +26,11 @@ interface ApplicationCardProps {
   campaignBudget?: number | null;
   campaignDeliveryFee?: number | null;
   campaignDeliveryType?: string | null;
+  /**
+   * True when the business invited this creator to this campaign. Closes the loop on
+   * what an invite produces: you invited them, and here is the application it led to.
+   */
+  wasInvited?: boolean;
   onViewProfile?: () => void;
   onPayEscrow?: () => void;
   isPayingEscrow?: boolean;
@@ -39,6 +45,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
   campaignBudget,
   campaignDeliveryFee: _campaignDeliveryFee,
   campaignDeliveryType: _campaignDeliveryType,
+  wasInvited = false,
   onViewProfile,
   onPayEscrow,
   isPayingEscrow: _isPayingEscrow,
@@ -122,6 +129,9 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
                 {application.creator_profile?.creator_name || 'Anonymous Creator'}
               </CardTitle>
               <ApplicationStatusBadge status={application.status} />
+              {wasInvited && (
+                <AppStatusBadge tone="teal">You invited them</AppStatusBadge>
+              )}
               <InlineRating
                 averageRating={application.creator_profile?.average_rating}
                 totalReviews={application.creator_profile?.total_reviews}

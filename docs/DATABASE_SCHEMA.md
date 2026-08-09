@@ -82,11 +82,57 @@
 | `campaigns` | Brand-created campaigns seeking creators |
 | `campaign_applications` | Creator applications to campaigns |
 | `campaign_collaborations` | Active collaborations between brands and creators |
-| `campaign_invitations` | Direct invites from brands to creators |
+| `campaign_invitations` | Direct invites from brands to creators. **A creator's UPDATE is decline-only (2026-08-08).** See the invitation-integrity note below. |
 | `campaign_matches` | Matched brand/creator pairings |
 | `campaign_sponsorships` | Sponsorship arrangements within campaigns |
+> **Invitation & application integrity — migrations `20260808010000` + `20260808020000`, applied
+> and proven red→green on prod 2026-08-08.** Two live holes, both demonstrated by impersonating a
+> real user inside a rolled-back transaction (never assumed):
+>
+> 1. **`campaign_invitations` UPDATE had `USING (auth.uid() = creator_id)` and NO `WITH CHECK`.**
+>    Postgres defaults an omitted `WITH CHECK` to the `USING` expression, so `creator_id` *was*
+>    pinned (reassignment blocked — verified) — but nothing else was. A creator could **forge
+>    `status='accepted'`** without applying (making the owner's card read "Applied — review them"
+>    with no application behind it) and could **repoint the row at another `campaign_id`**, which
+>    manufactures apply rights because an *invited* creator may apply to a campaign that has left
+>    `published`. Now: policy `USING (creator AND status='pending')` / `WITH CHECK (creator AND
+>    status='declined')`, **plus** `revoke update … from authenticated, anon` then
+>    `grant update (status) to authenticated` — because RLS `WITH CHECK` sees only the NEW row
+>    (there is no `OLD` in a policy), so "campaign_id must not change" is inexpressible as a policy
+>    and column privileges are the correct tool. The migration self-asserts the resulting grant set
+>    is exactly `authenticated:status`, and the filter includes **`PUBLIC`** — a table-wide
+>    `GRANT … TO PUBLIC` is recorded under that grantee, so omitting it would make the assertion
+>    unfailable. The one legitimate client write, `useDeclineInvitation`, still works.
+> 2. **`apply_to_campaign` checked eligibility ONLY on the `group_id IS NOT NULL` branch.** For an
+>    ordinary campaign it fell through to the INSERT with no status and no role check, and being
+>    `SECURITY DEFINER` it bypassed the `campaign_applications` INSERT policy that carries exactly
+>    those rules via `can_create_application`. Proven: a creator with no invitation applied to an
+>    **`active`** campaign. The non-group branch now calls `can_create_application` itself — the
+>    same predicate as the policy, not a re-invented one — OR-ed with "an existing non-`rejected`
+>    application", because the RPC is an upsert and that is how counter-offers amend a row the
+>    creator already legitimately holds. `anon` EXECUTE revoked (it was already stopped by the
+>    `auth.uid()` guard). Verified after: applying to a closed campaign now raises *"Not eligible
+>    to apply to this campaign"*, applying to a published one still succeeds.
+>
+> **Lesson worth keeping: a `SECURITY DEFINER` RPC silently opts out of the RLS policy protecting
+> the table it writes.** Whenever one exists, check that it re-asserts the policy's predicate —
+> here the policy was correct the whole time and the RPC simply never consulted it.
+
 | `application_counter_offers` | Negotiation counter-offers on applications. Written via the `create_counter_offer` SECURITY DEFINER RPC (authorization-hardened 2026-07-20: identity + participant + role-integrity guards, writes the server-derived `sender_id`/`sender_role`, `anon` EXECUTE revoked) or the direct-insert apply-time path; the INSERT RLS policy pins `sender_role` to the caller's derived role. See [[Service-Role Data Exposure]]. |
 | `content_disputes` | Dispute record opened when a business rejects content after max revisions (`reject-content` inserts `collaboration_id`/`initiated_by`/`reason`, `status=open`) and resolved by `resolve-dispute` (`status=resolved`, `outcome ∈ refund/partial_payment/approved`). Participant-SELECT RLS (creator or campaign owner) + a service-role FOR-ALL policy. **Restored to prod 2026-07-23 (PR #325)** — it, and the whole collaboration state machine, were recorded in `schema_migrations` but MISSING from prod (see below). |
+
+> **`campaigns.deadline` is a `date`, not a `timestamptz` — do not compare it as an instant.**
+> Verified against prod `information_schema` 2026-08-09. Supabase therefore returns it as
+> `"YYYY-MM-DD"`, and `new Date("2026-08-10")` parses to **UTC midnight** — an instant, in a
+> timezone the user does not live in. Subtracting a mid-day `now` from a midnight instant floors
+> **downward in every timezone**, so a "due today" check is unreachable for the whole day. In
+> America/New_York (UTC−4/−5, where the company is) UTC midnight of day D is 8pm local on D−1, so
+> *tomorrow's* deadline also reads as "today" until it vanishes at 8pm. Compare **local calendar
+> days**: build the deadline from its parts (`new Date(y, m-1, d)`) and floor `now` with
+> `setHours(0,0,0,0)`, then **round** the day difference rather than flooring — a calendar day is 23
+> or 25 hours across a DST transition, and a floored 25-hour "tomorrow" reads as "today". Found by
+> Codex after eight internal reviews missed it; see [[Donny-First Dashboard]].
+> (`campaigns.created_at` / `completed_at` **are** `timestamptz`; only `deadline` is date-only.)
 
 > **Collaboration state machine (`campaign_collaborations.content_status`) — restored 2026-07-23
 > (PR #325, [[Content Delivery State Machine]]).** The `20260425000000_collaboration_state_machine`
@@ -216,8 +262,41 @@ active members, who one-tap apply with no payment (free `fixed_price=0`). See
 | `messages_with_profiles` | View joining messages with sender profile data |
 | `message_reactions` | Emoji reactions on messages |
 | `user_presence` | Online/offline status (realtime) |
-| `push_notifications` | Push notification records |
+| `push_notifications` | Push notification records. Written **only** by the service role, via `create-notification` — which until 2026-08-08 performed **zero authorization** (see below). |
 | `notification_preferences` | Per-user notification settings |
+
+> **`can_notify_user(p_actor, p_recipient)` — migration `20260808030000`, applied to prod
+> 2026-08-08.** `create-notification` inserts `push_notifications` with the **service role**, so RLS
+> never applied to it — and the function authenticated its caller with `auth.getUser()` and then
+> **never referenced the `user` object again**. Every field written, `recipientId` and `actorId`
+> included, came from the request body, and for types in `NOTIFICATION_TYPE_TO_EMAIL_TYPE` it also
+> sent a real email. Any authenticated user could put arbitrary text and an arbitrary in-app link
+> into **any** other user's feed, attributed to **any** actor.
+>
+> `can_notify_user` is `SECURITY DEFINER`, `language sql stable`, `search_path=public`, **service-role
+> only** (`revoke execute … from public, anon, authenticated`; `grant … to service_role`). It returns
+> true when actor and recipient share one of six **live** relationships: self, campaign (owner ↔
+> applicant/collaborator/invitee, either direction), conversation (`left_at IS NULL` on both sides),
+> crew, org (`invitation_status='active'` on both sides), or **sponsorship**.
+>
+> **The sponsorship clause carries a trap worth reading before editing it:**
+> `campaign_sponsorships.brand_id` / `.restaurant_id` are FKs to **`business_profiles.id`, NOT
+> `auth.users`** — they must be resolved through `business_profiles.user_id`, which is what the call
+> sites actually notify. Comparing the raw columns to a user id never matches, and fails *silently*
+> as a 403 nobody can explain.
+>
+> The clause set is not guessed. It was **backtested** against all 91 actor-bearing
+> `push_notifications` rows (18 types, May–Aug 2026) → 89/91, **and** cross-checked by enumerating
+> all 32 client call sites — which is the only reason sponsorship is in the list, since no
+> sponsorship notification has ever fired on prod. The 2 backtest misses are `content_liked`, which
+> the edge function authorizes against the **referenced `dragonshare_posts` row** instead (a liker
+> legitimately has no prior tie to the poster) and for which the server composes the copy.
+>
+> Cold contact from a public profile needs **no** exemption: `ContactCreatorModal` /
+> `ContactRestaurantModal` both `await` conversation creation *before* notifying, so the
+> `conversation_participants` rows already exist. There is deliberately **no "open type" branch** —
+> but that rests on an **ordering dependency**, so if the sequencing is ever inverted, cold contact
+> starts silently 403ing and this is where to look.
 
 ## File Management
 
@@ -305,6 +384,15 @@ clients read their own rows (`auth.uid() = user_id`).
 > RPCs (SECURITY DEFINER, `service_role`-only): `dre_pending_events()` (anti-join — source rows
 > lacking a ledger row) and `dre_user_aggregates(uuid[])` (balance + completed-campaign count +
 > avg rating for tier resolution).
+>
+> **`dre_my_standing()`** (migration `20260807120000`, [[Dragon Rewards Engine (DRE)]] — DC
+> Points visibility) — a **caller-scoped** SECURITY DEFINER RPC wrapping `dre_user_aggregates`,
+> for the `/rewards` page and Donny's `rewards_agent`. Takes **no arguments**; identity comes
+> only from `auth.uid()`, and it `raise`s `forbidden: authentication required` if that's null —
+> so there is no parameter an id could ever be pointed at. `revoke ... from public, anon` +
+> `grant ... to authenticated` (the Supabase default-privilege gotcha above — a bare `revoke
+> from public` does not lock down a definer function). Applied + verified on prod: impersonated
+> creator returns exactly 1 own row; empty `auth.uid()` raises the forbidden exception.
 
 ## Payments & Revenue
 

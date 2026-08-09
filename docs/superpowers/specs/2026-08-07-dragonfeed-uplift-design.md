@@ -231,12 +231,45 @@ that predicate is business-consent-based and will **not** generalize from the po
 
 **None of these were verified**; each needs its own check before anyone acts on it.
 
-- `donny-dragonshare-score/index.ts:44-48` reads a post by `post_id` with the service-role key and
-  *appears* not to check the caller's membership in `target_org_id` — IDOR-shaped.
+- ~~`donny-dragonshare-score/index.ts:44-48` reads a post by `post_id` with the service-role key and
+  *appears* not to check the caller's membership in `target_org_id` — IDOR-shaped.~~
+  **CHECKED 2026-08-08 → confirmed, and resolved by deleting the function.** `caller` was validated
+  then never used again; the function was also orphaned (zero callers, webhook never wired, never
+  executed on prod). See [[Service-Role Data Exposure]].
 - `donny-orchestrator/agents/dragonshare.ts:71-76` *appears* to omit `status='verified'`, unlike the
   `donny-chat` equivalent. Same-tenant only, so not a leak, but a divergence from the RLS contract.
-- `landing-clips` is deployed and publicly callable but orphaned — its only consumer sits behind
-  `LANDING_VIDEO_BACKDROP_ENABLED = false`.
+  **Still unverified.**
+- ~~`landing-clips` is deployed and publicly callable but orphaned~~ — **CHECKED 2026-08-08 → the
+  "orphaned" half was wrong.** It has a real wired consumer (`useLandingBackdropPlaylist` →
+  `HeroVideoBackdrop`), lazy-loaded behind `LANDING_VIDEO_BACKDROP_ENABLED = false` **by design**:
+  `DESIGN_SYSTEM.md` promises the flag re-enables the video experience "with zero other code
+  changes". It is also not a data-exposure surface — it returns only boosted/verified/unflagged
+  video URLs from the `dragonshare-content` bucket, which is `public = true` with unconditional
+  public read, for an anonymous marketing homepage. **Do not delete it.** The open question there is
+  *consent* (neither creator nor business is asked before their video fronts the homepage), which is
+  §6's phase-3b decision, not a vulnerability.
+  **One real defect was found while confirming that and fixed in the same PR:** both
+  `content_file_path` and `screenshot_url` are **creator-writable free text**
+  (`ds_posts_creator_insert`/`_update` gate only on `creator_id = auth.uid()` with no column
+  constraint; `trg_ds_posts_block_self_verify` lists neither), so a boosted creator could point the
+  anonymous homepage at an arbitrary third-party URL — an IP/UA beacon fired from every visitor's
+  browser. `buildClips` now **origin-pins both** to the public bucket prefix. All 9 real rows
+  already match it, so nothing changes today.
+- **NEW leads from the same review pass, both `[med]`, both PRE-EXISTING and out of scope.**
+  Corroborated mechanically (`grep -c "getUser\|isAuthorizedIngest"` returns **0** for both files),
+  but not reproduced end-to-end:
+  - `fire-dragonshare-social-hook/index.ts:26-54` — body-supplied `boost_id`/`post_id`, service
+    role, **no caller resolution at all**. Appears to let any holder of a valid project JWT plant
+    `donny_scheduled_posts` drafts + `donny_nudges` into three other users' accounts. Returns no
+    victim data, so cross-user **write/forgery**, not a read leak.
+  - `dragonshare-notify/index.ts:346-361` — identical shape; appears to fire notifications, nudges
+    and a Donny chat message into arbitrary accounts by id.
+  - Both have exactly one real caller (`_shared/fulfill-boost.ts`, service-role→service-role), so
+    the likely fix is `isAuthorizedIngest`, matching `auto-approve-content`.
+- `donny-orchestrator/agents/dragonshare.ts` — the earlier lead **understated it**. Besides omitting
+  `.eq("status","verified")` (which `donny-chat/index.ts:1209` applies to mirror
+  `ds_posts_org_select`), it scopes on `userContext.org_id` = the denormalized `profiles.org_id`
+  cache with **no `invitation_status='active'` qualifier**. Still unverified against prod.
 - **Creator Settings saves stale form state.** `CreatorSettings.tsx:44` `handleFieldBlur` submits
   the whole `formData` on any blur with no `isLoaded` guard, while `useCreatorProfileForm` seeds
   every field with empty-string/false defaults and `setFormDataFromProfile` fills them

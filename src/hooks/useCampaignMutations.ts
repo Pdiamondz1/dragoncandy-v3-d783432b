@@ -31,6 +31,22 @@ export interface CreateCampaignData {
   org_unit_id?: string | null;
 }
 
+/**
+ * Did the publish broadcast actually deliver?
+ *
+ * A 2xx only means the edge function ran — it can still return `allDelivered: false`
+ * when every recipient list built fine but the sends themselves bounced. Claiming
+ * "Creators and brands have been notified!" on that is the same lie as claiming it on a
+ * leg that mailed nobody, just in a narrower window.
+ *
+ * Absent `allDelivered` is treated as delivered ON PURPOSE: during the deploy window the
+ * previously-live function returns `{ ok, notifications_sent }` with no such field, and
+ * the client must not start reporting failure against a version that simply predates it.
+ */
+export function didBroadcast(result: unknown): boolean {
+  return (result as { allDelivered?: boolean } | null)?.allDelivered !== false;
+}
+
 export const useCreateCampaign = () => {
   const { user, activeOrgUnit } = useAuth();
   const queryClient = useQueryClient();
@@ -60,23 +76,34 @@ export const useCreateCampaign = () => {
       // Batched publish notifications via single edge function call.
       // NEVER broadcast a private crew campaign (group_id set) to the whole creator/brand
       // base — that would leak the private campaign's title+id to non-members.
+      let broadcastSucceeded = false;
       if (data.status === 'published' && !data.group_id) {
         try {
-          await supabase.functions.invoke('send-campaign-publish-notifications', {
-            body: { campaignId: data.id, campaignTitle: data.title, userId: user!.id },
-          });
+          // invoke resolves on a non-2xx — read the error off the result, don't rely on
+          // the catch (see useUpdateCampaign for the same trap).
+          const { data: result, error } = await supabase.functions.invoke(
+            'send-campaign-publish-notifications',
+            { body: { campaignId: data.id, campaignTitle: data.title, userId: user!.id } },
+          );
+          if (error) console.error('Failed to send publish notifications:', error);
+          else broadcastSucceeded = didBroadcast(result);
         } catch (error) {
           console.error('Failed to send publish notifications:', error);
         }
       }
-      
+
+      // Only claim a notification that actually went out — a crew campaign is never
+      // broadcast, and a failed dispatch is not a notification.
+      const notice = data.status !== 'published'
+        ? ''
+        : data.group_id
+          ? ' Your crew can see it now.'
+          : broadcastSucceeded
+            ? ' Creators and brands have been notified!'
+            : '';
       toast({
         title: 'Campaign created successfully!',
-        description: `"${data.title}" has been ${data.status === 'published' ? 'published' : 'saved as draft'}.${
-          data.status === 'published' 
-            ? ' Creators and brands have been notified!' 
-            : ''
-        }`,
+        description: `"${data.title}" has been ${data.status === 'published' ? 'published' : 'saved as draft'}.${notice}`,
       });
     },
     onError: (error) => {
@@ -96,6 +123,23 @@ export const useUpdateCampaign = () => {
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<CreateCampaignData> }) => {
+      // Read the status BEFORE the write. Publishing is a TRANSITION, not a property of
+      // the resulting row, and CampaignEditPage renders its "Publish Campaign" button
+      // unconditionally — including on an already-live campaign. Without this, every edit
+      // of a published campaign re-invoked the broadcast and re-mailed the entire creator
+      // and brand base.
+      const { data: prior, error: priorError } = await supabase
+        .from('campaigns')
+        .select('status')
+        .eq('id', id)
+        .eq('user_id', user!.id)
+        .single();
+
+      if (priorError) {
+        console.error('Error reading campaign before update:', priorError);
+        throw priorError;
+      }
+
       const { data, error } = await supabase
         .from('campaigns')
         .update(updates as unknown as Database['public']['Tables']['campaigns']['Update'])
@@ -109,18 +153,34 @@ export const useUpdateCampaign = () => {
         throw error;
       }
 
-      return data as unknown as Campaign;
+      return {
+        ...(data as unknown as Campaign),
+        wasAlreadyPublished: prior.status === 'published',
+      };
     },
     onSuccess: async (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-      
+
+      // Only on the draft → published transition. See wasAlreadyPublished above.
+      const becamePublished =
+        variables.updates.status === 'published' &&
+        data.status === 'published' &&
+        !data.wasAlreadyPublished;
+
       // Batched publish notifications via single edge function call.
       // NEVER broadcast a private crew campaign (group_id set) to the whole creator/brand base.
-      if (variables.updates.status === 'published' && data.status === 'published' && !data.group_id) {
+      let broadcastSucceeded = false;
+      if (becamePublished && !data.group_id) {
         try {
-          await supabase.functions.invoke('send-campaign-publish-notifications', {
-            body: { campaignId: data.id, campaignTitle: data.title, userId: user!.id },
-          });
+          // invoke RESOLVES on a non-2xx (returns { data: null, error }), so the error has
+          // to be read off the result — the bare try/catch here was dead code for every
+          // 4xx/5xx and reported a total failure to notify as success.
+          const { data: result, error } = await supabase.functions.invoke(
+            'send-campaign-publish-notifications',
+            { body: { campaignId: data.id, campaignTitle: data.title, userId: user!.id } },
+          );
+          if (error) console.error('Failed to send publish notifications:', error);
+          else broadcastSucceeded = didBroadcast(result);
         } catch (error) {
           console.error('Failed to send publish notifications:', error);
         }
@@ -133,13 +193,18 @@ export const useUpdateCampaign = () => {
         });
       }
 
+      // Claim a notification only when one actually went out. This said "Creators and
+      // brands have been notified!" on every published save — including crew campaigns,
+      // which are deliberately never broadcast, and including the years in which the
+      // creator leg of the edge function was silently mailing nobody at all.
+      const notice = data.group_id
+        ? ' Your crew can see it now.'
+        : broadcastSucceeded
+          ? ' Creators and brands have been notified!'
+          : '';
       toast({
         title: 'Campaign updated successfully!',
-        description: `"${data.title}" has been updated.${
-          data.status === 'published'
-            ? ' Creators and brands have been notified!' 
-            : ''
-        }`,
+        description: `"${data.title}" has been updated.${notice}`,
       });
     },
     onError: (error) => {
@@ -257,6 +322,29 @@ export const useDeleteCampaign = () => {
   });
 };
 
+/**
+ * Counts how many invite dispatches actually landed.
+ *
+ * `supabase.functions.invoke` RESOLVES on a non-2xx — it returns `{ data: null, error }`
+ * rather than throwing (the same trap is documented at useCampaignCreator.ts and
+ * useCreatorGroupInvitations.ts). So `Promise.allSettled` marks a 400 as **fulfilled**, and
+ * counting fulfilled promises reported every rejection as "sent": send-campaign-invitation
+ * refuses a missing profiles row, a self-invite, a non-published campaign, a non-owner and
+ * any crew campaign, and the business was told those creators had been invited.
+ *
+ * `total` is passed in rather than derived from `results.length` so a promise that rejected
+ * outright (a genuine network failure) is still attributed to failed.
+ *
+ * Exported for tests.
+ */
+export function countInviteDispatch(
+  results: PromiseSettledResult<{ error: unknown } | null | undefined>[],
+  total: number,
+): { sentCount: number; failedCount: number } {
+  const sentCount = results.filter((r) => r.status === 'fulfilled' && !r.value?.error).length;
+  return { sentCount, failedCount: total - sentCount };
+}
+
 export const useDuplicateCampaign = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -269,7 +357,20 @@ export const useDuplicateCampaign = () => {
         // where the launch wizard actually writes deliverables — useCampaignQueries reads
         // it back as the source of truth. Omitting it here is why a duplicate arrived with
         // no content requirements even when the source clearly had them.
-        .select('title, description, goals, deliverables, campaign_deliverables, platforms, budget_min, budget_max, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, ai_analysis, org_unit_id')
+        // group_id MUST be carried through. Omitting it silently turned a duplicated crew
+        // campaign PUBLIC while keeping the crew's forced fixed_price of 0 — a public $0
+        // campaign, and publishing it fired send-campaign-publish-notifications to every
+        // onboarded creator. Note that BOTH gates were defeated, not just the client one:
+        // the edge function re-asserts the guard itself, but it reads group_id off the
+        // row, and the row had already been made to lie. Defence-in-depth does not help
+        // when the defect is in the data. That breaks the promise made in the
+        // crew-invitation email and both help articles that crew collabs never go public.
+        // Preserving it is also the better behaviour: re-launching a crew collab should
+        // give you another crew collab. It is safe — fixed_price 0 travels with it, which
+        // is exactly what campaigns_group_free requires, and
+        // trg_enforce_campaign_group_ownership passes because the duplicate keeps the same
+        // owner. Do NOT "clean this up" by dropping group_id.
+        .select('title, description, goals, deliverables, campaign_deliverables, platforms, budget_min, budget_max, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, ai_analysis, org_unit_id, group_id')
         .eq('id', sourceCampaignId)
         .single();
 
@@ -401,19 +502,49 @@ export const useRelaunchWithCreators = () => {
     }) => {
       const { data: source, error: fetchError } = await supabase
         .from('campaigns')
-        .select('title, description, goals, deliverables, platforms, budget_min, budget_max, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, ai_analysis, org_unit_id')
+        // group_id is selected to REJECT crew campaigns below, and campaign_deliverables
+        // (the JSONB column) because that is where the launch wizard actually writes
+        // deliverables — omitting it produced a re-hire with no content requirements.
+        .select('title, description, goals, deliverables, campaign_deliverables, platforms, budget_min, budget_max, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, ai_analysis, org_unit_id, group_id')
         .eq('id', sourceCampaignId)
         .single();
 
       if (fetchError || !source) throw fetchError ?? new Error('Campaign not found');
 
+      // Re-hire does not apply to a crew campaign, and quietly copying one was actively
+      // harmful: group_id was never selected, so `...source` produced a PUBLIC campaign
+      // carrying the crew's forced fixed_price of 0 — a private crew collab relisted live
+      // at $0 on the public board (usePublicCampaigns returns any published, group-less
+      // row). That breaks the promise made in the crew-invitation email and both help
+      // articles, that crew collabs never go public. To be precise, this path did NOT
+      // itself email anyone — send-campaign-publish-notifications is not called here; the
+      // leak was marketplace visibility. The duplicate path is the one that broadcasts.
+      //
+      // Preserving group_id is not the alternative: trg_reject_group_campaign_invitation
+      // (20260709120021) raises on ANY campaign_invitations insert for a crew campaign, so
+      // the invite fan-out below — the entire point of this action — cannot run. Re-hiring
+      // a crew is simply a different gesture: post a new crew campaign, which the crew
+      // already sees.
+      const { group_id: sourceGroupId, ...copyable } = source;
+      if (sourceGroupId !== null) {
+        throw new Error('CREW_CAMPAIGN_NOT_ELIGIBLE');
+      }
+
       const { data: newCampaign, error: insertError } = await supabase
         .from('campaigns')
         .insert({
-          ...source,
+          ...copyable,
           title: source.title.replace(/ \(Copy\)$/, ''),
           status: 'published',
-          escrow_status: 'pending',
+          // escrow_status is deliberately NOT set — the column defaults to 'none'.
+          // 'pending' means "the business clicked Publish and is heading to Stripe", so on
+          // a campaign this inserts as ALREADY published it rendered the contradictory
+          // "Payment Required to Publish" banner and a "Pay & Publish →" card CTA.
+          // Escrow is paid AFTER hire, not before listing (see usePublicCampaigns), and
+          // the launch wizard likewise publishes with no escrow_status at all. Note the
+          // older CampaignFinalizeStep flow is the deliberate exception — it keeps the
+          // campaign a DRAFT and sets 'pending' precisely because it is sending the
+          // business to checkout first. Don't reconcile the two; they are different flows.
           deadline: null,
           user_id: user!.id,
           duplicated_from: sourceCampaignId,
@@ -436,17 +567,45 @@ export const useRelaunchWithCreators = () => {
         )
       );
 
-      const sentCount = inviteResults.filter((r) => r.status === 'fulfilled').length;
-      return { id: newCampaign!.id, sentCount };
+      const { sentCount, failedCount } = countInviteDispatch(inviteResults, reinviteCreatorIds.length);
+      return { id: newCampaign!.id, sentCount, failedCount };
     },
     onSuccess: (_data) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      const plural = (n: number) => `${n} creator${n !== 1 ? 's' : ''}`;
+      // Don't report an invite as sent when it wasn't — the campaign is live either way,
+      // so the business needs to know who to chase rather than a reassuring total.
       toast({
         title: 'Campaign relaunched!',
-        description: `Published and ${_data.sentCount} creator${_data.sentCount !== 1 ? 's' : ''} invited.`,
+        description: _data.failedCount > 0
+          ? `Published, and ${plural(_data.sentCount)} invited. ${plural(_data.failedCount)} couldn't be reached — invite them from the campaign page.`
+          : `Published and ${plural(_data.sentCount)} invited.`,
       });
     },
-    onError: () => {
+    onError: (error) => {
+      // Say the real reason for the one refusal we raise ourselves, rather than sending
+      // the business round a "try again" loop on something that will never succeed.
+      if (error instanceof Error && error.message === 'CREW_CAMPAIGN_NOT_ELIGIBLE') {
+        toast({
+          title: 'Re-hire is for marketplace campaigns',
+          description: 'Crew collabs stay private to your crew. Post a new crew campaign — your crew already sees it.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      // The other deterministic refusal: enforce_active_campaign_limit fires on this
+      // INSERT (OLD is NULL, so its "not already published" guard is true) because the
+      // relaunch inserts straight to 'published'. "Please try again" would send the
+      // business round a loop that can never succeed — the fix is to finish or cancel a
+      // live campaign, which only they can decide.
+      if (error instanceof Error && /Active campaign limit reached/i.test(error.message)) {
+        toast({
+          title: 'You are at your active campaign limit',
+          description: 'Re-launching publishes immediately, so it needs a free slot. Complete or cancel a live campaign, then try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
       toast({ title: 'Failed to relaunch campaign', description: 'Please try again.', variant: 'destructive' });
     },
   });

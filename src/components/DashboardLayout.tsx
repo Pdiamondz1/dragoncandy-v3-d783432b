@@ -31,6 +31,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLogout } from '@/hooks/useLogout';
 import { useProfileData } from '@/hooks/useProfileData';
 import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
+import { DcPointsChip } from '@/components/rewards/DcPointsChip';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { MobileTopNav } from '@/components/MobileTopNav';
@@ -40,7 +41,8 @@ import { OrgUnitSwitcher } from '@/components/org/OrgUnitSwitcher';
 import { useMyOrgRole } from '@/hooks/useOrgData';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import type { UserRole } from '@/types/user';
-import { getSidebarNav, getSettingsHref, getDashboardLabel } from '@/lib/navConfig';
+import { getSidebarNav, getSettingsHref, getDashboardLabel, withDcPointsGate } from '@/lib/navConfig';
+import { useDragonRewardsEnabled } from '@/hooks/useDragonPoints';
 import { activeNavHref } from '@/lib/navActive';
 import { useTotalUnreadCount } from '@/hooks/useUnreadCounts';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
@@ -58,7 +60,10 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ userRole }) => {
   const location = useLocation();
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
-  const navItems = getSidebarNav(userRole);
+  // Role gate lives in the static arrays; the launch-flag gate can only be applied here,
+  // where a hook is available. Both must hold or the entry leads to a disabled page.
+  const dragonRewardsEnabled = useDragonRewardsEnabled();
+  const navItems = withDcPointsGate(getSidebarNav(userRole), dragonRewardsEnabled);
   const unreadCount = useTotalUnreadCount();
 
   // Longest match wins — a per-item prefix test lights the role-root "Dashboard" item on every
@@ -225,6 +230,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
                       }}
                     />
                   )}
+                  <DcPointsChip />
                   <NotificationDropdown />
 
                   <button

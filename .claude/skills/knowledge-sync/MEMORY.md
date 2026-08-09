@@ -74,19 +74,21 @@
   `fixed-probe` or `82dvh`, not a multi-word sentence) — wrapped prose false-negatives the check.
   Also `inserted=0` in the sync log does NOT mean a new page was missed (upsert counting) — trust
   the ilike probe, not the counters.
-  **Never use `max(updated_at)` as the freshness signal — root cause found 2026-08-07.**
-  `donny_knowledge`'s only trigger is `trg_donny_knowledge_updated_at → handle_updated_at()`, and
-  that shared function is a **stub** (`-- Function logic here / RETURN NEW;`) that never assigns
-  `NEW.updated_at`. So an UPDATE fires the trigger and changes nothing: after a sync reporting
-  `updated=101 errors=0`, the changed page held the new text while `updated_at` **equalled its
-  `created_at`** from 78 minutes earlier. An update-only sync can therefore *never* advance the
-  timestamp — the check was structurally unpassable, not flaky. **~30 tables share this stub**
-  (incl. `campaigns`, `campaign_applications`, `campaign_collaborations`, `conversations`,
-  `internal_docs`), so distrust `updated_at` on any of them without a confirmed second trigger or
-  an explicit app-level set. This upgrades [[verify-knowledge]]'s `[freshness-proxy]` lesson from
-  "not reliably bumped" (empirical) to a known mechanism, and `SKILL.md` step 6 was corrected —
-  it had recommended the broken check while `verify-knowledge` already knew better, and the skill
-  you read *first* was the wrong one.
+  **Never use `max(updated_at)` as the freshness signal.** Root cause found 2026-08-07 and
+  **since FIXED — the reason changed, the rule did not.** Historically
+  `trg_donny_knowledge_updated_at → handle_updated_at()` was a **stub**
+  (`-- Function logic here / RETURN NEW;`) that never assigned `NEW.updated_at`, so an UPDATE fired
+  it and changed nothing (after a sync reporting `updated=101 errors=0`, the changed page held the
+  new text while `updated_at` **equalled its `created_at`** from 78 minutes earlier) — the check was
+  structurally unpassable, not flaky. **PR #385 / migration `20260807233200` restored the function**;
+  measured 2026-08-08, **231 of 237** rows now have `updated_at > created_at`, exactly the UPDATE
+  count of that sync. **Still don't gate on it** — a moved timestamp proves only that *something*
+  was written; `content ilike` proves the specific new text is retrievable, which is what the RAG is
+  for. The old corollary "**~30 tables share this stub**, distrust `updated_at` on all of them" is
+  **retired** — those triggers work. What remains true is narrower: `updated_at` is a *modification*
+  stamp, never a *status* signal, and pre-2026-08-07 rows are unreliable in **both** directions
+  (`== created_at` means "no explicit writer touched it", not "never modified"). See
+  [[Updated-At Trigger Drift]].
 - **[context-tax] Session detail goes to `docs/SHIPPED_LOG.md`, NOT `PROJECT_CONTEXT.md` §5.**
   §5 is now a one-line-per-entry index with three subsections — `### In flight`, `### Built —
   awaiting founder go-live` (these carry a `**Pending:**` clause), `### Shipped` — because §5 is
@@ -106,7 +108,155 @@
   local branch's file-set is disjoint from what changed since the merge-base (so nothing is lost), then
   build the knowledge-sync commit on a fresh local branch off the FETCHED PR head, not the stale one.
 
+- **[doc-documents-the-bug] When the page you're compounding onto describes the defect as a
+  FEATURE, the edit is a retraction, not an append — and it must read as one.** On 2026-08-08
+  [[Notification Delivery]] said `create-notification` "resolves the email type as
+  `emailType ?? map[type]`, so a caller can target **any** template" — accurate, approving, and a
+  precise description of the hole being closed. Deleting the line would erase the evidence that the
+  guidance was ever given; a reader who acted on it needs to see it *withdrawn*. Quote the old text,
+  mark it corrected with a date, say why it was wrong, and point at what replaced it (same
+  discipline as the struck-through Known Issue). Ask on every compound: **does this page currently
+  recommend the thing I just fixed?** — a page can be entirely accurate and still be wrong about
+  whether the behaviour is desirable.
+- **[scope-ordering] Run the [scope] check before the FIRST doc edit, not after the last.** On
+  2026-08-08 I edited three core docs, *then* checked, and found `origin/main` 7 ahead with all four
+  moved — conflicting in exactly the three I'd touched. The check is **one command**
+  (`git log --oneline HEAD..origin/main -- <core docs>`) and it is worth running even when the branch
+  is "only a few" commits behind and the session isn't doc-focused, because the core docs are the
+  most-edited files in the repo and every knowledge-sync touches the same four. Corollary: **do the
+  `origin/main` merge before starting any long-running background `git push`** — a push in flight
+  pins the branch, so the merge has to wait it out.
+
+- **[memory-scope] A remembered fact can be true and still wrong *where you are standing*. Check
+  whether it is scoped to a location before propagating it.** On 2026-08-09 I quoted the stored
+  "`npm run test` exits 1 with ~103 pre-existing failures — judge by counts, not the exit code" into
+  **eight** subagent dispatches. Measured from the worktree: **210 files / 2033 tests / 0 failed.**
+  The memory wasn't stale — those failures are vitest mis-collecting Playwright specs under
+  `.claude/worktrees/**`, and *a worktree has none nested under it*. So from a worktree a red suite
+  means a **real regression**, the opposite of what I'd told everyone; "it's always red" trains a
+  session to ignore the one signal that catches a real break. Applies to any environment-shaped
+  claim (paths, tooling, CI, shells) — **the cheapest check is to run the thing once before quoting
+  the memory about it**, and to fix the memory with the scope rather than deleting it. Corollary:
+  `<cmd> | tail -N` reports **tail's** exit code, not `<cmd>`'s — a pipe launders a failure into 0.
+
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-09] Donny-first dashboard Phase A + route blind spot (PRs #409 merged, #410 open — bundled INTO #410)
+
+**Output:** new `raw/sessions/2026-08-09-donny-first-dashboard-and-route-blind-spot.md`; NEW
+`concepts/donny-first-dashboard.md`; **compounded as a CORRECTION** onto
+`concepts/donny-data-and-quick-actions.md` (new "The guard's blind spot" section, its Known Issue
+struck-and-explained, one new Known Issue, See Also); `index.md` (1 Sources line + the new Concept
++ the quick-actions entry corrected — **each in both catalog copies**, see below); `log.md` top
+entry; `SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5 **two** Built entries with dated
+`**Pending:**` clauses; `DATABASE_SCHEMA.md` (`campaigns.deadline` is a `date`); `DESIGN_SYSTEM.md`
+(`AppChip` is a filter primitive, wrong as a primary affordance); + THIS entry.
+
+**Happened.** Ran as the branch-finish step with #410 already open, so the docs ride in the same PR.
+Covered **two** efforts because #409 merged during the session without its own sync.
+
+**Worked — [scope-ordering] paid off by being run first, for once.** One command before any edit;
+core docs were current because the branch had just been rebased onto `origin/main`. Also
+[wikilinks]-exact (grepped all 7 targets against `index.md`; zero dangling) and [orphans]-by-path
+via PowerShell (clean).
+
+**Worked — [doc-documents-the-bug] fired exactly as written.** `donny-data-and-quick-actions.md`
+described the `isKnownRoute` three-layer fix as if it closed the class, and its Known Issue framed
+the residual risk as *under*-linking ("a new route must be added or Donny won't link to it") — the
+safe failure. The shipped failure was the opposite and cost twelve dead CTAs including the revenue
+path. Struck the Known Issue and explained it rather than deleting it.
+
+**NEW WIKI DEFECT FOUND, deliberately not fixed:** `index.md`'s `## Concepts` section contains the
+**entire catalog twice**, with UTF-8 mojibake (`â€”`) scattered through both copies. Verified by
+`uniq -c` on the extracted paths — every concept appears exactly 2×; Sources and Entities are
+single. I added each new/corrected entry to **both** copies, so nothing is lost whichever copy a
+future dedupe keeps. Deduping is a ~160-line rewrite of a file every worktree touches → its own PR.
+
+**Failed / didn't run.** RAG sync is post-merge per [rag-sync] (#410 open; `docs/` changed so the
+post-merge hook fires on the main fast-forward). `verify-knowledge`'s loop-close likewise deferred.
+
+**Remember — the correction this session had to make about ITSELF, which is the sharpest thing here.**
+I told **eight** subagent dispatches "`npm run test` exits 1 from ~103 pre-existing failures; judge
+by counts, not the exit code," quoting a stored memory. Then measured it: **210 files / 2033 tests /
+0 failed.** The memory was not stale — it is **location-scoped**. Those failures are vitest
+mis-collecting Playwright specs under `.claude/worktrees/**`, and *a worktree has no nested
+worktrees under it to scan*. So from a worktree a red suite means a **real regression**, the exact
+opposite of what I'd told everyone. Repeating "it's always ~103 red" trains a whole session to
+ignore the one number that catches a real break. **A memory can be true and still be wrong where you
+are standing — check whether a remembered fact is scoped to a location before propagating it.**
+(Memory file updated with the scoping.) Second, cheap: `npm run test | tail -N` reports **tail's**
+exit code, not vitest's — the pipe silently launders a failure into exit 0.
+
+### [2026-08-08] Notification + invitation authorization (`fix/notification-authorization`, PR #387)
+
+**Output:** new `raw/sessions/2026-08-08-notification-and-invitation-authorization.md`;
+**compounded** onto `concepts/notification-delivery.md` (new "Who may notify whom" section + the
+`emailType` correction + 2 new residuals + the bulk-invite Known Issue flipped) and
+`concepts/campaign-invitations.md` (new "Invitation & application integrity" section); `index.md`
+(new Sources line + **both** Concepts entries corrected); `log.md` top entry; `SHIPPED_LOG.md`
+prepended; `PROJECT_CONTEXT.md` §5 one Built entry with a `**Pending:**` clause;
+`DATABASE_SCHEMA.md` (`can_notify_user` blockquote + a `push_notifications` row note); + THIS entry.
+
+**Happened.** Covered **two** efforts, because #387's sync had never run — no raw session, and
+`SHIPPED_LOG.md`'s newest entry predated it. Both compounds are *reframes*: each page stated
+something this work made false, and on [[Notification Delivery]] the false statement **was the
+vulnerability** (`emailType ?? map[type]` — "a caller can target any template" — written approvingly).
+
+**Worked.** Struck-and-explained that line rather than deleting it, per "flag contradictions, never
+silently overwrite" — a reader who remembers the old guidance needs to see it retracted, not vanish.
+Choosing compound over new pages was easy once I asked which page would have to be *wrong* for the
+new page to be right: both would.
+
+**Failed — and it cost real work.** I edited `SHIPPED_LOG.md`, `index.md` and `log.md` **before**
+running the [scope] check, then found `origin/main` 7 ahead with all four core docs moved. The merge
+conflicted in exactly those three files. Nothing was lost, but the check is **one command** and I ran
+it after the last edit instead of before the first. Compounded by starting a long `git push`
+beforehand, which pinned the branch and forced the merge to wait ~20 min.
+
+**Remember.** Two new Lessons promoted: [doc-documents-the-bug] and the [scope] ordering corollary.
+Also worth carrying: `handle_updated_at()` was **restored** upstream (migration `20260807233200`,
+PR #385) — the "it's a stub, `updated_at` is untrustworthy on ~30 tables" warning still in older
+session context is now **stale**. A worktree 7 commits behind serves stale *facts*, not just stale
+files.
+### [2026-08-08] `donny-dragonshare-score` removal (`chore/remove-orphaned-dragonshare-score`)
+
+**Output:** "Resolved by deletion", "Found while confirming the sibling lead", "Open instances" and
+"deleting source is not undeploying" sections on `concepts/service-role-data-exposure.md`
+(compounded, no new page); source `raw/sessions/2026-08-08-dragonshare-score-removal.md`; `log.md`
+entry `[2026-08-08] update | [[Service-Role Data Exposure]]`; `index.md` concept line extended;
+`SHIPPED_LOG.md` prepend **plus a pointer inserted into the now-stale lead list of the 2026-08-07
+entry**; `PROJECT_CONTEXT.md` §5 (Built — awaiting founder go-live); removal notes on the two
+2026-04-27 DragonShare planning docs.
+
+**Happened.** Checked two of the four unverified leads the 2026-08-07 session filed. One was real
+(deleted the function); **one of my own claims about the other was wrong** and had already reached a
+recommendation to the founder.
+
+**Worked — closing a lead in the doc that filed it, in BOTH directions.** I struck the confirmed lead
+*and* the refuted one in the spec's §7, rather than deleting the refuted bullet. A wrong lead left
+standing is what gets acted on later; a lead silently removed looks like it was never checked. Both
+now carry `CHECKED <date> →` and the outcome.
+
+**Failed — "orphaned" was asserted from a grep of runtime call sites.** `landing-clips` reaches its
+consumer through `lazy(() => import("./HeroVideoBackdrop"))` behind a flag that is `false` **by
+design** (`DESIGN_SYSTEM.md` promises the flag re-enables it "with zero other code changes"). A lazy
+dynamic import behind a false flag is indistinguishable from dead code to that grep, and deleting the
+function would have broken the promise **silently** — the fetcher swallows all errors and returns
+`[]`. I had already recommended deleting it before checking.
+
+**Remember (promote if it recurs):**
+- **[dead-code] "Orphaned" is a claim about the whole consumer chain, flag-gated links included.**
+  Trace `lazy()`/dynamic `import()` and feature flags before calling anything dead. A flag that is
+  off by design is preservation, not abandonment — check whether a doc *promises* it can be flipped.
+- **[deploy-gap] Deleting source is NOT undeploying.** A merged deletion leaves the function serving,
+  so the repo and the live attack surface disagree — and the repo is what everyone greps. Any
+  "removed the function" entry must carry the undeploy as an explicit `**Pending:**`, which is why
+  this entry went to *Built — awaiting founder go-live*, not *Shipped*.
+- **[reviewer-scope] A reviewer finding can be too SMALL.** `data-exposure-reviewer` flagged
+  `screenshot_url`; the same policy left `content_file_path` unconstrained too. Verifying a finding
+  means re-deriving its reasoning, not just confirming the line it points at — check whether the
+  cause covers siblings the reviewer didn't name. (Mirror of the existing verify-before-accepting
+  rule, in the under-reporting direction.)
 
 ### [2026-08-08] `status_changed_at` anchor (`feat/status-changed-at-anchor`, PR #391)
 
@@ -264,6 +414,55 @@ every write path (incl. service-role)" while its `CREATE TRIGGER` clause says `B
 the comment was true when written and silently wrong the moment an UPDATE path appeared. When a
 wiki page records a guarantee, cite the clause, never the comment.
 
+### [2026-08-07] DC Points visibility (branch `feat/dc-points-visibility`, docs bundled into the same branch)
+
+**Output:** new `raw/sessions/2026-08-07-dc-points-visibility.md`; **compounded** onto
+`concepts/dragon-rewards-engine.md` (new "DC Points visibility" section + 2 new Known Issues +
+2 new See Also links; frontmatter `updated`/`sources` bumped); **qualified** (not overwrote)
+`concepts/self-improving-app.md`'s Known Issues claim that internal-scoped rows stay invisible
+to consumer Donny "on every path" — true only for the `sync-internal-docs.mjs` path it was
+verified against, not the separate `sync-wiki-to-donny.mjs` consumer path this session's RAG-leak
+finding disproves it on; short content-refresh note added to
+`concepts/help-center-and-guidance.md`'s existing naming-drift bullet; `index.md` (refreshed
+`[[Dragon Rewards Engine (DRE)]]` Concepts entry in place + 1 new Sources line); `log.md` ingest
+entry at top; `SHIPPED_LOG.md` **prepended** with a bold state-as-of-writing note;
+`PROJECT_CONTEXT.md` §5 one line under **Built — awaiting founder go-live** with a `**Pending:**`
+clause; `DATABASE_SCHEMA.md` (`dre_my_standing()` RPC blockquote appended to the existing DRE
+section). No `DESIGN_SYSTEM.md`/`CLAUDE.md` change — grepped the new components for off-palette
+classes first; all `dc-*`. + THIS entry.
+
+**Happened:** ran under an explicit constraint this run had never seen before — do the files only,
+no database operation of any kind, not even the read-only `verify-knowledge` loop-close if it would
+touch the DB, and no `sync:wiki`/`sync:internal` (RAG sync deferred to the post-merge hook, since
+this is pre-merge and per [rag-sync] that's the normal flow anyway). Ran on the SAME branch as the
+code (`feat/dc-points-visibility`), not a paired docs branch — the branch was already fully caught
+up with `origin/main` (`merge-base HEAD origin/main` == `origin/main`'s tip, confirmed before
+editing any core doc), so no [scope] risk from a stale worktree.
+
+**Worked:** compounding onto the existing DRE concept page rather than a new page — this is the
+*same subsystem* gaining a visibility layer, and the page already had the exact "sub-project gets
+its own raw session, all compounding onto one page" pattern from the UI-launch-gate and rename
+sub-projects. [status-correction]-adjacent: qualified self-improving-app.md's over-broad "every
+path" claim in place with dated counter-evidence rather than silently leaving it wrong, per the
+wiki's own "flag contradictions, never silently resolve" rule — found by asking whether the DRE
+RAG-leak session actually was covered by that page's own "verified with sentinel tests" line (it
+wasn't; two different sync scripts, only one was tested). [sync-before-blocked-gate]: recorded the
+unrun Codex gate in all three places status lives (§5, the concept page, SHIPPED_LOG's opening
+note) — mirrors the exact treatment the SAME-DAY campaign-target-audience run gave its own
+quota-blocked Codex gate, confirmed by reading that run's Lessons/entries first.
+
+**Failed:** nothing knowledge-side. Deliberately did not run [[verify-knowledge]]'s loop-close
+(it queries `donny_knowledge`, which the task explicitly scoped out) or attempt any `sync:*` npm
+script — both are correctly deferred to post-merge per the task's own instructions, not a gap.
+
+**Remember:** **a scope constraint that forbids the DB doesn't mean skip the loop-close
+discipline — it means the loop closes later, and the docs should say so explicitly rather than
+imply the RAG is current.** Every doc this run touched states "RAG sync deferred to the post-merge
+hook" or equivalent, so a reader (or the 3am freshness agent) doesn't mistake "files written" for
+"Donny already knows this." Second: when a page's Known Issues makes a claim ("on every path")
+that a *different* sync mechanism this session touches would falsify, check it explicitly instead
+of assuming the claim was about the mechanism you're currently working on — two sync scripts
+writing the same table is an easy place for "every path" to quietly become false.
 ### [2026-08-07] §5 "Built — awaiting founder go-live" verification sweep (`docs/section5-status-sweep`)
 
 **Output:** `PROJECT_CONTEXT.md` §5 — Built 10 → 2 entries, Shipped 79 → 87, −2,557 bytes off the

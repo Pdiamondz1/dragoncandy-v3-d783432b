@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { isAuthorizedIngest } from '../_shared/ingest-auth.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -19,6 +20,19 @@ function getNudgeSummary(role: string, creatorName: string, businessName: string
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders(req) });
+  }
+
+  // Service-role only. Its sole caller is `_shared/fulfill-boost.ts`, which already sends
+  // `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` — so this guard needs no caller change. Nothing in
+  // `src/` invokes it. Without it the function read no Authorization header at all, and
+  // `verify_jwt=true` is not a gate here because the anon key is a valid JWT that ships in the
+  // frontend bundle: anyone could plant scheduled-post drafts and nudges, carrying another
+  // tenant's caption and media URL, into three users' accounts. See [[Service-Role Data Exposure]].
+  if (!isAuthorizedIngest(req)) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+    });
   }
 
   try {

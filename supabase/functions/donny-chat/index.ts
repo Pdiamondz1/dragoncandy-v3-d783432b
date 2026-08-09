@@ -2082,7 +2082,9 @@ serve(async (req) => {
             error: "monthly_quota_exceeded",
             message: `You've used ${quotaCheck.used}/${quotaCheck.budget} Donny actions this month.`,
             tier: quotaCheck.tier,
-            upgrade_url: "/settings/billing",
+            // `/settings/billing` is not a route (no top-level /settings/* exists).
+            // Role-agnostic public pricing page, which is real.
+            upgrade_url: "/pricing",
           }),
           { status: 429, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
         );

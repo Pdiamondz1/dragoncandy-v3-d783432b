@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { authorizeCampaignHook } from './authz.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -8,6 +9,27 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 interface HookRequest {
   campaign_id: string;
   stage: number;
+}
+
+const errMessage = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
+/**
+ * Social-account manager route for one of THIS function's parties.
+ *
+ * Note the vocabulary: `parties[]` below uses 'restaurant' | 'brand' | 'creator',
+ * which is neither the profile roles ('business_client' | 'content_creator' |
+ * 'brand') that routes.ts's socialRoute() expects, nor interchangeable with them.
+ * Mapping locally keeps the two from being silently conflated.
+ *
+ * 'brand' used to fall through to the business branch, so a brand sponsor's
+ * "Connect Outstand" / "Review Draft" CTA pointed at /dashboard/business/social —
+ * which sits behind BusinessRoute and redirects a brand user away. Caught by
+ * Codex on the primary CTA; the two secondary CTAs carried it already.
+ */
+function partySocialRoute(partyRole: string): string {
+  if (partyRole === 'creator') return '/dashboard/creator/social';
+  if (partyRole === 'brand') return '/dashboard/brand/social';
+  return '/dashboard/business/social'; // 'restaurant'
 }
 
 const STAGE_TEMPLATES: Record<number, string> = {
@@ -28,15 +50,96 @@ serve(async (req) => {
 
     const { campaign_id, stage } = (await req.json()) as HookRequest;
 
-    const { data: campaign } = await supabase
-      .from('campaigns')
-      .select('id, title, description, goals, user_id, status, org_unit_id, delivery_type, platforms, posting_preferences')
-      .eq('id', campaign_id)
-      .single();
+    // --- Authorization -------------------------------------------------------
+    // Service-role function acting on a body-supplied `campaign_id`, with no caller check before
+    // this change — and `verify_jwt=true` does not gate it, because the anon key is a valid JWT
+    // that ships in the frontend bundle. With `stage: 4` on someone else's campaign it minted
+    // 1-hour signed Storage URLs over THAT campaign's private deliverables and persisted them into
+    // `donny_scheduled_posts.media_urls` for every party, behind a "Post Now" nudge — content the
+    // owner never approved, one tap from a live social account. See [[Service-Role Data Exposure]].
+    //
+    // Identity is resolved FIRST, before the campaign is ever read, so an anonymous caller cannot
+    // use 404-vs-403 as an existence oracle on a campaign id (a private crew campaign id in
+    // particular), and cannot make us run a service-role query on an id of their choosing.
+    // Rules live in ./authz.ts (pure + unit-tested) — and deliberately NOT in
+    // `_shared/campaign-access.ts`, which answers a READ question; see that file's header.
+    const unauthorized = (status: 401 | 403) =>
+      new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status,
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+      });
 
-    if (!campaign) {
-      return new Response(JSON.stringify({ error: 'Campaign not found' }), {
-        status: 404,
+    const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
+    let callerId: string | null = null;
+    if (token) {
+      const anon = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY') ?? '');
+      const { data: userData } = await anon.auth.getUser(token);
+      callerId = userData?.user?.id ?? null;
+    }
+    if (!callerId) return unauthorized(401);
+
+    // Error BOUND, not discarded. A failed lookup still resolves to `campaign = null` and is
+    // answered 403 by the gate below — that fail-closed shape is deliberate and unchanged. But an
+    // unbound error makes "this campaign does not exist" and "the query itself failed" identical in
+    // the log too, which is exactly how a nonexistent-column 42703 hid for months in
+    // send-campaign-publish-notifications (#400). The response stays silent; the log does not.
+    const { data: campaign, error: campaignError } = await supabase
+      .from('campaigns')
+      .select('id, title, description, goals, user_id, org_id, group_id, status, org_unit_id, delivery_type, platforms, posting_preferences')
+      .eq('id', campaign_id)
+      .maybeSingle();
+
+    if (campaignError) {
+      console.error('[fire-campaign-social-hook] campaign lookup failed:', campaignError);
+    }
+
+    const [orgRes, sponsorRes] = await Promise.all([
+      supabase.from('org_members').select('org_id')
+        .eq('user_id', callerId).eq('invitation_status', 'active'),
+      // Active sponsoring brand: campaign_sponsorships.brand_id → business_profiles.user_id,
+      // the same hop `fire-dragonshare-social-hook` already uses to resolve its brand party.
+      // The `!brand_id` hint is REQUIRED, not stylistic: campaign_sponsorships has two FKs into
+      // business_profiles (brand_id and restaurant_id), so a bare `business_profiles!inner`
+      // is ambiguous and PostgREST answers 300/PGRST201. supabase-js surfaces that as
+      // `{ data: null }` rather than throwing, so the arm would fail closed and silently —
+      // this whole branch would be dead the day BRAND_ROLE_ENABLED flips on.
+      campaign
+        ? supabase.from('campaign_sponsorships')
+            .select('brand_id, business_profiles!brand_id!inner(user_id)')
+            .eq('campaign_id', campaign.id)
+            .in('status', ['active', 'accepted'])
+        : Promise.resolve({ data: [] as unknown[] }),
+    ]);
+
+    const sponsorUserIds = ((sponsorRes.data ?? []) as Array<{
+      business_profiles?: { user_id?: string } | Array<{ user_id?: string }>;
+    }>).flatMap((s) => {
+      const bp = s.business_profiles;
+      const rows = Array.isArray(bp) ? bp : bp ? [bp] : [];
+      return rows.map((r) => r.user_id).filter((v): v is string => !!v);
+    });
+
+    const access = authorizeCampaignHook({
+      campaign: campaign ? { user_id: campaign.user_id, org_id: campaign.org_id ?? null } : null,
+      callerId,
+      callerOrgIds: (orgRes.data ?? []).map((m: { org_id: string }) => m.org_id),
+      isActiveSponsorBrand: sponsorUserIds.includes(callerId),
+    });
+
+    if (!access.ok) {
+      console.warn(`[fire-campaign-social-hook] denied campaign=${campaign_id} status=${access.status}`);
+      return unauthorized(access.status);
+    }
+    if (!campaign) return unauthorized(403); // unreachable — narrows the type for the code below
+    // --- end authorization ---------------------------------------------------
+
+    // `stage` indexes STAGE_TEMPLATES and is written straight into the row, but was never
+    // validated: `STAGE_TEMPLATES[stage] ?? ''` silently accepted `stage: 99` and wrote hook rows
+    // with an empty template. Checked AFTER authorization on purpose — an unauthenticated caller
+    // should learn nothing from us, not even that their body was malformed.
+    if (!Number.isInteger(stage) || stage < 1 || stage > 5) {
+      return new Response(JSON.stringify({ error: 'stage must be an integer from 1 to 5' }), {
+        status: 400,
         headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
@@ -203,7 +306,7 @@ serve(async (req) => {
               hashtags = captionData.hashtags || [];
             }
           } catch (captionErr) {
-            console.warn('[fire-campaign-social-hook] Caption generation failed, using template:', captionErr.message);
+            console.warn('[fire-campaign-social-hook] Caption generation failed, using template:', errMessage(captionErr));
           }
 
           let scheduledAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -233,29 +336,61 @@ serve(async (req) => {
               }
             }
           } catch (schedErr) {
-            console.warn('[fire-campaign-social-hook] Time suggestion failed, using +24h default:', schedErr.message);
+            console.warn('[fire-campaign-social-hook] Time suggestion failed, using +24h default:', errMessage(schedErr));
           }
 
-          const { data: scheduledPost } = await supabase
+          // Every other write in this function is an upsert; this one is an INSERT.
+          // `ContentReviewSection` retries the whole invoke once on failure, so a partial failure
+          // AFTER the draft landed stacked a second identical draft on the retry. Latent rather
+          // than live — prod currently holds 10 hook-sourced drafts across 10 distinct
+          // (campaign, user) pairs, zero duplicates — but the retry that causes it is real code.
+          const { data: existingDraft, error: existingDraftError } = await supabase
             .from('donny_scheduled_posts')
-            .insert({
-              user_id: party.user_id,
-              campaign_id,
-              platform,
-              content_type: contentType,
-              caption,
-              media_urls: mediaUrls,
-              hashtags,
-              scheduled_at: scheduledAt,
-              status: 'draft',
-              ai_suggested_time: true,
-              ai_reasoning: scheduledAt !== new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-                ? 'Donny picked the optimal posting time for your audience'
-                : 'Auto-drafted by campaign social hook (stage 4)',
-              metadata: { source: 'campaign_social_hook', stage: 4, outstand_connected: outstandConnected },
-            })
             .select('id')
-            .single();
+            .eq('campaign_id', campaign_id)
+            .eq('user_id', party.user_id)
+            .eq('metadata->>source', 'campaign_social_hook')
+            .limit(1)
+            .maybeSingle();
+
+          // Bound and logged, deliberately NOT thrown: if this lookup ever breaks, falling through
+          // to the insert restores the old behaviour (a possible duplicate draft), whereas throwing
+          // would skip this party's draft entirely. A duplicate is the lesser failure — this guard
+          // is an optimisation, not a gate.
+          if (existingDraftError) {
+            console.warn(
+              `[fire-campaign-social-hook] existing-draft check failed for ${party.user_id}, inserting anyway:`,
+              existingDraftError,
+            );
+          }
+
+          let scheduledPostId: string | null = existingDraft?.id ?? null;
+
+          if (!scheduledPostId) {
+            const { data: scheduledPost, error: draftError } = await supabase
+              .from('donny_scheduled_posts')
+              .insert({
+                user_id: party.user_id,
+                campaign_id,
+                platform,
+                content_type: contentType,
+                caption,
+                media_urls: mediaUrls,
+                hashtags,
+                scheduled_at: scheduledAt,
+                status: 'draft',
+                ai_suggested_time: true,
+                ai_reasoning: scheduledAt !== new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+                  ? 'Donny picked the optimal posting time for your audience'
+                  : 'Auto-drafted by campaign social hook (stage 4)',
+                metadata: { source: 'campaign_social_hook', stage: 4, outstand_connected: outstandConnected },
+              })
+              .select('id')
+              .single();
+
+            if (draftError) throw draftError;
+            scheduledPostId = scheduledPost?.id ?? null;
+          }
 
           const { data: hookRow } = await supabase
             .from('campaign_social_hooks')
@@ -272,13 +407,13 @@ serve(async (req) => {
                     label: 'Post Now',
                     variant: 'primary',
                     action: 'post_now',
-                    payload: { scheduled_post_id: scheduledPost?.id ?? null, campaign_id },
+                    payload: { scheduled_post_id: scheduledPostId, campaign_id },
                   },
                   {
                     label: 'Review Draft',
                     variant: 'secondary',
                     action: 'navigate',
-                    payload: { route: party.role === 'creator' ? '/dashboard/creator/social' : '/dashboard/business/social' },
+                    payload: { route: partySocialRoute(party.role) },
                   },
                 ]
               : [
@@ -286,13 +421,15 @@ serve(async (req) => {
                     label: 'Connect Outstand',
                     variant: 'primary',
                     action: 'navigate',
-                    payload: { route: '/settings/social' },
+                    // Was '/settings/social' — not a route (no top-level /settings/*
+                    // exists), so this primary CTA 404'd outright.
+                    payload: { route: partySocialRoute(party.role) },
                   },
                   {
                     label: 'Review Draft',
                     variant: 'secondary',
                     action: 'navigate',
-                    payload: { route: party.role === 'creator' ? '/dashboard/creator/social' : '/dashboard/business/social' },
+                    payload: { route: partySocialRoute(party.role) },
                   },
                 ];
 
@@ -312,7 +449,7 @@ serve(async (req) => {
             );
           }
         } catch (autoDraftErr) {
-          console.warn(`[fire-campaign-social-hook] Auto-draft failed for ${party.user_id}:`, autoDraftErr.message);
+          console.warn(`[fire-campaign-social-hook] Auto-draft failed for ${party.user_id}:`, errMessage(autoDraftErr));
         }
       }
     }
@@ -322,8 +459,11 @@ serve(async (req) => {
       { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
     );
   } catch (error) {
+    // Logged in full, answered generically. `error.message` here is raw Postgres/runtime text —
+    // the same class of string that hands a caller the schema ("column X does not exist").
+    console.error('[fire-campaign-social-hook] Error:', errMessage(error), error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: 'Failed to fire campaign social hook' }),
       { status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
     );
   }

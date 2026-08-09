@@ -70,8 +70,9 @@ and an append-only **Run Log**. Full contract: `docs/wiki/concepts/loop-memory-p
    node supabase/scripts/sync-wiki-to-donny.mjs
    ```
    The script reads `concepts/`·`entities/`·`analyses/` (never `raw/`/`sources/`), batches to
-   `donny-knowledge-sync` (OpenAI embeddings), and upserts by `source_id` — idempotent, safe
-   to re-run.
+   `donny-knowledge-sync` (OpenAI embeddings), and upserts by **`metadata->>source_id`**
+   (`wiki:<type>/<slug>`) — idempotent, safe to re-run. Note it is a **jsonb key, not a column**:
+   `donny_knowledge` has no `source_id` column, so `where source_id = …` fails with `42703`.
 
    **Verify by CONTENT, never by `max(updated_at)`** — the timestamp check this step used to
    recommend cannot pass on an update-only sync:
@@ -80,15 +81,27 @@ and an append-only **Run Log**. Full contract: `docs/wiki/concepts/loop-memory-p
    select count(*) from donny_knowledge where content ilike '%<distinctive new token>%';
    ```
 
-   **Why (root cause, confirmed on prod 2026-08-07):** `donny_knowledge`'s only trigger is
-   `trg_donny_knowledge_updated_at → handle_updated_at()`, and that shared function is a **stub**
-   whose entire body is `-- Function logic here / RETURN NEW;`. It never assigns
-   `NEW.updated_at`, so an UPDATE fires the trigger and changes nothing. Observed directly: after
-   a sync reporting `updated=101 errors=0`, the changed page held the new text while its
-   `updated_at` *equalled its `created_at`* from a sync 78 minutes earlier. **~30 tables are wired
-   to this same stub** (incl. `campaigns`, `campaign_applications`, `campaign_collaborations`,
-   `conversations`, `internal_docs`) — treat `updated_at` as untrustworthy on any of them unless
-   you've confirmed a *different* trigger or an explicit application-level set.
+   **Why content, not the timestamp — and why that survived the trigger being fixed.**
+   Historically (through 2026-08-07) `donny_knowledge`'s trigger
+   `trg_donny_knowledge_updated_at → handle_updated_at()` was a **stub** whose entire body was
+   `-- Function logic here / RETURN NEW;`, so an UPDATE fired it and changed nothing: after a sync
+   reporting `updated=101 errors=0`, the changed page held the new text while its `updated_at`
+   *equalled its `created_at`* from 78 minutes earlier. A timestamp gate was structurally
+   unpassable.
+
+   **That stub was restored on 2026-08-07** (PR #385, migration `20260807233200`) and `updated_at`
+   moves again. Measured 2026-08-08: **231 of 237** `donny_knowledge` rows have
+   `updated_at > created_at`, matching that sync's 231 UPDATEs exactly.
+
+   **Keep gating on content anyway** — for a better reason than the old one. A moved timestamp only
+   proves *something* was written; the probe proves *this* page's new text is retrievable, which is
+   the property the RAG exists for. Use `updated_at` as corroboration, never as the gate.
+
+   The wider warning this block used to carry — *"~30 tables share this stub, treat `updated_at` as
+   untrustworthy on all of them"* — **no longer holds**; those triggers work. The durable rule is
+   narrower: `updated_at` is a **modification** stamp, never a **status** signal (a title edit is
+   indistinguishable from a status change), and rows *predating* the restore are unreliable in both
+   directions. See [[Updated-At Trigger Drift]].
 
    Pick a token that cannot straddle a markdown line-wrap (a short hyphenated/code string, not a
    multi-word phrase). The authorities are the **sync's `errors=0`** and **direct content

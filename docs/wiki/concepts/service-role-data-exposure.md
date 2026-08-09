@@ -2,8 +2,8 @@
 title: Service-Role Data Exposure
 type: concept
 created: 2026-07-19
-updated: 2026-07-20
-sources: [2026-07-19-data-exposure-reviewer.md, 2026-07-19-service-role-remediation.md, 2026-07-20-counter-offer-authz.md]
+updated: 2026-08-08
+sources: [2026-07-19-data-exposure-reviewer.md, 2026-07-19-service-role-remediation.md, 2026-07-20-counter-offer-authz.md, 2026-08-08-dragonshare-score-removal.md]
 tags: [security, rls, service-role, edge-functions, subagents, review, privacy, gotcha]
 ---
 # Service-Role Data Exposure
@@ -165,6 +165,141 @@ call **succeeded pre-fix** and now **raises**; anon, identity-spoof, and role-fo
 real creator + owner still succeed; the RLS pin accepts the correct role and rejects a forged one.
 See [[Counter-Offer Authorization Session]].
 
+## Resolved by deletion — `donny-dragonshare-score` (found 2026-08-07, removed 2026-08-08)
+
+Filed as an **unverified lead** during the DragonFeed uplift and checked the next day, as
+[[Verify Before Reporting]] requires. The lead was right, and the remedy was still *delete*, not fix.
+
+**The hole.** `caller` was bound on line 32 (`supabaseAnon.auth.getUser(token)` → 401 on failure) and
+**never referenced again**. Everything after ran on the service-role client, keyed only on a
+body-supplied `post_id` — check 2 (record-level ownership assertion) missing outright:
+
+- **Cross-tenant read.** `select("*")` on any `dragonshare_posts` row (also check 7). The response
+  leaked the victim post's `platform`, `content_type`, and — stated in plain text in `rationale` —
+  the creator's verified post count.
+- **A solvable aggregate.** `matchQuality = min(100, 50 + orgBoostCount×5 + creatorPostCount×3)`,
+  with `creatorPostCount` disclosed in the same response, is one equation in one unknown. That
+  yields the target org's **total captured/transferred boost count** — which `ds_boosts_org_select`
+  restricts to org members and `ds_boosts_creator_select` restricts to a creator's own posts. It
+  saturates at 100 and is a count, not an amount.
+- **Cross-tenant write.** Overwrote `donny_recommended_tier` / `donny_score` /
+  `donny_reach_estimate` on the victim's post.
+- **Audit misattribution.** The `dragonshare_events` row was stamped
+  `actor_user_id: post.creator_id` — the **victim**. Since `ds_events_select` is
+  `actor_user_id = auth.uid()`, the victim sees a phantom event they didn't cause and the real
+  caller leaves no trace anywhere.
+
+**It was the hole in the DB's own guard.** `trg_ds_posts_block_self_verify` (migration
+`20260601160000`) explicitly forbids an authenticated non-admin from changing exactly those three
+`donny_*` columns — then waves through `auth.uid() is null`, i.e. the service role, because the
+boost-payment function legitimately needs that. A service-role function with no authorization of its
+own therefore converted a *closed* client path into an open one. **Defense-in-depth at the DB
+protects you only from the credentials it can see.**
+
+**Why deletion, not an org-membership check** (Musk's algorithm step 2 before step 3):
+
+- **Zero callers.** Nothing in `src/`, no other edge function, no `config.toml` entry, no CI gate,
+  no script. The `dragonshare_posts` INSERT webhook the 2026-04-27 plan specified was **never
+  wired** — checked against **prod**, not the repo: no `cron.job` command mentions dragonshare, no
+  `pg_proc` body mentions `dragonshare-score`, and all four triggers on `dragonshare_posts`
+  (`ds_posts_block_self_verify`, `trg_ds_post_submitted`, `trg_ds_post_verified`,
+  `trg_ds_posts_updated_at`) call local plpgsql functions, none of them
+  `supabase_functions.http_request`.
+- **Never executed.** Confirmed on prod twice (2026-08-07 and 2026-08-08): 10 posts, `0` with a
+  tier, `0` with a score, `0` with a reach estimate, `0` `donny_score_generated` events.
+- Nothing reads the three columns either — they appear only in `types.ts` and the guard trigger.
+
+Reachability was genuinely limited: `post_id` is a uuid and RLS blocks listing foreign post ids, so
+cross-tenant use needed an id obtained out of band. But **one variant needed no foreign id at all** —
+a creator calling it on their *own* post still solves for the target business's boost count. Being
+hard to aim is not the same as being closed.
+
+Columns kept (never drop a column); the two historical DragonShare planning docs now carry a
+removal note so nobody rebuilds it from the old spec.
+
+### Found while confirming the sibling lead: `landing-clips` origin pinning
+
+The same lead list called `landing-clips` "orphaned"; checking that turned up a **wrong claim and a
+real defect**, in opposite directions.
+
+**The claim was wrong.** It has a wired consumer (`useLandingBackdropPlaylist` →
+`HeroVideoBackdrop`), lazy-loaded behind `LANDING_VIDEO_BACKDROP_ENABLED = false` — deliberate
+preservation, since `DESIGN_SYSTEM.md` promises the flag re-enables video "with zero other code
+changes". Deleting it would have broken that **silently**: `fetchLandingBackdropClips` swallows every
+error and returns `[]`, so the hero falls back to static with nothing logged. **A lazy dynamic
+`import()` behind a false flag looks exactly like dead code to a grep of runtime call sites** —
+"orphaned" is a claim about the whole consumer chain, flag-gated links included.
+
+**The defect was real, and bigger than the reviewer flagged.** `data-exposure-reviewer` raised
+`screenshot_url`; the same reasoning covers `content_file_path` too. Both are **creator-writable free
+text** — `ds_posts_creator_insert` / `ds_posts_creator_update` gate only on `creator_id = auth.uid()`
+with **no column constraint**, and `trg_ds_posts_block_self_verify` lists neither column. The SQL
+filter (boosted + verified + unflagged) decides *whose row is eligible*; it says nothing about *where
+the bytes come from*, and the extension guard checks only the suffix. So a creator whose post got
+boosted could make the anonymous homepage fetch an arbitrary third-party URL from every visitor's
+browser — an IP/UA beacon on the marketing page.
+
+`buildClips` now takes a **required** `allowedPrefix` (required, not optional: an optional security
+control invites omission) derived from `SUPABASE_URL`, and pins both fields to the public
+`dragonshare-content` prefix. An off-bucket **poster is dropped but the clip is kept** — the video
+still plays, it just loses its still frame. All 9 real rows already carry the prefix, so behaviour is
+unchanged today. 16 tests, including a prefix-lookalike host, a sibling public bucket, and a
+non-http scheme.
+
+**Codex caught that in-code filtering alone was starvable** — a genuine second-model catch. The query
+takes the newest 20 eligible rows and `buildClips` filtered *after* that, so enough recent off-bucket
+boosted rows would push every valid clip out of the window and the hero would silently lose its
+dynamic clips. The predicate now runs **in the query too**
+(`.like("content_file_path", likePrefixPattern(prefix))`), with `\ % _` escaped — `_` is a LIKE
+single-character wildcard and would otherwise *loosen* the filter it exists to tighten. Both layers
+are kept on purpose: SQL so the window can't be starved, in-code because that is what covers
+`screenshot_url` and what protects any future caller of the pure helper.
+
+**Chasing that finding showed it was the second instance, not the first.** The 2026-07-17
+backdrop-adapter design (`…-backdrop-adapter-design.md:51-56`) specified the *extension* guard as a
+**query-level** predicate — `content_file_path ~* '\.(mp4|webm|mov)$'` — explicitly "mirrored in
+`buildClips` too — belt and suspenders". Only the mirror was ever built; the query half never
+shipped. So the extension guard is starvable by exactly Codex's argument, and has been since
+2026-07-17. **Left as a documented follow-up rather than fixed blind:** the fix needs a PostgREST
+regex/`or()` filter that cannot be exercised without deploying, and getting it wrong returns zero
+clips through the endpoint's own catch-all — silent breakage of the kind this page keeps recording.
+The `.like()` prefix filter that *was* added is a single core operator with no such ambiguity.
+
+**The pattern worth naming:** "mirrored in X too — belt and suspenders" is a design note that decays
+into a single point of failure the moment one belt is dropped, because the surviving layer still
+produces correct output and nothing fails. Whenever a spec says a predicate lives in two places,
+**verify both shipped** — the redundancy is the only thing making the weaker placement safe.
+
+**The generalizable bit:** a row-level eligibility filter is not a content filter. Whenever a
+service-role endpoint echoes a **URL** that any user can write, the origin must be pinned separately
+from whatever decides the row is allowed.
+
+### The durable lesson: deleting source is not undeploying
+
+A merged deletion removes the function from the repo. **The deployed function keeps serving** until
+it is explicitly removed from Supabase — so the repo and the live attack surface disagree, and the
+repo is the one everybody greps. An orphaned deployed function is the worst case of this class: live,
+authenticated-reachable, and owned by no feature, so no test, no user report, and no code review path
+ever touches it again. Audit the *deployed* function list against the repo, not the repo alone.
+
+**Codex raised this as a `[P1]` against the deletion itself** — correctly — and proposed a
+**tombstone**: keep the directory with a stub that errors, so a normal deploy neutralizes the live
+endpoint. Worth recording why the answer here was *undeploy* instead:
+
+- **A tombstone does not self-neutralize in this repo either.** Nothing auto-deploys edge functions —
+  a push to `main` deploys only the frontend (see [[Lovable Edge-Function Deploy Gap]]). A tombstone
+  still needs the same manual deploy the undeploy needs, so it buys no automation, only a *second*
+  chance if someone later runs a bulk deploy.
+- **It institutionalizes the exact anti-pattern above** — a permanently deployed, feature-less
+  endpoint in the function list, which is what made this defect invisible for months.
+- The undeploy is **reversible** (the source is in git history) and removes the endpoint outright.
+
+So the tombstone is the right advice for a repo whose CI deploys functions, and the wrong one here.
+**The residual risk Codex is pointing at is real and unmitigated by the PR**: the fix depends on a
+manual prod step, and this project's own record is that `**Pending:**` clauses decay — a 2026-08-07
+sweep found **8 of 10** already stale. That is precisely why this entry sits under *Built — awaiting
+founder go-live* in §5 rather than *Shipped*, and why the PR body leads with it instead of burying it.
+
 ## The remediation (PR #308 — shipped + deployed)
 
 12 guards across 4 edge functions, plus the pure `_shared/campaign-access.ts`
@@ -213,6 +348,37 @@ tests, both by asking *"does this still work for the person who's supposed to us
 a published non-crew campaign, while the helper also requires owner ∨ org ∨ collaborator ∨ applicant.
 `handleGenerate` spends AI budget, so "anyone may read it" must not become "anyone may bill previews
 against it." Documented rather than silently diverging.
+
+## Open instances (found 2026-08-08, NOT fixed — leads, not verdicts)
+
+Surfaced by fanning `data-exposure-reviewer` across all 90 functions while reviewing the deletion
+above. All **pre-existing**; none introduced by that change. Corroborated mechanically only — a
+`grep -c "getUser\|isAuthorizedIngest"` returns **0** for both files below — but **not reproduced
+end-to-end**, so treat them as leads ([[Verify Before Reporting]]).
+
+| Site | Shape | Why it is not a read leak |
+|---|---|---|
+| `fire-dragonshare-social-hook/index.ts:26-54` | body `boost_id`/`post_id` + service role + **no caller resolution** | returns `{ok, drafts_created, parties}` — no victim data |
+| `dragonshare-notify/index.ts:346-361` | identical | returns `{ok:true}` |
+
+Both are cross-user **write/forgery** rather than exposure: planting `donny_scheduled_posts` drafts,
+`donny_nudges`, notifications and a Donny chat message into other users' accounts by id. Each has
+exactly one real caller — `_shared/fulfill-boost.ts`, service-role→service-role — so the likely fix
+is `isAuthorizedIngest`, the pattern `auto-approve-content` already uses.
+
+Also revised: the `donny-orchestrator/agents/dragonshare.ts` lead is **worse than first filed**.
+Beyond omitting `.eq("status","verified")` (which `donny-chat/index.ts:1209` applies specifically to
+mirror `ds_posts_org_select`), it scopes on `userContext.org_id` — the denormalized `profiles.org_id`
+cache — with **no `invitation_status='active'` qualifier** (check 5). Whether a removed member's
+`profiles.org_id` is actually cleared is live state; no migration clears it on member removal, so
+route that to `verify-db-schema` before acting.
+
+**A false negative worth recording:** `donny-orchestrator/agents/billing.ts:80` reads
+`(input.org_id) ?? userContext.org_id` where `org_id` is a declared **LLM tool argument** — which
+looks exactly like check 4's violation and is **not** one. `donny-orchestrator/index.ts:491-499`
+builds `enrichedInput` as `{ ...toolInput, org_id: userContext.org_id }`, so the server-derived value
+overwrites whatever the model supplies. **Check the call site before believing a tool-argument
+finding** — the fallback is dead code, not a hole.
 
 ## See Also
 

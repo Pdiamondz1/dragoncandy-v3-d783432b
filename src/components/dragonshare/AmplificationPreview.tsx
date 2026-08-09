@@ -1,4 +1,6 @@
 import { useAmplificationPreview } from '@/hooks/useAmplificationPreview';
+import { useAuth } from '@/hooks/useAuth';
+import { socialRoute } from '@/lib/donnyRoutes';
 
 const PLATFORM_ICONS: Record<string, string> = {
   instagram: '📷',
@@ -17,6 +19,7 @@ interface AmplificationPreviewProps {
 
 export function AmplificationPreview({ creatorId, orgId, creatorName, orgName }: AmplificationPreviewProps) {
   const { data: platforms, isLoading } = useAmplificationPreview(creatorId, orgId);
+  const { profile } = useAuth();
 
   if (isLoading) return null;
 
@@ -25,7 +28,7 @@ export function AmplificationPreview({ creatorId, orgId, creatorName, orgName }:
       <div className="bg-dc-teal/5 border border-dc-teal/20 rounded-xl p-3 text-center">
         <p className="text-xs text-dc-text-muted">
           Connect social accounts to unlock cross-posting.{' '}
-          <a href="/settings/social" className="text-dc-teal font-medium underline">Settings →</a>
+          <a href={socialRoute(profile?.role)} className="text-dc-teal font-medium underline">Settings →</a>
         </p>
       </div>
     );

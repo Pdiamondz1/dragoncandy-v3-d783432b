@@ -39,6 +39,28 @@ const EXCLUDE = new Set([
   "content-engine-data-audit", "claude-skills-framework-audit", "claude-subagents-audit",
 ]);
 
+// Forced-internal (unconditional — NOT gated behind SYNC_CURATE, unlike EXCLUDE above):
+// these pages are DRE ENGINEERING docs describing phases that were never built
+// (referrals, streaks, "Hype Weeks", point redemption, opt-in leaderboards). If consumer
+// Donny can retrieve them, he promises users rewards that don't exist. donny-knowledge-sync
+// recomputes `scope` from this script's payload on EVERY sync, insert or update (it does not
+// preserve whatever is already in the DB), so a one-off DB fix does not hold — this
+// script must always send scope: "internal" for these paths, including on the
+// unattended post-merge sync. Keyed on the exact "<dir>/<filename>" pair (not a slug
+// substring) so an unrelated future page can never be swallowed by a loose match.
+//
+// EVERY ENTRY HERE MUST BE A PATH THAT EXISTS ON DISK. The original set was built from the
+// `donny_knowledge` rows rather than the filesystem, and named
+// "analyses/dragoncandy-dragon-rewards-engine-dre-full-system-spec.md" — a file that had
+// already been split into the two dre-part-* pages below. Only a stale orphan ROW still
+// carried that path. The guard correctly refused to run, which killed the entire consumer
+// sync until it was noticed. Verify with `ls docs/wiki/<dir>/<file>`, not with a DB query.
+const FORCE_INTERNAL = new Set([
+  "concepts/dragon-rewards-engine.md",
+  "analyses/dre-part-1-points-economy.md",
+  "analyses/dre-part-2-community-and-implementation.md",
+]);
+
 if (!URL || !KEY) {
   console.error("Set DONNY_SYNC_URL and SUPABASE_SECRET_KEY (the sb_secret_… key).");
   process.exit(1);
@@ -57,6 +79,8 @@ function parseFrontmatter(raw) {
 }
 
 const pages = [];
+/** Which FORCE_INTERNAL entries the scan actually matched — drives the guard below. */
+const forcedInternalSeen = new Set();
 for (const dir of DIRS) {
   let entries;
   try {
@@ -71,12 +95,43 @@ for (const dir of DIRS) {
     const raw = readFileSync(join(WIKI_ROOT, dir, name), "utf8");
     const { fm, body } = parseFrontmatter(raw);
     const title = fm.title ?? slug;
-    pages.push({
+    const page = {
       source_id: `wiki:${dir}/${slug}`,
       content: `${title}\n\n${body}`,
       metadata: { title, type: fm.type ?? dir, path: `${WIKI_ROOT}/${dir}/${name}`, tags: fm.tags ?? "" },
-    });
+    };
+    // Unconditional — see FORCE_INTERNAL above. donny-knowledge-sync reads page.scope.
+    if (FORCE_INTERNAL.has(`${dir}/${name}`)) {
+      page.scope = "internal";
+      forcedInternalSeen.add(`${dir}/${name}`);
+    }
+    pages.push(page);
   }
+}
+
+// Guard on FORCE_INTERNAL itself: it is the sole durable protection on the honesty hole
+// described above, keyed on exact "<dir>/<filename>" strings. If a backing wiki file is
+// ever renamed or moved, the match silently stops firing, the next sync re-inserts that
+// page at scope null, and the hole reopens with NO error signal.
+//
+// Aborting the WHOLE sync is deliberate, not collateral damage: a rename means the page is
+// still in the scan under its NEW name, so continuing would publish it to the consumer RAG
+// at scope null — the exact leak. Refusing to sync is the safe failure.
+//
+// It names the missing entries. The first version reported only a count ("expected 2, found
+// 1"), which said a path was wrong but not WHICH — and since the sync runs unattended from
+// the post-merge hook, the failure surfaced as a silently stale consumer RAG.
+const missingForcedInternal = [...FORCE_INTERNAL].filter((k) => !forcedInternalSeen.has(k));
+if (missingForcedInternal.length > 0) {
+  throw new Error(
+    `FORCE_INTERNAL guard failed — these entries matched no file on disk:\n` +
+    missingForcedInternal.map((k) => `  - ${WIKI_ROOT}/${k}`).join("\n") +
+    `\nA wiki file backing FORCE_INTERNAL was renamed, moved or split. The whole sync is ` +
+    `aborted on purpose: under a new name that page would sync to the CONSUMER RAG at scope ` +
+    `null. Fix the FORCE_INTERNAL set in supabase/scripts/sync-wiki-to-donny.mjs to match ` +
+    `the paths that exist on disk (check with ls, not with a donny_knowledge query — a stale ` +
+    `row outlives its file), then re-run.`
+  );
 }
 
 // One oversized page fails its WHOLE batch (the embedding call sends the batch as a single

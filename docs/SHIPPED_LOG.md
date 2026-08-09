@@ -26,6 +26,444 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-09] Donny-first business dashboard (Phase A) + the route guard's blind spot
+
+> **State as of writing.** PR #409 is **merged** (`fef2b428`). PR #410 is **open**, flag-off. Two
+> things are genuinely outstanding and are recorded as such in §5: `donny-orchestrator` has **not**
+> been deployed (merging ships the frontend only), and the **both-viewport browser check has never
+> been run on any task in this branch**. Neither is a formality — see "Not verified" below.
+
+Two efforts on one thread. The founder asked for a dashboard where the body *is* Donny; auditing
+whether that was even buildable is what surfaced the route bug, so it shipped first as #409.
+
+### Part 1 — twelve dead links beside a working guard (#409)
+
+`/settings/billing` and `/settings/social` were hardcoded in **12 places across 10 files**. There is
+**no top-level `/settings/*` route in `src/App.tsx`** — all twelve hit the catch-all `NotFound`,
+including the **"Upgrade" CTA gating the paid Weekly Content Plan** (the revenue path) and the
+primary **"Connect Outstand"** button on a high-priority `donny_nudges` row. `/settings/billing/upgrade`
+was dead twice over.
+
+`isKnownRoute` never caught them, and the reason is the durable lesson: **it validates routes the LLM
+*invents*.** A path hardcoded in source, in agent prompt text, or in a nudge payload never passes
+through `parseSuggestedActions`, so nothing validates it. A working guard sat directly beside twelve
+dead links.
+
+**Three role vocabularies coexist**, which is where the fix nearly went wrong twice: `profiles.role`
+(`business_client`/`content_creator`/`brand`), `fire-campaign-social-hook`'s `parties[]`
+(`restaurant`/`brand`/`creator`, **persisted as `party_role`** so it cannot be renamed to match), and
+others again. Folding `brand` into the business branch sends a brand user to
+`/dashboard/business/social`, which sits behind `BusinessRoute` and **redirects them away — a silent
+failure, not a 404.** The first fix attempt copied an adjacent existing ternary believing that was the
+conservative choice; **that ternary was itself broken for `brand`**, and Codex and
+`edge-function-reviewer` caught it independently. *A neighbouring line is not a specification.*
+
+Fixed with role-aware `billingRoute()`/`socialRoute()` in both mirrors plus a local
+`partySocialRoute()` where the vocabulary genuinely differs. **Creators have no billing route** —
+they land on `/dashboard/creator/earnings`; whether a creator should see an "Upgrade" CTA at all is
+an open product question. A new `donnyRoutes.parity.test.ts` asserts the client and server mirrors
+agree — **directionally** (every server route must exist client-side; the client may hold only the two
+documented legacy Crews redirects), because nothing had ever asserted it.
+
+**It was diagnosed on 2026-06-07 and deferred.** `docs/superpowers/specs/2026-06-07-ios-purchase-cta-gating-design.md:51,167`
+names the exact fix; the paired plan says *"Do NOT fix … out of scope."* It stayed broken for two
+months across the whole pre-launch push. **A dead link on a money path is not "unrelated."**
+
+### Part 2 — the dashboard (#410)
+
+`/dashboard/business` becomes a greeting, what needs the owner's attention, a prompt box and three
+taps; today's body moves **verbatim** to `/dashboard/business/overview`. Behind
+`DONNY_FIRST_DASHBOARD_ENABLED`, **default `false`**. The bar was the founder's: *"My 75 year old mom
+should be able to comfortably use the app as soon as they log in."*
+
+**The audit set the scope, not the mockup.** Run against prod first: only four Donny tools verifiably
+work (`prepare_campaign`, `find_creators`, `web_search`, `read_url`); `social_*` is **0/7** and blames
+the user's connection when it fails — the account it named has an **active** Instagram row;
+`donny_tool_executions` has **zero rows** for every consumer sub-agent, so sub-agent failures on prod
+are invisible; `allTools` is identical for all three roles. So the body ships **three** taps.
+**A tap that produces a shrug is worse than no tap.**
+
+The hard part was already built: `usePendingActions` → `PendingActionBanners` already produced
+dismissible, capped, state-derived proposals — buried under a greeting, a hero CTA and a frame.
+
+Structure: `BusinessDashboard` is a three-way switch (first-run checked **first**, then flag-off, then
+`DonnyHome`); `buildDonnyProposals()` is **pure** with an injected `now`, so its tests need no mocks;
+the location-setup blocker is returned **separately from the capped list** so three applications
+cannot crowd out the thing blocking campaign creation, promotions and DragonShare; dismissal is keyed
+**per proposal, not per campaign** (the old key silenced "submitted content" when you dismissed
+"applied"). Taps open the **existing** panel — **for one release the dashboard launches Donny rather
+than being Donny**, a trade the founder accepted; inline chat is Phase B, gated on seven verified
+hazards, two of which put two Donnys on one screen.
+
+`donny_nudges`' 0-of-33 action rate was **not** used as evidence: `executeAction` fires its UPDATE
+then immediately sets `window.location.href`, cancelling it. **That 0% is an instrumentation failure,
+not a behavioural fact.**
+
+### What review caught that authorship did not
+
+Four defects, **all four in code written into the plan**, every one past the plan's own self-review:
+
+1. Rating prompts rendered as **siblings** of the attention frame — one framed list plus two orphaned
+   rows. Caught *two tasks before* the code that would have shown it was written.
+2. Dismissal state read only the **capped three** proposals, so dismissing one row resurrected a
+   lower-ranked one already waved off, its record sitting unread on disk.
+3. **Two creators applying to one campaign minted the same proposal id** — duplicate React key, and
+   dismissing one silenced the other. The normal marketplace case.
+4. **Codex P2 — date-only deadlines compared as instants.** `campaigns.deadline` is a Postgres
+   **`date`** (verified against prod `information_schema`), so it arrives `"YYYY-MM-DD"` and
+   `new Date()` parses it at **UTC midnight**. Comparing that instant to a mid-day `now` floors
+   downward in **every** timezone, so `'due today'` was unreachable all day; in America/New_York
+   tomorrow's deadline also read "due today" until it vanished at 8pm. Fixed by normalizing both
+   endpoints to local midnight and **rounding rather than flooring** — a DST day is 23 or 25 hours.
+
+**Eight subagent reviews, an opus whole-branch pass and a spec self-review all missed #4. Codex caught
+it first look.** *Diversity of question beats depth of scrutiny.*
+
+### A correction the session made about itself
+
+Every implementer dispatch carried "`npm run test` exits 1 from ~103 pre-existing failures; judge by
+counts." Measured from the worktree: **210 files / 2033 tests / 0 failed** (219/2126 after rebase).
+The note was not stale — it is **location-scoped**: those failures are vitest mis-collecting
+Playwright specs under `.claude/worktrees/**`, and a worktree has none nested under it. **From a
+worktree, a red suite means a real regression** — the opposite of what was told to eight subagents.
+
+### Not verified
+
+- **The both-viewport browser check has never been run.** Subagents must not type credentials, and the
+  change is not deployed — Supabase auth is per-origin, so a prod session does not reach a local dev
+  server. Static analysis established that all four `RESTAURANT_TOUR` anchors resolve and that the two
+  `data-tour="brief-generator"` anchors can never co-mount (`PageTransition` is a keyed `motion.div`
+  with **no `AnimatePresence`**). **Unchecked: the panel opening on tap, the mobile viewport, console
+  errors.**
+- **`donny-orchestrator` is not deployed.** Verify by reading the **deployed source** back for the
+  literal `Never end on a dead end` — not the version number.
+- **The prompt rule's effect is not statically testable** — needs one live conversation forcing a
+  capability gap.
+- **`AppChip` may read as disabled** as the page's primary affordance (it is a *filter* primitive).
+  Mitigated with a call-site teal override; still wants a look on a real screen.
+
+## [2026-08-08] The deploy that actually closed them — 7 functions live, plus what the gate caught on the way
+
+The entry below this one ends with "all six are inert until deployed." This is that deploy. Seven
+functions (the six from #402 plus the hardened `landing-clips` from #399) are on prod and
+probe-verified. **Merging closed nothing; deploying did.**
+
+### Before and after, with the public anon key
+
+Baselines were captured *before* the deploy using payloads that stop before any side effect — an
+event string matching no branch, zeroed uuids that fail their lookup. **Prove reachability, never
+impact.**
+
+| Function | Before | After | Version |
+|---|---|---|---|
+| `dragonshare-notify` | **200** | 401 | 19 → 20 |
+| `fire-dragonshare-social-hook` | `{"error":"Boost not found"}` | 401 | 44 → 45 |
+| `fire-promotion-social-hook` | reached its lookup | 401 | 43 → 44 |
+| `social-caption` | **400** (auth passed, fields failed) | 401 | 44 → 45 |
+| `toast-discount-push` | reached its lookup | 401 | 60 → 61 |
+| `fire-campaign-social-hook` | **404 "Campaign not found"** | 401 | 50 → 51 |
+| `landing-clips` | 200, unpinned URLs | 200, own-bucket URLs only | 6 → 7 |
+
+`fire-campaign-social-hook` was additionally probed with a **real** published campaign id and a bogus
+one: both now return byte-identical `401`, so the existence oracle is closed rather than merely
+narrowed.
+
+Worth keeping: the no-credential request returns the platform's `{"code":"UNAUTHORIZED_NO_AUTH_HEADER"}`,
+while an anon-key request returns the function's own `{"error":"Unauthorized"}`. **Two different 401s
+from two different layers — and the gap between them was the entire vulnerability.**
+
+### The pre-deploy gate earned its place (#404)
+
+`edge-function-reviewer` returned ISSUES on `fire-campaign-social-hook` before it shipped:
+`campaign_sponsorships` has **two** FKs into `business_profiles` (`brand_id`, `restaurant_id`), so
+#402's `business_profiles!inner(user_id)` is ambiguous. Confirmed live rather than reasoned about:
+
+```
+business_profiles!inner(user_id)           -> HTTP 300  PGRST201
+business_profiles!brand_id(user_id)        -> HTTP 200
+business_profiles!brand_id!inner(user_id)  -> HTTP 200   <- taken
+```
+
+supabase-js surfaces a 300 as `{ data: null }` rather than throwing, and the call site reads
+`sponsorRes.data ?? []` — so `isActiveSponsorBrand` was permanently `false`. **The authorization arm
+was dead code.**
+
+It **fails closed**, so it never weakened the gate; it denies a party the gate meant to allow, and is
+inert today with `BRAND_ROLE_ENABLED` off. It still had to be fixed before shipping, because that arm
+exists *precisely* because its future caller swallows errors with `.catch(console.error)` — the
+failure mode it was written to prevent is exactly the one it would have caused.
+
+**Two independent close reads of this file missed it.** The parallel session behind #403 found four
+separate defects here and not this one; neither did my own re-read. A two-FK table is invisible in
+the query text and visible only in the schema. `verify-sponsorship-payment` already used the
+disambiguated form one hop away.
+
+### A collision, caught by the merge and not by me (#403)
+
+The merge of #404 was rejected as out-of-date: **#403 had landed on the same file from a parallel
+session** while my PR was open. It fixed four things #402 did not — unvalidated `stage` (checked
+*after* authorization, so an unauthorized caller still learns nothing), a discarded `campaignError`
+(the fail-closed 403 is unchanged; only the log improves), a non-idempotent `donny_scheduled_posts`
+insert under a retrying caller, and a leaked raw `error.message`. It also claimed the function **off**
+`.typecheck-ignore` (65 → 66 checked).
+
+So the deployed artifact was a version **no review had ever seen as a whole**. It went back to
+`edge-function-reviewer` before shipping — PASS, including explicit checks that #403's `campaignError`
+binding does not race the `Promise.all` #404 touched, and that the new `stage` check sits after both
+authorization exits. `deno check` on the merged file: **clean**, where the pre-rebase branch had four.
+
+**Re-fetch before assuming your branch is the only one touching a file.** Two Claude sessions edited
+the same function within hours; only the out-of-date merge rejection surfaced it.
+
+### Verification
+
+Live prod probes (before + after, all 7) · `pg_constraint` FK enumeration · 42 unit tests · `deno check`
+clean · `npm run typecheck` + `npm run build` via pre-push hook · `codex review --base main` clean ·
+`edge-function-reviewer` PASS on the final merged artifact · CLI deploy output confirming every
+transitive `_shared/*` bundled and every `*.test.ts` excluded.
+
+The failing `Supabase Preview` check on #404 is **pre-existing and unrelated** — a three-month-old
+migration (`20260509051132`) whose `ALTER TABLE realtime.messages ENABLE ROW LEVEL SECURITY` fails
+with *must be owner of table messages* on a fresh preview branch. #404 contains zero migrations.
+
+### Still open
+
+`toast-token-refresh`'s browser caller refreshes every tenant's tokens (a product decision, inert —
+zero Toast tables exist on prod); `fire-campaign-social-hook`'s per-party `file_uploads` scoping;
+`dragonshare-notify`'s replay bound on `submission` and owner/admin mirror on `declined`;
+`donny-oauth-token:50-55`'s module-scope `req` reference turning every OAuth 4xx into a 500; and
+`PROJECT_CONTEXT.md` §10 still lists Toast POS under "Active integrations".
+
+## [2026-08-08] `verify_jwt=true` is not authorization — 6 anon-key-reachable service-role functions
+
+Follow-on from the `donny-dragonshare-score` removal the same day, which filed two `[med]` leads.
+Checking them found something larger than either.
+
+**The anon key is a valid JWT and ships in the frontend bundle.** So `verify_jwt: true` — the default
+for any function with no `config.toml` entry — only rejects a *missing* header; it never establishes
+a user. Any service-role function that skips `auth.getUser()` answers **anyone on the internet**, not
+merely "any authenticated user" as I first described it. Proven on prod: `dragonshare-notify` → 401
+with no header, **200 with the public anon key**; `fire-dragonshare-social-hook` reached its DB
+lookup. Neither probe fired a side effect (an `event` matching no branch; a zeroed uuid that 404s
+before any write) — prove reachability, never impact.
+
+A sweep of all 100 functions produced 18 candidates → **4 legitimately public** (`capture-lead`,
+`generate-anonymous-brief`, `landing-clips`, and `verify-package-order-escrow`, which is correctly
+guest-reachable because its abuse control is the Stripe binding, not a token), **8 authorized by a
+mechanism the regex missed**, and **6 genuinely exposed**. Both money functions came back **clean** —
+`resolve-dispute` does an exact service-role compare.
+
+**One guard does not fit**; the fix is decided by who legitimately calls each function, which is a
+`src/` grep. `fire-dragonshare-social-hook` and `toast-discount-push` → `isAuthorizedIngest`.
+`social-caption` → `auth.getUser` with `user_id` derived from the JWT (it fed `donny_cost_ledger`,
+the AI kill-switch's own source of truth, so spend was attributable to an arbitrary victim).
+`fire-campaign-social-hook` and `fire-promotion-social-hook` → `getUser` + record-level ownership.
+`dragonshare-notify` → a per-event split, because **I was wrong that it was service-role only**: the
+browser calls it twice, and a blanket ingest guard would have broken post submission and decline.
+Its `boost_paid` also stopped trusting body `creator_id`/`creator_payout_cents` — an anonymous caller
+could otherwise make the platform's own AI say "$N is on the way" to any user.
+
+Two **unpaired-id** defects fixed en route, the same shape twice: `boost_id`+`post_id` were never
+cross-checked (any boost paired with any post), and `submission_id` was fetched without
+`promotion_id`.
+
+**The review caught a conceptual error.** I first gated `fire-campaign-social-hook` with the shared
+`evaluateCampaignAccess` — documented as *"can this actor **SEE** this campaign"*, a **read** gate —
+to guard a write that mints 1-hour signed URLs over private deliverables. Its
+`hasApplication && published` arm let a pending or rejected applicant fire it. Replaced with a
+purpose-built gate (owner ∨ active org member ∨ active sponsoring brand). **A read gate is not a
+write gate**, even when most clauses match.
+
+**The sweep's own method fell short**, which is the durable lesson: `fire-promotion-social-hook` was
+never a candidate because the regex saw `auth.getUser` and cleared it — it authenticates and never
+checks ownership. *Calling `getUser` is not authorizing.*
+
+Two prod checks changed answers: **zero `%toast%` tables exist**, so `toast-token-refresh` cannot
+disconnect a POS and `toast-discount-push`'s "unauthenticated INSERT" was never possible (the guard
+still lands before the tables do) — and that also makes `PROJECT_CONTEXT.md`'s "Active integrations:
+Toast POS" line aspirational. And `is_active_group_member` really is `(p_group_id, p_creator_id)`;
+`DATABASE_SCHEMA.md`'s shorthand drops the prefixes.
+
+26 new unit tests across two pure `authz.ts` modules. **The CI edge gate covers only 2 of the 6
+changed functions** — the other 4 sit in `.typecheck-ignore`, so "66 clean" said nothing about them;
+verified by hand with the gate's own `deno check`, 16 errors → 16, all pre-existing `TS18046`.
+Left open deliberately: `toast-token-refresh`'s cross-tenant browser button (a product decision),
+`fire-campaign-social-hook`'s per-party `file_uploads` scoping (pre-existing), and two
+`dragonshare-notify` residuals. **All six are inert until deployed.**
+## [2026-08-08] Three authorization holes the invite-clarity work walked into
+
+> **State as of writing:** migrations `20260808010000`, `20260808020000` and `20260808030000`
+> are **applied to prod**; `create-notification` is deployed at **v47** and **boot-verified**
+> (an anon-key POST returns the *function's own* `{"error":"Unauthorized"}`, not the platform's,
+> proving the module loaded and `_shared/cors.ts` bundled — nothing written, no mail sent).
+> Codex clean at round 6; `edge-function-reviewer` PASS. PR #387 is open;
+> `fix/notification-authorization` is pushed but its PR is not yet opened.
+> **The both-viewport visual pass on PR #382's UI has NOT been run** — it needs a signed-in
+> prod session. Recorded as unrun, not passed. And the new paths have never run with a real
+> user JWT (this function has had zero prod traffic in 24h), so they are proven at the SQL
+> layer and boot-verified — not exercised end-to-end.
+
+Explaining what the "Invite" button does (PR #382) meant reading the invitation data path
+closely, and it kept turning up things that had nothing to do with copy. Three pre-existing
+authorization holes, none introduced by #382, each **proven on prod by impersonating a real
+user inside a rolled-back transaction** — before the fix and again after.
+
+**1. `campaign_invitations` UPDATE — forged status, repointed campaign.** The policy was
+`USING (auth.uid() = creator_id)` with no `WITH CHECK`. My first diagnosis was wrong and the
+correction is the useful part: **Postgres defaults an omitted `WITH CHECK` on UPDATE to the
+`USING` expression**, so `creator_id` *was* pinned. What wasn't: a creator could forge
+`status='accepted'` with no application behind it — making the owner's card read "Applied —
+review them", the badge #382 had just added, pointing at nothing — and could **repoint
+`campaign_id`**, which manufactures apply rights, because an invited creator may apply to a
+campaign that has left `published`. Now decline-only (`USING … status='pending'` /
+`WITH CHECK … status='declined'`) **plus column privileges**, because a policy cannot pin a
+column against change at all: `WITH CHECK` sees only the NEW row — there is no `OLD` in a
+policy — so "`campaign_id` must not change" is inexpressible as RLS. The migration
+self-asserts the resulting grant set, and its filter includes `PUBLIC`, since a table-wide
+`GRANT … TO PUBLIC` is recorded under that grantee and omitting it would make the assertion
+unfailable.
+
+**2. `apply_to_campaign` skipped its own policy.** The RPC checked eligibility only on its
+crew branch; an ordinary campaign fell through to the INSERT with no status and no role check
+— and being `SECURITY DEFINER` it bypassed the `campaign_applications` INSERT policy carrying
+exactly those rules. Proven: a creator with no invitation applied to an **`active`** campaign
+that already had someone hired. The fix calls **the policy's own predicate**
+(`can_create_application`) rather than re-implementing it — two copies of an authorization
+rule drift, one does not — OR-ed with "already holds a non-`rejected` application", since the
+RPC is an upsert and that is how counter-offers amend a row. The durable lesson:
+**a `SECURITY DEFINER` RPC silently opts out of the RLS policy protecting the table it
+writes.** The policy was correct the whole time; the function never consulted it.
+
+**3. `create-notification` authenticated its caller and then discarded it.** It called
+`auth.getUser()` and never referenced the `user` object again — every field written,
+including `recipientId` and `actorId`, came from the request body and was inserted with the
+service role, and for mapped types it sent a real email. Any authenticated user could put
+arbitrary text and an arbitrary in-app link into anyone's feed, as any actor, and email them.
+Sharper in context: [[Notification Delivery]] documents `send-notification-email`'s self-only
+gate as existing *to prevent email enumeration*, and instructs all frontend code to route
+around it through `create-notification` — the recommended path around the guard had no guard.
+
+Closed in three layers. The actor is now derived from the JWT (verified safe first: every
+`actorId` in `src/` was already the caller's own id). The recipient must pass
+`can_notify_user` — six live relationships (self, campaign, conversation, crew, org,
+sponsorship), with membership clauses requiring `left_at IS NULL` / `invitation_status =
+'active'`, because a stale tie is not a current one. And `content_liked`, the one type
+legitimately reachable with no prior relationship, is authorized against the **referenced
+post** instead, with the server composing the copy — ownership being the only check would
+otherwise leave free text aimed at any post owner, the exact vector being closed.
+
+The clause set was derived **two independent ways and cross-checked**, which is the method
+worth reusing: backtested against all 91 actor-bearing `push_notifications` rows (89/91), and
+enumerated across all 32 client call sites. Only the enumeration found **sponsorship** — no
+sponsorship notification has ever fired on prod, so history could not have revealed it. It
+also corrected my own design: I had flagged cold contact from a public profile as needing an
+exemption, and it does not — both contact modals `await` conversation creation before
+notifying, so the conversation clause covers them. Result: 89/89 real notifications still
+pass, and across every user pair 30 allowed / 1,692 blocked.
+
+**Six Codex rounds, six real findings, every one mine** (round 6 came back clean). Round 1:
+`content_liked` was still a stranger-phishing vector, and `left_at`/`invitation_status` were
+ignored. Round 2: the templating was bypassable (`data` spread *after* the server's values),
+and — worse — my "ignore `emailType`" tightening had **silently killed 7 legitimate email
+flows** whose type has no map entry. Round 3: a flat template allow-list permitted
+type/template confusion. Round 4: `file_uploaded` still let the client choose the **role**
+variant, because that one type carries two role-worded emails, so binding the template to the
+type wasn't enough; it is now derived from the collaboration, checking both parties explicitly
+rather than inferring "not the creator ⇒ the business".
+
+Round 5 is the one worth keeping, because **I had considered that exact case and argued myself
+out of it**: I let an underivable role fall through to the type map, reasoning it was "the same
+email this type has always sent, so not a regression." True, and irrelevant — since the client
+no longer supplies `emailType`, omitting `data.collaboration_id` had become the *only*
+remaining way to force the wrong role-worded email. Same defect, shorter route. The email is
+now suppressed instead (the bell still fires), so we decline to send mail asserting a role we
+could not verify.
+
+The through-line across 1–4: I kept answering *"is this value allowed?"* when the question was
+*"allowed **for what**?"* — each fix correct as far as it went, and leaving the next gap open.
+Two second-order lessons: **ignoring an untrusted input is not automatically safe** (a
+tightening is a behaviour change and needs the same "what does this break?" pass as a feature),
+and **"no worse than before" is the wrong bar for a fix** — the test is whether the claim the
+code now makes is actually true.
+
+Also fixed en route: bulk invite sent the email but fired **no in-app bell** — the two invite
+paths had drifted, and both now route through one shared `notifyInvitedCreator()`; and the
+applications list now marks applicants the business had invited.
+## [2026-08-08] `donny-dragonshare-score` removed — an unauthorized service-role write, orphaned
+
+One of four unverified leads filed by the 2026-08-07 DragonFeed session, checked and closed. The
+lead was right; a claim I made about a *sibling* lead was wrong, and both are recorded here.
+
+**The defect.** The authenticated `caller` was bound on line 32 (`auth.getUser(token)`, 401 on
+failure) and **never referenced again**. Everything after ran on the service-role client keyed only
+on a body-supplied `post_id`. That gave any authenticated user, against any tenant's post: a write
+(`donny_recommended_tier`/`donny_score`/`donny_reach_estimate`), a `select("*")` read, and an audit
+row stamped `actor_user_id: post.creator_id` — the **victim** — so the victim sees a phantom event
+(`ds_events_select` is `actor_user_id = auth.uid()`) and the caller is untraceable. The response also
+made a private aggregate solvable: `matchQuality = min(100, 50 + orgBoostCount×5 +
+creatorPostCount×3)` with `creatorPostCount` stated in plain text in `rationale` is one equation in
+one unknown, yielding the target org's total boost count — restricted by `ds_boosts_org_select` to
+org members.
+
+**It was the hole in the DB's own guard.** `trg_ds_posts_block_self_verify` (`20260601160000`)
+forbids an authenticated non-admin from changing exactly those three columns, then returns early for
+`auth.uid() is null` — the service role, which `boost-payment` legitimately needs. A service-role
+function with no authorization of its own reopened a path the DB had deliberately closed.
+
+**Deleted rather than patched** (Musk's algorithm step 2 before step 3): zero callers anywhere
+(`src/`, other functions, `config.toml`, CI gate, scripts — only docs), the `dragonshare_posts`
+INSERT webhook the 2026-04-27 plan specified was **never wired**, and prod confirms on two
+consecutive days that it never ran once — `posts=10, with_tier=0, with_score=0, with_reach=0,
+score_events=0`. Nothing reads the columns either; they are kept (never drop a column) and stay null.
+
+**Severity scoped honestly.** `post_id` is a uuid and RLS blocks listing foreign ids, so a
+cross-tenant call needed an id obtained out of band. But one variant needed no foreign id: a creator
+calling it on their *own* post still solves for the target business's boost count. Hard to aim ≠
+closed. The write was not demonstrated against prod on purpose — the code reads unambiguously.
+
+**The `landing-clips` correction.** The same lead list called it "deployed and publicly callable but
+orphaned", and I had recommended deleting both together. The orphaned half is **false**: it has a
+wired consumer (`useLandingBackdropPlaylist` → `HeroVideoBackdrop`) lazy-loaded behind
+`LANDING_VIDEO_BACKDROP_ENABLED`, whose `false` value is deliberate preservation —
+`DESIGN_SYSTEM.md` promises the flag re-enables video "with zero other code changes". Deleting it
+would have broken that **silently**, since the fetcher swallows all errors and returns `[]`. It is
+also not an exposure surface: it returns only boosted/verified/unflagged video URLs from a bucket
+that is already `public = true` with unconditional read. **Kept.** Its real open question is consent,
+which is the DragonFeed spec's phase-3b decision.
+
+**But confirming that turned up a real defect, fixed here.** `data-exposure-reviewer` flagged
+`screenshot_url`; the same reasoning covers `content_file_path`, which it missed. Both are
+**creator-writable free text** — `ds_posts_creator_insert`/`_update` gate only on
+`creator_id = auth.uid()` with no column constraint, and `trg_ds_posts_block_self_verify` lists
+neither — so a boosted creator could make the anonymous homepage fetch an arbitrary third-party URL
+from every visitor's browser. The SQL filter decides *whose row is eligible*; it says nothing about
+*where the bytes come from*, and the extension guard checks only the suffix. `buildClips` now takes a
+**required** `allowedPrefix` (required, not optional — an optional security control invites
+omission) and pins both fields to the public bucket. An off-bucket **poster is dropped, the clip
+kept**. All 9 real rows already match, so behaviour is unchanged today; 14 tests, incl. a
+prefix-lookalike host, a sibling public bucket, and a non-http scheme. **This one needs a deploy** —
+`landing-clips` is a code change, unlike the deletion.
+
+**Two new `[med]` leads filed, both pre-existing and NOT fixed:**
+`fire-dragonshare-social-hook/index.ts:26-54` and `dragonshare-notify/index.ts:346-361` each take a
+body-supplied id, run as service role, and have **no caller resolution at all**
+(`grep -c "getUser\|isAuthorizedIngest"` = 0 for both). Neither returns victim data, so they are
+cross-user **write/forgery** — planting scheduled-post drafts, nudges, notifications and a Donny
+chat message into other accounts by id — not read leaks. Each has one real caller
+(`_shared/fulfill-boost.ts`, service-role→service-role), so `isAuthorizedIngest` is the likely fix.
+Also recorded a reviewer **false negative** worth keeping: `agents/billing.ts:80`'s
+`(input.org_id) ?? userContext.org_id` looks like an LLM-controlled tenant id and is not one —
+`donny-orchestrator/index.ts:491-499` overwrites it server-side. Check the call site.
+
+**Deleting source is not undeploying.** This PR removes the function from the repo; the deployed
+function keeps serving until it is explicitly removed from Supabase. Until then the repo and the live
+attack surface disagree, and the repo is what everyone greps. Audit the *deployed* function list
+against the repo, not the repo alone.
+
+Still open from that lead list: `donny-orchestrator/agents/dragonshare.ts:71-76` (possible missing
+`status='verified'`, same-tenant, unverified) and `CreatorSettings.tsx:44` (possible stale-form
+save, observed in code, not reproduced).
+
 ## [2026-08-08] `status_changed_at` — the analytics alerts finally get a change-anchor
 
 Closes the gap #385 recorded, Codex flagged, and post-merge measurement showed was **bigger than
@@ -249,7 +687,10 @@ creator opts in, business can veto, default off, asked at boost time.
 verified as a cold-cache timing artifact (import alone took 63s against a 5s test timeout), not a
 regression — confirmed by reverting only the two touched files, re-running, and restoring.
 
-Unverified leads filed for separate checking: `donny-dragonshare-score/index.ts:44-48` appears to
+Unverified leads filed for separate checking *(two closed 2026-08-08 — see the entry at the top of
+this file: the `donny-dragonshare-score` lead was **confirmed** and the function deleted; the
+`landing-clips` "orphaned" claim was **wrong** and it was kept)*:
+`donny-dragonshare-score/index.ts:44-48` appears to
 read a post by id with the service-role key without checking caller membership in `target_org_id`;
 `donny-orchestrator/agents/dragonshare.ts:71-76` appears to omit `status='verified'`;
 `landing-clips` is publicly callable but orphaned behind a false flag; and Creator Settings appears
@@ -404,6 +845,137 @@ email until both are live.
 members (crews stay a private 1:1 roster by product decision); delete-crew UI (the mutation and its
 toasts exist, wired to no button); renaming `/dashboard/business/groups` → `/crews` (stored
 notification `actionUrl`s point at it, so it needs a redirect).
+## [2026-08-07] DC Points get a destination: `/rewards`, a chip, a notification that names its reason, and Donny
+
+**Implementation complete on `feat/dc-points-visibility` (10/10 tasks reviewed clean, full suite
+green) — 3 migrations applied and verified on prod; PR #378 open; the mandatory Codex second review
+is **clean** as of 2026-08-08 (3 rounds — see the Codex section below). Still open: the founder's
+merge, and the 2 edge functions, which are NOT deployed and follow the merge. Nothing in this entry
+is user-visible on prod yet. State as of writing.**
+
+A business user received an in-app bell reading "You earned DC Points / +200 DC Points" with no
+way to learn what earned it, and clicking it went nowhere. Points showed on two dashboard pages
+with no destination behind them. The founder could not answer the question either — determining
+that +200 was `business.profile_completed` required a SQL query against the ledger. Verified prod
+state going in: the Dragon Rewards Engine v1 was fully live (`DRAGON_REWARDS_ENABLED` true,
+`go_live_at` 2026-06-28, 26 users holding 25,150 points, 25 event types priced in
+`dre_config.point_values`).
+
+**The product decision was the whole shape of the fix.** Ship honest, earn-only transparency:
+reaching a tier confers a public profile badge and **nothing else**. The founder chose this
+explicitly over designing a perk economy the platform doesn't have, because promising rewards
+that don't exist is the same failure mode [[Honest Analytics]] corrected in the analytics tab two
+days earlier. Every surface this branch touches — page copy, chip, notification, Donny's new
+sub-agent — carries the same "DC Points do not convert to money, credit, or discounts" line, so
+none of them can drift from that stance independently.
+
+**What shipped.** A `/rewards` page (balance, the gap to the next tier stated as a full sentence —
+"Established needs 500 points and 3 completed campaigns" — human-labeled award history, and an
+earn catalog rendered **live from `dre_config.point_values`**, so retuning the economy needs no
+deploy and no doc edit) wraps itself in `DashboardLayout` — a pre-flight check caught that routes
+registered under `<ProtectedRoute>` alone get no chrome, since every existing page wraps its own
+layout. An always-visible `DcPointsChip` sits in both top bars (`DashboardLayout`'s desktop header
+and `MobileTopNav`, which render mutually exclusively by viewport — one chip mount, not two),
+gated launch-flag → brand-role (brand has no DRE triggers, so its chip would read a permanent 0) →
+loading (renders nothing so the bar doesn't jitter). A new `dre_my_standing()` RPC
+(`SECURITY DEFINER`, migration `20260807120000`) wraps the existing service-role-only
+`dre_user_aggregates`, takes **no arguments** — identity comes only from `auth.uid()` — and raises
+if it's null; explicit `revoke ... from public, anon` closes the Supabase default-privilege gotcha
+this codebase has hit before (`ALTER DEFAULT PRIVILEGES` grants `anon`/`authenticated` EXECUTE
+regardless of a bare `revoke from public`).
+
+**The notification now names its reason.** `dre-award-engine` carries `event_type` through its
+award batch into a new pure `_shared/dre-notification.ts` builder: one event → the event's label
+as the body; several → an Oxford-comma join of every label; a tier-up appends " — new standing
+unlocked." Every award sets `actionUrl: '/rewards'`, and `getNotificationRoute` gained a
+`dragon_points_award` case that retroactively fixes bells already sent without one — this
+notification type has been firing on prod since June without being in the `NotificationType`
+union at all, a real gap in the plan the task review caught.
+
+**A Donny `rewards_agent`** answers "how many points do I have" / "what did I earn that for" /
+"what do I need for the next tier" strictly from `userContext.user_id`, never from tool `input` —
+the orchestrator's Supabase client is service-role and bypasses RLS, so an id from the request
+must never scope a query here (`data-exposure-reviewer` PASS, all 4 queries traced). It
+deliberately does **not** call `dre_my_standing()`: that RPC derives identity from `auth.uid()`,
+null under a service-role client, so it builds the same context directly from
+`dre_user_aggregates`/`dragon_point_balances`/`dragon_point_events`/`dre_config`, carrying the
+same honesty line as the frontend copy so the two surfaces can't drift apart.
+
+**Two pure modules are mirrored, not imported, across the frontend/edge boundary** —
+`src/lib/dragonEvents.ts` / `supabase/functions/_shared/dre-events.ts` (event_type → human label,
+25 entries, parity-tested) and `src/lib/dragonTierGap.ts` (the next-tier gap, mirroring
+`resolveTier`'s semantics including that a `null avg_rating` FAILS a rating threshold). This is
+the house pattern — zero `src/` files import from `supabase/functions/`, and 4 existing sibling
+pairs already keep-in-sync this way — reaffirmed rather than re-litigated after the plan itself
+initially imported a type across that boundary (fixed in pre-flight, before Task 1).
+
+**A stale cached tier is possible, and it's pre-existing, system-wide, and not fixed here.**
+`dragon_point_balances.tier` recomputes only when a user earns a new ledger event;
+`dre_pending_events()` gates `creator.five_star` on `rv.rating = 5` exactly, so a sub-5-star
+review lowers a creator's `avg_rating` without firing any event, and the cached tier outlives the
+rating that earned it. `DragonTierBadge` on public profiles has rendered that same cached value
+since June. `/rewards`'s gap calculator deliberately **trusts** the cached tier rather than
+re-deriving it — re-deriving would create a *visible* contradiction with the public badge reading
+the same cached data, trading a quiet inconsistency for a loud one — pinned by a trust-boundary
+test so a future "just re-derive it" refactor fails loudly. Filed as a follow-up against
+`dre-award-engine`'s recompute trigger, out of scope for a UI-visibility branch. Separately,
+`business.campaign_launched` pays 150 points on **every** campaign launch, not just the first —
+one prod business has collected it seven times — and is now publicly visible in the earn catalog;
+left deliberately unchanged, since retuning is a `dre_config` JSONB edit, a product decision.
+
+**The help article was rewritten** (migration `20260807120100`) from stale/roadmap language to
+the real 25-entry catalog and real tier thresholds — a reviewer audited all 25 point values and
+both tier ladders against the prod seed (migration `20260627000000`) and found zero mismatches.
+The rewrite preserved a screenshot an earlier migration had inserted under a `body NOT LIKE
+'%...png%'` guard that has already fired once and would never re-fire — a first attempt replaced
+`body` wholesale and would have dropped it permanently; restored byte-identical.
+
+**An honesty leak in the knowledge layer itself.** Two DRE *engineering* wiki docs — including a
+29,810-char six-phase spec describing referrals, streaks, "Hype Weeks," and point redemption that
+were **never built** — were reachable by consumer Donny, because `match_donny_knowledge`'s
+consumer filter (`scope IS NULL OR scope <> 'internal'`) treats a NULL `scope` as consumer-visible,
+and those two `donny_knowledge` rows carried NULL. A user asking Donny about rewards could get
+unbuilt-roadmap content back as if it were real — the exact failure mode this branch's honesty
+stance exists to prevent, surfacing one layer down. The fix needed two halves, not one: a
+migration (`20260807120200`) corrects the 4 existing rows now, and a new `FORCE_INTERNAL` —
+an unconditional `Set` of exact `"<dir>/<filename>"` strings — in
+`supabase/scripts/sync-wiki-to-donny.mjs` forces `scope: 'internal'` for those 2 files on every
+future sync. The second half is load-bearing: `donny-knowledge-sync` rebuilds `scope` from the
+sync payload on **every** call including UPDATEs, and this PR touches `docs/` heavily, so the
+committed `post-merge` hook's `npm run sync:wiki` would have silently reverted the migration
+within minutes of this very PR merging had the sync-side fix not shipped alongside it. A final
+review pass added a fail-loud count-assertion guard — proven both ways: it throws before any
+network call when a backing file is renamed, and stays silent when the two entries are correct.
+
+**Review found and fixed, not shipped:** a `StandingCard` branch that rendered "You are at the
+top of the ladder" on every cold load before the catalog query resolved; `EarnCatalog` briefly
+showing a creator the business-only earn list while standing was unresolved; an honest-copy guard
+regex that a mutation test proved could not catch "unlock exclusive rewards"; a `DcPointsChip`
+loading gate with zero test coverage (proven removable without failing any existing test); and a
+per-user bell-send failure in `dre-award-engine` sitting outside its own try/catch, so one bad
+notification would 500 the whole batch after ledger rows were already committed, silently losing
+every later user's bell in that run.
+
+**Codex second review — 3 rounds, and two of them were the same bug.** Round 1: `/rewards` was
+reachable by a brand account. Round 2: the identical defect one layer down, in
+`donny-orchestrator/agents/rewards.ts` — `agg?.role === "content_creator" ? "creator." :
+"business."` handed a brand user the entire business earn catalog through Donny's *generated
+prose*, where no amount of looking at the UI would reveal it. One root cause behind both: a
+two-way fallback silently absorbing a third role. Brand has no DRE triggers at all, so the honest
+answer is "nothing to earn here," not a catalog. Fixed by resolving the role explicitly and
+returning early with an empty catalog plus an instruction not to describe ways to earn or link the
+page; the guard is now stated in all four places that make the decision (chip, page, catalog,
+sub-agent), each cross-referencing the others. Round 3 clean: *"I did not identify any discrete,
+actionable regressions in the changed code relative to the base branch."* The lesson worth keeping
+is that the second instance was invisible to UI review — a `? :` fallback on a role enum should
+name every branch it intends to serve.
+
+typecheck 0 · lint 0 (0 in the 4 files this branch's final fix wave touched) · build ✓ · 903/903
+full suite (89 files) after a clean mid-branch merge of 6 `origin/main` commits ·
+`edge-function-reviewer` PASS on `donny-orchestrator` · `data-exposure-reviewer` PASS on the
+rewards agent, zero scope changes · `deno check` clean on `agents/rewards.ts` (worth stating: that
+function is on `supabase/functions/.typecheck-ignore`, so CI's edge gate does **not** cover it) ·
+Codex clean. → `docs/wiki/concepts/dragon-rewards-engine.md` · `feat/dc-points-visibility` · #378
 
 ## [2026-08-07] Campaign target audience replaces creator personas (+ Donny tags)
 
