@@ -1,5 +1,35 @@
 # Wiki Log
 
+## [2026-08-09] update | [[Donny Social Tools]] — three findings the review loop caught after the work looked finished
+
+Updated [[Donny Social Tools]] from the continuation section appended to
+`raw/sessions/2026-08-09-donny-social-tools-repair.md` (rounds 5–6 of the Codex loop, plus the
+two read-only reviewers' verdicts on the final code).
+
+Three defects, each caught only because the loop kept running past "done":
+
+1. **A published post the product could not see.** The draft card published through
+   `useCrossPost` and never wrote `donny_scheduled_posts` — live upstream, absent from the
+   calendar and three widgets. Both other cross-post callers write that row; the Donny card was
+   the only path that didn't.
+2. **An honest refusal that could not be reached.** Returning null at zero accounts meant no
+   social tool was offered, so the model could never emit one, so the audit branch written to
+   count that population could never fire. Recorded as a rule: *an honest refusal has to be
+   reachable to be honest about anything* — and a "we now count this" claim is worth nothing
+   until you check the counting path can execute.
+3. **A failed read claiming "no account connected"** — this branch's own thesis, one layer
+   down. The sharpest detail is the intermediate state: an earlier commit added the missing
+   `if (error)` check and **still returned `[]`**, while the comment above the call site claimed
+   the whole fix. The failure stopped being silent; the false claim survived. Cross-linked to
+   [[Notification Delivery]], which records the same bar from its own six-round loop.
+
+Also **corrected a claim this page inherited**: the CI edge-function typecheck gate covers
+*none* of this work — both importers sit on `.typecheck-ignore`, so "66 functions clean" says
+nothing about it. Replaced with a hand-run `deno check` carrying a `main` baseline (2 errors on
+both sides, identical codes — the known supabase-js skew).
+
+Pages updated: [[Donny Social Tools]].
+
 ## [2026-08-09] ingest | [[Donny Social Tools]] — repaired after 7 calls and 0 successes
 
 Ingested `raw/sessions/2026-08-09-donny-social-tools-repair.md`. The direct sequel to the entry

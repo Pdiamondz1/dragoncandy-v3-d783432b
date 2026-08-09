@@ -259,3 +259,54 @@ The proof this work is asking to be judged on is a **`status='success'` row in
 `donny_tool_executions` for a `social_*` tool** — which has never existed (7 calls, 0
 successes). It cannot be observed until after merge **and** a separate deploy of
 `donny-orchestrator`: merging ships the frontend only.
+
+---
+
+## Continuation — review rounds 5 and 6 (same session)
+
+**Correction to "Files" above.** That section's closing line, "No migration. No RLS change.",
+described the original task set and was already false by the time CT-4b landed later the same
+session. The branch ships **one** migration, `20260809193254` (`donny_draft_publications`),
+applied and verified on prod. It adds no policy or grant to any existing table.
+
+### Round 5 — two findings, both real
+
+**(a) The published post was invisible to the product.** The draft card published through
+`useCrossPost` and never wrote `donny_scheduled_posts`, so a post Donny scheduled went out
+upstream and then could not be found in the calendar, `UpcomingPostsWidget`, `SocialPostStatus`
+or `PostManagementPanel`. Verified before fixing: `useCrossPost` writes no such row, and both
+other cross-post callers (`SocialPostPrompt`, `PostingPlanReview`) insert it themselves — the
+Donny card was the only path that didn't.
+
+Fixed with a pure `buildDonnyScheduleRow` (`src/lib/donnyScheduleRow.ts`, 11 tests) plus
+`useRecordDonnyScheduledPost`, wired into the card's `onSuccess`. Vocabulary checked against the
+live prod CHECKs: `platform` allows instagram/tiktok/youtube/twitter/facebook/x, so **`threads`
+passes through and fails loudly** rather than being mapped onto an allowed value — a wrong row
+is worse than a missing one for every downstream reader. `content_type` has no text-only value,
+so a caption-only post records as `photo` behind a `content_type_inferred` flag.
+
+**(b) The honest refusal was unreachable.** `allTools` only carries social tools when the bridge
+is non-null, so the bridge's `return null` at zero accounts meant the model could never emit a
+social call — and the audit branch written to count that never-counted population could never
+fire. The bridge now reports `hasConnectedAccount` and the caller decides: auto-pilot still
+skips (explicitly), the orchestrator does not. Dead branch deleted.
+
+### Round 6 — the branch's own thesis, one layer down
+
+`fetchActiveAccounts` returned `[]` when the `business_outstand_accounts` read **failed**.
+`resolveAccount([])` is `none`; `none` becomes `no_social_account`; Donny tells a user with a
+live Instagram connection that they have none. That is the founder's original complaint,
+reproduced by a transient database error instead of the 401.
+
+The instructive part: an earlier commit on this branch added the missing `if (error)` check and
+**still returned `[]`**, and the comment above the call site claimed the whole fix. The failure
+stopped being silent; the false claim survived. Judge a fix against the claim it makes.
+
+Fixed by moving the distinction into the return type — `{ ok: false }` vs
+`{ ok: true, accounts: [] }` — since caller discipline is precisely what failed (two call sites,
+both collapsing it). New `accountsUnavailableResult()` (`accounts_unavailable`) tells the model
+the lookup failed and explicitly instructs it not to claim no account is connected.
+`hasConnectedAccount` stays false on a failed read as a documented deliberate collapse: its only
+consumer is auto-pilot's skip, and no user-facing claim derives from it.
+
+Negative controls were run for all three fixes — reverting each one fails the tests that pin it.

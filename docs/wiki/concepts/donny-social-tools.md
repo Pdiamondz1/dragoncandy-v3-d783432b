@@ -24,7 +24,9 @@ Four, and each one is enforced by structure rather than by prompt text:
    server-side from the authenticated user.
 2. **Donny never offers a capability with no implementation behind it.** A tool the model
    cannot call cannot be promised to a user.
-3. **Donny never states a cause the code did not report.**
+3. **Donny never states a cause the code did not report** — and, the same rule one level up,
+   never states a **fact about the user's setup** the code did not establish. "You have no
+   account connected" is a claim, not a fallback. See *What a refusal may claim* below.
 4. **The LLM cannot publish.** Publishing happens on a human tap, from the client, on the
    normal posting path.
 
@@ -241,6 +243,58 @@ platform, checked 2026-08-09), but it is precisely the case handle-disambiguatio
   a shared secret, with no user JWT and no prospect of one. It refuses rather than sending a
   request known to be unauthenticatable — the same rule the orchestrator's OAuth branch already
   applied.
+- **"Skip this user" is the caller's policy, not the bridge's.** The bridge reports
+  `hasConnectedAccount` and returns; the two callers legitimately differ. `donny-auto-pilot` is
+  a cron with nothing to report on and skips. `donny-orchestrator` must not: there the user is
+  *asking*, and the honest refusal is the entire point.
+
+  This started as a hard `return null` at zero accounts, which made the orchestrator's
+  zero-account handling **unreachable** — `allTools` only carries social tools when the bridge
+  is non-null, so the model could never emit a social call, so the audit branch written to count
+  that population could never fire. **An honest refusal has to be reachable to be honest about
+  anything**, and a "we now count this" claim is worth nothing until you check the path that
+  counts it can execute.
+
+## What a refusal may claim
+
+`no_social_account` and `accounts_unavailable` are different results because they are different
+facts, and only the first is a statement about the user's setup.
+
+`fetchActiveAccounts` returned `[]` when the `business_outstand_accounts` read **failed**.
+`resolveAccount([])` is `none`, `none` becomes `no_social_account`, and Donny tells a user with
+a live Instagram connection that they have none — **the original complaint, reproduced by a
+transient database error instead of a 401**. The distinction now lives in the return type
+(`{ ok: false }` vs `{ ok: true, accounts: [] }`) rather than in caller discipline, because
+caller discipline is exactly what failed: two call sites, both collapsing it.
+
+**The sharpest part is the intermediate state.** An earlier commit on this same branch added the
+missing `if (error)` check and still returned `[]` — and the comment above the call site claimed
+the whole fix. The failure stopped being *silent*; the false claim survived untouched. A fix is
+judged against the claim it makes, not against the state it improved on — the same bar
+[[Notification Delivery]] records from its own six-round Codex loop.
+
+One deliberate collapse survives, documented where it lives: `hasConnectedAccount` is false on a
+failed read too. It is safe only because its single consumer is auto-pilot's `continue`, and a
+cron that cannot read the account list cannot fetch metrics either — no user-facing claim
+derives from it. Every claim path re-reads per call.
+
+## A published post must land where the product looks for it
+
+The draft card's publish went out through `useCrossPost` and then **did not write
+`donny_scheduled_posts`** — so a post Donny scheduled was live upstream and absent from the
+calendar, `UpcomingPostsWidget`, `SocialPostStatus`, and `PostManagementPanel`. Verified rather
+than assumed: `useCrossPost` writes no such row, and **both** other cross-post callers
+(`SocialPostPrompt`, `PostingPlanReview`) insert it themselves. The Donny card was the only path
+that didn't.
+
+The row is built by a pure `buildDonnyScheduleRow` (`src/lib/donnyScheduleRow.ts`) checked
+against the **live prod CHECK constraints**, which is where the two judgment calls are:
+
+- **`threads` is not in the platform CHECK.** It passes through and fails loudly rather than
+  being mapped onto an allowed platform. A wrong row is worse than a missing one for every
+  downstream reader; widening the CHECK is a migration, not a mapping.
+- **The CHECK has no text-only content type**, so a caption-only post records as `photo`. That
+  is a fallback, not a finding, so the row carries `content_type_inferred` to say so.
 
 ## The once-only guard (CT-4b)
 
@@ -284,15 +338,29 @@ one — but it is not zero.
 
 ## Known Issues
 
-- **`outstand-mcp.ts` has never been inside the CI edge-function typecheck gate.** Both the
-  spec and the plan asserted it was, and both were wrong. The blocker is a **supabase-js
-  version skew**: `donny-orchestrator` imports `supabase-js@2` (floating) while
-  `_shared/outstand-mcp.ts` pins `@2.57.2`, and the two `SupabaseClient` types are structurally
-  incompatible (`supabaseUrl` is protected). Pinning the entry file is **not** a one-line fix —
-  tried, and errors went **1 → 18**, because `donny-orchestrator` also imports eight
-  `agents/*.ts` modules on `@2`; it sits *between* two camps, so pinning the entry only moves
-  the mismatch. The repo carries three pin styles (79× `@2`, 37× `@2.57.2`, 6× `@2.50.0`), so
-  aligning them is a repo-wide decision, not a tidy-up to smuggle into a feature branch.
+- **The CI edge-function typecheck gate covers none of this work, and "66 functions clean" must
+  not be read as if it did.** `check-edge-functions.mjs` reaches a `_shared` module only
+  *transitively*, through an entrypoint that imports it — and **both** importers here,
+  `donny-orchestrator` and `donny-auto-pilot`, are pre-existing entries on
+  `.typecheck-ignore`. So all of `outstand-mcp.ts`, `outstand-accounts.ts` and `social-draft.ts`
+  get **zero** coverage from that number. (Sharpened by `edge-function-reviewer`; the earlier
+  wording named only `outstand-mcp.ts` and understated the reach.)
+
+  The blocker is a **supabase-js version skew**: the entrypoints import `supabase-js@2`
+  (floating, resolving to `@2.107.0`) while `_shared/outstand-mcp.ts` pins `@2.57.2`, and the
+  two `SupabaseClient` types are structurally incompatible (`supabaseUrl` is protected).
+  Pinning the entry file is **not** a one-line fix — tried, and errors went **1 → 18**, because
+  `donny-orchestrator` also imports eight `agents/*.ts` modules on `@2`; it sits *between* two
+  camps, so pinning the entry only moves the mismatch. The repo carries three pin styles (79×
+  `@2`, 37× `@2.57.2`, 6× `@2.50.0`), so aligning them is a repo-wide decision, not a tidy-up
+  to smuggle into a feature branch.
+
+  **Covered by hand instead, and stated as evidence rather than assurance:** `deno check` run
+  directly on both ignored entrypoints returns **exactly 2 errors — `TS2345` and `TS2322`, both
+  the `supabaseUrl`-is-protected skew** — and the identical 2 errors, same codes, appear when
+  the same command runs against `main`. So this branch adds no new type error to the uncovered
+  surface. That is a real check with a real baseline; it is not the gate, and it does not
+  become the gate until those two names leave `.typecheck-ignore`.
 - **Amplification and the MCP path remain unproven on prod** — see [[Social Measurement Spine]].
 - **`donny-orchestrator`'s Donny-OAuth branch is dead code on prod.** Found by
   `edge-function-reviewer` during this branch's pre-deploy pass and then **verified by probe**,
@@ -322,3 +390,5 @@ the frontend only ([[Lovable Edge-Function Deploy Gap]]).
   instances of Donny inventing a cause
 - [[Cross-Tenant Proxy Authorization]] — why the account is resolved server-side
 - [[Reading Agent Traces]] — instrumentation that exists and is not read
+- [[Notification Delivery]] — the same "judge a fix against its claim" bar, from another
+  multi-round review loop

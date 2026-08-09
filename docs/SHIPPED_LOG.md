@@ -170,10 +170,51 @@ INSERT,SELECT` (no `anon`, no `PUBLIC`); cross-user INSERT → 42501; own INSERT
 re-arm that one card. Much narrower than what it replaced, and it fails toward a visible duplicate
 rather than a silent one — but not zero.
 
+### Three more, caught by the review loop after the work looked finished
+
+**A published post the product could not see.** The draft card published through `useCrossPost`
+and never wrote `donny_scheduled_posts` — so a post Donny scheduled was live upstream and absent
+from the calendar, `UpcomingPostsWidget`, `SocialPostStatus` and `PostManagementPanel`. Confirmed
+before fixing: both other cross-post callers insert that row themselves; the Donny card was the
+only path that didn't. Now built by a pure `buildDonnyScheduleRow` checked against the live prod
+CHECKs — `threads` is not an allowed platform, so it **fails loudly** rather than being mapped
+onto an allowed value (a wrong row is worse than a missing one for every downstream reader), and
+a caption-only post records as `photo` behind a `content_type_inferred` flag.
+
+**An honest refusal that could not be reached.** `allTools` only carries social tools when the
+bridge is non-null, so returning null at zero accounts meant the model could never emit a social
+call — and the audit branch written to count that never-counted population could never fire. The
+bridge now reports `hasConnectedAccount` and the **caller** decides: auto-pilot skips (it is a
+cron with nothing to report on), the orchestrator does not (the user is asking). An honest
+refusal has to be reachable to be honest about anything.
+
+**A failed read claiming "no account connected" — this branch's own thesis, one layer down.**
+`fetchActiveAccounts` returned `[]` when the account read *failed*; `resolveAccount([])` is
+`none`, and `none` becomes `no_social_account`. That is the founder's original complaint,
+reproduced by a database blip instead of the 401. The instructive part: an earlier commit on this
+branch added the missing `if (error)` check and **still returned `[]`**, while the comment above
+the call site claimed the whole fix — the failure stopped being silent, the false claim survived.
+The distinction now lives in the return type (`{ ok: false }` vs `{ ok: true, accounts: [] }`),
+because caller discipline is exactly what failed. A new `accounts_unavailable` result tells the
+model the lookup failed and explicitly forbids asserting no account is connected.
+
+Negative controls were run for all three: reverting each fix fails the tests that pin it.
+
 ### Stated rather than discovered later
 
-`outstand-mcp.ts` has **never been inside the CI edge-function typecheck gate**. Both the spec
-and the plan asserted it was, and both were wrong. The blocker is a **supabase-js version skew**:
+**The CI edge-function typecheck gate covers none of this work.** `check-edge-functions.mjs`
+reaches a `_shared` module only transitively, and **both** importers — `donny-orchestrator` and
+`donny-auto-pilot` — are pre-existing entries on `.typecheck-ignore`, so `outstand-mcp.ts`,
+`outstand-accounts.ts` and `social-draft.ts` get **zero** coverage from "66 functions clean".
+Both the spec and the plan asserted otherwise, and both were wrong (the original write-up named
+only `outstand-mcp.ts` and understated the reach; `edge-function-reviewer` sharpened it).
+
+Covered by hand instead: `deno check` on both ignored entrypoints returns **exactly 2 errors —
+`TS2345` + `TS2322`, both the `supabaseUrl`-is-protected skew** — and the identical 2 errors
+appear running the same command against `main`, so this branch adds none. Evidence with a
+baseline, not a substitute for the gate.
+
+The blocker is a **supabase-js version skew**:
 `donny-orchestrator` imports `supabase-js@2` (floating) while `_shared/outstand-mcp.ts` pins
 `@2.57.2`, and the two `SupabaseClient` types are structurally incompatible (`supabaseUrl` is
 protected). Pinning the entry file is **not** a one-line fix — tried, and errors went **1 → 18**,
