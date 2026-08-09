@@ -133,11 +133,19 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   same session: a published draft used to re-arm its own button on reload (a second tap = a duplicate
   public post), now blocked by the append-only `donny_draft_publications` marker — migration
   `20260809193254`, **applied and verified on prod**, with no change to any existing table's policies
-  or grants. **Pending (2026-08-09):** merge the PR; **deploy `donny-orchestrator` separately**
-  (merging ships frontend only); then the acceptance signal — a `status='success'` row in
-  `donny_tool_executions` for a `social_*` tool, which has **never existed** — and a both-viewport
-  `verify-prod`.
-  → `docs/wiki/concepts/donny-social-tools.md` · `feat/donny-social-tools-repair`
+  or grants. Four **more** defects surfaced by the review loop *after* the work read as finished —
+  a scheduled post the product could not see (no `donny_scheduled_posts` row), an honest refusal that
+  was structurally unreachable, a failed account read still claiming "no account connected" (the
+  original complaint via a DB blip, where an earlier commit had added the error check, still returned
+  `[]`, and carried a comment claiming the whole fix), and one wrapper fed two different shapes by its
+  two branches. **Pending (2026-08-09):** merge **PR #416** (open, mergeable; `verify`/`smoke`/
+  `lighthouse`/Vercel green — `Supabase Preview` fails here as it does on #396, the known staging
+  drift); **deploy `donny-orchestrator` separately** (merging ships frontend only); then the
+  acceptance signal — a `status='success'` row in `donny_tool_executions` for a `social_*` tool,
+  which has **never existed** — and a both-viewport `verify-prod`. Note the CI edge typecheck gate
+  covers **none** of these `_shared` files (both importers are on `.typecheck-ignore`); a hand-run
+  `deno check` with a `main` baseline stands in for it.
+  → `docs/wiki/concepts/donny-social-tools.md` · #416
 - **Donny-first business dashboard (Phase A)** — the `/dashboard/business` body becomes Donny
   (greeting + attention list + prompt box + three taps); today's body preserved verbatim at
   `/dashboard/business/overview`. Scope set by a prod audit, not the mockup: only 4 Donny tools
