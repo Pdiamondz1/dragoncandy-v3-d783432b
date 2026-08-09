@@ -8,7 +8,11 @@
 //
 // Keyed on user_id, NEVER business_id: creators can hold rows here and their
 // business_id is NULL, so a join through it silently drops them.
-import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.57.2';
+// `npm:` specifier, not esm.sh — PR #415 swept the whole functions tree onto
+// this because esm.sh specifiers were blocking edge-function redeploys. This
+// file was created on a branch cut before that sweep, so nothing would have
+// caught it: a rename pass cannot reach a file that does not exist yet.
+import { SupabaseClient } from 'npm:@supabase/supabase-js@2.57.2';
 
 export interface ConnectedAccount {
   id: string;
