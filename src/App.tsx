@@ -41,6 +41,7 @@ const LandingPage = lazy(() => import("./pages/LandingPage"));
 const PitchDeck = lazy(() => import("./pitch/PitchDeck"));
 const ProfileSetup = lazy(() => import("./pages/ProfileSetup"));
 const BusinessDashboard = lazy(() => import("./pages/BusinessDashboard"));
+const BusinessOverview = lazy(() => import("./pages/BusinessOverview"));
 const BrandDashboard = lazy(() => import("./pages/BrandDashboard"));
 const BrandSponsorships = lazy(() => import("./pages/BrandSponsorships"));
 const BrandCreators = lazy(() => import("./pages/BrandCreators"));
@@ -236,6 +237,8 @@ function AnimatedRoutes() {
           <Route path="/dashboard/brand" element={<ProtectedRoute><BrandRoute><BrandDashboard /></BrandRoute></ProtectedRoute>} />
           <Route path="/dashboard/creator" element={<ProtectedRoute><CreatorDashboard /></ProtectedRoute>} />
           <Route path="/dashboard/business/settings" element={<ProtectedRoute><BusinessRoute><BusinessSettings /></BusinessRoute></ProtectedRoute>} />
+          {/* Today's dashboard body, kept reachable when the Donny-first body is on. */}
+          <Route path="/dashboard/business/overview" element={<ProtectedRoute><BusinessRoute><BusinessOverview /></BusinessRoute></ProtectedRoute>} />
           <Route path="/dashboard/creator/settings" element={<ProtectedRoute><CreatorSettings /></ProtectedRoute>} />
 
           {/* Campaign Routes */}

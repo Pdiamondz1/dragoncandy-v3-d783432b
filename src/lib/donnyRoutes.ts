@@ -32,6 +32,7 @@ export const ROUTE_TEMPLATES: string[] = [
   // business (restaurant)
   "/dashboard/business",
   "/dashboard/business/settings",
+  "/dashboard/business/overview",
   "/dashboard/business/campaigns",
   "/dashboard/business/campaigns/create",
   "/dashboard/business/campaigns/:id",
