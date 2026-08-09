@@ -52,6 +52,8 @@ const msg = (over: Partial<DonnyMessage>): DonnyMessage =>
 
 const suggestions: DonnySuggestion[] = [
   { label: 'Find creators near me', message: 'Find creators near me' },
+  { label: 'Create a campaign', message: 'Create a campaign for my restaurant' },
+  { label: "What's trending?", message: "What's trending for restaurants near me?" },
 ];
 
 function renderCanvas(
@@ -148,6 +150,22 @@ describe('DonnyCanvas — resting to thread', () => {
 
     expect(onSuggestionTap).toHaveBeenCalledWith(suggestions[0]);
     expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument();
+  });
+});
+
+describe('DonnyCanvas — suggestion chips', () => {
+  it('renders one tap per suggestion, not just the first', () => {
+    // Guards against a canvas that renders only suggestions[0] and silently
+    // drops the rest — every other test in this file taps suggestions[0]
+    // only, so nothing else here would catch that regression.
+    renderCanvas();
+    for (const s of suggestions) {
+      expect(screen.getByRole('button', { name: s.label })).toBeInTheDocument();
+    }
+    const chipButtons = screen
+      .getAllByRole('button')
+      .filter((btn) => suggestions.some((s) => s.label === btn.textContent));
+    expect(chipButtons).toHaveLength(suggestions.length);
   });
 });
 

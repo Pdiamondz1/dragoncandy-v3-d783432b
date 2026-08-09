@@ -14,8 +14,24 @@ vi.mock('react-router-dom', async (importOriginal) => {
 });
 
 const openDonnyWithContextMock = vi.fn();
+const sendMessageMock = vi.fn();
+const setInlineMock = vi.fn();
 vi.mock('@/contexts/DonnyProvider', () => ({
-  useDonnyContext: () => ({ openDonnyWithContext: openDonnyWithContextMock }),
+  useDonnyContext: () => ({
+    openDonnyWithContext: openDonnyWithContextMock,
+    sendMessage: sendMessageMock,
+    setInline: setInlineMock,
+    exitInline: () => {},
+    registerInlineComposer: () => {},
+    focusInlineComposer: () => {},
+    markAllRead: () => {},
+    stage: 'inline',
+    messages: [],
+    isStreaming: false,
+    streamingContent: '',
+    error: null,
+    retry: () => {},
+  }),
 }));
 
 const trackEventMock = vi.fn();
@@ -117,7 +133,8 @@ describe('DonnyHome — taps and prompt', () => {
   it('sends a tapped suggestion to Donny and records it', async () => {
     renderHome();
     fireEvent.click(screen.getByRole('button', { name: BUSINESS_SUGGESTIONS[0].label }));
-    expect(openDonnyWithContextMock).toHaveBeenCalledWith(BUSINESS_SUGGESTIONS[0].message);
+    expect(sendMessageMock).toHaveBeenCalledWith(BUSINESS_SUGGESTIONS[0].message);
+    expect(openDonnyWithContextMock).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(trackEventMock).toHaveBeenCalledWith('donny_home_suggestion_tapped', {
         label: BUSINESS_SUGGESTIONS[0].label,
@@ -130,7 +147,8 @@ describe('DonnyHome — taps and prompt', () => {
     const input = screen.getByRole('textbox', { name: /ask donny/i });
     fireEvent.change(input, { target: { value: 'plan my week' } });
     fireEvent.submit(input.closest('form')!);
-    expect(openDonnyWithContextMock).toHaveBeenCalledWith('plan my week');
+    expect(sendMessageMock).toHaveBeenCalledWith('plan my week');
+    expect(openDonnyWithContextMock).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(trackEventMock).toHaveBeenCalledWith('donny_home_prompt_submitted', {})
     );

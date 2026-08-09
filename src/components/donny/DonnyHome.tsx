@@ -8,8 +8,10 @@
 // there is no net new load versus today — but this component now owns them
 // rather than inheriting them for free.
 //
-// Phase A opens the EXISTING Donny panel. Inline chat is Phase B; see the
-// design doc §13 for the seven hazards it has to resolve first.
+// The prompt and every tap answer inline via DonnyCanvas — nothing here opens
+// the side panel anymore. That used to be Phase A's behaviour (opening the
+// existing Donny panel); this is Phase B, wired in once the seven hazards in
+// design doc §13 were resolved.
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -29,7 +31,7 @@ import { TourButton } from '@/components/guidance/TourButton';
 import { RatingPromptManager } from '@/components/reviews/RatingPromptManager';
 import { SponsorshipRatingPromptManager } from '@/components/reviews/SponsorshipRatingPromptManager';
 import { DonnyHomeProposals } from './DonnyHomeProposals';
-import { DonnyHomePrompt } from './DonnyHomePrompt';
+import { DonnyCanvas } from './inline/DonnyCanvas';
 import { BUSINESS_SUGGESTIONS, type DonnySuggestion } from '@/lib/donny/donnyHomeSuggestions';
 import { buildDonnyProposals, type DonnyProposal } from '@/lib/donny/buildDonnyProposals';
 import {
@@ -42,7 +44,7 @@ const OVERVIEW_ROUTE = '/dashboard/business/overview';
 export function DonnyHome() {
   const { profile, activeOrgUnit } = useAuth();
   const navigate = useNavigate();
-  const { openDonnyWithContext } = useDonnyContext();
+  const { sendMessage } = useDonnyContext();
   const { trackEvent } = useAnalyticsContext();
   const { showTour, tourSteps, completeTour, skipTour, triggerTour } = useTour();
 
@@ -127,7 +129,7 @@ export function DonnyHome() {
     if (proposal.cta.kind === 'route') {
       navigate(proposal.cta.route);
     } else {
-      openDonnyWithContext(proposal.cta.message);
+      sendMessage(proposal.cta.message);
     }
   };
 
@@ -142,12 +144,12 @@ export function DonnyHome() {
 
   const handleSuggestionTap = (suggestion: DonnySuggestion) => {
     void trackEvent('donny_home_suggestion_tapped', { label: suggestion.label });
-    openDonnyWithContext(suggestion.message);
+    sendMessage(suggestion.message);
   };
 
   const handlePromptSubmit = (text: string) => {
     void trackEvent('donny_home_prompt_submitted', {});
-    openDonnyWithContext(text);
+    sendMessage(text);
   };
 
   if (!profile) {
@@ -197,27 +199,28 @@ export function DonnyHome() {
             </p>
           </div>
 
-          <DonnyHomePrompt
+          <DonnyCanvas
             suggestions={BUSINESS_SUGGESTIONS}
-            onSubmit={handlePromptSubmit}
             onSuggestionTap={handleSuggestionTap}
-          />
-
-          {/* The rating prompts go INSIDE the attention frame, not beside it.
-              `NeedsAttentionSection` exists to consolidate every "needs you"
-              banner into ONE quiet framed list — the replaced body put all four
-              in a single instance. Rendering these as siblings would produce one
-              framed list plus two orphaned rows under it. */}
-          <DonnyHomeProposals
-            result={result}
-            isLoading={isLoading}
-            onDismiss={handleDismiss}
-            onTap={handleProposalTap}
+            onPromptSubmit={handlePromptSubmit}
           >
-            {/* Kept from the replaced body: these have no other home for this role. */}
-            <RatingPromptManager variant="row" />
-            <SponsorshipRatingPromptManager variant="row" />
-          </DonnyHomeProposals>
+            {/* The rating prompts go INSIDE the attention frame, not beside it.
+                `NeedsAttentionSection` exists to consolidate every "needs you"
+                banner into ONE quiet framed list — the replaced body put all four
+                in a single instance. Rendering these as siblings would produce one
+                framed list plus two orphaned rows under it. Both this and the
+                proposals list hide (unmount) once the canvas is in thread state. */}
+            <DonnyHomeProposals
+              result={result}
+              isLoading={isLoading}
+              onDismiss={handleDismiss}
+              onTap={handleProposalTap}
+            >
+              {/* Kept from the replaced body: these have no other home for this role. */}
+              <RatingPromptManager variant="row" />
+              <SponsorshipRatingPromptManager variant="row" />
+            </DonnyHomeProposals>
+          </DonnyCanvas>
 
           <div className="flex items-center justify-between gap-3 pt-2">
             <Link
