@@ -83,6 +83,25 @@ migration work; changing which *kinds* of host a list trusts is a separate secur
 and is out of scope. `AuthPage`'s list in particular is a **credential boundary** — it gates
 where a session `access_token` is written into a redirect URL.
 
+### Verification links follow the signup origin
+
+`send-verification-email` built its link as `APP_URL || inferredOrigin || '…io'`. Because
+`APP_URL` is set in prod it always won, so a `.com` signup would receive a `.io` link and
+verify onto a host the user never chose — and sessions are origin-scoped, so they end up
+signed in on the wrong one. Caught by the Codex second review.
+
+Now the request origin wins **if it is allow-listed**, falling back to `APP_URL` then
+`DEFAULT_ORIGIN`. This also closes a latent hole: `inferredOrigin` was built from raw
+`Origin`/`Referer` headers with **no gate**, and is interpolated into a *token-bearing* link.
+It was harmless only because `APP_URL` happened to be set and took precedence — one unset env
+var away from letting a caller aim a legitimate-looking DragonCandy verification email at a
+domain they control. The allow-list mirrors `verify-email`'s, so a link we mint is always one
+that function will honour.
+
+`send-welcome-email` has the same `APP_URL` shape (and a wrong `https://lovable.app`
+fallback) but is deliberately left to Phase 2: its CTAs are navigational, whereas the
+verification link gates account activation.
+
 ### Other allow-lists and guards
 
 - `_shared/google-workspace.ts` — `REDIRECT_HOSTS` gains the `.com` hosts **and `www` on both

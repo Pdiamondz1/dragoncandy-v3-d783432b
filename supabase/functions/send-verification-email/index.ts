@@ -3,6 +3,23 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 import { Resend } from "npm:resend@2.0.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import { htmlEscape } from "../_shared/htmlEscape.ts";
+import {
+  APP_ORIGINS,
+  DEFAULT_ORIGIN,
+  LOVABLE_PREVIEW_ORIGIN,
+  LOVABLE_V3_ORIGIN,
+  WWW_APP_ORIGINS,
+} from "../_shared/origins.ts";
+
+// Origins a verification link may be built against. Mirrors verify-email's set
+// (which gates the redirect on the other end) so a link we mint is always one
+// that function will honour.
+const ALLOWED_LINK_ORIGINS = new Set<string>([
+  ...APP_ORIGINS,
+  ...WWW_APP_ORIGINS,
+  LOVABLE_V3_ORIGIN,
+  LOVABLE_PREVIEW_ORIGIN,
+]);
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -70,7 +87,18 @@ const handler = async (req: Request): Promise<Response> => {
       throw tokenError;
     }
 
-    // Create verification link
+    // Create verification link.
+    //
+    // Send the user back to the origin they actually signed up on — otherwise a
+    // dragoncandy.com signup receives a dragoncandy.io link and verifies onto a
+    // host they never chose (sessions are origin-scoped, so they end up signed
+    // in on the wrong one).
+    //
+    // The request origin is honoured ONLY if it is allow-listed. This value is
+    // interpolated into a token-bearing link, so an ungated Origin/Referer would
+    // let a caller aim a legitimate-looking DragonCandy verification email at a
+    // domain they control. It was previously ungated and only harmless because
+    // APP_URL happened to be set and took precedence.
     const origin = req.headers.get('origin') ?? '';
     const referer = req.headers.get('referer') ?? '';
     let inferredOrigin = '';
@@ -79,7 +107,8 @@ const handler = async (req: Request): Promise<Response> => {
     } catch (_) {
       inferredOrigin = origin;
     }
-    const appUrl = Deno.env.get('APP_URL') || inferredOrigin || 'https://dragoncandy.io';
+    const trustedOrigin = ALLOWED_LINK_ORIGINS.has(inferredOrigin) ? inferredOrigin : '';
+    const appUrl = trustedOrigin || Deno.env.get('APP_URL') || DEFAULT_ORIGIN;
     const verificationLink = `${appUrl}/verify-email?token=${token}`;
 
     // Send verification email using Resend
