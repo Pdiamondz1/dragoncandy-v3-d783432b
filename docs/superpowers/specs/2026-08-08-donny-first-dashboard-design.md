@@ -143,9 +143,13 @@ fixed in PR #409.
 - **The location-setup blocker is exempt from the cap** and renders above the list. Today it
   renders unconditionally and it *blocks campaign creation, promotions and DragonShare*. Ranked
   below three pending applications it would vanish, which would be a regression.
-- **Dismissal key** reuses the existing 24-hour `localStorage` convention but keys on
-  `${actionType}_${campaignId}`, **not** today's `pendingBannerDismissed_${campaignId}`. The
-  existing key is campaign-scoped, so dismissing an "applied" prompt also hides the "submitted
+- **Dismissal key** reuses the existing 24-hour `localStorage` convention but keys on the proposal
+  id, `donnyProposalDismissed_pending_action:${actionType}:${campaignId}:${sourceId}` — **not**
+  today's `pendingBannerDismissed_${campaignId}`. `sourceId` is the row's own primary key
+  (`campaign_applications.id` / `campaign_collaborations.id`); without it, two different creators
+  applying to the SAME campaign collide on one id, and dismissing one silences the other — the
+  normal marketplace case of multiple applicants, not an edge case. The existing key is also
+  campaign-scoped in the same way, so dismissing an "applied" prompt also hides the "submitted
   content" prompt for the same campaign — Donny goes quiet about delivered work. Not inherited.
 - Signals are **not dismissible** in Phase A. Few, low-noise, and each disappears when its
   condition clears.

@@ -2099,7 +2099,15 @@ Spec Goal 3: *"No path where Donny shrugs — if it cannot do a thing, it says w
 
 - [ ] **Step 1: Add the rule to the system prompt**
 
-The `stable` string is cached as a prompt-cache prefix, so append rather than reorder — inserting mid-string invalidates the cache for every user. Add these two bullets immediately after the existing `- Only use routes that appear in a tool result…` bullet (line 64), before the `web_search` bullet:
+`callClaude` places exactly ONE `cache_control` breakpoint, at the end of the whole `stable`
+block (`index.ts` around line 187) — there is no per-bullet or mid-string breakpoint. Any
+byte-change to `stable` invalidates that single cached prefix once, for every user, regardless of
+where in the string the change lands. So position within `stable` is a **semantic** choice (put
+the rule where it reads in context, next to the bullet it qualifies), not a caching one — do not
+default to appending just to "protect the cache." Add these two bullets immediately after the
+existing `- Only use routes that appear in a tool result…` bullet (line 64), before the
+`web_search` bullet, because the first new bullet's escape hatch only makes sense read next to
+that routes bullet (see the rationale after the snippet):
 
 ```
 - Never end on a dead end. If you cannot do something yourself, say plainly what you cannot do and then name the page where the user can do it — in one short sentence, in the words a restaurant owner would use ("your Social Media page", not "the Outstand connection manager"). Only name a page you actually know exists; if you do not know where something lives, say so plainly and offer what you CAN do instead — never invent a page name to avoid a dead end. "I can't help with that" on its own is a bug
