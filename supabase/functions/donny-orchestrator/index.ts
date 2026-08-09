@@ -13,6 +13,7 @@ import * as creatorsAgent from "./agents/creators.ts";
 import * as dragonshareAgent from "./agents/dragonshare.ts";
 import * as billingAgent from "./agents/billing.ts";
 import * as guidanceAgent from "./agents/guidance.ts";
+import * as rewardsAgent from "./agents/rewards.ts";
 import * as generalAgent from "./agents/general.ts";
 import * as webAgent from "./agents/web.ts";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -98,6 +99,7 @@ async function dispatchAgent(
     dragonshare_agent: dragonshareAgent.execute,
     billing_agent: billingAgent.execute,
     guidance_agent: guidanceAgent.execute,
+    rewards_agent: rewardsAgent.execute,
     general_agent: generalAgent.execute,
     web_search: webAgent.search,
     read_url: webAgent.readUrl,

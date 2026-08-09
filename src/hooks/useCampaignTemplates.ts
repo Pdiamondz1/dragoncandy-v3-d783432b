@@ -25,6 +25,13 @@ export function useCampaignTemplates() {
         .select('id, title, deliverables, budget_min, budget_max, platforms')
         .eq('user_id', user.id)
         .eq('status', 'completed')
+        // Crew collabs are not templates. useDuplicateCampaign deliberately preserves
+        // group_id, so duplicating one here would drop the business into the new-campaign
+        // flow with a crew-locked draft: no price input, no CostBreakdown, publishes only
+        // to that crew — and no UI anywhere can unset group_id, so they'd have to start
+        // over. Re-launching a crew collab is still available from its own campaign card,
+        // which is the surface where "another one of these" is what you actually mean.
+        .is('group_id', null)
         .order('updated_at', { ascending: false });
 
       if (error) throw error;

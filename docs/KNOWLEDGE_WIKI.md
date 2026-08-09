@@ -49,7 +49,11 @@ frontmatter. `[[Wikilinks]]` use display names, resolved via `index.md`.
 5. Create or update concept pages in `concepts/`.
 6. Update `[[cross-references]]` across all touched pages.
 7. Update `index.md` — add new entries, keep alphabetically sorted.
-8. Append to `log.md` — include pages created and updated. Use the format:
+8. **Prepend** to `log.md` — newest first, directly above the current top entry.
+   (This step used to read "append", which is wrong and has produced out-of-order
+   entries near the bottom of the file; the top of `log.md` is strictly
+   reverse-chronological and is what readers and the SessionStart hook scan.)
+   Include pages created and updated. Use the format:
    `## [YYYY-MM-DD] operation | Subject` where operation is one of:
    `ingest`, `query`, `lint`, `update`, `analysis`.
 

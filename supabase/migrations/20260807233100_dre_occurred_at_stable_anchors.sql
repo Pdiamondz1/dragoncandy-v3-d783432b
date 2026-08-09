@@ -164,7 +164,7 @@ as $$
     and not exists (select 1 from dragon_point_events e
       where e.user_id = rv.reviewer_id and e.event_type = 'business.five_star_bonus' and e.source_id = rv.id)
   union all
-  -- business campaign milestones (5/10/25/50) — campaigns has no completed_at
+  -- business campaign milestones (5/10/25/50) — anchored on completed_at (added 20260807233000)
   select m.user_id, 'business_client', 'business.milestone_campaigns_' || m.threshold::text,
          m.user_id, m.occurred_at
   from (

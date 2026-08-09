@@ -15,6 +15,7 @@ import { CampaignApplication } from '@/types/applications';
 import { useManageApplication } from '@/hooks/useManageApplication';
 import { useAuth } from '@/hooks/useAuth';
 import { useCampaignSponsorship } from '@/hooks/useCampaignSponsorship';
+import { useCampaignInvitations } from '@/hooks/useCampaignInvitations';
 import { useEscrowCheckout } from '@/hooks/useEscrowCheckout';
 import { BRAND_ROLE_ENABLED } from '@/lib/featureConfig';
 
@@ -35,6 +36,14 @@ export const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ ca
   
   // Check if campaign has an active sponsorship
   const { data: activeSponsorshipData } = useCampaignSponsorship(campaignId);
+
+  // Which of these applicants the business actually invited. Same query key as the
+  // matching panel, so it's served from cache when both are on screen.
+  const { data: invitations } = useCampaignInvitations(campaignId);
+  const invitedCreatorIds = React.useMemo(
+    () => new Set((invitations ?? []).map((inv) => inv.creator_id)),
+    [invitations],
+  );
   const hasActiveSponsor = !!activeSponsorshipData;
 
   // Determine user role based on profile and campaign ownership
@@ -253,6 +262,7 @@ export const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ ca
                   campaignDeliveryFee={campaign?.delivery_fee}
                   campaignDeliveryType={campaign?.delivery_type}
                   campaignEscrowStatus={campaign?.escrow_status}
+                  wasInvited={invitedCreatorIds.has(application.creator_id)}
                   onViewProfile={() => handleViewProfile(application)}
                   onPayEscrow={isGroupCampaign ? undefined : () => initiateCheckout(campaignId)}
                   isPayingEscrow={isPayingEscrow}

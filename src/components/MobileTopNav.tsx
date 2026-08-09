@@ -5,9 +5,11 @@ import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.webp';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useLogout } from '@/hooks/useLogout';
 import type { UserRole } from '@/types/user';
-import { getDrawerMenu } from '@/lib/navConfig';
+import { getDrawerMenu, withDcPointsGate } from '@/lib/navConfig';
 import { activeNavHref } from '@/lib/navActive';
 import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
+import { DcPointsChip } from '@/components/rewards/DcPointsChip';
+import { useDragonRewardsEnabled } from '@/hooks/useDragonPoints';
 
 interface MobileTopNavProps {
   bgClass?: string;
@@ -26,7 +28,16 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
 }) => {
   const logout = useLogout();
   const location = useLocation();
-  const sections = useMemo(() => (userRole ? getDrawerMenu(userRole) : []), [userRole]);
+  // Same two-gate rule as the desktop sidebar: role is baked into the arrays, the launch
+  // flag can only be applied here. Sections are rebuilt so an emptied section disappears
+  // rather than rendering a heading with nothing under it.
+  const dragonRewardsEnabled = useDragonRewardsEnabled();
+  const sections = useMemo(() => {
+    const raw = userRole ? getDrawerMenu(userRole) : [];
+    return raw
+      .map((s) => ({ ...s, items: withDcPointsGate(s.items, dragonRewardsEnabled) }))
+      .filter((s) => s.items.length > 0);
+  }, [userRole, dragonRewardsEnabled]);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   // Longest match wins, across ALL drawer sections (the role root lives in one section and its
@@ -62,6 +73,7 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
       )}
 
       <div className="flex items-center gap-1">
+        <DcPointsChip />
         <NotificationDropdown />
 
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>

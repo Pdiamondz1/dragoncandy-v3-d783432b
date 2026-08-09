@@ -1,5 +1,151 @@
 # Wiki Log
 
+## [2026-08-08] update | The deploy that closed the anon-key holes — plus a dead authorization arm and a session collision
+
+Ingested `raw/sessions/2026-08-08-anon-key-deploy-and-embed-fix.md`. #402 and #399 were merged but
+inert; this is the deploy that actually closed them. **7 functions deployed and probe-verified, of
+which 6 were closed** — each of those flipped 200/404/400 → **401** with the public anon key, with
+before/after baselines captured using payloads that stop short of any side effect.
+`fire-campaign-social-hook` now returns an identical 401 for a real and a bogus campaign id, so the
+existence oracle is closed rather than narrowed. The 7th, `landing-clips`, is a legitimate anonymous
+endpoint and **deliberately still answers 200** — it was hardened (both media URLs origin-pinned),
+not closed, and is deliberately not counted among the six. The `donny-dragonshare-score` undeploy was
+re-confirmed (absent from `list_edge_functions`).
+
+Two findings surfaced by the deploy itself, both compounded onto
+[[verify_jwt Is Not Authorization]] rather than given new pages — they are consequences of that
+page's subject, not separate ideas:
+
+**An ambiguous PostgREST embed made an authorization arm dead code.** `campaign_sponsorships` has two
+FKs into `business_profiles`, so `business_profiles!inner(user_id)` answers **300 PGRST201**.
+supabase-js returns that as `{data:null}` rather than throwing, and the call site's nullish fallback
+turned it into a confident empty list — the brand arm never evaluated. It failed **closed**, so it
+never weakened the gate, and it was still worth fixing: that arm exists because its future caller
+swallows errors, so it would have produced exactly the silent absence it was written to prevent.
+**Two independent close reads of the file missed it** — a two-FK table is invisible in query text.
+
+**A parallel Claude session edited the same function within hours** (#403), surfaced only by an
+out-of-date merge rejection. The artifact about to ship was therefore a version no review had seen
+whole, so `edge-function-reviewer` was re-dispatched on the merged file (PASS). Recorded as a rule: a
+pre-deploy review binds to a commit; if the branch moves, run it again. The collision pattern is
+recorded in project memory as `project_concurrent_lovable_pr_collisions` — a memory file, not a wiki
+page, so deliberately not written as a `[[wikilink]]`.
+
+Pages updated: [[verify_jwt Is Not Authorization]] (new "Closed on prod" section + two gotchas —
+embed hints are load-bearing, and supabase-js does not throw on HTTP error statuses), `index.md`
+(entry rewritten to deployed status), `docs/SHIPPED_LOG.md` (new entry prepended),
+`docs/PROJECT_CONTEXT.md` §5 (both entries moved from "Built — awaiting founder go-live" to
+"Shipped"). No new pages, no schema change, no migration.
+
+## [2026-08-08] ingest | [[verify_jwt Is Not Authorization]] — a new page, not a section on its sibling
+
+Deliberately a **new concept page** rather than compounding onto [[Service-Role Data Exposure]],
+which is the standing rule. The two are distinct mechanisms: that page is about a *credential* that
+bypasses RLS once you are inside; this is about a *platform gate* that never let anyone be
+identified in the first place. They compound rather than overlap, and a reader hunting "why did
+`verify_jwt:true` not stop this" will not find it under a service-role heading. Cross-linked both
+ways.
+
+The load-bearing fact, verified on prod rather than reasoned about: the anon key is a valid JWT and
+ships in the frontend bundle, so `dragonshare-notify` returned **401 with no header and 200 with the
+public anon key**. The 401 is what made it look protected.
+
+Three things I wanted preserved beyond the instance list. **The sweep's own blind spot** — a
+mechanical scan can only find a missing *signal*, and `fire-promotion-social-hook` was cleared
+because it calls `getUser` while never checking ownership. **A read gate is not a write gate** — I
+reused `evaluateCampaignAccess` (documented as "can this actor SEE") to guard a write, importing an
+applicant arm that let a rejected applicant mint signed URLs over private deliverables; the review
+caught it. And **the CI gate skipped 4 of the 6 functions I changed** (`.typecheck-ignore`), so
+"66 clean" was not evidence — the real check was a hand-run before/after `deno check` (16 → 16, all
+pre-existing).
+
+Recorded a correction too: I told the founder both DragonShare hooks were service-role-only. The
+browser calls `dragonshare-notify` twice; a blanket guard would have broken submission and decline.
+The grep that disproved it took thirty seconds and I ran it after making the claim.
+
+Pages: `concepts/anon-key-is-not-authorization.md` (new). Source:
+`raw/sessions/2026-08-08-anon-key-reachable-edge-functions.md`. Core docs: `SHIPPED_LOG.md`
+prepended, `PROJECT_CONTEXT.md` §5, `index.md`.
+## [2026-08-08] ingest | Notification & invitation authorization — three holes the invite UX walked into
+
+Ingested [[Notification & Invitation Authorization Session]] (PR #387 + branch
+`fix/notification-authorization`). **Compounded, not new** — both subjects already had owning
+pages, and each compound is a *reframe* rather than an append, because in both cases the page
+stated something now false:
+
+- **[[Notification Delivery]]** — new "Who may notify whom" section. The page described
+  `send-notification-email`'s self-only gate as existing *to prevent email enumeration*, then
+  told all frontend code to route around it through `create-notification` — which had no gate
+  of its own. It also documented `emailType ?? map[type]` ("a caller can target **any**
+  template") as a **feature**; that line is the vulnerability, and it is now struck and
+  explained rather than deleted, per "flag contradictions, never silently overwrite." The
+  bulk-invite Known Issue flipped to fixed; two new residuals filed (free-text
+  `title`/`body`/`actionUrl` for related callers; cold contact resting on an ordering
+  dependency nothing enforces).
+- **[[Campaign Invitations]]** — new "Invitation & application integrity" section. Its
+  mechanics table already named "applying after the campaign leaves `published`" as *the one
+  real privilege*; the `campaign_id`-repointing hole manufactured exactly that, so the fix
+  belongs on the page that defines the privilege.
+
+Also corrected both `index.md` entries: the Campaign Invitations line ended with
+"`bulk-invite` skips the in-app bell", now fixed.
+
+Durable lessons carried onto the pages: a policy **cannot** pin a column against change
+(`WITH CHECK` sees no `OLD`) — that is what column GRANTs are for; an omitted `WITH CHECK`
+defaults to `USING` and is **not** unconstrained; a `SECURITY DEFINER` RPC silently opts out
+of the RLS policy protecting the table it writes; a history-only backtest can only see what
+has already happened, so enumerate the call sites too; and **ignoring an untrusted input is
+not automatically safe** — dropping `emailType` silently killed 7 working email flows.
+## [2026-08-08] update | [[Service-Role Data Exposure]] — a lead checked, confirmed, and closed by deletion
+
+Compounded onto the class page rather than a new one: `donny-dragonshare-score` is a textbook
+instance of it (check 2 — record-level ownership assertion — missing outright, plus check 7's
+`select('*')`), so it belongs beside the other instances, not beside them in a thin sibling.
+
+Two things were worth writing down beyond the instance itself. First, the function was the hole in
+the DB's *own* guard: `trg_ds_posts_block_self_verify` blocks an authenticated non-admin from
+changing exactly those columns, then waves through the service role — so defense-in-depth at the DB
+protects only against credentials it can see. Second, and the reason the page now ends on it:
+**deleting source is not undeploying.** A merged deletion leaves the deployed function serving, so
+the repo and the live attack surface disagree, and the repo is the artifact everybody greps. Codex
+raised exactly that as a `[P1]` and proposed a tombstone; the page records why undeploy won here
+(nothing auto-deploys functions in this repo, so a tombstone needs the same manual deploy while
+institutionalizing the orphaned-endpoint anti-pattern). **The undeploy was then actually run and
+verified two ways** — `get_edge_function` → *Function not found*, live POST → **404**.
+
+Also recorded a **correction**: the sibling lead calling `landing-clips` "orphaned" was wrong — it
+has a wired consumer behind a deliberately-false flag, and deleting it would have broken a
+documented promise silently. Filed in the spec's §7 as a checked-and-refuted lead rather than
+quietly dropped, since a wrong lead left standing is what gets acted on later. Confirming it turned
+up a **real** defect in the kept function (both media URLs creator-writable free text → an
+arbitrary-URL beacon on the anonymous homepage), and chasing Codex's follow-up `[P3]` showed the
+2026-07-17 design had specified the *extension* guard at the query level "mirrored in `buildClips`
+too" — only the mirror ever shipped. Hence the new pattern note: **"belt and suspenders" decays into
+a single point of failure the moment one belt is dropped**, because the survivor still produces
+correct output and nothing fails.
+
+Pages: `concepts/service-role-data-exposure.md` (updated). Source:
+`raw/sessions/2026-08-08-dragonshare-score-removal.md`. Core docs: `SHIPPED_LOG.md` (prepended, plus
+a pointer on the now-stale lead list in the 2026-08-07 entry), `PROJECT_CONTEXT.md` §5, and removal
+notes on the two 2026-04-27 DragonShare planning docs.
+
+## [2026-08-08] update | [[Dragon Rewards Engine (DRE)]] — DC Points visibility cleared its review gate
+
+Status-only follow-up to the 2026-08-07 ingest below, which is left as written (a dated
+snapshot, not a claim about now). The mandatory Codex second review ran once the OpenAI
+quota reset and came back **clean** on its third round. Rounds 1 and 2 each found one
+instance of the same defect — a non-creator role falling back to the business branch —
+first making `/rewards` reachable by a brand, then handing a brand the entire business
+earn catalog through Donny's generated prose in `rewards_agent`. The second instance is
+the more interesting one: it lived in *generated prose*, where no reviewer looking at UI
+can see it. Both are fixed; the guard is now stated explicitly in all four places that
+make the decision (chip, page, catalog, sub-agent), each cross-referencing the others,
+because a fallback that silently absorbs an unknown role is what produced the bug twice.
+
+PR #378 is open and mergeable-pending-founder. The two edge functions are still
+**not deployed** — they follow the merge, and they take different flags
+(`dre-award-engine --no-verify-jwt`, `donny-orchestrator` without it).
+
 ## [2026-08-08] update | [[Updated-At Trigger Drift]] — the follow-up anchor, and why it is asymmetric
 
 Compounded onto the existing concept page rather than creating a new one: this is the same thread
@@ -92,6 +238,31 @@ only (read the clause, never the comment), and a shared motion variant with no c
 
 Pages created: `concepts/campaign-invitations.md`.
 Pages updated: `concepts/ai-creator-matching.md`, `index.md`.
+## [2026-08-07] ingest | [[Dragon Rewards Engine (DRE)]] — DC Points visibility
+
+New raw session `raw/sessions/2026-08-07-dc-points-visibility.md`; compounded a "DC Points
+visibility (2026-08-07)" section onto `concepts/dragon-rewards-engine.md` (frontmatter
+`updated`/`sources` bumped) plus two new Known Issues entries (a confirmed
+`campaign_launched` repeat-payment now user-visible, and a documented-not-fixed
+stale-cached-tier trust boundary) and two new See Also links. Qualified — did not
+silently overwrite — `concepts/self-improving-app.md`'s Known Issues claim that
+internal-scoped rows stay invisible to consumer Donny "on every path": true for the
+`sync-internal-docs.mjs` strategy-library path it was verified against, not for the
+separate consumer `sync-wiki-to-donny.mjs` path, which this session's RAG-leak finding
+is the counterexample to. Added a short content-refresh note to
+`concepts/help-center-and-guidance.md`'s existing naming-drift bullet (the dragon-rewards
+article's body was rewritten with real numbers; the naming drift itself is unaffected).
+`index.md` — refreshed the `[[Dragon Rewards Engine (DRE)]]` Concepts entry in place, one
+new Sources line. No new concept page — compounded onto the page that already owns the
+DRE subsystem, per "compound, don't duplicate."
+
+State as of writing: implementation complete (10/10 tasks reviewed clean, full suite
+green), 3 migrations applied+verified on prod, but the 2 edge functions are not deployed,
+the PR is not yet open, and the mandatory Codex second review has not run (OpenAI quota
+exhausted until 2026-08-08 08:55). Recorded honestly in all three places status lives —
+this page's new section, `PROJECT_CONTEXT.md` §5, and `SHIPPED_LOG.md`'s opening note —
+rather than represented as shipped. RAG sync deferred to the post-merge hook, per
+[[Knowledge-Sync Automation]].
 
 ## [2026-08-07] update | [[Campaign Target Audience]] — shipped both halves; the ordering claim is now measured
 

@@ -1,6 +1,8 @@
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { isAuthorizedIngest } from '../_shared/ingest-auth.ts';
+import { authorizeNotify, type NotifyPost } from './authz.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -346,16 +348,76 @@ serve(async (req) => {
     const payload = (await req.json()) as NotifyRequest;
     const { event } = payload;
 
+    // --- Authorization -------------------------------------------------------
+    // This function runs as SERVICE ROLE and acts on body-supplied ids. It previously read no
+    // Authorization header at all, and `verify_jwt=true` does not close that: the anon key is a
+    // valid JWT and ships in the frontend bundle, so the endpoint answered anyone. Rules live in
+    // ./authz.ts (pure + unit-tested); this block only gathers the facts they need.
+    const isIngest = isAuthorizedIngest(req);
+
+    let callerId: string | null = null;
+    if (!isIngest) {
+      const authHeader = req.headers.get('Authorization') ?? '';
+      const token = authHeader.replace(/^Bearer\s+/i, '');
+      if (token) {
+        // Resolve against the ANON client: with the anon key as the token this yields no user,
+        // which is exactly the distinction the old code failed to make.
+        const anon = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY') ?? '');
+        const { data } = await anon.auth.getUser(token);
+        callerId = data?.user?.id ?? null;
+      }
+    }
+
+    // Refuse an unidentified caller BEFORE any service-role lookup, so a body-chosen `post_id`
+    // never reaches the database on an anonymous request.
+    if (!isIngest && !callerId) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: jsonHeaders(req),
+      });
+    }
+
+    // `boost_paid` is keyed on a boost, not a post, and is service-role only — so skip the post
+    // and membership lookups entirely rather than doing work an unauthorized caller can trigger.
+    let post: NotifyPost | null = null;
+    let callerOrgIds: string[] = [];
+    if (!isIngest && event !== 'boost_paid') {
+      if (payload.post_id) {
+        const { data } = await sb
+          .from('dragonshare_posts')
+          .select('creator_id, target_org_id')
+          .eq('id', payload.post_id)
+          .maybeSingle();
+        post = (data as NotifyPost | null) ?? null;
+      }
+      if (callerId) {
+        const { data: memberships } = await sb
+          .from('org_members')
+          .select('org_id')
+          .eq('user_id', callerId)
+          .eq('invitation_status', 'active');
+        callerOrgIds = (memberships ?? []).map((m: { org_id: string }) => m.org_id);
+      }
+    }
+
+    const decision = authorizeNotify({ event, isIngest, callerId, post, callerOrgIds });
+    if (!decision.ok) {
+      console.warn(`[dragonshare-notify] denied event=${event} reason=${decision.reason}`);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }), // deliberately generic to the caller
+        { status: decision.status, headers: jsonHeaders(req) },
+      );
+    }
+    // --- end authorization ---------------------------------------------------
+
     if (event === 'submission' && payload.post_id) {
       await handleSubmission(sb, payload.post_id);
     } else if (event === 'boost_paid' && payload.boost_id) {
-      await handleBoostPaid(
-        sb,
-        payload.boost_id,
-        payload.post_id,
-        payload.creator_id,
-        payload.creator_payout_cents,
-      );
+      // Derive the post, creator and payout from the boost row — never from the body. The
+      // handler already falls back to the DB for all three, so dropping the client-supplied
+      // values is behaviour-preserving for the real caller and removes an attacker-chosen
+      // dollar figure from a "you got paid" message.
+      await handleBoostPaid(sb, payload.boost_id);
     } else if (event === 'declined' && payload.post_id) {
       await handleDeclined(sb, payload.post_id);
     }

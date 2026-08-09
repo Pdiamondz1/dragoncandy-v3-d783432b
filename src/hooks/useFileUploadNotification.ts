@@ -52,9 +52,10 @@ export const useFileUploadNotification = () => {
         body: {
           recipientId,
           type: 'file_uploaded',
-          // The default map sends the creator-variant email; override so a restaurant
-          // upload (recipient = creator) gets the restaurant-variant wording.
-          emailType: uploaderRole === 'creator' ? 'file_uploaded_by_creator' : 'file_uploaded_by_restaurant',
+          // No `emailType` here on purpose. This type has two role-worded templates, and
+          // whichever the client named is the one that fired — so either party in a real
+          // collaboration could send the other the email claiming the wrong uploader.
+          // `create-notification` now derives the variant from `collaboration_id` below.
           category: 'content',
           title: 'New File Upload',
           body: `${uploaderName} uploaded ${fileLabel} to "${title}"`,

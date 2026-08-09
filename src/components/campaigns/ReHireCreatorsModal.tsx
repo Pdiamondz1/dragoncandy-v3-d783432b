@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -37,6 +37,14 @@ export function ReHireCreatorsModal({
   isLoading,
 }: ReHireCreatorsModalProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // This component stays mounted while the sheet is shut (only Radix's content unmounts),
+  // so the selection outlives a closed sheet. That was invisible while a failed re-launch
+  // left the sheet open; now that the caller always closes it, reopening would otherwise
+  // show checkboxes silently pre-ticked from an abandoned attempt.
+  useEffect(() => {
+    if (!open) setSelectedIds(new Set());
+  }, [open]);
 
   const { data: pastCreators = [], isLoading: loadingCreators } = useQuery<PastCreator[]>({
     queryKey: ['past-collaborators', campaignId],
