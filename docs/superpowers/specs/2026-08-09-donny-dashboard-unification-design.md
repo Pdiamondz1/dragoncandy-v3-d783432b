@@ -145,12 +145,8 @@ What is **not** shared is the rendering. `DonnyChatView` / `DonnyMessage` keep
 their current look inside the panel. The inline surface gets its own presentation
 components. Two renderers over one hook instance.
 
-### 4.2 `useDonny` must change — three precise changes
+### 4.2 A fourth stage: `'inline'`
 
-The first draft of this spec claimed `useDonny` was reused unchanged. It cannot
-be. Each change below is required, minimal, and additive to existing callers.
-
-**(a) The `enabled` gate — blocking for Phase 1.**
 `DonnyProvider.tsx:136` reads:
 
 ```ts
@@ -158,31 +154,53 @@ const donny = useDonny({ campaignContext, enabled: stage !== 'closed' });
 ```
 
 The comment above it says "only fires queries when the panel is open." On a
-dashboard route the panel never opens (D1), so with this gate the conversation
-query never runs, `messages` is permanently `[]`, and `sendMessage` throws
-`'No active conversation'` (`useDonny.ts:128`). **The inline surface cannot
-function until this gate widens** to include dashboard routes:
+dashboard route the panel never opens (D1), so the conversation query never runs,
+`messages` is permanently `[]`, and `sendMessage` throws `'No active
+conversation'` (`useDonny.ts:128`).
+
+**The fix is a fourth stage, not a route predicate.** Today
+`src/types/donnyNudge.ts:28` reads `export type DonnyStage = 'closed' | 'tray' |
+'chat'` — there is no `'inline'` and no `setInline()`; both are aspirational in
+the #410 design doc (§4.10). Add them:
 
 ```ts
-enabled: stage !== 'closed' || isInlineDonnyRoute(pathname)
+export type DonnyStage = 'closed' | 'tray' | 'chat' | 'inline';
 ```
 
-`isInlineDonnyRoute` is the same predicate §4.5 uses for the launchers — one
-function, one definition, so the gate and the routing can never disagree.
+`DonnyCanvas` calls `setInline()` on mount and `close()` on unmount. Everything
+else follows from that one signal:
 
-**(b) `attachments` in the select list — Phase 2.**
-`useDonny.ts:88` enumerates columns explicitly (correctly — the project forbids
-`select *`). Adding the column to the table without adding it here means
-persisted attachments silently never re-render on past turns.
+- **`enabled: stage !== 'closed'` is already correct.** `'inline'` is not
+  `'closed'`, so the queries and the realtime subscription fire with **no change
+  to that line** — the gate stops being a blocker instead of being widened.
+- `open()`, `expand()`, `collapse()` and `close()` become **no-ops while
+  `stage === 'inline'`**, enforced in the provider rather than by convention at
+  each call site.
+- Every co-mounted `stage` consumer switches on one value instead of each having
+  to learn a route rule (§4.10).
 
-**(c) `sendMessage` accepts attachments — Phase 2.**
-Today `sendMessageMutation` takes `{ content: string; isRetry?: boolean }`,
-inserts `{ conversation_id, role, content }`, and POSTs a body with no
-attachments field. All three need the optional array. Optional, so every existing
-caller is unaffected.
+**Any new context field must also be added to `DONNY_FALLBACK`**
+(`DonnyProvider.tsx:55-81`) — the object `useDonnyContext()` returns outside a
+provider. Omitting it is a type error, and a silent no-op at runtime.
 
-**Not needed:** an `isPending` flag. D6 removes the load-flash problem by not
-deriving the resting state from a fetch.
+> **Consequence to accept:** the conversation query **creates a
+> `donny_conversations` row as a side effect** (`useDonny.ts:65-74`), and
+> `useLogout.ts:14` archives it on sign-out. So every business user who lands on
+> the dashboard gets one conversation row per session, whether or not they ever
+> talk to Donny. At ~30 users this is negligible, and the row is needed the
+> instant they do talk. Recorded so it reads as a decision, not a surprise.
+
+Two `useDonny` changes remain, both **Phase 2 only**:
+
+**(a) `attachments` in the select list.** `useDonny.ts:88` enumerates columns
+explicitly (correctly — the project forbids `select *`). Adding the column to the
+table without adding it here means persisted attachments silently never re-render
+on past turns.
+
+**(b) `sendMessage` accepts attachments.** Today `sendMessageMutation` takes
+`{ content: string; isRetry?: boolean }`, inserts `{ conversation_id, role,
+content }`, and POSTs a body with no attachments field. All three need the
+optional array. Optional, so every existing caller is unaffected.
 
 ### 4.3 New components
 
@@ -239,36 +257,44 @@ clearance, the composer needs no additional `6rem` offset; it needs
 
 ### 4.5 Launcher rewire (D2)
 
-One shared helper, because three call sites currently duplicate the toggle:
+Both launchers keep their identical toggle shape, now three-way on stage:
 
 ```
-openDonnyForRoute(pathname):
-  if isInlineDonnyRoute(pathname)  → focusInlineComposer()
-  else                             → existing open()/close() panel toggle
+if (stage === 'inline')      → focusInlineComposer()
+else if (stage === 'closed') → open()
+else                         → close()
 ```
 
-Call sites: `DashboardLayout.tsx:230` (desktop header), `DonnyNavButton.tsx:7`
-(mobile nav center).
+Call sites: `DashboardLayout.tsx:236-248` (desktop header — note the #410 design
+doc's "230-242" is stale post-rebase) and `DonnyNavButton.tsx:5-13` (mobile nav
+center). Both already carry `data-donny-launcher`; `DonnyNavButton` also carries
+`data-tour="donny-help"`.
 
 The composer is reached by ref: `DonnyProvider` exposes
 `registerInlineComposer(ref)` / `focusInlineComposer()`; `DonnyCanvas` registers
 on mount and deregisters on unmount.
 
-**On a dashboard route with no registered composer** — `/dashboard/business/overview`
-is exactly this case, and so is the first-run dashboard — the launcher **navigates
-to the canvas route and focuses the composer on arrival.** It does *not* fall back
-to opening the panel: `open()` is gated on dashboard routes (below), so that
-fallback would be a guaranteed dead click. Navigating is the only fail-open that
-actually works.
+**On a dashboard route with no canvas** — `/dashboard/business/overview`, and the
+first-run dashboard — `stage` is simply not `'inline'`, so the launcher falls
+through to the ordinary panel toggle. That is correct behaviour, not a fallback:
+those pages have no inline Donny, so the panel *is* the right surface. No dead
+click is possible.
 
-**Two panel gates**, both in the provider so there is one rule rather than one
-per surface:
+**Entering an inline route with the panel already open.** `stage` lives in the
+provider and survives navigation (`DonnyProvider` is mounted above the router at
+`App.tsx:483`, and nothing anywhere resets stage on navigation — verified). So
+open the panel on `/campaigns`, walk to `/dashboard/business`, and both surfaces
+are live. `DonnyCanvas`'s mount effect calls `setInline()` **unconditionally**,
+which overwrites `'tray'`/`'chat'` and closes the panel by the same stroke that
+opens the inline surface. One assignment resolves it; no separate close-on-entry
+rule is needed.
 
-- `open()` is a no-op on an inline route.
-- **Navigating *into* an inline route closes an already-open panel.** `stage`
-  lives in the provider and survives navigation, so without this you can open the
-  panel on `/campaigns`, walk to `/dashboard/business`, and have both surfaces
-  live at once — the exact defect being deleted.
+`openDonnyWithContext` keeps its behaviour for its other callers, but note its
+two nested 100 ms `setTimeout`s exist *only* to outwait the `enabled` gate — the
+conversation query must resolve before `sendMessage` stops throwing. It is
+fire-and-forget, so nothing surfaces if 200 ms is not enough. The inline composer
+must not copy this: with `setInline()` already called on mount, the conversation
+is loaded long before the user finishes typing.
 
 `openDonnyWithContext` keeps its behaviour for its other callers
 (`BrandFreeTrioHero.tsx:43,51`, `HelpArticlePage.tsx:171`, and the #411
@@ -321,6 +347,51 @@ container is `role="log" aria-live="polite"`, matching `DonnyChatView.tsx:55`. T
 "← Dashboard" pill is a link with a discernible name, not an icon-only control.
 Attachment remove controls are labelled per file. The transition respects
 `prefers-reduced-motion`. Keyboard focus is visible throughout.
+
+### 4.10 The complete `stage` consumer audit
+
+The #410 design doc (`2026-08-08-donny-first-dashboard-design.md` §13) deferred
+inline chat and left seven hazards for it to resolve — written by the session
+that built Phase A, and the reason `featureConfig.ts:49` points here. Its own
+audit was explicitly incomplete ("audit every co-mounted `stage` consumer, not
+three of five"). Completed below: `useDonnyContext()` has **13** consumers, of
+which **5** read `stage`. Every one needs a decision.
+
+| File:line | Reads `stage` to | Decision |
+|---|---|---|
+| `DashboardLayout.tsx:162,236-248` | Desktop header launcher toggle | Three-way per §4.5 |
+| `DonnyNavButton.tsx:5-13` | Mobile nav launcher toggle | Three-way per §4.5 |
+| `DonnyDesktopPanel.tsx:26,38,45-50` | `return null` when closed; width + body by stage | Add `'inline'` to the null branch |
+| `DonnyMobileSheet.tsx:24-29,43,57-58` | `return null` when closed; geometry + swipe by stage | Add `'inline'` to the null branch |
+| `DonnyProvider.tsx:98,136,342,371` | Owns it; gates `useDonny`; memo dep | §4.2 |
+
+The eight non-`stage` consumers are unaffected **except one**:
+`DonnyMessage.tsx:122` calls `close()` before `navigate()` when
+`matchMedia('(max-width: 767px)')` matches — correct for a fullscreen mobile
+sheet, wrong inline, where there is no overlay to dismiss and `close()` would
+tear down the surface the user is reading. The provider-level `close()` no-op
+(§4.2) neutralises it, but the mobile-only branch should also be skipped when
+`stage === 'inline'` so the intent is legible at the call site.
+
+`DonnyPanelHeader` is **pure props**, not a context consumer — the #410 doc's
+"via `DonnyChatView`" framing is right, and it is moot here because the inline
+surface renders no panel header at all.
+
+**The remaining #410 hazards, and how this design answers them:**
+
+| # | Hazard | Answer |
+|---|---|---|
+| 1 | `DonnyChatView` can't be reused — its header's `collapse()` un-hides the panel, `close()` disables the queries | Not reused. New renderer (§4.3), no panel header. |
+| 2 | Guard `close()`/`collapse()` in the provider, not by convention | §4.2 — no-ops while `'inline'`. |
+| 3 | Audit **every** co-mounted `stage` consumer | Table above — 13 found, 5 relevant. |
+| 4 | `setInline()` arriving from `'chat'` (panel open on another page) | §4.5 — unconditional assignment; the panel closes by the same stroke. |
+| 5 | Unmount mid-stream: `useDonny`'s send has **no `AbortController`** (verified — zero hits in `useDonny.ts`), and the provider sits above the router, so the stream survives navigation and the reply still persists | **Stated as the intended contract, not fixed here.** Navigating away mid-answer completes the turn and the reply is in the thread when you return. Adding cancellation is a change to shared send behaviour and belongs to its own task. `close()` on canvas unmount does *not* disable the messages query, because `'closed'` is only reached when no panel is open either. |
+| 6 | `DonnyChatView` is `h-full`, sized for a fixed panel; inside `#main-content` `h-full` has no definite height, and its auto-scroll writes to its own `scrollRef`, not the real scroller | §4.4 — the inline thread has no inner scroller. It grows in the page and the composer is `sticky bottom-0` inside `#main-content` (`App.tsx:438`, `flex-1 overflow-auto`). Auto-scroll targets `document.getElementById('main-content')`, the pattern `landing/Header.tsx:29-38` already uses, with a `?? window` fallback. Do **not** put `streamingContent` in the scroll deps as `DonnyChatView.tsx:42` does — on a page-length scroller that fights the user on every delta. |
+| 7 | Phase B hides `DonnyNavButton`, orphaning `[data-tour='donny-help']` and emptying `MobileBottomNav.tsx:48`'s wrapper for `[data-tour='bottom-nav-add']` | **Moot.** D2 keeps both launchers mounted everywhere, so both tour anchors survive untouched. |
+
+One anchor this design *does* put at risk: `DonnyHomePrompt.tsx:32` carries
+`data-tour="brief-generator"`, which RESTAURANT_TOUR step 2 targets and
+`DonnyHome.test.tsx:37` asserts. **`DonnyComposer` must carry it forward.**
 
 ## 5. Attachments (D4) — Phase 2
 
@@ -392,16 +463,22 @@ rebasing means reimplementing all of it and colliding on `BusinessDashboard.tsx`
 `donnyRoutes.ts`, `featureConfig.ts`, and `donny-orchestrator/routes.ts`.
 
 **Phase 1 — the inline canvas (frontend only, business role).**
-The `useDonny` `enabled` gate (§4.2a), composer, inline thread, the resting →
-thread takeover, sticky composer, "← Dashboard" pill, launcher rewire, both panel
-gates, inline nudges + `markAllRead`, the §4.8 failure states. No migration, no
-edge-function change; the `+` is not rendered.
+The `'inline'` stage and its provider guards (§4.2), the five `stage` consumers
+(§4.10), composer, inline thread, the resting → thread takeover, sticky composer,
+"← Dashboard" pill, launcher rewire, inline nudges + `markAllRead`, the §4.8
+failure states. No migration, no edge-function change; the `+` is not rendered.
 
-> **`DONNY_FIRST_DASHBOARD_ENABLED` is already `true` on `origin/main`.** Phase 1
-> is therefore **not gated** — merging it changes the dashboard for every business
-> user. Either flip the flag to `false` before merge and have the founder flip it
-> back deliberately, or accept that merge *is* the launch. Decide before the PR,
-> not after.
+> **`DONNY_FIRST_DASHBOARD_ENABLED` is already `true`** — flipped on by #411
+> (`fbfbe798`), verified at `featureConfig.ts:51`. The "Pending: flip the flag"
+> line in `PROJECT_CONTEXT.md` §5 is an expired claim of exactly the kind that
+> file warns about. **Founder decision, 2026-08-09: leave it on. Merging Phase 1
+> is the launch.** There is no staged rollout and no second switch to throw.
+
+> **The both-viewport prod check has never been run on this surface** — not for
+> #410, #411, or #413 (`featureConfig.ts:38-46` says so explicitly, and it is
+> listed as pending in `PROJECT_CONTEXT.md`). Phase 1's `verify-prod` is therefore
+> the *first* real look at the Donny-first dashboard on a device, and it is
+> checking Phase A's work as well as Phase 1's. Budget for finding Phase A bugs.
 
 **Phase 2 — attachments.** Migration + bucket + RLS + `useDonnyAttachments` + the
 `+` control + paste-URL-to-chip + `useDonny` changes (§4.2b, §4.2c) + the
@@ -467,12 +544,28 @@ Drawn from `CLAUDE.md`, `docs/DESIGN_SYSTEM.md`, and this project's memory.
 
 **Unit (Vitest, co-located).** Composer key handling — Enter submits,
 Shift+Enter inserts a newline, Enter during IME composition does not submit,
-empty/whitespace does not submit. Auto-grow caps then scrolls. `isInlineDonnyRoute`
-across all three role dashboards, the overview routes, and non-dashboard routes.
-`openDonnyForRoute` including the navigate-and-focus path when no composer is
-registered. D6: the canvas mounts `resting` even when the conversation has
-messages. Phase 2: attachment type/size/count validation, and rejection of a path
-not prefixed with the caller's uid.
+empty/whitespace does not submit, submitted text is trimmed. Auto-grow caps then
+scrolls. Provider: `open`/`expand`/`collapse`/`close` are no-ops while `'inline'`;
+`setInline()` from `'chat'` leaves `stage === 'inline'`. Launcher: three-way
+branch per stage. D6: the canvas mounts resting even when the conversation
+already has messages. Phase 2: attachment type/size/count validation, and
+rejection of a path not prefixed with the caller's uid.
+
+> **The existing suites constrain the composer's markup.** `DonnyHomePrompt.test.tsx`
+> and `DonnyHome.test.tsx` drive the input with
+> `fireEvent.submit(input.closest('form')!)` — a non-null assertion that *throws*
+> if the textarea has no `<form>` ancestor. **Keep the `<form>` wrapper** and
+> `aria-label="Ask Donny"`; a `<textarea>` also reports `role="textbox"`, so six
+> assertions survive untouched. Not asserted, and therefore free to change: the
+> placeholder, the send button's `aria-label`, and its disabled state.
+>
+> `DonnyHome.test.tsx:17-19` mocks `useDonnyContext` with **only**
+> `openDonnyWithContext`. Every new field the canvas reads (`stage`, `setInline`,
+> `sendMessage`, `messages`, `isStreaming`…) will be `undefined` and throw across
+> all 12 tests until that factory is widened. `DonnyChatView` also calls
+> `window.matchMedia` at render time, so any test rendering a chat surface needs
+> the local `stubViewport` helper from `DonnyMessage.test.tsx:23-34` — `matchMedia`
+> is not stubbed globally.
 
 > `npm run test` exits `1` from ~103 pre-existing failing files. Trust the
 > "N passed, 0 failed" line for the files you touched, not the exit code. RTL
@@ -586,3 +679,43 @@ accepted:
 12. **Failure states, accessibility, pending state, Retry-after-reload, and the
     unbounded thread** were unspecified. Now §3, §4.8, §4.9.
 13. **Citation fixed**: `isKnownDonnyRoute` is `src/lib/donnyRoutes.ts`.
+
+**2026-08-09 (second revision) — after rebasing onto `origin/main`.** The rebase
+surfaced a pointer in `featureConfig.ts:49` to a design doc section this spec did
+not know existed: `2026-08-08-donny-first-dashboard-design.md` §13, seven hazards
+for inline chat written by the session that shipped Phase A. Reading it changed
+the mechanism.
+
+14. **`stage: 'inline'` replaces the route predicate.** §13's hazard 2 proposes a
+    fourth provider stage. It is strictly better than `isInlineDonnyRoute`: the
+    `enabled: stage !== 'closed'` gate then resolves **by construction** with no
+    edit to that line, the `close()`/`collapse()` guards become natural, and all
+    five `stage` consumers switch on one value instead of each learning a route
+    rule. Revision 1's §4.2a (widen the gate) and §4.5's predicate are withdrawn.
+15. **The stage-consumer audit is now complete** — §13 admitted its own was not.
+    13 `useDonnyContext()` consumers, 5 read `stage`. Added as §4.10, with each
+    §13 hazard and its answer. Two were already resolved by earlier decisions
+    (hazard 1 by the new renderer, hazard 7 by D2 keeping both launchers mounted).
+16. **Hazard 5 is accepted, not fixed.** `useDonny`'s send has no
+    `AbortController` (verified: zero hits), so navigating away mid-answer
+    completes the turn. Stated as the intended contract; cancellation is its own
+    task.
+17. **Hazard 6 changed the scroll design.** The inline thread has no inner
+    scroller; auto-scroll targets `#main-content` via the `landing/Header.tsx:29-38`
+    pattern, and `streamingContent` is deliberately **not** a scroll dep.
+18. **Close-on-entry is deleted as a separate rule** — `setInline()` on mount
+    assigns unconditionally, which closes an already-open panel by the same
+    stroke. Revision 1 specified a second mechanism for a problem one assignment
+    solves.
+19. **The conversation row side effect is recorded** (§4.2). Un-gating the query
+    means one `donny_conversations` row per session per dashboard visitor.
+20. **The flag decision is resolved** (§6): `DONNY_FIRST_DASHBOARD_ENABLED` is
+    already `true`; the founder chose to leave it on, so merging Phase 1 is the
+    launch. Also recorded that the both-viewport check has never been run on this
+    surface at all, so Phase 1's `verify-prod` inherits Phase A's unverified work.
+21. **The existing tests constrain the markup** (§8) — keep the `<form>` wrapper
+    and `aria-label="Ask Donny"`, carry `data-tour="brief-generator"` forward, and
+    widen `DonnyHome.test.tsx`'s context mock.
+22. **Citation corrected**: the desktop header launcher is
+    `DashboardLayout.tsx:236-248`, not `:230-242` — the #410 doc's line numbers
+    are stale post-rebase.
