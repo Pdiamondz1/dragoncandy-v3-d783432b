@@ -1,6 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
+// Tables, strikethrough and autolinks are GitHub-Flavored Markdown, NOT base
+// CommonMark — without this plugin `| Metric | Total |` is not a table to the
+// parser, it is a paragraph, and it reaches the user as literal pipes. That
+// shipped: on 2026-08-09 an analytics answer rendered as
+// `| Metric | Total | |------|-----|| Views |1|`, while the **bold** in the same
+// message rendered correctly, because bold IS CommonMark. The tool that
+// prompted it now asks for plain lines (social-analytics.ts), so this is the
+// net rather than the fix — the model is free-form and will emit a table again.
+import remarkGfm from 'remark-gfm';
 import { DonnyAvatar } from './DonnyAvatar';
 import { DonnyRichCard } from './DonnyRichCard';
 import { formatBubbleTime } from './donnyTime';
@@ -56,6 +65,7 @@ export function DonnyMessage({ message, avatarState = 'idle', isLatestAssistant 
           <div className="bg-dc-pink rounded-2xl rounded-bl-sm px-3.5 py-2.5">
             <div className="donny-markdown text-sm text-dc-text leading-relaxed">
               <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
                 components={{
                   h1: ({ children }) => <h3 className="font-bold text-base mt-2 mb-1">{children}</h3>,
                   h2: ({ children }) => <h4 className="font-bold text-sm mt-2 mb-1">{children}</h4>,
@@ -90,6 +100,25 @@ export function DonnyMessage({ message, avatarState = 'idle', isLatestAssistant 
                     <code className="bg-black/10 rounded px-1 py-0.5 text-xs font-mono">{children}</code>
                   ),
                   hr: () => <hr className="border-black/20 my-2" />,
+                  // A table has to survive a ~370px bubble (narrower on a
+                  // phone), so it scrolls INSIDE its own container rather than
+                  // widening the bubble or the page. Same rule the design
+                  // system applies to wide content elsewhere.
+                  table: ({ children }) => (
+                    <div className="my-1.5 -mx-1 overflow-x-auto">
+                      <table className="w-full text-xs border-collapse">{children}</table>
+                    </div>
+                  ),
+                  thead: ({ children }) => <thead className="border-b border-black/20">{children}</thead>,
+                  tr: ({ children }) => <tr className="border-b border-black/10 last:border-0">{children}</tr>,
+                  // No gray fills here — brand rule. The header earns its weight
+                  // from font-semibold and a hairline, not a grey band.
+                  th: ({ children }) => (
+                    <th className="px-1.5 py-1 text-left font-semibold whitespace-nowrap">{children}</th>
+                  ),
+                  td: ({ children }) => (
+                    <td className="px-1.5 py-1 align-top tabular-nums">{children}</td>
+                  ),
                 }}
               >
                 {message.content}

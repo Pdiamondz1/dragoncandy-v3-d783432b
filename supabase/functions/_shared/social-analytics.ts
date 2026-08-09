@@ -98,9 +98,21 @@ export function summarizePerformance(rows: PerfRow[]): string {
       comments: sum(deduped, 'comments'),
       shares: sum(deduped, 'shares'),
     },
+    // FORMAT is part of the instruction because the answer is read in a chat
+    // bubble roughly 370px wide on desktop and narrower on a phone — a markdown
+    // table does not fit there even when it renders. On 2026-08-09 the model
+    // answered this tool with a 5-column table and the founder saw raw pipes:
+    // `| Metric | Total | |------|-----|| Views |1|`. The renderer was half the
+    // cause (no GFM plugin, since fixed) but a rendered table would still have
+    // been the wrong shape for the surface. The figures here are four numbers;
+    // four short lines read better than any grid.
     instruction: verdict.hasSignal
-      ? `State that this is based on ${postCount} measured posts, then answer normally.`
-      : `${verdict.caveat} Do not name a best platform, a trend, or a rate.`,
+      ? `State that this is based on ${postCount} measured posts, then answer normally. ` +
+        `Write the figures as short plain lines, never a markdown table or ASCII grid — ` +
+        `this is read in a narrow chat bubble.`
+      : `${verdict.caveat} Do not name a best platform, a trend, or a rate. ` +
+        `Write the figures as short plain lines, never a markdown table or ASCII grid — ` +
+        `this is read in a narrow chat bubble.`,
   };
 
   if (verdict.hasSignal) {
