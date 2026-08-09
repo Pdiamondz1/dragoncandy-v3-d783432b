@@ -949,10 +949,14 @@ Renders the blocker, the capped proposals, the overflow line and the dismiss con
     isLoading: boolean;
     onDismiss: (proposalId: string) => void;
     onTap: (proposal: DonnyProposal) => void;
+    /** Extra "needs you" rows appended as trailing slots INSIDE the same frame. */
+    children?: React.ReactNode;
   }
   export function DonnyHomeProposals(props: DonnyHomeProposalsProps): JSX.Element | null;
   ```
   `onTap` fires for **every** CTA activation — the container decides whether that means navigate or ask, and records the analytics event.
+
+  `children` exists because `NeedsAttentionSection`'s whole purpose is to consolidate every "needs you" banner into **one** framed list, and Task 6 has two more to contribute (the rating prompts). Without it they render as orphaned rows beside the frame.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1971,16 +1975,21 @@ export function DonnyHome() {
             onSuggestionTap={handleSuggestionTap}
           />
 
+          {/* The rating prompts go INSIDE the attention frame, not beside it.
+              `NeedsAttentionSection` exists to consolidate every "needs you"
+              banner into ONE quiet framed list — the replaced body put all four
+              in a single instance. Rendering these as siblings would produce one
+              framed list plus two orphaned rows under it. */}
           <DonnyHomeProposals
             result={result}
             isLoading={isLoading}
             onDismiss={handleDismiss}
             onTap={handleProposalTap}
-          />
-
-          {/* Kept from the replaced body: these have no other home for this role. */}
-          <RatingPromptManager variant="row" />
-          <SponsorshipRatingPromptManager variant="row" />
+          >
+            {/* Kept from the replaced body: these have no other home for this role. */}
+            <RatingPromptManager variant="row" />
+            <SponsorshipRatingPromptManager variant="row" />
+          </DonnyHomeProposals>
 
           <div className="flex items-center justify-between gap-3 pt-2">
             <Link
