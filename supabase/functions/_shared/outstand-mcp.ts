@@ -23,8 +23,16 @@ interface OutstandMcpConfig {
    * donny-orchestrator only supplies this on its Supabase-session branch. On
    * the OAuth-token branch there is no forwardable JWT, so no bridge is built
    * and no social tool is offered.
+   *
+   * Optional because some callers legitimately have no user session at all —
+   * donny-auto-pilot is a cron (gated on a shared x-cron-secret, not a signed-in
+   * user) iterating many users with a service-role client. It has no JWT to
+   * forward and never will. Rather than inventing a second rule for that case,
+   * callTool applies the same one donny-orchestrator's OAuth branch already
+   * uses: no forwardable user JWT ⇒ refuse the proxy call instead of sending
+   * one that cannot authenticate.
    */
-  authHeader: string;
+  authHeader?: string;
 }
 
 async function getUserAccountIds(supabase: SupabaseClient, userId: string): Promise<string[]> {
@@ -118,6 +126,17 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
       if (!req) {
         return {
           content: [{ type: 'text', text: JSON.stringify({ error: 'unsupported_tool' }) }],
+          isError: true,
+        };
+      }
+
+      if (!config.authHeader) {
+        // No user session to act on behalf of (e.g. the donny-auto-pilot cron).
+        // Refusing here is the same rule donny-orchestrator applies on its
+        // OAuth branch: a proxy call needs a user JWT, so without one we say so
+        // rather than sending a request we know cannot authenticate.
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ error: 'no_user_session', reason: 'This account read needs a signed-in session. Say so plainly; do not guess why.' }) }],
           isError: true,
         };
       }
