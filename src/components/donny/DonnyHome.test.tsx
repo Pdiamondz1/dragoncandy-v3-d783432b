@@ -33,8 +33,8 @@ vi.mock('@/hooks/usePendingActions', () => ({
   usePendingActions: () => pendingMock,
 }));
 
-vi.mock('@/hooks/useBusinessActiveCampaigns', () => ({
-  useBusinessActiveCampaigns: () => ({ data: [], isLoading: false, isError: false }),
+vi.mock('@/hooks/useUpcomingCampaignDeadlines', () => ({
+  useUpcomingCampaignDeadlines: () => ({ data: [], isLoading: false, isError: false }),
 }));
 
 vi.mock('@/hooks/useLocationReadiness', () => ({

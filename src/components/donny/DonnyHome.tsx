@@ -17,7 +17,7 @@ import { useDonnyContext } from '@/contexts/DonnyProvider';
 import { useAnalyticsContext } from '@/components/analytics/AnalyticsProvider';
 import { useTour } from '@/hooks/useTour';
 import { usePendingActions } from '@/hooks/usePendingActions';
-import { useBusinessActiveCampaigns } from '@/hooks/useBusinessActiveCampaigns';
+import { useUpcomingCampaignDeadlines } from '@/hooks/useUpcomingCampaignDeadlines';
 import { useLocationReadiness } from '@/hooks/useLocationReadiness';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { PageBody } from '@/components/app/PageBody';
@@ -47,7 +47,13 @@ export function DonnyHome() {
   const { showTour, tourSteps, completeTour, skipTour, triggerTour } = useTour();
 
   const pending = usePendingActions();
-  const campaigns = useBusinessActiveCampaigns(activeOrgUnit?.id);
+  // Deliberately NOT useBusinessActiveCampaigns: that hook is capped at the 5
+  // most recently CREATED campaigns for the recent-activity list it was built
+  // for (BusinessOverview.tsx still uses it for exactly that). This screen
+  // needs the campaigns due SOONEST, not created most recently — with more
+  // than 5 non-cancelled campaigns, an older one due tomorrow would silently
+  // vanish from "Needs your attention" if it fed off the recency query.
+  const campaigns = useUpcomingCampaignDeadlines(activeOrgUnit?.id);
   const readiness = useLocationReadiness();
 
   const [sessionDismissed, setSessionDismissed] = React.useState<string[]>([]);
