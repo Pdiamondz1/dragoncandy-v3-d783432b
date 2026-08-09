@@ -96,7 +96,16 @@ export async function verifyState(state: string, expectedUserId: string): Promis
 // OAuth: consent URL, code exchange, refresh, revoke
 // ---------------------------------------------------------------------------
 
-const REDIRECT_HOSTS = new Set(["internal.dragoncandy.io", "dragoncandy.io"]);
+// Hostnames (not origins) whose /internal/workspace/callback is a registered
+// Google OAuth redirect URI. Every entry here MUST also be listed verbatim in
+// the Google Cloud console credential, or the exchange fails redirect_uri_mismatch
+// — the two sides are changed together, never one at a time.
+const REDIRECT_HOSTS = new Set([
+  "internal.dragoncandy.com",
+  "dragoncandy.com",
+  "internal.dragoncandy.io",
+  "dragoncandy.io",
+]);
 
 export function redirectUriFor(host: string): string {
   if (!REDIRECT_HOSTS.has(host)) {

@@ -1,6 +1,13 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 import { corsHeaders } from "../_shared/cors.ts";
+import {
+  APP_ORIGINS,
+  DEFAULT_ORIGIN,
+  LOVABLE_PREVIEW_ORIGIN,
+  LOVABLE_V3_ORIGIN,
+  WWW_APP_ORIGINS,
+} from "../_shared/origins.ts";
 
 interface VerifyEmailRequest {
   token: string;
@@ -25,11 +32,13 @@ const handler = async (req: Request): Promise<Response> => {
       token = body?.token ?? null;
     }
 
-    const ALLOWED_ORIGINS = new Set([
-      'https://dragoncandy.io',
-      'https://www.dragoncandy.io',
-      'https://dragoncandy-v3.lovable.app',
-      'https://dragoncandy-preview.lovable.app',
+    // Same membership as before the .com migration (apex + www + both Lovable
+    // previews, deliberately NOT the internal AIOS host) — now on both TLDs.
+    const ALLOWED_ORIGINS = new Set<string>([
+      ...APP_ORIGINS,
+      ...WWW_APP_ORIGINS,
+      LOVABLE_V3_ORIGIN,
+      LOVABLE_PREVIEW_ORIGIN,
     ]);
     const rawRedirect = url.searchParams.get('redirect')
       || req.headers.get('origin')
@@ -44,7 +53,7 @@ const handler = async (req: Request): Promise<Response> => {
       // rawRedirect may be just an origin string
       if (ALLOWED_ORIGINS.has(rawRedirect)) redirectBase = rawRedirect;
     }
-    if (!redirectBase) redirectBase = Deno.env.get('APP_URL') || 'https://dragoncandy.io';
+    if (!redirectBase) redirectBase = Deno.env.get('APP_URL') || DEFAULT_ORIGIN;
 
     console.log('verify-email: request received', {
       method: req.method,
