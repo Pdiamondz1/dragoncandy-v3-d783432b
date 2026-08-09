@@ -117,6 +117,25 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 > proof the object exists (see [[Content Delivery State Machine]]) and "recorded ≠ actual" has
 > bitten this project before.
 
+- **Donny's `social_*` tools repaired (7 calls → 0 successes → 4 working tools)** — Donny told the
+  founder he had "no visibility into which Instagram account is connected", sent him to find an
+  **"account ID"** on a page that displays none, and promised to post once he had it. The prod audit
+  overturned **two standing project claims**: instrumentation was never missing (`donny_tool_executions`
+  held 158 rows and had already recorded the answer), and the cause was never the fabricated
+  `account_id` — the bridge sent the **service-role key** where `outstand-proxy` runs `auth.getUser()`
+  on the anon client, so it 401'd before any account logic ran. Ships 7 tools → **4** (three had no
+  backing operation), `account_id` deleted from every schema and resolved server-side, and
+  `create_post`/`schedule_post` returning a **draft card the owner taps** — so the LLM structurally
+  cannot publish. Three measurement traps caught in review, all one shape (*a gate must be about the
+  same thing as the claim it licenses*): cumulative milestone rows summed (~3×, proven on prod post
+  `XDbxe`), both reads ungated on `verified_at` (6 fabricated all-zero rows would have cleared the
+  sample bar), and a user-wide gate licensing one account's engagement rate. **No migration, no RLS
+  change. Pending (2026-08-09):** merge the PR; **deploy `donny-orchestrator` separately** (merging
+  ships frontend only); founder decision on **CT-4b** (republish-after-reload needs a `donny_messages`
+  UPDATE policy, which does not exist for any surface); then the acceptance signal — a
+  `status='success'` row in `donny_tool_executions` for a `social_*` tool, which has **never existed**
+  — and a both-viewport `verify-prod`.
+  → `docs/wiki/concepts/donny-social-tools.md` · `feat/donny-social-tools-repair`
 - **Donny-first business dashboard (Phase A)** — the `/dashboard/business` body becomes Donny
   (greeting + attention list + prompt box + three taps); today's body preserved verbatim at
   `/dashboard/business/overview`. Scope set by a prod audit, not the mockup: only 4 Donny tools

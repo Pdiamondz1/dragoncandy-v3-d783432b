@@ -162,8 +162,25 @@ and read that org's applications / DragonShare / campaign details (Codex P1). Sa
   CTAs; the seeded knowledge was not re-seeded, so Donny's retrieval layer still carries them.
   Needs a gated `donny_knowledge` write.
 
+## Bug class 3 — inventing a cause for his own failure
+
+Recorded here because it has now happened **three times**, and each time the invented cause
+sent the user somewhere real to do something impossible.
+
+The third instance (2026-08-09) is the cleanest specimen: asked to post to Instagram, Donny
+said he had *"no visibility into which Instagram account is connected"*, told the owner to
+find an **"account ID"** on a settings page that displays no ID anywhere, and promised to post
+once he had it — while the underlying tool had never once succeeded, for reasons entirely
+unrelated to any id. See [[Donny Social Tools]].
+
+The fix pattern is the same in all three: **the tool result must carry the reason, derived
+from what actually happened**, and the model must be told to relay it rather than explain it.
+Where the code cannot know why, it says so plainly instead of guessing. A prompt instruction
+alone is not enough — a tool that returns a bare failure invites a plausible story.
+
 ## See Also
 
+- [[Donny Social Tools]] — the third instance, and the `social_*` repair that followed.
 - [[AI Creator Matching]] — creator discovery/matching sibling; the two-backend wiring; service-role
   `profile_visibility` re-assertion.
 - [[Donny AI]] — the intelligence layer overview.

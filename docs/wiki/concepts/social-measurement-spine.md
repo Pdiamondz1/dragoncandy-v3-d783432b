@@ -185,6 +185,9 @@ could not exist without); multi-platform fan-out (the account has one connection
 
 ## See Also
 
+- [[Donny Social Tools]] — the third consumer of this table (2026-08-09), and the two traps it
+  hit: cumulative milestone rows are **not additive**, and a sample-size gate that counts
+  unverified rows is worse than no gate
 - [[Cross-Tenant Proxy Authorization]] — the proxy holes this work surfaced, and the rule that
   closed them
 - [[Service-Role Data Exposure]] — the sibling defect class; same "runs perfectly" property

@@ -1,5 +1,35 @@
 # Wiki Log
 
+## [2026-08-09] ingest | [[Donny Social Tools]] — repaired after 7 calls and 0 successes
+
+Ingested `raw/sessions/2026-08-09-donny-social-tools-repair.md`. The direct sequel to the entry
+below: that audit found `social_*` at 0/7 and routed nothing to it; this is the repair.
+
+New concept page [[Donny Social Tools]]. Its centre of gravity is that **the prod audit
+overturned two standing project claims**, both of which had been repeated in planning
+documents — instrumentation was never missing (`donny_tool_executions` held 158 rows and had
+already recorded the answer), and the cause was never the fabricated `account_id` (the bridge
+sent the **service-role key** where `outstand-proxy` runs `auth.getUser()` on the anon client,
+so it 401'd before any account logic ran). The durable lesson: *a claim in a planning doc is
+not evidence.*
+
+The four rules the page records are each enforced by structure, not by prompt text — most
+sharply that **the LLM cannot publish**, because `create_post` returns a draft card and
+publishing happens in client code on a human tap.
+
+Three measurement traps are recorded together because they are one shape — *a gate must be
+about the same thing as the claim it licenses*: cumulative milestone rows summed (~3×
+inflation, proven against prod post `XDbxe`); reads ungated on `verified_at`, which would have
+let six fabricated all-zero rows clear the sample-size bar; and a user-wide sample gate
+licensing a single account's engagement rate. All three were caught in review, none by tests
+that existed beforehand.
+
+Pages created: [[Donny Social Tools]]
+Pages updated: [[Honest Analytics]] (the bar now binds Donny, not just the screen),
+[[Social Measurement Spine]] (third consumer of `content_performance`, and its two traps),
+[[Donny Data Visibility & Quick-Action Routing]] (bug class 3 — inventing a cause, third
+recorded instance)
+
 ## [2026-08-09] ingest | [[Donny-First Dashboard]] + the route guard's blind spot
 
 Ingested `raw/sessions/2026-08-09-donny-first-dashboard-and-route-blind-spot.md` — two efforts on
