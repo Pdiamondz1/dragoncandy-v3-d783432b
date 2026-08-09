@@ -19,7 +19,7 @@ function proposal(over: Partial<DonnyProposal> = {}): DonnyProposal {
 }
 
 function result(over: Partial<DonnyProposalsResult> = {}): DonnyProposalsResult {
-  return { blocker: null, proposals: [], overflowCount: 0, ...over };
+  return { blocker: null, proposals: [], overflowCount: 0, allProposalIds: [], ...over };
 }
 
 const noop = () => {};

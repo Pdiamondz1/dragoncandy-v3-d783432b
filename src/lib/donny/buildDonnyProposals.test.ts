@@ -163,6 +163,52 @@ describe('buildDonnyProposals — cap, overflow and dismissal', () => {
     const { overflowCount } = buildDonnyProposals(input({ pendingActions: [action()] }));
     expect(overflowCount).toBe(0);
   });
+
+  it('allProposalIds carries every ranked id, including those past the cap', () => {
+    // The container's pass-1 localStorage read depends on this: reading only
+    // the capped `proposals` ids would miss a dismissal on a proposal ranked
+    // 4th+, and dismissing a higher-ranked one would resurrect it.
+    const { proposals, allProposalIds } = buildDonnyProposals(input({ pendingActions: five }));
+    expect(proposals).toHaveLength(3);
+    expect(allProposalIds).toEqual([
+      'pending_action:review_application:c1',
+      'pending_action:review_application:c2',
+      'pending_action:review_application:c3',
+      'pending_action:review_application:c4',
+      'pending_action:review_application:c5',
+    ]);
+  });
+
+  it('allProposalIds is unaffected by dismissedIds — it is the pre-filter set', () => {
+    const { allProposalIds } = buildDonnyProposals(
+      input({
+        pendingActions: five,
+        dismissedIds: [
+          'pending_action:review_application:c1',
+          'pending_action:review_application:c4',
+        ],
+      })
+    );
+    expect(allProposalIds).toHaveLength(5);
+    expect(allProposalIds).toContain('pending_action:review_application:c1');
+    expect(allProposalIds).toContain('pending_action:review_application:c4');
+  });
+
+  it('allProposalIds never includes the blocker — it is not dismissible', () => {
+    const { allProposalIds } = buildDonnyProposals(
+      input({
+        readiness: {
+          hasActiveLocation: true,
+          isReady: false,
+          locationName: 'Hoboken',
+          missingSocial: true,
+          missingStripe: false,
+        },
+        pendingActions: [action()],
+      })
+    );
+    expect(allProposalIds).not.toContain('signal:location_setup');
+  });
 });
 
 describe('buildDonnyProposals — the deadline signal', () => {

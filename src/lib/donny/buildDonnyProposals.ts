@@ -64,6 +64,13 @@ export interface DonnyProposalsResult {
   proposals: DonnyProposal[];
   /** How many ranked proposals the cap hid. Never counts the blocker. */
   overflowCount: number;
+  /**
+   * Every ranked proposal id, BEFORE the dismissal filter and BEFORE the cap.
+   * The container needs this to know which localStorage dismissal keys to read:
+   * reading only the capped ids would miss a dismissal on a proposal ranked
+   * below the cap, and dismissing one row would then resurrect it.
+   */
+  allProposalIds: string[];
 }
 
 /** localStorage key for a dismissed proposal. Deliberately NOT the old campaign-scoped `pendingBannerDismissed_` key. */
@@ -157,11 +164,13 @@ export function buildDonnyProposals(input: DonnyProposalsInput): DonnyProposalsR
     (a, b) => a.priority - b.priority
   );
 
-  const ranked = [...pendingProposals, ...signals].filter((p) => !dismissed.has(p.id));
+  const merged = [...pendingProposals, ...signals];
+  const ranked = merged.filter((p) => !dismissed.has(p.id));
 
   return {
     blocker: locationBlocker(input.readiness),
     proposals: ranked.slice(0, PROPOSAL_CAP),
     overflowCount: Math.max(0, ranked.length - PROPOSAL_CAP),
+    allProposalIds: merged.map((p) => p.id),
   };
 }

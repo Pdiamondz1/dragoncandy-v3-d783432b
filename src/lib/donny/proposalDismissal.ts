@@ -16,7 +16,14 @@ export function readDismissedProposalIds(candidateIds: string[]): string[] {
     try {
       const raw = localStorage.getItem(dismissalKey(id));
       if (!raw) continue;
-      if (Date.now() - new Date(raw).getTime() < TTL_MS) out.push(id);
+      if (Date.now() - new Date(raw).getTime() < TTL_MS) {
+        out.push(id);
+      } else {
+        // Expired — prune it now rather than leaving a permanent dead key.
+        // The writer only ever adds, so without this every actionType×campaignId
+        // ever dismissed would sit in localStorage forever.
+        localStorage.removeItem(dismissalKey(id));
+      }
     } catch {
       return [];
     }

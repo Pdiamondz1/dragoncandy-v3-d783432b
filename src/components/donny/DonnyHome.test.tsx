@@ -169,6 +169,44 @@ describe('DonnyHome — proposals', () => {
   });
 });
 
+describe('DonnyHome — dismissal below the cap', () => {
+  // Regression for the two-pass dismissal-read bug: pass 1 used to read
+  // localStorage only for the CAPPED (top-3) candidate ids, so a live
+  // dismissal on a proposal ranked 4th+ was never read. Dismissing a
+  // higher-ranked proposal then promoted the already-dismissed one back into
+  // view — dismissing one row resurrected another.
+  const fiveActions = [1, 2, 3, 4, 5].map((n) => ({
+    campaignId: `c${n}`,
+    campaignTitle: `Campaign ${n}`,
+    actionType: 'review_application' as const,
+    creatorName: 'Ricky Ricardo',
+    occurredAt: new Date(Date.now() - n * 3_600_000).toISOString(),
+  }));
+
+  it('does not resurrect a proposal ranked below the cap that was already dismissed', async () => {
+    pendingMock.data = fiveActions;
+    // Pre-seed a live (within-TTL) dismissal for the 4th-ranked proposal.
+    // Ranked below PROPOSAL_CAP=3, so it is not visible yet either way — the
+    // bug only surfaces once a higher-ranked proposal is dismissed and this
+    // one would be promoted into the visible top 3.
+    localStorage.setItem(
+      'donnyProposalDismissed_pending_action:review_application:c4',
+      new Date().toISOString()
+    );
+    renderHome();
+
+    // Dismiss the 1st-ranked (visible) proposal, promoting what was ranked
+    // 4th into the visible top 3.
+    const dismissButtons = screen.getAllByRole('button', { name: 'Dismiss' });
+    fireEvent.click(dismissButtons[0]);
+
+    await waitFor(() => expect(screen.queryByText(/Campaign 1/)).not.toBeInTheDocument());
+    // Campaign 4's dismissal predates this render — it must stay hidden, not
+    // reappear just because it fell outside the capped candidate set.
+    expect(screen.queryByText(/Campaign 4/)).not.toBeInTheDocument();
+  });
+});
+
 describe('DonnyHome — page-level behaviour', () => {
   it('records the view exactly once, even across re-renders', async () => {
     const { rerender } = renderHome();
@@ -184,10 +222,20 @@ describe('DonnyHome — page-level behaviour', () => {
     });
   });
 
-  it('keeps the rating prompts, which have no other home for this role', () => {
+  it('keeps the rating prompts INSIDE the attention frame, not beside it', () => {
+    // Containment, not mere presence: getByTestId alone would pass whether
+    // these are children of DonnyHomeProposals or siblings beside it — and
+    // children-vs-siblings is the one structural requirement that has already
+    // been caught as a defect once in this plan. NeedsAttentionSection wraps
+    // each child in a `[data-attention-slot]` div, so an ancestor query
+    // proves containment; a second, orphaned frame would show up as a second
+    // "Needs your attention" heading.
     renderHome();
-    expect(screen.getByTestId('rating-prompt')).toBeInTheDocument();
-    expect(screen.getByTestId('sponsorship-rating-prompt')).toBeInTheDocument();
+    const ratingPrompt = screen.getByTestId('rating-prompt');
+    const sponsorshipPrompt = screen.getByTestId('sponsorship-rating-prompt');
+    expect(ratingPrompt.closest('[data-attention-slot]')).not.toBeNull();
+    expect(sponsorshipPrompt.closest('[data-attention-slot]')).not.toBeNull();
+    expect(screen.getAllByText('Needs your attention')).toHaveLength(1);
   });
 
   it('links to the full dashboard and records it', async () => {

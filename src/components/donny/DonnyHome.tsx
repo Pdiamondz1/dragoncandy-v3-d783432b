@@ -66,14 +66,24 @@ export function DonnyHome() {
       pendingActionsError: pending.isError,
       campaigns: campaigns.data,
       readiness: { hasActiveLocation, isReady, locationName, missingSocial, missingStripe },
-      // Captured when the deps change, not on every render. A deadline crossing
-      // the 3-day line therefore updates on the next refetch (the queries
-      // refetch on window focus) rather than mid-render — which is what we want.
+      // Captured once, when this memo (re)computes — not on every render, and
+      // NOT on every refetch either: React Query's structural sharing means a
+      // refetch that returns identical rows keeps the same `data` reference,
+      // so it does not retrigger this memo. `now` is effectively frozen for
+      // the life of an open tab unless the underlying data actually changes.
+      // A deadline crossing the 3-day threshold in a long-lived open tab will
+      // not surface until then (e.g. on navigation, which remounts). No
+      // interval or focus listener is added on purpose — the blast radius of
+      // a stale `now` here is small and it self-heals on the next navigation.
       now: Date.now(),
     };
+    // Pass 1 must read the FULL ranked set (allProposalIds), not the capped
+    // `proposals` list: reading only the capped ids would miss a live
+    // dismissal on a proposal ranked below PROPOSAL_CAP, and dismissing a
+    // higher-ranked proposal would then resurrect it (promoted into the now
+    // shorter capped view without ever having its dismissal checked).
     const candidates = buildDonnyProposals({ ...base, dismissedIds: [] });
-    const candidateIds = candidates.proposals.map((p) => p.id);
-    const stored = readDismissedProposalIds(candidateIds);
+    const stored = readDismissedProposalIds(candidates.allProposalIds);
     return buildDonnyProposals({
       ...base,
       dismissedIds: [...stored, ...sessionDismissed],
