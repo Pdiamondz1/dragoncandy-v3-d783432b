@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom';
 import { render, screen, within, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
+import type { ReactElement } from 'react';
 
 vi.mock('@/components/donny/DonnyRichCard', () => ({
   DonnyRichCard: () => <div data-testid="rich-card" />,
@@ -9,6 +11,10 @@ vi.mock('@/components/donny/DonnyRichCard', () => ({
 
 import { DonnyThread } from './DonnyThread';
 import type { DonnyMessage } from '@/types/donny';
+
+// DonnyTurn renders Donny's quick-action pills, so it calls useNavigate and
+// needs a router in context.
+const renderThread = (ui: ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>);
 
 const msg = (over: Partial<DonnyMessage>): DonnyMessage =>
   ({
@@ -27,7 +33,7 @@ describe('DonnyThread', () => {
       msg({ id: 'a1', role: 'assistant', content: 'First answer' }),
       msg({ id: 'u2', role: 'user', content: 'Second question' }),
     ];
-    const { container } = render(
+    const { container } = renderThread(
       <DonnyThread messages={messages} isStreaming={false} streamingContent="" error={null} onRetry={vi.fn()} />
     );
     const turns = container.querySelectorAll('[data-turn]');
@@ -38,7 +44,7 @@ describe('DonnyThread', () => {
   });
 
   it('shows a shimmer placeholder while streaming with no content yet — never the three-dot indicator', () => {
-    render(<DonnyThread messages={[]} isStreaming streamingContent="" error={null} onRetry={vi.fn()} />);
+    renderThread(<DonnyThread messages={[]} isStreaming streamingContent="" error={null} onRetry={vi.fn()} />);
     expect(screen.getByTestId('donny-pending')).toBeInTheDocument();
     // DonnyTypingIndicator is the three-dot bounce indicator, identified by its
     // own role/label. The inline thread must never fall back to it.
@@ -46,7 +52,7 @@ describe('DonnyThread', () => {
   });
 
   it('renders partial streamed text as it arrives, instead of the shimmer', () => {
-    render(
+    renderThread(
       <DonnyThread
         messages={[]}
         isStreaming
@@ -61,7 +67,7 @@ describe('DonnyThread', () => {
 
   it('shows the error with a Retry button that calls onRetry', () => {
     const onRetry = vi.fn();
-    render(
+    renderThread(
       <DonnyThread
         messages={[]}
         isStreaming={false}
@@ -76,7 +82,7 @@ describe('DonnyThread', () => {
   });
 
   it('keeps the partial text on screen next to the error — a dropped stream must not lose it', () => {
-    render(
+    renderThread(
       <DonnyThread
         messages={[]}
         isStreaming={false}
@@ -90,7 +96,7 @@ describe('DonnyThread', () => {
   });
 
   it('marks the thread as a live log region', () => {
-    const { container } = render(
+    const { container } = renderThread(
       <DonnyThread messages={[]} isStreaming={false} streamingContent="" error={null} onRetry={vi.fn()} />
     );
     const root = container.firstChild as HTMLElement;
@@ -105,7 +111,7 @@ describe('DonnyThread', () => {
       msg({ id: 'a1', role: 'assistant', content: 'First answer' }),
       msg({ id: 'a2', role: 'assistant', content: 'Second answer' }),
     ];
-    const { container } = render(
+    const { container } = renderThread(
       <DonnyThread messages={messages} isStreaming={false} streamingContent="" error={null} onRetry={onRetry} />
     );
 
@@ -126,7 +132,7 @@ describe('DonnyThread', () => {
       msg({ id: 'u1', role: 'user', content: 'What creators are near me?' }),
       msg({ id: 'a1', role: 'assistant', content: 'Three creators near Hoboken.' }),
     ];
-    const { container } = render(
+    const { container } = renderThread(
       <DonnyThread
         messages={messages}
         isStreaming={false}
@@ -161,7 +167,7 @@ describe('DonnyThread', () => {
       msg({ id: 'u1', role: 'user', content: 'What creators are near me?' }),
       msg({ id: 'a1', role: 'assistant', content: 'Three creators near Hoboken.' }),
     ];
-    render(
+    renderThread(
       <DonnyThread messages={messages} isStreaming streamingContent="" error={null} onRetry={vi.fn()} />
     );
     expect(screen.queryByRole('button', { name: /retry/i })).not.toBeInTheDocument();
