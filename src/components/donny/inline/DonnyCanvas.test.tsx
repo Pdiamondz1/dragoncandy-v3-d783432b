@@ -151,6 +151,19 @@ describe('DonnyCanvas — resting to thread', () => {
     expect(onSuggestionTap).toHaveBeenCalledWith(suggestions[0]);
     expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument();
   });
+
+  it('taps a non-first suggestion (index 1) and reports THAT one, not the first', () => {
+    // Restores a guarantee the deleted DonnyHomePrompt.test.tsx used to carry
+    // explicitly (it clicked BUSINESS_SUGGESTIONS[1]). Every other test in
+    // this file only ever taps suggestions[0], so a canvas that hard-coded
+    // "always report suggestions[0]" would pass everything else on the branch.
+    const onSuggestionTap = vi.fn();
+    renderCanvas({ onSuggestionTap });
+
+    fireEvent.click(screen.getByRole('button', { name: suggestions[1].label }));
+
+    expect(onSuggestionTap).toHaveBeenCalledWith(suggestions[1]);
+  });
 });
 
 describe('DonnyCanvas — suggestion chips', () => {

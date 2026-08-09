@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Imported as a type only — `React.ReactNode` inside a vi.mock factory would
 // otherwise resolve to the UMD global, which TS rejects inside a module.
 import type { ReactNode } from 'react';
+import type { DonnyProposal, DonnyProposalsResult } from '@/lib/donny/buildDonnyProposals';
 
 const navigateMock = vi.fn();
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -38,6 +39,20 @@ const trackEventMock = vi.fn();
 vi.mock('@/components/analytics/AnalyticsProvider', () => ({
   useAnalyticsContext: () => ({ trackEvent: trackEventMock }),
 }));
+
+// Delegates to the real buildDonnyProposals by default — every existing test
+// keeps exercising the genuine pure function through pendingMock/etc. Setting
+// `.value` lets one test hand DonnyHome a proposal shape (an 'ask' cta) that
+// no real input currently produces, without touching production code.
+const proposalsOverrideMock: { value: DonnyProposalsResult | null } = { value: null };
+vi.mock('@/lib/donny/buildDonnyProposals', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/donny/buildDonnyProposals')>();
+  return {
+    ...actual,
+    buildDonnyProposals: (input: Parameters<typeof actual.buildDonnyProposals>[0]) =>
+      proposalsOverrideMock.value ?? actual.buildDonnyProposals(input),
+  };
+});
 
 const profileMock = { value: { full_name: 'Joe Castelo', role: 'business_client' } as { full_name: string | null; role: string } | null };
 vi.mock('@/hooks/useAuth', () => ({
@@ -103,6 +118,7 @@ beforeEach(() => {
   pendingMock.data = [];
   pendingMock.isLoading = false;
   pendingMock.isError = false;
+  proposalsOverrideMock.value = null;
 });
 
 describe('DonnyHome — greeting', () => {
@@ -176,6 +192,42 @@ describe('DonnyHome — proposals', () => {
       expect(trackEventMock).toHaveBeenCalledWith('donny_home_proposal_tapped', {
         proposal_kind: 'pending_action',
         cta_kind: 'route',
+      })
+    );
+  });
+
+  it('sends an "ask" CTA proposal to Donny instead of navigating or opening the panel', async () => {
+    // No real input currently produces an 'ask' cta (buildDonnyProposals only
+    // ever emits 'route' — see its file), but the type permits one and
+    // handleProposalTap's non-route branch is real, changed code: it used to
+    // call openDonnyWithContext and now calls sendMessage. Handed to DonnyHome
+    // via proposalsOverrideMock rather than through pendingMock, since the
+    // real pipeline can't produce this shape.
+    const askProposal: DonnyProposal = {
+      id: 'signal:ask_example',
+      kind: 'signal',
+      text: 'Ricky Ricardo asked a question about "Taco Tuesday"',
+      occurredAt: null,
+      cta: { kind: 'ask', label: 'Reply to Ricky', message: 'Draft a reply to Ricky Ricardo' },
+      priority: 0,
+      dismissible: false,
+    };
+    proposalsOverrideMock.value = {
+      blocker: null,
+      proposals: [askProposal],
+      overflowCount: 0,
+      allProposalIds: [askProposal.id],
+    };
+    renderHome();
+    const cta = screen.getByRole('button', { name: 'Reply to Ricky' });
+    expect(cta).toBeInTheDocument();
+    fireEvent.click(cta);
+    expect(sendMessageMock).toHaveBeenCalledWith('Draft a reply to Ricky Ricardo');
+    expect(openDonnyWithContextMock).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(trackEventMock).toHaveBeenCalledWith('donny_home_proposal_tapped', {
+        proposal_kind: 'signal',
+        cta_kind: 'ask',
       })
     );
   });
