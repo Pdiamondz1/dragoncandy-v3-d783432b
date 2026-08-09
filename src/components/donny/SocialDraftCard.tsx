@@ -12,6 +12,7 @@ import { useCrossPost } from '@/hooks/outstand/useCrossPost';
 import {
   useDraftPublication,
   useRecordDraftPublication,
+  useRecordDonnyScheduledPost,
 } from '@/hooks/donny/useDraftPublication';
 import type { DonnyRichCardSocialPostDraft } from '@/types/donny';
 
@@ -29,6 +30,7 @@ export function SocialDraftCard({ data }: SocialDraftCardProps) {
   // the draft's own id (CT-4b).
   const publication = useDraftPublication(data.draft_id);
   const record = useRecordDraftPublication();
+  const recordScheduled = useRecordDonnyScheduledPost();
   const [submitted, setSubmitted] = React.useState(false);
   const isScheduled = Boolean(data.scheduled_at);
 
@@ -56,7 +58,23 @@ export function SocialDraftCard({ data }: SocialDraftCardProps) {
         // "row exists => it went out". A pre-claim would leave a draft marked
         // published that never posted — permanently un-postable, with nothing
         // on the feed to explain why.
-        onSuccess: () => {
+        onSuccess: (result: unknown) => {
+          // Record it in the app's own schedule. Every other cross-post path
+          // does this; without it a post scheduled through Donny goes out
+          // upstream and then cannot be found anywhere in the product — no
+          // calendar entry, nothing in Upcoming, no post-management context.
+          // Its own onError surfaces a "posted, but not saved" toast; it must
+          // never re-arm the button, because the post is already live.
+          recordScheduled.mutate({
+            platform: data.platform,
+            caption: data.caption,
+            mediaUrls: data.media_urls,
+            accountIds: [data.account_id],
+            scheduledAt: data.scheduled_at,
+            outstandPostId:
+              (result as { _outstandPostId?: string | null } | undefined)?._outstandPostId ?? null,
+          });
+
           record.mutate(data.draft_id, {
             // The post IS live. A failed marker write is a bookkeeping failure,
             // not a publish failure, so it must not re-arm the button or tell

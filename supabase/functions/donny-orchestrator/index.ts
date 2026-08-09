@@ -529,31 +529,17 @@ serve(async (req) => {
           } catch (err) {
             console.error("[donny-orchestrator] tool exec log threw:", err);
           }
-        } else if (isSocialTool(toolName)) {
-          const noAccounts = {
-            error: "no_social_account",
-            reason:
-              "No social account is connected to this account yet. Point the user at " +
-              "Social Media settings to connect one.",
-          };
-          agentResult = JSON.stringify(noAccounts);
-
-          // This branch wrote nothing for its entire life, so "how often does
-          // Donny get asked to post by someone with no connected account" has
-          // never been answerable. It is the same insert as the success path.
-          try {
-            const { error: logErr } = await supabase.from("donny_tool_executions").insert({
-              user_id: userId,
-              message_id: null,
-              tool_name: toolName,
-              input: toolInput,
-              output: noAccounts,
-              status: "error",
-            });
-            if (logErr) console.error("[donny-orchestrator] no-account log failed:", logErr);
-          } catch (err) {
-            console.error("[donny-orchestrator] no-account log threw:", err);
-          }
+        // NOTE: there is deliberately no `else if (isSocialTool(toolName))`
+        // branch here. It existed, and it was DEAD CODE: `allTools` only
+        // carries social tools when `mcpBridge` is non-null, so the model
+        // could never emit a social tool call in the case that branch was
+        // written to handle. Worse, it carried the audit insert meant to make
+        // the zero-account population countable for the first time — a fix
+        // that could never fire. The bridge is now built whenever the provider
+        // is configured (see hasConnectedAccount in _shared/outstand-mcp.ts),
+        // so a zero-account caller reaches `callTool` above, gets the honest
+        // `no_social_account` result it already returns, and IS logged by the
+        // insert in that branch. Found by Codex.
         } else {
           const enrichedInput: Record<string, unknown> = {
             ...toolInput,

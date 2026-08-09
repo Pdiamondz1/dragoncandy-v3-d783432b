@@ -58,7 +58,12 @@ serve(async (req) => {
         supabase,
       });
 
-      if (!mcpBridge) continue;
+      // Skipping a user with no connected account is THIS caller's policy, and
+      // it used to be implicit in the bridge returning null. It is explicit now
+      // because donny-orchestrator needs the opposite behaviour: there, a user
+      // with no account is a user asking a question that deserves an honest
+      // answer, not silence. Behaviour here is unchanged.
+      if (!mcpBridge || !mcpBridge.hasConnectedAccount) continue;
 
       // Fetch recent metrics
       const metricsResult = await mcpBridge.callTool("social_get_account_metrics", {});

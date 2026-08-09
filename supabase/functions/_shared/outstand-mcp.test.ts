@@ -262,6 +262,45 @@ describe('get_account_metrics', () => {
   });
 });
 
+// A caller with no connected account must still get a bridge. The zero-account
+// case used to return null, which meant no social tool was ever OFFERED, which
+// meant the model could never call one — so the orchestrator branch written to
+// count that population could not fire. The honest refusal has to be reachable
+// to be honest about anything.
+describe('a caller with no connected account', () => {
+  async function zeroAccountBridge() {
+    const { supabase, queries } = fakeSupabase({ business_outstand_accounts: [] });
+    return build(supabase, queries, 'growth');
+  }
+
+  it('still gets a bridge, flagged as having no account', async () => {
+    const { bridge } = await zeroAccountBridge();
+    expect(bridge.hasConnectedAccount).toBe(false);
+    expect(bridge.tools.length).toBeGreaterThan(0);
+  });
+
+  it('reports hasConnectedAccount for a caller who does have one', async () => {
+    const { supabase, queries } = fakeSupabase({ business_outstand_accounts: [ACCOUNT_ROW] });
+    const { bridge } = await build(supabase, queries, 'growth');
+    expect(bridge.hasConnectedAccount).toBe(true);
+  });
+
+  it('answers a post request with an honest refusal the orchestrator will log', async () => {
+    const { bridge } = await zeroAccountBridge();
+    const res = await bridge.callTool('social_create_post', { caption: 'Taco Tuesday' });
+    // isError is what the orchestrator's audit insert records as status:'error',
+    // which is the whole point — this population has never been counted.
+    expect(res.isError).toBe(true);
+    expect(JSON.parse(res.content[0].text as string).status).toBe('no_social_account');
+  });
+
+  it('produces no draft card when there is no account to post to', async () => {
+    const { bridge } = await zeroAccountBridge();
+    await bridge.callTool('social_create_post', { caption: 'Taco Tuesday' });
+    expect(bridge.takeCards()).toEqual([]);
+  });
+});
+
 // The remote list decides which UPSTREAM-backed tools are real. It must not get
 // a vote on the three that are implemented here, or pointing OUTSTAND_MCP_URL at
 // a server with a different vocabulary silently hides working tools.

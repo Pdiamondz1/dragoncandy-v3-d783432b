@@ -53,6 +53,21 @@ export interface OutstandMcpBridge {
   callTool(name: string, args: Record<string, unknown>): Promise<McpToolResult>;
   /** Cards produced by the last callTool, for the orchestrator to collect. */
   takeCards(): SocialDraftCard[];
+  /**
+   * Whether this caller held at least one ACTIVE account when the bridge was
+   * built. Reported, not enforced — what to do about it is the caller's
+   * policy, and the two callers legitimately differ:
+   *
+   * - `donny-auto-pilot` is a cron with nothing to report on, so it skips.
+   * - `donny-orchestrator` must NOT skip: the user is asking, and the honest
+   *   refusal `callTool` already returns is the whole point.
+   *
+   * This used to be a hard `return null` here, which quietly made the
+   * orchestrator's zero-account handling unreachable — the tools were never
+   * offered, so the model could never call one, so the branch meant to count
+   * that population never ran. Found by Codex.
+   */
+  hasConnectedAccount: boolean;
   disconnect(): void;
 }
 
@@ -80,20 +95,18 @@ function safeReason(status: number): { error: string; reason: string } {
 }
 
 export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promise<OutstandMcpBridge | null> {
-  // The gate is "does this user hold at least one ACTIVE account" — the same
-  // question outstand-accounts.ts already answers correctly for resolveAccount
-  // below, so this reuses it rather than a second, drifted implementation.
-  // The function this replaced (a) swallowed a Postgrest error via
-  // `const { data }` with no error check — supabase-js v2 RESOLVES rather
-  // than rejects on a query error, so a transient failure silently produced
-  // `[]`, this returned null, and donny-orchestrator told the user "No
-  // social account is connected to this account yet" — a confident false
-  // claim — and (b) filtered `.neq('status', 'revoked')`, which counts an
-  // `error`-status row as usable. Verified on prod: user 7cc82738 holds 2
-  // `error` + 2 `revoked` + 0 `active` accounts, so the old gate built a
-  // bridge and offered all four tools to someone none of them could serve.
+  // "Does this user hold at least one ACTIVE account" is REPORTED, not enforced
+  // — see hasConnectedAccount above for why the two callers differ. It uses the
+  // same reader resolveAccount does rather than a second, drifted one. The
+  // function that used to answer this (a) swallowed a Postgrest error via
+  // `const { data }` with no error check — supabase-js v2 RESOLVES rather than
+  // rejects on a query error, so a transient failure silently produced `[]` and
+  // donny-orchestrator told the user "No social account is connected to this
+  // account yet", a confident false claim — and (b) filtered
+  // `.neq('status', 'revoked')`, which counts an `error`-status row as usable.
+  // Verified on prod: user 7cc82738 holds 2 `error` + 2 `revoked` + 0 `active`,
+  // so the old gate offered all four tools to someone none of them could serve.
   const accounts = await fetchActiveAccounts(config.supabase, config.userId);
-  if (accounts.length === 0) return null;
 
   const mcpUrl = Deno.env.get("OUTSTAND_MCP_URL");
   const apiKey = Deno.env.get("OUTSTAND_API_KEY");
@@ -149,6 +162,7 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
 
   return {
     tools: namespacedTools,
+    hasConnectedAccount: accounts.length > 0,
 
     takeCards() {
       const out = pendingCards;

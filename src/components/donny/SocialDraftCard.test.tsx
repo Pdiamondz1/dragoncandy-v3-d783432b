@@ -13,10 +13,12 @@ vi.mock('@/hooks/outstand/useCrossPost', () => ({
 // matters here is the DECISION the card makes from each state, which is where
 // a mistake sends a duplicate to a real public feed.
 const recordMutate = vi.fn();
+const recordScheduledMutate = vi.fn();
 const publication = { isPublished: false, isLoading: false, isUnknown: false };
 vi.mock('@/hooks/donny/useDraftPublication', () => ({
   useDraftPublication: () => publication,
   useRecordDraftPublication: () => ({ mutate: recordMutate, isPending: false }),
+  useRecordDonnyScheduledPost: () => ({ mutate: recordScheduledMutate, isPending: false }),
 }));
 
 const DATA = {
@@ -32,6 +34,7 @@ const DATA = {
 beforeEach(() => {
   mutate.mockReset();
   recordMutate.mockReset();
+  recordScheduledMutate.mockReset();
   publication.isPublished = false;
   publication.isLoading = false;
   publication.isUnknown = false;
@@ -172,6 +175,45 @@ describe('SocialDraftCard once-only guard', () => {
     fireEvent.click(screen.getByRole('button', { name: /post it/i }));
     expect(recordMutate).toHaveBeenCalledTimes(1);
     expect(recordMutate.mock.calls[0][0]).toBe(DATA.draft_id);
+  });
+
+  it('records the post in the app schedule, with the provider id', () => {
+    // Without this the post goes out upstream and then cannot be found
+    // anywhere in the product — no calendar entry, nothing in Upcoming.
+    const when = '2026-08-20T15:00:00.000Z';
+    mutate.mockImplementation((_vars, opts) => opts?.onSuccess?.({ _outstandPostId: 'ei1xc' }));
+    render(<SocialDraftCard data={{ ...DATA, scheduled_at: when }} />);
+    fireEvent.click(screen.getByRole('button', { name: /schedule it/i }));
+    expect(recordScheduledMutate).toHaveBeenCalledTimes(1);
+    expect(recordScheduledMutate.mock.calls[0][0]).toMatchObject({
+      platform: 'instagram',
+      caption: DATA.caption,
+      accountIds: ['LEnjV'],
+      scheduledAt: when,
+      outstandPostId: 'ei1xc',
+    });
+  });
+
+  it('records an immediate post too, not only a scheduled one', () => {
+    mutate.mockImplementation((_vars, opts) => opts?.onSuccess?.({ _outstandPostId: 'ei1xc' }));
+    render(<SocialDraftCard data={DATA} />);
+    fireEvent.click(screen.getByRole('button', { name: /post it/i }));
+    expect(recordScheduledMutate).toHaveBeenCalledTimes(1);
+    expect(recordScheduledMutate.mock.calls[0][0]).toMatchObject({ scheduledAt: null });
+  });
+
+  it('passes a null provider id through rather than inventing one', () => {
+    mutate.mockImplementation((_vars, opts) => opts?.onSuccess?.({}));
+    render(<SocialDraftCard data={DATA} />);
+    fireEvent.click(screen.getByRole('button', { name: /post it/i }));
+    expect(recordScheduledMutate.mock.calls[0][0]).toMatchObject({ outstandPostId: null });
+  });
+
+  it('does not touch the schedule when the publish failed', () => {
+    mutate.mockImplementation((_vars, opts) => opts?.onError?.(new Error('nope')));
+    render(<SocialDraftCard data={DATA} />);
+    fireEvent.click(screen.getByRole('button', { name: /post it/i }));
+    expect(recordScheduledMutate).not.toHaveBeenCalled();
   });
 
   it('does not record a publication that failed', () => {
