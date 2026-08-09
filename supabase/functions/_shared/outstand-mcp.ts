@@ -167,10 +167,35 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
         // Own rows only. config.supabase is service-role in the orchestrator,
         // so the user_id filter IS the tenant boundary here — it is not
         // enforced by RLS on this client.
+        //
+        // THE VERIFIED GATE. `verified_at` is stamped only by server-side code,
+        // from a signed Outstand event; an unstamped social_post_log row is
+        // client-asserted, and its outstand_post_id was never checked against
+        // anything. Both existing readers of this table already apply this
+        // filter — content-performance-capture/index.ts:94-104 to decide what
+        // is worth measuring, and the Analytics page
+        // (src/hooks/outstand/usePostPerformance.ts:64-72) to decide what is
+        // worth showing — so Donny reading it ungated would answer a question
+        // differently from the screen sitting next to him.
+        //
+        // Concretely: prod holds 9 legacy rows for 3 posts, 6 of them all-zero
+        // measurements the pre-fix capture job wrote whenever the provider
+        // returned nothing, and NONE of the 9 verified. Ungated, Donny states
+        // those zeros as measured fact — and worse, they clear the sample-size
+        // gate, so the answer arrives with no caveat at all. A gate that counts
+        // unverifiable rows toward its own sample is a gate that lies while
+        // looking rigorous.
+        //
+        // `!inner` makes the embed a filter rather than a nullable join; the
+        // .not() is still required, because !inner only proves the joined row
+        // exists, not that it is stamped.
         const { data, error } = await config.supabase
           .from('content_performance')
-          .select('outstand_post_id, platform, views, likes, comments, shares, engagement_rate, milestone')
+          .select(
+            'outstand_post_id, platform, views, likes, comments, shares, engagement_rate, milestone, social_post_log!inner(verified_at)',
+          )
           .eq('user_id', config.userId)
+          .not('social_post_log.verified_at', 'is', null)
           .gte('captured_at', since);
 
         if (error) {
@@ -253,10 +278,18 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
       // the bar. A follower COUNT is a fact, never suppressed — only the
       // rate is caveated.
       if (rawName === 'get_account_metrics') {
+        // Same verified gate as get_post_analytics above, for the same reason
+        // and with more at stake: this count is ONLY ever used as a sample-size
+        // bar. An unverified row contributes nothing a human could check, so
+        // letting it clear the bar hands the model permission to state an
+        // engagement rate as meaningful on the strength of rows nobody
+        // measured. See the block above for why `!inner` and `.not()` are both
+        // required.
         const { data: perfRows, error: perfError } = await config.supabase
           .from('content_performance')
-          .select('outstand_post_id')
-          .eq('user_id', config.userId);
+          .select('outstand_post_id, social_post_log!inner(verified_at)')
+          .eq('user_id', config.userId)
+          .not('social_post_log.verified_at', 'is', null);
         if (perfError) {
           // Mirror get_post_analytics above: a read failure must say so, not
           // silently fall through as `postCount = 0`. Otherwise a transient
