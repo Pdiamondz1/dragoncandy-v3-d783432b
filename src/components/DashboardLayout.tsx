@@ -159,7 +159,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
   const { avatarUrl, displayName } = useProfileData();
   const isMobile = useIsMobile();
   const location = useLocation();
-  const { stage, open, close, unreadCount, avatarState } = useDonnyContext();
+  const { stage, open, close, unreadCount, avatarState, focusInlineComposer } = useDonnyContext();
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const { data: myRole } = useMyOrgRole(activeOrg?.id);
   const canManageUnits = myRole?.role === 'owner' || myRole?.role === 'admin';
@@ -234,7 +234,15 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
                   <NotificationDropdown />
 
                   <button
-                    onClick={() => stage === 'closed' ? open() : close()}
+                    onClick={() => {
+                      if (stage === 'inline') {
+                        focusInlineComposer();
+                      } else if (stage === 'closed') {
+                        open();
+                      } else {
+                        close();
+                      }
+                    }}
                     className="relative hidden md:block"
                     aria-label="Open Donny"
                     data-donny-launcher

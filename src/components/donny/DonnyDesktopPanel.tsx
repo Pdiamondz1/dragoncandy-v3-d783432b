@@ -35,7 +35,9 @@ export function DonnyDesktopPanel() {
     return () => document.removeEventListener('pointerdown', handler);
   }, [isMobile, stage, close]);
 
-  if (stage === 'closed') return null;
+  // 'inline' means the dashboard is rendering its own Donny; a docked panel over
+  // it would be two Donnys on one screen.
+  if (stage === 'closed' || stage === 'inline') return null;
 
   return (
     <div

@@ -40,7 +40,7 @@ export function DonnyMobileSheet() {
     return () => window.removeEventListener('keydown', handler);
   }, [close]);
 
-  if (stage === 'closed') return null;
+  if (stage === 'closed' || stage === 'inline') return null;
 
   return (
     <>

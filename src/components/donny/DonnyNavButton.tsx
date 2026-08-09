@@ -2,9 +2,15 @@ import { useDonnyContext } from '@/contexts/DonnyProvider';
 import donnyEmblem from '@/assets/donny-emblem.webp';
 
 export function DonnyNavButton() {
-  const { stage, open, close } = useDonnyContext();
+  const { stage, open, close, focusInlineComposer } = useDonnyContext();
 
   const handleClick = () => {
+    // On the dashboard Donny is already on the page; summoning a panel over him
+    // is the duplicate surface this feature deletes.
+    if (stage === 'inline') {
+      focusInlineComposer();
+      return;
+    }
     if (stage === 'closed') {
       open();
     } else {
