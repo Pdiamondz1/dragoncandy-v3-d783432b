@@ -381,7 +381,8 @@ The one piece of real logic in Phase A. Pure: it takes already-fetched data plus
   - `type ProposalCta = { kind: 'route'; label: string; route: string } | { kind: 'ask'; label: string; message: string }`
   - `interface DonnyProposal { id; kind; text; occurredAt; cta; priority; dismissible }`
   - `interface DonnyProposalsInput { pendingActions; pendingActionsError; campaigns; readiness; dismissedIds; now }`
-  - `interface DonnyProposalsResult { blocker: DonnyProposal | null; proposals: DonnyProposal[]; overflowCount: number }`
+  - `interface DonnyProposalsResult { blocker: DonnyProposal | null; proposals: DonnyProposal[]; overflowCount: number; allProposalIds: string[] }`
+    — `allProposalIds` is every ranked proposal id **before** the dismissal filter and **before** the cap, blocker excluded. Task 6 needs it to know which localStorage dismissal keys to read. Reading only the capped ids misses a dismissal on a proposal ranked below the cap, and dismissing one row then resurrects it. (Added after Task 6's review found exactly that.)
   - `buildDonnyProposals(input: DonnyProposalsInput): DonnyProposalsResult`
   - `dismissalKey(proposalId: string): string`
 
@@ -1891,14 +1892,20 @@ export function DonnyHome() {
       pendingActionsError: pending.isError,
       campaigns: campaigns.data,
       readiness: { hasActiveLocation, isReady, locationName, missingSocial, missingStripe },
-      // Captured when the deps change, not on every render. A deadline crossing
-      // the 3-day line therefore updates on the next refetch (the queries
-      // refetch on window focus) rather than mid-render — which is what we want.
+      // Captured when the deps change, not on every render. Note React Query's
+      // structural sharing: a refetch returning identical rows keeps the SAME
+      // data reference, so this does not recompute and `now` stays frozen at
+      // mount. A deadline crossing the 3-day line in a long-lived open tab
+      // therefore will not surface until the data genuinely changes or the
+      // component remounts. Deliberately no interval and no focus listener —
+      // the blast radius is small and it self-heals on navigation.
       now: Date.now(),
     };
+    // Read dismissals against the FULL ranked set, not the capped one. Reading
+    // only the visible three misses a dismissal on a proposal ranked below the
+    // cap, and dismissing one row would then resurrect it.
     const candidates = buildDonnyProposals({ ...base, dismissedIds: [] });
-    const candidateIds = candidates.proposals.map((p) => p.id);
-    const stored = readDismissedProposalIds(candidateIds);
+    const stored = readDismissedProposalIds(candidates.allProposalIds);
     return buildDonnyProposals({
       ...base,
       dismissedIds: [...stored, ...sessionDismissed],
