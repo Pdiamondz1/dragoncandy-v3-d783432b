@@ -16,7 +16,7 @@
 // merge. Confirmed against .github/workflows/ci.yml and .github/workflows/e2e.yml.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { buildSyncPage, SyncPage } from "../_shared/wiki-sync-payload.ts";
 import { assertAllWikiPaths, dedupeByHeadBranch, MERGE_PATH_RE } from "../_shared/wiki-merge-guard.ts";

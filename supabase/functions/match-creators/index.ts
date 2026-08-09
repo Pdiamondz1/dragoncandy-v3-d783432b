@@ -1,6 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.50.0';
 import { corsHeaders } from "../_shared/cors.ts";
 import { resolveCoords, scoreGeographicDistance } from "../_shared/geo.ts";
 

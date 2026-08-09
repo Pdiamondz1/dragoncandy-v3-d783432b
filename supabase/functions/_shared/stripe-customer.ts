@@ -1,6 +1,6 @@
 // supabase/functions/_shared/stripe-customer.ts
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2.57.2";
 
 /**
  * Returns the single canonical Stripe customer id for an org, creating and

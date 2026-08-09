@@ -1,4 +1,4 @@
-import { type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { type SupabaseClient } from "npm:@supabase/supabase-js@2.57.2";
 
 export interface PricingResult {
   amount: number;

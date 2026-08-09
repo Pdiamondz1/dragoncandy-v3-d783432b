@@ -1,4 +1,4 @@
-import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { SupabaseClient } from "npm:@supabase/supabase-js@2.57.2";
 
 export interface PaymentEvent {
   event_type: string;
