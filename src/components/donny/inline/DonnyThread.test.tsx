@@ -119,4 +119,51 @@ describe('DonnyThread', () => {
     fireEvent.click(lastTurnRetry);
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
+
+  it('scopes Retry to the error card when an assistant turn is already present — not the turn', () => {
+    const onRetry = vi.fn();
+    const messages = [
+      msg({ id: 'u1', role: 'user', content: 'What creators are near me?' }),
+      msg({ id: 'a1', role: 'assistant', content: 'Three creators near Hoboken.' }),
+    ];
+    const { container } = render(
+      <DonnyThread
+        messages={messages}
+        isStreaming={false}
+        streamingContent=""
+        error="Donny lost the connection."
+        onRetry={onRetry}
+      />
+    );
+
+    // Exactly one Retry on screen — the error card owns it, not the turn.
+    expect(screen.getAllByRole('button', { name: /retry/i })).toHaveLength(1);
+
+    const errorCard = screen.getByText('Donny lost the connection.').closest('div');
+    expect(errorCard).not.toBeNull();
+    const errorCardRetry = within(errorCard as HTMLElement).getByRole('button', { name: /retry/i });
+    fireEvent.click(errorCardRetry);
+    expect(onRetry).toHaveBeenCalledTimes(1);
+
+    // No turn — including the last assistant turn — carries a Retry of its own.
+    const turns = container.querySelectorAll('[data-turn]');
+    expect(turns).toHaveLength(2);
+    turns.forEach((turn) => {
+      expect(within(turn as HTMLElement).queryByRole('button', { name: /retry/i })).not.toBeInTheDocument();
+    });
+
+    // The conversation itself is still on screen — an error doesn't replace it.
+    expect(screen.getByText('Three creators near Hoboken.')).toBeInTheDocument();
+  });
+
+  it('offers no Retry while streaming, even with an assistant turn already present', () => {
+    const messages = [
+      msg({ id: 'u1', role: 'user', content: 'What creators are near me?' }),
+      msg({ id: 'a1', role: 'assistant', content: 'Three creators near Hoboken.' }),
+    ];
+    render(
+      <DonnyThread messages={messages} isStreaming streamingContent="" error={null} onRetry={vi.fn()} />
+    );
+    expect(screen.queryByRole('button', { name: /retry/i })).not.toBeInTheDocument();
+  });
 });
