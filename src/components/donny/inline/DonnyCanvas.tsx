@@ -28,6 +28,7 @@ export function DonnyCanvas({ suggestions, onSuggestionTap, onPromptSubmit, chil
     exitInline,
     registerInlineComposer,
     markAllRead,
+    unreadCount,
     messages,
     isStreaming,
     streamingContent,
@@ -48,21 +49,31 @@ export function DonnyCanvas({ suggestions, onSuggestionTap, onPromptSubmit, chil
     return () => exitInline();
   }, [setInline, exitInline]);
 
-  // markAllRead runs in its OWN mount-once effect, read through a ref —
-  // deliberately NOT a dependency of the stage effect above. useDonnyNudges
-  // declares markAllRead as useCallback(..., [user?.id, nudges]), and
-  // `nudges` is a React Query array whose identity changes on every refetch.
-  // Adding it to the stage effect's deps would re-run that effect (and its
-  // exitInline cleanup) on every nudge refetch, thrashing the 'inline' stage
-  // and the enabled: stage !== 'closed' gate downstream. A ref sidesteps the
-  // unstable identity while still calling the current implementation.
+  // markAllRead runs in its OWN effect, read through a ref — deliberately NOT
+  // a dependency of the stage effect above. useDonnyNudges declares markAllRead
+  // as useCallback(..., [user?.id, nudges]), and `nudges` is a React Query
+  // array whose identity changes on every refetch. Adding it to the stage
+  // effect's deps would re-run that effect (and its exitInline cleanup) on
+  // every nudge refetch, thrashing the 'inline' stage and the
+  // enabled: stage !== 'closed' gate downstream. A ref sidesteps the unstable
+  // identity while still calling the current implementation.
+  //
+  // Keyed on unreadCount, NOT mount-once: markAllRead's own guard reads a
+  // closure snapshot of `nudges` and returns early when it is empty, so a
+  // single call at mount is a no-op on every load where the nudges query has
+  // not resolved yet — and nothing retried it, leaving the launcher badge
+  // reading "3" forever. The underlying UPDATE is `.is('read_at', null)`, so
+  // re-firing is idempotent.
   const markAllReadRef = useRef(markAllRead);
   useEffect(() => {
     markAllReadRef.current = markAllRead;
   }, [markAllRead]);
   useEffect(() => {
-    void markAllReadRef.current();
-  }, []);
+    if (unreadCount <= 0) return;
+    void Promise.resolve(markAllReadRef.current()).catch((err) =>
+      console.error('[DonnyCanvas] markAllRead failed', err)
+    );
+  }, [unreadCount]);
 
   const handleSubmit = (text: string) => {
     // Flip to thread BEFORE calling onPromptSubmit, so the thread is already

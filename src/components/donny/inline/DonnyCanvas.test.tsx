@@ -22,6 +22,7 @@ const donnyContextMock = {
     exitInline: exitInlineMock,
     registerInlineComposer: registerInlineComposerMock,
     markAllRead: markAllReadMock,
+    unreadCount: 0,
     messages: [] as DonnyMessage[],
     isStreaming: false,
     streamingContent: '',
@@ -56,11 +57,13 @@ const suggestions: DonnySuggestion[] = [
   { label: "What's trending?", message: "What's trending for restaurants near me?" },
 ];
 
-function renderCanvas(
+// A fresh element every call — `rerender(sameElementObject)` lets React bail
+// out on referential identity, which would make a rerender-driven test vacuous.
+function canvasTree(
   props: Partial<Parameters<typeof DonnyCanvas>[0]> = {},
   children: ReactNode = <div>Dashboard body</div>
 ) {
-  return render(
+  return (
     <MemoryRouter>
       <DonnyCanvas
         suggestions={suggestions}
@@ -74,6 +77,13 @@ function renderCanvas(
   );
 }
 
+function renderCanvas(
+  props: Partial<Parameters<typeof DonnyCanvas>[0]> = {},
+  children: ReactNode = <div>Dashboard body</div>
+) {
+  return render(canvasTree(props, children));
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   donnyContextMock.value = {
@@ -81,6 +91,7 @@ beforeEach(() => {
     exitInline: exitInlineMock,
     registerInlineComposer: registerInlineComposerMock,
     markAllRead: markAllReadMock,
+    unreadCount: 0,
     messages: [],
     isStreaming: false,
     streamingContent: '',
@@ -101,8 +112,30 @@ describe('DonnyCanvas — stage lifecycle', () => {
     expect(exitInlineMock).toHaveBeenCalledTimes(1);
   });
 
-  it('marks nudges read exactly once on mount', () => {
+  // These three replace a single "marks nudges read exactly once on mount"
+  // assertion. That test pinned the DEFECT: markAllRead guards on a closure
+  // snapshot of the nudges array (`useDonnyNudges.ts`), so a lone call at mount
+  // is a no-op on every load where the query has not resolved yet — and the
+  // launcher badge then reads "3" forever. Keyed on unreadCount instead; the
+  // underlying UPDATE is `.is('read_at', null)`, so re-firing is idempotent.
+  it('marks nudges read when there is something unread', () => {
+    donnyContextMock.value.unreadCount = 2;
     renderCanvas();
+    expect(markAllReadMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not mark read when there is nothing unread', () => {
+    renderCanvas();
+    expect(markAllReadMock).not.toHaveBeenCalled();
+  });
+
+  it('marks read when nudges land AFTER mount — the load race the mount-once call lost', () => {
+    const { rerender } = renderCanvas();
+    expect(markAllReadMock).not.toHaveBeenCalled();
+
+    donnyContextMock.value.unreadCount = 3;
+    rerender(canvasTree());
+
     expect(markAllReadMock).toHaveBeenCalledTimes(1);
   });
 });

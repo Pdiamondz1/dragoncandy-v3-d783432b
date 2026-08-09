@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // otherwise resolve to the UMD global, which TS rejects inside a module.
 import type { ReactNode } from 'react';
 import type { DonnyProposal, DonnyProposalsResult } from '@/lib/donny/buildDonnyProposals';
+import type { DonnyNudge } from '@/types/donnyNudge';
 
 const navigateMock = vi.fn();
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -17,6 +18,9 @@ vi.mock('react-router-dom', async (importOriginal) => {
 const openDonnyWithContextMock = vi.fn();
 const sendMessageMock = vi.fn();
 const setInlineMock = vi.fn();
+const executeActionMock = vi.fn();
+const dismissNudgeMock = vi.fn();
+const nudgesMock: { value: DonnyNudge[] } = { value: [] };
 vi.mock('@/contexts/DonnyProvider', () => ({
   useDonnyContext: () => ({
     openDonnyWithContext: openDonnyWithContextMock,
@@ -26,6 +30,10 @@ vi.mock('@/contexts/DonnyProvider', () => ({
     registerInlineComposer: () => {},
     focusInlineComposer: () => {},
     markAllRead: () => {},
+    unreadCount: 0,
+    nudges: nudgesMock.value,
+    executeAction: executeActionMock,
+    dismissNudge: dismissNudgeMock,
     stage: 'inline',
     messages: [],
     isStreaming: false,
@@ -119,6 +127,47 @@ beforeEach(() => {
   pendingMock.isLoading = false;
   pendingMock.isError = false;
   proposalsOverrideMock.value = null;
+  nudgesMock.value = [];
+});
+
+describe('DonnyHome — nudges', () => {
+  const nudge: DonnyNudge = {
+    id: 'n1',
+    type: 'content',
+    rawData: {},
+    summary: 'Two creators finished their content for Taco Tuesday.',
+    priority: 'high',
+    actions: [{ label: 'Review it', action: 'navigate', variant: 'primary', payload: {} }],
+    createdAt: new Date().toISOString(),
+    readAt: null,
+    actedAt: null,
+    dismissedAt: null,
+  };
+
+  it('renders the nudge list inline while resting, so the launcher badge points at something', () => {
+    // The launcher still shows unreadCount and glows, but tapping it now
+    // focuses the composer instead of opening DonnyTray — the only surface
+    // that used to render these. Without this list the badge counts nudges
+    // that are readable nowhere.
+    nudgesMock.value = [nudge];
+    renderHome();
+    expect(screen.getByText(nudge.summary)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Review it' }));
+    expect(executeActionMock).toHaveBeenCalledWith('n1', nudge.actions[0]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+    expect(dismissNudgeMock).toHaveBeenCalledWith('n1');
+  });
+
+  it('hides the nudge list once the canvas is in thread state', () => {
+    nudgesMock.value = [nudge];
+    renderHome();
+    const input = screen.getByRole('textbox', { name: /ask donny/i });
+    fireEvent.change(input, { target: { value: 'plan my week' } });
+    fireEvent.submit(input.closest('form')!);
+    expect(screen.queryByText(nudge.summary)).not.toBeInTheDocument();
+  });
 });
 
 describe('DonnyHome — greeting', () => {

@@ -25,7 +25,12 @@ interface DonnyContextValue {
   exitInline: () => void;
   registerInlineComposer: (el: HTMLTextAreaElement | null) => void;
   focusInlineComposer: () => void;
-  markAllRead: () => void;
+  /**
+   * Resolves once the write lands. `useDonnyNudges` returns a promise here and
+   * the fallback returns void — callers that care about failure should route
+   * through `Promise.resolve(...)`, which covers both.
+   */
+  markAllRead: () => void | Promise<void>;
 
   // Nudges
   nudges: DonnyNudge[];

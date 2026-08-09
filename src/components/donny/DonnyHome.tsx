@@ -31,6 +31,7 @@ import { TourButton } from '@/components/guidance/TourButton';
 import { RatingPromptManager } from '@/components/reviews/RatingPromptManager';
 import { SponsorshipRatingPromptManager } from '@/components/reviews/SponsorshipRatingPromptManager';
 import { DonnyHomeProposals } from './DonnyHomeProposals';
+import { DonnyNudgeCard } from './DonnyNudgeCard';
 import { DonnyCanvas } from './inline/DonnyCanvas';
 import { BUSINESS_SUGGESTIONS, type DonnySuggestion } from '@/lib/donny/donnyHomeSuggestions';
 import { buildDonnyProposals, type DonnyProposal } from '@/lib/donny/buildDonnyProposals';
@@ -44,7 +45,7 @@ const OVERVIEW_ROUTE = '/dashboard/business/overview';
 export function DonnyHome() {
   const { profile, activeOrgUnit } = useAuth();
   const navigate = useNavigate();
-  const { sendMessage } = useDonnyContext();
+  const { sendMessage, nudges, executeAction, dismissNudge } = useDonnyContext();
   const { trackEvent } = useAnalyticsContext();
   const { showTour, tourSteps, completeTour, skipTour, triggerTour } = useTour();
 
@@ -204,6 +205,25 @@ export function DonnyHome() {
             onSuggestionTap={handleSuggestionTap}
             onPromptSubmit={handlePromptSubmit}
           >
+            {/* Nudges live here, above "Needs your attention" (design §4.6).
+                The launcher still wears their unread badge, but tapping it now
+                focuses this canvas's composer instead of opening DonnyTray —
+                so without this list the badge would count nudges that are
+                readable nowhere on the app's most-visited route. Same wiring
+                DonnyTray uses; only the frame differs. */}
+            {nudges.length > 0 && (
+              <div className="space-y-2">
+                {nudges.map((nudge) => (
+                  <DonnyNudgeCard
+                    key={nudge.id}
+                    nudge={nudge}
+                    onAction={(action) => executeAction(nudge.id, action)}
+                    onDismiss={() => dismissNudge(nudge.id)}
+                  />
+                ))}
+              </div>
+            )}
+
             {/* The rating prompts go INSIDE the attention frame, not beside it.
                 `NeedsAttentionSection` exists to consolidate every "needs you"
                 banner into ONE quiet framed list — the replaced body put all four
