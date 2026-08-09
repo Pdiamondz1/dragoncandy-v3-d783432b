@@ -36,6 +36,8 @@ export interface DonnyProposal {
   occurredAt: string | null;
   /** null when the CTA's route failed validation: render the text, drop the button. */
   cta: ProposalCta | null;
+  /** Reserved. NOT read for cross-kind ordering: the merge concatenates pending
+   *  actions then signals as fixed groups. Do not assume this drives display order. */
   priority: number;
   dismissible: boolean;
 }
