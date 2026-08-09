@@ -34,11 +34,18 @@ export const DELEGATED_POSTING_ENABLED = false;
 // a greeting + what needs your attention + a prompt box + three taps; today's
 // body moves verbatim to /dashboard/business/overview and stays reachable.
 //
-// OFF until the surface is prod-verified on both viewports. Flipping this to
-// true changes ONLY the business dashboard body — the sidebar, mobile bottom
-// nav, header and first-run flow are untouched, and /overview keeps working
-// either way.
+// ON. Flipping this to true changes ONLY the business dashboard body — the
+// sidebar, mobile bottom nav, header and first-run flow are untouched, and
+// /overview keeps working either way.
+//
+// The both-viewport prod check is still outstanding — it could not be run
+// before this flip merged: the dashboard is auth-gated, an agent must never
+// type credentials into a login form, and at merge time the change was not
+// yet deployed (Supabase auth is per-origin, so a dragoncandy.io session
+// cookie/token does not reach a local dev server, and there was no prod build
+// to check against yet). Verify on dragoncandy.io, both viewports, before
+// treating this surface as done.
 //
 // Phase A taps open the EXISTING Donny panel (openDonnyWithContext). Inline
 // chat is Phase B — see the design doc §13 for the hazards it must resolve.
-export const DONNY_FIRST_DASHBOARD_ENABLED = false;
+export const DONNY_FIRST_DASHBOARD_ENABLED = true;
