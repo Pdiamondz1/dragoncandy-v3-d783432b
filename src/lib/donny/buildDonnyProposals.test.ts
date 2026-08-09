@@ -12,6 +12,25 @@ const NOW = new Date('2026-08-08T12:00:00.000Z').getTime();
 const hoursAgo = (h: number) => new Date(NOW - h * 3_600_000).toISOString();
 const daysFromNow = (d: number) => new Date(NOW + d * 86_400_000).toISOString();
 
+/**
+ * Local `now` at a given local hour/minute on NOW's local calendar day.
+ * Timezone-independent: derives the day from NOW's OWN local date rather
+ * than assuming a UTC offset.
+ */
+function localNowAt(hour: number, minute: number): number {
+  const d = new Date(NOW);
+  d.setHours(hour, minute, 0, 0);
+  return d.getTime();
+}
+
+/** "YYYY-MM-DD" for the local calendar day `offset` days from `ms`. */
+function localDateString(ms: number, offset: number): string {
+  const d = new Date(ms);
+  d.setDate(d.getDate() + offset);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 function action(over: Partial<PendingAction> = {}): PendingAction {
   return {
     sourceId: 'app1',
@@ -291,6 +310,73 @@ describe('buildDonnyProposals — the deadline signal', () => {
 
   it('renders nothing from campaigns when the query errored', () => {
     const { proposals } = buildDonnyProposals(input({ campaigns: undefined }));
+    expect(proposals).toEqual([]);
+  });
+});
+
+describe('buildDonnyProposals — date-only deadlines (Postgres `date` column)', () => {
+  // campaigns.deadline is a Postgres `date`, so Supabase returns "YYYY-MM-DD"
+  // with no time component. new Date("YYYY-MM-DD") parses at UTC midnight — an
+  // instant, not a calendar day — so instant-minus-instant is wrong in every
+  // timezone: "today" reads as already-past once `now` is past UTC midnight,
+  // and in a negative-UTC-offset zone (e.g. America/New_York, where the company
+  // is based) a date-only deadline of tomorrow reads as "today" until ~8pm
+  // local. These tests derive all expectations from LOCAL calendar-day
+  // arithmetic so they hold regardless of which timezone they run in.
+
+  it('is due today when `now` is late in the local day (the case that fails against instant-vs-instant math)', () => {
+    const lateNow = localNowAt(23, 0);
+    const todayDate = localDateString(lateNow, 0);
+    const { proposals } = buildDonnyProposals(
+      input({ campaigns: [campaign({ deadline: todayDate })], now: lateNow })
+    );
+    expect(proposals).toHaveLength(1);
+    expect(proposals[0].text).toBe('"Taco Tuesday" is due today');
+  });
+
+  it('is still due today when `now` is early in the local day', () => {
+    const earlyNow = localNowAt(0, 30);
+    const todayDate = localDateString(earlyNow, 0);
+    const { proposals } = buildDonnyProposals(
+      input({ campaigns: [campaign({ deadline: todayDate })], now: earlyNow })
+    );
+    expect(proposals).toHaveLength(1);
+    expect(proposals[0].text).toBe('"Taco Tuesday" is due today');
+  });
+
+  it('labels tomorrow\'s date "tomorrow", not "today", even late in the local day', () => {
+    const lateNow = localNowAt(23, 0);
+    const tomorrowDate = localDateString(lateNow, 1);
+    const { proposals } = buildDonnyProposals(
+      input({ campaigns: [campaign({ deadline: tomorrowDate })], now: lateNow })
+    );
+    expect(proposals).toHaveLength(1);
+    expect(proposals[0].text).toBe('"Taco Tuesday" is due tomorrow');
+  });
+
+  it('says "in 3 days" at the inclusive DEADLINE_SOON_DAYS boundary', () => {
+    expect(DEADLINE_SOON_DAYS).toBe(3);
+    const date = localDateString(NOW, DEADLINE_SOON_DAYS);
+    const { proposals } = buildDonnyProposals(
+      input({ campaigns: [campaign({ deadline: date })], now: NOW })
+    );
+    expect(proposals).toHaveLength(1);
+    expect(proposals[0].text).toBe('"Taco Tuesday" is due in 3 days');
+  });
+
+  it('is silent one day past the DEADLINE_SOON_DAYS boundary', () => {
+    const date = localDateString(NOW, DEADLINE_SOON_DAYS + 1);
+    const { proposals } = buildDonnyProposals(
+      input({ campaigns: [campaign({ deadline: date })], now: NOW })
+    );
+    expect(proposals).toEqual([]);
+  });
+
+  it('is silent for a deadline of yesterday (local)', () => {
+    const date = localDateString(NOW, -1);
+    const { proposals } = buildDonnyProposals(
+      input({ campaigns: [campaign({ deadline: date })], now: NOW })
+    );
     expect(proposals).toEqual([]);
   });
 });

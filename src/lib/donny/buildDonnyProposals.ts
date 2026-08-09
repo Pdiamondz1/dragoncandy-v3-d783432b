@@ -19,6 +19,8 @@ export const PROPOSAL_CAP = 3;
 
 const MS_PER_DAY = 86_400_000;
 
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 export type ProposalCta =
   | { kind: 'route'; label: string; route: string }
   | { kind: 'ask'; label: string; message: string };
@@ -88,8 +90,38 @@ function routeCta(label: string, route: string): ProposalCta | null {
   return isKnownDonnyRoute(route) ? { kind: 'route', label, route } : null;
 }
 
+/** Local midnight of the day containing `ms`. */
+function startOfLocalDay(ms: number): number {
+  const d = new Date(ms);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+/**
+ * Local midnight of the deadline's calendar day.
+ *
+ * `campaigns.deadline` is a Postgres `date`, so it arrives as "YYYY-MM-DD" and
+ * `new Date(...)` would parse it at UTC midnight — an instant in a timezone the
+ * user does not live in. Building it from parts gives LOCAL midnight, which is
+ * what "due today" actually means to a restaurant owner.
+ */
+function startOfDeadlineDay(deadline: string): number | null {
+  if (DATE_ONLY_RE.test(deadline)) {
+    const [y, m, d] = deadline.split('-').map(Number);
+    return new Date(y, m - 1, d).getTime();
+  }
+  // Defensive: a full timestamp would still be an instant, so floor it too.
+  const ms = new Date(deadline).getTime();
+  return Number.isNaN(ms) ? null : startOfLocalDay(ms);
+}
+
 function duePhrase(deadline: string, now: number): string | null {
-  const days = Math.floor((new Date(deadline).getTime() - now) / MS_PER_DAY);
+  const deadlineStart = startOfDeadlineDay(deadline);
+  if (deadlineStart === null) return null;
+  // Both endpoints are local midnights, but a calendar day can be 23 or 25
+  // hours across a DST transition, so the raw division isn't always a whole
+  // number — round rather than floor, or a 25-hour "tomorrow" reads as "today".
+  const days = Math.round((deadlineStart - startOfLocalDay(now)) / MS_PER_DAY);
   if (days < 0 || days > DEADLINE_SOON_DAYS) return null;
   if (days === 0) return 'today';
   if (days === 1) return 'tomorrow';
