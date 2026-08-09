@@ -188,14 +188,45 @@ Worth recording, because they are the reason the review gates exist and every on
   branch. So the MCP path is latent, not live — but a config flip (`OUTSTAND_MCP_URL`) would
   have re-armed the dropped tools, which is why the intersection above is enforced.
 
-## Known limitation — needs a founder decision
+## CT-4b — closed (founder asked for it in the same session)
 
-**CT-4b, republish after reload.** The draft card persists to `donny_messages.rich_cards` and
-re-renders on load, so after publishing, reopening the conversation shows a live "Post it" on
-the same draft — a second tap duplicates a real public post. `donny_messages` has SELECT and
-INSERT policies and **no UPDATE policy for any surface** (verified across all nine migrations
-that touch it), so closing it needs either a narrow UPDATE RLS policy or a service-role route
-— i.e. a migration, which this branch's scope forbids.
+**Republish after reload.** The draft card persists to `donny_messages.rich_cards` and
+re-renders on load, so "already sent" could not live in component state: reopening the
+conversation re-armed the button on a draft already live on a public feed, and a second tap
+posted a duplicate.
+
+Closed with a new append-only marker table `donny_draft_publications` (migration
+`20260809193254`), keyed on a `draft_id` now generated server-side when the card is built.
+
+**Why not an UPDATE policy on `donny_messages`** — the option the original write-up assumed:
+that table has exactly two policies on prod (SELECT own, INSERT own) and no UPDATE for any
+surface. Adding one so the client could rewrite `rich_cards` hands every user write access to
+the stored text of what Donny said, to fix a UI-state problem. And RLS `WITH CHECK` sees only
+the NEW row, so "only `rich_cards` may change" is not expressible as a policy — it would need
+column GRANTs on top (same lesson as `campaign_invitations`). The marker table is smaller, is
+enforced by a primary key rather than policy gymnastics, and leaves `donny_messages` untouched.
+
+**The PK is composite `(user_id, draft_id)`, not `draft_id` alone** — otherwise anyone who
+learned another user's draft id could squat the row, making the real owner's marker insert fail
+*after* their post had already gone out.
+
+**Ordering is the invariant:** written after the publish succeeds, so "row exists ⇒ it went
+out". A pre-claim would leave a draft marked published that never posted — permanently
+un-postable, with nothing on the feed to explain why. Corollary: a marker write that fails after
+a successful publish is a *bookkeeping* failure, and must not re-arm the button or suggest a
+retry.
+
+**The card fails closed** on anything short of a definite "not published" — lookup in flight,
+lookup failed, or no draft id at all.
+
+**Verified on prod, every write rolled back:** grants are exactly `authenticated: INSERT,SELECT`
+(no `anon`, no `PUBLIC`); cross-user INSERT → 42501 RLS; own INSERT → succeeds, own rows
+visible; DELETE → 42501 (no grant); duplicate → 23505, which the recording hook deliberately
+treats as success. `data-exposure-reviewer` PASS on the migration commit.
+
+**Residual:** if the publish succeeds and the marker write fails, this session's button stays
+down but a reload can re-arm that one card. Much narrower than what it replaced, and it fails
+toward a *visible* duplicate rather than a silent one — but it is not zero.
 
 ## Also true, and stated rather than discovered later
 

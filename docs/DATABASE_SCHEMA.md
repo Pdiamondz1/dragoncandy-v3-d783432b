@@ -337,6 +337,7 @@ active members, who one-tap apply with no payment (free `fixed_price=0`). See
 | `donny_campaign_previews` | Donny AI campaign preview data |
 | `donny_conversations` | Donny AI conversation threads |
 | `donny_messages` | Individual messages in Donny conversations. `rich_card` (jsonb, singular) + `rich_cards` (jsonb, nullable — a LIST of cards, e.g. the web-chat `find_creators` avatar cards; additive, internal Donny leaves it null) |
+| `donny_draft_publications` | Append-only marker — a Donny social draft card (`draft_id`) was published by `user_id` at `published_at`. See the note below. |
 | `donny_help_logs` | Help requests and resolutions via Donny |
 | `donny_knowledge` | Donny's knowledge base entries (RAG) |
 | `donny_nudges` | Proactive nudge definitions and delivery tracking |
@@ -346,6 +347,47 @@ active members, who one-tap apply with no payment (free `fixed_price=0`). See
 | `donny_oauth_tokens` | OAuth access/refresh tokens |
 | `donny_scheduled_posts` | Cross-platform posting schedule (auto cross-scheduling). Per-platform caption/media/hashtags, `scheduled_at`, status lifecycle, and `ai_suggested_time`/`ai_reasoning` for Donny-proposed slots. |
 | `donny_cost_ledger` | Per-call **runtime** AI-spend ledger (Donny/Dezzy generation + RAG embeddings) — the source of truth for the ≤15%-of-revenue AI kill-switch (NOT the total Anthropic/OpenAI invoice, which is mostly founder dev spend/opex). Written only by `_shared/cost-ledger.ts`. `user_id` is **nullable** (system/anonymous calls log `NULL`; the FK to `auth.users` is kept); `tier` ∈ `T0`–`T3`, `'embedding'`, or `'web_search'`/`'web_extract'` (Donny web tools — the ledger rows double as the daily web-search rate counter; see `docs/wiki/concepts/donny-web-access.md`). Summed MTD by the `aios_cost_stats()` RPC (see `docs/wiki/concepts/aios-runtime-spend-source-of-truth.md`). |
+
+> **`donny_draft_publications` — the once-only guard on Donny's social draft card.** Migration
+> `20260809193254`, applied and verified on prod 2026-08-09. Columns: `draft_id uuid`, `user_id uuid
+> REFERENCES auth.users(id) ON DELETE CASCADE`, `published_at timestamptz default now()`, primary key
+> **`(user_id, draft_id)`**.
+>
+> **Why it exists:** Donny proposes a post as a rich card and the owner taps to publish. That card is
+> persisted verbatim into `donny_messages.rich_cards` and re-rendered on every conversation load, so
+> "already sent" could not live in component state — reopening the conversation re-armed the button on
+> a draft already live on a public feed, and a second tap posted a duplicate.
+>
+> **Why not an UPDATE policy on `donny_messages`:** that table has exactly two policies (SELECT own,
+> INSERT own) and **no UPDATE for any surface** — verified against `pg_policies` on prod. Adding one so
+> the client could rewrite `rich_cards` would hand every user write access to the stored text of what
+> Donny said, to fix a UI-state problem. And RLS `WITH CHECK` sees only the NEW row, so "only
+> `rich_cards` may change" is **not expressible as a policy** — it would need column GRANTs on top
+> (the same lesson as `campaign_invitations`, `20260808010000`). A separate append-only marker is
+> smaller, enforced by a primary key rather than policy gymnastics, and leaves `donny_messages`
+> byte-unchanged.
+>
+> **The PK is composite on purpose.** `draft_id` alone would let anyone who learned another user's
+> draft id squat the row, making the real owner's marker insert fail *after* their post had gone out.
+> A draft belongs to exactly one user, so per-user is the correct grain.
+>
+> **RLS:** own-row SELECT + own-row INSERT, `TO authenticated`. **Deliberately no UPDATE or DELETE
+> policy** — a publication is a fact about something that already happened in public, and un-marking it
+> re-arms the button on a live post. Account deletion is unaffected: the FK cascade operates
+> independently of GRANTs and RLS. Grants are locked down table-level (`revoke all … from public, anon,
+> authenticated`, then `grant select, insert … to authenticated`) — a *column*-level revoke is a
+> documented no-op against Supabase's ambient table-wide grant.
+>
+> **Verified red→green on prod, every write rolled back:** grants are exactly `authenticated:
+> INSERT,SELECT` (no `anon`, no `PUBLIC`); a cross-user INSERT raises **42501**; an own INSERT succeeds
+> and sees its own rows; DELETE raises **42501** (no grant); a duplicate raises **23505**, which
+> `useRecordDraftPublication` treats as success — the key firing means the draft was already recorded,
+> which is the state the write was trying to reach.
+>
+> **Ordering is the invariant:** the marker is written **after** the publish succeeds, so "row exists ⇒
+> it went out" (the same rule as `campaign_collaborations.payout_executed_at`). A pre-claim would leave
+> a draft marked published that never posted — permanently un-postable, with nothing on the feed to
+> explain why. See [[Donny Social Tools]].
 
 > **Strategy library (`internal_docs`)** — the AIOS strategy/wiki docs surfaced at `/internal/strategy`;
 > a projection of git files synced by `donny-knowledge-sync` and the source of Donny's internal RAG

@@ -24,6 +24,14 @@ let six fabricated all-zero rows clear the sample-size bar; and a user-wide samp
 licensing a single account's engagement rate. All three were caught in review, none by tests
 that existed beforehand.
 
+Also records the once-only guard (CT-4b), which was an open founder decision when the page was
+first written and was closed in the same session: a published draft used to re-arm its own
+button on reload, because the card is persisted and re-rendered while "already sent" lived in
+component state. The page keeps the reasoning for *not* taking the obvious route — an UPDATE
+policy on `donny_messages` would hand every user write access to the stored text of what Donny
+said, and "only `rich_cards` may change" is not expressible as an RLS policy at all, since
+`WITH CHECK` sees only the NEW row.
+
 Pages created: [[Donny Social Tools]]
 Pages updated: [[Honest Analytics]] (the bar now binds Donny, not just the screen),
 [[Social Measurement Spine]] (third consumer of `content_performance`, and its two traps),

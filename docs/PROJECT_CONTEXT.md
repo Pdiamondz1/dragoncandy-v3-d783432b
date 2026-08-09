@@ -129,12 +129,14 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   cannot publish. Three measurement traps caught in review, all one shape (*a gate must be about the
   same thing as the claim it licenses*): cumulative milestone rows summed (~3×, proven on prod post
   `XDbxe`), both reads ungated on `verified_at` (6 fabricated all-zero rows would have cleared the
-  sample bar), and a user-wide gate licensing one account's engagement rate. **No migration, no RLS
-  change. Pending (2026-08-09):** merge the PR; **deploy `donny-orchestrator` separately** (merging
-  ships frontend only); founder decision on **CT-4b** (republish-after-reload needs a `donny_messages`
-  UPDATE policy, which does not exist for any surface); then the acceptance signal — a
-  `status='success'` row in `donny_tool_executions` for a `social_*` tool, which has **never existed**
-  — and a both-viewport `verify-prod`.
+  sample bar), and a user-wide gate licensing one account's engagement rate. **CT-4b closed** in the
+  same session: a published draft used to re-arm its own button on reload (a second tap = a duplicate
+  public post), now blocked by the append-only `donny_draft_publications` marker — migration
+  `20260809193254`, **applied and verified on prod**, with no change to any existing table's policies
+  or grants. **Pending (2026-08-09):** merge the PR; **deploy `donny-orchestrator` separately**
+  (merging ships frontend only); then the acceptance signal — a `status='success'` row in
+  `donny_tool_executions` for a `social_*` tool, which has **never existed** — and a both-viewport
+  `verify-prod`.
   → `docs/wiki/concepts/donny-social-tools.md` · `feat/donny-social-tools-repair`
 - **Donny-first business dashboard (Phase A)** — the `/dashboard/business` body becomes Donny
   (greeting + attention list + prompt box + three taps); today's body preserved verbatim at

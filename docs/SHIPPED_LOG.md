@@ -28,10 +28,11 @@
 
 ## [2026-08-09] Donny's `social_*` tools — repaired after 7 calls and 0 successes
 
-> **State as of writing.** Branch `feat/donny-social-tools-repair`, PR open. **No migration, no
-> RLS change.** Merging ships the frontend only — `donny-orchestrator` needs a **separate
-> deploy**, and the acceptance signal cannot be observed until it happens. One item needs a
-> founder decision (CT-4b, below).
+> **State as of writing.** Branch `feat/donny-social-tools-repair`, PR open. One migration
+> (`20260809193254`, applied and verified on prod ahead of the code, per the standing ordering
+> rule); no change to any existing table's policies or grants. Merging ships the frontend only —
+> `donny-orchestrator` needs a **separate deploy**, and the acceptance signal cannot be observed
+> until it happens.
 
 ### What was reported
 
@@ -136,14 +137,38 @@ together because they are the same defect wearing different clothes:
    platform) returns an honest count with **no signal** rather than borrowing the sibling's
    sample.
 
-### Open — needs a founder decision
+### CT-4b — closed in the same session
 
-**CT-4b, republish after reload.** The draft card persists to `donny_messages.rich_cards` and
-re-renders on load, so after publishing, reopening the conversation shows a live "Post it" on the
-same draft; a second tap duplicates a real public post. `donny_messages` has SELECT and INSERT
-policies and **no UPDATE policy for any surface** (verified across all nine migrations touching
-it), so closing it needs a narrow UPDATE RLS policy or a service-role route — a migration, which
-this branch's scope forbids.
+**Republish after reload.** The draft card persists to `donny_messages.rich_cards` and re-renders
+on load, so "already sent" could not live in component state: reopening the conversation re-armed
+the button on a draft already live on a public feed, and a second tap posted a duplicate.
+
+Closed by **`donny_draft_publications`** (migration `20260809193254`, applied and verified on
+prod) — an append-only marker keyed on a `draft_id` now generated server-side when the card is
+built.
+
+**Not** an UPDATE policy on `donny_messages`, which was the obvious route: that table has exactly
+two policies (SELECT own, INSERT own) and no UPDATE for any surface, so adding one would hand
+every user write access to the stored text of what Donny said, to fix a UI-state problem — and RLS
+`WITH CHECK` sees only the NEW row, so "only `rich_cards` may change" is not expressible as a
+policy anyway. The PK is composite `(user_id, draft_id)`, not `draft_id` alone: otherwise anyone
+who learned another user's draft id could squat the row and make the real owner's marker insert
+fail *after* their post had gone out.
+
+**Ordering is the invariant** — written after the publish succeeds, so "row exists ⇒ it went out",
+the same rule as `payout_executed_at`. A pre-claim would leave a draft marked published that never
+posted, permanently un-postable with nothing on the feed to explain why. So a marker write that
+fails after a successful publish is a *bookkeeping* failure and must not re-arm the button. The
+card fails **closed** on anything short of a definite "not published" — lookup in flight, lookup
+failed, or no draft id at all.
+
+Verified red→green on prod, every write rolled back: grants are exactly `authenticated:
+INSERT,SELECT` (no `anon`, no `PUBLIC`); cross-user INSERT → 42501; own INSERT → succeeds; DELETE
+→ 42501 (no grant); duplicate → 23505, which the recording hook deliberately treats as success.
+
+**Residual:** publish-succeeds-then-marker-fails leaves this session correct but a reload can
+re-arm that one card. Much narrower than what it replaced, and it fails toward a visible duplicate
+rather than a silent one — but not zero.
 
 ### Stated rather than discovered later
 

@@ -242,14 +242,48 @@ platform, checked 2026-08-09), but it is precisely the case handle-disambiguatio
   request known to be unauthenticatable — the same rule the orchestrator's OAuth branch already
   applied.
 
+## The once-only guard (CT-4b)
+
+A draft card is **persisted** into `donny_messages.rich_cards` and re-rendered on every
+conversation load, so "already sent" could not live in React component state. Reopening the
+conversation re-armed the button on a draft already live on a public feed, and a second tap
+posted a duplicate — on the one card whose action cannot be undone.
+
+Closed by `donny_draft_publications` (migration `20260809193254`), an append-only marker keyed
+on a `draft_id` now generated server-side when the card is built.
+
+**Why not an UPDATE policy on `donny_messages`.** That table has exactly two policies on prod —
+SELECT own and INSERT own — and no UPDATE for any surface. Adding one so the client could
+rewrite `rich_cards` would hand every user write access to the stored text of what Donny said,
+in order to fix a UI-state problem. And RLS `WITH CHECK` sees only the NEW row, so "only
+`rich_cards` may change" is not expressible as a policy at all; it would need column GRANTs on
+top. A separate marker is smaller, is enforced by a primary key instead of policy gymnastics,
+and leaves `donny_messages` byte-unchanged.
+
+**Ordering is the invariant.** The marker is written **after** the publish succeeds — "row
+exists ⇒ it went out", the same rule as `payout_executed_at`. A pre-claim inverts the failure
+into the worse one: a draft marked published that never posted, permanently un-postable, with
+nothing on the feed to explain why. It follows that a marker write that fails *after* a
+successful publish is a **bookkeeping** failure, not a publish failure: it must not re-arm the
+button or suggest a retry, because the post is live.
+
+**The card fails closed** on anything short of a definite "not published" — lookup in flight,
+lookup failed, or a card with no draft id at all. Without an id there is no way to prove the
+draft is unpublished, and the recoverable answer ("ask Donny for a fresh draft") beats a
+plausible one.
+
+The draft id is **injected** into `buildDraftCard` rather than generated inside it, keeping that
+function pure and its tests free of a crypto stub — the same pattern as `buildDonnyProposals`'
+injected `now`. It is a fresh uuid per draft, deliberately **not** a hash of the content: asking
+for the same post again after publishing is a legitimate second post.
+
+**Residual, stated rather than discovered later:** if the publish succeeds and the marker write
+fails, this session's button stays down but a reload can re-arm that one card. Narrower than
+what it replaced, and it fails in the direction of a visible duplicate rather than a silent
+one — but it is not zero.
+
 ## Known Issues
 
-- **CT-4b — republish after reload.** The draft card persists to `donny_messages.rich_cards`
-  and re-renders on load, so after publishing, reopening the conversation shows a live
-  "Post it" on the same draft; a second tap duplicates a real public post. `donny_messages`
-  has SELECT and INSERT policies and **no UPDATE policy for any surface** (verified across all
-  nine migrations touching it), so closing it needs a narrow UPDATE RLS policy or a
-  service-role route — a migration, which this branch's scope forbids. **Founder decision.**
 - **`outstand-mcp.ts` has never been inside the CI edge-function typecheck gate.** Both the
   spec and the plan asserted it was, and both were wrong. The blocker is a **supabase-js
   version skew**: `donny-orchestrator` imports `supabase-js@2` (floating) while
