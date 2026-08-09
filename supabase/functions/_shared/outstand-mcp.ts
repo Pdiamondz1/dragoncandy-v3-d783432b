@@ -7,6 +7,7 @@ import {
   buildForwardedArgs,
 } from './outstand-mcp-tools.ts';
 import { proxyRequestFor, requiresUpstream } from './outstand-mcp-paths.ts';
+import { unwrapMcpPayload } from './mcp-payload.ts';
 import { fetchActiveAccounts, resolveAccount } from './outstand-accounts.ts';
 import {
   buildDraftCard,
@@ -434,7 +435,14 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
           // synthetic string with nothing to leak), this one carries real
           // upstream content and must go through the same blocklist walk.
           if (sanitized.isError) return stripAccountIds(sanitized) as McpToolResult;
-          raw = sanitized;
+          // Unwrap the envelope so this branch hands the wrapper below the
+          // SAME thing the REST branch does — the metrics object itself. The
+          // envelope would make `data` read `{content:[{text:"{…}"}]}`, with
+          // the follower count `has_signal`/`caveat` are describing one
+          // JSON-decode away inside a string. Unwrapping only the unambiguous
+          // case; see mcp-payload.ts for why the fallback keeps the envelope
+          // rather than guessing.
+          raw = unwrapMcpPayload(sanitized);
         } else {
           const req = proxyRequestFor(rawName, accountId);
           if (!req) {

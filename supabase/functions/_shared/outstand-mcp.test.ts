@@ -4,12 +4,21 @@ import { createOutstandMcpBridge } from './outstand-mcp';
 // A stand-in MCP server whose advertised tool list each test controls. The real
 // one has never connected on prod (every logged failure carries the REST
 // branch's error string), so this is the only way to exercise that path at all.
-const remote = vi.hoisted(() => ({ tools: ['get_account_metrics'] }));
+const remote = vi.hoisted(() => ({
+  tools: ['get_account_metrics'],
+  // What the remote's callTool answers with. A real MCP server returns the
+  // payload as a JSON-encoded STRING inside content[].text — the envelope this
+  // code has to unwrap so both branches feed the wrapper the same shape.
+  result: { content: [{ type: 'text', text: '{}' }] } as {
+    content: Array<{ type: string; text?: string; data?: unknown }>;
+    isError?: boolean;
+  },
+}));
 
 vi.mock('./mcp-client.ts', () => ({
   createMcpClient: async () => ({
     listTools: async () => remote.tools.map((name) => ({ name, description: '', inputSchema: {} })),
-    callTool: async () => ({ content: [{ type: 'text', text: '{}' }] }),
+    callTool: async () => remote.result,
     disconnect: () => {},
   }),
 }));
@@ -388,5 +397,61 @@ describe('offered tools vs. a remote MCP server', () => {
     const names = await toolsWithRemote(['get_account_metrics', 'delete_everything']);
     expect(names).not.toContain('social_delete_everything');
     expect(names).not.toContain('delete_everything');
+  });
+});
+
+// One wrapper (`{ data, has_signal, caveat }`) consumes BOTH branches, so both
+// must hand it the same shape. The MCP branch used to assign the envelope, which
+// put the follower count `has_signal` is describing one JSON-decode away inside
+// content[0].text. Latent — the MCP client has never connected on prod — and one
+// OUTSTAND_MCP_URL away from being live.
+describe('get_account_metrics over the MCP branch', () => {
+  const METRICS = { followers: 1234, engagement_rate: 0.031 };
+
+  async function metricsViaMcp(result: typeof remote.result) {
+    remote.tools = ['get_account_metrics'];
+    remote.result = result;
+    ENV.OUTSTAND_MCP_URL = 'https://mcp.test';
+    try {
+      const { supabase, queries } = fakeSupabase({
+        business_outstand_accounts: [ACCOUNT_ROW],
+        content_performance: [perfRow('p1'), perfRow('p2'), perfRow('p3')],
+      });
+      const { bridge } = await build(supabase, queries, 'growth');
+      const res = await bridge.callTool('social_get_account_metrics', {});
+      return JSON.parse(res.content[0].text as string);
+    } finally {
+      delete ENV.OUTSTAND_MCP_URL;
+      remote.result = { content: [{ type: 'text', text: '{}' }] };
+    }
+  }
+
+  it('puts the metrics themselves in `data`, not the MCP envelope', async () => {
+    const payload = await metricsViaMcp({
+      content: [{ type: 'text', text: JSON.stringify(METRICS) }],
+    });
+    expect(payload.data).toEqual(METRICS);
+    expect(payload.data.followers).toBe(1234);
+    // The exact shape the bug produced.
+    expect(payload.data).not.toHaveProperty('content');
+  });
+
+  it('still reports the sample-size verdict alongside the unwrapped data', async () => {
+    const payload = await metricsViaMcp({
+      content: [{ type: 'text', text: JSON.stringify(METRICS) }],
+    });
+    // 3 verified posts on one platform meets MIN_POSTS_FOR_SIGNAL.
+    expect(payload.has_signal).toBe(true);
+    expect(payload.caveat).toBeDefined();
+  });
+
+  it('keeps an upstream error as an OUTER error rather than unwrapping it into data', async () => {
+    const payload = await metricsViaMcp({
+      content: [{ type: 'text', text: JSON.stringify({ error: 'upstream exploded' }) }],
+      isError: true,
+    });
+    // The error path returns before the gate wrapper, so there is no `data`
+    // key at all — the orchestrator's audit log stays status:'error'.
+    expect(payload.has_signal).toBeUndefined();
   });
 });
