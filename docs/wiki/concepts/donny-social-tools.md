@@ -294,6 +294,18 @@ one — but it is not zero.
   the mismatch. The repo carries three pin styles (79× `@2`, 37× `@2.57.2`, 6× `@2.50.0`), so
   aligning them is a repo-wide decision, not a tidy-up to smuggle into a feature branch.
 - **Amplification and the MCP path remain unproven on prod** — see [[Social Measurement Spine]].
+- **`donny-orchestrator`'s Donny-OAuth branch is dead code on prod.** Found by
+  `edge-function-reviewer` during this branch's pre-deploy pass and then **verified by probe**,
+  not left as a suspicion: a POST carrying an opaque Donny OAuth token returns
+  `401 {"code":"UNAUTHORIZED_INVALID_JWT_FORMAT"}` — the platform gateway's own reply, so the
+  function never runs. `donny_oauth_tokens` holds SHA-256 hashes of random strings, not
+  Supabase-signed JWTs, and this function is `verify_jwt: true`, so the gateway rejects them
+  before `validateDonnyToken` is ever consulted. Pre-existing and **out of scope here** —
+  `verify_jwt` is auth-model surface, and the OAuth/extension surface is `donny-chat`
+  (`verify_jwt: false`) anyway, so nothing is actually broken for a user. It is recorded because
+  the branch reads as live and is not: the bridge's `authHeader` comment describes what that
+  branch would do, and that path cannot execute. Either delete the branch or flip the flag —
+  a founder call, since it touches auth. See [[verify_jwt Is Not Authorization]].
 
 ## Acceptance
 
