@@ -74,6 +74,41 @@ export function dragonshareRoute(role: string | undefined): string {
   }
 }
 
+/**
+ * Subscription/billing page. Role-scoped.
+ *
+ * There is NO top-level `/settings/*` route in the app (see src/App.tsx), yet
+ * `/settings/billing` was hardcoded in 8 places — so every "Upgrade" CTA Donny
+ * emitted landed on the catch-all 404, including the one gating the paid
+ * Weekly Content Plan. `isKnownRoute` never caught it because it only guards
+ * routes the LLM *invents*; these were hardcoded in source and agent prompts.
+ *
+ * Creators have no subscription-billing page at all (tiers are an org/business
+ * concept), so they land on their own money surface instead of a dead link.
+ */
+export function billingRoute(role: string | undefined): string {
+  switch (roleSlug(role)) {
+    case "brand":
+      return "/dashboard/brand/billing";
+    case "creator":
+      return "/dashboard/creator/earnings";
+    default:
+      return "/dashboard/business/billing";
+  }
+}
+
+/** Social-account connection manager (OutstandManager). Role-scoped. */
+export function socialRoute(role: string | undefined): string {
+  switch (roleSlug(role)) {
+    case "brand":
+      return "/dashboard/brand/social";
+    case "creator":
+      return "/dashboard/creator/social";
+    default:
+      return "/dashboard/business/social";
+  }
+}
+
 // --- Route allow-list ---------------------------------------------------------
 // Templates mirror src/App.tsx. `:seg` matches a single dynamic path segment.
 // A route only needs to be listed if Donny could plausibly navigate to it.

@@ -10,6 +10,7 @@ import { useCrossPost } from '@/hooks/outstand/useCrossPost';
 import { MediaPreviewGrid } from '@/components/outstand/MediaPreviewGrid';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { socialRoute } from '@/lib/donnyRoutes';
 import { isVideoPost } from '@/types/dragonshare';
 import type { DragonSharePostWithRelations } from '@/types/dragonshare';
 
@@ -22,7 +23,7 @@ interface Props {
 }
 
 function SharePanelInner({ open, onOpenChange, post, creatorName, businessName }: Props) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { apiKey, baseUrl } = useOutstandConfig();
   const { accounts } = useAccounts({ apiKey, baseUrl, limit: 100 });
   const crossPost = useCrossPost();
@@ -114,7 +115,7 @@ function SharePanelInner({ open, onOpenChange, post, creatorName, businessName }
             <label className="text-[11px] uppercase tracking-wide font-medium text-dc-text-muted block mb-1.5">Post to</label>
             {(!accounts || accounts.length === 0) ? (
               <p className="text-xs text-dc-text-muted">
-                No connected accounts. <a href="/settings/social" className="text-dc-teal underline">Connect</a>
+                No connected accounts. <a href={socialRoute(profile?.role)} className="text-dc-teal underline">Connect</a>
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">

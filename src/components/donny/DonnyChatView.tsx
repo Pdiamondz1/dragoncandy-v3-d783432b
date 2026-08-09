@@ -11,6 +11,7 @@ import { DonnyAvatar } from './DonnyAvatar';
 import { useDonnyContext } from '@/contexts/DonnyProvider';
 import { useVisualViewportOffset } from '@/hooks/useVisualViewportOffset';
 import { WebOnly } from '@/components/platform/WebOnly';
+import { billingRoute } from '@/lib/donnyRoutes';
 
 export function DonnyChatView() {
   const {
@@ -24,6 +25,7 @@ export function DonnyChatView() {
     collapse,
     close,
     retry,
+    userRole,
   } = useDonnyContext();
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -93,7 +95,7 @@ export function DonnyChatView() {
             <div className="flex gap-2 mt-1.5">
               {error.includes('Upgrade') && (
                 <WebOnly>
-                  <Link to="/settings/billing"
+                  <Link to={billingRoute(userRole)}
                     className="text-xs text-dc-teal font-semibold">
                     Upgrade Plan
                   </Link>

@@ -7,9 +7,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { WebOnly } from '@/components/platform/WebOnly';
+import { billingRoute } from '@/lib/donnyRoutes';
 
 export const DonnyAutoPilot: React.FC = () => {
-  const { user, activeOrg } = useAuth();
+  const { user, activeOrg, profile } = useAuth();
   const qc = useQueryClient();
   const orgTier = activeOrg?.subscription_tier ?? 'free';
   const isLocked = orgTier === 'free' || orgTier === 'starter';
@@ -54,7 +55,7 @@ export const DonnyAutoPilot: React.FC = () => {
             </div>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Auto-Pilot requires Growth plan or higher. <WebOnly><a href="/settings/billing" className="underline text-dc-teal">Upgrade</a></WebOnly></p>
+            <p>Auto-Pilot requires Growth plan or higher. <WebOnly><a href={billingRoute(profile?.role)} className="underline text-dc-teal">Upgrade</a></WebOnly></p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
