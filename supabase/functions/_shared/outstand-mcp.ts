@@ -16,6 +16,8 @@ import {
   type SocialDraftCard,
 } from './social-draft.ts';
 import { summarizePerformance, type PerfRow } from './social-analytics.ts';
+import { assessSignal } from './social-signal.ts';
+import { stripAccountIds } from './strip-account-ids.ts';
 
 interface OutstandMcpConfig {
   userId: string;
@@ -43,15 +45,6 @@ interface OutstandMcpConfig {
    * one that cannot authenticate.
    */
   authHeader?: string;
-}
-
-async function getUserAccountIds(supabase: SupabaseClient, userId: string): Promise<string[]> {
-  const { data } = await supabase
-    .from("business_outstand_accounts")
-    .select("outstand_social_account_id")
-    .eq("user_id", userId)
-    .neq("status", "revoked");
-  return (data ?? []).map((r: { outstand_social_account_id: string }) => r.outstand_social_account_id);
 }
 
 export interface OutstandMcpBridge {
@@ -86,8 +79,20 @@ function safeReason(status: number): { error: string; reason: string } {
 }
 
 export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promise<OutstandMcpBridge | null> {
-  const accountIds = await getUserAccountIds(config.supabase, config.userId);
-  if (accountIds.length === 0) return null;
+  // The gate is "does this user hold at least one ACTIVE account" — the same
+  // question outstand-accounts.ts already answers correctly for resolveAccount
+  // below, so this reuses it rather than a second, drifted implementation.
+  // The function this replaced (a) swallowed a Postgrest error via
+  // `const { data }` with no error check — supabase-js v2 RESOLVES rather
+  // than rejects on a query error, so a transient failure silently produced
+  // `[]`, this returned null, and donny-orchestrator told the user "No
+  // social account is connected to this account yet" — a confident false
+  // claim — and (b) filtered `.neq('status', 'revoked')`, which counts an
+  // `error`-status row as usable. Verified on prod: user 7cc82738 holds 2
+  // `error` + 2 `revoked` + 0 `active` accounts, so the old gate built a
+  // bridge and offered all four tools to someone none of them could serve.
+  const accounts = await fetchActiveAccounts(config.supabase, config.userId);
+  if (accounts.length === 0) return null;
 
   const mcpUrl = Deno.env.get("OUTSTAND_MCP_URL");
   const apiKey = Deno.env.get("OUTSTAND_API_KEY");
@@ -132,6 +137,42 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
 
     async callTool(name: string, args: Record<string, unknown>): Promise<McpToolResult> {
       const rawName = name.replace(/^social_/, "");
+
+      // get_post_analytics MUST run before account resolution below, and
+      // stay above it. It reads content_performance filtered on user_id
+      // alone — it never resolves an account, and its schema (see
+      // outstand-mcp-tools.ts) carries no `platform`/account property at
+      // all. Every other branch resolves an account first and can hand back
+      // a "which account?" disambiguation; this tool has no field the model
+      // could use to answer that question, so a caller with 2+ active
+      // accounts would dead-end here forever — an infinite ask-loop, not a
+      // usability wrinkle. Do NOT "tidy" this back down below resolution:
+      // create_post/schedule_post/get_account_metrics genuinely need an
+      // account, this one deliberately does not.
+      if (rawName === 'get_post_analytics') {
+        const days = typeof args.days === 'number' && args.days > 0 ? Math.floor(args.days) : 30;
+        const since = new Date(Date.now() - days * 86_400_000).toISOString();
+
+        // Own rows only. config.supabase is service-role in the orchestrator,
+        // so the user_id filter IS the tenant boundary here — it is not
+        // enforced by RLS on this client.
+        const { data, error } = await config.supabase
+          .from('content_performance')
+          .select('outstand_post_id, platform, views, likes, comments, shares, engagement_rate, milestone')
+          .eq('user_id', config.userId)
+          .gte('captured_at', since);
+
+        if (error) {
+          console.error('[outstand-mcp] performance read failed:', error.message);
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ error: 'performance_unavailable', reason: 'Performance data could not be read. Say so plainly; do not guess why.' }) }],
+            isError: true,
+          };
+        }
+        return {
+          content: [{ type: 'text', text: summarizePerformance((data ?? []) as PerfRow[]) }],
+        };
+      }
 
       // Resolved fresh per call, from the authenticated user. The model never
       // sends an id, so there is nothing to validate and nothing to forge.
@@ -182,73 +223,126 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
         return { content: [{ type: 'text', text: result.text }] };
       }
 
-      if (rawName === 'get_post_analytics') {
-        const days = typeof args.days === 'number' && args.days > 0 ? Math.floor(args.days) : 30;
-        const since = new Date(Date.now() - days * 86_400_000).toISOString();
-
-        // Own rows only. config.supabase is service-role in the orchestrator,
-        // so the user_id filter IS the tenant boundary here — it is not
-        // enforced by RLS on this client.
-        const { data, error } = await config.supabase
+      // get_account_metrics is the only tool that reaches the client/proxy
+      // dispatch below (proxyRequestFor has no route for any other tool
+      // name). Its response is the provider's raw payload, which per
+      // outstand-metrics-map.test.ts's captured live shape carries the
+      // account's own id at top level, and it exposes an engagement RATE —
+      // a comparative claim exactly like the ones get_post_analytics gates
+      // (§7). The spec listed this tool as "keep, sample-size gated"; the
+      // original pass gated only get_post_analytics. Both gaps close here:
+      // strip ids from whatever comes back, and attach the same signal
+      // verdict used above so the model is told not to lean on a rate below
+      // the bar. A follower COUNT is a fact, never suppressed — only the
+      // rate is caveated.
+      if (rawName === 'get_account_metrics') {
+        const { data: perfRows, error: perfError } = await config.supabase
           .from('content_performance')
-          .select('outstand_post_id, platform, views, likes, comments, shares, engagement_rate, milestone')
-          .eq('user_id', config.userId)
-          .gte('captured_at', since);
-
-        if (error) {
-          console.error('[outstand-mcp] performance read failed:', error.message);
+          .select('outstand_post_id')
+          .eq('user_id', config.userId);
+        if (perfError) {
+          // Mirror get_post_analytics above: a read failure must say so, not
+          // silently fall through as `postCount = 0`. Otherwise a transient
+          // or RLS-drift failure reads identically to "this user genuinely
+          // has 0 measured posts" — more caution than a false claim, but it
+          // would mask a real, ongoing read failure indefinitely.
+          console.error('[outstand-mcp] performance read failed (metrics gate):', perfError.message);
           return {
             content: [{ type: 'text', text: JSON.stringify({ error: 'performance_unavailable', reason: 'Performance data could not be read. Say so plainly; do not guess why.' }) }],
             isError: true,
           };
         }
+        // Same dedup as summarizePerformance: a post yields one row per
+        // milestone, so counting raw rows would clear the bar off one post.
+        const postCount = new Set(
+          (perfRows ?? [])
+            .map((r: { outstand_post_id: string | null }) => r.outstand_post_id)
+            .filter((id): id is string => typeof id === 'string' && id.length > 0),
+        ).size;
+        const verdict = assessSignal(postCount);
+
+        let raw: unknown;
+        if (client) {
+          // Mirror the proxy branch's early-return-on-error below: an
+          // upstream error must keep isError:true at the OUTER result so
+          // donny-orchestrator's status=mcpResult.isError ? 'error' : 'success'
+          // audit log stays correct, rather than getting buried inside the
+          // gate-wrapped `data` field of a result that reads as success.
+          //
+          // Still stripped, not returned verbatim: mcp-client.ts's own error
+          // path forwards the upstream res.text() BODY straight into
+          // content[0].text, so an error result can echo the same raw
+          // provider payload — and the same account id — as a success one.
+          // Unlike the REST branch's error return (safeReason(), a fully
+          // synthetic string with nothing to leak), this one carries real
+          // upstream content and must go through the same blocklist walk.
+          const clientResult = await client.callTool(rawName, { ...args, account_id: accountId });
+          if (clientResult.isError) return stripAccountIds(clientResult) as McpToolResult;
+          raw = clientResult;
+        } else {
+          const req = proxyRequestFor(rawName, accountId);
+          if (!req) {
+            return {
+              content: [{ type: 'text', text: JSON.stringify({ error: 'unsupported_tool' }) }],
+              isError: true,
+            };
+          }
+          if (!config.authHeader) {
+            // No user session to act on behalf of (e.g. the donny-auto-pilot
+            // cron). Refusing here is the same rule donny-orchestrator applies
+            // on its OAuth branch: a proxy call needs a user JWT, so without
+            // one we say so rather than sending a request we know cannot
+            // authenticate.
+            return {
+              content: [{ type: 'text', text: JSON.stringify({ error: 'no_user_session', reason: 'This account read needs a signed-in session. Say so plainly; do not guess why.' }) }],
+              isError: true,
+            };
+          }
+          // Path-addressed, on the CALLER's credential. The old request sent
+          // {action} in the body over the service-role key and also carried
+          // an x-outstand-user-id header nothing in supabase/functions/ read.
+          const res = await fetch(`${proxyUrl}${req.path}`, {
+            method: req.method,
+            headers: {
+              Authorization: config.authHeader,
+              'Content-Type': 'application/json',
+            },
+            signal: AbortSignal.timeout(10_000),
+          });
+          if (!res.ok) {
+            return { content: [{ type: 'text', text: JSON.stringify(safeReason(res.status)) }], isError: true };
+          }
+          raw = await res.json();
+        }
+
+        // Never an allow-list — this endpoint has never once returned
+        // successfully, so a field list would be a guess that could empty
+        // the tool the first time it does. Recursive blocklist walk instead.
+        const data = stripAccountIds(raw);
         return {
-          content: [{ type: 'text', text: summarizePerformance((data ?? []) as PerfRow[]) }],
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              data,
+              has_signal: verdict.hasSignal,
+              caveat: verdict.caveat,
+              instruction: verdict.hasSignal
+                ? 'A follower count is a fact; state it normally. There is enough measured-post sample to also state the engagement rate.'
+                : `${verdict.caveat} A follower count is a fact and may still be stated; do not name the engagement rate as meaningful.`,
+            }),
+          }],
         };
       }
 
-      // Use real MCP client if available
-      if (client) {
-        return client.callTool(rawName, { ...args, account_id: accountId });
-      }
-
-      const req = proxyRequestFor(rawName, accountId);
-      if (!req) {
-        return {
-          content: [{ type: 'text', text: JSON.stringify({ error: 'unsupported_tool' }) }],
-          isError: true,
-        };
-      }
-
-      if (!config.authHeader) {
-        // No user session to act on behalf of (e.g. the donny-auto-pilot cron).
-        // Refusing here is the same rule donny-orchestrator applies on its
-        // OAuth branch: a proxy call needs a user JWT, so without one we say so
-        // rather than sending a request we know cannot authenticate.
-        return {
-          content: [{ type: 'text', text: JSON.stringify({ error: 'no_user_session', reason: 'This account read needs a signed-in session. Say so plainly; do not guess why.' }) }],
-          isError: true,
-        };
-      }
-
-      // Path-addressed, on the CALLER's credential. The old request sent
-      // {action} in the body over the service-role key and also carried an
-      // x-outstand-user-id header that nothing in supabase/functions/ ever read.
-      const res = await fetch(`${proxyUrl}${req.path}`, {
-        method: req.method,
-        headers: {
-          Authorization: config.authHeader,
-          'Content-Type': 'application/json',
-        },
-        signal: AbortSignal.timeout(10_000),
-      });
-
-      if (!res.ok) {
-        return { content: [{ type: 'text', text: JSON.stringify(safeReason(res.status)) }], isError: true };
-      }
-
-      const data = await res.json();
-      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+      // No other tool reaches here — create_post/schedule_post/
+      // get_post_analytics/get_account_metrics are all handled above. Kept
+      // as a defined fallback rather than an assert so a future tool added
+      // to SOCIAL_TOOLS without its own branch fails honestly (unsupported)
+      // instead of silently returning undefined.
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ error: 'unsupported_tool' }) }],
+        isError: true,
+      };
     },
 
     disconnect() {

@@ -17,18 +17,36 @@ interface SocialDraftCardProps {
 
 export function SocialDraftCard({ data }: SocialDraftCardProps) {
   const { mutate, isPending } = useCrossPost();
+  // KNOWN GAP, deliberately not closed here: `submitted` is component state,
+  // but this card is persisted verbatim to donny_messages.rich_cards and
+  // re-rendered on every conversation load — so a reload after a successful
+  // publish re-arms this button on the SAME draft, and a second tap posts a
+  // duplicate to a real public feed. Closing it needs the client to mark the
+  // card published in its own donny_messages row, and donny_messages has no
+  // UPDATE RLS policy for any surface (checked supabase/migrations/ — only
+  // SELECT + INSERT exist). Per this branch's no-migration constraint, that
+  // is left to the founder rather than worked around here.
   const [submitted, setSubmitted] = React.useState(false);
   const isScheduled = Boolean(data.scheduled_at);
 
   const handlePublish = () => {
     if (submitted || isPending) return;
     setSubmitted(true);
-    mutate({
-      caption: data.caption,
-      mediaUrls: data.media_urls,
-      accountIds: [data.account_id],
-      scheduledAt: data.scheduled_at ?? undefined,
-    });
+    mutate(
+      {
+        caption: data.caption,
+        mediaUrls: data.media_urls,
+        accountIds: [data.account_id],
+        scheduledAt: data.scheduled_at ?? undefined,
+      },
+      {
+        // useCrossPost's own onError already toasts the failure; without
+        // this, `submitted` stays true forever on a failed publish (it is
+        // only ever set, never cleared) and the button is permanently stuck
+        // on "Sending…" behind that toast, with no way to retry.
+        onError: () => setSubmitted(false),
+      },
+    );
   };
 
   return (

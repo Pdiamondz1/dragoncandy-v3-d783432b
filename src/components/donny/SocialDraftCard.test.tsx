@@ -71,4 +71,29 @@ describe('SocialDraftCard', () => {
     fireEvent.click(btn);
     expect(mutate).toHaveBeenCalledTimes(1);
   });
+
+  it('re-enables the button after a failed publish so the user can retry', () => {
+    // The mutation itself fails synchronously and invokes the per-call
+    // onError the component must now pass. Against the old code (which set
+    // `submitted` true and never cleared it) the button stays stuck on
+    // "Sending…" forever here.
+    mutate.mockImplementation((_vars, opts) => {
+      opts?.onError?.(new Error('upstream_error'));
+    });
+    render(<SocialDraftCard data={DATA} />);
+    const btn = screen.getByRole('button', { name: /post it/i });
+    fireEvent.click(btn);
+    expect(screen.getByRole('button', { name: /post it/i })).not.toBeDisabled();
+  });
+
+  it('allows a retry tap to call mutate again after a failed publish', () => {
+    mutate.mockImplementation((_vars, opts) => {
+      opts?.onError?.(new Error('upstream_error'));
+    });
+    render(<SocialDraftCard data={DATA} />);
+    const btn = screen.getByRole('button', { name: /post it/i });
+    fireEvent.click(btn);
+    fireEvent.click(btn);
+    expect(mutate).toHaveBeenCalledTimes(2);
+  });
 });
