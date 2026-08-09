@@ -1,6 +1,6 @@
 # Wiki Log
 
-## [2026-08-09] update | [[Donny Social Tools]] — three findings the review loop caught after the work looked finished
+## [2026-08-09] update | [[Donny Social Tools]] — four findings the review loop caught after the work looked finished
 
 Updated [[Donny Social Tools]] from the continuation section appended to
 `raw/sessions/2026-08-09-donny-social-tools-repair.md` (rounds 5–6 of the Codex loop, plus the
@@ -22,6 +22,12 @@ Three defects, each caught only because the loop kept running past "done":
    `if (error)` check and **still returned `[]`**, while the comment above the call site claimed
    the whole fix. The failure stopped being silent; the false claim survived. Cross-linked to
    [[Notification Delivery]], which records the same bar from its own six-round loop.
+4. **Two branches feeding one wrapper with two different shapes.** The MCP branch of
+   `get_account_metrics` assigned the envelope rather than the payload, so the follower count
+   `has_signal` describes sat one JSON-decode away inside a string. Latent (that branch has never
+   connected on prod) and fixed anyway — *a config flip is not a code review*. The unwrap handles
+   only the unambiguous case, because picking "the" payload among several **drops** the response
+   where the envelope merely **nests** it.
 
 Also **corrected a claim this page inherited**: the CI edge-function typecheck gate covers
 *none* of this work — both importers sit on `.typecheck-ignore`, so "66 functions clean" says

@@ -239,6 +239,18 @@ platform, checked 2026-08-09), but it is precisely the case handle-disambiguatio
   `Social tool error: {"error":"unauthorized"}` string, produced **only** by the REST-fallback
   branch, so the MCP path is latent. Latent is not safe: a config flip (`OUTSTAND_MCP_URL`)
   would have re-armed the dropped tools, which is why the name intersection is enforced.
+- **Two branches feeding one wrapper must hand it the same shape.** `get_account_metrics` wraps
+  its result as `{ data, has_signal, caveat }`. The REST branch assigns `await res.json()` — the
+  metrics object. The MCP branch assigned the **envelope**, so `data` read
+  `{content:[{text:'{"followers":…}'}]}` and the follower count `has_signal` is describing sat
+  one JSON-decode away inside a string. `unwrapMcpPayload` (`_shared/mcp-payload.ts`) now
+  unwraps it — but **only the unambiguous case**: one content block carrying a JSON object.
+  Zero blocks, two blocks, prose, a bare array or scalar, a malformed envelope — all return the
+  envelope untouched, because picking "the" payload among several is a guess and **a wrong guess
+  drops the provider's response, where the envelope merely nests it**. Nesting is recoverable by
+  a reader; dropping is not. The upstream-error path is deliberately excluded: it returns before
+  the wrapper, so an error stays an *outer* `isError` and the orchestrator's audit row stays
+  `status='error'` instead of being buried inside a result that reads as success.
 - **`authHeader` is optional, with an explicit refusal.** `donny-auto-pilot` is a cron gated on
   a shared secret, with no user JWT and no prospect of one. It refuses rather than sending a
   request known to be unauthenticatable — the same rule the orchestrator's OAuth branch already

@@ -198,7 +198,18 @@ The distinction now lives in the return type (`{ ok: false }` vs `{ ok: true, ac
 because caller discipline is exactly what failed. A new `accounts_unavailable` result tells the
 model the lookup failed and explicitly forbids asserting no account is connected.
 
-Negative controls were run for all three: reverting each fix fails the tests that pin it.
+**A fourth, one round later: two branches feeding one wrapper with two different shapes.**
+`get_account_metrics` returns `{ data, has_signal, caveat }`. The REST branch assigns the
+provider's metrics object; the MCP branch assigned the envelope, so `data` read
+`{content:[{text:'{"followers":…}'}]}` — the number `has_signal` describes, one JSON-decode away
+inside a string. Latent (the MCP client has never connected on prod) and fixed anyway, on the rule
+this branch already applied to the tool-name intersection: one config flip from live, and a config
+flip is not a code review. `unwrapMcpPayload` handles **only** the unambiguous case — a single
+content block carrying a JSON object — and returns the envelope untouched for everything else,
+because picking "the" payload among several is a guess and a wrong guess *drops* the response
+where the envelope merely *nests* it.
+
+Negative controls were run for all four: reverting each fix fails the tests that pin it.
 
 ### Stated rather than discovered later
 

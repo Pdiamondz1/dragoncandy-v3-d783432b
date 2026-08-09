@@ -310,3 +310,38 @@ the lookup failed and explicitly instructs it not to claim no account is connect
 consumer is auto-pilot's skip, and no user-facing claim derives from it.
 
 Negative controls were run for all three fixes — reverting each one fails the tests that pin it.
+
+### Round 7 — two branches, one wrapper, two shapes
+
+`get_account_metrics` wraps its result as `{ data, has_signal, caveat }`, and **both** branches
+feed that wrapper. The REST branch assigns `await res.json()` — the provider's metrics object.
+The MCP branch assigned the `McpToolResult` **envelope**, so `data` came out as
+`{content:[{type:'text',text:'{"followers":…}'}]}`: the follower count that `has_signal` and
+`caveat` are describing sat one JSON-decode away, inside a string.
+
+Latent — the MCP client has never connected on prod and `OUTSTAND_MCP_URL` is unset — and fixed
+anyway, on the rule this branch already applied to the tool-name intersection: it is one config
+flip from live, and **a config flip is not a code review**.
+
+New pure `_shared/mcp-payload.ts` unwraps **only the unambiguous case**: a single content block
+whose payload is a JSON object. Zero blocks, two blocks, prose, a bare array or scalar, or a
+malformed envelope all return the envelope untouched — because picking "the" payload among
+several is a guess, and a wrong guess **drops** the provider's response where the envelope merely
+**nests** it. Nesting is recoverable by a reader; dropping is not. The upstream-error path is
+deliberately excluded: it returns before the wrapper, so an error stays an outer `isError` and
+the orchestrator's audit row stays `status='error'`.
+
+### On the CI typecheck gate — a claim corrected
+
+`edge-function-reviewer` sharpened something this session had written down wrong. The earlier
+note said `outstand-mcp.ts` isn't in the CI edge-function typecheck gate. The truth is broader:
+`check-edge-functions.mjs` reaches a `_shared` module only *transitively*, and **both** importers
+— `donny-orchestrator` and `donny-auto-pilot` — are pre-existing entries on `.typecheck-ignore`.
+So `outstand-mcp.ts`, `outstand-accounts.ts` and `social-draft.ts` get **zero** coverage from
+"66 functions clean".
+
+Closed by hand, with a baseline rather than an assertion: `deno check` on both entrypoints
+returns exactly 2 errors (`TS2345` + `TS2322`, the `supabaseUrl`-is-protected supabase-js skew),
+and the identical 2 errors with the same codes come back running the same command against
+`main`. This branch adds none. That is evidence, not the gate — and it does not become the gate
+until those two names leave the ignore list.
