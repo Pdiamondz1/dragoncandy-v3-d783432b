@@ -26,6 +26,85 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-09] `.com` Phase 1, the esm.sh bundler outage, and an 82-function redeploy
+
+> State as of writing: PRs **#414 and #415 merged**; all 82 `_shared/cors.ts` consumers
+> redeployed and boot-verified; the Phase 1 gate is **green on both viewports**. Auth-gated
+> surfaces on `.com` remain **unverified** (no session available), and Phases 2–6 have not
+> started. `.io` was unchanged throughout.
+
+**Phase 1 was not a migration — it was stopping a live breakage.** Verified on prod before any
+code: `www.dragoncandy.com` was **already attached to Vercel and publicly serving the app**,
+while no `.com` origin existed in any allow-list. Preflight proved it — `OPTIONS
+/functions/v1/capture-lead` with `Origin: https://www.dragoncandy.com` returned
+`Access-Control-Allow-Origin: https://dragoncandy.io`, so the browser blocked **all 82** edge
+functions: login, signup, payments, Donny. The apex additionally **failed TLS**, its A records
+mixing Vercel's IP with two leftover GoDaddy parking IPs holding no certificate, and a GoTrue
+probe (bogus token, **unlisted control included**) showed Site URL on `.io` with no `.com`
+redirect entry at all. The page rendered and nothing worked, and nobody had reported it.
+
+PR **#414** collapsed four copy-pasted origin lists into one module per runtime —
+`_shared/origins.ts` (Deno) and `src/lib/allowedOrigins.ts` (Vite; the duplication is forced,
+the runtimes can't share a module). **Exported as narrow named groups, not one flat set**,
+because the four consumers don't trust the same hosts (`cors.ts` includes the internal AIOS
+host, `verify-email` doesn't) — flattening would have silently widened three allow-lists while
+"just refactoring". The frontend copy gates where a session `access_token` is written into a
+redirect URL, so it is a **credential boundary**. Also fixed `staging-login.mjs`, whose
+prod-safety guard was `/(^|\.)dragoncandy\.io$/` and would have **silently stopped protecting**
+the moment `.com` became production. Two Codex findings were verified against live prod before
+acting and both proved *worse* than reported: `REDIRECT_HOSTS` omitted `www` **and** the
+`www`→apex redirect the cutover runbook describes is not actually live on either domain; and
+`send-verification-email` built a **token-bearing** link from an ungated `Origin`/`Referer`,
+harmless only because `APP_URL` happened to take precedence.
+
+**Then the canary broke prod.** `capture-lead` was redeployed alone, ahead of the other 81, and
+returned 500 `WORKER_ERROR` on every request — including `OPTIONS`, which returns immediately,
+so the crash was at **boot**. Four redeploys with progressively simpler content failed
+identically, one of them a single self-contained file. **Every hypothesis read from the code was
+wrong** (entrypoint path, the new cross-file import, the `npm:resend` specifier); each was
+disproven by the next experiment, and I twice reported a cause I hadn't established. What
+actually found it was **comparing the broken function against a working one** — `verify-recaptcha`
+imports no esm.sh; every failing build carried `esm.sh/@supabase/supabase-js`.
+
+A 7-version single-variable probe (one throwaway function, **no-import baseline first**, or the
+probe proves nothing) isolated it: `deno.land/std` innocent, `esm.sh/@supabase/supabase-js`
+fatal, all three `npm:` pins fine — and **`esm.sh/stripe@18.5.0` + `esm.sh/jose@5.9.6` boot
+fine**, which is why PR **#415** stayed narrow: a version-preserving prefix swap to `npm:` across
+**121 files** (79× `@2`, 36× `@2.57.2`, 6× `@2.50.0`), leaving 34 Stripe/jose imports untouched
+rather than churning the money rail on an assumption. Not a library upgrade; exactly one changed
+line per file. `data-exposure-reviewer` fingerprinted 2,483 query/client/key occurrences across
+140 files and found them identical on both sides. It also caught me declaring `verify_jwt` for
+`verify-recaptcha` on a claim that was **false** (a function with no source is never in the
+deploy set) — both commits were rebuilt so that claim never shipped.
+
+**The redeploy:** 82 functions in 8 canary-verified batches, money last and split three ways.
+Preceded by a `verify_jwt` audit of all 99 live functions against `config.toml` (the CLI
+defaults undeclared functions to `true`) — one hit, zero mismatches. Verification used the
+public anon key as bearer, because an unauthenticated `OPTIONS` on a `verify_jwt=true` function
+is rejected at the **gateway before the worker boots** and so cannot distinguish healthy from
+never-booted. ~17 functions were deliberately **not** redeployed: they carry the same repo
+change but don't import `cors.ts`, so they had no stake in the migration.
+
+**Gate green:** every function echoes its own origin with the unlisted control never leaking;
+all three `.com` URLs allow-listed in GoTrue with the control falling back; apex TLS without
+`-k`; desktop 1280px and **real** mobile 390px (`lg:` inactive, hamburger nav) with zero console
+errors; and a **real browser `fetch` from `https://www.dragoncandy.com` returning 200** — a
+genuine CORS preflight, which curl cannot exercise. Mobile needed browser-use + CDP
+`setDeviceMetricsOverride` applied *after* load; `resize_window` reports success while leaving
+the viewport pinned at 1280, and a same-origin iframe fallback also fails.
+
+**Two clean-ups and one repair.** `verify-recaptcha` was deleted from prod — live at v161 four
+months after its source was removed, with no callers, no caller authorization, and a live
+secret. And a **silent revert**: a parallel session merged and deployed a `donny-orchestrator`
+fix at 22:38 UTC; this session's fleet deploy, pinned to a pre-merge commit, overwrote it at
+22:54. Both deploys succeeded and both passed the boot probe — stale code boots fine. Caught
+only by the knowledge-sync scope check, repaired from current `main`, and verified by reading
+the **deployed source** for the other change's symbols rather than the version number.
+`donny-auto-pilot` still runs pre-#416 code; flagged to the owning session, not deployed here.
+
+→ `docs/wiki/concepts/domain-migration-io-to-com.md` ·
+`docs/wiki/concepts/edge-function-deploy-bundling.md` · #414, #415
+
 ## [2026-08-09] Donny's `social_*` tools — repaired after 7 calls and 0 successes
 
 > **State as of writing.** Branch `feat/donny-social-tools-repair`, PR open. One migration

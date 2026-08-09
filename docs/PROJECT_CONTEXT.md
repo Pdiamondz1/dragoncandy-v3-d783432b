@@ -100,6 +100,11 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   handoff and payment flow; gates production launch. → `docs/SHIPPED_LOG.md`
 - **Outstand social media integration** — IG/TikTok/YouTube linking + delegated posting;
   phases 1–3 complete, phase 4 (analytics dashboard) still in scope. → `docs/SHIPPED_LOG.md`
+- **Domain migration `.io` → `.com`** — expand → switch → redirect → contract. **Phase 1
+  (EXPAND) shipped and gate-verified 2026-08-09** (#414, #415): `.com` works on all 82 edge
+  functions, both viewports, apex TLS fixed; `.io` still canonical and unchanged. Phases 2–6
+  (Site URL + `APP_URL` switch, the `.io` 301, content, mail) not started.
+  → `docs/wiki/concepts/domain-migration-io-to-com.md`
 - **Apple App Store (Capacitor)** — iOS shell over the web app. Phase 1 shipped, Phase 2
   (native camera capture) started; next push + share plugins, then TestFlight. Hard
   prerequisite: a macOS/cloud-Mac build + an Apple Developer account ($99/yr).

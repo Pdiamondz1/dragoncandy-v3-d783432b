@@ -1,5 +1,43 @@
 # Wiki Log
 
+## [2026-08-09] ingest | [[Domain Migration (.io → .com)]] + [[Edge-Function Deploy & Bundling]]
+
+Ingested `raw/sessions/2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md` as **two new
+concept pages**, split by subject rather than by session — the migration and the bundler
+outage share a session and nothing else. The outage page is the one that outlives the
+migration entirely.
+
+**Pages created:** `concepts/domain-migration-io-to-com.md`,
+`concepts/edge-function-deploy-bundling.md`.
+**Pages updated:** `index.md` (2 Concepts entries + 1 Sources line), this log.
+
+Three things worth carrying out of it:
+
+1. **Phase 1 was remediation, not migration.** `www.dragoncandy.com` was already attached to
+   Vercel and publicly serving the app while no `.com` origin existed in any allow-list — so
+   the page rendered and every one of 82 edge functions was CORS-blocked. The apex additionally
+   failed TLS on two leftover GoDaddy parking IPs. Nobody had reported it.
+
+2. **The bundler failure was invisible to code review, and four hypotheses read from the code
+   were all wrong.** `esm.sh/@supabase/supabase-js` stopped producing a bootable worker;
+   `WORKER_ERROR` fires at boot, so even an `OPTIONS` 500s. What found it was **comparing a
+   broken function against a working one**, not more reading. What made the fix *narrow* was
+   testing the sibling packages: `esm.sh/stripe` and `esm.sh/jose` boot fine, so 34 imports
+   were correctly left alone instead of churned on an assumption.
+
+3. **A fleet deploy pins itself to one commit while `origin/main` moves.** A parallel session
+   merged and deployed a `donny-orchestrator` fix at 22:38 UTC; this session's redeploy from a
+   pre-merge tree overwrote it at 22:54 and **silently reverted it**. Both deploys succeeded,
+   both passed the boot probe — stale code boots fine, so no health check catches it. Found
+   only by the knowledge-sync `[scope-ordering]` check, which exists to prevent *doc*
+   conflicts. Repaired and verified by reading the deployed source for the other change's
+   symbols, never by the version number.
+
+Also recorded: `verify-recaptcha` deleted from prod after serving four months past the removal
+of its source (no callers, no authorization, a live secret), and the mobile-viewport method
+that actually works (browser-use + CDP `setDeviceMetricsOverride` applied **after** load) versus
+the two that silently don't (`resize_window`, same-origin iframe).
+
 ## [2026-08-09] update | [[Donny Social Tools]] — four findings the review loop caught after the work looked finished
 
 Updated [[Donny Social Tools]] from the continuation section appended to
