@@ -288,8 +288,10 @@ serve(async (req) => {
       error: authError,
     } = await supabaseUser.auth.getUser();
 
+    let isSessionAuth = false;
     if (user && !authError) {
       userId = user.id;
+      isSessionAuth = true;
     } else {
       const oauthResult = await validateDonnyToken(req);
       if (!oauthResult) throw new Error("Unauthorized");
@@ -390,15 +392,23 @@ serve(async (req) => {
     };
 
     // --- MCP bridge ---
-    try {
-      mcpBridge = await createOutstandMcpBridge({
-        userId,
-        userRole: userContext.user_role,
-        orgTier: userContext.org_tier,
-        supabase,
-      });
-    } catch (mcpErr) {
-      console.warn("[donny-orchestrator] MCP bridge init failed:", mcpErr);
+    // Session branch only. outstand-proxy authenticates the forwarded header
+    // with auth.getUser(); a Donny OAuth token is not a Supabase JWT, so
+    // forwarding it would reproduce the 401 this fix exists to remove. No
+    // bridge means no social tools offered — honest, and better than offering
+    // a tool that cannot work over this connection.
+    if (isSessionAuth) {
+      try {
+        mcpBridge = await createOutstandMcpBridge({
+          userId,
+          userRole: userContext.user_role,
+          orgTier: userContext.org_tier,
+          supabase,
+          authHeader,
+        });
+      } catch (mcpErr) {
+        console.warn("[donny-orchestrator] MCP bridge init failed:", mcpErr);
+      }
     }
 
     // --- RAG: embed + retrieve ---
@@ -502,7 +512,30 @@ serve(async (req) => {
             console.error("[donny-orchestrator] tool exec log threw:", err);
           }
         } else if (isSocialTool(toolName)) {
-          agentResult = JSON.stringify({ error: "No social accounts connected. Connect a social account in the Social Media Manager to use this feature." });
+          const noAccounts = {
+            error: "no_social_account",
+            reason:
+              "No social account is connected to this account yet. Point the user at " +
+              "Social Media settings to connect one.",
+          };
+          agentResult = JSON.stringify(noAccounts);
+
+          // This branch wrote nothing for its entire life, so "how often does
+          // Donny get asked to post by someone with no connected account" has
+          // never been answerable. It is the same insert as the success path.
+          try {
+            const { error: logErr } = await supabase.from("donny_tool_executions").insert({
+              user_id: userId,
+              message_id: null,
+              tool_name: toolName,
+              input: toolInput,
+              output: noAccounts,
+              status: "error",
+            });
+            if (logErr) console.error("[donny-orchestrator] no-account log failed:", logErr);
+          } catch (err) {
+            console.error("[donny-orchestrator] no-account log threw:", err);
+          }
         } else {
           const enrichedInput: Record<string, unknown> = {
             ...toolInput,
