@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase, SUPABASE_URL } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -8,6 +8,7 @@ import { useDonnyNudges } from '@/hooks/useDonnyNudges';
 import { useDonnyQuickChips } from '@/hooks/useDonnyQuickChips';
 import { resolvePostType } from '@/lib/postType';
 import { extractOutstandPostId } from '@/lib/outstandPostId';
+import { nextStage } from '@/lib/donny/donnyStage';
 import type { DonnyStage, DonnyNudge, NudgeAction, QuickChip } from '@/types/donnyNudge';
 import type { DonnyMessage, DonnyConversation, DonnyAvatarState } from '@/types/donny';
 import type { UserRole } from '@/types/user';
@@ -20,6 +21,11 @@ interface DonnyContextValue {
   expand: () => void;
   collapse: () => void;
   close: () => void;
+  setInline: () => void;
+  exitInline: () => void;
+  registerInlineComposer: (el: HTMLTextAreaElement | null) => void;
+  focusInlineComposer: () => void;
+  markAllRead: () => void;
 
   // Nudges
   nudges: DonnyNudge[];
@@ -58,6 +64,11 @@ const DONNY_FALLBACK: DonnyContextValue = {
   expand: noop,
   collapse: noop,
   close: noop,
+  setInline: noop,
+  exitInline: noop,
+  registerInlineComposer: noop,
+  focusInlineComposer: noop,
+  markAllRead: noop,
   nudges: [],
   unreadCount: 0,
   executeAction: noop,
@@ -96,6 +107,8 @@ interface DonnyProviderProps {
 
 export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
   const [stage, setStage] = useState<DonnyStage>('closed');
+  // The inline dashboard composer, registered by DonnyCanvas while it is mounted.
+  const inlineComposerRef = useRef<HTMLTextAreaElement | null>(null);
   const location = useLocation();
 
   const campaignMatch = location.pathname.match(/\/campaigns\/([a-f0-9-]+)/);
@@ -147,15 +160,31 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
   // Quick chips
   const quickChips = useDonnyQuickChips(userRole);
 
-  // Stage transitions
+  // Stage transitions — every rule lives in nextStage(); these only bind side effects.
   const open = useCallback(() => {
-    setStage('tray');
+    // Guarded here rather than inside the updater: markAllRead is a side effect,
+    // and React may invoke a state updater twice under StrictMode.
+    if (stage === 'inline') return;
+    setStage((s) => nextStage(s, 'open'));
     markAllRead();
-  }, [markAllRead]);
+  }, [stage, markAllRead]);
 
-  const expand = useCallback(() => setStage('chat'), []);
-  const collapse = useCallback(() => setStage('tray'), []);
-  const close = useCallback(() => setStage('closed'), []);
+  const expand = useCallback(() => setStage((s) => nextStage(s, 'expand')), []);
+  const collapse = useCallback(() => setStage((s) => nextStage(s, 'collapse')), []);
+  const close = useCallback(() => setStage((s) => nextStage(s, 'close')), []);
+  const setInline = useCallback(() => setStage((s) => nextStage(s, 'inline')), []);
+  const exitInline = useCallback(() => setStage((s) => nextStage(s, 'exitInline')), []);
+
+  const registerInlineComposer = useCallback((el: HTMLTextAreaElement | null) => {
+    inlineComposerRef.current = el;
+  }, []);
+
+  const focusInlineComposer = useCallback(() => {
+    const el = inlineComposerRef.current;
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.focus();
+  }, []);
 
   const publishDraft = useCallback(async (scheduledPostId: string) => {
     try {
@@ -346,6 +375,11 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
       expand,
       collapse,
       close,
+      setInline,
+      exitInline,
+      registerInlineComposer,
+      focusInlineComposer,
+      markAllRead,
       nudges,
       unreadCount,
       executeAction,
@@ -369,6 +403,7 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
     }),
     [
       stage, open, expand, collapse, close,
+      setInline, exitInline, registerInlineComposer, focusInlineComposer, markAllRead,
       nudges, unreadCount, executeAction, dismissNudge,
       donny.messages, donny.conversation, donny.avatarState, donny.isStreaming, donny.error, donny.streamingContent, donny.retry, donny.clearChat, donny.archiveConversation,
       sendMessage, location.pathname, userRole, quickChips, campaignContext,
