@@ -12,6 +12,7 @@ import {
   draftToolResult,
   disambiguationResult,
   noAccountResult,
+  missingScheduledAtResult,
   type SocialDraftCard,
 } from './social-draft.ts';
 
@@ -155,13 +156,24 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
             isError: true,
           };
         }
+        // schedule_post with no usable time must refuse rather than silently
+        // fall back to an unscheduled draft — this is the one path that ends
+        // in an irreversible public post, so "a human will probably notice
+        // the card says Draft, not Scheduled" is not the bar.
+        let scheduledAt: string | null = null;
+        if (rawName === 'schedule_post') {
+          if (typeof args.scheduled_at !== 'string' || !args.scheduled_at.trim()) {
+            return {
+              content: [{ type: 'text', text: missingScheduledAtResult() }],
+              isError: true,
+            };
+          }
+          scheduledAt = args.scheduled_at;
+        }
+
         const mediaUrls = Array.isArray(args.media_urls)
           ? args.media_urls.filter((u): u is string => typeof u === 'string')
           : [];
-        const scheduledAt =
-          rawName === 'schedule_post' && typeof args.scheduled_at === 'string'
-            ? args.scheduled_at
-            : null;
 
         const card = buildDraftCard({ account, caption, mediaUrls, scheduledAt });
         const result = draftToolResult(card);

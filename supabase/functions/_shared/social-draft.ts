@@ -81,3 +81,17 @@ export function noAccountResult(): string {
       'Social Media settings to connect one. Do not speculate about why.',
   });
 }
+
+/**
+ * schedule_post with no (or non-string) scheduled_at must refuse, not silently
+ * fall back to an unscheduled draft. Silent degradation on the one path that
+ * ends in an irreversible public post is not an acceptable failure mode even
+ * though a human still confirms the card — "probably caught" is not the bar.
+ */
+export function missingScheduledAtResult(): string {
+  return JSON.stringify({
+    status: 'missing_scheduled_at',
+    instruction:
+      'Ask the user when this post should go out, then call schedule_post again with that time.',
+  });
+}

@@ -4,6 +4,7 @@ import {
   draftToolResult,
   disambiguationResult,
   noAccountResult,
+  missingScheduledAtResult,
 } from './social-draft';
 import type { ConnectedAccount } from './outstand-accounts';
 
@@ -87,5 +88,20 @@ describe('noAccountResult', () => {
     expect(text.toLowerCase()).toContain('no social account');
     expect(text.toLowerCase()).not.toContain('may not');
     expect(text.toLowerCase()).not.toContain('account id');
+  });
+});
+
+describe('missingScheduledAtResult', () => {
+  it('tells the model to ask for a time rather than proceed unscheduled', () => {
+    const text = missingScheduledAtResult();
+    expect(text.toLowerCase()).toContain('when');
+    expect(text.toLowerCase()).toContain('schedule_post');
+  });
+
+  it('never claims the post is scheduled or ready', () => {
+    const text = missingScheduledAtResult();
+    expect(text).not.toMatch(/\bposted\b/i);
+    expect(text).not.toMatch(/\bpublished\b/i);
+    expect(text).not.toContain('draft_ready');
   });
 });
