@@ -236,8 +236,30 @@ them is a repo-wide decision, not a tidy-up to smuggle into a feature branch.
 ### Acceptance
 
 The proof this asks to be judged on is a **`status='success'` row in `donny_tool_executions` for
-a `social_*` tool** — which has never existed. It cannot be observed until after merge **and** a
-separate deploy of `donny-orchestrator`. A both-viewport `verify-prod` is also outstanding.
+a `social_*` tool** — which has never existed. Both preconditions are now met: merged as
+`d5cb594b` (#416) and `donny-orchestrator` **deployed** on 2026-08-09.
+
+**Verified by the deployed source, not the version number** ([[Merged ≠ deployed]]):
+`accounts_unavailable`, `unwrapMcpPayload`, `hasConnectedAccount`, `draft_id` and
+`donny_draft_publications` are all present in the running bundle; `esm.sh/@supabase` is absent and
+`npm:@supabase/supabase-js` present. The two dropped tool names and all **25** `account_id`
+occurrences survive **only inside comments** — zero schema declarations, zero `required` entries —
+which is what "deleted from every schema" has to mean to be true. An unauthenticated POST returns
+**401** and an OPTIONS preflight **200**, so `verify_jwt: true` survived the deploy and the function
+boots.
+
+**Caught at merge time, and it would have re-broken the deploy.** PR #415 had already swept the
+whole functions tree from `esm.sh` to `npm:` specifiers *because esm.sh specifiers were blocking
+edge-function redeploys*. This branch was cut before that sweep and created a **new** `_shared`
+file, `outstand-accounts.ts`, which therefore still carried the old specifier into a module
+`donny-orchestrator` bundles. **A rename pass cannot reach a file that does not exist yet** — no
+gate would have caught it, and the fix for broken redeploys would have been undone by the next
+thing deployed. Worth generalising: after any tree-wide sweep, a branch cut before it needs its
+*new* files checked against the sweep, not just its merge conflicts.
+
+**Still outstanding:** the acceptance row itself, which needs a real signed-in interaction to
+produce (baseline re-checked immediately post-deploy: 7 rows, all `error`, none newer than Aug 7,
+and two of them for tools that no longer exist); and a both-viewport `verify-prod`.
 
 → `docs/wiki/concepts/donny-social-tools.md`
 

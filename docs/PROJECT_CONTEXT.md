@@ -138,12 +138,21 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   was structurally unreachable, a failed account read still claiming "no account connected" (the
   original complaint via a DB blip, where an earlier commit had added the error check, still returned
   `[]`, and carried a comment claiming the whole fix), and one wrapper fed two different shapes by its
-  two branches. **Pending (2026-08-09):** merge **PR #416** (open, mergeable; `verify`/`smoke`/
-  `lighthouse`/Vercel green — `Supabase Preview` fails here as it does on #396, the known staging
-  drift); **deploy `donny-orchestrator` separately** (merging ships frontend only); then the
-  acceptance signal — a `status='success'` row in `donny_tool_executions` for a `social_*` tool,
-  which has **never existed** — and a both-viewport `verify-prod`. Note the CI edge typecheck gate
-  covers **none** of these `_shared` files (both importers are on `.typecheck-ignore`); a hand-run
+  two branches. **Merged (#416, `d5cb594b`) and `donny-orchestrator` DEPLOYED 2026-08-09** — verified
+  by reading the **deployed source**, not the version: `accounts_unavailable`, `unwrapMcpPayload`,
+  `hasConnectedAccount`, `draft_id` and `donny_draft_publications` all present; the three dropped
+  tool names and all 25 `account_id` occurrences survive **only in comments** (zero schema
+  declarations, zero `required` entries). Unauthenticated POST → **401** and OPTIONS → 200, so
+  `verify_jwt` survived the deploy. A late catch at merge time: PR #415 had swept the tree from
+  `esm.sh` to `npm:` specifiers *because esm.sh was blocking redeploys*, and this branch's **new**
+  `_shared/outstand-accounts.ts` carried the old specifier — a rename pass cannot reach a file that
+  does not exist yet, so it would have re-broken the very redeploy this needed.
+  **Pending (2026-08-09):** the acceptance signal — a `status='success'` row in
+  `donny_tool_executions` for a `social_*` tool, which has **never existed** (baseline re-checked
+  post-deploy: 7 rows, all `error`, none since Aug 7, two for tools that no longer exist) and which
+  needs a real signed-in interaction to produce; and a both-viewport `verify-prod`. Note the CI edge
+  typecheck gate covers **none** of these `_shared` files (both importers are on `.typecheck-ignore`,
+  and #415 changed the protocol, not the versions, so the skew persists); a hand-run
   `deno check` with a `main` baseline stands in for it.
   → `docs/wiki/concepts/donny-social-tools.md` · #416
 - **Donny-first business dashboard (Phase A)** — the `/dashboard/business` body becomes Donny

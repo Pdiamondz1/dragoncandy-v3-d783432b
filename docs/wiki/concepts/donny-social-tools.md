@@ -390,9 +390,31 @@ one — but it is not zero.
 ## Acceptance
 
 The proof this work asks to be judged on is a **`status='success'` row in
-`donny_tool_executions` for a `social_*` tool** — which has never existed. It cannot be
-observed until after merge **and** a separate deploy of `donny-orchestrator`: merging ships
-the frontend only ([[Lovable Edge-Function Deploy Gap]]).
+`donny_tool_executions` for a `social_*` tool** — which has never existed. It could not be
+observed until after merge **and** a separate deploy of `donny-orchestrator`, because merging
+ships the frontend only ([[Lovable Edge-Function Deploy Gap]]).
+
+**Both preconditions are now met** — merged `d5cb594b` (#416), `donny-orchestrator` deployed
+2026-08-09 — and the deploy was verified by **reading the deployed source**, never the version
+number: `accounts_unavailable`, `unwrapMcpPayload`, `hasConnectedAccount`, `draft_id` and
+`donny_draft_publications` all present in the running bundle. The two dropped tool names and all
+25 `account_id` occurrences survive **only in comments** (zero schema declarations, zero
+`required` entries) — which is the only reading under which "deleted from every schema" is a true
+claim. Unauthenticated POST → **401**, OPTIONS → 200: `verify_jwt: true` survived and the
+function boots.
+
+**The row itself is still outstanding**, and honestly so: it needs a real signed-in interaction
+to produce. Baseline re-checked immediately after the deploy — 7 rows, all `error`, none newer
+than Aug 7, two of them for tools that no longer exist.
+
+**A near-miss worth generalising.** PR #415 had swept the whole functions tree from `esm.sh` to
+`npm:` specifiers *because esm.sh specifiers were blocking edge-function redeploys*. This branch
+was cut before that sweep and created a **new** `_shared` file, so `outstand-accounts.ts` still
+carried the old specifier into a module `donny-orchestrator` bundles — and would have re-broken
+the very redeploy it needed. **A rename pass cannot reach a file that does not exist yet.** After
+any tree-wide sweep, a branch cut before it needs its *new* files audited against the sweep, not
+merely its merge conflicts resolved. (Re-measured after merging: #415 changed the *protocol*, not
+the versions, so the supabase-js skew and the `.typecheck-ignore` entries both persist.)
 
 ## See Also
 
