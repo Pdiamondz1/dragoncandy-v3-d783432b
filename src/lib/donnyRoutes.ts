@@ -10,7 +10,8 @@
 //   - src/App.tsx (AnimatedRoutes — the real React Router table)
 //   - supabase/functions/donny-orchestrator/routes.ts (the server-side allow-list)
 
-const ROUTE_TEMPLATES: string[] = [
+/** Exported so `donnyRoutes.parity.test.ts` can diff this against the server mirror. */
+export const ROUTE_TEMPLATES: string[] = [
   "/",
   "/home",
   "/landing",
@@ -31,6 +32,7 @@ const ROUTE_TEMPLATES: string[] = [
   // business (restaurant)
   "/dashboard/business",
   "/dashboard/business/settings",
+  "/dashboard/business/overview",
   "/dashboard/business/campaigns",
   "/dashboard/business/campaigns/create",
   "/dashboard/business/campaigns/:id",

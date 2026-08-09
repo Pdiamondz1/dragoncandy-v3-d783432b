@@ -26,6 +26,122 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-09] Donny-first business dashboard (Phase A) + the route guard's blind spot
+
+> **State as of writing.** PR #409 is **merged** (`fef2b428`). PR #410 is **open**, flag-off. Two
+> things are genuinely outstanding and are recorded as such in §5: `donny-orchestrator` has **not**
+> been deployed (merging ships the frontend only), and the **both-viewport browser check has never
+> been run on any task in this branch**. Neither is a formality — see "Not verified" below.
+
+Two efforts on one thread. The founder asked for a dashboard where the body *is* Donny; auditing
+whether that was even buildable is what surfaced the route bug, so it shipped first as #409.
+
+### Part 1 — twelve dead links beside a working guard (#409)
+
+`/settings/billing` and `/settings/social` were hardcoded in **12 places across 10 files**. There is
+**no top-level `/settings/*` route in `src/App.tsx`** — all twelve hit the catch-all `NotFound`,
+including the **"Upgrade" CTA gating the paid Weekly Content Plan** (the revenue path) and the
+primary **"Connect Outstand"** button on a high-priority `donny_nudges` row. `/settings/billing/upgrade`
+was dead twice over.
+
+`isKnownRoute` never caught them, and the reason is the durable lesson: **it validates routes the LLM
+*invents*.** A path hardcoded in source, in agent prompt text, or in a nudge payload never passes
+through `parseSuggestedActions`, so nothing validates it. A working guard sat directly beside twelve
+dead links.
+
+**Three role vocabularies coexist**, which is where the fix nearly went wrong twice: `profiles.role`
+(`business_client`/`content_creator`/`brand`), `fire-campaign-social-hook`'s `parties[]`
+(`restaurant`/`brand`/`creator`, **persisted as `party_role`** so it cannot be renamed to match), and
+others again. Folding `brand` into the business branch sends a brand user to
+`/dashboard/business/social`, which sits behind `BusinessRoute` and **redirects them away — a silent
+failure, not a 404.** The first fix attempt copied an adjacent existing ternary believing that was the
+conservative choice; **that ternary was itself broken for `brand`**, and Codex and
+`edge-function-reviewer` caught it independently. *A neighbouring line is not a specification.*
+
+Fixed with role-aware `billingRoute()`/`socialRoute()` in both mirrors plus a local
+`partySocialRoute()` where the vocabulary genuinely differs. **Creators have no billing route** —
+they land on `/dashboard/creator/earnings`; whether a creator should see an "Upgrade" CTA at all is
+an open product question. A new `donnyRoutes.parity.test.ts` asserts the client and server mirrors
+agree — **directionally** (every server route must exist client-side; the client may hold only the two
+documented legacy Crews redirects), because nothing had ever asserted it.
+
+**It was diagnosed on 2026-06-07 and deferred.** `docs/superpowers/specs/2026-06-07-ios-purchase-cta-gating-design.md:51,167`
+names the exact fix; the paired plan says *"Do NOT fix … out of scope."* It stayed broken for two
+months across the whole pre-launch push. **A dead link on a money path is not "unrelated."**
+
+### Part 2 — the dashboard (#410)
+
+`/dashboard/business` becomes a greeting, what needs the owner's attention, a prompt box and three
+taps; today's body moves **verbatim** to `/dashboard/business/overview`. Behind
+`DONNY_FIRST_DASHBOARD_ENABLED`, **default `false`**. The bar was the founder's: *"My 75 year old mom
+should be able to comfortably use the app as soon as they log in."*
+
+**The audit set the scope, not the mockup.** Run against prod first: only four Donny tools verifiably
+work (`prepare_campaign`, `find_creators`, `web_search`, `read_url`); `social_*` is **0/7** and blames
+the user's connection when it fails — the account it named has an **active** Instagram row;
+`donny_tool_executions` has **zero rows** for every consumer sub-agent, so sub-agent failures on prod
+are invisible; `allTools` is identical for all three roles. So the body ships **three** taps.
+**A tap that produces a shrug is worse than no tap.**
+
+The hard part was already built: `usePendingActions` → `PendingActionBanners` already produced
+dismissible, capped, state-derived proposals — buried under a greeting, a hero CTA and a frame.
+
+Structure: `BusinessDashboard` is a three-way switch (first-run checked **first**, then flag-off, then
+`DonnyHome`); `buildDonnyProposals()` is **pure** with an injected `now`, so its tests need no mocks;
+the location-setup blocker is returned **separately from the capped list** so three applications
+cannot crowd out the thing blocking campaign creation, promotions and DragonShare; dismissal is keyed
+**per proposal, not per campaign** (the old key silenced "submitted content" when you dismissed
+"applied"). Taps open the **existing** panel — **for one release the dashboard launches Donny rather
+than being Donny**, a trade the founder accepted; inline chat is Phase B, gated on seven verified
+hazards, two of which put two Donnys on one screen.
+
+`donny_nudges`' 0-of-33 action rate was **not** used as evidence: `executeAction` fires its UPDATE
+then immediately sets `window.location.href`, cancelling it. **That 0% is an instrumentation failure,
+not a behavioural fact.**
+
+### What review caught that authorship did not
+
+Four defects, **all four in code written into the plan**, every one past the plan's own self-review:
+
+1. Rating prompts rendered as **siblings** of the attention frame — one framed list plus two orphaned
+   rows. Caught *two tasks before* the code that would have shown it was written.
+2. Dismissal state read only the **capped three** proposals, so dismissing one row resurrected a
+   lower-ranked one already waved off, its record sitting unread on disk.
+3. **Two creators applying to one campaign minted the same proposal id** — duplicate React key, and
+   dismissing one silenced the other. The normal marketplace case.
+4. **Codex P2 — date-only deadlines compared as instants.** `campaigns.deadline` is a Postgres
+   **`date`** (verified against prod `information_schema`), so it arrives `"YYYY-MM-DD"` and
+   `new Date()` parses it at **UTC midnight**. Comparing that instant to a mid-day `now` floors
+   downward in **every** timezone, so `'due today'` was unreachable all day; in America/New_York
+   tomorrow's deadline also read "due today" until it vanished at 8pm. Fixed by normalizing both
+   endpoints to local midnight and **rounding rather than flooring** — a DST day is 23 or 25 hours.
+
+**Eight subagent reviews, an opus whole-branch pass and a spec self-review all missed #4. Codex caught
+it first look.** *Diversity of question beats depth of scrutiny.*
+
+### A correction the session made about itself
+
+Every implementer dispatch carried "`npm run test` exits 1 from ~103 pre-existing failures; judge by
+counts." Measured from the worktree: **210 files / 2033 tests / 0 failed** (219/2126 after rebase).
+The note was not stale — it is **location-scoped**: those failures are vitest mis-collecting
+Playwright specs under `.claude/worktrees/**`, and a worktree has none nested under it. **From a
+worktree, a red suite means a real regression** — the opposite of what was told to eight subagents.
+
+### Not verified
+
+- **The both-viewport browser check has never been run.** Subagents must not type credentials, and the
+  change is not deployed — Supabase auth is per-origin, so a prod session does not reach a local dev
+  server. Static analysis established that all four `RESTAURANT_TOUR` anchors resolve and that the two
+  `data-tour="brief-generator"` anchors can never co-mount (`PageTransition` is a keyed `motion.div`
+  with **no `AnimatePresence`**). **Unchecked: the panel opening on tap, the mobile viewport, console
+  errors.**
+- **`donny-orchestrator` is not deployed.** Verify by reading the **deployed source** back for the
+  literal `Never end on a dead end` — not the version number.
+- **The prompt rule's effect is not statically testable** — needs one live conversation forcing a
+  capability gap.
+- **`AppChip` may read as disabled** as the page's primary affordance (it is a *filter* primitive).
+  Mitigated with a call-site teal override; still wants a look on a real screen.
+
 ## [2026-08-08] The deploy that actually closed them — 7 functions live, plus what the gate caught on the way
 
 The entry below this one ends with "all six are inert until deployed." This is that deploy. Seven

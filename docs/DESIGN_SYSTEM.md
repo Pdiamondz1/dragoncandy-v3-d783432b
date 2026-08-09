@@ -91,6 +91,15 @@ restyling an app surface, adopt these instead of hand-rolling — that's what ke
 - **`AppChip`** — de-grayed filter/segment control (renders a `<button>`): off = `bg-white
   border-dc-teal/20 text-dc-text-muted`, on (`active`) = teal fill. Never nest inside another
   button/clickable card.
+  **It is a filter primitive, and its off state is muted *on purpose* — so it recedes behind the
+  content it filters.** That makes it the wrong default when a chip **is** the content: as the
+  primary affordance on a page, muted grey on white reads as *disabled*, which is exactly backwards
+  for a user who is not tech savvy. Every other documented interactive label in this system is
+  coloured (primary = teal fill + white text; secondary = pink text; ghost/outline = pink or teal
+  text). For action chips, override at the **call site** — `className="text-dc-teal-btn
+  border-dc-teal/30"` — or use `<Button variant="dc-secondary" size="sm" className="rounded-full">`.
+  Do **not** restyle `AppChip` itself; it is shared with genuine filter surfaces where muted is
+  correct. (Surfaced by the Donny-first dashboard's three taps, 2026-08-09.)
 - **`AppStatusBadge`** — brand-tinted status badge (a `<span>`; `tone="teal|pink|amber|neutral"`, never
   gray). Use for non-interactive tags/pills, incl. inside clickable cards (where `AppChip` would make an
   invalid nested button).

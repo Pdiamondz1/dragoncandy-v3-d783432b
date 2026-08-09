@@ -117,6 +117,22 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 > proof the object exists (see [[Content Delivery State Machine]]) and "recorded ≠ actual" has
 > bitten this project before.
 
+- **Donny-first business dashboard (Phase A)** — the `/dashboard/business` body becomes Donny
+  (greeting + attention list + prompt box + three taps); today's body preserved verbatim at
+  `/dashboard/business/overview`. Scope set by a prod audit, not the mockup: only 4 Donny tools
+  verifiably work, so 3 taps and nothing routes to `social_*` (0/7). Four defects caught in review,
+  all in plan-authored code, incl. a Codex P2 — `campaigns.deadline` is a Postgres `date`, so
+  `new Date()` parsed **UTC midnight** and "due today" was unreachable all day. **Pending
+  (2026-08-09):** merge PR #410; **deploy `donny-orchestrator`** (merging ships frontend only —
+  verify by reading the deployed source for `Never end on a dead end`, not the version); flip
+  `DONNY_FIRST_DASHBOARD_ENABLED`; then the **both-viewport check, which has never been run on any
+  task in this branch**. → `docs/wiki/concepts/donny-first-dashboard.md` · #410
+- **Dead `/settings/*` CTAs fixed (12 across 10 files)** — every "Upgrade" (incl. the revenue path)
+  and "Connect Outstand" CTA 404'd; `isKnownRoute` never caught them because it only guards routes
+  the LLM **invents**. Diagnosed 2026-06-07, deferred as "out of scope", broken two months. Merged
+  `fef2b428`; frontend live. **Pending (2026-08-09):** deploy `donny-orchestrator` +
+  `fire-campaign-social-hook` — merging did **not** deploy either.
+  → `docs/wiki/concepts/donny-data-and-quick-actions.md` · #409
 - **DC Points visibility (`/rewards`, chip, honest notification, Donny)** — a bell said
   "+200 DC Points" with nowhere to click, points showed on two dashboards with no explanation, and
   even the founder needed a SQL query to answer "what earned that." Ships a `/rewards` page

@@ -3,6 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
 export interface PendingAction {
+  /** The row's own primary key (campaign_applications.id or campaign_collaborations.id).
+   *  Distinguishes two applicants on the SAME campaign — campaignId alone collides. */
+  sourceId: string;
   campaignId: string;
   campaignTitle: string;
   actionType: 'review_application' | 'review_content';
@@ -37,6 +40,7 @@ export function usePendingActions() {
           const campaign = app.campaigns as unknown as { title: string; user_id: string };
           const profile = app.profiles as unknown as { full_name: string | null };
           actions.push({
+            sourceId: app.id,
             campaignId: app.campaign_id,
             campaignTitle: campaign?.title ?? 'Untitled Campaign',
             actionType: 'review_application',
@@ -66,6 +70,7 @@ export function usePendingActions() {
           const campaign = collab.campaigns as unknown as { title: string; user_id: string };
           const profile = collab.profiles as unknown as { full_name: string | null };
           actions.push({
+            sourceId: collab.id,
             campaignId: collab.campaign_id,
             campaignTitle: campaign?.title ?? 'Untitled Campaign',
             actionType: 'review_content',

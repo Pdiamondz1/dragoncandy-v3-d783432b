@@ -29,3 +29,16 @@ export const PACKAGES_ENABLED = true;
 // widens an authorization path, so it needs its own review — see
 // docs/wiki/concepts/cross-tenant-proxy-authorization.md.
 export const DELEGATED_POSTING_ENABLED = false;
+
+// Donny-first business dashboard (Phase A). The /dashboard/business body becomes
+// a greeting + what needs your attention + a prompt box + three taps; today's
+// body moves verbatim to /dashboard/business/overview and stays reachable.
+//
+// OFF until the surface is prod-verified on both viewports. Flipping this to
+// true changes ONLY the business dashboard body — the sidebar, mobile bottom
+// nav, header and first-run flow are untouched, and /overview keeps working
+// either way.
+//
+// Phase A taps open the EXISTING Donny panel (openDonnyWithContext). Inline
+// chat is Phase B — see the design doc §13 for the hazards it must resolve.
+export const DONNY_FIRST_DASHBOARD_ENABLED = false;

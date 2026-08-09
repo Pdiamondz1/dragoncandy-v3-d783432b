@@ -1,5 +1,35 @@
 # Wiki Log
 
+## [2026-08-09] ingest | [[Donny-First Dashboard]] + the route guard's blind spot
+
+Ingested `raw/sessions/2026-08-09-donny-first-dashboard-and-route-blind-spot.md` — two efforts on
+one thread, because auditing whether the dashboard was buildable is what surfaced the route bug.
+
+New concept page [[Donny-First Dashboard]] (PR #410, open): the business dashboard body becomes
+Donny behind a default-off flag, with today's body preserved verbatim at
+`/dashboard/business/overview`. The page's centre of gravity is **the audit set the scope, not the
+mockup** — only four Donny tools verifiably work on prod, so the body ships three taps and nothing
+routes to `social_*`.
+
+**Compounded onto [[Donny Data Visibility & Quick-Action Routing]] as a correction, not an
+append.** That page described the `isKnownRoute` three-layer fix as if it closed the class, and
+framed the residual risk as *under*-linking. The shipped failure was the opposite: the guard only
+sees routes the LLM **invents**, so twelve hardcoded `/settings/*` paths — including the "Upgrade"
+CTA on the revenue path — 404'd for two months beside a working guard, having been correctly
+diagnosed on 2026-06-07 and deferred as "out of scope". Its Known Issue was struck and explained
+rather than deleted, and a second one added: the RAG seed still teaches the dead paths in eight
+places.
+
+Also recorded, because it is the sharper lesson: **`campaigns.deadline` is a Postgres `date`**, so
+`new Date()` parsed it at UTC midnight and `'due today'` was unreachable all day in every timezone.
+Eight subagent reviews, an opus whole-branch pass and a spec self-review missed it; Codex caught it
+first look. *Diversity of question beats depth of scrutiny.*
+
+**Wiki defect found, not fixed:** `index.md`'s `## Concepts` section contains the **entire catalog
+twice**, with UTF-8 mojibake scattered through both copies. New entries were added to both so they
+survive a dedupe in either direction. Deduping is a ~160-line rewrite of a file every worktree
+touches, so it wants its own PR.
+
 ## [2026-08-08] update | The deploy that closed the anon-key holes — plus a dead authorization arm and a session collision
 
 Ingested `raw/sessions/2026-08-08-anon-key-deploy-and-embed-fix.md`. #402 and #399 were merged but
