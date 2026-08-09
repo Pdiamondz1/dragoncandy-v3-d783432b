@@ -51,7 +51,11 @@ export function DonnyHomePrompt({
 
       <div className="flex flex-wrap gap-2">
         {suggestions.map((s) => (
-          <AppChip key={s.message} onClick={() => onSuggestionTap(s)}>
+          <AppChip
+            key={s.message}
+            className="text-dc-teal-btn border-dc-teal/30"
+            onClick={() => onSuggestionTap(s)}
+          >
             {s.label}
           </AppChip>
         ))}
