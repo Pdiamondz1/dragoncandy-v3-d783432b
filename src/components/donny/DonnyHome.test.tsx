@@ -129,6 +129,7 @@ describe('DonnyHome — taps and prompt', () => {
 
 describe('DonnyHome — proposals', () => {
   const action = {
+    sourceId: 'app1',
     campaignId: 'c1',
     campaignTitle: 'Taco Tuesday',
     actionType: 'review_application' as const,
@@ -159,7 +160,7 @@ describe('DonnyHome — proposals', () => {
       expect(screen.queryByText(/Ricky Ricardo applied/)).not.toBeInTheDocument()
     );
     expect(
-      localStorage.getItem('donnyProposalDismissed_pending_action:review_application:c1')
+      localStorage.getItem('donnyProposalDismissed_pending_action:review_application:c1:app1')
     ).toBeTruthy();
     await waitFor(() =>
       expect(trackEventMock).toHaveBeenCalledWith('donny_home_proposal_dismissed', {
@@ -176,6 +177,7 @@ describe('DonnyHome — dismissal below the cap', () => {
   // higher-ranked proposal then promoted the already-dismissed one back into
   // view — dismissing one row resurrected another.
   const fiveActions = [1, 2, 3, 4, 5].map((n) => ({
+    sourceId: `app${n}`,
     campaignId: `c${n}`,
     campaignTitle: `Campaign ${n}`,
     actionType: 'review_application' as const,
@@ -190,7 +192,7 @@ describe('DonnyHome — dismissal below the cap', () => {
     // bug only surfaces once a higher-ranked proposal is dismissed and this
     // one would be promoted into the visible top 3.
     localStorage.setItem(
-      'donnyProposalDismissed_pending_action:review_application:c4',
+      'donnyProposalDismissed_pending_action:review_application:c4:app4',
       new Date().toISOString()
     );
     renderHome();

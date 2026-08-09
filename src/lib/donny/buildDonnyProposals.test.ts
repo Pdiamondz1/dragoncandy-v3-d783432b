@@ -14,6 +14,7 @@ const daysFromNow = (d: number) => new Date(NOW + d * 86_400_000).toISOString();
 
 function action(over: Partial<PendingAction> = {}): PendingAction {
   return {
+    sourceId: 'app1',
     campaignId: 'c1',
     campaignTitle: 'Taco Tuesday',
     actionType: 'review_application',
@@ -98,6 +99,36 @@ describe('buildDonnyProposals — pending actions', () => {
     expect(new Set(proposals.map((p) => p.id)).size).toBe(2);
   });
 
+  it('gives two different applicants on the SAME campaign distinct ids, so dismissing one leaves the other visible', () => {
+    // Two creators applying to the same campaign used to collide: the id was
+    // `pending_action:${actionType}:${campaignId}` with no per-row component,
+    // so "Ricky applied" and "Lucy applied" minted the SAME id. Multiple
+    // applicants per campaign is the normal marketplace case, not an edge case.
+    const { proposals } = buildDonnyProposals(
+      input({
+        pendingActions: [
+          action({ sourceId: 'app-ricky', creatorName: 'Ricky Ricardo' }),
+          action({ sourceId: 'app-lucy', creatorName: 'Lucy Ricardo' }),
+        ],
+      })
+    );
+    expect(proposals).toHaveLength(2);
+    expect(proposals[0].id).not.toBe(proposals[1].id);
+
+    // Dismissing Ricky's application must not silence Lucy's.
+    const afterDismiss = buildDonnyProposals(
+      input({
+        pendingActions: [
+          action({ sourceId: 'app-ricky', creatorName: 'Ricky Ricardo' }),
+          action({ sourceId: 'app-lucy', creatorName: 'Lucy Ricardo' }),
+        ],
+        dismissedIds: [proposals[0].id],
+      })
+    );
+    expect(afterDismiss.proposals).toHaveLength(1);
+    expect(afterDismiss.proposals[0].id).toBe(proposals[1].id);
+  });
+
   it('orders pending actions newest first', () => {
     const { proposals } = buildDonnyProposals(
       input({
@@ -141,20 +172,20 @@ describe('buildDonnyProposals — cap, overflow and dismissal', () => {
     expect(proposals).toHaveLength(3);
     expect(overflowCount).toBe(2);
     expect(proposals.map((p) => p.id)).toEqual([
-      'pending_action:review_application:c1',
-      'pending_action:review_application:c2',
-      'pending_action:review_application:c3',
+      'pending_action:review_application:c1:app1',
+      'pending_action:review_application:c2:app1',
+      'pending_action:review_application:c3:app1',
     ]);
   });
 
   it('promotes the next proposal when one is dismissed', () => {
     const { proposals, overflowCount } = buildDonnyProposals(
-      input({ pendingActions: five, dismissedIds: ['pending_action:review_application:c1'] })
+      input({ pendingActions: five, dismissedIds: ['pending_action:review_application:c1:app1'] })
     );
     expect(proposals.map((p) => p.id)).toEqual([
-      'pending_action:review_application:c2',
-      'pending_action:review_application:c3',
-      'pending_action:review_application:c4',
+      'pending_action:review_application:c2:app1',
+      'pending_action:review_application:c3:app1',
+      'pending_action:review_application:c4:app1',
     ]);
     expect(overflowCount).toBe(1);
   });
@@ -171,11 +202,11 @@ describe('buildDonnyProposals — cap, overflow and dismissal', () => {
     const { proposals, allProposalIds } = buildDonnyProposals(input({ pendingActions: five }));
     expect(proposals).toHaveLength(3);
     expect(allProposalIds).toEqual([
-      'pending_action:review_application:c1',
-      'pending_action:review_application:c2',
-      'pending_action:review_application:c3',
-      'pending_action:review_application:c4',
-      'pending_action:review_application:c5',
+      'pending_action:review_application:c1:app1',
+      'pending_action:review_application:c2:app1',
+      'pending_action:review_application:c3:app1',
+      'pending_action:review_application:c4:app1',
+      'pending_action:review_application:c5:app1',
     ]);
   });
 
@@ -184,14 +215,14 @@ describe('buildDonnyProposals — cap, overflow and dismissal', () => {
       input({
         pendingActions: five,
         dismissedIds: [
-          'pending_action:review_application:c1',
-          'pending_action:review_application:c4',
+          'pending_action:review_application:c1:app1',
+          'pending_action:review_application:c4:app1',
         ],
       })
     );
     expect(allProposalIds).toHaveLength(5);
-    expect(allProposalIds).toContain('pending_action:review_application:c1');
-    expect(allProposalIds).toContain('pending_action:review_application:c4');
+    expect(allProposalIds).toContain('pending_action:review_application:c1:app1');
+    expect(allProposalIds).toContain('pending_action:review_application:c4:app1');
   });
 
   it('allProposalIds never includes the blocker — it is not dismissible', () => {

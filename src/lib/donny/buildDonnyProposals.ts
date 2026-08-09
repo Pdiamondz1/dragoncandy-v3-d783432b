@@ -24,7 +24,10 @@ export type ProposalCta =
   | { kind: 'ask'; label: string; message: string };
 
 export interface DonnyProposal {
-  /** `${kind}:${actionType}:${campaignId}` for actions, `signal:${key}` for signals. Stable across renders — it is the dismissal key. */
+  /** `pending_action:${actionType}:${campaignId}:${sourceId}` for actions, `signal:${key}` for
+   *  signals. Stable across renders — it is the dismissal key. The trailing `sourceId` is required:
+   *  two different creators applying to the SAME campaign are two different `campaign_applications`
+   *  rows, and without a per-row component their ids would collide. */
   id: string;
   kind: 'pending_action' | 'signal';
   /** Donny's voice, plain language, no timestamp. */
@@ -96,7 +99,7 @@ function pendingProposal(action: PendingAction): DonnyProposal {
   const isApplication = action.actionType === 'review_application';
   const route = `/dashboard/business/campaigns/${action.campaignId}`;
   return {
-    id: `pending_action:${action.actionType}:${action.campaignId}`,
+    id: `pending_action:${action.actionType}:${action.campaignId}:${action.sourceId}`,
     kind: 'pending_action',
     text: isApplication
       ? `${who} applied to "${action.campaignTitle}"`
