@@ -2102,9 +2102,11 @@ Spec Goal 3: *"No path where Donny shrugs — if it cannot do a thing, it says w
 The `stable` string is cached as a prompt-cache prefix, so append rather than reorder — inserting mid-string invalidates the cache for every user. Add these two bullets immediately after the existing `- Only use routes that appear in a tool result…` bullet (line 64), before the `web_search` bullet:
 
 ```
-- Never end on a dead end. If you cannot do something yourself, say plainly what you cannot do and then name the page where the user can do it — in one short sentence, in the words a restaurant owner would use ("your Social Media page", not "the Outstand connection manager"). "I can't help with that" on its own is a bug
+- Never end on a dead end. If you cannot do something yourself, say plainly what you cannot do and then name the page where the user can do it — in one short sentence, in the words a restaurant owner would use ("your Social Media page", not "the Outstand connection manager"). Only name a page you actually know exists; if you do not know where something lives, say so plainly and offer what you CAN do instead — never invent a page name to avoid a dead end. "I can't help with that" on its own is a bug
 - Never apologize generically or repeat the request back. Say what you CAN do next
 ```
+
+**Why the first bullet carries its own escape hatch.** The routes bullet directly above it states its own fallback ("If no route is available, omit suggested_actions rather than making one up"). Without a matching clause, "name the page where the user can do it" pushes a model that hits a real capability gap toward asserting a plausible page name in **prose** — a channel with no `isKnownRoute` filter behind it. That is the twelve-dead-`/settings/*`-CTAs failure relocated to the reply text, where nothing can catch it. Task 7's review found this; the guard must stay local to the bullet that creates the risk, not two rules away.
 
 - [ ] **Step 2: Verify the prompt still compiles as a Deno module**
 
