@@ -70,6 +70,7 @@ describe('DonnyComposer', () => {
     fireEvent.change(field(), { target: { value: '  click to send  ' } });
     fireEvent.click(screen.getByRole('button', { name: /send to donny/i }));
     expect(onSubmit).toHaveBeenCalledWith('click to send');
+    expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(field()).toHaveValue('');
   });
 
@@ -80,10 +81,17 @@ describe('DonnyComposer', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('sends nothing when the send button is clicked while disabled', () => {
+  // A disabled control never dispatches a click at all, so this cannot exercise
+  // submit()'s own `if (!trimmed || disabled) return` guard — it only proves the
+  // `disabled` prop reaches the button's HTML attribute. The guard itself is
+  // covered by the Enter-while-disabled test above, which is non-vacuous because
+  // the textarea is deliberately not disabled.
+  it('disables the send button while streaming, so the browser suppresses the click', () => {
     render(<DonnyComposer onSubmit={onSubmit} disabled />);
     fireEvent.change(field(), { target: { value: 'while streaming' } });
-    fireEvent.click(screen.getByRole('button', { name: /send to donny/i }));
+    const button = screen.getByRole('button', { name: /send to donny/i });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
