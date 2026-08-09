@@ -102,6 +102,24 @@ export function noAccountResult(): string {
 }
 
 /**
+ * The account list could not be READ. Distinct from noAccountResult on
+ * purpose: that one asserts a fact about the user's setup, and asserting it
+ * after a failed read is how Donny came to tell a user with a live Instagram
+ * connection that they had none. "I couldn't check" is the true statement,
+ * and it points at retrying rather than at a settings page that already has
+ * the account on it. See fetchActiveAccounts (outstand-accounts.ts).
+ */
+export function accountsUnavailableResult(): string {
+  return JSON.stringify({
+    status: 'accounts_unavailable',
+    instruction:
+      'Say the connected accounts could not be looked up right now and to try ' +
+      'again in a moment. Do NOT say the user has no account connected — that ' +
+      'is not known. Do not speculate about why.',
+  });
+}
+
+/**
  * schedule_post with no (or non-string) scheduled_at must refuse, not silently
  * fall back to an unscheduled draft. Silent degradation on the one path that
  * ends in an irreversible public post is not an acceptable failure mode even

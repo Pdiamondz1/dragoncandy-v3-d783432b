@@ -21,6 +21,18 @@ export type AccountResolution =
   | { kind: 'many'; accounts: ConnectedAccount[] }
   | { kind: 'none' };
 
+/**
+ * "The caller holds no accounts" and "we could not find out" are different
+ * facts, and only the first one licenses telling a user their accounts are
+ * not connected. They are separated HERE, in the type, because a plain
+ * `ConnectedAccount[]` return has no way to say the second — every caller
+ * would have to remember the distinction, and the last two that forgot both
+ * shipped the same false claim to a real user.
+ */
+export type AccountLookup =
+  | { ok: true; accounts: ConnectedAccount[] }
+  | { ok: false };
+
 const PLATFORM_LABELS: Record<string, string> = {
   instagram: 'Instagram',
   youtube: 'YouTube',
@@ -163,16 +175,25 @@ export function resolveAccount(
 }
 
 /**
- * The caller's LIVE accounts.
+ * The caller's LIVE accounts, or an explicit "could not read".
  *
  * `status = 'active'`, not `!= 'revoked'` — prod holds `error` rows alongside
  * `active` ones for the same handle (user d6a28dd6 has both for @areyouaman),
  * and the old filter could hand back the dead one as the default.
+ *
+ * A failed read returns `{ ok: false }` and NEVER an empty list. Returning
+ * `[]` here is the exact bug this whole change exists to close, one layer
+ * down: `resolveAccount([])` is `none`, `none` becomes `no_social_account`,
+ * and Donny tells a user with a live Instagram connection that they have no
+ * account connected — the original complaint, reproduced by a transient
+ * database error instead of a 401. An earlier revision of this function
+ * added the missing `if (error)` check and still `return []`, which fixed
+ * the silence but not the false claim.
  */
 export async function fetchActiveAccounts(
   supabase: SupabaseClient,
   userId: string,
-): Promise<ConnectedAccount[]> {
+): Promise<AccountLookup> {
   const { data, error } = await supabase
     .from('business_outstand_accounts')
     .select('outstand_social_account_id, platform, platform_handle')
@@ -182,16 +203,19 @@ export async function fetchActiveAccounts(
 
   if (error) {
     console.error('[outstand-accounts] account lookup failed:', error.message);
-    return [];
+    return { ok: false };
   }
   const rows = (data ?? []) as Array<{
     outstand_social_account_id: string;
     platform: string;
     platform_handle: string | null;
   }>;
-  return rows.map((r) => ({
-    id: r.outstand_social_account_id,
-    platform: r.platform,
-    handle: r.platform_handle,
-  }));
+  return {
+    ok: true,
+    accounts: rows.map((r) => ({
+      id: r.outstand_social_account_id,
+      platform: r.platform,
+      handle: r.platform_handle,
+    })),
+  };
 }

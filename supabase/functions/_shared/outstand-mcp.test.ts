@@ -35,7 +35,14 @@ interface RecordedQuery {
   filters: Array<{ op: string; args: unknown[] }>;
 }
 
-function fakeSupabase(rowsByTable: Record<string, unknown[]>) {
+function fakeSupabase(
+  rowsByTable: Record<string, unknown[]>,
+  // Tables whose read fails. supabase-js v2 RESOLVES with `{ data: null,
+  // error }` rather than rejecting, which is exactly why a swallowed error
+  // reads as "no rows" — so the fake must resolve too, or it would test a
+  // failure mode the client does not have.
+  errorTables: Record<string, string> = {},
+) {
   const queries: RecordedQuery[] = [];
 
   function from(table: string) {
@@ -63,8 +70,12 @@ function fakeSupabase(rowsByTable: Record<string, unknown[]>) {
         return builder;
       },
       // Thenable: `await supabase.from(x).select(y).eq(...)` resolves here.
-      then(onFulfilled: (v: { data: unknown[]; error: null }) => unknown) {
-        return Promise.resolve({ data: rowsByTable[table] ?? [], error: null }).then(onFulfilled);
+      then(onFulfilled: (v: { data: unknown[] | null; error: unknown }) => unknown) {
+        const message = errorTables[table];
+        const result = message
+          ? { data: null, error: { message } }
+          : { data: rowsByTable[table] ?? [], error: null };
+        return Promise.resolve(result).then(onFulfilled);
       },
     };
     return builder;
@@ -298,6 +309,41 @@ describe('a caller with no connected account', () => {
     const { bridge } = await zeroAccountBridge();
     await bridge.callTool('social_create_post', { caption: 'Taco Tuesday' });
     expect(bridge.takeCards()).toEqual([]);
+  });
+});
+
+// "You have no account connected" is a CLAIM about the user's setup. A failed
+// read does not license it — that is the original complaint (Donny denying a
+// live Instagram connection) arriving through a database blip instead of a 401.
+describe('when the account list cannot be read', () => {
+  async function unreadableBridge() {
+    const { supabase, queries } = fakeSupabase(
+      { business_outstand_accounts: [ACCOUNT_ROW] },
+      { business_outstand_accounts: 'connection terminated unexpectedly' },
+    );
+    return build(supabase, queries, 'growth');
+  }
+
+  it('says it could not look them up — NOT that none are connected', async () => {
+    const { bridge } = await unreadableBridge();
+    const res = await bridge.callTool('social_create_post', { caption: 'Taco Tuesday' });
+    const payload = JSON.parse(res.content[0].text as string);
+    expect(res.isError).toBe(true);
+    expect(payload.status).toBe('accounts_unavailable');
+    expect(payload.status).not.toBe('no_social_account');
+  });
+
+  it('publishes nothing on a failed read', async () => {
+    const { bridge } = await unreadableBridge();
+    await bridge.callTool('social_create_post', { caption: 'Taco Tuesday' });
+    expect(bridge.takeCards()).toEqual([]);
+  });
+
+  it('does not report a connected account it never managed to read', async () => {
+    const { bridge } = await unreadableBridge();
+    // The one consumer, auto-pilot, correctly skips: a cron that cannot read
+    // the account list cannot fetch metrics either.
+    expect(bridge.hasConnectedAccount).toBe(false);
   });
 });
 

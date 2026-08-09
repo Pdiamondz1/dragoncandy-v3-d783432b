@@ -13,6 +13,7 @@ import {
   draftToolResult,
   disambiguationResult,
   noAccountResult,
+  accountsUnavailableResult,
   missingScheduledAtResult,
   type SocialDraftCard,
 } from './social-draft.ts';
@@ -102,11 +103,15 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
   // `const { data }` with no error check — supabase-js v2 RESOLVES rather than
   // rejects on a query error, so a transient failure silently produced `[]` and
   // donny-orchestrator told the user "No social account is connected to this
-  // account yet", a confident false claim — and (b) filtered
+  // account yet", a confident false claim. Adding the error check was only half
+  // of that fix and this comment claimed the whole of it: the checked version
+  // still returned `[]`, so the false claim survived, just no longer silently.
+  // fetchActiveAccounts now returns an explicit `{ ok: false }` a caller cannot
+  // mistake for emptiness — and (b) filtered
   // `.neq('status', 'revoked')`, which counts an `error`-status row as usable.
   // Verified on prod: user 7cc82738 holds 2 `error` + 2 `revoked` + 0 `active`,
   // so the old gate offered all four tools to someone none of them could serve.
-  const accounts = await fetchActiveAccounts(config.supabase, config.userId);
+  const lookup = await fetchActiveAccounts(config.supabase, config.userId);
 
   const mcpUrl = Deno.env.get("OUTSTAND_MCP_URL");
   const apiKey = Deno.env.get("OUTSTAND_API_KEY");
@@ -162,7 +167,16 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
 
   return {
     tools: namespacedTools,
-    hasConnectedAccount: accounts.length > 0,
+    // False when the read FAILED as well as when the caller genuinely holds
+    // none — a deliberate collapse, safe only because of where this value is
+    // consumed. It drives one decision, auto-pilot's `continue`, and skipping
+    // is the correct action under both facts: a cron that cannot read the
+    // account list cannot fetch metrics either, and would otherwise feed an
+    // error into Claude and generate a digest out of it. No user-facing claim
+    // is ever derived from this. The claim path is callTool, which resolves
+    // fresh per call and distinguishes the two cases there — see the
+    // `lookup.ok` guard below.
+    hasConnectedAccount: lookup.ok && lookup.accounts.length > 0,
 
     takeCards() {
       const out = pendingCards;
@@ -241,10 +255,16 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
       // consumed here, by resolveAccount, and MUST NOT be part of what
       // reaches the upstream provider request (buildForwardedArgs excludes
       // it explicitly; see RESOLUTION_ONLY_KEYS in outstand-mcp-tools.ts).
-      const accounts = await fetchActiveAccounts(config.supabase, config.userId);
+      const lookup = await fetchActiveAccounts(config.supabase, config.userId);
+      // A failed read is NOT zero accounts. Falling through with `[]` here
+      // would resolve to `none` and tell the user their accounts are not
+      // connected — the original complaint, re-created by a database blip.
+      if (!lookup.ok) {
+        return { content: [{ type: 'text', text: accountsUnavailableResult() }], isError: true };
+      }
       const platformHint = typeof args.platform === 'string' ? args.platform : null;
       const handleHint = typeof args.handle === 'string' ? args.handle : null;
-      const resolution = resolveAccount(accounts, platformHint, handleHint);
+      const resolution = resolveAccount(lookup.accounts, platformHint, handleHint);
 
       if (resolution.kind === 'none') {
         return { content: [{ type: 'text', text: noAccountResult() }], isError: true };
@@ -363,7 +383,7 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
         // accounts on the same platform (checked 2026-08-09) — but it is
         // exactly the case handle-disambiguation exists for, so it will happen.
         const sharesPlatform =
-          accounts.filter(
+          lookup.accounts.filter(
             (a) => (a.platform ?? '').toLowerCase() === (account.platform ?? '').toLowerCase(),
           ).length > 1;
         const verdict = sharesPlatform

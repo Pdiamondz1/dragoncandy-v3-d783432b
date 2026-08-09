@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   resolveAccount,
   describeAccount,
+  fetchActiveAccounts,
   type ConnectedAccount,
 } from './outstand-accounts';
 
@@ -221,5 +222,52 @@ describe('describeAccount', () => {
 
   it('falls back to the platform alone when there is no handle', () => {
     expect(describeAccount({ id: 'x', platform: 'facebook', handle: null })).toBe('Facebook');
+  });
+});
+
+describe('fetchActiveAccounts', () => {
+  /**
+   * supabase-js v2 RESOLVES with `{ data: null, error }` on a query error
+   * rather than rejecting, so the fake resolves too — a rejecting fake would
+   * test a failure mode the real client does not have, and it is precisely
+   * this resolve-don't-reject shape that let the error be swallowed.
+   */
+  function client(result: { data: unknown[] | null; error: unknown }) {
+    const builder: Record<string, unknown> = {};
+    for (const op of ['select', 'eq', 'order']) {
+      builder[op] = vi.fn(() => builder);
+    }
+    builder.then = (onFulfilled: (v: unknown) => unknown) =>
+      Promise.resolve(result).then(onFulfilled);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return { from: () => builder } as any;
+  }
+
+  it('reports the rows it read', async () => {
+    const rows = [
+      { outstand_social_account_id: 'LEnjV', platform: 'instagram', platform_handle: 'areyouaman' },
+    ];
+    expect(await fetchActiveAccounts(client({ data: rows, error: null }), 'u1')).toEqual({
+      ok: true,
+      accounts: [IG],
+    });
+  });
+
+  it('reports a genuinely empty list as ok — this is the only thing that may become "none"', async () => {
+    expect(await fetchActiveAccounts(client({ data: [], error: null }), 'u1')).toEqual({
+      ok: true,
+      accounts: [],
+    });
+  });
+
+  it('reports a failed read as not-ok, NEVER as an empty list', async () => {
+    const lookup = await fetchActiveAccounts(
+      client({ data: null, error: { message: 'connection terminated unexpectedly' } }),
+      'u1',
+    );
+    expect(lookup.ok).toBe(false);
+    // The bug this replaces: `{ ok: true, accounts: [] }` here resolves to
+    // `none`, which becomes the claim "no social account is connected".
+    expect(lookup).not.toEqual({ ok: true, accounts: [] });
   });
 });
