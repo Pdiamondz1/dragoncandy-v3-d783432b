@@ -7,6 +7,7 @@ import { getUserUsageStage, incrementUsage, checkQuotaOrBlock, checkHourlyRateLi
 import { embedQuery, retrieveContext } from "./rag.ts";
 import { SUB_AGENT_TOOLS, mergeToolsWithMcp, detectSocialIntent, isSocialTool } from "./tools.ts";
 import { createOutstandMcpBridge, type OutstandMcpBridge } from "../_shared/outstand-mcp.ts";
+import type { SocialDraftCard } from "../_shared/social-draft.ts";
 import type { CreatorCard, OrchestratorInput, UserContext } from "./types.ts";
 import * as campaignAgent from "./agents/campaign.ts";
 import * as creatorsAgent from "./agents/creators.ts";
@@ -469,9 +470,11 @@ serve(async (req) => {
     await incrementUsage(supabase, userId, modelConfig.actionCost);
     let lastToolUsed = "general";
     let loopCount = 0;
-    // Structured cards from find_creators, threaded straight into the SSE `done`
-    // event (bypassing the LLM). Last find_creators dispatch wins.
-    let collectedCards: CreatorCard[] = [];
+    // Structured cards from find_creators (last dispatch wins) and social
+    // drafts from create_post/schedule_post (appended, never wiped by a later
+    // creator lookup), threaded straight into the SSE `done` event (bypassing
+    // the LLM).
+    let collectedCards: Array<CreatorCard | SocialDraftCard> = [];
 
     while (claudeResult.stop_reason === "tool_use" && loopCount < 3) {
       loopCount++;
@@ -488,6 +491,12 @@ serve(async (req) => {
         if (isSocialTool(toolName) && mcpBridge) {
           const mcpResult = await mcpBridge.callTool(toolName, toolInput);
           agentResult = JSON.stringify(mcpResult);
+
+          // Draft cards ride the same rich_cards side-channel as creator cards.
+          // Appended, not assigned: find_creators owns "last wins" for its own
+          // cards, and a draft must not be wiped by a later creator lookup.
+          const draftCards = mcpBridge.takeCards();
+          if (draftCards.length > 0) collectedCards = [...collectedCards, ...draftCards];
 
           // Audit log — all MCP tool calls logged to donny_tool_executions.
           // This insert wrote nothing for the function's entire life: it used columns that

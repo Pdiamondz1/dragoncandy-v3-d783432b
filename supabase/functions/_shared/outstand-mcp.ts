@@ -6,6 +6,14 @@ import {
   namespaceTools,
 } from './outstand-mcp-tools.ts';
 import { proxyRequestFor } from './outstand-mcp-paths.ts';
+import { fetchActiveAccounts, resolveAccount } from './outstand-accounts.ts';
+import {
+  buildDraftCard,
+  draftToolResult,
+  disambiguationResult,
+  noAccountResult,
+  type SocialDraftCard,
+} from './social-draft.ts';
 
 interface OutstandMcpConfig {
   userId: string;
@@ -47,6 +55,8 @@ async function getUserAccountIds(supabase: SupabaseClient, userId: string): Prom
 export interface OutstandMcpBridge {
   tools: McpToolDefinition[];
   callTool(name: string, args: Record<string, unknown>): Promise<McpToolResult>;
+  /** Cards produced by the last callTool, for the orchestrator to collect. */
+  takeCards(): SocialDraftCard[];
   disconnect(): void;
 }
 
@@ -106,23 +116,65 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
   const namespacedTools = namespaceTools(filterToolsByTier(rawTools, config.orgTier));
 
   const proxyUrl = Deno.env.get("SUPABASE_URL") + "/functions/v1/outstand-proxy";
-  const defaultAccountId = accountIds[0];
+
+  let pendingCards: SocialDraftCard[] = [];
 
   return {
     tools: namespacedTools,
 
+    takeCards() {
+      const out = pendingCards;
+      pendingCards = [];
+      return out;
+    },
+
     async callTool(name: string, args: Record<string, unknown>): Promise<McpToolResult> {
       const rawName = name.replace(/^social_/, "");
-      const enrichedArgs = { ...args, account_id: args.account_id ?? defaultAccountId };
+
+      // Resolved fresh per call, from the authenticated user. The model never
+      // sends an id, so there is nothing to validate and nothing to forge.
+      const accounts = await fetchActiveAccounts(config.supabase, config.userId);
+      const platformHint = typeof args.platform === 'string' ? args.platform : null;
+      const resolution = resolveAccount(accounts, platformHint);
+
+      if (resolution.kind === 'none') {
+        return { content: [{ type: 'text', text: noAccountResult() }], isError: true };
+      }
+      if (resolution.kind === 'many') {
+        // Not an error: the tool did its job and needs one more fact.
+        return { content: [{ type: 'text', text: disambiguationResult(resolution.accounts) }] };
+      }
+      const account = resolution.account;
+      const accountId = account.id;
+
+      if (rawName === 'create_post' || rawName === 'schedule_post') {
+        const caption = typeof args.caption === 'string' ? args.caption : '';
+        if (!caption.trim()) {
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ status: 'missing_caption', instruction: 'Ask the user what the post should say.' }) }],
+            isError: true,
+          };
+        }
+        const mediaUrls = Array.isArray(args.media_urls)
+          ? args.media_urls.filter((u): u is string => typeof u === 'string')
+          : [];
+        const scheduledAt =
+          rawName === 'schedule_post' && typeof args.scheduled_at === 'string'
+            ? args.scheduled_at
+            : null;
+
+        const card = buildDraftCard({ account, caption, mediaUrls, scheduledAt });
+        const result = draftToolResult(card);
+        pendingCards.push(result.card);
+        return { content: [{ type: 'text', text: result.text }] };
+      }
 
       // Use real MCP client if available
       if (client) {
-        return client.callTool(rawName, enrichedArgs);
+        return client.callTool(rawName, { ...args, account_id: accountId });
       }
 
-      // TODO(Task 5): accountId comes from server-side resolution, not
-      // defaultAccountId — Task 5 replaces this binding wholesale.
-      const req = proxyRequestFor(rawName, defaultAccountId);
+      const req = proxyRequestFor(rawName, accountId);
       if (!req) {
         return {
           content: [{ type: 'text', text: JSON.stringify({ error: 'unsupported_tool' }) }],
