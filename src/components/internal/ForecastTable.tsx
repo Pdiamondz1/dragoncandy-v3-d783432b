@@ -137,7 +137,13 @@ const GROUPS: Group[] = [
   },
 ];
 
-export function ForecastTable({ model }: { model: ForecastModel }) {
+export function ForecastTable({
+  model,
+  emphasizeLabel,
+}: {
+  model: ForecastModel;
+  emphasizeLabel?: string;
+}) {
   const { scenarios } = model;
   const projected = scenarios.filter((s) => !s.measured);
   const chartData = projected.map((s) => ({
@@ -161,7 +167,9 @@ export function ForecastTable({ model }: { model: ForecastModel }) {
               {scenarios.map((s) => (
                 <th
                   key={s.label}
-                  className={`px-4 py-3 text-right font-bold text-white ${s.measured ? todayCell : ''}`}
+                  className={`px-4 py-3 text-right font-bold text-white ${s.measured ? todayCell : ''} ${
+                    s.label === emphasizeLabel ? 'ring-1 ring-dc-pink/50' : ''
+                  }`}
                 >
                   {s.label}
                   {s.measured && <Pill tone="measured">measured</Pill>}
@@ -192,7 +200,9 @@ export function ForecastTable({ model }: { model: ForecastModel }) {
                         key={s.label}
                         className={`whitespace-nowrap px-4 py-2 text-right tabular-nums text-white ${
                           row.bold ? 'font-bold' : ''
-                        } ${s.measured ? todayCell : ''}`}
+                        } ${s.measured ? todayCell : ''} ${
+                          s.label === emphasizeLabel ? 'ring-1 ring-dc-pink/50' : ''
+                        }`}
                       >
                         {row.render(s)}
                       </td>

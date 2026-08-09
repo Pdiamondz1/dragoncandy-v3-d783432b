@@ -34,6 +34,7 @@ import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
 import { InactivityWarningDialog } from "@/components/InactivityWarningDialog";
 import { AppVersionProvider } from "@/contexts/AppVersionContext";
 import { UpdateBanner } from "@/components/UpdateBanner";
+import { DemoScaleBanner } from "@/components/internal/DemoScaleBanner";
 import { PageTransition } from "@/components/PageTransition";
 import type { UserRole } from "@/types/user";
 
@@ -437,6 +438,7 @@ function AppShell() {
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-black focus:underline">Skip to main content</a>
       <main id="main-content" className="flex-1 overflow-auto">
         <UpdateBanner />
+        <DemoScaleBanner />
         <SiteGateGuard>
           <AnimatedRoutes />
         </SiteGateGuard>

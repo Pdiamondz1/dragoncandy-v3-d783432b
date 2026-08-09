@@ -6,6 +6,7 @@ import { StatCard, SectionHeading, ErrorCard } from '@/components/internal/stats
 import { PlatformMetricSections } from '@/components/internal/PlatformMetricSections';
 import { PlatformTotalsPanel } from '@/components/internal/PlatformTotalsPanel';
 import { PageContainer, PageHeader } from '@/components/internal/layout';
+import { DemoScaleForecastHero } from '@/components/internal/DemoScaleForecastHero';
 import { formatCents, formatUsd } from '@/lib/utils';
 import { aiCapStatus } from '@/lib/aiCostCap';
 import { Spinner } from '@/components/ui/spinner';
@@ -51,6 +52,8 @@ const InternalOverview = () => {
           </p>
         }
       />
+
+      <DemoScaleForecastHero />
 
       <PlatformTotalsPanel stats={p} />
 
