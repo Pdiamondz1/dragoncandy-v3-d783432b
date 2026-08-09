@@ -25,4 +25,4 @@ export interface QuickChip {
   requiresChat: boolean;
 }
 
-export type DonnyStage = 'closed' | 'tray' | 'chat';
+export type DonnyStage = 'closed' | 'tray' | 'chat' | 'inline';
