@@ -127,7 +127,65 @@
   `origin/main` merge before starting any long-running background `git push`** — a push in flight
   pins the branch, so the merge has to wait it out.
 
+- **[memory-scope] A remembered fact can be true and still wrong *where you are standing*. Check
+  whether it is scoped to a location before propagating it.** On 2026-08-09 I quoted the stored
+  "`npm run test` exits 1 with ~103 pre-existing failures — judge by counts, not the exit code" into
+  **eight** subagent dispatches. Measured from the worktree: **210 files / 2033 tests / 0 failed.**
+  The memory wasn't stale — those failures are vitest mis-collecting Playwright specs under
+  `.claude/worktrees/**`, and *a worktree has none nested under it*. So from a worktree a red suite
+  means a **real regression**, the opposite of what I'd told everyone; "it's always red" trains a
+  session to ignore the one signal that catches a real break. Applies to any environment-shaped
+  claim (paths, tooling, CI, shells) — **the cheapest check is to run the thing once before quoting
+  the memory about it**, and to fix the memory with the scope rather than deleting it. Corollary:
+  `<cmd> | tail -N` reports **tail's** exit code, not `<cmd>`'s — a pipe launders a failure into 0.
+
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-09] Donny-first dashboard Phase A + route blind spot (PRs #409 merged, #410 open — bundled INTO #410)
+
+**Output:** new `raw/sessions/2026-08-09-donny-first-dashboard-and-route-blind-spot.md`; NEW
+`concepts/donny-first-dashboard.md`; **compounded as a CORRECTION** onto
+`concepts/donny-data-and-quick-actions.md` (new "The guard's blind spot" section, its Known Issue
+struck-and-explained, one new Known Issue, See Also); `index.md` (1 Sources line + the new Concept
++ the quick-actions entry corrected — **each in both catalog copies**, see below); `log.md` top
+entry; `SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5 **two** Built entries with dated
+`**Pending:**` clauses; `DATABASE_SCHEMA.md` (`campaigns.deadline` is a `date`); `DESIGN_SYSTEM.md`
+(`AppChip` is a filter primitive, wrong as a primary affordance); + THIS entry.
+
+**Happened.** Ran as the branch-finish step with #410 already open, so the docs ride in the same PR.
+Covered **two** efforts because #409 merged during the session without its own sync.
+
+**Worked — [scope-ordering] paid off by being run first, for once.** One command before any edit;
+core docs were current because the branch had just been rebased onto `origin/main`. Also
+[wikilinks]-exact (grepped all 7 targets against `index.md`; zero dangling) and [orphans]-by-path
+via PowerShell (clean).
+
+**Worked — [doc-documents-the-bug] fired exactly as written.** `donny-data-and-quick-actions.md`
+described the `isKnownRoute` three-layer fix as if it closed the class, and its Known Issue framed
+the residual risk as *under*-linking ("a new route must be added or Donny won't link to it") — the
+safe failure. The shipped failure was the opposite and cost twelve dead CTAs including the revenue
+path. Struck the Known Issue and explained it rather than deleting it.
+
+**NEW WIKI DEFECT FOUND, deliberately not fixed:** `index.md`'s `## Concepts` section contains the
+**entire catalog twice**, with UTF-8 mojibake (`â€”`) scattered through both copies. Verified by
+`uniq -c` on the extracted paths — every concept appears exactly 2×; Sources and Entities are
+single. I added each new/corrected entry to **both** copies, so nothing is lost whichever copy a
+future dedupe keeps. Deduping is a ~160-line rewrite of a file every worktree touches → its own PR.
+
+**Failed / didn't run.** RAG sync is post-merge per [rag-sync] (#410 open; `docs/` changed so the
+post-merge hook fires on the main fast-forward). `verify-knowledge`'s loop-close likewise deferred.
+
+**Remember — the correction this session had to make about ITSELF, which is the sharpest thing here.**
+I told **eight** subagent dispatches "`npm run test` exits 1 from ~103 pre-existing failures; judge
+by counts, not the exit code," quoting a stored memory. Then measured it: **210 files / 2033 tests /
+0 failed.** The memory was not stale — it is **location-scoped**. Those failures are vitest
+mis-collecting Playwright specs under `.claude/worktrees/**`, and *a worktree has no nested
+worktrees under it to scan*. So from a worktree a red suite means a **real regression**, the exact
+opposite of what I'd told everyone. Repeating "it's always ~103 red" trains a whole session to
+ignore the one number that catches a real break. **A memory can be true and still be wrong where you
+are standing — check whether a remembered fact is scoped to a location before propagating it.**
+(Memory file updated with the scoping.) Second, cheap: `npm run test | tail -N` reports **tail's**
+exit code, not vitest's — the pipe silently launders a failure into exit 0.
 
 ### [2026-08-08] Notification + invitation authorization (`fix/notification-authorization`, PR #387)
 

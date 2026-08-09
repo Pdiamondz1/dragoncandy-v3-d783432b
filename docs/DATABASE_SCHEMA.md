@@ -121,6 +121,19 @@
 | `application_counter_offers` | Negotiation counter-offers on applications. Written via the `create_counter_offer` SECURITY DEFINER RPC (authorization-hardened 2026-07-20: identity + participant + role-integrity guards, writes the server-derived `sender_id`/`sender_role`, `anon` EXECUTE revoked) or the direct-insert apply-time path; the INSERT RLS policy pins `sender_role` to the caller's derived role. See [[Service-Role Data Exposure]]. |
 | `content_disputes` | Dispute record opened when a business rejects content after max revisions (`reject-content` inserts `collaboration_id`/`initiated_by`/`reason`, `status=open`) and resolved by `resolve-dispute` (`status=resolved`, `outcome ∈ refund/partial_payment/approved`). Participant-SELECT RLS (creator or campaign owner) + a service-role FOR-ALL policy. **Restored to prod 2026-07-23 (PR #325)** — it, and the whole collaboration state machine, were recorded in `schema_migrations` but MISSING from prod (see below). |
 
+> **`campaigns.deadline` is a `date`, not a `timestamptz` — do not compare it as an instant.**
+> Verified against prod `information_schema` 2026-08-09. Supabase therefore returns it as
+> `"YYYY-MM-DD"`, and `new Date("2026-08-10")` parses to **UTC midnight** — an instant, in a
+> timezone the user does not live in. Subtracting a mid-day `now` from a midnight instant floors
+> **downward in every timezone**, so a "due today" check is unreachable for the whole day. In
+> America/New_York (UTC−4/−5, where the company is) UTC midnight of day D is 8pm local on D−1, so
+> *tomorrow's* deadline also reads as "today" until it vanishes at 8pm. Compare **local calendar
+> days**: build the deadline from its parts (`new Date(y, m-1, d)`) and floor `now` with
+> `setHours(0,0,0,0)`, then **round** the day difference rather than flooring — a calendar day is 23
+> or 25 hours across a DST transition, and a floored 25-hour "tomorrow" reads as "today". Found by
+> Codex after eight internal reviews missed it; see [[Donny-First Dashboard]].
+> (`campaigns.created_at` / `completed_at` **are** `timestamptz`; only `deadline` is date-only.)
+
 > **Collaboration state machine (`campaign_collaborations.content_status`) — restored 2026-07-23
 > (PR #325, [[Content Delivery State Machine]]).** The `20260425000000_collaboration_state_machine`
 > migration was recorded as applied but its objects were absent from prod (`recorded ≠ actual`):
