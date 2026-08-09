@@ -85,8 +85,18 @@ where a session `access_token` is written into a redirect URL.
 
 ### Other allow-lists and guards
 
-- `_shared/google-workspace.ts` — `REDIRECT_HOSTS` gains both `.com` hosts. Must land with
-  the matching Google Cloud console URIs or the flow 403s `bad_host`.
+- `_shared/google-workspace.ts` — `REDIRECT_HOSTS` gains the `.com` hosts **and `www` on both
+  TLDs**. Must land with the matching Google Cloud console URIs or the flow 403s `bad_host`.
+  Six URIs are now required: apex, `www` and `internal` × both TLDs, each
+  `https://<host>/internal/workspace/callback`.
+
+  **`www` is not decoration.** Measured 2026-08-09: `https://www.dragoncandy.io` returns
+  **HTTP 200, not a redirect** — the `www` → apex redirect the Vercel cutover runbook
+  describes is **not actually live**, on either domain (`.com` currently redirects the *other*
+  way, apex → `www`). The caller sends `window.location.hostname`, so `/internal/workspace` on
+  `www` fails `bad_host` before Google consent. That is a **pre-existing live bug on `.io`**,
+  caught by the Codex second review of this branch; listing `www` fixes it instead of
+  depending on a redirect that does not exist.
 - `index.html` — CSP `img-src` gains `https://dragoncandy.com`.
 - **`supabase/scripts/staging-login.mjs`** — the production-safety guard matched only
   `/(^|\.)dragoncandy\.io$/`. Once `.com` is production that guard **silently stops
@@ -98,7 +108,9 @@ where a session `access_token` is written into a redirect URL.
 
 1. **GoDaddy DNS** — delete the two parking A records so the apex gets a valid Vercel cert.
 2. **Vercel** — attach all three `.com` domains; apex primary, `www` → apex; Deployment
-   Protection stays "Standard Protection".
+   Protection stays "Standard Protection". Note that `www` → apex is **not currently live on
+   either domain** (`.io` serves `www` with a 200; `.com` redirects apex → `www`), so this is
+   a change to make, not a state to assume. The code no longer depends on it either way.
 3. **Supabase Auth** — *add* `https://dragoncandy.com/**`, `https://www.dragoncandy.com/**`,
    `https://internal.dragoncandy.com/**`. Keep every `.io` entry; leave Site URL on `.io`.
 4. **Google Cloud OAuth** — add the two `.com` callback URIs, keep the `.io` pair.
