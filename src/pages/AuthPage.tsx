@@ -10,15 +10,9 @@ import { toast } from 'sonner';
 import { BRAND_ROLE_ENABLED } from "@/lib/featureConfig";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { Eyebrow } from "@/components/landing/Eyebrow";
+import { ALLOWED_REDIRECT_ORIGINS } from "@/lib/allowedOrigins";
 
 type SignupStep = "role-selection" | "signup-form";
-
-const ALLOWED_REDIRECT_ORIGINS = new Set([
-  'https://dragoncandy.io',
-  'https://www.dragoncandy.io',
-  'https://dragoncandy-v3.lovable.app',
-  'https://dragoncandy-preview.lovable.app',
-]);
 
 const AuthPage = () => {
   const [searchParams] = useSearchParams();

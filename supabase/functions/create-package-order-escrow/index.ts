@@ -3,6 +3,13 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import {
+  APP_ORIGINS,
+  DEFAULT_ORIGIN,
+  INTERNAL_APP_ORIGINS,
+  LOVABLE_PREVIEW_ORIGIN,
+  WWW_APP_ORIGINS,
+} from "../_shared/origins.ts";
 import { testModeCustomText } from "../_shared/test-mode-text.ts";
 import { testModePaymentMethodTypes } from "../_shared/test-mode-payment-methods.ts";
 
@@ -171,16 +178,16 @@ serve(async (req) => {
     // Resolve the redirect host from an ALLOWLIST (mirrors _shared/cors.ts) — NEVER the raw Origin header: for
     // guests the success URL embeds the opaque order token, so a spoofed Origin must not be able to send
     // Stripe's post-payment redirect (token and all) to an attacker-controlled domain.
-    const ALLOWED_ORIGINS = new Set([
-      "https://dragoncandy.io",
-      "https://www.dragoncandy.io",
-      "https://dragoncandy-preview.lovable.app",
-      "https://internal.dragoncandy.io",
+    const ALLOWED_ORIGINS = new Set<string>([
+      ...APP_ORIGINS,
+      ...WWW_APP_ORIGINS,
+      ...INTERNAL_APP_ORIGINS,
+      LOVABLE_PREVIEW_ORIGIN,
     ]);
     const reqOrigin = req.headers.get("origin") ?? "";
     const origin = ALLOWED_ORIGINS.has(reqOrigin)
       ? reqOrigin
-      : (Deno.env.get("PUBLIC_SITE_URL") || "https://dragoncandy.io");
+      : (Deno.env.get("PUBLIC_SITE_URL") || DEFAULT_ORIGIN);
 
     // Guests land on their tokenized order page; logged-in buyers on the dashboard order. Both carry the
     // session id so the return page can call verify-package-order-escrow.

@@ -96,7 +96,26 @@ export async function verifyState(state: string, expectedUserId: string): Promis
 // OAuth: consent URL, code exchange, refresh, revoke
 // ---------------------------------------------------------------------------
 
-const REDIRECT_HOSTS = new Set(["internal.dragoncandy.io", "dragoncandy.io"]);
+// Hostnames (not origins) whose /internal/workspace/callback is a registered
+// Google OAuth redirect URI. Every entry here MUST also be listed verbatim in
+// the Google Cloud console credential, or the exchange fails redirect_uri_mismatch
+// — the two sides are changed together, never one at a time.
+//
+// `www` is included because it genuinely serves the app: https://www.dragoncandy.io
+// returns 200, NOT a redirect to the apex (measured 2026-08-09 — the Vercel
+// cutover runbook describes a www→apex redirect that is not actually live). The
+// caller sends `window.location.hostname`, so a founder who reaches
+// /internal/workspace on www would otherwise fail `bad_host` before ever seeing
+// Google consent. That was already broken on .io; listing www fixes it rather
+// than depending on a redirect that does not exist.
+const REDIRECT_HOSTS = new Set([
+  "dragoncandy.com",
+  "www.dragoncandy.com",
+  "internal.dragoncandy.com",
+  "dragoncandy.io",
+  "www.dragoncandy.io",
+  "internal.dragoncandy.io",
+]);
 
 export function redirectUriFor(host: string): string {
   if (!REDIRECT_HOSTS.has(host)) {
