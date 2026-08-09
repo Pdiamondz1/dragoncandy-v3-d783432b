@@ -22,8 +22,8 @@ import { useLocationReadiness } from '@/hooks/useLocationReadiness';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { PageBody } from '@/components/app/PageBody';
 import { DCSkeleton } from '@/components/ui/dc-skeleton';
-import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting';
 import { LocationBadge } from '@/components/org/LocationBadge';
+import { DonnyAvatar } from './DonnyAvatar';
 import { DCTour } from '@/components/guidance/DCTour';
 import { TourButton } from '@/components/guidance/TourButton';
 import { RatingPromptManager } from '@/components/reviews/RatingPromptManager';
@@ -154,12 +154,15 @@ export function DonnyHome() {
     return (
       <DashboardLayout userRole="business_client">
         <div className="min-h-screen bg-white overflow-x-hidden">
-          <PageBody>
-            <div className="space-y-3">
-              <DCSkeleton variant="text-block" className="h-3 w-32" />
-              <DCSkeleton variant="text-block" className="h-8 w-48" />
+          {/* Mirrors the loaded hero's width and centring so there is no
+              layout jump when the profile resolves. */}
+          <PageBody maxWidth="4xl">
+            <div className="flex flex-col items-center gap-3 pt-4 lg:pt-12">
+              <DCSkeleton variant="text-block" className="h-16 w-16 rounded-full" />
+              <DCSkeleton variant="text-block" className="h-8 w-64" />
+              <DCSkeleton variant="text-block" className="h-3 w-72" />
             </div>
-            <DCSkeleton variant="text-block" className="h-12 w-full lg:w-72 rounded-full" />
+            <DCSkeleton variant="text-block" className="h-16 w-full rounded-full" />
             <DCSkeleton variant="list-row" count={3} />
           </PageBody>
         </div>
@@ -170,13 +173,29 @@ export function DonnyHome() {
   return (
     <DashboardLayout userRole="business_client">
       <div className="min-h-screen bg-white overflow-x-hidden">
-        <PageBody>
-          <DashboardGreeting
-            roleLabel="Restaurant Dashboard"
-            userName={profile?.full_name || 'there'}
-            badge={<LocationBadge />}
-            subtitle="Tell me what you need and I'll take it from here."
-          />
+        <PageBody maxWidth="4xl">
+          {/* A centered hero, not a heading with a field under it: on this
+              dashboard the prompt IS the body, so it gets the emblem, the
+              greeting and the whitespace rather than sharing them with a
+              stat grid. Deliberately NOT DashboardGreeting — that component
+              is left-aligned and shared with the creator/brand dashboards,
+              which keep their current layout. No tour anchor lives in it, so
+              swapping it here costs nothing. */}
+          <div className="flex flex-col items-center pt-4 text-center lg:pt-12">
+            <div className="flex items-center gap-2 pb-7">
+              <span className="text-xs font-semibold uppercase tracking-widest text-dc-text-muted">
+                Restaurant Dashboard
+              </span>
+              <LocationBadge />
+            </div>
+            <DonnyAvatar size="xl" aria-label="Donny" />
+            <h1 className="pt-5 text-3xl font-bold text-dc-text lg:text-4xl">
+              Welcome back, {profile?.full_name || 'there'}
+            </h1>
+            <p className="pt-2 text-base text-dc-text-muted">
+              Tell me what you need and I'll take it from here.
+            </p>
+          </div>
 
           <DonnyHomePrompt
             suggestions={BUSINESS_SUGGESTIONS}
