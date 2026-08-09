@@ -54,7 +54,12 @@ export function useDraftPublication(draftId: string | undefined): DraftPublicati
 
   return {
     isPublished: !!data,
-    isLoading: !!draftId && !!user && isLoading,
+    // "No session yet" counts as NOT KNOWN, not as "safe to send". React Query
+    // reports a disabled query as not-loading, so without the `!user` term this
+    // returns all-false during the auth-loading window and the card arms itself
+    // with no guard behind it — the exact failure this hook exists to prevent,
+    // just in a narrower window.
+    isLoading: !!draftId && (!user || isLoading),
     isUnknown: !!error,
   };
 }
