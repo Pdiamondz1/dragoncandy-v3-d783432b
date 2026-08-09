@@ -96,8 +96,36 @@ shows **zero measured posts**. The only verified post published that afternoon
 and its first milestone had not elapsed. That is the correct answer, and the UI
 says it.
 
+## The rule now binds Donny too (2026-08-09)
+
+The `verified_at` gate and `MIN_POSTS_FOR_SIGNAL` were, until 2026-08-09, properties
+of the **screen**. Donny answered the same questions from the same table with neither
+— so the chat panel and the Analytics page could disagree about the same account, and
+the panel was the one that would have been believed.
+
+Two things closed that, both in [[Donny Social Tools]]:
+
+- **The same inner-join filter**, in both of Donny's `content_performance` reads.
+  `!inner` alone only proves the joined row exists; the `.not()` on `verified_at` is
+  what proves it is stamped. Note the second read is a **sample-size count**, which is
+  the worse of the two places to leak: an unverified row there does not merely add a
+  wrong number, it buys the model permission to state a rate as meaningful.
+
+  > **A bar cleared by rows nobody measured is a gate that lies while looking rigorous.**
+
+- **One canonical `MIN_POSTS_FOR_SIGNAL`.** It had drifted into two copies; the edge
+  side now has one (`supabase/functions/_shared/social-signal.ts`) that
+  `content-strategy-recommend` re-exports, with `src/lib/postPerformance.ts` left as the
+  frontend copy behind a pointer comment — `src/` and `supabase/functions/` cannot import
+  each other, so two files is the floor, and the pointer is what keeps them one value.
+
+A related trap in the same read, worth stating because the code *ran perfectly*:
+`content_performance` rows are **cumulative per milestone**, so summing them roughly
+tripled real totals. See [[Donny Social Tools]] for the prod numbers that proved it.
+
 ## See Also
 
+- [[Donny Social Tools]] — the same evidence bar applied to Donny's own social answers
 - [[Social Measurement Spine]] — the pipeline that produces the data, and the
   `verified_at` rule this filters on
 - [[Cross-Tenant Proxy Authorization]] — same session; the same "runs perfectly,

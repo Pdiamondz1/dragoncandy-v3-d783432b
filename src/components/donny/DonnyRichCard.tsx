@@ -4,6 +4,7 @@ import type { DonnyRichCard as RichCardType } from '@/types/donny';
 import { useNavigate } from 'react-router-dom';
 import { useDonnyContext } from '@/contexts/DonnyProvider';
 import { useResolvedAvatarUrl } from '@/hooks/useSignedUrl';
+import { SocialDraftCard } from './SocialDraftCard';
 
 interface DonnyRichCardProps {
   card: RichCardType;
@@ -111,6 +112,9 @@ export function DonnyRichCard({ card }: DonnyRichCardProps) {
 
     case 'onboarding_step':
       return null; // Onboarding options rendered as quick chips, not cards
+
+    case 'social_post_draft':
+      return <SocialDraftCard data={card.data} />;
 
     default:
       return null;

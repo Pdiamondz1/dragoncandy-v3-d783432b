@@ -26,6 +26,221 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-09] Donny's `social_*` tools — repaired after 7 calls and 0 successes
+
+> **State as of writing.** Branch `feat/donny-social-tools-repair`, PR open. One migration
+> (`20260809193254`, applied and verified on prod ahead of the code, per the standing ordering
+> rule); no change to any existing table's policies or grants. Merging ships the frontend only —
+> `donny-orchestrator` needs a **separate deploy**, and the acceptance signal cannot be observed
+> until it happens.
+
+### What was reported
+
+Driving the founder's own signed-in prod session, Donny was asked to post to Instagram. He
+replied that he had **"no visibility into which Instagram account is connected to your
+Harbormill organization,"** told the owner to go find an **"account ID"** under Social Media
+settings, and promised **"Once you provide that account ID, I can post."**
+
+Three separate defects in one reply. The app plainly knows the account —
+`/dashboard/business/social` shows one connected account, `@areyouaman`, one click away. The
+Social Media page **displays no account ID anywhere**; the instruction was not followable. And
+he could not post regardless: `social_*` had never once succeeded.
+
+Third recorded instance of Donny inventing a cause for his own failure.
+
+### The audit overturned two standing claims
+
+Both had been repeated in planning documents, which is why the spec opens with the audit
+rather than the fix. **A claim in a planning doc is not evidence.**
+
+**"Instrumentation is missing" — false.** `donny_tool_executions` held **158 rows**. That claim
+described a bug fixed on 2026-07-18 (nullable `message_id`, corrected column names) and had
+been stale since. The table had already caught this failure: 7 `social_*` calls on Aug 7,
+**7 errors, 0 successes**, every one carrying the identical stored output
+`{"error":"unauthorized"}`. So **no instrumentation work was in scope** — the observability
+existed and did its job; nobody was reading it.
+
+**"The cause is the bogus `account_id`" — false.** The bridge sent `SUPABASE_SERVICE_ROLE_KEY`
+as the `Authorization` header to `outstand-proxy`, which authenticates by running that header
+through `auth.getUser()` on the **anon** client. A service-role token resolves to **no user** →
+401, returned *before* path extraction and long before the account-ownership check. Two further
+breakages sat latent in the same request: the bridge sent an `{action}` **body field** while the
+proxy routes by **URL path** (a POST to the bare function URL resolves to `/`, matching no
+branch → `403 path_not_allowed`), and it sent an `x-outstand-user-id` header that appears in
+exactly one file in the whole `supabase/functions/` tree — the sender. **This bridge had never
+been able to succeed.**
+
+The fabricated id was real but **separate**. All 7 tools declared `account_id` as required with
+no enum or hint, and nothing ever told the model a real value — no `social_list_accounts` tool,
+no accounts in the system prompt — so it sent `"harbormill"`, the org name. The server-side
+default `args.account_id ?? defaultAccountId` could not catch it: **`??` only fires on
+`null`/`undefined`**. Had auth been correct this would have surfaced as `403 forbidden_account`,
+a **different signature** from the 401 observed. Latent, not causal.
+
+**A third failure mode was uncountable.** With zero connected accounts the bridge returned
+`null` and the orchestrator returned a canned string **without writing to
+`donny_tool_executions`** — so the 7 logged errors were necessarily from users who *did* have an
+account. It now logs.
+
+### What shipped
+
+**Surface: 7 tools → 4.** `get_optimal_times`, `get_audience_insights` and `list_scheduled` have
+**no backing operation** — recorded in the Zernio cutover spec and ignored since, while still
+being offered to the model. Removed. `filterToolsByTier` updated in the same change, because the
+free-tier list held one of the three and would otherwise have lost a tool silently.
+
+**`account_id` deleted from every schema.** The bridge resolves the account from the
+authenticated user: one active account → use it silently; more than one → a disambiguation
+payload listing **handles and platforms, never ids**; zero → an honest result, now logged. This
+makes `403 forbidden_account` **unreachable** rather than handled — *a grant may rest only on a
+fact the client cannot assert*. "Active" means `status = 'active'`, not the old `!= 'revoked'`:
+prod holds `error` rows beside `active` ones for the same handle, and one user holds 2 `error` +
+2 `revoked` + 0 `active`, so the old gate offered all four tools to someone none could serve.
+
+**Publishing is two steps, structurally.** Founder decision: publishing is irreversible and
+public. `social_create_post` **does not publish** — it returns a draft rendered through the
+existing `donny_messages.rich_cards` side-channel (no schema change), naming the account by
+handle and platform, showing the caption and media exactly as they will post, with **Post it** /
+**Edit**. Publishing happens on the tap, from the authenticated client. **The LLM cannot
+publish** — enforced by where the code lives, not by an instruction a model may ignore.
+`schedule_post` is identical and **refuses** rather than degrading to an unscheduled draft when
+it has no usable time.
+
+**Numbers are sample-size gated** at `MIN_POSTS_FOR_SIGNAL = 3`. The constant existed twice; the
+canonical edge copy now lives in `_shared/social-signal.ts`, re-exported by
+`content-strategy-recommend/brief.ts`, with `src/lib/postPerformance.ts` left as the frontend
+copy behind a pointer comment (neither tree can import the other).
+
+### Three measurement traps, one shape
+
+All three were introduced by the plan and caught in review; none by a pre-existing test. Stated
+together because they are the same defect wearing different clothes:
+
+> **A gate must be about the same thing as the claim it licenses.**
+
+1. **Cumulative snapshots summed.** `content_performance` stores a cumulative snapshot per
+   `(post, platform, milestone)` — the 72h row restates the 24h row. Summing multiplied real
+   totals by the number of milestones fired. Proven against prod post `XDbxe`/youtube: 24h =
+   1369 views/5 likes, 72h = 1388/5, 7d = 1388/5 → naive summing reports **4145/15**; the truth
+   is **1388/5**. Fixed by keeping only the most mature snapshot per `(post, platform)`, ranked
+   by the same milestone `CASE` `get_creator_brief_performance` uses.
+2. **Reads ungated on `verified_at`** (Codex round 2, two P2s = one defect in two places). Both
+   existing readers of that table already apply the filter — the capture job and the Analytics
+   page. `verified_at` is stamped only by server-side code from a signed Outstand event, so an
+   unstamped row is client-asserted. Prod holds 9 legacy rows for 3 posts, **6 of them
+   fabricated all-zero measurements**, and ungated they would have **cleared the sample-size
+   bar**. *A bar cleared by rows nobody measured is a gate that lies while looking rigorous.*
+3. **A user-wide gate licensing one account's rate** (Codex round 3). `get_account_metrics`
+   resolves one account and returns that account's engagement rate, but counted every verified
+   post the user had — five Instagram posts could certify a YouTube rate. Scoped to the resolved
+   account's platform, the finest grain the table offers. The residual (two accounts on one
+   platform) returns an honest count with **no signal** rather than borrowing the sibling's
+   sample.
+
+### CT-4b — closed in the same session
+
+**Republish after reload.** The draft card persists to `donny_messages.rich_cards` and re-renders
+on load, so "already sent" could not live in component state: reopening the conversation re-armed
+the button on a draft already live on a public feed, and a second tap posted a duplicate.
+
+Closed by **`donny_draft_publications`** (migration `20260809193254`, applied and verified on
+prod) — an append-only marker keyed on a `draft_id` now generated server-side when the card is
+built.
+
+**Not** an UPDATE policy on `donny_messages`, which was the obvious route: that table has exactly
+two policies (SELECT own, INSERT own) and no UPDATE for any surface, so adding one would hand
+every user write access to the stored text of what Donny said, to fix a UI-state problem — and RLS
+`WITH CHECK` sees only the NEW row, so "only `rich_cards` may change" is not expressible as a
+policy anyway. The PK is composite `(user_id, draft_id)`, not `draft_id` alone: otherwise anyone
+who learned another user's draft id could squat the row and make the real owner's marker insert
+fail *after* their post had gone out.
+
+**Ordering is the invariant** — written after the publish succeeds, so "row exists ⇒ it went out",
+the same rule as `payout_executed_at`. A pre-claim would leave a draft marked published that never
+posted, permanently un-postable with nothing on the feed to explain why. So a marker write that
+fails after a successful publish is a *bookkeeping* failure and must not re-arm the button. The
+card fails **closed** on anything short of a definite "not published" — lookup in flight, lookup
+failed, or no draft id at all.
+
+Verified red→green on prod, every write rolled back: grants are exactly `authenticated:
+INSERT,SELECT` (no `anon`, no `PUBLIC`); cross-user INSERT → 42501; own INSERT → succeeds; DELETE
+→ 42501 (no grant); duplicate → 23505, which the recording hook deliberately treats as success.
+
+**Residual:** publish-succeeds-then-marker-fails leaves this session correct but a reload can
+re-arm that one card. Much narrower than what it replaced, and it fails toward a visible duplicate
+rather than a silent one — but not zero.
+
+### Three more, caught by the review loop after the work looked finished
+
+**A published post the product could not see.** The draft card published through `useCrossPost`
+and never wrote `donny_scheduled_posts` — so a post Donny scheduled was live upstream and absent
+from the calendar, `UpcomingPostsWidget`, `SocialPostStatus` and `PostManagementPanel`. Confirmed
+before fixing: both other cross-post callers insert that row themselves; the Donny card was the
+only path that didn't. Now built by a pure `buildDonnyScheduleRow` checked against the live prod
+CHECKs — `threads` is not an allowed platform, so it **fails loudly** rather than being mapped
+onto an allowed value (a wrong row is worse than a missing one for every downstream reader), and
+a caption-only post records as `photo` behind a `content_type_inferred` flag.
+
+**An honest refusal that could not be reached.** `allTools` only carries social tools when the
+bridge is non-null, so returning null at zero accounts meant the model could never emit a social
+call — and the audit branch written to count that never-counted population could never fire. The
+bridge now reports `hasConnectedAccount` and the **caller** decides: auto-pilot skips (it is a
+cron with nothing to report on), the orchestrator does not (the user is asking). An honest
+refusal has to be reachable to be honest about anything.
+
+**A failed read claiming "no account connected" — this branch's own thesis, one layer down.**
+`fetchActiveAccounts` returned `[]` when the account read *failed*; `resolveAccount([])` is
+`none`, and `none` becomes `no_social_account`. That is the founder's original complaint,
+reproduced by a database blip instead of the 401. The instructive part: an earlier commit on this
+branch added the missing `if (error)` check and **still returned `[]`**, while the comment above
+the call site claimed the whole fix — the failure stopped being silent, the false claim survived.
+The distinction now lives in the return type (`{ ok: false }` vs `{ ok: true, accounts: [] }`),
+because caller discipline is exactly what failed. A new `accounts_unavailable` result tells the
+model the lookup failed and explicitly forbids asserting no account is connected.
+
+**A fourth, one round later: two branches feeding one wrapper with two different shapes.**
+`get_account_metrics` returns `{ data, has_signal, caveat }`. The REST branch assigns the
+provider's metrics object; the MCP branch assigned the envelope, so `data` read
+`{content:[{text:'{"followers":…}'}]}` — the number `has_signal` describes, one JSON-decode away
+inside a string. Latent (the MCP client has never connected on prod) and fixed anyway, on the rule
+this branch already applied to the tool-name intersection: one config flip from live, and a config
+flip is not a code review. `unwrapMcpPayload` handles **only** the unambiguous case — a single
+content block carrying a JSON object — and returns the envelope untouched for everything else,
+because picking "the" payload among several is a guess and a wrong guess *drops* the response
+where the envelope merely *nests* it.
+
+Negative controls were run for all four: reverting each fix fails the tests that pin it.
+
+### Stated rather than discovered later
+
+**The CI edge-function typecheck gate covers none of this work.** `check-edge-functions.mjs`
+reaches a `_shared` module only transitively, and **both** importers — `donny-orchestrator` and
+`donny-auto-pilot` — are pre-existing entries on `.typecheck-ignore`, so `outstand-mcp.ts`,
+`outstand-accounts.ts` and `social-draft.ts` get **zero** coverage from "66 functions clean".
+Both the spec and the plan asserted otherwise, and both were wrong (the original write-up named
+only `outstand-mcp.ts` and understated the reach; `edge-function-reviewer` sharpened it).
+
+Covered by hand instead: `deno check` on both ignored entrypoints returns **exactly 2 errors —
+`TS2345` + `TS2322`, both the `supabaseUrl`-is-protected skew** — and the identical 2 errors
+appear running the same command against `main`, so this branch adds none. Evidence with a
+baseline, not a substitute for the gate.
+
+The blocker is a **supabase-js version skew**:
+`donny-orchestrator` imports `supabase-js@2` (floating) while `_shared/outstand-mcp.ts` pins
+`@2.57.2`, and the two `SupabaseClient` types are structurally incompatible (`supabaseUrl` is
+protected). Pinning the entry file is **not** a one-line fix — tried, and errors went **1 → 18**,
+because `donny-orchestrator` also imports eight `agents/*.ts` modules on `@2`; it sits *between*
+two camps. The repo carries three pin styles (79× `@2`, 37× `@2.57.2`, 6× `@2.50.0`), so aligning
+them is a repo-wide decision, not a tidy-up to smuggle into a feature branch.
+
+### Acceptance
+
+The proof this asks to be judged on is a **`status='success'` row in `donny_tool_executions` for
+a `social_*` tool** — which has never existed. It cannot be observed until after merge **and** a
+separate deploy of `donny-orchestrator`. A both-viewport `verify-prod` is also outstanding.
+
+→ `docs/wiki/concepts/donny-social-tools.md`
+
 ## [2026-08-09] Donny-first business dashboard (Phase A) + the route guard's blind spot
 
 > **State as of writing.** PR #409 is **merged** (`fef2b428`). PR #410 is **open**, flag-off. Two

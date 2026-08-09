@@ -2791,6 +2791,24 @@ export type Database = {
         }
         Relationships: []
       }
+      donny_draft_publications: {
+        Row: {
+          draft_id: string
+          published_at: string
+          user_id: string
+        }
+        Insert: {
+          draft_id: string
+          published_at?: string
+          user_id: string
+        }
+        Update: {
+          draft_id?: string
+          published_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       donny_help_logs: {
         Row: {
           agent_used: string | null

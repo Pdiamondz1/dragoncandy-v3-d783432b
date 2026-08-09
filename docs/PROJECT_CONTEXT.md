@@ -117,6 +117,35 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 > proof the object exists (see [[Content Delivery State Machine]]) and "recorded ≠ actual" has
 > bitten this project before.
 
+- **Donny's `social_*` tools repaired (7 calls → 0 successes → 4 working tools)** — Donny told the
+  founder he had "no visibility into which Instagram account is connected", sent him to find an
+  **"account ID"** on a page that displays none, and promised to post once he had it. The prod audit
+  overturned **two standing project claims**: instrumentation was never missing (`donny_tool_executions`
+  held 158 rows and had already recorded the answer), and the cause was never the fabricated
+  `account_id` — the bridge sent the **service-role key** where `outstand-proxy` runs `auth.getUser()`
+  on the anon client, so it 401'd before any account logic ran. Ships 7 tools → **4** (three had no
+  backing operation), `account_id` deleted from every schema and resolved server-side, and
+  `create_post`/`schedule_post` returning a **draft card the owner taps** — so the LLM structurally
+  cannot publish. Three measurement traps caught in review, all one shape (*a gate must be about the
+  same thing as the claim it licenses*): cumulative milestone rows summed (~3×, proven on prod post
+  `XDbxe`), both reads ungated on `verified_at` (6 fabricated all-zero rows would have cleared the
+  sample bar), and a user-wide gate licensing one account's engagement rate. **CT-4b closed** in the
+  same session: a published draft used to re-arm its own button on reload (a second tap = a duplicate
+  public post), now blocked by the append-only `donny_draft_publications` marker — migration
+  `20260809193254`, **applied and verified on prod**, with no change to any existing table's policies
+  or grants. Four **more** defects surfaced by the review loop *after* the work read as finished —
+  a scheduled post the product could not see (no `donny_scheduled_posts` row), an honest refusal that
+  was structurally unreachable, a failed account read still claiming "no account connected" (the
+  original complaint via a DB blip, where an earlier commit had added the error check, still returned
+  `[]`, and carried a comment claiming the whole fix), and one wrapper fed two different shapes by its
+  two branches. **Pending (2026-08-09):** merge **PR #416** (open, mergeable; `verify`/`smoke`/
+  `lighthouse`/Vercel green — `Supabase Preview` fails here as it does on #396, the known staging
+  drift); **deploy `donny-orchestrator` separately** (merging ships frontend only); then the
+  acceptance signal — a `status='success'` row in `donny_tool_executions` for a `social_*` tool,
+  which has **never existed** — and a both-viewport `verify-prod`. Note the CI edge typecheck gate
+  covers **none** of these `_shared` files (both importers are on `.typecheck-ignore`); a hand-run
+  `deno check` with a `main` baseline stands in for it.
+  → `docs/wiki/concepts/donny-social-tools.md` · #416
 - **Donny-first business dashboard (Phase A)** — the `/dashboard/business` body becomes Donny
   (greeting + attention list + prompt box + three taps); today's body preserved verbatim at
   `/dashboard/business/overview`. Scope set by a prod audit, not the mockup: only 4 Donny tools

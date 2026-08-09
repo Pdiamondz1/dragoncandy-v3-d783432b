@@ -7,6 +7,7 @@ import { getUserUsageStage, incrementUsage, checkQuotaOrBlock, checkHourlyRateLi
 import { embedQuery, retrieveContext } from "./rag.ts";
 import { SUB_AGENT_TOOLS, mergeToolsWithMcp, detectSocialIntent, isSocialTool } from "./tools.ts";
 import { createOutstandMcpBridge, type OutstandMcpBridge } from "../_shared/outstand-mcp.ts";
+import type { SocialDraftCard } from "../_shared/social-draft.ts";
 import type { CreatorCard, OrchestratorInput, UserContext } from "./types.ts";
 import * as campaignAgent from "./agents/campaign.ts";
 import * as creatorsAgent from "./agents/creators.ts";
@@ -288,8 +289,10 @@ serve(async (req) => {
       error: authError,
     } = await supabaseUser.auth.getUser();
 
+    let isSessionAuth = false;
     if (user && !authError) {
       userId = user.id;
+      isSessionAuth = true;
     } else {
       const oauthResult = await validateDonnyToken(req);
       if (!oauthResult) throw new Error("Unauthorized");
@@ -390,15 +393,23 @@ serve(async (req) => {
     };
 
     // --- MCP bridge ---
-    try {
-      mcpBridge = await createOutstandMcpBridge({
-        userId,
-        userRole: userContext.user_role,
-        orgTier: userContext.org_tier,
-        supabase,
-      });
-    } catch (mcpErr) {
-      console.warn("[donny-orchestrator] MCP bridge init failed:", mcpErr);
+    // Session branch only. outstand-proxy authenticates the forwarded header
+    // with auth.getUser(); a Donny OAuth token is not a Supabase JWT, so
+    // forwarding it would reproduce the 401 this fix exists to remove. No
+    // bridge means no social tools offered — honest, and better than offering
+    // a tool that cannot work over this connection.
+    if (isSessionAuth) {
+      try {
+        mcpBridge = await createOutstandMcpBridge({
+          userId,
+          userRole: userContext.user_role,
+          orgTier: userContext.org_tier,
+          supabase,
+          authHeader,
+        });
+      } catch (mcpErr) {
+        console.warn("[donny-orchestrator] MCP bridge init failed:", mcpErr);
+      }
     }
 
     // --- RAG: embed + retrieve ---
@@ -459,9 +470,19 @@ serve(async (req) => {
     await incrementUsage(supabase, userId, modelConfig.actionCost);
     let lastToolUsed = "general";
     let loopCount = 0;
-    // Structured cards from find_creators, threaded straight into the SSE `done`
-    // event (bypassing the LLM). Last find_creators dispatch wins.
-    let collectedCards: CreatorCard[] = [];
+    // Two independently-owned card sources, threaded into the SSE `done` event
+    // (bypassing the LLM), combined only at the single write site below.
+    //
+    // They CANNOT share one array: find_creators legitimately reassigns its
+    // cards wholesale (including resetting to empty on an empty lookup — a
+    // Codex P2 fix, so a later empty search can't leave stale creator cards
+    // on the response) while a social draft, once produced, must survive any
+    // later tool call in the same turn ("post this update and find me a
+    // creator" is a plausible single-turn request). A single shared array
+    // made that reassignment silently wipe an already-produced,
+    // unrecoverable draft — caught in review before it shipped.
+    let creatorCards: CreatorCard[] = []; // "last find_creators wins" — reset semantics preserved
+    let draftCards: SocialDraftCard[] = []; // accumulate; never reset by another tool
 
     while (claudeResult.stop_reason === "tool_use" && loopCount < 3) {
       loopCount++;
@@ -478,6 +499,13 @@ serve(async (req) => {
         if (isSocialTool(toolName) && mcpBridge) {
           const mcpResult = await mcpBridge.callTool(toolName, toolInput);
           agentResult = JSON.stringify(mcpResult);
+
+          // Draft cards ride the same rich_cards side-channel as creator cards,
+          // but in their OWN array (see the declaration above) — appended,
+          // never assigned, so a later find_creators dispatch in this same
+          // turn cannot wipe an already-produced draft.
+          const newDraftCards = mcpBridge.takeCards();
+          if (newDraftCards.length > 0) draftCards = [...draftCards, ...newDraftCards];
 
           // Audit log — all MCP tool calls logged to donny_tool_executions.
           // This insert wrote nothing for the function's entire life: it used columns that
@@ -501,8 +529,17 @@ serve(async (req) => {
           } catch (err) {
             console.error("[donny-orchestrator] tool exec log threw:", err);
           }
-        } else if (isSocialTool(toolName)) {
-          agentResult = JSON.stringify({ error: "No social accounts connected. Connect a social account in the Social Media Manager to use this feature." });
+        // NOTE: there is deliberately no `else if (isSocialTool(toolName))`
+        // branch here. It existed, and it was DEAD CODE: `allTools` only
+        // carries social tools when `mcpBridge` is non-null, so the model
+        // could never emit a social tool call in the case that branch was
+        // written to handle. Worse, it carried the audit insert meant to make
+        // the zero-account population countable for the first time — a fix
+        // that could never fire. The bridge is now built whenever the provider
+        // is configured (see hasConnectedAccount in _shared/outstand-mcp.ts),
+        // so a zero-account caller reaches `callTool` above, gets the honest
+        // `no_social_account` result it already returns, and IS logged by the
+        // insert in that branch. Found by Codex.
         } else {
           const enrichedInput: Record<string, unknown> = {
             ...toolInput,
@@ -519,7 +556,9 @@ serve(async (req) => {
           // pool / error), so a later empty lookup can't leave STALE cards from an
           // earlier one on the response (Codex P2). Gate on the tool name, not on
           // card presence: other sub-agents (undefined cards) must not clear it.
-          if (toolName === "find_creators") collectedCards = dispatched.cards ?? [];
+          // Reassigns creatorCards ONLY — draftCards lives in its own array and is
+          // untouched by this branch.
+          if (toolName === "find_creators") creatorCards = dispatched.cards ?? [];
         }
 
         toolResultBlocks.push({
@@ -569,8 +608,11 @@ serve(async (req) => {
       console.error("[donny-orchestrator] logging failed:", logErr);
     }
 
-    // Return as SSE events for frontend streaming consumption
+    // Return as SSE events for frontend streaming consumption.
+    // Combined only here, drafts first — a draft is the thing the user is
+    // being asked to act on, and this is the one place both sources merge.
     const textChunk = JSON.stringify({ text: answer });
+    const collectedCards: Array<SocialDraftCard | CreatorCard> = [...draftCards, ...creatorCards];
     const doneChunk = JSON.stringify({
       suggested_actions,
       agent_used: lastToolUsed,

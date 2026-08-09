@@ -1,5 +1,79 @@
 # Wiki Log
 
+## [2026-08-09] update | [[Donny Social Tools]] — four findings the review loop caught after the work looked finished
+
+Updated [[Donny Social Tools]] from the continuation section appended to
+`raw/sessions/2026-08-09-donny-social-tools-repair.md` (rounds 5–6 of the Codex loop, plus the
+two read-only reviewers' verdicts on the final code).
+
+Three defects, each caught only because the loop kept running past "done":
+
+1. **A published post the product could not see.** The draft card published through
+   `useCrossPost` and never wrote `donny_scheduled_posts` — live upstream, absent from the
+   calendar and three widgets. Both other cross-post callers write that row; the Donny card was
+   the only path that didn't.
+2. **An honest refusal that could not be reached.** Returning null at zero accounts meant no
+   social tool was offered, so the model could never emit one, so the audit branch written to
+   count that population could never fire. Recorded as a rule: *an honest refusal has to be
+   reachable to be honest about anything* — and a "we now count this" claim is worth nothing
+   until you check the counting path can execute.
+3. **A failed read claiming "no account connected"** — this branch's own thesis, one layer
+   down. The sharpest detail is the intermediate state: an earlier commit added the missing
+   `if (error)` check and **still returned `[]`**, while the comment above the call site claimed
+   the whole fix. The failure stopped being silent; the false claim survived. Cross-linked to
+   [[Notification Delivery]], which records the same bar from its own six-round loop.
+4. **Two branches feeding one wrapper with two different shapes.** The MCP branch of
+   `get_account_metrics` assigned the envelope rather than the payload, so the follower count
+   `has_signal` describes sat one JSON-decode away inside a string. Latent (that branch has never
+   connected on prod) and fixed anyway — *a config flip is not a code review*. The unwrap handles
+   only the unambiguous case, because picking "the" payload among several **drops** the response
+   where the envelope merely **nests** it.
+
+Also **corrected a claim this page inherited**: the CI edge-function typecheck gate covers
+*none* of this work — both importers sit on `.typecheck-ignore`, so "66 functions clean" says
+nothing about it. Replaced with a hand-run `deno check` carrying a `main` baseline (2 errors on
+both sides, identical codes — the known supabase-js skew).
+
+Pages updated: [[Donny Social Tools]].
+
+## [2026-08-09] ingest | [[Donny Social Tools]] — repaired after 7 calls and 0 successes
+
+Ingested `raw/sessions/2026-08-09-donny-social-tools-repair.md`. The direct sequel to the entry
+below: that audit found `social_*` at 0/7 and routed nothing to it; this is the repair.
+
+New concept page [[Donny Social Tools]]. Its centre of gravity is that **the prod audit
+overturned two standing project claims**, both of which had been repeated in planning
+documents — instrumentation was never missing (`donny_tool_executions` held 158 rows and had
+already recorded the answer), and the cause was never the fabricated `account_id` (the bridge
+sent the **service-role key** where `outstand-proxy` runs `auth.getUser()` on the anon client,
+so it 401'd before any account logic ran). The durable lesson: *a claim in a planning doc is
+not evidence.*
+
+The four rules the page records are each enforced by structure, not by prompt text — most
+sharply that **the LLM cannot publish**, because `create_post` returns a draft card and
+publishing happens in client code on a human tap.
+
+Three measurement traps are recorded together because they are one shape — *a gate must be
+about the same thing as the claim it licenses*: cumulative milestone rows summed (~3×
+inflation, proven against prod post `XDbxe`); reads ungated on `verified_at`, which would have
+let six fabricated all-zero rows clear the sample-size bar; and a user-wide sample gate
+licensing a single account's engagement rate. All three were caught in review, none by tests
+that existed beforehand.
+
+Also records the once-only guard (CT-4b), which was an open founder decision when the page was
+first written and was closed in the same session: a published draft used to re-arm its own
+button on reload, because the card is persisted and re-rendered while "already sent" lived in
+component state. The page keeps the reasoning for *not* taking the obvious route — an UPDATE
+policy on `donny_messages` would hand every user write access to the stored text of what Donny
+said, and "only `rich_cards` may change" is not expressible as an RLS policy at all, since
+`WITH CHECK` sees only the NEW row.
+
+Pages created: [[Donny Social Tools]]
+Pages updated: [[Honest Analytics]] (the bar now binds Donny, not just the screen),
+[[Social Measurement Spine]] (third consumer of `content_performance`, and its two traps),
+[[Donny Data Visibility & Quick-Action Routing]] (bug class 3 — inventing a cause, third
+recorded instance)
+
 ## [2026-08-09] ingest | [[Donny-First Dashboard]] + the route guard's blind spot
 
 Ingested `raw/sessions/2026-08-09-donny-first-dashboard-and-route-blind-spot.md` — two efforts on
