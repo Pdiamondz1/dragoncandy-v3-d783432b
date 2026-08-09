@@ -14,7 +14,7 @@
 // Body: { promotion_id, action: 'publish' | 'update' | 'end', payload: {...} }
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { isAuthorizedIngest } from "../_shared/ingest-auth.ts";
 

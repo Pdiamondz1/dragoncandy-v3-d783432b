@@ -1,4 +1,4 @@
-import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { SubAgentResult, UserContext } from "../types.ts";
 import { dragonshareRoute } from "../routes.ts";
 

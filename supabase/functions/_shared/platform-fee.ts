@@ -1,4 +1,4 @@
-import { type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 // Free-tier default from the take-rate ladder: Free 10% / Starter 7% / Growth 5% / Pro 3% / Enterprise 2%
 export const PLATFORM_FEE_RATE = 0.10;

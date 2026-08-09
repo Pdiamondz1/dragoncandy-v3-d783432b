@@ -1,5 +1,5 @@
 // supabase/functions/donny-orchestrator/agents/guidance.ts
-import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { SubAgentResult, UserContext } from "../types.ts";
 import { stripHtml } from "./guidance-helpers.ts";
 

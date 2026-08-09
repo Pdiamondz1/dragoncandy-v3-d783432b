@@ -11,7 +11,7 @@
 // Spec: docs/superpowers/specs/2026-06-11-google-workspace-connections-design.md §3.B
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { describeError } from "./errors.ts";
 import {

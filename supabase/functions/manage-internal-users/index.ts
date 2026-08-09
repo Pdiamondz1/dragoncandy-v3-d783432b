@@ -6,7 +6,7 @@
 // metadata → the handle_new_user trigger creates no consumer profile), and AIOS
 // access is granted purely through user_roles.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import { createClient } from "npm:@supabase/supabase-js@2.50.0";
 import { Resend } from "npm:resend@2.0.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import {
