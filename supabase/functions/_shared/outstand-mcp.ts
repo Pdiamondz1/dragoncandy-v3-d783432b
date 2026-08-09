@@ -191,7 +191,7 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
         // enforced by RLS on this client.
         const { data, error } = await config.supabase
           .from('content_performance')
-          .select('outstand_post_id, platform, views, likes, comments, shares, engagement_rate')
+          .select('outstand_post_id, platform, views, likes, comments, shares, engagement_rate, milestone')
           .eq('user_id', config.userId)
           .gte('captured_at', since);
 
