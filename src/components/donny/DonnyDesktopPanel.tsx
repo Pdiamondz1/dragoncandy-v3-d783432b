@@ -22,8 +22,14 @@ export function DonnyDesktopPanel() {
   // Desktop: close when clicking outside the panel. Mobile has its own backdrop,
   // and this panel is only CSS-hidden (not unmounted) on mobile — so the isMobile
   // gate is required to avoid closing Donny on unrelated mobile taps.
+  // 'inline' matches the render guard below: while inline this component
+  // returns null, so panelRef.current is null and `?.contains(target)` is
+  // undefined — every document pointerdown would fall straight through to
+  // close(). Inert today only because nextStage('inline','close') is 'inline';
+  // arming a handler whose guard clause is one rulebook edit from closing the
+  // dashboard canvas on every click is not worth the saving.
   useEffect(() => {
-    if (isMobile || stage === 'closed') return;
+    if (isMobile || stage === 'closed' || stage === 'inline') return;
     const handler = (e: PointerEvent) => {
       const target = e.target as HTMLElement | null;
       if (!target) return;

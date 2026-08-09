@@ -240,18 +240,26 @@ export function DonnyHome() {
               <RatingPromptManager variant="row" />
               <SponsorshipRatingPromptManager variant="row" />
             </DonnyHomeProposals>
-          </DonnyCanvas>
 
-          <div className="flex items-center justify-between gap-3 pt-2">
-            <Link
-              to={OVERVIEW_ROUTE}
-              onClick={() => void trackEvent('donny_home_overview_opened', {})}
-              className="text-sm font-semibold text-dc-teal-btn hover:underline"
-            >
-              View full dashboard →
-            </Link>
-            <TourButton onClick={triggerTour} />
-          </div>
+            {/* INSIDE the canvas, so it hides in thread state. Outside it, the
+                canvas's own "← Dashboard" and this row would put two links to
+                the same route on screen mid-thread, and the tour button would
+                point at [data-tour] anchors that are no longer rendered.
+                Duplication is the complaint this whole surface exists to
+                remove. The pt-2 keeps the old spacing: PageBody's space-y-8 is
+                2rem, and the canvas's gap-6 (1.5rem) plus this 0.5rem is the
+                same. */}
+            <div className="flex items-center justify-between gap-3 pt-2">
+              <Link
+                to={OVERVIEW_ROUTE}
+                onClick={() => void trackEvent('donny_home_overview_opened', {})}
+                className="text-sm font-semibold text-dc-teal-btn hover:underline"
+              >
+                View full dashboard →
+              </Link>
+              <TourButton onClick={triggerTour} />
+            </div>
+          </DonnyCanvas>
         </PageBody>
         {showTour && tourSteps.length > 0 && (
           <DCTour steps={tourSteps} onComplete={completeTour} onSkip={skipTour} />

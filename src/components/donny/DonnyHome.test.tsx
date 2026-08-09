@@ -384,6 +384,23 @@ describe('DonnyHome — page-level behaviour', () => {
     expect(screen.getByRole('button', { name: /show tour/i })).toBeInTheDocument();
   });
 
+  it('drops the footer row in thread state, so only one link to the overview is on screen', () => {
+    // The canvas renders its own "← Dashboard" to the SAME route. Two links to
+    // one page mid-thread is the duplication this surface exists to remove,
+    // and the tour button would be aiming at [data-tour] anchors that are no
+    // longer rendered.
+    renderHome();
+    const input = screen.getByRole('textbox', { name: /ask donny/i });
+    fireEvent.change(input, { target: { value: 'plan my week' } });
+    fireEvent.submit(input.closest('form')!);
+
+    expect(screen.queryByRole('link', { name: /view full dashboard/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /show tour/i })).not.toBeInTheDocument();
+    // Exactly one route out remains — the canvas's own back link.
+    expect(screen.getAllByRole('link')).toHaveLength(1);
+    expect(screen.getByRole('link')).toHaveAttribute('href', '/dashboard/business/overview');
+  });
+
   it('renders the prompt and taps even with nothing else to say', () => {
     renderHome();
     expect(screen.getByRole('textbox', { name: /ask donny/i })).toBeInTheDocument();
