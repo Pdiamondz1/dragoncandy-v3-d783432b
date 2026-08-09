@@ -17,6 +17,9 @@
 
 /** Minimum measured posts before a pattern may be presented as a pattern.
  *  Matches the precedent already set by the weekly brief's MIN_POSTS_FOR_SIGNAL. */
+// Deliberate duplicate of supabase/functions/_shared/social-signal.ts.
+// src/ cannot import from supabase/functions/, so this value is mirrored, not
+// shared. If you change it, change it there too — the edge side is canonical.
 export const MIN_POSTS_FOR_SIGNAL = 3;
 
 /** One measurement of one post at one milestone, as stored in content_performance. */

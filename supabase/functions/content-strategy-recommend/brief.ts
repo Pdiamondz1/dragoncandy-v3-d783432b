@@ -1,7 +1,11 @@
 // Pure, dependency-free logic for the content-brief recommender. Imported by both
 // the Deno edge function (index.ts) and the Vitest test — no Deno/Supabase/I/O.
 
-export const MIN_POSTS_FOR_SIGNAL = 3;
+import { MIN_POSTS_FOR_SIGNAL } from '../_shared/social-signal.ts';
+
+// Re-exported so this module's existing importers and tests keep their import
+// path. The VALUE now has exactly one definition, in _shared/social-signal.ts.
+export { MIN_POSTS_FOR_SIGNAL };
 
 export interface PerfRow {
   outstand_post_id: string | null;
