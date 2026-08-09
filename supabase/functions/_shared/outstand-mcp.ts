@@ -114,12 +114,22 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
     rawTools = SOCIAL_TOOLS;
   }
 
-  // A remote MCP server's list is NOT a permission to offer a tool. Task 3
-  // dropped three tools for having no backing operation; without this, setting
-  // OUTSTAND_MCP_URL would silently re-offer them on any paid tier, since
-  // filterToolsByTier only restricts free. Intersect, never trust.
-  const known = new Set(SOCIAL_TOOLS.map((t) => t.name));
-  rawTools = rawTools.filter((t) => known.has(t.name));
+  // A remote MCP server's list is NOT a permission to offer a tool, and its
+  // SCHEMA is not authoritative either — both buildForwardedArgs' allow-list
+  // and RESOLUTION_ONLY_KEYS (outstand-mcp-tools.ts) enforce against OUR
+  // schema (SOCIAL_TOOLS), not whatever the remote declares. If the model
+  // were shown the remote's own property set instead, a field it forwards
+  // that we don't allow-list on our side would silently vanish before
+  // reaching the provider — and, concretely, the `handle` disambiguation
+  // property (outstand-accounts.ts) exists only in SOCIAL_TOOLS, so a
+  // remote-schema-driven tool list would never advertise it, reopening the
+  // same ask-loop this fix exists to close. Task 3 already established the
+  // "never trust the remote's tool NAMES" rule (dropped three tools with no
+  // backing operation); this uses the remote list ONLY to decide which
+  // names are actually supported upstream, then substitutes our own
+  // definition for every field of the offered schema.
+  const supportedNames = new Set(rawTools.map((t) => t.name));
+  rawTools = SOCIAL_TOOLS.filter((t) => supportedNames.has(t.name));
 
   const namespacedTools = namespaceTools(filterToolsByTier(rawTools, config.orgTier));
 
@@ -177,9 +187,15 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
 
       // Resolved fresh per call, from the authenticated user. The model never
       // sends an id, so there is nothing to validate and nothing to forge.
+      // `handle` is the answer to a disambiguation question this same
+      // function asked on a prior call (see the `many` branch below) — it is
+      // consumed here, by resolveAccount, and MUST NOT be part of what
+      // reaches the upstream provider request (buildForwardedArgs excludes
+      // it explicitly; see RESOLUTION_ONLY_KEYS in outstand-mcp-tools.ts).
       const accounts = await fetchActiveAccounts(config.supabase, config.userId);
       const platformHint = typeof args.platform === 'string' ? args.platform : null;
-      const resolution = resolveAccount(accounts, platformHint);
+      const handleHint = typeof args.handle === 'string' ? args.handle : null;
+      const resolution = resolveAccount(accounts, platformHint, handleHint);
 
       if (resolution.kind === 'none') {
         return { content: [{ type: 'text', text: noAccountResult() }], isError: true };

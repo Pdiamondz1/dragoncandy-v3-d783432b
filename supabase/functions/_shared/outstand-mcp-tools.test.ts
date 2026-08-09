@@ -75,6 +75,26 @@ describe('account_id is gone from the model-facing contract', () => {
   });
 });
 
+describe('the handle disambiguation field', () => {
+  it('is declared on the three account-taking tools', () => {
+    for (const name of ['create_post', 'schedule_post', 'get_account_metrics']) {
+      const t = SOCIAL_TOOLS.find((x) => x.name === name);
+      const props = (t?.inputSchema as { properties?: Record<string, unknown> }).properties ?? {};
+      expect(Object.keys(props)).toContain('handle');
+    }
+  });
+
+  it('regression: get_post_analytics still declares no account-selecting property at all', () => {
+    // get_post_analytics runs BEFORE account resolution and never resolves
+    // one — adding a selector here would re-introduce the bug this branch
+    // already fixed (an unreachable dead-end for a 2+-account caller).
+    const t = SOCIAL_TOOLS.find((x) => x.name === 'get_post_analytics');
+    const props = (t?.inputSchema as { properties?: Record<string, unknown> }).properties ?? {};
+    expect(Object.keys(props)).not.toContain('handle');
+    expect(Object.keys(props)).not.toContain('platform');
+  });
+});
+
 describe('the publishing tools say they do not publish', () => {
   it('tells the model create_post only drafts', () => {
     const t = SOCIAL_TOOLS.find((x) => x.name === 'create_post');
@@ -153,5 +173,30 @@ describe('buildForwardedArgs', () => {
       'real-id',
     );
     expect(forwarded).toEqual({ caption: 'hello', platform: 'instagram', media_urls: ['x'], account_id: 'real-id' });
+  });
+
+  it('never forwards handle upstream, even though get_account_metrics declares it in its schema', () => {
+    // handle exists so the MODEL has somewhere to answer a disambiguation
+    // question; it is consumed server-side by resolveAccount before this
+    // function ever runs. account_id must remain the only account selector
+    // that reaches the upstream provider call.
+    const forwarded = buildForwardedArgs(
+      'get_account_metrics',
+      { platform: 'instagram', handle: '@areyouaman' },
+      'real-id',
+    );
+    expect(forwarded).toEqual({ platform: 'instagram', account_id: 'real-id' });
+    expect(forwarded.handle).toBeUndefined();
+  });
+
+  it('never forwards handle upstream for create_post or schedule_post either', () => {
+    for (const name of ['create_post', 'schedule_post']) {
+      const forwarded = buildForwardedArgs(
+        name,
+        { caption: 'hi', scheduled_at: '2030-01-01T00:00:00Z', handle: '@areyouaman' },
+        'real-id',
+      );
+      expect(forwarded.handle).toBeUndefined();
+    }
   });
 });

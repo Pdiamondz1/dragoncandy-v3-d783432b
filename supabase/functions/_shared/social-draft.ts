@@ -69,7 +69,9 @@ export function disambiguationResult(accounts: ConnectedAccount[]): string {
     status: 'which_account',
     accounts: accounts.map(describeAccount),
     instruction:
-      'Ask the user which of these accounts to use. Refer to them exactly as listed.',
+      'Ask the user which of these accounts to use. Refer to them exactly as listed. ' +
+      'When they answer, call this tool again and pass their exact answer in the ' +
+      '"handle" field (e.g. "@areyouaman") so the account can be resolved.',
   });
 }
 

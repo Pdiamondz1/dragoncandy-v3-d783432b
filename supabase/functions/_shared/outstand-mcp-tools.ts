@@ -27,6 +27,13 @@ export const SOCIAL_TOOLS: McpToolDefinition[] = [
           description:
             'Optional. Only when the user named a platform, e.g. "instagram". Omit otherwise.',
         },
+        handle: {
+          type: 'string',
+          description:
+            'Optional. Only when the user is answering a "which account?" question you just ' +
+            'asked them — pass back the exact handle they picked (e.g. "@areyouaman"), ' +
+            'unchanged from how it was shown. Omit otherwise.',
+        },
         media_urls: { type: 'array', items: { type: 'string' } },
       },
       required: ['caption'],
@@ -47,6 +54,13 @@ export const SOCIAL_TOOLS: McpToolDefinition[] = [
           type: 'string',
           description:
             'Optional. Only when the user named a platform, e.g. "instagram". Omit otherwise.',
+        },
+        handle: {
+          type: 'string',
+          description:
+            'Optional. Only when the user is answering a "which account?" question you just ' +
+            'asked them — pass back the exact handle they picked (e.g. "@areyouaman"), ' +
+            'unchanged from how it was shown. Omit otherwise.',
         },
         media_urls: { type: 'array', items: { type: 'string' } },
       },
@@ -76,6 +90,13 @@ export const SOCIAL_TOOLS: McpToolDefinition[] = [
           type: 'string',
           description:
             'Optional. Only when the user named a platform, e.g. "instagram". Omit otherwise.',
+        },
+        handle: {
+          type: 'string',
+          description:
+            'Optional. Only when the user is answering a "which account?" question you just ' +
+            'asked them — pass back the exact handle they picked (e.g. "@areyouaman"), ' +
+            'unchanged from how it was shown. Omit otherwise.',
         },
       },
       required: [],
@@ -107,11 +128,26 @@ export function namespaceTools(tools: McpToolDefinition[]): McpToolDefinition[] 
 }
 
 /**
+ * Schema properties that exist for the MODEL to fill in (so it can answer a
+ * disambiguation question) but that resolveAccount consumes SERVER-SIDE, in
+ * outstand-mcp.ts, before buildForwardedArgs ever runs. `handle` must never
+ * reach the upstream provider call: the only account selector that may ever
+ * leave this function is the server-resolved `account_id` below. Without
+ * this exclusion, declaring `handle` on a tool's schema (so the model has
+ * somewhere to put the user's answer) would also allow-list it straight
+ * through to the org-wide-authenticated upstream request — the same class of
+ * leak this allow-list exists to prevent, just via a field we ourselves
+ * declared instead of one the model invented.
+ */
+const RESOLUTION_ONLY_KEYS: ReadonlySet<string> = new Set(['handle']);
+
+/**
  * The request forwarded to the MCP client for `toolName` — an ALLOW-LIST,
  * not a spread of the model's raw args. Only keys the tool's OWN schema
- * declares (this tool's `inputSchema.properties` above) are forwarded, plus
- * the server-resolved `account_id`, which always wins regardless of what the
- * model sent under that key or any other name.
+ * declares (this tool's `inputSchema.properties` above), minus
+ * RESOLUTION_ONLY_KEYS, are forwarded, plus the server-resolved
+ * `account_id`, which always wins regardless of what the model sent under
+ * that key or any other name.
  *
  * WHY an allow-list here (unlike the response-shaping blocklist in
  * strip-account-ids.ts): this is a REQUEST we wrote. The schema is ours, so
@@ -147,6 +183,7 @@ export function buildForwardedArgs(
 
   const forwarded: Record<string, unknown> = {};
   for (const key of Object.keys(props)) {
+    if (RESOLUTION_ONLY_KEYS.has(key)) continue;
     if (Object.prototype.hasOwnProperty.call(args, key)) {
       forwarded[key] = args[key];
     }
