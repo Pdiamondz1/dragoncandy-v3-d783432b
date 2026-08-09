@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - **Branch:** `feat/donny-first-dashboard` (already checked out; holds the two spec commits stacked on `2066cbf6`). Do not commit to `worktree-dc-improvements-22` — PR #409 is open on it.
-- **Feature flag:** `DONNY_FIRST_DASHBOARD_ENABLED` in `src/lib/featureConfig.ts`, default **`false`**. Every new surface is behind it. With the flag off the app must be behaviourally identical to today.
+- **Feature flag:** `DONNY_FIRST_DASHBOARD_ENABLED` in `src/lib/featureConfig.ts`, default **`false`**. Every new **UI surface** is behind it, and with the flag off the app must render exactly as it does today. The single exception is Task 7's system-prompt rule, which is deliberately not gated: it lives in an edge function that cannot read a frontend constant, and it makes Donny more helpful on every surface rather than introducing a new one. Task 7 states this at its own site too.
 - **Nothing is deleted.** Today's body moves; the two rating prompts and the location-setup blocker keep a home. (Spec Goal 4.)
 - **Design system:** light app only — `dc-*` tokens, `PageBody` / `AppCard` / `AppChip` / `AppStatusBadge` from `src/components/app/`. **Never a gray background, banner or badge**; `amber` is the allowed warm-neutral status tone. Gray *text* (`text-dc-text-muted`) is fine. Buttons are `rounded-full`.
 - **`PageBody` owns page padding** — do not add your own. Pass `className="space-y-4"` only if you need tighter rhythm.
