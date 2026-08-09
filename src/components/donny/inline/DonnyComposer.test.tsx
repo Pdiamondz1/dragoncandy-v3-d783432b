@@ -65,10 +65,25 @@ describe('DonnyComposer', () => {
     expect(onSubmit).toHaveBeenCalledWith('via form');
   });
 
+  it('submits the trimmed text and clears the field when the send button is clicked', () => {
+    render(<DonnyComposer onSubmit={onSubmit} />);
+    fireEvent.change(field(), { target: { value: '  click to send  ' } });
+    fireEvent.click(screen.getByRole('button', { name: /send to donny/i }));
+    expect(onSubmit).toHaveBeenCalledWith('click to send');
+    expect(field()).toHaveValue('');
+  });
+
   it('sends nothing while disabled', () => {
     render(<DonnyComposer onSubmit={onSubmit} disabled />);
     fireEvent.change(field(), { target: { value: 'while streaming' } });
     fireEvent.keyDown(field(), { key: 'Enter' });
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('sends nothing when the send button is clicked while disabled', () => {
+    render(<DonnyComposer onSubmit={onSubmit} disabled />);
+    fireEvent.change(field(), { target: { value: 'while streaming' } });
+    fireEvent.click(screen.getByRole('button', { name: /send to donny/i }));
     expect(onSubmit).not.toHaveBeenCalled();
   });
 

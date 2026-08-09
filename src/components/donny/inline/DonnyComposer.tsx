@@ -10,7 +10,12 @@ const MAX_COMPOSER_HEIGHT = 200;
 interface DonnyComposerProps {
   onSubmit: (text: string) => void;
   disabled?: boolean;
-  /** Lets DonnyProvider focus this field when a launcher is tapped. */
+  /**
+   * Lets DonnyProvider focus this field when a launcher is tapped. Must be
+   * referentially stable (e.g. `useCallback(..., [])`) — the effect below
+   * keys off its identity, so a new function every render would
+   * unregister/re-register on every keystroke.
+   */
   registerRef?: (el: HTMLTextAreaElement | null) => void;
   variant?: 'resting' | 'stuck';
 }
