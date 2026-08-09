@@ -1,6 +1,7 @@
 // Presentational half of the Donny-first dashboard body: what needs the owner's
 // attention right now. Every input is a prop and every action is a callback —
 // the container owns the data, the navigation and the analytics.
+import type { ReactNode } from 'react';
 import { AlertTriangle, Clock, Eye, X } from 'lucide-react';
 import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { NeedsAttentionSection } from '@/components/dashboard/NeedsAttentionSection';
@@ -12,6 +13,8 @@ interface DonnyHomeProposalsProps {
   isLoading: boolean;
   onDismiss: (proposalId: string) => void;
   onTap: (proposal: DonnyProposal) => void;
+  /** Extra "needs you" rows appended as trailing slots INSIDE the same frame. */
+  children?: ReactNode;
 }
 
 function ProposalIcon({ proposal }: { proposal: DonnyProposal }) {
@@ -77,6 +80,7 @@ export function DonnyHomeProposals({
   isLoading,
   onDismiss,
   onTap,
+  children,
 }: DonnyHomeProposalsProps) {
   if (isLoading) {
     return (
@@ -88,8 +92,10 @@ export function DonnyHomeProposals({
 
   const { blocker, proposals, overflowCount } = result;
   // NeedsAttentionSection hides itself when every slot is empty, but returning
-  // null here keeps the DOM clean and makes the "nothing to say" case explicit.
-  if (!blocker && proposals.length === 0) return null;
+  // null here keeps the DOM clean and makes the "nothing to say" case explicit —
+  // "nothing to say" now includes no trailing children, since those (e.g. the
+  // rating prompts) are their own reason to keep the frame around.
+  if (!blocker && proposals.length === 0 && !children) return null;
 
   return (
     <NeedsAttentionSection>
@@ -108,6 +114,7 @@ export function DonnyHomeProposals({
           )}
         </div>
       )}
+      {children}
     </NeedsAttentionSection>
   );
 }

@@ -152,4 +152,36 @@ describe('DonnyHomeProposals', () => {
     expect(texts[0]).toContain('Hoboken needs a connected Stripe account');
     expect(texts).toHaveLength(4);
   });
+
+  it('renders children inside the frame alongside proposals', () => {
+    render(
+      <DonnyHomeProposals
+        result={result({ proposals: [proposal()] })}
+        isLoading={false}
+        onDismiss={noop}
+        onTap={noop}
+      >
+        <div data-testid="rating-prompt">Rate your last collaboration</div>
+      </DonnyHomeProposals>
+    );
+    expect(screen.getByText(/Ricky Ricardo applied to "Taco Tuesday"/)).toBeInTheDocument();
+    expect(screen.getByTestId('rating-prompt')).toBeInTheDocument();
+  });
+
+  it('renders children even when there is no blocker and no proposals', () => {
+    const { container } = render(
+      <DonnyHomeProposals result={result()} isLoading={false} onDismiss={noop} onTap={noop}>
+        <div data-testid="rating-prompt">Rate your last collaboration</div>
+      </DonnyHomeProposals>
+    );
+    expect(screen.getByTestId('rating-prompt')).toBeInTheDocument();
+    expect(container).not.toBeEmptyDOMElement();
+  });
+
+  it('renders nothing when there is no blocker, no proposals, and no children', () => {
+    const { container } = render(
+      <DonnyHomeProposals result={result()} isLoading={false} onDismiss={noop} onTap={noop} />
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
 });
