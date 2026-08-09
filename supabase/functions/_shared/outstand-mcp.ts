@@ -17,7 +17,7 @@ import {
   type SocialDraftCard,
 } from './social-draft.ts';
 import { summarizePerformance, type PerfRow } from './social-analytics.ts';
-import { assessSignal } from './social-signal.ts';
+import { assessSignal, unattributableSignal } from './social-signal.ts';
 import { stripAccountIds, stripAccountIdsFromMcpContent } from './strip-account-ids.ts';
 
 interface OutstandMcpConfig {
@@ -285,10 +285,23 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
         // engagement rate as meaningful on the strength of rows nobody
         // measured. See the block above for why `!inner` and `.not()` are both
         // required.
+        //
+        // Scoped to the RESOLVED ACCOUNT'S PLATFORM, not the whole user. Unlike
+        // get_post_analytics — which reports across everything the user has and
+        // is therefore correctly user-wide — this tool answers about ONE
+        // account, and its payload carries that account's engagement rate. A
+        // user-wide count lets five measured Instagram posts certify a YouTube
+        // rate: the gate would be about a different thing than the claim.
+        // Platform is the finest grain available (content_performance records a
+        // platform, never an account id) and the vocabularies match — verified
+        // on prod 2026-08-09, all three tables use lowercase provider names
+        // (instagram/youtube/facebook). If they ever diverge this returns 0 and
+        // caveats, which is the safe direction.
         const { data: perfRows, error: perfError } = await config.supabase
           .from('content_performance')
           .select('outstand_post_id, social_post_log!inner(verified_at)')
           .eq('user_id', config.userId)
+          .eq('platform', account.platform)
           .not('social_post_log.verified_at', 'is', null);
         if (perfError) {
           // Mirror get_post_analytics above: a read failure must say so, not
@@ -309,7 +322,19 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
             .map((r: { outstand_post_id: string | null }) => r.outstand_post_id)
             .filter((id): id is string => typeof id === 'string' && id.length > 0),
         ).size;
-        const verdict = assessSignal(postCount);
+        // Platform is as fine as this table goes, so two connected accounts on
+        // ONE platform share the count above and it cannot be attributed to
+        // either. Refuse the signal rather than let the sibling's posts vouch
+        // for this account. Latent today — no prod user holds two active
+        // accounts on the same platform (checked 2026-08-09) — but it is
+        // exactly the case handle-disambiguation exists for, so it will happen.
+        const sharesPlatform =
+          accounts.filter(
+            (a) => (a.platform ?? '').toLowerCase() === (account.platform ?? '').toLowerCase(),
+          ).length > 1;
+        const verdict = sharesPlatform
+          ? unattributableSignal(postCount)
+          : assessSignal(postCount);
 
         let raw: unknown;
         if (client) {

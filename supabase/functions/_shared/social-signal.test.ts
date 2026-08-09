@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MIN_POSTS_FOR_SIGNAL, assessSignal } from './social-signal';
+import { MIN_POSTS_FOR_SIGNAL, assessSignal, unattributableSignal } from './social-signal';
 
 describe('MIN_POSTS_FOR_SIGNAL', () => {
   it('is 3 — the value the rest of the product already uses', () => {
@@ -37,5 +37,26 @@ describe('assessSignal', () => {
     expect(assessSignal(-1).hasSignal).toBe(false);
     expect(assessSignal(Number.NaN).hasSignal).toBe(false);
     expect(assessSignal(Number.NaN).n).toBe(0);
+  });
+});
+
+describe('unattributableSignal', () => {
+  it('never claims a signal, however large the sample', () => {
+    // This is the whole point: the sample can be enormous and still say nothing
+    // about the account being reported on.
+    for (const n of [0, 1, 3, 50, 5000]) {
+      expect(unattributableSignal(n).hasSignal).toBe(false);
+    }
+  });
+
+  it('reports the count honestly — the attribution failed, not the measurement', () => {
+    expect(unattributableSignal(1).caveat).toContain('1 measured post ');
+    expect(unattributableSignal(4).caveat).toContain('4 measured posts ');
+    expect(unattributableSignal(4).caveat).toContain('more than one connected account shares it');
+  });
+
+  it('floors an invalid count the same way assessSignal does', () => {
+    expect(unattributableSignal(-2).n).toBe(0);
+    expect(unattributableSignal(Number.NaN).n).toBe(0);
   });
 });

@@ -67,6 +67,19 @@ const ACCOUNT_ROW = {
   platform_handle: 'areyouaman',
 };
 
+const YT_ACCOUNT_ROW = {
+  outstand_social_account_id: 'I2pgX',
+  platform: 'youtube',
+  platform_handle: '@josephcastelo149',
+};
+
+/** A second Instagram connection — the case platform-scoping cannot separate. */
+const IG_SIBLING_ROW = {
+  outstand_social_account_id: 'ZZZZZ',
+  platform: 'instagram',
+  platform_handle: 'second_shop',
+};
+
 /** One measured post, in the shape the gated select returns. */
 function perfRow(id: string, milestone = '24h') {
   return {
@@ -111,6 +124,11 @@ async function bridgeFor(rowsByTable: Record<string, unknown[]>) {
     business_outstand_accounts: [ACCOUNT_ROW],
     ...rowsByTable,
   });
+  return build(supabase, queries);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function build(supabase: any, queries: RecordedQuery[]) {
   const bridge = await createOutstandMcpBridge({
     userId: 'user-1',
     userRole: 'business_client',
@@ -187,5 +205,45 @@ describe('get_account_metrics', () => {
     });
     const atBar = await three.bridge.callTool('social_get_account_metrics', {});
     expect(JSON.parse(atBar.content[0].text as string).has_signal).toBe(true);
+  });
+
+  // This tool answers about ONE account and returns that account's engagement
+  // rate, so a user-wide sample would let five measured Instagram posts certify
+  // a YouTube rate — a gate about a different thing than the claim.
+  // get_post_analytics is deliberately NOT scoped this way: it reports across
+  // everything the user has.
+  it('scopes the sample to the resolved account platform', async () => {
+    stubFetchOk();
+    const { supabase, queries } = fakeSupabase({
+      business_outstand_accounts: [ACCOUNT_ROW, YT_ACCOUNT_ROW],
+      content_performance: [perfRow('p1'), perfRow('p2'), perfRow('p3')],
+    });
+    const { bridge } = await build(supabase, queries);
+
+    await bridge.callTool('social_get_account_metrics', { platform: 'youtube' });
+
+    const [q] = perfQuery(queries);
+    expect(q.filters).toContainEqual({ op: 'eq', args: ['platform', 'youtube'] });
+  });
+
+  it('refuses the signal when two accounts share the resolved platform', async () => {
+    stubFetchOk();
+    const { supabase, queries } = fakeSupabase({
+      business_outstand_accounts: [ACCOUNT_ROW, IG_SIBLING_ROW],
+      // Three measured posts — enough to clear the bar on count alone. They
+      // cannot be attributed to either Instagram account, so the bar must not
+      // clear: content_performance records a platform, never an account id.
+      content_performance: [perfRow('p1'), perfRow('p2'), perfRow('p3')],
+    });
+    const { bridge } = await build(supabase, queries);
+
+    const res = await bridge.callTool('social_get_account_metrics', { handle: '@areyouaman' });
+    const payload = JSON.parse(res.content[0].text as string);
+
+    expect(payload.has_signal).toBe(false);
+    expect(payload.caveat).toMatch(/more than one connected account shares it/i);
+    // The count is still reported honestly — it is the attribution that fails,
+    // not the measurement.
+    expect(payload.caveat).toMatch(/^3 measured posts/);
   });
 });
