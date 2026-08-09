@@ -76,6 +76,20 @@ export interface DonnyRichCardOnboardingStep {
 export interface DonnyRichCardSocialPostDraft {
   type: 'social_post_draft';
   data: {
+    /**
+     * This draft's stable identity, generated server-side when the card was
+     * built. Keys the once-only guard in `donny_draft_publications`, because
+     * the card is persisted and re-rendered on every load — "already sent"
+     * cannot live in component state (CT-4b).
+     *
+     * Required: no draft card has ever been produced without one (the whole
+     * draft mechanism ships in the same change), so an absent id means a
+     * malformed card, not a legacy one. `SocialDraftCard` still checks at
+     * runtime and refuses to publish rather than trusting the type — without an
+     * id there is no way to prove the draft is unpublished, and this is the one
+     * card whose action cannot be undone.
+     */
+    draft_id: string;
     /** "@areyouaman · Instagram". The only account text a user ever sees. */
     account_label: string;
     /** For the publish call only — never rendered. */

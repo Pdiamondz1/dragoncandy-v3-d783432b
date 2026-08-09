@@ -269,7 +269,17 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
           ? args.media_urls.filter((u): u is string => typeof u === 'string')
           : [];
 
-        const card = buildDraftCard({ account, caption, mediaUrls, scheduledAt });
+        // A fresh identity per draft — the once-only guard's key (CT-4b). Two
+        // drafts with identical text are two drafts: the user asking again
+        // after publishing is a legitimate second post, so this must NOT be a
+        // hash of the content.
+        const card = buildDraftCard({
+          draftId: crypto.randomUUID(),
+          account,
+          caption,
+          mediaUrls,
+          scheduledAt,
+        });
         const result = draftToolResult(card);
         pendingCards.push(result.card);
         return { content: [{ type: 'text', text: result.text }] };
