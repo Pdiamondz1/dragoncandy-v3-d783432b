@@ -146,6 +146,38 @@ describe('resolveAccount', () => {
     });
   });
 
+  it('breaks a same-handle tie with the SEPARATE platform argument too — Codex round 4', () => {
+    // The model may send the platform as its own argument rather than echoing
+    // the full label. Only the label was consulted before, so this fell
+    // through and applied the platform to the FULL list: @brand-IG plus the
+    // unrelated second Instagram account → `many`, forever, even though the
+    // caller had already supplied both facts that exist.
+    expect(resolveAccount([BRAND_IG, BRAND_TT, IG2], 'instagram', '@brand')).toEqual({
+      kind: 'one',
+      account: BRAND_IG,
+    });
+    expect(resolveAccount([BRAND_IG, BRAND_TT, IG2], 'tiktok', '@brand')).toEqual({
+      kind: 'one',
+      account: BRAND_TT,
+    });
+  });
+
+  it('prefers the echoed label over a conflicting platform argument', () => {
+    // The label is the string THIS function put in front of the user, so when
+    // both are present and disagree, the one the user was actually shown wins.
+    expect(resolveAccount([BRAND_IG, BRAND_TT], 'tiktok', '@brand · Instagram')).toEqual({
+      kind: 'one',
+      account: BRAND_IG,
+    });
+  });
+
+  it('falls back rather than reporting none when both hints match nothing', () => {
+    expect(resolveAccount([BRAND_IG, BRAND_TT], 'youtube', '@nobody')).toEqual({
+      kind: 'many',
+      accounts: [BRAND_IG, BRAND_TT],
+    });
+  });
+
   it('resolves an account with NO handle by its platform-only label — Codex round 3', () => {
     // describeAccount(NO_HANDLE_TT) is just "TikTok" (no handle to show), so
     // that IS "the exact answer" the model hands back for this account when

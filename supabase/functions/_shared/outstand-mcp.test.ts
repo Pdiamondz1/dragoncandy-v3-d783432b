@@ -1,6 +1,19 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
 import { createOutstandMcpBridge } from './outstand-mcp';
 
+// A stand-in MCP server whose advertised tool list each test controls. The real
+// one has never connected on prod (every logged failure carries the REST
+// branch's error string), so this is the only way to exercise that path at all.
+const remote = vi.hoisted(() => ({ tools: ['get_account_metrics'] }));
+
+vi.mock('./mcp-client.ts', () => ({
+  createMcpClient: async () => ({
+    listTools: async () => remote.tools.map((name) => ({ name, description: '', inputSchema: {} })),
+    callTool: async () => ({ content: [{ type: 'text', text: '{}' }] }),
+    disconnect: () => {},
+  }),
+}));
+
 /**
  * These tests pin ONE property: every read Donny makes of `content_performance`
  * asks the database for verified rows only.
@@ -128,10 +141,11 @@ async function bridgeFor(rowsByTable: Record<string, unknown[]>) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function build(supabase: any, queries: RecordedQuery[]) {
+async function build(supabase: any, queries: RecordedQuery[], orgTier?: string) {
   const bridge = await createOutstandMcpBridge({
     userId: 'user-1',
     userRole: 'business_client',
+    orgTier,
     supabase,
     authHeader: 'Bearer user-jwt',
   });
@@ -245,5 +259,49 @@ describe('get_account_metrics', () => {
     // The count is still reported honestly — it is the attribution that fails,
     // not the measurement.
     expect(payload.caveat).toMatch(/^3 measured posts/);
+  });
+});
+
+// The remote list decides which UPSTREAM-backed tools are real. It must not get
+// a vote on the three that are implemented here, or pointing OUTSTAND_MCP_URL at
+// a server with a different vocabulary silently hides working tools.
+describe('offered tools vs. a remote MCP server', () => {
+  async function toolsWithRemote(advertised: string[]) {
+    remote.tools = advertised;
+    // The MCP client is only built when this is set; without it the bridge
+    // takes the REST fallback and never consults a remote list at all.
+    ENV.OUTSTAND_MCP_URL = 'https://mcp.test';
+    try {
+      const { supabase, queries } = fakeSupabase({ business_outstand_accounts: [ACCOUNT_ROW] });
+      // A paid tier — filterToolsByTier restricts a free/absent tier to the two
+      // analytics tools, which would mask what this test is about.
+      const { bridge } = await build(supabase, queries, 'growth');
+      return bridge.tools.map((t) => t.name).sort();
+    } finally {
+      delete ENV.OUTSTAND_MCP_URL;
+    }
+  }
+
+  it('keeps every locally-implemented tool when the remote advertises none of them', async () => {
+    expect(await toolsWithRemote([])).toEqual([
+      'social_create_post',
+      'social_get_post_analytics',
+      'social_schedule_post',
+    ]);
+  });
+
+  it('adds the upstream-backed tool only when the remote advertises it', async () => {
+    expect(await toolsWithRemote(['get_account_metrics'])).toEqual([
+      'social_create_post',
+      'social_get_account_metrics',
+      'social_get_post_analytics',
+      'social_schedule_post',
+    ]);
+  });
+
+  it('never offers a tool the remote invents', async () => {
+    const names = await toolsWithRemote(['get_account_metrics', 'delete_everything']);
+    expect(names).not.toContain('social_delete_everything');
+    expect(names).not.toContain('delete_everything');
   });
 });

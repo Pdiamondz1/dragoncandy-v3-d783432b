@@ -6,7 +6,7 @@ import {
   namespaceTools,
   buildForwardedArgs,
 } from './outstand-mcp-tools.ts';
-import { proxyRequestFor } from './outstand-mcp-paths.ts';
+import { proxyRequestFor, requiresUpstream } from './outstand-mcp-paths.ts';
 import { fetchActiveAccounts, resolveAccount } from './outstand-accounts.ts';
 import {
   buildDraftCard,
@@ -128,8 +128,18 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
   // backing operation); this uses the remote list ONLY to decide which
   // names are actually supported upstream, then substitutes our own
   // definition for every field of the offered schema.
+  //
+  // The intersection binds ONLY upstream-backed tools (requiresUpstream —
+  // today just get_account_metrics). The other three are answered entirely
+  // here: create_post/schedule_post build a draft card and never call out,
+  // get_post_analytics reads our own content_performance. Their availability
+  // is a fact about THIS code, so a remote server that advertises a different
+  // vocabulary must not be able to veto them — that would hide three working
+  // tools the first time OUTSTAND_MCP_URL points somewhere new, which is the
+  // same "offered ≠ implemented" mismatch as the three dropped tools, just
+  // pointing the other way.
   const supportedNames = new Set(rawTools.map((t) => t.name));
-  rawTools = SOCIAL_TOOLS.filter((t) => supportedNames.has(t.name));
+  rawTools = SOCIAL_TOOLS.filter((t) => !requiresUpstream(t.name) || supportedNames.has(t.name));
 
   const namespacedTools = namespaceTools(filterToolsByTier(rawTools, config.orgTier));
 

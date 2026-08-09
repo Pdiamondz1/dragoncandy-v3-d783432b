@@ -1,5 +1,29 @@
 import { describe, it, expect } from 'vitest';
-import { proxyRequestFor } from './outstand-mcp-paths';
+import { proxyRequestFor, requiresUpstream } from './outstand-mcp-paths';
+
+describe('requiresUpstream', () => {
+  it('is true only for the tool whose answer comes from the provider', () => {
+    expect(requiresUpstream('get_account_metrics')).toBe(true);
+    // Namespaced form too — the bridge filters the offered list before the
+    // prefix is stripped, so both spellings must agree.
+    expect(requiresUpstream('social_get_account_metrics')).toBe(true);
+  });
+
+  it('is false for every locally-answered tool', () => {
+    for (const t of ['create_post', 'schedule_post', 'get_post_analytics']) {
+      expect(requiresUpstream(t)).toBe(false);
+      expect(requiresUpstream(`social_${t}`)).toBe(false);
+    }
+  });
+
+  it('agrees with proxyRequestFor — one list, not two', () => {
+    // If these ever disagree, either a local tool starts being vetoed by a
+    // remote server or an upstream tool is offered with no route behind it.
+    for (const t of ['get_account_metrics', 'create_post', 'schedule_post', 'get_post_analytics']) {
+      expect(requiresUpstream(t)).toBe(proxyRequestFor(t, 'acct') !== null);
+    }
+  });
+});
 import { SOCIAL_TOOLS } from './outstand-mcp-tools';
 
 const ACCOUNT = 'LEnjV';

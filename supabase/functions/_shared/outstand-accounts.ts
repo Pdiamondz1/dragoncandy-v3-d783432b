@@ -125,15 +125,26 @@ export function resolveAccount(
       // to close, just for a different reason.
       return platformLabelFor(a) === normalizedHint || a.platform?.toLowerCase() === normalizedHint;
     });
-    // The handle alone is ambiguous (same handle on 2+ platforms) but the
-    // hint carried a platform label too (the model echoed the FULL listed
-    // string) — use it to narrow rather than discarding it.
-    if (platformLabel && matched.length > 1) {
-      const normalizedPlatformLabel = platformLabel.toLowerCase();
+    // The handle alone is ambiguous (same handle on 2+ platforms). Narrow with
+    // whatever platform we were told — from the echoed label ("@brand ·
+    // TikTok") OR from the separate `platform` argument, which the model may
+    // well send instead of, or alongside, the label.
+    //
+    // Both sources matter, and using only the label was a real dead-end: with
+    // @brand on Instagram AND TikTok plus a second Instagram account,
+    // {handle:'@brand', platform:'instagram'} identifies exactly one account,
+    // but falling through applied the platform to the FULL list (→ @brand and
+    // the other Instagram account) and asked again — forever, since the caller
+    // has already given both facts that exist. The label is preferred when
+    // present because it is the string this function itself put in front of
+    // the user; `platformHint` is the fallback.
+    const narrowingPlatform = platformLabel ?? platformHint ?? null;
+    if (narrowingPlatform && matched.length > 1) {
+      const normalizedPlatform = narrowingPlatform.trim().toLowerCase();
       const narrowed = matched.filter(
         (a) =>
-          platformLabelFor(a) === normalizedPlatformLabel ||
-          a.platform?.toLowerCase() === normalizedPlatformLabel,
+          platformLabelFor(a) === normalizedPlatform ||
+          a.platform?.toLowerCase() === normalizedPlatform,
       );
       if (narrowed.length > 0) matched = narrowed;
     }
