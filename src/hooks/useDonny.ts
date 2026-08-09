@@ -125,11 +125,17 @@ export function useDonny(options?: UseDonnyOptions) {
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async ({ content, isRetry = false }: { content: string; isRetry?: boolean }) => {
+      // Recorded BEFORE the guards, not after: retry() is gated on this ref, so
+      // a send that fails on the conversation guard used to leave it empty and
+      // make Retry inert — no request, no state change, no feedback. That is
+      // the likeliest failure on this path, since a suggestion chip on the
+      // inline dashboard can fire before the conversation query resolves.
+      lastUserMessage.current = content;
+
       if (!conversation || !user) throw new Error('No active conversation');
       if (isSendingRef.current) throw new Error('Message already in flight');
 
       isSendingRef.current = true;
-      lastUserMessage.current = content;
 
       setIsStreaming(true);
       setAvatarState('thinking');
