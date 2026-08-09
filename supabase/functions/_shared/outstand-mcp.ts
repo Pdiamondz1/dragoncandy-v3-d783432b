@@ -15,6 +15,7 @@ import {
   missingScheduledAtResult,
   type SocialDraftCard,
 } from './social-draft.ts';
+import { summarizePerformance, type PerfRow } from './social-analytics.ts';
 
 interface OutstandMcpConfig {
   userId: string;
@@ -179,6 +180,31 @@ export async function createOutstandMcpBridge(config: OutstandMcpConfig): Promis
         const result = draftToolResult(card);
         pendingCards.push(result.card);
         return { content: [{ type: 'text', text: result.text }] };
+      }
+
+      if (rawName === 'get_post_analytics') {
+        const days = typeof args.days === 'number' && args.days > 0 ? Math.floor(args.days) : 30;
+        const since = new Date(Date.now() - days * 86_400_000).toISOString();
+
+        // Own rows only. config.supabase is service-role in the orchestrator,
+        // so the user_id filter IS the tenant boundary here — it is not
+        // enforced by RLS on this client.
+        const { data, error } = await config.supabase
+          .from('content_performance')
+          .select('outstand_post_id, platform, views, likes, comments, shares, engagement_rate')
+          .eq('user_id', config.userId)
+          .gte('captured_at', since);
+
+        if (error) {
+          console.error('[outstand-mcp] performance read failed:', error.message);
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ error: 'performance_unavailable', reason: 'Performance data could not be read. Say so plainly; do not guess why.' }) }],
+            isError: true,
+          };
+        }
+        return {
+          content: [{ type: 'text', text: summarizePerformance((data ?? []) as PerfRow[]) }],
+        };
       }
 
       // Use real MCP client if available
