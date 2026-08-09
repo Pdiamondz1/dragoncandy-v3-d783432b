@@ -85,6 +85,15 @@ disables the conversation's queries while the page is still mounted, unrecoverab
 - **Route CTAs are validated through `isKnownDonnyRoute` before render**; one that fails
   renders as text with no button. Direct lesson of the twelve dead CTAs in
   [[Donny Data Visibility & Quick-Action Routing]].
+- **Deadline signals get their own query — recency is not due-soon.** The first cut fed them from
+  `useBusinessActiveCampaigns`, which is `.order('created_at', desc).limit(5)` because it was built
+  for the recent-activity widget. A restaurant with more than five campaigns would therefore
+  **silently lose the due-tomorrow warning on an older one** — no error, no empty state.
+  `useUpcomingCampaignDeadlines` filters the window in SQL (local calendar dates, since `deadline`
+  is a Postgres `date`) ordered by `deadline` ascending. **When a list is a means to an end, check
+  that its ordering and limit serve the question you are actually asking** — reusing a convenient
+  query is how a "needs your attention" surface quietly stops mentioning things. Found by Codex,
+  second P2 on this branch.
 - **`priority` does not drive cross-kind ordering.** It exists on the exported interface but
   the merge concatenates pending-actions then signals as fixed groups. Annotated as reserved so
   a consumer doesn't assume otherwise.
