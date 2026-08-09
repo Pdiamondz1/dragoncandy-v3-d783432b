@@ -21,6 +21,7 @@ import { useBusinessActiveCampaigns } from '@/hooks/useBusinessActiveCampaigns';
 import { useLocationReadiness } from '@/hooks/useLocationReadiness';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { PageBody } from '@/components/app/PageBody';
+import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting';
 import { LocationBadge } from '@/components/org/LocationBadge';
 import { DCTour } from '@/components/guidance/DCTour';
@@ -142,6 +143,23 @@ export function DonnyHome() {
     void trackEvent('donny_home_prompt_submitted', {});
     openDonnyWithContext(text);
   };
+
+  if (!profile) {
+    return (
+      <DashboardLayout userRole="business_client">
+        <div className="min-h-screen bg-white overflow-x-hidden">
+          <PageBody>
+            <div className="space-y-3">
+              <DCSkeleton variant="text-block" className="h-3 w-32" />
+              <DCSkeleton variant="text-block" className="h-8 w-48" />
+            </div>
+            <DCSkeleton variant="text-block" className="h-12 w-full lg:w-72 rounded-full" />
+            <DCSkeleton variant="list-row" count={3} />
+          </PageBody>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout userRole="business_client">

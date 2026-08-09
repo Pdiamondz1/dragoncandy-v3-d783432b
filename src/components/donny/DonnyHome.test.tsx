@@ -101,6 +101,16 @@ describe('DonnyHome — greeting', () => {
     expect(screen.queryByText(/undefined/i)).not.toBeInTheDocument();
     expect(screen.getByText(/there/)).toBeInTheDocument();
   });
+
+  it('shows a skeleton instead of greeting "there" while the profile has not loaded', () => {
+    // BusinessOverview.tsx (the body this replaces) guards with an `!profile`
+    // skeleton branch — without the same guard here, a logged-in owner would
+    // flash "Welcome back, there" before their name loads.
+    profileMock.value = null;
+    const { container } = renderHome();
+    expect(screen.queryByText(/there/)).not.toBeInTheDocument();
+    expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
+  });
 });
 
 describe('DonnyHome — taps and prompt', () => {
