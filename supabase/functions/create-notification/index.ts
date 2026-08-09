@@ -29,6 +29,13 @@ const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Record<string, string> = {
   invitation_declined: 'campaign_invitation_declined',
   campaign_published: 'campaign_published',
   campaign_cancelled: 'campaign_cancelled',
+  // The publish broadcast, emitted only by send-campaign-publish-notifications (which proves
+  // campaign ownership before fanning out). New NOTIFICATION types over pre-existing EMAIL
+  // templates of the same name — the templates shipped months ago; the bell never existed,
+  // because that function called send-notification-email directly and bypassed this one.
+  // Keep in sync with src/types/notifications.ts.
+  new_campaign_for_creators: 'new_campaign_for_creators',
+  new_campaign_for_brands: 'new_campaign_for_brands',
   // Crew-specific (Crews v1 fires this bell-only to active crew members when a
   // crew campaign is posted). Mapping it adds email for CREW campaigns only —
   // no shared/standard type is remapped. Keep in sync with
