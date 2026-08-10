@@ -359,6 +359,23 @@ serve(async (req) => {
         `failedLegs=${failedLegs.join(",") || "none"}`,
     );
 
+    // The one combination worth shouting about, because nothing else surfaces it: every bell
+    // landed and not one email was attempted. Deploy this function BEFORE create-notification
+    // and that is exactly what happens — the two broadcast types aren't in the deployed map
+    // yet, so no template resolves, every call still returns 200, and `allDelivered` stays
+    // true. The response can't carry this (it reports delivery of the notification, which did
+    // succeed) and a reader would have to notice `emailed=0` sitting beside a healthy `sent`.
+    // Mass opt-out would trip this too, which is why it's a warning and not an error.
+    if (sent > 0 && emailed === 0) {
+      console.warn(
+        `[send-campaign-publish-notifications] campaign=${campaignRef} ` +
+          `sent=${sent} but emailed=0 — no email leg fired for ANY recipient. ` +
+          `Check that create-notification is deployed with new_campaign_for_creators / ` +
+          `new_campaign_for_brands mapped, then that the templates exist in ` +
+          `send-notification-email.`,
+      );
+    }
+
     // Booleans, not counts, in the RESPONSE. Because this broadcast targets everyone, its
     // reach figure IS the platform's total creator/brand supply — a number this repo
     // deliberately revokes from `authenticated` (aios_metrics_snapshot). Owning one campaign
