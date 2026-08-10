@@ -30,10 +30,6 @@ export interface CreatorProposalsInput {
   payoutError: boolean;
   /** Proposal ids the user has already dismissed (localStorage + this session). */
   dismissedIds: string[];
-  /** Injected so ordering is deterministic in tests. Unused today — no item in
-   *  this builder reads a deadline window — but kept for parity with the
-   *  business builder's signature and in case a future item needs it. */
-  now: number;
 }
 
 /**
@@ -208,9 +204,13 @@ export function buildCreatorProposals(input: CreatorProposalsInput): DonnyPropos
     collaborationCount === 0;
   const findWorkProps = findWorkProposal(nothingInFlight);
 
+  // A/B/D keep one fixed relative order; only where item C sits around them
+  // changes. Writing that order once means a future reorder cannot land in one
+  // branch and miss the other.
+  const work = [...contentProposals, ...applicationProps, ...invitationProps];
   const merged = hasMoneyOrWork
-    ? [...payoutProps, ...contentProposals, ...applicationProps, ...invitationProps]
-    : [...contentProposals, ...applicationProps, ...invitationProps, ...findWorkProps, ...payoutProps];
+    ? [...payoutProps, ...work]
+    : [...work, ...findWorkProps, ...payoutProps];
 
   const ranked = merged.filter((p) => !dismissed.has(p.id));
 

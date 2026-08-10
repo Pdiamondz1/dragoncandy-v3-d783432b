@@ -37,10 +37,18 @@ export function useCreatorAttentionInvitations() {
       if (error) throw error;
       if (!data || data.length === 0) return [];
 
+      // Scoped to the invited campaigns, not the creator's whole application
+      // history: this only ever answers "has one of THESE been applied to". The
+      // `.in()` list is bounded by the invitation count above — single digits on
+      // prod, far under the ~100-id threshold where a filter starts overflowing
+      // undici's 16 KB header limit.
+      const invitedCampaignIds = [...new Set(data.map((inv) => inv.campaign_id))];
+
       const { data: applied, error: appliedError } = await supabase
         .from('campaign_applications')
         .select('campaign_id')
-        .eq('creator_id', user!.id);
+        .eq('creator_id', user!.id)
+        .in('campaign_id', invitedCampaignIds);
 
       if (appliedError) throw appliedError;
 

@@ -23,19 +23,22 @@ export function useCreatorPayoutState() {
   return useQuery({
     queryKey: ['creator-payout-state', user?.id],
     queryFn: async (): Promise<CreatorPayoutState> => {
-      const { data: cp, error } = await supabase
-        .from('creator_profiles')
-        .select('stripe_account_id, stripe_onboarding_complete, pending_balance')
-        .eq('user_id', user!.id)
-        .maybeSingle();
+      // Independent reads — neither needs the other's result, so they go out
+      // together. Sequencing them would add a full round-trip to the path that
+      // gates the whole dashboard's loading state.
+      const [{ data: cp, error }, { count, error: countError }] = await Promise.all([
+        supabase
+          .from('creator_profiles')
+          .select('stripe_account_id, stripe_onboarding_complete, pending_balance')
+          .eq('user_id', user!.id)
+          .maybeSingle(),
+        supabase
+          .from('campaign_collaborations')
+          .select('id', { count: 'exact', head: true })
+          .eq('creator_id', user!.id),
+      ]);
 
       if (error) throw error;
-
-      const { count, error: countError } = await supabase
-        .from('campaign_collaborations')
-        .select('id', { count: 'exact', head: true })
-        .eq('creator_id', user!.id);
-
       if (countError) throw countError;
 
       return {

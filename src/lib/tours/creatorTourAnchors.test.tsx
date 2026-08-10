@@ -115,10 +115,17 @@ describe('CREATOR_TOUR anchors resolve on both creator pages', () => {
   it('every page-owned step is present on the Donny dashboard and the overview', () => {
     const bodySteps = CREATOR_TOUR.filter((s) => !CHROME.includes(s.target));
     expect(bodySteps.length).toBe(3);
+
+    // Mount each page ONCE. Neither renders anything that varies per step, so
+    // mounting inside the loop would be six full renders of two real page trees
+    // to answer three static selector questions.
+    const donnyHome = renderCreatorDonnyHome().container;
+    const overview = renderCreatorOverview().container;
+
     for (const step of bodySteps) {
-      expect(renderCreatorDonnyHome().container.querySelector(step.target),
+      expect(donnyHome.querySelector(step.target),
         `${step.target} missing from CreatorDonnyHome`).not.toBeNull();
-      expect(renderCreatorOverview().container.querySelector(step.target),
+      expect(overview.querySelector(step.target),
         `${step.target} missing from CreatorOverview`).not.toBeNull();
     }
   });

@@ -33,10 +33,9 @@
 //     but `stage` is untouched, so if the panel happens to be open the query
 //     stays enabled, and on return the thread refetches.
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useDonnyHomeConversation } from '@/hooks/donny/useDonnyHomeConversation';
-import { useAnalyticsContext } from '@/components/analytics/AnalyticsProvider';
+import { useDonnyHomeInteractions } from '@/hooks/donny/useDonnyHomeInteractions';
 import { useTour } from '@/hooks/useTour';
 import { usePendingActions } from '@/hooks/usePendingActions';
 import { useUpcomingCampaignDeadlines } from '@/hooks/useUpcomingCampaignDeadlines';
@@ -46,21 +45,15 @@ import { RatingPromptManager } from '@/components/reviews/RatingPromptManager';
 import { SponsorshipRatingPromptManager } from '@/components/reviews/SponsorshipRatingPromptManager';
 import { DonnyHomeShell } from './DonnyHomeShell';
 import { DonnyHomeProposals } from './DonnyHomeProposals';
-import { BUSINESS_SUGGESTIONS, type DonnySuggestion } from '@/lib/donny/donnyHomeSuggestions';
-import { buildDonnyProposals, type DonnyProposal } from '@/lib/donny/buildDonnyProposals';
-import {
-  readDismissedProposalIds,
-  writeDismissedProposalId,
-} from '@/lib/donny/proposalDismissal';
+import { BUSINESS_SUGGESTIONS } from '@/lib/donny/donnyHomeSuggestions';
+import { buildDonnyProposals } from '@/lib/donny/buildDonnyProposals';
 
 const OVERVIEW_ROUTE = '/dashboard/business/overview';
 
 export function DonnyHome() {
   const { profile, activeOrgUnit } = useAuth();
-  const navigate = useNavigate();
   const conversation = useDonnyHomeConversation();
   const { ask } = conversation;
-  const { trackEvent } = useAnalyticsContext();
   const tour = useTour();
 
   const pending = usePendingActions();
@@ -73,19 +66,14 @@ export function DonnyHome() {
   const campaigns = useUpcomingCampaignDeadlines(activeOrgUnit?.id);
   const readiness = useLocationReadiness();
 
-  const [sessionDismissed, setSessionDismissed] = React.useState<string[]>([]);
-
   const isLoading = pending.isLoading || campaigns.isLoading;
 
-  // Two passes: build once to learn the candidate ids, read localStorage for
-  // just those, then build again with the dismissals applied. Cheap — the
-  // function is pure and the lists are capped at 5 rows each.
   // useLocationReadiness returns a fresh object literal every render, so
   // depending on it directly would defeat the memo. Depend on its primitives.
   const { hasActiveLocation, isReady, locationName, missingSocial, missingStripe } = readiness;
 
-  const result = React.useMemo(() => {
-    const base = {
+  const base = React.useMemo(
+    () => ({
       pendingActions: pending.data,
       pendingActionsError: pending.isError,
       campaigns: campaigns.data,
@@ -100,74 +88,33 @@ export function DonnyHome() {
       // interval or focus listener is added on purpose — the blast radius of
       // a stale `now` here is small and it self-heals on the next navigation.
       now: Date.now(),
-    };
-    // Pass 1 must read the FULL ranked set (allProposalIds), not the capped
-    // `proposals` list: reading only the capped ids would miss a live
-    // dismissal on a proposal ranked below PROPOSAL_CAP, and dismissing a
-    // higher-ranked proposal would then resurrect it (promoted into the now
-    // shorter capped view without ever having its dismissal checked).
-    const candidates = buildDonnyProposals({ ...base, dismissedIds: [] });
-    const stored = readDismissedProposalIds(candidates.allProposalIds);
-    return buildDonnyProposals({
-      ...base,
-      dismissedIds: [...stored, ...sessionDismissed],
-    });
-  }, [
-    pending.data,
-    pending.isError,
-    campaigns.data,
-    hasActiveLocation,
-    isReady,
-    locationName,
-    missingSocial,
-    missingStripe,
-    sessionDismissed,
-  ]);
+    }),
+    [
+      pending.data,
+      pending.isError,
+      campaigns.data,
+      hasActiveLocation,
+      isReady,
+      locationName,
+      missingSocial,
+      missingStripe,
+    ]
+  );
 
-  const viewRecorded = React.useRef(false);
-  React.useEffect(() => {
-    if (viewRecorded.current || isLoading) return;
-    viewRecorded.current = true;
-    void trackEvent('donny_home_viewed', {
-      role: profile?.role ?? 'unknown',
-      proposal_count: result.proposals.length,
-      has_pending: result.proposals.some((p) => p.kind === 'pending_action'),
-    });
-  }, [isLoading, result.proposals, profile?.role, trackEvent]);
-
-  const handleProposalTap = (proposal: DonnyProposal) => {
-    if (!proposal.cta) return;
-    void trackEvent('donny_home_proposal_tapped', {
-      proposal_kind: proposal.kind,
-      cta_kind: proposal.cta.kind,
-    });
-    if (proposal.cta.kind === 'route') {
-      navigate(proposal.cta.route);
-    } else {
-      // Inline too — an attention-list tap that threw the panel open while the
-      // prompt box answered in place would be two behaviours for one page.
-      ask(proposal.cta.message);
-    }
-  };
-
-  const handleDismiss = (proposalId: string) => {
-    const proposal = result.proposals.find((p) => p.id === proposalId);
-    writeDismissedProposalId(proposalId);
-    setSessionDismissed((prev) => (prev.includes(proposalId) ? prev : [...prev, proposalId]));
-    void trackEvent('donny_home_proposal_dismissed', {
-      proposal_kind: proposal?.kind ?? 'unknown',
-    });
-  };
-
-  const handleSuggestionTap = (suggestion: DonnySuggestion) => {
-    void trackEvent('donny_home_suggestion_tapped', { label: suggestion.label });
-    ask(suggestion.message);
-  };
-
-  const handlePromptSubmit = (text: string) => {
-    void trackEvent('donny_home_prompt_submitted', {});
-    ask(text);
-  };
+  const {
+    result,
+    handleProposalTap,
+    handleDismiss,
+    handleSuggestionTap,
+    handlePromptSubmit,
+    trackOverviewOpen,
+  } = useDonnyHomeInteractions({
+    build: buildDonnyProposals,
+    base,
+    ask,
+    isLoading,
+    role: profile?.role,
+  });
 
   return (
     <DonnyHomeShell
@@ -177,7 +124,7 @@ export function DonnyHome() {
       subtitle="Tell me what you need and I'll take it from here."
       badge={<LocationBadge />}
       overviewRoute={OVERVIEW_ROUTE}
-      onOverviewOpen={() => void trackEvent('donny_home_overview_opened', {})}
+      onOverviewOpen={trackOverviewOpen}
       suggestions={BUSINESS_SUGGESTIONS}
       onSubmit={handlePromptSubmit}
       onSuggestionTap={handleSuggestionTap}

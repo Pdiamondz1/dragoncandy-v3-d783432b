@@ -8,7 +8,6 @@ const EMPTY = {
   payout: { hasStripeAccount: false, onboardingComplete: false, pendingBalance: 0, collaborationCount: 0 },
   payoutError: false,
   dismissedIds: [] as string[],
-  now: Date.parse('2026-08-10T16:00:00Z'),
 };
 const invite = (id: string) => ({
   invitationId: `i${id}`, campaignId: `c${id}`, campaignTitle: `Campaign ${id}`,
