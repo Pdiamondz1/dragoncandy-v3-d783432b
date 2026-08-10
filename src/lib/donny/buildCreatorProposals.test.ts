@@ -56,6 +56,17 @@ describe('item C — payouts', () => {
     expect(ids(r)).toEqual(['creator:find_work', 'creator:payout']);
   });
 
+  // A creator whose only collaboration was CANCELLED has earned nothing, so
+  // useCreatorPayoutState reports 0 here — and they must see "find your next
+  // campaign" before "set up payouts". Configuration before value is exactly
+  // what PROJECT_CONTEXT §7 forbids. (Caught by Codex; the count used to
+  // include cancelled.)
+  it('ranks below find-work for a creator whose only history fell through', () => {
+    const r = buildCreatorProposals({ ...EMPTY,
+      payout: { ...EMPTY.payout, collaborationCount: 0, activeCollaborationCount: 0 } });
+    expect(ids(r)).toEqual(['creator:find_work', 'creator:payout']);
+  });
+
   it('ranks FIRST when a collaboration exists', () => {
     const r = buildCreatorProposals({ ...EMPTY,
       payout: { ...EMPTY.payout, collaborationCount: 1, activeCollaborationCount: 1 },

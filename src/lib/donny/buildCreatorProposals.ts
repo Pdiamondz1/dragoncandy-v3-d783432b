@@ -205,10 +205,10 @@ export function buildCreatorProposals(input: CreatorProposalsInput): DonnyPropos
   const invitationProps = invitationProposals(invitations);
 
   // Two different questions, so two different counts — see CreatorPayoutState.
-  // `collaborationCount` is lifetime ("has this creator ever worked or
-  // earned"), which is what ranks payout to the top. `activeCollaborationCount`
-  // is right now, which is the only one that can license "nothing on your
-  // plate": on prod 11 of 16 collaborations are already `completed`.
+  // `collaborationCount` is lifetime work or earnings (active + completed,
+  // never cancelled), which is what ranks payout to the top.
+  // `activeCollaborationCount` is right now, the only one that can license
+  // "nothing on your plate": on prod 11 of 16 collaborations are `completed`.
   const collaborationCount = payout?.collaborationCount ?? 0;
   const activeCollaborationCount = payout?.activeCollaborationCount ?? 0;
   const pendingBalance = payout?.pendingBalance ?? 0;

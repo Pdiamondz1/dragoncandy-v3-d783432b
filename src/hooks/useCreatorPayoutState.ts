@@ -6,8 +6,14 @@ export interface CreatorPayoutState {
   hasStripeAccount: boolean;
   onboardingComplete: boolean;
   pendingBalance: number;
-  /** EVERY collaboration, any status, for all time — "has this creator ever
-   *  worked or earned". Ranks payout above the rest. */
+  /** Collaborations that represent real work or earnings — `active` or
+   *  `completed`, for all time. "Has this creator ever worked or earned",
+   *  which is what ranks payout above the rest.
+   *
+   *  `cancelled` is EXCLUDED deliberately. A collaboration that fell through
+   *  produced no earnings, so counting it would rank "set up payouts" above
+   *  "find your next campaign" for someone who has never been paid anything —
+   *  configuration before they have seen the value (PROJECT_CONTEXT §7). */
   collaborationCount: number;
   /** Only `status='active'` — "is anything in flight RIGHT NOW". Suppresses the
    *  "nothing on your plate" nudge.
@@ -47,10 +53,13 @@ export function useCreatorPayoutState() {
           .select('stripe_account_id, stripe_onboarding_complete, pending_balance')
           .eq('user_id', user!.id)
           .maybeSingle(),
+        // `collaboration_status` is exactly active | completed | cancelled, so
+        // this is "everything that counts as work" rather than a denylist.
         supabase
           .from('campaign_collaborations')
           .select('id', { count: 'exact', head: true })
-          .eq('creator_id', user!.id),
+          .eq('creator_id', user!.id)
+          .in('status', ['active', 'completed']),
         // Counted server-side rather than derived from the content-todo hook:
         // that hook pins `content_status='pending'` too, so a collaboration
         // sitting at `submitted` is genuinely in flight but produces no row —
