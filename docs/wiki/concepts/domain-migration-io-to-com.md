@@ -2,8 +2,8 @@
 title: Domain Migration (.io → .com)
 type: concept
 created: 2026-08-09
-updated: 2026-08-09
-sources: [2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md]
+updated: 2026-08-10
+sources: [2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md, 2026-08-09-ios-testflight-first-build.md]
 tags: [domain, dns, cors, auth, vercel, migration]
 ---
 # Domain Migration (.io → .com)
@@ -118,10 +118,14 @@ rather than surprising them.
 
 ## Must NOT change
 
-`io.dragoncandy.app` (Capacitor appId / iOS bundle id) — a reverse-DNS **identifier**, not a
-URL; changing it means a new App Store listing and users lose the install. And
-`@synthetic.dragoncandy.test`, the reserved-TLD marker the entire synthetic-user safety spine
-keys on.
+~~`io.dragoncandy.app`~~ → **`com.dragoncandy.app`** (Capacitor appId / iOS bundle id).
+**Superseded 2026-08-09** — see `2026-08-09-ios-testflight-first-build-design.md`. A
+reverse-DNS **identifier**, not a URL, and genuinely immutable — but only from the moment an
+App Store Connect record exists. None did, so it was changed to match the now-primary domain
+while that was still free. The original reason ("a new listing and users lose the install")
+presumed a listing and users; there were neither. From record creation onward this row applies
+again, permanently. And `@synthetic.dragoncandy.test`, the reserved-TLD marker the entire
+synthetic-user safety spine keys on.
 
 ## Known Issues
 

@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { SEO } from '@/components/SEO';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { LandingButton } from '@/components/landing/LandingButton';
+import { publicOrigin } from '@/lib/publicOrigin';
 
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
@@ -30,7 +31,7 @@ const VerifyEmail = () => {
 
         if (error || !data?.success) {
           console.warn('VerifyEmail: invoke failed, redirecting to GET function endpoint', { error, data });
-          const redirect = encodeURIComponent(window.location.origin);
+          const redirect = encodeURIComponent(publicOrigin());
           window.location.replace(`${import.meta.env.VITE_SUPABASE_URL || 'https://zocahiffooqdybdhguqv.supabase.co'}/functions/v1/verify-email?token=${token}&redirect=${redirect}`);
           return;
         }
@@ -45,7 +46,7 @@ const VerifyEmail = () => {
 
       } catch (error: unknown) {
         console.error('VerifyEmail: unexpected error, redirecting to GET endpoint', error);
-        const redirect = encodeURIComponent(window.location.origin);
+        const redirect = encodeURIComponent(publicOrigin());
         window.location.replace(`${import.meta.env.VITE_SUPABASE_URL || 'https://zocahiffooqdybdhguqv.supabase.co'}/functions/v1/verify-email?token=${token}&redirect=${redirect}`);
       }
     };

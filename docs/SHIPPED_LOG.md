@@ -26,6 +26,100 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-09/10] iOS — repo work for the first signed build to TestFlight
+
+> **Merged, but that ships the frontend only.** Tasks 11–14 are still ahead and none of them
+> is optional: founder Apple enrollment (24–48h, gates everything), a **canaried
+> `donny-orchestrator` redeploy** — the CORS change is inert until it runs, because
+> `_shared/` is bundled per function at deploy time across 82 files — and the physical-device
+> build once the founder's Mac arrives 2026-08-12. **Merging this does not make Donny work on
+> the phone.** `npm run build` clean on every commit.
+
+Not the start of the iOS project — Phase 1 (Capacitor foundation) and Phase 2 (native
+camera + share sheet) shipped in June. This branch is the distance between "code exists"
+and "it runs on a phone": neither the camera nor the share sheet had **ever once executed
+on real iOS hardware**, because nothing in the app's origin handling or the backend's
+CORS allow-lists had ever been checked against what Capacitor actually does.
+
+**Three things blocked the shell from working at all**, all found by grepping the
+worktree before writing any code. `window.location.origin` evaluates to
+`capacitor://localhost` inside Capacitor — 21 occurrences across 14 files, and they don't
+all want the same fix. A new `publicOrigin()` seam (`src/lib/publicOrigin.ts` +
+`CANONICAL_APP_ORIGIN` in `allowedOrigins.ts`) returns `window.location.origin`
+byte-identically on web and the canonical `.com` origin natively, and the sites sort into
+three buckets: **repoint** (auth email redirects, share links, and the worst case —
+notification `actionUrl`s that `create-notification` **emails to a different user**, so a
+dead `capacitor://` link would have landed in a creator's inbox after their project was
+marked complete); **leave alone** (`AuthPage.tsx`'s in-app navigation base — repointing
+it would eject the user into Safari mid-auth); and **gate the consumer instead of the
+value** (the Outstand OAuth `redirect_uri` — repointing it stops the provider rejecting
+`capacitor://`, but the callback then completes in Safari with no route back into the
+shell at all, so the fix is a new `ConnectAccountButtonGroupGated` that says "web-only for
+now" rather than trading a visible rejection for a silent dead end). Second: no edge
+function trusted the native origin, so the app would reach Supabase REST/Auth but zero
+custom edge functions — Donny, campaign generation, payments. Fixed with a new
+`NATIVE_APP_ORIGINS` in `_shared/origins.ts`, composed into `cors.ts` only (deliberately
+**not** mirrored into the frontend's credential-boundary `ALLOWED_REDIRECT_ORIGINS`) —
+inert on prod until a canaried redeploy, per [[Edge-Function Deploy & Bundling]]. Third:
+the bundle ID `io.dragoncandy.app` predated the `.com` domain decision, and a bundle ID
+is immutable **once an App Store Connect record exists** — since none did, changing it to
+`com.dragoncandy.app` was a free two-file edit today and permanent tomorrow. Seven
+committed documents said this must not change (the original audit found five; running
+the actual inventory instead of trusting the brief found two more), all updated with a
+superseded note rather than silently overridden. Also shipped:
+`ITSAppUsesNonExemptEncryption` in `Info.plist` (without it every TestFlight upload waits
+behind the export-compliance questionnaire) and a re-run of the bounded purchase-CTA
+audit, which confirmed the gated set is **still closed** after 233 commits and 31 new
+pages since the iOS scaffold.
+
+**The process record is the more durable part.** Five defects surfaced in the **plan
+itself**, each caught by a different party than its author: a wrong grep count (the
+implementer reported the true number rather than fudging it to match); an `as never` test
+fixture that failed `TS2698` under strict mode and wouldn't have type-checked anything
+even compiling; a `npx supabase functions download` step that overwrites local source
+with the **currently deployed** bundle — it silently reverted the just-edited CORS files
+to their pre-task content and truncated a file nine others import to **0 bytes**, caught
+only by a reviewer noticing three identical file mtimes, not by any typecheck or build;
+a device-checklist route, `/settings/billing`, that **doesn't exist** and had already
+caused a documented two-month 404 incident on the real "Upgrade" CTA (PR #409, fixed two
+days before this branch); and a pre-PR gate's expected-hit-count that contradicted the
+plan's own later decision (Task 5 chose to gate the Outstand consumer rather than
+repoint its value, and the earlier gate step was never updated to match — the same drift
+independently showed up in the spec's own Finding-1 table). A second, unrelated
+casualty from the same troubleshooting: `deno install`, run after `deno check` failed to
+resolve `npm:` specifiers, silently rewrote `node_modules` into Deno's own layout,
+swapping the lockfile's pinned vitest 4.1.2 for 4.1.10 — every test run then died with
+`ERR_PACKAGE_PATH_NOT_EXPORTED`, invisible for four tasks because `build` and `lint` kept
+passing. Recovered with `npm ci`.
+
+**Gate results (Task 10, commit `69ca2ad8`):** Category-B protection verified (the three
+must-not-repoint sites still hold raw `window.location.origin`); lint 0 errors / 119
+pre-existing warnings; build clean; 3 test files / 11 tests passed post-recovery; `tsc
+--noEmit` exits 0 in 69s (down from ~420s once the `deno install` damage was cleared);
+`data-exposure-reviewer` **PASS**, having tested rather than accepted the "CORS is not
+authorization" claim; Codex second review **CLEAN** with an explicit no-issues verdict.
+
+**A final whole-branch fix wave** (this session, 2026-08-10) closed five findings, all
+documentation/comments — no code defect was found, no behaviour changed: added a missing
+known limitation (a completion notification from the iOS app now deep-links its
+recipient to `.com` while their other transactional emails still point at `.io`, verified
+against `send-notification-email`'s actual template rendering before writing anything
+down); wrote this entry and the accompanying wiki ingest, since none of the knowledge
+layer existed before this pass and CLAUDE.md makes that the actual merge blocker; brought
+the domain-migration wiki page's "Must NOT change" justification into line with its
+source spec, which had already been corrected in place while the RAG-visible wiki copy
+still led with the original unqualified sentence; documented in code the
+origin-classification rule that had previously lived only in the spec (all four raw
+`window.location.origin` sites named in `publicOrigin.ts`'s docblock, plus a one-line
+comment at the one site — `safeUrl.ts:4` — where repointing would actually change
+behaviour) and fixed the spec's own Finding-1 table, which still filed the Outstand sites
+as "must be repointed" though the shipped design gates the consumer instead; and recorded
+the `NATIVE_APP_ORIGINS` mirror-rule exception on the frontend side, where it had been
+undocumented.
+
+→ `docs/wiki/concepts/ios-testflight-first-build.md` · `docs/wiki/entities/capacitor-native-shell.md`
+· `docs/superpowers/specs/2026-08-09-ios-testflight-first-build-design.md`
+· `docs/superpowers/plans/2026-08-09-ios-testflight-first-build.md` · `worktree-dc-apple-store`
 ## [2026-08-09] Donny-first dashboard Phase B — the answer lands on the dashboard, and the table that arrived as pipes
 
 **Branch:** `feat/donny-dashboard-inline-chat` · **Wiki:** [[Donny-First Dashboard]],

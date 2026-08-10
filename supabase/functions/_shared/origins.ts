@@ -37,6 +37,21 @@ export const INTERNAL_APP_ORIGINS = [
   'https://internal.dragoncandy.io',
 ] as const;
 
+/**
+ * The origin the iOS Capacitor shell serves from.
+ *
+ * `capacitor.config.ts` sets `webDir: 'dist'` with no `server.url`, so the app
+ * loads its bundle locally and every fetch carries `Origin:
+ * capacitor://localhost`. Without this the native app reaches Supabase REST and
+ * Auth (which send their own permissive CORS) but NO custom edge function.
+ *
+ * Composed into `cors.ts` only — deliberately NOT into the email-redirect
+ * allow-list, which must keep naming real web URLs.
+ */
+export const NATIVE_APP_ORIGINS = [
+  'capacitor://localhost',
+] as const;
+
 /** Lovable AI-edit preview surfaces (Lovable is no longer the host — see docs/runbooks/vercel-prod-cutover.md). */
 export const LOVABLE_PREVIEW_ORIGIN = 'https://dragoncandy-preview.lovable.app';
 export const LOVABLE_V3_ORIGIN = 'https://dragoncandy-v3.lovable.app';
