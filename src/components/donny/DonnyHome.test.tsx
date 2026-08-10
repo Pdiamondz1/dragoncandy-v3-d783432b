@@ -26,6 +26,7 @@ vi.mock('react-router-dom', async (importOriginal) => {
 const openDonnyWithContextMock = vi.fn();
 const sendMessageMock = vi.fn();
 const registerInlineConversationMock = vi.fn(() => vi.fn());
+const retryLoadMessagesMock = vi.fn();
 const donnyState = {
   // Defaults to READY. A null conversation is the cold-load window, which the
   // queueing tests below opt into explicitly.
@@ -35,6 +36,7 @@ const donnyState = {
   // query still in flight, so `messages` is `[]` while a thread exists on the
   // server — is opted into explicitly by the race test below.
   messagesLoaded: true,
+  messagesErrored: false,
   isStreaming: false,
   streamingContent: '',
   error: null as string | null,
@@ -45,6 +47,7 @@ vi.mock('@/contexts/DonnyProvider', () => ({
     sendMessage: sendMessageMock,
     registerInlineConversation: registerInlineConversationMock,
     retry: vi.fn(),
+    retryLoadMessages: retryLoadMessagesMock,
     avatarState: 'idle',
     userRole: 'business_client',
     close: vi.fn(),
@@ -176,6 +179,7 @@ beforeEach(() => {
   donnyState.conversation = { id: 'c1' };
   donnyState.messages = [];
   donnyState.messagesLoaded = true;
+  donnyState.messagesErrored = false;
   donnyState.isStreaming = false;
   donnyState.streamingContent = '';
   donnyState.error = null;
@@ -611,6 +615,46 @@ describe('DonnyHome — every visit starts fresh', () => {
 
     expect(screen.queryByRole('log', { name: 'Donny conversation' })).not.toBeInTheDocument();
     expect(screen.queryByText(/failed in the side panel/)).not.toBeInTheDocument();
+  });
+
+  it('says so, and offers a working retry, when the history cannot be loaded', () => {
+    // The third option. Sending anyway takes a baseline from an empty array and
+    // lets the whole conversation back in when the query recovers (Codex, on my
+    // own fix for the deadlock); waiting silently is a prompt that never sends.
+    // So: say it, and offer the retry that repairs the cause.
+    donnyState.messagesLoaded = false;
+    donnyState.messagesErrored = true;
+    renderHome();
+
+    askOnPage();
+    expect(sendMessageMock).not.toHaveBeenCalled();
+    expect(screen.getByText(/couldn't load your conversation/i)).toBeInTheDocument();
+
+    const tryAgain = screen.getByRole('button', { name: 'Try Again' });
+    fireEvent.click(tryAgain);
+    expect(retryLoadMessagesMock).toHaveBeenCalled();
+  });
+
+  it('sends the waiting question itself once the history recovers', () => {
+    // The queued ask is KEPT across the failure, so a successful refetch drains
+    // it without the owner retyping a word.
+    donnyState.messagesLoaded = false;
+    donnyState.messagesErrored = true;
+    const { rerender } = renderHome();
+    askOnPage('what should I post this week?');
+
+    donnyState.messagesErrored = false;
+    donnyState.messagesLoaded = true;
+    donnyState.messages = [msg('old', 'Yesterday I said this.')];
+    rerender(
+      <MemoryRouter>
+        <DonnyHome />
+      </MemoryRouter>
+    );
+
+    expect(sendMessageMock).toHaveBeenCalledWith('what should I post this week?');
+    // And the recovered history is still history — not this visit's.
+    expect(screen.queryByText(/Yesterday I said this/)).not.toBeInTheDocument();
   });
 
   it('collapses the greeting once the conversation starts, and restores it when resting', () => {

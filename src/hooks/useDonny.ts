@@ -97,6 +97,7 @@ export function useDonny(options?: UseDonnyOptions) {
     isSuccess: messagesFetched,
     isFetching: messagesFetching,
     isError: messagesErrored,
+    refetch: refetchMessages,
   } = useQuery({
     queryKey: ['donny-messages', conversation?.id],
     queryFn: async () => {
@@ -408,15 +409,16 @@ export function useDonny(options?: UseDonnyOptions) {
   // land after a baseline taken from it. `isSuccess` alone answers "have we
   // ever loaded"; this answers "is what I am holding current".
   //
-  // `isError` counts as settled, deliberately. This flag exists so a caller can
-  // WAIT rather than act on an empty array, and a caller that waits needs the
-  // wait to end. A permanently-failing history query would otherwise hold every
-  // send forever in a silent queue — a prompt that never sends and never
-  // explains itself, which is the dead-control failure this codebase keeps
-  // fighting. It is also the safe direction: on a failed load `data` is
-  // undefined, so `messages` is the `[]` default and there is no stale history
-  // to leak into the fresh view.
-  const messagesLoaded = !messagesFetching && (messagesFetched || messagesErrored);
+  // A FAILED fetch is deliberately NOT loaded. Counting it as loaded was the
+  // obvious way to stop a failing query queueing sends forever, and it quietly
+  // reintroduced the very leak this flag exists to prevent: on error `data` is
+  // undefined, so `messages` is the `[]` default, a baseline taken from it says
+  // "no history", and the moment the query recovers the whole conversation
+  // counts as the current visit. (Codex, twice — the second time on my own
+  // fix.) The deadlock is real but it is the CALLER's to solve, with
+  // `messagesErrored` below, by telling the user rather than by pretending the
+  // empty array is an answer.
+  const messagesLoaded = messagesFetched && !messagesFetching;
 
   const state: DonnyState = {
     conversation: conversation ?? null,
@@ -427,9 +429,17 @@ export function useDonny(options?: UseDonnyOptions) {
     error,
   };
 
+  const retryLoadMessages = useCallback(() => {
+    void refetchMessages();
+  }, [refetchMessages]);
+
   return {
     ...state,
     messagesLoaded,
+    // The history load FAILED, as opposed to "has not finished". A surface that
+    // waits on `messagesLoaded` needs this to end the wait honestly.
+    messagesErrored,
+    retryLoadMessages,
     sendMessage,
     clearChat,
     archiveConversation,

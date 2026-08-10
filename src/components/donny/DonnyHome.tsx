@@ -70,6 +70,8 @@ export function DonnyHome() {
     conversation,
     messages,
     messagesLoaded,
+    messagesErrored,
+    retryLoadMessages,
     avatarState,
     isStreaming,
     streamingContent,
@@ -179,11 +181,28 @@ export function DonnyHome() {
   // of a stale `error` raised by a send that happened somewhere else. (Codex.)
   const askedHere = visitBaselineId !== undefined || queuedAsk !== null;
 
+  // An ask is waiting on history that FAILED to load, so the wait will never
+  // end on its own. Both obvious escapes are wrong: sending anyway takes a
+  // baseline from an empty array and lets the whole conversation back in the
+  // moment the query recovers, and waiting silently is a prompt that never
+  // sends and never explains itself. So the page says so, and offers the retry
+  // that actually fixes it.
+  //
+  // The queued ask is deliberately KEPT. A successful refetch flips
+  // `messagesLoaded`, the flush effect drains the queue, and the question the
+  // owner typed is sent without them retyping a word — the retry repairs the
+  // cause, and the effect that was already waiting does the rest.
+  const historyUnavailable = messagesErrored && queuedAsk !== null;
+  const threadError = historyUnavailable
+    ? "I couldn't load your conversation just now."
+    : error;
+  const threadRetry = historyUnavailable ? retryLoadMessages : retry;
+
   // Keyed on THIS VISIT's messages, so arriving with yesterday's thread in the
   // shared conversation leaves the page in its resting arrangement — greeting,
   // composer, taps — instead of opening on a conversation the owner did not
   // start.
-  const hasConversation = askedHere && (visitMessages.length > 0 || isBusy || !!error);
+  const hasConversation = askedHere && (visitMessages.length > 0 || isBusy || !!threadError);
 
   // Points at the composer, which in the conversation arrangement is the LAST
   // thing in the block — so bringing it into view brings the whole exchange
@@ -459,10 +478,13 @@ export function DonnyHome() {
                 // THIS VISIT's messages, not the whole shared conversation.
                 messages={visitMessages}
                 avatarState={avatarState}
-                isStreaming={isBusy}
+                // Not `isBusy`: a queued ask waiting on history that failed is
+                // not "answering", and a typing indicator over an error is a
+                // lie about what is happening.
+                isStreaming={isBusy && !historyUnavailable}
                 streamingContent={streamingContent}
-                error={error}
-                retry={retry}
+                error={threadError}
+                retry={threadRetry}
                 userRole={userRole}
               />
             )}
