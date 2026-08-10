@@ -1,13 +1,25 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { stubMatchMedia } from '@/test/stubMatchMedia';
 import { DonnyComposer } from './DonnyComposer';
+
+// useIsMobile subscribes to window.matchMedia on mount; jsdom has none.
+stubMatchMedia();
 
 const onSubmit = vi.fn();
 const field = () => screen.getByRole('textbox', { name: /ask donny/i });
 
+// jsdom reports 1024, so every test below is a DESKTOP test unless it calls
+// this. useIsMobile reads window.innerWidth against a 768px breakpoint.
+const DESKTOP_WIDTH = window.innerWidth;
+const setViewportWidth = (px: number) => {
+  Object.defineProperty(window, 'innerWidth', { value: px, configurable: true, writable: true });
+};
+
 beforeEach(() => vi.clearAllMocks());
+afterEach(() => setViewportWidth(DESKTOP_WIDTH));
 
 describe('DonnyComposer', () => {
   it('is a textarea, so a long prompt is visible as a whole', () => {
@@ -95,6 +107,42 @@ describe('DonnyComposer', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it('hands its element to the provider and releases it on unmount', () => {
+    const registerRef = vi.fn();
+    const { unmount } = render(<DonnyComposer onSubmit={onSubmit} registerRef={registerRef} />);
+    expect(registerRef).toHaveBeenCalledWith(expect.any(HTMLTextAreaElement));
+    unmount();
+    expect(registerRef).toHaveBeenLastCalledWith(null);
+  });
+});
+
+describe('DonnyComposer — Enter behaves per platform, like ChatGPT', () => {
+  it('inserts a newline on mobile Enter instead of sending — a phone has no Shift key', () => {
+    setViewportWidth(390);
+    render(<DonnyComposer onSubmit={onSubmit} />);
+    fireEvent.change(field(), { target: { value: 'first line' } });
+    fireEvent.keyDown(field(), { key: 'Enter' });
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(field()).toHaveValue('first line');
+  });
+
+  it('still sends from the button on mobile — the only submit affordance there', () => {
+    setViewportWidth(390);
+    render(<DonnyComposer onSubmit={onSubmit} />);
+    fireEvent.change(field(), { target: { value: 'find creators near me' } });
+    fireEvent.click(screen.getByRole('button', { name: /send to donny/i }));
+    expect(onSubmit).toHaveBeenCalledWith('find creators near me');
+    expect(field()).toHaveValue('');
+  });
+
+  // Desktop's half of this pair is the unchanged "submits on Enter and clears"
+  // above, which now also proves the mobile branch did not leak upward. A
+  // mobile IME test is deliberately absent: on mobile Enter returns early
+  // regardless, so it could not distinguish the guard being first from it
+  // being unreachable — the desktop IME test is the non-vacuous one.
+});
+
+describe('DonnyComposer — registration', () => {
   it('hands its element to the provider and releases it on unmount', () => {
     const registerRef = vi.fn();
     const { unmount } = render(<DonnyComposer onSubmit={onSubmit} registerRef={registerRef} />);

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import { ArrowUp } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 
 // Grows to about eight lines, then scrolls internally. A pill cannot do this,
@@ -28,6 +29,9 @@ export function DonnyComposer({
 }: DonnyComposerProps) {
   const [text, setText] = useState('');
   const ref = useRef<HTMLTextAreaElement>(null);
+  // Matches ChatGPT per platform (founder decision). Same 768px boundary the
+  // rest of the app branches on.
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const el = ref.current;
@@ -58,6 +62,11 @@ export function DonnyComposer({
     // would send a half-composed one — a bug DonnyChatInput and
     // MessageInputEnhanced both still have.
     if (e.nativeEvent.isComposing) return;
+    // A phone keyboard has no Shift+Enter, so Enter-sends would leave the
+    // multi-line composer unable to produce a newline at all — which is the
+    // complaint this composer exists to fix. On mobile Enter is a newline and
+    // the send button is the only way to submit; desktop keeps Enter to send.
+    if (isMobile) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       submit();
@@ -85,7 +94,11 @@ export function DonnyComposer({
           className="w-full resize-none bg-transparent text-base text-dc-text placeholder:text-dc-text/60 focus:outline-none lg:text-lg"
         />
         <div className="flex items-center gap-3">
-          <span className="hidden text-xs text-dc-text-muted sm:inline">
+          {/* md:, not sm: — the hint has to appear at exactly the width where
+              the behaviour it describes turns on (useIsMobile's 768px). At sm:
+              it would have promised "Enter to send" across the 640–767 band,
+              where Enter now inserts a newline. */}
+          <span className="hidden text-xs text-dc-text-muted md:inline">
             Enter to send · Shift+Enter for a new line
           </span>
           <button

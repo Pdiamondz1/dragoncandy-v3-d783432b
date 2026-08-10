@@ -108,8 +108,13 @@ vi.mock('@/components/DashboardLayout', () => ({
 }));
 vi.mock('@/components/org/LocationBadge', () => ({ LocationBadge: () => null }));
 
+import { stubMatchMedia } from '@/test/stubMatchMedia';
 import { DonnyHome } from './DonnyHome';
 import { BUSINESS_SUGGESTIONS } from '@/lib/donny/donnyHomeSuggestions';
+
+// DonnyComposer branches Enter-vs-newline on useIsMobile, which subscribes to
+// window.matchMedia; jsdom has none.
+stubMatchMedia();
 
 function renderHome() {
   return render(

@@ -35,7 +35,12 @@ vi.mock('@/contexts/DonnyProvider', () => ({
   useDonnyContext: () => donnyContextMock.value,
 }));
 
+import { stubMatchMedia } from '@/test/stubMatchMedia';
 import { DonnyCanvas } from './DonnyCanvas';
+
+// DonnyComposer branches Enter-vs-newline on useIsMobile, which subscribes to
+// window.matchMedia; jsdom has none.
+stubMatchMedia();
 
 const msg = (over: Partial<DonnyMessage>): DonnyMessage =>
   ({
