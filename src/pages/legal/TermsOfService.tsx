@@ -1,10 +1,6 @@
 import { LegalPageLayout } from './LegalPageLayout';
 import { PRIVACY_EMAIL } from '@/lib/contactAddresses';
-import {
-  LEGAL_ENTITY_ADDRESS_LINES,
-  LEGAL_ENTITY_JURISDICTION,
-  LEGAL_ENTITY_NAME,
-} from '@/lib/legalEntity';
+import { LEGAL_ENTITY_ADDRESS_LINES, LEGAL_ENTITY_NAME } from '@/lib/legalEntity';
 
 // Bumped from June 6, 2026 when §1 changed to name the operating entity. §16 below
 // commits in writing to revising this date on an update, and naming the contracting
@@ -22,10 +18,9 @@ export default function TermsOfService() {
       <p>
         These Terms of Service ("Terms") govern your access to and use of the DragonCandy
         website at dragoncandy.com, our iOS application, and related services (collectively,
-        the "Service"), operated by {LEGAL_ENTITY_NAME}, a {LEGAL_ENTITY_JURISDICTION}{' '}
-        limited liability company ("DragonCandy," "we," "us," or "our"). By creating an
-        account or using the Service, you agree to these Terms. If you do not agree, do not
-        use the Service.
+        the "Service"), operated by {LEGAL_ENTITY_NAME} ("DragonCandy," "we," "us," or
+        "our"). By creating an account or using the Service, you agree to these Terms. If
+        you do not agree, do not use the Service.
       </p>
 
       <h2>1. Eligibility</h2>
