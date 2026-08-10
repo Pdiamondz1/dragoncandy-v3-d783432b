@@ -316,6 +316,15 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **Donny's consumer RAG closed — the wiki syncs internal by default** — `EXCLUDE` was inert
+  (gated on a `SYNC_CURATE=1` the unattended post-merge sync never sets), so **107 of 112** wiki
+  rows were consumer-reachable, retrievable via `donny-orchestrator`'s default-scope RAG → the
+  `general` catch-all; the worst page was on neither list and states the live user count, the
+  vendor-by-vendor burn and "Stripe test mode". Inverted to an **empty `CONSUMER` allowlist** —
+  nothing lost internally, since `sync-internal-docs.mjs` already mirrors every page at internal
+  scope (1:1, 112 and 112). **Merged and verified on prod 2026-08-10:** `internal` 112, NULL group
+  gone, consumer predicate **0 of 247**. Codex found 2, both mine. → `docs/SHIPPED_LOG.md` ·
+  `docs/wiki/concepts/donny-rag-scope-boundary.md` · #434
 - **Dead `/settings/*` CTAs fixed (12 across 10 files)** — every "Upgrade" (incl. the revenue path)
   and "Connect Outstand" CTA 404'd; `isKnownRoute` never caught them because it only guards routes
   the LLM **invents**. Merged `fef2b428`; `donny-orchestrator` + `fire-campaign-social-hook` both

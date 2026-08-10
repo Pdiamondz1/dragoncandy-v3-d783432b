@@ -1,5 +1,29 @@
 # Wiki Log
 
+## [2026-08-10] ingest | [[Donny RAG Scope Boundary]] — the consumer RAG was the leak
+
+Ingested `raw/sessions/2026-08-10-wiki-rag-consumer-scope.md` as a **new concept page**, not a
+compound. The nearest existing page, [[Knowledge-Sync Automation]], is about the *plumbing* that
+writes the RAG (npm aliases, the secret resolver, the post-merge hook); this is about the
+*boundary* it writes across — who may retrieve what, and why `scope NULL` being both the
+permissive value and the default is the root of a recurring leak class. Distinct subject, and one
+that other pages need to link at ([[Dragon Rewards Engine (DRE)]] already carries an instance of
+it).
+
+**Pages created:** `concepts/donny-rag-scope-boundary.md`.
+**Pages updated:** `concepts/knowledge-sync-automation.md` — added what the two sync scripts now
+mean for audience, a pointer to the new page, and a **claim-decay fix**: its Gotchas asserted
+"updates don't bump `updated_at`", which PR #385 falsified on 2026-08-07 by restoring
+`handle_updated_at()`. Rewritten to the principle that survived — gate on `content ilike` because
+it proves *this* text is retrievable, not merely that *something* was written.
+
+**Contradiction flagged, not silently resolved:** this page states the wiki is deliberately
+absent from the consumer RAG, while [[Self-Improving App]] and `CLAUDE.md` both describe the
+autoresearch loop as syncing verified wiki pages into "Donny's RAG". Both are true and the
+distinction is scope, not accuracy — the loop still feeds **internal** Donny through
+`sync-internal-docs.mjs`. The new page says so explicitly rather than editing the older claims,
+which remain correct as written.
+
 ## [2026-08-10] ingest | [[Domain Migration (.io → .com)]] Phase 4 — content and knowledge
 
 Ingested `raw/sessions/2026-08-10-dotcom-phase4-content.md` by **compounding onto the existing
