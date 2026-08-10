@@ -58,6 +58,23 @@ export function useDonny(options?: UseDonnyOptions) {
   // the shift() below are what make a queued send exactly-once.
   const isDrainingRef = useRef(false);
 
+  // `enabled` gates BACKGROUND work; an explicit send is a user intent and must
+  // not be gated by it. DonnyProvider derives `enabled` from `stage`, and
+  // DonnyCanvas only leaves 'closed' in a mount EFFECT — which React runs after
+  // the first paint, i.e. while the inline composer and its chips are already
+  // on screen and clickable. So `isEnabled === false` is NOT evidence that no
+  // conversation is coming, and a tap in that window must not be answered with
+  // "No active conversation".
+  //
+  // A send therefore turns the conversation query on ITSELF. That is what
+  // bounds the hold below: the query a send starts has exactly two terminal
+  // states and BOTH release the queue — success drains it, failure sets
+  // `conversationError`, which makes `conversationPending` false and lets the
+  // send fall through to the existing error card + Retry. Nothing ever waits on
+  // a component that may never mount.
+  const [sendRequested, setSendRequested] = useState(false);
+  const queriesEnabled = isEnabled || sendRequested;
+
   // Load or create conversation
   const { data: conversation, error: conversationError } = useQuery({
     queryKey: ['donny-conversation', user?.id],
@@ -86,8 +103,16 @@ export function useDonny(options?: UseDonnyOptions) {
       if (createError) throw createError;
       return created as unknown as DonnyConversation;
     },
-    enabled: !!user && isEnabled,
+    enabled: !!user && queriesEnabled,
   });
+
+  // The intent is discharged the moment the query reaches a terminal state:
+  // react-query keeps `conversation` (or the error) in its cache when the gate
+  // closes again, so subsequent sends resolve from cache and the "only query
+  // while Donny is open" optimisation is preserved rather than pinned on.
+  useEffect(() => {
+    if (conversation || conversationError) setSendRequested(false);
+  }, [conversation, conversationError]);
 
   // Load messages
   const { data: messages = [] } = useQuery({
@@ -104,12 +129,12 @@ export function useDonny(options?: UseDonnyOptions) {
       if (fetchError) throw fetchError;
       return (data ?? []) as DonnyMessage[];
     },
-    enabled: !!conversation && isEnabled,
+    enabled: !!conversation && queriesEnabled,
   });
 
   // Subscribe to Realtime for new messages (streamed from edge function)
   useEffect(() => {
-    if (!conversation || !isEnabled) return;
+    if (!conversation || !queriesEnabled) return;
 
     const channel = supabase
       .channel(`donny-messages-${conversation.id}`)
@@ -132,7 +157,7 @@ export function useDonny(options?: UseDonnyOptions) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [conversation, isEnabled, queryClient]);
+  }, [conversation, queriesEnabled, queryClient]);
 
   // Send message mutation
   const sendMessageMutation = useMutation({
@@ -330,11 +355,17 @@ export function useDonny(options?: UseDonnyOptions) {
   });
 
   // Is a conversation genuinely on its way? Only then is holding a send the
-  // right answer. With no user, with the hook disabled, or once the query has
-  // FAILED, nothing is coming — fall through to the mutation so the
-  // `!conversation || !user` guard fires and the caller gets the existing error
-  // card and its Retry, rather than a queue that never drains.
-  const conversationPending = !!user && isEnabled && !conversation && !conversationError;
+  // right answer. With no user, or once the query has FAILED, nothing is
+  // coming — fall through to the mutation so the `!conversation || !user` guard
+  // fires and the caller gets the existing error card and its Retry, rather
+  // than a queue that never drains.
+  //
+  // `isEnabled` is deliberately NOT a term here. It used to be, and that left
+  // the whole pre-effect window uncovered: on a cold dashboard the hook is
+  // disabled until DonnyCanvas's mount effect runs, so the very taps this queue
+  // exists for were the ones it excluded. Removing it is only safe because
+  // `sendMessage` below turns the query on when it queues — see `sendRequested`.
+  const conversationPending = !!user && !conversation && !conversationError;
 
   const sendMessage = useCallback(
     (content: string) => {
@@ -348,6 +379,11 @@ export function useDonny(options?: UseDonnyOptions) {
       // lands.
       if (conversationPending) {
         queuedSendsRef.current.push(content);
+        // Load-bearing, not bookkeeping: this is what guarantees the hold ends.
+        // Without it a send issued while the hook is disabled would wait on
+        // some OTHER component flipping the stage, and would sit queued and
+        // silent forever if none ever did.
+        setSendRequested(true);
         setQueueSignal((n) => n + 1);
         return;
       }
