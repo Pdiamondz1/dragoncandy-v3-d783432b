@@ -296,6 +296,44 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **Every `href` in our transactional emails was caller-chosen — closed on prod (#442)** — ~30
+  templates built every link from caller-supplied `data` with no check, reachable because
+  `create-notification` spreads the request body **verbatim** and calls `send-notification-email`
+  with the **service key**, so the self-only 403 never applied. Whole-URL fields went into `href`
+  raw (attacker site, or `javascript:`); id fields were concatenated into paths, so a `"` closed
+  the attribute and wrote markup into the message. Closed by `_shared/emailLinks.ts`, whose
+  `safeLink` **discards the host rather than validating it** (parse relative to our origin, keep
+  only `pathname+search+hash`) — one rule covering absolute, protocol-relative, backslash,
+  userinfo, `javascript:`/`data:`, CRLF and encoded traversal at once. **29 tests**, confirmed
+  collected by CI (239→240 files). Two auth bugs went with it: **`"Bearer undefined"` promoted an
+  unauthenticated caller to SERVICE** (key read `as string`, no presence check — confirmed against
+  the **live** bundle), and the self-check **failed open on any caller with no email** on their
+  auth record. The regression it had to avoid: `budget: 0` is real (crew campaigns are free), so
+  `?? ''` would have printed "Budget: $0" on every free-campaign email — **escaping must not change
+  what renders**; money is *coerced* not escaped because two amounts sit in the subject. Authored
+  by a **parallel session** and left unmerged a day — **cherry-picked, not merged**, since the
+  branch predated the `.io`→`.com` migration in the same file. Reviewer completeness sweep: all 45
+  sinks enumerated, **zero** raw values remain. Codex clean; deployed and boot-verified.
+  → `docs/SHIPPED_LOG.md` · `docs/wiki/concepts/notification-delivery.md` · #442
+- **`can_notify_user`'s crew clause was forgeable — closed on prod (#440)** — no membership-status
+  filter, and since **any** user may create a crew (`WITH CHECK (owner_id = auth.uid())`) with an
+  **unconstrained `creator_id`**, two INSERTs bought a notification channel to **any user on the
+  platform**. Proven red on prod, then proven closed against the live function
+  (`forged_row_grants=f`, genuine accept still `t`, self-notify control `t`). Fixed in two halves,
+  because the obvious one-liner is a regression: the clause now requires `status='active'` (which
+  an **owner cannot write** — verified with a control: INSERT/UPDATE to active → 42501, UPDATE to
+  `removed` → succeeds, so it means *the creator accepted*), **plus** a row-authorized,
+  **server-worded** branch for the two crew notifications that fire at a non-active status
+  (`group_invitation` at `invited`, `group_membership_removed` at `removed`) — without that second
+  half it is the same hole by a shorter route. Two more live bugs closed en route: the internal
+  email call let a caller **overwrite `recipientUserId`** and redirect a branded email to a third
+  party with no bell row (service key ⇒ the self-only gate did not apply), and `forceDelivery`
+  overrode the recipient's opt-out for user callers (zero callers → service-only). Also discovered:
+  **the repo cannot rebuild this function** — ledger entry `20260808120130` has **no file in the
+  tree**, so a clean `db push` would have silently dropped two authorization clauses; this
+  migration codifies prod's real body. Deploy order was deliberately the **reverse** of the usual
+  rule (function first, migration second). `create-notification` **v53**; Codex clean.
+  → `docs/SHIPPED_LOG.md` · `docs/wiki/concepts/notification-delivery.md` · #440
 - **Donny-first business dashboard (Phases A + B + the shape corrections)** — the
   `/dashboard/business` body is Donny: greeting, attention list, prompt box, three taps, with the
   answer landing in-page. Scope set by a prod audit, not the mockup. The founder then corrected the

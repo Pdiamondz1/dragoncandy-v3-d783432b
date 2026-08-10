@@ -26,6 +26,152 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-10] A user could choose the CTA link inside our transactional emails (#442)
+
+Every `href` in `send-notification-email`'s ~30 templates was built from caller-supplied `data`,
+and none of it was checked. Third link in the day's chain (#419 → #440 → #442), and the same
+reachability each time:
+
+> `create-notification` spreads the caller's request body **verbatim** into the payload it sends
+> `send-notification-email`, and calls it with the **service key** — so a user-authenticated caller
+> reaches those templates and the function's own "recipient must be self" 403, which exists
+> precisely to stop cross-user mail, **does not apply to the resulting message.**
+
+Whole-URL fields (`actionUrl`, `campaignUrl`, `reviewUrl`) went into `href` raw, so the CTA of a
+genuine DragonCandy email could point at an attacker's site or a `javascript:` scheme; id fields
+were concatenated into paths, so a `"` closed the attribute and let the caller write markup into
+the message body.
+
+**Not my work.** Both commits were authored by a **parallel session on 2026-08-09** and left with
+**no PR** for a day. Cherry-picked onto current `main` rather than merged, because the branch
+predated the `.io`→`.com` migration *in this same file* (branch 4 `.io`/0 `.com`; main 1/2) and a
+straight merge risked silently reintroducing `.io` on the hunks it touched. Verified after: both
+`.com` emblem images intact, `from:` correctly still `notify.dragoncandy.io` (Phase 5b is blocked
+on the $20/mo decision). *A parallel session's branch is not a merge candidate just because it
+exists — check what landed under it first.*
+
+**The fix** is `_shared/emailLinks.ts`: `link` (a path *we* composed), `safeLink` (a caller path
+forced back onto our origin), `pathSegment`, `safeImageUrl`.
+
+> **`safeLink` discards the host rather than validating it** — parses relative to our own origin,
+> keeps only `pathname + search + hash`. One rule therefore covers absolute, protocol-relative,
+> backslash, userinfo, `javascript:`/`data:`, CRLF and encoded-traversal spellings at once.
+> **Validation enumerates what is bad; discarding keeps only what is good.** A `toString`-bearing
+> object is rejected by a `typeof` check *before* `new URL` can stringify it — correct ordering,
+> easy to get wrong.
+
+**29 tests** assert **both** properties on every hostile input (stays-on-origin *and*
+cannot-break-out), because fixing one without the other still leaves a usable injection. Confirmed
+**collected by CI**, not merely runnable by hand: 239 → 240 files.
+
+**Two auth bugs fixed alongside.** `"Bearer undefined"` **promoted an unauthenticated caller to
+SERVICE** — the key was read `as string` with no presence check, so an unset secret made the
+comparison true for the one string an attacker would guess first, and service callers skip the
+same-inbox check entirely. Confirmed real by reading the **live v252 bundle**. And the self-check
+`to && callerEmail && …` **failed open on any caller with no email on their auth record** — latent
+at 0-of-42 users, but one GoTrue toggle (anonymous/phone sign-in) from live.
+
+**The regression it had to avoid:** `budget: 0` is a real value — crew campaigns are free and carry
+a literal `0` behind a `data.budget ?` guard — so a naive `?? ''` would have printed "Budget: $0"
+on every free-campaign email. **Escaping must not change what renders.** Money is *coerced* rather
+than escaped, because two amounts sit in the **subject**, which is not markup: `&amp;` renders
+literally and a CRLF is a header-injection primitive escaping cannot touch. That coercion also
+fixed a live crash — `data.amount.toFixed(2)` is typed `number` but arrives as JSON.
+
+**Review follow-ups (mine, on their work).** Fixed: `fileCount ?? 0` rendered "uploaded **0 new
+files**" under an H1 reading "New Deliverables!" — a *confident false statement*, worse than the
+obvious garbage it replaced; a **set but unparseable** `APP_URL` silently stripped the deep link
+from every completion email while the send still reported success; drifted comment line-refs
+replaced with **symbol** refs rather than corrected, since numbers drift again. Cleared with
+evidence, no change: the preserved `search`/`hash` needs an on-origin redirect sink to be
+exploitable and the only one (`AuthPage` `returnTo`) already gates on `ALLOWED_REDIRECT_ORIGINS`;
+`safeImageUrl` drops relative URLs but **0 of 10** prod `dragonshare_posts` have one.
+
+**Left open deliberately:** `safeImageUrl` pins the scheme but not the host (these images
+legitimately live on Supabase storage), so a creator-writable `post_url` could be a tracking pixel
+— same class as #399. Self-addressed today, so documented rather than fixed.
+
+**Verified:** `data-exposure-reviewer` completeness sweep — all 45 `href`/`src`/subject sinks
+enumerated, **zero** raw caller values remain; `edge-function-reviewer` PASS (transitive `_shared`
+= 4 files, all uploaded; zero `esm.sh`; no unrelated drift); **Codex clean**; 240 files / 2410
+tests green. Deployed and boot-verified, all 5 assets including the new `emailLinks.ts`.
+
+*Caveat recorded honestly:* the post-deploy `Bearer undefined` curl returns 401, but **would have
+before the fix too** (the secret is set, so the comparison fails either way) — a non-discriminating
+probe, same lesson as the Phase-5a SMTP `RCPT TO` run. The live-bundle read is what established it.
+
+→ `docs/wiki/concepts/notification-delivery.md` · #442
+
+## [2026-08-10] A crew invite nobody accepted was a notification channel to anyone (#440)
+
+`can_notify_user`'s crew clause carried **no membership-status filter**, so a channel to any
+user on the platform was manufacturable with two INSERTs and nobody's consent. Surfaced by the
+review of #419, which leaned on that gate.
+
+**Proven, not argued** — on prod, inside a rolled-back transaction, impersonating a real
+`business_client` against an unrelated `brand` user:
+
+```
+BEFORE  baseline=f  crew_insert=t  member_insert=t  after=t
+AFTER   forged_row_grants=f   after_genuine_accept=t   self_notify_CONTROL=t
+```
+
+Three facts composed into it: `creator_groups` INSERT is `WITH CHECK (owner_id = auth.uid())`
+(**any** authenticated user may create a crew — no role check); `cgm_owner_insert` leaves
+**`creator_id` entirely unconstrained**; and the clause filtered no status. The *actor* was
+never forgeable (`actorId` is JWT-derived) — the **words and the link were**, on any of the 26
+mapped types, i.e. a DragonCandy-branded transactional email with attacker-chosen copy.
+
+**Why `status='active'` is the right predicate:** an owner **cannot write it**. Verified on prod
+**with a control**, because two denials alone could just mean a broken probe — INSERT active →
+**42501**, UPDATE to active → **42501**, UPDATE to `'removed'` → **succeeds**. The only writer of
+`'active'` is `respond_to_group_invitation()`, gated `creator_id = auth.uid()`. So it means *the
+creator themselves accepted*.
+
+**Why that filter alone would have been a regression — the constraint the founder set.** Two crew
+notifications fire at a **non-active** status: `group_invitation` (`invited`) and
+`group_membership_removed` (`removed` — `removeMember` UPDATEs *before* dispatching). Gating them
+on `active` kills both (the #387 shape); relaxing to `IN ('active','invited','removed')` excludes
+only `declined` and fixes nothing. Both are now authorized against the **membership row** with
+**server-composed copy**. That second half is not polish: row authorization alone would still mean
+"you may send anyone you can name in a crew row arbitrary text" — the same hole by a shorter route.
+Mirrors the existing `content_liked` pattern.
+
+**Two more live bugs, found in review and fixed here:**
+- **The transactional email could be redirected.** `recipientUserId` was spread **first** in the
+  internal call to `send-notification-email`, so caller-controlled `data`/`emailData` overwrote it
+  — and because that call uses the service key, the self-only gate does not apply. A caller could
+  authorize against **themselves** (`p_actor = p_recipient`) and have a branded email delivered to
+  a **third party, with no `push_notifications` row recording it**. Now pinned last.
+- **`forceDelivery` overrode the recipient's email opt-out** for user callers — the one control the
+  "no more than a business can already do" reasoning depends on. Zero callers anywhere → service-only.
+
+**The repo could not rebuild prod's `can_notify_user`.** `schema_migrations` records
+`20260808120130 can_notify_user_active_relationships` with **no file in `supabase/migrations/`**
+(applied via MCP during #387/#396, never written back), so the repo body lacked the conversation
+`left_at` and org `invitation_status` clauses prod has. **A clean `supabase db push` would have
+produced the LOOSER function and silently dropped two authorization tightenings.**
+`recorded ≠ actual`, opposite direction from #325/#385. This migration codifies prod's real body.
+
+**One guard rejected:** requiring `responded_at IS NOT NULL` to prove prior membership.
+`column_privileges` shows `authenticated` holds UPDATE on `responded_at`, and RLS `WITH CHECK`
+cannot pin a column — forgeable by the same owner, so it would have been decoration. The
+overclaiming comment was corrected instead, and the residual stated plainly: an owner can still put
+a crew-flavoured bell in any user's feed (bell-only for removal, server-worded, fixed URL).
+
+**Deploy order was the REVERSE of the usual rule** — `create-notification` **first**, migration
+second, because the code change makes those two types stop consulting `can_notify_user` entirely,
+so they work under both function bodies. Migration-first would have 403'd every crew invite until
+the deploy landed.
+
+**Verified live:** `create-notification` **v53** boot-verified; migration applied; the original
+attack re-run against the live function returns `f`; ACL `anon=false auth=false service=true`;
+conversation/org/sponsorship clauses all intact. `edge-function-reviewer` PASS (`_shared`
+byte-compared to the live bundle, zero drift), `data-exposure-reviewer` 1 high + 3 low all
+addressed or explicitly rejected, **Codex clean**, 239 files / 2381 tests green.
+
+→ `docs/wiki/concepts/notification-delivery.md` · #440
+
 ## [2026-08-10] Domain migration Phase 5 (MAIL) — 5a shipped; 5b blocked on $20/mo
 
 Branch `feat/dotcom-phase5-mail` · `src/lib/contactAddresses.ts` (new) · migration

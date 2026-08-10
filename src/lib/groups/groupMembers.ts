@@ -14,6 +14,19 @@ export function activeMemberIds(members: GroupMemberLike[]): string[] {
   return members.filter(m => m.status === 'active').map(m => m.creator_id);
 }
 
+/**
+ * NOTE (2026-08-10): `title`, `body` and `actionUrl` below are now DISCARDED by
+ * `create-notification`, which composes them server-side for `group_invitation` and
+ * `group_membership_removed` — see CREW_COLD_CONTACT_TYPES in that function. These two
+ * types are cold contact by design and fire at a non-active membership status, so they
+ * are authorized against the membership row rather than `can_notify_user`; letting the
+ * caller choose the words would have re-opened the hole that change closed.
+ *
+ * They are kept (rather than deleted) deliberately: `recipientId`/`type`/`category`/
+ * `data.group_id` are still load-bearing, and retaining the copy means the client keeps
+ * working unchanged if the edge function is ever rolled back. If you edit the wording
+ * here, edit it in `create-notification` too — that is now the source of truth.
+ */
 export function buildGroupInviteNotification(args: {
   creatorId: string; groupName: string; groupId: string; actorId: string;
   /** Owner's business name. Drives both the bell body and the email subject. */
