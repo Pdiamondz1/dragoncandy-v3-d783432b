@@ -70,9 +70,13 @@ export function useCreatorAttentionInvitations() {
         supabase.from('profiles').select('id, full_name').in('id', ownerIds),
       ]);
 
-      if (bpResult.error) throw bpResult.error;
-      if (profileResult.error) throw profileResult.error;
-
+      // Deliberately NOT thrown on — unlike the two reads above, whose failure
+      // means we do not know whether an invitation exists. These only decorate
+      // a row we have already earned the right to show, and throwing would
+      // delete the whole invitation category (and, via the errored-source
+      // guard, suppress the find-work nudge too) because a display name could
+      // not be resolved. Falls through to 'A business'. Matches the sibling
+      // useCreatorPendingInvitations, which tolerates the same failure.
       const businessMap = new Map((bpResult.data ?? []).map((b) => [b.user_id, b.business_name]));
       const profileMap = new Map((profileResult.data ?? []).map((p) => [p.id, p.full_name]));
 

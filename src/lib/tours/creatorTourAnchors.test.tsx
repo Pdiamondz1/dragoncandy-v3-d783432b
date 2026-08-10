@@ -48,7 +48,7 @@ vi.mock('@/hooks/useCreatorPendingApplications', () => ({
   useCreatorPendingApplications: () => ({ data: [], isLoading: false, isError: false }),
 }));
 vi.mock('@/hooks/useCreatorPayoutState', () => ({
-  useCreatorPayoutState: () => ({ data: { hasStripeAccount: false, onboardingComplete: false, pendingBalance: 0, collaborationCount: 1 }, isLoading: false, isError: false }),
+  useCreatorPayoutState: () => ({ data: { hasStripeAccount: false, onboardingComplete: false, pendingBalance: 0, collaborationCount: 1, activeCollaborationCount: 1 }, isLoading: false, isError: false }),
 }));
 
 // CreatorOverview's own data hooks — all react-query based, so leaving any one
@@ -128,5 +128,15 @@ describe('CREATOR_TOUR anchors resolve on both creator pages', () => {
       expect(overview.querySelector(step.target),
         `${step.target} missing from CreatorOverview`).not.toBeNull();
     }
+
+    // Presence is not enough for the attention anchor specifically:
+    // NeedsAttentionSection self-hides via `hidden` + CSS :has() when every
+    // slot is empty, and querySelector finds the wrapper either way. A tour
+    // step pointed at a zero-height element spotlights nothing. The mocks
+    // above supply an invitation precisely so this can be asserted.
+    expect(
+      donnyHome.querySelector("[data-tour='creator-attention']")!.childElementCount,
+      'creator-attention is present but empty — the tour would spotlight nothing'
+    ).toBeGreaterThan(0);
   });
 });

@@ -104,12 +104,24 @@ function invitationProposals(items: CreatorInvitation[]): DonnyProposal[] {
 }
 
 /**
- * Item C — payout readiness. Four states, in order. The fourth is silent on
- * purpose: `stripe_onboarding_complete` is known to go stale-false (#173, the
- * webhook never delivers), and the only real verifier calls the Stripe API
- * from the backend — the frontend cannot tell "hasn't finished" from
- * "finished, we never heard". Telling someone who is already set up to go set
- * up is the #357 false-"verify your email" class, on the top item of the page.
+ * Item C — payout readiness. Four states, in order.
+ *
+ * The last two branches are worded to be TRUE IN BOTH WORLDS, because this
+ * screen cannot know which world it is in. `stripe_onboarding_complete` goes
+ * stale-FALSE (#173 — the webhook never delivers), and the only real verifier
+ * is `check-creator-payout-status`, which calls the Stripe API from the
+ * backend. That verifier is deliberately NOT called here: it would put an
+ * external round-trip on the path gating the dashboard's first paint.
+ *
+ * So the copy asserts nothing about the creator's actual Stripe state. "Check
+ * your payout setup" is honest whether they finished or not; "you aren't set
+ * up" would be the #357 false-"verify your email" class on the top item of
+ * the page. Only the never-started branch, where `stripe_account_id` is null
+ * and there is nothing to be stale about, says "set up".
+ *
+ * Note for whoever edits this next: the app now holds two answers to "is this
+ * creator's Stripe ready" — this column read, and the self-healing verification
+ * behind `useTransactionReadiness`. They can disagree. Word accordingly.
  */
 function payoutProposals(payout: CreatorPayoutState): DonnyProposal[] {
   if (payout.onboardingComplete) return [];
@@ -142,9 +154,22 @@ function payoutProposals(payout: CreatorPayoutState): DonnyProposal[] {
     ];
   }
 
-  // Ambiguous: account set, flag false, no balance. Unknowable from the
-  // client, and no urgency to justify a guess — stay silent.
-  return [];
+  // Started onboarding and stopped: an account exists, the flag is false, no
+  // money is waiting. Whether they actually finished is unknowable here — so
+  // the row says "check", never "you aren't set up". This is the largest
+  // reachable group (only 3 of 18 creators have completed onboarding) and the
+  // one closest to being able to get paid.
+  return [
+    {
+      id: 'creator:payout',
+      kind: 'signal',
+      text: 'Check your payout setup so you can get paid',
+      occurredAt: null,
+      cta: routeCta('Check payout setup', '/dashboard/creator/earnings'),
+      priority: 0,
+      dismissible: false,
+    },
+  ];
 }
 
 /**
@@ -179,7 +204,13 @@ export function buildCreatorProposals(input: CreatorProposalsInput): DonnyPropos
   const applicationProps = applicationProposals(applications);
   const invitationProps = invitationProposals(invitations);
 
+  // Two different questions, so two different counts — see CreatorPayoutState.
+  // `collaborationCount` is lifetime ("has this creator ever worked or
+  // earned"), which is what ranks payout to the top. `activeCollaborationCount`
+  // is right now, which is the only one that can license "nothing on your
+  // plate": on prod 11 of 16 collaborations are already `completed`.
   const collaborationCount = payout?.collaborationCount ?? 0;
+  const activeCollaborationCount = payout?.activeCollaborationCount ?? 0;
   const pendingBalance = payout?.pendingBalance ?? 0;
   const hasMoneyOrWork = pendingBalance > 0 || collaborationCount > 0;
 
@@ -201,16 +232,28 @@ export function buildCreatorProposals(input: CreatorProposalsInput): DonnyPropos
     contentProposals.length === 0 &&
     applicationProps.length === 0 &&
     invitationProps.length === 0 &&
-    collaborationCount === 0;
+    activeCollaborationCount === 0;
   const findWorkProps = findWorkProposal(nothingInFlight);
 
-  // A/B/D keep one fixed relative order; only where item C sits around them
-  // changes. Writing that order once means a future reorder cannot land in one
-  // branch and miss the other.
-  const work = [...contentProposals, ...applicationProps, ...invitationProps];
+  // A, B, D, E keep one fixed relative order. The ONLY thing `hasMoneyOrWork`
+  // decides is which end item C sits at.
+  //
+  // Writing the body once is what makes that true. The first version of this
+  // branched on `hasMoneyOrWork` with two hand-written lists, and the
+  // money-first list simply omitted item E — so a creator who had earned before
+  // but had nothing in flight lost the one nudge meant for exactly them, and if
+  // their payout was already set up the whole attention region rendered empty.
+  // A/B/D and E are mutually exclusive by construction (E only fires when the
+  // other three are empty), so the concatenation is never both.
+  const body = [
+    ...contentProposals,
+    ...applicationProps,
+    ...invitationProps,
+    ...findWorkProps,
+  ];
   const merged = hasMoneyOrWork
-    ? [...payoutProps, ...work]
-    : [...work, ...findWorkProps, ...payoutProps];
+    ? [...payoutProps, ...body]
+    : [...body, ...payoutProps];
 
   const ranked = merged.filter((p) => !dismissed.has(p.id));
 

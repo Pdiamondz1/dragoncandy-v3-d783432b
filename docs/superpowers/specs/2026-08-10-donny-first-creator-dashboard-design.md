@@ -537,9 +537,32 @@ every **body** selector in `CREATOR_TOUR` must be present in the rendered tree o
 >
 > One safeguard worth recording rather than assuming: `NeedsAttentionSection` hides
 > itself with CSS `:has()`, so the `creator-attention` anchor is always in the DOM but
-> could have a zero-size rect and an invisible spotlight. In practice item E
-> guarantees every creator has at least one row, so it is never empty. (Note also
-> that `DonnyHomeProposals` renders a skeleton, not the section, while loading.)
+> could have a zero-size rect and an invisible spotlight. (Note also that
+> `DonnyHomeProposals` renders a skeleton, not the section, while loading.)
+>
+> **CORRECTED after the whole-branch review, 2026-08-10.** This paragraph used to end
+> "in practice item E guarantees every creator has at least one row, so it is never
+> empty." **That was false, and it was the load-bearing reason this hazard was
+> dismissed.** Two ways the region can be empty:
+>
+> 1. As originally specified, §4.4's rule said item E requires "no collaboration" —
+>    a *lifetime* count. On prod 11 of 16 collaborations are already `completed`, so
+>    a creator who simply finished their work counted as having something in flight,
+>    E never fired, and an onboarded creator in that state got **zero** rows. Fixed
+>    in the same review: the builder now splits the two questions
+>    (`collaborationCount` for "has ever worked", `activeCollaborationCount` for
+>    "is anything in flight"), with tests pinning both.
+> 2. Even after that fix, a creator with an `active` collaboration whose content sits
+>    at `submitted` — nothing to do, waiting on the business — with no pending
+>    application, no invitation, and payout complete renders zero rows. That state is
+>    honest ("nothing needs you"), so it is left alone; but it means the anchor CAN be
+>    zero-height and the claim above must not be relied on again. `creatorTourAnchors.test.tsx`
+>    now asserts the anchor has children rather than merely existing, so the two do
+>    not silently diverge.
+>
+> The general lesson, since this spec made the mistake twice in one paragraph: **a
+> safeguard that rests on "in practice X never happens" is not a safeguard.** Assert
+> it or handle it.
 
 Without this test the tour silently rots the next time either page is restructured,
 which is precisely how the current breakage arrived.
