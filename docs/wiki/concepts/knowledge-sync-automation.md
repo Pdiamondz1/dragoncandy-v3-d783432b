@@ -34,12 +34,21 @@ dev tooling over the existing `donny-knowledge-sync` edge function and the two s
 
 Net workflow: edit a `docs/` page → merge → `refresh-main` → Donny updates itself.
 
-**What the two scripts now mean for audience** (changed 2026-08-10, PR #434): `sync:internal`
-still writes the whole repo `docs/` tree — wiki pages included — to `scope='internal'`.
-`sync:wiki` no longer populates a consumer knowledge base at all: it marks every wiki page
-`internal` unless the page is on an explicit, currently-empty `CONSUMER` allowlist. Preview any
-allowlist edit with `SYNC_DRY_RUN=1 node supabase/scripts/sync-wiki-to-donny.mjs`, which prints
-the split and POSTs nothing. Rules and rationale: [[Donny RAG Scope Boundary]].
+**What the two scripts now mean for audience** (changed 2026-08-10, PRs #434 → #437):
+`sync:internal` writes the whole repo `docs/` tree — wiki pages included — to `scope='internal'`,
+and is the **only** thing that syncs the wiki. `sync:wiki` publishes just the pages on an explicit
+`CONSUMER` allowlist, which is **empty**, so it sends nothing and is a near no-op that exists for
+the day someone deliberately publishes a page. Preview any allowlist edit with
+`SYNC_DRY_RUN=1 node supabase/scripts/sync-wiki-to-donny.mjs`, which prints the list and POSTs
+nothing.
+
+**Two ordering rules the hook enforces the hard way.** (1) The hook runs the script **as it exists
+on `main`**, not in your worktree — so a change to sync behaviour must be merged before any
+matching data fix, or the next fast-forward undoes it. That is not hypothetical: 113 rows pruned
+before the script merged were re-inserted by the hook minutes later, visible as `inserted=113` in
+`.git/knowledge-sync.log`. (2) `sync:wiki` now exits **1** when it finds `wiki:` rows the
+allowlist does not publish, so a red line in the log can mean "drift to prune", not "sync broke".
+Rules and rationale: [[Donny RAG Scope Boundary]].
 
 ## Known Issues / Gotchas
 
@@ -58,8 +67,15 @@ the split and POSTs nothing. Rules and rationale: [[Donny RAG Scope Boundary]].
   timestamp proves only that *something* was written, whereas the probe proves *this* page's new
   text is retrievable — the property the RAG exists for. Use `updated_at` as corroboration only.
   See [[Updated-At Trigger Drift]].
-- Harmless libuv-on-Windows `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)` can print
-  *after* `Done.` in the background log; it doesn't affect the sync or git.
+- **The libuv-on-Windows `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)` after `Done.`
+  was never quite harmless, and its cause is now known.** It is `process.exit()` tearing the
+  process down while undici still holds a pooled socket — and it does not merely print, it
+  **replaces the exit code** (observed: an intended `1` surfaced as `127`). Any script here that
+  fetches must set `process.exitCode` instead of calling `process.exit()`.
+  `sync-wiki-to-donny.mjs` was fixed in #437, and the sweep it prompted found the same pattern on
+  `sync-internal-docs.mjs`'s error path (`if (errors > 0) process.exit(1)` after its fetch loop) —
+  fixed too. That one only fires when `errors > 0`, i.e. exactly when the hook and CI need the
+  code to be trustworthy, which is why a latent bug on an error path was worth chasing.
 - **Auth note:** prod uses the legacy service-role JWT injected as `SUPABASE_SERVICE_ROLE_KEY`;
   `with-env.mjs`'s key just needs to match what `donny-knowledge-sync` accepts.
 
