@@ -46,10 +46,33 @@ BEGIN
 END;
 $$;
 
--- CREATE OR REPLACE keeps the existing ACL, so this is a restatement rather than a change.
--- Kept for parity with 20260709120014 and so a fresh database lands in the same state.
-REVOKE EXECUTE ON FUNCTION public.enforce_campaign_group_ownership() FROM anon, authenticated;
+-- Says `public` because 20260709120014's version did not, and so did not do what it read as.
+-- CREATE OR REPLACE preserves owner and ACL, so this REVOKE is the only line that can move
+-- the grant. Measured on prod before changing it: proacl was
+-- {=X/postgres,postgres=X/postgres,service_role=X/postgres}, and that leading `=X` is the
+-- EXECUTE-to-PUBLIC grant every function is created with. Revoking from anon and
+-- authenticated never touched it, so both kept EXECUTE through PUBLIC --
+-- has_function_privilege('anon', ..., 'EXECUTE') returned true. Adding `public` drops the
+-- ACL to {postgres,service_role}, which is what the line always claimed.
+--
+-- Not a live exposure in either state: the function RETURNS trigger, so a direct call is
+-- refused ("trigger functions can only be called as triggers") and PostgREST does not expose
+-- trigger-returning functions. Corrected because the statement should be true, not because
+-- anything was reachable.
+--
+-- Verified this does not break enforcement: with the PUBLIC grant dropped, an INSERT run as
+-- role `authenticated` still fired the trigger and still raised. EXECUTE is checked when the
+-- trigger is created, not each time it fires.
+REVOKE EXECUTE ON FUNCTION public.enforce_campaign_group_ownership() FROM public, anon, authenticated;
 
--- The trigger itself is unchanged and intentionally not re-issued: 20260709120014 already
--- declares it BEFORE INSERT OR UPDATE OF group_id, which fires whenever group_id appears in
--- an UPDATE's SET list. That is exactly the reach the new branch needs.
+-- Re-issued rather than assumed. The branch above enforces nothing unless this trigger
+-- exists, and resting that on "20260709120014 applied" is repo intent rather than database
+-- state -- a distinction this repo has been bitten by, having found migrations recorded as
+-- applied but absent from prod. Confirmed present on prod today via pg_trigger; re-issuing
+-- keeps it true for a fresh or drifted database as well. Identical to the original
+-- declaration: BEFORE INSERT OR UPDATE OF group_id fires whenever group_id appears in an
+-- UPDATE's SET list, which is exactly the reach the new branch needs.
+DROP TRIGGER IF EXISTS trg_enforce_campaign_group_ownership ON public.campaigns;
+CREATE TRIGGER trg_enforce_campaign_group_ownership
+  BEFORE INSERT OR UPDATE OF group_id ON public.campaigns
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_campaign_group_ownership();
