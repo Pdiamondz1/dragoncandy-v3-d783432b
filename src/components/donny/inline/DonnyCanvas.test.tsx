@@ -158,10 +158,13 @@ describe('DonnyCanvas — D6: always starts resting', () => {
 });
 
 describe('DonnyCanvas — resting to thread', () => {
-  it('submitting the composer calls onPromptSubmit and switches to thread — dashboard content gone, turns render', () => {
+  it('submitting the composer calls onPromptSubmit and switches to thread — dashboard content gone, the new turn renders', () => {
+    // Amended for the this-visit-only rule: the prior message is now BELOW the
+    // baseline, so the turn that appears has to be one that arrived after the
+    // send, not one that was already persisted.
     donnyContextMock.value.messages = [msg({ id: 'u1', role: 'user', content: 'First question' })];
     const onPromptSubmit = vi.fn();
-    const { container } = renderCanvas({ onPromptSubmit });
+    const { container, rerender } = render(canvasTree({ onPromptSubmit }));
 
     const field = screen.getByRole('textbox', { name: /ask donny/i });
     fireEvent.change(field, { target: { value: 'find creators near me' } });
@@ -169,6 +172,13 @@ describe('DonnyCanvas — resting to thread', () => {
 
     expect(onPromptSubmit).toHaveBeenCalledWith('find creators near me');
     expect(screen.queryByText('Dashboard body')).not.toBeInTheDocument();
+
+    donnyContextMock.value.messages = [
+      ...donnyContextMock.value.messages,
+      msg({ id: 'u2', role: 'user', content: 'find creators near me' }),
+    ];
+    rerender(canvasTree({ onPromptSubmit }));
+
     expect(container.querySelectorAll('[data-turn]')).toHaveLength(1);
   });
 
@@ -202,6 +212,92 @@ describe('DonnyCanvas — resting to thread', () => {
 
     expect(onSuggestionTap).toHaveBeenCalledWith(suggestions[1]);
   });
+});
+
+describe('DonnyCanvas — the thread shows this visit only', () => {
+  const priorTurns = [
+    msg({ id: 'u1', role: 'user', content: 'Question from last week' }),
+    msg({ id: 'a1', role: 'assistant', content: 'Answer from last week' }),
+  ];
+
+  it('shows only the new exchange, not every turn ever persisted', () => {
+    // useDonny fetches the whole conversation with no limit, so without a
+    // baseline one question would materialise months of history above the
+    // answer — and the scroll effect would jump the user to the bottom of it.
+    donnyContextMock.value.messages = priorTurns;
+    const { container, rerender } = render(canvasTree());
+
+    const field = screen.getByRole('textbox', { name: /ask donny/i });
+    fireEvent.change(field, { target: { value: 'find creators near me' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+
+    donnyContextMock.value.messages = [
+      ...priorTurns,
+      msg({ id: 'u2', role: 'user', content: 'find creators near me' }),
+      msg({ id: 'a2', role: 'assistant', content: 'Three creators near Hoboken.' }),
+    ];
+    rerender(canvasTree());
+
+    expect(container.querySelectorAll('[data-turn]')).toHaveLength(2);
+    expect(screen.queryByText('Question from last week')).not.toBeInTheDocument();
+    expect(screen.queryByText('Answer from last week')).not.toBeInTheDocument();
+    expect(screen.getByText('Three creators near Hoboken.')).toBeInTheDocument();
+  });
+
+  it('keeps the first exchange of the visit visible when a second question is asked', () => {
+    // The baseline moves on the resting→thread edge ONLY. If it re-anchored on
+    // every send, each answer would erase the one before it.
+    donnyContextMock.value.messages = priorTurns;
+    const { container, rerender } = render(canvasTree());
+
+    const field = screen.getByRole('textbox', { name: /ask donny/i });
+    fireEvent.change(field, { target: { value: 'first question' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+
+    donnyContextMock.value.messages = [
+      ...priorTurns,
+      msg({ id: 'u2', role: 'user', content: 'first question' }),
+      msg({ id: 'a2', role: 'assistant', content: 'first answer' }),
+    ];
+    rerender(canvasTree());
+
+    fireEvent.change(field, { target: { value: 'second question' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+
+    donnyContextMock.value.messages = [
+      ...donnyContextMock.value.messages,
+      msg({ id: 'u3', role: 'user', content: 'second question' }),
+    ];
+    rerender(canvasTree());
+
+    expect(container.querySelectorAll('[data-turn]')).toHaveLength(3);
+    expect(screen.getByText('first answer')).toBeInTheDocument();
+    expect(screen.queryByText('Question from last week')).not.toBeInTheDocument();
+  });
+});
+
+describe('DonnyCanvas — a send the canvas did not start still lands somewhere', () => {
+  it('enters thread state when streaming begins while resting', () => {
+    // DonnyHome's proposal handler calls sendMessage() directly for an 'ask'
+    // CTA and never touches this component's mode — such a tap would otherwise
+    // stream a real answer, burn a Donny call, and render nothing.
+    donnyContextMock.value.messages = [msg({ id: 'u1', role: 'user', content: 'Old question' })];
+    const { container, rerender } = render(canvasTree());
+    expect(screen.getByText('Dashboard body')).toBeInTheDocument();
+
+    donnyContextMock.value.isStreaming = true;
+    rerender(canvasTree());
+
+    expect(screen.queryByText('Dashboard body')).not.toBeInTheDocument();
+    expect(screen.getByTestId('donny-pending')).toBeInTheDocument();
+    // The baseline is taken on this path too — the old turn stays hidden.
+    expect(container.querySelectorAll('[data-turn]')).toHaveLength(0);
+    expect(screen.queryByText('Old question')).not.toBeInTheDocument();
+  });
+
+  // The D6 counterpart — that this effect does NOT fire at mount — is already
+  // pinned by "mounts resting even with messages already present" above, which
+  // renders with isStreaming false and asserts zero turns. Not repeated here.
 });
 
 describe('DonnyCanvas — suggestion chips', () => {

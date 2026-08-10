@@ -41,6 +41,21 @@ export function DonnyCanvas({ suggestions, onSuggestionTap, onPromptSubmit, chil
   // shows the dashboard, not a resumed thread.
   const [mode, setMode] = useState<'resting' | 'thread'>('resting');
 
+  // How many persisted messages existed when this visit's thread began. The
+  // conversation is fetched whole and unbounded, so without this one question
+  // would materialise every turn the user has ever exchanged with Donny above
+  // the answer — and the scroll effect would then jump them to the bottom of
+  // it. A ref initialised per mount resets itself on remount, which is exactly
+  // the "this visit only" rule (founder decision). It moves ONLY on the
+  // resting→thread edge; a second question in the same visit must not hide the
+  // first exchange.
+  const baselineRef = useRef(0);
+  const enterThread = () => {
+    if (mode === 'thread') return;
+    baselineRef.current = messages.length;
+    setMode('thread');
+  };
+
   // Claim the stage for as long as this canvas is mounted. Unconditional on
   // purpose: it also closes a panel opened on another page, because nothing
   // resets stage on navigation.
@@ -77,15 +92,31 @@ export function DonnyCanvas({ suggestions, onSuggestionTap, onPromptSubmit, chil
 
   const handleSubmit = (text: string) => {
     // Flip to thread BEFORE calling onPromptSubmit, so the thread is already
-    // mounted when the reply lands.
-    setMode('thread');
+    // mounted when the reply lands — and so the baseline is taken before the
+    // send adds the user's own row.
+    enterThread();
     onPromptSubmit(text);
   };
 
   const handleSuggestionTap = (suggestion: DonnySuggestion) => {
-    setMode('thread');
+    enterThread();
     onSuggestionTap(suggestion);
   };
+
+  // A send this canvas did not initiate still has to land somewhere visible.
+  // DonnyHome's proposal handler calls sendMessage() directly for an 'ask'
+  // CTA, and nothing in that path touches `mode` — such a tap would stream a
+  // real answer, burn a Donny call, and render nothing. buildDonnyProposals
+  // only emits 'route' today, but Phase 2 adds Donny-authored taps, so close
+  // it here (once, generally) rather than per caller. Safe for D6: mount is
+  // always 'resting' and isStreaming is false at mount, so this never fires on
+  // load. The guard inside enterThread makes re-runs no-ops.
+  useEffect(() => {
+    if (!isStreaming) return;
+    enterThread();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- enterThread is
+    // re-created every render; its own mode guard is what makes this idempotent.
+  }, [isStreaming, mode, messages.length]);
 
   // Scroll anchoring: the app's real scroller is #main-content
   // (window.scrollY is always 0 in this shell), not an internal div —
@@ -129,7 +160,7 @@ export function DonnyCanvas({ suggestions, onSuggestionTap, onPromptSubmit, chil
 
       {mode === 'thread' && (
         <DonnyThread
-          messages={messages}
+          messages={messages.slice(baselineRef.current)}
           isStreaming={isStreaming}
           streamingContent={streamingContent}
           error={error}
