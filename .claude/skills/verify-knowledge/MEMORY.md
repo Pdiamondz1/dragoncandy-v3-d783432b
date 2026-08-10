@@ -25,14 +25,25 @@
   RIGHT AUDIENCE — and the two failure modes look identical from here.** The probe queries
   `donny_knowledge` with the service role and no scope predicate, so it returns a row whether that
   row is `scope:'internal'`, `null`, or wrong. A page that leaks internal infra/ops content to
-  consumer Donny passes (b) exactly as cleanly as one correctly walled off. When a run adds pages
-  that are **internal by nature** (deploy runbooks, outage post-mortems, DNS/registrar or account
-  details, anything naming people), read `scope` alongside the probe and say so in prose — the
-  authority is `sync-wiki-to-donny.mjs`'s `FORCE_INTERNAL` (unconditional), **not** `EXCLUDE`, which
-  only fires under `SYNC_CURATE=1` and so does nothing on the unattended post-merge sync. Report a
-  scope miss as **advisory** (it is outside all three gated checks — do NOT put it in `missing[]`),
-  but do report it: it is a live data-exposure defect, not a docs nit. (Advisory: adds a thing to
-  watch; does not change any `met`.) See [[Dragon Rewards Engine (DRE)]] for the precedent leak.
+  consumer Donny passes (b) exactly as cleanly as one correctly walled off.
+
+  **The default inverted on 2026-08-10, so what you are watching for inverted with it.**
+  `sync-wiki-to-donny.mjs` now marks **every** wiki page `scope:'internal'` unless its exact
+  `<dir>/<filename>` is in the `CONSUMER` allowlist, which is currently **empty** — so the correct
+  expectation is that every `wiki:%` row reads `internal`, and a `NULL` one is the anomaly. The two
+  denylists this replaced (`EXCLUDE`, gated behind a `SYNC_CURATE` flag the unattended post-merge
+  sync never set, and `FORCE_INTERNAL`) are **gone**; do not look for them. A denylist failed open —
+  it only held pages someone had enumerated — which is how 107 of 112 wiki rows sat consumer-reachable,
+  including the page stating the live user count, the vendor-by-vendor burn, and that Stripe was in
+  test mode.
+
+  So: read `scope` alongside the probe and say so in prose. Flag any `wiki:%` row at `scope NULL`,
+  and flag any addition to `CONSUMER` whose page has not been read end-to-end for content an end
+  user must not see. `SYNC_DRY_RUN=1 node supabase/scripts/sync-wiki-to-donny.mjs` prints the split
+  without POSTing. Report a scope miss as **advisory** (it is outside all three gated checks — do
+  NOT put it in `missing[]`), but do report it: it is a live data-exposure defect, not a docs nit.
+  (Advisory: adds a thing to watch; does not change any `met`.) See [[Dragon Rewards Engine (DRE)]]
+  for the precedent leak.
 
 - **[unmerged-branch] Validating a PRE-merge branch is legitimate — and (b) must stay anchored to
   `origin/main`.** `LAST_WIKI_SYNC` is defined on `origin/main`, so a branch's un-merged pages are
