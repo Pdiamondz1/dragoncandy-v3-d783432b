@@ -121,7 +121,9 @@ maintenance task. There is no in-flight code.
 1. **Founder mobile `verify-prod` on dragoncandy.com** (the only unverified claim). Check:
    answer appears **above** the prompt in a self-scrolling box; greeting collapses when the
    answer starts; returning later shows **no** conversation from the previous visit.
-2. **Split the oversized wiki concept pages** — the sync now warns on three:
+2. **Split the oversized wiki concept pages — IN PROGRESS IN ANOTHER SESSION as of 2026-08-10.**
+   Do not start it here and do not edit these pages; that is precisely the collision this handoff
+   warns about. The sync warns on three:
    `donny-first-dashboard` (24,707 chars), `donny-social-tools` (26,847),
    `service-role-data-exposure` (27,304). Nothing is lost today; they are near the embedding
    ceiling and will silently drop out of semantic retrieval if they keep growing.
