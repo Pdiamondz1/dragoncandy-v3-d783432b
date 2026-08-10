@@ -528,12 +528,16 @@ vi.mock('@outstand-so/ui', () => ({
 import { ConnectAccountButtonGroupGated } from './ConnectAccountButtonGroupGated';
 
 describe('ConnectAccountButtonGroupGated', () => {
-  const props = {
+  // Typed against the real prop shape, NOT `as never` — under this repo's strict
+  // config a `never`-typed fixture fails TS2698 ("Spread types may only be created
+  // from object types") on the JSX spread below, and would not be type-checking
+  // anything even if it compiled.
+  const props: Parameters<typeof ConnectAccountButtonGroupGated>[0] = {
     networks: ['instagram'],
     redirectUri: 'https://dragoncandy.com/outstand/callback',
     apiKey: 'k',
     baseUrl: 'https://api.example.test',
-  } as never;
+  };
 
   it('renders the real connect buttons on web', () => {
     mockPlatform = { isNative: false, isIOS: false };
