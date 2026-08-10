@@ -32,6 +32,13 @@ const conversationGate = vi.hoisted(() => {
   let pending: Promise<void> | null = null;
   return {
     failing: false,
+    /**
+     * How many times the conversation query has actually RUN. A failed
+     * conversation query used to be terminal — nothing ever asked for a
+     * conversation again — so "the query was restarted" is the property the
+     * recovery tests have to assert, and it is invisible from the send alone.
+     */
+    fetches: 0,
     /** Block `maybeSingle` until open()/fail() is called. */
     hold() {
       this.failing = false;
@@ -70,6 +77,7 @@ vi.mock('@/integrations/supabase/client', () => {
       b[method] = () => b;
     }
     b.maybeSingle = async () => {
+      conversationGate.fetches += 1;
       await conversationGate.wait();
       if (conversationGate.failing) throw new Error('conversation fetch failed');
       return { data: conversationRow, error: null };
@@ -129,6 +137,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   authMock.value = null;
   conversationGate.open();
+  conversationGate.fetches = 0;
   fetchMock.mockResolvedValue({
     ok: true,
     headers: { get: () => 'application/json' },
@@ -510,6 +519,178 @@ describe('useDonny — a send issued before the conversation resolves is held, n
 
     await waitFor(() => expect(result.current.error).toBe('No active conversation'));
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('restarts a FAILED conversation query on Retry, and the retried send actually posts', async () => {
+    // A failed conversation query was a dead end. `conversationError` made the
+    // send fall straight through to the `!conversation` guard, so Retry
+    // re-emitted "No active conversation" for ever — and nothing anywhere asked
+    // for a conversation again. A Retry button that cannot succeed is precisely
+    // the failure this surface exists to remove.
+    conversationGate.hold();
+    authMock.value = { id: 'u1' };
+    const { result } = renderHook(() => useDonny(), { wrapper: Wrapper });
+
+    act(() => result.current.sendMessage('find creators near me'));
+    await act(async () => {
+      conversationGate.fail();
+    });
+    await waitFor(() => expect(result.current.error).toBe('No active conversation'));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(conversationGate.fetches).toBe(1);
+
+    // The next attempt succeeds — a TRANSIENT failure, which is the case the
+    // finding is about.
+    conversationGate.open();
+    act(() => result.current.retry());
+
+    // The query itself ran again. Without this the Retry could only ever re-run
+    // the guard against a conversation that was never re-requested.
+    await waitFor(() => expect(conversationGate.fetches).toBe(2));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(sentQueries()).toEqual(['find creators near me']);
+    await waitFor(() => expect(result.current.error).toBeNull());
+  });
+
+  it('restarts a failed conversation query for a send made while the stage is still "closed"', async () => {
+    // The compound case the finding calls out: the send lands in the pre-effect
+    // window (`enabled: false`) AND the conversation query has already failed.
+    // Neither existing mechanism could recover it — the queue excluded it
+    // because an error was cached, and the fall-through only re-ran the guard.
+    // This is also the branch where resetQueries CANNOT refetch on its own (the
+    // query has no active observer while the stage is closed); the send's own
+    // `enabled` false→true flip is what runs it.
+    conversationGate.hold();
+    authMock.value = { id: 'u1' };
+    const { result } = renderHook(() => useDonny({ enabled: false }), { wrapper: Wrapper });
+
+    act(() => result.current.sendMessage('first try'));
+    await act(async () => {
+      conversationGate.fail();
+    });
+    await waitFor(() => expect(result.current.error).toBe('No active conversation'));
+    expect(conversationGate.fetches).toBe(1);
+
+    // Hold the second attempt open. Asserting only the eventual outcome would
+    // NOT pin the restart here: flipping `enabled` re-runs a stale query on its
+    // own, so a version that never cleared the cached error still lands a
+    // conversation eventually — it just races the send against it. The send has
+    // to be HELD behind the fresh attempt, and that is what this asserts.
+    conversationGate.hold();
+    act(() => result.current.sendMessage('second try'));
+
+    await waitFor(() => expect(conversationGate.fetches).toBe(2));
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      conversationGate.open();
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(sentQueries()).toEqual(['second try']);
+  });
+
+  it('ends a PERMANENTLY failing conversation query in a visible error, never in silence', async () => {
+    // The bound on the recovery path. One user action buys exactly one fresh
+    // attempt; if that fails too the user is back at the error card and its
+    // Retry — not a spinner, not a blank screen, and not a queue with nothing
+    // left to wait for.
+    conversationGate.hold();
+    authMock.value = { id: 'u1' };
+    const { result } = renderHook(() => useDonny(), { wrapper: Wrapper });
+
+    act(() => result.current.sendMessage('find creators near me'));
+    await act(async () => {
+      conversationGate.fail();
+    });
+    await waitFor(() => expect(result.current.error).toBe('No active conversation'));
+
+    // Hold the SECOND attempt open, so the "trying again" phase is observable
+    // rather than inferred. Without this the closing assertion would be vacuous
+    // — the error text it waits for is the one already on screen.
+    conversationGate.hold();
+    act(() => result.current.retry());
+
+    await waitFor(() => expect(conversationGate.fetches).toBe(2));
+    expect(result.current.error).toBeNull();
+    expect(result.current.isStreaming).toBe(false);
+
+    await act(async () => {
+      conversationGate.fail();
+    });
+
+    await waitFor(() => expect(result.current.error).toBe('No active conversation'));
+    expect(result.current.isStreaming).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('writes the user row exactly once when a Retry has to WAIT for the conversation', async () => {
+    // Round 3's property (a retry must write the user row when the failed send
+    // never did) composed with this round's (a retry may now have to queue).
+    // Each was pinned on its own; their composition was not, and it is the
+    // sequence a cold dashboard actually produces.
+    fetchMock.mockResolvedValue(sseResponse('Three creators near Hoboken.'));
+    conversationGate.hold();
+    authMock.value = { id: 'u1' };
+    const { result } = renderHook(() => useDonny(), { wrapper: Wrapper });
+
+    act(() => result.current.sendMessage('find creators near me'));
+    await act(async () => {
+      conversationGate.fail();
+    });
+    await waitFor(() => expect(result.current.error).toBe('No active conversation'));
+    expect(messageInsertMock).not.toHaveBeenCalled();
+
+    conversationGate.open();
+    act(() => result.current.retry());
+
+    await waitFor(() => expect(result.current.clientMessageIds).toHaveLength(2));
+    const rows = insertedRows();
+    expect(rows.filter((r) => r.role === 'user')).toHaveLength(1);
+    expect(rows[0].content).toBe('find creators near me');
+    expect(rows.map((r) => r.role)).toEqual(['user', 'assistant']);
+  });
+
+  it('does NOT write a second user row when a queued Retry replays a message it already wrote', async () => {
+    // `isRetry` has to travel WITH the queued send: it is what tells mutationFn
+    // that this text's `donny_messages` row already exists, and a queued retry
+    // drained as a brand-new message would reset that fact and write the
+    // question twice.
+    //
+    // Reaching it needs `conversation` to go missing AFTER a row was written,
+    // which a failed refetch cannot do (react-query keeps the last successful
+    // data). An identity change does: the conversation query is keyed on the
+    // user id, while `lastUserMessage` and its "already inserted" companion are
+    // refs on this hook instance and carry over.
+    authMock.value = { id: 'u1' };
+    fetchMock.mockRejectedValueOnce(new Error('network down'));
+
+    const { result, rerender } = renderHook(() => useDonny(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.conversation).not.toBeNull());
+
+    act(() => result.current.sendMessage('find creators near me'));
+    await waitFor(() => expect(result.current.error).toBe('network down'));
+    expect(messageInsertMock).toHaveBeenCalledTimes(1);
+    expect(insertedRows()[0].role).toBe('user');
+
+    // The conversation goes missing, and the next fetch is held open so the
+    // Retry lands in the QUEUE instead of going straight out.
+    conversationGate.hold();
+    authMock.value = { id: 'u2' };
+    rerender();
+    await waitFor(() => expect(result.current.conversation).toBeNull());
+
+    act(() => result.current.retry());
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      conversationGate.open();
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(result.current.isStreaming).toBe(false));
+
+    // One question, one answer: the retry regenerated the answer without
+    // duplicating the row it already had.
+    expect(insertedRows().map((r) => r.role)).toEqual(['user', 'assistant']);
   });
 
   it('gives up and shows the existing error when the conversation query FAILS, rather than holding forever', async () => {

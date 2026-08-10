@@ -34,6 +34,40 @@ interface UseDonnyOptions {
   enabled?: boolean;
 }
 
+/**
+ * What can happen to a send RIGHT NOW. Every entry point — a composer submit, a
+ * suggestion chip, a nudge action, Retry — is classified through this one value,
+ * so no two of them can disagree about whether a conversation is coming.
+ *
+ * - `send`    the conversation exists; run the mutation.
+ * - `hold`    one is genuinely on its way — in flight, or not even started
+ *             because DonnyCanvas claims the stage in a mount effect that runs
+ *             after first paint. Queue it and let the drain effect send it.
+ * - `restart` the conversation query FAILED. Nothing retries a failed query on
+ *             its own, so this used to be a terminal state: every later send,
+ *             Retry included, fell through to the `!conversation` guard and
+ *             re-emitted "No active conversation" with nothing ever asking for
+ *             a conversation again. Clear the cached failure, then hold behind
+ *             the fresh attempt.
+ * - `fail`    nothing is coming at all (no user). Run the mutation so its guard
+ *             produces the visible error card and its Retry, rather than a
+ *             queue with nothing to wait for.
+ */
+type SendDisposition = 'send' | 'hold' | 'restart' | 'fail';
+
+/** A send being held until a conversation exists. */
+interface QueuedSend {
+  content: string;
+  /**
+   * Carried through the queue rather than defaulted at drain time: it is what
+   * tells `mutationFn` whether the `donny_messages` user row for this text was
+   * already written. A retry can be queued (the conversation cache can be
+   * evicted while an error card is on screen), and draining it as a NEW message
+   * would reset that fact and insert the row a second time.
+   */
+  isRetry: boolean;
+}
+
 export function useDonny(options?: UseDonnyOptions) {
   const { user, profile, activeOrg } = useAuth();
   const queryClient = useQueryClient();
@@ -78,8 +112,8 @@ export function useDonny(options?: UseDonnyOptions) {
   const [clientMessageIds, setClientMessageIds] = useState<string[]>([]);
 
   // Sends issued before the conversation existed, oldest first. See the
-  // `conversationPending` block below for why they can't just be sent.
-  const queuedSendsRef = useRef<string[]>([]);
+  // `disposition` block below for why they can't just be sent.
+  const queuedSendsRef = useRef<QueuedSend[]>([]);
   // Bumped only to re-run the drain effect — mutating a ref does not.
   const [queueSignal, setQueueSignal] = useState(0);
   // Set SYNCHRONOUSLY, immediately before mutate(). isSendingRef is not usable
@@ -414,44 +448,6 @@ export function useDonny(options?: UseDonnyOptions) {
     },
   });
 
-  // Is a conversation genuinely on its way? Only then is holding a send the
-  // right answer. With no user, or once the query has FAILED, nothing is
-  // coming — fall through to the mutation so the `!conversation || !user` guard
-  // fires and the caller gets the existing error card and its Retry, rather
-  // than a queue that never drains.
-  //
-  // `isEnabled` is deliberately NOT a term here. It used to be, and that left
-  // the whole pre-effect window uncovered: on a cold dashboard the hook is
-  // disabled until DonnyCanvas's mount effect runs, so the very taps this queue
-  // exists for were the ones it excluded. Removing it is only safe because
-  // `sendMessage` below turns the query on when it queues — see `sendRequested`.
-  const conversationPending = !!user && !conversation && !conversationError;
-
-  const sendMessage = useCallback(
-    (content: string) => {
-      if (isSendingRef.current) return;
-      // On a fresh dashboard visit this hook is disabled until DonnyCanvas's
-      // mount effect moves the stage off 'closed', so the conversation query
-      // does not even START until after first paint. A suggestion tap or a
-      // prompt submit inside that window used to die on the guard in
-      // mutationFn and render "No active conversation" instead of an answer.
-      // Hold it instead; the effect below sends it the moment the conversation
-      // lands.
-      if (conversationPending) {
-        queuedSendsRef.current.push(content);
-        // Load-bearing, not bookkeeping: this is what guarantees the hold ends.
-        // Without it a send issued while the hook is disabled would wait on
-        // some OTHER component flipping the stage, and would sit queued and
-        // silent forever if none ever did.
-        setSendRequested(true);
-        setQueueSignal((n) => n + 1);
-        return;
-      }
-      sendMessageMutation.mutate({ content });
-    },
-    [conversationPending, sendMessageMutation]
-  );
-
   // `mutate` is referentially stable for the life of the hook (react-query
   // binds it to a single observer); the mutation OBJECT is not — its identity
   // changes on every mutation state transition. Depending on the object here
@@ -461,6 +457,93 @@ export function useDonny(options?: UseDonnyOptions) {
   // mutation testing: with the object as the dependency, deleting the re-drain
   // bump left every test green.
   const { mutate: mutateSend } = sendMessageMutation;
+
+  // The one classifier. See SendDisposition above for what each value means.
+  //
+  // `conversation` is tested FIRST because react-query keeps the last
+  // successful data when a later background refetch fails — a usable
+  // conversation beats a stale error.
+  //
+  // `isEnabled` is deliberately NOT a term. It used to be, and that left the
+  // whole pre-effect window uncovered: on a cold dashboard the hook is disabled
+  // until DonnyCanvas's mount effect runs, so the very taps the queue exists
+  // for were the ones it excluded. Dropping it is only safe because a queued
+  // send turns the conversation query on itself — see `sendRequested`.
+  const disposition: SendDisposition = conversation
+    ? 'send'
+    : !user
+      ? 'fail'
+      : conversationError
+        ? 'restart'
+        : 'hold';
+
+  // A held send is released the instant the world stops being 'hold' — which is
+  // the entire bound on the wait. Derived from the classifier rather than
+  // restated, so the queue and the send can never disagree.
+  const conversationPending = disposition === 'hold';
+
+  // The transition that was missing: a failed conversation query is put back on
+  // its way.
+  const restartConversation = useCallback(() => {
+    // Two things have to happen here, and only one of them is "fetch again".
+    //
+    // 1. The cached error must GO. `disposition` reads `!conversationError`, so
+    //    while it is set the send is not held at all — the drain effect
+    //    releases it straight back into the failure it is supposed to be
+    //    waiting out. reset() clears it unconditionally. (refetch() would
+    //    usually clear it too, but only as a side effect: react-query zeroes
+    //    `error` when a fetch starts on a query whose `data` is undefined.
+    //    That is a condition, not a guarantee, and the predicate above depends
+    //    on it — so clear it outright rather than inherit it.)
+    // 2. A fetch must actually run. reset() refetches a query that has an
+    //    ACTIVE observer, which is the case whenever the stage already has this
+    //    hook enabled. When it does not — a send in the pre-effect window —
+    //    `setSendRequested(true)` in dispatchSend flips `enabled` false→true
+    //    and react-query fetches the now-pristine query on that transition
+    //    (queryObserver's `shouldFetchOptionally`; read from
+    //    @tanstack/query-core 5.59.16, not assumed). Exactly one attempt either
+    //    way — `Query.fetch` de-dupes a second request while one is in flight.
+    queryClient.resetQueries({ queryKey: ['donny-conversation', user?.id] });
+  }, [queryClient, user?.id]);
+
+  /**
+   * The single entry point for every send. Returns whether the send was taken
+   * up — false only when one is already in flight.
+   */
+  const dispatchSend = useCallback(
+    (content: string, isRetry: boolean): boolean => {
+      // isDrainingRef as well as isSendingRef: mutationFn is async, so between
+      // mutate() and its first statement there is a window in which the hook
+      // still looks idle to a second caller.
+      if (isSendingRef.current || isDrainingRef.current) return false;
+
+      if (disposition === 'hold' || disposition === 'restart') {
+        if (disposition === 'restart') restartConversation();
+        queuedSendsRef.current.push({ content, isRetry });
+        // Load-bearing, not bookkeeping: this is what guarantees the hold ends.
+        // Without it a send issued while the hook is disabled would wait on
+        // some OTHER component flipping the stage, and would sit queued and
+        // silent forever if none ever did.
+        setSendRequested(true);
+        setQueueSignal((n) => n + 1);
+        return true;
+      }
+
+      // 'send' runs it. 'fail' runs it too — the `!conversation || !user` guard
+      // inside mutationFn is what turns that into the visible error card and
+      // its Retry, which is the correct end for a send that cannot proceed.
+      mutateSend({ content, isRetry });
+      return true;
+    },
+    [disposition, restartConversation, mutateSend]
+  );
+
+  const sendMessage = useCallback(
+    (content: string) => {
+      dispatchSend(content, false);
+    },
+    [dispatchSend]
+  );
 
   // Drain the held sends — one at a time, oldest first. Serial on purpose:
   // mutationFn rejects a second concurrent send ("Message already in flight"),
@@ -474,17 +557,14 @@ export function useDonny(options?: UseDonnyOptions) {
     if (next === undefined) return;
 
     isDrainingRef.current = true;
-    mutateSend(
-      { content: next },
-      {
-        onSettled: () => {
-          isDrainingRef.current = false;
-          // The ONLY thing that re-runs this effect for the next item. Guarded
-          // so a lone queued send does not cost a pointless extra render.
-          if (queuedSendsRef.current.length > 0) setQueueSignal((n) => n + 1);
-        },
-      }
-    );
+    mutateSend(next, {
+      onSettled: () => {
+        isDrainingRef.current = false;
+        // The ONLY thing that re-runs this effect for the next item. Guarded
+        // so a lone queued send does not cost a pointless extra render.
+        if (queuedSendsRef.current.length > 0) setQueueSignal((n) => n + 1);
+      },
+    });
   }, [conversationPending, queueSignal, mutateSend]);
 
   const clearChat = useCallback(async () => {
@@ -515,12 +595,18 @@ export function useDonny(options?: UseDonnyOptions) {
       .is('dismissed_at', null);
   }, [conversation, user]);
 
+  // Retry goes through the SAME classifier as an ordinary send — it used to
+  // call mutate() directly, which is why a failed conversation query made it
+  // permanently inert: it re-ran the guard instead of asking for a conversation
+  // again. Routed here, a Retry against a failed query restarts that query, and
+  // a Retry issued during the pre-effect window queues instead of erroring.
   const retry = useCallback(() => {
-    if (lastUserMessage.current && !isSendingRef.current) {
-      setError(null);
-      sendMessageMutation.mutate({ content: lastUserMessage.current, isRetry: true });
-    }
-  }, [sendMessageMutation]);
+    if (!lastUserMessage.current) return;
+    // Cleared only when the send was actually taken up. A Retry that emptied
+    // the error card and then did nothing would leave a blank screen with no
+    // way back — the dead end this whole path exists to remove.
+    if (dispatchSend(lastUserMessage.current, true)) setError(null);
+  }, [dispatchSend]);
 
   const quickChips = DEFAULT_QUICK_CHIPS[profile?.role ?? 'business_client'] ?? [];
 
