@@ -3,9 +3,14 @@ import '@testing-library/jest-dom';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { stubMatchMedia } from '@/test/stubMatchMedia';
 // Imported as a type only — `React.ReactNode` inside a vi.mock factory would
 // otherwise resolve to the UMD global, which TS rejects inside a module.
 import type { ReactNode } from 'react';
+
+// DonnyHomePrompt's textarea branches on useIsMobile, which subscribes to
+// window.matchMedia on mount; jsdom has none.
+stubMatchMedia();
 
 const navigateMock = vi.fn();
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -314,13 +319,19 @@ describe('DonnyHome — the conversation renders in the page', () => {
   // panel was never exposed to this: it passes disabled={isStreaming} to its
   // input. Asserting the text SURVIVES is the point — an assertion that
   // sendMessage was not called would pass even while the box emptied.
+  //
+  // The field itself is deliberately NOT disabled (founder decision, matching
+  // ChatGPT): the owner composes their follow-up while the answer streams. It
+  // is the SEND BUTTON that is disabled, and DonnyHomePrompt.submit() re-checks
+  // `busy` so Enter cannot get past it either.
   it('does not swallow a follow-up typed while a reply is streaming', () => {
     donnyState.isStreaming = true;
     donnyState.streamingContent = 'Based on';
     renderHome();
 
-    const input = screen.getByRole('textbox', { name: /ask donny/i }) as HTMLInputElement;
-    expect(input).toBeDisabled();
+    const input = screen.getByRole('textbox', { name: /ask donny/i }) as HTMLTextAreaElement;
+    expect(input).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: /send to donny/i })).toBeDisabled();
 
     fireEvent.change(input, { target: { value: 'and what about TikTok?' } });
     fireEvent.submit(input.closest('form')!);
