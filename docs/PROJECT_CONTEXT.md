@@ -296,6 +296,25 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **Every `href` in our transactional emails was caller-chosen — closed on prod (#442)** — ~30
+  templates built every link from caller-supplied `data` with no check, reachable because
+  `create-notification` spreads the request body **verbatim** and calls `send-notification-email`
+  with the **service key**, so the self-only 403 never applied. Whole-URL fields went into `href`
+  raw (attacker site, or `javascript:`); id fields were concatenated into paths, so a `"` closed
+  the attribute and wrote markup into the message. Closed by `_shared/emailLinks.ts`, whose
+  `safeLink` **discards the host rather than validating it** (parse relative to our origin, keep
+  only `pathname+search+hash`) — one rule covering absolute, protocol-relative, backslash,
+  userinfo, `javascript:`/`data:`, CRLF and encoded traversal at once. **29 tests**, confirmed
+  collected by CI (239→240 files). Two auth bugs went with it: **`"Bearer undefined"` promoted an
+  unauthenticated caller to SERVICE** (key read `as string`, no presence check — confirmed against
+  the **live** bundle), and the self-check **failed open on any caller with no email** on their
+  auth record. The regression it had to avoid: `budget: 0` is real (crew campaigns are free), so
+  `?? ''` would have printed "Budget: $0" on every free-campaign email — **escaping must not change
+  what renders**; money is *coerced* not escaped because two amounts sit in the subject. Authored
+  by a **parallel session** and left unmerged a day — **cherry-picked, not merged**, since the
+  branch predated the `.io`→`.com` migration in the same file. Reviewer completeness sweep: all 45
+  sinks enumerated, **zero** raw values remain. Codex clean; deployed and boot-verified.
+  → `docs/SHIPPED_LOG.md` · `docs/wiki/concepts/notification-delivery.md` · #442
 - **`can_notify_user`'s crew clause was forgeable — closed on prod (#440)** — no membership-status
   filter, and since **any** user may create a crew (`WITH CHECK (owner_id = auth.uid())`) with an
   **unconstrained `creator_id`**, two INSERTs bought a notification channel to **any user on the

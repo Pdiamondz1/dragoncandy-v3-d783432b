@@ -26,6 +26,82 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-10] A user could choose the CTA link inside our transactional emails (#442)
+
+Every `href` in `send-notification-email`'s ~30 templates was built from caller-supplied `data`,
+and none of it was checked. Third link in the day's chain (#419 → #440 → #442), and the same
+reachability each time:
+
+> `create-notification` spreads the caller's request body **verbatim** into the payload it sends
+> `send-notification-email`, and calls it with the **service key** — so a user-authenticated caller
+> reaches those templates and the function's own "recipient must be self" 403, which exists
+> precisely to stop cross-user mail, **does not apply to the resulting message.**
+
+Whole-URL fields (`actionUrl`, `campaignUrl`, `reviewUrl`) went into `href` raw, so the CTA of a
+genuine DragonCandy email could point at an attacker's site or a `javascript:` scheme; id fields
+were concatenated into paths, so a `"` closed the attribute and let the caller write markup into
+the message body.
+
+**Not my work.** Both commits were authored by a **parallel session on 2026-08-09** and left with
+**no PR** for a day. Cherry-picked onto current `main` rather than merged, because the branch
+predated the `.io`→`.com` migration *in this same file* (branch 4 `.io`/0 `.com`; main 1/2) and a
+straight merge risked silently reintroducing `.io` on the hunks it touched. Verified after: both
+`.com` emblem images intact, `from:` correctly still `notify.dragoncandy.io` (Phase 5b is blocked
+on the $20/mo decision). *A parallel session's branch is not a merge candidate just because it
+exists — check what landed under it first.*
+
+**The fix** is `_shared/emailLinks.ts`: `link` (a path *we* composed), `safeLink` (a caller path
+forced back onto our origin), `pathSegment`, `safeImageUrl`.
+
+> **`safeLink` discards the host rather than validating it** — parses relative to our own origin,
+> keeps only `pathname + search + hash`. One rule therefore covers absolute, protocol-relative,
+> backslash, userinfo, `javascript:`/`data:`, CRLF and encoded-traversal spellings at once.
+> **Validation enumerates what is bad; discarding keeps only what is good.** A `toString`-bearing
+> object is rejected by a `typeof` check *before* `new URL` can stringify it — correct ordering,
+> easy to get wrong.
+
+**29 tests** assert **both** properties on every hostile input (stays-on-origin *and*
+cannot-break-out), because fixing one without the other still leaves a usable injection. Confirmed
+**collected by CI**, not merely runnable by hand: 239 → 240 files.
+
+**Two auth bugs fixed alongside.** `"Bearer undefined"` **promoted an unauthenticated caller to
+SERVICE** — the key was read `as string` with no presence check, so an unset secret made the
+comparison true for the one string an attacker would guess first, and service callers skip the
+same-inbox check entirely. Confirmed real by reading the **live v252 bundle**. And the self-check
+`to && callerEmail && …` **failed open on any caller with no email on their auth record** — latent
+at 0-of-42 users, but one GoTrue toggle (anonymous/phone sign-in) from live.
+
+**The regression it had to avoid:** `budget: 0` is a real value — crew campaigns are free and carry
+a literal `0` behind a `data.budget ?` guard — so a naive `?? ''` would have printed "Budget: $0"
+on every free-campaign email. **Escaping must not change what renders.** Money is *coerced* rather
+than escaped, because two amounts sit in the **subject**, which is not markup: `&amp;` renders
+literally and a CRLF is a header-injection primitive escaping cannot touch. That coercion also
+fixed a live crash — `data.amount.toFixed(2)` is typed `number` but arrives as JSON.
+
+**Review follow-ups (mine, on their work).** Fixed: `fileCount ?? 0` rendered "uploaded **0 new
+files**" under an H1 reading "New Deliverables!" — a *confident false statement*, worse than the
+obvious garbage it replaced; a **set but unparseable** `APP_URL` silently stripped the deep link
+from every completion email while the send still reported success; drifted comment line-refs
+replaced with **symbol** refs rather than corrected, since numbers drift again. Cleared with
+evidence, no change: the preserved `search`/`hash` needs an on-origin redirect sink to be
+exploitable and the only one (`AuthPage` `returnTo`) already gates on `ALLOWED_REDIRECT_ORIGINS`;
+`safeImageUrl` drops relative URLs but **0 of 10** prod `dragonshare_posts` have one.
+
+**Left open deliberately:** `safeImageUrl` pins the scheme but not the host (these images
+legitimately live on Supabase storage), so a creator-writable `post_url` could be a tracking pixel
+— same class as #399. Self-addressed today, so documented rather than fixed.
+
+**Verified:** `data-exposure-reviewer` completeness sweep — all 45 `href`/`src`/subject sinks
+enumerated, **zero** raw caller values remain; `edge-function-reviewer` PASS (transitive `_shared`
+= 4 files, all uploaded; zero `esm.sh`; no unrelated drift); **Codex clean**; 240 files / 2410
+tests green. Deployed and boot-verified, all 5 assets including the new `emailLinks.ts`.
+
+*Caveat recorded honestly:* the post-deploy `Bearer undefined` curl returns 401, but **would have
+before the fix too** (the secret is set, so the comparison fails either way) — a non-discriminating
+probe, same lesson as the Phase-5a SMTP `RCPT TO` run. The live-bundle read is what established it.
+
+→ `docs/wiki/concepts/notification-delivery.md` · #442
+
 ## [2026-08-10] A crew invite nobody accepted was a notification channel to anyone (#440)
 
 `can_notify_user`'s crew clause carried **no membership-status filter**, so a channel to any

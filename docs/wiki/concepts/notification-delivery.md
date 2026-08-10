@@ -3,7 +3,7 @@ title: Notification Delivery
 type: concept
 created: 2026-06-23
 updated: 2026-08-10
-sources: [2026-06-23-notification-email-audit.md, 2026-08-08-notification-and-invitation-authorization.md, 2026-08-10-can-notify-crew-clause.md]
+sources: [2026-06-23-notification-email-audit.md, 2026-08-08-notification-and-invitation-authorization.md, 2026-08-10-can-notify-crew-clause.md, 2026-08-10-email-link-injection.md]
 tags: [notifications, email, edge-functions, auth, rls]
 ---
 # Notification Delivery
@@ -150,6 +150,39 @@ is no self-UPDATE policy, and the only writer of `'active'` is `respond_to_group
 gated `creator_id = auth.uid()`. Proven on prod **with a control**, since two denials alone
 could mean a broken probe: INSERT active → 42501, UPDATE to active → 42501, UPDATE to
 `'removed'` → **succeeds**.
+
+### Every href was caller-chosen (2026-08-10, #442)
+
+The same reachability, a third time: because `create-notification` spreads the request body
+verbatim and calls `send-notification-email` **with the service key**, a user-authenticated
+caller reached the templates and the self-only gate did not apply. **Every `href` in ~30
+templates was built from that `data` and none was checked** — whole-URL fields (`actionUrl`,
+`campaignUrl`, `reviewUrl`) went into `href` raw, and id fields were concatenated into paths so
+a `"` closed the attribute and let the caller write markup into the message.
+
+Closed by `_shared/emailLinks.ts`: `link` (a path *we* composed), `safeLink` (a caller path
+forced back onto our origin), `pathSegment`, `safeImageUrl`.
+
+> **`safeLink` discards the host rather than validating it** — it parses relative to our own
+> origin and keeps only `pathname + search + hash`. That is why one rule covers absolute,
+> protocol-relative, backslash, userinfo, `javascript:`/`data:`, CRLF and encoded-traversal
+> spellings simultaneously. **Validation enumerates what is bad; discarding keeps only what is
+> good — a host that is never read cannot be smuggled.**
+
+29 tests assert **both** properties on every hostile input (stays-on-origin *and*
+cannot-break-out), since fixing one without the other still leaves a usable injection.
+
+Two auth bugs went with it: **`"Bearer undefined"` promoted an unauthenticated caller to
+SERVICE** (the key was read `as string` with no presence check — confirmed real by reading the
+live deployed bundle), and the self-check `to && callerEmail && …` **failed open on any caller
+with no email on their auth record** — latent at 0-of-42 users today, but one GoTrue toggle
+away from live.
+
+**And the regression it had to avoid:** `budget: 0` is a real value (crew campaigns are free and
+carry a literal `0`) behind a `data.budget ?` guard, so a naive `?? ''` would have printed
+"Budget: $0" on every free-campaign email. **Escaping must not change what renders.** Money is
+*coerced* rather than escaped, because two amounts sit in the **subject** — not markup, where
+`&amp;` renders literally and a CRLF is a header-injection primitive escaping cannot touch.
 
 **Also closed in #440 — the email could be redirected.** `recipientUserId` was spread **first**
 in the payload `create-notification` sends to `send-notification-email`, so the two
