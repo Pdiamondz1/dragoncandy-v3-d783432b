@@ -1,7 +1,7 @@
 import { LegalPageLayout } from './LegalPageLayout';
+import { PRIVACY_EMAIL } from '@/lib/contactAddresses';
 
 const LAST_UPDATED = 'June 6, 2026';
-const CONTACT_EMAIL = 'privacy@dragoncandy.io';
 
 export default function TermsOfService() {
   return (
@@ -13,7 +13,7 @@ export default function TermsOfService() {
     >
       <p>
         These Terms of Service ("Terms") govern your access to and use of the DragonCandy
-        website at dragoncandy.io, our iOS application, and related services (collectively,
+        website at dragoncandy.com, our iOS application, and related services (collectively,
         the "Service"), operated by DragonCandy ("DragonCandy," "we," "us," or "our"). By
         creating an account or using the Service, you agree to these Terms. If you do not
         agree, do not use the Service.
@@ -161,7 +161,7 @@ export default function TermsOfService() {
       <h2>17. Contact Us</h2>
       <p>
         Questions about these Terms? Contact us at{' '}
-        <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+        <a href={`mailto:${PRIVACY_EMAIL}`}>{PRIVACY_EMAIL}</a>.
       </p>
     </LegalPageLayout>
   );

@@ -128,11 +128,40 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `supabase db push` will see the repo version as unapplied and re-run it — **proven a no-op**
   (`rows_help=0 rows_playbook=0`, assertions pass) because every statement is filtered on
   containing the old string. Same class as the Slice-2 entry recorded under `20260726024318`.
-  **Pending (2026-08-10):** the `.com` **Search Console** property — founder
-  chose `info@dragoncandy.com`, which is not signed into the browser; Change of Address is
-  **impossible, not deferred** (no property has ever existed); and a **redeploy of
-  `send-verification-email` + `manage-internal-users`** for the derived link labels. Phases 5–6
-  (mail, contract) not started. → `docs/wiki/concepts/domain-migration-io-to-com.md`
+  **`send-verification-email` (v231) + `manage-internal-users` (v11) DEPLOYED and boot-verified
+  2026-08-10**, closing the derived link labels — and the redeploy incidentally closed a
+  **pre-Phase-2 `_shared/origins.ts`** in `send-verification-email` (every verification email had
+  been going out with `<a href="…dragoncandy.com">dragoncandy.io</a>`, the mismatched-anchor shape
+  mail filters score as phishing) and added `capacitor://localhost` to its CORS allow-list.
+  **Phase 5a (MAIL — recipient addresses) SHIPPED 2026-08-10; 5b blocked on a $20/mo decision.**
+  The gate was "does the `.com` mailbox receive", and the obvious test could not answer it: an SMTP
+  `RCPT TO` probe returned **250 for all five target mailboxes AND for two nonsense control
+  addresses**, because Google's MX does not disclose recipient validity at `RCPT`. *Without the
+  controls it would have read as "all five confirmed" and licensed the flip.* (An earlier revision
+  of this line said `.com` **catch-alls** — it does not; the admin console shows no catch-all rule.
+  Mechanism corrected, conclusion unchanged.) `.io` was unprobeable the other way (IONOS `554
+  blocklisted`), so **neither TLD could be established by probing at all.** What cleared it was
+  **reading the Workspace admin console**: all five are **aliases on `dame@dragoncandy.com`** (active,
+  daily use) alongside `info@` and `appstore@`, in an org with 3 users and **zero groups** — which
+  establishes the *routing* rather than one delivery, strictly stronger than the planned receive
+  test. **Durable rule: when a probe cannot distinguish a true answer from a false one, no number of
+  runs makes it evidence — change instrument.** Shipped across **three stores with three release
+  mechanisms** (bundle: `src/lib/contactAddresses.ts`'s 3 constants + MDX prose + pitch deck +
+  internal placeholder; edge fn: `stripe-webhook`'s dispute `admin@`; DB: migration
+  `20260810170000` moving `help_articles.gdpr-erasure`'s `privacy@`, dry-run-proven on prod with
+  `search_vector` reindex confirmed). Also fixed a live `mailto:` encoding bug (8 of 32 prod help
+  titles carry a URL metacharacter; `DC Points & Creator Standing` truncated the subject to "Help:
+  DC Points") and 6 Phase-2 residuals naming the **website** in the legal pages, pitch deck and help
+  briefs. **5b (Resend `from:` ×8) is BLOCKED, and not on engineering:** the Resend account is on the
+  **free tier, limit 1 domain**, so adding `notify.dragoncandy.com` needs **Pro at $20/mo** — and
+  the free tier makes expand-then-switch **structurally impossible** (one slot ⇒ delete the working
+  warmed `.io` domain to add `.com` ⇒ a window with no verified sender where ALL transactional email
+  fails, no rollback, into `.com`'s **`p=quarantine`** DMARC vs `.io`'s `p=none`). **Pending
+  (2026-08-10):** the **$20/mo go/no-go on 5b**; and the `.com` **Search Console** property — note
+  `info@` turns out to be an **alias of `dame@`**, which IS signed in, so this may no longer be
+  blocked (Change of Address remains **impossible, not deferred** — no property ever existed).
+  Phase 6 (contract) **recommendation: don't** — all transactional mail still originates from
+  `notify.dragoncandy.io`. → `docs/wiki/concepts/domain-migration-io-to-com.md`
 - **Apple App Store (Capacitor)** — iOS shell over the web app. Phase 1 (foundation) +
   Phase 2 (native camera + share sheet) shipped; the first-signed-build work (origin
   seam so email/share/OAuth links work natively, `capacitor://localhost` trusted in the
@@ -211,71 +240,6 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   and #415 changed the protocol, not the versions, so the skew persists); a hand-run
   `deno check` with a `main` baseline stands in for it.
   → `docs/wiki/concepts/donny-social-tools.md` · #416
-- **Donny-first business dashboard (Phases A + B)** — the `/dashboard/business` body becomes Donny
-  (greeting + attention list + prompt box + three taps); today's body preserved verbatim at
-  `/dashboard/business/overview`. Scope set by a prod audit, not the mockup: only 4 Donny tools
-  verifiably work, so 3 taps and nothing routes to `social_*` (0/7). **Phase A merged (#410) and
-  `DONNY_FIRST_DASHBOARD_ENABLED` flipped on (#411) — both verified 2026-08-09**, which is how the
-  founder reached it on prod. Their feedback there produced **Phase B**: the answer now lands *on
-  the dashboard* instead of throwing the side panel open (Phase A's prompt box was a **launcher by
-  design** — not a bug), plus the fix for a markdown table that reached the bubble as literal pipes
-  (`DonnyMessage` ran ReactMarkdown with **no `remark-gfm`**; tables are GFM, not CommonMark). The
-  Phase-B blocker was **not** on the design doc's seven-hazard list: queries gated on
-  `stage !== 'closed'` would have rendered a permanently **empty** inline thread, indistinguishable
-  from "no messages yet". Solved by separating what `stage` conflated (panel visible vs conversation
-  live), leaving `stage` byte-unchanged. **Four Codex rounds, four more defects, all one shape — the
-  code claimed more than it delivered**: `package-lock.json` still carried `remark-gfm` as a dev dep
-  (so `npm ci --omit=dev` would ship without a runtime import), a failed first ask rendered nothing
-  at all, the fix for that offered a **dead "Try Again"**, and a follow-up typed mid-answer vanished
-  into a silent `return`. **#423 merged 2026-08-10 04:24 UTC and `donny-orchestrator` is DEPLOYED
-  and verified 2026-08-10** — for ~2 hours in between, prod was **half-shipped**: merging #423 ships
-  the **frontend only**, so Phase B's UI was live against the pre-#423 bundle. Closed by deploying
-  from current `main` and reading the **deployed source**, not the version: `Never end on a dead end`
-  (Phase A), `accounts_unavailable` (#416) and `NARROW_BUBBLE_FORMAT` ×3 (Phase B) all present, no
-  `esm.sh` specifier; `OPTIONS` + anon key → **200** with the origin echoed back, which is the real
-  boot proof (a bundle can store successfully and still fail at module load — that is exactly what
-  [[Edge-Function Deploy & Bundling]] documents, so "the deploy succeeded" is not evidence).
-  **Gotcha worth keeping:** `NARROW_BUBBLE_FORMAT` lives in `_shared/social-analytics.ts`, which the
-  orchestrator *bundles* — grep the whole deployed file set, never just `index.ts`, which returns 0
-  and reads as a failed deploy for entirely the wrong reason. The founder then used it on prod and
-  filed one complaint twice — *"the conversation just keep running down endlessly and there's no
-  scroll button"* / *"we don't need the conversation from yesterday. Every prompt is fresh upon
-  visit."* — and **two sessions built the scroller in parallel**. #429 merged it (`DonnyThreadRegion`
-  + scroll-to-bottom, and a real-browser measurement catching `h-full` computing an **8337px scroller
-  inside a 145px parent**); #428 was **reset onto main and rebuilt** to carry only the remainder —
-  a display filtered **fresh per visit** by slicing Donny's one shared conversation on a baseline
-  **id** (never a count or a client clock), plus a greeting that collapses once a conversation runs,
-  with the block's reserved chrome dropping 26rem → 12rem so the reclaimed space reaches the thread
-  instead of becoming whitespace. Its duplicate scroller was **discarded, not merged**. **Four Codex
-  rounds, five findings**, the sharpest on my own fix: an empty `messages` array is not proof there
-  is no history; `isSuccess` is not "current" (React Query keeps it true during a background refetch
-  over cached data); `isStreaming`/`error` are **global to the shared conversation**, so a side-panel
-  reply rendered as this visit's transcript; and counting a **failed** history fetch as loaded — the
-  obvious cure for the queue-forever deadlock that caused — reintroduced the first bug. **When a flag
-  answers "is it safe to act", failure is a third answer, not a vote for either** → `messagesErrored`
-  + a Try Again that refetches, with the queued ask kept so recovery sends it without retyping.
-  **The durable lesson is process, not code:** the collision was found *by accident*, because the
-  `[scope]` check ran that morning against the **core docs** and said nothing about
-  `src/components/donny/` — point it at the **source paths the branch touches**.
-  **Pending:** **#428 is open, not merged**; and the **both-viewport check, which has still never
-  been run on any task in this line of work**.
-  **Phase 3 — the CREATOR role — is PR #444, open 2026-08-10.** Same body for creators (two taps,
-  not three), old body preserved verbatim at a new `/dashboard/creator/overview`; brand deliberately
-  out of scope. The shared pieces are now role-generic (`DonnyHomeShell`, `useDonnyHomeConversation`,
-  `useDonnyHomeInteractions`), the two builders stay siblings. **Corrects a claim this file has been
-  making: `donny_tool_executions` cannot confirm a sub-agent tap for ANY role** — its insert sits
-  inside the `isSocialTool && mcpBridge` branch, so its emptiness is not evidence about consumer
-  sub-agents. Central defect: a lifetime `collaborationCount` gated "nothing in flight" while 11 of
-  16 prod collaborations are `completed`, so a creator who *finished* their work could see a **blank**
-  attention region; the fix's own test then found the money-first merge branch omitted the find-work
-  item entirely. `billing_agent` is **wrong for creators** (serves the restaurant catalog) — routed
-  around, not fixed, and still live. `stripe_onboarding_complete` now has **two disagreeing readers**,
-  resolved by copy true in both worlds. `DCTour` no longer spotlights a zero-size target. A Codex P1
-  claiming those financial columns are unreadable by `authenticated` was **refuted on prod**.
-  **Pending:** merge, then the both-viewport `verify-prod` (first live exercise of the two taps) and
-  the RAG sync. **No per-role kill switch — merging #444 IS the creator launch**, and rollback takes
-  the business dashboard with it.
-  → `docs/wiki/concepts/donny-first-dashboard.md` · #410, #411, #423, #428, #429, #444
 - **DragonFeed uplift + sidebar double-active fix** — the "double-clicked button" was a
   **specificity** bug (each role's bare-root Dashboard href prefixed all ~26 child routes, in three
   copy-pasted navs) → one shared longest-match-wins `activeNavHref()`. The feed's four complaints
@@ -332,15 +296,84 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
-- **Donny's consumer RAG closed — the wiki syncs internal by default** — `EXCLUDE` was inert
-  (gated on a `SYNC_CURATE=1` the unattended post-merge sync never sets), so **107 of 112** wiki
-  rows were consumer-reachable, retrievable via `donny-orchestrator`'s default-scope RAG → the
-  `general` catch-all; the worst page was on neither list and states the live user count, the
-  vendor-by-vendor burn and "Stripe test mode". Inverted to an **empty `CONSUMER` allowlist** —
-  nothing lost internally, since `sync-internal-docs.mjs` already mirrors every page at internal
-  scope (1:1, 112 and 112). **Merged and verified on prod 2026-08-10:** `internal` 112, NULL group
-  gone, consumer predicate **0 of 247**. Codex found 2, both mine. → `docs/SHIPPED_LOG.md` ·
-  `docs/wiki/concepts/donny-rag-scope-boundary.md` · #434
+- **Every `href` in our transactional emails was caller-chosen — closed on prod (#442)** — ~30
+  templates built every link from caller-supplied `data` with no check, reachable because
+  `create-notification` spreads the request body **verbatim** and calls `send-notification-email`
+  with the **service key**, so the self-only 403 never applied. Whole-URL fields went into `href`
+  raw (attacker site, or `javascript:`); id fields were concatenated into paths, so a `"` closed
+  the attribute and wrote markup into the message. Closed by `_shared/emailLinks.ts`, whose
+  `safeLink` **discards the host rather than validating it** (parse relative to our origin, keep
+  only `pathname+search+hash`) — one rule covering absolute, protocol-relative, backslash,
+  userinfo, `javascript:`/`data:`, CRLF and encoded traversal at once. **29 tests**, confirmed
+  collected by CI (239→240 files). Two auth bugs went with it: **`"Bearer undefined"` promoted an
+  unauthenticated caller to SERVICE** (key read `as string`, no presence check — confirmed against
+  the **live** bundle), and the self-check **failed open on any caller with no email** on their
+  auth record. The regression it had to avoid: `budget: 0` is real (crew campaigns are free), so
+  `?? ''` would have printed "Budget: $0" on every free-campaign email — **escaping must not change
+  what renders**; money is *coerced* not escaped because two amounts sit in the subject. Authored
+  by a **parallel session** and left unmerged a day — **cherry-picked, not merged**, since the
+  branch predated the `.io`→`.com` migration in the same file. Reviewer completeness sweep: all 45
+  sinks enumerated, **zero** raw values remain. Codex clean; deployed and boot-verified.
+  → `docs/SHIPPED_LOG.md` · `docs/wiki/concepts/notification-delivery.md` · #442
+- **`can_notify_user`'s crew clause was forgeable — closed on prod (#440)** — no membership-status
+  filter, and since **any** user may create a crew (`WITH CHECK (owner_id = auth.uid())`) with an
+  **unconstrained `creator_id`**, two INSERTs bought a notification channel to **any user on the
+  platform**. Proven red on prod, then proven closed against the live function
+  (`forged_row_grants=f`, genuine accept still `t`, self-notify control `t`). Fixed in two halves,
+  because the obvious one-liner is a regression: the clause now requires `status='active'` (which
+  an **owner cannot write** — verified with a control: INSERT/UPDATE to active → 42501, UPDATE to
+  `removed` → succeeds, so it means *the creator accepted*), **plus** a row-authorized,
+  **server-worded** branch for the two crew notifications that fire at a non-active status
+  (`group_invitation` at `invited`, `group_membership_removed` at `removed`) — without that second
+  half it is the same hole by a shorter route. Two more live bugs closed en route: the internal
+  email call let a caller **overwrite `recipientUserId`** and redirect a branded email to a third
+  party with no bell row (service key ⇒ the self-only gate did not apply), and `forceDelivery`
+  overrode the recipient's opt-out for user callers (zero callers → service-only). Also discovered:
+  **the repo cannot rebuild this function** — ledger entry `20260808120130` has **no file in the
+  tree**, so a clean `db push` would have silently dropped two authorization clauses; this
+  migration codifies prod's real body. Deploy order was deliberately the **reverse** of the usual
+  rule (function first, migration second). `create-notification` **v53**; Codex clean.
+  → `docs/SHIPPED_LOG.md` · `docs/wiki/concepts/notification-delivery.md` · #440
+- **Donny-first business dashboard (Phases A + B + the shape corrections)** — the
+  `/dashboard/business` body is Donny: greeting, attention list, prompt box, three taps, with the
+  answer landing in-page. Scope set by a prod audit, not the mockup. The founder then corrected the
+  SHAPE twice from prod — the thread is now a bounded self-scrolling panel above the composer
+  (#429), the greeting collapses once a conversation runs, and every visit starts fresh by slicing
+  the shared conversation on a baseline **id** (#428). **Both-viewport check confirmed by the
+  founder on prod 2026-08-10** — the first time it has ever been run on this feature.
+  **Phase 3 — the CREATOR role — is PR #444, OPEN not merged (2026-08-10).** Same body for creators
+  (**two** taps, not three), old body preserved verbatim at a new `/dashboard/creator/overview`;
+  brand deliberately out of scope. The shared pieces are now role-generic — `DonnyHomeShell`,
+  `useDonnyHomeConversation`, `useDonnyHomeInteractions` — while the two builders stay siblings
+  (the roles rank by different rules). **Corrects a claim this file has been making:
+  `donny_tool_executions` cannot confirm a sub-agent tap for ANY role** — its insert sits inside the
+  `isSocialTool && mcpBridge` branch, so its emptiness is not evidence about consumer sub-agents,
+  including the taps Phase A shipped. Central defect: a **lifetime** `collaborationCount` gated
+  "nothing in flight" while 11 of 16 prod collaborations are `completed`, so a creator who *finished*
+  their work could see a **blank** attention region; the fix's own test then found the money-first
+  merge branch omitted the find-work item entirely. `billing_agent` is **wrong for creators** (serves
+  the restaurant catalog) — routed around, not fixed, and **still live**.
+  `stripe_onboarding_complete` now has **two disagreeing readers**, resolved by copy true in both
+  worlds rather than by plumbing. `DCTour` no longer spotlights a zero-size target (mechanism fix,
+  all three roles). A Codex **P1** claiming those financial columns are unreadable by `authenticated`
+  was **refuted on prod** by impersonation. **Pending:** merge; then the both-viewport `verify-prod`
+  — which for the creator role has **not** been run — including the first live exercise of the two
+  taps; and the RAG sync. **No per-role kill switch: merging #444 IS the creator launch**, and
+  rollback is a revert that takes the business dashboard with it.
+  → `docs/wiki/concepts/donny-first-dashboard.md` · #410, #411, #423, #428, #429, #444
+
+- **Donny's consumer RAG closed, then de-duplicated — the wiki no longer syncs to consumers at
+  all** — `EXCLUDE` was inert (gated on a `SYNC_CURATE=1` the unattended post-merge sync never
+  sets), so **107 of 112** wiki rows were consumer-reachable via `donny-orchestrator`'s
+  default-scope RAG → the `general` catch-all; the worst page was on neither list and states the
+  live user count, the vendor-by-vendor burn and "Stripe test mode". #434 inverted it to an
+  **empty `CONSUMER` allowlist**; #437 then stopped sending non-listed pages entirely, because
+  marking them internal duplicated rows `sync-internal-docs.mjs` + `wiki-merge-pr` already write
+  (**113 pages embedded twice, 109 byte-identical**). **Both merged and verified on prod
+  2026-08-10:** `donny_knowledge` 249 → **136**, `wiki:` namespace empty, consumer-reachable
+  **0**, 113 mirrors intact, merged-script sync `errors=0 orphans=0`. A read-only orphan check
+  replaces the self-healing the change cost. Codex found 2 on #434 (both mine), clean on #437.
+  → `docs/SHIPPED_LOG.md` · `docs/wiki/concepts/donny-rag-scope-boundary.md` · #434, #437
 - **Dead `/settings/*` CTAs fixed (12 across 10 files)** — every "Upgrade" (incl. the revenue path)
   and "Connect Outstand" CTA 404'd; `isKnownRoute` never caught them because it only guards routes
   the LLM **invents**. Merged `fef2b428`; `donny-orchestrator` + `fire-campaign-social-hook` both

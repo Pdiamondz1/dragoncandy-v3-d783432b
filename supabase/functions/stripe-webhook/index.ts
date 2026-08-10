@@ -504,7 +504,11 @@ serve(async (req) => {
         try {
           await supabase.functions.invoke('send-notification-email', {
             body: {
-              to: 'admin@dragoncandy.io',
+              // Phase 5a (2026-08-10): moved to .com. Verified in the Google
+              // Workspace admin console as an alias on dame@dragoncandy.com,
+              // not inferred from an SMTP probe -- Google's MX returns 250 for
+              // addresses that do not exist, so acceptance proves nothing.
+              to: 'admin@dragoncandy.com',
               subject: `Payment Dispute Filed — $${(dispute.amount / 100).toFixed(2)}`,
               type: 'dispute_alert',
               data: { disputeId: dispute.id, amount: dispute.amount, reason: dispute.reason },

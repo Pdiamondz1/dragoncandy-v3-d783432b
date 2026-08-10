@@ -27,13 +27,16 @@
   answer changed. Same edit-in-place discipline as `[status-correction]`, applied to design
   rules instead of status lines.
 
-- **[wiki-is-internal] Step 6's sync no longer publishes anything to consumers — and that is by
-  design, not a gap.** Since PR #434 (2026-08-10) `sync-wiki-to-donny.mjs` marks **every** page
-  `scope:"internal"` unless its exact `<dir>/<filename>` is in a `CONSUMER` allowlist that is
-  **empty**. Run `sync:wiki` exactly as before — pages still reach `donny_knowledge`, just at
-  internal scope — and keep verifying with `content ilike`, which queries with the service role
-  and no scope predicate, so it is unaffected. **Do not "fix" a page's absence from the consumer
-  scope; that is the intended state.** The prior shape was two denylists, one of them
+- **[wiki-is-internal] `sync:wiki` publishes nothing, and `sync:internal` is what carries the
+  wiki into the RAG — by design, not a gap.** Since PRs #434 → #437 (2026-08-10)
+  `sync-wiki-to-donny.mjs` sends **only** pages listed in a `CONSUMER` allowlist that is
+  **empty**, so it is a near no-op; `sync-internal-docs.mjs` is the script that syncs
+  `docs/wiki/` (as `internal-<dir>:<slug>`, scope internal), and `wiki-merge-pr` writes the same
+  namespace. **Step 6 should therefore run `sync:internal`** — running only `sync:wiki` after
+  adding a page will report `Publishing 0 page(s)` and the page will NOT be in the RAG. Keep
+  verifying with `content ilike`, which queries with the service role and no scope predicate, so
+  it is unaffected. **Do not "fix" a page's absence from the consumer scope; that is intended.**
+  If `sync:wiki` exits 1 with `orphans=N`, that is drift to prune, not a broken sync. The prior shape was two denylists, one of them
   (`EXCLUDE`) inert behind a `SYNC_CURATE=1` the unattended post-merge sync never set, which left
   **107 of 112** wiki rows consumer-reachable — including the page stating the live user count,
   the vendor-by-vendor burn and "Stripe test mode". A denylist **fails open**; every page
@@ -197,6 +200,32 @@
   *files*; this says a stale worktree can also ship stale *code to production*.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-10] Wiki RAG dedupe — compounding onto a page THIS session wrote (`docs/wiki-sync-dedupe`, after #437)
+- Output: `docs/wiki/concepts/donny-rag-scope-boundary.md` (updated, not a new page) + the
+  `log.md` entry dated 2026-08-10 "the wiki was syncing a second copy of itself";
+  `knowledge-sync-automation.md` updated again; `SHIPPED_LOG.md` prepended;
+  `PROJECT_CONTEXT.md` §5 line **edited in place** per [status-correction].
+- Happened: #437 superseded the mechanism the page written *four hours earlier in this same
+  session* described, so the compound/new-page call was easy in the other direction from last
+  run — same subject, edited in place. Two pages describing one boundary would leave no signal
+  about which is current.
+- Worked: [claim-decay] fired twice in one run, both on text this session authored.
+  `knowledge-sync-automation.md`'s "what the two scripts mean" block was false within hours, and
+  its **long-standing** "harmless libuv assertion" Gotcha turned out to be wrong in a way that
+  mattered — the assertion replaces the process exit code (an intended 1 observed as 127).
+- Worked: chasing that claim instead of just rewording it found the identical `process.exit()`
+  -after-fetch pattern latent on `sync-internal-docs.mjs`'s error path, fixed in the same PR.
+  **A doc that says "check the others" and does not check is the same defect it is documenting.**
+- Failed: nothing gating. One genuine operational error earlier in the session, recorded because
+  it is cheap to repeat: the 113-row prune was run **before** its script change reached `main`,
+  and the post-merge hook re-inserted every row by running `main`'s older script. Sequence data
+  changes AFTER the code that governs them, and read `.git/knowledge-sync.log` before concluding
+  a delete failed.
+- Remember: **a page this session created is not exempt from [claim-decay] — it is the most
+  likely thing to rot, because the same session keeps changing what it describes.** Before
+  finishing any run, re-read the pages this session touched *earlier* against what shipped
+  *later*.
 
 ### [2026-08-10] Donny RAG consumer scope — the wiki goes internal by default (`docs/wiki-sync-consumer-scope`, after #434)
 - Output: `docs/wiki/concepts/donny-rag-scope-boundary.md` (new) + the `log.md` entry dated

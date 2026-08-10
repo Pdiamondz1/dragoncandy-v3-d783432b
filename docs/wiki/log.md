@@ -28,6 +28,131 @@ the refutation is recorded because the claim is the kind that would otherwise be
 Pages updated: [[Donny-First Dashboard]] (Phase 3 section, 6 new Known Issues, 5 new See Also),
 `index.md` (1 Sources entry + the Concepts summary), this log.
 
+## [2026-08-10] ingest | [[Notification Delivery]] — every href was caller-chosen (#442)
+
+Ingested `raw/sessions/2026-08-10-email-link-injection.md`, compounding onto
+[[Notification Delivery]] — third entry in one day on that page (#419 → #440 → #442), all
+tracing to the same structural fact it already documented: *the recommended path around the
+self-only gate has no gate of its own.*
+
+- New section "Every href was caller-chosen": ~30 templates built every `href` from
+  caller-supplied `data` with no check, reachable because `create-notification` spreads the
+  request body verbatim and calls with the **service key**.
+- Durable technique recorded: **`safeLink` discards the host rather than validating it** —
+  parse relative to our origin, keep only `pathname + search + hash`. One rule covers absolute,
+  protocol-relative, backslash, userinfo, `javascript:`/`data:`, CRLF and encoded traversal at
+  once. *Validation enumerates what is bad; discarding keeps only what is good.*
+- Recorded the **regression the fix had to avoid**: `budget: 0` is real (crew campaigns are
+  free), so `?? ''` would have printed "Budget: $0" on every free-campaign email —
+  **escaping must not change what renders** — and money is *coerced* not escaped because two
+  amounts sit in the subject, where `&amp;` renders literally and CRLF is header injection.
+- Two auth bugs recorded: `"Bearer undefined"` promoted an unauthenticated caller to SERVICE
+  (confirmed by reading the **live** bundle), and the self-check failed open on any caller with
+  no email on their auth record.
+- Process note kept: these commits came from a **parallel session** and sat unmerged for a day;
+  they were **cherry-picked, not merged**, because the branch predated the `.io`→`.com`
+  migration in the same file. *A parallel session's branch is not a merge candidate just
+  because it exists.*
+- The non-discriminating post-deploy probe is recorded as such, not as proof — same lesson as
+  the Phase-5a SMTP `RCPT TO` run.
+
+Pages updated: `concepts/notification-delivery.md`. No new page (compounded). No `index.md`
+change needed.
+
+## [2026-08-10] ingest | [[Notification Delivery]] — the crew clause was forgeable (#440)
+
+Ingested `raw/sessions/2026-08-10-can-notify-crew-clause.md` by **compounding onto
+[[Notification Delivery]]**, and **this entry corrects a claim that page itself made**, per the
+flag-contradictions rule:
+
+- The page stated membership clauses in `can_notify_user` check the relationship is **live**
+  (`left_at IS NULL`, `invitation_status='active'`). That was **false for the crew clause**,
+  which carried no status filter at all. A correction blockquote now sits at that sentence.
+- Because `creator_groups` INSERT is `WITH CHECK (owner_id = auth.uid())` and
+  `cgm_owner_insert` leaves `creator_id` unconstrained, **two INSERTs manufactured a
+  notification channel from any authenticated user to any user on the platform.** Proven red
+  on prod, then proven closed against the live function.
+- Durable lesson recorded: **a page that lists a control is not evidence the control exists** —
+  read the deployed `pg_get_functiondef`, not the prose and not the migration file.
+- Second durable lesson: the naive fix (`status='active'`) would have **silently killed crew
+  invitations and removals**, both of which fire at a non-active status. The page now carries
+  the status-at-notify-time table and the rule that row authorization without server-composed
+  copy is a *relocation*, not a fix.
+- Also recorded: `recipientUserId` was overwritable in the internal email call (a third-party
+  email redirect with no bell row), `forceDelivery` is now service-only, and the repo could not
+  rebuild `can_notify_user` because ledger entry `20260808120130` has no file in the tree.
+
+Pages updated: `concepts/notification-delivery.md`. No new page (compounded, per
+*compound-don't-duplicate*). No `index.md` change needed.
+
+## [2026-08-10] ingest | [[Domain Migration (.io → .com)]] Phase 5a — mailboxes moved
+
+Ingested `raw/sessions/2026-08-10-dotcom-phase5a-mailboxes-shipped.md`, compounding onto the
+concept page. **This entry CORRECTS the one immediately below it**, per the wiki's
+flag-contradictions-never-silently-overwrite rule:
+
+- The earlier ingest recorded that `dragoncandy.com` **catch-alls**. It does not — the Workspace
+  admin console shows no catch-all rule, only Google's stock "Default delegation rule". The true
+  mechanism is that **Google's MX does not disclose recipient validity at `RCPT` time**. The
+  *observation* (250 for two nonsense controls) and the *decision* it drove (don't flip yet) were
+  both correct; only the inferred mechanism was wrong. The raw session file is immutable and still
+  carries the original claim, which is why this correction lives in the synthesis layer.
+
+New durable lesson, one step past the existing *a probe without a control proves nothing*:
+**when a probe cannot distinguish a true answer from a false one, no number of runs turns it into
+evidence — change instrument.** Here the control *killed* the probe rather than validating it, and
+the right response was to read the configuration instead.
+
+Phase 5a then shipped: all five addresses proved to be **aliases on `dame@dragoncandy.com`**, and
+the mailboxes moved across **three stores with three release mechanisms** (bundle / edge function /
+migration `20260810170000`). 5b is now blocked not on engineering but on **$20/mo** — the Resend
+free tier's one-domain limit makes expand-then-switch structurally impossible.
+Pages updated: `concepts/domain-migration-io-to-com.md`.
+
+## [2026-08-10] ingest | [[Domain Migration (.io → .com)]] Phase 5 — the mail audit
+
+Ingested `raw/sessions/2026-08-10-dotcom-phase5-mail-audit.md` by **compounding onto the existing
+concept page**, replacing its one-line "Phase 5 — mail (deferred)" placeholder with what the audit
+actually established. Two findings overturned the plan's own reasoning, so this is a correction to
+the page, not an addition to it:
+
+- The plan's premise — *"a dead support address is worse than an old one"* — assumed a **bounce**.
+  `dragoncandy.com` **catch-alls**: an SMTP `RCPT TO` probe returned 250 for all five target
+  mailboxes **and for two nonsense control addresses**. Without the controls it would have read as
+  "all five confirmed." Mail to a nonexistent `.com` mailbox is accepted and then vanishes, so the
+  receive test is **irreplaceable** and a successful *send* proves nothing.
+- Phase 5 was one item; it is **two**, with different gates and blast radii. 5b (sending domain)
+  moves mail from `.io`'s `p=none` DMARC to `.com`'s **`p=quarantine`** — where a misconfiguration
+  junks mail **silently** — for **zero** user-visible benefit. Recommendation recorded: defer.
+
+Also records that MDX help briefs move by **deploy**, not migration — a limit on Phase 4's
+"editing a seed changes nothing in prod" lesson. Pages updated: `concepts/domain-migration-io-to-com.md`.
+## [2026-08-10] ingest | [[Donny RAG Scope Boundary]] — the wiki was syncing a second copy of itself
+
+Ingested `raw/sessions/2026-08-10-wiki-rag-dedupe.md` by **compounding onto the page this
+session's earlier entry created**, because #437 did not add a subject — it **superseded the
+mechanism that page described**. Same subject, edited in place, which is the rule for
+supersession; a second page would have left two live descriptions of one boundary and no signal
+about which is current.
+
+**Pages updated:** `concepts/donny-rag-scope-boundary.md` — the mechanism section now says the
+script publishes only the allowlist rather than marking everything internal, with a dated block
+recording what #434 did and why it changed; the "nothing is lost internally" section gains the
+oversize-behaviour table that explains why the *duplicate* was the copy that would hard-fail; and
+Known Issues gains the lost self-healing property, the orphan check that replaces it, the
+merge-before-prune ordering rule, and the `process.exit()` exit-code trap.
+`concepts/knowledge-sync-automation.md` — its "what the two scripts mean" block, written **hours
+earlier in this same session**, was already false and is rewritten.
+
+**A claim was falsified, not just updated.** That page's own Gotchas called the Windows libuv
+assertion "harmless". It is not: it replaces the exit code (an intended `1` observed as `127`).
+Chasing it found the identical pattern latent on `sync-internal-docs.mjs`'s error path, fixed in
+the same PR.
+
+**Note for whoever picks up the splits:** the entry below queued four oversize pages on the
+strength of a hard `FAIL_CHARS` skip. That skip applied to the `wiki:` copy, which no longer
+exists, so the case for splitting is now retrieval quality rather than a broken sync.
+
 ## [2026-08-10] ingest | [[Donny RAG Scope Boundary]] — the consumer RAG was the leak
 
 Ingested `raw/sessions/2026-08-10-wiki-rag-consumer-scope.md` as a **new concept page**, not a

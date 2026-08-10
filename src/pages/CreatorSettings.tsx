@@ -12,6 +12,7 @@ import { useCreatorProfileSubmit } from '@/hooks/useCreatorProfileSubmit';
 import { calculateCreatorCompletion } from '@/hooks/useProfileCompletion';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { NotificationPreferencesSection } from '@/components/settings/NotificationPreferencesSection';
+import { SUPPORT_EMAIL, mailtoHref } from '@/lib/contactAddresses';
 import { DeleteUserSheet } from '@/components/org/DeleteUserSheet';
 import { Coachmark } from '@/components/guidance/Coachmark';
 import { WhyExpander } from '@/components/guidance/WhyExpander';
@@ -129,7 +130,7 @@ const CreatorSettings = () => {
                 </button>
                 <div className="flex items-center gap-1">
                   <a
-                    href="mailto:support@dragoncandy.io?subject=GDPR%20Data%20Erasure%20Request"
+                    href={mailtoHref(SUPPORT_EMAIL, 'GDPR Data Erasure Request')}
                     className="text-sm text-muted-foreground hover:text-foreground underline"
                   >
                     Request full data erasure (GDPR/CCPA)

@@ -118,6 +118,319 @@ after merge. **Note there is no per-role kill switch** — `DONNY_FIRST_DASHBOAR
 `true` and both roles share it by documented choice, so **merging is the creator launch** and
 rollback is a code revert that also takes the founder-verified business dashboard with it.
 
+## [2026-08-10] A user could choose the CTA link inside our transactional emails (#442)
+
+Every `href` in `send-notification-email`'s ~30 templates was built from caller-supplied `data`,
+and none of it was checked. Third link in the day's chain (#419 → #440 → #442), and the same
+reachability each time:
+
+> `create-notification` spreads the caller's request body **verbatim** into the payload it sends
+> `send-notification-email`, and calls it with the **service key** — so a user-authenticated caller
+> reaches those templates and the function's own "recipient must be self" 403, which exists
+> precisely to stop cross-user mail, **does not apply to the resulting message.**
+
+Whole-URL fields (`actionUrl`, `campaignUrl`, `reviewUrl`) went into `href` raw, so the CTA of a
+genuine DragonCandy email could point at an attacker's site or a `javascript:` scheme; id fields
+were concatenated into paths, so a `"` closed the attribute and let the caller write markup into
+the message body.
+
+**Not my work.** Both commits were authored by a **parallel session on 2026-08-09** and left with
+**no PR** for a day. Cherry-picked onto current `main` rather than merged, because the branch
+predated the `.io`→`.com` migration *in this same file* (branch 4 `.io`/0 `.com`; main 1/2) and a
+straight merge risked silently reintroducing `.io` on the hunks it touched. Verified after: both
+`.com` emblem images intact, `from:` correctly still `notify.dragoncandy.io` (Phase 5b is blocked
+on the $20/mo decision). *A parallel session's branch is not a merge candidate just because it
+exists — check what landed under it first.*
+
+**The fix** is `_shared/emailLinks.ts`: `link` (a path *we* composed), `safeLink` (a caller path
+forced back onto our origin), `pathSegment`, `safeImageUrl`.
+
+> **`safeLink` discards the host rather than validating it** — parses relative to our own origin,
+> keeps only `pathname + search + hash`. One rule therefore covers absolute, protocol-relative,
+> backslash, userinfo, `javascript:`/`data:`, CRLF and encoded-traversal spellings at once.
+> **Validation enumerates what is bad; discarding keeps only what is good.** A `toString`-bearing
+> object is rejected by a `typeof` check *before* `new URL` can stringify it — correct ordering,
+> easy to get wrong.
+
+**29 tests** assert **both** properties on every hostile input (stays-on-origin *and*
+cannot-break-out), because fixing one without the other still leaves a usable injection. Confirmed
+**collected by CI**, not merely runnable by hand: 239 → 240 files.
+
+**Two auth bugs fixed alongside.** `"Bearer undefined"` **promoted an unauthenticated caller to
+SERVICE** — the key was read `as string` with no presence check, so an unset secret made the
+comparison true for the one string an attacker would guess first, and service callers skip the
+same-inbox check entirely. Confirmed real by reading the **live v252 bundle**. And the self-check
+`to && callerEmail && …` **failed open on any caller with no email on their auth record** — latent
+at 0-of-42 users, but one GoTrue toggle (anonymous/phone sign-in) from live.
+
+**The regression it had to avoid:** `budget: 0` is a real value — crew campaigns are free and carry
+a literal `0` behind a `data.budget ?` guard — so a naive `?? ''` would have printed "Budget: $0"
+on every free-campaign email. **Escaping must not change what renders.** Money is *coerced* rather
+than escaped, because two amounts sit in the **subject**, which is not markup: `&amp;` renders
+literally and a CRLF is a header-injection primitive escaping cannot touch. That coercion also
+fixed a live crash — `data.amount.toFixed(2)` is typed `number` but arrives as JSON.
+
+**Review follow-ups (mine, on their work).** Fixed: `fileCount ?? 0` rendered "uploaded **0 new
+files**" under an H1 reading "New Deliverables!" — a *confident false statement*, worse than the
+obvious garbage it replaced; a **set but unparseable** `APP_URL` silently stripped the deep link
+from every completion email while the send still reported success; drifted comment line-refs
+replaced with **symbol** refs rather than corrected, since numbers drift again. Cleared with
+evidence, no change: the preserved `search`/`hash` needs an on-origin redirect sink to be
+exploitable and the only one (`AuthPage` `returnTo`) already gates on `ALLOWED_REDIRECT_ORIGINS`;
+`safeImageUrl` drops relative URLs but **0 of 10** prod `dragonshare_posts` have one.
+
+**Left open deliberately:** `safeImageUrl` pins the scheme but not the host (these images
+legitimately live on Supabase storage), so a creator-writable `post_url` could be a tracking pixel
+— same class as #399. Self-addressed today, so documented rather than fixed.
+
+**Verified:** `data-exposure-reviewer` completeness sweep — all 45 `href`/`src`/subject sinks
+enumerated, **zero** raw caller values remain; `edge-function-reviewer` PASS (transitive `_shared`
+= 4 files, all uploaded; zero `esm.sh`; no unrelated drift); **Codex clean**; 240 files / 2410
+tests green. Deployed and boot-verified, all 5 assets including the new `emailLinks.ts`.
+
+*Caveat recorded honestly:* the post-deploy `Bearer undefined` curl returns 401, but **would have
+before the fix too** (the secret is set, so the comparison fails either way) — a non-discriminating
+probe, same lesson as the Phase-5a SMTP `RCPT TO` run. The live-bundle read is what established it.
+
+→ `docs/wiki/concepts/notification-delivery.md` · #442
+
+## [2026-08-10] A crew invite nobody accepted was a notification channel to anyone (#440)
+
+`can_notify_user`'s crew clause carried **no membership-status filter**, so a channel to any
+user on the platform was manufacturable with two INSERTs and nobody's consent. Surfaced by the
+review of #419, which leaned on that gate.
+
+**Proven, not argued** — on prod, inside a rolled-back transaction, impersonating a real
+`business_client` against an unrelated `brand` user:
+
+```
+BEFORE  baseline=f  crew_insert=t  member_insert=t  after=t
+AFTER   forged_row_grants=f   after_genuine_accept=t   self_notify_CONTROL=t
+```
+
+Three facts composed into it: `creator_groups` INSERT is `WITH CHECK (owner_id = auth.uid())`
+(**any** authenticated user may create a crew — no role check); `cgm_owner_insert` leaves
+**`creator_id` entirely unconstrained**; and the clause filtered no status. The *actor* was
+never forgeable (`actorId` is JWT-derived) — the **words and the link were**, on any of the 26
+mapped types, i.e. a DragonCandy-branded transactional email with attacker-chosen copy.
+
+**Why `status='active'` is the right predicate:** an owner **cannot write it**. Verified on prod
+**with a control**, because two denials alone could just mean a broken probe — INSERT active →
+**42501**, UPDATE to active → **42501**, UPDATE to `'removed'` → **succeeds**. The only writer of
+`'active'` is `respond_to_group_invitation()`, gated `creator_id = auth.uid()`. So it means *the
+creator themselves accepted*.
+
+**Why that filter alone would have been a regression — the constraint the founder set.** Two crew
+notifications fire at a **non-active** status: `group_invitation` (`invited`) and
+`group_membership_removed` (`removed` — `removeMember` UPDATEs *before* dispatching). Gating them
+on `active` kills both (the #387 shape); relaxing to `IN ('active','invited','removed')` excludes
+only `declined` and fixes nothing. Both are now authorized against the **membership row** with
+**server-composed copy**. That second half is not polish: row authorization alone would still mean
+"you may send anyone you can name in a crew row arbitrary text" — the same hole by a shorter route.
+Mirrors the existing `content_liked` pattern.
+
+**Two more live bugs, found in review and fixed here:**
+- **The transactional email could be redirected.** `recipientUserId` was spread **first** in the
+  internal call to `send-notification-email`, so caller-controlled `data`/`emailData` overwrote it
+  — and because that call uses the service key, the self-only gate does not apply. A caller could
+  authorize against **themselves** (`p_actor = p_recipient`) and have a branded email delivered to
+  a **third party, with no `push_notifications` row recording it**. Now pinned last.
+- **`forceDelivery` overrode the recipient's email opt-out** for user callers — the one control the
+  "no more than a business can already do" reasoning depends on. Zero callers anywhere → service-only.
+
+**The repo could not rebuild prod's `can_notify_user`.** `schema_migrations` records
+`20260808120130 can_notify_user_active_relationships` with **no file in `supabase/migrations/`**
+(applied via MCP during #387/#396, never written back), so the repo body lacked the conversation
+`left_at` and org `invitation_status` clauses prod has. **A clean `supabase db push` would have
+produced the LOOSER function and silently dropped two authorization tightenings.**
+`recorded ≠ actual`, opposite direction from #325/#385. This migration codifies prod's real body.
+
+**One guard rejected:** requiring `responded_at IS NOT NULL` to prove prior membership.
+`column_privileges` shows `authenticated` holds UPDATE on `responded_at`, and RLS `WITH CHECK`
+cannot pin a column — forgeable by the same owner, so it would have been decoration. The
+overclaiming comment was corrected instead, and the residual stated plainly: an owner can still put
+a crew-flavoured bell in any user's feed (bell-only for removal, server-worded, fixed URL).
+
+**Deploy order was the REVERSE of the usual rule** — `create-notification` **first**, migration
+second, because the code change makes those two types stop consulting `can_notify_user` entirely,
+so they work under both function bodies. Migration-first would have 403'd every crew invite until
+the deploy landed.
+
+**Verified live:** `create-notification` **v53** boot-verified; migration applied; the original
+attack re-run against the live function returns `f`; ACL `anon=false auth=false service=true`;
+conversation/org/sponsorship clauses all intact. `edge-function-reviewer` PASS (`_shared`
+byte-compared to the live bundle, zero drift), `data-exposure-reviewer` 1 high + 3 low all
+addressed or explicitly rejected, **Codex clean**, 239 files / 2381 tests green.
+
+→ `docs/wiki/concepts/notification-delivery.md` · #440
+
+## [2026-08-10] Domain migration Phase 5 (MAIL) — 5a shipped; 5b blocked on $20/mo
+
+Branch `feat/dotcom-phase5-mail` · `src/lib/contactAddresses.ts` (new) · migration
+`20260810170000` · `data-exposure-reviewer` PASS · `edge-function-reviewer` PASS.
+
+**5a shipped: every contact mailbox is on `.com`.** The interesting part is not the flip, it is that
+the obvious way to clear its gate turned out to be incapable of answering the question.
+
+**Finding 1 — the probe could not distinguish a true answer from a false one.** A read-only SMTP
+`RCPT TO` probe (never issues `DATA`, so nothing is sent) against `aspmx.l.google.com` returned
+**250 for all five target mailboxes** — `support@`, `privacy@`, `sales@`, `admin@`, `founders@` —
+**and 250 for two deliberately nonsensical control addresses.** *Without the controls this would
+have read as "all five confirmed" and licensed the flip.* Google's MX simply **does not disclose
+recipient validity at `RCPT` time**. (An earlier draft of this entry called that a *catch-all*; the
+Workspace console shows no catch-all rule, only Google's stock "Default delegation rule" —
+mechanism corrected, conclusion unchanged.) `.io` was unprobeable in the other direction — IONOS
+answers `554 IP address is block listed`. **Neither TLD could be established by probing at all.**
+
+> **The durable rule: when a probe cannot distinguish a true answer from a false one, no number of
+> runs turns it into evidence — change instrument.** One step past this project's existing *a probe
+> without a control proves nothing*: there the control validates the probe, here it **killed** it.
+
+**What actually cleared the gate — the Google Workspace admin console.** All five are **aliases on
+`dame@dragoncandy.com`** (active, in daily use), alongside `info@` and `appstore@`; the org has
+three users and **zero groups**, so the alias list is the whole story. That establishes the
+**routing** rather than one lucky delivery — strictly stronger than the send-and-receive test
+planned, which was itself only a proxy for what the config states directly. (Recorded honestly: this
+session asserted "the five mailboxes do not exist" after checking users and groups but *before*
+finishing the alias check, and was wrong. Finish the enumeration before stating the conclusion.)
+
+**Shipped across three stores with three release mechanisms** — which is why the flip needed a
+checklist, not a find-and-replace: **bundle** (the 3 constants, MDX help prose, pitch-deck
+`founders@`, internal-login placeholder), **edge function** (`stripe-webhook`'s dispute-alert
+`admin@`), and **database** (migration `20260810170000` moving `help_articles.gdpr-erasure`'s
+`privacy@`, the last stored `.io` mailbox). The migration's pre-guard is deliberately **broader**
+than its operation — the inverse of the Phase 4 defect `data-exposure-reviewer` caught. Dry-run on
+prod inside a rolled-back block: `rows=1`, `stale_io_mailboxes=0` table-wide, `sv_has_com=t /
+sv_has_io=f` proving the non-generated `search_vector` reindexed. The unit test now **pins** `.com`
+instead of accepting either TLD — correct while the gate was open, wrong the moment it closed.
+
+**A reviewer's stated gap, closed by hand.** `edge-function-reviewer` PASSed but named what it
+could not check: whether `stripe-webhook`'s bundle was unchanged since its last deploy. v165 shipped
+2026-07-24; two commits since touch its dependency set — **#363** widens a TypeScript union (erased
+at runtime, DB CHECK already applied) and **#415** is the `esm.sh` → `npm:` specifier fix itself.
+v165 still ran the **old `esm.sh` specifier**, so the redeploy moved it onto the fixed one. Nothing
+unwanted rode along. *A reviewer that names what it could not verify is more useful than one that
+quietly assumes* — the gap it named was the only real risk in the deploy.
+
+**`.io` still must never lapse or transfer**: every already-delivered copy of the GDPR article
+points at `privacy@dragoncandy.io`, and an erasure request carries identity PII by definition.
+Moving the published address reduces *future* exposure; it does not retire the old mailbox.
+
+**Finding 2 — Phase 5 is two changes, not one.** **5a** (recipient addresses: `mailto:` ×7 +
+`stripe-webhook`'s `to: admin@`) is gated on the receive test. **5b** (sending domain: `from:` ×8
+across 7 edge functions) is gated on Resend + GoDaddy DNS, and is far riskier than the plan assumed:
+`.io` publishes DMARC `p=none`, `.com` publishes **`p=quarantine`**, so moving the sending domain
+moves transactional mail from a policy that *tolerates* a DKIM/SPF misconfiguration to one that
+**junks it silently** — Resend reports success, our logs report success, the mail lands in spam, and
+the one email a new signup MUST receive is the verification email. For **zero** user-visible
+benefit: `notify.dragoncandy.io` is never a clickable brand link and carries a warmed reputation a
+new subdomain would start from zero. `notify.dragoncandy.com` doesn't exist in DNS at all.
+
+**Then 5b hit a harder wall than DMARC: the Resend account (team `harbormill`) is on the FREE TIER,
+limit ONE domain.** Adding `notify.dragoncandy.com` needs **Pro at $20/mo**. The cost is not the
+problem — **the free tier makes expand-then-switch structurally impossible.** One slot means
+**deleting the working, warmed, verified `.io` domain** to add `.com`: a window with **no verified
+sending domain** (every transactional email failing at once), **no rollback** (re-adding `.io` means
+re-verifying DNS and restarting its reputation), landing into `p=quarantine`. The plan tier forces
+exactly the all-at-once failure the governing principle exists to prevent. So 5b is **$20/mo, or a
+hard cutover with an outage window** — there is no free safe version. **A founder cost decision, not
+an engineering one.** One risk retired on the way: Resend's DKIM/SPF live on the **subdomain**, so
+GoDaddy's `_spfm` merge record on the `.com` apex is never touched.
+
+**Shipped (expand):** `support@` had been hardcoded in **four** components, `privacy@` in two,
+`sales@` in one — the shape that lets a domain get missed, and the same shape the origins allow-list
+had before Phase 1 collapsed it. **Eight literals is eight chances to update seven of them.** One
+module now owns all three, with a test asserting they share **one** domain so a partial flip fails
+CI rather than reaching a user told to email an address nobody reads.
+
+**A live defect fixed en route:** `HelpArticlePage` interpolated the article title straight into the
+`mailto:` query string, and **8 of 32 prod titles carry a URL metacharacter** — `DC Points & Creator
+Standing` among them. The unencoded `&` ended the `subject` parameter early, so the Email-support
+button opened a mail client with the subject truncated to "Help: DC Points". `mailtoHref()` encodes
+structurally and retired the hand-written `%20` escaping in the settings pages.
+
+**Six Phase-2 residuals** swept while here — they name the **website**, not a mailbox, so nothing
+gated them: the Privacy Policy and ToS each defined the Service as "our website at dragoncandy.io",
+the pitch deck's closing slide showed `.io`, two troubleshooting steps told users to allow pop-ups
+and clear cookies for the old domain, and a promo share-link example read `dragoncandy.io/promo/...`.
+**MDX help briefs are bundled via `import.meta.glob`, so they move by DEPLOY, not migration** — a
+real limit on Phase 4's "editing a seed changes nothing in prod" lesson.
+
+Deliberately left, each with a reason: `troubleshooting.mdx`'s `support@` prose and
+`stripe-webhook`'s `admin@` (mailboxes → gated; and Deno can't import from `src/`), the
+`gdpr-erasure` article's stored `privacy@` (DB content → migration), and architecture comments
+naming `internal.dragoncandy.io` (mechanism text; the host still resolves). Surfaced but **not**
+fixed: the legal pages route data-rights requests to `privacy@` while the in-app GDPR-erasure links
+route to `support@` — where those land is an operations decision, not a refactor.
+
+→ `docs/wiki/concepts/domain-migration-io-to-com.md`
+## [2026-08-10] The wiki was syncing a second copy of itself
+
+**PR #437** (`63862a23`, squash-merged) · `supabase/scripts/sync-wiki-to-donny.mjs` +
+`sync-internal-docs.mjs` · one prod data change (113 rows deleted) · no migration, no deploy.
+→ `docs/wiki/concepts/donny-rag-scope-boundary.md`
+
+**#434 was right about direction, wrong about volume.** It closed the consumer leak by marking
+every non-allowlisted page `scope:"internal"`. But `sync-internal-docs.mjs` **already** syncs the
+whole `docs/wiki/` tree as `internal-<dir>:<slug>`, and `wiki-merge-pr` writes that same namespace
+via `_shared/wiki-sync-payload.ts`. So the internal copy has **two** writers, this script has one,
+and the `wiki:` namespace exists for one purpose: the consumer scope, which is empty.
+
+Measured on prod: **113 pages embedded twice, 109 byte-identical.** Internal Donny could spend two
+of its five RAG slots on one page; every sync paid double the embedding cost; and the duplicate
+was the **only** copy subject to this script's hard `FAIL_CHARS` skip — the thing that had queued
+four pages for splitting. The internal copy handles the same page gracefully (embeds the first
+24,000 chars, keeps the full markdown in `internal_docs`), because that trick needs
+`full_content`, which `donny-knowledge-sync` rejects on anything but internal scope.
+
+**What shipped.** The script publishes only what `CONSUMER` lists — nothing — and the 113
+duplicates were pruned: **249 → 136**, `wiki:` namespace empty, all 113 mirrors intact,
+consumer-reachable **0** throughout, and a content probe confirms wiki text is still retrievable
+via the mirror.
+
+**The property it cost, and what pays for it.** Sending every page was self-healing: drop one from
+the allowlist and the next run overwrote its row back to internal. Publishing only the allowlist
+loses that — a removed page is never sent again, so its row strands at `scope null`,
+consumer-retrievable, forever. That is exactly the shape `EXCLUDE` had, and the lesson from
+`EXCLUDE` is that **a rule living only in a comment does not hold.** So the rule got a check: a
+**read-only** GET diffs the `wiki:` rows against the allowlist, names orphans **with their actual
+scope**, prints the prune SQL, and carries the count into the exit code. Read-only on purpose —
+giving a sync script `DELETE` on `donny_knowledge` has a worse blast radius than the drift it
+fixes. Fails **open** on a REST error, since the sync did not create the drift.
+
+**Two defects found by running it, not reasoning about it.** The orphan message asserted the rows
+were "still consumer-retrievable" — false, they were at scope `internal`; the same overclaiming
+Codex caught in #434, now reporting each row's real scope. And `process.exit(1)` after the new
+second fetch host tore the process down while undici held a pooled socket, aborting on Windows
+with `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)` and exit **127** — masking the 1 it
+meant to return. **That is the assertion `knowledge-sync-automation.md` had documented as
+"harmless" for months; it was eating the exit code.** Fixed with `process.exitCode`, and the sweep
+it prompted found the identical pattern latent on `sync-internal-docs.mjs`'s error path — which
+fires exactly when the hook and CI need the code to be trustworthy — fixed too.
+
+**The prune taught an ordering rule the hard way.** Run behind the `careful` gate (pre-flight: 113
+matched, **0** at consumer scope, **0** lost uniquely). Then the rows **came back** — not a failed
+delete: the `post-merge` hook fired on a main fast-forward and ran the script **as it existed on
+`main`**, the #434 version, re-inserting all 113 (`inserted=113` in `.git/knowledge-sync.log`).
+**Merge the script change first, prune second** — and read the hook log before concluding a delete
+failed. Re-pruned after #437 merged, then verified by running the merged script from `origin/main`:
+`errors=0 orphans=0`, exit 0, nothing re-created.
+
+**Verification.** 238 files / **2375** tests, typecheck + build clean, Codex clean first round. (A
+first suite run reported "7 errors / 2307" under machine load at 215s vs 91s; the re-run was clean
+and the count reconciles exactly — 2373 plus the 2 new assertions.) The PostgREST filter's
+correctness is proven by the check itself: the same unencoded request returned all 113 rows with
+scopes before the prune and 0 after, corroborated independently by SQL. Codex tried to verify that
+URL encoding and was blocked by its own sandbox — the empirical result is the stronger evidence.
+
+**Consequence for the queued page splits.** `donny-social-tools` (26,847),
+`service-role-data-exposure` (26,779), `domain-migration-io-to-com` (25,086) and
+`donny-first-dashboard` (24,708) were queued because of the hard `FAIL_CHARS` skip — **which
+applied to the copy that was just deleted.** The remaining ceiling is `MAX_EMBED_CHARS = 24,000`,
+a truncated embed with the full markdown still in `internal_docs`. Splitting is now a
+retrieval-quality improvement (708–2,847 chars of tail per page, plus focused units), not a fix
+for a broken sync.
+
 ## [2026-08-10] Donny's consumer RAG was 107 leaking wiki pages and nothing else
 
 **PR #434** (`669b259b`, squash-merged) · script `supabase/scripts/sync-wiki-to-donny.mjs` ·
