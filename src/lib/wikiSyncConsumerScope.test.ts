@@ -35,10 +35,26 @@ describe('sync-wiki-to-donny consumer scope', () => {
   // asserted. An empty allowlist means the whole wiki is internal, which is the current and
   // correct state: no page in an engineering notebook is written for a customer to read.
 
-  it('defaults every non-allowlisted page to internal', () => {
-    // The one line the whole guarantee rests on. If a refactor drops it, every page silently
-    // returns to the consumer RAG at scope null — the exact defect this replaced.
-    expect(source).toMatch(/}\s*else\s*{\s*\n\s*page\.scope = "internal";/);
+  it('sends ONLY allowlisted pages — an unlisted page is skipped, not marked', () => {
+    // The line the whole guarantee rests on. If a refactor drops it, every wiki page is published
+    // to the consumer RAG at scope null — the exact defect this file's history is about.
+    expect(source).toMatch(/if \(!CONSUMER\.has\(`\$\{dir\}\/\$\{name\}`\)\) continue;/);
+  });
+
+  it('never sets a scope — everything it sends is consumer by construction', () => {
+    // PR #434 marked unlisted pages `internal`; #436 stops sending them at all, because
+    // sync-internal-docs.mjs already writes an internal copy of every page (measured 1:1 on
+    // prod). A reintroduced `scope: "internal"` here means the duplicate rows are back.
+    expect(source).not.toMatch(/scope:\s*["']internal["']/);
+    expect(source).not.toMatch(/page\.scope\s*=/);
+  });
+
+  it('keeps the orphan check, which is what replaced the self-healing overwrite', () => {
+    // Sending only allowlisted pages costs the property #434 relied on: dropping a page from
+    // CONSUMER no longer overwrites its row back to internal, so it strands at scope null.
+    // The read-only check is the entire compensation — a rule in a comment does not hold.
+    expect(source).toMatch(/orphanCount/);
+    expect(source).toMatch(/rest\/v1\/donny_knowledge/);
   });
 
   it('has no denylist left to rot', () => {
