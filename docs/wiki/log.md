@@ -1,5 +1,33 @@
 # Wiki Log
 
+## [2026-08-10] ingest | [[Donny-First Dashboard]] Phase 3 — the creator role
+
+Ingested `raw/sessions/2026-08-10-donny-first-creator-dashboard.md` by **compounding onto the
+existing concept page**, not creating a new one. Phase 3 is the same feature reaching a second
+role, and the page already carries the Phase A/B history the creator work builds on — a separate
+page would have split one narrative and duplicated the audit-before-design principle, the
+tap-honesty rule and the flag discussion.
+
+The tour material stayed here too rather than becoming a thin `DCTour` page: the zero-size-target
+fix is a *consequence* of this dashboard's self-hiding attention section, and the page already
+owned the "both pages must resolve every anchor" invariant.
+
+Three durable claims this run corrected or established:
+- **`donny_tool_executions` cannot confirm a sub-agent tap for any role** — its insert sits inside
+  the `isSocialTool && mcpBridge` branch. This corrects how its emptiness has been read in
+  `PROJECT_CONTEXT.md` and on this page since Phase A.
+- **`stripe_onboarding_complete` now has two disagreeing readers in the frontend** — a direct
+  column read and a self-healing live-Stripe verification. Resolved by *copy*, not plumbing.
+- **A safeguard resting on "in practice X never happens" is not a safeguard** — the spec dismissed
+  the zero-size anchor hazard on exactly that basis, and the hazard was live.
+
+A Codex P1 claiming `authenticated` cannot select `creator_profiles`' financial columns was
+**refuted by prod impersonation** (rollback-wrapped: `has_acct=t onboarding=f balance=360`), and
+the refutation is recorded because the claim is the kind that would otherwise be repeated.
+
+Pages updated: [[Donny-First Dashboard]] (Phase 3 section, 6 new Known Issues, 5 new See Also),
+`index.md` (1 Sources entry + the Concepts summary), this log.
+
 ## [2026-08-10] ingest | [[Donny RAG Scope Boundary]] — the consumer RAG was the leak
 
 Ingested `raw/sessions/2026-08-10-wiki-rag-consumer-scope.md` as a **new concept page**, not a
