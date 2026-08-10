@@ -31,7 +31,7 @@ environment has no `grep` on PATH — `C:\Program Files\Git\usr\bin\grep.exe` wa
 grep -rn "create-checkout-session\|create-billing-portal-session\|checkout_url\|billingRoute\|/pricing\|>Upgrade\|Upgrade<" src/ --include=*.tsx --include=*.ts
 ```
 
-Full output (34 lines):
+Full output (35 lines):
 
 ```
 src/App.tsx:215:          <Route path="/pricing" element={<PricingPage />} />
@@ -71,7 +71,12 @@ src/pages/PricingPage.tsx:37:        window.location.href = data.checkout_url;
 src/pages/PricingPage.tsx:53:        path="/pricing"
 ```
 
-34 lines total.
+35 lines total. **Correction (2026-08-10):** this doc originally said 34 here and below; the raw
+`grep` output above has 35 lines. Nothing is missing — the 33-row classification table in Step 2
+merges two adjacent-line pairs into single rows (`boostOutcome.test.ts:6-7` and
+`PricingPage.tsx:36-37`, each one finding split across two consecutive matched lines), which is why
+33 rows correctly account for 35 raw hits (35 − 2 merges = 33). The count itself, not the
+underlying analysis, was wrong.
 
 ## Step 2 — Classification of every hit
 
@@ -91,7 +96,7 @@ src/pages/PricingPage.tsx:53:        path="/pricing"
 | 12 | `DonnyPerformanceInsights.tsx:72` | Upgrade link in locked card | **Known set — gated** | Wrapped in `<WebOnly>` inline. |
 | 13 | `DonnyWeeklyPlanner.tsx:7` | `import { billingRoute }` | Not a CTA | Import statement. |
 | 14 | `DonnyWeeklyPlanner.tsx:44` | Upgrade link in locked card | **Known set — gated** | Wrapped in `<WebOnly>` inline. |
-| 15 | `DragonDashRushButton.tsx:34` | `<span>Upgrade to unlock Rush Posting</span>` | **New hit, not in known table — read as SAFE, no gate needed** | Static `<span>` inside a non-interactive `<div>` (the `tierLocked` branch, lines 30–37) — **no `onClick`, no handler at all**. Read-only status text, same pattern the design system calls out as fine. Additionally, both current call sites (`SponsorshipAmplificationPrompt.tsx:166`, `SocialPostPrompt.tsx:708`) never pass `tierLocked`, so this branch is dead code today — it cannot render. Note this button's *unlocked* state triggers `RushConfirmDialog`, which is the DragonDash rush **surcharge** — a marketplace/Stripe payment, explicitly out of scope. |
+| 15 | `DragonDashRushButton.tsx:34` | `<span>Upgrade to unlock Rush Posting</span>` | **New hit, not in known table — read as SAFE, no gate needed** | Static `<span>` inside a non-interactive `<div>` (the `tierLocked` branch, lines 30–37) — **no `onClick`, no handler at all**. Read-only status text, same pattern the design system calls out as fine. Additionally, both current call sites (`SponsorshipAmplificationPrompt.tsx:166`, `SocialPostPrompt.tsx:708`) never pass `tierLocked`, so this branch is dead code today — it cannot render. Note this button's *unlocked* state triggers `RushConfirmDialog`, which is the DragonDash rush **surcharge** — a marketplace/Stripe payment, explicitly out of scope. **Forward-looking fragility (not fixed here):** unlike its three sibling lock cards (`DonnyAutoPilot`/`DonnyPerformanceInsights`/`DonnyWeeklyPlanner`, all of which import `WebOnly`), this file never imports `WebOnly` at all — its safety rests entirely on the unenforced invariant that no caller passes `tierLocked`, with no structural gate and no `WebOnly` import present to remind a future editor who does wire it up. |
 | 16 | `SoftPaywallSheet.tsx:5` | `import { ... TIER_PRICES ... }` | Not a CTA | Import statement; `TIER_PRICES` used only for read-only price display (`Starting at $X/mo`). |
 | 17 | `SoftPaywallSheet.tsx:40` | `navigate(...)` inside `handleUpgrade` | **Known set — gated** | `handleUpgrade`'s only caller is the `<Button>` at lines 64–66, wrapped in `<WebOnly>` (lines 63–67). |
 | 18 | `TierComparisonGrid.tsx:11` | `import ... from '@/lib/pricing/tier-features'` | Not a CTA | Import statement (part of the "known set — gated" file; the actual CTA is item #33). |
@@ -220,28 +225,95 @@ cannot produce in a sitting:
 1. **`/pricing`** — confirm the tier-comparison grid renders with **no** "Choose Plan"/"Get Started"
    buttons on-device (covers this CTA regardless of entry point — direct nav, `BrandFreeTrioHero`'s
    "See plans", or `SoftPaywallSheet`'s "Upgrade").
-2. **`/settings/billing`** (`OrgBillingPage`) — confirm "Manage billing" and "Upgrade plan" do not
-   render; confirm the informational "Current Plan" / "Available Plans" cards still do (read-only
-   context must survive).
+2. **`/dashboard/business/billing`** and **`/dashboard/brand/billing`** (both host `OrgBillingPage`;
+   role determines which one applies — a business account only ever sees the former, a brand
+   account only the latter, per `billingRoute(role)` in `src/lib/donnyRoutes.ts`) — confirm "Manage
+   billing" and "Upgrade plan" do not render; confirm the informational "Current Plan" / "Available
+   Plans" cards still do (read-only context must survive). **Correction (2026-08-10):** the brief
+   originally named `/settings/billing` here, which is not a route in this app — there is no
+   top-level `/settings/*` route at all (see `src/App.tsx`; the exact mistake is recorded in
+   `donnyRoutes.ts`'s own comment: "`/settings/billing` was hardcoded in 8 places — every 'Upgrade'
+   CTA 404'd"). A tester following the original wording would have 404'd on the two most sensitive
+   gated CTAs in this audit instead of reaching them.
 3. **The Donny chat panel** — trigger an error state containing "Upgrade" (e.g. exceed a tier's
    rate limit) and confirm `DonnyChatView`'s "Upgrade Plan" link is absent, and "Try Again" still
-   works for non-upgrade errors.
+   works for non-upgrade errors. (Not a route — the panel is reachable from any authenticated
+   screen, so no path to verify.)
 4. **The three Donny lock cards** (`DonnyAutoPilot`, `DonnyPerformanceInsights`,
    `DonnyWeeklyPlanner`) — on a free/starter-tier org, confirm the locked-state card shows its
-   status text ("Requires Starter plan or higher." / tooltip) with no "Upgrade" link.
+   status text ("Requires Starter plan or higher." / tooltip) with no "Upgrade" link. Reachable via
+   the Calendar/Analytics tabs of `OutstandManager` (`src/pages/OutstandManager.tsx`), hosted at
+   `/dashboard/business/social`, `/dashboard/creator/social`, and `/dashboard/brand/social`
+   (all confirmed in `src/App.tsx`).
 5. **`/dashboard/business`** and **`/dashboard/creator`** — general smoke pass; no known CTA here
    but both are high-traffic entry points worth a console-error check.
 6. **`/rewards`** — no purchase CTA found in the predicate or manual read; included for a general
    data-state/console-error pass.
-7. **DragonFeed** — same as above; also the reachable surface closest to `SocialPostPrompt` /
+7. **DragonFeed** — concretely `/dashboard/business/dragon-feed` and `/dashboard/creator/dragon-feed`
+   (both confirmed in `src/App.tsx`); also the reachable surface closest to `SocialPostPrompt` /
    `DragonDashRushButton`, worth confirming the (currently-dead) `tierLocked` branch still shows no
    clickable "Upgrade" if it's ever wired up later.
 
-This list is unchanged from the brief's suggested list — the audit's two new-but-safe hits
-(`BrandFreeTrioHero`'s "See plans", `DragonDashRushButton`'s locked text) don't need their own
-device-pass entries: the former's safety is fully covered by testing `/pricing` directly (item 1),
-and the latter is unreachable code today (no call site passes `tierLocked`), so there is nothing to
-observe on-device.
+**Every route named above was individually confirmed to exist in `src/App.tsx`** (see the
+`git grep` excerpt in the correction log below) — not assumed from prose, after `/settings/billing`
+turned out to be exactly that kind of unverified assumption.
+
+Aside from the `/settings/billing` → real-route correction, this list is otherwise unchanged from
+the brief's suggested list — the audit's two new-but-safe hits (`BrandFreeTrioHero`'s "See plans",
+`DragonDashRushButton`'s locked text) don't need their own device-pass entries: the former's safety
+is fully covered by testing `/pricing` directly (item 1), and the latter is unreachable code today
+(no call site passes `tierLocked`), so there is nothing to observe on-device.
+
+## Correction log (2026-08-10)
+
+The coordinator caught one Important issue in the original 2026-08-09 version of this document:
+the device-pass list named `/settings/billing`, which does not exist as a route anywhere in this
+app — there is no top-level `/settings/*` route at all. The real host of `OrgBillingPage` is
+role-scoped via `billingRoute(role)` (`src/lib/donnyRoutes.ts`), which carries its own comment
+recording that this exact class of mistake shipped once before: *"There is NO top-level
+`/settings/*` route in this app, yet `/settings/billing` was hardcoded in 8 places — every
+'Upgrade' CTA 404'd."* I had cited `billingRoute` correctly throughout the Step 2 classification
+table but then carried the coordinator's stale wording into the device-pass list unchanged, without
+independently checking it against `src/App.tsx` — exactly the kind of unverified-route mistake the
+`donnyRoutes.ts` comment warns about.
+
+**Fix applied:** replaced `/settings/billing` with both real routes,
+`/dashboard/business/billing` and `/dashboard/brand/billing`, with a parenthetical noting role
+determines which applies.
+
+**Every route in the corrected device-pass list was then individually re-checked against
+`src/App.tsx`** (not re-assumed) via:
+
+```
+grep -n "path=\"/pricing\"\|path=\"/dashboard/business\|path=\"/dashboard/brand\|path=\"/dashboard/creator\|path=\"/rewards\|path=\"/settings" src/App.tsx
+```
+
+Confirmed present, one `<Route>` each:
+
+```
+215:          <Route path="/pricing" element={<PricingPage />} />
+236:          <Route path="/dashboard/business" element={...} />
+237:          <Route path="/dashboard/brand" element={...} />
+238:          <Route path="/dashboard/creator" element={...} />
+264:          <Route path="/dashboard/business/dragon-feed" element={...} />
+289:          <Route path="/rewards" element={<ProtectedRoute><DcPointsPage /></ProtectedRoute>} />
+294:          <Route path="/dashboard/business/billing" element={<ProtectedRoute><BusinessRoute><OrgBillingPage /></BusinessRoute></ProtectedRoute>} />
+315:          <Route path="/dashboard/brand/billing" element={<ProtectedRoute><BrandRoute><OrgBillingPage /></BrandRoute></ProtectedRoute>} />
+```
+
+Plus `/dashboard/creator/dragon-feed` (line 341) and the three `OutstandManager`-hosting routes
+`/dashboard/business/social` (line 273), `/dashboard/creator/social` (line 275), and
+`/dashboard/brand/social` (line 279) — all confirmed the same way. **No occurrence of
+`/settings/` as a path prefix exists anywhere in `src/App.tsx`.** The Donny chat panel and the
+three Donny lock cards are not routes (they're always-available UI / tab content within an
+existing route), so there is no path to verify for them — noted explicitly in the list now instead
+of left ambiguous.
+
+Two Minor items from the same review, fixed in place, not expanded further: the "34 lines" /
+"34 lines total" line-count in Step 1 was corrected to the actual 35 (the 33-row classification
+table merges two adjacent-line pairs, which is now spelled out inline); and the
+`DragonDashRushButton.tsx` classification row (#15) now notes it never imports `WebOnly` at all,
+unlike its three sibling lock cards — a forward-looking fragility recorded, not fixed.
 
 ## Commands log (for reproducibility)
 
