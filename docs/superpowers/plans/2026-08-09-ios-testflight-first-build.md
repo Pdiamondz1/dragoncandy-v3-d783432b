@@ -732,14 +732,34 @@ Expected: PASS, 6 tests.
 
 - [ ] **Step 5: Typecheck the Deno side by hand**
 
-CI's edge typecheck gate does not cover every `_shared` importer, so check directly:
+CI's edge typecheck gate does not cover every `_shared` importer.
+
+> **⚠️ NEVER run `npx supabase functions download` to do this.** An earlier draft of this
+> step said to, and it caused real damage: the command overwrites local source with the
+> **currently deployed** bundle. It reverted `_shared/cors.ts` and `_shared/origins.ts` to
+> their pre-task state — silently undoing this very task — and truncated
+> `donny-orchestrator/types.ts` to **0 bytes**, a file nine other files import. The commit
+> survived; the working tree did not. A blanket `git add` afterwards would have shipped the
+> reverted CORS with no error anywhere.
+
+Check the local sources directly instead, without fetching anything:
 
 ```bash
-npx supabase functions download donny-orchestrator --project-ref zocahiffooqdybdhguqv 2>/dev/null || true
-deno check supabase/functions/donny-orchestrator/index.ts
+deno check supabase/functions/_shared/cors.ts
 ```
 
-Expected: no type errors. If `deno` is unavailable on Windows, record that and let Task 12's deploy be the gate — note it in the PR rather than skipping silently.
+`cors.ts` imports only `./origins.ts`, so this covers both files with no external
+dependency to resolve. If it fails on module resolution rather than types — Deno may not
+resolve this repo's `npm:` specifiers locally — record that plainly and let Task 12's
+deploy be the gate. Note it in the PR rather than implying coverage you do not have.
+
+Then confirm the tree is still clean, because this step's whole hazard is invisible otherwise:
+
+```bash
+git status --porcelain
+```
+
+Expected: no output.
 
 - [ ] **Step 6: Commit**
 
