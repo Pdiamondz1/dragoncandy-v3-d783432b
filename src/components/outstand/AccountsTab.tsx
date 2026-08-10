@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ConnectAccountButtonGroup, AccountsList, type SocialNetwork } from '@outstand-so/ui';
+import { AccountsList, type SocialNetwork } from '@outstand-so/ui';
+import { ConnectAccountButtonGroupGated } from './ConnectAccountButtonGroupGated';
 import { useQueryClient } from '@tanstack/react-query';
 import { useOutstandConfig, OUTSTAND_PROXY_BASE_URL } from '@/integrations/outstand/Provider';
 import { useOutstandPaths } from '@/hooks/outstand/useOutstandPaths';
@@ -150,7 +151,7 @@ export const AccountsTab: React.FC = () => {
                 All networks connected. Disconnect one below to switch accounts.
               </p>
             ) : (
-            <ConnectAccountButtonGroup
+            <ConnectAccountButtonGroupGated
               networks={availableNetworks}
               redirectUri={redirectUri}
               apiKey={apiKey}

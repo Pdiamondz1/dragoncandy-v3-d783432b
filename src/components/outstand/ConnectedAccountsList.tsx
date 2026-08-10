@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { RefreshCw, X, AlertCircle } from 'lucide-react';
-import { useAccounts, ConnectAccountButtonGroup, type SocialNetwork } from '@outstand-so/ui';
+import { useAccounts, type SocialNetwork } from '@outstand-so/ui';
+import { ConnectAccountButtonGroupGated } from './ConnectAccountButtonGroupGated';
 import { DragonCandyOutstandProvider, useOutstandConfig, OUTSTAND_PROXY_BASE_URL } from '@/integrations/outstand/Provider';
 import { useOutstandPaths } from '@/hooks/outstand/useOutstandPaths';
 import { useReconnectNeeded } from '@/hooks/outstand/useReconnectNeeded';
@@ -145,7 +146,7 @@ const ConnectedAccountsListInner: React.FC<ConnectedAccountsListProps> = ({ role
                       {platformHandle ?? label}
                     </div>
                   </div>
-                  <ConnectAccountButtonGroup
+                  <ConnectAccountButtonGroupGated
                     networks={[platform as SocialNetwork]}
                     redirectUri={redirectUri}
                     apiKey={apiKey}
@@ -238,7 +239,7 @@ const ConnectedAccountsListInner: React.FC<ConnectedAccountsListProps> = ({ role
                   </button>
                 </div>
               ) : isSwitchTarget ? (
-                <ConnectAccountButtonGroup
+                <ConnectAccountButtonGroupGated
                   networks={[network]}
                   redirectUri={redirectUri}
                   apiKey={apiKey}
@@ -256,7 +257,7 @@ const ConnectedAccountsListInner: React.FC<ConnectedAccountsListProps> = ({ role
                   }}
                 />
               ) : !isConnected ? (
-                <ConnectAccountButtonGroup
+                <ConnectAccountButtonGroupGated
                   networks={[network]}
                   redirectUri={redirectUri}
                   apiKey={apiKey}
