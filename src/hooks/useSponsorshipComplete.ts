@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { publicOrigin } from '@/lib/publicOrigin';
 import { useAuth } from './useAuth';
 
 export const useSponsorshipComplete = () => {
@@ -108,7 +109,7 @@ export const useSponsorshipComplete = () => {
               brandName: brandProfile.business_name,
               businessName: restaurantProfile.business_name,
               sponsorshipId,
-              actionUrl: `${window.location.origin}/dashboard/brand/sponsorships?highlight=${sponsorshipId}`,
+              actionUrl: `${publicOrigin()}/dashboard/brand/sponsorships?highlight=${sponsorshipId}`,
             },
           },
         }).catch((err: unknown) => console.error('Failed to send sponsorship-completed notification:', err));
@@ -130,7 +131,7 @@ export const useSponsorshipComplete = () => {
               brandName: brandProfile.business_name,
               businessName: restaurantProfile.business_name,
               sponsorshipId,
-              actionUrl: `${window.location.origin}/dashboard/business/campaigns/${campaignData.id}`,
+              actionUrl: `${publicOrigin()}/dashboard/business/campaigns/${campaignData.id}`,
             },
           },
         }).catch((err: unknown) => console.error('Failed to send sponsorship-completed notification:', err));
@@ -161,7 +162,7 @@ export const useSponsorshipComplete = () => {
               businessName: restaurantProfile.business_name,
               requesterName: brandProfile.business_name,
               sponsorshipId,
-              actionUrl: `${window.location.origin}/dashboard/business/campaigns/${campaignData.id}`,
+              actionUrl: `${publicOrigin()}/dashboard/business/campaigns/${campaignData.id}`,
             },
           },
         }).catch((err: unknown) => console.error('Failed to send sponsorship-completion-request notification:', err));
@@ -184,7 +185,7 @@ export const useSponsorshipComplete = () => {
               businessName: restaurantProfile.business_name,
               requesterName: restaurantProfile.business_name,
               sponsorshipId,
-              actionUrl: `${window.location.origin}/dashboard/brand/sponsorships?highlight=${sponsorshipId}`,
+              actionUrl: `${publicOrigin()}/dashboard/brand/sponsorships?highlight=${sponsorshipId}`,
             },
           },
         }).catch((err: unknown) => console.error('Failed to send sponsorship-completion-request notification:', err));
