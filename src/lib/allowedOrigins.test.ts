@@ -36,3 +36,12 @@ describe('CANONICAL_APP_ORIGIN', () => {
     expect(ALLOWED_REDIRECT_ORIGINS.has(CANONICAL_APP_ORIGIN)).toBe(true);
   });
 });
+
+describe('the native origin is a CORS concern, not a redirect concern', () => {
+  it('never admits capacitor://localhost as a redirect target', () => {
+    // ALLOWED_REDIRECT_ORIGINS gates where a session access_token is sent.
+    // capacitor://localhost belongs in the Deno CORS allow-list only; folding
+    // it in here would widen the app's one credential boundary.
+    expect(ALLOWED_REDIRECT_ORIGINS.has('capacitor://localhost')).toBe(false);
+  });
+});
