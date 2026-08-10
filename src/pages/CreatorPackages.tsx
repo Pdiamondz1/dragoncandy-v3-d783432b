@@ -10,6 +10,7 @@ import { useCreatorStorefront } from '@/hooks/packages/useCreatorStorefront';
 import { PackageCard } from '@/components/packages/PackageCard';
 import { PackageTemplatePicker } from '@/components/packages/PackageTemplatePicker';
 import { PackageEditorSheet } from '@/components/packages/PackageEditorSheet';
+import { publicOrigin } from '@/lib/publicOrigin';
 import type { CreatorPackage, PackageTemplate } from '@/types/packages';
 
 type EditorState =
@@ -31,7 +32,7 @@ const CreatorPackages = () => {
   // The public buyer page at /p/:creatorSlug/:packageSlug lands in v1c; PACKAGES_ENABLED must stay off until
   // then (see featureConfig) so this link is never shared before its destination exists.
   const shareUrlFor = (pkg: CreatorPackage): string | null =>
-    slug ? `${window.location.origin}/p/${slug}/${pkg.slug}` : null;
+    slug ? `${publicOrigin()}/p/${slug}/${pkg.slug}` : null;
 
   return (
     <DashboardLayout userRole="content_creator">

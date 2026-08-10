@@ -23,6 +23,7 @@ import {
 import { format, isAfter, isBefore } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import { shareOrCopyLink } from '@/lib/nativeShare';
+import { publicOrigin } from '@/lib/publicOrigin';
 import { useVideoUrl } from '@/hooks/useVideoUrl';
 import { SocialHandleChips } from '@/features/promotions/review/SubmissionRow';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -288,7 +289,7 @@ const PromotionDetailPage: React.FC = () => {
   const isActive = promotion.status === 'active' && !isUpcoming && !isExpired;
   const isPaused = promotion.status === 'paused';
 
-  const promotionUrl = `${window.location.origin}/promo/${promotion.id}`;
+  const promotionUrl = `${publicOrigin()}/promo/${promotion.id}`;
   const discountDisplay = promotion.discount_type === 'percentage'
     ? `${promotion.discount_value}% off`
     : `$${promotion.discount_value} off`;
