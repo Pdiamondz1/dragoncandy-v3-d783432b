@@ -308,6 +308,36 @@ describe('DonnyHome — the conversation renders in the page', () => {
     expect(sendMessageMock).toHaveBeenCalledTimes(1);
   });
 
+  // useDonny.sendMessage opens with `if (isSendingRef.current) return;` — a
+  // SILENT return. DonnyHomePrompt cleared the box on submit regardless, so a
+  // follow-up typed while Donny was still answering vanished with no trace. The
+  // panel was never exposed to this: it passes disabled={isStreaming} to its
+  // input. Asserting the text SURVIVES is the point — an assertion that
+  // sendMessage was not called would pass even while the box emptied.
+  it('does not swallow a follow-up typed while a reply is streaming', () => {
+    donnyState.isStreaming = true;
+    donnyState.streamingContent = 'Based on';
+    renderHome();
+
+    const input = screen.getByRole('textbox', { name: /ask donny/i }) as HTMLInputElement;
+    expect(input).toBeDisabled();
+
+    fireEvent.change(input, { target: { value: 'and what about TikTok?' } });
+    fireEvent.submit(input.closest('form')!);
+
+    expect(sendMessageMock).not.toHaveBeenCalled();
+    expect(input.value).toBe('and what about TikTok?');
+  });
+
+  it('disables the suggestion chips while a reply is streaming', () => {
+    donnyState.isStreaming = true;
+    renderHome();
+
+    // Same reason as the input: a chip tap mid-reply reaches sendMessage's
+    // silent early return and does nothing, which reads as a broken button.
+    expect(screen.getByRole('button', { name: BUSINESS_SUGGESTIONS[0].label })).toBeDisabled();
+  });
+
   it('follows the reply down the page once the user asks something here', () => {
     const scrollIntoView = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoView;

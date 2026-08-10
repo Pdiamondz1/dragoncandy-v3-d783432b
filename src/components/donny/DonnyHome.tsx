@@ -96,13 +96,20 @@ export function DonnyHome() {
   // dropped, and there is no dead affordance to explain. Surfacing the error was
   // the first attempt and was not enough — the bar is whether the thing the user
   // did works, not whether the failure is visible. (Codex, rounds 1 and 2.)
+  // The same slot also covers a send arriving while a reply is still streaming.
+  // `useDonny.sendMessage` opens with `if (isSendingRef.current) return;` — a
+  // SILENT return, no throw and no error — so an ask during that window simply
+  // evaporates. The panel is safe because it passes `disabled={isStreaming}` to
+  // its input; this surface had no such guard.
   const [queuedAsk, setQueuedAsk] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (!conversation || queuedAsk === null) return;
+    // Flush on `isStreaming`, not on `isBusy` — isBusy includes the queue
+    // itself, so gating on it would deadlock the flush it is meant to trigger.
+    if (!conversation || isStreaming || queuedAsk === null) return;
     setQueuedAsk(null);
     sendMessage(queuedAsk);
-  }, [conversation, queuedAsk, sendMessage]);
+  }, [conversation, isStreaming, queuedAsk, sendMessage]);
 
   // A queued ask counts as busy: the tap already happened, so the thread shows
   // the typing indicator instead of looking like nothing registered.
@@ -141,13 +148,20 @@ export function DonnyHome() {
       userAskedHere.current = true;
       // One slot, last-wins. The window is a single round-trip; two asks inside
       // it means the user changed their mind, not that both should be sent.
-      if (!conversation) {
+      //
+      // The `isStreaming` branch is a GUARD, not a live path: the prompt box and
+      // the chips are disabled while busy, and `DonnyProposalCta`'s `kind: 'ask'`
+      // variant — the only other caller — is declared in buildDonnyProposals.ts
+      // and constructed nowhere in src/ today. Kept because it costs four lines
+      // and the alternative is that whoever first ships an 'ask' proposal
+      // silently reintroduces the dropped-message defect.
+      if (!conversation || isStreaming) {
         setQueuedAsk(text);
         return;
       }
       sendMessage(text);
     },
-    [conversation, sendMessage]
+    [conversation, isStreaming, sendMessage]
   );
   const { trackEvent } = useAnalyticsContext();
   const { showTour, tourSteps, completeTour, skipTour, triggerTour } = useTour();
@@ -309,6 +323,7 @@ export function DonnyHome() {
             suggestions={BUSINESS_SUGGESTIONS}
             onSubmit={handlePromptSubmit}
             onSuggestionTap={handleSuggestionTap}
+            busy={isBusy}
           />
 
           {/* The conversation, in the page — not in a panel over it. Rendered
