@@ -296,6 +296,25 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **`can_notify_user`'s crew clause was forgeable — closed on prod (#440)** — no membership-status
+  filter, and since **any** user may create a crew (`WITH CHECK (owner_id = auth.uid())`) with an
+  **unconstrained `creator_id`**, two INSERTs bought a notification channel to **any user on the
+  platform**. Proven red on prod, then proven closed against the live function
+  (`forged_row_grants=f`, genuine accept still `t`, self-notify control `t`). Fixed in two halves,
+  because the obvious one-liner is a regression: the clause now requires `status='active'` (which
+  an **owner cannot write** — verified with a control: INSERT/UPDATE to active → 42501, UPDATE to
+  `removed` → succeeds, so it means *the creator accepted*), **plus** a row-authorized,
+  **server-worded** branch for the two crew notifications that fire at a non-active status
+  (`group_invitation` at `invited`, `group_membership_removed` at `removed`) — without that second
+  half it is the same hole by a shorter route. Two more live bugs closed en route: the internal
+  email call let a caller **overwrite `recipientUserId`** and redirect a branded email to a third
+  party with no bell row (service key ⇒ the self-only gate did not apply), and `forceDelivery`
+  overrode the recipient's opt-out for user callers (zero callers → service-only). Also discovered:
+  **the repo cannot rebuild this function** — ledger entry `20260808120130` has **no file in the
+  tree**, so a clean `db push` would have silently dropped two authorization clauses; this
+  migration codifies prod's real body. Deploy order was deliberately the **reverse** of the usual
+  rule (function first, migration second). `create-notification` **v53**; Codex clean.
+  → `docs/SHIPPED_LOG.md` · `docs/wiki/concepts/notification-delivery.md` · #440
 - **Donny-first business dashboard (Phases A + B + the shape corrections)** — the
   `/dashboard/business` body is Donny: greeting, attention list, prompt box, three taps, with the
   answer landing in-page. Scope set by a prod audit, not the mockup. The founder then corrected the

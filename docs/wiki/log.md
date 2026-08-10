@@ -1,5 +1,31 @@
 # Wiki Log
 
+## [2026-08-10] ingest | [[Notification Delivery]] — the crew clause was forgeable (#440)
+
+Ingested `raw/sessions/2026-08-10-can-notify-crew-clause.md` by **compounding onto
+[[Notification Delivery]]**, and **this entry corrects a claim that page itself made**, per the
+flag-contradictions rule:
+
+- The page stated membership clauses in `can_notify_user` check the relationship is **live**
+  (`left_at IS NULL`, `invitation_status='active'`). That was **false for the crew clause**,
+  which carried no status filter at all. A correction blockquote now sits at that sentence.
+- Because `creator_groups` INSERT is `WITH CHECK (owner_id = auth.uid())` and
+  `cgm_owner_insert` leaves `creator_id` unconstrained, **two INSERTs manufactured a
+  notification channel from any authenticated user to any user on the platform.** Proven red
+  on prod, then proven closed against the live function.
+- Durable lesson recorded: **a page that lists a control is not evidence the control exists** —
+  read the deployed `pg_get_functiondef`, not the prose and not the migration file.
+- Second durable lesson: the naive fix (`status='active'`) would have **silently killed crew
+  invitations and removals**, both of which fire at a non-active status. The page now carries
+  the status-at-notify-time table and the rule that row authorization without server-composed
+  copy is a *relocation*, not a fix.
+- Also recorded: `recipientUserId` was overwritable in the internal email call (a third-party
+  email redirect with no bell row), `forceDelivery` is now service-only, and the repo could not
+  rebuild `can_notify_user` because ledger entry `20260808120130` has no file in the tree.
+
+Pages updated: `concepts/notification-delivery.md`. No new page (compounded, per
+*compound-don't-duplicate*). No `index.md` change needed.
+
 ## [2026-08-10] ingest | [[Domain Migration (.io → .com)]] Phase 5a — mailboxes moved
 
 Ingested `raw/sessions/2026-08-10-dotcom-phase5a-mailboxes-shipped.md`, compounding onto the

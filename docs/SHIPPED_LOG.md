@@ -26,6 +26,76 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-10] A crew invite nobody accepted was a notification channel to anyone (#440)
+
+`can_notify_user`'s crew clause carried **no membership-status filter**, so a channel to any
+user on the platform was manufacturable with two INSERTs and nobody's consent. Surfaced by the
+review of #419, which leaned on that gate.
+
+**Proven, not argued** — on prod, inside a rolled-back transaction, impersonating a real
+`business_client` against an unrelated `brand` user:
+
+```
+BEFORE  baseline=f  crew_insert=t  member_insert=t  after=t
+AFTER   forged_row_grants=f   after_genuine_accept=t   self_notify_CONTROL=t
+```
+
+Three facts composed into it: `creator_groups` INSERT is `WITH CHECK (owner_id = auth.uid())`
+(**any** authenticated user may create a crew — no role check); `cgm_owner_insert` leaves
+**`creator_id` entirely unconstrained**; and the clause filtered no status. The *actor* was
+never forgeable (`actorId` is JWT-derived) — the **words and the link were**, on any of the 26
+mapped types, i.e. a DragonCandy-branded transactional email with attacker-chosen copy.
+
+**Why `status='active'` is the right predicate:** an owner **cannot write it**. Verified on prod
+**with a control**, because two denials alone could just mean a broken probe — INSERT active →
+**42501**, UPDATE to active → **42501**, UPDATE to `'removed'` → **succeeds**. The only writer of
+`'active'` is `respond_to_group_invitation()`, gated `creator_id = auth.uid()`. So it means *the
+creator themselves accepted*.
+
+**Why that filter alone would have been a regression — the constraint the founder set.** Two crew
+notifications fire at a **non-active** status: `group_invitation` (`invited`) and
+`group_membership_removed` (`removed` — `removeMember` UPDATEs *before* dispatching). Gating them
+on `active` kills both (the #387 shape); relaxing to `IN ('active','invited','removed')` excludes
+only `declined` and fixes nothing. Both are now authorized against the **membership row** with
+**server-composed copy**. That second half is not polish: row authorization alone would still mean
+"you may send anyone you can name in a crew row arbitrary text" — the same hole by a shorter route.
+Mirrors the existing `content_liked` pattern.
+
+**Two more live bugs, found in review and fixed here:**
+- **The transactional email could be redirected.** `recipientUserId` was spread **first** in the
+  internal call to `send-notification-email`, so caller-controlled `data`/`emailData` overwrote it
+  — and because that call uses the service key, the self-only gate does not apply. A caller could
+  authorize against **themselves** (`p_actor = p_recipient`) and have a branded email delivered to
+  a **third party, with no `push_notifications` row recording it**. Now pinned last.
+- **`forceDelivery` overrode the recipient's email opt-out** for user callers — the one control the
+  "no more than a business can already do" reasoning depends on. Zero callers anywhere → service-only.
+
+**The repo could not rebuild prod's `can_notify_user`.** `schema_migrations` records
+`20260808120130 can_notify_user_active_relationships` with **no file in `supabase/migrations/`**
+(applied via MCP during #387/#396, never written back), so the repo body lacked the conversation
+`left_at` and org `invitation_status` clauses prod has. **A clean `supabase db push` would have
+produced the LOOSER function and silently dropped two authorization tightenings.**
+`recorded ≠ actual`, opposite direction from #325/#385. This migration codifies prod's real body.
+
+**One guard rejected:** requiring `responded_at IS NOT NULL` to prove prior membership.
+`column_privileges` shows `authenticated` holds UPDATE on `responded_at`, and RLS `WITH CHECK`
+cannot pin a column — forgeable by the same owner, so it would have been decoration. The
+overclaiming comment was corrected instead, and the residual stated plainly: an owner can still put
+a crew-flavoured bell in any user's feed (bell-only for removal, server-worded, fixed URL).
+
+**Deploy order was the REVERSE of the usual rule** — `create-notification` **first**, migration
+second, because the code change makes those two types stop consulting `can_notify_user` entirely,
+so they work under both function bodies. Migration-first would have 403'd every crew invite until
+the deploy landed.
+
+**Verified live:** `create-notification` **v53** boot-verified; migration applied; the original
+attack re-run against the live function returns `f`; ACL `anon=false auth=false service=true`;
+conversation/org/sponsorship clauses all intact. `edge-function-reviewer` PASS (`_shared`
+byte-compared to the live bundle, zero drift), `data-exposure-reviewer` 1 high + 3 low all
+addressed or explicitly rejected, **Codex clean**, 239 files / 2381 tests green.
+
+→ `docs/wiki/concepts/notification-delivery.md` · #440
+
 ## [2026-08-10] Domain migration Phase 5 (MAIL) — 5a shipped; 5b blocked on $20/mo
 
 Branch `feat/dotcom-phase5-mail` · `src/lib/contactAddresses.ts` (new) · migration
