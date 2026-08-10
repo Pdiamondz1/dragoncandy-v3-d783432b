@@ -146,8 +146,8 @@ needs is reachable under the creator's own RLS: `campaign_invitations` SELECT al
 
 **D5 — Copy: an invitation is a nudge to apply, never an assignment.** No Accept
 button, no "you've been selected", no implied priority. The campaign is already public
-and the invitation carries none (#382). The item reads *"N businesses asked you to
-apply."*
+and the invitation carries none (#382). One row per invitation, reading
+*"{Business} asked you to apply to \"{campaign title}\""*.
 
 **D6 — Build role-generic, ship creator-only.** Per the parent design §6. Brand gets
 no route, no suggestion set and no container in this phase.
@@ -256,11 +256,13 @@ signal the extraction changed behaviour.
 `/dashboard/creator/overview` does not exist. Extract it the way #411 extracted
 `BusinessOverview`:
 
-- `src/pages/CreatorOverview.tsx` — today's `CreatorDashboard` body, verbatim,
-  including `DashboardGreeting`, `HeroPrimaryAction` ("Find paid work"), `StatsRow`,
-  the DragonShare tiles, `NeedsAttentionSection`, `RecentActivitySection`, the
-  calendar disclosure and `UpcomingPostsWidget`. All three body tour anchors travel
-  with it.
+- `src/pages/CreatorOverview.tsx` — today's `CreatorDashboard` body, verbatim
+  **except for the two tour anchors §4.6 re-points**, including `DashboardGreeting`,
+  `HeroPrimaryAction` ("Find paid work"), `StatsRow`, the DragonShare tiles,
+  `NeedsAttentionSection`, `RecentActivitySection`, the calendar disclosure and
+  `UpcomingPostsWidget`. `browse-campaigns` travels unchanged; `profile-completion`
+  and `dragonshare-nav` are renamed here to match §4.6, or they are left targeting
+  nothing.
 - `src/pages/CreatorDashboard.tsx` — reduced to the same three-way switch
   `BusinessDashboard` is: first-run missions first, then
   `DONNY_FIRST_DASHBOARD_ENABLED`, then `CreatorDonnyHome`.
@@ -376,7 +378,9 @@ Within a type, newest first, on the `occurredAt` named per item in §4.3. C is t
 only item that moves, and it moves for the reason in the conditioning rule below.
 **E is mutually exclusive with A, B, D and any collaboration** — it is the "you have
 nothing on" state — so the second row resolves in practice to `B, D, C`, `D, C`,
-`B, C`, `E, C` or bare `C`, and the cap is never the binding constraint on E.
+`B, C`, `E, C` or bare `C`, **or any of those with C absent**, since C does not fire
+for the 3 creators who are already set up nor in its silent fourth state. The cap is
+never the binding constraint on E.
 
 **Item E takes no new query and names no number.** It is derived entirely from the
 absence of the other items, so it adds no fifth read. This is deliberate: the only
@@ -415,11 +419,22 @@ A permanently-parked dead item at the top of the list trains people to ignore th
 whole region, which is why the `=== true` branch removes it entirely rather than
 rendering a satisfied state.
 
-**Copy for item D — the hard constraint.** *"N businesses asked you to apply"*, with
-the campaign titles. Never "you've been selected", never an Accept affordance, never
-implied priority. The campaign is already public; the invitation is a nudge with zero
-standing (#382). Where the invitation is old, the copy may say so ("invited 8 days
-ago") — honest about staleness without hiding the opportunity.
+**Copy for item D — the hard constraint.** **One row per invitation**, not one
+aggregated row: *"{Business} asked you to apply to \"{campaign title}\""*. Per-row is
+what the id (`creator:invitation:${campaignId}`) and the per-campaign CTA already
+commit to, and it matches the business precedent — `pendingProposal` emits one row
+per action and never an aggregate. It also gives the right dismissal grain: a creator
+with several invitations dismisses them one at a time rather than losing all of them
+in one tap. `occurredAt` supplies the optional staleness rider ("invited 8 days ago")
+— honest about age without hiding the opportunity.
+
+Never "you've been selected", never an Accept affordance, never implied priority. The
+campaign is already public; the invitation is a nudge with zero standing (#382).
+
+> Several D rows crowding C below the cap is the intended outcome, not a regression.
+> When money or work is in flight C is already first; when neither is, C is the
+> deprioritised "set up payouts" homework item that §4.4's conditioning rule
+> deliberately ranks last.
 
 `PROPOSAL_CAP` stays at 3, as on the business side.
 
@@ -501,6 +516,12 @@ the container never holds either. That is why `DonnyHomeShellProps` carries
 passes nothing and is byte-unchanged; `DonnyHomePrompt` itself is not touched, which
 §4.1 requires since it is shared. Only `creator-attention` is genuinely container-side,
 because the proposals block is passed as `children`.
+
+**Both anchors land on elements that already exist — add no wrapper.**
+`tourAnchors.prompt` goes on the existing `composerRef` div that wraps
+`DonnyHomePrompt` (`DonnyHome.tsx:491`), and `tourAnchors.overview` on the existing
+overview `<Link>` (`:519`). Introducing a new wrapper node instead would risk the
+element-depth pins §4.1 warns about, for no gain.
 
 Exact copy is a plan-level detail; the constraint is not. **A unit test enforces it:**
 every **body** selector in `CREATOR_TOUR` must be present in the rendered tree of both
