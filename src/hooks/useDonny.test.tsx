@@ -238,6 +238,95 @@ describe('useDonny — the ids of the rows this client writes', () => {
   });
 });
 
+// The rows this hook actually handed to `donny_messages.insert`, in call order.
+const insertedRows = () =>
+  messageInsertMock.mock.calls.map(
+    (call) => (call as unknown as [{ id: string; role: string; content: string }])[0]
+  );
+
+describe('useDonny — Retry writes the user row when the failed send never did', () => {
+  it('inserts the user row on a retry after a failure that happened BEFORE the insert', async () => {
+    // `isRetry` was standing in for "the user row already exists", and those
+    // are different facts. A send that dies on the `!conversation || !user`
+    // guard — the cold-load path a suggestion chip provokes — writes nothing,
+    // but retry() replays with `isRetry: true`, which used to skip the insert.
+    // Donny's answer was then persisted with no question above it: the
+    // conversation is missing the user's turn in the DATABASE, permanently.
+    //
+    // The retry runs down the SSE branch, which is what production serves; the
+    // JSON fallback every other test here uses is not the path that ships.
+    fetchMock.mockResolvedValue(sseResponse('Three creators near Hoboken.'));
+
+    const { result, rerender } = renderHook(() => useDonny(), { wrapper: Wrapper });
+
+    act(() => result.current.sendMessage('find creators near me'));
+    await waitFor(() => expect(result.current.error).toBe('No active conversation'));
+    // Nothing was written — that is the premise of the whole test.
+    expect(messageInsertMock).not.toHaveBeenCalled();
+
+    authMock.value = { id: 'u1' };
+    rerender();
+    await waitFor(() => expect(result.current.conversation).not.toBeNull());
+
+    act(() => result.current.retry());
+    await waitFor(() => expect(result.current.clientMessageIds).toHaveLength(2));
+
+    const rows = insertedRows();
+    // Exactly one user row, carrying the user's actual question…
+    expect(rows.filter((r) => r.role === 'user')).toHaveLength(1);
+    expect(rows[0].content).toBe('find creators near me');
+    // …written BEFORE the answer, and reported in that order — which is what
+    // puts the question above the answer in DonnyCanvas, whose visit window is
+    // membership in exactly this list.
+    expect(rows.map((r) => r.role)).toEqual(['user', 'assistant']);
+    expect(result.current.clientMessageIds).toEqual(rows.map((r) => r.id));
+  });
+
+  it('does NOT write a second user row when the failure happened AFTER the insert', async () => {
+    // The other half of the same fact. Here the row exists, so the retry has to
+    // regenerate the answer without duplicating the question — the failure is
+    // at the fetch, downstream of the insert.
+    authMock.value = { id: 'u1' };
+    fetchMock.mockRejectedValueOnce(new Error('network down'));
+
+    const { result } = renderHook(() => useDonny(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.conversation).not.toBeNull());
+
+    act(() => result.current.sendMessage('find creators near me'));
+    await waitFor(() => expect(result.current.error).toBe('network down'));
+    expect(messageInsertMock).toHaveBeenCalledTimes(1);
+    expect(insertedRows()[0].role).toBe('user');
+
+    act(() => result.current.retry());
+    await waitFor(() => expect(result.current.clientMessageIds).toHaveLength(2));
+
+    expect(insertedRows().map((r) => r.role)).toEqual(['user', 'assistant']);
+  });
+
+  it('writes its own user row for a genuinely NEW message after a successful send', async () => {
+    // The reset. Tracking "the row exists" without clearing it when a new
+    // question is asked would just trade one dropped turn for another: every
+    // message after the first would answer with nothing above it.
+    authMock.value = { id: 'u1' };
+    const { result } = renderHook(() => useDonny(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.conversation).not.toBeNull());
+
+    act(() => result.current.sendMessage('first question'));
+    await waitFor(() => expect(result.current.clientMessageIds).toHaveLength(2));
+    // onSuccess is what releases isSendingRef, and it runs AFTER the assistant
+    // id is recorded — without this the second send would be swallowed by the
+    // in-flight guard and the test would prove nothing.
+    await waitFor(() => expect(result.current.isStreaming).toBe(false));
+
+    act(() => result.current.sendMessage('second question'));
+    await waitFor(() => expect(result.current.clientMessageIds).toHaveLength(4));
+
+    const rows = insertedRows();
+    expect(rows.map((r) => r.role)).toEqual(['user', 'assistant', 'user', 'assistant']);
+    expect(rows[2].content).toBe('second question');
+  });
+});
+
 // Every `query` this hook has posted to donny-orchestrator, in call order.
 const sentQueries = () =>
   fetchMock.mock.calls.map(

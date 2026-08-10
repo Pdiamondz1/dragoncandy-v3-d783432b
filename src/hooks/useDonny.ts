@@ -45,6 +45,20 @@ export function useDonny(options?: UseDonnyOptions) {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const isSendingRef = useRef(false);
   const lastUserMessage = useRef<string>("");
+  // Whether the `donny_messages` USER row for `lastUserMessage.current` was
+  // actually written.
+  //
+  // `isRetry` used to stand in for this fact, and the two diverge exactly where
+  // it matters. A send can fail BEFORE the insert — the `No active
+  // conversation` guard (reachable whenever the conversation query has failed
+  // or the user has not resolved), or the insert statement itself erroring.
+  // Replaying that with `isRetry: true` skipped the insert, so the assistant
+  // row was persisted with no question above it: the conversation is then
+  // permanently missing the user's turn in the DATABASE, not merely in the
+  // current view, and under the visit-scoped inline thread the answer renders
+  // with nothing above it. This ref is assigned in the same statement block as
+  // `lastUserMessage` below, so the pair can never describe different messages.
+  const lastUserMessageInserted = useRef(false);
 
   // Ids of the `donny_messages` rows THIS client wrote, oldest first.
   //
@@ -185,6 +199,12 @@ export function useDonny(options?: UseDonnyOptions) {
       // the likeliest failure on this path, since a suggestion chip on the
       // inline dashboard can fire before the conversation query resolves.
       lastUserMessage.current = content;
+      // A genuinely new message has no row yet, so the pair is reset together
+      // with the text it describes — a stale `true` surviving into a new
+      // question would silently drop that question instead. A retry
+      // deliberately keeps what is known, because it replays the very message
+      // this pair already describes.
+      if (!isRetry) lastUserMessageInserted.current = false;
 
       if (!conversation || !user) throw new Error('No active conversation');
       if (isSendingRef.current) throw new Error('Message already in flight');
@@ -196,8 +216,10 @@ export function useDonny(options?: UseDonnyOptions) {
       setStreamingContent('');
       setError(null);
 
-      // Insert user message locally first (skip on retry — message already exists)
-      if (!isRetry) {
+      // Insert the user message locally first. Skipped ONLY when this message's
+      // row is known to have been written — never merely because this
+      // invocation is a retry.
+      if (!lastUserMessageInserted.current) {
         // The row id is chosen HERE rather than read back from the insert.
         // `donny_messages.id` is `uuid not null default gen_random_uuid()` with
         // no triggers on the table and an `authenticated` INSERT grant on the
@@ -217,9 +239,11 @@ export function useDonny(options?: UseDonnyOptions) {
           });
 
         if (insertError) throw insertError;
-        // Recorded only after the write lands, so the set never claims a row
-        // that does not exist.
+        // Both recorded only after the write lands, so neither the id set nor
+        // the skip-flag ever claims a row that does not exist. In particular an
+        // insert that THREW leaves the flag false, so Retry writes the row.
         setClientMessageIds((ids) => [...ids, userMessageId]);
+        lastUserMessageInserted.current = true;
       }
 
       // Get session for auth header

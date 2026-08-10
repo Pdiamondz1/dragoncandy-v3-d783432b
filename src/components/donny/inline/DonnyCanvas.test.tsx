@@ -316,6 +316,44 @@ describe('DonnyCanvas — the thread shows this visit only', () => {
     expect(screen.queryByText('Earlier answer')).not.toBeInTheDocument();
   });
 
+  it('renders a question that was only persisted on RETRY above its answer', () => {
+    // The surface view of the Codex round-3 defect. The first send failed
+    // before useDonny could insert the user row, so the visit opened EMPTY and
+    // the error card was all there was. The retry writes the user row and then
+    // the answer, so both ids arrive well after the resting→thread edge — and
+    // the question must still land above the answer. When `isRetry` was used as
+    // a proxy for "the row exists", the user row was never written at all and
+    // this is what the user saw instead: an answer with nothing above it.
+    donnyContextMock.value.messages = priorTurns;
+    const { container, rerender } = render(canvasTree());
+
+    const field = screen.getByRole('textbox', { name: /ask donny/i });
+    fireEvent.change(field, { target: { value: 'find creators near me' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+
+    // Attempt 1 dies on the conversation guard: nothing written, error card up.
+    donnyContextMock.value.error = 'No active conversation';
+    rerender(canvasTree());
+    expect(container.querySelectorAll('[data-turn]')).toHaveLength(0);
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+
+    // Retry: the user row is written NOW, then the assistant row.
+    donnyContextMock.value.error = null;
+    landExchange(
+      priorTurns,
+      msg({ id: 'u2', role: 'user', content: 'find creators near me' }),
+      msg({ id: 'a2', role: 'assistant', content: 'Three creators near Hoboken.' })
+    );
+    rerender(canvasTree());
+
+    const turns = container.querySelectorAll('[data-turn]');
+    expect(turns).toHaveLength(2);
+    expect(turns[0]).toHaveAttribute('data-turn', 'user');
+    expect(turns[0]).toHaveTextContent('find creators near me');
+    expect(turns[1]).toHaveTextContent('Three creators near Hoboken.');
+    expect(screen.queryByText('Question from last week')).not.toBeInTheDocument();
+  });
+
   it('keeps the first exchange of the visit visible when a second question is asked', () => {
     // The entry index moves on the resting→thread edge ONLY. If it re-anchored
     // on every send, each answer would erase the one before it.
