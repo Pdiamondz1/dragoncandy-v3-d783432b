@@ -158,7 +158,15 @@ const handler = async (req: Request): Promise<Response> => {
           headers: { "Content-Type": "application/json", ...corsHeaders(req) },
         });
       }
-      if (to && callerEmail && to.toLowerCase() !== callerEmail.toLowerCase()) {
+      // `!callerEmail`, not `callerEmail &&`. Written as a conjunct, a caller whose auth
+      // record carries no email skipped this check entirely and could name ANY recipient —
+      // the check failed open on exactly the actor it could not identify. Prod has no such
+      // user today (42 auth users, 0 without an email, 0 anonymous, 0 phone-only, measured
+      // 2026-08-09), so this is latent rather than live; but it opens the moment anonymous
+      // or phone sign-in is switched on, and that is a GoTrue toggle, not a code change.
+      // Nothing legitimate is lost: a caller with no email address has no own-inbox to
+      // send to.
+      if (to && (!callerEmail || to.toLowerCase() !== callerEmail.toLowerCase())) {
         return new Response(JSON.stringify({ error: "Forbidden: recipient must be self" }), {
           status: 403,
           headers: { "Content-Type": "application/json", ...corsHeaders(req) },
@@ -241,7 +249,11 @@ const handler = async (req: Request): Promise<Response> => {
       // htmlEscape. `data` is caller-supplied end to end — create-notification spreads the
       // request body straight into this payload — so each was an HTML injection into a
       // genuine DragonCandy transactional email.
-      budget: htmlEscape(String(data.budget ?? '')),
+      // Truthiness, not `?? ''`. A budget of 0 is a real value here — crew campaigns are
+      // free and carry a literal 0 — and the template's `data.budget ?` guard therefore
+      // hid the block. `?? ''` would have started rendering "💰 Budget: $0" on every free
+      // campaign email. Escaping must not change what gets shown.
+      budget: htmlEscape(data.budget ? String(data.budget) : ''),
       platforms: htmlEscape(Array.isArray(data.platforms) ? data.platforms.map(String).join(', ') : ''),
     };
     // Money and counts are coerced rather than escaped. Escaping is the wrong tool for two
@@ -726,7 +738,7 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       },
       project_completion: {
-        subject: `Project Completed${amount !== null ? ' - Payment Released!' : ''} 🎉`,
+        subject: `Project Completed${amount ? ' - Payment Released!' : ''} 🎉`,
         html: `
           <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
@@ -739,7 +751,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="margin: 0; color: #065F46; font-weight: 600;">✅ Both parties have approved completion</p>
                 <p style="margin: 8px 0 0 0; color: #065F46; font-size: 14px;">This collaboration is now officially complete. Time to celebrate and leave a review!</p>
               </div>
-              ${amount !== null ? `
+              ${amount ? `
               <div style="background: #EFF6FF; border-left: 4px solid #3B82F6; padding: 16px; margin: 24px 0; border-radius: 4px;">
                 <p style="margin: 0; color: #1E40AF; font-weight: 600;">💰 Payment ${data.isRecipient ? 'Released' : 'Processed'}: $${amount.toFixed(2)}</p>
                 <p style="margin: 8px 0 0 0; color: #1E40AF; font-size: 14px;">
@@ -843,7 +855,7 @@ const handler = async (req: Request): Promise<Response> => {
         html: `
           <p>Hi ${esc.rn},</p>
           <p>You've received a <strong>counter offer</strong> for campaign <strong>"${esc.campaignTitle}"</strong>.</p>
-          ${amount !== null ? `<p>Proposed rate: <strong>$${amount}</strong></p>` : ''}
+          ${amount ? `<p>Proposed rate: <strong>$${amount}</strong></p>` : ''}
           ${data.message ? `<blockquote style="border-left: 4px solid #F59E0B; padding-left: 16px; margin: 20px 0; color: #374151;">${esc.message}</blockquote>` : ''}
           <p>You can accept, decline, or counter back with your own terms.</p>
           <p style="margin-top: 30px;">
@@ -1121,13 +1133,24 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     // `subjectOverride` is caller-supplied and reached Resend with no treatment at all —
-    // the widest of the subject inputs, since it skips the templates entirely. A subject is
-    // a header, so the thing to remove is the line break: escaping does not touch a CRLF,
-    // and a CRLF is what turns a subject into extra headers. Whether Resend already rejects
-    // one was NOT verified — this is defence in depth, not a demonstrated hole. Nothing
-    // legitimate changes: the only caller that sets an override is stripe-webhook:508, with
-    // a formatted dispute amount.
-    const subject = String(subjectOverride || template.subject).replace(/[\r\n]+/g, ' ').trim();
+    // the widest of the subject inputs, since it skips the templates entirely. Two guards.
+    //
+    // It is now service-only. Every caller that sets one is a service caller
+    // (stripe-webhook:508, a formatted dispute amount), and create-notification never
+    // forwards it at all, so honouring it from a user caller bought nothing and let them
+    // write the subject line of a mail from alerts@notify.dragoncandy.io.
+    //
+    // Then the line breaks come out, whatever the source. A subject is a header, and a CRLF
+    // is what turns one header into several; escaping does not touch it. Applied at this
+    // single choke point so it covers the templates too. Whether Resend already rejects a
+    // CRLF here was NOT verified — this is defence in depth, not a demonstrated hole.
+    //
+    // Known and deliberately NOT fixed here: template subjects interpolate `esc.*`, so an
+    // ampersand in a campaign title still reaches the inbox as `&amp;`. That is a display
+    // bug of its own and wants a separate `subjectText` helper across ~12 sites, not a
+    // rider on a security fix.
+    const rawSubject = (isService && subjectOverride) || template.subject;
+    const subject = String(rawSubject).replace(/[\r\n]+/g, ' ').trim().slice(0, 200);
 
     const { data: emailData, error } = await resend.emails.send({
       from: "DragonCandy <alerts@notify.dragoncandy.io>",
