@@ -16,8 +16,10 @@
 // verified against code rather than assumed:
 //  1/6. DonnyChatView is NOT reused — the thread was extracted into DonnyThread,
 //       which renders no panel header (so no collapse()/close() inline, so no
-//       second Donny) and owns no scroll container or h-full (so it composes in
-//       normal page flow inside #main-content).
+//       second Donny) and owns no scroll container of its own. Each surface
+//       supplies that: the panel is a fixed-height flex column, and here it is
+//       DonnyThreadRegion, whose bounded scroller is what stops this page
+//       growing a screen per exchange.
 //  2/3/4/7. Dissolved rather than solved: there is no new `inline` stage. The
 //       real blocker was that useDonny gates its queries on `stage !== 'closed'`,
 //       which is about the PANEL being visible, not about the conversation being
@@ -50,7 +52,7 @@ import { RatingPromptManager } from '@/components/reviews/RatingPromptManager';
 import { SponsorshipRatingPromptManager } from '@/components/reviews/SponsorshipRatingPromptManager';
 import { DonnyHomeProposals } from './DonnyHomeProposals';
 import { DonnyHomePrompt } from './DonnyHomePrompt';
-import { DonnyThread } from './DonnyThread';
+import { DonnyThreadRegion } from './DonnyThreadRegion';
 import { BUSINESS_SUGGESTIONS, type DonnySuggestion } from '@/lib/donny/donnyHomeSuggestions';
 import { buildDonnyProposals, type DonnyProposal } from '@/lib/donny/buildDonnyProposals';
 import {
@@ -116,12 +118,18 @@ export function DonnyHome() {
   const isBusy = isStreaming || queuedAsk !== null;
   const hasConversation = messages.length > 0 || isBusy || !!error;
 
-  const threadEndRef = React.useRef<HTMLDivElement>(null);
-  // Auto-scroll follows the reply ONLY after the user has asked something on
-  // this page. It deliberately does not fire on arrival: this is a dashboard,
-  // and someone returning to it with yesterday's thread should land on the
-  // greeting and the attention list, not be thrown to the bottom of an old
-  // conversation. (The panel scrolls on mount because it IS a chat surface.)
+  // Points at the composer, which in the conversation arrangement is the LAST
+  // thing in the block — so bringing it into view brings the whole exchange
+  // with it. `block: 'nearest'` is what makes this safe to fire on every token:
+  // it scrolls the minimum needed and does nothing at all when the composer is
+  // already on screen, which after the bounded-thread change it usually is.
+  const composerRef = React.useRef<HTMLDivElement>(null);
+  // The PAGE scroll follows the reply ONLY after the user has asked something
+  // here. It deliberately does not fire on arrival: this is a dashboard, and
+  // someone returning to it with yesterday's thread should land on the greeting
+  // and the attention list, not be thrown down the page. (Scrolling the thread
+  // REGION to its newest message is a different thing and always happens — it
+  // lives in DonnyThreadRegion and cannot move the page.)
   //
   // The obvious heuristic — "the message count grew" — is wrong here, and was
   // the first version of this code. On arrival the count grows from 0 to N as
@@ -137,7 +145,7 @@ export function DonnyHome() {
     // scrollIntoView, not a scrollTop write: the app's scroller is
     // #main-content, never the window (window.scrollY is always 0 here), and
     // letting the browser find the scrollable ancestor avoids hard-coding that.
-    threadEndRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
+    composerRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [messages.length, isBusy, streamingContent]);
 
   // Every path that sends from this page goes through here, so both the scroll
@@ -319,27 +327,40 @@ export function DonnyHome() {
             </p>
           </div>
 
-          <DonnyHomePrompt
-            suggestions={BUSINESS_SUGGESTIONS}
-            onSubmit={handlePromptSubmit}
-            onSuggestionTap={handleSuggestionTap}
-            busy={isBusy}
-          />
+          {/* Two arrangements, one wrapper.
+              RESTING (no conversation): a bare div holding the composer — the
+              same greeting → composer → taps → attention list page as before.
+              CONVERSATION: a bounded flex column. The thread scrolls INSIDE it
+              and the composer sits directly underneath, always reachable,
+              instead of the thread growing the page a screen per exchange and
+              stranding the composer at the top of it.
 
-          {/* The conversation, in the page — not in a panel over it. Rendered
-              only once there is something to show, so a first visit still opens
-              on the greeting and the attention list rather than an empty well.
-              No fixed height and no inner scroller: the page scrolls, which is
-              what makes a long answer readable here instead of trapped in a
-              200px box. */}
-          {hasConversation && (
-            <div
-              className="space-y-3 rounded-2xl border border-dc-teal/15 bg-dc-teal/[0.04] p-4"
-              role="log"
-              aria-label="Donny conversation"
-              aria-live="polite"
-            >
-              <DonnyThread
+              The wrapper is rendered in BOTH states on purpose. `false` still
+              occupies slot 0 below when there is no conversation, so the
+              composer stays at slot 1 and React's positional reconciliation
+              keeps it MOUNTED across the switch — a remount would drop focus
+              and any half-typed follow-up the moment the first reply arrived.
+
+              Sizing: 26rem is the chrome this block sits between, and it is
+              close enough on both viewports to be one number. Desktop: 64px
+              sticky header + 32px content padding + ~250px hero + 32px PageBody
+              gap + 32px bottom padding. Mobile: ~56px top nav + 16px pt-4 +
+              ~214px hero + 32px gap + 96px MobileBottomNav clearance (the
+              content area's own pb-24). `dvh`, never `vh` — the app document
+              never scrolls, so iOS toolbars never collapse and `vh` overshoots
+              the visible area (docs/DESIGN_SYSTEM.md). The 20rem floor wins
+              over max-h on very short viewports, where the honest outcome is a
+              slightly scrolling page rather than a thread squeezed to nothing. */}
+          <div
+            className={
+              hasConversation
+                ? 'flex max-h-[calc(100dvh-26rem)] min-h-[20rem] flex-col gap-3'
+                : undefined
+            }
+          >
+            {hasConversation && (
+              <DonnyThreadRegion
+                className="min-h-0 flex-1"
                 messages={messages}
                 avatarState={avatarState}
                 isStreaming={isBusy}
@@ -348,9 +369,16 @@ export function DonnyHome() {
                 retry={retry}
                 userRole={userRole}
               />
-              <div ref={threadEndRef} />
+            )}
+            <div ref={composerRef} className={hasConversation ? 'shrink-0' : undefined}>
+              <DonnyHomePrompt
+                suggestions={BUSINESS_SUGGESTIONS}
+                onSubmit={handlePromptSubmit}
+                onSuggestionTap={handleSuggestionTap}
+                busy={isBusy}
+              />
             </div>
-          )}
+          </div>
 
           {/* The rating prompts go INSIDE the attention frame, not beside it.
               `NeedsAttentionSection` exists to consolidate every "needs you"

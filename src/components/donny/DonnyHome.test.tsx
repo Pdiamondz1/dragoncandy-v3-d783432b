@@ -375,6 +375,99 @@ describe('DonnyHome — the conversation renders in the page', () => {
   });
 });
 
+// The founder, on prod: "On the Desktop the conversation just keep running down
+// endlessly and there's no scroll button." The composer sat ABOVE the thread, so
+// the newest message was the furthest thing from the box you type in.
+//
+// `compareDocumentPosition` is a real fact about the rendered tree, not a class
+// string — it is the strongest thing jsdom can say here, because jsdom loads no
+// CSS and does no layout, so nothing in this file can prove the box is actually
+// bounded on screen. The height/overflow assertions below are CLASS-VALUE PINS
+// and are labelled as such.
+describe('DonnyHome — the composer moves under the conversation', () => {
+  const answer = {
+    id: 'm1',
+    conversation_id: 'c1',
+    role: 'assistant',
+    content: 'Based on 1 measured post so far.',
+    tool_calls: null,
+    tool_result: null,
+    rich_card: null,
+    quick_actions: [],
+    created_at: '2026-08-09T23:24:00.000Z',
+  };
+
+  const composerForm = () => screen.getByRole('textbox', { name: /ask donny/i }).closest('form')!;
+  const follows = (first: Element, second: Element) =>
+    Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+  it('puts the composer BELOW the conversation once there is one', () => {
+    donnyState.messages = [answer];
+    renderHome();
+
+    expect(follows(screen.getByRole('log', { name: 'Donny conversation' }), composerForm())).toBe(
+      true
+    );
+  });
+
+  it('keeps the composer above the dashboard body while resting', () => {
+    donnyState.messages = [];
+    renderHome();
+
+    expect(screen.queryByRole('log', { name: 'Donny conversation' })).not.toBeInTheDocument();
+    expect(follows(composerForm(), screen.getByText('Needs your attention'))).toBe(true);
+  });
+
+  it('bounds the conversation block once there is a conversation', () => {
+    // CLASS-VALUE PINS. They pin the values that make the layout work; they do
+    // not prove it works. `max-h`/`min-h` in dvh (never vh — the app document
+    // never scrolls, so iOS toolbars never collapse and vh overshoots) live on
+    // the BLOCK rather than the thread, so the composer's auto-grow eats into
+    // the thread instead of pushing itself off screen.
+    donnyState.messages = [answer];
+    renderHome();
+
+    // scroller → DonnyThreadRegion's positioning wrapper → the block.
+    const block = screen.getByRole('log', { name: 'Donny conversation' }).parentElement!
+      .parentElement!;
+    expect(block.className).toContain('max-h-[calc(100dvh-26rem)]');
+    expect(block.className).toContain('min-h-[20rem]');
+    expect(block.className).toContain('flex-col');
+  });
+
+  it('leaves the resting page unbounded — nothing about it changes', () => {
+    donnyState.messages = [];
+    const { container } = renderHome();
+    expect(container.innerHTML).not.toContain('max-h-[calc(100dvh-26rem)]');
+    expect(container.innerHTML).not.toContain('min-h-[20rem]');
+  });
+
+  it('keeps a half-typed follow-up when the first reply turns the page into a conversation', () => {
+    // The composer changes POSITION between the two arrangements. If it also
+    // changed identity it would remount, and whatever was being typed — plus
+    // the focus that was in it — would vanish the instant Donny started
+    // answering. Rendering the wrapper in both states keeps it at the same
+    // child slot, so React reuses the element.
+    donnyState.messages = [];
+    const { rerender } = renderHome();
+
+    const input = screen.getByRole('textbox', { name: /ask donny/i }) as HTMLTextAreaElement;
+    fireEvent.change(input, { target: { value: 'a follow-up in progress' } });
+
+    donnyState.messages = [answer];
+    rerender(
+      <MemoryRouter>
+        <DonnyHome />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('log', { name: 'Donny conversation' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /ask donny/i })).toHaveValue(
+      'a follow-up in progress'
+    );
+  });
+});
+
 describe('DonnyHome — proposals', () => {
   const action = {
     sourceId: 'app1',
