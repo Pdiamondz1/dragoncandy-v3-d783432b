@@ -112,6 +112,23 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Built — awaiting founder go-live
 
+> **This section rots faster than anyone expects, and the 2026-08-07 sweep below did not stop it.**
+> Nine days later, on **2026-08-09**, a spot-check found **five of its entries already done** —
+> `LEADS_NOTIFY_EMAIL` (set 08-07), Donny-first dashboard #410 (merged, flag on, orchestrator
+> deployed), DC Points #378 (merged, chip rendering on prod), the `/settings` CTAs #409 (both edge
+> functions deployed), and notification authz #387/#396 (migrations + `can_notify_user` on `main`).
+> None of it was noticed, because **nothing here detects its own staleness** — it is a hand-written
+> list of claims about prod, and every one of them is written in the present tense. The 2026-08-09
+> discovery was accidental: the dashboard was observed rendering a feature this section called
+> pending.
+>
+> **So treat the whole section as suspect, not just old entries.** Before acting on ANY clause here,
+> verify it — `gh pr view <n>` for a merge, `list_edge_functions` + reading the **deployed source**
+> for a deploy, `supabase secrets list` for a secret (yes, secrets **are** listable — that myth cost
+> two days, see the Shipped lead-capture entry), and `pg_proc`/`information_schema` for a migration.
+> The cheapest of those is seconds. **A `**Pending:**` clause is a claim with an expiry date, and
+> the date on it is an expiry, not a warranty.**
+>
 > **Every `**Pending:**` clause below was re-verified against prod on 2026-08-07** — not against
 > the PR description or this file's own history. Eight entries were found already complete (merged
 > PRs, applied migrations, deployed functions) and moved to Shipped; the two that remained at that
@@ -176,33 +193,19 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   code claimed more than it delivered**: `package-lock.json` still carried `remark-gfm` as a dev dep
   (so `npm ci --omit=dev` would ship without a runtime import), a failed first ask rendered nothing
   at all, the fix for that offered a **dead "Try Again"**, and a follow-up typed mid-answer vanished
-  into a silent `return`. **Pending (2026-08-09):** merge the Phase-B PR; **deploy
-  `donny-orchestrator`** — merging ships frontend only, and that one deploy carries **two** dark
-  strings (Phase A's `Never end on a dead end` and Phase B's `NARROW_BUBBLE_FORMAT`); verify by
-  reading the **deployed source** for both, never the version. Then the **both-viewport check, which
-  has still never been run on any task in this line of work**.
-  → `docs/wiki/concepts/donny-first-dashboard.md` · #410, #411
-- **Dead `/settings/*` CTAs fixed (12 across 10 files)** — every "Upgrade" (incl. the revenue path)
-  and "Connect Outstand" CTA 404'd; `isKnownRoute` never caught them because it only guards routes
-  the LLM **invents**. Diagnosed 2026-06-07, deferred as "out of scope", broken two months. Merged
-  `fef2b428`; frontend live. **Pending (2026-08-09):** deploy `donny-orchestrator` +
-  `fire-campaign-social-hook` — merging did **not** deploy either.
-  → `docs/wiki/concepts/donny-data-and-quick-actions.md` · #409
-- **DC Points visibility (`/rewards`, chip, honest notification, Donny)** — a bell said
-  "+200 DC Points" with nowhere to click, points showed on two dashboards with no explanation, and
-  even the founder needed a SQL query to answer "what earned that." Ships a `/rewards` page
-  (balance, full-sentence tier gap, labeled history, a live `dre_config`-driven earn catalog), an
-  always-visible chip in both top bars, a caller-scoped `dre_my_standing()` RPC, a bell that names
-  its reason, and a Donny `rewards_agent` answering strictly from the caller's own standing.
-  Deliberately **earn-only** — a tier confers a public badge and nothing else ([[Honest Analytics]]).
-  Also closed a live leak: two never-built DRE engineering specs (referrals, streaks, redemption)
-  were reachable by consumer Donny via a NULL `donny_knowledge.scope`. **Pending (verified
-  2026-08-08):** 3 migrations applied + verified on prod; PR #378 open, and the mandatory Codex pass
-  is now **clean** — it took 3 rounds, two of which caught the same defect (a non-creator role
-  falling back to the business branch) in two different places, the second inside Donny's generated
-  prose where no UI review could see it. Awaiting the founder's merge, then deploy
-  `dre-award-engine` (`--no-verify-jwt`) and `donny-orchestrator` (without that flag).
-  → `docs/wiki/concepts/dragon-rewards-engine.md` · #378
+  into a silent `return`. **#423 merged 2026-08-10 04:24 UTC and `donny-orchestrator` is DEPLOYED
+  and verified 2026-08-10** — for ~2 hours in between, prod was **half-shipped**: merging #423 ships
+  the **frontend only**, so Phase B's UI was live against the pre-#423 bundle. Closed by deploying
+  from current `main` and reading the **deployed source**, not the version: `Never end on a dead end`
+  (Phase A), `accounts_unavailable` (#416) and `NARROW_BUBBLE_FORMAT` ×3 (Phase B) all present, no
+  `esm.sh` specifier; `OPTIONS` + anon key → **200** with the origin echoed back, which is the real
+  boot proof (a bundle can store successfully and still fail at module load — that is exactly what
+  [[Edge-Function Deploy & Bundling]] documents, so "the deploy succeeded" is not evidence).
+  **Gotcha worth keeping:** `NARROW_BUBBLE_FORMAT` lives in `_shared/social-analytics.ts`, which the
+  orchestrator *bundles* — grep the whole deployed file set, never just `index.ts`, which returns 0
+  and reads as a failed deploy for entirely the wrong reason. **Pending:** the **both-viewport check,
+  which has still never been run on any task in this line of work**.
+  → `docs/wiki/concepts/donny-first-dashboard.md` · #410, #411, #423
 - **DragonFeed uplift + sidebar double-active fix** — the "double-clicked button" was a
   **specificity** bug (each role's bare-root Dashboard href prefixed all ~26 child routes, in three
   copy-pasted navs) → one shared longest-match-wins `activeNavHref()`. The feed's four complaints
@@ -232,10 +235,12 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   than before" is the wrong bar; the test is whether the claim the code makes is true). Migrations
   `20260808010000`/`020000`/`030000` **applied**; `create-notification` **v47** deployed and
   **boot-verified on prod**; Codex clean at round 6; `edge-function-reviewer` PASS.
-  **Pending:** merge PR #387 and PR #396 (both open); and the **both-viewport visual pass on #382 is
-  still unrun** — it needs a signed-in prod session. Note the new paths have never run with a real
-  user JWT (zero prod traffic on this function), so they are proven at the SQL layer and
-  boot-verified, not exercised end-to-end. #396's final push used `--no-verify` (machine at 100% CPU
+  **#387 and #396 are MERGED** (verified 2026-08-09 on `origin/main`: all three migrations present
+  and `can_notify_user` referenced 3× in `create-notification/index.ts`) — this clause previously
+  said "both open". **Pending:** the **both-viewport visual pass on #382**, still unrun. Note the new
+  paths have never run with a real user JWT (zero prod traffic on this function), so they are proven
+  at the SQL layer and boot-verified, not exercised end-to-end — **merged is not exercised**, and
+  that distinction is the one this section keeps collapsing. #396's final push used `--no-verify` (machine at 100% CPU
   made the hook unfinishable; the skipped commits touch only `supabase/functions/` and `docs/`, both
   out of scope for the hook's `src/`-only typecheck and Vite build) — stated in the PR, and CI
   re-runs those checks plus the edge-function gate.
@@ -246,17 +251,36 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   **Pending:** register the Chat app, set `GOOGLE_CHAT_PROJECT_NUMBER` +
   `GOOGLE_ALLOWED_DOMAIN` — all blocked on creating the DragonCandy Workspace org.
   → `docs/superpowers/specs/2026-06-11-google-workspace-connections-design.md`
-- **Public landing — Dark-Luxe redesign + lead capture** — scoped-`.dark` rebuild + a
-  closed-anon-DML `leads` table and throttled `capture-lead` fn; both live on prod.
-  **Pending:** set the `LEADS_NOTIFY_EMAIL` edge secret — without it nobody is notified of a
-  captured lead. **Not verifiable from the repo or the DB** (edge secrets aren't listable), so this
-  one rests on founder knowledge, not a check — the only way to confirm it is the Supabase
-  dashboard. `leads` held **0 rows** as of 2026-08-07, so nothing has been lost yet; the cost is
-  that the *first* real lead lands silently.
-  → `docs/wiki/concepts/landing-lead-capture.md` · `feat/landing-luxe-redesign`
+> **Edge secrets ARE verifiable — `supabase secrets list --project-ref <ref>`.** The entry that
+> used to sit here claimed the opposite ("edge secrets aren't listable… rests on founder knowledge,
+> not a check") and on that basis was left unverified. It was wrong: the CLI returns every secret's
+> **name, SHA-256 digest and `updated_at`** — enough to prove presence and to detect a change,
+> without ever exposing a value. Checked 2026-08-09; `LEADS_NOTIFY_EMAIL` had in fact been set on
+> **2026-08-07**, so a `**Pending:**` clause outlived its truth by two days purely because a doc
+> discouraged the check. **A claim that something is unverifiable is itself a claim — verify it
+> before repeating it.** (Same class as [[Updated-At Trigger Drift]]'s `recorded ≠ actual`.)
 
 ### Shipped
 
+- **Dead `/settings/*` CTAs fixed (12 across 10 files)** — every "Upgrade" (incl. the revenue path)
+  and "Connect Outstand" CTA 404'd; `isKnownRoute` never caught them because it only guards routes
+  the LLM **invents**. Merged `fef2b428`; `donny-orchestrator` + `fire-campaign-social-hook` both
+  **deployed 2026-08-09** in the post-#415 fleet redeploy.
+  → `docs/wiki/concepts/donny-data-and-quick-actions.md` · #409
+- **DC Points visibility (`/rewards`, chip, honest notification, Donny)** — a `/rewards` page, an
+  always-visible chip in both top bars, a caller-scoped `dre_my_standing()` RPC, a bell that names
+  its reason, and a Donny `rewards_agent` answering strictly from the caller's own standing.
+  Deliberately **earn-only** ([[Honest Analytics]]). Also closed a live leak: two never-built DRE
+  specs were reachable by consumer Donny via a NULL `donny_knowledge.scope`. **Live 2026-08-09** —
+  #378 merged (`/rewards` route + `dre_my_standing` callers on `main`), `dre-award-engine` and
+  `donny-orchestrator` both deployed, chip observed rendering on prod.
+  → `docs/wiki/concepts/dragon-rewards-engine.md` · #378
+- **Public landing — Dark-Luxe redesign + lead capture** — scoped-`.dark` rebuild + a closed-anon-DML
+  `leads` table and throttled `capture-lead` fn, both live on prod; `LEADS_NOTIFY_EMAIL` **set
+  2026-08-07, verified 2026-08-09** via `supabase secrets list` (see the note above — it was never
+  unverifiable). Lead capture never depended on it: the row is inserted first and the email is
+  best-effort, so an unset secret would have cost notification, never data.
+  → `docs/wiki/concepts/landing-lead-capture.md` · `feat/landing-luxe-redesign`
 - **`verify_jwt=true` is not authorization — 6 edge functions closed on prod** — the anon key **is** a
   valid JWT and ships in the frontend bundle, so the platform default rejects only a *missing* header
   and never establishes a user. A 100-function sweep found 6 genuinely exposed (both money functions
