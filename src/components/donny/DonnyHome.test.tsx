@@ -13,9 +13,34 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, useNavigate: () => navigateMock };
 });
 
+// `openDonnyWithContext` is the OLD behaviour — it opens the side panel. It is
+// still mocked so the tests below can assert it is NOT called: the founder's
+// report was that asking on the dashboard threw the panel open instead of
+// answering in place, and an assertion that only checks sendMessage would still
+// pass if both fired.
 const openDonnyWithContextMock = vi.fn();
+const sendMessageMock = vi.fn();
+const registerInlineConversationMock = vi.fn(() => vi.fn());
+const donnyState = {
+  // Defaults to READY. A null conversation is the cold-load window, which the
+  // queueing tests below opt into explicitly.
+  conversation: { id: 'c1' } as { id: string } | null,
+  messages: [] as unknown[],
+  isStreaming: false,
+  streamingContent: '',
+  error: null as string | null,
+};
 vi.mock('@/contexts/DonnyProvider', () => ({
-  useDonnyContext: () => ({ openDonnyWithContext: openDonnyWithContextMock }),
+  useDonnyContext: () => ({
+    openDonnyWithContext: openDonnyWithContextMock,
+    sendMessage: sendMessageMock,
+    registerInlineConversation: registerInlineConversationMock,
+    retry: vi.fn(),
+    avatarState: 'idle',
+    userRole: 'business_client',
+    close: vi.fn(),
+    ...donnyState,
+  }),
 }));
 
 const trackEventMock = vi.fn();
@@ -87,6 +112,13 @@ beforeEach(() => {
   pendingMock.data = [];
   pendingMock.isLoading = false;
   pendingMock.isError = false;
+  // Reset here rather than at the end of each test — a failing assertion skips
+  // the trailing cleanup and leaks state into whatever runs next.
+  donnyState.conversation = { id: 'c1' };
+  donnyState.messages = [];
+  donnyState.isStreaming = false;
+  donnyState.streamingContent = '';
+  donnyState.error = null;
 });
 
 describe('DonnyHome — greeting', () => {
@@ -117,7 +149,8 @@ describe('DonnyHome — taps and prompt', () => {
   it('sends a tapped suggestion to Donny and records it', async () => {
     renderHome();
     fireEvent.click(screen.getByRole('button', { name: BUSINESS_SUGGESTIONS[0].label }));
-    expect(openDonnyWithContextMock).toHaveBeenCalledWith(BUSINESS_SUGGESTIONS[0].message);
+    expect(sendMessageMock).toHaveBeenCalledWith(BUSINESS_SUGGESTIONS[0].message);
+    expect(openDonnyWithContextMock).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(trackEventMock).toHaveBeenCalledWith('donny_home_suggestion_tapped', {
         label: BUSINESS_SUGGESTIONS[0].label,
@@ -130,10 +163,204 @@ describe('DonnyHome — taps and prompt', () => {
     const input = screen.getByRole('textbox', { name: /ask donny/i });
     fireEvent.change(input, { target: { value: 'plan my week' } });
     fireEvent.submit(input.closest('form')!);
-    expect(openDonnyWithContextMock).toHaveBeenCalledWith('plan my week');
+    expect(sendMessageMock).toHaveBeenCalledWith('plan my week');
     await waitFor(() =>
       expect(trackEventMock).toHaveBeenCalledWith('donny_home_prompt_submitted', {})
     );
+  });
+
+  // The reported defect, pinned directly: asking here must not throw the side
+  // panel open. openDonnyWithContext is what does that — open() then expand()
+  // then send.
+  it('never opens the side panel — the answer belongs on this page', () => {
+    renderHome();
+    const input = screen.getByRole('textbox', { name: /ask donny/i });
+    fireEvent.change(input, { target: { value: 'how are my instagram posts doing?' } });
+    fireEvent.submit(input.closest('form')!);
+
+    expect(openDonnyWithContextMock).not.toHaveBeenCalled();
+  });
+
+  // Without this registration the messages query stays disabled whenever the
+  // panel is closed — which is the normal state on this page — and the thread
+  // renders permanently empty. That is design-doc §13 hazard 5's real teeth.
+  it('keeps the conversation live while the dashboard is mounted', () => {
+    renderHome();
+    expect(registerInlineConversationMock).toHaveBeenCalled();
+  });
+});
+
+describe('DonnyHome — the conversation renders in the page', () => {
+  it('shows no conversation area before anything has been asked', () => {
+    donnyState.messages = [];
+    donnyState.isStreaming = false;
+    renderHome();
+
+    // A first visit opens on the greeting and the attention list, not an empty
+    // chat well.
+    expect(screen.queryByRole('log', { name: 'Donny conversation' })).not.toBeInTheDocument();
+  });
+
+  it('renders the answer inline once there is one', () => {
+    donnyState.messages = [
+      {
+        id: 'm1',
+        conversation_id: 'c1',
+        role: 'assistant',
+        content: 'Based on 1 measured post so far.',
+        tool_calls: null,
+        tool_result: null,
+        rich_card: null,
+        quick_actions: [],
+        created_at: '2026-08-09T23:24:00.000Z',
+      },
+    ];
+    renderHome();
+
+    const log = screen.getByRole('log', { name: 'Donny conversation' });
+    expect(log).toBeInTheDocument();
+    expect(screen.getByText(/Based on 1 measured post/)).toBeInTheDocument();
+    donnyState.messages = [];
+  });
+
+  it('shows the thread while a reply is still streaming', () => {
+    donnyState.messages = [];
+    donnyState.isStreaming = true;
+    donnyState.streamingContent = 'Based on 1 measu';
+    renderHome();
+
+    expect(screen.getByRole('log', { name: 'Donny conversation' })).toBeInTheDocument();
+    expect(screen.getByText(/Based on 1 measu/)).toBeInTheDocument();
+    donnyState.isStreaming = false;
+    donnyState.streamingContent = '';
+  });
+
+  // Arriving on the dashboard must not throw the page to the bottom of an old
+  // thread. The first version of this code inferred "a reply arrived" from the
+  // message count growing — but on arrival the count grows 0 → N as the query
+  // resolves, so it scrolled here too, and only *sometimes*: with the thread
+  // already in the React Query cache the count never grew and it looked
+  // correct. jsdom has no scrollIntoView, so it is stubbed rather than spied.
+  it('does not scroll the page when arriving with an existing conversation', () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    donnyState.messages = [
+      {
+        id: 'm1',
+        conversation_id: 'c1',
+        role: 'assistant',
+        content: 'Yesterday I said this.',
+        tool_calls: null,
+        tool_result: null,
+        rich_card: null,
+        quick_actions: [],
+        created_at: '2026-08-08T10:00:00.000Z',
+      },
+    ];
+    renderHome();
+
+    expect(screen.getByRole('log', { name: 'Donny conversation' })).toBeInTheDocument();
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    donnyState.messages = [];
+  });
+
+  // A send can fail before any message exists — tapping before the conversation
+  // has loaded makes useDonny throw "No active conversation" without inserting
+  // anything. Gating the thread on messages/streaming alone would leave that tap
+  // doing nothing at all: no answer, no error, no retry.
+  it('surfaces a send failure that produced no message', () => {
+    donnyState.messages = [];
+    donnyState.isStreaming = false;
+    donnyState.error = 'No active conversation';
+    renderHome();
+
+    expect(screen.getByRole('log', { name: 'Donny conversation' })).toBeInTheDocument();
+    expect(screen.getByText('No active conversation')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try Again' })).toBeInTheDocument();
+    donnyState.error = null;
+  });
+
+  // The cold-load window: the prompt box is live before the conversation query
+  // resolves. Sending into that gap throws "No active conversation" BEFORE
+  // useDonny records lastUserMessage, so the resulting error's "Try Again" is a
+  // button that does nothing. The ask is held instead of thrown away.
+  it('holds an ask made before the conversation exists, then sends it', () => {
+    donnyState.conversation = null;
+    donnyState.messages = [];
+    const { rerender } = renderHome();
+
+    const input = screen.getByRole('textbox', { name: /ask donny/i });
+    fireEvent.change(input, { target: { value: 'how are my instagram posts doing?' } });
+    fireEvent.submit(input.closest('form')!);
+
+    // Not sent — it would have thrown — but the tap is visibly acknowledged.
+    expect(sendMessageMock).not.toHaveBeenCalled();
+    expect(screen.getByRole('log', { name: 'Donny conversation' })).toBeInTheDocument();
+
+    donnyState.conversation = { id: 'c1' };
+    rerender(
+      <MemoryRouter>
+        <DonnyHome />
+      </MemoryRouter>
+    );
+
+    expect(sendMessageMock).toHaveBeenCalledWith('how are my instagram posts doing?');
+    expect(sendMessageMock).toHaveBeenCalledTimes(1);
+  });
+
+  // useDonny.sendMessage opens with `if (isSendingRef.current) return;` — a
+  // SILENT return. DonnyHomePrompt cleared the box on submit regardless, so a
+  // follow-up typed while Donny was still answering vanished with no trace. The
+  // panel was never exposed to this: it passes disabled={isStreaming} to its
+  // input. Asserting the text SURVIVES is the point — an assertion that
+  // sendMessage was not called would pass even while the box emptied.
+  it('does not swallow a follow-up typed while a reply is streaming', () => {
+    donnyState.isStreaming = true;
+    donnyState.streamingContent = 'Based on';
+    renderHome();
+
+    const input = screen.getByRole('textbox', { name: /ask donny/i }) as HTMLInputElement;
+    expect(input).toBeDisabled();
+
+    fireEvent.change(input, { target: { value: 'and what about TikTok?' } });
+    fireEvent.submit(input.closest('form')!);
+
+    expect(sendMessageMock).not.toHaveBeenCalled();
+    expect(input.value).toBe('and what about TikTok?');
+  });
+
+  it('disables the suggestion chips while a reply is streaming', () => {
+    donnyState.isStreaming = true;
+    renderHome();
+
+    // Same reason as the input: a chip tap mid-reply reaches sendMessage's
+    // silent early return and does nothing, which reads as a broken button.
+    expect(screen.getByRole('button', { name: BUSINESS_SUGGESTIONS[0].label })).toBeDisabled();
+  });
+
+  it('follows the reply down the page once the user asks something here', () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    donnyState.messages = [];
+    const { rerender } = renderHome();
+
+    const input = screen.getByRole('textbox', { name: /ask donny/i });
+    fireEvent.change(input, { target: { value: 'how are my instagram posts doing?' } });
+    fireEvent.submit(input.closest('form')!);
+    expect(sendMessageMock).toHaveBeenCalledWith('how are my instagram posts doing?');
+
+    // Asking arms the scroll; the arriving reply is what actually triggers it.
+    donnyState.isStreaming = true;
+    donnyState.streamingContent = 'Based on';
+    rerender(
+      <MemoryRouter>
+        <DonnyHome />
+      </MemoryRouter>
+    );
+
+    expect(scrollIntoView).toHaveBeenCalled();
+    donnyState.isStreaming = false;
+    donnyState.streamingContent = '';
   });
 });
 

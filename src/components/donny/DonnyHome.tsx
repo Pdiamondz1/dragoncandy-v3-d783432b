@@ -8,8 +8,28 @@
 // there is no net new load versus today — but this component now owns them
 // rather than inheriting them for free.
 //
-// Phase A opens the EXISTING Donny panel. Inline chat is Phase B; see the
-// design doc §13 for the seven hazards it has to resolve first.
+// Phase B: the answer lands HERE, on the dashboard, instead of throwing the
+// side panel open. Founder feedback after using Phase A on prod — "it opened
+// the chat instead of keeping the conversation and details in the dashboard."
+//
+// How the design doc's §13 hazards were resolved, since it asked for each to be
+// verified against code rather than assumed:
+//  1/6. DonnyChatView is NOT reused — the thread was extracted into DonnyThread,
+//       which renders no panel header (so no collapse()/close() inline, so no
+//       second Donny) and owns no scroll container or h-full (so it composes in
+//       normal page flow inside #main-content).
+//  2/3/4/7. Dissolved rather than solved: there is no new `inline` stage. The
+//       real blocker was that useDonny gates its queries on `stage !== 'closed'`,
+//       which is about the PANEL being visible, not about the conversation being
+//       live. registerInlineConversation separates those, so `stage` is
+//       byte-unchanged and every consumer of it — nav button, desktop panel,
+//       mobile sheet, tour anchors — behaves exactly as before. Nothing is
+//       hidden, so no tour anchor is orphaned.
+//  5. Unmount mid-stream keeps the documented contract: DonnyProvider sits above
+//     the router, so the stream survives navigation and the reply persists. It
+//     is now strictly better than before — deregistering drops the count to 0
+//     but `stage` is untouched, so if the panel happens to be open the query
+//     stays enabled, and on return the thread refetches.
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -30,6 +50,7 @@ import { RatingPromptManager } from '@/components/reviews/RatingPromptManager';
 import { SponsorshipRatingPromptManager } from '@/components/reviews/SponsorshipRatingPromptManager';
 import { DonnyHomeProposals } from './DonnyHomeProposals';
 import { DonnyHomePrompt } from './DonnyHomePrompt';
+import { DonnyThread } from './DonnyThread';
 import { BUSINESS_SUGGESTIONS, type DonnySuggestion } from '@/lib/donny/donnyHomeSuggestions';
 import { buildDonnyProposals, type DonnyProposal } from '@/lib/donny/buildDonnyProposals';
 import {
@@ -42,7 +63,106 @@ const OVERVIEW_ROUTE = '/dashboard/business/overview';
 export function DonnyHome() {
   const { profile, activeOrgUnit } = useAuth();
   const navigate = useNavigate();
-  const { openDonnyWithContext } = useDonnyContext();
+  const {
+    registerInlineConversation,
+    conversation,
+    messages,
+    avatarState,
+    isStreaming,
+    streamingContent,
+    error,
+    sendMessage,
+    retry,
+    userRole,
+  } = useDonnyContext();
+
+  // Keep the conversation live while this page is mounted — without it the
+  // messages query is disabled whenever the panel is closed, which is the
+  // normal state here, and the thread below would render permanently empty.
+  React.useEffect(() => registerInlineConversation(), [registerInlineConversation]);
+
+  // An ask can land before there is a conversation to put it in. The prompt box
+  // and the suggestions are live from first paint, but the conversation query
+  // only starts once the effect above registers this surface, so a quick tap on
+  // a cold load reaches useDonny with `conversation === null`.
+  //
+  // Sending into that gap does not just fail — it fails BADLY. useDonny throws
+  // "No active conversation" on its first line, before it records
+  // `lastUserMessage`, and retry() guards on that still-empty ref. So the error
+  // renders a "Try Again" button that does nothing at all when clicked: a dead
+  // control, the same class as the twelve dead /settings CTAs.
+  //
+  // So the ask is QUEUED rather than sent-and-caught. Nothing the user typed is
+  // dropped, and there is no dead affordance to explain. Surfacing the error was
+  // the first attempt and was not enough — the bar is whether the thing the user
+  // did works, not whether the failure is visible. (Codex, rounds 1 and 2.)
+  // The same slot also covers a send arriving while a reply is still streaming.
+  // `useDonny.sendMessage` opens with `if (isSendingRef.current) return;` — a
+  // SILENT return, no throw and no error — so an ask during that window simply
+  // evaporates. The panel is safe because it passes `disabled={isStreaming}` to
+  // its input; this surface had no such guard.
+  const [queuedAsk, setQueuedAsk] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    // Flush on `isStreaming`, not on `isBusy` — isBusy includes the queue
+    // itself, so gating on it would deadlock the flush it is meant to trigger.
+    if (!conversation || isStreaming || queuedAsk === null) return;
+    setQueuedAsk(null);
+    sendMessage(queuedAsk);
+  }, [conversation, isStreaming, queuedAsk, sendMessage]);
+
+  // A queued ask counts as busy: the tap already happened, so the thread shows
+  // the typing indicator instead of looking like nothing registered.
+  const isBusy = isStreaming || queuedAsk !== null;
+  const hasConversation = messages.length > 0 || isBusy || !!error;
+
+  const threadEndRef = React.useRef<HTMLDivElement>(null);
+  // Auto-scroll follows the reply ONLY after the user has asked something on
+  // this page. It deliberately does not fire on arrival: this is a dashboard,
+  // and someone returning to it with yesterday's thread should land on the
+  // greeting and the attention list, not be thrown to the bottom of an old
+  // conversation. (The panel scrolls on mount because it IS a chat surface.)
+  //
+  // The obvious heuristic — "the message count grew" — is wrong here, and was
+  // the first version of this code. On arrival the count grows from 0 to N as
+  // the query resolves, which is indistinguishable from a new reply, so
+  // returning to the page scrolled past the greeting anyway. Worse, it depended
+  // on React Query's cache: with the thread already cached the count never
+  // grew and it behaved correctly, so it would have looked right about half the
+  // time. Asking is something the user DOES — record it, don't infer it.
+  const userAskedHere = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!userAskedHere.current) return;
+    // scrollIntoView, not a scrollTop write: the app's scroller is
+    // #main-content, never the window (window.scrollY is always 0 here), and
+    // letting the browser find the scrollable ancestor avoids hard-coding that.
+    threadEndRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  }, [messages.length, isBusy, streamingContent]);
+
+  // Every path that sends from this page goes through here, so both the scroll
+  // intent and the not-ready-yet queue are handled in exactly one place and
+  // cannot drift between the prompt box, the taps and the attention list.
+  const ask = React.useCallback(
+    (text: string) => {
+      userAskedHere.current = true;
+      // One slot, last-wins. The window is a single round-trip; two asks inside
+      // it means the user changed their mind, not that both should be sent.
+      //
+      // The `isStreaming` branch is a GUARD, not a live path: the prompt box and
+      // the chips are disabled while busy, and `DonnyProposalCta`'s `kind: 'ask'`
+      // variant — the only other caller — is declared in buildDonnyProposals.ts
+      // and constructed nowhere in src/ today. Kept because it costs four lines
+      // and the alternative is that whoever first ships an 'ask' proposal
+      // silently reintroduces the dropped-message defect.
+      if (!conversation || isStreaming) {
+        setQueuedAsk(text);
+        return;
+      }
+      sendMessage(text);
+    },
+    [conversation, isStreaming, sendMessage]
+  );
   const { trackEvent } = useAnalyticsContext();
   const { showTour, tourSteps, completeTour, skipTour, triggerTour } = useTour();
 
@@ -127,7 +247,9 @@ export function DonnyHome() {
     if (proposal.cta.kind === 'route') {
       navigate(proposal.cta.route);
     } else {
-      openDonnyWithContext(proposal.cta.message);
+      // Inline too — an attention-list tap that threw the panel open while the
+      // prompt box answered in place would be two behaviours for one page.
+      ask(proposal.cta.message);
     }
   };
 
@@ -142,12 +264,12 @@ export function DonnyHome() {
 
   const handleSuggestionTap = (suggestion: DonnySuggestion) => {
     void trackEvent('donny_home_suggestion_tapped', { label: suggestion.label });
-    openDonnyWithContext(suggestion.message);
+    ask(suggestion.message);
   };
 
   const handlePromptSubmit = (text: string) => {
     void trackEvent('donny_home_prompt_submitted', {});
-    openDonnyWithContext(text);
+    ask(text);
   };
 
   if (!profile) {
@@ -201,7 +323,34 @@ export function DonnyHome() {
             suggestions={BUSINESS_SUGGESTIONS}
             onSubmit={handlePromptSubmit}
             onSuggestionTap={handleSuggestionTap}
+            busy={isBusy}
           />
+
+          {/* The conversation, in the page — not in a panel over it. Rendered
+              only once there is something to show, so a first visit still opens
+              on the greeting and the attention list rather than an empty well.
+              No fixed height and no inner scroller: the page scrolls, which is
+              what makes a long answer readable here instead of trapped in a
+              200px box. */}
+          {hasConversation && (
+            <div
+              className="space-y-3 rounded-2xl border border-dc-teal/15 bg-dc-teal/[0.04] p-4"
+              role="log"
+              aria-label="Donny conversation"
+              aria-live="polite"
+            >
+              <DonnyThread
+                messages={messages}
+                avatarState={avatarState}
+                isStreaming={isBusy}
+                streamingContent={streamingContent}
+                error={error}
+                retry={retry}
+                userRole={userRole}
+              />
+              <div ref={threadEndRef} />
+            </div>
+          )}
 
           {/* The rating prompts go INSIDE the attention frame, not beside it.
               `NeedsAttentionSection` exists to consolidate every "needs you"

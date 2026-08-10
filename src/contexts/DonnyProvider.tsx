@@ -46,6 +46,13 @@ interface DonnyContextValue {
   quickChips: QuickChip[];
   campaignContext: { campaign_id: string; title: string; status: string } | null;
   openDonnyWithContext: (query: string) => void;
+  /**
+   * Declare that this surface is rendering the conversation outside the panel,
+   * so the messages query runs with the panel closed. Call in an effect and
+   * return the result as the cleanup:
+   * `useEffect(() => registerInlineConversation(), [registerInlineConversation])`
+   */
+  registerInlineConversation: () => () => void;
 }
 
 const DonnyContext = createContext<DonnyContextValue | null>(null);
@@ -78,6 +85,9 @@ const DONNY_FALLBACK: DonnyContextValue = {
   quickChips: [],
   campaignContext: null,
   openDonnyWithContext: noop,
+  // The fallback is used where no provider is mounted; returning a no-op
+  // cleanup keeps a consumer's effect valid rather than throwing on unmount.
+  registerInlineConversation: () => noop,
 };
 
 export function useDonnyContext() {
@@ -96,6 +106,22 @@ interface DonnyProviderProps {
 
 export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
   const [stage, setStage] = useState<DonnyStage>('closed');
+  // How many mounted surfaces are showing the conversation OUTSIDE the panel
+  // (today: the business dashboard). A count, not a boolean, so two such
+  // surfaces — or a remount that runs the new effect before the old cleanup —
+  // cannot switch the conversation off underneath the other.
+  //
+  // This exists to separate two things `stage` used to conflate: whether the
+  // PANEL is visible, and whether the conversation is LIVE. The queries were
+  // gated on `stage !== 'closed'`, so an inline surface rendering with the
+  // panel shut would have shown a permanently empty thread — the messages
+  // query simply never runs. The design doc's Phase B answered this with a new
+  // `inline` stage, which would have meant auditing every one of the six
+  // components that branch on `stage` and guarding close()/collapse() against
+  // it. Decoupling instead leaves the stage machine byte-unchanged: the panel,
+  // the nav button, the mobile sheet and the tour anchors all behave exactly
+  // as they do today.
+  const [inlineConsumers, setInlineConsumers] = useState(0);
   const location = useLocation();
 
   const campaignMatch = location.pathname.match(/\/campaigns\/([a-f0-9-]+)/);
@@ -132,8 +158,18 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
     fetchCampaign();
   }, [campaignIdFromUrl]);
 
-  // Existing chat hook — only fires queries when the panel is open
-  const donny = useDonny({ campaignContext, enabled: stage !== 'closed' });
+  // Live when the panel is open OR an inline surface is showing the thread.
+  const donny = useDonny({
+    campaignContext,
+    enabled: stage !== 'closed' || inlineConsumers > 0,
+  });
+
+  // Called by an inline surface on mount; the returned cleanup deregisters it.
+  // Stable identity so a consumer's effect does not re-run every render.
+  const registerInlineConversation = useCallback(() => {
+    setInlineConsumers((n) => n + 1);
+    return () => setInlineConsumers((n) => Math.max(0, n - 1));
+  }, []);
 
   // Nudges
   const {
@@ -366,13 +402,14 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
       quickChips,
       campaignContext,
       openDonnyWithContext,
+      registerInlineConversation,
     }),
     [
       stage, open, expand, collapse, close,
       nudges, unreadCount, executeAction, dismissNudge,
       donny.messages, donny.conversation, donny.avatarState, donny.isStreaming, donny.error, donny.streamingContent, donny.retry, donny.clearChat, donny.archiveConversation,
       sendMessage, location.pathname, userRole, quickChips, campaignContext,
-      openDonnyWithContext, publishDraft,
+      openDonnyWithContext, publishDraft, registerInlineConversation,
     ]
   );
 
