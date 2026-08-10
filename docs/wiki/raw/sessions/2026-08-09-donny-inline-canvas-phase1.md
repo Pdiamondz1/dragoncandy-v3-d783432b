@@ -127,6 +127,21 @@ Open: the Codex second review, `npm run build` since the rebase, and the both-vi
 `verify-prod` — which has **never** run on this surface (#410, #411 and #413 all shipped
 without one).
 
+## Known unfixed, found while fixing this
+
+**`src/hooks/internal/useInternalDonny.ts:64-67` carries an identical data-integrity defect.**
+Same `lastUserMessage` / `if (!isRetry)` pair, same `retry()` at `:151`. `isRetry` is used as a
+proxy for *"the user row already exists"*, and three paths fail before the insert — the
+`No active conversation` guard, the in-flight guard, and the insert statement itself erroring.
+On any of them, Retry replays with the insert skipped, so the assistant row persists with no
+user row behind it. That is not only a rendering gap: `conversation_history` is assembled from
+those rows, so every later turn is briefed on an answer to a question Donny cannot see.
+
+It was **filed, not fixed** — it is on the internal AIOS Donny surface, outside this branch's
+file set, and has no test file, so a blind edit to a second surface was the wrong move. The fix
+that landed here (`lastUserMessageInserted`, assigned alongside `lastUserMessage.current`, reset
+on non-retry, set true only after the write lands) transfers directly.
+
 ## See also
 
 - `docs/superpowers/specs/2026-08-09-donny-dashboard-unification-design.md`
