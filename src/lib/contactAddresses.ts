@@ -7,28 +7,32 @@
  * `src/lib/allowedOrigins.ts` collapsed it. Eight scattered literals is eight
  * chances to update seven of them.
  *
- * DOMAIN MIGRATION STATUS (2026-08-10): these deliberately still read
- * `.io`. Phases 1-4 moved the app, the config, the redirect and the stored
- * content, but a mailbox is not a URL — flipping it is only safe once the
- * `.com` mailbox is proven to RECEIVE, and that proof is a Phase 5 gate that
- * has not yet been met.
+ * DOMAIN MIGRATION STATUS (2026-08-10): moved to `.com`. Phase 5a's gate — that
+ * each `.com` mailbox genuinely RECEIVES — is met, and it is worth recording
+ * what did and did not establish that, because the obvious check was worthless.
  *
- * Do NOT flip these on the strength of a send test or a DNS check. Two facts
- * from the 2026-08-10 audit, both verified, say why:
+ * WHAT DID NOT COUNT: an SMTP `RCPT TO` probe returned `250` for all five
+ * addresses — and `250` for two deliberately nonsensical control addresses.
+ * Google's MX does not disclose recipient validity at `RCPT` time, so
+ * acceptance carries NO information about whether a mailbox exists. Without
+ * the controls that probe would have read as "all five confirmed" and been
+ * believed. (`dragoncandy.io`'s IONOS MX refused the probe outright — it
+ * blocklists the origin IP — so it proved nothing in either direction either.)
  *
- *   1. `dragoncandy.com` accepts EVERY recipient at SMTP time. Probing
- *      `support@`, `privacy@`, `sales@`, `admin@` and `founders@` returned
- *      `250` — and so did two deliberately nonsensical control addresses.
- *      So mail to a `.com` mailbox that does not exist is accepted and then
- *      disappears: no bounce to the sender, no error anywhere. A user's GDPR
- *      erasure request would vanish in silence.
- *   2. `dragoncandy.io`'s IONOS MX could not be probed from here at all (it
- *      blocklists the origin IP), so we do not actually know that today's
- *      addresses receive either. Neither side is verified by observation.
+ * WHAT DID COUNT: the Google Workspace admin console. All five are **aliases
+ * on `dame@dragoncandy.com`** (an active account in daily use), alongside
+ * `info@` and `appstore@`. There are only three users in the org and zero
+ * groups, so the alias list is the whole story. That establishes the ROUTING
+ * — a property of the configuration — rather than one lucky delivery, which is
+ * strictly stronger than the send-and-receive test originally planned.
  *
- * The only evidence that clears this gate is a human confirming a real message
- * arrived in a monitored inbox, per address. When that happens, change the
- * three constants below and nothing else.
+ * The lesson generalises past this file: when a probe cannot distinguish a
+ * true from a false answer, no number of runs makes it evidence. Go and read
+ * the configuration instead.
+ *
+ * All five deliver to ONE person's inbox today. That is fine at three
+ * employees and will not stay fine — `privacy@` and `support@` in particular
+ * want a shared mailbox someone else can cover. Flagged, not fixed.
  *
  * NOT COVERED HERE (each has a reason it cannot import this file):
  *   - `supabase/functions/stripe-webhook/index.ts` sends dispute alerts to
@@ -38,11 +42,12 @@
  *     prose; MDX body copy cannot reference a constant.
  *   - The `gdpr-erasure` help article names `privacy@` in its stored `body`
  *     on prod. That is database content and moves by migration, not by deploy.
- *   Any flip has to sweep those three by hand — hence this list.
+ *   Any flip has to sweep those three by hand — hence this list. All three were
+ *   swept alongside the constants below in the 2026-08-10 Phase 5a change.
  */
 
 /** General user-facing support. */
-export const SUPPORT_EMAIL = 'support@dragoncandy.io';
+export const SUPPORT_EMAIL = 'support@dragoncandy.com';
 
 /**
  * Privacy and data-rights contact, as published in the Privacy Policy and
@@ -54,10 +59,10 @@ export const SUPPORT_EMAIL = 'support@dragoncandy.io';
  * Both behaviours are preserved exactly as they were. Where GDPR requests
  * should land is an operations decision, not a refactor.
  */
-export const PRIVACY_EMAIL = 'privacy@dragoncandy.io';
+export const PRIVACY_EMAIL = 'privacy@dragoncandy.com';
 
 /** Enterprise / sales enquiries from the pricing page. */
-export const SALES_EMAIL = 'sales@dragoncandy.io';
+export const SALES_EMAIL = 'sales@dragoncandy.com';
 
 /**
  * Build a `mailto:` href with a correctly encoded subject.

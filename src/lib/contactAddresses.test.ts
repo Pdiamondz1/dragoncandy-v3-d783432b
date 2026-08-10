@@ -54,16 +54,15 @@ describe('contact addresses', () => {
     expect(new Set(domains).size).toBe(1);
   });
 
-  it('are on a domain we actually control', () => {
-    // Deliberately accepts BOTH TLDs. `.io` is correct today and stays correct
-    // until a human confirms the `.com` mailboxes receive -- `dragoncandy.com`
-    // accepts every recipient at SMTP (proven with control addresses on
-    // 2026-08-10), so mail to a mailbox that does not exist vanishes without a
-    // bounce. The gate is a receive test, not a DNS lookup, and this test must
-    // not pretend otherwise by pinning one TLD.
+  it('are on dragoncandy.com', () => {
+    // Pinned to `.com` now that Phase 5a's gate is met -- each address is a
+    // verified alias on an active Workspace account (see contactAddresses.ts).
+    // Pinning is what makes an accidental revert to `.io` fail CI. This test
+    // deliberately accepted BOTH TLDs while the gate was open; it does not
+    // anymore, because "either is fine" stopped being true.
     for (const [name, address] of Object.entries(ALL)) {
-      expect(address, `${name} must be on dragoncandy.io or dragoncandy.com`)
-        .toMatch(/^[a-z]+@dragoncandy\.(io|com)$/);
+      expect(address, `${name} must be on dragoncandy.com`)
+        .toMatch(/^[a-z]+@dragoncandy\.com$/);
     }
   });
 });
