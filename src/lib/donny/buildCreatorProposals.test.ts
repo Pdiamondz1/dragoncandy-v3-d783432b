@@ -85,6 +85,40 @@ describe('item E — find work', () => {
       payout: { ...EMPTY.payout, collaborationCount: 1 } });
     expect(ids(r)).not.toContain('creator:find_work');
   });
+
+  it('does not fire when a content-todo item exists', () => {
+    const r = buildCreatorProposals({ ...EMPTY,
+      contentTodo: [{ collaborationId: 'k1', campaignId: 'c1', campaignTitle: 'Taco Tuesday', createdAt: '2026-08-01T00:00:00Z' }] });
+    expect(ids(r)).not.toContain('creator:find_work');
+  });
+
+  it('does not fire when a pending application exists', () => {
+    const r = buildCreatorProposals({ ...EMPTY,
+      applications: [{ applicationId: 'a1', campaignId: 'c1', campaignTitle: 'Taco Tuesday', createdAt: '2026-08-01T00:00:00Z' }] });
+    expect(ids(r)).not.toContain('creator:find_work');
+  });
+});
+
+describe('item E — error guard (a failed read is not proof of an empty plate)', () => {
+  it('does not fire when the payout read errored', () => {
+    const r = buildCreatorProposals({ ...EMPTY, payout: undefined, payoutError: true });
+    expect(ids(r)).not.toContain('creator:find_work');
+  });
+
+  it('does not fire when the content-todo read errored', () => {
+    const r = buildCreatorProposals({ ...EMPTY, contentTodo: undefined, contentTodoError: true });
+    expect(ids(r)).not.toContain('creator:find_work');
+  });
+
+  it('does not fire when the applications read errored', () => {
+    const r = buildCreatorProposals({ ...EMPTY, applications: undefined, applicationsError: true });
+    expect(ids(r)).not.toContain('creator:find_work');
+  });
+
+  it('does not fire when the invitations read errored', () => {
+    const r = buildCreatorProposals({ ...EMPTY, invitations: undefined, invitationsError: true });
+    expect(ids(r)).not.toContain('creator:find_work');
+  });
 });
 
 describe('errors and contract', () => {

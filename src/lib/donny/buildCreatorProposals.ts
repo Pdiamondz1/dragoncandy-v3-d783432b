@@ -189,7 +189,19 @@ export function buildCreatorProposals(input: CreatorProposalsInput): DonnyPropos
 
   const payoutProps = payout ? payoutProposals(payout) : [];
 
+  // A composite claim, not an individual proposal: "nothing in flight" must
+  // never be synthesized from a source that errored. Rule 5 (an errored
+  // source contributes no proposal) is correct for A/B/D individually, but
+  // for E "no data because it errored" and "no data because there is
+  // nothing there" are different facts, and defaulting every errored input
+  // to empty would let a transient failure assert the opposite of the
+  // truth: "nothing on your plate" when the real answer is unknown. Same
+  // failure mode item C's silent fourth branch exists to prevent — failure
+  // is a third answer, not a vote for either side.
+  const anySourceErrored =
+    input.contentTodoError || input.applicationsError || input.invitationsError || input.payoutError;
   const nothingInFlight =
+    !anySourceErrored &&
     contentProposals.length === 0 &&
     applicationProps.length === 0 &&
     invitationProps.length === 0 &&
