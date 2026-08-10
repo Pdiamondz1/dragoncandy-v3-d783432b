@@ -1,5 +1,46 @@
 # Wiki Log
 
+## [2026-08-10] ingest | [[iOS TestFlight First Build]]
+
+Ingested `raw/sessions/2026-08-09-ios-testflight-first-build.md` as a **new concept
+page** plus updates to two existing pages whose content this branch touched but whose
+`updated:` frontmatter had gone stale.
+
+**Pages created:** `concepts/ios-testflight-first-build.md`.
+**Pages updated:** `entities/capacitor-native-shell.md` (new "Phase 3" section + bumped
+date), `sources/apple-app-store-capacitor-phase1-session.md` (bumped date only — the
+bundle-ID correction it already carried predates this ingest), `concepts/domain-migration-io-to-com.md`
+(the "Must NOT change" row's justification brought into line with its source spec, which
+had been corrected in place while the derived wiki copy still led with the original
+unqualified sentence), `index.md` (1 new Source + 1 new Concept entry), this log.
+
+Three things worth carrying out of it:
+
+1. **The origin-classification problem generalizes beyond this branch.** Any value
+   consumed outside a sandboxed WebView needs the same three-way sort this session used:
+   repoint (the value leaves the device and the destination can receive it), leave alone
+   (the value is an in-app navigation base), or gate the consumer instead (the value
+   leaves the device but the destination has no way to hand control back — repointing
+   would trade a visible rejection for a silent dead end). The Outstand OAuth callback is
+   the concrete instance: `redirect_uri` could be repointed, but nothing catches the
+   return, so the fix gates `ConnectAccountButtonGroupGated` instead.
+
+2. **A plan-authoring session and a plan-execution session can each destroy the other's
+   work through a tool that looks like read-only diagnostics.** `supabase functions
+   download` reads as "check what's deployed" but overwrites local source with it — on a
+   branch with uncommitted edits to that same file, that is a silent revert. `deno
+   install`, reached for after a Deno typecheck failed, corrupted the npm-managed
+   `node_modules` for four tasks before a full gate run surfaced it. Neither left a build
+   or lint failure behind.
+
+3. **A decision made in a later plan step can silently invalidate an earlier step's
+   assertion.** Task 5 chose to gate the Outstand OAuth consumer instead of repointing
+   its value; the pre-PR gate written earlier still expected the value to be repointed,
+   and its "exactly 3 hits" assertion went stale the moment Task 5 shipped. The same
+   drift independently appeared in the spec's own Finding-1 table. Whenever a plan
+   revisits an earlier decision, every place that assumed the old decision needs its own
+   pass — an acceptance gate is not exempt just because it was already written.
+
 ## [2026-08-09] ingest | [[Domain Migration (.io → .com)]] + [[Edge-Function Deploy & Bundling]]
 
 Ingested `raw/sessions/2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md` as **two new

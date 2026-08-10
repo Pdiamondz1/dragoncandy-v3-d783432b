@@ -105,10 +105,14 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   functions, both viewports, apex TLS fixed; `.io` still canonical and unchanged. Phases 2–6
   (Site URL + `APP_URL` switch, the `.io` 301, content, mail) not started.
   → `docs/wiki/concepts/domain-migration-io-to-com.md`
-- **Apple App Store (Capacitor)** — iOS shell over the web app. Phase 1 shipped, Phase 2
-  (native camera capture) started; next push + share plugins, then TestFlight. Hard
-  prerequisite: a macOS/cloud-Mac build + an Apple Developer account ($99/yr).
-  → `docs/superpowers/specs/2026-06-01-apple-app-store-design.md`
+- **Apple App Store (Capacitor)** — iOS shell over the web app. Phase 1 (foundation) +
+  Phase 2 (native camera + share sheet) shipped; the first-signed-build work (origin
+  seam so email/share/OAuth links work natively, `capacitor://localhost` trusted in the
+  edge-function CORS allow-list, bundle ID → `com.dragoncandy.app`, export-compliance
+  plist key) is on `worktree-dc-apple-store`, gated + Codex-clean, not yet merged.
+  Pending: founder Apple enrollment, a canaried edge-function redeploy, and the founder's
+  Mac (arriving 2026-08-12) for the first physical-device build + on-device verification.
+  → `docs/superpowers/specs/2026-08-09-ios-testflight-first-build-design.md`
 
 ### Built — awaiting founder go-live
 

@@ -94,7 +94,6 @@ implementer break auth while fixing share links.
 | `AuthForm.tsx:50`, `AuthenticationModal.tsx:44`, `ForgotPassword.tsx:22`, `VerifyEmail.tsx:33,48` | GoTrue gets a `capacitor://localhost/…` redirect. Unopenable from Mail. **Password reset is dead in the native app.** |
 | `PromotionCard.tsx:57`, `PromotionDetailPage.tsx:291`, `CreatorPackages.tsx:34` | Slice C's share sheet would share `capacitor://localhost/promo/<id>` — **a shipped feature broken on the only platform it was built for.** |
 | `useProjectComplete.ts:151,173,207,227`, `useSponsorshipComplete.ts:111,133,164,187` | `actionUrl` handed to `create-notification`, which **emails it to a different user.** A dead `capacitor://` link lands in someone else's inbox. Worse than the share case, and "mark project complete" is a core business action. |
-| `ConnectedAccountsList.tsx:39`, `AccountsTab.tsx:33` | Outstand OAuth `redirect_uri`. See Known Limitations — repointing alone does not make this work. |
 
 **Category B — the value is an in-app navigation base. Must NOT be repointed.**
 
@@ -116,9 +115,23 @@ The single exception is `DonnyMessage.tsx:84`, where Donny's generated markdown 
 **relative in-app route** — Category B. The split is clean and the helper is not doing two
 jobs, so this is a one-line confirmation during Component 1, not open design work.
 
+**Category D — the value leaves the device, but repointing it doesn't close the gap.**
+
+`ConnectedAccountsList.tsx:40`, `AccountsTab.tsx:34` — the Outstand OAuth `redirect_uri`. This
+sat under Category A in an earlier draft of this table, which was wrong: repointing stops the
+provider rejecting a `capacitor://` value, but the callback then completes in Safari against
+the web app with no route back into the shell (no `@capacitor/app`, no `appUrlOpen` listener,
+no `@capacitor/browser` anywhere in the tree) — converting a hard rejection into a silent dead
+end, which is not obviously better. The shipped design (Task 5) leaves the value **raw** and
+gates the *consumer* instead: `ConnectAccountButtonGroupGated` returns explanatory copy before
+reading props on native, so the `capacitor://` value is computed and discarded either way. See
+Known Limitations.
+
 **The rule an implementer applies, so a future re-grep is decidable:** if the resulting string
 is consumed by anything outside the WebView — an email, a share sheet, a third party, another
-user — it is Category A. If it is consumed by in-app navigation, it is Category B.
+user — repoint it (Category A) unless repointing alone doesn't close the gap, in which case gate
+the consumer instead (Category D). If it is consumed by in-app navigation, leave it alone
+(Category B).
 
 ### Finding 2 — the native origin is not trusted by any edge function, and fixing it requires a fleet redeploy
 
@@ -436,6 +449,19 @@ neither.
 - **Camera is photo-only** — Capacitor's Camera plugin cannot record video. Video stays on the
   file picker.
 - iPad runs in iPhone compatibility mode.
+- **A completion notification sent from the iOS app deep-links its recipient to `.com`, while
+  every other transactional email that same recipient gets still points at `.io`.** Verified
+  against `supabase/functions/send-notification-email/index.ts`: the four templates these
+  eight `actionUrl` call sites select (`completion_request`, `project_completion` — the email
+  type `project_completed` maps to, `sponsorship_completion_request`, `sponsorship_completed`)
+  render `href="${data.actionUrl || ...}"`, so Task 4's `publicOrigin()` value flows straight
+  into the link. Every other template hardcodes `${baseUrl}` = `Deno.env.get('APP_URL')`,
+  which the domain migration has not moved off `.io` (Phase 2, still open). Sessions are
+  origin-scoped `localStorage`, and the `.com` apex 308s to `www` (both allow-listed, so the
+  hop is harmless) — but a web recipient with a live `.io` session who clicks the `.com` link
+  lands **signed out**, at `/auth`. Strictly better than the `capacitor://` link it replaces,
+  which was unopenable outright rather than merely inconvenient. Closes when the domain
+  migration's Phase 2 (`APP_URL` flip) and Phase 3 (the `.io` → `.com` redirect) land.
 
 ## Expected Friction on First Upload (not failures)
 

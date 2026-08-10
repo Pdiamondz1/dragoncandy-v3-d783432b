@@ -2,7 +2,7 @@
 title: Apple App Store Capacitor Phase 1 Session
 type: source
 created: 2026-06-01
-updated: 2026-06-01
+updated: 2026-08-09
 sources: [raw/sessions/2026-06-01-apple-app-store-capacitor-phase1.md]
 tags: [capacitor, ios, app-store, mobile]
 ---

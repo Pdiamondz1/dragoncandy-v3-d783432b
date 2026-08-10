@@ -2,8 +2,8 @@
 title: Capacitor Native Shell
 type: entity
 created: 2026-06-01
-updated: 2026-06-07
-sources: [raw/sessions/2026-06-01-apple-app-store-capacitor-phase1.md, raw/sessions/2026-06-07-core-docs-recent-updates-sync.md, docs/superpowers/specs/2026-06-01-apple-app-store-design.md]
+updated: 2026-08-10
+sources: [raw/sessions/2026-06-01-apple-app-store-capacitor-phase1.md, raw/sessions/2026-06-07-core-docs-recent-updates-sync.md, docs/superpowers/specs/2026-06-01-apple-app-store-design.md, raw/sessions/2026-08-09-ios-testflight-first-build.md]
 tags: [capacitor, ios, app-store, mobile, native]
 ---
 
@@ -26,15 +26,59 @@ changed.
 - CSP allows `capacitor://localhost` so the WebView bridge loads.
 - npm scripts `cap:sync` / `cap:open` / `cap:copy`; runbook at `docs/runbooks/capacitor-ios.md`.
 
-## Phase 2 — Native Value-Adds (started 2026-06)
+## Phase 2 — Native Value-Adds (2026-06)
 
-- **Camera / photo-library capture shipped** — the first native value-add. Native
-  capture UI for [[DragonShare]] uploads, iOS permission strings (camera + photo
-  library), and a `captureFromCamera` helper feeding a shared upload area. This
-  advances the camera-first North Star and the guideline-4.2 "more than a wrapper" bar.
+- **Camera / photo-library capture shipped** (Slice B) — native capture UI for
+  [[DragonShare]] uploads, iOS permission strings (camera + photo library), and a
+  `captureFromCamera` helper feeding a shared upload area. Advances the camera-first
+  North Star and the guideline-4.2 "more than a wrapper" bar.
+- **Native share sheet shipped** (Slice C) — `@capacitor/share`, `src/lib/nativeShare.ts`.
 - **Privacy Policy + Terms of Service pages shipped** — clearing the hosted
   privacy-policy/terms prerequisite below.
-- Still next: push + share plugins, then TestFlight → submission → review.
+- **Purchase-CTA gating (Phase 3a) + UGC block/report (Phase 3b) shipped.**
+- Still next: push notifications + universal links (Slice A/D) — both genuinely need
+  Apple enrollment, so neither could have preceded Phase 3 below.
+
+## Phase 3 — First Signed Build to TestFlight (2026-08-09/10)
+
+Not the start of the iOS project — the distance between "code exists" and "it runs on a
+phone." Neither Slice B (camera) nor Slice C (share) had ever executed on real iOS
+hardware before this phase. Full session, including a process record worth reading
+before repeating this branch's pattern: five defects in the plan itself (a wrong grep
+count; a `never`-typed test fixture that couldn't typecheck under strict mode; a
+`supabase functions download` step that reverted committed work and truncated a live
+file to 0 bytes; a hardcoded `/settings/billing` route that doesn't exist and had
+already caused a documented 404 incident; an expected-hit-count that contradicted the
+plan's own earlier decision) — each caught downstream rather than by its author — plus a
+`deno install` run that silently corrupted `node_modules` for four tasks. See
+[[iOS TestFlight First Build]].
+
+- **`publicOrigin()` seam** (`src/lib/publicOrigin.ts` + `CANONICAL_APP_ORIGIN` in
+  `allowedOrigins.ts`) — `window.location.origin` is `capacitor://localhost` inside the
+  shell, unusable anywhere the value leaves the WebView (email, share sheet, OAuth
+  redirect). Web branch byte-identical.
+- **`capacitor://localhost` trusted in the edge-function CORS allow-list**
+  (`NATIVE_APP_ORIGINS` in `_shared/origins.ts`, composed into `cors.ts` only) — without
+  it the native app reaches Supabase REST/Auth but no custom edge function (Donny,
+  campaign generation, payments). Inert until each function the app calls redeploys; the
+  `donny-orchestrator` canary is a separate, not-yet-run step.
+- **Bundle ID `io.dragoncandy.app` → `com.dragoncandy.app`**, merged before any App
+  Store Connect record exists (the record is what freezes it permanently). Seven
+  committed docs said it must not change; all seven updated rather than silently
+  overridden — see [[Domain Migration (.io → .com)]].
+- **`ITSAppUsesNonExemptEncryption`** added to `Info.plist` — without it every
+  TestFlight upload parks behind the export-compliance questionnaire.
+- **Outstand OAuth declared unavailable in the iOS app, not repointed** — the OAuth
+  callback returns over `https` and lands in Safari with no route back into the shell
+  (no `@capacitor/app`, no `appUrlOpen` listener), so repointing `redirectUri` alone
+  would trade a visible provider rejection for a silent dead end.
+  `ConnectAccountButtonGroupGated` says so instead of trying. Closed by Slice D.
+- **Bounded purchase-CTA audit** — still closed after 233 commits / 31 new pages since
+  the Phase 1 scaffold; nothing new needed gating.
+
+**As of writing:** work sits on `worktree-dc-apple-store`, not yet merged. Founder Apple
+enrollment, a canaried edge-function redeploy, and the physical-device build + on-device
+verification (blocked on the founder's Mac arriving 2026-08-12) are all still ahead.
 
 ## Strategy
 
@@ -70,3 +114,5 @@ changed.
 - [[Stripe Connect]]
 - [[Apple App Store Capacitor Phase 1 Session]]
 - [[Core Docs Recent Updates Sync Session]]
+- [[iOS TestFlight First Build]]
+- [[Domain Migration (.io → .com)]]

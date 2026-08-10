@@ -1341,7 +1341,18 @@ Confirm `#main-content` scrolls and the document itself does not. This app's win
 
 Request a reset. Confirm the email arrives with an `https://dragoncandy.com/auth/update-password` link (not `capacitor://`) and that it opens and works — **in Safari**, which is the expected behaviour until Slice D.
 
-- [ ] **Step 10: Write up and commit**
+- [ ] **Step 10: Completion notification email domain**
+
+Mark a project or sponsorship complete from the device (or trigger only your own half, so
+`completion_request` fires instead). Open the resulting email — as the *recipient*, on a
+different account/session than the device — and read the action link. It must be
+`https://dragoncandy.com/...`, openable, unlike the `capacitor://` link it replaces. Compare
+against a non-completion notification from the same test pass (e.g. a new-message email),
+which still uses `${baseUrl}` = `.io`. If the recipient happens to have a live `.io` browser
+session, confirm the known-limitation behaviour: the `.com` link signs them out to `/auth`
+rather than opening the page signed in.
+
+- [ ] **Step 11: Write up and commit**
 
 ```bash
 git add docs/app-store/2026-08-12-on-device-verification.md
