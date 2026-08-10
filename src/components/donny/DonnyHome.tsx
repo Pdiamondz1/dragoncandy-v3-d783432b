@@ -80,7 +80,15 @@ export function DonnyHome() {
   // normal state here, and the thread below would render permanently empty.
   React.useEffect(() => registerInlineConversation(), [registerInlineConversation]);
 
-  const hasConversation = messages.length > 0 || isStreaming;
+  // `error` counts as something to show, and that is not a detail. The prompt
+  // box and the taps are live from first paint, but the conversation query only
+  // starts once the effect above registers this surface — so an early tap can
+  // reach useDonny before a conversation exists, where it throws "No active
+  // conversation" without inserting a message. Without `error` here there is no
+  // message, no stream and therefore no thread: the tap does NOTHING, silently,
+  // with no error and no retry. The panel never had this hole because
+  // DonnyChatView renders the thread unconditionally. Found by Codex.
+  const hasConversation = messages.length > 0 || isStreaming || !!error;
 
   const threadEndRef = React.useRef<HTMLDivElement>(null);
   // Auto-scroll follows the reply ONLY after the user has asked something on

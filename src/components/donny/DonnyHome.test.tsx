@@ -254,6 +254,22 @@ describe('DonnyHome — the conversation renders in the page', () => {
     donnyState.messages = [];
   });
 
+  // A send can fail before any message exists — tapping before the conversation
+  // has loaded makes useDonny throw "No active conversation" without inserting
+  // anything. Gating the thread on messages/streaming alone would leave that tap
+  // doing nothing at all: no answer, no error, no retry.
+  it('surfaces a send failure that produced no message', () => {
+    donnyState.messages = [];
+    donnyState.isStreaming = false;
+    donnyState.error = 'No active conversation';
+    renderHome();
+
+    expect(screen.getByRole('log', { name: 'Donny conversation' })).toBeInTheDocument();
+    expect(screen.getByText('No active conversation')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try Again' })).toBeInTheDocument();
+    donnyState.error = null;
+  });
+
   it('follows the reply down the page once the user asks something here', () => {
     const scrollIntoView = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoView;
