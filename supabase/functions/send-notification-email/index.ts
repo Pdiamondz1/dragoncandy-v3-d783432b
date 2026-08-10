@@ -111,11 +111,11 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     // Auth gate: require either service-role token or a valid user JWT
     const authHeader = req.headers.get("Authorization") || "";
-    // Presence-checked before it is compared, matching create-notification:122. Read with
+    // Presence-checked before it is compared, matching the identical guard in `create-notification`. Read with
     // `as string` and no check, an unset secret makes the comparison below
     // `"Bearer undefined" === "Bearer undefined"` — true for anyone who sends that header,
     // which is the one string an attacker would guess first. That promotes an unauthenticated
-    // caller to SERVICE, and service callers skip the same-inbox restriction at :138 and may
+    // caller to SERVICE, and service callers skip the same-inbox "recipient must be self" check below and may
     // name any recipient. Supabase injects this secret automatically so it has never been
     // unset in practice; this is the guard that keeps a future misconfiguration from turning
     // into an open cross-user mailer rather than a 500.
@@ -268,12 +268,20 @@ const handler = async (req: Request): Promise<Response> => {
     };
     const amount = asNum(data.amount);
     const sponsorshipAmount = asNum(data.sponsorshipAmount);
-    const fileCount = asNum(data.fileCount) ?? 0;
+    // Deliberately NOT `?? 0`. A missing count is unknown, not zero, and defaulting it
+    // rendered "uploaded 0 new files" under an H1 reading "New Deliverables!" — a
+    // confident false statement, which is worse than the obvious garbage ("undefined new
+    // files") it replaced. An unknown count drops the number and stays true instead.
+    const fileCountRaw = asNum(data.fileCount);
+    const filesPhrase =
+      fileCountRaw === null
+        ? 'new files'
+        : String(fileCountRaw) + ' new ' + (fileCountRaw === 1 ? 'file' : 'files');
     // ---- Link safety ----------------------------------------------------------------
     // Every href in the templates below is built from caller-supplied `data`, and none of
     // it was checked. create-notification spreads the request body verbatim into this
     // payload and calls this function with the SERVICE key, so a user-authenticated caller
-    // reaches these templates and the same-inbox restriction at :152 does not apply to the
+    // reaches these templates and the same-inbox "recipient must be self" check does not apply to the
     // resulting mail. Two distinct defects came out of that:
     //
     //   * whole-URL fields (`actionUrl`, `campaignUrl`, `reviewUrl`) landed in href raw, so
@@ -691,7 +699,7 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
               <p style="font-size: 16px; color: #374151;">Hi ${esc.rn},</p>
-              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${esc.uploaderName}</strong> has uploaded <strong>${fileCount} new ${fileCount === 1 ? 'file' : 'files'}</strong> to your campaign <strong>"${esc.campaignTitle}"</strong>.</p>
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${esc.uploaderName}</strong> has uploaded <strong>${filesPhrase}</strong> to your campaign <strong>"${esc.campaignTitle}"</strong>.</p>
               <div style="background: #F0F9FF; border-left: 4px solid #0EA5E9; padding: 16px; margin: 24px 0; border-radius: 4px;"><p style="margin: 0; color: #075985; font-weight: 600;">✅ Ready for Review</p><p style="margin: 8px 0 0 0; color: #075985; font-size: 14px;">The creator has submitted their work. Please review and provide feedback.</p></div>
               <p style="text-align: center; margin-top: 40px;"><a href="${data.collaborationId ? link('/projects/' + seg(data.collaborationId)) : link('/dashboard/business/campaigns')}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">Review Files</a></p>
             </div>
@@ -707,7 +715,7 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
               <p style="font-size: 16px; color: #374151;">Hi ${esc.rn},</p>
-              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${esc.uploaderName}</strong> has uploaded <strong>${fileCount} new ${fileCount === 1 ? 'file' : 'files'}</strong> for campaign <strong>"${esc.campaignTitle}"</strong>.</p>
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${esc.uploaderName}</strong> has uploaded <strong>${filesPhrase}</strong> for campaign <strong>"${esc.campaignTitle}"</strong>.</p>
               <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px; margin: 24px 0; border-radius: 4px;"><p style="margin: 0; color: #92400E; font-weight: 600;">📋 Reference Materials</p><p style="margin: 8px 0 0 0; color: #92400E; font-size: 14px;">New reference files are available to help with your content creation.</p></div>
               <p style="text-align: center; margin-top: 40px;"><a href="${data.collaborationId ? link('/projects/' + seg(data.collaborationId)) : link('/dashboard/creator/projects')}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">View Files</a></p>
             </div>

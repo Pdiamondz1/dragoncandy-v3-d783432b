@@ -61,6 +61,20 @@ export const createEmailLinks = (baseUrl: string): EmailLinks => {
     try {
       return new URL(baseUrl).origin;
     } catch {
+      // Distinguish the two ways this ends up empty, because they need different
+      // reactions and only one is expected. An UNSET `APP_URL` ('') is the documented
+      // degraded mode — links go out relative. A SET but unparseable one (e.g.
+      // `dragoncandy.com`, no scheme) is a misconfiguration that silently strips the deep
+      // link out of every completion email while the send still reports success — the
+      // failure shape this project keeps getting bitten by. Neither is a security problem
+      // (both fail to the fallback, never to a foreign host), so this warns rather than
+      // throws: a broken link is better than no email at all.
+      if (baseUrl) {
+        console.warn(
+          `[emailLinks] APP_URL is set but not a parseable absolute URL (${JSON.stringify(baseUrl)}) — ` +
+            `every caller-supplied link will degrade to its fallback path.`,
+        );
+      }
       return '';
     }
   })();

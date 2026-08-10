@@ -74,6 +74,26 @@ describe('safeLink — no APP_URL configured', () => {
   });
 });
 
+describe('safeLink — APP_URL set but unparseable', () => {
+  // The distinct failure mode: a misconfigured APP_URL (no scheme) is NOT the same as an
+  // unset one. It looks configured, so nothing downstream suspects the deep links are
+  // gone. Asserted here because it is now a warn path, and an unasserted warn path is one
+  // refactor away from being silent again.
+  const misconfigured = createEmailLinks('dragoncandy.com');
+
+  it('still refuses a foreign host rather than failing open', () => {
+    expect(misconfigured.safeLink('https://evil.example/phish', '/dashboard')).toBe(
+      'dragoncandy.com/dashboard',
+    );
+  });
+
+  it('degrades every caller URL to its fallback', () => {
+    expect(misconfigured.safeLink('/dashboard/creator/campaigns', '/dashboard')).toBe(
+      'dragoncandy.com/dashboard',
+    );
+  });
+});
+
 describe('pathSegment — an id can no longer close the href', () => {
   it('encodes a quote', () => {
     cannotBreakOut(link(`/dashboard/business/campaigns/${pathSegment('abc" onmouseover="alert(1)')}`));
