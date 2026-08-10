@@ -26,6 +26,98 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-10] Domain migration Phase 2 (SWITCH) — canonical URLs move to `dragoncandy.com`
+
+Phase 2b + 2c of the `.io` → `.com` migration: the hardcoded literals that have no env
+indirection, plus two pre-existing fallback bugs. **Phase 2a (config) is deliberately not in
+this work** — the three secrets and the GoTrue Site URL are founder-owned.
+
+**Infrastructure resolved first (founder-executed, Claude-verified).** The Vercel primary was
+flipped so **apex is canonical**: `www` → apex is now a 308, path- and query-preserving
+(verified). Previously apex 308'd to `www`, the reverse of the plan. Auth-gated surfaces were
+verified on `.com` on **both viewports** — desktop by Claude in the founder's signed-in Chrome
+with direct CORS measurement, mobile confirmed by the founder — closing the last open item on
+the Phase 1 gate.
+
+**Code shipped.** `src/components/SEO.tsx`'s `SITE_URL` is the single constant every canonical
+link and `og:url` on the site derives from, so that one line is the highest-leverage change.
+Plus `index.html` metadata, `public/sitemap.xml` (5 locs), `public/robots.txt`, three JSON-LD
+blocks, redirect/origin fallbacks across eleven edge functions, email **bodies** (links and
+images only, never a `from:`), internal surface copy, and `playwright.config.ts`. Two
+pre-existing bugs fixed en route, both wrong independent of this migration:
+`send-welcome-email` fell back to `https://lovable.app` so every welcome CTA pointed at the old
+Lovable host (3 sites), and `create-sponsorship-checkout` fell back to the Lovable *preview*
+host, inconsistent with every other payment function.
+
+**The Codex finding: the intent was recorded three times and the change still didn't happen.**
+Codex flagged [P2] that `_shared/origins.ts`'s `DEFAULT_ORIGIN` was still `.io`. Three places
+had already said Phase 2 would move it — the constant's own doc comment, the iOS TestFlight
+spec, and this migration's design doc §2b. And `docs/wiki/concepts/ios-testflight-first-build.md`
+had gone further, naming the omission as an open risk *in writing*, before Phase 2 was drafted.
+**A previous session spotted the gap, wrote it in the wiki, and the next session shipped
+without it.** Writing something down is not the same as it being consulted — which is an
+argument for the review gates, not against the wiki: Codex, having read none of it, found the
+same thing from the diff alone.
+
+Severity was measured rather than assumed. As a CORS fallback `DEFAULT_ORIGIN` is genuinely
+cosmetic (an unlisted origin is blocked by exact-match ACAO whatever the header says), but
+three functions mint real user-facing URLs from it when their env var is unset —
+`verify-email`, `send-verification-email`, `create-package-order-escrow`. All three prefer a
+trusted request `Origin` or the env var first, so ordinary browser traffic already resolved to
+`.com`; the fallback fires only for a request with no trusted `Origin`. Worth fixing, not
+urgent. And Phase 2 Step 1 (setting the secrets) overrides it in all three with **no deploy at
+all**, making the code flip defense-in-depth for the absent-secret case — which
+`PUBLIC_SITE_URL` proves is real, since it does not exist on prod.
+
+**Reading a secret's value without exposing it.** `supabase secrets list` returns each secret's
+name, **SHA-256 digest** and `updated_at`. The digest is a plain SHA-256 of the value, so a
+candidate can be tested for exact equality: `printf '%s' "https://dragoncandy.io" | sha256sum`
+matched `APP_URL`'s digest, establishing its value without ever seeing it. Works for any
+low-cardinality secret (a URL, a domain, a flag); useless against a real key, which is precisely
+why it is safe.
+
+**Three misses the finding surfaced downstream.** Chasing it rather than just patching it found
+four `href`/link-text pairs in `InternalRoute.tsx` and `InternalAuth.tsx` that the plan listed
+and the mechanical pass skipped — the `https://` prefix that deliberately makes email addresses
+*structurally* unmatchable also hid the bare display text next to each `href`, so they would
+have shipped with href and label disagreeing (the same defect `data-exposure-reviewer` caught
+on the password-set email: a link whose visible text names a different domain than its target
+is what mail filters score as phishing). It also falsified the wiki's own prediction that the
+flip "would force a sweep" — `_shared/*` bundles per function at deploy time, so a
+non-redeployed function simply keeps emitting `.io` cosmetically. Mixed fleet state costs
+nothing; the flip supplies a *reason* to sweep, not a requirement.
+
+**Method: binary-mode replacement with per-file assertions.** The first pass used Python text
+mode, which silently converts CRLF→LF on write and rewrote every line ending in five files — a
+2-line change appeared as a **2,192-line diff** on `send-notification-email`, which would have
+buried the change and polluted `git blame`. Reverted and redone in binary mode. The script
+asserts an exact expected occurrence count per file, which is what caught a real defect rather
+than merely preventing a mistake: `donny-chat` matched **0** URL-shaped occurrences, because
+its `.io` is prose inside a sentence Donny speaks, not a URL. A blind find-and-replace would
+have "succeeded".
+
+**Deliberately not changed:** 9 `@dragoncandy.io` addresses and 8 `notify.dragoncandy.io`
+references (Phase 5, gated on a real per-mailbox receive test — a dead support address is worse
+than an old one, since GDPR erasure requests and Stripe dispute alerts land there);
+`InternalAuth`'s `placeholder="you@dragoncandy.io"` (an email address, and pointing it at `.com`
+could mislead a founder about which account to use while the Workspace-org question behind
+`GOOGLE_ALLOWED_DOMAIN` is open); and **all three allow-lists plus the CSP keep BOTH TLDs** —
+expand → switch → redirect → **contract**, `.io` removed last or never, because removing it
+here would break every in-flight email link.
+
+**Gates:** `tsc --noEmit` clean · `allowedOrigins` + `internalHost` + `publicOrigin` 19/19 ·
+`data-exposure-reviewer` **PASS** (allow-list membership byte-compared unchanged;
+`DEFAULT_ORIGIN` traced through all 8 references and proven never an authorization input, and
+not an open-redirect surface) · **Codex clean on re-run** — *"The changes consistently switch
+canonical/public-facing defaults from dragoncandy.io to dragoncandy.com while preserving
+existing allow-list coverage for both TLDs. I did not find a discrete regression introduced by
+the diff."*
+
+**Still founder-owned:** set `APP_URL` (currently `.io`), `PUBLIC_SITE_URL` and
+`DRAGONCANDY_APP_URL` (both absent) to `https://dragoncandy.com`; then GoTrue **Site URL** →
+apex, which **logs out all ~42 users** (sessions live in origin-scoped `localStorage`). Phases
+3–6 not started. → `docs/wiki/concepts/domain-migration-io-to-com.md`
+
 ## [2026-08-09/10] iOS — repo work for the first signed build to TestFlight
 
 > **Merged, but that ships the frontend only.** Tasks 11–14 are still ahead and none of them

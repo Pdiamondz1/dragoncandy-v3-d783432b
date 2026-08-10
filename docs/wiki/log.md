@@ -1,5 +1,39 @@
 # Wiki Log
 
+## [2026-08-10] ingest | [[Domain Migration (.io → .com)]] Phase 2 — canonical switch
+
+Ingested `raw/sessions/2026-08-10-dotcom-phase2-canonical-switch.md` by **compounding onto
+the existing concept page** rather than creating a new one — Phase 2 is the same migration,
+and a second page would have split the phase sequence across two files.
+
+**Pages updated:** `concepts/domain-migration-io-to-com.md` (Phase 2 section replacing the
+prediction with what shipped; three resolved Known Issues struck through with dates rather
+than deleted; the secret-digest technique), `concepts/ios-testflight-first-build.md` (two
+claims this session falsified), `index.md`, this log. **No new page.**
+
+Three things worth carrying out of it:
+
+1. **The wiki had already caught this and nobody read it.** `ios-testflight-first-build.md`
+   named the exact omission in writing — *"most naturally the domain migration's
+   `DEFAULT_ORIGIN` flip … but is not currently listed in that migration's Phase 2"* — before
+   Phase 2 was drafted. A previous session spotted the gap, recorded it, and the next session
+   shipped without it. **Writing something down is not the same as it being consulted.** The
+   knowledge layer pays off only if something reads it at the moment of the decision, and
+   nothing did. This is an argument *for* the review gates, not against the wiki: Codex, which
+   had read none of it, found the same thing from the diff alone.
+
+2. **A wiki claim can be wrong in the confident direction too.** The same page asserted the
+   flip "would force a sweep" of the ~77 un-redeployed functions. It doesn't — `_shared/*`
+   bundles per function, so a non-redeployed function keeps emitting the old value as a
+   cosmetic ACAO fallback. Corrected in place. Synthesis inherits the confidence of its source
+   without inheriting the source's caveats.
+
+3. **Struck-through Known Issues beat deleted ones.** Three entries on that page were resolved
+   this session, and one (`LEADS_NOTIFY_EMAIL`) had been false *when written*, surviving only
+   because another doc claimed edge secrets were unlistable so nobody checked. Keeping them
+   struck through with resolution dates preserves the pattern — every one was a present-tense
+   claim about prod with an unmarked expiry.
+
 ## [2026-08-10] ingest | [[iOS TestFlight First Build]]
 
 Ingested `raw/sessions/2026-08-09-ios-testflight-first-build.md` as a **new concept
