@@ -49,10 +49,17 @@ This plan therefore does two things the spec did not spell out:
 
 ---
 
-### Task 1: Migration — column, bucket, storage RLS
+### Task 1: Migration — column, bucket, storage RLS — ✅ DONE 2026-08-09
+
+> **Already applied to prod and verified**, recorded as version `20260810013012`; the file is
+> committed at `supabase/migrations/20260810013012_donny_attachments.sql`. Verified results:
+> column exists (`jsonb`, nullable), bucket exists (`public = false`), all four policies
+> present, 0 existing rows touched, and the predicate rejects both `${uuid}-evil/…` and a
+> folderless key. **Steps 1–3 below are the record of what was done — do not re-run them.**
+> Step 4 (the `DATABASE_SCHEMA.md` note) is still open.
 
 **Files:**
-- Create: `supabase/migrations/20260809180000_donny_attachments.sql`
+- Create: `supabase/migrations/20260810013012_donny_attachments.sql`
 - Modify: `docs/DATABASE_SCHEMA.md`
 
 **Interfaces:**
@@ -144,7 +151,7 @@ Add a `donny_messages.attachments` note to the Donny AI table in `docs/DATABASE_
 - [ ] **Step 5: Commit**
 
 ```bash
-git add supabase/migrations/20260809180000_donny_attachments.sql docs/DATABASE_SCHEMA.md
+git add supabase/migrations/20260810013012_donny_attachments.sql docs/DATABASE_SCHEMA.md
 git commit -m "feat(donny): attachments column, private bucket, owner-only storage policies"
 ```
 
