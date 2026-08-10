@@ -213,9 +213,25 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   [[Edge-Function Deploy & Bundling]] documents, so "the deploy succeeded" is not evidence).
   **Gotcha worth keeping:** `NARROW_BUBBLE_FORMAT` lives in `_shared/social-analytics.ts`, which the
   orchestrator *bundles* — grep the whole deployed file set, never just `index.ts`, which returns 0
-  and reads as a failed deploy for entirely the wrong reason. **Pending:** the **both-viewport check,
-  which has still never been run on any task in this line of work**.
-  → `docs/wiki/concepts/donny-first-dashboard.md` · #410, #411, #423
+  and reads as a failed deploy for entirely the wrong reason. The founder then used it on prod and
+  filed one complaint twice — *"the conversation just keep running down endlessly and there's no
+  scroll button"* / *"we don't need the conversation from yesterday. Every prompt is fresh upon
+  visit."* — and **two sessions built the scroller in parallel**. #429 merged it (`DonnyThreadRegion`
+  + scroll-to-bottom, and a real-browser measurement catching `h-full` computing an **8337px scroller
+  inside a 145px parent**); #428 was **reset onto main and rebuilt** to carry only the remainder —
+  a display filtered **fresh per visit** by slicing Donny's one shared conversation on a baseline
+  **id** (never a count or a client clock), plus a greeting that collapses once a conversation runs,
+  with the block's reserved chrome dropping 26rem → 12rem so the reclaimed space reaches the thread
+  instead of becoming whitespace. Its duplicate scroller was **discarded, not merged**. Two Codex
+  findings, one confusion: **an empty `messages` array is not proof there is no history** (cold-load
+  tap recorded "no history" and let yesterday back in), and `isSuccess` is not "current" (React Query
+  keeps it true during a background refetch over cached data) → `isSuccess && !isFetching`.
+  **The durable lesson is process, not code:** the collision was found *by accident*, because the
+  `[scope]` check ran that morning against the **core docs** and said nothing about
+  `src/components/donny/` — point it at the **source paths the branch touches**.
+  **Pending:** **#428 is open, not merged**; and the **both-viewport check, which has still never
+  been run on any task in this line of work**.
+  → `docs/wiki/concepts/donny-first-dashboard.md` · #410, #411, #423, #428, #429
 - **DragonFeed uplift + sidebar double-active fix** — the "double-clicked button" was a
   **specificity** bug (each role's bare-root Dashboard href prefixed all ~26 child routes, in three
   copy-pasted navs) → one shared longest-match-wins `activeNavHref()`. The feed's four complaints

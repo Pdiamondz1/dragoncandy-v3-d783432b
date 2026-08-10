@@ -26,6 +26,54 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-10] Donny dashboard — every visit starts fresh, and the greeting gets out of the way
+
+The founder opened the deployed dashboard on their phone and rejected the shape: *"The long scroll
+down still exists. We don't need the conversation from yesterday. Every prompt is fresh upon visit…
+The current conversation should appear above the prompt like Claude and ChatGPT… Once the
+conversation reaches the 'page length' there needs to be a scroller."* Asked how the greeting should
+behave once a conversation starts, they chose **collapse it**.
+
+**Two sessions solved the first half in parallel, and only one shipped.** #429 (merged from
+`fix/donny-prompt-chrome-and-scroll`) landed the bounded scroller — `DonnyThreadRegion`, the composer
+as a plain flex sibling beneath it, and a scroll-to-bottom control — while this branch was building
+its own. #429's is better on every axis, including a defect this branch never found: `h-full` on the
+scroller resolved against ancestors with no definite height and computed an **8337px scroller inside
+a 145px parent**, so `overflow-y-auto` had nothing to overflow. So this branch was **reset onto main
+and rebuilt** to carry only what main still lacked, and its duplicate scroller was **discarded, not
+merged**.
+
+**What shipped here.** Donny keeps ONE conversation per user, shared with the side panel, so the
+dashboard **filters** it rather than forking it: the panel stays continuous, the model still receives
+its history, and only this surface's display is fresh. `visitBaselineId` is the id of the last
+message present when the user first asked here; the view is everything after it. **Slicing by an id
+rather than a count or a wall-clock time is what makes it robust** — late-arriving history lands
+*before* the baseline and stays excluded, and no client clock is involved (a skewed one would hide
+the reply being waited on). The greeting collapses to its label row once a conversation runs, and the
+block's max-height drops **26rem → 12rem** to match, because reserving room for a hero that is no
+longer rendered would hand the reclaimed ~200px back as whitespace. Suggestion chips retire with the
+hero.
+
+**Two Codex findings, both the same confusion.** The baseline was first recorded in `ask()`, *above*
+the "not ready yet, queue it" guard — so a tap on a cold dashboard recorded `null` ("this user has no
+history") and yesterday's thread counted as this visit the moment it arrived: **the founder's exact
+complaint, in precisely the fast-tap window the queue exists for.** Then: `isSuccess` is not
+"current" — React Query keeps it true while a background refetch runs over cached data, so readiness
+would be announced over a stale array. Hence `messagesLoaded = isSuccess && !isFetching`.
+
+Two existing tests became **stronger** rather than adjusted: arrival with an existing conversation
+now asserts the thread is *absent*, not merely unscrolled, and the chips assert *absence*, not
+`disabled`. Three negative controls run and confirmed. 33 tests in the file; full suite **2373 passed
+/ 0 failed**; typecheck, lint and build clean.
+
+**The durable lesson is not in the code.** The collision was found *by accident*, chasing an
+unrelated Codex finding. The `[scope]` check that would have caught it had been run that morning
+against the **core docs**, came back clean, and said nothing about `src/components/donny/`. Run it
+against the source paths the branch touches — on a repo with 30+ worktrees, "has someone already
+shipped this?" has a real answer, one command away.
+
+→ `docs/wiki/concepts/donny-first-dashboard.md` · #428, #429
+
 ## [2026-08-10] Domain migration Phase 2 (SWITCH) — canonical URLs move to `dragoncandy.com`
 
 Phase 2b + 2c of the `.io` → `.com` migration: the hardcoded literals that have no env

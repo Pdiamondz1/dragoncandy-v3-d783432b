@@ -1,5 +1,28 @@
 # Wiki Log
 
+## [2026-08-10] ingest | [[Donny-First Dashboard]] — fresh every visit, and a parallel-PR collision
+
+Ingested `raw/sessions/2026-08-10-donny-dashboard-fresh-per-visit.md` by **compounding onto
+the existing page**.
+
+The founder rejected the shape of the shipped Phase B dashboard. **Two sessions acted on it in
+parallel**: #429 merged the bounded scroller (plus a scroll-to-bottom control and a real-browser
+measurement showing `h-full` computing an 8337px scroller inside a 145px parent), and #428 was
+**reset onto main and rebuilt** to carry only the remainder — fresh-per-visit filtering and the
+collapsing greeting. The duplicate scroller was discarded, not merged.
+
+Two durable lessons recorded. **The `[scope]` check is only as wide as the paths given to it** —
+it was run that morning against the core docs, came back clean, and said nothing about
+`src/components/donny/`, where the feature had just been reimplemented; the collision was found
+by accident, chasing an unrelated Codex finding. And **an empty collection is three different
+facts** — "not loaded", "loaded and empty", "no query ran" — which is why the fresh-per-visit
+baseline needs `isSuccess && !isFetching` rather than an array length.
+
+Also corrected a claim the page had carried since #423: the dashboard thread no longer "sits in
+normal page flow scrolled by `#main-content`".
+
+Pages updated: [[Donny-First Dashboard]], `docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §5.
+
 ## [2026-08-10] ingest | [[Domain Migration (.io → .com)]] Phase 2 — canonical switch
 
 Ingested `raw/sessions/2026-08-10-dotcom-phase2-canonical-switch.md` by **compounding onto
