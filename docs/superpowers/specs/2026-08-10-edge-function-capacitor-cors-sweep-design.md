@@ -115,13 +115,6 @@ these — not CORS itself. They carry the same stale `_shared` module and stale 
 > parameter and the line break defeat it. The enumeration must be **multiline-aware**:
 > `functions\.invoke(<[^>]*>)?\(\s*['"\n]` plus the `` `${…}/functions/v1/<slug>` `` template form.
 > A grep that silently under-matches is worse than no grep, because it produces a confident wrong list.
-`aios-playbook-run`, `aios-report-ingest`, `chat-assistant`, `donny-analytics-alerts`,
-`donny-cost-rollup`, `donny-creator-match`, `donny-knowledge-sync`, `donny-nudge-frame`,
-`donny-oauth-token`, `donny-oauth-userinfo`, `donny-schedule`, `donny-toast-context`,
-`dre-award-engine`, `expire-social-hooks`, `fire-dragonshare-social-hook`, `fire-promotion-social-hook`,
-`generate-anonymous-brief`, `generate-embedding`, `google-workspace-proxy`, `notify-package-order`,
-`resolve-dispute`, `sync-seat-count`, `toast-discount-push`, `validate-upload`, `wiki-commit-pr`,
-`wiki-import-doc`, `wiki-save-answer`
 
 **Bucket C — money (15). Excluded.** See §7.
 
@@ -196,11 +189,9 @@ real cross-function dependency and had to be redone:
   deployed from a branch carries that branch's bytes — invisible to any timestamp comparison. Two things
   support the assumption: all 45 deploys fall inside a single ~54-minute window (epoch 1786314500 →
   1786317758), consistent with one scripted fleet pass rather than 45 independent acts; and PROJECT_CONTEXT
-  records a post-#415 fleet redeploy at exactly that time. Neither is proof. **§8 therefore adds a canary
-  provenance check** — read `match-creators`' deployed source and confirm it matches `main`'s
-  `match-creators/index.ts`. If it does, the fleet pass was from `main` and this assumption is closed
-  empirically. If it does not, stop: the whole timestamp argument fails and every function needs
-  individual source comparison.
+  records a post-#415 fleet redeploy at exactly that time. Neither is proof. **§6 therefore adds a
+  pre-flight provenance gate on `content-strategy-recommend`** — see there for why that function and not
+  the canary.
 - **Commit-timestamp order as a proxy for reachability order.** `git log --since` filters on committer
   date, so a merge that preserved a branch's older dates could make a commit fall outside the window yet
   only become reachable after it. Closed by inspection: `caa7ca97`, `d5cb594b`, `98c63745` and
@@ -217,8 +208,13 @@ which is what makes the tranche plan in §5 cheap.
 where being wrong is cheapest. It is also on **`.typecheck-ignore` (line 39)**: CI has never
 type-checked it, so if any function in the sweep is going to fail a hand-run `deno check` or fail to
 boot, this is the class it comes from. Leading with an unchecked function is deliberate, not incidental.
-The canary additionally carries the **provenance check** from §4 — confirm its deployed source matches
-`main` — because that is what closes the deployed-from-`main` assumption for the whole fleet pass.
+
+**The canary does *not* carry the provenance gate, and the two roles must not be collapsed onto one
+function.** They ask different questions and have different closure requirements: the canary asks *does
+the new delta boot and take effect*, which wants the least-covered function; the provenance gate (§6)
+asks *was the fleet deployed from `main`*, which wants a function whose closure contains a
+changed-but-not-delta file — something `match-creators` structurally lacks. Merging them would make the
+provenance gate vacuous, which is exactly the trap it was rewritten to escape.
 
 Then tranches, **all of bucket A before any of bucket B**, with a probe sweep after each:
 
@@ -263,7 +259,7 @@ Three of the brief's guardrails were verified **already satisfied** and are reti
 > because the diff above proves no slug can flip — but the post-deploy assertion is what would *catch*
 > that proof being wrong.
 
-Two remain live and are pre-flight gates:
+Three remain live and are pre-flight gates:
 
 - **`deno check` by hand** against a `main` baseline, on the changed `_shared` files and on the 18
   functions CI does not cover. **`supabase/functions/.typecheck-ignore` is an *exclusion* list, not an
@@ -275,6 +271,20 @@ Two remain live and are pre-flight gates:
   `main` baseline rather than expecting zero errors: every name on that list is there because
   `deno check` currently *fails* on it, so only a **delta** against the baseline is signal.
 - **`edge-function-reviewer` subagent** before the first deploy (CLAUDE.md mandate).
+- **Provenance gate — `get_edge_function` on `content-strategy-recommend`, before any deploy. Blocking.**
+  This is the one empirical test of §4's deployed-from-`main` assumption, on which the entire
+  byte-identical-delta argument rests. Its deployed bundle must contain the **post-#416** `brief.ts` and
+  `_shared/social-signal.ts` (both epoch 1786315093, both preceding its 1786317758 deploy). If either is
+  absent or pre-#416, the fleet pass was **not** from `main`, every timestamp comparison in §4 is void,
+  and each of the 45 needs individual source comparison before it moves.
+
+  **Why this function and not the canary.** A deploy from a worktree branch differs from `main` only in
+  files that branch changed, so the check only discriminates if the closure contains a file that changed
+  in the window but is *not* part of the delta. `match-creators`' entire closure is `index.ts` +
+  `cors.ts` + `geo.ts` — `geo.ts` is unchanged and the other two *are* the delta, whose stale state §3
+  already reported. Running this on the canary would pass unconditionally and record a load-bearing
+  assumption as discharged while testing nothing. `content-strategy-recommend` is the only bucket-A/B
+  function whose closure carries changed-but-not-delta files.
 
 ## 7. Deliberate exclusions
 
@@ -353,11 +363,10 @@ Per function, after deploy:
 **canary and any anomaly only**. When it is run, grep the whole spilled file set rather than `index.ts`
 alone — shared modules are bundled in, and grepping only the entrypoint returns 0 for the wrong reason.
 
-**Canary-only, and blocking: the provenance check.** Before deploying `match-creators`, `get_edge_function`
-it and compare the deployed `match-creators/index.ts` against `main`'s copy. They must match. This is the
-one empirical test of §4's deployed-from-`main` assumption, on which the entire "byte-identical delta"
-argument rests. **If they differ, stop the sweep** — the fleet was not deployed from `main`, timestamp
-comparison proves nothing, and every function needs individual source comparison before it moves.
+Note that the **provenance gate is a separate, earlier read** and lives in §6, not here: it runs once
+before any deploy, targets `content-strategy-recommend` rather than the canary, and greps for
+post-#416 `brief.ts` / `social-signal.ts` rather than for `capacitor://localhost`. Do not conflate the
+two bundle reads — passing one is not passing the other.
 
 **Done means:** the stale bucket drops **60 → 15** (exactly bucket C), the **22 enumerated in §3** still
 probe as `capacitor://localhost`, and no `verify_jwt` moved anywhere in the fleet. All three are checked
