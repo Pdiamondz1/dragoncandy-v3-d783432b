@@ -471,9 +471,10 @@ Expected: no errors.
 
 ```bash
 grep -c "publicOrigin()" src/hooks/useProjectComplete.ts src/hooks/useSponsorshipComplete.ts
+grep -n "window.location.origin" src/hooks/useProjectComplete.ts src/hooks/useSponsorshipComplete.ts
 ```
 
-Expected: `5` for each file (4 usages + 1 import line).
+Expected: `4` for each file from the first command, and **no output** from the second. Four, not five — the import line reads `import { publicOrigin } from …` with no parentheses, so it does not match the pattern. Confirm both imports separately; this count would not catch a missing one.
 
 - [ ] **Step 4: Commit**
 
