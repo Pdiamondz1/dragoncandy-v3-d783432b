@@ -9,7 +9,7 @@ tags: [aios, internal, auth, user-roles, provisioning, supabase, resend]
 # AIOS Stakeholder Invite
 
 How **internal-only accounts** are provisioned for the DragonCandy AIOS
-(`internal.dragoncandy.io`): a reusable, admin-only **invite-by-email** that grants AIOS access
+(`internal.dragoncandy.com`): a reusable, admin-only **invite-by-email** that grants AIOS access
 and lets the invitee set their own password — **without ever creating a consumer DragonCandy.io
 account**. Shipped in PR #178; the driver was adding Adrian Vella as an AIOS admin. Provisioning
 used to be hand-inserted `user_roles` rows in the DB; this is the UI + plumbing that replaces that.
@@ -66,7 +66,7 @@ Frontend: `/internal/stakeholders` (admin-tier) + `useInternalUsers`/`useInviteI
 - None functional. Codex second review clean; the two Codex P2 catches (stale-trigger-body
   regression, never-accepted re-invite gap) were fixed before merge.
 - **Founder go-live prerequisites** (one-time, done): allow-list
-  `internal.dragoncandy.io/auth/update-password` (+ `/*`) in Supabase Auth Redirect URLs; deploy
+  `internal.dragoncandy.com/auth/update-password` (+ `/*`) in Supabase Auth Redirect URLs; deploy
   the edge fn with `verify_jwt=false`.
 
 ## See Also

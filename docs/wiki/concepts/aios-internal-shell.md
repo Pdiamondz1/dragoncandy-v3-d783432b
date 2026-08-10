@@ -8,7 +8,7 @@ tags: [aios, internal, navigation, ui, design, mobile, donny]
 ---
 # AIOS Internal Shell
 
-How the DragonCandy AIOS (`/internal/*` on `internal.dragoncandy.io`) is navigated and
+How the DragonCandy AIOS (`/internal/*` on `internal.dragoncandy.com`) is navigated and
 laid out. The AIOS is a single role-gated React surface that had grown to **11 sections**;
 this is the shell + page chrome that keeps that many sections calm and one-tap navigable
 on both desktop and mobile. It is the dark "ops-deck" counterpart to the light consumer

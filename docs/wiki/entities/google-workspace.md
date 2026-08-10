@@ -32,8 +32,9 @@ Surface: `/internal/workspace` (stakeholder tier and above).
   `GOOGLE_OAUTH_STATE_SECRET`). Google authorization codes are single-redemption, so a
   replayed state+code fails at the exchange. `access_type=offline`, `prompt=consent`
   guarantees a refresh token.
-- **Callback**: `/internal/workspace/callback` (registered for both
-  `internal.dragoncandy.io` and `dragoncandy.io`).
+- **Callback**: `/internal/workspace/callback` (registered for
+  `internal.dragoncandy.com` and `dragoncandy.com`; the `.io` pair stays registered too,
+  so an in-flight OAuth link still completes).
 
 ### `google-workspace-proxy` Edge Function
 

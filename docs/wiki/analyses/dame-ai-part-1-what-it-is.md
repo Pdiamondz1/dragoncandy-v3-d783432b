@@ -64,7 +64,7 @@ Dame AI doesn't replace human judgment on strategy. It executes the work that st
 - When a new feature ships, Dame auto-drafts a website update: updated feature copy for the relevant landing page section, an updated FAQ entry, and a changelog post  
 - Presents draft to founders via AIOS for one-tap approval before publishing  
 - Manages the website's blog/content section — publishes one article per week on topics relevant to creators, restaurants, or the food content economy (see Domain 4 for sourcing)  
-- Monitors dragoncandy.io contact form submissions and drafts personalized responses within 2 hours, presented to founders for review and send
+- Monitors dragoncandy.com contact form submissions and drafts personalized responses within 2 hours, presented to founders for review and send
 
 **Hard rules:**
 
@@ -283,7 +283,7 @@ This domain connects Dame AI to the Dragon Rewards Engine (DRE) built separately
   - "Best way to get social media content for my restaurant" → restaurant acquisition  
   - "How to find local food influencers" → restaurant acquisition  
   - "Food content creator jobs near me \[city\]" → creator acquisition per metro  
-- One article per week, Dame writes it, founders review and approve, publishes to dragoncandy.io/blog  
+- One article per week, Dame writes it, founders review and approve, publishes to dragoncandy.com/blog  
 - Over 6–12 months this becomes a significant organic acquisition channel at $0 additional cost
 
 **Community Building:**
