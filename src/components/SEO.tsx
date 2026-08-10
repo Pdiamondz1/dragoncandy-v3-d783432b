@@ -10,7 +10,12 @@ interface SEOProps {
   jsonLd?: Record<string, unknown>;
 }
 
-const SITE_URL = "https://dragoncandy.io";
+// Canonical origin. Phase 2 of the .io → .com migration (apex, not www — Vercel
+// 308s www → apex). Every canonical link and og:url on the site derives from this
+// one constant, so it is the single highest-leverage line in the migration.
+// `.io` keeps working and 301s here in Phase 3; it is NOT removed from any
+// allow-list (see src/lib/allowedOrigins.ts, which deliberately keeps both).
+const SITE_URL = "https://dragoncandy.com";
 const DEFAULT_IMAGE = `${SITE_URL}/icons/icon-512.png`;
 
 export function SEO({

@@ -61,7 +61,7 @@ function esc(s: string): string {
     .replace(/'/g, '&#39;');
 }
 
-export const INTERNAL_HOST_URL = 'https://internal.dragoncandy.io';
+export const INTERNAL_HOST_URL = 'https://internal.dragoncandy.com';
 export const INVITE_SUBJECT = 'Your invitation to DragonCandy AIOS';
 export const GRANTED_SUBJECT = 'You now have access to DragonCandy AIOS';
 

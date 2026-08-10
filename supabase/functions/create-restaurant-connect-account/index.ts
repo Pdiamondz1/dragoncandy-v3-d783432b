@@ -55,7 +55,7 @@ serve(async (req) => {
     }
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const origin = req.headers.get("origin") || "https://dragoncandy.io";
+    const origin = req.headers.get("origin") || "https://dragoncandy.com";
 
     // Resolve existing Stripe account: org_units first, then business_profiles
     let accountId: string | null = null;

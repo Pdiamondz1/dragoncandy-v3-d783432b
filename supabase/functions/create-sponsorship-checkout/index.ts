@@ -99,7 +99,7 @@ serve(async (req) => {
     const totalAmount = Math.round(amount * 100);
     logStep("Fee calculation", { amount, takeRate, platformFee: platformFee / 100, totalAmount: totalAmount / 100 });
 
-    const origin = req.headers.get("origin") || "https://dragoncandy-v3.lovable.app";
+    const origin = req.headers.get("origin") || "https://dragoncandy.com";
 
     // Create checkout session with dynamic price
     const session = await stripe.checkout.sessions.create({

@@ -288,7 +288,7 @@ const PublicCreatorProfile = () => {
           "@type": "Person",
           "name": profile.creator_name,
           "image": profile.avatar_url,
-          "url": `https://dragoncandy.io/creator/${slug}`,
+          "url": `https://dragoncandy.com/creator/${slug}`,
           "jobTitle": "Content Creator",
         }}
       />

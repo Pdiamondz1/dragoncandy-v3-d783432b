@@ -68,7 +68,7 @@ serve(async (req: Request) => {
   const TOAST_CLIENT_ID = Deno.env.get("TOAST_CLIENT_ID");
   const TOAST_CLIENT_SECRET = Deno.env.get("TOAST_CLIENT_SECRET");
   const TOAST_OAUTH_REDIRECT_URI = Deno.env.get("TOAST_OAUTH_REDIRECT_URI");
-  const DRAGONCANDY_APP_URL = Deno.env.get("DRAGONCANDY_APP_URL") || "https://dragoncandy.io";
+  const DRAGONCANDY_APP_URL = Deno.env.get("DRAGONCANDY_APP_URL") || "https://dragoncandy.com";
 
   if (!TOAST_OAUTH_TOKEN_URL || !TOAST_CLIENT_ID || !TOAST_CLIENT_SECRET || !TOAST_OAUTH_REDIRECT_URI) {
     return new Response(

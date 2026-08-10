@@ -95,7 +95,7 @@ export default function HelpArticlePage() {
           "@context": "https://schema.org",
           "@type": "Article",
           "headline": article.title,
-          "url": `https://dragoncandy.io/help/${slug}`,
+          "url": `https://dragoncandy.com/help/${slug}`,
         }}
       />
       <PageHeader>

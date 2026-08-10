@@ -537,7 +537,7 @@ const handler = async (req: Request): Promise<Response> => {
         html: `
           <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
-              <img src="https://dragoncandy.io/donny-emblem.webp" alt="DragonCandy" width="48" height="48" style="display: block; margin: 0 auto 12px; border-radius: 50%; object-fit: cover;" />
+              <img src="https://dragoncandy.com/donny-emblem.webp" alt="DragonCandy" width="48" height="48" style="display: block; margin: 0 auto 12px; border-radius: 50%; object-fit: cover;" />
               <h1 style="color: white; margin: 0; font-size: 28px;">New Crew Campaign!</h1>
             </div>
             <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
@@ -564,7 +564,7 @@ const handler = async (req: Request): Promise<Response> => {
         html: `
           <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
-              <img src="https://dragoncandy.io/donny-emblem.webp" alt="DragonCandy" width="48" height="48" style="display: block; margin: 0 auto 12px; border-radius: 50%; object-fit: cover;" />
+              <img src="https://dragoncandy.com/donny-emblem.webp" alt="DragonCandy" width="48" height="48" style="display: block; margin: 0 auto 12px; border-radius: 50%; object-fit: cover;" />
               <h1 style="color: white; margin: 0; font-size: 28px;">You're invited to a crew</h1>
             </div>
             <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
