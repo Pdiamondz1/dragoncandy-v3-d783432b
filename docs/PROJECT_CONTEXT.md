@@ -128,11 +128,31 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `supabase db push` will see the repo version as unapplied and re-run it — **proven a no-op**
   (`rows_help=0 rows_playbook=0`, assertions pass) because every statement is filtered on
   containing the old string. Same class as the Slice-2 entry recorded under `20260726024318`.
-  **Pending (2026-08-10):** the `.com` **Search Console** property — founder
-  chose `info@dragoncandy.com`, which is not signed into the browser; Change of Address is
-  **impossible, not deferred** (no property has ever existed); and a **redeploy of
-  `send-verification-email` + `manage-internal-users`** for the derived link labels. Phases 5–6
-  (mail, contract) not started. → `docs/wiki/concepts/domain-migration-io-to-com.md`
+  **`send-verification-email` (v231) + `manage-internal-users` (v11) DEPLOYED and boot-verified
+  2026-08-10**, closing the derived link labels — and the redeploy incidentally closed a
+  **pre-Phase-2 `_shared/origins.ts`** in `send-verification-email` (every verification email had
+  been going out with `<a href="…dragoncandy.com">dragoncandy.io</a>`, the mismatched-anchor shape
+  mail filters score as phishing) and added `capacitor://localhost` to its CORS allow-list.
+  **Phase 5 (MAIL) AUDITED 2026-08-10; the *expand* step shipped and NO mailbox moved.** The audit
+  overturned the plan's premise: an SMTP `RCPT TO` probe returned **250 for all five `.com` target
+  mailboxes and for two nonsense control addresses** — `dragoncandy.com` **catch-alls**, so a dead
+  address does **not** bounce, it silently vanishes (a GDPR erasure request with it), which makes a
+  human **receive test irreplaceable** and a successful *send* worthless as evidence. `.io` is
+  unprobeable (IONOS `554 blocklisted`), so neither side is verified by observation. Phase 5 is
+  therefore **two** gated halves, not one: **5a** (recipient `mailto:`/`to:`) awaits the receive
+  test; **5b** (Resend `from:` ×8) is **recommended DEFERRED** — `notify.dragoncandy.com` doesn't
+  exist in DNS at all, and `.com`'s DMARC is **`p=quarantine`** vs `.io`'s `p=none`, so a
+  misconfigured move junks every transactional email **silently** (Resend and our logs both report
+  success) for zero user-visible benefit. Shipped instead: `src/lib/contactAddresses.ts` collapsing
+  8 scattered literals to 3 constants + a test that fails CI on a *partial* flip, a live `mailto:`
+  encoding bug (8 of 32 prod help titles carry a URL metacharacter; `DC Points & Creator Standing`
+  truncated the subject to "Help: DC Points"), and 6 Phase-2 residuals naming the **website** in the
+  legal pages, pitch deck and help briefs. **Pending (2026-08-10):** the founder **receive test** on
+  the five `.com` mailboxes (the 5a gate); a **go/no-go on 5b**; and the `.com` **Search Console**
+  property — founder chose `info@dragoncandy.com`, which is not signed into the browser; Change of
+  Address is **impossible, not deferred** (no property has ever existed). Phase 6 (contract)
+  **recommendation: don't** — all transactional mail still originates from `notify.dragoncandy.io`.
+  → `docs/wiki/concepts/domain-migration-io-to-com.md`
 - **Apple App Store (Capacitor)** — iOS shell over the web app. Phase 1 (foundation) +
   Phase 2 (native camera + share sheet) shipped; the first-signed-build work (origin
   seam so email/share/OAuth links work natively, `capacitor://localhost` trusted in the

@@ -3,8 +3,8 @@ title: Domain Migration (.io → .com)
 type: concept
 created: 2026-08-09
 updated: 2026-08-10
-sources: [2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md, 2026-08-09-ios-testflight-first-build.md, 2026-08-10-dotcom-phase2-canonical-switch.md, 2026-08-10-dotcom-phase3-permanent-redirect.md, 2026-08-10-dotcom-phase4-content.md]
-tags: [domain, dns, cors, auth, vercel, migration, seo, content, help-center]
+sources: [2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md, 2026-08-09-ios-testflight-first-build.md, 2026-08-10-dotcom-phase2-canonical-switch.md, 2026-08-10-dotcom-phase3-permanent-redirect.md, 2026-08-10-dotcom-phase4-content.md, 2026-08-10-dotcom-phase5-mail-audit.md]
+tags: [domain, dns, cors, auth, vercel, migration, seo, content, help-center, email, dmarc, resend]
 ---
 # Domain Migration (.io → .com)
 
@@ -307,10 +307,78 @@ The doc edits ran through an exact-string script requiring **exactly one match p
 caught a real miss: `google-workspace.md` uses CRLF, so a `\n`-containing pattern matched zero
 times — and the script failed loudly instead of silently doing nothing.
 
-## Remaining phases
+## Phase 5 — MAIL (audited 2026-08-10; expand step shipped, no mailbox moved)
 
-- **Phase 5 — mail** (deferred; a dead support address is worse than an old one),
-  **Phase 6 — CONTRACT** (optional; recommendation: don't).
+**Phase 5 is two changes with two gates and two blast radii, and treating them as one is what made
+it look like a single deferred chore:**
+
+- **5a — recipient addresses** (`mailto:` ×7 + `stripe-webhook`'s `to:`). Gate: a per-address
+  **receive test**.
+- **5b — sending domain** (`from:` ×8 across 7 edge functions, all `@notify.dragoncandy.io`).
+  Gate: Resend + GoDaddy DNS. **Recommendation: defer indefinitely** — see below.
+
+### A dead `.com` address does not bounce — it disappears
+
+The plan's premise, *"a dead support address is worse than an old one,"* assumed a **bounce**.
+There isn't one. A read-only SMTP `RCPT TO` probe (never issues `DATA`, so nothing is sent) against
+`aspmx.l.google.com` returned **250 for all five target mailboxes — and 250 for two deliberately
+nonsensical control addresses.** `dragoncandy.com` catch-alls.
+
+**Without the controls the probe would have read as "all five mailboxes confirmed."** It proves the
+opposite: SMTP acceptance carries **no information** about whether a mailbox exists or is monitored.
+Mail to a nonexistent `.com` address is accepted and then vanishes — no bounce, no error, no signal
+to anyone. A GDPR erasure request would disappear in silence.
+
+So **the receive test is irreplaceable**: no probe substitutes for it, and a successful *send*
+proves nothing. Only a human confirming arrival in a monitored inbox clears 5a. (Same family as
+[[Domain Migration (.io → .com)]]'s own rule that *a probe without a control proves nothing* — here
+the control is what killed the probe rather than validating it.)
+
+The `.io` side is **unprobeable** — IONOS answers `554 IP address is block listed` for this origin —
+so today's addresses are not verified either. **Neither side is established by observation.**
+
+### 5b moves mail from a forgiving DMARC policy to an unforgiving one
+
+| | `_dmarc` policy |
+|---|---|
+| `dragoncandy.io` | `p=none` |
+| `dragoncandy.com` | **`p=quarantine`** (`adkim=r`, `aspf=r`) |
+
+Moving the Resend sending domain moves transactional mail from a policy that *tolerates* a DKIM/SPF
+misconfiguration to one that **junks it — silently**. Resend reports success, our logs report
+success, the mail lands in spam. The one email a new signup MUST receive is the verification email.
+
+Against that risk, the move buys **nothing user-visible**: `notify.dragoncandy.io` appears only as a
+sender address, never as a clickable brand link, and it carries a warmed DKIM reputation a new
+subdomain would start from zero. `notify.dragoncandy.com` **does not exist in DNS at all** today —
+no TXT, no DKIM, no MX.
+
+If it is ever done: both domains verified in Resend **simultaneously**, flip **one function at a
+time** starting with the lowest-stakes (`capture-lead`, internal-only alerts), and verify by opening
+a real inbox **including the spam folder** — never by trusting "Resend says verified."
+
+### What shipped: the expand step (`src/lib/contactAddresses.ts`)
+
+`support@` was hardcoded in **four** components, `privacy@` in two, `sales@` in one — the shape that
+lets a domain get missed, and the same shape the origins allow-list had before Phase 1 collapsed it.
+**Eight literals is eight chances to update seven of them.** One module now owns all three, and a
+test asserts they share **one** domain, so a partial flip fails CI rather than reaching a user told
+to email an address nobody reads. The addresses still read `.io`; the flip is a three-line change.
+
+**A live defect found en route:** `HelpArticlePage` interpolated the article title straight into the
+`mailto:` query string, and **8 of 32 prod titles carry a URL metacharacter** — `DC Points & Creator
+Standing` among them. The unencoded `&` ended the `subject` parameter early, truncating it to
+"Help: DC Points". `mailtoHref()` encodes structurally.
+
+**MDX help briefs move by DEPLOY, not migration.** `src/content/help/promotions/*.mdx` is bundled via
+`import.meta.glob`, so Phase 4's *"editing a seed changes nothing in prod"* lesson does **not** apply
+to them — check which store a piece of content actually lives in before assuming.
+
+## Phase 6 — CONTRACT
+
+Optional; **recommendation: don't**. Now doubly so: every transactional email currently originates
+from `notify.dragoncandy.io`, so letting `.io` lapse would kill **all** transactional mail, on top of
+the PII constraint below.
 
 > **A hard constraint on ever letting `.io` go, surfaced by `data-exposure-reviewer` during the
 > Phase 4 review.** `dragoncandy.io` must not be allowed to **lapse or transfer** while any

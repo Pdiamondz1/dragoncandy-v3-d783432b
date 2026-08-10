@@ -1,5 +1,24 @@
 # Wiki Log
 
+## [2026-08-10] ingest | [[Domain Migration (.io → .com)]] Phase 5 — the mail audit
+
+Ingested `raw/sessions/2026-08-10-dotcom-phase5-mail-audit.md` by **compounding onto the existing
+concept page**, replacing its one-line "Phase 5 — mail (deferred)" placeholder with what the audit
+actually established. Two findings overturned the plan's own reasoning, so this is a correction to
+the page, not an addition to it:
+
+- The plan's premise — *"a dead support address is worse than an old one"* — assumed a **bounce**.
+  `dragoncandy.com` **catch-alls**: an SMTP `RCPT TO` probe returned 250 for all five target
+  mailboxes **and for two nonsense control addresses**. Without the controls it would have read as
+  "all five confirmed." Mail to a nonexistent `.com` mailbox is accepted and then vanishes, so the
+  receive test is **irreplaceable** and a successful *send* proves nothing.
+- Phase 5 was one item; it is **two**, with different gates and blast radii. 5b (sending domain)
+  moves mail from `.io`'s `p=none` DMARC to `.com`'s **`p=quarantine`** — where a misconfiguration
+  junks mail **silently** — for **zero** user-visible benefit. Recommendation recorded: defer.
+
+Also records that MDX help briefs move by **deploy**, not migration — a limit on Phase 4's
+"editing a seed changes nothing in prod" lesson. Pages updated: `concepts/domain-migration-io-to-com.md`.
+
 ## [2026-08-10] ingest | [[Donny RAG Scope Boundary]] — the consumer RAG was the leak
 
 Ingested `raw/sessions/2026-08-10-wiki-rag-consumer-scope.md` as a **new concept page**, not a

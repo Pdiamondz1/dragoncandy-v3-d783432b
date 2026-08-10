@@ -26,6 +26,63 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-10] Domain migration Phase 5 (MAIL) — audited, and deliberately not flipped
+
+Branch `feat/dotcom-phase5-mail` · `src/lib/contactAddresses.ts` (new) · Codex clean, no findings.
+
+**No mailbox moved.** The session shipped the *expand* step and left the flip gated, because the
+audit overturned the plan's own premise.
+
+**Finding 1 — a dead `.com` address does not bounce, it disappears.** A read-only SMTP `RCPT TO`
+probe (never issues `DATA`, so nothing is sent) against `aspmx.l.google.com` returned **250 for all
+five target mailboxes** — `support@`, `privacy@`, `sales@`, `admin@`, `founders@` — **and 250 for
+two deliberately nonsensical control addresses.** `dragoncandy.com` catch-alls. *Without the
+controls this probe would have read as "all five mailboxes confirmed."* The plan said "a dead
+support address is worse than an old one," which assumes a **bounce** — there is none. Mail to a
+nonexistent `.com` mailbox is accepted and then vanishes: no bounce, no error, no signal to anyone.
+A GDPR erasure request would disappear in silence. **So the receive test is irreplaceable, and a
+successful *send* proves nothing.** The `.io` side is unprobeable (IONOS answers `554 IP address is
+block listed`), so today's addresses aren't verified either — reported as unknown, not dressed up.
+
+**Finding 2 — Phase 5 is two changes, not one.** **5a** (recipient addresses: `mailto:` ×7 +
+`stripe-webhook`'s `to: admin@`) is gated on the receive test. **5b** (sending domain: `from:` ×8
+across 7 edge functions) is gated on Resend + GoDaddy DNS, and is far riskier than the plan assumed:
+`.io` publishes DMARC `p=none`, `.com` publishes **`p=quarantine`**, so moving the sending domain
+moves transactional mail from a policy that *tolerates* a DKIM/SPF misconfiguration to one that
+**junks it silently** — Resend reports success, our logs report success, the mail lands in spam, and
+the one email a new signup MUST receive is the verification email. For **zero** user-visible
+benefit: `notify.dragoncandy.io` is never a clickable brand link and carries a warmed reputation a
+new subdomain would start from zero. `notify.dragoncandy.com` doesn't exist in DNS at all.
+**Recommendation recorded: defer 5b indefinitely.**
+
+**Shipped (expand):** `support@` had been hardcoded in **four** components, `privacy@` in two,
+`sales@` in one — the shape that lets a domain get missed, and the same shape the origins allow-list
+had before Phase 1 collapsed it. **Eight literals is eight chances to update seven of them.** One
+module now owns all three, with a test asserting they share **one** domain so a partial flip fails
+CI rather than reaching a user told to email an address nobody reads.
+
+**A live defect fixed en route:** `HelpArticlePage` interpolated the article title straight into the
+`mailto:` query string, and **8 of 32 prod titles carry a URL metacharacter** — `DC Points & Creator
+Standing` among them. The unencoded `&` ended the `subject` parameter early, so the Email-support
+button opened a mail client with the subject truncated to "Help: DC Points". `mailtoHref()` encodes
+structurally and retired the hand-written `%20` escaping in the settings pages.
+
+**Six Phase-2 residuals** swept while here — they name the **website**, not a mailbox, so nothing
+gated them: the Privacy Policy and ToS each defined the Service as "our website at dragoncandy.io",
+the pitch deck's closing slide showed `.io`, two troubleshooting steps told users to allow pop-ups
+and clear cookies for the old domain, and a promo share-link example read `dragoncandy.io/promo/...`.
+**MDX help briefs are bundled via `import.meta.glob`, so they move by DEPLOY, not migration** — a
+real limit on Phase 4's "editing a seed changes nothing in prod" lesson.
+
+Deliberately left, each with a reason: `troubleshooting.mdx`'s `support@` prose and
+`stripe-webhook`'s `admin@` (mailboxes → gated; and Deno can't import from `src/`), the
+`gdpr-erasure` article's stored `privacy@` (DB content → migration), and architecture comments
+naming `internal.dragoncandy.io` (mechanism text; the host still resolves). Surfaced but **not**
+fixed: the legal pages route data-rights requests to `privacy@` while the in-app GDPR-erasure links
+route to `support@` — where those land is an operations decision, not a refactor.
+
+→ `docs/wiki/concepts/domain-migration-io-to-com.md`
+
 ## [2026-08-10] Donny's consumer RAG was 107 leaking wiki pages and nothing else
 
 **PR #434** (`669b259b`, squash-merged) · script `supabase/scripts/sync-wiki-to-donny.mjs` ·
