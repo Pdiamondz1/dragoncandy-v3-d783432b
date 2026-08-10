@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { AppChip } from '@/components/app/AppChip';
@@ -50,11 +50,11 @@ export function DonnyCanvas({ suggestions, onSuggestionTap, onPromptSubmit, chil
   // resting→thread edge; a second question in the same visit must not hide the
   // first exchange.
   const baselineRef = useRef(0);
-  const enterThread = () => {
+  const enterThread = useCallback(() => {
     if (mode === 'thread') return;
     baselineRef.current = messages.length;
     setMode('thread');
-  };
+  }, [mode, messages.length]);
 
   // Claim the stage for as long as this canvas is mounted. Unconditional on
   // purpose: it also closes a panel opened on another page, because nothing
@@ -114,9 +114,7 @@ export function DonnyCanvas({ suggestions, onSuggestionTap, onPromptSubmit, chil
   useEffect(() => {
     if (!isStreaming) return;
     enterThread();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- enterThread is
-    // re-created every render; its own mode guard is what makes this idempotent.
-  }, [isStreaming, mode, messages.length]);
+  }, [isStreaming, enterThread]);
 
   // Scroll anchoring: the app's real scroller is #main-content
   // (window.scrollY is always 0 in this shell), not an internal div —

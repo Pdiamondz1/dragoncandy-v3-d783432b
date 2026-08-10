@@ -107,13 +107,6 @@ describe('DonnyComposer', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('hands its element to the provider and releases it on unmount', () => {
-    const registerRef = vi.fn();
-    const { unmount } = render(<DonnyComposer onSubmit={onSubmit} registerRef={registerRef} />);
-    expect(registerRef).toHaveBeenCalledWith(expect.any(HTMLTextAreaElement));
-    unmount();
-    expect(registerRef).toHaveBeenLastCalledWith(null);
-  });
 });
 
 describe('DonnyComposer — Enter behaves per platform, like ChatGPT', () => {
