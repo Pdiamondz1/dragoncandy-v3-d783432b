@@ -1,5 +1,31 @@
 # Wiki Log
 
+## [2026-08-10] ingest | [[Donny RAG Scope Boundary]] — the wiki was syncing a second copy of itself
+
+Ingested `raw/sessions/2026-08-10-wiki-rag-dedupe.md` by **compounding onto the page this
+session's earlier entry created**, because #437 did not add a subject — it **superseded the
+mechanism that page described**. Same subject, edited in place, which is the rule for
+supersession; a second page would have left two live descriptions of one boundary and no signal
+about which is current.
+
+**Pages updated:** `concepts/donny-rag-scope-boundary.md` — the mechanism section now says the
+script publishes only the allowlist rather than marking everything internal, with a dated block
+recording what #434 did and why it changed; the "nothing is lost internally" section gains the
+oversize-behaviour table that explains why the *duplicate* was the copy that would hard-fail; and
+Known Issues gains the lost self-healing property, the orphan check that replaces it, the
+merge-before-prune ordering rule, and the `process.exit()` exit-code trap.
+`concepts/knowledge-sync-automation.md` — its "what the two scripts mean" block, written **hours
+earlier in this same session**, was already false and is rewritten.
+
+**A claim was falsified, not just updated.** That page's own Gotchas called the Windows libuv
+assertion "harmless". It is not: it replaces the exit code (an intended `1` observed as `127`).
+Chasing it found the identical pattern latent on `sync-internal-docs.mjs`'s error path, fixed in
+the same PR.
+
+**Note for whoever picks up the splits:** the entry below queued four oversize pages on the
+strength of a hard `FAIL_CHARS` skip. That skip applied to the `wiki:` copy, which no longer
+exists, so the case for splitting is now retrieval quality rather than a broken sync.
+
 ## [2026-08-10] ingest | [[Donny RAG Scope Boundary]] — the consumer RAG was the leak
 
 Ingested `raw/sessions/2026-08-10-wiki-rag-consumer-scope.md` as a **new concept page**, not a

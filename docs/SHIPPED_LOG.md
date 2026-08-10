@@ -26,6 +26,73 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-10] The wiki was syncing a second copy of itself
+
+**PR #437** (`63862a23`, squash-merged) · `supabase/scripts/sync-wiki-to-donny.mjs` +
+`sync-internal-docs.mjs` · one prod data change (113 rows deleted) · no migration, no deploy.
+→ `docs/wiki/concepts/donny-rag-scope-boundary.md`
+
+**#434 was right about direction, wrong about volume.** It closed the consumer leak by marking
+every non-allowlisted page `scope:"internal"`. But `sync-internal-docs.mjs` **already** syncs the
+whole `docs/wiki/` tree as `internal-<dir>:<slug>`, and `wiki-merge-pr` writes that same namespace
+via `_shared/wiki-sync-payload.ts`. So the internal copy has **two** writers, this script has one,
+and the `wiki:` namespace exists for one purpose: the consumer scope, which is empty.
+
+Measured on prod: **113 pages embedded twice, 109 byte-identical.** Internal Donny could spend two
+of its five RAG slots on one page; every sync paid double the embedding cost; and the duplicate
+was the **only** copy subject to this script's hard `FAIL_CHARS` skip — the thing that had queued
+four pages for splitting. The internal copy handles the same page gracefully (embeds the first
+24,000 chars, keeps the full markdown in `internal_docs`), because that trick needs
+`full_content`, which `donny-knowledge-sync` rejects on anything but internal scope.
+
+**What shipped.** The script publishes only what `CONSUMER` lists — nothing — and the 113
+duplicates were pruned: **249 → 136**, `wiki:` namespace empty, all 113 mirrors intact,
+consumer-reachable **0** throughout, and a content probe confirms wiki text is still retrievable
+via the mirror.
+
+**The property it cost, and what pays for it.** Sending every page was self-healing: drop one from
+the allowlist and the next run overwrote its row back to internal. Publishing only the allowlist
+loses that — a removed page is never sent again, so its row strands at `scope null`,
+consumer-retrievable, forever. That is exactly the shape `EXCLUDE` had, and the lesson from
+`EXCLUDE` is that **a rule living only in a comment does not hold.** So the rule got a check: a
+**read-only** GET diffs the `wiki:` rows against the allowlist, names orphans **with their actual
+scope**, prints the prune SQL, and carries the count into the exit code. Read-only on purpose —
+giving a sync script `DELETE` on `donny_knowledge` has a worse blast radius than the drift it
+fixes. Fails **open** on a REST error, since the sync did not create the drift.
+
+**Two defects found by running it, not reasoning about it.** The orphan message asserted the rows
+were "still consumer-retrievable" — false, they were at scope `internal`; the same overclaiming
+Codex caught in #434, now reporting each row's real scope. And `process.exit(1)` after the new
+second fetch host tore the process down while undici held a pooled socket, aborting on Windows
+with `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)` and exit **127** — masking the 1 it
+meant to return. **That is the assertion `knowledge-sync-automation.md` had documented as
+"harmless" for months; it was eating the exit code.** Fixed with `process.exitCode`, and the sweep
+it prompted found the identical pattern latent on `sync-internal-docs.mjs`'s error path — which
+fires exactly when the hook and CI need the code to be trustworthy — fixed too.
+
+**The prune taught an ordering rule the hard way.** Run behind the `careful` gate (pre-flight: 113
+matched, **0** at consumer scope, **0** lost uniquely). Then the rows **came back** — not a failed
+delete: the `post-merge` hook fired on a main fast-forward and ran the script **as it existed on
+`main`**, the #434 version, re-inserting all 113 (`inserted=113` in `.git/knowledge-sync.log`).
+**Merge the script change first, prune second** — and read the hook log before concluding a delete
+failed. Re-pruned after #437 merged, then verified by running the merged script from `origin/main`:
+`errors=0 orphans=0`, exit 0, nothing re-created.
+
+**Verification.** 238 files / **2375** tests, typecheck + build clean, Codex clean first round. (A
+first suite run reported "7 errors / 2307" under machine load at 215s vs 91s; the re-run was clean
+and the count reconciles exactly — 2373 plus the 2 new assertions.) The PostgREST filter's
+correctness is proven by the check itself: the same unencoded request returned all 113 rows with
+scopes before the prune and 0 after, corroborated independently by SQL. Codex tried to verify that
+URL encoding and was blocked by its own sandbox — the empirical result is the stronger evidence.
+
+**Consequence for the queued page splits.** `donny-social-tools` (26,847),
+`service-role-data-exposure` (26,779), `domain-migration-io-to-com` (25,086) and
+`donny-first-dashboard` (24,708) were queued because of the hard `FAIL_CHARS` skip — **which
+applied to the copy that was just deleted.** The remaining ceiling is `MAX_EMBED_CHARS = 24,000`,
+a truncated embed with the full markdown still in `internal_docs`. Splitting is now a
+retrieval-quality improvement (708–2,847 chars of tail per page, plus focused units), not a fix
+for a broken sync.
+
 ## [2026-08-10] Donny's consumer RAG was 107 leaking wiki pages and nothing else
 
 **PR #434** (`669b259b`, squash-merged) · script `supabase/scripts/sync-wiki-to-donny.mjs` ·
