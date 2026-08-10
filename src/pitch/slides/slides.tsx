@@ -704,8 +704,8 @@ export function SlideClose({ index, total }: SlideProps) {
         </p>
         <div className="relative mt-12 flex items-center gap-8 text-lg text-white/60">
           <span className="font-semibold text-dc-teal">#DragonDashed</span>
-          <span>dragoncandy.io</span>
-          <span>[founders@dragoncandy.io]</span>
+          <span>dragoncandy.com</span>
+          <span>[founders@dragoncandy.com]</span>
         </div>
       </div>
     </SlideShell>

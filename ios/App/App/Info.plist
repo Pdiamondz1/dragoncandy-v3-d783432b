@@ -49,5 +49,7 @@
 	<string>DragonCandy uses your camera so you can capture photos of food and content to share with restaurants.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>DragonCandy needs access to your photos so you can upload content to share with restaurants.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

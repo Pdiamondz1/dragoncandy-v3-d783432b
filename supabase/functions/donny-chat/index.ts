@@ -874,7 +874,7 @@ async function executeTool(
     return {
       result: {
         message:
-          "Live platform, revenue, and cost figures aren't available over Google Chat yet — open the AIOS dashboard at internal.dragoncandy.io for those. I can still pull the latest weekly brief, search the strategy library, and work with Workspace files and email drafts here.",
+          "Live platform, revenue, and cost figures aren't available over Google Chat yet — open the AIOS dashboard at internal.dragoncandy.com for those. I can still pull the latest weekly brief, search the strategy library, and work with Workspace files and email drafts here.",
       },
     };
   }

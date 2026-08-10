@@ -111,6 +111,15 @@ const handler = async (req: Request): Promise<Response> => {
     const appUrl = trustedOrigin || Deno.env.get('APP_URL') || DEFAULT_ORIGIN;
     const verificationLink = `${appUrl}/verify-email?token=${token}`;
 
+    // The footer link's visible text is DERIVED from its own href, never written
+    // out. It used to read a hardcoded "dragoncandy.io" while the href had already
+    // moved to .com, which renders <a href="...com">...io</a> — the exact shape mail
+    // filters score as phishing, in the one email a new signup must receive. Since
+    // `appUrl` is chosen at runtime (trusted request origin, else APP_URL, else the
+    // default), any hardcoded label is a mismatch waiting to happen again; deriving
+    // it makes that structurally impossible.
+    const appUrlLabel = appUrl.replace(/^https?:\/\//, '');
+
     // Send verification email using Resend
     const emailResponse = await resend.emails.send({
       from: "DragonCandy <verify@notify.dragoncandy.io>",
@@ -154,7 +163,7 @@ const handler = async (req: Request): Promise<Response> => {
               
               <p style="font-size: 12px; color: #9ca3af; text-align: center;">
                 DragonCandy - Connecting Brands with Creators<br>
-                <a href="${appUrl}" style="color: #8B5CF6; text-decoration: none;">dragoncandy.io</a>
+                <a href="${appUrl}" style="color: #8B5CF6; text-decoration: none;">${appUrlLabel}</a>
               </p>
             </div>
           </body>

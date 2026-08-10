@@ -26,42 +26,50 @@ const URL = process.env.DONNY_SYNC_URL;
 const KEY = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 const DIRS = ["concepts", "entities", "analyses"];
 const BATCH = 50;
+// SYNC_DRY_RUN=1 scans and prints the consumer/internal split, then exits without POSTing —
+// so an edit to CONSUMER below can be checked before it reaches prod. Needs no URL or key.
+const DRY_RUN = process.env.SYNC_DRY_RUN === "1";
 
-// Curation: with SYNC_CURATE=1 (use for the user-facing prod assistant), skip internal
-// engineering / infra / ops / internal-strategy pages so Donny only retrieves
-// product/content-relevant knowledge in end-user chats. Edit as the wiki grows.
-const CURATE = process.env.SYNC_CURATE === "1";
-const EXCLUDE = new Set([
-  "self-improving-app", "migration-replay-drift", "qa-cicd-gate", "typescript-patterns",
-  "error-handling-patterns", "content-delivery-state-machine", "boost-payment-two-path",
-  "payments-split-by-surface", "data-flywheel", "musks-algorithm", "north-star-kpi-scorecard",
-  "supabase", "capacitor-native-shell", "file-management", "organizations", "stripe-connect",
-  "content-engine-data-audit", "claude-skills-framework-audit", "claude-subagents-audit",
-]);
-
-// Forced-internal (unconditional — NOT gated behind SYNC_CURATE, unlike EXCLUDE above):
-// these pages are DRE ENGINEERING docs describing phases that were never built
-// (referrals, streaks, "Hype Weeks", point redemption, opt-in leaderboards). If consumer
-// Donny can retrieve them, he promises users rewards that don't exist. donny-knowledge-sync
-// recomputes `scope` from this script's payload on EVERY sync, insert or update (it does not
-// preserve whatever is already in the DB), so a one-off DB fix does not hold — this
-// script must always send scope: "internal" for these paths, including on the
-// unattended post-merge sync. Keyed on the exact "<dir>/<filename>" pair (not a slug
-// substring) so an unrelated future page can never be swallowed by a loose match.
+// ── This script publishes to the CONSUMER scope, and does nothing else ────────────────────
 //
-// EVERY ENTRY HERE MUST BE A PATH THAT EXISTS ON DISK. The original set was built from the
-// `donny_knowledge` rows rather than the filesystem, and named
-// "analyses/dragoncandy-dragon-rewards-engine-dre-full-system-spec.md" — a file that had
-// already been split into the two dre-part-* pages below. Only a stale orphan ROW still
-// carried that path. The guard correctly refused to run, which killed the entire consumer
-// sync until it was noticed. Verify with `ls docs/wiki/<dir>/<file>`, not with a DB query.
-const FORCE_INTERNAL = new Set([
-  "concepts/dragon-rewards-engine.md",
-  "analyses/dre-part-1-points-economy.md",
-  "analyses/dre-part-2-community-and-implementation.md",
-]);
+// It syncs exactly the pages listed in CONSUMER below — currently **none** — at consumer scope
+// (`scope` omitted ⇒ null). Every other wiki page is deliberately not sent, because
+// `sync-internal-docs.mjs` ALREADY syncs the whole `docs/wiki/` tree as `internal-<dir>:<slug>`
+// at scope "internal", and `wiki-merge-pr` writes that same namespace via
+// `_shared/wiki-sync-payload.ts`. So the internal copy has two writers and this has one, and the
+// `wiki:<dir>/<slug>` namespace exists for one purpose: the consumer scope.
+//
+// WHY IT SENDS NOTHING TODAY. The wiki is an engineering and founder notebook, written for an
+// internal reader — schema, RLS holes, deploy runbooks, vendor spend, margin strategy ("all four
+// streams stack on one customer"), product-decision framing ("MVPs over-gate"). Consumer product
+// knowledge lives in `help_articles` and the /help center, which is what users actually read.
+// An empty set is a valid, and currently the correct, state.
+//
+// HOW THIS GOT HERE, because the shape matters more than the list:
+//
+//   1. Two denylists, one of them dead. `EXCLUDE` (19 pages) gated on SYNC_CURATE=1, which the
+//      unattended `npm run sync:wiki` from the post-merge hook never sets, so its pages reached
+//      the CONSUMER RAG at scope null on every merge. Prod 2026-08-10: 107 of 112 rows
+//      consumer-reachable. The worst page was on NEITHER list — `entities/dragoncandy-platform`
+//      states the live user count, the vendor-by-vendor burn and "Stripe test mode" — because a
+//      denylist FAILS OPEN, holding only what someone thought to enumerate.
+//   2. PR #434 inverted it to this allowlist and marked every non-listed page "internal", which
+//      closed the leak (verified: consumer-reachable 0 of 247).
+//   3. PR #436 (this) stops sending them at all. Marking 100+ pages internal duplicated rows that
+//      `sync-internal-docs.mjs` already writes — measured on prod, **113 pages embedded twice,
+//      109 of them byte-identical** — so internal Donny could spend two of its five RAG slots on
+//      one page, and every sync paid double the embedding cost. It also subjected the duplicate
+//      to this script's hard `FAIL_CHARS` skip, while the internal copy handles the same page
+//      gracefully (truncate-embed at MAX_EMBED_CHARS, full markdown preserved in `internal_docs`).
+//
+// TO PUBLISH A PAGE TO CONSUMERS: read it end to end first and edit out anything an end user must
+// not read — then add its exact "<dir>/<filename>" here. Preview with
+// `SYNC_DRY_RUN=1 node supabase/scripts/sync-wiki-to-donny.mjs`, which prints the list and POSTs
+// nothing. TO UNPUBLISH ONE: remove it here AND prune its row — see the orphan check below, which
+// exists precisely because removing it here is not self-healing.
+const CONSUMER = new Set([]);
 
-if (!URL || !KEY) {
+if (!DRY_RUN && (!URL || !KEY)) {
   console.error("Set DONNY_SYNC_URL and SUPABASE_SECRET_KEY (the sb_secret_… key).");
   process.exit(1);
 }
@@ -79,8 +87,8 @@ function parseFrontmatter(raw) {
 }
 
 const pages = [];
-/** Which FORCE_INTERNAL entries the scan actually matched — drives the guard below. */
-const forcedInternalSeen = new Set();
+/** Which CONSUMER entries the scan actually matched — drives the guard below. */
+const consumerSeen = new Set();
 for (const dir of DIRS) {
   let entries;
   try {
@@ -90,57 +98,60 @@ for (const dir of DIRS) {
   }
   for (const name of entries) {
     if (!name.endsWith(".md")) continue;
+    // Allowlist ONLY — see CONSUMER above. A page that is not listed is not this script's
+    // business: `sync-internal-docs.mjs` already syncs it at internal scope.
+    if (!CONSUMER.has(`${dir}/${name}`)) continue;
+    consumerSeen.add(`${dir}/${name}`);
     const slug = name.replace(/\.md$/, "");
-    if (CURATE && EXCLUDE.has(slug)) continue;
     const raw = readFileSync(join(WIKI_ROOT, dir, name), "utf8");
     const { fm, body } = parseFrontmatter(raw);
     const title = fm.title ?? slug;
-    const page = {
+    // No `scope` key ⇒ donny-knowledge-sync stores scope null ⇒ consumer-reachable. That is the
+    // entire point of this script, so it is stated rather than left as an absence.
+    pages.push({
       source_id: `wiki:${dir}/${slug}`,
       content: `${title}\n\n${body}`,
       metadata: { title, type: fm.type ?? dir, path: `${WIKI_ROOT}/${dir}/${name}`, tags: fm.tags ?? "" },
-    };
-    // Unconditional — see FORCE_INTERNAL above. donny-knowledge-sync reads page.scope.
-    if (FORCE_INTERNAL.has(`${dir}/${name}`)) {
-      page.scope = "internal";
-      forcedInternalSeen.add(`${dir}/${name}`);
-    }
-    pages.push(page);
+    });
   }
 }
 
-// Guard on FORCE_INTERNAL itself: it is the sole durable protection on the honesty hole
-// described above, keyed on exact "<dir>/<filename>" strings. If a backing wiki file is
-// ever renamed or moved, the match silently stops firing, the next sync re-inserts that
-// page at scope null, and the hole reopens with NO error signal.
+// Staleness guard on CONSUMER: it is keyed on exact "<dir>/<filename>" strings, so a rename,
+// move or split silently stops the match firing. The page then stops being published with no
+// signal — the same silent rot that let `EXCLUDE` sit dead for months.
 //
-// Aborting the WHOLE sync is deliberate, not collateral damage: a rename means the page is
-// still in the scan under its NEW name, so continuing would publish it to the consumer RAG
-// at scope null — the exact leak. Refusing to sync is the safe failure.
+// NOT A HARD ABORT. The version of this guard that threw was protecting a DENYLIST, where a
+// stale entry meant a page was about to be published at scope null — refusing to sync genuinely
+// prevented that. Here a stale entry only means one page is not published, which is the safe
+// direction, so it names the entries, syncs the rest, and exits 1.
 //
-// It names the missing entries. The first version reported only a count ("expected 2, found
-// 1"), which said a path was wrong but not WHICH — and since the sync runs unattended from
-// the post-merge hook, the failure surfaced as a silently stale consumer RAG.
-const missingForcedInternal = [...FORCE_INTERNAL].filter((k) => !forcedInternalSeen.has(k));
-if (missingForcedInternal.length > 0) {
-  throw new Error(
-    `FORCE_INTERNAL guard failed — these entries matched no file on disk:\n` +
-    missingForcedInternal.map((k) => `  - ${WIKI_ROOT}/${k}`).join("\n") +
-    `\nA wiki file backing FORCE_INTERNAL was renamed, moved or split. The whole sync is ` +
-    `aborted on purpose: under a new name that page would sync to the CONSUMER RAG at scope ` +
-    `null. Fix the FORCE_INTERNAL set in supabase/scripts/sync-wiki-to-donny.mjs to match ` +
-    `the paths that exist on disk (check with ls, not with a donny_knowledge query — a stale ` +
-    `row outlives its file), then re-run.`
+// It names them. An earlier version reported only a count ("expected 2, found 1"), which said a
+// path was wrong but not WHICH — and since the sync runs unattended from the post-merge hook,
+// the failure surfaced as a silently stale RAG.
+/** Set by the orphan check below; carried into the exit code so drift is never a silent pass. */
+let orphanCount = 0;
+const missingConsumer = [...CONSUMER].filter((k) => !consumerSeen.has(k));
+if (missingConsumer.length > 0) {
+  console.error(
+    `CONSUMER guard failed — these entries matched no file on disk:\n` +
+    missingConsumer.map((k) => `  - ${WIKI_ROOT}/${k}`).join("\n") +
+    `\nA wiki file on the consumer allowlist was renamed, moved or split, so it is syncing as ` +
+    `internal and consumer Donny can no longer retrieve it. Fix the CONSUMER set in ` +
+    `supabase/scripts/sync-wiki-to-donny.mjs to match the paths that exist on disk (check with ` +
+    `ls, not with a donny_knowledge query — a stale row outlives its file), then re-run.`
   );
 }
 
 // One oversized page fails its WHOLE batch (the embedding call sends the batch as a single
 // `input` array, so OpenAI's 8,192-token-per-input limit rejects all 50). On 2026-07-26 a
 // 33 KB concepts page did exactly that: "Invalid 'input[8]': maximum input length is 8192
-// tokens" → 41 unrelated pages never reached the RAG. Wiki pages cannot use the
-// truncate-embed-but-store-full trick sync-internal-docs.mjs relies on (the edge function
-// rejects `full_content` on non-internal scope), so the fix is to keep pages small — this
-// check names the offender instead of leaving a 502 to decode.
+// tokens" → 41 unrelated pages never reached the RAG. A page published HERE cannot use the
+// truncate-embed-but-store-full trick sync-internal-docs.mjs relies on, because that trick needs
+// `full_content`, which donny-knowledge-sync rejects on anything but internal scope — and a
+// consumer page is by definition not internal scope. So a published page must be kept small.
+// This applies only to the allowlist: since PR #436 an unlisted page is not sent at all, so its
+// size is `sync-internal-docs.mjs`'s business, where oversize degrades to a truncated embed with
+// the full markdown still readable in `internal_docs` instead of a hard skip.
 // Calibrated empirically, NOT theoretically — the char:token ratio varies with how much code,
 // table pipe and symbol a page carries, so these are the observed data points:
 //   29,865 chars — synced fine (analyses/…dre-full-system-spec.md)
@@ -159,6 +170,77 @@ for (const p of oversized) {
   console.error(`SKIPPING ${p.source_id} — ${p.content.length} chars exceeds ~${FAIL_CHARS}; it would fail its entire batch. Split it into focused siblings (a page this size is usually covering two subjects) and re-run.`);
 }
 const syncable = pages.filter((p) => p.content.length <= FAIL_CHARS);
+
+// Always report what is being published. Compare against the DB after a sync:
+//   select coalesce(scope,'NULL'), count(*) from donny_knowledge
+//   where metadata->>'source_id' like 'wiki:%' group by 1;
+// Expected: exactly these source_ids, all at NULL. Anything else is an orphan (see below).
+console.log(
+  `Publishing ${pages.length} page(s) to the CONSUMER scope` +
+  `${pages.length === 0 ? " — the allowlist is empty, which is the expected state" : ""}.`
+);
+for (const p of pages) console.log(`  consumer: ${p.source_id}`);
+
+if (DRY_RUN) {
+  console.log(`\nDry run — nothing sent. ${pages.length} pages scanned, ${oversized.length} oversized.`);
+  process.exit(missingConsumer.length > 0 ? 1 : 0);
+}
+
+// ── Orphan check (READ-ONLY) ──────────────────────────────────────────────────────────────
+//
+// WHY THIS EXISTS. Before PR #436 this script sent EVERY page, marking unlisted ones "internal",
+// which made it self-healing: dropping a page from the allowlist overwrote its row back to
+// internal on the next run. Sending only allowlisted pages is what removes the duplicate rows,
+// but it costs exactly that property — a page removed from CONSUMER is simply no longer sent,
+// so its row sits at scope null, consumer-retrievable, forever. That is the same silent rot
+// `EXCLUDE` had, and the lesson from that one is that a rule living only in a comment does not
+// hold. So the rule gets a check.
+//
+// It only READS. Pruning would mean giving a sync script DELETE on donny_knowledge, and the
+// blast radius of a bad filter there is worse than the drift it fixes; the fix is a one-line
+// SQL a human runs, which this prints. It also catches the pre-existing orphan class this file
+// already documented — renaming ANY wiki page strands its old row, because nothing deletes.
+//
+// FAILS OPEN on a transport/permission error, deliberately: the sync itself did not create the
+// drift, so a REST blip must not fail an otherwise good run. Skipped entirely under DRY_RUN
+// (which is offline by contract — it needs no URL or key).
+try {
+  const restUrl = URL.replace(/\/functions\/v1\/.*$/, "/rest/v1/donny_knowledge");
+  const resp = await fetch(
+    `${restUrl}?select=scope,metadata->>source_id&metadata->>source_id=like.wiki:*`,
+    { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } },
+  );
+  if (!resp.ok) {
+    console.warn(`Orphan check skipped — donny_knowledge read returned ${resp.status}.`);
+  } else {
+    const rows = await resp.json();
+    const expected = new Set(pages.map((p) => p.source_id));
+    const orphans = rows
+      .map((r) => ({ id: r["source_id"] ?? r["?column?"], scope: r.scope }))
+      .filter((r) => typeof r.id === "string" && !expected.has(r.id));
+    if (orphans.length > 0) {
+      // Report the scope per row rather than asserting one. These rows are unmaintained either
+      // way, but only the scope-null ones are a live exposure — and claiming more than that is
+      // the same defect this file's history is full of.
+      const reachable = orphans.filter((r) => r.scope === null || r.scope !== "internal");
+      console.error(
+        `\nORPHANED rows — ${orphans.length} row(s) under the "wiki:" namespace that this ` +
+        `allowlist does not publish. Nothing updates or deletes them; they duplicate the ` +
+        `internal-<dir>:<slug> rows sync-internal-docs.mjs maintains.\n` +
+        orphans.slice(0, 10).map((r) => `  - ${r.id} (scope ${r.scope ?? "NULL"})`).join("\n") +
+        (orphans.length > 10 ? `\n  … and ${orphans.length - 10} more` : "") +
+        `\n${reachable.length} of them are CONSUMER-RETRIEVABLE (scope null).` +
+        `${reachable.length === 0 ? " None are a live exposure — this is cleanup, not a leak." : " That IS a live exposure."}` +
+        `\nPrune with:\n` +
+        `  delete from donny_knowledge where metadata->>'source_id' like 'wiki:%';\n` +
+        `(add "and metadata->>'source_id' not in (…)" if the allowlist is non-empty).`
+      );
+      orphanCount = orphans.length;
+    }
+  }
+} catch (e) {
+  console.warn(`Orphan check skipped — ${(e instanceof Error ? e.message : String(e))}`);
+}
 
 console.log(`Found ${pages.length} in-scope wiki pages${oversized.length ? ` (${oversized.length} skipped as oversized)` : ""}. Syncing to ${URL} ...`);
 
@@ -182,5 +264,13 @@ for (let i = 0; i < syncable.length; i += BATCH) {
   console.log(`Batch ${i / BATCH + 1}: +${json.inserted} inserted, ~${json.updated} updated, ${json.errors} errors`);
 }
 
-console.log(`\nDone. inserted=${inserted} updated=${updated} errors=${errors} skipped=${oversized.length}`);
-if (errors > 0 || oversized.length > 0) process.exit(1);
+console.log(`\nDone. inserted=${inserted} updated=${updated} errors=${errors} skipped=${oversized.length} orphans=${orphanCount}`);
+
+// `process.exitCode`, NOT `process.exit()`. Since the orphan check added a second fetch host,
+// calling process.exit() here tore the process down while undici still held a pooled socket,
+// which on Windows aborts with `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)` and a
+// 127 — masking the 1 this line means to return. Setting exitCode lets the loop drain and exit
+// with the intended status.
+if (errors > 0 || oversized.length > 0 || missingConsumer.length > 0 || orphanCount > 0) {
+  process.exitCode = 1;
+}

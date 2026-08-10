@@ -323,7 +323,7 @@ serve(async (req: Request) => {
         const returnTo = encodeURIComponent(publicUrl.toString());
         return new Response(null, {
           status: 302,
-          headers: { Location: `https://dragoncandy.io/auth?returnTo=${returnTo}`, ...corsHeaders(req) },
+          headers: { Location: `https://dragoncandy.com/auth?returnTo=${returnTo}`, ...corsHeaders(req) },
         });
       }
 
@@ -332,7 +332,7 @@ serve(async (req: Request) => {
         const returnTo = encodeURIComponent(publicUrl.toString());
         return new Response(null, {
           status: 302,
-          headers: { Location: `https://dragoncandy.io/auth?returnTo=${returnTo}`, ...corsHeaders(req) },
+          headers: { Location: `https://dragoncandy.com/auth?returnTo=${returnTo}`, ...corsHeaders(req) },
         });
       }
 

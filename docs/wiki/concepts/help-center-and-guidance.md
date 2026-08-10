@@ -8,7 +8,7 @@ tags: [help, donny, guidance, full-text-search, help_articles, schema-contract, 
 ---
 # Help Center & Donny Guidance
 
-`dragoncandy.io/help` is a **DB-driven** help center, and the same `help_articles` table is the
+`dragoncandy.com/help` is a **DB-driven** help center, and the same `help_articles` table is the
 grounding source for consumer Donny's how-to answers. Two consumers, one table — keep their column
 contract in sync.
 

@@ -29,7 +29,7 @@ export function buildTestAccountParams(o: TestAccountOptions): Stripe.AccountCre
       name: o.businessName || undefined,
       product_description: o.productDescription,
       mcc: '5734',
-      url: 'https://dragoncandy.io',
+      url: 'https://dragoncandy.com',
     },
     individual: {
       first_name: 'Test',

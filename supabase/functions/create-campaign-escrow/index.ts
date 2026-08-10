@@ -111,7 +111,7 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin")
       || Deno.env.get("PUBLIC_SITE_URL")
-      || "https://dragoncandy.io";
+      || "https://dragoncandy.com";
 
     // Build description based on delivery type
     const deliveryLabels: Record<string, string> = {

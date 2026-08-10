@@ -125,7 +125,7 @@ For brands — be seen as the company that supports local businesses and creator
 
 **Awareness:** Marcus hears about DragonCandy from another creator's Instagram story showing a payout notification — "$350 earned this week on DragonCandy." He's intrigued because it looks effortless. He sees the DragonCandy profile showcasing sample content from real restaurants, confirming it's legit.
 
-**Consideration:** Marcus visits dragoncandy.io. The landing page shows a creator earnings calculator and sample campaigns near his area. He watches a 30-second video showing the gig flow: accept, shoot, upload, get paid. No interviews, no bidding wars, no haggling. He signs up in under 2 minutes.
+**Consideration:** Marcus visits dragoncandy.com. The landing page shows a creator earnings calculator and sample campaigns near his area. He watches a 30-second video showing the gig flow: accept, shoot, upload, get paid. No interviews, no bidding wars, no haggling. He signs up in under 2 minutes.
 
 **First use:** Marcus completes his creator profile — uploads 5 portfolio pieces, sets his location radius, and selects his content styles (food photography, video reels). Within hours, AI matches him to his first gig: shoot content for a new pizza spot 15 minutes from his apartment. The brief is already written — he just needs to show up, shoot, and upload.
 

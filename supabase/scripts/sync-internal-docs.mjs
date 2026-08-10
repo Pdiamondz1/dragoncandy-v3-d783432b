@@ -101,4 +101,11 @@ for (let i = 0; i < pages.length; i += BATCH) {
 }
 
 console.log(`\nDone. inserted=${inserted} updated=${updated} errors=${errors}`);
-if (errors > 0) process.exit(1);
+
+// `process.exitCode`, NOT `process.exit()` — same fix as sync-wiki-to-donny.mjs (#437). Calling
+// process.exit() here tears the process down while undici still holds a pooled socket from the
+// fetch loop above; on Windows that aborts with
+// `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)` and REPLACES the exit code (an
+// intended 1 was observed surfacing as 127). This path only runs when errors > 0 — i.e. exactly
+// when the post-merge hook and CI need the code to be trustworthy.
+if (errors > 0) process.exitCode = 1;

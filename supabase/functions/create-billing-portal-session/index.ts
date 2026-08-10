@@ -12,7 +12,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY')!;
-    const siteUrl = Deno.env.get('PUBLIC_SITE_URL') || 'https://dragoncandy.io';
+    const siteUrl = Deno.env.get('PUBLIC_SITE_URL') || 'https://dragoncandy.com';
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const stripe = new Stripe(stripeSecretKey, { apiVersion: '2025-08-27.basil' });

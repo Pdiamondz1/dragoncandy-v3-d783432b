@@ -167,4 +167,45 @@ describe('DonnyMessage rich cards (plural creator-discovery cards)', () => {
 
     expect(screen.queryByRole('button', { name: 'View Portfolio' })).not.toBeInTheDocument();
   });
+  // The exact defect the founder hit on prod (2026-08-09): a markdown table in
+  // an analytics answer reached the bubble as literal pipes, because
+  // ReactMarkdown was running base CommonMark with no GFM plugin. Asserting the
+  // RENDERED OUTPUT rather than the plugin's presence — 'remarkGfm is in the
+  // array' would pass even if the components map dropped the table.
+  it('renders a markdown table as a real table, not as raw pipes', () => {
+    stubViewport(false);
+    renderMessage({
+      ...baseMessage,
+      quick_actions: [],
+      content: [
+        'Based on **1 measured post**:',
+        '',
+        '| Metric | Total |',
+        '|--------|-------|',
+        '| Views | 1 |',
+        '| Likes | 0 |',
+      ].join('\n'),
+    });
+
+    const table = screen.getByRole('table');
+    expect(table).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Metric' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'Views' })).toBeInTheDocument();
+    // The failure signature: the pipe characters must not survive as text.
+    expect(table.textContent).not.toContain('|');
+  });
+
+  it('keeps a wide table inside its own scroll container, never widening the bubble', () => {
+    stubViewport(true);
+    renderMessage({
+      ...baseMessage,
+      quick_actions: [],
+      content: ['| A | B | C | D | E |', '|---|---|---|---|---|', '| 1 | 2 | 3 | 4 | 5 |'].join('\n'),
+    });
+
+    // A bubble that grows to fit a table pushes the whole chat column sideways
+    // on a phone, which is the reason wide content scrolls itself here.
+    const wrapper = screen.getByRole('table').parentElement;
+    expect(wrapper).toHaveClass('overflow-x-auto');
+  });
 });

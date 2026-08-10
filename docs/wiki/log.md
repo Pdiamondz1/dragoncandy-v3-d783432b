@@ -1,5 +1,312 @@
 # Wiki Log
 
+## [2026-08-10] ingest | [[Domain Migration (.io → .com)]] Phase 5a — mailboxes moved
+
+Ingested `raw/sessions/2026-08-10-dotcom-phase5a-mailboxes-shipped.md`, compounding onto the
+concept page. **This entry CORRECTS the one immediately below it**, per the wiki's
+flag-contradictions-never-silently-overwrite rule:
+
+- The earlier ingest recorded that `dragoncandy.com` **catch-alls**. It does not — the Workspace
+  admin console shows no catch-all rule, only Google's stock "Default delegation rule". The true
+  mechanism is that **Google's MX does not disclose recipient validity at `RCPT` time**. The
+  *observation* (250 for two nonsense controls) and the *decision* it drove (don't flip yet) were
+  both correct; only the inferred mechanism was wrong. The raw session file is immutable and still
+  carries the original claim, which is why this correction lives in the synthesis layer.
+
+New durable lesson, one step past the existing *a probe without a control proves nothing*:
+**when a probe cannot distinguish a true answer from a false one, no number of runs turns it into
+evidence — change instrument.** Here the control *killed* the probe rather than validating it, and
+the right response was to read the configuration instead.
+
+Phase 5a then shipped: all five addresses proved to be **aliases on `dame@dragoncandy.com`**, and
+the mailboxes moved across **three stores with three release mechanisms** (bundle / edge function /
+migration `20260810170000`). 5b is now blocked not on engineering but on **$20/mo** — the Resend
+free tier's one-domain limit makes expand-then-switch structurally impossible.
+Pages updated: `concepts/domain-migration-io-to-com.md`.
+
+## [2026-08-10] ingest | [[Domain Migration (.io → .com)]] Phase 5 — the mail audit
+
+Ingested `raw/sessions/2026-08-10-dotcom-phase5-mail-audit.md` by **compounding onto the existing
+concept page**, replacing its one-line "Phase 5 — mail (deferred)" placeholder with what the audit
+actually established. Two findings overturned the plan's own reasoning, so this is a correction to
+the page, not an addition to it:
+
+- The plan's premise — *"a dead support address is worse than an old one"* — assumed a **bounce**.
+  `dragoncandy.com` **catch-alls**: an SMTP `RCPT TO` probe returned 250 for all five target
+  mailboxes **and for two nonsense control addresses**. Without the controls it would have read as
+  "all five confirmed." Mail to a nonexistent `.com` mailbox is accepted and then vanishes, so the
+  receive test is **irreplaceable** and a successful *send* proves nothing.
+- Phase 5 was one item; it is **two**, with different gates and blast radii. 5b (sending domain)
+  moves mail from `.io`'s `p=none` DMARC to `.com`'s **`p=quarantine`** — where a misconfiguration
+  junks mail **silently** — for **zero** user-visible benefit. Recommendation recorded: defer.
+
+Also records that MDX help briefs move by **deploy**, not migration — a limit on Phase 4's
+"editing a seed changes nothing in prod" lesson. Pages updated: `concepts/domain-migration-io-to-com.md`.
+## [2026-08-10] ingest | [[Donny RAG Scope Boundary]] — the wiki was syncing a second copy of itself
+
+Ingested `raw/sessions/2026-08-10-wiki-rag-dedupe.md` by **compounding onto the page this
+session's earlier entry created**, because #437 did not add a subject — it **superseded the
+mechanism that page described**. Same subject, edited in place, which is the rule for
+supersession; a second page would have left two live descriptions of one boundary and no signal
+about which is current.
+
+**Pages updated:** `concepts/donny-rag-scope-boundary.md` — the mechanism section now says the
+script publishes only the allowlist rather than marking everything internal, with a dated block
+recording what #434 did and why it changed; the "nothing is lost internally" section gains the
+oversize-behaviour table that explains why the *duplicate* was the copy that would hard-fail; and
+Known Issues gains the lost self-healing property, the orphan check that replaces it, the
+merge-before-prune ordering rule, and the `process.exit()` exit-code trap.
+`concepts/knowledge-sync-automation.md` — its "what the two scripts mean" block, written **hours
+earlier in this same session**, was already false and is rewritten.
+
+**A claim was falsified, not just updated.** That page's own Gotchas called the Windows libuv
+assertion "harmless". It is not: it replaces the exit code (an intended `1` observed as `127`).
+Chasing it found the identical pattern latent on `sync-internal-docs.mjs`'s error path, fixed in
+the same PR.
+
+**Note for whoever picks up the splits:** the entry below queued four oversize pages on the
+strength of a hard `FAIL_CHARS` skip. That skip applied to the `wiki:` copy, which no longer
+exists, so the case for splitting is now retrieval quality rather than a broken sync.
+
+## [2026-08-10] ingest | [[Donny RAG Scope Boundary]] — the consumer RAG was the leak
+
+Ingested `raw/sessions/2026-08-10-wiki-rag-consumer-scope.md` as a **new concept page**, not a
+compound. The nearest existing page, [[Knowledge-Sync Automation]], is about the *plumbing* that
+writes the RAG (npm aliases, the secret resolver, the post-merge hook); this is about the
+*boundary* it writes across — who may retrieve what, and why `scope NULL` being both the
+permissive value and the default is the root of a recurring leak class. Distinct subject, and one
+that other pages need to link at ([[Dragon Rewards Engine (DRE)]] already carries an instance of
+it).
+
+**Pages created:** `concepts/donny-rag-scope-boundary.md`.
+**Pages updated:** `concepts/knowledge-sync-automation.md` — added what the two sync scripts now
+mean for audience, a pointer to the new page, and a **claim-decay fix**: its Gotchas asserted
+"updates don't bump `updated_at`", which PR #385 falsified on 2026-08-07 by restoring
+`handle_updated_at()`. Rewritten to the principle that survived — gate on `content ilike` because
+it proves *this* text is retrievable, not merely that *something* was written.
+
+**Contradiction flagged, not silently resolved:** this page states the wiki is deliberately
+absent from the consumer RAG, while [[Self-Improving App]] and `CLAUDE.md` both describe the
+autoresearch loop as syncing verified wiki pages into "Donny's RAG". Both are true and the
+distinction is scope, not accuracy — the loop still feeds **internal** Donny through
+`sync-internal-docs.mjs`. The new page says so explicitly rather than editing the older claims,
+which remain correct as written.
+
+## [2026-08-10] ingest | [[Domain Migration (.io → .com)]] Phase 4 — content and knowledge
+
+Ingested `raw/sessions/2026-08-10-dotcom-phase4-content.md` by **compounding onto the existing
+concept page** — fourth consecutive phase on one page, same reasoning: the page holds the phase
+sequence, and splitting it would scatter the decision record.
+
+**Pages updated:** `concepts/domain-migration-io-to-com.md` (new Phase 4 section — URLs-move-but-
+mailboxes-don't, why editing an applied migration is a no-op, the search-index trigger check, the
+prose classification rule; `Remaining phases` reduced to 5–6; three new Known Issues), plus the
+13 doc/wiki pages whose own present-tense `.io` claims were corrected. **No new page.**
+
+**Worth carrying forward.** Two things generalize past this migration. First, **a half-fix to a
+compound-stale claim makes it more wrong, not less** — the pricing table saying "Lovable.dev
+hosting … hosts the dragoncandy.io website" is wrong on host *and* domain, so moving only the
+domain would newly assert Lovable hosts `.com`. It was left alone and flagged, while the same
+claim on a wiki *entity* page (current architecture, not a historical cost table) was fixed in
+full. Second, **a sweep that reports success on zero matches is the hazard, not the sweep that
+errors** — the exact-string editor required one match per edit and caught a CRLF file where the
+pattern matched nothing. And a third, smaller: `donny_knowledge` was queried to *test* rather than
+assume the #378 NULL-`scope` leak was closed. It was — zero rows — but two orphan `internal_docs`
+rows for the same deleted files survive, so `sync:internal` does not delete removed files.
+
+## [2026-08-10] ingest | [[Domain Migration (.io → .com)]] Phase 3 — the permanent redirect
+
+Ingested `raw/sessions/2026-08-10-dotcom-phase3-permanent-redirect.md` by **compounding onto
+the existing concept page** again — same reasoning as Phase 2: one page holds the phase
+sequence.
+
+**Pages updated:** `concepts/domain-migration-io-to-com.md` (new Phase 3 section — the 308
+table, temporary-then-promote, the fragment proof, Search Console, and the anchor-text class;
+`Remaining phases` reduced to 4–6; the `.io` `www` Known Issue closed; three new Known Issues
+including one defect I authored), `index.md`, this log. **No new page.**
+
+**Worth carrying forward.** Three findings generalise past this migration: (1) a redirect can
+be fully correct on the wire and still break every login, because the auth token rides in a
+**fragment** that never reaches the server — it must be proven in a browser; (2) **Change of
+Address was impossible**, not pending, because no Search Console property had ever existed —
+the plan asserted a prerequisite nobody had checked; (3) the `PUBLIC_SITE_URL` comment defect
+was committed **by this page's own author in the same session that wrote its staleness
+warning**, which is the strongest evidence yet that the fix is structural (don't assert mutable
+prod state in a comment) rather than a matter of care.
+
+## [2026-08-10] ingest | [[Donny-First Dashboard]] — fresh every visit, and a parallel-PR collision
+
+Ingested `raw/sessions/2026-08-10-donny-dashboard-fresh-per-visit.md` by **compounding onto
+the existing page**.
+
+The founder rejected the shape of the shipped Phase B dashboard. **Two sessions acted on it in
+parallel**: #429 merged the bounded scroller (plus a scroll-to-bottom control and a real-browser
+measurement showing `h-full` computing an 8337px scroller inside a 145px parent), and #428 was
+**reset onto main and rebuilt** to carry only the remainder — fresh-per-visit filtering and the
+collapsing greeting. The duplicate scroller was discarded, not merged.
+
+Two durable lessons recorded. **The `[scope]` check is only as wide as the paths given to it** —
+it was run that morning against the core docs, came back clean, and said nothing about
+`src/components/donny/`, where the feature had just been reimplemented; the collision was found
+by accident, chasing an unrelated Codex finding. And **an empty collection is three different
+facts** — "not loaded", "loaded and empty", "no query ran" — which is why the fresh-per-visit
+baseline needs `isSuccess && !isFetching` rather than an array length.
+
+Also corrected a claim the page had carried since #423: the dashboard thread no longer "sits in
+normal page flow scrolled by `#main-content`".
+
+Pages updated: [[Donny-First Dashboard]], `docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §5.
+
+## [2026-08-10] ingest | [[Domain Migration (.io → .com)]] Phase 2 — canonical switch
+
+Ingested `raw/sessions/2026-08-10-dotcom-phase2-canonical-switch.md` by **compounding onto
+the existing concept page** rather than creating a new one — Phase 2 is the same migration,
+and a second page would have split the phase sequence across two files.
+
+**Pages updated:** `concepts/domain-migration-io-to-com.md` (Phase 2 section replacing the
+prediction with what shipped; three resolved Known Issues struck through with dates rather
+than deleted; the secret-digest technique), `concepts/ios-testflight-first-build.md` (two
+claims this session falsified), `index.md`, this log. **No new page.**
+
+Three things worth carrying out of it:
+
+1. **The wiki had already caught this and nobody read it.** `ios-testflight-first-build.md`
+   named the exact omission in writing — *"most naturally the domain migration's
+   `DEFAULT_ORIGIN` flip … but is not currently listed in that migration's Phase 2"* — before
+   Phase 2 was drafted. A previous session spotted the gap, recorded it, and the next session
+   shipped without it. **Writing something down is not the same as it being consulted.** The
+   knowledge layer pays off only if something reads it at the moment of the decision, and
+   nothing did. This is an argument *for* the review gates, not against the wiki: Codex, which
+   had read none of it, found the same thing from the diff alone.
+
+2. **A wiki claim can be wrong in the confident direction too.** The same page asserted the
+   flip "would force a sweep" of the ~77 un-redeployed functions. It doesn't — `_shared/*`
+   bundles per function, so a non-redeployed function keeps emitting the old value as a
+   cosmetic ACAO fallback. Corrected in place. Synthesis inherits the confidence of its source
+   without inheriting the source's caveats.
+
+3. **Struck-through Known Issues beat deleted ones.** Three entries on that page were resolved
+   this session, and one (`LEADS_NOTIFY_EMAIL`) had been false *when written*, surviving only
+   because another doc claimed edge secrets were unlistable so nobody checked. Keeping them
+   struck through with resolution dates preserves the pattern — every one was a present-tense
+   claim about prod with an unmarked expiry.
+
+## [2026-08-10] ingest | [[iOS TestFlight First Build]]
+
+Ingested `raw/sessions/2026-08-09-ios-testflight-first-build.md` as a **new concept
+page** plus updates to two existing pages whose content this branch touched but whose
+`updated:` frontmatter had gone stale.
+
+**Pages created:** `concepts/ios-testflight-first-build.md`.
+**Pages updated:** `entities/capacitor-native-shell.md` (new "Phase 3" section + bumped
+date), `sources/apple-app-store-capacitor-phase1-session.md` (bumped date only — the
+bundle-ID correction it already carried predates this ingest), `concepts/domain-migration-io-to-com.md`
+(the "Must NOT change" row's justification brought into line with its source spec, which
+had been corrected in place while the derived wiki copy still led with the original
+unqualified sentence), `index.md` (1 new Source + 1 new Concept entry), this log.
+
+Three things worth carrying out of it:
+
+1. **The origin-classification problem generalizes beyond this branch.** Any value
+   consumed outside a sandboxed WebView needs the same three-way sort this session used:
+   repoint (the value leaves the device and the destination can receive it), leave alone
+   (the value is an in-app navigation base), or gate the consumer instead (the value
+   leaves the device but the destination has no way to hand control back — repointing
+   would trade a visible rejection for a silent dead end). The Outstand OAuth callback is
+   the concrete instance: `redirect_uri` could be repointed, but nothing catches the
+   return, so the fix gates `ConnectAccountButtonGroupGated` instead.
+
+2. **A plan-authoring session and a plan-execution session can each destroy the other's
+   work through a tool that looks like read-only diagnostics.** `supabase functions
+   download` reads as "check what's deployed" but overwrites local source with it — on a
+   branch with uncommitted edits to that same file, that is a silent revert. `deno
+   install`, reached for after a Deno typecheck failed, corrupted the npm-managed
+   `node_modules` for four tasks before a full gate run surfaced it. Neither left a build
+   or lint failure behind.
+
+3. **A decision made in a later plan step can silently invalidate an earlier step's
+   assertion.** Task 5 chose to gate the Outstand OAuth consumer instead of repointing
+   its value; the pre-PR gate written earlier still expected the value to be repointed,
+   and its "exactly 3 hits" assertion went stale the moment Task 5 shipped. The same
+   drift independently appeared in the spec's own Finding-1 table. Whenever a plan
+   revisits an earlier decision, every place that assumed the old decision needs its own
+   pass — an acceptance gate is not exempt just because it was already written.
+## [2026-08-09] ingest | [[Donny-First Dashboard]] Phase B — the dashboard answers in place
+
+Ingested `raw/sessions/2026-08-09-donny-dashboard-inline-chat.md` by **compounding onto the
+existing page rather than creating a new one** — this is the same feature, one phase later, and a
+`donny-inline-chat.md` would have split its story in two.
+
+**Pages updated:** `concepts/donny-first-dashboard.md`, `index.md` (Sources line), this log.
+**Pages created:** none, deliberately.
+
+The edit is partly a **retraction**, and reads as one. The page's "Phase A launches Donny; it does
+not become Donny" section described the panel-opening as *"a deliberate trade the founder accepted,
+not an oversight"* — accurate when written, and precisely the behaviour the founder then reported as
+the defect. Struck through with a date and the reason, not deleted: a reader who acted on that
+framing needs to see it withdrawn ([[Updated-At Trigger Drift]]'s
+`doc-documents-the-bug` discipline).
+
+Three things worth carrying out of it:
+
+1. **The acceptance signal for [[Donny Social Tools]] finally exists.** `social_get_post_analytics`,
+   `status='success'`, 23:23:57 — the first success in `donny_tool_executions`' history for any
+   `social_*` tool — with [[Honest Analytics]]' sample-size gate visibly holding under a real user
+   (`post_count: 1`, no best-platform claim).
+
+2. **`stage` was conflating two facts**, and separating them was smaller than the spec's fix. "The
+   panel is visible" ≠ "the conversation is live". A ref-counted `registerInlineConversation()`
+   leaves the stage machine byte-unchanged and makes four of the design doc's seven Phase-B hazards
+   **dissolve rather than be solved**. The blocker that mattered was not on the list at all: queries
+   gated on `stage !== 'closed'` would have rendered a permanently empty thread, indistinguishable
+   from "no messages yet".
+
+3. **Four review rounds, four defects, one shape — the code claimed more than it delivered.** A
+   half-done dependency move (`package.json` fixed, `package-lock.json` not), an error made visible
+   but unrecoverable (its "Try Again" was a dead button, because `lastUserMessage` is assigned
+   *after* the throw it guards on), a comment promising a scroll behaviour the code did not
+   implement, and an input that accepted text it would never send. **"No worse than before" and
+   "the failure is visible now" are both the wrong bar** — the test is whether the thing the user
+   did works.
+
+## [2026-08-09] ingest | [[Domain Migration (.io → .com)]] + [[Edge-Function Deploy & Bundling]]
+
+Ingested `raw/sessions/2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md` as **two new
+concept pages**, split by subject rather than by session — the migration and the bundler
+outage share a session and nothing else. The outage page is the one that outlives the
+migration entirely.
+
+**Pages created:** `concepts/domain-migration-io-to-com.md`,
+`concepts/edge-function-deploy-bundling.md`.
+**Pages updated:** `index.md` (2 Concepts entries + 1 Sources line), this log.
+
+Three things worth carrying out of it:
+
+1. **Phase 1 was remediation, not migration.** `www.dragoncandy.com` was already attached to
+   Vercel and publicly serving the app while no `.com` origin existed in any allow-list — so
+   the page rendered and every one of 82 edge functions was CORS-blocked. The apex additionally
+   failed TLS on two leftover GoDaddy parking IPs. Nobody had reported it.
+
+2. **The bundler failure was invisible to code review, and four hypotheses read from the code
+   were all wrong.** `esm.sh/@supabase/supabase-js` stopped producing a bootable worker;
+   `WORKER_ERROR` fires at boot, so even an `OPTIONS` 500s. What found it was **comparing a
+   broken function against a working one**, not more reading. What made the fix *narrow* was
+   testing the sibling packages: `esm.sh/stripe` and `esm.sh/jose` boot fine, so 34 imports
+   were correctly left alone instead of churned on an assumption.
+
+3. **A fleet deploy pins itself to one commit while `origin/main` moves.** A parallel session
+   merged and deployed a `donny-orchestrator` fix at 22:38 UTC; this session's redeploy from a
+   pre-merge tree overwrote it at 22:54 and **silently reverted it**. Both deploys succeeded,
+   both passed the boot probe — stale code boots fine, so no health check catches it. Found
+   only by the knowledge-sync `[scope-ordering]` check, which exists to prevent *doc*
+   conflicts. Repaired and verified by reading the deployed source for the other change's
+   symbols, never by the version number.
+
+Also recorded: `verify-recaptcha` deleted from prod after serving four months past the removal
+of its source (no callers, no authorization, a live secret), and the mobile-viewport method
+that actually works (browser-use + CDP `setDeviceMetricsOverride` applied **after** load) versus
+the two that silently don't (`resize_window`, same-origin iframe).
+
 ## [2026-08-09] update | [[Donny Social Tools]] — four findings the review loop caught after the work looked finished
 
 Updated [[Donny Social Tools]] from the continuation section appended to

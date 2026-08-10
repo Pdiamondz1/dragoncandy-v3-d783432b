@@ -17,6 +17,7 @@ import { format, isAfter, isBefore } from 'date-fns';
 import { Promotion } from '@/hooks/usePromotions';
 import { toast } from '@/hooks/use-toast';
 import { shareOrCopyLink } from '@/lib/nativeShare';
+import { publicOrigin } from '@/lib/publicOrigin';
 import { SyncStatusBadge } from '@/features/promotions/components/SyncStatusBadge';
 import { useToastSyncStatus } from '@/features/promotions/hooks/useToastSyncStatus';
 import { RedemptionMetrics } from '@/features/promotions/components/RedemptionMetrics';
@@ -54,7 +55,7 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
   const isActive = promotion.status === 'active' && !isUpcoming && !isExpired;
   const isPaused = promotion.status === 'paused';
 
-  const promotionUrl = `${window.location.origin}/promo/${promotion.id}`;
+  const promotionUrl = `${publicOrigin()}/promo/${promotion.id}`;
 
   const getStatusBadge = () => {
     if (isPaused) return <AppStatusBadge tone="neutral">Paused</AppStatusBadge>;

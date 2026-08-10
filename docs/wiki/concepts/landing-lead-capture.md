@@ -90,8 +90,16 @@ RLS read is in place). A `/internal/leads` triage view is a clean follow-up (not
 - Rewards copy is **action-based and flag-gated** — no fabricated signup bonus.
 
 ## Known Issues / Follow-ups
-- Founder go-live: drop Nano Banana Pro assets into the slots; set `LEADS_NOTIFY_EMAIL`;
-  optionally flip `DRAGON_REWARDS_ENABLED`.
+- Founder go-live: drop Nano Banana Pro assets into the slots; optionally flip
+  `DRAGON_REWARDS_ENABLED`. **`LEADS_NOTIFY_EMAIL` is DONE** — set 2026-08-07, verified
+  2026-08-09.
+- **Verify an edge secret with `supabase secrets list --project-ref <ref>`** — it returns each
+  secret's name, SHA-256 digest and `updated_at`, so presence and change are both provable
+  without exposing a value. This is worth stating explicitly because `PROJECT_CONTEXT.md` §5
+  carried the opposite claim ("edge secrets aren't listable… rests on founder knowledge, not a
+  check") and that claim is what kept this item sitting in *Built — awaiting founder go-live* for
+  two days after it was actually done. The digest is also the tool for the harder question — "did
+  this secret change?" — which a dashboard eyeball cannot answer.
 - Mobile not screenshot-verifiable in-session (extension viewport floor ~1280px) — covered by
   the post-deploy [[verify-prod]] both-viewport check.
 - A `/internal/leads` triage UI is deferred.

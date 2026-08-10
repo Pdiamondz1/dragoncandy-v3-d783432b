@@ -223,12 +223,15 @@ verify_jwt = false
 # it to the platform default (true) and broken the sync. Same posture as
 # aios-report-ingest.
 #
-# NOT declared here: verify-recaptcha. It is live on prod (v161) but its source was
-# deleted from this repo by 7d8ef4a4 ("remove CAPTCHA from login and signup pages")
-# and it has zero callers in src/. A config block cannot protect a function with no
-# source — `supabase functions deploy` would never include it in the deploy set —
-# so declaring it would sanction an endpoint nobody in this repo can review.
-# Retiring the orphaned prod deployment is tracked separately.
+# NOT declared here: verify-recaptcha — it no longer exists. Its source was deleted
+# from this repo by 7d8ef4a4 ("remove CAPTCHA from login and signup pages"), but the
+# prod deployment was left running for months afterwards (v161, zero callers, no
+# in-body authorization). Deleted from prod 2026-08-09; the endpoint now 404s, which
+# completes docs/superpowers/plans/2026-04-30-remove-captcha-from-auth.md.
+#
+# The lesson worth keeping: "deleted from the repo" is not "deleted from prod" —
+# the same merged-is-not-deployed gap that this file's donny-knowledge-sync entry
+# guards against, pointing the other way.
 [functions.donny-knowledge-sync]
 verify_jwt = false
 
