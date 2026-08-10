@@ -26,57 +26,56 @@ const URL = process.env.DONNY_SYNC_URL;
 const KEY = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 const DIRS = ["concepts", "entities", "analyses"];
 const BATCH = 50;
+// SYNC_DRY_RUN=1 scans and prints the consumer/internal split, then exits without POSTing —
+// so an edit to CONSUMER below can be checked before it reaches prod. Needs no URL or key.
+const DRY_RUN = process.env.SYNC_DRY_RUN === "1";
 
-// Curation: with SYNC_CURATE=1 (use for the user-facing prod assistant), skip internal
-// engineering / infra / ops / internal-strategy pages so Donny only retrieves
-// product/content-relevant knowledge in end-user chats. Edit as the wiki grows.
-const CURATE = process.env.SYNC_CURATE === "1";
-const EXCLUDE = new Set([
-  "self-improving-app", "migration-replay-drift", "qa-cicd-gate", "typescript-patterns",
-  "error-handling-patterns", "content-delivery-state-machine", "boost-payment-two-path",
-  "payments-split-by-surface", "data-flywheel", "musks-algorithm", "north-star-kpi-scorecard",
-  "supabase", "capacitor-native-shell", "file-management", "organizations", "stripe-connect",
-  "content-engine-data-audit", "claude-skills-framework-audit", "claude-subagents-audit",
-]);
+// ── Scope: the wiki is INTERNAL BY DEFAULT ────────────────────────────────────────────────
+//
+// Every page this script sends is marked scope:"internal" unless its exact "<dir>/<filename>"
+// is listed in CONSUMER below. `donny-knowledge-sync` recomputes `scope` from this payload on
+// EVERY sync, insert or update — it does not preserve what is already in the DB — so this
+// script is the sole source of truth and a one-off DB fix does not hold.
+//
+// WHY DEFAULT-INTERNAL, AND WHY THE PREVIOUS SHAPE FAILED. This used to be two denylists:
+// `EXCLUDE` (19 pages, gated behind SYNC_CURATE=1) and `FORCE_INTERNAL` (5 pages,
+// unconditional). The unattended sync — `npm run sync:wiki`, fired by the post-merge hook —
+// never set SYNC_CURATE, so all 19 `EXCLUDE` pages synced to the CONSUMER RAG at scope null on
+// every merge. Verified on prod 2026-08-10: 107 of 112 wiki rows were consumer-reachable.
+//
+// But the deeper defect was the denylist SHAPE, not the dead gate. A denylist fails OPEN: it
+// only holds pages someone thought to enumerate, so every page `/wiki-ops ingest` adds is
+// consumer-reachable until noticed. The pages that leaked worst were on NEITHER list —
+// `entities/dragoncandy-platform` states the live user count, the monthly burn broken down by
+// vendor, and that Stripe is in test mode, and `donny-orchestrator` hands consumer RAG chunks
+// straight to the `general` catch-all agent, so "what is DragonCandy?" could retrieve it.
+//
+// An allowlist fails CLOSED, which is the correct direction here because the wiki is not
+// consumer material in the first place: it is an engineering and founder notebook, written for
+// an internal reader. Its pages carry schema, RLS holes, deploy runbooks, vendor spend, margin
+// strategy ("all four streams stack on one customer") and product-decision framing ("MVPs
+// over-gate"). Consumer product knowledge lives in `help_articles` and the /help center, which
+// is what users actually read.
+//
+// NOTHING IS LOST INTERNALLY. `sync-internal-docs.mjs` already writes an
+// `internal-<dir>:<slug>` copy of every wiki page at scope "internal" — verified 1:1 on prod
+// (112 wiki pages, 112 internal copies). Internal Donny reads those; these `wiki:` rows exist
+// only to populate the consumer scope.
+//
+// KNOWN SIDE EFFECT OF THE FLIP, checked rather than assumed: in donny-knowledge-sync, a page
+// sent with scope "internal" and no `full_content` also does a `select archived_at from
+// internal_docs where path = metadata.path`, and an archived doc gets its donny_knowledge row
+// DELETED instead of upserted. That branch used to see 5 pages and now sees all of them. On
+// prod 2026-08-10 `internal_docs` holds 114 `docs/wiki/%` paths with **0** archived, so this is
+// a no-op today; going forward it is the behaviour you want — archiving a wiki doc through
+// `internal_doc_archive()` now also prunes its consumer-facing row instead of leaving it live.
+//
+// TO PUBLISH A PAGE TO CONSUMERS: read it end to end first and edit out anything an end user
+// must not read, then add its exact "<dir>/<filename>" here. An empty set is a valid, and
+// currently the correct, state. Run with SYNC_DRY_RUN=1 to see the split before it reaches prod.
+const CONSUMER = new Set([]);
 
-// Forced-internal (unconditional — NOT gated behind SYNC_CURATE, unlike EXCLUDE above).
-//
-// WHY THIS LIST AND NOT `EXCLUDE`: `EXCLUDE` only applies when SYNC_CURATE=1, and the sync
-// that actually runs unattended — `npm run sync:wiki`, invoked by the post-merge hook — does
-// NOT set it. So adding an internal page to `EXCLUDE` alone leaves it syncing to the CONSUMER
-// RAG at scope null on every merge. Anything a consumer must never retrieve belongs HERE.
-// (Codex flagged the 2026-08-09 infra pages against `EXCLUDE`; correct finding, wrong list.)
-//
-// Two kinds of page qualify:
-//
-// 1. DRE ENGINEERING docs describing phases that were never built
-// (referrals, streaks, "Hype Weeks", point redemption, opt-in leaderboards). If consumer
-// Donny can retrieve them, he promises users rewards that don't exist. donny-knowledge-sync
-// recomputes `scope` from this script's payload on EVERY sync, insert or update (it does not
-// preserve whatever is already in the DB), so a one-off DB fix does not hold — this
-// script must always send scope: "internal" for these paths, including on the
-// unattended post-merge sync. Keyed on the exact "<dir>/<filename>" pair (not a slug
-// substring) so an unrelated future page can never be swallowed by a loose match.
-//
-// EVERY ENTRY HERE MUST BE A PATH THAT EXISTS ON DISK. The original set was built from the
-// `donny_knowledge` rows rather than the filesystem, and named
-// "analyses/dragoncandy-dragon-rewards-engine-dre-full-system-spec.md" — a file that had
-// already been split into the two dre-part-* pages below. Only a stale orphan ROW still
-// carried that path. The guard correctly refused to run, which killed the entire consumer
-// sync until it was noticed. Verify with `ls docs/wiki/<dir>/<file>`, not with a DB query.
-// 2. INFRA/OPS runbooks. A restaurant owner asking Donny about their campaign must never
-//    retrieve deploy procedures, outage post-mortems, DNS/registrar details, or the founder's
-//    machine constraints — none of it is product knowledge, some of it names people and
-//    accounts, and all of it reads as authoritative if it surfaces in a consumer answer.
-const FORCE_INTERNAL = new Set([
-  "concepts/dragon-rewards-engine.md",
-  "analyses/dre-part-1-points-economy.md",
-  "analyses/dre-part-2-community-and-implementation.md",
-  "concepts/edge-function-deploy-bundling.md",
-  "concepts/domain-migration-io-to-com.md",
-]);
-
-if (!URL || !KEY) {
+if (!DRY_RUN && (!URL || !KEY)) {
   console.error("Set DONNY_SYNC_URL and SUPABASE_SECRET_KEY (the sb_secret_… key).");
   process.exit(1);
 }
@@ -94,8 +93,8 @@ function parseFrontmatter(raw) {
 }
 
 const pages = [];
-/** Which FORCE_INTERNAL entries the scan actually matched — drives the guard below. */
-const forcedInternalSeen = new Set();
+/** Which CONSUMER entries the scan actually matched — drives the guard below. */
+const consumerSeen = new Set();
 for (const dir of DIRS) {
   let entries;
   try {
@@ -106,7 +105,6 @@ for (const dir of DIRS) {
   for (const name of entries) {
     if (!name.endsWith(".md")) continue;
     const slug = name.replace(/\.md$/, "");
-    if (CURATE && EXCLUDE.has(slug)) continue;
     const raw = readFileSync(join(WIKI_ROOT, dir, name), "utf8");
     const { fm, body } = parseFrontmatter(raw);
     const title = fm.title ?? slug;
@@ -115,37 +113,42 @@ for (const dir of DIRS) {
       content: `${title}\n\n${body}`,
       metadata: { title, type: fm.type ?? dir, path: `${WIKI_ROOT}/${dir}/${name}`, tags: fm.tags ?? "" },
     };
-    // Unconditional — see FORCE_INTERNAL above. donny-knowledge-sync reads page.scope.
-    if (FORCE_INTERNAL.has(`${dir}/${name}`)) {
+    // Internal by default — see CONSUMER above. donny-knowledge-sync reads page.scope.
+    if (CONSUMER.has(`${dir}/${name}`)) {
+      consumerSeen.add(`${dir}/${name}`);
+    } else {
       page.scope = "internal";
-      forcedInternalSeen.add(`${dir}/${name}`);
     }
     pages.push(page);
   }
 }
 
-// Guard on FORCE_INTERNAL itself: it is the sole durable protection on the honesty hole
-// described above, keyed on exact "<dir>/<filename>" strings. If a backing wiki file is
-// ever renamed or moved, the match silently stops firing, the next sync re-inserts that
-// page at scope null, and the hole reopens with NO error signal.
+// Staleness guard on CONSUMER: it is keyed on exact "<dir>/<filename>" strings, so a rename,
+// move or split silently stops the match firing. The page then stays internal under its new
+// name and quietly disappears from consumer Donny with no signal — the same silent rot that
+// let `EXCLUDE` sit dead for months.
 //
-// Aborting the WHOLE sync is deliberate, not collateral damage: a rename means the page is
-// still in the scan under its NEW name, so continuing would publish it to the consumer RAG
-// at scope null — the exact leak. Refusing to sync is the safe failure.
+// THIS IS DELIBERATELY NOT A HARD ABORT, and the reason is the inverted default. The version
+// of this guard that threw was protecting a DENYLIST, where a stale entry meant a page was
+// about to reach the consumer RAG at scope null — refusing to sync was the safe failure.
+// Under an allowlist the failure direction flips: a stale entry means a page is MORE
+// protected than intended, never less. Aborting every page over an over-protection bug
+// would stop internal knowledge updating to guard against nothing, and would reproduce the
+// very defect the oversized-page check below already refuses to reproduce. So: name the
+// entries, sync everything, exit non-zero.
 //
-// It names the missing entries. The first version reported only a count ("expected 2, found
+// It names the missing entries. An earlier version reported only a count ("expected 2, found
 // 1"), which said a path was wrong but not WHICH — and since the sync runs unattended from
-// the post-merge hook, the failure surfaced as a silently stale consumer RAG.
-const missingForcedInternal = [...FORCE_INTERNAL].filter((k) => !forcedInternalSeen.has(k));
-if (missingForcedInternal.length > 0) {
-  throw new Error(
-    `FORCE_INTERNAL guard failed — these entries matched no file on disk:\n` +
-    missingForcedInternal.map((k) => `  - ${WIKI_ROOT}/${k}`).join("\n") +
-    `\nA wiki file backing FORCE_INTERNAL was renamed, moved or split. The whole sync is ` +
-    `aborted on purpose: under a new name that page would sync to the CONSUMER RAG at scope ` +
-    `null. Fix the FORCE_INTERNAL set in supabase/scripts/sync-wiki-to-donny.mjs to match ` +
-    `the paths that exist on disk (check with ls, not with a donny_knowledge query — a stale ` +
-    `row outlives its file), then re-run.`
+// the post-merge hook, the failure surfaced as a silently stale RAG.
+const missingConsumer = [...CONSUMER].filter((k) => !consumerSeen.has(k));
+if (missingConsumer.length > 0) {
+  console.error(
+    `CONSUMER guard failed — these entries matched no file on disk:\n` +
+    missingConsumer.map((k) => `  - ${WIKI_ROOT}/${k}`).join("\n") +
+    `\nA wiki file on the consumer allowlist was renamed, moved or split, so it is syncing as ` +
+    `internal and consumer Donny can no longer retrieve it. Fix the CONSUMER set in ` +
+    `supabase/scripts/sync-wiki-to-donny.mjs to match the paths that exist on disk (check with ` +
+    `ls, not with a donny_knowledge query — a stale row outlives its file), then re-run.`
   );
 }
 
@@ -175,6 +178,21 @@ for (const p of oversized) {
 }
 const syncable = pages.filter((p) => p.content.length <= FAIL_CHARS);
 
+// Always report the scope split. This is the number to compare against the DB after a sync:
+//   select coalesce(scope,'NULL'), count(*) from donny_knowledge
+//   where metadata->>'source_id' like 'wiki:%' group by 1;
+const consumerPages = pages.filter((p) => p.scope !== "internal");
+console.log(
+  `Scope: ${consumerPages.length} consumer, ${pages.length - consumerPages.length} internal ` +
+  `(wiki is internal by default — see CONSUMER in this file).`
+);
+for (const p of consumerPages) console.log(`  consumer: ${p.source_id}`);
+
+if (DRY_RUN) {
+  console.log(`\nDry run — nothing sent. ${pages.length} pages scanned, ${oversized.length} oversized.`);
+  process.exit(missingConsumer.length > 0 ? 1 : 0);
+}
+
 console.log(`Found ${pages.length} in-scope wiki pages${oversized.length ? ` (${oversized.length} skipped as oversized)` : ""}. Syncing to ${URL} ...`);
 
 let inserted = 0, updated = 0, errors = 0;
@@ -198,4 +216,4 @@ for (let i = 0; i < syncable.length; i += BATCH) {
 }
 
 console.log(`\nDone. inserted=${inserted} updated=${updated} errors=${errors} skipped=${oversized.length}`);
-if (errors > 0 || oversized.length > 0) process.exit(1);
+if (errors > 0 || oversized.length > 0 || missingConsumer.length > 0) process.exit(1);
