@@ -53,7 +53,7 @@ serve(async (req) => {
     }
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const origin = req.headers.get("origin") || "https://dragoncandy.io";
+    const origin = req.headers.get("origin") || "https://dragoncandy.com";
 
     let accountId = creatorProfile?.stripe_account_id;
 

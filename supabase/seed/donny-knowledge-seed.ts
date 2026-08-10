@@ -911,7 +911,7 @@ const chunks: KnowledgeChunk[] = [
   {
     source_type: 'help_article',
     content:
-      'Getting support on DragonCandy: tap the ? icon in the header or go to dragoncandy.io/help to access the Help Center. The Help Center has articles organized by category: Getting Started, Campaigns, DragonShare, Billing, and Account. Use the search bar to find answers quickly. If you can\'t find what you need, tap "Ask Donny" for an AI-powered answer. For issues Donny can\'t resolve, use the "Contact Support" button at the bottom of any help article to open a ticket.',
+      'Getting support on DragonCandy: tap the ? icon in the header or go to dragoncandy.com/help to access the Help Center. The Help Center has articles organized by category: Getting Started, Campaigns, DragonShare, Billing, and Account. Use the search bar to find answers quickly. If you can\'t find what you need, tap "Ask Donny" for an AI-powered answer. For issues Donny can\'t resolve, use the "Contact Support" button at the bottom of any help article to open a ticket.',
     metadata: {
       source_type: 'help_article',
       source_id: 'getting-support',

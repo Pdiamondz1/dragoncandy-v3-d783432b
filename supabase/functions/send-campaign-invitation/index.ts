@@ -228,7 +228,7 @@ serve(async (req) => {
             businessName,
             campaignTitle: campaign.title,
             invitationMessage: invitation_message || "",
-            campaignUrl: `https://dragoncandy.io/dashboard/creator/campaigns/${campaign_id}?invited=true`,
+            campaignUrl: `https://dragoncandy.com/dashboard/creator/campaigns/${campaign_id}?invited=true`,
           },
         }),
       });

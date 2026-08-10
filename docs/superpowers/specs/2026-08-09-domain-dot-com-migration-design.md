@@ -202,7 +202,7 @@ Pruning `.io` from the allow-lists costs nothing to skip. Recommendation: don't.
 
 | Item | Why |
 |---|---|
-| `io.dragoncandy.app` (Capacitor `appId`, iOS bundle id) | A reverse-DNS **identifier**, not a URL. Changing it means a new App Store listing and users lose the install. |
+| ~~`io.dragoncandy.app`~~ → **`com.dragoncandy.app`** (Capacitor `appId`, iOS bundle id) | **Superseded 2026-08-09** — see `2026-08-09-ios-testflight-first-build-design.md`. A reverse-DNS **identifier**, not a URL, and genuinely immutable — but only from the moment an App Store Connect record exists. None did, so it was changed to match the now-primary domain while that was still free. The original reason ("a new listing and users lose the install") presumed a listing and users; there were neither. From record creation onward this row applies again, permanently. |
 | `@synthetic.dragoncandy.test` (~90 sites) | Reserved-TLD marker; source of truth for the synthetic-user safety spine (triggers, purge RPCs, email suppression). |
 | `dragoncandy_campaign_draft`, `dragoncandy2026`, Stripe `platform: "dragoncandy"`, repo slug, `@dragoncandy` handle | Identifiers that merely contain the brand string. |
 

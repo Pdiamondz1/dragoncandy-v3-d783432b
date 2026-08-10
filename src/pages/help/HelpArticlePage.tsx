@@ -11,6 +11,7 @@ import { DCSkeleton } from "@/components/ui/dc-skeleton";
 import { SEO } from "@/components/SEO";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PublicPageHeader } from '@/components/PublicPageHeader';
+import { SUPPORT_EMAIL, mailtoHref } from '@/lib/contactAddresses';
 
 export default function HelpArticlePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -95,7 +96,7 @@ export default function HelpArticlePage() {
           "@context": "https://schema.org",
           "@type": "Article",
           "headline": article.title,
-          "url": `https://dragoncandy.io/help/${slug}`,
+          "url": `https://dragoncandy.com/help/${slug}`,
         }}
       />
       <PageHeader>
@@ -174,7 +175,7 @@ export default function HelpArticlePage() {
             Talk to Donny about this
           </Button>
           <Button variant="dc-outline" className="flex-1" asChild>
-            <a href={`mailto:support@dragoncandy.io?subject=Help: ${article.title}`}>
+            <a href={mailtoHref(SUPPORT_EMAIL, `Help: ${article.title}`)}>
               <Mail className="w-4 h-4 mr-1.5" />
               Email support
             </a>

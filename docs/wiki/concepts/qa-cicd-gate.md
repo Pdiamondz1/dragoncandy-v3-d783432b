@@ -64,7 +64,7 @@ credentials never work against a preview. See [[Staging Headless Login Session]]
 - **Human ship gate retained** — checks + staging run automatically; a human merges.
 - **Separate staging Supabase project**, not Supabase branching (paid) — full data isolation.
 - ~~**Lovable stays the prod host**~~ — **superseded 2026-07-16:** prod cut over to
-  Vercel (`dragoncandy.io` now serves from Vercel; Lovable is only an AI-edit surface;
+  Vercel (`dragoncandy.com` now serves from Vercel; Lovable is only an AI-edit surface;
   see `docs/runbooks/vercel-prod-cutover.md`). The gate still uses Vercel **Preview**
   scope for staging.
 - **Staging AI-spend guard** decided before wiring keys: a dedicated $25/mo Anthropic workspace (hard cap).

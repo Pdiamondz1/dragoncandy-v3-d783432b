@@ -163,7 +163,7 @@ const PublicBusinessProfile = () => {
           "@type": "Organization",
           "name": profile.business_name,
           "image": resolveProfileAssetUrl(profile.logo_url),
-          "url": `https://dragoncandy.io/business/${slug}`,
+          "url": `https://dragoncandy.com/business/${slug}`,
         }}
       />
       {/* Hero Image */}

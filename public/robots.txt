@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://dragoncandy.io/sitemap.xml
+Sitemap: https://dragoncandy.com/sitemap.xml

@@ -5,6 +5,51 @@
 
 ## Lessons (read FIRST every run; curated — rewrite/prune as they evolve)
 
+- **[scope-paths] Point the `[scope]` check at the branch's SOURCE paths, not just the core
+  docs.** On 2026-08-10 the check ran clean against `PROJECT_CONTEXT.md`/`SHIPPED_LOG.md`/
+  `docs/wiki/` — and `origin/main` had, that same morning, merged a **parallel implementation of
+  the very feature the branch was building** (#429 vs #428, two sessions acting on two phrasings
+  of one founder complaint). A docs-clean `origin/main` says nothing about
+  `src/components/...`. The collision was found by accident, chasing an unrelated Codex finding,
+  after hours of duplicate work. Run
+  `git log --oneline HEAD..origin/main -- <the dirs this branch edits>` as well — on a repo with
+  30+ worktrees, *"has someone already shipped this?"* has a real answer one command away.
+  Corollary: **when the parallel version landed first and is better, delete yours** and rebuild
+  on top of it; merging both produces two answers to one question.
+- **[superseded-mechanism] When work DELETES a mechanism, hunt the rule you wrote for it.**
+  A knowledge-sync that generalises a pattern into `DESIGN_SYSTEM.md` / `CLAUDE.md` plants a
+  claim that outlives the branch. On 2026-08-10 a redesign deleted the pinned-composer machinery
+  a *previous run on the same branch* had just codified as a house rule — leaving an
+  always-loaded doc instructing every future session to build the thing that had just been
+  removed, which is worse than never writing it. **Before finishing, grep the core docs for the
+  mechanism this session removed**, and rewrite the rule to the principle that survived rather
+  than deleting it outright — the reason the old rule existed is usually still true, only its
+  answer changed. Same edit-in-place discipline as `[status-correction]`, applied to design
+  rules instead of status lines.
+
+- **[wiki-is-internal] `sync:wiki` publishes nothing, and `sync:internal` is what carries the
+  wiki into the RAG — by design, not a gap.** Since PRs #434 → #437 (2026-08-10)
+  `sync-wiki-to-donny.mjs` sends **only** pages listed in a `CONSUMER` allowlist that is
+  **empty**, so it is a near no-op; `sync-internal-docs.mjs` is the script that syncs
+  `docs/wiki/` (as `internal-<dir>:<slug>`, scope internal), and `wiki-merge-pr` writes the same
+  namespace. **Step 6 should therefore run `sync:internal`** — running only `sync:wiki` after
+  adding a page will report `Publishing 0 page(s)` and the page will NOT be in the RAG. Keep
+  verifying with `content ilike`, which queries with the service role and no scope predicate, so
+  it is unaffected. **Do not "fix" a page's absence from the consumer scope; that is intended.**
+  If `sync:wiki` exits 1 with `orphans=N`, that is drift to prune, not a broken sync. The prior shape was two denylists, one of them
+  (`EXCLUDE`) inert behind a `SYNC_CURATE=1` the unattended post-merge sync never set, which left
+  **107 of 112** wiki rows consumer-reachable — including the page stating the live user count,
+  the vendor-by-vendor burn and "Stripe test mode". A denylist **fails open**; every page
+  `/wiki-ops ingest` adds was consumer-reachable until someone noticed. If a page genuinely
+  should be consumer-readable, that is a deliberate allowlist edit — read the page end to end
+  first, then preview with `SYNC_DRY_RUN=1`. See [[Donny RAG Scope Boundary]].
+- **[new-page-vs-compound] "Compound, don't duplicate" is about the same SUBJECT, not the same
+  neighbourhood.** On 2026-08-10 the nearest page to a RAG-scope session was
+  [[Knowledge-Sync Automation]] — but that page is the *plumbing* (npm aliases, secret resolver,
+  post-merge hook) and the session was about the *boundary* that plumbing writes across. Separate
+  page, cross-linked both ways. Compounding a distinct subject onto a topical neighbour buries it
+  as a retrieval key and pushes the host page toward `FAIL_CHARS`, where it is **skipped entirely**
+  — paying a real cost for a principle that did not apply.
 - **[orphans] Run the orphan check every run — by PATH, not title.** The `wiki-save-answer`
   flow adds `analyses/` pages + syncs RAG but does NOT update `index.md`, so its pages land as
   catalog orphans (caught 2: [[Competitive Advantage]], [[Influencer/Creator Outreach]]). Before
@@ -155,6 +200,130 @@
   *files*; this says a stale worktree can also ship stale *code to production*.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-10] Wiki RAG dedupe — compounding onto a page THIS session wrote (`docs/wiki-sync-dedupe`, after #437)
+- Output: `docs/wiki/concepts/donny-rag-scope-boundary.md` (updated, not a new page) + the
+  `log.md` entry dated 2026-08-10 "the wiki was syncing a second copy of itself";
+  `knowledge-sync-automation.md` updated again; `SHIPPED_LOG.md` prepended;
+  `PROJECT_CONTEXT.md` §5 line **edited in place** per [status-correction].
+- Happened: #437 superseded the mechanism the page written *four hours earlier in this same
+  session* described, so the compound/new-page call was easy in the other direction from last
+  run — same subject, edited in place. Two pages describing one boundary would leave no signal
+  about which is current.
+- Worked: [claim-decay] fired twice in one run, both on text this session authored.
+  `knowledge-sync-automation.md`'s "what the two scripts mean" block was false within hours, and
+  its **long-standing** "harmless libuv assertion" Gotcha turned out to be wrong in a way that
+  mattered — the assertion replaces the process exit code (an intended 1 observed as 127).
+- Worked: chasing that claim instead of just rewording it found the identical `process.exit()`
+  -after-fetch pattern latent on `sync-internal-docs.mjs`'s error path, fixed in the same PR.
+  **A doc that says "check the others" and does not check is the same defect it is documenting.**
+- Failed: nothing gating. One genuine operational error earlier in the session, recorded because
+  it is cheap to repeat: the 113-row prune was run **before** its script change reached `main`,
+  and the post-merge hook re-inserted every row by running `main`'s older script. Sequence data
+  changes AFTER the code that governs them, and read `.git/knowledge-sync.log` before concluding
+  a delete failed.
+- Remember: **a page this session created is not exempt from [claim-decay] — it is the most
+  likely thing to rot, because the same session keeps changing what it describes.** Before
+  finishing any run, re-read the pages this session touched *earlier* against what shipped
+  *later*.
+
+### [2026-08-10] Donny RAG consumer scope — the wiki goes internal by default (`docs/wiki-sync-consumer-scope`, after #434)
+- Output: `docs/wiki/concepts/donny-rag-scope-boundary.md` (new) + the `log.md` entry dated
+  2026-08-10 "the consumer RAG was the leak"; `knowledge-sync-automation.md` updated;
+  `SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5 one line under Shipped.
+- Happened: [scope-paths] and [scope] both applied and both earned their keep — `origin/main`
+  moved **twice** during the code session (#430/#431, then #433) in a repo with 30+ worktrees, so
+  the docs branch was cut fresh from `origin/main` (669b259b) and the path check
+  (`git log HEAD..origin/main -- docs/wiki docs/SHIPPED_LOG.md docs/PROJECT_CONTEXT.md
+  .claude/skills`) came back empty. [orphans] run by path: **113 pages, 0 orphans**.
+- Worked: **a new page rather than a compound, for a reason worth reusing.** The nearest existing
+  page, [[Knowledge-Sync Automation]], is the *plumbing* (aliases, secret resolver, post-merge
+  hook); this session's subject is the *boundary* that plumbing writes across. "Compound, don't
+  duplicate" is about the same subject, not the same neighbourhood — and compounding here would
+  also have pushed a page toward the embedding ceiling for no retrieval benefit.
+- Worked: [claim-decay] caught a live one **in the page I was already editing**.
+  `knowledge-sync-automation.md` asserted "updates don't bump `updated_at`" — falsified by PR #385
+  on 2026-08-07. Rewritten to the principle that survived (gate on `content ilike` because it
+  proves *this* text is retrievable, not merely that *something* was written) rather than deleted,
+  per [superseded-mechanism].
+- Failed: nothing gating. One process note — the code PR (#434) merged **before** its docs, so
+  this ran as a paired follow-up rather than riding in the same PR. That is the opposite of
+  [sync-before-blocked-gate]'s preference and it was avoidable: the founder asked for step 1 only,
+  and I treated "step 1" as excluding the knowledge layer instead of asking.
+- Remember: **the wiki now syncs `internal` by default, so a knowledge-sync no longer publishes
+  anything to consumers.** Step 6's `sync:wiki` still runs and is still how pages reach
+  `donny_knowledge` — they just land at `scope='internal'` alongside the `internal-*` mirror. The
+  `content ilike` verification is unaffected (it queries with the service role and no scope
+  predicate). If a future session wants a page consumer-readable, that is a deliberate `CONSUMER`
+  allowlist edit in `sync-wiki-to-donny.mjs`, previewable with `SYNC_DRY_RUN=1`, and it should
+  read the page end to end first — see [[Donny RAG Scope Boundary]].
+
+### [2026-08-10] Donny dashboard — fresh per visit, after a parallel-PR collision (`fix/donny-dashboard-mobile-composer`, #428)
+
+Output: `docs/wiki/raw/sessions/2026-08-10-donny-dashboard-fresh-per-visit.md` →
+[[Donny-First Dashboard]] (new "#429, #428" section + a "collision nobody looked for" subsection
+under review-caught + 3 new Decisions) · `docs/wiki/log.md` top entry · `SHIPPED_LOG.md` top
+entry · `PROJECT_CONTEXT.md` §5 edited in place.
+
+- Happened: mid-session, #429 merged a **parallel implementation** of the bounded scroller this
+  branch was building. Branch was reset onto `main` and rebuilt to carry only the remainder
+  (fresh-per-visit + collapsing greeting); the duplicate was discarded.
+- Failed: the `[scope]` check ran that morning and came back clean — against the **core docs
+  only**. It said nothing about `src/components/donny/`. → new Lesson `[scope-paths]`.
+- Worked: correcting a stale claim the concept page had carried since #423 ("the dashboard sits
+  in normal page flow scrolled by `#main-content`"), which #429 had invalidated and #429's own
+  knowledge-sync had not yet reached. **Compounding onto a page is also a chance to check what it
+  currently asserts.**
+- Worked: recording the *process* lesson in the wiki, not just the code lesson. The expensive
+  miss here was duplicated work, and no amount of test coverage would have surfaced it.
+- Remember: an earlier run on this same branch generalised a mechanism into `DESIGN_SYSTEM.md`
+  that a later commit deleted — see `[superseded-mechanism]`. Both of this session's lessons are
+  about **knowledge-sync output going stale faster than the branch it documents**.
+
+### [2026-08-09] Donny-first dashboard Phase B — inline chat + the markdown-table fix (`feat/donny-dashboard-inline-chat`)
+
+**Output:** new `raw/sessions/2026-08-09-donny-dashboard-inline-chat.md`; **no new concept page** —
+compounded onto `concepts/donny-first-dashboard.md`; `index.md` (1 Sources line + the existing
+Concepts entry rewritten); `log.md` top entry; `SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5
+entry **corrected in place**; + THIS entry.
+
+**Happened.** Branch-finish for the Phase-B work that came out of the founder's own prod
+acceptance test of the repaired `social_*` tools.
+
+**Worked — [status-correction], and it caught two decayed claims in the always-loaded doc.** §5's
+Phase-A entry still said *"Pending: merge PR #410 … flip `DONNY_FIRST_DASHBOARD_ENABLED`"*. Both
+were **already done** — #410 merged at 10:19 UTC the same day and #411 flipped the flag, which is
+precisely why the founder could reach the feature on prod. Verified against the **PR state** and
+`git show origin/main:src/lib/featureConfig.ts`, not against the clause. Corrected the one line
+rather than appending a Phase-B entry beside a stale Phase-A one.
+
+**Worked — [doc-documents-the-bug].** The concept page described the panel-opening as *"a
+deliberate trade the founder accepted, not an oversight"* — accurate when written, and exactly the
+behaviour the founder then reported as broken. Struck through with a date and the reason instead of
+deleted, because a reader who acted on that framing needs to see it **withdrawn**.
+
+**Worked — [scope].** `git diff --name-only` both ways before touching anything showed **zero
+overlap** between `origin/main`'s two new commits (#418, #421 — docs only) and this branch's file
+set. That proved the rebase could not conflict *and* could not invalidate the finished Codex
+review, so the code gate did not have to be re-run after it. Ordering that paid: the two files
+`origin/main` did **not** touch (`concepts/donny-first-dashboard.md`, the new raw session) were
+written and committed **before** the rebase; `index.md`/`log.md`/`SHIPPED_LOG`/`PROJECT_CONTEXT`
+after — `log.md` is prepend-at-top, so editing it pre-rebase conflicts by construction.
+
+**Failed → fixed.** Reported a full-suite figure of "229 files" from a `grep` that had matched
+vitest's **interim progress line** rather than the final summary, which read as five test files
+silently vanishing. The JSON reporter settled it: 234 files / 2329 tests / 0 failed. **Remember:
+`--reporter=json` for any test count that goes into a doc or a commit message** — the console
+summary is not addressable by grep mid-run. Two unrelated red tests (`HeroSection`,
+`OnboardingWizard`) were chased to ground rather than waved off as flakes: untouched directories
+(empty diff vs main), passing in isolation, and `HeroSection` green at a longer timeout because its
+tests do a dynamic `import()` inside a 5s budget on a heavily loaded machine.
+
+**Remember — a blank Codex run is a FAILED gate, and it happened three times here.** Round 1 was
+killed by a session compaction, round 2 hit the 10-minute cap mid-pass, and round 4 died at exit
+127 after 157 KB of output. None produced a verdict; none counts as a pass. Round 4's retry came
+back clean. Also: a `codex review` backgrounded with `&` inside a shell command writes to
+`/dev/null` and its verdict is **unrecoverable** — use the harness's own background mode.
 
 ### [2026-08-09] `.com` Phase 1 + esm.sh bundler outage + 82-function redeploy (PRs #414, #415 merged; docs on `fix/redeploy-after-social-tools-merge`)
 

@@ -241,7 +241,12 @@ const config: CapacitorConfig = {
 export default config;
 ```
 
-> **Note on `appId`:** `io.dragoncandy.app` is the bundle identifier that must match the App Store Connect record created in Phase 0. Do not change it later without updating App Store Connect — it is the app's permanent identity.
+> **Note on `appId`:** ~~`io.dragoncandy.app`~~ → **`com.dragoncandy.app`** (superseded
+> 2026-08-09). The bundle identifier must match the App Store Connect record. It became
+> permanent only once that record existed — and none did, so it was changed while it was
+> still free, to match the now-primary `dragoncandy.com` domain. From the moment the record
+> is created, the original warning applies again and permanently.
+> See `docs/superpowers/specs/2026-08-09-ios-testflight-first-build-design.md`.
 
 - [ ] **Step 2: Verify typecheck**
 

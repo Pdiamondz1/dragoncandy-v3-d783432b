@@ -26,6 +26,733 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-10] Domain migration Phase 5 (MAIL) — 5a shipped; 5b blocked on $20/mo
+
+Branch `feat/dotcom-phase5-mail` · `src/lib/contactAddresses.ts` (new) · migration
+`20260810170000` · `data-exposure-reviewer` PASS · `edge-function-reviewer` PASS.
+
+**5a shipped: every contact mailbox is on `.com`.** The interesting part is not the flip, it is that
+the obvious way to clear its gate turned out to be incapable of answering the question.
+
+**Finding 1 — the probe could not distinguish a true answer from a false one.** A read-only SMTP
+`RCPT TO` probe (never issues `DATA`, so nothing is sent) against `aspmx.l.google.com` returned
+**250 for all five target mailboxes** — `support@`, `privacy@`, `sales@`, `admin@`, `founders@` —
+**and 250 for two deliberately nonsensical control addresses.** *Without the controls this would
+have read as "all five confirmed" and licensed the flip.* Google's MX simply **does not disclose
+recipient validity at `RCPT` time**. (An earlier draft of this entry called that a *catch-all*; the
+Workspace console shows no catch-all rule, only Google's stock "Default delegation rule" —
+mechanism corrected, conclusion unchanged.) `.io` was unprobeable in the other direction — IONOS
+answers `554 IP address is block listed`. **Neither TLD could be established by probing at all.**
+
+> **The durable rule: when a probe cannot distinguish a true answer from a false one, no number of
+> runs turns it into evidence — change instrument.** One step past this project's existing *a probe
+> without a control proves nothing*: there the control validates the probe, here it **killed** it.
+
+**What actually cleared the gate — the Google Workspace admin console.** All five are **aliases on
+`dame@dragoncandy.com`** (active, in daily use), alongside `info@` and `appstore@`; the org has
+three users and **zero groups**, so the alias list is the whole story. That establishes the
+**routing** rather than one lucky delivery — strictly stronger than the send-and-receive test
+planned, which was itself only a proxy for what the config states directly. (Recorded honestly: this
+session asserted "the five mailboxes do not exist" after checking users and groups but *before*
+finishing the alias check, and was wrong. Finish the enumeration before stating the conclusion.)
+
+**Shipped across three stores with three release mechanisms** — which is why the flip needed a
+checklist, not a find-and-replace: **bundle** (the 3 constants, MDX help prose, pitch-deck
+`founders@`, internal-login placeholder), **edge function** (`stripe-webhook`'s dispute-alert
+`admin@`), and **database** (migration `20260810170000` moving `help_articles.gdpr-erasure`'s
+`privacy@`, the last stored `.io` mailbox). The migration's pre-guard is deliberately **broader**
+than its operation — the inverse of the Phase 4 defect `data-exposure-reviewer` caught. Dry-run on
+prod inside a rolled-back block: `rows=1`, `stale_io_mailboxes=0` table-wide, `sv_has_com=t /
+sv_has_io=f` proving the non-generated `search_vector` reindexed. The unit test now **pins** `.com`
+instead of accepting either TLD — correct while the gate was open, wrong the moment it closed.
+
+**A reviewer's stated gap, closed by hand.** `edge-function-reviewer` PASSed but named what it
+could not check: whether `stripe-webhook`'s bundle was unchanged since its last deploy. v165 shipped
+2026-07-24; two commits since touch its dependency set — **#363** widens a TypeScript union (erased
+at runtime, DB CHECK already applied) and **#415** is the `esm.sh` → `npm:` specifier fix itself.
+v165 still ran the **old `esm.sh` specifier**, so the redeploy moved it onto the fixed one. Nothing
+unwanted rode along. *A reviewer that names what it could not verify is more useful than one that
+quietly assumes* — the gap it named was the only real risk in the deploy.
+
+**`.io` still must never lapse or transfer**: every already-delivered copy of the GDPR article
+points at `privacy@dragoncandy.io`, and an erasure request carries identity PII by definition.
+Moving the published address reduces *future* exposure; it does not retire the old mailbox.
+
+**Finding 2 — Phase 5 is two changes, not one.** **5a** (recipient addresses: `mailto:` ×7 +
+`stripe-webhook`'s `to: admin@`) is gated on the receive test. **5b** (sending domain: `from:` ×8
+across 7 edge functions) is gated on Resend + GoDaddy DNS, and is far riskier than the plan assumed:
+`.io` publishes DMARC `p=none`, `.com` publishes **`p=quarantine`**, so moving the sending domain
+moves transactional mail from a policy that *tolerates* a DKIM/SPF misconfiguration to one that
+**junks it silently** — Resend reports success, our logs report success, the mail lands in spam, and
+the one email a new signup MUST receive is the verification email. For **zero** user-visible
+benefit: `notify.dragoncandy.io` is never a clickable brand link and carries a warmed reputation a
+new subdomain would start from zero. `notify.dragoncandy.com` doesn't exist in DNS at all.
+
+**Then 5b hit a harder wall than DMARC: the Resend account (team `harbormill`) is on the FREE TIER,
+limit ONE domain.** Adding `notify.dragoncandy.com` needs **Pro at $20/mo**. The cost is not the
+problem — **the free tier makes expand-then-switch structurally impossible.** One slot means
+**deleting the working, warmed, verified `.io` domain** to add `.com`: a window with **no verified
+sending domain** (every transactional email failing at once), **no rollback** (re-adding `.io` means
+re-verifying DNS and restarting its reputation), landing into `p=quarantine`. The plan tier forces
+exactly the all-at-once failure the governing principle exists to prevent. So 5b is **$20/mo, or a
+hard cutover with an outage window** — there is no free safe version. **A founder cost decision, not
+an engineering one.** One risk retired on the way: Resend's DKIM/SPF live on the **subdomain**, so
+GoDaddy's `_spfm` merge record on the `.com` apex is never touched.
+
+**Shipped (expand):** `support@` had been hardcoded in **four** components, `privacy@` in two,
+`sales@` in one — the shape that lets a domain get missed, and the same shape the origins allow-list
+had before Phase 1 collapsed it. **Eight literals is eight chances to update seven of them.** One
+module now owns all three, with a test asserting they share **one** domain so a partial flip fails
+CI rather than reaching a user told to email an address nobody reads.
+
+**A live defect fixed en route:** `HelpArticlePage` interpolated the article title straight into the
+`mailto:` query string, and **8 of 32 prod titles carry a URL metacharacter** — `DC Points & Creator
+Standing` among them. The unencoded `&` ended the `subject` parameter early, so the Email-support
+button opened a mail client with the subject truncated to "Help: DC Points". `mailtoHref()` encodes
+structurally and retired the hand-written `%20` escaping in the settings pages.
+
+**Six Phase-2 residuals** swept while here — they name the **website**, not a mailbox, so nothing
+gated them: the Privacy Policy and ToS each defined the Service as "our website at dragoncandy.io",
+the pitch deck's closing slide showed `.io`, two troubleshooting steps told users to allow pop-ups
+and clear cookies for the old domain, and a promo share-link example read `dragoncandy.io/promo/...`.
+**MDX help briefs are bundled via `import.meta.glob`, so they move by DEPLOY, not migration** — a
+real limit on Phase 4's "editing a seed changes nothing in prod" lesson.
+
+Deliberately left, each with a reason: `troubleshooting.mdx`'s `support@` prose and
+`stripe-webhook`'s `admin@` (mailboxes → gated; and Deno can't import from `src/`), the
+`gdpr-erasure` article's stored `privacy@` (DB content → migration), and architecture comments
+naming `internal.dragoncandy.io` (mechanism text; the host still resolves). Surfaced but **not**
+fixed: the legal pages route data-rights requests to `privacy@` while the in-app GDPR-erasure links
+route to `support@` — where those land is an operations decision, not a refactor.
+
+→ `docs/wiki/concepts/domain-migration-io-to-com.md`
+## [2026-08-10] The wiki was syncing a second copy of itself
+
+**PR #437** (`63862a23`, squash-merged) · `supabase/scripts/sync-wiki-to-donny.mjs` +
+`sync-internal-docs.mjs` · one prod data change (113 rows deleted) · no migration, no deploy.
+→ `docs/wiki/concepts/donny-rag-scope-boundary.md`
+
+**#434 was right about direction, wrong about volume.** It closed the consumer leak by marking
+every non-allowlisted page `scope:"internal"`. But `sync-internal-docs.mjs` **already** syncs the
+whole `docs/wiki/` tree as `internal-<dir>:<slug>`, and `wiki-merge-pr` writes that same namespace
+via `_shared/wiki-sync-payload.ts`. So the internal copy has **two** writers, this script has one,
+and the `wiki:` namespace exists for one purpose: the consumer scope, which is empty.
+
+Measured on prod: **113 pages embedded twice, 109 byte-identical.** Internal Donny could spend two
+of its five RAG slots on one page; every sync paid double the embedding cost; and the duplicate
+was the **only** copy subject to this script's hard `FAIL_CHARS` skip — the thing that had queued
+four pages for splitting. The internal copy handles the same page gracefully (embeds the first
+24,000 chars, keeps the full markdown in `internal_docs`), because that trick needs
+`full_content`, which `donny-knowledge-sync` rejects on anything but internal scope.
+
+**What shipped.** The script publishes only what `CONSUMER` lists — nothing — and the 113
+duplicates were pruned: **249 → 136**, `wiki:` namespace empty, all 113 mirrors intact,
+consumer-reachable **0** throughout, and a content probe confirms wiki text is still retrievable
+via the mirror.
+
+**The property it cost, and what pays for it.** Sending every page was self-healing: drop one from
+the allowlist and the next run overwrote its row back to internal. Publishing only the allowlist
+loses that — a removed page is never sent again, so its row strands at `scope null`,
+consumer-retrievable, forever. That is exactly the shape `EXCLUDE` had, and the lesson from
+`EXCLUDE` is that **a rule living only in a comment does not hold.** So the rule got a check: a
+**read-only** GET diffs the `wiki:` rows against the allowlist, names orphans **with their actual
+scope**, prints the prune SQL, and carries the count into the exit code. Read-only on purpose —
+giving a sync script `DELETE` on `donny_knowledge` has a worse blast radius than the drift it
+fixes. Fails **open** on a REST error, since the sync did not create the drift.
+
+**Two defects found by running it, not reasoning about it.** The orphan message asserted the rows
+were "still consumer-retrievable" — false, they were at scope `internal`; the same overclaiming
+Codex caught in #434, now reporting each row's real scope. And `process.exit(1)` after the new
+second fetch host tore the process down while undici held a pooled socket, aborting on Windows
+with `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)` and exit **127** — masking the 1 it
+meant to return. **That is the assertion `knowledge-sync-automation.md` had documented as
+"harmless" for months; it was eating the exit code.** Fixed with `process.exitCode`, and the sweep
+it prompted found the identical pattern latent on `sync-internal-docs.mjs`'s error path — which
+fires exactly when the hook and CI need the code to be trustworthy — fixed too.
+
+**The prune taught an ordering rule the hard way.** Run behind the `careful` gate (pre-flight: 113
+matched, **0** at consumer scope, **0** lost uniquely). Then the rows **came back** — not a failed
+delete: the `post-merge` hook fired on a main fast-forward and ran the script **as it existed on
+`main`**, the #434 version, re-inserting all 113 (`inserted=113` in `.git/knowledge-sync.log`).
+**Merge the script change first, prune second** — and read the hook log before concluding a delete
+failed. Re-pruned after #437 merged, then verified by running the merged script from `origin/main`:
+`errors=0 orphans=0`, exit 0, nothing re-created.
+
+**Verification.** 238 files / **2375** tests, typecheck + build clean, Codex clean first round. (A
+first suite run reported "7 errors / 2307" under machine load at 215s vs 91s; the re-run was clean
+and the count reconciles exactly — 2373 plus the 2 new assertions.) The PostgREST filter's
+correctness is proven by the check itself: the same unencoded request returned all 113 rows with
+scopes before the prune and 0 after, corroborated independently by SQL. Codex tried to verify that
+URL encoding and was blocked by its own sandbox — the empirical result is the stronger evidence.
+
+**Consequence for the queued page splits.** `donny-social-tools` (26,847),
+`service-role-data-exposure` (26,779), `domain-migration-io-to-com` (25,086) and
+`donny-first-dashboard` (24,708) were queued because of the hard `FAIL_CHARS` skip — **which
+applied to the copy that was just deleted.** The remaining ceiling is `MAX_EMBED_CHARS = 24,000`,
+a truncated embed with the full markdown still in `internal_docs`. Splitting is now a
+retrieval-quality improvement (708–2,847 chars of tail per page, plus focused units), not a fix
+for a broken sync.
+
+## [2026-08-10] Donny's consumer RAG was 107 leaking wiki pages and nothing else
+
+**PR #434** (`669b259b`, squash-merged) · script `supabase/scripts/sync-wiki-to-donny.mjs` ·
+no migration, no edge-function deploy, no RLS change.
+→ `docs/wiki/concepts/donny-rag-scope-boundary.md`
+
+**The reported defect.** `EXCLUDE` (19 pages) gated on `SYNC_CURATE=1`. The sync that actually
+runs unattended — `npm run sync:wiki`, fired by the `post-merge` hook — never sets it, so all 19
+synced to the **consumer** RAG at `scope null` on every merge. The script's own comment said this
+verbatim; `FORCE_INTERNAL` was created as the remedy and the 19 stale entries were never moved.
+Prod before the fix: 112 wiki rows, **107 at `scope NULL`**.
+
+**Two findings changed the fix from "extend the list" to "invert the default".**
+
+1. **Every wiki page already exists twice.** `sync-internal-docs.mjs` writes an
+   `internal-<dir>:<slug>` copy of the same page at `scope='internal'` — measured **1:1 on prod,
+   112 and 112**. So the `wiki:` rows exist *only* to populate the consumer scope, and marking one
+   internal costs internal Donny nothing. Not in the handoff, and it reframes "mark internal" as
+   purely a removal from consumer reach.
+2. **The worst page was on neither list, and the path is live.** `donny-orchestrator` calls
+   `retrieveContext(…, 5)` at default consumer scope and hands the chunks to `agents/general.ts`,
+   the catch-all for greetings and open questions. So *"what is DragonCandy?"* could retrieve
+   `entities/dragoncandy-platform`: *"Pre-revenue: ~30 organic users, $0 paying, ~$390/mo
+   operating cost (Lovable $50, Anthropic $200, Outstand $67, Supabase $45, OpenAI $25)"* and
+   *"Stripe Connect (test mode)"*. It was on no list because **a denylist fails open** — it holds
+   only what someone thought to enumerate.
+
+**What shipped.** Every page syncs `scope:"internal"` unless its exact `<dir>/<filename>` is in a
+new `CONSUMER` allowlist, **which is empty** — the founder's call after reading the candidates.
+Read end to end, none are written for a customer: `take-rate-ladder` (*"all four streams stack on
+one customer"*), `dragondash` (*"the profit engine — premium margins"*), `trust-then-flag-model`
+(*"MVPs over-gate"*), and even `campaign-lifecycle`, the cleanest page in the set, lists DB tables
+and a trigger name. Consumer product knowledge lives in `help_articles` and `/help`.
+Adds `SYNC_DRY_RUN=1`, which prints the split without POSTing.
+
+**The sharpest number:** afterwards the consumer predicate returns **0 of 247** rows — every
+non-wiki row was already internal, so consumer Donny's *entire* RAG had been the 107 leaking
+pages. There was never a legitimate consumer knowledge base to lose, and `agents/general.ts`
+already degrades gracefully (*"No additional context available."*).
+
+**Deliberate design calls.** The staleness guard survives re-pointed at the allowlist but **no
+longer throws**: under a denylist a stale entry meant a page was about to be published to
+consumers, so refusing to sync prevented it; under an allowlist the renamed file is already in the
+scan under its new name and syncing as internal, so aborting all 112 pages prevents nothing. Its
+real limitation is written into the code rather than papered over — the script never deletes, so a
+renamed allowlisted page's OLD row survives at its old scope, consumer-retrievable with stale
+content; aborting does not fix that (the orphan is in the DB either way) and a prune is impossible
+because `donny-knowledge-sync` exposes no delete-by-source_id. Not allowlist-specific: renaming
+*any* wiki page orphans its row. Prod clean 2026-08-10 (disk 112 = DB 112).
+
+**Checked rather than assumed.** 112 pages now take `donny-knowledge-sync`'s
+`scope === "internal"` branch instead of 5, and that branch also reads `internal_docs.archived_at`
+and **deletes** the row if archived. Prod holds 114 `docs/wiki/%` paths with **0** archived → a
+no-op today, and the behaviour you want later.
+
+**Codex — 2 findings round 1, both mine, clean round 2.** **P1:** deleting the denylist broke
+`src/lib/wikiSyncForceInternal.test.ts`, which parses the script for
+`const FORCE_INTERNAL = new Set(...)` and throws at module load if absent — I had grepped for
+`SYNC_CURATE` and never for `FORCE_INTERNAL`, precisely the sweep that test existed to survive.
+Rewritten as `wikiSyncConsumerScope.test.ts`, now asserting the load-bearing
+`else { page.scope = "internal" }` line (**proven live** — stubbing it turns the test red) and
+failing if a denylist returns, matched on **declarations not mentions** so the comments can keep
+narrating the history. **P2:** my guard comment claimed a stale allowlist entry leaves a page
+"MORE protected than intended, never less" — false, per the orphan above. Codex's suggested
+remedy (abort) does not fix its own finding, so the correction was to the claim, not the
+behaviour. *"No worse than before" is the wrong bar; judge a fix against the claim it makes.*
+
+**Verified on prod after merge:** `internal` **112** and the `NULL` group **absent** (was 5/107);
+consumer predicate **0 of 247**; `match_donny_knowledge`'s deployed body confirms the consumer
+branch is `dk.scope IS NULL OR dk.scope <> 'internal'`; sync reported
+`inserted=0 updated=112 errors=0`. Suite 238 files / 2373 tests, typecheck and build clean.
+
+**Gotcha worth keeping:** a `git stash push` run to check a lint baseline reverted live work —
+recovered by SHA (`git stash list --format='%H %gs'` → `apply` → `drop`), leaving two other
+sessions' stashes untouched. Don't stash to answer a question `git diff` answers. Also: the sync
+key lives only in the main checkout (`supabase/scripts/.env.sync.local`, gitignored), and copying
+it in by absolute path lets a worktree-isolated session run the sync without `cd`-ing into main —
+which would lock both shells for the session.
+
+**Still open (handoff steps 2–4):** page splits (`donny-social-tools` 26,847 ·
+`service-role-data-exposure` 26,779 · `domain-migration-io-to-com` 25,086 ·
+`donny-first-dashboard` 24,708, against `FAIL_CHARS = 31_000`) — note the old `FORCE_INTERNAL`
+split-trap is **gone**, since an empty `CONSUMER` has no path-keyed entry a split could break;
+`analyses/` heading-derived filenames; `index.md`/`log.md` trimming.
+
+## [2026-08-10] Domain migration Phase 4 (CONTENT) — the text no code change can reach
+
+Phases 1–3 moved the app, the config and the redirect. None of them touch text stored in the
+**database** or written in **prose**. Phase 4 is that text.
+
+**Migration `20260810140000_dotcom_phase4_content.sql` — built and dry-run-proven, NOT applied.**
+It moves three help articles (the "go to **dragoncandy.io** and tap Get Started" instruction in
+the restaurant/creator/brand signup guides — the first thing a brand-new user reads) and the
+`dezzy-seo-articles` playbook prompt, which tells the agent where public SEO articles publish.
+
+*Why a migration rather than editing the seed files:* the rows were seeded by `20260427120000`,
+`20260512000001` and `20260628120000`, all long since run. **Editing an applied migration changes
+nothing in prod** — it only makes the repo disagree with the database. A forward-only `UPDATE` is
+the only mechanism that moves a seeded row.
+
+*Proven before applied, then rolled back.* The exact rewrite ran on prod inside a `DO` block
+ending in `RAISE EXCEPTION`, which reports what it did and rolls the whole thing back:
+`rows_help=3 rows_playbook=1`, all three signup rows `com=t io=f`, `gdpr-erasure` untouched. Prod
+was re-queried afterwards to confirm nothing moved. The dry run also proved something that was
+otherwise an assumption: `help_articles.search_vector` is **not** a generated column, so an
+`UPDATE` could have left a stale full-text index matching only the old domain — `sv_com=t` shows
+`trg_help_articles_search_vector` genuinely reindexed. (Asymmetry found in the same check:
+`aios_playbooks` has a `handle_updated_at` trigger; `help_articles` does not.)
+
+**URLs move; mailboxes do not — and the migration asserts it.** `help_articles.gdpr-erasure`
+carries `privacy@dragoncandy.io` and is deliberately untouched. The `.com` mailboxes do not exist
+yet; that move is Phase 5, gated on a real send-and-receive test per address. Pointing a GDPR
+erasure contact at an address that may not receive is strictly worse than leaving one that does —
+erasure requests and Stripe dispute alerts land there. **A stale-but-delivering address beats a
+fresh-but-dead one.** The reasoning is encoded as a guard that raises if an `@dragoncandy.io`
+mailbox appears in any targeted row, so a later body edit cannot drag a mailbox along with a URL.
+
+**Prose: 17 fixes across 13 files, under one rule.** A blanket find-and-replace would have been
+wrong — most surviving `.io` mentions are *correct*. The migration wiki page says `.io` many times
+because that is what it documents, and `SHIPPED_LOG` records history. The rule applied: **undated,
+present-tense claims about the live domain get fixed; dated or explicitly historical statements
+keep their original text.** Fixed: the `PROJECT_CONTEXT` identity line, the Engineering Blueprint
+prompt header, three present-tense investor claims, `internal.dragoncandy.io` in two AIOS pages
+plus a setup instruction, `dragoncandy.io/help`, the platform entity's hosting row, the Google
+OAuth callback registration, and the forward-looking `/c/[id]` and `/blog` product links. Kept:
+`as of April 2026`, the dated `Update (2026-06-01)` blocks, `notify.dragoncandy.io` (mail, Phase
+5), past-incident narratives, the Lovable-era CI description, and all of `docs/archive/`.
+
+**One deliberate non-fix.** The pricing briefing's cost table reads `| Lovable.dev hosting | $50 |
+Hosts the dragoncandy.io website and app |` — stale on *both* counts, since Vercel has hosted
+since the 2026-07-15 cutover. Changing only the domain would newly assert that Lovable hosts
+`.com`. **A half-fix to a compound-stale claim makes it more wrong, not less**, and rewriting a
+financial table's row label is outside a domain migration. Left alone and flagged. The same claim
+on the *wiki entity* page — current architecture, not a historical cost table — was fixed in full.
+
+**Tooling guard that earned its keep.** The doc edits ran through an exact-string script requiring
+**exactly one match per edit**, refusing any whole-file sweep on a file containing an
+`@dragoncandy.io` mailbox. It caught a real miss: `google-workspace.md` uses CRLF, so a
+`\n`-containing pattern matched zero times and the script **failed loudly instead of silently
+doing nothing**. A sweep that reports success on zero matches is the hazard.
+
+Also: `supabase/seed/donny-knowledge-seed.ts` moved `dragoncandy.io/help` → `.com/help`. This is
+**preventive only** — no `donny_knowledge` row on prod carries that sentence today (checked), so
+it stops a future re-seed from writing the old domain.
+
+**Two findings recorded, not acted on.** (1) Two orphan `internal_docs` rows survive for wiki
+analyses deleted when they were split into `part-1`/`part-2`, stuck at `updated_at = 2026-06-27`
+while ~130 siblings read `2026-08-10` — so **`sync:internal` does not delete rows for removed
+files**, and superseded specs stay visible in `/internal/strategy` and to Dezzy's
+`get_internal_doc`. The *consumer* half is genuinely closed: `donny_knowledge` returns **zero**
+rows for either, so the NULL-`scope` leak recorded in #378 really was fixed — tested, not assumed.
+Remedy is the existing reversible `internal_doc_archive(path, reason)`, which is exactly what the
+monthly `strategy-library-audit-agent` exists to propose. (2) `sync:wiki` writes `donny_knowledge`
+with `scope = NULL`, i.e. engineering wiki prose is consumer-Donny-reachable by design — noted
+because it raises the value of keeping present-tense wiki claims accurate.
+
+No RLS, policy, grant or authorization change. → `docs/wiki/concepts/domain-migration-io-to-com.md`
+
+## [2026-08-10] Domain migration Phase 3 (REDIRECT) — `.io` permanently 308s to `.com`
+
+All three `.io` hosts now issue a permanent **308** to their own `.com` counterpart, configured
+per-domain in the Vercel dashboard (`vercel.json` holds only the SPA rewrite; `www.com` → apex
+was already done the same way):
+
+| From | Code | To |
+|---|---|---|
+| `dragoncandy.io` | 308 | `dragoncandy.com` |
+| `www.dragoncandy.io` | 308 | `dragoncandy.com` |
+| `internal.dragoncandy.io` | 308 | `internal.dragoncandy.com` |
+
+`www.io` targets the **apex** (one hop, not chained through `www.com`'s 308), and `internal.io`
+targets `internal.com` — the dropdown makes the apex the easy wrong answer, and that mistake
+would have dumped internal users into the consumer app. **308 rather than the plan's literal
+301**: Google consolidates them identically, 308 also preserves method and body, and it matches
+the existing `www.com` → apex.
+
+**Method — temporary first, then promote.** Configured as 307 on all three, verified end to end,
+then promoted. The costs are asymmetric: a permanent redirect is cached by browsers indefinitely
+and cannot be revoked per user, while a 307 reverts in one click. The soak is also the only
+window in which verification is possible at all — you cannot test a redirect that does not exist
+yet. Vercel defaults a new domain redirect to 307, so this was the path of least resistance.
+
+**The check that mattered was the fragment.** Path and query survive verbatim (URL-encoding
+intact; the internal OAuth callback keeps `code`/`state`). But the decisive proof was done in a
+real browser: `.io/help#fragment-survival-probe` → `.com/help#fragment-survival-probe`. GoTrue
+returns the session in `#access_token=…`; fragments are **never sent to the server**, so nothing
+on the wire can show this and a curl-only pass would have proven nothing. They survive only
+because browsers re-attach a fragment to a target that has none. Had it failed, every in-flight
+verification email would have silently logged nobody in. `.io` remains allow-listed in GoTrue
+(probed with an unlisted control), and an old bookmark to a protected route degrades correctly:
+`.io/dashboard/business` → `.com/auth`.
+
+**Mail was structurally out of reach.** `notify.dragoncandy.io` is a Cloudflare mail subdomain
+never attached to Vercel, and Vercel redirects are per-attached-domain — DKIM and every `from:`
+untouched. Phase 5 stays independent.
+
+**The forced re-login starts at the *first* redirect, not the permanent one** — it follows the
+origin change (sessions are origin-scoped `localStorage`), so it began at the 307.
+
+**Search Console: the plan assumed a property that never existed.** Checking rather than
+executing found **no properties at all**. So Change of Address is *impossible*, not deferred —
+it needs a verified source property — and it matters less than it sounds, since the 308 is what
+passes ranking signals. Also: `.io` is now verifiable **only by DNS TXT**, because it 308s
+everything and the HTML-file/meta-tag methods would redirect away. `?authuser=<email>` silently
+fell back to the signed-in account rather than erroring, the same shape as the GoTrue allow-list.
+Artifacts were verified before being offered to Google — `sitemap.xml` holds 5 `.com` entries and
+0 `.io`. **Open (founder):** add the `.com` property under `info@dragoncandy.com`, which is not
+signed into the browser profile.
+
+**Code follow-ups on the same branch.** (1) The Phase 2 `DEFAULT_ORIGIN` doc comment asserted
+`PUBLIC_SITE_URL` "does not exist on prod" — **false within the hour**, and it shipped inside 15
+deployed bundles. Rewritten to describe the mechanism instead: a comment cannot track mutable
+deploy state, so restating today's truth would only re-arm the trap. Re-verified by digest
+equality first — all three URL secrets hash to `52bf7482…` = `https://dragoncandy.com`, no
+trailing slash. (2) `send-verification-email` rendered `<a href="…com">dragoncandy.io</a>`, the
+same defect `8f2312ae` fixed in `manage-internal-users` — a **class**, and this instance is worse
+for being the consumer signup email. Fixed by deriving the label from the href rather than
+hardcoding a corrected one, and the same derivation applied to `manage-internal-users` (correct
+today, but hardcoded duplicates of a constant — exactly how the first drift happened). A
+repo-wide sweep found no others. **Both functions need a redeploy to reach users.**
+
+No migration. No RLS, policy, grant or authorization change.
+→ `docs/wiki/concepts/domain-migration-io-to-com.md`
+
+## [2026-08-10] Donny dashboard — every visit starts fresh, and the greeting gets out of the way
+
+The founder opened the deployed dashboard on their phone and rejected the shape: *"The long scroll
+down still exists. We don't need the conversation from yesterday. Every prompt is fresh upon visit…
+The current conversation should appear above the prompt like Claude and ChatGPT… Once the
+conversation reaches the 'page length' there needs to be a scroller."* Asked how the greeting should
+behave once a conversation starts, they chose **collapse it**.
+
+**Two sessions solved the first half in parallel, and only one shipped.** #429 (merged from
+`fix/donny-prompt-chrome-and-scroll`) landed the bounded scroller — `DonnyThreadRegion`, the composer
+as a plain flex sibling beneath it, and a scroll-to-bottom control — while this branch was building
+its own. #429's is better on every axis, including a defect this branch never found: `h-full` on the
+scroller resolved against ancestors with no definite height and computed an **8337px scroller inside
+a 145px parent**, so `overflow-y-auto` had nothing to overflow. So this branch was **reset onto main
+and rebuilt** to carry only what main still lacked, and its duplicate scroller was **discarded, not
+merged**.
+
+**What shipped here.** Donny keeps ONE conversation per user, shared with the side panel, so the
+dashboard **filters** it rather than forking it: the panel stays continuous, the model still receives
+its history, and only this surface's display is fresh. `visitBaselineId` is the id of the last
+message present when the user first asked here; the view is everything after it. **Slicing by an id
+rather than a count or a wall-clock time is what makes it robust** — late-arriving history lands
+*before* the baseline and stays excluded, and no client clock is involved (a skewed one would hide
+the reply being waited on). The greeting collapses to its label row once a conversation runs, and the
+block's max-height drops **26rem → 12rem** to match, because reserving room for a hero that is no
+longer rendered would hand the reclaimed ~200px back as whitespace. Suggestion chips retire with the
+hero.
+
+**Four Codex rounds, five findings, and the last one was on my own fix.**
+
+1. The baseline was recorded in `ask()`, *above* the "not ready yet, queue it" guard — so a tap on a
+   cold dashboard recorded `null` ("this user has no history") and yesterday's thread counted as this
+   visit the moment it arrived: **the founder's exact complaint, in precisely the fast-tap window the
+   queue exists for.**
+2. `isSuccess` is not "current" — React Query keeps it true while a background refetch runs over
+   **cached** data, so readiness would be announced over a stale array.
+3. `isStreaming`/`error` are **global to the shared conversation**. Ask in the side panel, walk to the
+   dashboard mid-reply, and the page collapsed its greeting to render someone else's answer as this
+   visit's transcript — the leak the filtering exists to stop, through the adjacent unlocked door.
+   Now gated on `askedHere`. Five existing tests had to change to prove it; they had only ever passed
+   because the page keyed off global streaming.
+4. …and the one worth keeping: **counting a failed history fetch as "loaded"** — my fix for the
+   deadlock in (2) — reintroduced (1) on any transient failure. **Both collapses of the failure case
+   are guesses**: "loaded" leaks, "not loaded" hangs forever behind a flush guarded on the same flag.
+   The answer is a third state — `messagesErrored` + `retryLoadMessages` — where the page says *"I
+   couldn't load your conversation just now"*, **keeps the queued ask**, and the flush already
+   waiting drains it on recovery, so the retry repairs the cause and nothing is retyped.
+
+Two existing tests became **stronger** rather than adjusted: arrival with an existing conversation
+now asserts the thread is *absent*, not merely unscrolled, and the chips assert *absence*, not
+`disabled`. Three negative controls run and confirmed. 33 tests in the file; full suite **2373 passed
+/ 0 failed**; typecheck, lint and build clean.
+
+**The durable lesson is not in the code.** The collision was found *by accident*, chasing an
+unrelated Codex finding. The `[scope]` check that would have caught it had been run that morning
+against the **core docs**, came back clean, and said nothing about `src/components/donny/`. Run it
+against the source paths the branch touches — on a repo with 30+ worktrees, "has someone already
+shipped this?" has a real answer, one command away.
+
+→ `docs/wiki/concepts/donny-first-dashboard.md` · #428, #429
+
+## [2026-08-10] Domain migration Phase 2 (SWITCH) — canonical URLs move to `dragoncandy.com`
+
+Phase 2b + 2c of the `.io` → `.com` migration: the hardcoded literals that have no env
+indirection, plus two pre-existing fallback bugs. **Phase 2a (config) is deliberately not in
+this work** — the three secrets and the GoTrue Site URL are founder-owned.
+
+**Infrastructure resolved first (founder-executed, Claude-verified).** The Vercel primary was
+flipped so **apex is canonical**: `www` → apex is now a 308, path- and query-preserving
+(verified). Previously apex 308'd to `www`, the reverse of the plan. Auth-gated surfaces were
+verified on `.com` on **both viewports** — desktop by Claude in the founder's signed-in Chrome
+with direct CORS measurement, mobile confirmed by the founder — closing the last open item on
+the Phase 1 gate.
+
+**Code shipped.** `src/components/SEO.tsx`'s `SITE_URL` is the single constant every canonical
+link and `og:url` on the site derives from, so that one line is the highest-leverage change.
+Plus `index.html` metadata, `public/sitemap.xml` (5 locs), `public/robots.txt`, three JSON-LD
+blocks, redirect/origin fallbacks across eleven edge functions, email **bodies** (links and
+images only, never a `from:`), internal surface copy, and `playwright.config.ts`. Two
+pre-existing bugs fixed en route, both wrong independent of this migration:
+`send-welcome-email` fell back to `https://lovable.app` so every welcome CTA pointed at the old
+Lovable host (3 sites), and `create-sponsorship-checkout` fell back to the Lovable *preview*
+host, inconsistent with every other payment function.
+
+**The Codex finding: the intent was recorded three times and the change still didn't happen.**
+Codex flagged [P2] that `_shared/origins.ts`'s `DEFAULT_ORIGIN` was still `.io`. Three places
+had already said Phase 2 would move it — the constant's own doc comment, the iOS TestFlight
+spec, and this migration's design doc §2b. And `docs/wiki/concepts/ios-testflight-first-build.md`
+had gone further, naming the omission as an open risk *in writing*, before Phase 2 was drafted.
+**A previous session spotted the gap, wrote it in the wiki, and the next session shipped
+without it.** Writing something down is not the same as it being consulted — which is an
+argument for the review gates, not against the wiki: Codex, having read none of it, found the
+same thing from the diff alone.
+
+Severity was measured rather than assumed. As a CORS fallback `DEFAULT_ORIGIN` is genuinely
+cosmetic (an unlisted origin is blocked by exact-match ACAO whatever the header says), but
+three functions mint real user-facing URLs from it when their env var is unset —
+`verify-email`, `send-verification-email`, `create-package-order-escrow`. All three prefer a
+trusted request `Origin` or the env var first, so ordinary browser traffic already resolved to
+`.com`; the fallback fires only for a request with no trusted `Origin`. Worth fixing, not
+urgent. And Phase 2 Step 1 (setting the secrets) overrides it in all three with **no deploy at
+all**, making the code flip defense-in-depth for the absent-secret case — which
+`PUBLIC_SITE_URL` proves is real, since it does not exist on prod.
+
+**Reading a secret's value without exposing it.** `supabase secrets list` returns each secret's
+name, **SHA-256 digest** and `updated_at`. The digest is a plain SHA-256 of the value, so a
+candidate can be tested for exact equality: `printf '%s' "https://dragoncandy.io" | sha256sum`
+matched `APP_URL`'s digest, establishing its value without ever seeing it. Works for any
+low-cardinality secret (a URL, a domain, a flag); useless against a real key, which is precisely
+why it is safe.
+
+**Three misses the finding surfaced downstream.** Chasing it rather than just patching it found
+four `href`/link-text pairs in `InternalRoute.tsx` and `InternalAuth.tsx` that the plan listed
+and the mechanical pass skipped — the `https://` prefix that deliberately makes email addresses
+*structurally* unmatchable also hid the bare display text next to each `href`, so they would
+have shipped with href and label disagreeing (the same defect `data-exposure-reviewer` caught
+on the password-set email: a link whose visible text names a different domain than its target
+is what mail filters score as phishing). It also falsified the wiki's own prediction that the
+flip "would force a sweep" — `_shared/*` bundles per function at deploy time, so a
+non-redeployed function simply keeps emitting `.io` cosmetically. Mixed fleet state costs
+nothing; the flip supplies a *reason* to sweep, not a requirement.
+
+**Method: binary-mode replacement with per-file assertions.** The first pass used Python text
+mode, which silently converts CRLF→LF on write and rewrote every line ending in five files — a
+2-line change appeared as a **2,192-line diff** on `send-notification-email`, which would have
+buried the change and polluted `git blame`. Reverted and redone in binary mode. The script
+asserts an exact expected occurrence count per file, which is what caught a real defect rather
+than merely preventing a mistake: `donny-chat` matched **0** URL-shaped occurrences, because
+its `.io` is prose inside a sentence Donny speaks, not a URL. A blind find-and-replace would
+have "succeeded".
+
+**Deliberately not changed:** 9 `@dragoncandy.io` addresses and 8 `notify.dragoncandy.io`
+references (Phase 5, gated on a real per-mailbox receive test — a dead support address is worse
+than an old one, since GDPR erasure requests and Stripe dispute alerts land there);
+`InternalAuth`'s `placeholder="you@dragoncandy.io"` (an email address, and pointing it at `.com`
+could mislead a founder about which account to use while the Workspace-org question behind
+`GOOGLE_ALLOWED_DOMAIN` is open); and **all three allow-lists plus the CSP keep BOTH TLDs** —
+expand → switch → redirect → **contract**, `.io` removed last or never, because removing it
+here would break every in-flight email link.
+
+**Gates:** `tsc --noEmit` clean · `allowedOrigins` + `internalHost` + `publicOrigin` 19/19 ·
+`data-exposure-reviewer` **PASS** (allow-list membership byte-compared unchanged;
+`DEFAULT_ORIGIN` traced through all 8 references and proven never an authorization input, and
+not an open-redirect surface) · **Codex clean on re-run** — *"The changes consistently switch
+canonical/public-facing defaults from dragoncandy.io to dragoncandy.com while preserving
+existing allow-list coverage for both TLDs. I did not find a discrete regression introduced by
+the diff."*
+
+**Still founder-owned:** set `APP_URL` (currently `.io`), `PUBLIC_SITE_URL` and
+`DRAGONCANDY_APP_URL` (both absent) to `https://dragoncandy.com`; then GoTrue **Site URL** →
+apex, which **logs out all ~42 users** (sessions live in origin-scoped `localStorage`). Phases
+3–6 not started. → `docs/wiki/concepts/domain-migration-io-to-com.md`
+
+## [2026-08-09/10] iOS — repo work for the first signed build to TestFlight
+
+> **Merged, but that ships the frontend only.** Tasks 11–14 are still ahead and none of them
+> is optional: founder Apple enrollment (24–48h, gates everything), a **canaried
+> `donny-orchestrator` redeploy** — the CORS change is inert until it runs, because
+> `_shared/` is bundled per function at deploy time across 82 files — and the physical-device
+> build once the founder's Mac arrives 2026-08-12. **Merging this does not make Donny work on
+> the phone.** `npm run build` clean on every commit.
+
+Not the start of the iOS project — Phase 1 (Capacitor foundation) and Phase 2 (native
+camera + share sheet) shipped in June. This branch is the distance between "code exists"
+and "it runs on a phone": neither the camera nor the share sheet had **ever once executed
+on real iOS hardware**, because nothing in the app's origin handling or the backend's
+CORS allow-lists had ever been checked against what Capacitor actually does.
+
+**Three things blocked the shell from working at all**, all found by grepping the
+worktree before writing any code. `window.location.origin` evaluates to
+`capacitor://localhost` inside Capacitor — 21 occurrences across 14 files, and they don't
+all want the same fix. A new `publicOrigin()` seam (`src/lib/publicOrigin.ts` +
+`CANONICAL_APP_ORIGIN` in `allowedOrigins.ts`) returns `window.location.origin`
+byte-identically on web and the canonical `.com` origin natively, and the sites sort into
+three buckets: **repoint** (auth email redirects, share links, and the worst case —
+notification `actionUrl`s that `create-notification` **emails to a different user**, so a
+dead `capacitor://` link would have landed in a creator's inbox after their project was
+marked complete); **leave alone** (`AuthPage.tsx`'s in-app navigation base — repointing
+it would eject the user into Safari mid-auth); and **gate the consumer instead of the
+value** (the Outstand OAuth `redirect_uri` — repointing it stops the provider rejecting
+`capacitor://`, but the callback then completes in Safari with no route back into the
+shell at all, so the fix is a new `ConnectAccountButtonGroupGated` that says "web-only for
+now" rather than trading a visible rejection for a silent dead end). Second: no edge
+function trusted the native origin, so the app would reach Supabase REST/Auth but zero
+custom edge functions — Donny, campaign generation, payments. Fixed with a new
+`NATIVE_APP_ORIGINS` in `_shared/origins.ts`, composed into `cors.ts` only (deliberately
+**not** mirrored into the frontend's credential-boundary `ALLOWED_REDIRECT_ORIGINS`) —
+inert on prod until a canaried redeploy, per [[Edge-Function Deploy & Bundling]]. Third:
+the bundle ID `io.dragoncandy.app` predated the `.com` domain decision, and a bundle ID
+is immutable **once an App Store Connect record exists** — since none did, changing it to
+`com.dragoncandy.app` was a free two-file edit today and permanent tomorrow. Seven
+committed documents said this must not change (the original audit found five; running
+the actual inventory instead of trusting the brief found two more), all updated with a
+superseded note rather than silently overridden. Also shipped:
+`ITSAppUsesNonExemptEncryption` in `Info.plist` (without it every TestFlight upload waits
+behind the export-compliance questionnaire) and a re-run of the bounded purchase-CTA
+audit, which confirmed the gated set is **still closed** after 233 commits and 31 new
+pages since the iOS scaffold.
+
+**The process record is the more durable part.** Five defects surfaced in the **plan
+itself**, each caught by a different party than its author: a wrong grep count (the
+implementer reported the true number rather than fudging it to match); an `as never` test
+fixture that failed `TS2698` under strict mode and wouldn't have type-checked anything
+even compiling; a `npx supabase functions download` step that overwrites local source
+with the **currently deployed** bundle — it silently reverted the just-edited CORS files
+to their pre-task content and truncated a file nine others import to **0 bytes**, caught
+only by a reviewer noticing three identical file mtimes, not by any typecheck or build;
+a device-checklist route, `/settings/billing`, that **doesn't exist** and had already
+caused a documented two-month 404 incident on the real "Upgrade" CTA (PR #409, fixed two
+days before this branch); and a pre-PR gate's expected-hit-count that contradicted the
+plan's own later decision (Task 5 chose to gate the Outstand consumer rather than
+repoint its value, and the earlier gate step was never updated to match — the same drift
+independently showed up in the spec's own Finding-1 table). A second, unrelated
+casualty from the same troubleshooting: `deno install`, run after `deno check` failed to
+resolve `npm:` specifiers, silently rewrote `node_modules` into Deno's own layout,
+swapping the lockfile's pinned vitest 4.1.2 for 4.1.10 — every test run then died with
+`ERR_PACKAGE_PATH_NOT_EXPORTED`, invisible for four tasks because `build` and `lint` kept
+passing. Recovered with `npm ci`.
+
+**Gate results (Task 10, commit `69ca2ad8`):** Category-B protection verified (the three
+must-not-repoint sites still hold raw `window.location.origin`); lint 0 errors / 119
+pre-existing warnings; build clean; 3 test files / 11 tests passed post-recovery; `tsc
+--noEmit` exits 0 in 69s (down from ~420s once the `deno install` damage was cleared);
+`data-exposure-reviewer` **PASS**, having tested rather than accepted the "CORS is not
+authorization" claim; Codex second review **CLEAN** with an explicit no-issues verdict.
+
+**A final whole-branch fix wave** (this session, 2026-08-10) closed five findings, all
+documentation/comments — no code defect was found, no behaviour changed: added a missing
+known limitation (a completion notification from the iOS app now deep-links its
+recipient to `.com` while their other transactional emails still point at `.io`, verified
+against `send-notification-email`'s actual template rendering before writing anything
+down); wrote this entry and the accompanying wiki ingest, since none of the knowledge
+layer existed before this pass and CLAUDE.md makes that the actual merge blocker; brought
+the domain-migration wiki page's "Must NOT change" justification into line with its
+source spec, which had already been corrected in place while the RAG-visible wiki copy
+still led with the original unqualified sentence; documented in code the
+origin-classification rule that had previously lived only in the spec (all four raw
+`window.location.origin` sites named in `publicOrigin.ts`'s docblock, plus a one-line
+comment at the one site — `safeUrl.ts:4` — where repointing would actually change
+behaviour) and fixed the spec's own Finding-1 table, which still filed the Outstand sites
+as "must be repointed" though the shipped design gates the consumer instead; and recorded
+the `NATIVE_APP_ORIGINS` mirror-rule exception on the frontend side, where it had been
+undocumented.
+
+→ `docs/wiki/concepts/ios-testflight-first-build.md` · `docs/wiki/entities/capacitor-native-shell.md`
+· `docs/superpowers/specs/2026-08-09-ios-testflight-first-build-design.md`
+· `docs/superpowers/plans/2026-08-09-ios-testflight-first-build.md` · `worktree-dc-apple-store`
+## [2026-08-09] Donny-first dashboard Phase B — the answer lands on the dashboard, and the table that arrived as pipes
+
+**Branch:** `feat/donny-dashboard-inline-chat` · **Wiki:** [[Donny-First Dashboard]],
+[[Honest Analytics]] · 2026-08-09
+
+**This session started with the acceptance signal that had never existed.** The `social_*` repair
+(#416) set its own bar — a `status='success'` row in `donny_tool_executions` for a `social_*` tool —
+and that bar had never been met in the table's history (7 rows, all `error`, none since Aug 7, two
+for tools that no longer exist). The founder signed in on prod and asked about their Instagram
+posts. Read from the table, not inferred from the screenshot: **`social_get_post_analytics`,
+`status='success'`, 2026-08-09 23:23:57**, output
+`{"post_count":1,"has_signal":false,"caveat":"Based on 1 measured post — too few to name a trend, a
+best anything, or a rate."}` — and Donny obeyed the gate, naming no best platform and no trend.
+[[Honest Analytics]] held under a real user rather than a probe.
+
+**The same screenshot exposed two problems, different in kind.**
+
+**The table was a straight defect.** Donny's answer opened with
+`| Metric | Total | |------|-----|| Views |1|` — literal pipes. `DonnyMessage.tsx` ran ReactMarkdown
+with **no `remark-gfm`**, and tables are GitHub-Flavored Markdown, not base CommonMark. The tell was
+in the same message: the `**bold**` rendered perfectly, because bold *is* CommonMark. Fixed at both
+layers deliberately — the tool now asks for plain lines (`NARROW_BUBBLE_FORMAT` in
+`_shared/social-analytics.ts`, since four numbers do not need a grid and a 5-column table does not
+fit a ~370px bubble *even when it renders*), and the plugin is added because the model is free-form
+and will emit a table again. Tables scroll inside their own container, header weight from
+`font-semibold` and a hairline rather than a grey band.
+
+**The panel was not a bug.** Phase A's prompt box was a launcher by design —
+`handlePromptSubmit` → `openDonnyWithContext()` → `open()`, `expand()`, send. Said plainly to the
+founder rather than relabelled, because the *design* was wrong for the surface, not the code. The
+founder chose "answer inline on the dashboard".
+
+**The design doc's §13 hazard list is what prevented shipping something broken — but the
+load-bearing blocker was not on it.** `useDonny` gates its queries on `stage !== 'closed'`, so an
+inline thread with the panel shut renders a **permanently empty box**, and empty is
+indistinguishable from "no messages yet" — it would have passed review and failed the user. The
+spec's answer was a new `inline` stage (close/collapse guards + an audit of six `stage` consumers).
+Instead: `stage` was conflating **"the panel is visible"** with **"the conversation is live"**, and
+`registerInlineConversation()` — a ref-count, so two surfaces or a remount-before-cleanup cannot
+switch the conversation off under the one still showing it — separates them. `stage` is
+byte-unchanged; **hazards 2, 3, 4 and 7 dissolve rather than being solved**. Hazards 1 and 6 close
+by extracting `DonnyThread` from `DonnyChatView`: one implementation, no panel header, and no scroll
+container or `h-full` (the panel scrolls itself; the dashboard is scrolled by `#main-content`).
+
+**Then four review rounds found four more defects, none of which a passing suite or a screenshot
+would show — and all four are one shape: the code claimed more than it delivered.**
+
+1. **(self) Arrival scrolled past the greeting.** The comment promised it would not; the code
+   inferred "a reply arrived" from the message count growing, and on arrival that count grows 0→N as
+   the query resolves. **Intermittent** — with the thread already in React Query's cache the count
+   never grew and it behaved correctly. Replaced by recording the fact: one `ask()` helper wraps
+   every send from the page, so intent is recorded, not inferred.
+2. **(Codex P1) The dependency move was half done.** `package.json` moved `remark-gfm` to runtime;
+   `package-lock.json` still had it under devDependencies with `dev: true`, so `npm ci --omit=dev`
+   would build a production tree missing a module `DonnyMessage` imports.
+3. **(Codex P2) A failed first ask rendered nothing at all.** The thread was gated on
+   messages/streaming, so an error producing neither was invisible — the tap did nothing, with no
+   error and no retry. The panel was never exposed to this; the gate is what this branch introduced.
+4. **(Codex P2) The fix for that offered a dead button.** `lastUserMessage` is assigned on the line
+   *after* the `No active conversation` throw and `retry()` guards on it, so "Try Again" did
+   literally nothing — the same dead-CTA class as the twelve `/settings/*` ones. **"The failure is
+   visible now" is not the bar**; the ask is now **queued** until a conversation exists.
+5. **(Codex P2) A follow-up typed mid-answer vanished.** `sendMessage` opens with a *silent*
+   `return` while a send is in flight, and the prompt cleared its box unconditionally. Fixed the way
+   the panel already does it — input and chips disabled while busy, with a "Donny is answering…"
+   placeholder — **plus** the guard inside `handleSubmit`, because **Enter submits a form without
+   ever consulting the button's `disabled` state**.
+
+**Incidental finding, left unfixed on purpose:** `buildDonnyProposals.ts` declares a
+`kind: 'ask'` proposal CTA and **nothing in `src/` constructs one**, so that handler branch is
+unreachable today. It is Phase A's and plausibly intended for a near-future proposal type; the
+queue's `isStreaming` branch is documented as a **guard, not a live path**, so the first `ask`
+proposal does not silently reintroduce the dropped-message defect.
+
+**Gates.** 234 files / 2329 tests / 0 failed (JSON reporter — the console summary's interim lines
+undercount and briefly read as five missing files); tsc; lint 0 errors; build; `deno check` on the
+edge module by hand, since **CI's edge typecheck covers neither importer** (both on
+`.typecheck-ignore`). `data-exposure-reviewer` PASS — notable for reading `outstand-mcp.ts`, a file
+**not in the diff**, to confirm the `.eq('user_id', config.userId)` and `verified_at` scoping that
+`social-analytics.ts` does not itself contain. Two unrelated test failures (HeroSection,
+OnboardingWizard) were proven to be load flakes: both directories untouched by this branch, both
+pass in isolation, HeroSection passes at a longer timeout because its tests do a dynamic `import()`
+inside a 5s budget.
+
+**Still open at merge:** deploy `donny-orchestrator` (merging ships frontend only — the
+`NARROW_BUBBLE_FORMAT` half stays dark until then; verify by reading the **deployed source** for the
+string, not the version), and the **both-viewport `verify-prod`, which has still never been run on
+any task in this line of work**.
+
 ## [2026-08-09] `.com` Phase 1, the esm.sh bundler outage, and an 82-function redeploy
 
 > State as of writing: PRs **#414 and #415 merged**; all 82 `_shared/cors.ts` consumers

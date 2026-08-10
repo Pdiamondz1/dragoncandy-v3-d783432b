@@ -68,6 +68,18 @@ function sum(rows: PerfRow[], key: 'views' | 'likes' | 'comments' | 'shares'): n
   return rows.reduce((acc, r) => acc + (typeof r[key] === 'number' ? (r[key] as number) : 0), 0);
 }
 
+// FORMAT is part of the instruction because the answer is read in a chat bubble
+// roughly 370px wide on desktop and narrower on a phone — a markdown table does
+// not fit there even when it renders. On 2026-08-09 the model answered this tool
+// with a 5-column table and the founder saw raw pipes:
+// `| Metric | Total | |------|-----|| Views |1|`. The renderer was half the cause
+// (no GFM plugin, since fixed) but a rendered table would still have been the
+// wrong shape for the surface. The figures here are four numbers; four short
+// lines read better than any grid.
+const NARROW_BUBBLE_FORMAT =
+  'Write the figures as short plain lines, never a markdown table or ASCII grid — ' +
+  'this is read in a narrow chat bubble.';
+
 export function summarizePerformance(rows: PerfRow[]): string {
   const withId = rows.filter((r) => typeof r.outstand_post_id === 'string' && r.outstand_post_id);
 
@@ -98,9 +110,11 @@ export function summarizePerformance(rows: PerfRow[]): string {
       comments: sum(deduped, 'comments'),
       shares: sum(deduped, 'shares'),
     },
+    // The format rule applies to BOTH branches, so it lives in one constant —
+    // signal or no signal, the answer is read in the same narrow bubble.
     instruction: verdict.hasSignal
-      ? `State that this is based on ${postCount} measured posts, then answer normally.`
-      : `${verdict.caveat} Do not name a best platform, a trend, or a rate.`,
+      ? `State that this is based on ${postCount} measured posts, then answer normally. ${NARROW_BUBBLE_FORMAT}`
+      : `${verdict.caveat} Do not name a best platform, a trend, or a rate. ${NARROW_BUBBLE_FORMAT}`,
   };
 
   if (verdict.hasSignal) {

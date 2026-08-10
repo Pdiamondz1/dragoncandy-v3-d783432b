@@ -43,7 +43,7 @@ Before we talk about projections, here's exactly where DragonCandy stands right 
 | Team size | 1 (founder + AI development tools) |
 | Platform status | Fully built, feature-complete for launch |
 
-**Our entire platform runs for less than $300/month.** That's $295 split across four tools: Claude AI ($200), OpenAI ($20), Lovable.dev hosting ($50), and Supabase database ($25). There is no payroll, no office, no ad spend. Every feature described in this document is built and live on dragoncandy.io — we are pre-revenue by choice, not by capability.
+**Our entire platform runs for less than $300/month.** That's $295 split across four tools: Claude AI ($200), OpenAI ($20), Lovable.dev hosting ($50), and Supabase database ($25). There is no payroll, no office, no ad spend. Every feature described in this document is built and live on dragoncandy.com — we are pre-revenue by choice, not by capability.
 
 ### What This Document Explains, in Plain English
 
@@ -88,7 +88,7 @@ Every feature below is labeled with its current build status:
 
 | Label | What It Means |
 |-------|--------------|
-| **LIVE** | Built, tested, and working in the app right now at dragoncandy.io |
+| **LIVE** | Built, tested, and working in the app right now at dragoncandy.com |
 | **IN DEV** | Partially built or being actively developed — expected within 1-3 months |
 | **PLANNED** | Designed but not yet built — on the roadmap for the next 6-12 months |
 
@@ -140,7 +140,7 @@ Creators use DragonCandy for free. We never charge the supply side of the market
 |---------|--------|----------------------|
 | **Campaign Discovery (Swipe Stack)** | LIVE | Creator opens the app and sees available campaigns near them — like a job board, but visual. Filter by content type (photo, reel, story), distance, budget, or delivery tier. Three tabs: discover new campaigns, see what you've applied to, and track active collaborations. |
 | **AI-Recommended Matches ("Donny's Picks")** | LIVE | At the top of the feed, Donny AI recommends the top 3 campaigns the creator is most likely to win, with a match score (e.g. 95% Match). Saves them from scrolling past mismatched gigs. ML-ranked based on skills, location, rating, and availability. |
-| **Professional Portfolio & Public Profile** | LIVE | A public profile page (dragoncandy.io/creator/your-name) showing their best work, stats (campaigns completed, average rating), bio, specialties, and skills across 10 categories (UGC, video, photography, design, copywriting, social, animation, strategy, influencer, other). Acts as a digital resume for the local creator economy. |
+| **Professional Portfolio & Public Profile** | LIVE | A public profile page (dragoncandy.com/creator/your-name) showing their best work, stats (campaigns completed, average rating), bio, specialties, and skills across 10 categories (UGC, video, photography, design, copywriting, social, animation, strategy, influencer, other). Acts as a digital resume for the local creator economy. |
 | **Stripe Connect Payments** | LIVE | Direct deposit to their bank when content is approved. Stripe Connect onboarding built into the app. Balance display showing available, pending, and platform-pending earnings. Link to Stripe Dashboard for full account management. |
 | **Earnings Dashboard** | LIVE | Live tracker of total revenue from completed projects, application counts, projects completed, and average rating from businesses. Upcoming deadlines with color-coded urgency. Recent activity feed. |
 | **DragonShare Submissions** | LIVE | Submit organic posts you've already created on TikTok, Instagram, etc. Tag brands and products. Monthly free limit of 5 submissions. When businesses boost your posts, you earn money. Track submitted, boosted, and expired posts. |

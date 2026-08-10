@@ -125,7 +125,7 @@ serve(async (req) => {
     } else {
       // New user: send magic link with org context
       const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
-        redirectTo: `https://dragoncandy.io/invite/accept?org=${org_id}&role=${role}&invited_by=${caller.id}`,
+        redirectTo: `https://dragoncandy.com/invite/accept?org=${org_id}&role=${role}&invited_by=${caller.id}`,
       });
 
       if (inviteError) {

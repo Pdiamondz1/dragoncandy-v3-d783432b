@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { recordCrewActivity } from '@/lib/crews/recordCrewActivity';
+import { publicOrigin } from '@/lib/publicOrigin';
 import type { Database } from '@/integrations/supabase/types';
 
 type CollaborationRow = Database['public']['Tables']['campaign_collaborations']['Row'];
@@ -148,7 +149,7 @@ export const useProjectComplete = () => {
             emailData: {
               campaignTitle: campaignData.title,
               projectId: collaborationId,
-              actionUrl: `${window.location.origin}/dashboard/business/campaigns/${campaignData.id}`,
+              actionUrl: `${publicOrigin()}/dashboard/business/campaigns/${campaignData.id}`,
               amount: payoutSuccess ? payoutAmount : undefined,
               paymentMethod: payoutSuccess ? payoutMethod : undefined,
               isRecipient: false,
@@ -170,7 +171,7 @@ export const useProjectComplete = () => {
             emailData: {
               campaignTitle: campaignData.title,
               projectId: collaborationId,
-              actionUrl: `${window.location.origin}/dashboard/creator/projects?highlight=${collaborationId}`,
+              actionUrl: `${publicOrigin()}/dashboard/creator/projects?highlight=${collaborationId}`,
               amount: payoutSuccess ? payoutAmount : undefined,
               paymentMethod: payoutSuccess ? payoutMethod : undefined,
               isRecipient: true,
@@ -204,7 +205,7 @@ export const useProjectComplete = () => {
             emailData: {
               campaignTitle: collabCampaign.title,
               requesterName: creatorProfile?.creator_name ?? '',
-              actionUrl: `${window.location.origin}/dashboard/business/campaigns/${collabCampaign.id}`,
+              actionUrl: `${publicOrigin()}/dashboard/business/campaigns/${collabCampaign.id}`,
             },
           },
         }).catch((err: unknown) => console.error('Failed to send completion-request notification:', err));
@@ -224,7 +225,7 @@ export const useProjectComplete = () => {
             emailData: {
               campaignTitle: collabCampaign.title,
               requesterName: 'Business Owner',
-              actionUrl: `${window.location.origin}/dashboard/creator/projects?highlight=${collaborationId}`,
+              actionUrl: `${publicOrigin()}/dashboard/creator/projects?highlight=${collaborationId}`,
             },
           },
         }).catch((err: unknown) => console.error('Failed to send completion-request notification:', err));
