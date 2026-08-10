@@ -316,29 +316,82 @@ describe('DonnyCanvas — suggestion chips', () => {
   });
 });
 
-describe('DonnyCanvas — the sticky composer must clear the mobile bottom nav', () => {
-  it('offsets the thread-state composer above the nav on mobile and resets it flush on desktop', () => {
-    const { container } = renderCanvas();
-    const wrapperClass = () =>
-      container.querySelector("[data-tour='brief-generator']")!.parentElement!.className;
+// HONEST SCOPE: jsdom loads no CSS and lays nothing out, so every assertion in
+// this block pins the class VALUE the component asks for — not that the bar
+// actually pins, actually clears MobileBottomNav, or actually escapes
+// DashboardLayout's overflow wrappers. Those are browser facts and belong to
+// the both-viewport verify-prod pass. What these DO prove is that the recipe
+// cannot silently regress to the inert `sticky` it replaced.
+describe('DonnyCanvas — thread composer positioning (class values only)', () => {
+  const wrapperClassOf = (container: HTMLElement) =>
+    container.querySelector("[data-tour='brief-generator']")!.parentElement!.className;
 
-    // Resting: it sits in the normal flow, not stuck to anything.
-    expect(wrapperClass()).not.toContain('sticky');
-
+  const enterThread = () => {
     const field = screen.getByRole('textbox', { name: /ask donny/i });
     fireEvent.change(field, { target: { value: 'hi' } });
     fireEvent.keyDown(field, { key: 'Enter' });
+  };
 
-    const cls = wrapperClass();
-    expect(cls).toContain('sticky');
-    // A sticky inset resolves against #main-content's padding box, and that
-    // element carries no padding — so a bare `bottom-0` would park the send
-    // button underneath MobileBottomNav (fixed bottom-0 z-40, opaque, portaled
-    // to <body>). 6rem mirrors the content area's pb-24 nav clearance.
+  it('asks for no positioning at all while resting', () => {
+    const { container } = renderCanvas();
+    const cls = wrapperClassOf(container);
+    expect(cls).not.toContain('fixed');
+    expect(cls).not.toContain('sticky');
+  });
+
+  it('asks for the documented mobile fixed-bar recipe in thread mode', () => {
+    const { container } = renderCanvas();
+    enterThread();
+    const cls = wrapperClassOf(container);
+
+    // `fixed`, not `sticky`: DashboardLayout's `overflow-x-hidden` root (:182)
+    // and mobile content wrapper (:309) compute to scroll containers per CSS
+    // Overflow 3, and neither ever scrolls — so a sticky here was inert. A
+    // fixed box's containing block is the viewport, so it escapes both.
+    expect(cls).toContain('fixed');
+    expect(cls).not.toContain('sticky');
+    // Full-bleed on mobile (no sidebar there), with the app's own gutter.
+    expect(cls).toContain('left-0');
+    expect(cls).toContain('right-0');
+    expect(cls).toContain('px-4');
+    // Clears MobileBottomNav (fixed bottom-0 z-40, opaque, portaled to <body>);
+    // 6rem mirrors the content area's pb-24 nav clearance and absorbs the
+    // safe-area inset. Same shape and value as StickyApplyCTA.
     expect(cls).toContain('bottom-[calc(6rem+env(safe-area-inset-bottom))]');
-    expect(cls).toContain('md:bottom-0');
     // The offset already absorbs the safe area; a second pad would double it.
     expect(cls).not.toContain('pb-[env(safe-area-inset-bottom)]');
+    // App chrome, never the Radix modal layer (docs/DESIGN_SYSTEM.md).
+    expect(cls).toContain('z-40');
+    expect(cls).not.toContain('z-50');
+  });
+
+  it('leaves the composer IN FLOW on desktop — no md: pinning until a browser confirms one', () => {
+    const { container } = renderCanvas();
+    enterThread();
+    const cls = wrapperClassOf(container);
+
+    expect(cls).toContain('md:static');
+    // The previous `md:bottom-0` pinned nothing (see above) and a replacement
+    // cannot be designed from jsdom: <main>'s content column is centred beside
+    // a collapsible sidebar, so a viewport-fixed bar needs a measured width.
+    expect(cls).not.toContain('md:bottom-0');
+    expect(cls).not.toContain('md:fixed');
+    expect(cls).not.toContain('md:sticky');
+  });
+
+  it('pads the thread on mobile so the out-of-flow bar cannot cover the newest turn', () => {
+    const { container } = renderCanvas();
+    const root = () => container.querySelector("[data-tour='brief-generator']")!.parentElement!
+      .parentElement!;
+
+    // Resting: the composer is in flow, so no reserved space is needed.
+    expect(root().className).not.toContain('pb-32');
+
+    enterThread();
+
+    expect(root().className).toContain('pb-32');
+    // Desktop keeps the composer in flow, so the reservation is mobile-only.
+    expect(root().className).toContain('md:pb-0');
   });
 });
 

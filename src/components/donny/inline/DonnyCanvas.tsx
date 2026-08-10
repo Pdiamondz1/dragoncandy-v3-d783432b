@@ -132,7 +132,11 @@ export function DonnyCanvas({ suggestions, onSuggestionTap, onPromptSubmit, chil
   }, [mode, messages.length]);
 
   return (
-    <div className="flex flex-col gap-6">
+    // The thread-mode bottom padding pairs with the composer's mobile `fixed`
+    // bar below: out of flow, it would otherwise cover the newest turn — the
+    // one the user is waiting to read. Mobile only; on desktop the composer is
+    // still in flow and provides its own space.
+    <div className={cn('flex flex-col gap-6', mode === 'thread' && 'pb-32 md:pb-0')}>
       {mode === 'thread' && (
         <Link
           to={OVERVIEW_ROUTE}
@@ -171,35 +175,41 @@ export function DonnyCanvas({ suggestions, onSuggestionTap, onPromptSubmit, chil
           resting<->thread transition. A remount here would drop half-typed
           text, focus, and any in-flight IME composition.
 
-          The mobile offset is NOT optional, and it is load-bearing even though
-          the stickiness itself may not be. MobileBottomNav is `fixed bottom-0
-          z-40`, opaque, and portaled to <body>, so a z-10 in here cannot beat
-          it — anything resolving to a bare `bottom-0` lands underneath it. The
-          6rem mirrors the app's pb-24 nav clearance and absorbs the safe-area
-          inset, so no separate padding is needed; desktop has no bottom nav, so
-          `md:` resets it flush. Same shape and same value as StickyApplyCTA,
-          per docs/DESIGN_SYSTEM.md.
-
-          UNVERIFIED, and do not "clean up" on the assumption that it works:
+          WHY NOT `sticky`: it used to be, and it could not have worked.
           `position: sticky` resolves against the nearest ancestor scroll
           container, and that is NOT `#main-content` (App.tsx: `flex-1
-          overflow-auto`) as you might expect. DashboardLayout sits in between
+          overflow-auto`) as you would expect. DashboardLayout sits in between
           and carries `overflow-x-hidden` on both its root (:182) and, on
           mobile, its content wrapper (:309). Per CSS Overflow 3, an
           `overflow-x` of `hidden` against an `overflow-y` of `visible`
           computes that `overflow-y` to `auto` — so those wrappers are the
-          scrollport. Both are `min-h-screen` with content-driven height, so
-          they never actually scroll, which would make this `sticky` inert and
-          leave the composer scrolling away with the thread instead of pinning.
-          StickyApplyCTA is not a precedent for the sticky half: it uses
-          `fixed`. jsdom loads no CSS, so no test here can tell the two apart.
-          Resolve this in a real browser on both viewports; if it is inert, the
-          fix is `fixed` (mobile is full-bleed, so it is safe there; desktop
-          needs the sidebar column accounted for). */}
+          scrollport. Both are `min-h-screen` with content-driven height and
+          never actually scroll, which makes a `sticky` inside them inert: the
+          composer scrolled away with the thread instead of pinning.
+
+          MOBILE — `fixed`, the repo's documented pattern for a non-modal
+          in-page bottom bar (StickyApplyCTA.tsx:29, docs/DESIGN_SYSTEM.md). A
+          fixed box's containing block is the viewport, so it escapes those
+          overflow wrappers entirely. MobileBottomNav is `fixed bottom-0 z-40`,
+          opaque, portaled to <body>; the 6rem offset mirrors the app's pb-24
+          nav clearance and absorbs the safe-area inset so the composer clears
+          it. z-40 is app-chrome level and must NOT reach z-50 — that is the
+          Radix modal layer, and a bar tying it would paint over dialogs. Being
+          out of flow, it needs the root's thread-mode pb-32 above or the last
+          turn hides behind it.
+
+          DESKTOP — deliberately IN FLOW and unpinned (`md:static`). There is no
+          bottom nav to clear and nothing is broken today: the composer sits at
+          the end of the content and the page scrolls. A viewport-`fixed` bar
+          would misalign with the content column, which is centred inside
+          <main> beside a collapsible sidebar, and correcting that needs a
+          measured width. Desktop pinning is therefore DEFERRED pending a real
+          browser check on both viewports — do not add `md:` pinning from a
+          jsdom test, which loads no CSS and cannot tell any of these apart. */}
       <div
         className={cn(
           mode === 'thread' &&
-            'sticky bottom-[calc(6rem+env(safe-area-inset-bottom))] md:bottom-0 z-10 bg-white pt-3'
+            'fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] left-0 right-0 z-40 bg-white px-4 pt-3 pb-3 md:static md:z-auto md:px-0 md:pb-0'
         )}
       >
         <DonnyComposer
