@@ -12,6 +12,7 @@ import { LocationSettingsSections } from '@/components/settings/LocationSettings
 import { useBusinessProfileForm } from '@/hooks/useBusinessProfileForm';
 import { useBusinessProfileSubmit } from '@/hooks/useBusinessProfileSubmit';
 import { useLocationProfileForm } from '@/hooks/useLocationProfileForm';
+import { SUPPORT_EMAIL, mailtoHref } from '@/lib/contactAddresses';
 import { useLocationProfileSubmit } from '@/hooks/useLocationProfileSubmit';
 import {
   calculateBusinessCompletion,
@@ -316,7 +317,7 @@ const BusinessSettings = () => {
                 </button>
                 <div className="flex items-center gap-1">
                   <a
-                    href="mailto:support@dragoncandy.io?subject=GDPR%20Data%20Erasure%20Request"
+                    href={mailtoHref(SUPPORT_EMAIL, 'GDPR Data Erasure Request')}
                     className="text-sm text-muted-foreground hover:text-foreground underline"
                   >
                     Request full data erasure (GDPR/CCPA)

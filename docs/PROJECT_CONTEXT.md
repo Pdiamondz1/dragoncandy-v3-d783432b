@@ -128,11 +128,40 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `supabase db push` will see the repo version as unapplied and re-run it — **proven a no-op**
   (`rows_help=0 rows_playbook=0`, assertions pass) because every statement is filtered on
   containing the old string. Same class as the Slice-2 entry recorded under `20260726024318`.
-  **Pending (2026-08-10):** the `.com` **Search Console** property — founder
-  chose `info@dragoncandy.com`, which is not signed into the browser; Change of Address is
-  **impossible, not deferred** (no property has ever existed); and a **redeploy of
-  `send-verification-email` + `manage-internal-users`** for the derived link labels. Phases 5–6
-  (mail, contract) not started. → `docs/wiki/concepts/domain-migration-io-to-com.md`
+  **`send-verification-email` (v231) + `manage-internal-users` (v11) DEPLOYED and boot-verified
+  2026-08-10**, closing the derived link labels — and the redeploy incidentally closed a
+  **pre-Phase-2 `_shared/origins.ts`** in `send-verification-email` (every verification email had
+  been going out with `<a href="…dragoncandy.com">dragoncandy.io</a>`, the mismatched-anchor shape
+  mail filters score as phishing) and added `capacitor://localhost` to its CORS allow-list.
+  **Phase 5a (MAIL — recipient addresses) SHIPPED 2026-08-10; 5b blocked on a $20/mo decision.**
+  The gate was "does the `.com` mailbox receive", and the obvious test could not answer it: an SMTP
+  `RCPT TO` probe returned **250 for all five target mailboxes AND for two nonsense control
+  addresses**, because Google's MX does not disclose recipient validity at `RCPT`. *Without the
+  controls it would have read as "all five confirmed" and licensed the flip.* (An earlier revision
+  of this line said `.com` **catch-alls** — it does not; the admin console shows no catch-all rule.
+  Mechanism corrected, conclusion unchanged.) `.io` was unprobeable the other way (IONOS `554
+  blocklisted`), so **neither TLD could be established by probing at all.** What cleared it was
+  **reading the Workspace admin console**: all five are **aliases on `dame@dragoncandy.com`** (active,
+  daily use) alongside `info@` and `appstore@`, in an org with 3 users and **zero groups** — which
+  establishes the *routing* rather than one delivery, strictly stronger than the planned receive
+  test. **Durable rule: when a probe cannot distinguish a true answer from a false one, no number of
+  runs makes it evidence — change instrument.** Shipped across **three stores with three release
+  mechanisms** (bundle: `src/lib/contactAddresses.ts`'s 3 constants + MDX prose + pitch deck +
+  internal placeholder; edge fn: `stripe-webhook`'s dispute `admin@`; DB: migration
+  `20260810170000` moving `help_articles.gdpr-erasure`'s `privacy@`, dry-run-proven on prod with
+  `search_vector` reindex confirmed). Also fixed a live `mailto:` encoding bug (8 of 32 prod help
+  titles carry a URL metacharacter; `DC Points & Creator Standing` truncated the subject to "Help:
+  DC Points") and 6 Phase-2 residuals naming the **website** in the legal pages, pitch deck and help
+  briefs. **5b (Resend `from:` ×8) is BLOCKED, and not on engineering:** the Resend account is on the
+  **free tier, limit 1 domain**, so adding `notify.dragoncandy.com` needs **Pro at $20/mo** — and
+  the free tier makes expand-then-switch **structurally impossible** (one slot ⇒ delete the working
+  warmed `.io` domain to add `.com` ⇒ a window with no verified sender where ALL transactional email
+  fails, no rollback, into `.com`'s **`p=quarantine`** DMARC vs `.io`'s `p=none`). **Pending
+  (2026-08-10):** the **$20/mo go/no-go on 5b**; and the `.com` **Search Console** property — note
+  `info@` turns out to be an **alias of `dame@`**, which IS signed in, so this may no longer be
+  blocked (Change of Address remains **impossible, not deferred** — no property ever existed).
+  Phase 6 (contract) **recommendation: don't** — all transactional mail still originates from
+  `notify.dragoncandy.io`. → `docs/wiki/concepts/domain-migration-io-to-com.md`
 - **Apple App Store (Capacitor)** — iOS shell over the web app. Phase 1 (foundation) +
   Phase 2 (native camera + share sheet) shipped; the first-signed-build work (origin
   seam so email/share/OAuth links work natively, `capacitor://localhost` trusted in the
