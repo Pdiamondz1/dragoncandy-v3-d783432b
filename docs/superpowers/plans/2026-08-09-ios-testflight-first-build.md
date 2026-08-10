@@ -1019,7 +1019,11 @@ Expected: 9 files — `WebOnly.tsx`, `WebOnly.test.tsx`, `OrgBillingPage.tsx`, `
 
 Create `docs/app-store/2026-08-09-ios-purchase-cta-audit.md` recording: the exact command run, its full output, each hit classified gated/ungated, and the named short list for the Wednesday device pass. If the set is still closed, say so explicitly — a document saying "checked, nothing new" is the deliverable, not a failure.
 
-**Name the device-pass list here.** Do not write "31 pages" — many need data states one founder account cannot produce in a sitting (a package order, a guest order token, a crew, a pending invite, a completed collaboration, brand role behind `BRAND_ROLE_ENABLED`). The list is: `/pricing`, `/settings/billing`, the Donny chat panel, the three Donny lock cards, `/dashboard/business`, `/dashboard/creator`, `/rewards`, and DragonFeed.
+**Name the device-pass list here.** Do not write "31 pages" — many need data states one founder account cannot produce in a sitting (a package order, a guest order token, a crew, a pending invite, a completed collaboration, brand role behind `BRAND_ROLE_ENABLED`).
+
+The list is: `/pricing`, **`/dashboard/business/billing` or `/dashboard/brand/billing`** (whichever matches the signed-in role), the Donny chat panel, the three Donny lock cards, `/dashboard/business`, `/dashboard/creator`, `/rewards`, and DragonFeed.
+
+> **The billing route is written out in full deliberately.** An earlier draft of this plan said `/settings/billing`. **There is no top-level `/settings/*` route in this app** — `src/lib/donnyRoutes.ts` resolves billing via `billingRoute(role)`, and its own comment records that `/settings/billing` was once hardcoded in 8 places and every "Upgrade" CTA 404'd. A tester following the stale list would hit a 404 at precisely the screen holding the two most sensitive gated CTAs. **Verify every route in this list against `src/App.tsx` before the device pass** rather than trusting it.
 
 - [ ] **Step 5: Gate anything ungated**
 
