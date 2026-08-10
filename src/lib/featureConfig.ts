@@ -30,13 +30,15 @@ export const PACKAGES_ENABLED = true;
 // docs/wiki/concepts/cross-tenant-proxy-authorization.md.
 export const DELEGATED_POSTING_ENABLED = false;
 
-// Donny-first business dashboard (Phase A). The /dashboard/business body becomes
-// a greeting + what needs your attention + a prompt box + three taps; today's
-// body moves verbatim to /dashboard/business/overview and stays reachable.
+// Donny-first dashboard (Phase A). The /dashboard/business AND /dashboard/creator
+// bodies become a greeting + what needs your attention + a prompt box + three
+// taps; today's body moves verbatim to /dashboard/business/overview and
+// /dashboard/creator/overview respectively, and both stay reachable.
 //
-// ON. Flipping this to true changes ONLY the business dashboard body — the
+// ON. Flipping this to true changes ONLY the dashboard body for both roles — the
 // sidebar, mobile bottom nav, header and first-run flow are untouched, and
-// /overview keeps working either way.
+// /overview keeps working either way. There is no per-role switch: this one flag
+// gates both, and merging the creator surface's code is that surface's launch too.
 //
 // The both-viewport prod check is still outstanding — it could not be run
 // before this flip merged: the dashboard is auth-gated, an agent must never

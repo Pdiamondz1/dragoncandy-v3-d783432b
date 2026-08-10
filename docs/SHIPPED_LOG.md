@@ -26,6 +26,98 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-10] Donny-first creator dashboard (Phase 3) — and a gate that measured the wrong thing
+
+**PR #444** (open at time of writing) · branch `worktree-dc-donny-1st-creators` ·
+no migration, no RLS change, no edge-function deploy.
+→ `docs/wiki/concepts/donny-first-dashboard.md`
+
+**What shipped.** `/dashboard/creator` becomes the Donny-first body the business role already runs
+(#423, #426, #428, #429): greeting, attention list, prompt box, two taps. The old body is preserved
+**verbatim** at a new `/dashboard/creator/overview`, mirroring #411's `BusinessOverview` extraction.
+Brand is out of scope — `BRAND_ROLE_ENABLED` is false, so it could not be prod-verified either way.
+
+**The shared pieces are now genuinely role-generic**, which is the part that outlives this phase: a
+third role supplies its own hooks, builder and copy and edits none of `useDonnyHomeConversation`
+(conversation state), `DonnyHomeShell` (layout, no state), or `useDonnyHomeInteractions` (dismissal
+state, the two-pass build, view tracking, four handlers). The third was extracted during `/simplify`
+after two independent reviewers reached it separately — both containers carried byte-identical
+copies of ~65 lines with nothing to catch drift. The two **builders** were deliberately left as
+siblings: the roles rank by genuinely different rules, and collapsing them would mean a
+group-ordering mini-DSL for two call sites.
+
+**Two taps, not three, and the instrument that can never confirm them.** Only `rewards_agent` is
+verifiably creator-real. `billing_agent` resolves subscription context through `organizations`,
+which a creator does not have — it would hand a creator the **restaurant** subscription catalog and
+an "Upgrade to Starter" CTA (**a live defect this phase routes around rather than fixes**). And **no**
+agent can answer "find work" at all: `find_creators` returns creators, `campaign_agent` returns only
+campaigns the creator is already in. Both became route-based attention items. Separately:
+**`donny_tool_executions` cannot prove a sub-agent tap for any role** — its insert sits inside the
+`isSocialTool(toolName) && mcpBridge` branch, so no sub-agent has *ever* been logged, including the
+taps Phase A shipped. Its emptiness has been read as evidence about consumer sub-agents; it is an
+instrument that was never wired to the thing being measured.
+
+**The defect that mattered: one number answering two questions.** `collaborationCount` was a
+lifetime count used both to rank the payout row ("has this creator ever worked or earned" — correct)
+and to gate "nothing on your plate" ("is anything in flight" — wrong). On prod **11 of 16
+collaborations are already `completed`**, so a creator who simply finished their last campaign
+counted as busy, the find-work nudge never fired, and an onboarded creator in that state rendered
+**zero rows** in the flagship attention region — indistinguishable from a bug, on the platform's most
+valuable creators. Split into `collaborationCount` and `activeCollaborationCount`. **Writing the test
+then exposed a second half no review had named:** the `merged` array branched into two hand-written
+lists and the money-first one **omitted the find-work item entirely**, so it was unreachable for
+anyone who had ever worked, independent of the count. The body is now written once and
+`hasMoneyOrWork` decides only which *end* the payout row sits at.
+
+**Copy as the fix for a column that lies.** `creator_profiles.stripe_onboarding_complete` goes
+stale-**false** (#173 — the webhook never delivers), and the app now has **two disagreeing readers**:
+this hook's direct column read, and the self-healing live-Stripe verification behind
+`useTransactionReadiness`. Calling the verifier here was rejected (an external round-trip on the
+path gating first paint). The spec's original answer was silence for the ambiguous state, but that
+abandoned the largest reachable group — only **3 of 18** creators have completed onboarding. The
+founder chose the reword: every payout row that can meet an already-onboarded creator is worded to
+be true in both worlds — *"Check your payout setup so you can get paid"*, never *"you aren't set
+up"*. Only the never-started branch, where there is nothing to be stale about, says "set up".
+
+**Five review passes, each catching what the others missed — and two of the last three findings were
+errors in the fixes, not the original work.** The whole-branch review found the count defect and the
+silent payout branch. The scoped re-review found that my own new tour assertion was
+**unfalsifiable**: `childElementCount > 0` on the attention anchor is 1 in *every* state, because
+`DonnyHomeProposals`' `!children` early return is dead code for this container — it would have passed
+in exactly the case it was written to catch. Codex found two more: `cancelled` collaborations counted
+as evidence of earnings (ranking setup above value, contrary to `PROJECT_CONTEXT` §7), and `DCTour`
+**spotlighting a zero-height wrapper** — `NeedsAttentionSection` hides itself with CSS `:has()`, so
+the `data-tour` div survives at full width and zero height, and the tour punched a ~16px hole in the
+dim layer with an arrow pointing at blank page. Fixed at the **mechanism** (a zero-size target is now
+treated as absent, which already degrades honestly) rather than per page, since all three roles can
+hit it; the first guard used `||` and still spotlit the wrapper, because only its *height* collapses.
+First `DCTour` tests in the codebase.
+
+**A third Codex finding was refuted, and that is recorded on purpose.** Round 3 filed a **P1** saying
+`authenticated` cannot select `creator_profiles`' financial columns, which would mean the hook errors
+for every creator. It can: `column_privileges` grants all three, `useLocationReadiness` already does
+the same direct client read on `business_profiles` in production, and impersonating a real creator as
+role `authenticated` in a rolled-back block returns the row (`has_acct=t onboarding=f balance=360`).
+A false permissions claim nobody writes down simply gets raised again.
+
+**Also worth keeping:** `useTour` is role-keyed with **no page awareness**, and both creator pages
+render a `TourButton`, so every step must resolve on both — now enforced by a parity test, because
+that invariant rotting silently is exactly how the creator tour broke. And spec §4.6's safeguard
+("item E guarantees every creator has at least one row, so it is never empty") was **false**, and was
+the load-bearing reason the zero-size hazard was dismissed. **A safeguard resting on "in practice X
+never happens" is not a safeguard.**
+
+**Verification:** typecheck clean · lint 0 errors · build clean · **241 test files / 2406 tests
+passing**. `DonnyHome.test.tsx` reports **37 passed with the file untouched by the entire branch
+diff** — the proof that the extraction and the later refactor are a move, not a rewrite, and that the
+live business dashboard is behaviourally unchanged.
+
+**Open at time of writing:** the both-viewport `verify-prod`, including the first live exercise of
+the two taps (which `donny_tool_executions` structurally cannot confirm); and the Donny RAG sync
+after merge. **Note there is no per-role kill switch** — `DONNY_FIRST_DASHBOARD_ENABLED` is already
+`true` and both roles share it by documented choice, so **merging is the creator launch** and
+rollback is a code revert that also takes the founder-verified business dashboard with it.
+
 ## [2026-08-10] A user could choose the CTA link inside our transactional emails (#442)
 
 Every `href` in `send-notification-email`'s ~30 templates was built from caller-supplied `data`,

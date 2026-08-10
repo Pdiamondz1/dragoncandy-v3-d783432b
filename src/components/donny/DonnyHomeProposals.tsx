@@ -2,7 +2,7 @@
 // attention right now. Every input is a prop and every action is a callback —
 // the container owns the data, the navigation and the analytics.
 import type { ReactNode } from 'react';
-import { AlertTriangle, Clock, Eye, X } from 'lucide-react';
+import { AlertTriangle, Clock, Compass, DollarSign, Eye, Mail, X } from 'lucide-react';
 import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { NeedsAttentionSection } from '@/components/dashboard/NeedsAttentionSection';
 import { formatRelativeTime } from '@/lib/campaignUtils';
@@ -17,12 +17,27 @@ interface DonnyHomeProposalsProps {
   children?: ReactNode;
 }
 
+// Keyed on proposal id because that is what carries the kind — `proposal.kind`
+// is only 'signal' | 'pending_action', which does not distinguish money from
+// an invitation. The creator branches exist because that role's three-row list
+// is genuinely heterogeneous (money / work / invitation / nudge); without them
+// every creator row fell through to the same amber clock and read as one
+// undifferentiated pile.
 function ProposalIcon({ proposal }: { proposal: DonnyProposal }) {
   if (proposal.id === 'signal:location_setup') {
     return <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />;
   }
   if (proposal.id.startsWith('pending_action:review_content')) {
     return <Eye className="h-4 w-4 text-dc-pink-accent shrink-0 mt-0.5" aria-hidden="true" />;
+  }
+  if (proposal.id === 'creator:payout') {
+    return <DollarSign className="h-4 w-4 text-dc-teal-btn shrink-0 mt-0.5" aria-hidden="true" />;
+  }
+  if (proposal.id.startsWith('creator:invitation:')) {
+    return <Mail className="h-4 w-4 text-dc-pink-accent shrink-0 mt-0.5" aria-hidden="true" />;
+  }
+  if (proposal.id === 'creator:find_work') {
+    return <Compass className="h-4 w-4 text-dc-teal-btn shrink-0 mt-0.5" aria-hidden="true" />;
   }
   return <Clock className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />;
 }
