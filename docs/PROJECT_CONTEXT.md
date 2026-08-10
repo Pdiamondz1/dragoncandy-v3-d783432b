@@ -259,7 +259,23 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `src/components/donny/` — point it at the **source paths the branch touches**.
   **Pending:** **#428 is open, not merged**; and the **both-viewport check, which has still never
   been run on any task in this line of work**.
-  → `docs/wiki/concepts/donny-first-dashboard.md` · #410, #411, #423, #428, #429
+  **Phase 3 — the CREATOR role — is PR #444, open 2026-08-10.** Same body for creators (two taps,
+  not three), old body preserved verbatim at a new `/dashboard/creator/overview`; brand deliberately
+  out of scope. The shared pieces are now role-generic (`DonnyHomeShell`, `useDonnyHomeConversation`,
+  `useDonnyHomeInteractions`), the two builders stay siblings. **Corrects a claim this file has been
+  making: `donny_tool_executions` cannot confirm a sub-agent tap for ANY role** — its insert sits
+  inside the `isSocialTool && mcpBridge` branch, so its emptiness is not evidence about consumer
+  sub-agents. Central defect: a lifetime `collaborationCount` gated "nothing in flight" while 11 of
+  16 prod collaborations are `completed`, so a creator who *finished* their work could see a **blank**
+  attention region; the fix's own test then found the money-first merge branch omitted the find-work
+  item entirely. `billing_agent` is **wrong for creators** (serves the restaurant catalog) — routed
+  around, not fixed, and still live. `stripe_onboarding_complete` now has **two disagreeing readers**,
+  resolved by copy true in both worlds. `DCTour` no longer spotlights a zero-size target. A Codex P1
+  claiming those financial columns are unreadable by `authenticated` was **refuted on prod**.
+  **Pending:** merge, then the both-viewport `verify-prod` (first live exercise of the two taps) and
+  the RAG sync. **No per-role kill switch — merging #444 IS the creator launch**, and rollback takes
+  the business dashboard with it.
+  → `docs/wiki/concepts/donny-first-dashboard.md` · #410, #411, #423, #428, #429, #444
 - **DragonFeed uplift + sidebar double-active fix** — the "double-clicked button" was a
   **specificity** bug (each role's bare-root Dashboard href prefixed all ~26 child routes, in three
   copy-pasted navs) → one shared longest-match-wins `activeNavHref()`. The feed's four complaints
