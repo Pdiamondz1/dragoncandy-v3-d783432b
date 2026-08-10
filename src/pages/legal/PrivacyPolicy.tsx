@@ -1,7 +1,7 @@
 import { LegalPageLayout } from './LegalPageLayout';
+import { PRIVACY_EMAIL } from '@/lib/contactAddresses';
 
 const LAST_UPDATED = 'June 6, 2026';
-const CONTACT_EMAIL = 'privacy@dragoncandy.io';
 
 export default function PrivacyPolicy() {
   return (
@@ -14,7 +14,7 @@ export default function PrivacyPolicy() {
       <p>
         This Privacy Policy explains how DragonCandy ("DragonCandy," "we," "us," or
         "our") collects, uses, shares, and protects information about you when you use
-        our website at dragoncandy.io, our iOS application, and related services
+        our website at dragoncandy.com, our iOS application, and related services
         (collectively, the "Service"). By using the Service, you agree to the practices
         described in this policy.
       </p>
@@ -162,7 +162,7 @@ export default function PrivacyPolicy() {
       <h2>11. Contact Us</h2>
       <p>
         If you have questions about this Privacy Policy or our data practices, contact us at{' '}
-        <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+        <a href={`mailto:${PRIVACY_EMAIL}`}>{PRIVACY_EMAIL}</a>.
       </p>
     </LegalPageLayout>
   );
