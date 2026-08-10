@@ -70,6 +70,30 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-08-10] Post-merge verify for PR #435 (RAG scope boundary knowledge-sync, after #434)
+- Output: verdict `done:true` — all three met, `missing:[]`.
+- Happened: (a) 113 in-scope pages, index-incompleteness **0**. The contradiction half needed a
+  real judgment this time, because the session's own `log.md` entry *flagged* one: the new page
+  says the wiki is deliberately absent from the consumer RAG, while [[Self-Improving App]] says
+  "Donny retrieves them through the existing `match_donny_knowledge` RPC". **Not a
+  contradiction** — that sentence is audience-agnostic and `match_donny_knowledge` is exactly the
+  RPC internal Donny uses at internal scope, so no page asserts a conflicting *current* state
+  ([dated-analysis]'s test). A flagged nuance is not automatically a critical finding.
+  (b) newest in-scope revision `6df77138`; probe token **`internal_docs.archived_at`**, confirmed
+  present in the first-parent added lines AND on exactly **one** page on disk, so a hit cannot be
+  trivial → 1 row. Advisory `RAG_LAST` 2026-08-10 14:56Z corroborates. (c) both session pages
+  (`donny-rag-scope-boundary`, `knowledge-sync-automation`) in `index.md` and `log.md`.
+- Worked: the token-uniqueness pre-check again. The obvious candidates from the added lines were
+  `` `CONSUMER` ``, `` `EXCLUDE` ``, `` `donny_knowledge` `` — all of which live on other pages
+  and would have passed on content that predates this sync.
+- Failed: nothing gating.
+- Remember: **this validator's own passing condition is now scope-blind by design, and that is
+  correct.** Since PR #434 every `wiki:%` row is `scope='internal'`, and (b) probes with the
+  service role and no scope predicate, so it passes identically either way — exactly the
+  [scope-is-not-freshness] warning, now with the *expected* value inverted. Flag a `wiki:%` row at
+  `scope NULL` as advisory: it means either a sync ran from a pre-#434 checkout, or someone edited
+  the `CONSUMER` allowlist. Both are worth a sentence in prose; neither flips a `met`.
+
 ### [2026-08-09] Post-merge verify for PR #418 (.com Phase 1 + esm.sh bundler outage knowledge-sync)
 - Output: verdict `done:true` — all three criteria met, `missing:[]`.
 - Happened: (a) 111 in-scope pages, index-incompleteness **0**. Contradiction half needed real work

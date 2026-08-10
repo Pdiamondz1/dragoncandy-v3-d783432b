@@ -240,55 +240,6 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   and #415 changed the protocol, not the versions, so the skew persists); a hand-run
   `deno check` with a `main` baseline stands in for it.
   → `docs/wiki/concepts/donny-social-tools.md` · #416
-- **Donny-first business dashboard (Phases A + B)** — the `/dashboard/business` body becomes Donny
-  (greeting + attention list + prompt box + three taps); today's body preserved verbatim at
-  `/dashboard/business/overview`. Scope set by a prod audit, not the mockup: only 4 Donny tools
-  verifiably work, so 3 taps and nothing routes to `social_*` (0/7). **Phase A merged (#410) and
-  `DONNY_FIRST_DASHBOARD_ENABLED` flipped on (#411) — both verified 2026-08-09**, which is how the
-  founder reached it on prod. Their feedback there produced **Phase B**: the answer now lands *on
-  the dashboard* instead of throwing the side panel open (Phase A's prompt box was a **launcher by
-  design** — not a bug), plus the fix for a markdown table that reached the bubble as literal pipes
-  (`DonnyMessage` ran ReactMarkdown with **no `remark-gfm`**; tables are GFM, not CommonMark). The
-  Phase-B blocker was **not** on the design doc's seven-hazard list: queries gated on
-  `stage !== 'closed'` would have rendered a permanently **empty** inline thread, indistinguishable
-  from "no messages yet". Solved by separating what `stage` conflated (panel visible vs conversation
-  live), leaving `stage` byte-unchanged. **Four Codex rounds, four more defects, all one shape — the
-  code claimed more than it delivered**: `package-lock.json` still carried `remark-gfm` as a dev dep
-  (so `npm ci --omit=dev` would ship without a runtime import), a failed first ask rendered nothing
-  at all, the fix for that offered a **dead "Try Again"**, and a follow-up typed mid-answer vanished
-  into a silent `return`. **#423 merged 2026-08-10 04:24 UTC and `donny-orchestrator` is DEPLOYED
-  and verified 2026-08-10** — for ~2 hours in between, prod was **half-shipped**: merging #423 ships
-  the **frontend only**, so Phase B's UI was live against the pre-#423 bundle. Closed by deploying
-  from current `main` and reading the **deployed source**, not the version: `Never end on a dead end`
-  (Phase A), `accounts_unavailable` (#416) and `NARROW_BUBBLE_FORMAT` ×3 (Phase B) all present, no
-  `esm.sh` specifier; `OPTIONS` + anon key → **200** with the origin echoed back, which is the real
-  boot proof (a bundle can store successfully and still fail at module load — that is exactly what
-  [[Edge-Function Deploy & Bundling]] documents, so "the deploy succeeded" is not evidence).
-  **Gotcha worth keeping:** `NARROW_BUBBLE_FORMAT` lives in `_shared/social-analytics.ts`, which the
-  orchestrator *bundles* — grep the whole deployed file set, never just `index.ts`, which returns 0
-  and reads as a failed deploy for entirely the wrong reason. The founder then used it on prod and
-  filed one complaint twice — *"the conversation just keep running down endlessly and there's no
-  scroll button"* / *"we don't need the conversation from yesterday. Every prompt is fresh upon
-  visit."* — and **two sessions built the scroller in parallel**. #429 merged it (`DonnyThreadRegion`
-  + scroll-to-bottom, and a real-browser measurement catching `h-full` computing an **8337px scroller
-  inside a 145px parent**); #428 was **reset onto main and rebuilt** to carry only the remainder —
-  a display filtered **fresh per visit** by slicing Donny's one shared conversation on a baseline
-  **id** (never a count or a client clock), plus a greeting that collapses once a conversation runs,
-  with the block's reserved chrome dropping 26rem → 12rem so the reclaimed space reaches the thread
-  instead of becoming whitespace. Its duplicate scroller was **discarded, not merged**. **Four Codex
-  rounds, five findings**, the sharpest on my own fix: an empty `messages` array is not proof there
-  is no history; `isSuccess` is not "current" (React Query keeps it true during a background refetch
-  over cached data); `isStreaming`/`error` are **global to the shared conversation**, so a side-panel
-  reply rendered as this visit's transcript; and counting a **failed** history fetch as loaded — the
-  obvious cure for the queue-forever deadlock that caused — reintroduced the first bug. **When a flag
-  answers "is it safe to act", failure is a third answer, not a vote for either** → `messagesErrored`
-  + a Try Again that refetches, with the queued ask kept so recovery sends it without retyping.
-  **The durable lesson is process, not code:** the collision was found *by accident*, because the
-  `[scope]` check ran that morning against the **core docs** and said nothing about
-  `src/components/donny/` — point it at the **source paths the branch touches**.
-  **Pending:** **#428 is open, not merged**; and the **both-viewport check, which has still never
-  been run on any task in this line of work**.
-  → `docs/wiki/concepts/donny-first-dashboard.md` · #410, #411, #423, #428, #429
 - **DragonFeed uplift + sidebar double-active fix** — the "double-clicked button" was a
   **specificity** bug (each role's bare-root Dashboard href prefixed all ~26 child routes, in three
   copy-pasted navs) → one shared longest-match-wins `activeNavHref()`. The feed's four complaints
@@ -345,15 +296,27 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
-- **Donny's consumer RAG closed — the wiki syncs internal by default** — `EXCLUDE` was inert
-  (gated on a `SYNC_CURATE=1` the unattended post-merge sync never sets), so **107 of 112** wiki
-  rows were consumer-reachable, retrievable via `donny-orchestrator`'s default-scope RAG → the
-  `general` catch-all; the worst page was on neither list and states the live user count, the
-  vendor-by-vendor burn and "Stripe test mode". Inverted to an **empty `CONSUMER` allowlist** —
-  nothing lost internally, since `sync-internal-docs.mjs` already mirrors every page at internal
-  scope (1:1, 112 and 112). **Merged and verified on prod 2026-08-10:** `internal` 112, NULL group
-  gone, consumer predicate **0 of 247**. Codex found 2, both mine. → `docs/SHIPPED_LOG.md` ·
-  `docs/wiki/concepts/donny-rag-scope-boundary.md` · #434
+- **Donny-first business dashboard (Phases A + B + the shape corrections)** — the
+  `/dashboard/business` body is Donny: greeting, attention list, prompt box, three taps, with the
+  answer landing in-page. Scope set by a prod audit, not the mockup. The founder then corrected the
+  SHAPE twice from prod — the thread is now a bounded self-scrolling panel above the composer
+  (#429), the greeting collapses once a conversation runs, and every visit starts fresh by slicing
+  the shared conversation on a baseline **id** (#428). **Both-viewport check confirmed by the
+  founder on prod 2026-08-10** — the first time it has ever been run on this feature.
+  → `docs/wiki/concepts/donny-first-dashboard.md` · #410, #411, #423, #428, #429
+
+- **Donny's consumer RAG closed, then de-duplicated — the wiki no longer syncs to consumers at
+  all** — `EXCLUDE` was inert (gated on a `SYNC_CURATE=1` the unattended post-merge sync never
+  sets), so **107 of 112** wiki rows were consumer-reachable via `donny-orchestrator`'s
+  default-scope RAG → the `general` catch-all; the worst page was on neither list and states the
+  live user count, the vendor-by-vendor burn and "Stripe test mode". #434 inverted it to an
+  **empty `CONSUMER` allowlist**; #437 then stopped sending non-listed pages entirely, because
+  marking them internal duplicated rows `sync-internal-docs.mjs` + `wiki-merge-pr` already write
+  (**113 pages embedded twice, 109 byte-identical**). **Both merged and verified on prod
+  2026-08-10:** `donny_knowledge` 249 → **136**, `wiki:` namespace empty, consumer-reachable
+  **0**, 113 mirrors intact, merged-script sync `errors=0 orphans=0`. A read-only orphan check
+  replaces the self-healing the change cost. Codex found 2 on #434 (both mine), clean on #437.
+  → `docs/SHIPPED_LOG.md` · `docs/wiki/concepts/donny-rag-scope-boundary.md` · #434, #437
 - **Dead `/settings/*` CTAs fixed (12 across 10 files)** — every "Upgrade" (incl. the revenue path)
   and "Connect Outstand" CTA 404'd; `isKnownRoute` never caught them because it only guards routes
   the LLM **invents**. Merged `fef2b428`; `donny-orchestrator` + `fire-campaign-social-hook` both
