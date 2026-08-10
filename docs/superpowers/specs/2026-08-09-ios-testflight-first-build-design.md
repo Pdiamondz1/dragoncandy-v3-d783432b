@@ -161,7 +161,7 @@ mandatory unlisted control:
 | `https://www.dragoncandy.com/` | echoed back | `www` is listed too |
 | `https://unlisted-control-probe.invalid/x` | `https://dragoncandy.io/` | **Site URL is still `.io`** |
 
-The control behaving differently from the two test cases is what makes the result trustworthy;
+The control behaving differently from all four test rows is what makes the result trustworthy;
 without it, an endpoint that echoed everything would look identical to a correct allow-list.
 
 This matches `docs/wiki/concepts/domain-migration-io-to-com.md`: Phase 1 (EXPAND) shipped,
@@ -224,8 +224,9 @@ publicOrigin(): string
 ```
 
 **Only Finding 1's Category A sites are repointed.** Category B keeps
-`window.location.origin`. Category C is decided per call site and the decision recorded in the
-plan. Web behavior is unchanged everywhere.
+`window.location.origin` — including `DonnyMessage.tsx:84`, the single `safeUrl` site Finding 1
+resolves as Category B. That resolution stands; confirm it in passing rather than re-deriving
+it. Web behavior is unchanged everywhere.
 
 ### Component 2 — native origin in the CORS allow-list, then a canaried redeploy
 
@@ -379,6 +380,12 @@ Archive, upload, internal tester (founder only). External testers are out of sco
 ## On-Device Verification Checklist
 
 This is the actual deliverable. Three shipped features have never executed on iOS.
+
+**Carry Phase 1b's deployed-function list into the session as a reference sheet.** The walk in
+#6 touches surfaces calling functions outside the fan-out set, and per Phase 1b an un-deployed
+function fails in a way indistinguishable from a genuine iOS bug. Without that list in hand the
+session cannot interpret its own failures — which would corrupt the one output the whole
+exercise exists to produce.
 
 | # | Check | Why it matters |
 |---|---|---|
