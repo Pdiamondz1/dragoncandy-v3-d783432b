@@ -114,15 +114,21 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   (`internal.` → `internal.`), path/query verbatim, and the `#access_token` **fragment proven to
   survive in a real browser** — the check nothing on the wire can make. Done as a 307 first, then
   promoted. Mail untouched (`notify.dragoncandy.io` was never attached to Vercel). **Phase 4
-  (CONTENT) BUILT 2026-08-10, migration NOT applied**: a forward-only `UPDATE` migration
-  (`20260810140000`) moves the 3 signup help articles + the Dezzy SEO prompt — editing the applied
-  seed migrations would change nothing in prod — dry-run-proven on prod inside a rolled-back
-  `DO`/`RAISE` block (`rows_help=3 rows_playbook=1`, and `sv_com=t` proving the non-generated
-  `search_vector` really reindexed), plus 17 present-tense `.io` claims fixed across 13 docs under
-  one rule: *undated present-tense claims move, dated/historical text stays*. **Mailboxes
-  deliberately untouched** (`privacy@dragoncandy.io` et al.) — that is Phase 5, gated on a receive
-  test, and the migration *asserts* it moved no mailbox. **Pending (2026-08-10):** **apply the
-  Phase 4 migration** (merging does not apply it); the `.com` **Search Console** property — founder
+  (CONTENT) MERGED (#431) AND APPLIED TO PROD 2026-08-10**: a forward-only `UPDATE` migration
+  moves the 3 signup help articles + the Dezzy SEO prompt — editing the applied seed migrations
+  would change nothing in prod — dry-run-proven in a rolled-back `DO`/`RAISE` block, then applied
+  and **verified by re-reading the rows**: all three signup articles `has_com=t has_io=f`, their
+  `search_vector` genuinely reindexed (the column is **not** generated, so a stale index was a real
+  hazard), Supabase storage URLs intact, playbook moved, and `gdpr-erasure` **untouched**. Plus 17
+  present-tense `.io` claims fixed across 13 docs under one rule: *undated present-tense claims
+  move, dated/historical text stays*. **Mailboxes deliberately untouched**
+  (`privacy@dragoncandy.io` et al.) — that is Phase 5, gated on a receive test, and the migration
+  *asserts* it moved no mailbox. **Ledger version drift, harmless:** the repo file is
+  `20260810140000` but MCP `apply_migration` stamped **`20260810140234`**, so a future
+  `supabase db push` will see the repo version as unapplied and re-run it — **proven a no-op**
+  (`rows_help=0 rows_playbook=0`, assertions pass) because every statement is filtered on
+  containing the old string. Same class as the Slice-2 entry recorded under `20260726024318`.
+  **Pending (2026-08-10):** the `.com` **Search Console** property — founder
   chose `info@dragoncandy.com`, which is not signed into the browser; Change of Address is
   **impossible, not deferred** (no property has ever existed); and a **redeploy of
   `send-verification-email` + `manage-internal-users`** for the derived link labels. Phases 5–6
