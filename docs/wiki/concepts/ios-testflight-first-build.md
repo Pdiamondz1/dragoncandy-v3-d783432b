@@ -45,9 +45,9 @@ the resulting value leave the WebView?**
 `CANONICAL_APP_ORIGIN` is deliberately **not** derived from `APP_ORIGINS[0]` (an
 allow-list whose ordering carries no contract — see [[Domain Migration (.io → .com)]])
 and is **not** `DEFAULT_ORIGIN` (the Deno CORS fallback, which `_shared/origins.ts`
-itself calls "cosmetic, not a security boundary"). It already holds the post-migration
-value and never flips; migration Phase 2 moves `DEFAULT_ORIGIN` to meet it, not the other
-way around.
+itself calls "cosmetic, not a security boundary"). It already held the post-migration
+value and never flipped; migration Phase 2 moved `DEFAULT_ORIGIN` to meet it, not the
+other way around — so the two now agree, having arrived from opposite directions.
 
 ## `capacitor://localhost` had to be added to the backend's trust list too
 
@@ -139,8 +139,12 @@ previously assumed, not just where it was made.
   for picking up `NATIVE_APP_ORIGINS`. Not on the TestFlight critical path (the app only
   calls a named subset), but the allow-list stays half-applied on prod indefinitely
   unless something names the closure condition — most naturally the domain migration's
-  `DEFAULT_ORIGIN` `.io` → `.com` flip, which is a code change and would force a sweep,
-  but is not currently listed in that migration's Phase 2.
+  `DEFAULT_ORIGIN` `.io` → `.com` flip, which is a code change and would force a sweep.
+  **That flip has now landed** (Phase 2 — it was missing from that phase when this page
+  was written, and Codex caught the omission). It does not *compel* the sweep, though:
+  a non-redeployed function keeps emitting `.io` as its ACAO fallback, which is cosmetic
+  and harmless, so mixed state costs nothing and nothing forces the issue. What the flip
+  supplies is a *reason* to sweep that someone owns — the sweep itself is still unowned.
 - Push notifications and universal links (Slices A/D) remain out of scope — both need
   Apple enrollment, which is itself gated on this branch's bundle-ID merge.
 - As of writing, Tasks 11–14 (founder Apple enrollment, the canaried edge-function

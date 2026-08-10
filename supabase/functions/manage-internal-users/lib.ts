@@ -61,7 +61,7 @@ function esc(s: string): string {
     .replace(/'/g, '&#39;');
 }
 
-export const INTERNAL_HOST_URL = 'https://internal.dragoncandy.io';
+export const INTERNAL_HOST_URL = 'https://internal.dragoncandy.com';
 export const INVITE_SUBJECT = 'Your invitation to DragonCandy AIOS';
 export const GRANTED_SUBJECT = 'You now have access to DragonCandy AIOS';
 
@@ -87,7 +87,7 @@ function shell(inner: string): string {
       <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
       <p style="font-size: 12px; color: #9ca3af; text-align: center;">
         DragonCandy · Hoboken, NJ · internal use only<br>
-        <a href="${INTERNAL_HOST_URL}" style="color: #0F766E; text-decoration: none;">internal.dragoncandy.io</a>
+        <a href="${INTERNAL_HOST_URL}" style="color: #0F766E; text-decoration: none;">internal.dragoncandy.com</a>
       </p>
     </div>
   </body>
@@ -117,7 +117,7 @@ export function buildInviteEmailHtml(args: {
       </p>
       <p style="font-size: 16px; color: #374151;">
         Click below to set your password. Afterwards, sign in any time at
-        <a href="${INTERNAL_HOST_URL}" style="color: #0F766E;">internal.dragoncandy.io</a>.
+        <a href="${INTERNAL_HOST_URL}" style="color: #0F766E;">internal.dragoncandy.com</a>.
       </p>
       ${ctaButton(args.actionLink, 'Set your password')}
       <p style="font-size: 14px; color: #6b7280;">

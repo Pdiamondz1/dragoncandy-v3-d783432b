@@ -42,9 +42,10 @@ export const WWW_APP_ORIGINS = [
  * `Origin` is absent or untrusted, and which that file itself calls "a
  * cosmetic default, not a security boundary."
  *
- * It is deliberately AHEAD of `DEFAULT_ORIGIN` during the .io -> .com
- * migration: it already holds the post-migration value, so it never changes.
- * Migration Phase 2 moves `DEFAULT_ORIGIN` from .io to .com to meet it.
+ * It was deliberately AHEAD of `DEFAULT_ORIGIN` during the .io -> .com
+ * migration: it already held the post-migration value, so it never changed.
+ * Phase 2 moved `DEFAULT_ORIGIN` to .com to meet it, so the two now agree —
+ * keep them separate anyway, since they answer different questions.
  */
 export const CANONICAL_APP_ORIGIN = 'https://dragoncandy.com';
 

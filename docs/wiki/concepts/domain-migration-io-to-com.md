@@ -3,7 +3,7 @@ title: Domain Migration (.io → .com)
 type: concept
 created: 2026-08-09
 updated: 2026-08-10
-sources: [2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md, 2026-08-09-ios-testflight-first-build.md]
+sources: [2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md, 2026-08-09-ios-testflight-first-build.md, 2026-08-10-dotcom-phase2-canonical-switch.md]
 tags: [domain, dns, cors, auth, vercel, migration]
 ---
 # Domain Migration (.io → .com)
@@ -99,14 +99,56 @@ Dashboard gotchas that cost time:
 - Google OAuth redirect URIs must be added to the **same client** as `GOOGLE_OAUTH_CLIENT_ID`
   — which lives on the personal Google Cloud project, not the DragonCandy Workspace org.
 
+## Phase 2 — SWITCH (code shipped 2026-08-10; config founder-owned)
+
+**Apex is canonical.** The Vercel primary was flipped, so `www` → apex is now a **308,
+path- and query-preserving** (verified) — previously apex 308'd to www, the reverse of the plan.
+
+**Code (shipped).** `src/components/SEO.tsx`'s `SITE_URL` is the single constant every canonical
+link and `og:url` derives from — the highest-leverage line in the change. Plus `index.html`
+metadata, sitemap, `robots.txt`, three JSON-LD blocks, redirect/origin fallbacks in eleven edge
+functions, email **bodies** (links and images only, never a `from:`), internal surface copy, and
+`DEFAULT_ORIGIN`. Two pre-existing bugs fixed en route: `send-welcome-email` fell back to
+`https://lovable.app` (3 sites) and `create-sponsorship-checkout` to the Lovable *preview* host.
+
+**Config (still founder-owned).** `APP_URL` / `PUBLIC_SITE_URL` / `DRAGONCANDY_APP_URL` →
+`https://dragoncandy.com`, and GoTrue **Site URL** → apex. Each secret has a hard-coded
+`|| 'https://dragoncandy.io'` fallback, so a *forgotten* one looks like working behaviour —
+verify by observed output, never by "I set it".
+
+### The intent was recorded three times and the change still didn't happen
+
+Codex caught [P2] that `DEFAULT_ORIGIN` was still `.io`. Three places had already said Phase 2
+would move it: the constant's own doc comment, the iOS TestFlight spec, and this migration's
+design doc §2b. **And [[iOS TestFlight First Build]] had gone further** — it named the omission
+as an open risk, in writing, before Phase 2 was drafted.
+
+**A previous session spotted the gap, wrote it in the wiki, and the next session shipped without
+it.** Writing something down is not the same as it being consulted; the knowledge layer only pays
+off if something *reads* it at the moment of the decision. That is an argument for the review
+gates, not against the wiki — Codex, which had never read any of it, found it from the diff alone.
+
+`DEFAULT_ORIGIN` is cosmetic **as a CORS fallback** (an unlisted origin is blocked by exact-match
+ACAO whatever the header says) but it also mints user-facing URLs in `verify-email`,
+`send-verification-email` and `create-package-order-escrow` when their env var is unset. All
+three prefer a trusted `Origin` or the env var first, so ordinary browser traffic already
+resolved to `.com`; the fallback fires only for a request with no trusted `Origin`.
+
+That page's companion claim — that the flip "would force a sweep" of the ~77 un-redeployed
+functions — is an **overstatement, now corrected**: `_shared/*` bundles per function at deploy
+time, so a non-redeployed function simply keeps emitting `.io` cosmetically. Mixed fleet state
+costs nothing. The flip supplies a *reason* to sweep, not a requirement.
+
+### Reading a secret's value without exposing it
+
+`supabase secrets list` returns each secret's name, **SHA-256 digest** and `updated_at`. The
+digest is a plain SHA-256 of the value, so a candidate can be tested for exact equality —
+`printf '%s' "https://dragoncandy.io" | sha256sum` matched `APP_URL`'s digest, establishing its
+value without ever seeing it. Works for any low-cardinality secret (a URL, a domain, a flag);
+useless against a real key, which is precisely why it is safe.
+
 ## Remaining phases
 
-- **Phase 2 — SWITCH.** `APP_URL` / `PUBLIC_SITE_URL` / `DRAGONCANDY_APP_URL` secrets, GoTrue
-  Site URL, and the Vercel apex↔www primary (currently apex **308 → www**; the plan is apex
-  canonical). Each secret has a hard-coded `|| 'https://dragoncandy.io'` fallback, so a
-  *forgotten* one looks like working behaviour — verify by observed output, never by "I set it".
-  Plus the hard-coded literals with no env indirection: SEO/metadata, sitemap, robots.txt,
-  JSON-LD, redirect builders, email bodies.
 - **Phase 3 — REDIRECT.** Path-preserving 301 on all three `.io` domains. **Keep `.io` in every
   allow-list** — in-flight email links and cached SPA sessions still need it.
 - **Phase 4 — content/knowledge**, **Phase 5 — mail** (deferred; a dead support address is
@@ -129,13 +171,27 @@ synthetic-user safety spine keys on.
 
 ## Known Issues
 
-- **The `www`→apex redirect the Vercel cutover runbook describes is not actually live on
-  either domain** — `https://www.dragoncandy.io` returns 200, not a redirect. Found while
-  verifying a Codex finding; it is a pre-existing `.io` bug, not a `.com` one.
-- **Auth-gated surfaces are unverified on `.com`** on both viewports — no session was available.
-- **`LEADS_NOTIFY_EMAIL` is still unset**, so `capture-lead` saves a lead and notifies nobody.
+> **Three entries here were resolved on 2026-08-10 and are kept, struck through, with the date.**
+> All three were written in the present tense about production, which is the failure mode this
+> whole page keeps documenting: a claim about prod has an expiry, and nothing here detects its
+> own staleness. Resolutions are recorded rather than deleted so the pattern stays visible.
+
+- ~~The `www`→apex redirect is not live on either domain~~ — **resolved 2026-08-10 on `.com`.**
+  Apex is now canonical and `www` → apex is a 308, path- and query-preserving (verified). The
+  `.io` side is unchanged and still returns 200 on `www`; it is a pre-existing `.io` bug and
+  Phase 3 supersedes it.
+- ~~Auth-gated surfaces are unverified on `.com`~~ — **resolved 2026-08-10.** Desktop verified
+  in the founder's signed-in Chrome with direct CORS measurement; mobile confirmed by the
+  founder. This closes the last open item on the Phase 1 gate.
+- ~~`LEADS_NOTIFY_EMAIL` is still unset~~ — **it was set on 2026-08-07**, i.e. this entry was
+  already false when written. It survived because a doc asserted edge secrets were not listable,
+  so nobody ran the check. They are listable. **A claim that something is unverifiable is itself
+  a claim** — verify it before repeating it. Lead capture never depended on it anyway: the row
+  is inserted first and the email is best-effort.
 - Phase 1 was interrupted by an unrelated prod outage — see
   [[Edge-Function Deploy & Bundling]].
+- **Open:** the ~77 edge functions outside the Phase 1 fan-out still carry the pre-`.com`
+  `DEFAULT_ORIGIN` until redeployed. Harmless (see Phase 2 above) and nothing forces it.
 
 ## See Also
 

@@ -101,10 +101,16 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 - **Outstand social media integration** — IG/TikTok/YouTube linking + delegated posting;
   phases 1–3 complete, phase 4 (analytics dashboard) still in scope. → `docs/SHIPPED_LOG.md`
 - **Domain migration `.io` → `.com`** — expand → switch → redirect → contract. **Phase 1
-  (EXPAND) shipped and gate-verified 2026-08-09** (#414, #415): `.com` works on all 82 edge
-  functions, both viewports, apex TLS fixed; `.io` still canonical and unchanged. Phases 2–6
-  (Site URL + `APP_URL` switch, the `.io` 301, content, mail) not started.
-  → `docs/wiki/concepts/domain-migration-io-to-com.md`
+  (EXPAND) shipped and gate-verified 2026-08-09** (#414, #415). **Phase 2 (SWITCH) code shipped
+  2026-08-10**: apex is canonical (`www` → apex 308, path/query preserving), `SEO.tsx`'s one
+  `SITE_URL` constant drives every canonical + `og:url`, eleven edge functions' redirect
+  fallbacks moved, and `DEFAULT_ORIGIN` flipped after Codex caught it missing — an omission the
+  wiki had **already flagged in writing** and nothing read. Auth-gated `.com` verified on both
+  viewports. Allow-lists deliberately keep BOTH TLDs. **Pending (2026-08-10):** Phase 2a config
+  is founder-owned — set `APP_URL` (currently `.io`), `PUBLIC_SITE_URL` + `DRAGONCANDY_APP_URL`
+  (both absent, verified via `supabase secrets list`) to `.com`, then GoTrue **Site URL** → apex,
+  **which logs out all ~42 users**. Phases 3–6 (the `.io` 301, content, mail, contract) not
+  started. → `docs/wiki/concepts/domain-migration-io-to-com.md`
 - **Apple App Store (Capacitor)** — iOS shell over the web app. Phase 1 (foundation) +
   Phase 2 (native camera + share sheet) shipped; the first-signed-build work (origin
   seam so email/share/OAuth links work natively, `capacitor://localhost` trusted in the
