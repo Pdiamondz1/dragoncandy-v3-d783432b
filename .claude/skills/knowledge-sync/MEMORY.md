@@ -5,6 +5,28 @@
 
 ## Lessons (read FIRST every run; curated — rewrite/prune as they evolve)
 
+- **[scope-paths] Point the `[scope]` check at the branch's SOURCE paths, not just the core
+  docs.** On 2026-08-10 the check ran clean against `PROJECT_CONTEXT.md`/`SHIPPED_LOG.md`/
+  `docs/wiki/` — and `origin/main` had, that same morning, merged a **parallel implementation of
+  the very feature the branch was building** (#429 vs #428, two sessions acting on two phrasings
+  of one founder complaint). A docs-clean `origin/main` says nothing about
+  `src/components/...`. The collision was found by accident, chasing an unrelated Codex finding,
+  after hours of duplicate work. Run
+  `git log --oneline HEAD..origin/main -- <the dirs this branch edits>` as well — on a repo with
+  30+ worktrees, *"has someone already shipped this?"* has a real answer one command away.
+  Corollary: **when the parallel version landed first and is better, delete yours** and rebuild
+  on top of it; merging both produces two answers to one question.
+- **[superseded-mechanism] When work DELETES a mechanism, hunt the rule you wrote for it.**
+  A knowledge-sync that generalises a pattern into `DESIGN_SYSTEM.md` / `CLAUDE.md` plants a
+  claim that outlives the branch. On 2026-08-10 a redesign deleted the pinned-composer machinery
+  a *previous run on the same branch* had just codified as a house rule — leaving an
+  always-loaded doc instructing every future session to build the thing that had just been
+  removed, which is worse than never writing it. **Before finishing, grep the core docs for the
+  mechanism this session removed**, and rewrite the rule to the principle that survived rather
+  than deleting it outright — the reason the old rule existed is usually still true, only its
+  answer changed. Same edit-in-place discipline as `[status-correction]`, applied to design
+  rules instead of status lines.
+
 - **[orphans] Run the orphan check every run — by PATH, not title.** The `wiki-save-answer`
   flow adds `analyses/` pages + syncs RAG but does NOT update `index.md`, so its pages land as
   catalog orphans (caught 2: [[Competitive Advantage]], [[Influencer/Creator Outreach]]). Before
@@ -155,6 +177,28 @@
   *files*; this says a stale worktree can also ship stale *code to production*.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-10] Donny dashboard — fresh per visit, after a parallel-PR collision (`fix/donny-dashboard-mobile-composer`, #428)
+
+Output: `docs/wiki/raw/sessions/2026-08-10-donny-dashboard-fresh-per-visit.md` →
+[[Donny-First Dashboard]] (new "#429, #428" section + a "collision nobody looked for" subsection
+under review-caught + 3 new Decisions) · `docs/wiki/log.md` top entry · `SHIPPED_LOG.md` top
+entry · `PROJECT_CONTEXT.md` §5 edited in place.
+
+- Happened: mid-session, #429 merged a **parallel implementation** of the bounded scroller this
+  branch was building. Branch was reset onto `main` and rebuilt to carry only the remainder
+  (fresh-per-visit + collapsing greeting); the duplicate was discarded.
+- Failed: the `[scope]` check ran that morning and came back clean — against the **core docs
+  only**. It said nothing about `src/components/donny/`. → new Lesson `[scope-paths]`.
+- Worked: correcting a stale claim the concept page had carried since #423 ("the dashboard sits
+  in normal page flow scrolled by `#main-content`"), which #429 had invalidated and #429's own
+  knowledge-sync had not yet reached. **Compounding onto a page is also a chance to check what it
+  currently asserts.**
+- Worked: recording the *process* lesson in the wiki, not just the code lesson. The expensive
+  miss here was duplicated work, and no amount of test coverage would have surfaced it.
+- Remember: an earlier run on this same branch generalised a mechanism into `DESIGN_SYSTEM.md`
+  that a later commit deleted — see `[superseded-mechanism]`. Both of this session's lessons are
+  about **knowledge-sync output going stale faster than the branch it documents**.
 
 ### [2026-08-09] Donny-first dashboard Phase B — inline chat + the markdown-table fix (`feat/donny-dashboard-inline-chat`)
 

@@ -23,6 +23,19 @@ interface DonnyHomePromptProps {
   onSuggestionTap: (suggestion: DonnySuggestion) => void;
   /** A reply is in flight. Mirrors the panel, which disables its own input. */
   busy?: boolean;
+  /**
+   * A conversation is running, so this is a chat composer rather than the
+   * page's hero: no suggestion chips, and no gap reserved for them.
+   *
+   * The chips are a cold-start affordance — "Create a campaign" is help for
+   * someone who has not asked anything yet. Keeping them mid-conversation
+   * spends a fifth of a phone screen suggesting openers to someone already past
+   * that, and pushes the thread further up.
+   *
+   * Named for what it does, not for a viewport: the trigger is the
+   * conversation, and it applies on desktop too.
+   */
+  compact?: boolean;
 }
 
 export function DonnyHomePrompt({
@@ -30,6 +43,7 @@ export function DonnyHomePrompt({
   onSubmit,
   onSuggestionTap,
   busy = false,
+  compact = false,
 }: DonnyHomePromptProps) {
   const [text, setText] = React.useState('');
   const fieldRef = React.useRef<HTMLTextAreaElement>(null);
@@ -81,7 +95,7 @@ export function DonnyHomePrompt({
   return (
     // RESTAURANT_TOUR step 2 targets this anchor. It used to live on
     // HeroPrimaryAction, which this body replaces.
-    <div data-tour="brief-generator" className="space-y-4">
+    <div data-tour="brief-generator" className={compact ? undefined : 'space-y-4'}>
       <form
         onSubmit={handleSubmit}
         // One quiet outline. Founder, on prod: "there a border around prompt
@@ -141,18 +155,20 @@ export function DonnyHomePrompt({
         </div>
       </form>
 
-      <div className="flex flex-wrap justify-center gap-2">
-        {suggestions.map((s) => (
-          <AppChip
-            key={s.message}
-            className="text-dc-teal-btn border-dc-teal/30 disabled:opacity-50"
-            disabled={busy}
-            onClick={() => onSuggestionTap(s)}
-          >
-            {s.label}
-          </AppChip>
-        ))}
-      </div>
+      {!compact && (
+        <div className="flex flex-wrap justify-center gap-2">
+          {suggestions.map((s) => (
+            <AppChip
+              key={s.message}
+              className="text-dc-teal-btn border-dc-teal/30 disabled:opacity-50"
+              disabled={busy}
+              onClick={() => onSuggestionTap(s)}
+            >
+              {s.label}
+            </AppChip>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
