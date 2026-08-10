@@ -247,7 +247,7 @@ A repo-wide sweep found no further instances.
 **Both functions need a redeploy for this to reach users** — see
 [[Edge-Function Deploy & Bundling]].
 
-## Phase 4 — CONTENT (built 2026-08-10; migration NOT yet applied)
+## Phase 4 — CONTENT (merged and applied to prod 2026-08-10)
 
 The phases above move code, config and routing. None of them can reach text stored in the
 **database** or written in **prose**. Phase 4 is that text: three help articles a brand-new user
@@ -366,10 +366,17 @@ synthetic-user safety spine keys on.
   describes the mechanism and names the check. This one is notable because it is the same
   staleness pattern this page documents, committed **by the page's own author, in the same
   session that wrote the warning**.
-- **Open (Phase 4):** `20260810140000_dotcom_phase4_content.sql` is **written and dry-run-proven
-  but NOT applied to prod**. Merging does not apply it — this project applies migrations
-  explicitly. Until it runs, the three signup help articles and the Dezzy SEO prompt still say
-  `.io`. (Not broken: `.io` 308s. Just the wrong brand string in the first thing a new user reads.)
+- ~~**Open (Phase 4):** the content migration is written but not applied~~ — **applied and
+  verified on prod 2026-08-10.** #430 and #431 merged in sequence, then the migration ran. Verified
+  by **re-reading the rows**, not by the `{"success":true}`: all three signup articles
+  `has_com=t has_io=f`, `search_vector` reindexed, storage URLs intact, playbook moved,
+  `gdpr-erasure` untouched with its `privacy@` mailbox intact.
+  **Ledger version drift (harmless, but know about it):** the repo file is `20260810140000`;
+  MCP `apply_migration` stamps its *own* timestamp, so prod recorded **`20260810140234`**. A future
+  `supabase db push` therefore sees the repo version as unapplied and re-runs it. That was
+  **proven a no-op** (`rows_help=0 rows_playbook=0`, guard and assertions pass) rather than assumed
+  — which works only because every statement is filtered on containing the old string. Precedent
+  for the same drift: the Slice-2 migration `20260725140000`, recorded under `20260726024318`.
 - **Deliberately open:** `help_articles.gdpr-erasure` still carries `privacy@dragoncandy.io`, and
   every other `@dragoncandy.io` mailbox is untouched. This is Phase 5 and is gated on a
   send-and-receive test — a fresh-but-dead contact address is worse than a stale-but-delivering
