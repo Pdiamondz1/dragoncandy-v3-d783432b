@@ -84,14 +84,31 @@ export function DonnyThreadRegion({ className, ...thread }: DonnyThreadRegionPro
     // the scroller it would scroll away with the content it is meant to chase.
     // Keeping it in here also keeps it clear of MobileBottomNav — it can never
     // reach the app chrome because it can never leave this box.
-    <div className={cn('relative', className)}>
+    <div className={cn('relative flex flex-col', className)}>
       <div
         ref={scrollerRef}
         onScroll={readPosition}
         role="log"
         aria-label="Donny conversation"
         aria-live="polite"
-        className="h-full space-y-3 overflow-y-auto rounded-2xl border border-dc-teal/15 bg-dc-teal/[0.04] p-4"
+        // `flex-1 min-h-0`, NOT `h-full`. h-full is `height: 100%`, and a
+        // percentage height only resolves against a parent whose `height`
+        // PROPERTY is definite. Every ancestor here sizes itself with
+        // min-h/max-h and leaves `height: auto`, so the percentage never
+        // resolved — it fell back to content height. Measured on the real page:
+        // the scroller computed to 8337px inside a 145px parent, so
+        // `overflow-y-auto` had nothing to overflow and the thread painted
+        // straight over the attention list below it.
+        //
+        // Flex sizing needs no definite parent height: this box is a flex item,
+        // so it is measured against its parent's USED height. `min-h-0` is
+        // load-bearing — a flex item's default `min-height: auto` refuses to
+        // shrink below its content, which would reproduce the same overflow.
+        //
+        // jsdom cannot catch this class of bug: it performs no layout, so the
+        // class-value pin in the test file passes on the broken version too.
+        // The proof is a DOM measurement in a real browser.
+        className="min-h-0 flex-1 space-y-3 overflow-y-auto rounded-2xl border border-dc-teal/15 bg-dc-teal/[0.04] p-4"
       >
         <DonnyThread {...thread} />
       </div>

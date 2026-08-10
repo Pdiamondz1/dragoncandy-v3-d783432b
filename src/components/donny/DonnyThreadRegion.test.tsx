@@ -105,6 +105,28 @@ describe('DonnyThreadRegion — the thread is bounded, not endless', () => {
     renderRegion([message('m1', 'Based on 1 measured post so far.')]);
     expect(scroller()).toHaveClass('overflow-y-auto');
   });
+
+  it('sizes the scroller with flex, never a percentage height', () => {
+    // CLASS-VALUE PIN, and a deliberately weak one — but it guards a bug this
+    // whole test tier is blind to, so it is worth its weight.
+    //
+    // The first version shipped `h-full` here. Every test in this file passed,
+    // because jsdom does no layout. In a real browser it was broken: `h-full`
+    // is `height: 100%`, and a percentage height only resolves against a parent
+    // whose `height` PROPERTY is definite. Every ancestor sizes itself with
+    // min-h/max-h and leaves `height: auto`, so the percentage silently fell
+    // back to content height — measured at 8337px inside a 145px parent. The
+    // box was never scrollable and the thread painted over the attention list.
+    //
+    // Flex sizing is measured against the parent's USED height, so it needs no
+    // definite ancestor. `min-h-0` is load-bearing: a flex item defaults to
+    // `min-height: auto` and refuses to shrink below its content, which would
+    // reproduce the identical overflow.
+    stubScrollMetrics({ scrollHeight: 0, clientHeight: 0, scrollTop: 0 });
+    renderRegion([message('m1', 'first')]);
+    expect(scroller()).toHaveClass('flex-1', 'min-h-0');
+    expect(scroller()).not.toHaveClass('h-full');
+  });
 });
 
 describe('DonnyThreadRegion — the scroll-to-bottom control', () => {
