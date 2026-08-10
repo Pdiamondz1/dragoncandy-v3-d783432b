@@ -20,7 +20,7 @@ Without the fix the native app reaches Supabase REST and Auth (which send their 
 but **no custom edge function** — every Donny call, campaign action, and upload path fails at the
 preflight.
 
-## 2. Enumeration method — and why it replaces reading the deployed source
+## 2. Enumeration method — and why the probe, not the bundle, is the primary instrument
 
 `corsHeaders(req)` echoes the request origin **verbatim** when it is allow-listed, and falls back to
 `DEFAULT_ORIGIN` otherwise. So an unauthenticated `OPTIONS` request discriminates perfectly:
@@ -91,18 +91,30 @@ also finishes the domain migration inside the deployed fleet at zero marginal co
 
 The 60 stale functions split three ways:
 
-**Bucket A — browser-reachable, non-money (18).** The Wednesday gate.
-`bulk-download-campaign-content`, `capture-lead`, `confirm-posting-schedule`, `content-posting-plan`,
-`content-strategy-recommend`, `donny-apply-pitch`, `donny-campaign-preview`, `extend-review`,
-`fire-campaign-social-hook`, `generate-campaign-analysis`, `landing-clips`, `match-creators`,
+**Bucket A — browser-reachable, non-money (25).** The Wednesday gate.
+`aios-playbook-run`, `bulk-download-campaign-content`, `capture-lead`, `confirm-posting-schedule`,
+`content-posting-plan`, `content-strategy-recommend`, `donny-apply-pitch`, `donny-campaign-preview`,
+`donny-schedule`, `extend-review`, `fire-campaign-social-hook`, `generate-anonymous-brief`,
+`generate-campaign-analysis`, `google-workspace-proxy`, `landing-clips`, `match-creators`,
 `reject-content`, `social-caption`, `suggest-package`, `toast-oauth-start`, `verify-email`,
-`wiki-merge-pr`
+`wiki-commit-pr`, `wiki-import-doc`, `wiki-merge-pr`, `wiki-save-answer`
 
-**Bucket B — cron / internal / AIOS, non-money (27).** The **Capacitor** origin is irrelevant to these
-— not CORS itself. **Three are genuinely browser-invoked from `/internal`** and depend on the shared
-helper today: `google-workspace-proxy` (`src/hooks/internal/useGoogleWorkspace.ts:18`), `wiki-commit-pr`
-(`src/hooks/internal/useCorrections.ts:108`), and `donny-schedule`. Whoever triages a preflight failure
-in T2/T3 needs to know that. They all carry the same stale `_shared` module and stale `DEFAULT_ORIGIN`.
+**Bucket B — cron / webhook / internal, non-money (20).** The **Capacitor** origin is irrelevant to
+these — not CORS itself. They carry the same stale `_shared` module and stale `DEFAULT_ORIGIN`.
+`aios-report-ingest`, `chat-assistant`, `donny-analytics-alerts`, `donny-cost-rollup`,
+`donny-creator-match`, `donny-knowledge-sync`, `donny-nudge-frame`, `donny-oauth-token`,
+`donny-oauth-userinfo`, `donny-toast-context`, `dre-award-engine`, `expire-social-hooks`,
+`fire-dragonshare-social-hook`, `fire-promotion-social-hook`, `generate-embedding`,
+`notify-package-order`, `resolve-dispute`, `sync-seat-count`, `toast-discount-push`, `validate-upload`
+
+> **This split was cut wrong once, and the failure mode is worth recording.** A first pass put **7** of
+> these in bucket B — including `generate-anonymous-brief`, which
+> `src/components/landing/BriefGeneratorPreview.tsx:70` invokes **anonymously from the public landing
+> page**. The cause was a single-line grep for `functions.invoke('<slug>')`, when this codebase's
+> dominant style is `await supabase.functions.invoke<T>(` / newline / `'slug',` — both the generic
+> parameter and the line break defeat it. The enumeration must be **multiline-aware**:
+> `functions\.invoke(<[^>]*>)?\(\s*['"\n]` plus the `` `${…}/functions/v1/<slug>` `` template form.
+> A grep that silently under-matches is worse than no grep, because it produces a confident wrong list.
 `aios-playbook-run`, `aios-report-ingest`, `chat-assistant`, `donny-analytics-alerts`,
 `donny-cost-rollup`, `donny-creator-match`, `donny-knowledge-sync`, `donny-nudge-frame`,
 `donny-oauth-token`, `donny-oauth-userinfo`, `donny-schedule`, `donny-toast-context`,
@@ -115,23 +127,23 @@ in T2/T3 needs to know that. They all carry the same stale `_shared` module and 
 
 **Scope of this sweep: buckets A + B = 45 functions.**
 
-> **The A/B split is a lower bound, not an exact partition.** It was derived by grepping `src/` for both
-> `functions.invoke('<slug>')` and `` `${…}/functions/v1/<slug>` ``. Neither pattern resolves a
-> **variable slug** — e.g. `supabase.functions.invoke(config.createFn)` in
-> `src/components/settings/StripeConnectSetup.tsx:119` and `` invoke(`${statusFn}${params}`) `` in
-> `src/hooks/useTransactionReadiness.ts:35`. Every such call site found resolves to a bucket-C money
-> function, so it does not move this sweep's scope — but a future reader must not read bucket B as
-> "provably not browser-reachable". The split governs **deploy order only**; both buckets ship.
+> **Even multiline-aware, the A/B split is a lower bound.** No static pattern resolves a **variable
+> slug** — `supabase.functions.invoke(config.createFn)` at
+> `src/components/settings/StripeConnectSetup.tsx:119`, `` invoke(`${statusFn}${params}`) `` at
+> `src/hooks/useTransactionReadiness.ts:35`. Every such call site resolves to a bucket-C money function,
+> so it does not move this sweep's scope — but bucket B must be read as "not *found* to be
+> browser-reachable", never "provably not". The split governs **deploy order only**; both buckets ship,
+> so a miscut costs ordering, not coverage.
 
-**Why bucket B is in scope rather than deferred.** It is fair to ask, since bucket B delivers nothing
-for the *device build* specifically, and §7 refuses a ride-along on exactly that principle. Three reasons
-it is not the same shape: at least three of the 27 **are** browser-invoked from `/internal` today and the
-grep that says so is a lower bound, so "deploy only what iOS touches" does not cleanly identify a safe
-remainder; the marginal risk is near zero, because bucket B ships the identical two-file delta already
-being proven on the canary and 17 bucket-A functions before it; and leaving 27 functions on a stale
-shared module guarantees a third sweep. Bucket C is different on all three counts — it is money code,
-it ships to a different risk tolerance, and its one live defect wants individual verification. Deploy
-order (A before B) preserves the option to stop after T1 if anything looks wrong.
+**Why bucket B is in scope rather than deferred.** Fair to ask, since bucket B delivers nothing for the
+*device build* specifically and §7 refuses a ride-along on exactly that principle. Three reasons it is
+not the same shape. The marginal risk is near zero: bucket B ships the identical two-file delta already
+proven on the canary and 24 bucket-A functions before it. The boundary is a lower bound, not a proof, so
+"deploy only what iOS touches" cannot cleanly identify a safe remainder — the first cut of this very
+split was wrong by seven. And leaving 20 functions on a stale shared module guarantees a third sweep.
+Bucket C differs on all three counts: it is money code, it ships to a different risk tolerance, and its
+one live defect wants individual verification. Deploy order (**all** of A before any of B) preserves the
+option to stop after T1 with every browser-reachable function already covered.
 
 ## 4. What actually ships
 
@@ -147,8 +159,19 @@ real cross-function dependency and had to be redone:
 
 1. **Enumerate the changed set.** One `git log --since=@<earliest-deploy> --name-only` pass over
    `supabase/functions/` yields **35** non-test `.ts` files changed since the earliest deploy in the
-   sweep (`capture-lead`, epoch 1786314500). Of those, 12 are in `_shared`. This enumeration is what
-   licenses "nothing else ships"; without it the claim is unfalsifiable.
+   sweep (`capture-lead`, epoch 1786314500). This enumeration is what licenses "nothing else ships";
+   without it the claim is unfalsifiable, so the 12 in `_shared` are named in full:
+
+   | epoch | file | | epoch | file |
+   |---|---|---|---|---|
+   | 1786369434 | `origins.ts` | | 1786315093 | `outstand-accounts.ts` |
+   | 1786352575 | `test-mode-connect.ts` | | 1786315093 | `outstand-mcp.ts` |
+   | 1786345100 | `cors.ts` | | 1786315093 | `outstand-mcp-paths.ts` |
+   | 1786335860 | `social-analytics.ts` | | 1786315093 | `outstand-mcp-tools.ts` |
+   | 1786315093 | `mcp-payload.ts` | | 1786315093 | `social-draft.ts` |
+   | 1786315093 | `strip-account-ids.ts` | | 1786315093 | `social-signal.ts` |
+
+   `htmlEscape.ts` is **not** in this list, which is the fact that clears `capture-lead` in step 3.
 2. **Compute each function's real closure**, following `../_shared/*.ts`, `./*.ts` **and cross-function
    `../<other-fn>/*.ts`** imports transitively. That third form is not hypothetical:
    `content-strategy-recommend/index.ts:12` imports `../donny-orchestrator/rag.ts` — neither its own
@@ -165,26 +188,51 @@ real cross-function dependency and had to be redone:
    `create-creator-connect-account` / `create-restaurant-connect-account`, both already-fixed money
    functions outside it.
 
+**Two assumptions carry this, and both are named rather than buried:**
+
+- **Deploy epoch ↔ git epoch comparability.** Step 3 compares Supabase deploy timestamps against git
+  commit timestamps, which is only valid if each function was deployed **from `main`** at that instant.
+  This project routinely deploys edge functions from worktree branches before merge, and a function
+  deployed from a branch carries that branch's bytes — invisible to any timestamp comparison. Two things
+  support the assumption: all 45 deploys fall inside a single ~54-minute window (epoch 1786314500 →
+  1786317758), consistent with one scripted fleet pass rather than 45 independent acts; and PROJECT_CONTEXT
+  records a post-#415 fleet redeploy at exactly that time. Neither is proof. **§8 therefore adds a canary
+  provenance check** — read `match-creators`' deployed source and confirm it matches `main`'s
+  `match-creators/index.ts`. If it does, the fleet pass was from `main` and this assumption is closed
+  empirically. If it does not, stop: the whole timestamp argument fails and every function needs
+  individual source comparison.
+- **Commit-timestamp order as a proxy for reachability order.** `git log --since` filters on committer
+  date, so a merge that preserved a branch's older dates could make a commit fall outside the window yet
+  only become reachable after it. Closed by inspection: `caa7ca97`, `d5cb594b`, `98c63745` and
+  `4e945222` all have **exactly one parent**, i.e. this repo squash-merges, so committer date *is* merge
+  time and reachability order follows timestamp order.
+
 This is a mechanical sweep, not 45 code changes. It also means **a canary failure is a fleet failure**,
 which is what makes the tranche plan in §5 cheap.
 
 ## 5. Sequencing
 
-**Canary: `match-creators`.** It is the proven-stale reference case, browser-reachable, non-money, and
-`verify_jwt = true` with **no** `config.toml` block — so it empirically confirms the
-no-block-stays-`true` finding on the function where being wrong is cheapest.
+**Canary: `match-creators`.** The proven-stale reference case, browser-reachable, non-money, and
+`verify_jwt = true` with **no** `config.toml` block — so it confirms the no-block-stays-`true` finding
+where being wrong is cheapest. It is also on **`.typecheck-ignore` (line 39)**: CI has never
+type-checked it, so if any function in the sweep is going to fail a hand-run `deno check` or fail to
+boot, this is the class it comes from. Leading with an unchecked function is deliberate, not incidental.
+The canary additionally carries the **provenance check** from §4 — confirm its deployed source matches
+`main` — because that is what closes the deployed-from-`main` assumption for the whole fleet pass.
 
-Then tranches, bucket A before bucket B, with a probe sweep after each:
+Then tranches, **all of bucket A before any of bucket B**, with a probe sweep after each:
 
 | Step | Contents | n |
 |---|---|---|
 | Canary | `match-creators` | 1 |
-| T1 | remainder of bucket A, alphabetical | 17 |
-| T2 | bucket B, alphabetical, `aios-playbook-run` … `expire-social-hooks` | 14 |
-| T3 | bucket B, alphabetical, `fire-dragonshare-social-hook` … `wiki-save-answer` | 13 |
+| T1 | remainder of bucket A, alphabetical | 24 |
+| T2 | bucket B, alphabetical, `aios-report-ingest` … `donny-toast-context` | 10 |
+| T3 | bucket B, alphabetical, `dre-award-engine` … `validate-upload` | 10 |
 
 Both bucket-B halves are the §3 list in alphabetical order; the split point is stated above so two
-implementers cannot disagree about it.
+implementers cannot disagree about it. T1 is large, and deliberately so: the delta is byte-identical, the
+canary has already proven it end to end, and finishing bucket A in one step is what makes "stop here if
+anything looks wrong" a safe resting point with every browser-reachable function covered.
 
 Deploy command, one slug at a time — **never a bare `supabase functions deploy`**, which is a blind
 fleet deploy:
@@ -205,7 +253,7 @@ Three of the brief's guardrails were verified **already satisfied** and are reti
 
 | Guardrail | Finding | Instrument |
 |---|---|---|
-| `verify_jwt` drift | **Zero risk.** All 58 live-`false` functions have an explicit `[functions.<slug>]` block; every function *without* a block is already `true`. Nothing can flip. The brief's at-risk list (`stripe-webhook`, `outstand-webhook`, `zernio-webhook`, `toast-redemption-webhook`, `auto-approve-content`, `reconcile-pending-flushes`, `capture-lead`, `donny-knowledge-sync`, `expire-social-hooks`, `content-performance-capture`) all have blocks. | `comm` diff of the 58 `verify_jwt = false` slugs from `list_edge_functions` against the 59 `^\[functions\.` blocks in `supabase/config.toml`; the difference set is empty |
+| `verify_jwt` drift | **Zero risk.** All 58 live-`false` functions have an explicit `[functions.<slug>]` block; every function *without* a block is already `true`. Nothing can flip. The brief's at-risk list (`stripe-webhook`, `outstand-webhook`, `zernio-webhook`, `toast-redemption-webhook`, `auto-approve-content`, `reconcile-pending-flushes`, `capture-lead`, `donny-knowledge-sync`, `expire-social-hooks`, `content-performance-capture`) all have blocks. | `comm -23` of the 58 live `verify_jwt = false` slugs against the 59 `^\[functions\.` blocks in `supabase/config.toml` → **empty**. The containment is deliberately one-directional (`{live-false} \ {blocks} = ∅`); the 59th block is `social-proxy`, declared `verify_jwt = true`, so 58-vs-59 is expected and not a discrepancy |
 | `esm.sh` boot failure | **Non-issue.** Zero `esm.sh/@supabase` imports. All 33 `esm.sh` uses are `stripe@18.5.0` plus one `jose@5.9.6`, both established safe by #415. | `grep -rl 'esm\.sh/@supabase' supabase/functions/` → 0 files; package histogram over `esm.sh/…` matches |
 | Own-source drift | **Zero**, per §4. | closure × changed-set intersection, per §4 |
 | Deploy-from-stale-tree | **Not applicable.** Local `main` is identical to `origin/main`. | `git rev-parse HEAD` == `git rev-parse origin/main` after `git fetch`; `git rev-list --count` both directions = 0 |
@@ -217,11 +265,16 @@ Three of the brief's guardrails were verified **already satisfied** and are reti
 
 Two remain live and are pre-flight gates:
 
-- **`deno check` by hand** against a `main` baseline on the changed `_shared` files and the canary. CI
-  type-checks none of these — both importers are on `.typecheck-ignore`.
+- **`deno check` by hand** against a `main` baseline, on the changed `_shared` files and on the 18
+  functions CI does not cover. **`supabase/functions/.typecheck-ignore` is an *exclusion* list, not an
+  inclusion list** — its own header states "The CI gate checks everything NOT listed." It holds 32
+  names, of which **18 are in this sweep**; the other **27 of the 45 are type-checked by CI today**
+  (`capture-lead`, `content-strategy-recommend`, `landing-clips`, `verify-email`, `wiki-merge-pr` among
+  them), and since the gate `deno check`s each entrypoint, `cors.ts` and `origins.ts` are transitively
+  covered by all 27. So the manual pass is a real gate for **18** functions, not 45. Run it against a
+  `main` baseline rather than expecting zero errors: every name on that list is there because
+  `deno check` currently *fails* on it, so only a **delta** against the baseline is signal.
 - **`edge-function-reviewer` subagent** before the first deploy (CLAUDE.md mandate).
-
-Local `main` is confirmed identical to `origin/main`, so the tree is clean to deploy from.
 
 ## 7. Deliberate exclusions
 
@@ -280,7 +333,8 @@ Per function, after deploy:
      -H "Origin: capacitor://localhost" -H "Content-Type: application/json" -d '{}'
    ```
 
-   - **`verify_jwt = true` (23 of the 45)** → **401**, body
+   - **`verify_jwt = true` (23 of the 45 in scope — not to be confused with the 22 already-fixed
+     functions enumerated in §3; different sets, similar size)** → **401**, body
      `{"code":"UNAUTHORIZED_NO_AUTH_HEADER","message":"Missing authorization header"}`. Verified on
      `match-creators` and `landing-clips`: that error shape is the **platform gateway**, emitted
      *before the worker runs*. It is therefore **not boot evidence** — step 1 already established boot
@@ -298,6 +352,12 @@ Per function, after deploy:
 `get_edge_function` → grep the spilled `tool-results/*.txt` for `capacitor://localhost` is run for the
 **canary and any anomaly only**. When it is run, grep the whole spilled file set rather than `index.ts`
 alone — shared modules are bundled in, and grepping only the entrypoint returns 0 for the wrong reason.
+
+**Canary-only, and blocking: the provenance check.** Before deploying `match-creators`, `get_edge_function`
+it and compare the deployed `match-creators/index.ts` against `main`'s copy. They must match. This is the
+one empirical test of §4's deployed-from-`main` assumption, on which the entire "byte-identical delta"
+argument rests. **If they differ, stop the sweep** — the fleet was not deployed from `main`, timestamp
+comparison proves nothing, and every function needs individual source comparison before it moves.
 
 **Done means:** the stale bucket drops **60 → 15** (exactly bucket C), the **22 enumerated in §3** still
 probe as `capacitor://localhost`, and no `verify_jwt` moved anywhere in the fleet. All three are checked
