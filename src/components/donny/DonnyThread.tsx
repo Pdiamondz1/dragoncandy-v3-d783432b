@@ -4,9 +4,9 @@
 //
 // Deliberately owns no scroll container, no header and no input. Those differ
 // per surface and are the parent's job: the panel is a fixed-height flex column
-// that scrolls itself, while the dashboard sits in normal page flow and is
-// scrolled by #main-content. A component that assumed either one could not be
-// shared.
+// that scrolls itself, while the dashboard wraps this in DonnyThreadRegion,
+// which supplies its own bounded scroller and a scroll-to-bottom control. A
+// component that assumed either one could not be shared.
 import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { DonnyMessage } from './DonnyMessage';
