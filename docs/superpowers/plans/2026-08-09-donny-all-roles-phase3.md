@@ -127,7 +127,14 @@ git commit -m "refactor(dashboard): extract CreatorOverview and BrandOverview be
 
 ### Task 2: Audit what Donny can actually do for a creator and a brand, then write the taps
 
-**Do the audit before writing a single chip.** `donnyHomeSuggestions.ts:3-8` records why: the business set was cut to the four tools *verified working on prod*, and anything touching `social_*` (0/7) or an analytics claim was deliberately excluded. Its closing line is the standard — *"A tap that produces a shrug is worse than no tap — do not add one without re-running the capability audit."* `find_creators` and `prepare_campaign` are business verbs; handing them to a creator is exactly the shrug that comment forbids.
+> **The `social_*` exclusion is now STALE — re-check it before you inherit it.** PR #416
+> (*"repair the `social_*` tools — 7 calls, 0 successes, 4 working tools"*) landed on `main`
+> on 2026-08-09, and #417 confirms those tools are **merged and deployed**. So the pool of
+> working tools is larger than `donnyHomeSuggestions.ts:3-8` describes. Re-run the audit
+> against `origin/main` after the rebase, not against that comment — and update the comment
+> itself once you know what is true, or the next person inherits the same stale constraint.
+
+**Do the audit before writing a single chip.** `donnyHomeSuggestions.ts:3-8` records why: the business set was cut to the four tools *verified working on prod*, and anything touching `social_*` (0/7 **at that time** — see above) or an analytics claim was deliberately excluded. Its closing line is the standard — *"A tap that produces a shrug is worse than no tap — do not add one without re-running the capability audit."* `find_creators` and `prepare_campaign` are business verbs; handing them to a creator is exactly the shrug that comment forbids.
 
 **Files:**
 - Modify: `src/lib/donny/donnyHomeSuggestions.ts`

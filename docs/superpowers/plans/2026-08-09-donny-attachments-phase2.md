@@ -10,6 +10,15 @@
 
 ## Global Constraints
 
+- **REBASE ONTO `origin/main` BEFORE DEPLOYING THE ORCHESTRATOR.** PR #415 replaced
+  `https://esm.sh/@supabase/supabase-js@2` with `npm:@supabase/supabase-js@2` across
+  `donny-orchestrator`, because the esm.sh form **boot-fails on every redeploy**
+  (`WORKER_ERROR` before the handler ever runs — `project_esm_sh_supabase_js_breaks_bundler`).
+  A branch cut before that fix still carries the old import in ~10 files, and deploying it
+  would take the function down. Rebase first, then deploy, and **canary one function before
+  any fleet deploy**. Note also that a pre-deploy review binds to a commit — re-run Codex
+  and `edge-function-reviewer` *after* the rebase, not before.
+
 - **Ownership invariant (verbatim from spec §5.2):** *The bucket is a server-side constant, and every `path` must begin with `${ctx.userId}/` — where `ctx.userId` comes from `auth.getUser()`, never from the request body. A path failing that check is rejected, and the whole request fails rather than silently dropping the attachment.*
 - Attachment descriptor is exactly `{ path, mime, size_bytes, name, kind }`. **No `bucket` field** — the bucket is a server constant. **No URL field** — see Architecture.
 - `kind ∈ 'image' | 'video' | 'document' | 'link'`. A `link` carries its URL in `path` and has `size_bytes: 0`.
