@@ -9,6 +9,7 @@ import { HowItWorks } from "@/components/landing/HowItWorks";
 import { DonnySection } from "@/components/landing/DonnySection";
 import { FinalCTASection } from "@/components/landing/FinalCTASection";
 import { useAuth } from "@/hooks/useAuth";
+import { LEGAL_ENTITY_LOCALITY, LEGAL_ENTITY_NAME } from "@/lib/legalEntity";
 
 export default function LandingPage() {
   const { user, loading } = useAuth();
@@ -83,7 +84,7 @@ export default function LandingPage() {
             text-sm so it reads as subordinate; no pixel font / uppercase (the tagline owns that
             treatment) and no extra divider. */}
         <p className="mx-auto mt-8 max-w-6xl px-5 text-center text-xs text-landing-ink-soft sm:px-8 sm:text-left lg:px-12">
-          © {new Date().getFullYear()} Dragon Candy LLC · Hoboken, NJ
+          © {new Date().getFullYear()} {LEGAL_ENTITY_NAME} · {LEGAL_ENTITY_LOCALITY}
         </p>
       </footer>
     </div>
