@@ -3,7 +3,7 @@ title: Domain Migration (.io → .com)
 type: concept
 created: 2026-08-09
 updated: 2026-08-10
-sources: [2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md, 2026-08-09-ios-testflight-first-build.md, 2026-08-10-dotcom-phase2-canonical-switch.md, 2026-08-10-dotcom-phase3-permanent-redirect.md, 2026-08-10-dotcom-phase4-content.md, 2026-08-10-dotcom-phase5-mail-audit.md]
+sources: [2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md, 2026-08-09-ios-testflight-first-build.md, 2026-08-10-dotcom-phase2-canonical-switch.md, 2026-08-10-dotcom-phase3-permanent-redirect.md, 2026-08-10-dotcom-phase4-content.md, 2026-08-10-dotcom-phase5-mail-audit.md, 2026-08-10-dotcom-phase5a-mailboxes-shipped.md]
 tags: [domain, dns, cors, auth, vercel, migration, seo, content, help-center, email, dmarc, resend]
 ---
 # Domain Migration (.io → .com)
@@ -307,35 +307,71 @@ The doc edits ran through an exact-string script requiring **exactly one match p
 caught a real miss: `google-workspace.md` uses CRLF, so a `\n`-containing pattern matched zero
 times — and the script failed loudly instead of silently doing nothing.
 
-## Phase 5 — MAIL (audited 2026-08-10; expand step shipped, no mailbox moved)
+## Phase 5 — MAIL (5a SHIPPED 2026-08-10; 5b blocked on a cost decision)
 
 **Phase 5 is two changes with two gates and two blast radii, and treating them as one is what made
 it look like a single deferred chore:**
 
-- **5a — recipient addresses** (`mailto:` ×7 + `stripe-webhook`'s `to:`). Gate: a per-address
-  **receive test**.
+- **5a — recipient addresses** (`mailto:` ×7 + `stripe-webhook`'s `to:`). Gate: each `.com` mailbox
+  genuinely receives. **Met and shipped** — see below.
 - **5b — sending domain** (`from:` ×8 across 7 edge functions, all `@notify.dragoncandy.io`).
-  Gate: Resend + GoDaddy DNS. **Recommendation: defer indefinitely** — see below.
+  Gate: Resend + GoDaddy DNS. **Blocked on $20/mo** — see below.
 
-### A dead `.com` address does not bounce — it disappears
+### The probe that could not answer its own question
 
-The plan's premise, *"a dead support address is worse than an old one,"* assumed a **bounce**.
-There isn't one. A read-only SMTP `RCPT TO` probe (never issues `DATA`, so nothing is sent) against
+A read-only SMTP `RCPT TO` probe (never issues `DATA`, so nothing is sent) against
 `aspmx.l.google.com` returned **250 for all five target mailboxes — and 250 for two deliberately
-nonsensical control addresses.** `dragoncandy.com` catch-alls.
+nonsensical control addresses.**
 
-**Without the controls the probe would have read as "all five mailboxes confirmed."** It proves the
-opposite: SMTP acceptance carries **no information** about whether a mailbox exists or is monitored.
-Mail to a nonexistent `.com` address is accepted and then vanishes — no bounce, no error, no signal
-to anyone. A GDPR erasure request would disappear in silence.
+**Without the controls this would have read as "all five mailboxes confirmed" and licensed the
+flip.** Google's MX simply **does not disclose recipient validity at `RCPT` time**, so acceptance
+carries **no information** either way. (An earlier revision of this page called that a *catch-all*.
+It is not: the Workspace admin console shows no catch-all routing rule, only Google's stock
+"Default delegation rule". Corrected 2026-08-10.)
 
-So **the receive test is irreplaceable**: no probe substitutes for it, and a successful *send*
-proves nothing. Only a human confirming arrival in a monitored inbox clears 5a. (Same family as
-[[Domain Migration (.io → .com)]]'s own rule that *a probe without a control proves nothing* — here
-the control is what killed the probe rather than validating it.)
+The `.io` side is **unprobeable** in a different way — IONOS answers `554 IP address is block listed`
+for this origin. Neither TLD could be established by probing.
 
-The `.io` side is **unprobeable** — IONOS answers `554 IP address is block listed` for this origin —
-so today's addresses are not verified either. **Neither side is established by observation.**
+> **The durable rule: when a probe cannot distinguish a true answer from a false one, no number of
+> runs turns it into evidence. Go and read the configuration instead.** This is the same family as
+> this page's *a probe without a control proves nothing* — but a step further. There, the control
+> validated the probe. Here, the control **killed** it, and the right response was to change
+> instrument rather than to re-run.
+
+### What actually cleared the gate
+
+The **Google Workspace admin console**. All five addresses are **aliases on `dame@dragoncandy.com`**
+— an active account in daily use — alongside `info@` and `appstore@`. The org has **three users**
+(`dame@`, `joe@`, `jay@`) and **zero groups**, so the alias list is the whole story.
+
+That establishes the **routing** — a property of the configuration — rather than one lucky delivery,
+which is **strictly stronger** than the send-and-receive test the plan originally called for. Worth
+noticing: the planned gate was itself only a proxy for the fact the config states directly.
+
+**Shipped in three stores**, because a mailbox string lives in three places with three different
+release mechanisms — the reason the flip needed a checklist and not a find-and-replace:
+
+| store | moves by | what |
+|---|---|---|
+| bundle | deploy | the three `contactAddresses.ts` constants, MDX help prose, pitch-deck `founders@`, internal-login placeholder |
+| edge function | separate deploy | `stripe-webhook`'s dispute-alert `admin@` |
+| database | migration `20260810170000` | `help_articles.gdpr-erasure`'s `privacy@` — the last stored `.io` mailbox |
+
+The migration's pre-guard is deliberately **broader** than its operation (it scans the row for any
+`dragoncandy.io`, while `replace()` moves only the mailbox) — the inverse of the Phase 4 defect
+`data-exposure-reviewer` caught, where a guard *narrower* than its operation is decorative. Dry-run
+on prod inside a rolled-back block: `rows=1`, `stale_io_mailboxes=0` table-wide, and
+`sv_has_com=t / sv_has_io=f` proving the **non-generated** `search_vector` genuinely reindexed
+instead of continuing to match the old address.
+
+The unit test now **pins** to `.com` rather than accepting either TLD. Accepting both was right
+while the gate was open and stopped being right the moment it closed — pinning is what makes an
+accidental revert fail CI.
+
+> **`.io` still must never lapse or transfer.** Every copy of the old GDPR article already delivered
+> still points at `privacy@dragoncandy.io`, and an erasure request carries identity PII by
+> definition. Moving the published address reduces *future* exposure; it does not retire the old
+> mailbox.
 
 ### 5b moves mail from a forgiving DMARC policy to an unforgiving one
 
@@ -356,6 +392,27 @@ no TXT, no DKIM, no MX.
 If it is ever done: both domains verified in Resend **simultaneously**, flip **one function at a
 time** starting with the lowest-stakes (`capture-lead`, internal-only alerts), and verify by opening
 a real inbox **including the spam folder** — never by trusting "Resend says verified."
+
+### …and that safe path is paywalled
+
+Checked in the Resend dashboard 2026-08-10. The account (team **harbormill**) holds exactly one
+domain — `notify.dragoncandy.io`, **Verified**, us-east-1, created ~10 months ago — on the **free
+tier, whose limit is 1 domain.** Adding `notify.dragoncandy.com` requires **Pro at $20/mo**.
+
+**The cost is not the real problem. The free tier makes expand-then-switch structurally
+impossible.** With one domain slot you cannot hold `.io` and `.com` verified at the same time, so
+the only free path is to **delete the working, warmed, verified `.io` domain** and add `.com` in its
+place. That yields a window with **no verified sending domain** — every transactional email failing
+at once — with **no rollback** (re-adding `.io` means re-verifying DNS and restarting its
+reputation), landing into `.com`'s `p=quarantine`.
+
+That is precisely the all-at-once failure the governing principle exists to prevent, and the plan
+tier forces it. So 5b is genuinely **$20/mo, or a hard cutover with an outage window** — there is no
+free safe version. A founder cost decision, not an engineering one.
+
+One piece of good news found on the way: Resend's DKIM/SPF records live on the **subdomain**
+(`notify.dragoncandy.com`), so GoDaddy's `_spfm` SPF-merge record on the `.com` apex is never
+touched. The apex-SPF risk this page previously worried about is not real.
 
 ### What shipped: the expand step (`src/lib/contactAddresses.ts`)
 

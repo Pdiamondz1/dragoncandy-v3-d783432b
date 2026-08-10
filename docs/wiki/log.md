@@ -1,5 +1,29 @@
 # Wiki Log
 
+## [2026-08-10] ingest | [[Domain Migration (.io → .com)]] Phase 5a — mailboxes moved
+
+Ingested `raw/sessions/2026-08-10-dotcom-phase5a-mailboxes-shipped.md`, compounding onto the
+concept page. **This entry CORRECTS the one immediately below it**, per the wiki's
+flag-contradictions-never-silently-overwrite rule:
+
+- The earlier ingest recorded that `dragoncandy.com` **catch-alls**. It does not — the Workspace
+  admin console shows no catch-all rule, only Google's stock "Default delegation rule". The true
+  mechanism is that **Google's MX does not disclose recipient validity at `RCPT` time**. The
+  *observation* (250 for two nonsense controls) and the *decision* it drove (don't flip yet) were
+  both correct; only the inferred mechanism was wrong. The raw session file is immutable and still
+  carries the original claim, which is why this correction lives in the synthesis layer.
+
+New durable lesson, one step past the existing *a probe without a control proves nothing*:
+**when a probe cannot distinguish a true answer from a false one, no number of runs turns it into
+evidence — change instrument.** Here the control *killed* the probe rather than validating it, and
+the right response was to read the configuration instead.
+
+Phase 5a then shipped: all five addresses proved to be **aliases on `dame@dragoncandy.com`**, and
+the mailboxes moved across **three stores with three release mechanisms** (bundle / edge function /
+migration `20260810170000`). 5b is now blocked not on engineering but on **$20/mo** — the Resend
+free tier's one-domain limit makes expand-then-switch structurally impossible.
+Pages updated: `concepts/domain-migration-io-to-com.md`.
+
 ## [2026-08-10] ingest | [[Domain Migration (.io → .com)]] Phase 5 — the mail audit
 
 Ingested `raw/sessions/2026-08-10-dotcom-phase5-mail-audit.md` by **compounding onto the existing

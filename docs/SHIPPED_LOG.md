@@ -26,23 +26,57 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
-## [2026-08-10] Domain migration Phase 5 (MAIL) — audited, and deliberately not flipped
+## [2026-08-10] Domain migration Phase 5 (MAIL) — 5a shipped; 5b blocked on $20/mo
 
-Branch `feat/dotcom-phase5-mail` · `src/lib/contactAddresses.ts` (new) · Codex clean, no findings.
+Branch `feat/dotcom-phase5-mail` · `src/lib/contactAddresses.ts` (new) · migration
+`20260810170000` · `data-exposure-reviewer` PASS · `edge-function-reviewer` PASS.
 
-**No mailbox moved.** The session shipped the *expand* step and left the flip gated, because the
-audit overturned the plan's own premise.
+**5a shipped: every contact mailbox is on `.com`.** The interesting part is not the flip, it is that
+the obvious way to clear its gate turned out to be incapable of answering the question.
 
-**Finding 1 — a dead `.com` address does not bounce, it disappears.** A read-only SMTP `RCPT TO`
-probe (never issues `DATA`, so nothing is sent) against `aspmx.l.google.com` returned **250 for all
-five target mailboxes** — `support@`, `privacy@`, `sales@`, `admin@`, `founders@` — **and 250 for
-two deliberately nonsensical control addresses.** `dragoncandy.com` catch-alls. *Without the
-controls this probe would have read as "all five mailboxes confirmed."* The plan said "a dead
-support address is worse than an old one," which assumes a **bounce** — there is none. Mail to a
-nonexistent `.com` mailbox is accepted and then vanishes: no bounce, no error, no signal to anyone.
-A GDPR erasure request would disappear in silence. **So the receive test is irreplaceable, and a
-successful *send* proves nothing.** The `.io` side is unprobeable (IONOS answers `554 IP address is
-block listed`), so today's addresses aren't verified either — reported as unknown, not dressed up.
+**Finding 1 — the probe could not distinguish a true answer from a false one.** A read-only SMTP
+`RCPT TO` probe (never issues `DATA`, so nothing is sent) against `aspmx.l.google.com` returned
+**250 for all five target mailboxes** — `support@`, `privacy@`, `sales@`, `admin@`, `founders@` —
+**and 250 for two deliberately nonsensical control addresses.** *Without the controls this would
+have read as "all five confirmed" and licensed the flip.* Google's MX simply **does not disclose
+recipient validity at `RCPT` time**. (An earlier draft of this entry called that a *catch-all*; the
+Workspace console shows no catch-all rule, only Google's stock "Default delegation rule" —
+mechanism corrected, conclusion unchanged.) `.io` was unprobeable in the other direction — IONOS
+answers `554 IP address is block listed`. **Neither TLD could be established by probing at all.**
+
+> **The durable rule: when a probe cannot distinguish a true answer from a false one, no number of
+> runs turns it into evidence — change instrument.** One step past this project's existing *a probe
+> without a control proves nothing*: there the control validates the probe, here it **killed** it.
+
+**What actually cleared the gate — the Google Workspace admin console.** All five are **aliases on
+`dame@dragoncandy.com`** (active, in daily use), alongside `info@` and `appstore@`; the org has
+three users and **zero groups**, so the alias list is the whole story. That establishes the
+**routing** rather than one lucky delivery — strictly stronger than the send-and-receive test
+planned, which was itself only a proxy for what the config states directly. (Recorded honestly: this
+session asserted "the five mailboxes do not exist" after checking users and groups but *before*
+finishing the alias check, and was wrong. Finish the enumeration before stating the conclusion.)
+
+**Shipped across three stores with three release mechanisms** — which is why the flip needed a
+checklist, not a find-and-replace: **bundle** (the 3 constants, MDX help prose, pitch-deck
+`founders@`, internal-login placeholder), **edge function** (`stripe-webhook`'s dispute-alert
+`admin@`), and **database** (migration `20260810170000` moving `help_articles.gdpr-erasure`'s
+`privacy@`, the last stored `.io` mailbox). The migration's pre-guard is deliberately **broader**
+than its operation — the inverse of the Phase 4 defect `data-exposure-reviewer` caught. Dry-run on
+prod inside a rolled-back block: `rows=1`, `stale_io_mailboxes=0` table-wide, `sv_has_com=t /
+sv_has_io=f` proving the non-generated `search_vector` reindexed. The unit test now **pins** `.com`
+instead of accepting either TLD — correct while the gate was open, wrong the moment it closed.
+
+**A reviewer's stated gap, closed by hand.** `edge-function-reviewer` PASSed but named what it
+could not check: whether `stripe-webhook`'s bundle was unchanged since its last deploy. v165 shipped
+2026-07-24; two commits since touch its dependency set — **#363** widens a TypeScript union (erased
+at runtime, DB CHECK already applied) and **#415** is the `esm.sh` → `npm:` specifier fix itself.
+v165 still ran the **old `esm.sh` specifier**, so the redeploy moved it onto the fixed one. Nothing
+unwanted rode along. *A reviewer that names what it could not verify is more useful than one that
+quietly assumes* — the gap it named was the only real risk in the deploy.
+
+**`.io` still must never lapse or transfer**: every already-delivered copy of the GDPR article
+points at `privacy@dragoncandy.io`, and an erasure request carries identity PII by definition.
+Moving the published address reduces *future* exposure; it does not retire the old mailbox.
 
 **Finding 2 — Phase 5 is two changes, not one.** **5a** (recipient addresses: `mailto:` ×7 +
 `stripe-webhook`'s `to: admin@`) is gated on the receive test. **5b** (sending domain: `from:` ×8
@@ -53,7 +87,17 @@ moves transactional mail from a policy that *tolerates* a DKIM/SPF misconfigurat
 the one email a new signup MUST receive is the verification email. For **zero** user-visible
 benefit: `notify.dragoncandy.io` is never a clickable brand link and carries a warmed reputation a
 new subdomain would start from zero. `notify.dragoncandy.com` doesn't exist in DNS at all.
-**Recommendation recorded: defer 5b indefinitely.**
+
+**Then 5b hit a harder wall than DMARC: the Resend account (team `harbormill`) is on the FREE TIER,
+limit ONE domain.** Adding `notify.dragoncandy.com` needs **Pro at $20/mo**. The cost is not the
+problem — **the free tier makes expand-then-switch structurally impossible.** One slot means
+**deleting the working, warmed, verified `.io` domain** to add `.com`: a window with **no verified
+sending domain** (every transactional email failing at once), **no rollback** (re-adding `.io` means
+re-verifying DNS and restarting its reputation), landing into `p=quarantine`. The plan tier forces
+exactly the all-at-once failure the governing principle exists to prevent. So 5b is **$20/mo, or a
+hard cutover with an outage window** — there is no free safe version. **A founder cost decision, not
+an engineering one.** One risk retired on the way: Resend's DKIM/SPF live on the **subdomain**, so
+GoDaddy's `_spfm` merge record on the `.com` apex is never touched.
 
 **Shipped (expand):** `support@` had been hardcoded in **four** components, `privacy@` in two,
 `sales@` in one — the shape that lets a domain get missed, and the same shape the origins allow-list
