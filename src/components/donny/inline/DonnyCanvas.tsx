@@ -171,16 +171,31 @@ export function DonnyCanvas({ suggestions, onSuggestionTap, onPromptSubmit, chil
           resting<->thread transition. A remount here would drop half-typed
           text, focus, and any in-flight IME composition.
 
-          The mobile offset is NOT optional. A sticky inset resolves against the
-          scrollport's padding box, and the scrollport here is
-          `#main-content` (App.tsx: `flex-1 overflow-auto`), which has NO
-          padding — DashboardLayout's `pb-24` sits on an inner div, well inside
-          it. So a bare `bottom-0` pins the composer to the viewport bottom,
-          underneath MobileBottomNav (`fixed bottom-0 z-40`, opaque, portaled to
-          <body> — a z-10 in here cannot beat it). Same shape and same 6rem as
-          StickyApplyCTA, per docs/DESIGN_SYSTEM.md; the offset absorbs the
-          safe-area inset, so no separate padding is needed. Desktop has no
-          bottom nav, so `md:` resets it flush. */}
+          The mobile offset is NOT optional, and it is load-bearing even though
+          the stickiness itself may not be. MobileBottomNav is `fixed bottom-0
+          z-40`, opaque, and portaled to <body>, so a z-10 in here cannot beat
+          it — anything resolving to a bare `bottom-0` lands underneath it. The
+          6rem mirrors the app's pb-24 nav clearance and absorbs the safe-area
+          inset, so no separate padding is needed; desktop has no bottom nav, so
+          `md:` resets it flush. Same shape and same value as StickyApplyCTA,
+          per docs/DESIGN_SYSTEM.md.
+
+          UNVERIFIED, and do not "clean up" on the assumption that it works:
+          `position: sticky` resolves against the nearest ancestor scroll
+          container, and that is NOT `#main-content` (App.tsx: `flex-1
+          overflow-auto`) as you might expect. DashboardLayout sits in between
+          and carries `overflow-x-hidden` on both its root (:182) and, on
+          mobile, its content wrapper (:309). Per CSS Overflow 3, an
+          `overflow-x` of `hidden` against an `overflow-y` of `visible`
+          computes that `overflow-y` to `auto` — so those wrappers are the
+          scrollport. Both are `min-h-screen` with content-driven height, so
+          they never actually scroll, which would make this `sticky` inert and
+          leave the composer scrolling away with the thread instead of pinning.
+          StickyApplyCTA is not a precedent for the sticky half: it uses
+          `fixed`. jsdom loads no CSS, so no test here can tell the two apart.
+          Resolve this in a real browser on both viewports; if it is inert, the
+          fix is `fixed` (mobile is full-bleed, so it is safe there; desktop
+          needs the sidebar column accounted for). */}
       <div
         className={cn(
           mode === 'thread' &&
