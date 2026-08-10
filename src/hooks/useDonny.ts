@@ -46,8 +46,20 @@ export function useDonny(options?: UseDonnyOptions) {
   const isSendingRef = useRef(false);
   const lastUserMessage = useRef<string>("");
 
+  // Sends issued before the conversation existed, oldest first. See the
+  // `conversationPending` block below for why they can't just be sent.
+  const queuedSendsRef = useRef<string[]>([]);
+  // Bumped only to re-run the drain effect — mutating a ref does not.
+  const [queueSignal, setQueueSignal] = useState(0);
+  // Set SYNCHRONOUSLY, immediately before mutate(). isSendingRef is not usable
+  // as the drain's own guard: it flips inside the async mutationFn, so between
+  // mutate() and that first statement there is a window in which a re-render
+  // would see an idle hook and fire the same queued item twice. This ref plus
+  // the shift() below are what make a queued send exactly-once.
+  const isDrainingRef = useRef(false);
+
   // Load or create conversation
-  const { data: conversation } = useQuery({
+  const { data: conversation, error: conversationError } = useQuery({
     queryKey: ['donny-conversation', user?.id],
     queryFn: async () => {
       if (!user) return null;
@@ -317,13 +329,67 @@ export function useDonny(options?: UseDonnyOptions) {
     },
   });
 
+  // Is a conversation genuinely on its way? Only then is holding a send the
+  // right answer. With no user, with the hook disabled, or once the query has
+  // FAILED, nothing is coming — fall through to the mutation so the
+  // `!conversation || !user` guard fires and the caller gets the existing error
+  // card and its Retry, rather than a queue that never drains.
+  const conversationPending = !!user && isEnabled && !conversation && !conversationError;
+
   const sendMessage = useCallback(
     (content: string) => {
       if (isSendingRef.current) return;
+      // On a fresh dashboard visit this hook is disabled until DonnyCanvas's
+      // mount effect moves the stage off 'closed', so the conversation query
+      // does not even START until after first paint. A suggestion tap or a
+      // prompt submit inside that window used to die on the guard in
+      // mutationFn and render "No active conversation" instead of an answer.
+      // Hold it instead; the effect below sends it the moment the conversation
+      // lands.
+      if (conversationPending) {
+        queuedSendsRef.current.push(content);
+        setQueueSignal((n) => n + 1);
+        return;
+      }
       sendMessageMutation.mutate({ content });
     },
-    [sendMessageMutation]
+    [conversationPending, sendMessageMutation]
   );
+
+  // `mutate` is referentially stable for the life of the hook (react-query
+  // binds it to a single observer); the mutation OBJECT is not — its identity
+  // changes on every mutation state transition. Depending on the object here
+  // would re-run the drain effect on those transitions, which happens to keep
+  // the queue moving but leaves the continuation resting on a react-query
+  // implementation detail rather than on the explicit signal below. Verified by
+  // mutation testing: with the object as the dependency, deleting the re-drain
+  // bump left every test green.
+  const { mutate: mutateSend } = sendMessageMutation;
+
+  // Drain the held sends — one at a time, oldest first. Serial on purpose:
+  // mutationFn rejects a second concurrent send ("Message already in flight"),
+  // so firing the queue in parallel would silently lose every message but the
+  // first. Each item is shift()ed out BEFORE it is sent, so it cannot be
+  // replayed by a later re-render or a later conversation change.
+  useEffect(() => {
+    if (conversationPending) return;
+    if (isDrainingRef.current || isSendingRef.current) return;
+    const next = queuedSendsRef.current.shift();
+    if (next === undefined) return;
+
+    isDrainingRef.current = true;
+    mutateSend(
+      { content: next },
+      {
+        onSettled: () => {
+          isDrainingRef.current = false;
+          // The ONLY thing that re-runs this effect for the next item. Guarded
+          // so a lone queued send does not cost a pointless extra render.
+          if (queuedSendsRef.current.length > 0) setQueueSignal((n) => n + 1);
+        },
+      }
+    );
+  }, [conversationPending, queueSignal, mutateSend]);
 
   const clearChat = useCallback(async () => {
     if (!conversation) return;
