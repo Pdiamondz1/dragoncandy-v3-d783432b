@@ -65,6 +65,7 @@ export function DonnyHome() {
   const navigate = useNavigate();
   const {
     registerInlineConversation,
+    conversation,
     messages,
     avatarState,
     isStreaming,
@@ -80,15 +81,33 @@ export function DonnyHome() {
   // normal state here, and the thread below would render permanently empty.
   React.useEffect(() => registerInlineConversation(), [registerInlineConversation]);
 
-  // `error` counts as something to show, and that is not a detail. The prompt
-  // box and the taps are live from first paint, but the conversation query only
-  // starts once the effect above registers this surface — so an early tap can
-  // reach useDonny before a conversation exists, where it throws "No active
-  // conversation" without inserting a message. Without `error` here there is no
-  // message, no stream and therefore no thread: the tap does NOTHING, silently,
-  // with no error and no retry. The panel never had this hole because
-  // DonnyChatView renders the thread unconditionally. Found by Codex.
-  const hasConversation = messages.length > 0 || isStreaming || !!error;
+  // An ask can land before there is a conversation to put it in. The prompt box
+  // and the suggestions are live from first paint, but the conversation query
+  // only starts once the effect above registers this surface, so a quick tap on
+  // a cold load reaches useDonny with `conversation === null`.
+  //
+  // Sending into that gap does not just fail — it fails BADLY. useDonny throws
+  // "No active conversation" on its first line, before it records
+  // `lastUserMessage`, and retry() guards on that still-empty ref. So the error
+  // renders a "Try Again" button that does nothing at all when clicked: a dead
+  // control, the same class as the twelve dead /settings CTAs.
+  //
+  // So the ask is QUEUED rather than sent-and-caught. Nothing the user typed is
+  // dropped, and there is no dead affordance to explain. Surfacing the error was
+  // the first attempt and was not enough — the bar is whether the thing the user
+  // did works, not whether the failure is visible. (Codex, rounds 1 and 2.)
+  const [queuedAsk, setQueuedAsk] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!conversation || queuedAsk === null) return;
+    setQueuedAsk(null);
+    sendMessage(queuedAsk);
+  }, [conversation, queuedAsk, sendMessage]);
+
+  // A queued ask counts as busy: the tap already happened, so the thread shows
+  // the typing indicator instead of looking like nothing registered.
+  const isBusy = isStreaming || queuedAsk !== null;
+  const hasConversation = messages.length > 0 || isBusy || !!error;
 
   const threadEndRef = React.useRef<HTMLDivElement>(null);
   // Auto-scroll follows the reply ONLY after the user has asked something on
@@ -112,17 +131,23 @@ export function DonnyHome() {
     // #main-content, never the window (window.scrollY is always 0 here), and
     // letting the browser find the scrollable ancestor avoids hard-coding that.
     threadEndRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
-  }, [messages.length, isStreaming, streamingContent]);
+  }, [messages.length, isBusy, streamingContent]);
 
-  // Every path that sends from this page goes through here, so the scroll
-  // intent is recorded in exactly one place and cannot drift between the
-  // prompt box, the taps and the attention list.
+  // Every path that sends from this page goes through here, so both the scroll
+  // intent and the not-ready-yet queue are handled in exactly one place and
+  // cannot drift between the prompt box, the taps and the attention list.
   const ask = React.useCallback(
     (text: string) => {
       userAskedHere.current = true;
+      // One slot, last-wins. The window is a single round-trip; two asks inside
+      // it means the user changed their mind, not that both should be sent.
+      if (!conversation) {
+        setQueuedAsk(text);
+        return;
+      }
       sendMessage(text);
     },
-    [sendMessage]
+    [conversation, sendMessage]
   );
   const { trackEvent } = useAnalyticsContext();
   const { showTour, tourSteps, completeTour, skipTour, triggerTour } = useTour();
@@ -302,7 +327,7 @@ export function DonnyHome() {
               <DonnyThread
                 messages={messages}
                 avatarState={avatarState}
-                isStreaming={isStreaming}
+                isStreaming={isBusy}
                 streamingContent={streamingContent}
                 error={error}
                 retry={retry}

@@ -22,6 +22,9 @@ const openDonnyWithContextMock = vi.fn();
 const sendMessageMock = vi.fn();
 const registerInlineConversationMock = vi.fn(() => vi.fn());
 const donnyState = {
+  // Defaults to READY. A null conversation is the cold-load window, which the
+  // queueing tests below opt into explicitly.
+  conversation: { id: 'c1' } as { id: string } | null,
   messages: [] as unknown[],
   isStreaming: false,
   streamingContent: '',
@@ -109,6 +112,13 @@ beforeEach(() => {
   pendingMock.data = [];
   pendingMock.isLoading = false;
   pendingMock.isError = false;
+  // Reset here rather than at the end of each test — a failing assertion skips
+  // the trailing cleanup and leaks state into whatever runs next.
+  donnyState.conversation = { id: 'c1' };
+  donnyState.messages = [];
+  donnyState.isStreaming = false;
+  donnyState.streamingContent = '';
+  donnyState.error = null;
 });
 
 describe('DonnyHome — greeting', () => {
@@ -268,6 +278,34 @@ describe('DonnyHome — the conversation renders in the page', () => {
     expect(screen.getByText('No active conversation')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Try Again' })).toBeInTheDocument();
     donnyState.error = null;
+  });
+
+  // The cold-load window: the prompt box is live before the conversation query
+  // resolves. Sending into that gap throws "No active conversation" BEFORE
+  // useDonny records lastUserMessage, so the resulting error's "Try Again" is a
+  // button that does nothing. The ask is held instead of thrown away.
+  it('holds an ask made before the conversation exists, then sends it', () => {
+    donnyState.conversation = null;
+    donnyState.messages = [];
+    const { rerender } = renderHome();
+
+    const input = screen.getByRole('textbox', { name: /ask donny/i });
+    fireEvent.change(input, { target: { value: 'how are my instagram posts doing?' } });
+    fireEvent.submit(input.closest('form')!);
+
+    // Not sent — it would have thrown — but the tap is visibly acknowledged.
+    expect(sendMessageMock).not.toHaveBeenCalled();
+    expect(screen.getByRole('log', { name: 'Donny conversation' })).toBeInTheDocument();
+
+    donnyState.conversation = { id: 'c1' };
+    rerender(
+      <MemoryRouter>
+        <DonnyHome />
+      </MemoryRouter>
+    );
+
+    expect(sendMessageMock).toHaveBeenCalledWith('how are my instagram posts doing?');
+    expect(sendMessageMock).toHaveBeenCalledTimes(1);
   });
 
   it('follows the reply down the page once the user asks something here', () => {
