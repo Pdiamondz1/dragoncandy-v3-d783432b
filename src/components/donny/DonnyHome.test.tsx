@@ -224,6 +224,60 @@ describe('DonnyHome — the conversation renders in the page', () => {
     donnyState.isStreaming = false;
     donnyState.streamingContent = '';
   });
+
+  // Arriving on the dashboard must not throw the page to the bottom of an old
+  // thread. The first version of this code inferred "a reply arrived" from the
+  // message count growing — but on arrival the count grows 0 → N as the query
+  // resolves, so it scrolled here too, and only *sometimes*: with the thread
+  // already in the React Query cache the count never grew and it looked
+  // correct. jsdom has no scrollIntoView, so it is stubbed rather than spied.
+  it('does not scroll the page when arriving with an existing conversation', () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    donnyState.messages = [
+      {
+        id: 'm1',
+        conversation_id: 'c1',
+        role: 'assistant',
+        content: 'Yesterday I said this.',
+        tool_calls: null,
+        tool_result: null,
+        rich_card: null,
+        quick_actions: [],
+        created_at: '2026-08-08T10:00:00.000Z',
+      },
+    ];
+    renderHome();
+
+    expect(screen.getByRole('log', { name: 'Donny conversation' })).toBeInTheDocument();
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    donnyState.messages = [];
+  });
+
+  it('follows the reply down the page once the user asks something here', () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    donnyState.messages = [];
+    const { rerender } = renderHome();
+
+    const input = screen.getByRole('textbox', { name: /ask donny/i });
+    fireEvent.change(input, { target: { value: 'how are my instagram posts doing?' } });
+    fireEvent.submit(input.closest('form')!);
+    expect(sendMessageMock).toHaveBeenCalledWith('how are my instagram posts doing?');
+
+    // Asking arms the scroll; the arriving reply is what actually triggers it.
+    donnyState.isStreaming = true;
+    donnyState.streamingContent = 'Based on';
+    rerender(
+      <MemoryRouter>
+        <DonnyHome />
+      </MemoryRouter>
+    );
+
+    expect(scrollIntoView).toHaveBeenCalled();
+    donnyState.isStreaming = false;
+    donnyState.streamingContent = '';
+  });
 });
 
 describe('DonnyHome — proposals', () => {

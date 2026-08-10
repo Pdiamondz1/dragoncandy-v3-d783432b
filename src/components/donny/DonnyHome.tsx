@@ -83,24 +83,39 @@ export function DonnyHome() {
   const hasConversation = messages.length > 0 || isStreaming;
 
   const threadEndRef = React.useRef<HTMLDivElement>(null);
-  // Whether a message has arrived since this page mounted. Auto-scroll only
-  // fires after that, never on the first paint: this is a dashboard, and a user
-  // returning to it with yesterday's thread should land on the greeting and the
-  // attention list, not be thrown to the bottom of an old conversation. The
-  // panel scrolls on mount because it IS a chat surface; this is not.
-  const hasNewSinceMount = React.useRef(false);
-  const messageCount = messages.length;
-  const previousCount = React.useRef(messageCount);
+  // Auto-scroll follows the reply ONLY after the user has asked something on
+  // this page. It deliberately does not fire on arrival: this is a dashboard,
+  // and someone returning to it with yesterday's thread should land on the
+  // greeting and the attention list, not be thrown to the bottom of an old
+  // conversation. (The panel scrolls on mount because it IS a chat surface.)
+  //
+  // The obvious heuristic — "the message count grew" — is wrong here, and was
+  // the first version of this code. On arrival the count grows from 0 to N as
+  // the query resolves, which is indistinguishable from a new reply, so
+  // returning to the page scrolled past the greeting anyway. Worse, it depended
+  // on React Query's cache: with the thread already cached the count never
+  // grew and it behaved correctly, so it would have looked right about half the
+  // time. Asking is something the user DOES — record it, don't infer it.
+  const userAskedHere = React.useRef(false);
 
   React.useEffect(() => {
-    if (messageCount > previousCount.current) hasNewSinceMount.current = true;
-    previousCount.current = messageCount;
-    if (!hasNewSinceMount.current) return;
+    if (!userAskedHere.current) return;
     // scrollIntoView, not a scrollTop write: the app's scroller is
     // #main-content, never the window (window.scrollY is always 0 here), and
     // letting the browser find the scrollable ancestor avoids hard-coding that.
     threadEndRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
-  }, [messageCount, isStreaming, streamingContent]);
+  }, [messages.length, isStreaming, streamingContent]);
+
+  // Every path that sends from this page goes through here, so the scroll
+  // intent is recorded in exactly one place and cannot drift between the
+  // prompt box, the taps and the attention list.
+  const ask = React.useCallback(
+    (text: string) => {
+      userAskedHere.current = true;
+      sendMessage(text);
+    },
+    [sendMessage]
+  );
   const { trackEvent } = useAnalyticsContext();
   const { showTour, tourSteps, completeTour, skipTour, triggerTour } = useTour();
 
@@ -187,7 +202,7 @@ export function DonnyHome() {
     } else {
       // Inline too — an attention-list tap that threw the panel open while the
       // prompt box answered in place would be two behaviours for one page.
-      sendMessage(proposal.cta.message);
+      ask(proposal.cta.message);
     }
   };
 
@@ -202,12 +217,12 @@ export function DonnyHome() {
 
   const handleSuggestionTap = (suggestion: DonnySuggestion) => {
     void trackEvent('donny_home_suggestion_tapped', { label: suggestion.label });
-    sendMessage(suggestion.message);
+    ask(suggestion.message);
   };
 
   const handlePromptSubmit = (text: string) => {
     void trackEvent('donny_home_prompt_submitted', {});
-    sendMessage(text);
+    ask(text);
   };
 
   if (!profile) {
