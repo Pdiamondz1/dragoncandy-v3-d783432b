@@ -26,6 +26,72 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-10] Domain migration Phase 3 (REDIRECT) — `.io` permanently 308s to `.com`
+
+All three `.io` hosts now issue a permanent **308** to their own `.com` counterpart, configured
+per-domain in the Vercel dashboard (`vercel.json` holds only the SPA rewrite; `www.com` → apex
+was already done the same way):
+
+| From | Code | To |
+|---|---|---|
+| `dragoncandy.io` | 308 | `dragoncandy.com` |
+| `www.dragoncandy.io` | 308 | `dragoncandy.com` |
+| `internal.dragoncandy.io` | 308 | `internal.dragoncandy.com` |
+
+`www.io` targets the **apex** (one hop, not chained through `www.com`'s 308), and `internal.io`
+targets `internal.com` — the dropdown makes the apex the easy wrong answer, and that mistake
+would have dumped internal users into the consumer app. **308 rather than the plan's literal
+301**: Google consolidates them identically, 308 also preserves method and body, and it matches
+the existing `www.com` → apex.
+
+**Method — temporary first, then promote.** Configured as 307 on all three, verified end to end,
+then promoted. The costs are asymmetric: a permanent redirect is cached by browsers indefinitely
+and cannot be revoked per user, while a 307 reverts in one click. The soak is also the only
+window in which verification is possible at all — you cannot test a redirect that does not exist
+yet. Vercel defaults a new domain redirect to 307, so this was the path of least resistance.
+
+**The check that mattered was the fragment.** Path and query survive verbatim (URL-encoding
+intact; the internal OAuth callback keeps `code`/`state`). But the decisive proof was done in a
+real browser: `.io/help#fragment-survival-probe` → `.com/help#fragment-survival-probe`. GoTrue
+returns the session in `#access_token=…`; fragments are **never sent to the server**, so nothing
+on the wire can show this and a curl-only pass would have proven nothing. They survive only
+because browsers re-attach a fragment to a target that has none. Had it failed, every in-flight
+verification email would have silently logged nobody in. `.io` remains allow-listed in GoTrue
+(probed with an unlisted control), and an old bookmark to a protected route degrades correctly:
+`.io/dashboard/business` → `.com/auth`.
+
+**Mail was structurally out of reach.** `notify.dragoncandy.io` is a Cloudflare mail subdomain
+never attached to Vercel, and Vercel redirects are per-attached-domain — DKIM and every `from:`
+untouched. Phase 5 stays independent.
+
+**The forced re-login starts at the *first* redirect, not the permanent one** — it follows the
+origin change (sessions are origin-scoped `localStorage`), so it began at the 307.
+
+**Search Console: the plan assumed a property that never existed.** Checking rather than
+executing found **no properties at all**. So Change of Address is *impossible*, not deferred —
+it needs a verified source property — and it matters less than it sounds, since the 308 is what
+passes ranking signals. Also: `.io` is now verifiable **only by DNS TXT**, because it 308s
+everything and the HTML-file/meta-tag methods would redirect away. `?authuser=<email>` silently
+fell back to the signed-in account rather than erroring, the same shape as the GoTrue allow-list.
+Artifacts were verified before being offered to Google — `sitemap.xml` holds 5 `.com` entries and
+0 `.io`. **Open (founder):** add the `.com` property under `info@dragoncandy.com`, which is not
+signed into the browser profile.
+
+**Code follow-ups on the same branch.** (1) The Phase 2 `DEFAULT_ORIGIN` doc comment asserted
+`PUBLIC_SITE_URL` "does not exist on prod" — **false within the hour**, and it shipped inside 15
+deployed bundles. Rewritten to describe the mechanism instead: a comment cannot track mutable
+deploy state, so restating today's truth would only re-arm the trap. Re-verified by digest
+equality first — all three URL secrets hash to `52bf7482…` = `https://dragoncandy.com`, no
+trailing slash. (2) `send-verification-email` rendered `<a href="…com">dragoncandy.io</a>`, the
+same defect `8f2312ae` fixed in `manage-internal-users` — a **class**, and this instance is worse
+for being the consumer signup email. Fixed by deriving the label from the href rather than
+hardcoding a corrected one, and the same derivation applied to `manage-internal-users` (correct
+today, but hardcoded duplicates of a constant — exactly how the first drift happened). A
+repo-wide sweep found no others. **Both functions need a redeploy to reach users.**
+
+No migration. No RLS, policy, grant or authorization change.
+→ `docs/wiki/concepts/domain-migration-io-to-com.md`
+
 ## [2026-08-10] Donny dashboard — every visit starts fresh, and the greeting gets out of the way
 
 The founder opened the deployed dashboard on their phone and rejected the shape: *"The long scroll

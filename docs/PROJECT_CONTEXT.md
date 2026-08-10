@@ -106,17 +106,27 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `SITE_URL` constant drives every canonical + `og:url`, eleven edge functions' redirect
   fallbacks moved, and `DEFAULT_ORIGIN` flipped after Codex caught it missing — an omission the
   wiki had **already flagged in writing** and nothing read. Auth-gated `.com` verified on both
-  viewports. Allow-lists deliberately keep BOTH TLDs. **Pending (2026-08-10):** Phase 2a config
-  is founder-owned — set `APP_URL` (currently `.io`), `PUBLIC_SITE_URL` + `DRAGONCANDY_APP_URL`
-  (both absent, verified via `supabase secrets list`) to `.com`, then GoTrue **Site URL** → apex,
-  **which logs out all ~42 users**. Phases 3–6 (the `.io` 301, content, mail, contract) not
+  viewports. Allow-lists deliberately keep BOTH TLDs. **Phase 2a config DONE 2026-08-10** — all
+  three secrets proven to hold exactly `https://dragoncandy.com` by SHA-256 digest equality
+  (`52bf7482…`), GoTrue Site URL confirmed `.com` by probe-with-unlisted-control, and the 16
+  changed edge functions canaried then deployed and boot-verified. **Phase 3 (REDIRECT) LIVE
+  2026-08-10**: all three `.io` hosts permanently **308** to their own `.com` counterpart
+  (`internal.` → `internal.`), path/query verbatim, and the `#access_token` **fragment proven to
+  survive in a real browser** — the check nothing on the wire can make. Done as a 307 first, then
+  promoted. Mail untouched (`notify.dragoncandy.io` was never attached to Vercel). **Pending
+  (2026-08-10):** the `.com` **Search Console** property — founder chose `info@dragoncandy.com`,
+  which is not signed into the browser; Change of Address is **impossible, not deferred** (no
+  property has ever existed). Also pending: a **redeploy of `send-verification-email` +
+  `manage-internal-users`** for the derived link labels. Phases 4–6 (content, mail, contract) not
   started. → `docs/wiki/concepts/domain-migration-io-to-com.md`
 - **Apple App Store (Capacitor)** — iOS shell over the web app. Phase 1 (foundation) +
   Phase 2 (native camera + share sheet) shipped; the first-signed-build work (origin
   seam so email/share/OAuth links work natively, `capacitor://localhost` trusted in the
   edge-function CORS allow-list, bundle ID → `com.dragoncandy.app`, export-compliance
-  plist key) is on `worktree-dc-apple-store`, gated + Codex-clean, not yet merged.
-  Pending: founder Apple enrollment, a canaried edge-function redeploy, and the founder's
+  plist key) **MERGED as #425 on 2026-08-10** (`gh pr view 425` — this line previously read
+  "not yet merged", stale by the usual mechanism), and the `capacitor://localhost` CORS
+  widening rode along with the Phase 2 fleet deploy, verified live by preflight probe.
+  Pending: founder Apple enrollment (not started — this is the real gate) and the founder's
   Mac (arriving 2026-08-12) for the first physical-device build + on-device verification.
   → `docs/superpowers/specs/2026-08-09-ios-testflight-first-build-design.md`
 

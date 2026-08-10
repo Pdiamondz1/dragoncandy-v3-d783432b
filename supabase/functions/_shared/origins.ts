@@ -1,11 +1,14 @@
 /**
  * Single source of truth for the browser origins the backend trusts.
  *
- * Domain migration (2026-08): `dragoncandy.com` is becoming canonical and
- * `dragoncandy.io` will permanently 301 to it. BOTH TLDs are listed here on
- * purpose. Every allow-list must accept the new domain *before* any traffic
- * moves to it, and the old one is removed last — or never, since keeping it
- * costs nothing and old email links stay valid for a long time.
+ * Domain migration (2026-08): `dragoncandy.com` is canonical, and as of
+ * 2026-08-10 all three `dragoncandy.io` hosts issue a permanent 308 to their
+ * `.com` counterpart (Phase 3). BOTH TLDs are still listed here on purpose,
+ * and that is not leftover: GoTrue continues to honour `.io` redirect targets,
+ * so an in-flight verification email lands on `.io` and is redirected — with
+ * its `#access_token` fragment intact, since browsers re-attach a fragment to
+ * a redirect target that has none. Removing `.io` from these lists is Phase 6,
+ * is optional, and costs nothing to skip.
  *
  * These are exported as narrow groups rather than one flat set because the
  * four consumers do NOT trust the same hosts: `cors.ts` includes the internal
@@ -63,12 +66,23 @@ export const LOVABLE_V3_ORIGIN = 'https://dragoncandy-v3.lovable.app';
  * that is not the browser blocks the response regardless — so as a CORS
  * default it is cosmetic, not a security boundary.
  *
- * But it is not only a CORS default, which is why Phase 2 moves it. Three
+ * But it is not only a CORS default, which is why Phase 2 moved it. Three
  * functions mint real user-facing URLs from it when their env var is unset:
  * `send-verification-email` and `verify-email` (behind `APP_URL`) and
- * `create-package-order-escrow` (behind `PUBLIC_SITE_URL`, which does not
- * exist on prod — so this constant is that function's LIVE value today, not
- * a hypothetical). A last-resort default should name the canonical domain.
+ * `create-package-order-escrow` (behind `PUBLIC_SITE_URL`). A last-resort
+ * default should therefore name the canonical domain, which it now does.
+ *
+ * Deliberately NOT recorded here: whether those env vars are currently set on
+ * prod. An earlier revision of this comment asserted `PUBLIC_SITE_URL` "does
+ * not exist on prod" and was false within the hour — the secret was set the
+ * same morning, and the claim shipped inside 15 deployed bundles. A comment
+ * cannot track mutable deploy state, so it should not try to. Check it, and
+ * note that a *digest* is enough to prove a value without exposing it:
+ *   supabase secrets list --project-ref <ref>
+ * returns each secret's SHA-256, so hashing a candidate
+ * (`printf '%s' 'https://dragoncandy.com' | sha256sum`) proves equality
+ * exactly. Verified that way 2026-08-10: all three hold the apex, no
+ * trailing slash.
  *
  * Now equal to `CANONICAL_APP_ORIGIN` in `src/lib/allowedOrigins.ts`, which
  * held the post-migration value throughout and never moved. They stay
