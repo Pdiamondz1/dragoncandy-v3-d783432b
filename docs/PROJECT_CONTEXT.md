@@ -222,10 +222,14 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   a display filtered **fresh per visit** by slicing Donny's one shared conversation on a baseline
   **id** (never a count or a client clock), plus a greeting that collapses once a conversation runs,
   with the block's reserved chrome dropping 26rem → 12rem so the reclaimed space reaches the thread
-  instead of becoming whitespace. Its duplicate scroller was **discarded, not merged**. Two Codex
-  findings, one confusion: **an empty `messages` array is not proof there is no history** (cold-load
-  tap recorded "no history" and let yesterday back in), and `isSuccess` is not "current" (React Query
-  keeps it true during a background refetch over cached data) → `isSuccess && !isFetching`.
+  instead of becoming whitespace. Its duplicate scroller was **discarded, not merged**. **Four Codex
+  rounds, five findings**, the sharpest on my own fix: an empty `messages` array is not proof there
+  is no history; `isSuccess` is not "current" (React Query keeps it true during a background refetch
+  over cached data); `isStreaming`/`error` are **global to the shared conversation**, so a side-panel
+  reply rendered as this visit's transcript; and counting a **failed** history fetch as loaded — the
+  obvious cure for the queue-forever deadlock that caused — reintroduced the first bug. **When a flag
+  answers "is it safe to act", failure is a third answer, not a vote for either** → `messagesErrored`
+  + a Try Again that refetches, with the queued ask kept so recovery sends it without retyping.
   **The durable lesson is process, not code:** the collision was found *by accident*, because the
   `[scope]` check ran that morning against the **core docs** and said nothing about
   `src/components/donny/` — point it at the **source paths the branch touches**.

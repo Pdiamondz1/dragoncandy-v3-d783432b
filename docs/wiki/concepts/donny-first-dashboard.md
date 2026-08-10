@@ -146,6 +146,24 @@ visible change is that something disappeared.
 
 ## Decisions worth keeping
 
+- **Global state is not this page's state.** `isStreaming` and `error` belong to the ONE conversation
+  the dashboard and the side panel share. Ask in the panel, walk to the dashboard while the reply
+  streams, and `isBusy` is true with `visitMessages` empty — so the page collapsed its greeting and
+  rendered someone else's in-flight answer as this visit's transcript. **The leak the filtering
+  exists to stop, arriving through the door next to the one that was locked.** Gated on `askedHere`
+  (baseline set, or an ask queued). Found by Codex; the fact that five existing tests had to change
+  to `askThenStream()` is the evidence it was real — they only ever passed because the page keyed off
+  global streaming.
+- **When a flag answers "is it safe to act", failure is a THIRD answer, not a vote for either.**
+  `messagesLoaded` gates the fresh-per-visit baseline. Counting a *failed* history fetch as loaded
+  leaks (an empty array becomes "no history", and the conversation reappears when the query
+  recovers); counting it as not-loaded hangs (every ask queues behind a flush guarded on the same
+  flag — a prompt that never sends and never explains itself, the dead-control class again). **Both
+  collapses are guesses.** The answer is a separate `messagesErrored` + `retryLoadMessages`: the page
+  says *"I couldn't load your conversation just now"* with a Try Again, **keeps the queued ask**, and
+  the flush that was already waiting drains it on recovery — so the retry repairs the cause and
+  nothing is retyped. Codex caught this **on the fix for its own previous finding**, which is the
+  useful part: a fix that trades one failure for its opposite is not progress.
 - **An empty collection is three different facts.** `messages` defaults to `[]` and its query is
   `enabled: !!conversation`, so an empty array means "conversation still loading", "history query in
   flight", or "genuinely none" — and only the third is a fact about the world. Recording the

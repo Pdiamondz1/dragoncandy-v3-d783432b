@@ -54,12 +54,25 @@ block's max-height drops **26rem → 12rem** to match, because reserving room fo
 longer rendered would hand the reclaimed ~200px back as whitespace. Suggestion chips retire with the
 hero.
 
-**Two Codex findings, both the same confusion.** The baseline was first recorded in `ask()`, *above*
-the "not ready yet, queue it" guard — so a tap on a cold dashboard recorded `null` ("this user has no
-history") and yesterday's thread counted as this visit the moment it arrived: **the founder's exact
-complaint, in precisely the fast-tap window the queue exists for.** Then: `isSuccess` is not
-"current" — React Query keeps it true while a background refetch runs over cached data, so readiness
-would be announced over a stale array. Hence `messagesLoaded = isSuccess && !isFetching`.
+**Four Codex rounds, five findings, and the last one was on my own fix.**
+
+1. The baseline was recorded in `ask()`, *above* the "not ready yet, queue it" guard — so a tap on a
+   cold dashboard recorded `null` ("this user has no history") and yesterday's thread counted as this
+   visit the moment it arrived: **the founder's exact complaint, in precisely the fast-tap window the
+   queue exists for.**
+2. `isSuccess` is not "current" — React Query keeps it true while a background refetch runs over
+   **cached** data, so readiness would be announced over a stale array.
+3. `isStreaming`/`error` are **global to the shared conversation**. Ask in the side panel, walk to the
+   dashboard mid-reply, and the page collapsed its greeting to render someone else's answer as this
+   visit's transcript — the leak the filtering exists to stop, through the adjacent unlocked door.
+   Now gated on `askedHere`. Five existing tests had to change to prove it; they had only ever passed
+   because the page keyed off global streaming.
+4. …and the one worth keeping: **counting a failed history fetch as "loaded"** — my fix for the
+   deadlock in (2) — reintroduced (1) on any transient failure. **Both collapses of the failure case
+   are guesses**: "loaded" leaks, "not loaded" hangs forever behind a flush guarded on the same flag.
+   The answer is a third state — `messagesErrored` + `retryLoadMessages` — where the page says *"I
+   couldn't load your conversation just now"*, **keeps the queued ask**, and the flush already
+   waiting drains it on recovery, so the retry repairs the cause and nothing is retyped.
 
 Two existing tests became **stronger** rather than adjusted: arrival with an existing conversation
 now asserts the thread is *absent*, not merely unscrolled, and the chips assert *absence*, not
