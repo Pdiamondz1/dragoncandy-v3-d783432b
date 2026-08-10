@@ -26,6 +26,72 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-09] Donny answers on the dashboard instead of in a panel (inline canvas, Phase 1)
+
+> State as of writing: branch pushed, **PR deliberately NOT opened** — the Codex second review
+> could not complete (four runs killed by machine saturation), and an unrun gate is open, not
+> passed. Verified: rebase onto `origin/main` (30 commits, 0 conflicts), 13 files / 159 tests
+> passing, typecheck clean. Still open: Codex, `npm run build` since the rebase, and the
+> both-viewport `verify-prod` — which has **never** run on this surface. Business role only;
+> attachments (Phase 2) and creator/brand (Phase 3) are planned, not built.
+
+**The dashboard had two Donnys.** You typed into the prompt on the page and the answer appeared
+somewhere else — a docked panel on desktop, a bottom sheet on mobile, both covering the thing
+you were looking at. The founder's words: *"There's duplicity and confusion there for the
+users."* The page you asked from was never the page that answered. Now a `DonnyCanvas` with a
+resting and a thread state renders the reply inline, in the same column, and no panel opens.
+Three input defects went with it: Return now inserts a newline on mobile (only the send button
+sends; desktop Enter-to-send is unchanged), the field grows to a 200px cap so a paragraph is
+visible while you write it, and a first tap on a cold page load no longer fails.
+
+**Two defects are worth more than the feature.** First, `useDonny`'s conversation query is
+`enabled: stage !== 'closed'` and the canvas only flips the stage in a **mount effect** — so on
+a fresh visit the query does not merely resolve late, it does not *start* until after first
+paint, while the chips and composer are live throughout. A tap in that window hit the
+`!conversation` guard and rendered "No active conversation." **Nine reviews missed it because
+every test mounted with the conversation already resolved** — the race was structurally
+invisible to the suite. Codex found it; sends are now queued and drained serially, FIFO.
+
+Second, the composer's `sticky` positioning **could never have worked**, and a code comment
+asserting the scrollport was `#main-content` carried eight review rounds past it.
+`DashboardLayout` has `overflow-x-hidden` on its root and, on mobile, its content wrapper; per
+CSS Overflow 3 that computes `overflow-y` to `auto`, making *those* the nearest scroll
+container — and both are `min-h-screen` with content-driven height, so they never scroll and
+sticky is inert. Now `fixed` on mobile (full-bleed is right there — no sidebar — with the 6rem
+offset that clears `MobileBottomNav`), in flow on desktop, with desktop pinning **deliberately
+deferred** because a viewport-fixed bar misaligns with a sidebar-offset column without a
+measured width. **jsdom loads no CSS, so no test at this tier can catch this class of bug** —
+it took an independent reviewer and a Codex P2, reaching the same conclusion separately. The
+lesson generalises: sticky is inert for *any* UI inside `DashboardLayout`.
+
+**Mutation testing became the standard, and earned it.** Every load-bearing test on the branch
+is proven to fail against a named one-token mutation. That exposed two button tests passing
+only because `toHaveBeenCalledWith` succeeds if *any* call matched (masking a duplicate
+submit), and a "disabled button does not submit" test that was outright vacuous — a `disabled`
+button suppresses click natively. Most valuable was a mutant that **survived**: deleting the
+send queue's re-drain signal left the whole suite green, because the drain depended on the
+react-query *mutation object*, whose identity changes on every state transition. The queue was
+running on an implementation detail nothing stated, and a version bump that memoised it would
+have silently dropped every message after the first.
+
+**Planning the next two phases against verified facts, not the spec, changed all three
+assumptions.** The orchestrator never touches `donny_messages` (the client writes both rows), so
+attachments need two paths rather than one; Anthropic caps one image at 5 MB base64, making the
+spec's 25 MB a *storage* cap, so images compress client-side and oversized ones are named as
+unreadable rather than silently dropped; and `BRAND_ROLE_ENABLED` gates signup and sponsorship
+UI, **not** `/dashboard/brand` — so brand is prod-verifiable, the opposite of what had been
+assumed. Fetching `origin/main` added two more: the branch predated #415 and still carried the
+`esm.sh` supabase-js import that boot-fails on every redeploy (both later phases deploy
+`donny-orchestrator`), and #416/#417 repaired the `social_*` tools, making the "0/7, never offer
+a social chip" constraint stale. Phase 2's migration (`20260810013012` — a nullable
+`donny_messages.attachments` column and a private `donny-attachments` bucket with owner-only
+policies) is applied and **object-verified**, with the path predicate tested against the
+`${uuid}-evil/` prefix a naive `startsWith` would have accepted.
+
+→ `docs/wiki/raw/sessions/2026-08-09-donny-inline-canvas-phase1.md` ·
+`docs/superpowers/plans/2026-08-09-donny-attachments-phase2.md` ·
+`docs/superpowers/plans/2026-08-09-donny-all-roles-phase3.md`
+
 ## [2026-08-09] `.com` Phase 1, the esm.sh bundler outage, and an 82-function redeploy
 
 > State as of writing: PRs **#414 and #415 merged**; all 82 `_shared/cors.ts` consumers

@@ -122,6 +122,18 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 > proof the object exists (see [[Content Delivery State Machine]]) and "recorded ≠ actual" has
 > bitten this project before.
 
+- **Donny answers on the dashboard instead of in a panel (inline canvas, Phase 1)** — the page you
+  asked from was never the page that answered; a `DonnyCanvas` now renders the reply inline and no
+  panel opens. Also: mobile Return inserts a newline, the field grows to a 200px cap, and a fast
+  first tap no longer fails. Two defects outweigh the feature — a conversation-query race **nine
+  reviews missed** (every test mounted with the conversation already resolved), and a `sticky`
+  composer that **could never have worked**, because `DashboardLayout`'s `overflow-x-hidden`
+  wrappers become the scrollport and never scroll (jsdom loads no CSS, so no test can catch it).
+  **Pending (2026-08-09):** the **Codex second review never completed** — four runs killed by
+  machine saturation, so the gate is open, not passed — and the PR is deliberately **unopened**
+  until it clears; then the both-viewport `verify-prod`, which has **never** run on this surface.
+  Verified: rebase (30 commits, 0 conflicts), 159 tests, typecheck clean, build green.
+  Business role only. → `docs/SHIPPED_LOG.md` · `worktree-dc-improvements-21`
 - **Donny's `social_*` tools repaired (7 calls → 0 successes → 4 working tools)** — Donny told the
   founder he had "no visibility into which Instagram account is connected", sent him to find an
   **"account ID"** on a page that displays none, and promised to post once he had it. The prod audit
