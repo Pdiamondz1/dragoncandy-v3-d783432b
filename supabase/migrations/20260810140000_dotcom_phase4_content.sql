@@ -27,15 +27,22 @@
 -- ---------------------------------------------------------------------------
 -- Guard: refuse to rewrite a targeted row that contains an @dragoncandy.io mailbox.
 -- ---------------------------------------------------------------------------
+-- The pattern matches a mailbox on dragoncandy.io OR ANY SUBDOMAIN of it. A bare
+-- `@dragoncandy\.io` would miss `x@mail.dragoncandy.io` -- which `replace()` below would
+-- happily rewrite anyway, since it matches on the bare substring. The guard has to cover
+-- everything the rewrite can reach, or it is only decorative. (Caught by
+-- `data-exposure-reviewer`; verified against prod 2026-08-10 -- none of the three targeted
+-- rows contains a mailbox in any form, and the one article that does, `gdpr-erasure`, is
+-- not in the slug list.)
 do $$
 begin
   if exists (
     select 1 from public.help_articles
     where slug in ('signup-restaurant', 'signup-creator', 'signup-brand')
-      and body ~ '@dragoncandy\.io'
+      and body ~ '@[A-Za-z0-9.-]*dragoncandy\.io'
   ) then
     raise exception
-      'Refusing to rewrite: an @dragoncandy.io mailbox appears in a targeted help article. Mailbox moves are Phase 5 (gated on a receive test), not Phase 4.';
+      'Refusing to rewrite: an @...dragoncandy.io mailbox appears in a targeted help article. Mailbox moves are Phase 5 (gated on a receive test), not Phase 4.';
   end if;
 end $$;
 

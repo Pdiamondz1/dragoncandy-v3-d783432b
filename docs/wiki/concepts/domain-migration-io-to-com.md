@@ -312,6 +312,15 @@ times — and the script failed loudly instead of silently doing nothing.
 - **Phase 5 — mail** (deferred; a dead support address is worse than an old one),
   **Phase 6 — CONTRACT** (optional; recommendation: don't).
 
+> **A hard constraint on ever letting `.io` go, surfaced by `data-exposure-reviewer` during the
+> Phase 4 review.** `dragoncandy.io` must not be allowed to **lapse or transfer** while any
+> published article still routes mail to an `@dragoncandy.io` address. `help_articles.gdpr-erasure`
+> currently tells users to email `privacy@dragoncandy.io` for data-rights questions — and a GDPR
+> erasure request carries identity PII **by definition**. If the domain ever changed hands, that
+> mail would start landing with whoever next controls it. This is a stronger reason to keep `.io`
+> registered than the SEO/redirect argument that motivated the original "recommendation: don't",
+> and it holds until Phase 5 has moved every published mailbox *and* the articles naming them.
+
 ## Must NOT change
 
 ~~`io.dragoncandy.app`~~ → **`com.dragoncandy.app`** (Capacitor appId / iOS bundle id).
