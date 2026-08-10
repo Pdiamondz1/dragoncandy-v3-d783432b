@@ -160,16 +160,28 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   and #415 changed the protocol, not the versions, so the skew persists); a hand-run
   `deno check` with a `main` baseline stands in for it.
   → `docs/wiki/concepts/donny-social-tools.md` · #416
-- **Donny-first business dashboard (Phase A)** — the `/dashboard/business` body becomes Donny
+- **Donny-first business dashboard (Phases A + B)** — the `/dashboard/business` body becomes Donny
   (greeting + attention list + prompt box + three taps); today's body preserved verbatim at
   `/dashboard/business/overview`. Scope set by a prod audit, not the mockup: only 4 Donny tools
-  verifiably work, so 3 taps and nothing routes to `social_*` (0/7). Four defects caught in review,
-  all in plan-authored code, incl. a Codex P2 — `campaigns.deadline` is a Postgres `date`, so
-  `new Date()` parsed **UTC midnight** and "due today" was unreachable all day. **Pending
-  (2026-08-09):** merge PR #410; **deploy `donny-orchestrator`** (merging ships frontend only —
-  verify by reading the deployed source for `Never end on a dead end`, not the version); flip
-  `DONNY_FIRST_DASHBOARD_ENABLED`; then the **both-viewport check, which has never been run on any
-  task in this branch**. → `docs/wiki/concepts/donny-first-dashboard.md` · #410
+  verifiably work, so 3 taps and nothing routes to `social_*` (0/7). **Phase A merged (#410) and
+  `DONNY_FIRST_DASHBOARD_ENABLED` flipped on (#411) — both verified 2026-08-09**, which is how the
+  founder reached it on prod. Their feedback there produced **Phase B**: the answer now lands *on
+  the dashboard* instead of throwing the side panel open (Phase A's prompt box was a **launcher by
+  design** — not a bug), plus the fix for a markdown table that reached the bubble as literal pipes
+  (`DonnyMessage` ran ReactMarkdown with **no `remark-gfm`**; tables are GFM, not CommonMark). The
+  Phase-B blocker was **not** on the design doc's seven-hazard list: queries gated on
+  `stage !== 'closed'` would have rendered a permanently **empty** inline thread, indistinguishable
+  from "no messages yet". Solved by separating what `stage` conflated (panel visible vs conversation
+  live), leaving `stage` byte-unchanged. **Four Codex rounds, four more defects, all one shape — the
+  code claimed more than it delivered**: `package-lock.json` still carried `remark-gfm` as a dev dep
+  (so `npm ci --omit=dev` would ship without a runtime import), a failed first ask rendered nothing
+  at all, the fix for that offered a **dead "Try Again"**, and a follow-up typed mid-answer vanished
+  into a silent `return`. **Pending (2026-08-09):** merge the Phase-B PR; **deploy
+  `donny-orchestrator`** — merging ships frontend only, and that one deploy carries **two** dark
+  strings (Phase A's `Never end on a dead end` and Phase B's `NARROW_BUBBLE_FORMAT`); verify by
+  reading the **deployed source** for both, never the version. Then the **both-viewport check, which
+  has still never been run on any task in this line of work**.
+  → `docs/wiki/concepts/donny-first-dashboard.md` · #410, #411
 - **Dead `/settings/*` CTAs fixed (12 across 10 files)** — every "Upgrade" (incl. the revenue path)
   and "Connect Outstand" CTA 404'd; `isKnownRoute` never caught them because it only guards routes
   the LLM **invents**. Diagnosed 2026-06-07, deferred as "out of scope", broken two months. Merged

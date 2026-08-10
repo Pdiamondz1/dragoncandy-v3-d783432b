@@ -1,5 +1,43 @@
 # Wiki Log
 
+## [2026-08-09] ingest | [[Donny-First Dashboard]] Phase B — the dashboard answers in place
+
+Ingested `raw/sessions/2026-08-09-donny-dashboard-inline-chat.md` by **compounding onto the
+existing page rather than creating a new one** — this is the same feature, one phase later, and a
+`donny-inline-chat.md` would have split its story in two.
+
+**Pages updated:** `concepts/donny-first-dashboard.md`, `index.md` (Sources line), this log.
+**Pages created:** none, deliberately.
+
+The edit is partly a **retraction**, and reads as one. The page's "Phase A launches Donny; it does
+not become Donny" section described the panel-opening as *"a deliberate trade the founder accepted,
+not an oversight"* — accurate when written, and precisely the behaviour the founder then reported as
+the defect. Struck through with a date and the reason, not deleted: a reader who acted on that
+framing needs to see it withdrawn ([[Updated-At Trigger Drift]]'s
+`doc-documents-the-bug` discipline).
+
+Three things worth carrying out of it:
+
+1. **The acceptance signal for [[Donny Social Tools]] finally exists.** `social_get_post_analytics`,
+   `status='success'`, 23:23:57 — the first success in `donny_tool_executions`' history for any
+   `social_*` tool — with [[Honest Analytics]]' sample-size gate visibly holding under a real user
+   (`post_count: 1`, no best-platform claim).
+
+2. **`stage` was conflating two facts**, and separating them was smaller than the spec's fix. "The
+   panel is visible" ≠ "the conversation is live". A ref-counted `registerInlineConversation()`
+   leaves the stage machine byte-unchanged and makes four of the design doc's seven Phase-B hazards
+   **dissolve rather than be solved**. The blocker that mattered was not on the list at all: queries
+   gated on `stage !== 'closed'` would have rendered a permanently empty thread, indistinguishable
+   from "no messages yet".
+
+3. **Four review rounds, four defects, one shape — the code claimed more than it delivered.** A
+   half-done dependency move (`package.json` fixed, `package-lock.json` not), an error made visible
+   but unrecoverable (its "Try Again" was a dead button, because `lastUserMessage` is assigned
+   *after* the throw it guards on), a comment promising a scroll behaviour the code did not
+   implement, and an input that accepted text it would never send. **"No worse than before" and
+   "the failure is visible now" are both the wrong bar** — the test is whether the thing the user
+   did works.
+
 ## [2026-08-09] ingest | [[Domain Migration (.io → .com)]] + [[Edge-Function Deploy & Bundling]]
 
 Ingested `raw/sessions/2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md` as **two new

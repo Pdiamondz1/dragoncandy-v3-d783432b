@@ -156,6 +156,51 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-08-09] Donny-first dashboard Phase B — inline chat + the markdown-table fix (`feat/donny-dashboard-inline-chat`)
+
+**Output:** new `raw/sessions/2026-08-09-donny-dashboard-inline-chat.md`; **no new concept page** —
+compounded onto `concepts/donny-first-dashboard.md`; `index.md` (1 Sources line + the existing
+Concepts entry rewritten); `log.md` top entry; `SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5
+entry **corrected in place**; + THIS entry.
+
+**Happened.** Branch-finish for the Phase-B work that came out of the founder's own prod
+acceptance test of the repaired `social_*` tools.
+
+**Worked — [status-correction], and it caught two decayed claims in the always-loaded doc.** §5's
+Phase-A entry still said *"Pending: merge PR #410 … flip `DONNY_FIRST_DASHBOARD_ENABLED`"*. Both
+were **already done** — #410 merged at 10:19 UTC the same day and #411 flipped the flag, which is
+precisely why the founder could reach the feature on prod. Verified against the **PR state** and
+`git show origin/main:src/lib/featureConfig.ts`, not against the clause. Corrected the one line
+rather than appending a Phase-B entry beside a stale Phase-A one.
+
+**Worked — [doc-documents-the-bug].** The concept page described the panel-opening as *"a
+deliberate trade the founder accepted, not an oversight"* — accurate when written, and exactly the
+behaviour the founder then reported as broken. Struck through with a date and the reason instead of
+deleted, because a reader who acted on that framing needs to see it **withdrawn**.
+
+**Worked — [scope].** `git diff --name-only` both ways before touching anything showed **zero
+overlap** between `origin/main`'s two new commits (#418, #421 — docs only) and this branch's file
+set. That proved the rebase could not conflict *and* could not invalidate the finished Codex
+review, so the code gate did not have to be re-run after it. Ordering that paid: the two files
+`origin/main` did **not** touch (`concepts/donny-first-dashboard.md`, the new raw session) were
+written and committed **before** the rebase; `index.md`/`log.md`/`SHIPPED_LOG`/`PROJECT_CONTEXT`
+after — `log.md` is prepend-at-top, so editing it pre-rebase conflicts by construction.
+
+**Failed → fixed.** Reported a full-suite figure of "229 files" from a `grep` that had matched
+vitest's **interim progress line** rather than the final summary, which read as five test files
+silently vanishing. The JSON reporter settled it: 234 files / 2329 tests / 0 failed. **Remember:
+`--reporter=json` for any test count that goes into a doc or a commit message** — the console
+summary is not addressable by grep mid-run. Two unrelated red tests (`HeroSection`,
+`OnboardingWizard`) were chased to ground rather than waved off as flakes: untouched directories
+(empty diff vs main), passing in isolation, and `HeroSection` green at a longer timeout because its
+tests do a dynamic `import()` inside a 5s budget on a heavily loaded machine.
+
+**Remember — a blank Codex run is a FAILED gate, and it happened three times here.** Round 1 was
+killed by a session compaction, round 2 hit the 10-minute cap mid-pass, and round 4 died at exit
+127 after 157 KB of output. None produced a verdict; none counts as a pass. Round 4's retry came
+back clean. Also: a `codex review` backgrounded with `&` inside a shell command writes to
+`/dev/null` and its verdict is **unrecoverable** — use the harness's own background mode.
+
 ### [2026-08-09] `.com` Phase 1 + esm.sh bundler outage + 82-function redeploy (PRs #414, #415 merged; docs on `fix/redeploy-after-social-tools-merge`)
 
 **Output:** new `raw/sessions/2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md`; **two NEW**
