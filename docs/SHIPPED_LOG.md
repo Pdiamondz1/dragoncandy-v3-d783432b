@@ -26,12 +26,14 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
-## [2026-08-09/10] iOS — first signed build to TestFlight, on `worktree-dc-apple-store`, not yet merged
+## [2026-08-09/10] iOS — repo work for the first signed build to TestFlight
 
-> State as of writing: work sits on the branch, not pushed, no PR open — Steps 6–7 of the
-> pre-PR gate task were deliberately not run, and Tasks 11–14 (founder Apple enrollment,
-> a canaried edge-function redeploy, and the physical-device build once the founder's Mac
-> arrives 2026-08-12) are all still ahead. `npm run build` clean on every commit.
+> **Merged, but that ships the frontend only.** Tasks 11–14 are still ahead and none of them
+> is optional: founder Apple enrollment (24–48h, gates everything), a **canaried
+> `donny-orchestrator` redeploy** — the CORS change is inert until it runs, because
+> `_shared/` is bundled per function at deploy time across 82 files — and the physical-device
+> build once the founder's Mac arrives 2026-08-12. **Merging this does not make Donny work on
+> the phone.** `npm run build` clean on every commit.
 
 Not the start of the iOS project — Phase 1 (Capacitor foundation) and Phase 2 (native
 camera + share sheet) shipped in June. This branch is the distance between "code exists"
@@ -118,6 +120,94 @@ undocumented.
 → `docs/wiki/concepts/ios-testflight-first-build.md` · `docs/wiki/entities/capacitor-native-shell.md`
 · `docs/superpowers/specs/2026-08-09-ios-testflight-first-build-design.md`
 · `docs/superpowers/plans/2026-08-09-ios-testflight-first-build.md` · `worktree-dc-apple-store`
+## [2026-08-09] Donny-first dashboard Phase B — the answer lands on the dashboard, and the table that arrived as pipes
+
+**Branch:** `feat/donny-dashboard-inline-chat` · **Wiki:** [[Donny-First Dashboard]],
+[[Honest Analytics]] · 2026-08-09
+
+**This session started with the acceptance signal that had never existed.** The `social_*` repair
+(#416) set its own bar — a `status='success'` row in `donny_tool_executions` for a `social_*` tool —
+and that bar had never been met in the table's history (7 rows, all `error`, none since Aug 7, two
+for tools that no longer exist). The founder signed in on prod and asked about their Instagram
+posts. Read from the table, not inferred from the screenshot: **`social_get_post_analytics`,
+`status='success'`, 2026-08-09 23:23:57**, output
+`{"post_count":1,"has_signal":false,"caveat":"Based on 1 measured post — too few to name a trend, a
+best anything, or a rate."}` — and Donny obeyed the gate, naming no best platform and no trend.
+[[Honest Analytics]] held under a real user rather than a probe.
+
+**The same screenshot exposed two problems, different in kind.**
+
+**The table was a straight defect.** Donny's answer opened with
+`| Metric | Total | |------|-----|| Views |1|` — literal pipes. `DonnyMessage.tsx` ran ReactMarkdown
+with **no `remark-gfm`**, and tables are GitHub-Flavored Markdown, not base CommonMark. The tell was
+in the same message: the `**bold**` rendered perfectly, because bold *is* CommonMark. Fixed at both
+layers deliberately — the tool now asks for plain lines (`NARROW_BUBBLE_FORMAT` in
+`_shared/social-analytics.ts`, since four numbers do not need a grid and a 5-column table does not
+fit a ~370px bubble *even when it renders*), and the plugin is added because the model is free-form
+and will emit a table again. Tables scroll inside their own container, header weight from
+`font-semibold` and a hairline rather than a grey band.
+
+**The panel was not a bug.** Phase A's prompt box was a launcher by design —
+`handlePromptSubmit` → `openDonnyWithContext()` → `open()`, `expand()`, send. Said plainly to the
+founder rather than relabelled, because the *design* was wrong for the surface, not the code. The
+founder chose "answer inline on the dashboard".
+
+**The design doc's §13 hazard list is what prevented shipping something broken — but the
+load-bearing blocker was not on it.** `useDonny` gates its queries on `stage !== 'closed'`, so an
+inline thread with the panel shut renders a **permanently empty box**, and empty is
+indistinguishable from "no messages yet" — it would have passed review and failed the user. The
+spec's answer was a new `inline` stage (close/collapse guards + an audit of six `stage` consumers).
+Instead: `stage` was conflating **"the panel is visible"** with **"the conversation is live"**, and
+`registerInlineConversation()` — a ref-count, so two surfaces or a remount-before-cleanup cannot
+switch the conversation off under the one still showing it — separates them. `stage` is
+byte-unchanged; **hazards 2, 3, 4 and 7 dissolve rather than being solved**. Hazards 1 and 6 close
+by extracting `DonnyThread` from `DonnyChatView`: one implementation, no panel header, and no scroll
+container or `h-full` (the panel scrolls itself; the dashboard is scrolled by `#main-content`).
+
+**Then four review rounds found four more defects, none of which a passing suite or a screenshot
+would show — and all four are one shape: the code claimed more than it delivered.**
+
+1. **(self) Arrival scrolled past the greeting.** The comment promised it would not; the code
+   inferred "a reply arrived" from the message count growing, and on arrival that count grows 0→N as
+   the query resolves. **Intermittent** — with the thread already in React Query's cache the count
+   never grew and it behaved correctly. Replaced by recording the fact: one `ask()` helper wraps
+   every send from the page, so intent is recorded, not inferred.
+2. **(Codex P1) The dependency move was half done.** `package.json` moved `remark-gfm` to runtime;
+   `package-lock.json` still had it under devDependencies with `dev: true`, so `npm ci --omit=dev`
+   would build a production tree missing a module `DonnyMessage` imports.
+3. **(Codex P2) A failed first ask rendered nothing at all.** The thread was gated on
+   messages/streaming, so an error producing neither was invisible — the tap did nothing, with no
+   error and no retry. The panel was never exposed to this; the gate is what this branch introduced.
+4. **(Codex P2) The fix for that offered a dead button.** `lastUserMessage` is assigned on the line
+   *after* the `No active conversation` throw and `retry()` guards on it, so "Try Again" did
+   literally nothing — the same dead-CTA class as the twelve `/settings/*` ones. **"The failure is
+   visible now" is not the bar**; the ask is now **queued** until a conversation exists.
+5. **(Codex P2) A follow-up typed mid-answer vanished.** `sendMessage` opens with a *silent*
+   `return` while a send is in flight, and the prompt cleared its box unconditionally. Fixed the way
+   the panel already does it — input and chips disabled while busy, with a "Donny is answering…"
+   placeholder — **plus** the guard inside `handleSubmit`, because **Enter submits a form without
+   ever consulting the button's `disabled` state**.
+
+**Incidental finding, left unfixed on purpose:** `buildDonnyProposals.ts` declares a
+`kind: 'ask'` proposal CTA and **nothing in `src/` constructs one**, so that handler branch is
+unreachable today. It is Phase A's and plausibly intended for a near-future proposal type; the
+queue's `isStreaming` branch is documented as a **guard, not a live path**, so the first `ask`
+proposal does not silently reintroduce the dropped-message defect.
+
+**Gates.** 234 files / 2329 tests / 0 failed (JSON reporter — the console summary's interim lines
+undercount and briefly read as five missing files); tsc; lint 0 errors; build; `deno check` on the
+edge module by hand, since **CI's edge typecheck covers neither importer** (both on
+`.typecheck-ignore`). `data-exposure-reviewer` PASS — notable for reading `outstand-mcp.ts`, a file
+**not in the diff**, to confirm the `.eq('user_id', config.userId)` and `verified_at` scoping that
+`social-analytics.ts` does not itself contain. Two unrelated test failures (HeroSection,
+OnboardingWizard) were proven to be load flakes: both directories untouched by this branch, both
+pass in isolation, HeroSection passes at a longer timeout because its tests do a dynamic `import()`
+inside a 5s budget.
+
+**Still open at merge:** deploy `donny-orchestrator` (merging ships frontend only — the
+`NARROW_BUBBLE_FORMAT` half stays dark until then; verify by reading the **deployed source** for the
+string, not the version), and the **both-viewport `verify-prod`, which has still never been run on
+any task in this line of work**.
 
 ## [2026-08-09] `.com` Phase 1, the esm.sh bundler outage, and an 82-function redeploy
 

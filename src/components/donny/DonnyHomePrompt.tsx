@@ -9,19 +9,25 @@ interface DonnyHomePromptProps {
   suggestions: DonnySuggestion[];
   onSubmit: (text: string) => void;
   onSuggestionTap: (suggestion: DonnySuggestion) => void;
+  /** A reply is in flight. Mirrors the panel, which disables its own input. */
+  busy?: boolean;
 }
 
 export function DonnyHomePrompt({
   suggestions,
   onSubmit,
   onSuggestionTap,
+  busy = false,
 }: DonnyHomePromptProps) {
   const [text, setText] = React.useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = text.trim();
-    if (!trimmed) return;
+    // The `busy` check is here as well as on the button, because Enter submits
+    // the form without going near the button's disabled state. Clearing the box
+    // for a send that will not happen is how a follow-up disappears.
+    if (!trimmed || busy) return;
     onSubmit(trimmed);
     setText('');
   };
@@ -36,7 +42,8 @@ export function DonnyHomePrompt({
           value={text}
           onChange={(e) => setText(e.target.value)}
           aria-label="Ask Donny"
-          placeholder="Ask Donny anything…"
+          disabled={busy}
+          placeholder={busy ? 'Donny is answering…' : 'Ask Donny anything…'}
           // The page's primary control, so it is sized and weighted like one:
           // a 2px teal border and a soft teal fill instead of a hairline on
           // white, which left it flat against the page ground.
@@ -45,7 +52,7 @@ export function DonnyHomePrompt({
         <button
           type="submit"
           aria-label="Send to Donny"
-          disabled={!text.trim()}
+          disabled={!text.trim() || busy}
           // opacity-70 (not 40) when empty: the field starts empty, so a
           // heavily dimmed button meant the one saturated element on the
           // dashboard rendered greyed-out before the user touched anything.
@@ -59,7 +66,8 @@ export function DonnyHomePrompt({
         {suggestions.map((s) => (
           <AppChip
             key={s.message}
-            className="text-dc-teal-btn border-dc-teal/30"
+            className="text-dc-teal-btn border-dc-teal/30 disabled:opacity-50"
+            disabled={busy}
             onClick={() => onSuggestionTap(s)}
           >
             {s.label}

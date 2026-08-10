@@ -3,8 +3,8 @@ title: Donny-First Dashboard
 type: concept
 created: 2026-08-09
 updated: 2026-08-09
-sources: [2026-08-09-donny-first-dashboard-and-route-blind-spot.md]
-tags: [donny, dashboard, business-role, onboarding, feature-flag, phase-a]
+sources: [2026-08-09-donny-first-dashboard-and-route-blind-spot.md, 2026-08-09-donny-dashboard-inline-chat.md]
+tags: [donny, dashboard, business-role, onboarding, feature-flag, phase-a, phase-b, inline-chat]
 ---
 
 # Donny-First Dashboard
@@ -57,17 +57,42 @@ cite it as proof that proposals don't work.
 - **`DonnyHome` is the container**; `DonnyHomeProposals` and `DonnyHomePrompt` are
   presentational. Every fetch, dismissal write, analytics call and `navigate()` lives in the
   container.
-- **Taps open the existing Donny panel** via `openDonnyWithContext()`. `DonnyStage` is
-  untouched.
+- **Taps and the prompt box answer IN the page** via `sendMessage()` (Phase B, below). `DonnyStage`
+  is untouched.
 
-### Phase A launches Donny; it does not become Donny
+### Phase A launched Donny; Phase B made the dashboard BE Donny
 
-For one release the dashboard *opens* the panel rather than hosting the conversation. This is
-a deliberate trade the founder accepted, not an oversight. Phase B (inline chat) must first
-resolve seven hazards verified against code — two of which put **two Donnys on one screen**,
-because `DonnyChatView`'s header calls `collapse()` (→ un-hides the panel) and `close()` (→
-disables the conversation's queries while the page is still mounted, unrecoverably, since
-`setInline()` is mount-only).
+> **Superseded 2026-08-09.** This section used to read: *"For one release the dashboard opens the
+> panel rather than hosting the conversation. This is a deliberate trade the founder accepted, not
+> an oversight."* That was accurate when written and is **no longer the behaviour** — the founder
+> used Phase A on prod and reported the panel-opening as the defect: *"it opened the chat instead
+> of keeping the conversation and details in the dashboard."* Kept rather than deleted because the
+> trade was real and the reasoning below is why Phase B is shaped the way it is.
+
+Phase A's prompt box was a **launcher**: `handlePromptSubmit` called `openDonnyWithContext()`,
+which `open()`s the panel, `expand()`s it, then sends. That was the design behaving as specified,
+not a bug — worth saying plainly, because relabelling it as a defect would hide that the *design*
+was wrong for the surface rather than the code.
+
+**The load-bearing blocker was not on §13's list of seven hazards.** `useDonny` gates its queries
+on `stage !== 'closed'`, so an inline thread rendered with the panel shut shows a **permanently
+empty box** — and empty is indistinguishable from "no messages yet", so it would have passed review
+and failed the user.
+
+**Phase B is smaller than the spec's answer, because `stage` was conflating two things.** The spec
+proposed a new `inline` stage, which drags in `close()`/`collapse()` guards plus an audit of all six
+components that branch on `stage`. But "the panel is visible" and "the conversation is live" are
+different facts. `registerInlineConversation()` — a **ref-count**, not a boolean, so two surfaces or
+a remount whose new effect precedes the old cleanup cannot switch the conversation off underneath
+the one still showing it — separates them. `stage` is byte-unchanged, so the nav button, desktop
+panel, mobile sheet and tour anchors behave exactly as before, and **hazards 2, 3, 4 and 7 dissolve
+rather than being solved**.
+
+Hazards 1 and 6 are closed by extracting **`DonnyThread`** from `DonnyChatView`: one implementation
+for both surfaces, rendering **no panel header** (an inline collapse/close is the "two Donnys on one
+screen" hazard) and owning **no scroll container and no `h-full`**, because those differ per surface
+— the panel is a fixed-height flex column that scrolls itself, the dashboard sits in normal page
+flow scrolled by `#main-content`.
 
 ## Decisions worth keeping
 
@@ -100,17 +125,28 @@ disables the conversation's queries while the page is still mounted, unrecoverab
 
 ## Known Issues
 
-- **The both-viewport browser check has never been run**, on any task in this branch.
-  Subagents must not type credentials and the change is not deployed — Supabase auth is
+- **The both-viewport browser check has never been run**, on any task in this branch **or in
+  Phase B**. Subagents must not type credentials and the change is not deployed — Supabase auth is
   per-origin, so a prod session does not reach a local dev server. Static analysis established
   that all four `RESTAURANT_TOUR` anchors resolve and that the two
   `data-tour="brief-generator"` anchors can never co-mount (`PageTransition` is a keyed
   `motion.div` with **no `AnimatePresence`**, so the outgoing tree unmounts synchronously).
-  **Genuinely unchecked: the panel actually opening on tap, the mobile viewport, console
-  errors.** Closes at `verify-prod` after merge + flag flip.
+  **Genuinely unchecked: the inline thread on a real screen, the mobile viewport, console
+  errors.** Closes at `verify-prod` after merge + flag flip. **This is now the largest unretired
+  risk on this feature** — everything else is proven by tests, source reads or prod SQL; none of it
+  has been *seen*.
 - **The `donny-orchestrator` prompt rule is not deployed by merging.** Vercel ships the
   frontend only. Verify by reading the **deployed source** back for the literal string
-  `Never end on a dead end` — not the version number.
+  `Never end on a dead end` — not the version number. **Phase B adds a second string to the same
+  deploy**: `_shared/social-analytics.ts`'s `NARROW_BUBBLE_FORMAT` reaches users only through that
+  function, so merging ships the table *rendering* fix while the "write plain lines" half stays
+  dark. One deploy closes both; verify both strings.
+- **`DonnyProposalCta`'s `kind: 'ask'` variant is declared and never constructed.**
+  `buildDonnyProposals.ts` types it; nothing in `src/` builds one, so `handleProposalAction`'s
+  else-branch is unreachable today. Left alone (Phase A's, plausibly intended for a near-future
+  proposal type) — but `ask()`'s `isStreaming` queue branch is documented as a **guard, not a live
+  path**, so whoever ships the first `ask` proposal does not silently reintroduce the
+  dropped-message defect.
 - **The prompt rule's effect is not statically verifiable.** It needs one live conversation
   forcing a capability gap, confirming Donny neither invents a page name nor bleeds a guessed
   route into `suggested_actions`.
@@ -155,11 +191,43 @@ Codex caught it on the first look.** The generalizable point is the one
 scrutiny.* Every internal review asked "is this correct?"; Codex asked "what type is that
 column, really?"
 
+### Phase B: four Codex rounds, four real findings, one shape
+
+Phase B "looked done" after its first commit — all gates green, negative controls run. Four review
+rounds then found four more defects, **none of which a passing suite or a screenshot would show**,
+and every one is the same failure: *the code claimed more than it delivered.*
+
+| Round | Defect | Why the tests were silent |
+|---|---|---|
+| self | Arrival scrolled past the greeting | The comment promised it would not; the code inferred "a reply arrived" from the **message count growing**, and on arrival that count grows 0→N as the query resolves. **Intermittent** — with the thread already cached the count never grew and it behaved correctly. |
+| Codex 1 (P1) | `package-lock.json` still had `remark-gfm` as a **dev** dep | `package.json` was fixed; the file that governs `npm ci` was not. `--omit=dev` would ship a production tree missing a runtime import. |
+| Codex 1 (P2) | A failed first ask rendered **nothing at all** | The thread was gated on messages/streaming, so an error that produced neither was invisible. `onError` had set it correctly the whole time. |
+| Codex 2 (P2) | The fix for that offered a **dead button** | `lastUserMessage` is assigned on the line *after* the `No active conversation` throw, and `retry()` guards on it — so "Try Again" did literally nothing. |
+| Codex 3 (P2) | A follow-up typed mid-answer **vanished** | `sendMessage` opens with a *silent* `return` when a send is in flight, while the prompt cleared its box unconditionally. |
+
+**The lesson that generalizes, and it sharpens [[Notification Delivery]]'s "no worse than before is
+the wrong bar":** each fix must be judged against **the claim it makes**, comment included. A
+half-done dependency move, a visible-but-unrecoverable error, a comment promising a scroll
+behaviour the code did not implement, and an input that accepts text it will not send are one
+defect wearing four costumes.
+
+**Two corollaries worth keeping:**
+
+- **"The failure is visible now" is not the bar.** Round 1 surfaced the error; round 2 showed that
+  surfacing it produced a dead control. The bar is whether *the thing the user did works* — which
+  is why the ask is **queued** rather than sent-and-caught.
+- **A guard belongs where the event actually enters.** The `busy` check sits in `handleSubmit` as
+  well as on the button, because **Enter submits a form without ever consulting the button's
+  `disabled` state**. Guarding only the visible control would have left the exact path most people
+  use.
+
 ## See Also
 
 - [[Donny Data Visibility & Quick-Action Routing]] — the route allow-list, its blind spot, and
   the twelve dead CTAs this dashboard's CTA validation exists to prevent
-- [[Honest Analytics]] — why no stats tap ships here
+- [[Honest Analytics]] — why no stats tap ships here, and the sample-size gate the first
+  successful `social_*` call exercised
+- [[Donny Social Tools]] — the repair whose acceptance test produced both Phase B defects
 - [[Light-App Kit]] — `PageBody` / `AppCard` / `AppChip`, and the filter-vs-affordance tension
 - [[Nav Active State]] — the sibling "which surface am I on" concern; nav is untouched by Phase A
 - [[Mobile Viewport & Fixed Positioning]] — `PageTransition`'s opacity-only contract, which is
