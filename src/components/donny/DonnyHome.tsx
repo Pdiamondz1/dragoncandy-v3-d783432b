@@ -167,11 +167,23 @@ export function DonnyHome() {
   // A queued ask counts as busy: the tap already happened, so the thread shows
   // the typing indicator instead of looking like nothing registered.
   const isBusy = isStreaming || queuedAsk !== null;
+  // Has the owner asked something ON THIS PAGE, this visit? The baseline is set
+  // by `dispatch` the instant a send goes out, and `queuedAsk` covers the window
+  // before that where the send is waiting on the conversation or its history.
+  //
+  // This gate is why `isStreaming` and `error` are not enough on their own.
+  // BOTH are global to the shared Donny state: ask in the side panel, navigate
+  // here while the reply is still streaming, and `isBusy` is true with
+  // `visitMessages` empty — so the page would collapse its greeting and render
+  // someone else's in-flight answer as this visit's transcript. The same is true
+  // of a stale `error` raised by a send that happened somewhere else. (Codex.)
+  const askedHere = visitBaselineId !== undefined || queuedAsk !== null;
+
   // Keyed on THIS VISIT's messages, so arriving with yesterday's thread in the
   // shared conversation leaves the page in its resting arrangement — greeting,
   // composer, taps — instead of opening on a conversation the owner did not
   // start.
-  const hasConversation = visitMessages.length > 0 || isBusy || !!error;
+  const hasConversation = askedHere && (visitMessages.length > 0 || isBusy || !!error);
 
   // Points at the composer, which in the conversation arrangement is the LAST
   // thing in the block — so bringing it into view brings the whole exchange

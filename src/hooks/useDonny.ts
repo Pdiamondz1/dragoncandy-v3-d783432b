@@ -96,6 +96,7 @@ export function useDonny(options?: UseDonnyOptions) {
     data: messages = [],
     isSuccess: messagesFetched,
     isFetching: messagesFetching,
+    isError: messagesErrored,
   } = useQuery({
     queryKey: ['donny-messages', conversation?.id],
     queryFn: async () => {
@@ -406,7 +407,16 @@ export function useDonny(options?: UseDonnyOptions) {
   // stale array, and anything added since (another tab, another device) would
   // land after a baseline taken from it. `isSuccess` alone answers "have we
   // ever loaded"; this answers "is what I am holding current".
-  const messagesLoaded = messagesFetched && !messagesFetching;
+  //
+  // `isError` counts as settled, deliberately. This flag exists so a caller can
+  // WAIT rather than act on an empty array, and a caller that waits needs the
+  // wait to end. A permanently-failing history query would otherwise hold every
+  // send forever in a silent queue — a prompt that never sends and never
+  // explains itself, which is the dead-control failure this codebase keeps
+  // fighting. It is also the safe direction: on a failed load `data` is
+  // undefined, so `messages` is the `[]` default and there is no stale history
+  // to leak into the fresh view.
+  const messagesLoaded = !messagesFetching && (messagesFetched || messagesErrored);
 
   const state: DonnyState = {
     conversation: conversation ?? null,

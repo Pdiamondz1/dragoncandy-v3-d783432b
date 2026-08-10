@@ -121,6 +121,29 @@ function askOnPage(text = 'plan my week') {
   fireEvent.submit(input.closest('form')!);
 }
 
+/**
+ * Ask on this page, THEN have the reply start streaming — the real sequence,
+ * and the only one that works: the composer refuses to submit while `busy`, so
+ * a test that sets `isStreaming` before asking cannot ask at all.
+ *
+ * It matters that the ask comes first. `isStreaming` and `error` are global to
+ * the shared Donny state, so the page shows a thread only when the owner asked
+ * HERE — a reply started in the side panel must not open one.
+ */
+function askThenStream(
+  rerender: (ui: React.ReactElement) => void,
+  streamingContent = 'Working on it'
+) {
+  askOnPage();
+  donnyState.isStreaming = true;
+  donnyState.streamingContent = streamingContent;
+  rerender(
+    <MemoryRouter>
+      <DonnyHome />
+    </MemoryRouter>
+  );
+}
+
 /** A minimal assistant message — only the fields DonnyHome/DonnyThread read. */
 function msg(id: string, content: string, created_at = '2026-08-09T23:24:00.000Z') {
   return {
@@ -272,9 +295,8 @@ describe('DonnyHome — the conversation renders in the page', () => {
 
   it('shows the thread while a reply is still streaming', () => {
     donnyState.messages = [];
-    donnyState.isStreaming = true;
-    donnyState.streamingContent = 'Based on 1 measu';
-    renderHome();
+    const { rerender } = renderHome();
+    askThenStream(rerender, 'Based on 1 measu');
 
     expect(screen.getByRole('log', { name: 'Donny conversation' })).toBeInTheDocument();
     expect(screen.getByText(/Based on 1 measu/)).toBeInTheDocument();
@@ -312,6 +334,9 @@ describe('DonnyHome — the conversation renders in the page', () => {
     donnyState.isStreaming = false;
     donnyState.error = 'No active conversation';
     renderHome();
+    // The error belongs to a send made HERE; `error` is global state, so an
+    // error raised by the side panel must not surface on this page.
+    askOnPage();
 
     expect(screen.getByRole('log', { name: 'Donny conversation' })).toBeInTheDocument();
     expect(screen.getByText('No active conversation')).toBeInTheDocument();
@@ -375,8 +400,8 @@ describe('DonnyHome — the conversation renders in the page', () => {
   });
 
   it('retires the suggestion chips once a reply is streaming', () => {
-    donnyState.isStreaming = true;
-    renderHome();
+    const { rerender } = renderHome();
+    askThenStream(rerender);
 
     // Stronger than "disabled", which is what this asserted before the chips
     // became a cold-start-only affordance. They are gone, so a chip tap into
@@ -436,9 +461,8 @@ describe('DonnyHome — the composer moves under the conversation', () => {
     // Streaming, not seeded messages: the page shows only this visit's thread,
     // and a reply in flight is this visit by definition. Seeding `messages`
     // alone is a previous visit and renders nothing.
-    donnyState.isStreaming = true;
-    donnyState.streamingContent = 'Working on it';
-    renderHome();
+    const { rerender } = renderHome();
+    askThenStream(rerender);
 
     expect(follows(screen.getByRole('log', { name: 'Donny conversation' }), composerForm())).toBe(
       true
@@ -459,9 +483,8 @@ describe('DonnyHome — the composer moves under the conversation', () => {
     // never scrolls, so iOS toolbars never collapse and vh overshoots) live on
     // the BLOCK rather than the thread, so the composer's auto-grow eats into
     // the thread instead of pushing itself off screen.
-    donnyState.isStreaming = true;
-    donnyState.streamingContent = 'Working on it';
-    renderHome();
+    const { rerender } = renderHome();
+    askThenStream(rerender);
 
     // scroller → DonnyThreadRegion's positioning wrapper → the block.
     const block = screen.getByRole('log', { name: 'Donny conversation' }).parentElement!
@@ -491,6 +514,7 @@ describe('DonnyHome — the composer moves under the conversation', () => {
     donnyState.messages = [];
     const { rerender } = renderHome();
 
+    askOnPage('the first question');
     const input = screen.getByRole('textbox', { name: /ask donny/i }) as HTMLTextAreaElement;
     fireEvent.change(input, { target: { value: 'a follow-up in progress' } });
 
@@ -567,6 +591,28 @@ describe('DonnyHome — every visit starts fresh', () => {
     expect(screen.queryByText(/Yesterday I said this/)).not.toBeInTheDocument();
   });
 
+  it('ignores a reply that is streaming from another surface', () => {
+    // `isStreaming` and `streamingContent` are GLOBAL to the shared Donny
+    // state. Ask in the side panel, walk to the dashboard while it answers, and
+    // without this gate the page collapses its greeting and renders someone
+    // else's in-flight answer as this visit's transcript. (Codex.)
+    donnyState.isStreaming = true;
+    donnyState.streamingContent = 'Answering something you asked in the panel';
+    renderHome();
+
+    expect(screen.queryByRole('log', { name: 'Donny conversation' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/asked in the panel/)).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Welcome back/ })).toBeInTheDocument();
+  });
+
+  it('ignores an error raised by another surface', () => {
+    donnyState.error = 'Something failed in the side panel';
+    renderHome();
+
+    expect(screen.queryByRole('log', { name: 'Donny conversation' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/failed in the side panel/)).not.toBeInTheDocument();
+  });
+
   it('collapses the greeting once the conversation starts, and restores it when resting', () => {
     // ~200px of avatar + greeting + subtitle, which on a phone is the
     // difference between a readable thread and a letterbox. The label row and
@@ -576,9 +622,8 @@ describe('DonnyHome — every visit starts fresh', () => {
     expect(screen.getByText('Restaurant Dashboard')).toBeInTheDocument();
     cold.unmount();
 
-    donnyState.isStreaming = true;
-    donnyState.streamingContent = 'Working on it';
-    renderHome();
+    const warm = renderHome();
+    askThenStream(warm.rerender);
     expect(screen.queryByRole('heading', { name: /Welcome back/ })).not.toBeInTheDocument();
     expect(screen.getByText('Restaurant Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Needs your attention')).toBeInTheDocument();
