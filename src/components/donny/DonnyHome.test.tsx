@@ -13,9 +13,31 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, useNavigate: () => navigateMock };
 });
 
+// `openDonnyWithContext` is the OLD behaviour — it opens the side panel. It is
+// still mocked so the tests below can assert it is NOT called: the founder's
+// report was that asking on the dashboard threw the panel open instead of
+// answering in place, and an assertion that only checks sendMessage would still
+// pass if both fired.
 const openDonnyWithContextMock = vi.fn();
+const sendMessageMock = vi.fn();
+const registerInlineConversationMock = vi.fn(() => vi.fn());
+const donnyState = {
+  messages: [] as unknown[],
+  isStreaming: false,
+  streamingContent: '',
+  error: null as string | null,
+};
 vi.mock('@/contexts/DonnyProvider', () => ({
-  useDonnyContext: () => ({ openDonnyWithContext: openDonnyWithContextMock }),
+  useDonnyContext: () => ({
+    openDonnyWithContext: openDonnyWithContextMock,
+    sendMessage: sendMessageMock,
+    registerInlineConversation: registerInlineConversationMock,
+    retry: vi.fn(),
+    avatarState: 'idle',
+    userRole: 'business_client',
+    close: vi.fn(),
+    ...donnyState,
+  }),
 }));
 
 const trackEventMock = vi.fn();
@@ -117,7 +139,8 @@ describe('DonnyHome — taps and prompt', () => {
   it('sends a tapped suggestion to Donny and records it', async () => {
     renderHome();
     fireEvent.click(screen.getByRole('button', { name: BUSINESS_SUGGESTIONS[0].label }));
-    expect(openDonnyWithContextMock).toHaveBeenCalledWith(BUSINESS_SUGGESTIONS[0].message);
+    expect(sendMessageMock).toHaveBeenCalledWith(BUSINESS_SUGGESTIONS[0].message);
+    expect(openDonnyWithContextMock).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(trackEventMock).toHaveBeenCalledWith('donny_home_suggestion_tapped', {
         label: BUSINESS_SUGGESTIONS[0].label,
@@ -130,10 +153,76 @@ describe('DonnyHome — taps and prompt', () => {
     const input = screen.getByRole('textbox', { name: /ask donny/i });
     fireEvent.change(input, { target: { value: 'plan my week' } });
     fireEvent.submit(input.closest('form')!);
-    expect(openDonnyWithContextMock).toHaveBeenCalledWith('plan my week');
+    expect(sendMessageMock).toHaveBeenCalledWith('plan my week');
     await waitFor(() =>
       expect(trackEventMock).toHaveBeenCalledWith('donny_home_prompt_submitted', {})
     );
+  });
+
+  // The reported defect, pinned directly: asking here must not throw the side
+  // panel open. openDonnyWithContext is what does that — open() then expand()
+  // then send.
+  it('never opens the side panel — the answer belongs on this page', () => {
+    renderHome();
+    const input = screen.getByRole('textbox', { name: /ask donny/i });
+    fireEvent.change(input, { target: { value: 'how are my instagram posts doing?' } });
+    fireEvent.submit(input.closest('form')!);
+
+    expect(openDonnyWithContextMock).not.toHaveBeenCalled();
+  });
+
+  // Without this registration the messages query stays disabled whenever the
+  // panel is closed — which is the normal state on this page — and the thread
+  // renders permanently empty. That is design-doc §13 hazard 5's real teeth.
+  it('keeps the conversation live while the dashboard is mounted', () => {
+    renderHome();
+    expect(registerInlineConversationMock).toHaveBeenCalled();
+  });
+});
+
+describe('DonnyHome — the conversation renders in the page', () => {
+  it('shows no conversation area before anything has been asked', () => {
+    donnyState.messages = [];
+    donnyState.isStreaming = false;
+    renderHome();
+
+    // A first visit opens on the greeting and the attention list, not an empty
+    // chat well.
+    expect(screen.queryByRole('log', { name: 'Donny conversation' })).not.toBeInTheDocument();
+  });
+
+  it('renders the answer inline once there is one', () => {
+    donnyState.messages = [
+      {
+        id: 'm1',
+        conversation_id: 'c1',
+        role: 'assistant',
+        content: 'Based on 1 measured post so far.',
+        tool_calls: null,
+        tool_result: null,
+        rich_card: null,
+        quick_actions: [],
+        created_at: '2026-08-09T23:24:00.000Z',
+      },
+    ];
+    renderHome();
+
+    const log = screen.getByRole('log', { name: 'Donny conversation' });
+    expect(log).toBeInTheDocument();
+    expect(screen.getByText(/Based on 1 measured post/)).toBeInTheDocument();
+    donnyState.messages = [];
+  });
+
+  it('shows the thread while a reply is still streaming', () => {
+    donnyState.messages = [];
+    donnyState.isStreaming = true;
+    donnyState.streamingContent = 'Based on 1 measu';
+    renderHome();
+
+    expect(screen.getByRole('log', { name: 'Donny conversation' })).toBeInTheDocument();
+    expect(screen.getByText(/Based on 1 measu/)).toBeInTheDocument();
+    donnyState.isStreaming = false;
+    donnyState.streamingContent = '';
   });
 });
 

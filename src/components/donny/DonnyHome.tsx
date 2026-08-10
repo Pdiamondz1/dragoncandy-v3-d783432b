@@ -8,8 +8,28 @@
 // there is no net new load versus today — but this component now owns them
 // rather than inheriting them for free.
 //
-// Phase A opens the EXISTING Donny panel. Inline chat is Phase B; see the
-// design doc §13 for the seven hazards it has to resolve first.
+// Phase B: the answer lands HERE, on the dashboard, instead of throwing the
+// side panel open. Founder feedback after using Phase A on prod — "it opened
+// the chat instead of keeping the conversation and details in the dashboard."
+//
+// How the design doc's §13 hazards were resolved, since it asked for each to be
+// verified against code rather than assumed:
+//  1/6. DonnyChatView is NOT reused — the thread was extracted into DonnyThread,
+//       which renders no panel header (so no collapse()/close() inline, so no
+//       second Donny) and owns no scroll container or h-full (so it composes in
+//       normal page flow inside #main-content).
+//  2/3/4/7. Dissolved rather than solved: there is no new `inline` stage. The
+//       real blocker was that useDonny gates its queries on `stage !== 'closed'`,
+//       which is about the PANEL being visible, not about the conversation being
+//       live. registerInlineConversation separates those, so `stage` is
+//       byte-unchanged and every consumer of it — nav button, desktop panel,
+//       mobile sheet, tour anchors — behaves exactly as before. Nothing is
+//       hidden, so no tour anchor is orphaned.
+//  5. Unmount mid-stream keeps the documented contract: DonnyProvider sits above
+//     the router, so the stream survives navigation and the reply persists. It
+//     is now strictly better than before — deregistering drops the count to 0
+//     but `stage` is untouched, so if the panel happens to be open the query
+//     stays enabled, and on return the thread refetches.
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -30,6 +50,7 @@ import { RatingPromptManager } from '@/components/reviews/RatingPromptManager';
 import { SponsorshipRatingPromptManager } from '@/components/reviews/SponsorshipRatingPromptManager';
 import { DonnyHomeProposals } from './DonnyHomeProposals';
 import { DonnyHomePrompt } from './DonnyHomePrompt';
+import { DonnyThread } from './DonnyThread';
 import { BUSINESS_SUGGESTIONS, type DonnySuggestion } from '@/lib/donny/donnyHomeSuggestions';
 import { buildDonnyProposals, type DonnyProposal } from '@/lib/donny/buildDonnyProposals';
 import {
@@ -42,7 +63,44 @@ const OVERVIEW_ROUTE = '/dashboard/business/overview';
 export function DonnyHome() {
   const { profile, activeOrgUnit } = useAuth();
   const navigate = useNavigate();
-  const { openDonnyWithContext } = useDonnyContext();
+  const {
+    registerInlineConversation,
+    messages,
+    avatarState,
+    isStreaming,
+    streamingContent,
+    error,
+    sendMessage,
+    retry,
+    userRole,
+  } = useDonnyContext();
+
+  // Keep the conversation live while this page is mounted — without it the
+  // messages query is disabled whenever the panel is closed, which is the
+  // normal state here, and the thread below would render permanently empty.
+  React.useEffect(() => registerInlineConversation(), [registerInlineConversation]);
+
+  const hasConversation = messages.length > 0 || isStreaming;
+
+  const threadEndRef = React.useRef<HTMLDivElement>(null);
+  // Whether a message has arrived since this page mounted. Auto-scroll only
+  // fires after that, never on the first paint: this is a dashboard, and a user
+  // returning to it with yesterday's thread should land on the greeting and the
+  // attention list, not be thrown to the bottom of an old conversation. The
+  // panel scrolls on mount because it IS a chat surface; this is not.
+  const hasNewSinceMount = React.useRef(false);
+  const messageCount = messages.length;
+  const previousCount = React.useRef(messageCount);
+
+  React.useEffect(() => {
+    if (messageCount > previousCount.current) hasNewSinceMount.current = true;
+    previousCount.current = messageCount;
+    if (!hasNewSinceMount.current) return;
+    // scrollIntoView, not a scrollTop write: the app's scroller is
+    // #main-content, never the window (window.scrollY is always 0 here), and
+    // letting the browser find the scrollable ancestor avoids hard-coding that.
+    threadEndRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  }, [messageCount, isStreaming, streamingContent]);
   const { trackEvent } = useAnalyticsContext();
   const { showTour, tourSteps, completeTour, skipTour, triggerTour } = useTour();
 
@@ -127,7 +185,9 @@ export function DonnyHome() {
     if (proposal.cta.kind === 'route') {
       navigate(proposal.cta.route);
     } else {
-      openDonnyWithContext(proposal.cta.message);
+      // Inline too — an attention-list tap that threw the panel open while the
+      // prompt box answered in place would be two behaviours for one page.
+      sendMessage(proposal.cta.message);
     }
   };
 
@@ -142,12 +202,12 @@ export function DonnyHome() {
 
   const handleSuggestionTap = (suggestion: DonnySuggestion) => {
     void trackEvent('donny_home_suggestion_tapped', { label: suggestion.label });
-    openDonnyWithContext(suggestion.message);
+    sendMessage(suggestion.message);
   };
 
   const handlePromptSubmit = (text: string) => {
     void trackEvent('donny_home_prompt_submitted', {});
-    openDonnyWithContext(text);
+    sendMessage(text);
   };
 
   if (!profile) {
@@ -202,6 +262,32 @@ export function DonnyHome() {
             onSubmit={handlePromptSubmit}
             onSuggestionTap={handleSuggestionTap}
           />
+
+          {/* The conversation, in the page — not in a panel over it. Rendered
+              only once there is something to show, so a first visit still opens
+              on the greeting and the attention list rather than an empty well.
+              No fixed height and no inner scroller: the page scrolls, which is
+              what makes a long answer readable here instead of trapped in a
+              200px box. */}
+          {hasConversation && (
+            <div
+              className="space-y-3 rounded-2xl border border-dc-teal/15 bg-dc-teal/[0.04] p-4"
+              role="log"
+              aria-label="Donny conversation"
+              aria-live="polite"
+            >
+              <DonnyThread
+                messages={messages}
+                avatarState={avatarState}
+                isStreaming={isStreaming}
+                streamingContent={streamingContent}
+                error={error}
+                retry={retry}
+                userRole={userRole}
+              />
+              <div ref={threadEndRef} />
+            </div>
+          )}
 
           {/* The rating prompts go INSIDE the attention frame, not beside it.
               `NeedsAttentionSection` exists to consolidate every "needs you"
