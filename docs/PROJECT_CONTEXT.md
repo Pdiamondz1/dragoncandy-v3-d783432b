@@ -246,17 +246,23 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   **Pending:** register the Chat app, set `GOOGLE_CHAT_PROJECT_NUMBER` +
   `GOOGLE_ALLOWED_DOMAIN` — all blocked on creating the DragonCandy Workspace org.
   → `docs/superpowers/specs/2026-06-11-google-workspace-connections-design.md`
-- **Public landing — Dark-Luxe redesign + lead capture** — scoped-`.dark` rebuild + a
-  closed-anon-DML `leads` table and throttled `capture-lead` fn; both live on prod.
-  **Pending:** set the `LEADS_NOTIFY_EMAIL` edge secret — without it nobody is notified of a
-  captured lead. **Not verifiable from the repo or the DB** (edge secrets aren't listable), so this
-  one rests on founder knowledge, not a check — the only way to confirm it is the Supabase
-  dashboard. `leads` held **0 rows** as of 2026-08-07, so nothing has been lost yet; the cost is
-  that the *first* real lead lands silently.
-  → `docs/wiki/concepts/landing-lead-capture.md` · `feat/landing-luxe-redesign`
+> **Edge secrets ARE verifiable — `supabase secrets list --project-ref <ref>`.** The entry that
+> used to sit here claimed the opposite ("edge secrets aren't listable… rests on founder knowledge,
+> not a check") and on that basis was left unverified. It was wrong: the CLI returns every secret's
+> **name, SHA-256 digest and `updated_at`** — enough to prove presence and to detect a change,
+> without ever exposing a value. Checked 2026-08-09; `LEADS_NOTIFY_EMAIL` had in fact been set on
+> **2026-08-07**, so a `**Pending:**` clause outlived its truth by two days purely because a doc
+> discouraged the check. **A claim that something is unverifiable is itself a claim — verify it
+> before repeating it.** (Same class as [[Updated-At Trigger Drift]]'s `recorded ≠ actual`.)
 
 ### Shipped
 
+- **Public landing — Dark-Luxe redesign + lead capture** — scoped-`.dark` rebuild + a closed-anon-DML
+  `leads` table and throttled `capture-lead` fn, both live on prod; `LEADS_NOTIFY_EMAIL` **set
+  2026-08-07, verified 2026-08-09** via `supabase secrets list` (see the note above — it was never
+  unverifiable). Lead capture never depended on it: the row is inserted first and the email is
+  best-effort, so an unset secret would have cost notification, never data.
+  → `docs/wiki/concepts/landing-lead-capture.md` · `feat/landing-luxe-redesign`
 - **`verify_jwt=true` is not authorization — 6 edge functions closed on prod** — the anon key **is** a
   valid JWT and ships in the frontend bundle, so the platform default rejects only a *missing* header
   and never establishes a user. A 100-function sweep found 6 genuinely exposed (both money functions
