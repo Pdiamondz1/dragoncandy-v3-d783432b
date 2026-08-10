@@ -556,9 +556,18 @@ every **body** selector in `CREATOR_TOUR` must be present in the rendered tree o
 >    at `submitted` — nothing to do, waiting on the business — with no pending
 >    application, no invitation, and payout complete renders zero rows. That state is
 >    honest ("nothing needs you"), so it is left alone; but it means the anchor CAN be
->    zero-height and the claim above must not be relied on again. `creatorTourAnchors.test.tsx`
->    now asserts the anchor has children rather than merely existing, so the two do
->    not silently diverge.
+>    zero-height and the claim above must not be relied on again.
+>    `creatorTourAnchors.test.tsx` asserts that the anchor contains at least one
+>    rendered `[data-testid="donny-proposal"]` row.
+>
+> That assertion took two attempts, which is itself the lesson. The first version
+> counted the anchor's `childElementCount > 0` — **unfalsifiable**, because
+> `DonnyHomeProposals`' `if (!blocker && proposals.length === 0 && !children) return null`
+> is dead code for this container (`RatingPromptManager` is always passed as `children`,
+> and a React element is always truthy). So the `<section>` renders in every state and
+> counts as one child even when it is CSS-hidden with nothing inside it — the test
+> would have passed in exactly the situation it was written to catch. **Count the thing
+> the user sees, not the container that holds it.**
 >
 > The general lesson, since this spec made the mistake twice in one paragraph: **a
 > safeguard that rests on "in practice X never happens" is not a safeguard.** Assert

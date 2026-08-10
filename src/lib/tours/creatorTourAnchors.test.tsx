@@ -134,9 +134,16 @@ describe('CREATOR_TOUR anchors resolve on both creator pages', () => {
     // slot is empty, and querySelector finds the wrapper either way. A tour
     // step pointed at a zero-height element spotlights nothing. The mocks
     // above supply an invitation precisely so this can be asserted.
+    //
+    // Count the ROWS, not the wrapper's children. `childElementCount` is
+    // unfalsifiable here: DonnyHomeProposals' `!children` early return is dead
+    // for this container (RatingPromptManager is always passed, and an element
+    // is always truthy), so the section renders — and counts as one child —
+    // even when it is CSS-hidden with nothing in it.
+    const rows = donnyHome.querySelectorAll('[data-testid="donny-proposal"]');
     expect(
-      donnyHome.querySelector("[data-tour='creator-attention']")!.childElementCount,
-      'creator-attention is present but empty — the tour would spotlight nothing'
+      rows.length,
+      'creator-attention renders no proposal rows — the section self-hides, so the tour would spotlight a zero-height element'
     ).toBeGreaterThan(0);
   });
 });
