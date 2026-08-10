@@ -26,6 +26,91 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-10] Donny's consumer RAG was 107 leaking wiki pages and nothing else
+
+**PR #434** (`669b259b`, squash-merged) · script `supabase/scripts/sync-wiki-to-donny.mjs` ·
+no migration, no edge-function deploy, no RLS change.
+→ `docs/wiki/concepts/donny-rag-scope-boundary.md`
+
+**The reported defect.** `EXCLUDE` (19 pages) gated on `SYNC_CURATE=1`. The sync that actually
+runs unattended — `npm run sync:wiki`, fired by the `post-merge` hook — never sets it, so all 19
+synced to the **consumer** RAG at `scope null` on every merge. The script's own comment said this
+verbatim; `FORCE_INTERNAL` was created as the remedy and the 19 stale entries were never moved.
+Prod before the fix: 112 wiki rows, **107 at `scope NULL`**.
+
+**Two findings changed the fix from "extend the list" to "invert the default".**
+
+1. **Every wiki page already exists twice.** `sync-internal-docs.mjs` writes an
+   `internal-<dir>:<slug>` copy of the same page at `scope='internal'` — measured **1:1 on prod,
+   112 and 112**. So the `wiki:` rows exist *only* to populate the consumer scope, and marking one
+   internal costs internal Donny nothing. Not in the handoff, and it reframes "mark internal" as
+   purely a removal from consumer reach.
+2. **The worst page was on neither list, and the path is live.** `donny-orchestrator` calls
+   `retrieveContext(…, 5)` at default consumer scope and hands the chunks to `agents/general.ts`,
+   the catch-all for greetings and open questions. So *"what is DragonCandy?"* could retrieve
+   `entities/dragoncandy-platform`: *"Pre-revenue: ~30 organic users, $0 paying, ~$390/mo
+   operating cost (Lovable $50, Anthropic $200, Outstand $67, Supabase $45, OpenAI $25)"* and
+   *"Stripe Connect (test mode)"*. It was on no list because **a denylist fails open** — it holds
+   only what someone thought to enumerate.
+
+**What shipped.** Every page syncs `scope:"internal"` unless its exact `<dir>/<filename>` is in a
+new `CONSUMER` allowlist, **which is empty** — the founder's call after reading the candidates.
+Read end to end, none are written for a customer: `take-rate-ladder` (*"all four streams stack on
+one customer"*), `dragondash` (*"the profit engine — premium margins"*), `trust-then-flag-model`
+(*"MVPs over-gate"*), and even `campaign-lifecycle`, the cleanest page in the set, lists DB tables
+and a trigger name. Consumer product knowledge lives in `help_articles` and `/help`.
+Adds `SYNC_DRY_RUN=1`, which prints the split without POSTing.
+
+**The sharpest number:** afterwards the consumer predicate returns **0 of 247** rows — every
+non-wiki row was already internal, so consumer Donny's *entire* RAG had been the 107 leaking
+pages. There was never a legitimate consumer knowledge base to lose, and `agents/general.ts`
+already degrades gracefully (*"No additional context available."*).
+
+**Deliberate design calls.** The staleness guard survives re-pointed at the allowlist but **no
+longer throws**: under a denylist a stale entry meant a page was about to be published to
+consumers, so refusing to sync prevented it; under an allowlist the renamed file is already in the
+scan under its new name and syncing as internal, so aborting all 112 pages prevents nothing. Its
+real limitation is written into the code rather than papered over — the script never deletes, so a
+renamed allowlisted page's OLD row survives at its old scope, consumer-retrievable with stale
+content; aborting does not fix that (the orphan is in the DB either way) and a prune is impossible
+because `donny-knowledge-sync` exposes no delete-by-source_id. Not allowlist-specific: renaming
+*any* wiki page orphans its row. Prod clean 2026-08-10 (disk 112 = DB 112).
+
+**Checked rather than assumed.** 112 pages now take `donny-knowledge-sync`'s
+`scope === "internal"` branch instead of 5, and that branch also reads `internal_docs.archived_at`
+and **deletes** the row if archived. Prod holds 114 `docs/wiki/%` paths with **0** archived → a
+no-op today, and the behaviour you want later.
+
+**Codex — 2 findings round 1, both mine, clean round 2.** **P1:** deleting the denylist broke
+`src/lib/wikiSyncForceInternal.test.ts`, which parses the script for
+`const FORCE_INTERNAL = new Set(...)` and throws at module load if absent — I had grepped for
+`SYNC_CURATE` and never for `FORCE_INTERNAL`, precisely the sweep that test existed to survive.
+Rewritten as `wikiSyncConsumerScope.test.ts`, now asserting the load-bearing
+`else { page.scope = "internal" }` line (**proven live** — stubbing it turns the test red) and
+failing if a denylist returns, matched on **declarations not mentions** so the comments can keep
+narrating the history. **P2:** my guard comment claimed a stale allowlist entry leaves a page
+"MORE protected than intended, never less" — false, per the orphan above. Codex's suggested
+remedy (abort) does not fix its own finding, so the correction was to the claim, not the
+behaviour. *"No worse than before" is the wrong bar; judge a fix against the claim it makes.*
+
+**Verified on prod after merge:** `internal` **112** and the `NULL` group **absent** (was 5/107);
+consumer predicate **0 of 247**; `match_donny_knowledge`'s deployed body confirms the consumer
+branch is `dk.scope IS NULL OR dk.scope <> 'internal'`; sync reported
+`inserted=0 updated=112 errors=0`. Suite 238 files / 2373 tests, typecheck and build clean.
+
+**Gotcha worth keeping:** a `git stash push` run to check a lint baseline reverted live work —
+recovered by SHA (`git stash list --format='%H %gs'` → `apply` → `drop`), leaving two other
+sessions' stashes untouched. Don't stash to answer a question `git diff` answers. Also: the sync
+key lives only in the main checkout (`supabase/scripts/.env.sync.local`, gitignored), and copying
+it in by absolute path lets a worktree-isolated session run the sync without `cd`-ing into main —
+which would lock both shells for the session.
+
+**Still open (handoff steps 2–4):** page splits (`donny-social-tools` 26,847 ·
+`service-role-data-exposure` 26,779 · `domain-migration-io-to-com` 25,086 ·
+`donny-first-dashboard` 24,708, against `FAIL_CHARS = 31_000`) — note the old `FORCE_INTERNAL`
+split-trap is **gone**, since an empty `CONSUMER` has no path-keyed entry a split could break;
+`analyses/` heading-derived filenames; `index.md`/`log.md` trimming.
+
 ## [2026-08-10] Domain migration Phase 4 (CONTENT) — the text no code change can reach
 
 Phases 1–3 moved the app, the config and the redirect. None of them touch text stored in the
