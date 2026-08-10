@@ -225,6 +225,69 @@ describe('DonnyHomePrompt — Enter behaves per platform, like ChatGPT', () => {
   // desktop IME test is the non-vacuous one.
 });
 
+// Founder, on prod: "there a border around prompt input which is unneccessary."
+//
+// EVERY assertion in this block is a CLASS-VALUE PIN, not a behavioural proof.
+// jsdom loads no CSS and computes no styles, so nothing here can observe a
+// border, a ring or a colour. What they pin is the small set of values that
+// produced the founder's double border, so a future edit cannot quietly restore
+// them. The behavioural guarantee for this component is the 14 tests above,
+// which are unchanged by the restyle — that is the evidence nothing broke.
+describe('DonnyHomePrompt — one quiet outline, not three', () => {
+  const composer = () => field().closest('form')!;
+  const classesOf = (el: Element) => el.className.split(/\s+/).filter(Boolean);
+
+  it('wears a hairline on white, not a 2px teal slab over a teal fill', () => {
+    render(
+      <DonnyHomePrompt suggestions={BUSINESS_SUGGESTIONS} onSubmit={noop} onSuggestionTap={noop} />
+    );
+    const classes = classesOf(composer());
+    // The documented light-app card treatment, docs/DESIGN_SYSTEM.md.
+    expect(classes).toContain('border');
+    expect(classes).toContain('border-dc-teal/20');
+    expect(classes).toContain('bg-white');
+    expect(classes).not.toContain('border-2');
+    expect(classes).not.toContain('bg-dc-teal/[0.06]');
+  });
+
+  it('signals focus exactly once', () => {
+    // It used to change the border colour AND add a ring, while the textarea
+    // painted an outline of its own — three signals for one state.
+    render(
+      <DonnyHomePrompt suggestions={BUSINESS_SUGGESTIONS} onSubmit={noop} onSuggestionTap={noop} />
+    );
+    const focusTreatments = classesOf(composer()).filter((c) => c.startsWith('focus-within:'));
+    expect(focusTreatments).toEqual(['focus-within:border-dc-teal-btn']);
+  });
+
+  it('stops the textarea painting its own outline inside the wrapper', () => {
+    // src/index.css has a global `*:focus-visible { ring-2 ring-ring
+    // ring-offset-2 }` in @layer base. A Tailwind ring is a BOX-SHADOW, so
+    // `focus:outline-none` never touched it — and ring-0 without
+    // ring-offset-0 still paints, because the ring shadow is drawn at
+    // calc(width + offset). Both are load-bearing.
+    render(
+      <DonnyHomePrompt suggestions={BUSINESS_SUGGESTIONS} onSubmit={noop} onSuggestionTap={noop} />
+    );
+    const classes = classesOf(field());
+    expect(classes).toContain('focus:outline-none');
+    expect(classes).toContain('focus-visible:ring-0');
+    expect(classes).toContain('focus-visible:ring-offset-0');
+  });
+
+  it('never reaches for gray', () => {
+    // docs/DESIGN_SYSTEM.md: never gray surfaces or borders — teal, pink and
+    // warm neutrals only. "Quieter" is the one instruction that most invites a
+    // gray, so pin it.
+    render(
+      <DonnyHomePrompt suggestions={BUSINESS_SUGGESTIONS} onSubmit={noop} onSuggestionTap={noop} />
+    );
+    for (const cls of classesOf(composer())) {
+      expect(cls).not.toMatch(/(bg|border|ring)-(gray|slate|zinc|neutral|stone)/);
+    }
+  });
+});
+
 describe('DonnyHomePrompt — while Donny is answering', () => {
   it('leaves the field editable so a follow-up can be composed mid-reply', () => {
     // Founder decision, matching ChatGPT: `busy` disables the SEND BUTTON only.

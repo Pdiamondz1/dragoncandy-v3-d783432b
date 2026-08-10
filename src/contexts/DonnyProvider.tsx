@@ -29,6 +29,19 @@ interface DonnyContextValue {
 
   // Chat
   messages: DonnyMessage[];
+  /**
+   * Whether `messages` currently reflects the server — not the same as
+   * `messages.length`. It defaults to `[]` and its query only runs once a
+   * conversation exists, so an empty array can mean "still loading" or
+   * "genuinely none". A surface that must tell those apart (DonnyHome shows
+   * only the current visit) has to read this; one that just renders the thread
+   * does not.
+   */
+  messagesLoaded: boolean;
+  /** The history load FAILED, as opposed to "has not finished yet". */
+  messagesErrored: boolean;
+  /** Re-run the history query. Pairs with `messagesErrored` as its Retry. */
+  retryLoadMessages: () => void;
   conversation: DonnyConversation | null;
   avatarState: DonnyAvatarState;
   isStreaming: boolean;
@@ -70,6 +83,12 @@ const DONNY_FALLBACK: DonnyContextValue = {
   executeAction: noop,
   dismissNudge: noop,
   messages: [],
+  // False, not true: with no provider there is no query, so nothing has loaded.
+  // A surface gating a send on this queues rather than baselining against an
+  // array that will never fill.
+  messagesLoaded: false,
+  messagesErrored: false,
+  retryLoadMessages: noop,
   conversation: null,
   avatarState: 'idle' as DonnyAvatarState,
   isStreaming: false,
@@ -387,6 +406,9 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
       executeAction,
       dismissNudge,
       messages: donny.messages,
+      messagesLoaded: donny.messagesLoaded,
+      messagesErrored: donny.messagesErrored,
+      retryLoadMessages: donny.retryLoadMessages,
       conversation: donny.conversation ?? null,
       avatarState: donny.avatarState,
       isStreaming: donny.isStreaming,
@@ -407,7 +429,7 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
     [
       stage, open, expand, collapse, close,
       nudges, unreadCount, executeAction, dismissNudge,
-      donny.messages, donny.conversation, donny.avatarState, donny.isStreaming, donny.error, donny.streamingContent, donny.retry, donny.clearChat, donny.archiveConversation,
+      donny.messages, donny.messagesLoaded, donny.messagesErrored, donny.retryLoadMessages, donny.conversation, donny.avatarState, donny.isStreaming, donny.error, donny.streamingContent, donny.retry, donny.clearChat, donny.archiveConversation,
       sendMessage, location.pathname, userRole, quickChips, campaignContext,
       openDonnyWithContext, publishDraft, registerInlineConversation,
     ]

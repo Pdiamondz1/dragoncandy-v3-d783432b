@@ -26,11 +26,17 @@ vi.mock('react-router-dom', async (importOriginal) => {
 const openDonnyWithContextMock = vi.fn();
 const sendMessageMock = vi.fn();
 const registerInlineConversationMock = vi.fn(() => vi.fn());
+const retryLoadMessagesMock = vi.fn();
 const donnyState = {
   // Defaults to READY. A null conversation is the cold-load window, which the
   // queueing tests below opt into explicitly.
   conversation: { id: 'c1' } as { id: string } | null,
   messages: [] as unknown[],
+  // Defaults to READY, like `conversation`. The cold-load window — history
+  // query still in flight, so `messages` is `[]` while a thread exists on the
+  // server — is opted into explicitly by the race test below.
+  messagesLoaded: true,
+  messagesErrored: false,
   isStreaming: false,
   streamingContent: '',
   error: null as string | null,
@@ -41,6 +47,7 @@ vi.mock('@/contexts/DonnyProvider', () => ({
     sendMessage: sendMessageMock,
     registerInlineConversation: registerInlineConversationMock,
     retry: vi.fn(),
+    retryLoadMessages: retryLoadMessagesMock,
     avatarState: 'idle',
     userRole: 'business_client',
     close: vi.fn(),
@@ -110,8 +117,58 @@ function renderHome() {
   );
 }
 
+/** Type into the composer and submit — the page shows only what was asked HERE. */
+function askOnPage(text = 'plan my week') {
+  const input = screen.getByRole('textbox', { name: /ask donny/i });
+  fireEvent.change(input, { target: { value: text } });
+  fireEvent.submit(input.closest('form')!);
+}
+
+/**
+ * Ask on this page, THEN have the reply start streaming — the real sequence,
+ * and the only one that works: the composer refuses to submit while `busy`, so
+ * a test that sets `isStreaming` before asking cannot ask at all.
+ *
+ * It matters that the ask comes first. `isStreaming` and `error` are global to
+ * the shared Donny state, so the page shows a thread only when the owner asked
+ * HERE — a reply started in the side panel must not open one.
+ */
+function askThenStream(
+  rerender: (ui: React.ReactElement) => void,
+  streamingContent = 'Working on it'
+) {
+  askOnPage();
+  donnyState.isStreaming = true;
+  donnyState.streamingContent = streamingContent;
+  rerender(
+    <MemoryRouter>
+      <DonnyHome />
+    </MemoryRouter>
+  );
+}
+
+/** A minimal assistant message — only the fields DonnyHome/DonnyThread read. */
+function msg(id: string, content: string, created_at = '2026-08-09T23:24:00.000Z') {
+  return {
+    id,
+    conversation_id: 'c1',
+    role: 'assistant',
+    content,
+    tool_calls: null,
+    tool_result: null,
+    rich_card: null,
+    quick_actions: [],
+    created_at,
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  // jsdom implements no scrollIntoView at all, so the follow-the-reply effect
+  // throws the moment a test asks something. Individual tests still install
+  // their own spy when they need to assert on it; this is the floor so that a
+  // test which merely asks does not have to care.
+  Element.prototype.scrollIntoView = vi.fn();
   localStorage.clear();
   profileMock.value = { full_name: 'Joe Castelo', role: 'business_client' };
   pendingMock.data = [];
@@ -121,6 +178,8 @@ beforeEach(() => {
   // the trailing cleanup and leaks state into whatever runs next.
   donnyState.conversation = { id: 'c1' };
   donnyState.messages = [];
+  donnyState.messagesLoaded = true;
+  donnyState.messagesErrored = false;
   donnyState.isStreaming = false;
   donnyState.streamingContent = '';
   donnyState.error = null;
@@ -206,7 +265,13 @@ describe('DonnyHome — the conversation renders in the page', () => {
     expect(screen.queryByRole('log', { name: 'Donny conversation' })).not.toBeInTheDocument();
   });
 
-  it('renders the answer inline once there is one', () => {
+  it('renders the answer inline once the user has asked here', () => {
+    // Asks FIRST, because the page shows only this visit's exchange. Seeding
+    // `messages` alone is a message from a previous visit and correctly renders
+    // nothing — see the fresh-per-visit tests below.
+    const { rerender } = renderHome();
+    askOnPage('how are my instagram posts doing?');
+
     donnyState.messages = [
       {
         id: 'm1',
@@ -220,7 +285,11 @@ describe('DonnyHome — the conversation renders in the page', () => {
         created_at: '2026-08-09T23:24:00.000Z',
       },
     ];
-    renderHome();
+    rerender(
+      <MemoryRouter>
+        <DonnyHome />
+      </MemoryRouter>
+    );
 
     const log = screen.getByRole('log', { name: 'Donny conversation' });
     expect(log).toBeInTheDocument();
@@ -230,9 +299,8 @@ describe('DonnyHome — the conversation renders in the page', () => {
 
   it('shows the thread while a reply is still streaming', () => {
     donnyState.messages = [];
-    donnyState.isStreaming = true;
-    donnyState.streamingContent = 'Based on 1 measu';
-    renderHome();
+    const { rerender } = renderHome();
+    askThenStream(rerender, 'Based on 1 measu');
 
     expect(screen.getByRole('log', { name: 'Donny conversation' })).toBeInTheDocument();
     expect(screen.getByText(/Based on 1 measu/)).toBeInTheDocument();
@@ -246,25 +314,17 @@ describe('DonnyHome — the conversation renders in the page', () => {
   // resolves, so it scrolled here too, and only *sometimes*: with the thread
   // already in the React Query cache the count never grew and it looked
   // correct. jsdom has no scrollIntoView, so it is stubbed rather than spied.
-  it('does not scroll the page when arriving with an existing conversation', () => {
+  it('arriving with an existing conversation shows nothing and scrolls nothing', () => {
+    // Stronger than it used to be. This test previously asserted the thread
+    // rendered but the page did not scroll to it; "every prompt is fresh upon
+    // visit" means the thread is not there to scroll to at all.
     const scrollIntoView = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoView;
-    donnyState.messages = [
-      {
-        id: 'm1',
-        conversation_id: 'c1',
-        role: 'assistant',
-        content: 'Yesterday I said this.',
-        tool_calls: null,
-        tool_result: null,
-        rich_card: null,
-        quick_actions: [],
-        created_at: '2026-08-08T10:00:00.000Z',
-      },
-    ];
+    donnyState.messages = [msg('m1', 'Yesterday I said this.', '2026-08-08T10:00:00.000Z')];
     renderHome();
 
-    expect(screen.getByRole('log', { name: 'Donny conversation' })).toBeInTheDocument();
+    expect(screen.queryByRole('log', { name: 'Donny conversation' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Yesterday I said this/)).not.toBeInTheDocument();
     expect(scrollIntoView).not.toHaveBeenCalled();
     donnyState.messages = [];
   });
@@ -278,6 +338,9 @@ describe('DonnyHome — the conversation renders in the page', () => {
     donnyState.isStreaming = false;
     donnyState.error = 'No active conversation';
     renderHome();
+    // The error belongs to a send made HERE; `error` is global state, so an
+    // error raised by the side panel must not surface on this page.
+    askOnPage();
 
     expect(screen.getByRole('log', { name: 'Donny conversation' })).toBeInTheDocument();
     expect(screen.getByText('No active conversation')).toBeInTheDocument();
@@ -340,13 +403,17 @@ describe('DonnyHome — the conversation renders in the page', () => {
     expect(input.value).toBe('and what about TikTok?');
   });
 
-  it('disables the suggestion chips while a reply is streaming', () => {
-    donnyState.isStreaming = true;
-    renderHome();
+  it('retires the suggestion chips once a reply is streaming', () => {
+    const { rerender } = renderHome();
+    askThenStream(rerender);
 
-    // Same reason as the input: a chip tap mid-reply reaches sendMessage's
-    // silent early return and does nothing, which reads as a broken button.
-    expect(screen.getByRole('button', { name: BUSINESS_SUGGESTIONS[0].label })).toBeDisabled();
+    // Stronger than "disabled", which is what this asserted before the chips
+    // became a cold-start-only affordance. They are gone, so a chip tap into
+    // sendMessage's silent early return is unreachable rather than merely
+    // discouraged — and the room they occupied goes to the thread.
+    expect(
+      screen.queryByRole('button', { name: BUSINESS_SUGGESTIONS[0].label })
+    ).not.toBeInTheDocument();
   });
 
   it('follows the reply down the page once the user asks something here', () => {
@@ -372,6 +439,238 @@ describe('DonnyHome — the conversation renders in the page', () => {
     expect(scrollIntoView).toHaveBeenCalled();
     donnyState.isStreaming = false;
     donnyState.streamingContent = '';
+  });
+});
+
+// The founder, on prod: "On the Desktop the conversation just keep running down
+// endlessly and there's no scroll button." The composer sat ABOVE the thread, so
+// the newest message was the furthest thing from the box you type in.
+//
+// `compareDocumentPosition` is a real fact about the rendered tree, not a class
+// string — it is the strongest thing jsdom can say here, because jsdom loads no
+// CSS and does no layout, so nothing in this file can prove the box is actually
+// bounded on screen. The height/overflow assertions below are CLASS-VALUE PINS
+// and are labelled as such.
+describe('DonnyHome — the composer moves under the conversation', () => {
+  // These cases drive the conversation state with `isStreaming` rather than a
+  // seeded message. Seeded messages are a PREVIOUS visit now, and the dashboard
+  // deliberately shows nothing from one — so a fixture message would leave the
+  // page in its resting arrangement and every assertion here would be about the
+  // wrong layout.
+  const composerForm = () => screen.getByRole('textbox', { name: /ask donny/i }).closest('form')!;
+  const follows = (first: Element, second: Element) =>
+    Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+  it('puts the composer BELOW the conversation once there is one', () => {
+    // Streaming, not seeded messages: the page shows only this visit's thread,
+    // and a reply in flight is this visit by definition. Seeding `messages`
+    // alone is a previous visit and renders nothing.
+    const { rerender } = renderHome();
+    askThenStream(rerender);
+
+    expect(follows(screen.getByRole('log', { name: 'Donny conversation' }), composerForm())).toBe(
+      true
+    );
+  });
+
+  it('keeps the composer above the dashboard body while resting', () => {
+    donnyState.messages = [];
+    renderHome();
+
+    expect(screen.queryByRole('log', { name: 'Donny conversation' })).not.toBeInTheDocument();
+    expect(follows(composerForm(), screen.getByText('Needs your attention'))).toBe(true);
+  });
+
+  it('bounds the conversation block once there is a conversation', () => {
+    // CLASS-VALUE PINS. They pin the values that make the layout work; they do
+    // not prove it works. `max-h`/`min-h` in dvh (never vh — the app document
+    // never scrolls, so iOS toolbars never collapse and vh overshoots) live on
+    // the BLOCK rather than the thread, so the composer's auto-grow eats into
+    // the thread instead of pushing itself off screen.
+    const { rerender } = renderHome();
+    askThenStream(rerender);
+
+    // scroller → DonnyThreadRegion's positioning wrapper → the block.
+    const block = screen.getByRole('log', { name: 'Donny conversation' }).parentElement!
+      .parentElement!;
+    // 12rem, not 26rem: the hero collapses in exactly this state, so the
+    // subtrahend no longer reserves room for an avatar and greeting that are
+    // not rendered. Reserving it anyway would hand the reclaimed ~200px back as
+    // whitespace and leave the thread the size it was.
+    expect(block.className).toContain('max-h-[calc(100dvh-12rem)]');
+    expect(block.className).toContain('min-h-[20rem]');
+    expect(block.className).toContain('flex-col');
+  });
+
+  it('leaves the resting page unbounded — nothing about it changes', () => {
+    donnyState.messages = [];
+    const { container } = renderHome();
+    expect(container.innerHTML).not.toContain('max-h-[calc(100dvh-12rem)]');
+    expect(container.innerHTML).not.toContain('min-h-[20rem]');
+  });
+
+  it('keeps a half-typed follow-up when the first reply turns the page into a conversation', () => {
+    // The composer changes POSITION between the two arrangements. If it also
+    // changed identity it would remount, and whatever was being typed — plus
+    // the focus that was in it — would vanish the instant Donny started
+    // answering. Rendering the wrapper in both states keeps it at the same
+    // child slot, so React reuses the element.
+    donnyState.messages = [];
+    const { rerender } = renderHome();
+
+    askOnPage('the first question');
+    const input = screen.getByRole('textbox', { name: /ask donny/i }) as HTMLTextAreaElement;
+    fireEvent.change(input, { target: { value: 'a follow-up in progress' } });
+
+    donnyState.isStreaming = true;
+    donnyState.streamingContent = 'Working on it';
+    rerender(
+      <MemoryRouter>
+        <DonnyHome />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('log', { name: 'Donny conversation' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /ask donny/i })).toHaveValue(
+      'a follow-up in progress'
+    );
+  });
+});
+
+// Founder, after seeing the bounded thread on prod: "We don't need the
+// conversation from yesterday. Every prompt is fresh upon visit." Donny keeps
+// ONE conversation per user, shared with the side panel, so the dashboard
+// filters it rather than forking it — the panel stays continuous and the model
+// still receives history; only this surface's display is fresh.
+describe('DonnyHome — every visit starts fresh', () => {
+  it('shows nothing from a previous visit, on arrival', () => {
+    donnyState.messages = [msg('old', 'Yesterday I said this.')];
+    renderHome();
+
+    expect(screen.queryByRole('log', { name: 'Donny conversation' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Yesterday I said this/)).not.toBeInTheDocument();
+  });
+
+  it('keeps yesterday out even after asking — only this visit is shown', () => {
+    // The load-bearing one. A wrong baseline would let the whole prior thread
+    // back in the moment the user typed anything.
+    donnyState.messages = [msg('old', 'Yesterday I said this.')];
+    const { rerender } = renderHome();
+
+    askOnPage();
+    donnyState.messages = [msg('old', 'Yesterday I said this.'), msg('new', 'Here is today.')];
+    rerender(
+      <MemoryRouter>
+        <DonnyHome />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/Here is today/)).toBeInTheDocument();
+    expect(screen.queryByText(/Yesterday I said this/)).not.toBeInTheDocument();
+  });
+
+  it('does not treat unloaded history as this visit when the owner asks immediately', () => {
+    // The cold-load race (Codex). `messages` is `[]` while the history query is
+    // in flight, so recording the baseline on tap would record "this user has
+    // no history" — and the whole prior thread would then count as this visit's
+    // and render the moment it arrived. The ask is queued instead, and the
+    // baseline is taken when the send actually happens.
+    donnyState.messagesLoaded = false;
+    donnyState.messages = [];
+    const { rerender } = renderHome();
+
+    askOnPage();
+    expect(sendMessageMock).not.toHaveBeenCalled();
+
+    // History lands a moment later, exactly as it does on a cold dashboard.
+    donnyState.messagesLoaded = true;
+    donnyState.messages = [msg('old', 'Yesterday I said this.')];
+    rerender(
+      <MemoryRouter>
+        <DonnyHome />
+      </MemoryRouter>
+    );
+
+    expect(sendMessageMock).toHaveBeenCalledWith('plan my week');
+    expect(screen.queryByText(/Yesterday I said this/)).not.toBeInTheDocument();
+  });
+
+  it('ignores a reply that is streaming from another surface', () => {
+    // `isStreaming` and `streamingContent` are GLOBAL to the shared Donny
+    // state. Ask in the side panel, walk to the dashboard while it answers, and
+    // without this gate the page collapses its greeting and renders someone
+    // else's in-flight answer as this visit's transcript. (Codex.)
+    donnyState.isStreaming = true;
+    donnyState.streamingContent = 'Answering something you asked in the panel';
+    renderHome();
+
+    expect(screen.queryByRole('log', { name: 'Donny conversation' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/asked in the panel/)).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Welcome back/ })).toBeInTheDocument();
+  });
+
+  it('ignores an error raised by another surface', () => {
+    donnyState.error = 'Something failed in the side panel';
+    renderHome();
+
+    expect(screen.queryByRole('log', { name: 'Donny conversation' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/failed in the side panel/)).not.toBeInTheDocument();
+  });
+
+  it('says so, and offers a working retry, when the history cannot be loaded', () => {
+    // The third option. Sending anyway takes a baseline from an empty array and
+    // lets the whole conversation back in when the query recovers (Codex, on my
+    // own fix for the deadlock); waiting silently is a prompt that never sends.
+    // So: say it, and offer the retry that repairs the cause.
+    donnyState.messagesLoaded = false;
+    donnyState.messagesErrored = true;
+    renderHome();
+
+    askOnPage();
+    expect(sendMessageMock).not.toHaveBeenCalled();
+    expect(screen.getByText(/couldn't load your conversation/i)).toBeInTheDocument();
+
+    const tryAgain = screen.getByRole('button', { name: 'Try Again' });
+    fireEvent.click(tryAgain);
+    expect(retryLoadMessagesMock).toHaveBeenCalled();
+  });
+
+  it('sends the waiting question itself once the history recovers', () => {
+    // The queued ask is KEPT across the failure, so a successful refetch drains
+    // it without the owner retyping a word.
+    donnyState.messagesLoaded = false;
+    donnyState.messagesErrored = true;
+    const { rerender } = renderHome();
+    askOnPage('what should I post this week?');
+
+    donnyState.messagesErrored = false;
+    donnyState.messagesLoaded = true;
+    donnyState.messages = [msg('old', 'Yesterday I said this.')];
+    rerender(
+      <MemoryRouter>
+        <DonnyHome />
+      </MemoryRouter>
+    );
+
+    expect(sendMessageMock).toHaveBeenCalledWith('what should I post this week?');
+    // And the recovered history is still history — not this visit's.
+    expect(screen.queryByText(/Yesterday I said this/)).not.toBeInTheDocument();
+  });
+
+  it('collapses the greeting once the conversation starts, and restores it when resting', () => {
+    // ~200px of avatar + greeting + subtitle, which on a phone is the
+    // difference between a readable thread and a letterbox. The label row and
+    // the dashboard body survive in both states.
+    const cold = renderHome();
+    expect(screen.getByRole('heading', { name: /Welcome back/ })).toBeInTheDocument();
+    expect(screen.getByText('Restaurant Dashboard')).toBeInTheDocument();
+    cold.unmount();
+
+    const warm = renderHome();
+    askThenStream(warm.rerender);
+    expect(screen.queryByRole('heading', { name: /Welcome back/ })).not.toBeInTheDocument();
+    expect(screen.getByText('Restaurant Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Needs your attention')).toBeInTheDocument();
   });
 });
 

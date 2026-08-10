@@ -23,6 +23,19 @@ interface DonnyHomePromptProps {
   onSuggestionTap: (suggestion: DonnySuggestion) => void;
   /** A reply is in flight. Mirrors the panel, which disables its own input. */
   busy?: boolean;
+  /**
+   * A conversation is running, so this is a chat composer rather than the
+   * page's hero: no suggestion chips, and no gap reserved for them.
+   *
+   * The chips are a cold-start affordance — "Create a campaign" is help for
+   * someone who has not asked anything yet. Keeping them mid-conversation
+   * spends a fifth of a phone screen suggesting openers to someone already past
+   * that, and pushes the thread further up.
+   *
+   * Named for what it does, not for a viewport: the trigger is the
+   * conversation, and it applies on desktop too.
+   */
+  compact?: boolean;
 }
 
 export function DonnyHomePrompt({
@@ -30,6 +43,7 @@ export function DonnyHomePrompt({
   onSubmit,
   onSuggestionTap,
   busy = false,
+  compact = false,
 }: DonnyHomePromptProps) {
   const [text, setText] = React.useState('');
   const fieldRef = React.useRef<HTMLTextAreaElement>(null);
@@ -81,13 +95,20 @@ export function DonnyHomePrompt({
   return (
     // RESTAURANT_TOUR step 2 targets this anchor. It used to live on
     // HeroPrimaryAction, which this body replaces.
-    <div data-tour="brief-generator" className="space-y-4">
+    <div data-tour="brief-generator" className={compact ? undefined : 'space-y-4'}>
       <form
         onSubmit={handleSubmit}
-        // The page's primary control, so it is sized and weighted like one: a
-        // 2px teal border and a soft teal fill instead of a hairline on white,
-        // which left it flat against the page ground.
-        className="flex w-full flex-col gap-2 rounded-3xl border-2 border-dc-teal bg-dc-teal/[0.06] px-5 py-4 shadow-dc-sm focus-within:border-dc-teal-dark focus-within:ring-2 focus-within:ring-dc-teal/40"
+        // One quiet outline. Founder, on prod: "there a border around prompt
+        // input which is unneccessary." It was a 2px teal border over a teal
+        // fill, and on focus it added a ring on top of that while the textarea
+        // contributed an outline of its own — three signals for one state, read
+        // as a double border. Now it is the documented light-app card treatment
+        // (hairline dc-teal on white, docs/DESIGN_SYSTEM.md), and focus is
+        // EXACTLY one change: the same hairline darkens to dc-teal-btn. Dark
+        // teal rather than dc-teal because this border is now the only focus
+        // indicator on the composer — #0F766E clears 3:1 against white,
+        // #4DD9C0 does not. The width never changes, so nothing reflows.
+        className="flex w-full flex-col gap-2 rounded-3xl border border-dc-teal/20 bg-white px-5 py-4 shadow-dc-sm focus-within:border-dc-teal-btn"
       >
         <textarea
           ref={fieldRef}
@@ -101,7 +122,16 @@ export function DonnyHomePrompt({
           // disabled, so nothing is sent into the silent early return in
           // useDonny.sendMessage.
           placeholder={busy ? 'Donny is answering…' : 'Ask Donny anything…'}
-          className="w-full resize-none overflow-y-auto bg-transparent text-base text-dc-text placeholder:text-dc-text/60 focus:outline-none lg:text-lg"
+          // `focus:outline-none` alone does NOT hold, which is why the founder's
+          // screenshot shows a second outline inside the border. src/index.css
+          // has a global `*:focus-visible { ring-2 ring-ring ring-offset-2 }` in
+          // @layer base, and a Tailwind ring is a BOX-SHADOW — outline-none
+          // cannot touch it. ring-0 alone is not enough either: the ring shadow
+          // is drawn at calc(width + offset), so a 0-width ring with a 2px
+          // offset still paints. Both are needed, and being utilities they beat
+          // the base layer regardless of specificity. Focus stays visible — the
+          // form's focus-within border above is the indicator now.
+          className="w-full resize-none overflow-y-auto bg-transparent text-base text-dc-text placeholder:text-dc-text/60 focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 lg:text-lg"
         />
         <div className="flex items-center gap-3">
           {/* md:, not sm: — the hint has to appear at exactly the width where
@@ -125,18 +155,20 @@ export function DonnyHomePrompt({
         </div>
       </form>
 
-      <div className="flex flex-wrap justify-center gap-2">
-        {suggestions.map((s) => (
-          <AppChip
-            key={s.message}
-            className="text-dc-teal-btn border-dc-teal/30 disabled:opacity-50"
-            disabled={busy}
-            onClick={() => onSuggestionTap(s)}
-          >
-            {s.label}
-          </AppChip>
-        ))}
-      </div>
+      {!compact && (
+        <div className="flex flex-wrap justify-center gap-2">
+          {suggestions.map((s) => (
+            <AppChip
+              key={s.message}
+              className="text-dc-teal-btn border-dc-teal/30 disabled:opacity-50"
+              disabled={busy}
+              onClick={() => onSuggestionTap(s)}
+            >
+              {s.label}
+            </AppChip>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

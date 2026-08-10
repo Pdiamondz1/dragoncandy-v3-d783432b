@@ -91,11 +91,97 @@ rather than being solved**.
 Hazards 1 and 6 are closed by extracting **`DonnyThread`** from `DonnyChatView`: one implementation
 for both surfaces, rendering **no panel header** (an inline collapse/close is the "two Donnys on one
 screen" hazard) and owning **no scroll container and no `h-full`**, because those differ per surface
-— the panel is a fixed-height flex column that scrolls itself, the dashboard sits in normal page
-flow scrolled by `#main-content`.
+— the panel is a fixed-height flex column that scrolls itself, and the dashboard supplies
+**`DonnyThreadRegion`** (see below). *(Through #423 the dashboard sat in normal page flow scrolled by
+`#main-content`; that is what #429 replaced.)*
+
+### The page stopped growing, and then stopped remembering (#429, #428)
+
+The founder used the shipped Phase B on prod and filed the same defect twice, in two different
+words — *"On the Desktop the conversation just keep running down endlessly and there's no scroll
+button"* and *"the conversation just runs down endlessly on the mobile and desktop versions is a bad
+UX design… once the conversation reaches the 'page length' there needs to be a scroller."* **Two
+sessions picked those up in parallel and both built a bounded scroller.** #429 merged first and is
+the one that shipped; the other branch was reset onto it and rebuilt to carry only the remainder.
+The duplicate was **discarded, not merged** — two implementations of one behaviour is worse than
+either. See "What review caught" below for how the collision was found, because it was not found by
+looking.
+
+**#429 — the thread became a real scroll container.** `DonnyThreadRegion` owns a bounded scroller
+with the composer as a plain flex sibling **beneath** it and a scroll-to-bottom control that appears
+only when the reader is away from the bottom (follow-the-reply is suppressed for a reader who has
+scrolled up — yanking them back is the defect the control exists to let them undo).
+
+Two things in it are worth keeping past this feature:
+
+- **Not `position: sticky` for the composer — it is INERT anywhere inside `DashboardLayout`.** The
+  layout root and the mobile content wrapper carry `overflow-x-hidden`, and per CSS Overflow 3 a
+  non-visible overflow on one axis computes the other to `auto`, making them the nearest scroll
+  container. Both are `min-h-screen` with content-driven height, so neither ever scrolls and a
+  sticky composer silently never pins.
+- **`min-h-0 flex-1`, never `h-full`.** A percentage height only resolves against a parent whose
+  `height` *property* is definite; every ancestor here uses `min-h`/`max-h` and leaves `height:
+  auto`, so it fell back to content height. Measured on the real page: the scroller computed to
+  **8337px inside a 145px parent**, so `overflow-y-auto` had nothing to overflow and the thread
+  painted straight over the attention list. **jsdom cannot catch this class** — it performs no
+  layout, so a class-value pin passes on the broken version too. The proof is a DOM measurement in a
+  real browser.
+
+**#428 — the page stopped showing yesterday.** *"We don't need the conversation from yesterday.
+Every prompt is fresh upon visit."* Donny keeps ONE conversation per user, shared with the side
+panel, so the dashboard **filters** it rather than forking it: the panel stays continuous, the model
+still receives its history, and only this surface's display is fresh. `visitBaselineId` is the id of
+the last message present when the user first asked here; `visitMessages` is everything after it, and
+`hasConversation` keys on that — so arriving with yesterday's thread leaves the page resting.
+
+**Slice by id, never by count or by clock.** Late-arriving history lands *before* the baseline in the
+ordered array and stays excluded, and no client clock is involved — a skewed one would hide the very
+reply the user is waiting for.
+
+The **greeting collapses** to its label row once a conversation runs (founder's choice), and the
+block's max-height drops **26rem → 12rem** to match. The second half is load-bearing: reserving room
+for a hero that is no longer rendered hands the reclaimed ~200px back as whitespace and leaves the
+thread exactly the size it was. **A collapse that frees space must also spend it**, or the only
+visible change is that something disappeared.
 
 ## Decisions worth keeping
 
+- **Global state is not this page's state.** `isStreaming` and `error` belong to the ONE conversation
+  the dashboard and the side panel share. Ask in the panel, walk to the dashboard while the reply
+  streams, and `isBusy` is true with `visitMessages` empty — so the page collapsed its greeting and
+  rendered someone else's in-flight answer as this visit's transcript. **The leak the filtering
+  exists to stop, arriving through the door next to the one that was locked.** Gated on `askedHere`
+  (baseline set, or an ask queued). Found by Codex; the fact that five existing tests had to change
+  to `askThenStream()` is the evidence it was real — they only ever passed because the page keyed off
+  global streaming.
+- **When a flag answers "is it safe to act", failure is a THIRD answer, not a vote for either.**
+  `messagesLoaded` gates the fresh-per-visit baseline. Counting a *failed* history fetch as loaded
+  leaks (an empty array becomes "no history", and the conversation reappears when the query
+  recovers); counting it as not-loaded hangs (every ask queues behind a flush guarded on the same
+  flag — a prompt that never sends and never explains itself, the dead-control class again). **Both
+  collapses are guesses.** The answer is a separate `messagesErrored` + `retryLoadMessages`: the page
+  says *"I couldn't load your conversation just now"* with a Try Again, **keeps the queued ask**, and
+  the flush that was already waiting drains it on recovery — so the retry repairs the cause and
+  nothing is retyped. Codex caught this **on the fix for its own previous finding**, which is the
+  useful part: a fix that trades one failure for its opposite is not progress.
+- **An empty collection is three different facts.** `messages` defaults to `[]` and its query is
+  `enabled: !!conversation`, so an empty array means "conversation still loading", "history query in
+  flight", or "genuinely none" — and only the third is a fact about the world. Recording the
+  fresh-per-visit baseline from `[]` therefore wrote *"this user has no history"* during a cold load,
+  and the whole prior thread counted as this visit the moment it arrived. Hence `messagesLoaded`,
+  and hence it is **`isSuccess && !isFetching`**, not `isSuccess`: React Query keeps `isSuccess` true
+  while a background refetch runs over **cached** data, so `isSuccess` answers *"have we ever
+  loaded"* — which is not the question. Both halves found by Codex. **Generalises: any code reading
+  `length === 0` as evidence about the world rather than about the array is one slow network away
+  from being wrong.**
+- **A prop named after a viewport is wrong the moment the trigger changes.** The chips-and-density
+  switch was briefly `pinned` ("mobile, mid-conversation"); the real condition is "mid-conversation,
+  any width". `compact` describes what the component does and survived the change intact.
+- **The suggestion chips are cold-start help and retire with the hero.** "Create a campaign" is for
+  someone who has not asked anything yet; keeping them mid-conversation spends a fifth of a phone
+  screen suggesting openers to someone already past that. The test asserts **absence**, not
+  `disabled` — which also makes a chip tap into `sendMessage`'s silent early return unreachable
+  rather than merely discouraged.
 - **The location-setup blocker is returned separately from the capped list.** It blocks
   campaign creation, promotions *and* DragonShare; ranked below three pending applications it
   would vanish. Structure, not a priority number, keeps it visible.
@@ -171,6 +257,30 @@ one survived the plan's own self-review:
 3. **Two applicants on one campaign minted the same proposal id** — React duplicate-key
    warning, and dismissing one silenced the other. **The normal marketplace case.**
 4. **Codex: date-only deadlines compared as instants** — see below.
+
+### The collision nobody looked for (#428 vs #429)
+
+The most expensive miss on this feature was not a defect — it was **building something that had
+already been built**. Two sessions took the founder's two phrasings of one complaint and both
+implemented a bounded scroller. #429 merged; #428 spent hours on a parallel implementation, plus
+five review rounds on a fixed-composer mechanism that #429's approach makes unnecessary.
+
+**It was found by accident.** A Codex finding about missing `space-y-3` prompted a look at how the
+side panel spaced its thread — and `origin/main` turned out to contain a `DonnyThreadRegion` that
+did not exist when the branch started.
+
+**The check that would have caught it had been run that morning, and came back clean, because it was
+pointed at the wrong paths.** `[scope]` (`git log --oneline HEAD..origin/main -- <paths>`) was run
+against the **core docs**; `origin/main` was docs-clean and said nothing about
+`src/components/donny/`. **Run it against the source files the branch touches**, not only the docs
+the knowledge-sync will edit. On a repo with 30+ worktrees, *"has someone already shipped this?"* has
+a real answer available in one command.
+
+The second half of the lesson: **when the parallel implementation landed first and is better, delete
+yours.** #429's is better on every axis — a scroll-to-bottom control, and the `min-h-0 flex-1`
+measurement that no test in the other branch could have produced. Rebuilding on top of it cost an
+hour and removed an entire duplicate mechanism. The instinct to merge both, or to defend work
+already done, produces two answers to one question.
 
 ### The deadline bug is the durable one
 

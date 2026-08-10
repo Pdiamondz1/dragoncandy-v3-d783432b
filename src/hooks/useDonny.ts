@@ -92,7 +92,13 @@ export function useDonny(options?: UseDonnyOptions) {
   });
 
   // Load messages
-  const { data: messages = [] } = useQuery({
+  const {
+    data: messages = [],
+    isSuccess: messagesFetched,
+    isFetching: messagesFetching,
+    isError: messagesErrored,
+    refetch: refetchMessages,
+  } = useQuery({
     queryKey: ['donny-messages', conversation?.id],
     queryFn: async () => {
       if (!conversation) return [];
@@ -388,6 +394,32 @@ export function useDonny(options?: UseDonnyOptions) {
 
   const quickChips = DEFAULT_QUICK_CHIPS[profile?.role ?? 'business_client'] ?? [];
 
+  // Whether `messages` currently reflects the server — NOT the same question as
+  // `messages.length === 0`. The query defaults to `[]` and is
+  // `enabled: !!conversation`, so an empty array means "conversation still
+  // loading", "history query in flight", or "genuinely none", and only the
+  // third is a fact a caller can act on. A caller that must tell them apart —
+  // DonnyHome, which shows only the current visit — cannot do it from
+  // `messages`.
+  //
+  // `!isFetching` as well as `isSuccess`, because React Query keeps `isSuccess`
+  // true while a background refetch runs against CACHED data. With the thread
+  // already cached from the side panel, readiness would be announced over a
+  // stale array, and anything added since (another tab, another device) would
+  // land after a baseline taken from it. `isSuccess` alone answers "have we
+  // ever loaded"; this answers "is what I am holding current".
+  //
+  // A FAILED fetch is deliberately NOT loaded. Counting it as loaded was the
+  // obvious way to stop a failing query queueing sends forever, and it quietly
+  // reintroduced the very leak this flag exists to prevent: on error `data` is
+  // undefined, so `messages` is the `[]` default, a baseline taken from it says
+  // "no history", and the moment the query recovers the whole conversation
+  // counts as the current visit. (Codex, twice — the second time on my own
+  // fix.) The deadlock is real but it is the CALLER's to solve, with
+  // `messagesErrored` below, by telling the user rather than by pretending the
+  // empty array is an answer.
+  const messagesLoaded = messagesFetched && !messagesFetching;
+
   const state: DonnyState = {
     conversation: conversation ?? null,
     messages,
@@ -397,8 +429,17 @@ export function useDonny(options?: UseDonnyOptions) {
     error,
   };
 
+  const retryLoadMessages = useCallback(() => {
+    void refetchMessages();
+  }, [refetchMessages]);
+
   return {
     ...state,
+    messagesLoaded,
+    // The history load FAILED, as opposed to "has not finished". A surface that
+    // waits on `messagesLoaded` needs this to end the wait honestly.
+    messagesErrored,
+    retryLoadMessages,
     sendMessage,
     clearChat,
     archiveConversation,
