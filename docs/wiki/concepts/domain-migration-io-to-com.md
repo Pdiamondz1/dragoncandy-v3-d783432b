@@ -3,14 +3,14 @@ title: Domain Migration (.io → .com)
 type: concept
 created: 2026-08-09
 updated: 2026-08-10
-sources: [2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md, 2026-08-09-ios-testflight-first-build.md, 2026-08-10-dotcom-phase2-canonical-switch.md]
-tags: [domain, dns, cors, auth, vercel, migration]
+sources: [2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md, 2026-08-09-ios-testflight-first-build.md, 2026-08-10-dotcom-phase2-canonical-switch.md, 2026-08-10-dotcom-phase3-permanent-redirect.md]
+tags: [domain, dns, cors, auth, vercel, migration, seo]
 ---
 # Domain Migration (.io → .com)
 
-Moving production from `dragoncandy.io` to `dragoncandy.com`. `.io` stays registered and
-eventually 301s to `.com`, so existing invite links, verification emails, bookmarks and search
-results keep working and SEO authority transfers.
+Moving production from `dragoncandy.io` to `dragoncandy.com`. `.io` stays registered and — since
+**2026-08-10** — permanently **308**s to `.com`, so existing invite links, verification emails,
+bookmarks and search results keep working and SEO authority transfers.
 
 ## Governing principle: expand → switch → redirect → contract
 
@@ -147,16 +147,110 @@ digest is a plain SHA-256 of the value, so a candidate can be tested for exact e
 value without ever seeing it. Works for any low-cardinality secret (a URL, a domain, a flag);
 useless against a real key, which is precisely why it is safe.
 
+## Phase 3 — REDIRECT (live 2026-08-10)
+
+All three `.io` hosts issue a permanent **308**, configured per-domain in the Vercel dashboard
+(not `vercel.json`, which holds only the SPA rewrite — matching how `www.com` → apex was already
+done):
+
+| From | Code | To |
+|---|---|---|
+| `dragoncandy.io` | 308 | `dragoncandy.com` |
+| `www.dragoncandy.io` | 308 | `dragoncandy.com` |
+| `internal.dragoncandy.io` | 308 | `internal.dragoncandy.com` |
+
+`www.io` targets the **apex**, one hop, rather than chaining through `www.com`'s own 308. And
+`internal.io` targets `internal.com` — the dropdown makes the apex the easy wrong answer, which
+would have dumped internal users into the consumer app.
+
+**308, not the plan's literal 301.** Google consolidates them identically, 308 additionally
+preserves method and body, and `www.com` → apex was already 308.
+
+### Temporary first, then promote
+
+Configured as **307** on all three, verified, and only then promoted. The costs are asymmetric: a
+permanent redirect is cached by browsers indefinitely and **cannot be revoked per user**, so a
+mistake strands them; a 307 reverts in one click. The soak is also the only window in which
+verification can happen at all — **you cannot test a redirect that does not exist yet**. Vercel
+defaults a new domain redirect to 307, so this is the path of least resistance, not extra work.
+
+### The fragment is the check that matters
+
+Path and query survive verbatim, URL-encoding intact (`?returnTo=%2F…&invite=…`, and the internal
+OAuth callback's `code`/`state`). But the decisive test was the **hash fragment**, proven in a
+real browser: `.io/help#fragment-survival-probe` → `.com/help#fragment-survival-probe`.
+
+GoTrue returns the session in `#access_token=…`. Fragments are **never sent to the server**, so
+nothing on the wire can show this and a curl-only check would have "passed" while proving nothing.
+They survive only because browsers re-attach a fragment to a redirect target that has none. Had
+that failed, every in-flight verification email would have silently logged nobody in.
+
+`.io` remains allow-listed in GoTrue (verified with an unlisted control) so those links still
+resolve before redirecting. An old bookmark to a protected route degrades correctly:
+`.io/dashboard/business` → `.com/auth`.
+
+### Mail was structurally out of reach
+
+`notify.dragoncandy.io` is a **Cloudflare mail subdomain never attached to Vercel**, and Vercel
+redirects are per-attached-domain — so DKIM and every `from:` were untouchable by this change.
+Phase 5 stays fully independent.
+
+### The re-login begins at the *first* redirect, not at the permanent one
+
+Sessions are origin-scoped `localStorage`, so the forced sign-in follows the **origin change** —
+it starts the moment any redirect goes live, 307 included, not when it becomes permanent. Worth
+telling the ~42 real users rather than surprising them; and the window for telling them opens
+earlier than "Phase 3" reads.
+
+### Search Console: the plan assumed a property that never existed
+
+Phase 3's plan said "add the `.com` property, submit the sitemap, file Change of Address."
+Checking instead of executing found **no Search Console properties at all** — the first-run
+welcome screen.
+
+- **Change of Address is impossible, not deferred** — it needs a verified *source* property and
+  there is nothing to transfer from. It also matters less than it sounds: the **308 is what
+  passes ranking signals**; Change of Address only clarifies and accelerates.
+- **`.io` is now verifiable only by DNS TXT.** Since it 308s *everything*, HTML-file and
+  meta-tag verification are structurally dead — the verification file would redirect away.
+
+`?authuser=<email>` **silently fell back** to the signed-in account rather than erroring — the
+same shape as the GoTrue allow-list, and the reason to check the *resulting* state rather than
+trust that a request did what it said.
+
+Artifacts were verified before being offered to Google: `sitemap.xml` holds **5 `.com` entries
+and 0 `.io`**. Submitting a sitemap still listing `.io` would instruct Google to crawl the domain
+we had just told it to abandon — worse than submitting nothing.
+
+### Anchor text that disagrees with its own href — a class, not an instance
+
+Twice now a domain move updated an `href` and left the visible link **text** behind, rendering
+`<a href="…com">…io</a>`. That is not cosmetic: it is precisely the shape mail filters score as
+phishing, and both instances were in **auth** email — the internal invite that carries a
+password-set flow (`manage-internal-users`, fixed by hand in `8f2312ae`) and, discovered on
+2026-08-10, the **consumer signup verification** email (`send-verification-email`), which is
+higher volume and was missed because the first fix patched a file rather than the pattern.
+
+Fixed by **deriving the label from the href** rather than writing a corrected string:
+
+```ts
+const appUrlLabel = appUrl.replace(/^https?:\/\//, '');
+```
+
+Deriving matters most where the href is chosen at **runtime** — `send-verification-email`'s
+`appUrl` is trusted-request-origin, else `APP_URL`, else `DEFAULT_ORIGIN`, so *any* hardcoded
+label is a mismatch waiting to happen. The same derivation was applied to `manage-internal-users`,
+whose labels are correct today but are hardcoded duplicates of a constant — which is exactly how
+the first drift happened. That edit is behaviour-identical and removes the recurrence vector.
+A repo-wide sweep found no further instances.
+
+**Both functions need a redeploy for this to reach users** — see
+[[Edge-Function Deploy & Bundling]].
+
 ## Remaining phases
 
-- **Phase 3 — REDIRECT.** Path-preserving 301 on all three `.io` domains. **Keep `.io` in every
-  allow-list** — in-flight email links and cached SPA sessions still need it.
 - **Phase 4 — content/knowledge**, **Phase 5 — mail** (deferred; a dead support address is
   worse than an old one), **Phase 6 — CONTRACT** (optional; recommendation: don't).
-
-**Sessions are origin-scoped `localStorage`.** Anyone logged in on `.io` will not be logged in
-on `.com` and must sign in again. Unavoidable, not a bug — worth telling the ~42 real users
-rather than surprising them.
 
 ## Must NOT change
 
@@ -178,8 +272,8 @@ synthetic-user safety spine keys on.
 
 - ~~The `www`→apex redirect is not live on either domain~~ — **resolved 2026-08-10 on `.com`.**
   Apex is now canonical and `www` → apex is a 308, path- and query-preserving (verified). The
-  `.io` side is unchanged and still returns 200 on `www`; it is a pre-existing `.io` bug and
-  Phase 3 supersedes it.
+  `.io` side was still returning 200 on `www` at that point; **Phase 3 superseded it on
+  2026-08-10** — `www.dragoncandy.io` now 308s straight to the `.com` apex.
 - ~~Auth-gated surfaces are unverified on `.com`~~ — **resolved 2026-08-10.** Desktop verified
   in the founder's signed-in Chrome with direct CORS measurement; mobile confirmed by the
   founder. This closes the last open item on the Phase 1 gate.
@@ -192,6 +286,22 @@ synthetic-user safety spine keys on.
   [[Edge-Function Deploy & Bundling]].
 - **Open:** the ~77 edge functions outside the Phase 1 fan-out still carry the pre-`.com`
   `DEFAULT_ORIGIN` until redeployed. Harmless (see Phase 2 above) and nothing forces it.
+- **Open (founder):** the `dragoncandy.com` Search Console property. Founder chose to add it
+  under `info@dragoncandy.com`, which is **not signed into the browser profile**, and Claude does
+  not enter credentials. Once signed in: Add property → Domain → DNS TXT at GoDaddy → submit
+  sitemap. The TXT record is additive and does not touch the Workspace MX.
+- ~~The `DEFAULT_ORIGIN` doc comment asserted `PUBLIC_SITE_URL` "does not exist on prod"~~ —
+  **false within the hour it was written**, and it shipped inside 15 deployed bundles. Resolved
+  2026-08-10. The lesson is *not* "update the fact": **a code comment cannot track mutable deploy
+  state, so it must not try to** — restating today's truth re-arms the same trap. The comment now
+  describes the mechanism and names the check. This one is notable because it is the same
+  staleness pattern this page documents, committed **by the page's own author, in the same
+  session that wrote the warning**.
+- **Needs confirming:** `PROJECT_CONTEXT.md` §5 lists `google-chat-donny` as blocked on
+  "creating the DragonCandy Workspace org", but a `dame@dragoncandy.com` Google account is
+  visible in the founder's account switcher and `.com` MX points at Google. Strong evidence the
+  org already exists — i.e. the bot may be blocked on something already done. Not directly
+  verified in the Admin console, so recorded as a lead, not a correction.
 
 ## See Also
 

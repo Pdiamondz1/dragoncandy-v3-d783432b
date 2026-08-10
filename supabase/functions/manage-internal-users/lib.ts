@@ -62,6 +62,17 @@ function esc(s: string): string {
 }
 
 export const INTERNAL_HOST_URL = 'https://internal.dragoncandy.com';
+
+/**
+ * Visible link text, derived from the href above rather than written out.
+ *
+ * These two were hardcoded and went stale the moment `INTERNAL_HOST_URL` moved
+ * to .com in Phase 2, rendering <a href="...com">...io</a> in the email that
+ * carries the password-set flow — the shape mail filters score as phishing.
+ * That was fixed by hand (8f2312ae); deriving it means the next time this
+ * constant moves, the label cannot be left behind.
+ */
+export const INTERNAL_HOST_LABEL = INTERNAL_HOST_URL.replace(/^https?:\/\//, '');
 export const INVITE_SUBJECT = 'Your invitation to DragonCandy AIOS';
 export const GRANTED_SUBJECT = 'You now have access to DragonCandy AIOS';
 
@@ -87,7 +98,7 @@ function shell(inner: string): string {
       <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
       <p style="font-size: 12px; color: #9ca3af; text-align: center;">
         DragonCandy · Hoboken, NJ · internal use only<br>
-        <a href="${INTERNAL_HOST_URL}" style="color: #0F766E; text-decoration: none;">internal.dragoncandy.com</a>
+        <a href="${INTERNAL_HOST_URL}" style="color: #0F766E; text-decoration: none;">${INTERNAL_HOST_LABEL}</a>
       </p>
     </div>
   </body>
@@ -117,7 +128,7 @@ export function buildInviteEmailHtml(args: {
       </p>
       <p style="font-size: 16px; color: #374151;">
         Click below to set your password. Afterwards, sign in any time at
-        <a href="${INTERNAL_HOST_URL}" style="color: #0F766E;">internal.dragoncandy.com</a>.
+        <a href="${INTERNAL_HOST_URL}" style="color: #0F766E;">${INTERNAL_HOST_LABEL}</a>.
       </p>
       ${ctaButton(args.actionLink, 'Set your password')}
       <p style="font-size: 14px; color: #6b7280;">

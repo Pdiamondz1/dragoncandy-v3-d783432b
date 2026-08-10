@@ -1,5 +1,25 @@
 # Wiki Log
 
+## [2026-08-10] ingest | [[Domain Migration (.io → .com)]] Phase 3 — the permanent redirect
+
+Ingested `raw/sessions/2026-08-10-dotcom-phase3-permanent-redirect.md` by **compounding onto
+the existing concept page** again — same reasoning as Phase 2: one page holds the phase
+sequence.
+
+**Pages updated:** `concepts/domain-migration-io-to-com.md` (new Phase 3 section — the 308
+table, temporary-then-promote, the fragment proof, Search Console, and the anchor-text class;
+`Remaining phases` reduced to 4–6; the `.io` `www` Known Issue closed; three new Known Issues
+including one defect I authored), `index.md`, this log. **No new page.**
+
+**Worth carrying forward.** Three findings generalise past this migration: (1) a redirect can
+be fully correct on the wire and still break every login, because the auth token rides in a
+**fragment** that never reaches the server — it must be proven in a browser; (2) **Change of
+Address was impossible**, not pending, because no Search Console property had ever existed —
+the plan asserted a prerequisite nobody had checked; (3) the `PUBLIC_SITE_URL` comment defect
+was committed **by this page's own author in the same session that wrote its staleness
+warning**, which is the strongest evidence yet that the fix is structural (don't assert mutable
+prod state in a comment) rather than a matter of care.
+
 ## [2026-08-10] ingest | [[Domain Migration (.io → .com)]] Phase 2 — canonical switch
 
 Ingested `raw/sessions/2026-08-10-dotcom-phase2-canonical-switch.md` by **compounding onto
