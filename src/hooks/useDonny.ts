@@ -92,7 +92,11 @@ export function useDonny(options?: UseDonnyOptions) {
   });
 
   // Load messages
-  const { data: messages = [] } = useQuery({
+  const {
+    data: messages = [],
+    isSuccess: messagesFetched,
+    isFetching: messagesFetching,
+  } = useQuery({
     queryKey: ['donny-messages', conversation?.id],
     queryFn: async () => {
       if (!conversation) return [];
@@ -388,6 +392,22 @@ export function useDonny(options?: UseDonnyOptions) {
 
   const quickChips = DEFAULT_QUICK_CHIPS[profile?.role ?? 'business_client'] ?? [];
 
+  // Whether `messages` currently reflects the server — NOT the same question as
+  // `messages.length === 0`. The query defaults to `[]` and is
+  // `enabled: !!conversation`, so an empty array means "conversation still
+  // loading", "history query in flight", or "genuinely none", and only the
+  // third is a fact a caller can act on. A caller that must tell them apart —
+  // DonnyHome, which shows only the current visit — cannot do it from
+  // `messages`.
+  //
+  // `!isFetching` as well as `isSuccess`, because React Query keeps `isSuccess`
+  // true while a background refetch runs against CACHED data. With the thread
+  // already cached from the side panel, readiness would be announced over a
+  // stale array, and anything added since (another tab, another device) would
+  // land after a baseline taken from it. `isSuccess` alone answers "have we
+  // ever loaded"; this answers "is what I am holding current".
+  const messagesLoaded = messagesFetched && !messagesFetching;
+
   const state: DonnyState = {
     conversation: conversation ?? null,
     messages,
@@ -399,6 +419,7 @@ export function useDonny(options?: UseDonnyOptions) {
 
   return {
     ...state,
+    messagesLoaded,
     sendMessage,
     clearChat,
     archiveConversation,
