@@ -1,5 +1,36 @@
 # Wiki Log
 
+## [2026-08-10] ingest | [[Notification Delivery]] — every href was caller-chosen (#442)
+
+Ingested `raw/sessions/2026-08-10-email-link-injection.md`, compounding onto
+[[Notification Delivery]] — third entry in one day on that page (#419 → #440 → #442), all
+tracing to the same structural fact it already documented: *the recommended path around the
+self-only gate has no gate of its own.*
+
+- New section "Every href was caller-chosen": ~30 templates built every `href` from
+  caller-supplied `data` with no check, reachable because `create-notification` spreads the
+  request body verbatim and calls with the **service key**.
+- Durable technique recorded: **`safeLink` discards the host rather than validating it** —
+  parse relative to our origin, keep only `pathname + search + hash`. One rule covers absolute,
+  protocol-relative, backslash, userinfo, `javascript:`/`data:`, CRLF and encoded traversal at
+  once. *Validation enumerates what is bad; discarding keeps only what is good.*
+- Recorded the **regression the fix had to avoid**: `budget: 0` is real (crew campaigns are
+  free), so `?? ''` would have printed "Budget: $0" on every free-campaign email —
+  **escaping must not change what renders** — and money is *coerced* not escaped because two
+  amounts sit in the subject, where `&amp;` renders literally and CRLF is header injection.
+- Two auth bugs recorded: `"Bearer undefined"` promoted an unauthenticated caller to SERVICE
+  (confirmed by reading the **live** bundle), and the self-check failed open on any caller with
+  no email on their auth record.
+- Process note kept: these commits came from a **parallel session** and sat unmerged for a day;
+  they were **cherry-picked, not merged**, because the branch predated the `.io`→`.com`
+  migration in the same file. *A parallel session's branch is not a merge candidate just
+  because it exists.*
+- The non-discriminating post-deploy probe is recorded as such, not as proof — same lesson as
+  the Phase-5a SMTP `RCPT TO` run.
+
+Pages updated: `concepts/notification-delivery.md`. No new page (compounded). No `index.md`
+change needed.
+
 ## [2026-08-10] ingest | [[Notification Delivery]] — the crew clause was forgeable (#440)
 
 Ingested `raw/sessions/2026-08-10-can-notify-crew-clause.md` by **compounding onto
