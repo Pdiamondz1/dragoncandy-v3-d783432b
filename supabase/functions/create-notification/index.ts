@@ -19,6 +19,12 @@ interface CreateNotificationRequest {
 }
 
 // Keep in sync with src/types/notifications.ts NOTIFICATION_TYPE_TO_EMAIL_TYPE
+//
+// READ BEFORE ADDING AN ENTRY. Landing a type here grants it to user-authenticated callers
+// by default: any caller who clears `can_notify_user` may then select this template with a
+// request-supplied title, body and link. That default is how the two broadcast types below
+// arrived reachable. If the type asserts a fact only the platform can know — money moved, a
+// campaign went live, content was approved — it belongs in SERVICE_ONLY_TYPES too.
 const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Record<string, string> = {
   application_received: 'new_application',
   application_accepted: 'application_status',
@@ -29,6 +35,14 @@ const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Record<string, string> = {
   invitation_declined: 'campaign_invitation_declined',
   campaign_published: 'campaign_published',
   campaign_cancelled: 'campaign_cancelled',
+  // The publish broadcast. New NOTIFICATION types over pre-existing EMAIL templates of the
+  // same name — the templates shipped months ago; the bell never existed, because
+  // send-campaign-publish-notifications called send-notification-email directly and bypassed
+  // this function. Both are SERVICE_ONLY_TYPES (see below) — that gate is what makes
+  // "only send-campaign-publish-notifications emits these" an enforced fact rather than a
+  // comment. Keep in sync with src/types/notifications.ts.
+  new_campaign_for_creators: 'new_campaign_for_creators',
+  new_campaign_for_brands: 'new_campaign_for_brands',
   // Crew-specific (Crews v1 fires this bell-only to active crew members when a
   // crew campaign is posted). Mapping it adds email for CREW campaigns only —
   // no shared/standard type is remapped. Keep in sync with
@@ -62,6 +76,30 @@ const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Record<string, string> = {
   dragonshare_boost_receipt: 'dragonshare_boost_receipt',
   dragonshare_declined: 'dragonshare_declined',
 };
+
+// Types the PLATFORM emits about itself, never a user about another user.
+//
+// `can_notify_user` asks one question — may this caller contact this recipient at all —
+// and a broadcast type needs a second one it cannot answer: did a campaign of the caller's
+// actually go live? `send-campaign-publish-notifications` answers that by proving ownership
+// and `published` status before it fans out. A direct call proves nothing.
+//
+// Without this gate, mapping the two broadcast types above would newly hand any authenticated
+// caller a "New campaign available" email aimed at any contact who passes `can_notify_user`,
+// with the subject line and link taken from the request — and the
+// `new_campaign_for_creators` template interpolates `data.budget` and `data.platforms`
+// UNESCAPED (every other field goes through `esc.*`), so the request would reach the email
+// body as markup. Neither template was reachable from a user call before those map entries
+// existed; this keeps it that way.
+//
+// Deliberately a deny-list, and deliberately temporary. An allow-list would fail closed and
+// is the right end state, but inverting it means classifying every existing entry above as
+// user-emittable or not — misjudge `message_received` and real notifications stop. That
+// audit is its own change; this covers the types this commit made reachable.
+const SERVICE_ONLY_TYPES = new Set([
+  'new_campaign_for_creators',
+  'new_campaign_for_brands',
+]);
 
 // Email templates a USER-authenticated caller may select explicitly via `emailType`.
 //
@@ -130,6 +168,17 @@ const handler = async (req: Request): Promise<Response> => {
     if (!recipientId || !type || !category || !title || !notifBody) {
       return new Response(JSON.stringify({ error: "Missing required fields: recipientId, type, category, title, body" }), {
         status: 400,
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+
+    // Rejected before any DB work: both `type` and `isService` are already known here.
+    if (!isService && SERVICE_ONLY_TYPES.has(type)) {
+      console.warn(
+        `Blocked service-only notification type: actor=${callerId} recipient=${recipientId} type=${type}`,
+      );
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
         headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
     }
