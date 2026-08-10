@@ -23,6 +23,24 @@ export const WWW_APP_ORIGINS = [
   'https://www.dragoncandy.io',
 ] as const;
 
+/**
+ * The one origin the app uses when it must name itself to the outside world —
+ * an email link, a share sheet, an OAuth `redirect_uri`, a notification
+ * `actionUrl`. Read only through `publicOrigin()` (src/lib/publicOrigin.ts),
+ * which returns `window.location.origin` on web and this value in the native
+ * shell, where `window.location.origin` is `capacitor://localhost`.
+ *
+ * This is NOT `DEFAULT_ORIGIN` (supabase/functions/_shared/origins.ts), which
+ * answers a different question — the ACAO value emitted when a caller's
+ * `Origin` is absent or untrusted, and which that file itself calls "a
+ * cosmetic default, not a security boundary."
+ *
+ * It is deliberately AHEAD of `DEFAULT_ORIGIN` during the .io -> .com
+ * migration: it already holds the post-migration value, so it never changes.
+ * Migration Phase 2 moves `DEFAULT_ORIGIN` from .io to .com to meet it.
+ */
+export const CANONICAL_APP_ORIGIN = 'https://dragoncandy.com';
+
 /** Lovable AI-edit preview surfaces (Lovable is no longer the host). */
 export const LOVABLE_PREVIEW_ORIGIN = 'https://dragoncandy-preview.lovable.app';
 export const LOVABLE_V3_ORIGIN = 'https://dragoncandy-v3.lovable.app';

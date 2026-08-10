@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ALLOWED_REDIRECT_ORIGINS } from './allowedOrigins';
+import { ALLOWED_REDIRECT_ORIGINS, APP_ORIGINS, CANONICAL_APP_ORIGIN } from './allowedOrigins';
 
 describe('ALLOWED_REDIRECT_ORIGINS', () => {
   it('accepts both production TLDs, apex and www', () => {
@@ -21,5 +21,18 @@ describe('ALLOWED_REDIRECT_ORIGINS', () => {
     expect(ALLOWED_REDIRECT_ORIGINS.has('https://notdragoncandy.com')).toBe(false);
     expect(ALLOWED_REDIRECT_ORIGINS.has('http://dragoncandy.com')).toBe(false);
     expect(ALLOWED_REDIRECT_ORIGINS.has('https://dragoncandy.com/')).toBe(false);
+  });
+});
+
+describe('CANONICAL_APP_ORIGIN', () => {
+  it('is the .com apex', () => {
+    expect(CANONICAL_APP_ORIGIN).toBe('https://dragoncandy.com');
+  });
+
+  it('is an origin we accept back — a link we mint must be one we allow', () => {
+    // These two survive every phase of the .io -> .com migration, where a bare
+    // literal assertion would only catch an APP_ORIGINS reorder.
+    expect((APP_ORIGINS as readonly string[]).includes(CANONICAL_APP_ORIGIN)).toBe(true);
+    expect(ALLOWED_REDIRECT_ORIGINS.has(CANONICAL_APP_ORIGIN)).toBe(true);
   });
 });
