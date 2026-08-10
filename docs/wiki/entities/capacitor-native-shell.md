@@ -10,7 +10,7 @@ tags: [capacitor, ios, app-store, mobile, native]
 # Capacitor Native Shell
 
 The iOS delivery surface for [[DragonCandy Platform]]. Capacitor 6 wraps the existing
-web build in a native WKWebView so **one codebase serves both dragoncandy.io (unchanged)
+web build in a native WKWebView so **one codebase serves both dragoncandy.com (unchanged)
 and a downloadable iPhone app.** Phase 1 (foundation) has shipped; no business logic
 changed.
 

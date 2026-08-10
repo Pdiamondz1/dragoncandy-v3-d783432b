@@ -1,5 +1,27 @@
 # Wiki Log
 
+## [2026-08-10] ingest | [[Domain Migration (.io → .com)]] Phase 4 — content and knowledge
+
+Ingested `raw/sessions/2026-08-10-dotcom-phase4-content.md` by **compounding onto the existing
+concept page** — fourth consecutive phase on one page, same reasoning: the page holds the phase
+sequence, and splitting it would scatter the decision record.
+
+**Pages updated:** `concepts/domain-migration-io-to-com.md` (new Phase 4 section — URLs-move-but-
+mailboxes-don't, why editing an applied migration is a no-op, the search-index trigger check, the
+prose classification rule; `Remaining phases` reduced to 5–6; three new Known Issues), plus the
+13 doc/wiki pages whose own present-tense `.io` claims were corrected. **No new page.**
+
+**Worth carrying forward.** Two things generalize past this migration. First, **a half-fix to a
+compound-stale claim makes it more wrong, not less** — the pricing table saying "Lovable.dev
+hosting … hosts the dragoncandy.io website" is wrong on host *and* domain, so moving only the
+domain would newly assert Lovable hosts `.com`. It was left alone and flagged, while the same
+claim on a wiki *entity* page (current architecture, not a historical cost table) was fixed in
+full. Second, **a sweep that reports success on zero matches is the hazard, not the sweep that
+errors** — the exact-string editor required one match per edit and caught a CRLF file where the
+pattern matched nothing. And a third, smaller: `donny_knowledge` was queried to *test* rather than
+assume the #378 NULL-`scope` leak was closed. It was — zero rows — but two orphan `internal_docs`
+rows for the same deleted files survive, so `sync:internal` does not delete removed files.
+
 ## [2026-08-10] ingest | [[Domain Migration (.io → .com)]] Phase 3 — the permanent redirect
 
 Ingested `raw/sessions/2026-08-10-dotcom-phase3-permanent-redirect.md` by **compounding onto

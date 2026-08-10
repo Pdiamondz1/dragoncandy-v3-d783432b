@@ -3,8 +3,8 @@ title: Domain Migration (.io → .com)
 type: concept
 created: 2026-08-09
 updated: 2026-08-10
-sources: [2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md, 2026-08-09-ios-testflight-first-build.md, 2026-08-10-dotcom-phase2-canonical-switch.md, 2026-08-10-dotcom-phase3-permanent-redirect.md]
-tags: [domain, dns, cors, auth, vercel, migration, seo]
+sources: [2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md, 2026-08-09-ios-testflight-first-build.md, 2026-08-10-dotcom-phase2-canonical-switch.md, 2026-08-10-dotcom-phase3-permanent-redirect.md, 2026-08-10-dotcom-phase4-content.md]
+tags: [domain, dns, cors, auth, vercel, migration, seo, content, help-center]
 ---
 # Domain Migration (.io → .com)
 
@@ -247,10 +247,79 @@ A repo-wide sweep found no further instances.
 **Both functions need a redeploy for this to reach users** — see
 [[Edge-Function Deploy & Bundling]].
 
+## Phase 4 — CONTENT (built 2026-08-10; migration NOT yet applied)
+
+The phases above move code, config and routing. None of them can reach text stored in the
+**database** or written in **prose**. Phase 4 is that text: three help articles a brand-new user
+reads, one agent prompt that publishes public SEO copy, one seed file, and the doc set that feeds
+`internal_docs` + Donny's RAG.
+
+### URLs move; mailboxes do not
+
+`help_articles.gdpr-erasure` carries `privacy@dragoncandy.io` and is deliberately **left alone**.
+The `.com` mailboxes do not exist yet — that move is Phase 5, gated on a real send-and-receive
+test per address. Repointing a GDPR erasure contact at an address that may not receive is
+strictly worse than leaving one that does; erasure requests and Stripe dispute alerts land there.
+**A stale-but-delivering address beats a fresh-but-dead one.**
+
+That reasoning is a **guard inside the migration**, not a comment: it raises if an
+`@dragoncandy.io` mailbox appears in any targeted row. The comment explains, the guard enforces —
+so a later body edit cannot quietly drag a mailbox along with a URL rewrite.
+
+### Editing an applied migration changes nothing
+
+The rows were seeded by `20260427120000` / `20260512000001` / `20260628120000`, all long since
+run. Editing those files would only make the repo disagree with prod. A forward-only `UPDATE` is
+the sole mechanism that moves a seeded row.
+
+### The index that could have gone stale, and didn't
+
+`help_articles.search_vector` is **not** a generated column, so an `UPDATE` to `body` could have
+left a stale index matching only the old domain. It doesn't: `trg_help_articles_search_vector`
+fires `BEFORE INSERT OR UPDATE OF title, body, search_terms`. Confirmed in `pg_trigger`, then
+**proven** in the dry run (`sv_com=t` on all three rows). The same check found an asymmetry worth
+knowing: `aios_playbooks` has a `handle_updated_at` trigger and `help_articles` does not.
+
+The whole rewrite was dry-run on prod inside a `DO` block ending in `RAISE EXCEPTION` — it
+reports what it did and rolls back. Result: `rows_help=3 rows_playbook=1`, all three signup rows
+`com=t io=f sv_com=t`, `gdpr-erasure` untouched. Prod was re-queried afterwards to confirm the
+rollback. See [[Updated-At Trigger Drift]] for why "the migration succeeded" is not evidence.
+
+### Classifying prose — the rule that made the sweep tractable
+
+A blanket find-and-replace across `docs/` would have been wrong: most surviving `.io` mentions
+are **correct**. This page says `.io` many times *because that is what it documents*, and
+`SHIPPED_LOG` records history.
+
+> **Undated, present-tense claims about the live domain get fixed. Dated or explicitly historical
+> statements keep their original text.**
+
+**One deliberate non-fix.** The pricing briefing's cost table reads `| Lovable.dev hosting | $50 |
+Hosts the dragoncandy.io website and app |` — stale on *both* counts, since Vercel has hosted
+since the 2026-07-15 cutover. Changing only the domain would newly assert that Lovable hosts
+`.com`. **A half-fix to a compound-stale claim makes it more wrong, not less.** Left alone and
+flagged; the *wiki entity* version of the same claim (current architecture, not a historical cost
+table) was corrected in full.
+
+### A sweep that reports success on zero matches is the hazard
+
+The doc edits ran through an exact-string script requiring **exactly one match per edit**. It
+caught a real miss: `google-workspace.md` uses CRLF, so a `\n`-containing pattern matched zero
+times — and the script failed loudly instead of silently doing nothing.
+
 ## Remaining phases
 
-- **Phase 4 — content/knowledge**, **Phase 5 — mail** (deferred; a dead support address is
-  worse than an old one), **Phase 6 — CONTRACT** (optional; recommendation: don't).
+- **Phase 5 — mail** (deferred; a dead support address is worse than an old one),
+  **Phase 6 — CONTRACT** (optional; recommendation: don't).
+
+> **A hard constraint on ever letting `.io` go, surfaced by `data-exposure-reviewer` during the
+> Phase 4 review.** `dragoncandy.io` must not be allowed to **lapse or transfer** while any
+> published article still routes mail to an `@dragoncandy.io` address. `help_articles.gdpr-erasure`
+> currently tells users to email `privacy@dragoncandy.io` for data-rights questions — and a GDPR
+> erasure request carries identity PII **by definition**. If the domain ever changed hands, that
+> mail would start landing with whoever next controls it. This is a stronger reason to keep `.io`
+> registered than the SEO/redirect argument that motivated the original "recommendation: don't",
+> and it holds until Phase 5 has moved every published mailbox *and* the articles naming them.
 
 ## Must NOT change
 
@@ -297,6 +366,23 @@ synthetic-user safety spine keys on.
   describes the mechanism and names the check. This one is notable because it is the same
   staleness pattern this page documents, committed **by the page's own author, in the same
   session that wrote the warning**.
+- **Open (Phase 4):** `20260810140000_dotcom_phase4_content.sql` is **written and dry-run-proven
+  but NOT applied to prod**. Merging does not apply it — this project applies migrations
+  explicitly. Until it runs, the three signup help articles and the Dezzy SEO prompt still say
+  `.io`. (Not broken: `.io` 308s. Just the wrong brand string in the first thing a new user reads.)
+- **Deliberately open:** `help_articles.gdpr-erasure` still carries `privacy@dragoncandy.io`, and
+  every other `@dragoncandy.io` mailbox is untouched. This is Phase 5 and is gated on a
+  send-and-receive test — a fresh-but-dead contact address is worse than a stale-but-delivering
+  one. The Phase 4 migration *asserts* it did not touch a mailbox.
+- **Recorded, not fixed:** two orphan `internal_docs` rows
+  (`dragoncandy-dame-ai-…-system-spec`, `dragoncandy-dragon-rewards-engine-dre-full-system-spec`)
+  survive for files deleted from disk when both were split into `part-1`/`part-2` — stuck at
+  `updated_at = 2026-06-27` while ~130 siblings read `2026-08-10`. So **`sync:internal` does not
+  delete rows for removed files**; superseded specs stay visible in `/internal/strategy` and to
+  Dezzy's `get_internal_doc`. The **consumer** half is genuinely closed: `donny_knowledge` returns
+  **zero** rows for either spec, so the NULL-`scope` leak recorded in #378 really was fixed
+  (verified, not assumed). Remedy is the existing reversible `internal_doc_archive(path, reason)`
+  — and precisely what the monthly `strategy-library-audit-agent` exists to propose.
 - **Needs confirming:** `PROJECT_CONTEXT.md` §5 lists `google-chat-donny` as blocked on
   "creating the DragonCandy Workspace org", but a `dame@dragoncandy.com` Google account is
   visible in the founder's account switcher and `.com` MX points at Google. Strong evidence the

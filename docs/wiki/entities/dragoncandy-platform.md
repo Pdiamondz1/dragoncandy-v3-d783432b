@@ -20,7 +20,7 @@ through a hybrid marketplace model.
 - AI: Claude Sonnet 4 + Haiku (cost routing via edge functions)
 - Social: [[Outstand]] (Instagram, TikTok, YouTube)
 - Payments: [[Stripe Connect]] (test mode)
-- Hosting: Lovable.dev → dragoncandy.io
+- Hosting: Vercel → dragoncandy.com
 - iOS: [[Capacitor Native Shell]] (Phase 1 shipped; Phase 2 camera shipped)
 
 ## Scale (as of 2026-06-13)

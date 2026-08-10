@@ -27,7 +27,7 @@ learning each business he serves and embedding into its daily rhythm. The bet: i
 the next era of marketing, the winners won't type at all — they'll just ask
 Donny, and let him handle the rest.
 
-DragonCandy (dragoncandy.io) is an AI-powered creator–business marketplace HQ'd
+DragonCandy (dragoncandy.com) is an AI-powered creator–business marketplace HQ'd
 in Hoboken, NJ, connecting three roles — Restaurant/Business, Content Creator,
 and Brand/Sponsor — through a hybrid marketplace model. Restaurants are the
 beachhead.
@@ -113,12 +113,20 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   2026-08-10**: all three `.io` hosts permanently **308** to their own `.com` counterpart
   (`internal.` → `internal.`), path/query verbatim, and the `#access_token` **fragment proven to
   survive in a real browser** — the check nothing on the wire can make. Done as a 307 first, then
-  promoted. Mail untouched (`notify.dragoncandy.io` was never attached to Vercel). **Pending
-  (2026-08-10):** the `.com` **Search Console** property — founder chose `info@dragoncandy.com`,
-  which is not signed into the browser; Change of Address is **impossible, not deferred** (no
-  property has ever existed). Also pending: a **redeploy of `send-verification-email` +
-  `manage-internal-users`** for the derived link labels. Phases 4–6 (content, mail, contract) not
-  started. → `docs/wiki/concepts/domain-migration-io-to-com.md`
+  promoted. Mail untouched (`notify.dragoncandy.io` was never attached to Vercel). **Phase 4
+  (CONTENT) BUILT 2026-08-10, migration NOT applied**: a forward-only `UPDATE` migration
+  (`20260810140000`) moves the 3 signup help articles + the Dezzy SEO prompt — editing the applied
+  seed migrations would change nothing in prod — dry-run-proven on prod inside a rolled-back
+  `DO`/`RAISE` block (`rows_help=3 rows_playbook=1`, and `sv_com=t` proving the non-generated
+  `search_vector` really reindexed), plus 17 present-tense `.io` claims fixed across 13 docs under
+  one rule: *undated present-tense claims move, dated/historical text stays*. **Mailboxes
+  deliberately untouched** (`privacy@dragoncandy.io` et al.) — that is Phase 5, gated on a receive
+  test, and the migration *asserts* it moved no mailbox. **Pending (2026-08-10):** **apply the
+  Phase 4 migration** (merging does not apply it); the `.com` **Search Console** property — founder
+  chose `info@dragoncandy.com`, which is not signed into the browser; Change of Address is
+  **impossible, not deferred** (no property has ever existed); and a **redeploy of
+  `send-verification-email` + `manage-internal-users`** for the derived link labels. Phases 5–6
+  (mail, contract) not started. → `docs/wiki/concepts/domain-migration-io-to-com.md`
 - **Apple App Store (Capacitor)** — iOS shell over the web app. Phase 1 (foundation) +
   Phase 2 (native camera + share sheet) shipped; the first-signed-build work (origin
   seam so email/share/OAuth links work natively, `capacitor://localhost` trusted in the
