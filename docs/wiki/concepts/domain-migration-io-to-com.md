@@ -118,10 +118,16 @@ rather than surprising them.
 
 ## Must NOT change
 
-`io.dragoncandy.app` (Capacitor appId / iOS bundle id) — a reverse-DNS **identifier**, not a
+~~`io.dragoncandy.app`~~ → **`com.dragoncandy.app`** (Capacitor appId / iOS bundle id).
+**Superseded 2026-08-09.** It is a reverse-DNS **identifier**, not a
 URL; changing it means a new App Store listing and users lose the install. And
 `@synthetic.dragoncandy.test`, the reserved-TLD marker the entire synthetic-user safety spine
 keys on.
+
+> **Why this moved out of "Must NOT change" (2026-08-09):** the constraint is real but
+> begins only when the App Store Connect record is created, and none existed. It was
+> changed to match the now-primary domain while it was still free. After the record
+> exists it is genuinely immutable, and this entry applies again — permanently.
 
 ## Known Issues
 

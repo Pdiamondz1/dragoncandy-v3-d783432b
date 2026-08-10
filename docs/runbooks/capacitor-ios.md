@@ -22,7 +22,10 @@ Use `@/lib/platform` (`isNativeApp()`, `isIOS()`, `getPlatformName()`) or the
 Never branch on user-agent sniffing.
 
 ## Identity
-- Bundle id (`appId`): `io.dragoncandy.app` — permanent; must match App Store Connect.
+- Bundle id (`appId`): `com.dragoncandy.app` — permanent; must match App Store Connect.
+  (Changed from `io.dragoncandy.app` on 2026-08-09, before any App Store Connect
+  record existed, to match the now-primary `dragoncandy.com` domain. It is frozen
+  the moment that record is created.)
 - `webDir`: `dist` — Vite's build output; `cap sync` copies this into the app.
 
 ## What is / isn't committed

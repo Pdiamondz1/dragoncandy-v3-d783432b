@@ -15,7 +15,9 @@ iOS shell — one codebase serving both web and an iPhone app. No business logic
 ## Key Decisions
 
 - Capacitor 6 over React Native / native rewrite (one codebase, Vite/React-native, Lovable-compatible).
-- Permanent bundle ID `io.dragoncandy.app`.
+- Permanent bundle ID `io.dragoncandy.app`. *(Superseded 2026-08-09 →
+  `com.dragoncandy.app`, before any App Store Connect record existed. Left here
+  as the record of what was decided in June.)*
 - Platform detection (`useNativePlatform`) as the single source of truth for native-vs-web.
 - CSP must allow `capacitor://localhost` or the WebView load fails silently.
 - Scaffold on Windows; compile/sign only on macOS.

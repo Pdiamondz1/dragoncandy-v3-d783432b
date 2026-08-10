@@ -17,7 +17,7 @@ changed.
 ## What Shipped (Phase 1)
 
 - Capacitor 6 packages (`@capacitor/core`, `@capacitor/cli`, `@capacitor/ios`).
-- `capacitor.config.ts` — `appId: io.dragoncandy.app` (permanent; must match App Store
+- `capacitor.config.ts` — `appId: com.dragoncandy.app` (permanent; must match App Store
   Connect), `webDir: dist`, iOS scheme `DragonCandy`.
 - iOS native project scaffold committed (`ios/App/**`); `Pods/`, `build/`, and the
   regenerated `public/` are gitignored.
@@ -50,7 +50,9 @@ changed.
 ## Key Decisions
 
 - Capacitor over React Native / native rewrite (lean, Vite/React-native, Lovable-compatible).
-- Bundle ID fixed now as `io.dragoncandy.app` (changing it later means re-registering).
+- Bundle ID fixed as `com.dragoncandy.app` (2026-08-09; was `io.dragoncandy.app`).
+  Changing it after the App Store Connect record exists means re-registering, so it
+  was changed while no record existed.
 - Platform detection is the single source of truth for "am I native?" — no user-agent sniffing.
 - Scaffold on Windows; only the Xcode build/sign needs macOS.
 
