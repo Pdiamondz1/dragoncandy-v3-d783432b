@@ -753,6 +753,16 @@ dependency to resolve. If it fails on module resolution rather than types — De
 resolve this repo's `npm:` specifiers locally — record that plainly and let Task 12's
 deploy be the gate. Note it in the PR rather than implying coverage you do not have.
 
+> **⚠️ If `deno check` fails, STOP. Do not run `deno install` to try to fix it.** That is
+> the second thing this step destroyed. `deno install` rewrites `node_modules/` into Deno's
+> own layout: it deletes npm's `node_modules/.package-lock.json` state marker and installs
+> different package versions under `node_modules/.deno/`. Here it silently replaced the
+> lockfile's vitest 4.1.2 with 4.1.10, after which **every** test run died with
+> `ERR_PACKAGE_PATH_NOT_EXPORTED: './module-runner'`. `npm run build` and `npm run lint`
+> kept working, so the damage stayed invisible until the next test run — several tasks
+> later. Recovery is `npm ci`. A failing `deno check` is an accepted, documented gap; a
+> broken `node_modules` is not.
+
 Then confirm the tree is still clean, because this step's whole hazard is invisible otherwise:
 
 ```bash
@@ -1081,7 +1091,17 @@ grep -rn "window\.location\.origin" src/ --include=*.ts --include=*.tsx \
   | grep -v "src/lib/allowedOrigins.ts"
 ```
 
-Expected: exactly the three Category B lines from Step 1, and nothing else. There were **21 occurrences across 14 files** before this branch.
+Expected: **five** lines — the three Category B sites from Step 1, plus `AccountsTab.tsx` and `ConnectedAccountsList.tsx`, which are correct-by-design and must **not** be repointed.
+
+> Those last two are the Outstand OAuth `redirectUri`s. Task 5 handled them by gating the
+> *consumer* rather than repointing the *value*: on native `ConnectAccountButtonGroupGated`
+> returns early with explanatory copy and never reads `props`, so the `capacitor://` value is
+> computed and discarded. An earlier draft of this step expected three lines, having failed to
+> account for Task 5's own design decision — the plan contradicted itself. Repointing them to
+> satisfy a naive count would convert a visible provider rejection into a silent dead end,
+> which is exactly what Task 5 exists to prevent.
+
+There were **21 occurrences across 14 files** before this branch.
 
 - [ ] **Step 3: Full local gate**
 
