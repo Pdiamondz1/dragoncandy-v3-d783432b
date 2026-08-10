@@ -87,8 +87,9 @@ verification (blocked on the founder's Mac arriving 2026-08-12) are all still ah
   [[Stripe Connect]] on both surfaces; subscriptions/credits are web-only to avoid Apple's
   30% cut.
 - **Guideline 4.2** — native value-adds (push/camera/share) for Phase 2, not a bare
-  wrapper. **Camera shipped (2026-06)**; push/share still planned. Camera also advances
-  the camera-first North Star.
+  wrapper. **Camera (Slice B) and share sheet (Slice C) both shipped 2026-06**; push
+  (Slice A) and universal links (Slice D) still planned, both gated on Apple enrollment.
+  Camera also advances the camera-first North Star.
 - Route to store: TestFlight → submission → review → live.
 
 ## Key Decisions
