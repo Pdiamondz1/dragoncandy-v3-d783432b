@@ -130,12 +130,23 @@ for (const dir of DIRS) {
 //
 // THIS IS DELIBERATELY NOT A HARD ABORT, and the reason is the inverted default. The version
 // of this guard that threw was protecting a DENYLIST, where a stale entry meant a page was
-// about to reach the consumer RAG at scope null — refusing to sync was the safe failure.
-// Under an allowlist the failure direction flips: a stale entry means a page is MORE
-// protected than intended, never less. Aborting every page over an over-protection bug
-// would stop internal knowledge updating to guard against nothing, and would reproduce the
-// very defect the oversized-page check below already refuses to reproduce. So: name the
-// entries, sync everything, exit non-zero.
+// about to be published to the consumer RAG at scope null — refusing to sync genuinely
+// prevented that. Under an allowlist there is no such publish to prevent: the renamed file is
+// already in the scan under its new name and syncs as internal, so aborting every page would
+// stop internal knowledge updating to prevent nothing, and would reproduce the very defect the
+// oversized-page check below already refuses to reproduce. Name the entries, sync, exit 1.
+//
+// WHAT THIS GUARD DOES NOT FIX, stated plainly because the honest bar is whether the claim the
+// code makes is true: this script never deletes, so the renamed page's OLD row survives at its
+// old source_id with its old scope and its old content. If that page was on CONSUMER, a stale
+// row stays consumer-retrievable — the rename left it *less* protected, not more. Aborting
+// does not help; the orphan is already in the DB either way, and abort would only add 111 stale
+// pages to the problem. The real remedy is a prune, which this script cannot do —
+// donny-knowledge-sync exposes no delete-by-source_id, only the archived-doc path. Note the
+// orphan is not allowlist-specific: renaming ANY wiki page orphans its row. Prod was clean on
+// 2026-08-10 (disk 112 = DB 112, zero orphans), so the standing rule is the cheap one — when
+// you rename or split a wiki page, check for an orphaned row, and check twice if it was on
+// CONSUMER.
 //
 // It names the missing entries. An earlier version reported only a count ("expected 2, found
 // 1"), which said a path was wrong but not WHICH — and since the sync runs unattended from
