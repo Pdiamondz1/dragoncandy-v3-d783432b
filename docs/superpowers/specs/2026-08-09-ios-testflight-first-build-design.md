@@ -102,11 +102,19 @@ implementer break auth while fixing share links.
 `window.location.href`. Repointing them would **eject the user out of the app into Safari
 mid-auth.** These keep `window.location.origin`.
 
-**Category C — needs per-call-site judgement.**
+**Category C — `safeUrl.ts:4`, resolved.**
 
-`safeUrl.ts:4` resolves a possibly-relative URL and then applies a protocol whitelist. On
-native, a relative input resolves to `capacitor:` and is dropped, rendering `href="#"`. It has
-8 call sites and they are not uniformly Category A or B.
+It resolves a possibly-relative URL then applies a protocol whitelist; on native a relative
+input resolves to `capacitor:`, is dropped, and renders `href="#"`. Reading all eight call
+sites settles it: `DragonSharePostCard.tsx:42`, `CreatorDragonShare.tsx:277`,
+`CampaignDetailModal.tsx:329`, `RestaurantProfileCard.tsx:90-101`,
+`CreatorProfileModal.tsx:175-268` and `MessageBubbleEnhanced.tsx:192` all pass **absolute
+external URLs read from the database** (`post_url`, `file_url`, `website_url`, social URLs,
+`attachment_url`), so the base argument is never used and they are unaffected either way.
+
+The single exception is `DonnyMessage.tsx:84`, where Donny's generated markdown may carry a
+**relative in-app route** — Category B. The split is clean and the helper is not doing two
+jobs, so this is a one-line confirmation during Component 1, not open design work.
 
 **The rule an implementer applies, so a future re-grep is decidable:** if the resulting string
 is consumed by anything outside the WebView — an email, a share sheet, a third party, another
@@ -149,6 +157,8 @@ mandatory unlisted control:
 |---|---|---|
 | `https://dragoncandy.com/auth/update-password` | echoed back | `.com` **is** allow-listed |
 | `https://dragoncandy.io/auth/update-password` | echoed back | `.io` is allow-listed |
+| `https://dragoncandy.com/` | echoed back | The **bare apex** is listed — this is what `AuthForm.tsx:50` and `AuthenticationModal.tsx:44` send after repointing |
+| `https://www.dragoncandy.com/` | echoed back | `www` is listed too |
 | `https://unlisted-control-probe.invalid/x` | `https://dragoncandy.io/` | **Site URL is still `.io`** |
 
 The control behaving differently from the two test cases is what makes the result trustworthy;
@@ -157,9 +167,15 @@ without it, an endpoint that echoed everything would look identical to a correct
 This matches `docs/wiki/concepts/domain-migration-io-to-com.md`: Phase 1 (EXPAND) shipped,
 Phase 2 (SWITCH — Site URL, `APP_URL`) and Phase 3 (REDIRECT — the `.io` 301) have not.
 
-**Consequence for this design: none, by construction.** `publicOrigin()` derives from the
-canonical constant rather than hardcoding, `.com` is already fully allow-listed and verified
-across all 82 edge functions, and the value stays correct after Phase 2 flips. Note the Vercel
+**Consequence for this design: none, by construction.** `publicOrigin()` reads the canonical
+constant rather than hardcoding, and the value stays correct after Phase 2 flips.
+
+One distinction to hold onto, because these two facts sit close together and collapsing them
+would be costly: `.com` is allow-listed **and deployed** across the 82 functions — that was
+migration Phase 1, which shipped. The `capacitor://localhost` addition in Component 2 is a
+*new* edit to the same file and is **not** deployed. The first does not discharge the second.
+
+Note the Vercel
 apex currently 308s to `www`, so a `.com` link takes one extra hop; both are allow-listed and
 browsers reapply the URL fragment across a redirect, so auth returns survive it.
 
@@ -172,15 +188,31 @@ browsers reapply the URL fragment across a redirect, so auth returns survive it.
 **First, a canonical-origin contract that does not currently exist.** The obvious move —
 deriving from `APP_ORIGINS[0]` — is wrong. That array is an *allow-list*; its ordering carries
 no stated meaning, and its own comment says both TLDs stay listed with `.io` removed "last, or
-never." Meanwhile the repo's explicit canonical marker is `DEFAULT_ORIGIN =
-'https://dragoncandy.io'` (`_shared/origins.ts:52`), which still says `.io` and which Phase 2
-of the domain migration flips. Two canonicality signals that disagree, and array order is the
-one with no contract and no test.
+never." A reorder would silently repoint the native app.
 
-So: introduce **`CANONICAL_APP_ORIGIN`** in both `_shared/origins.ts` and
-`src/lib/allowedOrigins.ts`, set to `https://dragoncandy.com`, pinned by a unit test, and
-flipped alongside `DEFAULT_ORIGIN` when the migration's Phase 2 lands. A reorder of
-`APP_ORIGINS` then cannot silently repoint the native app.
+**`DEFAULT_ORIGIN` is not the alternative, and calling it the canonical marker would be a
+misreading.** `_shared/origins.ts:44-51` states plainly that it is the ACAO value emitted when
+the caller's `Origin` is absent or untrusted — "a cosmetic default, not a security boundary."
+It answers a different question entirely.
+
+So: introduce **`CANONICAL_APP_ORIGIN = 'https://dragoncandy.com'` in
+`src/lib/allowedOrigins.ts` only.** Frontend-only, because `publicOrigin()` is the only
+consumer this spec creates — the same reasoning that removes the frontend CORS mirror in
+Component 2, applied symmetrically. If a Deno consumer appears later (the migration doc records
+hard-coded `|| 'https://dragoncandy.io'` fallbacks in edge secrets at
+`domain-migration-io-to-com.md:106-109`), adding the constant there is that workstream's call,
+not this one's.
+
+**It is deliberately ahead of `DEFAULT_ORIGIN`, and it never flips.** `CANONICAL_APP_ORIGIN`
+holds the post-migration value today; migration Phase 2 closes the gap by moving
+`DEFAULT_ORIGIN` `.io` → `.com` to meet it. Nothing about this constant changes at Phase 2 —
+an instruction to "flip it alongside" would send a future engineer to edit a value that is
+already correct.
+
+**Test invariants**, chosen to survive every migration phase rather than merely detect the
+`APP_ORIGINS` reorder they were written for: assert `APP_ORIGINS.includes(CANONICAL_APP_ORIGIN)`
+and `ALLOWED_REDIRECT_ORIGINS.has(CANONICAL_APP_ORIGIN)` — *a link we mint must be one we accept
+back* — and keep a literal assertion alongside them.
 
 **Then the seam**, following the pattern `nativeCamera.ts` and `nativeShare.ts` established: a
 plain function, not a hook, gated by the existing `isNativeApp()`.
@@ -213,10 +245,9 @@ cannot be made later.
 entirely, so it was never the security boundary. Authorization continues to rest on the JWT.
 
 **The redeploy is part of this component, not a footnote.** Per Finding 2 the edit is inert
-until each function ships. Scope it to the functions the iOS app actually calls rather than all
-82, and follow #415's canary rule: deploy **`donny-orchestrator` alone first**, prove it from
-the device (checklist #3), then fan out in batches. The full-82 sweep is deferred to the
-domain-migration workstream, which already owns fleet redeploys.
+until each function ships. Follow #415's canary rule: deploy **`donny-orchestrator` alone
+first**, prove it from the device (checklist #3), then fan out. Scope and remainder are handled
+in Phase 1b, which states the predicate mechanically rather than by description.
 
 ### Component 3 — bundle ID, and the five documents that forbid it
 
@@ -303,9 +334,30 @@ Components 1–5 above, on the existing `worktree-dc-apple-store` branch. `npm r
 
 Merging ships the frontend only. Deploy **`donny-orchestrator` alone** and verify the deployed
 source actually carries `capacitor://localhost` — reading the source, not the version number,
-because "merged ≠ deployed" has bitten this project repeatedly. Then fan out to the remaining
-functions the iOS app calls. Do this *before* Wednesday so the device session is not spent
-diagnosing a deploy.
+because "merged ≠ deployed" has bitten this project repeatedly. Do this *before* Wednesday so
+the device session is not spent diagnosing a deploy.
+
+**The scope predicate, stated mechanically** so the plan can enumerate it rather than argue
+about it: grep `supabase.functions.invoke(` in `src/`, minus callers reachable only from
+`/internal`. The honest predicate is narrower than "functions the app calls" — a function
+invoked server-to-server or by cron carries no browser `Origin`, and CORS applies only to the
+outermost response, so inner hops need nothing.
+
+**What a partially-deployed fleet looks like on the device, because this is the expected
+Wednesday state and not a failure.** An un-deployed function answers a `capacitor://localhost`
+caller with `Access-Control-Allow-Origin: https://dragoncandy.io`; `WKWebView` blocks the
+response and supabase-js surfaces a generic fetch error **indistinguishable from "this feature
+is broken on iOS."** Anticipating that is most of Phase 1b's value.
+
+**Open — the remaining ~77 functions have no owner.** An earlier draft deferred them to the
+domain-migration workstream "which already owns fleet redeploys." That is not supported: the
+82-function sweep was migration **Phase 1 (EXPAND), already shipped**, and the remaining phases
+at `domain-migration-io-to-com.md:104-113` are secrets, GoTrue Site URL, the Vercel apex↔www
+primary, the `.io` 301, content and mail — none of which is a redeploy, and changing edge
+secrets requires none. The natural closure condition is the `DEFAULT_ORIGIN` `.io` → `.com`
+flip, which *is* a code change in `_shared/origins.ts` and would force a sweep — but migration
+Phase 2 does not currently list it. **Filed here as an open item rather than assigned to a
+workstream that has not agreed to it.**
 
 ### Phase 2 — Wednesday, on the Mac
 
@@ -394,8 +446,10 @@ neither.
    of the exercise, and Web Inspector is the mitigation. It is also the largest unknown.
 2. **The edge function redeploy is the highest-risk step in Phase 1.** PR #415 established that
    a bundler change can boot-break a function, hence the canary. If the canary fails, Wednesday
-   proceeds without checklist #3 rather than blocking — a build on the phone with a known
-   backend gap is still worth more than no build.
+   proceeds without checklist #3 — but that outcome is **Success Criterion 2 unmet and the
+   build reported as a partial success**, not a pass. Stated this way deliberately: "still
+   better than no build" is true and is also exactly how an incomplete result gets written up
+   as done.
 3. **Apple's current minimum SDK is unverified** and may force a Capacitor upgrade, which would
    expand scope beyond this spec. Checked in Phase 2; if it forces an upgrade, that becomes its
    own spec.
@@ -403,9 +457,10 @@ neither.
    day as the build. Realistically it consumes some of Wednesday.
 5. **The Component 4 audit may surface more than purchase CTAs.** Findings that are not
    rejection-blocking should be filed, not fixed inline, or this spec grows without bound.
-6. **Open:** whether `safeUrl.ts`'s eight call sites split cleanly into Categories A and B, or
-   whether it needs its own parameterised treatment. Resolved during Component 1; if the split
-   is messy, that is a signal the helper is doing two jobs.
+6. **Open — and the only genuinely unassigned item in this spec:** the ~77 edge functions
+   outside Phase 1b's canary and fan-out set have no owner and no trigger. See Phase 1b. This
+   does not block TestFlight; it does mean the allow-list is half-applied on prod indefinitely
+   unless someone names the closure condition.
 
 ---
 
