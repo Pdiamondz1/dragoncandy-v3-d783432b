@@ -39,8 +39,17 @@ const EXCLUDE = new Set([
   "content-engine-data-audit", "claude-skills-framework-audit", "claude-subagents-audit",
 ]);
 
-// Forced-internal (unconditional — NOT gated behind SYNC_CURATE, unlike EXCLUDE above):
-// these pages are DRE ENGINEERING docs describing phases that were never built
+// Forced-internal (unconditional — NOT gated behind SYNC_CURATE, unlike EXCLUDE above).
+//
+// WHY THIS LIST AND NOT `EXCLUDE`: `EXCLUDE` only applies when SYNC_CURATE=1, and the sync
+// that actually runs unattended — `npm run sync:wiki`, invoked by the post-merge hook — does
+// NOT set it. So adding an internal page to `EXCLUDE` alone leaves it syncing to the CONSUMER
+// RAG at scope null on every merge. Anything a consumer must never retrieve belongs HERE.
+// (Codex flagged the 2026-08-09 infra pages against `EXCLUDE`; correct finding, wrong list.)
+//
+// Two kinds of page qualify:
+//
+// 1. DRE ENGINEERING docs describing phases that were never built
 // (referrals, streaks, "Hype Weeks", point redemption, opt-in leaderboards). If consumer
 // Donny can retrieve them, he promises users rewards that don't exist. donny-knowledge-sync
 // recomputes `scope` from this script's payload on EVERY sync, insert or update (it does not
@@ -55,10 +64,16 @@ const EXCLUDE = new Set([
 // already been split into the two dre-part-* pages below. Only a stale orphan ROW still
 // carried that path. The guard correctly refused to run, which killed the entire consumer
 // sync until it was noticed. Verify with `ls docs/wiki/<dir>/<file>`, not with a DB query.
+// 2. INFRA/OPS runbooks. A restaurant owner asking Donny about their campaign must never
+//    retrieve deploy procedures, outage post-mortems, DNS/registrar details, or the founder's
+//    machine constraints — none of it is product knowledge, some of it names people and
+//    accounts, and all of it reads as authoritative if it surfaces in a consumer answer.
 const FORCE_INTERNAL = new Set([
   "concepts/dragon-rewards-engine.md",
   "analyses/dre-part-1-points-economy.md",
   "analyses/dre-part-2-community-and-implementation.md",
+  "concepts/edge-function-deploy-bundling.md",
+  "concepts/domain-migration-io-to-com.md",
 ]);
 
 if (!URL || !KEY) {

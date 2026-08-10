@@ -139,7 +139,63 @@
   the memory about it**, and to fix the memory with the scope rather than deleting it. Corollary:
   `<cmd> | tail -N` reports **tail's** exit code, not `<cmd>`'s — a pipe launders a failure into 0.
 
+- **[scope-catches-more-than-docs] The `[scope-ordering]` check is a PROD safety check, not just a
+  doc-conflict check — and it is the only thing that catches a concurrent-deploy revert.** On
+  2026-08-09 it was run for the usual reason (are the core docs current before I edit them?) and
+  the answer — `origin/main` 3 ahead — revealed that a **fleet redeploy had silently reverted a
+  parallel session's prod fix**. #416 merged and deployed `donny-orchestrator` at 22:38 UTC; a
+  redeploy of 82 functions pinned to `caa7ca97` (pre-merge) overwrote it at 22:54. **Both deploys
+  succeeded and both passed the boot probe, because stale code boots perfectly well** — there is
+  no health check that catches this, and nothing in the deploying session's view looks wrong.
+  Generalize two ways: (1) a multi-function deploy pins itself to one commit while `origin/main`
+  keeps moving, so re-check `HEAD..origin/main` immediately **before** a fleet deploy and again
+  **after**; (2) when repairing, verify by **reading the deployed source for the other change's
+  symbols**, never by the version number, which increments either way. Corollary for parallel
+  sessions generally: `[squash-drift]` and `[gap-claims]` already say a worktree serves stale
+  *files*; this says a stale worktree can also ship stale *code to production*.
+
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-09] `.com` Phase 1 + esm.sh bundler outage + 82-function redeploy (PRs #414, #415 merged; docs on `fix/redeploy-after-social-tools-merge`)
+
+**Output:** new `raw/sessions/2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md`; **two NEW**
+concept pages `concepts/domain-migration-io-to-com.md` + `concepts/edge-function-deploy-bundling.md`;
+`index.md` (2 Concepts entries + 1 Sources line); `log.md` top entry; `SHIPPED_LOG.md` prepended;
+`PROJECT_CONTEXT.md` §5 one **In flight** line; `supabase/config.toml` comment corrected; + THIS
+entry and the [scope-catches-more-than-docs] Lesson above.
+
+**Happened.** Ran as the branch-finish step for three efforts on one thread. Split into **two**
+concept pages by subject, not session — the bundler-outage page outlives the migration entirely,
+and neither would have to be wrong for the other to be right.
+
+**Worked — [scope-ordering], and it paid off far beyond its purpose.** One command before the
+first doc edit surfaced `origin/main` 3 ahead, which is how I found that my own fleet deploy had
+**silently reverted a parallel session's prod fix** 16 minutes after they deployed it. Promoted as
+[scope-catches-more-than-docs]. Also [wikilinks]-exact, which caught **two** dangling links
+(`[[Anon Key Is Not Authorization]]` → the real name is `[[verify_jwt Is Not Authorization]]`;
+`[[Landing Lead Capture]]` → `[[Landing Redesign & Public Lead Capture]]`) — the recurring failure
+of writing a link from memory of a page's *subject* rather than its catalogued display name.
+Confirmed the `index.md` Concepts duplication from the 2026-08-09 run is **fixed** (#412); each
+concept path now appears once.
+
+**Failed — my own verification command lied to me, twice in one session.** I passed
+`[regex]::Escape(...)` together with `-SimpleMatch`, so the search looked for literal backslashes
+and reported all three *real* links as DANGLING. Had I trusted it I'd have "fixed" three correct
+links into broken ones. **A verification tool that reports failure is itself a claim that needs
+checking** — the same discipline as verifying a reviewer's finding, applied to my own tooling.
+
+**Remember — the sharpest thing here is about my own reporting, not the code.** During the outage
+I told the founder twice that I had found the cause (entrypoint path; then the new cross-file
+import). Both were wrong, and each was disproven by the very next experiment. What actually found
+it was **comparing the broken function against a working one** — one call, after four wrong
+hypotheses read from the code. Two durable rules: when a deploy breaks and the code looks fine,
+**diff against something that still serves** instead of rewriting the thing that's broken; and
+**a hypothesis that survives only because you haven't tested it is not a finding** — say
+"unverified" until an experiment separates it. Second: testing the *siblings* (`esm.sh/stripe`,
+`esm.sh/jose` — both fine) is what kept the fix at 121 files instead of 155, i.e. what stopped
+me churning the money rail on an assumption. Third, on mobile verification: I nearly filed
+"blocked" again, and only the stored memory recording that this exact verdict had been **too
+broad once before** made me try browser-use, which worked first attempt.
 
 ### [2026-08-09] Donny-first dashboard Phase A + route blind spot (PRs #409 merged, #410 open — bundled INTO #410)
 
