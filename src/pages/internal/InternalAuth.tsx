@@ -203,10 +203,10 @@ const InternalAuth = () => {
               <br />
               Forgot your password?{' '}
               <a
-                href="https://dragoncandy.io/auth"
+                href="https://dragoncandy.com/auth"
                 className="text-dc-pink underline-offset-2 hover:underline"
               >
-                Reset it on dragoncandy.io
+                Reset it on dragoncandy.com
               </a>
             </p>
           </form>

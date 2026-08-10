@@ -60,8 +60,18 @@ export const LOVABLE_V3_ORIGIN = 'https://dragoncandy-v3.lovable.app';
  * Where to point when the caller's `Origin` is absent or untrusted.
  *
  * For an origin that IS allow-listed this value is never used, and for one
- * that is not the browser blocks the response regardless — so this is a
- * cosmetic default, not a security boundary. Phase 2 of the migration flips
- * it to the `.com` apex along with the canonical switch.
+ * that is not the browser blocks the response regardless — so as a CORS
+ * default it is cosmetic, not a security boundary.
+ *
+ * But it is not only a CORS default, which is why Phase 2 moves it. Three
+ * functions mint real user-facing URLs from it when their env var is unset:
+ * `send-verification-email` and `verify-email` (behind `APP_URL`) and
+ * `create-package-order-escrow` (behind `PUBLIC_SITE_URL`, which does not
+ * exist on prod — so this constant is that function's LIVE value today, not
+ * a hypothetical). A last-resort default should name the canonical domain.
+ *
+ * Now equal to `CANONICAL_APP_ORIGIN` in `src/lib/allowedOrigins.ts`, which
+ * held the post-migration value throughout and never moved. They stay
+ * separate constants because they answer different questions.
  */
-export const DEFAULT_ORIGIN = 'https://dragoncandy.io';
+export const DEFAULT_ORIGIN = 'https://dragoncandy.com';
