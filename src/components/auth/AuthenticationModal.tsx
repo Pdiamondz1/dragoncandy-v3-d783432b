@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Rocket, Shield, Save } from 'lucide-react';
+import { publicOrigin } from '@/lib/publicOrigin';
 
 interface AuthenticationModalProps {
   isOpen: boolean;
@@ -41,7 +42,7 @@ export const AuthenticationModal: React.FC<AuthenticationModalProps> = ({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: `${publicOrigin()}/`,
           },
         });
         if (error) throw error;

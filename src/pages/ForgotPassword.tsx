@@ -8,6 +8,7 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { Eyebrow } from "@/components/landing/Eyebrow";
 import { LandingButton } from "@/components/landing/LandingButton";
 import { SEO } from "@/components/SEO";
+import { publicOrigin } from '@/lib/publicOrigin';
 
 const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -19,7 +20,7 @@ const ForgotPassword: React.FC = () => {
     setLoading(true);
     try {
       await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/update-password`,
+        redirectTo: `${publicOrigin()}/auth/update-password`,
       });
 
       toast({
