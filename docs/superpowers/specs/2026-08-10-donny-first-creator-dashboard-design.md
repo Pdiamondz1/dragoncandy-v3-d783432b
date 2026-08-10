@@ -179,7 +179,7 @@ in the component the existing tests assert against.
 
 ```ts
 interface DonnyHomeShellProps {
-  userRole: 'business_client' | 'content_creator' | 'brand';
+  userRole: UserRole;              // the alias from src/types/user.ts, as DonnyThreadRegion uses
   roleLabel: string;               // "Restaurant Dashboard" | "Creator Dashboard"
   greetingName: string;
   subtitle: string;
@@ -192,6 +192,11 @@ interface DonnyHomeShellProps {
   profileLoaded: boolean;          // drives the skeleton branch
   children: ReactNode;             // the proposals block, rendered by the container
 
+  /** Per-role tour anchors for the two elements the SHELL owns (§4.6).
+   *  Business passes nothing; creator passes both. Keeps the shell role-generic
+   *  and DonnyHomePrompt byte-unchanged. */
+  tourAnchors?: { prompt?: string; overview?: string };
+
   // straight from useDonnyHomeConversation, spread by the container
   hasConversation: boolean;
   isBusy: boolean;
@@ -201,11 +206,20 @@ interface DonnyHomeShellProps {
     messages: DonnyMessage[];
     avatarState: DonnyAvatarState;
     streamingContent: string;
-    error: string | null;
-    retry: () => void;
+    error: string | null;   // the hook's DERIVED threadError, not the raw error
+    retry: () => void;      // the hook's DERIVED threadRetry, not the raw retry
   };
 }
 ```
+
+> `thread.error` and `thread.retry` are the hook's **derived** `threadError` /
+> `threadRetry`, never the raw `error` / `retry` from context — the derivation is what
+> makes a failed history load offer the refetch that actually fixes it rather than a
+> replay that cannot. And `historyUnavailable` is passed for exactly one purpose: the
+> shell computes `isStreaming={isBusy && !historyUnavailable}` (`DonnyHome.tsx:484`),
+> because a typing indicator rendered over an error is a lie about what is happening.
+> Both are easy to drop or re-invent wrongly during the extraction, so they are named
+> here.
 
 **Why separate containers rather than one component with a `role` prop.** Hooks
 cannot be conditional. A single component would fire `usePendingActions` — which is
@@ -221,7 +235,7 @@ composer must stay at the same slot in the element tree across the resting →
 conversation switch; `DonnyHomeShell` renders the wrapper in both states for exactly
 that reason, and a remount would drop focus and any half-typed follow-up.
 
-**Regression net.** `DonnyHome.test.tsx` — **44 `it()` cases across 8 `describe`
+**Regression net.** `DonnyHome.test.tsx` — **37 `it()` cases across 8 `describe`
 blocks**, not the 12 the parent design §8 cites, which was written pre-Phase-B —
 plus `DonnyHomePrompt.test.tsx` and `DonnyThreadRegion.test.tsx`, all passing
 unchanged. If the extraction is a move, they do. If any needs editing, that is the
@@ -285,7 +299,16 @@ creator container needs its own reads, all under the creator's own RLS:
 | `useCreatorPendingApplications` | `campaign_applications` where `creator_id = auth.uid()` and `status='pending'` | Item B |
 | `useCreatorPayoutState` | `creator_profiles` (`stripe_account_id`, `stripe_onboarding_complete`, `pending_balance`) for the caller, via `.maybeSingle()`, plus the caller's collaboration count for the §4.4 conditioning rule | Item C |
 
-Three details that would otherwise be invented twice:
+**Each item's `occurredAt` must be named, not left to the implementer.**
+`DonnyHomeProposals.tsx:47-49` renders it inline through `formatRelativeTime`, the
+ordering rule is "newest first", and item D's copy explicitly wants "invited 8 days
+ago". So: **B** → `campaign_applications.created_at`; **D** →
+`campaign_invitations.created_at`; **A** → `campaign_collaborations.created_at`, not
+`status_changed_at` — the item says content has not been *started*, and the honest
+clock for that is how long the collaboration has existed, not when its status last
+moved. **C and E carry `occurredAt: null`**, like every business signal.
+
+Three further details that would otherwise be invented twice:
 
 - **The embedded campaign filter needs `!inner`.** A plain embed returns the
   invitation row with a `null` campaign when the filter excludes it, so without
@@ -349,10 +372,11 @@ hasMoneyOrWork   →  C, A, B, D            (E cannot fire — work is in flight
 otherwise        →  A, B, D, E, C
 ```
 
-Within a type, newest first. C is the only item that moves, and it moves for the
-reason in the conditioning rule below. **E is mutually exclusive with A, B, D and any
-collaboration** — it is the "you have nothing on" state — so in practice the second
-row is `D, E, C` or `E, C`, and the cap is never the binding constraint on it.
+Within a type, newest first, on the `occurredAt` named per item in §4.3. C is the
+only item that moves, and it moves for the reason in the conditioning rule below.
+**E is mutually exclusive with A, B, D and any collaboration** — it is the "you have
+nothing on" state — so the second row resolves in practice to `B, D, C`, `D, C`,
+`B, C`, `E, C` or bare `C`, and the cap is never the binding constraint on E.
 
 **Item E takes no new query and names no number.** It is derived entirely from the
 absence of the other items, so it adds no fifth read. This is deliberate: the only
@@ -463,18 +487,41 @@ step, resolving on either page — the primary action of whichever page you are 
 Two of the three orphaned anchors have a genuine equivalent on the Donny page and one
 does not:
 
-| Step | Today's anchor | Resolution |
-|---|---|---|
-| "Browse campaigns" | `browse-campaigns` on `HeroPrimaryAction` | **Duplicate.** `CreatorDonnyHome` wraps `DonnyHomePrompt` in `<div data-tour="browse-campaigns">`. Mirrors `BusinessOverview:122` exactly — the primary action of each page. Wrapped in the container, not inside the shared `DonnyHomePrompt`, which already carries `brief-generator` and is shared with business. |
-| "Complete your profile" | `profile-completion` on `StatsRow` | **Re-point + rewrite.** A new `creator-attention` anchor on the attention region, which both pages have (`DonnyHomeProposals` renders `NeedsAttentionSection`; `CreatorOverview` renders it directly). New copy about what needs the creator, since a stats grid no longer leads the page. |
-| "DragonShare" | `dragonshare-nav` on `DragonShareStatTile` | **Re-point.** The overview link on the Donny page, and the existing tile on the overview — one shared new anchor. |
-| "Ask Donny" | `donny-help` | Unchanged — chrome. |
+| Step | Today's anchor | Resolution | Where the Donny-page anchor lives |
+|---|---|---|---|
+| "Browse campaigns" | `browse-campaigns` on `HeroPrimaryAction` | **Duplicate**, mirroring `BusinessOverview:122` — the primary action of whichever page you are on | `tourAnchors.prompt` on the shell's `DonnyHomePrompt` wrapper |
+| "Complete your profile" | `profile-completion` on `StatsRow` | **Re-point + rewrite.** Both pages have an attention region (`DonnyHomeProposals` renders `NeedsAttentionSection`; `CreatorOverview` renders it directly). New copy, since a stats grid no longer leads the page | a `creator-attention` wrapper the container puts around the `children` proposals block |
+| "DragonShare" | `dragonshare-nav` on `DragonShareStatTile` | **Re-point** to a shared anchor: the overview link on the Donny page, the existing tile on the overview | `tourAnchors.overview` on the shell's overview link |
+| "Ask Donny" | `donny-help` | Unchanged — chrome (`DonnyNavButton.tsx:18`) | n/a |
+
+**Two of these three anchors sit on elements the *shell* owns, not the container** —
+`DonnyHomePrompt` and the overview link are both in `DonnyHomeShell` per §4.1, and
+the container never holds either. That is why `DonnyHomeShellProps` carries
+`tourAnchors`: the container declares the selector, the shell applies it. Business
+passes nothing and is byte-unchanged; `DonnyHomePrompt` itself is not touched, which
+§4.1 requires since it is shared. Only `creator-attention` is genuinely container-side,
+because the proposals block is passed as `children`.
 
 Exact copy is a plan-level detail; the constraint is not. **A unit test enforces it:**
-every selector in `CREATOR_TOUR` must be present in the rendered tree of both
-`CreatorDonnyHome` and `CreatorOverview`. Without that test this silently rots the
-next time either page is restructured, which is precisely how the current breakage
-arrived.
+every **body** selector in `CREATOR_TOUR` must be present in the rendered tree of both
+`CreatorDonnyHome` and `CreatorOverview`.
+
+> **Chrome selectors are explicitly out of that test's scope.** `donny-help` lives in
+> `DonnyNavButton` inside `MobileBottomNav`/`DashboardLayout`, and any unit test of
+> these containers must mock `DashboardLayout` the way `DonnyHome.test.tsx:104-106`
+> already does — so asserting it would fail against a mock, not against a real
+> regression. The same reasoning covers `org-switcher` and `bottom-nav-add` on the
+> business side. The test covers the three page-owned anchors; the chrome ones are
+> guaranteed by the layout.
+>
+> One safeguard worth recording rather than assuming: `NeedsAttentionSection` hides
+> itself with CSS `:has()`, so the `creator-attention` anchor is always in the DOM but
+> could have a zero-size rect and an invisible spotlight. In practice item E
+> guarantees every creator has at least one row, so it is never empty. (Note also
+> that `DonnyHomeProposals` renders a skeleton, not the section, while loading.)
+
+Without this test the tour silently rots the next time either page is restructured,
+which is precisely how the current breakage arrived.
 
 ## 5. Testing
 
@@ -497,9 +544,10 @@ because it is pure and every rule above is a branch:
 - `PROPOSAL_CAP` and `allProposalIds` behave as on the business side — the full
   pre-cap id list is returned so a dismissal below the cap is not resurrected.
 
-**Tour parity.** A test asserting every `CREATOR_TOUR` selector resolves in both
-`CreatorDonnyHome` and `CreatorOverview` (§4.6). This is the check that would have
-caught the current breakage.
+**Tour parity.** A test asserting every **page-owned** `CREATOR_TOUR` selector
+resolves in both `CreatorDonnyHome` and `CreatorOverview` — the three body anchors,
+not the chrome step, which resolves from a `DashboardLayout` these tests mock (§4.6).
+This is the check that would have caught the current breakage.
 
 **Regression.** `DonnyHome.test.tsx`, `DonnyHomePrompt.test.tsx` and
 `DonnyThreadRegion.test.tsx` pass **unchanged**. Needing to edit them means §4.1's
