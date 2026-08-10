@@ -45,6 +45,20 @@ export function useDonny(options?: UseDonnyOptions) {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const isSendingRef = useRef(false);
   const lastUserMessage = useRef<string>("");
+  // Whether the `donny_messages` USER row for `lastUserMessage.current` was
+  // actually written.
+  //
+  // `isRetry` used to stand in for this fact, and the two diverge exactly where
+  // it matters. A send can fail BEFORE the insert — the `No active
+  // conversation` guard, the in-flight guard, or the insert statement itself
+  // erroring. Replaying any of those with `isRetry: true` skipped the insert,
+  // so the assistant row was persisted with no question above it. That is not
+  // cosmetic: `conversation_history` is assembled from these rows, so every
+  // later turn is briefed on an answer to a question Donny cannot see.
+  //
+  // Assigned in the same statement block as `lastUserMessage` below, so the
+  // pair can never describe different messages.
+  const lastUserMessageInserted = useRef(false);
 
   // Load or create conversation
   const { data: conversation } = useQuery({
@@ -125,19 +139,33 @@ export function useDonny(options?: UseDonnyOptions) {
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async ({ content, isRetry = false }: { content: string; isRetry?: boolean }) => {
+      // Recorded BEFORE the guards, not after: retry() is gated on this ref, so
+      // a send that failed on the conversation guard used to leave it holding
+      // the PREVIOUS message — or, on the very first send, the empty string it
+      // is initialised with, which makes retry() a no-op and renders the error
+      // card's "Try Again" as a button that does nothing at all.
+      lastUserMessage.current = content;
+      // A genuinely new message has no row yet, so the pair is reset together
+      // with the text it describes — a stale `true` surviving into a new
+      // question would silently drop that question instead. A retry
+      // deliberately keeps what is known, because it replays the very message
+      // this pair already describes.
+      if (!isRetry) lastUserMessageInserted.current = false;
+
       if (!conversation || !user) throw new Error('No active conversation');
       if (isSendingRef.current) throw new Error('Message already in flight');
 
       isSendingRef.current = true;
-      lastUserMessage.current = content;
 
       setIsStreaming(true);
       setAvatarState('thinking');
       setStreamingContent('');
       setError(null);
 
-      // Insert user message locally first (skip on retry — message already exists)
-      if (!isRetry) {
+      // Insert the user message locally first. Skipped ONLY when this message's
+      // row is known to have been written — never merely because this
+      // invocation is a retry.
+      if (!lastUserMessageInserted.current) {
         const { error: insertError } = await supabase
           .from('donny_messages')
           .insert({
@@ -147,6 +175,10 @@ export function useDonny(options?: UseDonnyOptions) {
           });
 
         if (insertError) throw insertError;
+        // Recorded only AFTER the write lands, so the flag never claims a row
+        // that does not exist. In particular an insert that THREW leaves it
+        // false, so Retry writes the row.
+        lastUserMessageInserted.current = true;
       }
 
       // Get session for auth header
