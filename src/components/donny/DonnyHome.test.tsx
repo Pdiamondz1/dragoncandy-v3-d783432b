@@ -36,6 +36,7 @@ vi.mock('@/contexts/DonnyProvider', () => ({
     dismissNudge: dismissNudgeMock,
     stage: 'inline',
     messages: [],
+    clientMessageIds: [],
     isStreaming: false,
     streamingContent: '',
     error: null,

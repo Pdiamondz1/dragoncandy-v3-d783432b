@@ -24,6 +24,7 @@ const donnyContextMock = {
     markAllRead: markAllReadMock,
     unreadCount: 0,
     messages: [] as DonnyMessage[],
+    clientMessageIds: [] as string[],
     isStreaming: false,
     streamingContent: '',
     error: null as string | null,
@@ -98,12 +99,23 @@ beforeEach(() => {
     markAllRead: markAllReadMock,
     unreadCount: 0,
     messages: [],
+    clientMessageIds: [],
     isStreaming: false,
     streamingContent: '',
     error: null,
     retry: retryMock,
   };
 });
+
+// The two rows of one exchange, as useDonny would report them: the persisted
+// messages AND the ids this browser session minted while writing them.
+function landExchange(prior: DonnyMessage[], ...turns: DonnyMessage[]) {
+  donnyContextMock.value.messages = [...prior, ...turns];
+  donnyContextMock.value.clientMessageIds = [
+    ...donnyContextMock.value.clientMessageIds,
+    ...turns.map((t) => t.id),
+  ];
+}
 
 describe('DonnyCanvas — stage lifecycle', () => {
   it('claims the inline stage exactly once on mount', () => {
@@ -173,10 +185,10 @@ describe('DonnyCanvas — resting to thread', () => {
     expect(onPromptSubmit).toHaveBeenCalledWith('find creators near me');
     expect(screen.queryByText('Dashboard body')).not.toBeInTheDocument();
 
-    donnyContextMock.value.messages = [
-      ...donnyContextMock.value.messages,
-      msg({ id: 'u2', role: 'user', content: 'find creators near me' }),
-    ];
+    landExchange(
+      donnyContextMock.value.messages,
+      msg({ id: 'u2', role: 'user', content: 'find creators near me' })
+    );
     rerender(canvasTree({ onPromptSubmit }));
 
     expect(container.querySelectorAll('[data-turn]')).toHaveLength(1);
@@ -221,9 +233,9 @@ describe('DonnyCanvas — the thread shows this visit only', () => {
   ];
 
   it('shows only the new exchange, not every turn ever persisted', () => {
-    // useDonny fetches the whole conversation with no limit, so without a
-    // baseline one question would materialise months of history above the
-    // answer — and the scroll effect would jump the user to the bottom of it.
+    // useDonny fetches the whole conversation with no limit, so without a rule
+    // one question would materialise months of history above the answer — and
+    // the scroll effect would jump the user to the bottom of it.
     donnyContextMock.value.messages = priorTurns;
     const { container, rerender } = render(canvasTree());
 
@@ -231,11 +243,11 @@ describe('DonnyCanvas — the thread shows this visit only', () => {
     fireEvent.change(field, { target: { value: 'find creators near me' } });
     fireEvent.keyDown(field, { key: 'Enter' });
 
-    donnyContextMock.value.messages = [
-      ...priorTurns,
+    landExchange(
+      priorTurns,
       msg({ id: 'u2', role: 'user', content: 'find creators near me' }),
-      msg({ id: 'a2', role: 'assistant', content: 'Three creators near Hoboken.' }),
-    ];
+      msg({ id: 'a2', role: 'assistant', content: 'Three creators near Hoboken.' })
+    );
     rerender(canvasTree());
 
     expect(container.querySelectorAll('[data-turn]')).toHaveLength(2);
@@ -244,9 +256,69 @@ describe('DonnyCanvas — the thread shows this visit only', () => {
     expect(screen.getByText('Three creators near Hoboken.')).toBeInTheDocument();
   });
 
+  it('hides history that arrives AFTER the thread opened — the cold-load race', () => {
+    // The defect an index-based baseline could not survive. On a cold dashboard
+    // the messages query is gated behind the stage, which DonnyCanvas only
+    // flips in a mount effect, so `messages` is still EMPTY when the user
+    // submits. A baseline of `messages.length` was therefore 0, and `slice(0)`
+    // rendered the user's entire Donny history the instant the query landed.
+    // Membership in the id set this session minted cannot be fooled by arrival
+    // order.
+    donnyContextMock.value.messages = [];
+    const { container, rerender } = render(canvasTree());
+
+    const field = screen.getByRole('textbox', { name: /ask donny/i });
+    fireEvent.change(field, { target: { value: 'find creators near me' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+
+    // Now the query resolves — and it brings back fifty prior turns alongside
+    // this visit's two.
+    landExchange(
+      priorTurns,
+      msg({ id: 'u2', role: 'user', content: 'find creators near me' }),
+      msg({ id: 'a2', role: 'assistant', content: 'Three creators near Hoboken.' })
+    );
+    rerender(canvasTree());
+
+    expect(screen.queryByText('Question from last week')).not.toBeInTheDocument();
+    expect(screen.queryByText('Answer from last week')).not.toBeInTheDocument();
+    // …and this visit's own exchange is all that is there, both halves of it.
+    expect(container.querySelectorAll('[data-turn]')).toHaveLength(2);
+    expect(screen.getByText('find creators near me')).toBeInTheDocument();
+    expect(screen.getByText('Three creators near Hoboken.')).toBeInTheDocument();
+  });
+
+  it('does not resurrect an EARLIER visit of the same page session', () => {
+    // The provider outlives this component: navigate away and back and
+    // DonnyCanvas remounts while `clientMessageIds` keeps everything the
+    // session has written. Membership alone would show the earlier visit too,
+    // which is why the entry index still exists.
+    donnyContextMock.value.messages = [
+      msg({ id: 'u1', role: 'user', content: 'Earlier this session' }),
+      msg({ id: 'a1', role: 'assistant', content: 'Earlier answer' }),
+    ];
+    donnyContextMock.value.clientMessageIds = ['u1', 'a1'];
+
+    const { container, rerender } = render(canvasTree());
+
+    const field = screen.getByRole('textbox', { name: /ask donny/i });
+    fireEvent.change(field, { target: { value: 'new question' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+
+    landExchange(
+      donnyContextMock.value.messages,
+      msg({ id: 'u2', role: 'user', content: 'new question' })
+    );
+    rerender(canvasTree());
+
+    expect(container.querySelectorAll('[data-turn]')).toHaveLength(1);
+    expect(screen.queryByText('Earlier this session')).not.toBeInTheDocument();
+    expect(screen.queryByText('Earlier answer')).not.toBeInTheDocument();
+  });
+
   it('keeps the first exchange of the visit visible when a second question is asked', () => {
-    // The baseline moves on the resting→thread edge ONLY. If it re-anchored on
-    // every send, each answer would erase the one before it.
+    // The entry index moves on the resting→thread edge ONLY. If it re-anchored
+    // on every send, each answer would erase the one before it.
     donnyContextMock.value.messages = priorTurns;
     const { container, rerender } = render(canvasTree());
 
@@ -254,20 +326,20 @@ describe('DonnyCanvas — the thread shows this visit only', () => {
     fireEvent.change(field, { target: { value: 'first question' } });
     fireEvent.keyDown(field, { key: 'Enter' });
 
-    donnyContextMock.value.messages = [
-      ...priorTurns,
+    landExchange(
+      priorTurns,
       msg({ id: 'u2', role: 'user', content: 'first question' }),
-      msg({ id: 'a2', role: 'assistant', content: 'first answer' }),
-    ];
+      msg({ id: 'a2', role: 'assistant', content: 'first answer' })
+    );
     rerender(canvasTree());
 
     fireEvent.change(field, { target: { value: 'second question' } });
     fireEvent.keyDown(field, { key: 'Enter' });
 
-    donnyContextMock.value.messages = [
-      ...donnyContextMock.value.messages,
-      msg({ id: 'u3', role: 'user', content: 'second question' }),
-    ];
+    landExchange(
+      donnyContextMock.value.messages,
+      msg({ id: 'u3', role: 'user', content: 'second question' })
+    );
     rerender(canvasTree());
 
     expect(container.querySelectorAll('[data-turn]')).toHaveLength(3);

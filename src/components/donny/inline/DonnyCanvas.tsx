@@ -30,6 +30,7 @@ export function DonnyCanvas({ suggestions, onSuggestionTap, onPromptSubmit, chil
     markAllRead,
     unreadCount,
     messages,
+    clientMessageIds,
     isStreaming,
     streamingContent,
     error,
@@ -41,20 +42,39 @@ export function DonnyCanvas({ suggestions, onSuggestionTap, onPromptSubmit, chil
   // shows the dashboard, not a resumed thread.
   const [mode, setMode] = useState<'resting' | 'thread'>('resting');
 
-  // How many persisted messages existed when this visit's thread began. The
-  // conversation is fetched whole and unbounded, so without this one question
-  // would materialise every turn the user has ever exchanged with Donny above
-  // the answer — and the scroll effect would then jump them to the bottom of
-  // it. A ref initialised per mount resets itself on remount, which is exactly
-  // the "this visit only" rule (founder decision). It moves ONLY on the
-  // resting→thread edge; a second question in the same visit must not hide the
-  // first exchange.
-  const baselineRef = useRef(0);
+  // "This visit only" (founder decision) is expressed as MEMBERSHIP, not
+  // position. The conversation is fetched whole and unbounded, so without a
+  // rule one question would materialise every turn the user has ever exchanged
+  // with Donny above the answer — and the scroll effect would then jump them to
+  // the bottom of it.
+  //
+  // The rule used to be `messages.slice(count-at-entry)`, and an index into
+  // `messages` is inherently racy: that array is still empty while the
+  // stage-gated messages query is in flight, so on a cold load with prior
+  // history the count was 0 and `slice(0)` meant "show all of it" the moment
+  // the history arrived. `clientMessageIds` carries no such dependency — it is
+  // written by this browser session at send time, so its length at entry is a
+  // fact, not a snapshot of a query that may not have run. A history row can
+  // never pass the test below no matter when it loads, because this session
+  // never minted its id.
+  //
+  // The index still exists, but it now marks how much of THIS SESSION's own
+  // output predates this visit (navigate away and back and the canvas remounts
+  // while the provider's list does not). It moves ONLY on the resting→thread
+  // edge; a second question in the same visit must not hide the first exchange.
+  const visitStartRef = useRef(0);
   const enterThread = useCallback(() => {
     if (mode === 'thread') return;
-    baselineRef.current = messages.length;
+    visitStartRef.current = clientMessageIds.length;
     setMode('thread');
-  }, [mode, messages.length]);
+  }, [mode, clientMessageIds.length]);
+
+  // Recomputed every render rather than memoised: `visitStartRef` is a ref, so
+  // a memo keyed on `clientMessageIds` would not see the entry edge move and
+  // would serve the previous visit's set for one render. Both lists are a
+  // single conversation long.
+  const visitMessageIds = new Set(clientMessageIds.slice(visitStartRef.current));
+  const visitMessages = messages.filter((m) => visitMessageIds.has(m.id));
 
   // Claim the stage for as long as this canvas is mounted. Unconditional on
   // purpose: it also closes a panel opened on another page, because nothing
@@ -124,12 +144,16 @@ export function DonnyCanvas({ suggestions, onSuggestionTap, onPromptSubmit, chil
   // a page-length scroller it would fight the user's own scroll on every
   // delta. DonnyChatView.tsx includes it only because it drives a short
   // fixed-height panel, not a full-page scroller.
+  //
+  // Keyed on the RENDERED turn count, not `messages.length`: history landing
+  // mid-visit changes the latter without changing anything on screen, and would
+  // otherwise yank the page to the bottom for no visible reason.
   useEffect(() => {
     if (mode !== 'thread') return;
     const scroller = document.getElementById('main-content');
     if (!scroller) return;
     scroller.scrollTo({ top: scroller.scrollHeight, behavior: 'smooth' });
-  }, [mode, messages.length]);
+  }, [mode, visitMessages.length]);
 
   return (
     // The thread-mode bottom padding pairs with the composer's mobile `fixed`
@@ -162,7 +186,7 @@ export function DonnyCanvas({ suggestions, onSuggestionTap, onPromptSubmit, chil
 
       {mode === 'thread' && (
         <DonnyThread
-          messages={messages.slice(baselineRef.current)}
+          messages={visitMessages}
           isStreaming={isStreaming}
           streamingContent={streamingContent}
           error={error}

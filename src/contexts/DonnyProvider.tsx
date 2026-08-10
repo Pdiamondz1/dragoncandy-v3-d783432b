@@ -40,6 +40,14 @@ interface DonnyContextValue {
 
   // Chat
   messages: DonnyMessage[];
+  /**
+   * Ids of the `donny_messages` rows this browser session wrote, oldest first.
+   * Both halves of an exchange appear here (the client writes both rows;
+   * donny-orchestrator writes none), which is what lets the inline canvas scope
+   * its thread to "this visit" without counting rows it may not have fetched
+   * yet. See `DonnyCanvas`.
+   */
+  clientMessageIds: string[];
   conversation: DonnyConversation | null;
   avatarState: DonnyAvatarState;
   isStreaming: boolean;
@@ -79,6 +87,7 @@ const DONNY_FALLBACK: DonnyContextValue = {
   executeAction: noop,
   dismissNudge: noop,
   messages: [],
+  clientMessageIds: [],
   conversation: null,
   avatarState: 'idle' as DonnyAvatarState,
   isStreaming: false,
@@ -390,6 +399,7 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
       executeAction,
       dismissNudge,
       messages: donny.messages,
+      clientMessageIds: donny.clientMessageIds,
       conversation: donny.conversation ?? null,
       avatarState: donny.avatarState,
       isStreaming: donny.isStreaming,
@@ -410,7 +420,7 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
       stage, open, expand, collapse, close,
       setInline, exitInline, registerInlineComposer, focusInlineComposer, markAllRead,
       nudges, unreadCount, executeAction, dismissNudge,
-      donny.messages, donny.conversation, donny.avatarState, donny.isStreaming, donny.error, donny.streamingContent, donny.retry, donny.clearChat, donny.archiveConversation,
+      donny.messages, donny.clientMessageIds, donny.conversation, donny.avatarState, donny.isStreaming, donny.error, donny.streamingContent, donny.retry, donny.clearChat, donny.archiveConversation,
       sendMessage, location.pathname, userRole, quickChips, campaignContext,
       openDonnyWithContext, publishDraft,
     ]

@@ -46,6 +46,23 @@ export function useDonny(options?: UseDonnyOptions) {
   const isSendingRef = useRef(false);
   const lastUserMessage = useRef<string>("");
 
+  // Ids of the `donny_messages` rows THIS client wrote, oldest first.
+  //
+  // Both halves of every exchange are written here — the user row and, once the
+  // model answers, the assistant row. `donny-orchestrator` never touches
+  // `donny_messages` (verified: zero references anywhere in that function), so
+  // this list is a complete record of what the current browser session
+  // contributed to the thread.
+  //
+  // Its value is that it does NOT depend on any query having resolved. The
+  // inline canvas needs to show "this visit only", and a COUNT of `messages`
+  // cannot express that on a cold load: `messages` is still 0-length while the
+  // (stage-gated) messages query is in flight, so a baseline taken then means
+  // "show everything" the moment months of history arrive. Membership in a set
+  // this client minted is immune to that — a history row carries an id this
+  // session never issued, whenever it turns up.
+  const [clientMessageIds, setClientMessageIds] = useState<string[]>([]);
+
   // Sends issued before the conversation existed, oldest first. See the
   // `conversationPending` block below for why they can't just be sent.
   const queuedSendsRef = useRef<string[]>([]);
@@ -181,15 +198,28 @@ export function useDonny(options?: UseDonnyOptions) {
 
       // Insert user message locally first (skip on retry — message already exists)
       if (!isRetry) {
+        // The row id is chosen HERE rather than read back from the insert.
+        // `donny_messages.id` is `uuid not null default gen_random_uuid()` with
+        // no triggers on the table and an `authenticated` INSERT grant on the
+        // column (checked against prod 2026-08-09), so an explicit value is
+        // stored verbatim. Doing it this way means the id is known without a
+        // second round trip and without making the send depend on RLS letting
+        // the INSERT return its own row — a `.select()` that came back empty
+        // would fail a send that had actually succeeded.
+        const userMessageId = crypto.randomUUID();
         const { error: insertError } = await supabase
           .from('donny_messages')
           .insert({
+            id: userMessageId,
             conversation_id: conversation.id,
             role: 'user',
             content,
           });
 
         if (insertError) throw insertError;
+        // Recorded only after the write lands, so the set never claims a row
+        // that does not exist.
+        setClientMessageIds((ids) => [...ids, userMessageId]);
       }
 
       // Get session for auth header
@@ -293,7 +323,9 @@ export function useDonny(options?: UseDonnyOptions) {
             })
           );
 
+          const assistantMessageId = crypto.randomUUID();
           const { error: saveErr } = await supabase.from('donny_messages').insert({
+            id: assistantMessageId,
             conversation_id: conversation.id,
             role: 'assistant',
             content: accumulatedText,
@@ -301,6 +333,7 @@ export function useDonny(options?: UseDonnyOptions) {
             rich_cards: richCards.length ? richCards : null,
           });
           if (saveErr) throw saveErr;
+          setClientMessageIds((ids) => [...ids, assistantMessageId]);
         } else {
           throw new Error('Donny could not generate a response');
         }
@@ -321,7 +354,9 @@ export function useDonny(options?: UseDonnyOptions) {
         );
         const jsonRichCards = (data.rich_cards ?? []) as DonnyRichCard[];
 
+        const assistantMessageId = crypto.randomUUID();
         const { error: saveErr } = await supabase.from('donny_messages').insert({
+          id: assistantMessageId,
           conversation_id: conversation.id,
           role: 'assistant',
           content: data.answer,
@@ -329,6 +364,7 @@ export function useDonny(options?: UseDonnyOptions) {
           rich_cards: jsonRichCards.length ? jsonRichCards : null,
         });
         if (saveErr) throw saveErr;
+        setClientMessageIds((ids) => [...ids, assistantMessageId]);
       } else {
         throw new Error(data?.error || 'Donny could not generate a response');
       }
@@ -475,6 +511,7 @@ export function useDonny(options?: UseDonnyOptions) {
 
   return {
     ...state,
+    clientMessageIds,
     sendMessage,
     clearChat,
     archiveConversation,

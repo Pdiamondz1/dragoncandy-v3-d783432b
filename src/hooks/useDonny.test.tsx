@@ -167,6 +167,77 @@ describe('useDonny — retry after a send that failed before the conversation ex
   });
 });
 
+// donny-orchestrator answers with SSE in production; the JSON branch every
+// other test in this file exercises is only its fallback. The two branches
+// insert the assistant row through separate code, so the streaming one needs
+// its own coverage or half the id recording is unpinned.
+function sseResponse(answer: string): Response {
+  const encoder = new TextEncoder();
+  const frames = [
+    `event: text_delta\ndata: ${JSON.stringify({ text: answer })}\n\n`,
+    `event: done\ndata: ${JSON.stringify({ answer, suggested_actions: [], rich_cards: [] })}\n\n`,
+  ].map((frame) => encoder.encode(frame));
+  let i = 0;
+  return {
+    ok: true,
+    headers: { get: () => 'text/event-stream' },
+    body: {
+      getReader: () => ({
+        read: async () =>
+          i < frames.length ? { done: false, value: frames[i++] } : { done: true, value: undefined },
+      }),
+    },
+  } as unknown as Response;
+}
+
+describe('useDonny — the ids of the rows this client writes', () => {
+  it('reports both halves of an exchange, and they are the ids actually inserted', async () => {
+    // DonnyCanvas scopes its thread to "this visit" by MEMBERSHIP in this list,
+    // so if either half went unrecorded the user would watch their own question
+    // — or Donny's answer — never appear. An index-based baseline could not do
+    // this job at all: `messages` is empty on a cold load, so a count taken
+    // then means "show everything".
+    authMock.value = { id: 'u1' };
+    const { result } = renderHook(() => useDonny(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.conversation).not.toBeNull());
+
+    act(() => result.current.sendMessage('find creators near me'));
+    await waitFor(() => expect(result.current.clientMessageIds).toHaveLength(2));
+
+    const rows = messageInsertMock.mock.calls.map(
+      (call) => (call as unknown as [{ id: string; role: string }])[0]
+    );
+    expect(rows.map((r) => r.role)).toEqual(['user', 'assistant']);
+    // The id is chosen client-side and sent WITH the insert, so what this hook
+    // reports is what the row actually carries — no read-back, no guessing.
+    expect(result.current.clientMessageIds).toEqual(rows.map((r) => r.id));
+    // `donny_messages.id` is a `uuid` column; a placeholder would be rejected
+    // by Postgres long before any of this mattered.
+    for (const row of rows) {
+      expect(row.id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      );
+    }
+  });
+
+  it('records the assistant id on the STREAMING path too, not just the JSON fallback', async () => {
+    fetchMock.mockResolvedValue(sseResponse('Three creators near Hoboken.'));
+    authMock.value = { id: 'u1' };
+    const { result } = renderHook(() => useDonny(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.conversation).not.toBeNull());
+
+    act(() => result.current.sendMessage('find creators near me'));
+    await waitFor(() => expect(result.current.clientMessageIds).toHaveLength(2));
+
+    const rows = messageInsertMock.mock.calls.map(
+      (call) => (call as unknown as [{ id: string; role: string; content: string }])[0]
+    );
+    expect(rows.map((r) => r.role)).toEqual(['user', 'assistant']);
+    expect(rows[1].content).toBe('Three creators near Hoboken.');
+    expect(result.current.clientMessageIds).toEqual(rows.map((r) => r.id));
+  });
+});
+
 // Every `query` this hook has posted to donny-orchestrator, in call order.
 const sentQueries = () =>
   fetchMock.mock.calls.map(
