@@ -114,10 +114,35 @@ webhook missed it". The copy is therefore true under both readings: *"You have $
 waiting — check your payout setup."* Telling someone who is already set up to go set
 up is the #357 false-"verify your email" class, and this is the top item on the page.
 
-**D4 — No new backend.** No migration, no edge-function change, no RLS change, no new
-agent. Everything the creator surface needs is reachable under the creator's own RLS.
-`campaign_invitations` SELECT allows `creator_id = auth.uid()` (verified against
-`pg_policy`).
+**D4 — No backend behaviour change, and no deploy.** No migration, no RLS change, no
+new agent, no change to any edge function's behaviour. Everything the creator surface
+needs is reachable under the creator's own RLS: `campaign_invitations` SELECT allows
+`creator_id = auth.uid()` (verified against `pg_policy`).
+
+> **One edge-function *source* file is nonetheless edited.** `ROUTE_TEMPLATES` lives
+> in `supabase/functions/donny-orchestrator/routes.ts`, and
+> `src/lib/donnyRoutes.parity.test.ts` is **bidirectional** — it fails both when a
+> server route is missing from the client and when a client route is missing from the
+> server, with a documented `ALLOWED_CLIENT_ONLY` exception list that covers two
+> legacy Crews redirects and nothing else. So `/dashboard/creator/overview` must be
+> added to **both** mirrors; adding it to the client alone fails the second
+> assertion, and widening `ALLOWED_CLIENT_ONLY` to dodge that would be abusing a list
+> whose stated purpose is legacy redirects.
+>
+> **No redeploy of `donny-orchestrator` is required**, and this is a reasoned
+> conclusion rather than an omission. The server list governs exactly one thing:
+> `isKnownRoute` drops routes the *model* invents from `suggested_actions`. No agent
+> returns `/dashboard/creator/overview` in its `suggested_actions` — the route is
+> brand new and nothing references it — and the "← Dashboard" control is a hardcoded
+> `<Link>` in the shell, not an LLM-emitted route, so it is never subject to the
+> guard. The worst case of the skew is that Donny cannot spontaneously emit a link to
+> a page it has no reason to emit.
+>
+> **Record the skew rather than assume it away.** After merge the repo's server list
+> and the deployed function's list differ by one entry until the next
+> `donny-orchestrator` deploy for any reason picks it up. Anyone later reading
+> `routes.ts` as evidence of prod behaviour would be wrong — this project's recurring
+> "merged ≠ deployed" trap, reached from the harmless end.
 
 **D5 — Copy: an invitation is a nudge to apply, never an assignment.** No Accept
 button, no "you've been selected", no implied priority. The campaign is already public
@@ -139,10 +164,48 @@ founder-verified on prod; it must be moved, not rewritten.
 
 | Unit | Responsibility |
 |---|---|
-| `src/hooks/donny/useDonnyHomeConversation.ts` | Every piece of the conversation machinery, moved verbatim: `queuedAsk`, `visitBaselineId`, `dispatch`, `visitMessages`, the flush effect, `isBusy`, `askedHere`, `historyUnavailable`, `threadError`/`threadRetry`, `hasConversation`, `composerRef`, `userAskedHere`, `ask`. Role-agnostic; consumes `useDonnyContext()` only. |
-| `src/components/donny/DonnyHomeShell.tsx` | The layout. Props: `userRole`, `roleLabel`, `badge?`, `overviewRoute`, `suggestions`, `proposals` slot, `greetingName`. Owns the collapsing hero, the two-arrangement wrapper, `DonnyThreadRegion`, `DonnyHomePrompt`, the overview link and the tour. |
+| `src/hooks/donny/useDonnyHomeConversation.ts` | Every piece of the conversation machinery, moved verbatim: the `registerInlineConversation` mount effect, `queuedAsk`, `visitBaselineId`, `dispatch`, `visitMessages`, the flush effect, `isBusy`, `askedHere`, `historyUnavailable`, `threadError`/`threadRetry`, `hasConversation`, `composerRef`, `userAskedHere` and its scroll effect, and `ask`. Role-agnostic; consumes `useDonnyContext()` only. |
+| `src/components/donny/DonnyHomeShell.tsx` | The layout only. Owns the collapsing hero, the two-arrangement wrapper, `DonnyThreadRegion`, `DonnyHomePrompt`, the `!profile` skeleton, the overview link and the tour. Holds no conversation state. |
 | `src/components/donny/DonnyHome.tsx` | Business container. Same external behaviour as today: `usePendingActions`, `useUpcomingCampaignDeadlines`, `useLocationReadiness`, `buildDonnyProposals`, `BUSINESS_SUGGESTIONS`, `LocationBadge`, the two rating managers. |
 | `src/components/donny/CreatorDonnyHome.tsx` | Creator container: the §4.3 hooks, `buildCreatorProposals`, `CREATOR_SUGGESTIONS`, `RatingPromptManager`. No `LocationBadge` — locations are an org concept. |
+
+**The container calls the hook and passes its result down.** Not the shell. The
+container needs `ask` directly, because `handleProposalTap` routes a
+`cta.kind === 'ask'` proposal through it (`DonnyHome.tsx:346-352`), and because the
+three `trackEvent` calls for prompt submit, suggestion tap and proposal tap must stay
+in the component the existing tests assert against.
+
+`DonnyHomeShell`'s full prop list follows from that:
+
+```ts
+interface DonnyHomeShellProps {
+  userRole: 'business_client' | 'content_creator' | 'brand';
+  roleLabel: string;               // "Restaurant Dashboard" | "Creator Dashboard"
+  greetingName: string;
+  subtitle: string;
+  badge?: ReactNode;               // LocationBadge for business, omitted for creator
+  overviewRoute: string;
+  onOverviewOpen: () => void;      // the trackEvent call stays in the container
+  suggestions: DonnySuggestion[];
+  onSubmit: (text: string) => void;
+  onSuggestionTap: (s: DonnySuggestion) => void;
+  profileLoaded: boolean;          // drives the skeleton branch
+  children: ReactNode;             // the proposals block, rendered by the container
+
+  // straight from useDonnyHomeConversation, spread by the container
+  hasConversation: boolean;
+  isBusy: boolean;
+  historyUnavailable: boolean;
+  composerRef: React.RefObject<HTMLDivElement>;
+  thread: {
+    messages: DonnyMessage[];
+    avatarState: DonnyAvatarState;
+    streamingContent: string;
+    error: string | null;
+    retry: () => void;
+  };
+}
+```
 
 **Why separate containers rather than one component with a `role` prop.** Hooks
 cannot be conditional. A single component would fire `usePendingActions` — which is
@@ -158,10 +221,21 @@ composer must stay at the same slot in the element tree across the resting →
 conversation switch; `DonnyHomeShell` renders the wrapper in both states for exactly
 that reason, and a remount would drop focus and any half-typed follow-up.
 
-**Regression net.** `DonnyHome.test.tsx` (12 tests), `DonnyHomePrompt.test.tsx` and
-`DonnyThreadRegion.test.tsx` must pass unchanged. If the extraction is a move, they
-do. If any of them needs editing, that is the signal the extraction changed
-behaviour.
+**Regression net.** `DonnyHome.test.tsx` — **44 `it()` cases across 8 `describe`
+blocks**, not the 12 the parent design §8 cites, which was written pre-Phase-B —
+plus `DonnyHomePrompt.test.tsx` and `DonnyThreadRegion.test.tsx`, all passing
+unchanged. If the extraction is a move, they do. If any needs editing, that is the
+signal the extraction changed behaviour.
+
+> **Several of those tests pin structure, not just behaviour, so the shell's markup
+> is constrained.** `DonnyHome.test.tsx:493-495` reaches the conversation block by
+> `getByRole('log').parentElement.parentElement` to assert
+> `max-h-[calc(100dvh-12rem)]`, and `:460-483` uses `compareDocumentPosition` to
+> assert the composer sits below the thread in the conversation arrangement and above
+> "Needs your attention" while resting. **Any extra wrapper element the shell
+> introduces around `DonnyThreadRegion` breaks the first**, and it will read as a
+> layout regression rather than as a test that was measuring depth. Preserve the
+> existing element depth exactly.
 
 ### 4.2 The creator overview page
 
@@ -180,12 +254,24 @@ behaviour.
   `ProtectedRoute`. Creators have no role guard equivalent to `BusinessRoute`;
   `ProtectedRoute` is what every other `/dashboard/creator/*` route uses.
 
-**The route must be registered in three places or a test fails.** `src/App.tsx` is
-the real table; `src/lib/donnyRoutes.ts` is the client-side guard; the orchestrator's
-`ROUTE_TEMPLATES` in `supabase/functions/donny-orchestrator/routes.ts` is the
-server-side allow-list. `src/lib/donnyRoutes.parity.test.ts` diffs the last two, so a
-one-sided edit is caught at test time. Adding it to the allow-list is what stops
-`isKnownDonnyRoute` downgrading the "← Dashboard" CTA to a dead label.
+**The route must be registered in three places or a test fails** — `src/App.tsx` (the
+real table), `src/lib/donnyRoutes.ts` (the client guard) and the orchestrator's
+`ROUTE_TEMPLATES` (the server allow-list). See D4 for why both mirrors must move
+together and why no redeploy follows.
+
+**Every other CTA this design emits is already allow-listed.**
+`/dashboard/creator/campaigns`, `/dashboard/creator/campaigns/:id`,
+`/dashboard/creator/my-campaigns`, `/dashboard/creator/my-campaigns/:id` and
+`/dashboard/creator/earnings` are all present in the client mirror
+(`donnyRoutes.ts:84-97`), so only the new overview route is added. Item B's
+`?tab=applied` is safe: `isKnownDonnyRoute` strips the query string and fragment
+before matching (`donnyRoutes.ts:158`), and `MyCampaignsPage` genuinely honours the
+parameter — so `routeCta` will not silently downgrade it to a dead label.
+
+**`DONNY_FIRST_DASHBOARD_ENABLED` is shared and already `true`.** There is no
+per-role switch, so merging this **is** the creator launch, exactly as it was for
+business. The flag's own comment in `featureConfig.ts` is business-specific and
+should be widened to say it now gates two roles.
 
 ### 4.3 Creator data hooks
 
@@ -194,10 +280,24 @@ creator container needs its own reads, all under the creator's own RLS:
 
 | Hook | Reads | Feeds |
 |---|---|---|
-| `useCreatorAttentionInvitations` | `campaign_invitations` where `creator_id = auth.uid()` and `status='pending'`, joined to `campaigns` filtered to `status='published'`, excluding campaigns the creator already applied to | Item D |
-| `useCreatorContentTodo` | `campaign_collaborations` where `creator_id = auth.uid()` and `content_status='pending'` | Item A |
+| `useCreatorAttentionInvitations` | `campaign_invitations` where `creator_id = auth.uid()` and `status='pending'`, embedding `campaigns!inner(id, title, status)` filtered to `status='published'`, minus the campaigns the creator already has an application on | Item D |
+| `useCreatorContentTodo` | `campaign_collaborations` where `creator_id = auth.uid()`, `status='active'` **and** `content_status='pending'`, returning `campaign_id` alongside the collaboration id | Item A |
 | `useCreatorPendingApplications` | `campaign_applications` where `creator_id = auth.uid()` and `status='pending'` | Item B |
-| `useCreatorPayoutState` | `creator_profiles` (`stripe_account_id`, `stripe_onboarding_complete`, `pending_balance`) for the caller, via `.maybeSingle()` | Item C |
+| `useCreatorPayoutState` | `creator_profiles` (`stripe_account_id`, `stripe_onboarding_complete`, `pending_balance`) for the caller, via `.maybeSingle()`, plus the caller's collaboration count for the §4.4 conditioning rule | Item C |
+
+Three details that would otherwise be invented twice:
+
+- **The embedded campaign filter needs `!inner`.** A plain embed returns the
+  invitation row with a `null` campaign when the filter excludes it, so without
+  `!inner` a closed campaign's invitation still arrives and has to be re-filtered
+  client-side.
+- **"Already applied" needs a second read.** PostgREST cannot express a
+  not-exists against a sibling table in one request; fetch the creator's own
+  `campaign_applications.campaign_id` list and exclude client-side. It is the
+  creator's own rows, so RLS returns them all.
+- **`useCreatorContentTodo` must pin `status='active'`**, mirroring
+  `usePendingActions.ts:64-65`. Without it a cancelled collaboration still sitting at
+  `content_status='pending'` renders as "content not started".
 
 `useCreatorPayoutState` **must use `.maybeSingle()`, never `.single()`**. Three of the
 18 creators have no `creator_profiles` row at all; `.single()` throws on zero rows,
@@ -223,13 +323,52 @@ dismissal keys: `creator:invitation:${campaignId}`, `creator:content_todo:${coll
 
 **The items:**
 
-| | Item | Fires when | CTA | Live today |
-|---|---|---|---|---|
-| A | Content not started | a collaboration with `content_status='pending'` | route → `/dashboard/creator/my-campaigns/:id` | 4 creators |
-| B | Waiting on a reply | an application with `status='pending'` | route → `/dashboard/creator/my-campaigns?tab=applied` | 2 creators |
-| C | Payouts | see the table below | route → `/dashboard/creator/earnings` | 14 creators |
-| D | Invitations | pending invite, campaign still `published`, no application yet | route → `/dashboard/creator/campaigns/:id` | 9 creators |
-| E | Find work | nothing in flight | route → `/dashboard/creator/campaigns` | 8 visible campaigns |
+| | Item | Fires when | CTA | `kind` | Dismissible | Live today |
+|---|---|---|---|---|---|---|
+| A | Content not started | collaboration `status='active'` and `content_status='pending'` | route → `/dashboard/creator/my-campaigns/:campaignId` | `pending_action` | yes | 4 creators |
+| B | Waiting on a reply | application `status='pending'` | route → `/dashboard/creator/my-campaigns?tab=applied` | `pending_action` | yes | 2 creators |
+| C | Payouts | see the state table below | route → `/dashboard/creator/earnings` | `signal` | **no** | 14 creators |
+| D | Invitations | pending invite, campaign still `published`, no application yet | route → `/dashboard/creator/campaigns/:campaignId` | `pending_action` | yes | 9 creators |
+| E | Find work | nothing in flight (no A, B, D and no collaboration) | route → `/dashboard/creator/campaigns` | `signal` | **no** | see below |
+
+> **Item A's route takes a campaign id, not a collaboration id.**
+> `MyCampaignDetailPage` resolves `:id` through `useCampaignById`. The proposal's own
+> id keys on the collaboration (two collaborations can share a campaign), so the hook
+> must return both — the collaboration id for the dismissal key, the campaign id for
+> the route.
+
+**Ordering — explicit, because the cap makes it decisive.** Five item types share a
+`PROPOSAL_CAP` of 3, and `buildDonnyProposals` deliberately does **not** rank by
+`priority` across kinds (`buildDonnyProposals.ts:41-43`) — it concatenates fixed
+groups. So `buildCreatorProposals` states its order rather than inheriting one:
+
+```
+hasMoneyOrWork = pending_balance > 0 || collaborations.length > 0
+
+hasMoneyOrWork   →  C, A, B, D            (E cannot fire — work is in flight)
+otherwise        →  A, B, D, E, C
+```
+
+Within a type, newest first. C is the only item that moves, and it moves for the
+reason in the conditioning rule below. **E is mutually exclusive with A, B, D and any
+collaboration** — it is the "you have nothing on" state — so in practice the second
+row is `D, E, C` or `E, C`, and the cap is never the binding constraint on it.
+
+**Item E takes no new query and names no number.** It is derived entirely from the
+absence of the other items, so it adds no fifth read. This is deliberate: the only
+hook that counts visible campaigns, `usePublicCampaigns`, runs a per-campaign fan-out
+that would undo §4.1's whole cost argument for two containers. The copy is therefore
+*"Nothing on your plate — find your next campaign"*, with no count.
+
+> **A known weakness, recorded rather than hidden.** §2 measured that **0 of the 24
+> open campaigns have a future deadline** — the latest is 2026-08-02 — and that only
+> 8 survive the taken-campaign exclusion. So E currently points at a board of 8
+> campaigns whose deadlines all read as past. It is not a dead end (a `published`
+> campaign is public and applying still works, which is why the marketplace shows
+> them at all), but it is thin, and it is the honest reason E ranks *below* the items
+> that point at something specific. If the board is still all-lapsed at
+> `verify-prod`, that is a supply problem for the founder, not a reason to hold this
+> phase — and it is the strongest argument for the `find_campaigns` follow-up in §8.
 
 **Item C's four states, in order:**
 
@@ -259,6 +398,18 @@ standing (#382). Where the invitation is old, the copy may say so ("invited 8 da
 ago") — honest about staleness without hiding the opportunity.
 
 `PROPOSAL_CAP` stays at 3, as on the business side.
+
+**`blocker` is always `null` for creators.** The business builder reserves it for the
+location-readiness blocker — a state that genuinely prevents creating campaigns,
+promotions and DragonShare. Nothing in the creator flow is blocked that way: an
+unpaid creator can still browse, apply and deliver. Item C is a ranked proposal, not
+a blocker, and returning `null` keeps `DonnyHomeProposals` rendering unchanged.
+
+**`ProposalIcon` will give every creator item the default clock icon** — its
+special-cases key on business-specific proposal ids
+(`DonnyHomeProposals.tsx:20-27`). Accepted for this phase; per-item icons are
+cosmetic and would mean editing a shared presentational component for no behavioural
+gain.
 
 ### 4.5 `CREATOR_SUGGESTIONS`
 
@@ -292,19 +443,38 @@ anchors that live in the `CreatorDashboard` body being replaced —
 `[data-tour='profile-completion']` (`StatsRow`), `[data-tour='browse-campaigns']`
 (`HeroPrimaryAction`) and `[data-tour='dragonshare-nav']` (`DragonShareStatTile`).
 
-The business tour survived Phase A by luck: `org-switcher`, `bottom-nav-add` and
-`donny-help` are app chrome, and `brief-generator` sits on `DonnyHomePrompt`, which
-the parent design §4.10 explicitly required be carried forward. The creator tour has
-no such luck.
-
 `DCTour` degrades rather than crashes — `document.querySelector` misses,
 `targetRect` stays `null`, and the popover renders centred with no spotlight
-(`DCTour.tsx:28-33`). So this ships as three quiet dead steps unless re-pointed.
+(`DCTour.tsx:26-35`). So this ships as three quiet dead steps unless addressed.
 
-Re-point the three body steps at anchors that exist on the new page: the prompt box
-(`DonnyHomePrompt` already carries `data-tour="brief-generator"` and is reused
-unchanged), the attention region, and the overview link. The old anchors travel to
-`CreatorOverview`, where the tour still resolves them if triggered from that page.
+**The invariant, which is what the business role actually satisfies.** `useTour`
+resolves steps by **role alone** — `getTourForRole(profile?.role)`, with no page
+awareness — and **both** creator pages render a `TourButton`. So there is only ever
+one creator tour, and it must resolve on `/dashboard/creator` **and**
+`/dashboard/creator/overview`.
+
+That is not luck on the business side, it is a deliberate duplication:
+`data-tour="brief-generator"` exists on **both** `DonnyHomePrompt.tsx:98` and
+`BusinessOverview.tsx:122` (wrapping `HeroPrimaryAction`). One selector, the same
+step, resolving on either page — the primary action of whichever page you are on.
+`org-switcher`, `bottom-nav-add` and `donny-help` are chrome and resolve everywhere.
+
+**So the rule is: every `CREATOR_TOUR` selector must exist on both creator pages.**
+Two of the three orphaned anchors have a genuine equivalent on the Donny page and one
+does not:
+
+| Step | Today's anchor | Resolution |
+|---|---|---|
+| "Browse campaigns" | `browse-campaigns` on `HeroPrimaryAction` | **Duplicate.** `CreatorDonnyHome` wraps `DonnyHomePrompt` in `<div data-tour="browse-campaigns">`. Mirrors `BusinessOverview:122` exactly — the primary action of each page. Wrapped in the container, not inside the shared `DonnyHomePrompt`, which already carries `brief-generator` and is shared with business. |
+| "Complete your profile" | `profile-completion` on `StatsRow` | **Re-point + rewrite.** A new `creator-attention` anchor on the attention region, which both pages have (`DonnyHomeProposals` renders `NeedsAttentionSection`; `CreatorOverview` renders it directly). New copy about what needs the creator, since a stats grid no longer leads the page. |
+| "DragonShare" | `dragonshare-nav` on `DragonShareStatTile` | **Re-point.** The overview link on the Donny page, and the existing tile on the overview — one shared new anchor. |
+| "Ask Donny" | `donny-help` | Unchanged — chrome. |
+
+Exact copy is a plan-level detail; the constraint is not. **A unit test enforces it:**
+every selector in `CREATOR_TOUR` must be present in the rendered tree of both
+`CreatorDonnyHome` and `CreatorOverview`. Without that test this silently rots the
+next time either page is restructured, which is precisely how the current breakage
+arrived.
 
 ## 5. Testing
 
@@ -319,10 +489,17 @@ because it is pure and every rule above is a branch:
 - Item D fires for a `published` campaign and not for any other status.
 - Item D does not fire when the creator already has an application on that campaign.
 - Item D is unaffected by `expires_at` in either direction (D1).
+- Item E fires only when A, B, D are all empty **and** there is no collaboration.
+- The two orderings hold: `C,A,B,D` when money or work exists, `A,B,D,E,C` otherwise.
 - An errored input contributes no proposal, and never a zero.
 - Ids are stable across rebuilds, since they are the dismissal keys.
+- `blocker` is always `null`.
 - `PROPOSAL_CAP` and `allProposalIds` behave as on the business side — the full
   pre-cap id list is returned so a dismissal below the cap is not resurrected.
+
+**Tour parity.** A test asserting every `CREATOR_TOUR` selector resolves in both
+`CreatorDonnyHome` and `CreatorOverview` (§4.6). This is the check that would have
+caught the current breakage.
 
 **Regression.** `DonnyHome.test.tsx`, `DonnyHomePrompt.test.tsx` and
 `DonnyThreadRegion.test.tsx` pass **unchanged**. Needing to edit them means §4.1's
@@ -384,8 +561,12 @@ call the business version made.
    `SHIPPED_LOG.md` prepend, `PROJECT_CONTEXT.md` §5 index line, Donny RAG sync after
    merge.
 
-`data-exposure-reviewer` and `edge-function-reviewer` do **not** apply: no edge
-function changes, no service-role read, no RLS policy, no new bucket, no migration.
+`data-exposure-reviewer` does **not** apply: no service-role read, no RLS policy, no
+new bucket, no migration. `edge-function-reviewer` does **not** apply either — its
+subject is deploy hazards (`verify_jwt` drift, `_shared` bundling, CORS, deploy
+ordering) and nothing here is deployed. The one edge-function source file touched,
+`routes.ts`, gains a single string in a pure allow-list array with no runtime imports
+(D4).
 
 ## 8. Non-goals
 
