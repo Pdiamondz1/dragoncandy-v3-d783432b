@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 // baseURL is env-driven so the same suite runs against a Vercel PR preview
 // (STAGING backend) in CI and falls back to prod for ad-hoc local runs.
-const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'https://dragoncandy.io';
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'https://dragoncandy.com';
 
 // Vercel preview deployments sit behind Deployment Protection (anonymous
 // requests get a 401). When a Protection-Bypass-for-Automation secret is

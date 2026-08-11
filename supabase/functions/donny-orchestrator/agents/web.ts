@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { SubAgentResult, UserContext } from "../types.ts";
 import { tavilySearch, tavilyExtract, type SearchResult, type ExtractResult } from "../../_shared/tavily.ts";
 import { logWebToolCost } from "../../_shared/cost-ledger.ts";

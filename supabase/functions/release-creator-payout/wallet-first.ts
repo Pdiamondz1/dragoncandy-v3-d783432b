@@ -1,5 +1,5 @@
 import type Stripe from "https://esm.sh/stripe@18.5.0";
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2.57.2";
 import { applyWalletFirstPayoutCore } from "../_shared/wallet-first-payout.ts";
 
 const logStep = (step: string, details?: unknown) => {

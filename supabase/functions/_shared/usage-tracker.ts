@@ -4,7 +4,7 @@
  * and after each call to increment usage.
  */
 
-import { type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { type UsageStage } from "./model-routing.ts";
 
 // Default action budgets per tier (monthly)

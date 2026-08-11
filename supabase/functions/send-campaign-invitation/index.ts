@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -228,7 +228,7 @@ serve(async (req) => {
             businessName,
             campaignTitle: campaign.title,
             invitationMessage: invitation_message || "",
-            campaignUrl: `https://dragoncandy.io/dashboard/creator/campaigns/${campaign_id}?invited=true`,
+            campaignUrl: `https://dragoncandy.com/dashboard/creator/campaigns/${campaign_id}?invited=true`,
           },
         }),
       });

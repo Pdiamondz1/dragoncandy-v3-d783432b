@@ -80,10 +80,10 @@ function InternalAccessDenied() {
           {signingOut ? 'Signing out…' : 'Sign in with a different account'}
         </button>
         <a
-          href="https://dragoncandy.io"
+          href="https://dragoncandy.com"
           className="mt-3 inline-block w-full rounded-full border border-dc-teal/30 px-6 py-3 font-semibold text-dc-pink hover:bg-white/[0.06] transition-colors"
         >
-          Go to dragoncandy.io
+          Go to dragoncandy.com
         </a>
       </div>
     </div>

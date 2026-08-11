@@ -25,6 +25,7 @@ import {
   Package,
   ClipboardList,
   Share2,
+  Gem,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { UserRole } from '@/types/user';
@@ -44,6 +45,24 @@ export interface BottomNavItem {
   isDonny?: boolean;
 }
 
+/**
+ * The DC Points page. Present in the business + creator navs and deliberately ABSENT
+ * from every brand nav: brand accounts have no DRE triggers, so /rewards renders
+ * "DC Points are not available." for them — same decision as DcPointsChip.tsx,
+ * DcPointsPage.tsx, EarnCatalog.tsx and donny-orchestrator's rewards agent.
+ *
+ * Role is the only condition these static arrays can express. The OTHER condition —
+ * the DRAGON_REWARDS_ENABLED launch flag — is a hook, so it is applied where the nav
+ * renders, via withDcPointsGate(). A nav entry pointing at a disabled page would be
+ * the same dead end /rewards exists to remove, so both gates must hold.
+ */
+export const DC_POINTS_HREF = '/rewards';
+
+/** Drop the DC Points entry unless the launch flag is on. Pass the flag from a component. */
+export function withDcPointsGate<T extends { href: string }>(items: T[], enabled: boolean): T[] {
+  return enabled ? items : items.filter((i) => i.href !== DC_POINTS_HREF);
+}
+
 // ── Sidebar nav (desktop) ──────────────────────────────────────────────────
 
 export const businessSidebarNav: SidebarNavItem[] = [
@@ -58,6 +77,7 @@ export const businessSidebarNav: SidebarNavItem[] = [
   { icon: Sparkles, label: 'DragonShare', href: '/dashboard/business/dragonshare' },
   { icon: MessageSquare, label: 'Messages', href: '/dashboard/business/messages' },
   { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
+  { icon: Gem, label: 'DC Points', href: DC_POINTS_HREF },
   { icon: Wallet, label: 'Payments', href: '/dashboard/payments' },
   { icon: Building2, label: 'Locations', href: '/dashboard/business/locations' },
   { icon: Users2, label: 'Team', href: '/dashboard/business/team' },
@@ -97,6 +117,7 @@ export const creatorSidebarNav: SidebarNavItem[] = [
   { icon: Sparkles, label: 'DragonShare', href: '/dashboard/creator/dragonshare' },
   { icon: MessageSquare, label: 'Messages', href: '/dashboard/creator/messages' },
   { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
+  { icon: Gem, label: 'DC Points', href: DC_POINTS_HREF },
   { icon: Wallet, label: 'Payments', href: '/dashboard/payments' },
   { icon: Settings, label: 'Settings', href: '/dashboard/creator/settings' },
   { icon: HelpCircle, label: 'Help', href: '/help' },
@@ -194,6 +215,7 @@ const businessDrawerMenu: DrawerMenuSection[] = [
       { icon: Sparkles, label: 'DragonShare', href: '/dashboard/business/dragonshare' },
       { icon: MessageSquare, label: 'Messages', href: '/dashboard/business/messages' },
       { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
+      { icon: Gem, label: 'DC Points', href: DC_POINTS_HREF },
     ],
   },
   {
@@ -232,6 +254,7 @@ const creatorDrawerMenu: DrawerMenuSection[] = [
       { icon: Sparkles, label: 'DragonShare', href: '/dashboard/creator/dragonshare' },
       { icon: MessageSquare, label: 'Messages', href: '/dashboard/creator/messages' },
       { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
+      { icon: Gem, label: 'DC Points', href: DC_POINTS_HREF },
     ],
   },
   {

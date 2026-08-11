@@ -1,7 +1,11 @@
 import { LegalPageLayout } from './LegalPageLayout';
+import { PRIVACY_EMAIL } from '@/lib/contactAddresses';
+import { LEGAL_ENTITY_ADDRESS_LINES, LEGAL_ENTITY_NAME } from '@/lib/legalEntity';
 
-const LAST_UPDATED = 'June 6, 2026';
-const CONTACT_EMAIL = 'privacy@dragoncandy.io';
+// Bumped from June 6, 2026 when the opening paragraph changed to name the entity
+// that controls the data. §10 commits to revising this date on an update, and
+// identifying the controller is material. Kept in step with the Terms.
+const LAST_UPDATED = 'August 10, 2026';
 
 export default function PrivacyPolicy() {
   return (
@@ -12,9 +16,9 @@ export default function PrivacyPolicy() {
       lastUpdated={LAST_UPDATED}
     >
       <p>
-        This Privacy Policy explains how DragonCandy ("DragonCandy," "we," "us," or
+        This Privacy Policy explains how {LEGAL_ENTITY_NAME} ("DragonCandy," "we," "us," or
         "our") collects, uses, shares, and protects information about you when you use
-        our website at dragoncandy.io, our iOS application, and related services
+        our website at dragoncandy.com, our iOS application, and related services
         (collectively, the "Service"). By using the Service, you agree to the practices
         described in this policy.
       </p>
@@ -162,7 +166,16 @@ export default function PrivacyPolicy() {
       <h2>11. Contact Us</h2>
       <p>
         If you have questions about this Privacy Policy or our data practices, contact us at{' '}
-        <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+        <a href={`mailto:${PRIVACY_EMAIL}`}>{PRIVACY_EMAIL}</a>, or by mail:
+      </p>
+      <p>
+        {LEGAL_ENTITY_NAME}
+        {LEGAL_ENTITY_ADDRESS_LINES.map((line) => (
+          <span key={line}>
+            <br />
+            {line}
+          </span>
+        ))}
       </p>
     </LegalPageLayout>
   );

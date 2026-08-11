@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { htmlEscape } from "../_shared/htmlEscape.ts";
+import { createEmailLinks, pathSegment as seg, safeImageUrl } from "../_shared/emailLinks.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
@@ -110,7 +111,22 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     // Auth gate: require either service-role token or a valid user JWT
     const authHeader = req.headers.get("Authorization") || "";
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
+    // Presence-checked before it is compared, matching the identical guard in `create-notification`. Read with
+    // `as string` and no check, an unset secret makes the comparison below
+    // `"Bearer undefined" === "Bearer undefined"` — true for anyone who sends that header,
+    // which is the one string an attacker would guess first. That promotes an unauthenticated
+    // caller to SERVICE, and service callers skip the same-inbox "recipient must be self" check below and may
+    // name any recipient. Supabase injects this secret automatically so it has never been
+    // unset in practice; this is the guard that keeps a future misconfiguration from turning
+    // into an open cross-user mailer rather than a 500.
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!serviceKey) {
+      console.error("SUPABASE_SERVICE_ROLE_KEY is not configured");
+      return new Response(JSON.stringify({ error: "Server misconfiguration" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json", ...corsHeaders(req) },
+      });
+    }
     const isService = authHeader === `Bearer ${serviceKey}`;
     let callerUserId: string | null = null;
     let callerEmail: string | null = null;
@@ -142,7 +158,15 @@ const handler = async (req: Request): Promise<Response> => {
           headers: { "Content-Type": "application/json", ...corsHeaders(req) },
         });
       }
-      if (to && callerEmail && to.toLowerCase() !== callerEmail.toLowerCase()) {
+      // `!callerEmail`, not `callerEmail &&`. Written as a conjunct, a caller whose auth
+      // record carries no email skipped this check entirely and could name ANY recipient —
+      // the check failed open on exactly the actor it could not identify. Prod has no such
+      // user today (42 auth users, 0 without an email, 0 anonymous, 0 phone-only, measured
+      // 2026-08-09), so this is latent rather than live; but it opens the moment anonymous
+      // or phone sign-in is switched on, and that is a GoTrue toggle, not a code change.
+      // Nothing legitimate is lost: a caller with no email address has no own-inbox to
+      // send to.
+      if (to && (!callerEmail || to.toLowerCase() !== callerEmail.toLowerCase())) {
         return new Response(JSON.stringify({ error: "Forbidden: recipient must be self" }), {
           status: 403,
           headers: { "Content-Type": "application/json", ...corsHeaders(req) },
@@ -221,22 +245,78 @@ const handler = async (req: Request): Promise<Response> => {
       updateDetails: htmlEscape(data.updateDetails || ''),
       deliveryTime: htmlEscape(data.deliveryTime || ''),
       groupName: htmlEscape(data.groupName || ''),
+      // Below: fields the templates interpolated RAW while every neighbour went through
+      // htmlEscape. `data` is caller-supplied end to end — create-notification spreads the
+      // request body straight into this payload — so each was an HTML injection into a
+      // genuine DragonCandy transactional email.
+      // Truthiness, not `?? ''`. A budget of 0 is a real value here — crew campaigns are
+      // free and carry a literal 0 — and the template's `data.budget ?` guard therefore
+      // hid the block. `?? ''` would have started rendering "💰 Budget: $0" on every free
+      // campaign email. Escaping must not change what gets shown.
+      budget: htmlEscape(data.budget ? String(data.budget) : ''),
+      platforms: htmlEscape(Array.isArray(data.platforms) ? data.platforms.map(String).join(', ') : ''),
     };
+    // Money and counts are coerced rather than escaped. Escaping is the wrong tool for two
+    // of these: `payment_received` and `sponsorship_payment_confirmed` put the amount in the
+    // SUBJECT, which is not markup — `&amp;` would render literally, and a CRLF there is a
+    // header-injection primitive that escaping does not touch. Coercing to a finite number
+    // ends both. It also fixes a crash: `data.amount.toFixed(2)` at project_completion is
+    // typed `number` but arrives as JSON, so a string amount threw and the email never sent.
+    const asNum = (v: unknown): number | null => {
+      const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN;
+      return Number.isFinite(n) ? n : null;
+    };
+    const amount = asNum(data.amount);
+    const sponsorshipAmount = asNum(data.sponsorshipAmount);
+    // Deliberately NOT `?? 0`. A missing count is unknown, not zero, and defaulting it
+    // rendered "uploaded 0 new files" under an H1 reading "New Deliverables!" — a
+    // confident false statement, which is worse than the obvious garbage ("undefined new
+    // files") it replaced. An unknown count drops the number and stays true instead.
+    const fileCountRaw = asNum(data.fileCount);
+    const filesPhrase =
+      fileCountRaw === null
+        ? 'new files'
+        : String(fileCountRaw) + ' new ' + (fileCountRaw === 1 ? 'file' : 'files');
+    // ---- Link safety ----------------------------------------------------------------
+    // Every href in the templates below is built from caller-supplied `data`, and none of
+    // it was checked. create-notification spreads the request body verbatim into this
+    // payload and calls this function with the SERVICE key, so a user-authenticated caller
+    // reaches these templates and the same-inbox "recipient must be self" check does not apply to the
+    // resulting mail. Two distinct defects came out of that:
+    //
+    //   * whole-URL fields (`actionUrl`, `campaignUrl`, `reviewUrl`) landed in href raw, so
+    //     the CTA of a genuine DragonCandy email could point anywhere — an attacker's site,
+    //     or a `javascript:` scheme;
+    //   * id fields (`campaignId`, `projectId`, `collaborationId`, `campaign_id`) were
+    //     concatenated into a path, so a `"` closed the attribute and let the caller write
+    //     arbitrary markup into the message.
+    //
+    // `link` takes a path this function composed; `safeLink` takes one the caller supplied
+    // and forces it back onto our own origin; `seg` makes an id safe to sit in a path.
+    // The guarantees are asserted in _shared/emailLinks.test.ts rather than described here.
+    const { link, safeLink } = createEmailLinks(baseUrl);
+    const contentImageUrl = safeImageUrl(data.contentUrl);
+
     // Build the invitation deep-link here (not inline in the template) so we avoid
     // nested backticks inside the backtick-delimited template.html string, and so no
     // caller can ever produce href="undefined" — fall back to baseUrl + campaignId.
-    const invitationUrl =
-      data.campaignUrl ||
-      `${baseUrl}/dashboard/creator/campaigns/${data.campaignId ?? ''}?invited=true`;
+    const invitationUrl = safeLink(
+      data.campaignUrl,
+      '/dashboard/creator/campaigns/' + seg(data.campaignId) + '?invited=true',
+    );
     // Guard id-interpolated links so a missing id degrades to the relevant list /
     // dashboard page instead of routing to a literal "/undefined" (NotFound).
-    // (Concat form on the true-branch keeps these defs distinct from the raw
-    // `${baseUrl}/...${data.x}` strings the templates below use.)
     const businessCampaignUrl = data.campaignId
-      ? `${baseUrl}/dashboard/business/campaigns/` + data.campaignId
-      : `${baseUrl}/dashboard/business/campaigns`;
-    const reviewLink = data.reviewUrl ? `${baseUrl}` + data.reviewUrl : `${baseUrl}/dashboard`;
-    const projectLink = data.projectId ? `${baseUrl}/projects/` + data.projectId : `${baseUrl}/dashboard`;
+      ? link('/dashboard/business/campaigns/' + seg(data.campaignId))
+      : link('/dashboard/business/campaigns');
+    const reviewLink = safeLink(data.reviewUrl, '/dashboard');
+    const projectLink = data.projectId
+      ? link('/projects/' + seg(data.projectId))
+      : link('/dashboard');
+    // The four completion templates read `data.actionUrl` directly. Resolved once here so
+    // every one of them gets the same treatment and none can drift back.
+    const actionLink = safeLink(data.actionUrl, '/dashboard');
+    const actionLinkOrHome = safeLink(data.actionUrl, '');
     const templates: Record<NotificationType, { subject: string; html: string }> = {
       new_application: {
         subject: `New Application for "${esc.campaignTitle}"`,
@@ -276,7 +356,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p>You have a new message from <strong>${esc.senderName}</strong>${data.campaignTitle ? ` about "${esc.campaignTitle}"` : ''}.</p>
           ${data.message ? `<blockquote style="border-left: 4px solid #8B5CF6; padding-left: 16px; margin: 20px 0; color: #374151;">${esc.message}</blockquote>` : ''}
           <p style="margin-top: 30px;">
-            <a href="${baseUrl}/messages${data.campaignId ? `/${data.campaignId}` : ''}" 
+            <a href="${data.campaignId ? link('/messages/' + seg(data.campaignId)) : link('/messages')}"
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               View Message
             </a>
@@ -284,10 +364,10 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       },
       payment_received: {
-        subject: `Payment Received - $${data.amount}`,
+        subject: `Payment Received - $${amount ?? ''}`,
         html: `
           <p>Hi ${esc.recipientName},</p>
-          <p>Great news! You've received a payment of <strong>$${data.amount}</strong> for your work on <strong>"${esc.campaignTitle}"</strong>.</p>
+          <p>Great news! You've received a payment of <strong>$${amount ?? ''}</strong> for your work on <strong>"${esc.campaignTitle}"</strong>.</p>
           <p>The funds will be available in your account shortly. Thank you for your excellent work!</p>
           <p style="margin-top: 30px;">
             <a href="${baseUrl}/dashboard/creator/projects" 
@@ -400,7 +480,7 @@ const handler = async (req: Request): Promise<Response> => {
         subject: `New Sponsorship Proposal from ${esc.brandName}`,
         html: `
           <p>Hi ${esc.recipientName},</p>
-          <p><strong>${esc.brandName}</strong> has submitted a sponsorship proposal of <strong>$${data.sponsorshipAmount}</strong> for your campaign <strong>"${esc.campaignTitle}"</strong>!</p>
+          <p><strong>${esc.brandName}</strong> has submitted a sponsorship proposal of <strong>$${sponsorshipAmount ?? ''}</strong> for your campaign <strong>"${esc.campaignTitle}"</strong>!</p>
           ${data.message ? `<p>Their message:</p><blockquote style="border-left: 4px solid #8B5CF6; padding-left: 16px; margin: 20px 0; color: #374151;">${esc.message}</blockquote>` : ''}
           <p style="margin-top: 30px;">
             <a href="${businessCampaignUrl}"
@@ -447,9 +527,9 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Hi ${esc.rn},</p>
           <p>Great news! <strong>${esc.likerName || 'A business client'}</strong> liked your content on DragonCandy!</p>
           <p>This is a great sign that your work is resonating with potential clients. Keep creating amazing content!</p>
-          ${data.contentUrl ? `
+          ${contentImageUrl ? `
             <p style="margin: 20px 0;">
-              <img src="${data.contentUrl}" alt="Liked content" style="max-width: 300px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+              <img src="${contentImageUrl}" alt="Liked content" style="max-width: 300px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
             </p>
           ` : ''}
           <p style="margin-top: 30px;">
@@ -521,8 +601,8 @@ const handler = async (req: Request): Promise<Response> => {
                 A new campaign opportunity is now live! <strong>"${esc.campaignTitle}"</strong> is looking for talented creators like you.
               </p>
               ${data.description ? `<div style="background: #F9FAFB; padding: 16px; border-radius: 8px; margin: 20px 0;"><p style="margin: 0; color: #6B7280; font-size: 14px; line-height: 1.6;">${esc.description}</p></div>` : ''}
-              ${data.budget ? `<div style="background: #ECFDF5; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;"><p style="margin: 0; color: #065F46; font-weight: 600;">💰 Budget: $${data.budget}</p></div>` : ''}
-              ${data.platforms && data.platforms.length > 0 ? `<div style="margin: 20px 0;"><p style="font-weight: 600; color: #374151; margin-bottom: 8px;">📱 Platforms:</p><p style="color: #6B7280; font-size: 14px;">${data.platforms.join(', ')}</p></div>` : ''}
+              ${esc.budget ? `<div style="background: #ECFDF5; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;"><p style="margin: 0; color: #065F46; font-weight: 600;">💰 Budget: $${esc.budget}</p></div>` : ''}
+              ${esc.platforms ? `<div style="margin: 20px 0;"><p style="font-weight: 600; color: #374151; margin-bottom: 8px;">📱 Platforms:</p><p style="color: #6B7280; font-size: 14px;">${esc.platforms}</p></div>` : ''}
               <p style="text-align: center; margin-top: 40px;"><a href="${baseUrl}/dashboard/creator/campaigns" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">View Campaign & Apply</a></p>
             </div>
           </div>
@@ -537,7 +617,7 @@ const handler = async (req: Request): Promise<Response> => {
         html: `
           <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
-              <img src="https://dragoncandy.io/donny-emblem.webp" alt="DragonCandy" width="48" height="48" style="display: block; margin: 0 auto 12px; border-radius: 50%; object-fit: cover;" />
+              <img src="https://dragoncandy.com/donny-emblem.webp" alt="DragonCandy" width="48" height="48" style="display: block; margin: 0 auto 12px; border-radius: 50%; object-fit: cover;" />
               <h1 style="color: white; margin: 0; font-size: 28px;">New Crew Campaign!</h1>
             </div>
             <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
@@ -564,7 +644,7 @@ const handler = async (req: Request): Promise<Response> => {
         html: `
           <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
-              <img src="https://dragoncandy.io/donny-emblem.webp" alt="DragonCandy" width="48" height="48" style="display: block; margin: 0 auto 12px; border-radius: 50%; object-fit: cover;" />
+              <img src="https://dragoncandy.com/donny-emblem.webp" alt="DragonCandy" width="48" height="48" style="display: block; margin: 0 auto 12px; border-radius: 50%; object-fit: cover;" />
               <h1 style="color: white; margin: 0; font-size: 28px;">You're invited to a crew</h1>
             </div>
             <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
@@ -605,7 +685,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="margin: 0; color: #075985; font-weight: 600;">✅ Ready for Review</p>
                 <p style="margin: 8px 0 0 0; color: #075985; font-size: 14px;">Review the deliverables and approve or request changes to keep the collab moving.</p>
               </div>
-              <p style="text-align: center; margin-top: 40px;"><a href="${data.campaign_id ? baseUrl + '/dashboard/business/campaigns/' + data.campaign_id : baseUrl + '/dashboard/business/campaigns'}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">Review Content</a></p>
+              <p style="text-align: center; margin-top: 40px;"><a href="${data.campaign_id ? link('/dashboard/business/campaigns/' + seg(data.campaign_id)) : link('/dashboard/business/campaigns')}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">Review Content</a></p>
             </div>
           </div>
         `,
@@ -619,9 +699,9 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
               <p style="font-size: 16px; color: #374151;">Hi ${esc.rn},</p>
-              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${esc.uploaderName}</strong> has uploaded <strong>${data.fileCount} new ${data.fileCount === 1 ? 'file' : 'files'}</strong> to your campaign <strong>"${esc.campaignTitle}"</strong>.</p>
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${esc.uploaderName}</strong> has uploaded <strong>${filesPhrase}</strong> to your campaign <strong>"${esc.campaignTitle}"</strong>.</p>
               <div style="background: #F0F9FF; border-left: 4px solid #0EA5E9; padding: 16px; margin: 24px 0; border-radius: 4px;"><p style="margin: 0; color: #075985; font-weight: 600;">✅ Ready for Review</p><p style="margin: 8px 0 0 0; color: #075985; font-size: 14px;">The creator has submitted their work. Please review and provide feedback.</p></div>
-              <p style="text-align: center; margin-top: 40px;"><a href="${data.collaborationId ? `${baseUrl}/projects/${data.collaborationId}` : `${baseUrl}/dashboard/business/campaigns`}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">Review Files</a></p>
+              <p style="text-align: center; margin-top: 40px;"><a href="${data.collaborationId ? link('/projects/' + seg(data.collaborationId)) : link('/dashboard/business/campaigns')}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">Review Files</a></p>
             </div>
           </div>
         `,
@@ -635,9 +715,9 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
               <p style="font-size: 16px; color: #374151;">Hi ${esc.rn},</p>
-              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${esc.uploaderName}</strong> has uploaded <strong>${data.fileCount} new ${data.fileCount === 1 ? 'file' : 'files'}</strong> for campaign <strong>"${esc.campaignTitle}"</strong>.</p>
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${esc.uploaderName}</strong> has uploaded <strong>${filesPhrase}</strong> for campaign <strong>"${esc.campaignTitle}"</strong>.</p>
               <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px; margin: 24px 0; border-radius: 4px;"><p style="margin: 0; color: #92400E; font-weight: 600;">📋 Reference Materials</p><p style="margin: 8px 0 0 0; color: #92400E; font-size: 14px;">New reference files are available to help with your content creation.</p></div>
-              <p style="text-align: center; margin-top: 40px;"><a href="${data.collaborationId ? `${baseUrl}/projects/${data.collaborationId}` : `${baseUrl}/dashboard/creator/projects`}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">View Files</a></p>
+              <p style="text-align: center; margin-top: 40px;"><a href="${data.collaborationId ? link('/projects/' + seg(data.collaborationId)) : link('/dashboard/creator/projects')}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">View Files</a></p>
             </div>
           </div>
         `,
@@ -657,7 +737,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="margin: 8px 0 0 0; color: #92400E; font-size: 14px;">Please review and approve the project completion to finalize the collaboration.</p>
               </div>
               <p style="text-align: center; margin-top: 40px;">
-                <a href="${data.actionUrl || baseUrl}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
+                <a href="${actionLinkOrHome}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
                   Review & Approve
                 </a>
               </p>
@@ -666,7 +746,7 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       },
       project_completion: {
-        subject: `Project Completed${data.amount ? ' - Payment Released!' : ''} 🎉`,
+        subject: `Project Completed${amount ? ' - Payment Released!' : ''} 🎉`,
         html: `
           <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
@@ -679,9 +759,9 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="margin: 0; color: #065F46; font-weight: 600;">✅ Both parties have approved completion</p>
                 <p style="margin: 8px 0 0 0; color: #065F46; font-size: 14px;">This collaboration is now officially complete. Time to celebrate and leave a review!</p>
               </div>
-              ${data.amount ? `
+              ${amount ? `
               <div style="background: #EFF6FF; border-left: 4px solid #3B82F6; padding: 16px; margin: 24px 0; border-radius: 4px;">
-                <p style="margin: 0; color: #1E40AF; font-weight: 600;">💰 Payment ${data.isRecipient ? 'Released' : 'Processed'}: $${data.amount.toFixed(2)}</p>
+                <p style="margin: 0; color: #1E40AF; font-weight: 600;">💰 Payment ${data.isRecipient ? 'Released' : 'Processed'}: $${amount.toFixed(2)}</p>
                 <p style="margin: 8px 0 0 0; color: #1E40AF; font-size: 14px;">
                   ${data.isRecipient 
                     ? (data.paymentMethod === 'stripe_transfer' 
@@ -693,7 +773,7 @@ const handler = async (req: Request): Promise<Response> => {
               ` : ''}
               <p style="font-size: 16px; color: #374151; line-height: 1.6;">We'd love to hear about your experience. Your feedback helps build trust in the DragonCandy community.</p>
               <p style="text-align: center; margin-top: 40px;">
-                <a href="${data.actionUrl || `${baseUrl}/dashboard`}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
+                <a href="${actionLink}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
                   Leave a Review
                 </a>
               </p>
@@ -716,7 +796,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="margin: 8px 0 0 0; color: #92400E; font-size: 14px;">Please review and approve the sponsorship completion to finalize the partnership.</p>
               </div>
               <p style="text-align: center; margin-top: 40px;">
-                <a href="${data.actionUrl || `${baseUrl}/dashboard`}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
+                <a href="${actionLink}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
                   Review & Approve
                 </a>
               </p>
@@ -740,7 +820,7 @@ const handler = async (req: Request): Promise<Response> => {
               </div>
               <p style="font-size: 16px; color: #374151; line-height: 1.6;">We'd love to hear about your experience. Your feedback helps build trust in the DragonCandy community and improves future partnerships.</p>
               <p style="text-align: center; margin-top: 40px;">
-                <a href="${data.actionUrl || `${baseUrl}/dashboard`}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
+                <a href="${actionLink}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
                   Leave a Review
                 </a>
               </p>
@@ -783,7 +863,7 @@ const handler = async (req: Request): Promise<Response> => {
         html: `
           <p>Hi ${esc.rn},</p>
           <p>You've received a <strong>counter offer</strong> for campaign <strong>"${esc.campaignTitle}"</strong>.</p>
-          ${data.amount ? `<p>Proposed rate: <strong>$${data.amount}</strong></p>` : ''}
+          ${amount ? `<p>Proposed rate: <strong>$${amount}</strong></p>` : ''}
           ${data.message ? `<blockquote style="border-left: 4px solid #F59E0B; padding-left: 16px; margin: 20px 0; color: #374151;">${esc.message}</blockquote>` : ''}
           <p>You can accept, decline, or counter back with your own terms.</p>
           <p style="margin-top: 30px;">
@@ -813,8 +893,8 @@ const handler = async (req: Request): Promise<Response> => {
       },
       sponsorship_payment_confirmed: {
         subject: data.isRecipient 
-          ? `💰 Sponsorship Payment Received - $${data.sponsorshipAmount}`
-          : `✅ Sponsorship Payment Confirmed - $${data.sponsorshipAmount}`,
+          ? `💰 Sponsorship Payment Received - $${sponsorshipAmount ?? ''}`
+          : `✅ Sponsorship Payment Confirmed - $${sponsorshipAmount ?? ''}`,
         html: `
           <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
@@ -823,8 +903,8 @@ const handler = async (req: Request): Promise<Response> => {
             <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
               <p style="font-size: 16px; color: #374151;">Hi ${esc.rn},</p>
               ${data.isRecipient 
-                ? `<p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${esc.brandName}</strong> has completed their sponsorship payment of <strong>$${data.sponsorshipAmount?.toLocaleString()}</strong> for campaign <strong>"${esc.campaignTitle}"</strong>.</p>`
-                : `<p style="font-size: 16px; color: #374151; line-height: 1.6;">Your sponsorship payment of <strong>$${data.sponsorshipAmount?.toLocaleString()}</strong> for campaign <strong>"${esc.campaignTitle}"</strong> has been successfully processed.</p>`
+                ? `<p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${esc.brandName}</strong> has completed their sponsorship payment of <strong>$${sponsorshipAmount?.toLocaleString() ?? ''}</strong> for campaign <strong>"${esc.campaignTitle}"</strong>.</p>`
+                : `<p style="font-size: 16px; color: #374151; line-height: 1.6;">Your sponsorship payment of <strong>$${sponsorshipAmount?.toLocaleString() ?? ''}</strong> for campaign <strong>"${esc.campaignTitle}"</strong> has been successfully processed.</p>`
               }
               <div style="background: #ECFDF5; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;">
                 <p style="margin: 0; color: #065F46; font-weight: 600;">✅ Payment Verified</p>
@@ -1060,10 +1140,30 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
+    // `subjectOverride` is caller-supplied and reached Resend with no treatment at all —
+    // the widest of the subject inputs, since it skips the templates entirely. Two guards.
+    //
+    // It is now service-only. Every caller that sets one is a service caller
+    // (stripe-webhook:508, a formatted dispute amount), and create-notification never
+    // forwards it at all, so honouring it from a user caller bought nothing and let them
+    // write the subject line of a mail from alerts@notify.dragoncandy.io.
+    //
+    // Then the line breaks come out, whatever the source. A subject is a header, and a CRLF
+    // is what turns one header into several; escaping does not touch it. Applied at this
+    // single choke point so it covers the templates too. Whether Resend already rejects a
+    // CRLF here was NOT verified — this is defence in depth, not a demonstrated hole.
+    //
+    // Known and deliberately NOT fixed here: template subjects interpolate `esc.*`, so an
+    // ampersand in a campaign title still reaches the inbox as `&amp;`. That is a display
+    // bug of its own and wants a separate `subjectText` helper across ~12 sites, not a
+    // rider on a security fix.
+    const rawSubject = (isService && subjectOverride) || template.subject;
+    const subject = String(rawSubject).replace(/[\r\n]+/g, ' ').trim().slice(0, 200);
+
     const { data: emailData, error } = await resend.emails.send({
       from: "DragonCandy <alerts@notify.dragoncandy.io>",
       to: resolvedTo,
-      subject: subjectOverride || template.subject,
+      subject,
       html: emailHtml,
     });
 

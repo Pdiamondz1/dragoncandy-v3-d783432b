@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
 import { fulfillBoost } from "../_shared/fulfill-boost.ts";
 import { flushPendingBalance } from "../_shared/flush-pending-balance.ts";
@@ -504,7 +504,11 @@ serve(async (req) => {
         try {
           await supabase.functions.invoke('send-notification-email', {
             body: {
-              to: 'admin@dragoncandy.io',
+              // Phase 5a (2026-08-10): moved to .com. Verified in the Google
+              // Workspace admin console as an alias on dame@dragoncandy.com,
+              // not inferred from an SMTP probe -- Google's MX returns 250 for
+              // addresses that do not exist, so acceptance proves nothing.
+              to: 'admin@dragoncandy.com',
               subject: `Payment Dispute Filed — $${(dispute.amount / 100).toFixed(2)}`,
               type: 'dispute_alert',
               data: { disputeId: dispute.id, amount: dispute.amount, reason: dispute.reason },

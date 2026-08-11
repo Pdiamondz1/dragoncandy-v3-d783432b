@@ -81,6 +81,53 @@ The allow-list is a hand-maintained mirror of the route table in three places
 routes change. `find_creators`'s routes (`/dashboard/{business,brand}/creators`, `/creator/:slug`)
 are in the list, so the server filter never drops them.
 
+### The guard's blind spot — corrected 2026-08-09 (PR #409)
+
+**The three layers above were written as if they close this bug class. They do not, and reading
+them that way is what let twelve dead links ship past a working guard.**
+
+`isKnownRoute` / `isKnownDonnyRoute` validate routes **the LLM invents**. They never see a route
+**hardcoded in source, in agent prompt text, or in a nudge action payload** — those never pass
+through `parseSuggestedActions`, so nothing validates them.
+
+`/settings/billing` and `/settings/social` were hardcoded in **12 places across 10 files**. There is
+**no top-level `/settings/*` route in `src/App.tsx`**, so all twelve hit the catch-all `NotFound` —
+including the **"Upgrade" CTA gating the paid Weekly Content Plan** (the revenue path) and the
+primary **"Connect Outstand"** button on a high-priority `donny_nudges` row. `/settings/billing/upgrade`
+was dead twice over: no `/upgrade` sub-route either.
+
+**Three role vocabularies coexist and are not interchangeable** — this is where the fix nearly went
+wrong twice:
+
+| Vocabulary | Values | Used by |
+|---|---|---|
+| `profiles.role` | `business_client` \| `content_creator` \| `brand` | what `billingRoute()`/`socialRoute()` expect |
+| `fire-campaign-social-hook` `parties[]` | `restaurant` \| `brand` \| `creator` | **persisted as `party_role`**, so it cannot be renamed to match |
+| others | their own | — |
+
+Folding `brand` into the business branch sends a brand user to `/dashboard/business/social`, which
+sits behind `BusinessRoute` and **redirects them away — a silent failure, not a 404.** The first fix
+attempt copied an adjacent existing ternary believing that was conservative; **that ternary was
+itself broken for `brand`**, and Codex plus `edge-function-reviewer` caught it independently. *A
+neighbouring line is not a specification.*
+
+**Fix:** role-aware `billingRoute()` / `socialRoute()` in both mirrors, plus a local
+`partySocialRoute()` where the vocabulary genuinely differs. `routes.test.ts` asserts every
+role-route helper's output passes `isKnownRoute`, and pins the three dead paths as rejected.
+**Creators have no billing route** — `/dashboard/{business,brand}/billing` exist; creators land on
+`/dashboard/creator/earnings`. Whether a creator should see an "Upgrade" CTA at all is an open
+product question, not just a routing one.
+
+**A new test asserts the mirrors agree** (`src/lib/donnyRoutes.parity.test.ts`) — nothing did before.
+It is **directional, not an identity check**: every *server* route must exist in the client mirror
+(the server emits; the client validates, and `DonnyMessage` drops what it rejects), while the client
+may hold only the two documented legacy Crews redirects the server must never emit.
+
+**This was found and correctly diagnosed on 2026-06-07.**
+`docs/superpowers/specs/2026-06-07-ios-purchase-cta-gating-design.md:51,167` names the exact fix; the
+paired plan says *"Do NOT fix the legacy `/settings/billing` route — out of scope."* It stayed broken
+for two months across the whole pre-launch push. **A dead link on a money path is not "unrelated."**
+
 ## Service-role tenant scoping (security)
 
 A service-role tool must **never scope reads by a client-supplied id**. The orchestrator originally
@@ -103,12 +150,40 @@ and read that org's applications / DragonShare / campaign details (Codex P1). Sa
 - Campaigns owned by a *teammate* under a shared org can still be invisible to a member (the fix
   scopes to the signed-in user's own `user_id` + server org); org-wide visibility is a possible later
   enhancement.
-- The route allow-list is mirrored in three files; a new app route must be added to
-  `routes.ts` + `src/lib/donnyRoutes.ts` or Donny won't link to it.
+- ~~The route allow-list is mirrored in three files; a new app route must be added to
+  `routes.ts` + `src/lib/donnyRoutes.ts` or Donny won't link to it.~~
+  **Corrected 2026-08-09.** True, but it framed the risk as *under*-linking — a missing route means
+  Donny stays quiet, which is the safe failure. The expensive failure is the opposite and it
+  shipped: a route that never reaches the guard at all. Since PR #409 the parity test catches
+  mirror drift; **nothing catches a hardcoded path**, so that remains the live risk. See "The
+  guard's blind spot" above.
+- **The RAG seed still teaches the dead paths.** `supabase/seed/donny-knowledge-seed.ts` hardcodes
+  `/settings/billing` and `/settings/social` in `page_paths` in **8 places**. PR #409 fixed the live
+  CTAs; the seeded knowledge was not re-seeded, so Donny's retrieval layer still carries them.
+  Needs a gated `donny_knowledge` write.
+
+## Bug class 3 — inventing a cause for his own failure
+
+Recorded here because it has now happened **three times**, and each time the invented cause
+sent the user somewhere real to do something impossible.
+
+The third instance (2026-08-09) is the cleanest specimen: asked to post to Instagram, Donny
+said he had *"no visibility into which Instagram account is connected"*, told the owner to
+find an **"account ID"** on a settings page that displays no ID anywhere, and promised to post
+once he had it — while the underlying tool had never once succeeded, for reasons entirely
+unrelated to any id. See [[Donny Social Tools]].
+
+The fix pattern is the same in all three: **the tool result must carry the reason, derived
+from what actually happened**, and the model must be told to relay it rather than explain it.
+Where the code cannot know why, it says so plainly instead of guessing. A prompt instruction
+alone is not enough — a tool that returns a bare failure invites a plausible story.
 
 ## See Also
 
+- [[Donny Social Tools]] — the third instance, and the `social_*` repair that followed.
 - [[AI Creator Matching]] — creator discovery/matching sibling; the two-backend wiring; service-role
   `profile_visibility` re-assertion.
 - [[Donny AI]] — the intelligence layer overview.
 - [[Donny Web Access]] — the `find_creators` / web-tool work this branch merged with.
+- [[Donny-First Dashboard]] — validates every proposal CTA through `isKnownDonnyRoute` before
+  render, as a direct consequence of the blind spot above.

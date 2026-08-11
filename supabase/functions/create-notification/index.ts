@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
 interface CreateNotificationRequest {
@@ -19,6 +19,12 @@ interface CreateNotificationRequest {
 }
 
 // Keep in sync with src/types/notifications.ts NOTIFICATION_TYPE_TO_EMAIL_TYPE
+//
+// READ BEFORE ADDING AN ENTRY. Landing a type here grants it to user-authenticated callers
+// by default: any caller who clears `can_notify_user` may then select this template with a
+// request-supplied title, body and link. That default is how the two broadcast types below
+// arrived reachable. If the type asserts a fact only the platform can know — money moved, a
+// campaign went live, content was approved — it belongs in SERVICE_ONLY_TYPES too.
 const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Record<string, string> = {
   application_received: 'new_application',
   application_accepted: 'application_status',
@@ -29,6 +35,14 @@ const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Record<string, string> = {
   invitation_declined: 'campaign_invitation_declined',
   campaign_published: 'campaign_published',
   campaign_cancelled: 'campaign_cancelled',
+  // The publish broadcast. New NOTIFICATION types over pre-existing EMAIL templates of the
+  // same name — the templates shipped months ago; the bell never existed, because
+  // send-campaign-publish-notifications called send-notification-email directly and bypassed
+  // this function. Both are SERVICE_ONLY_TYPES (see below) — that gate is what makes
+  // "only send-campaign-publish-notifications emits these" an enforced fact rather than a
+  // comment. Keep in sync with src/types/notifications.ts.
+  new_campaign_for_creators: 'new_campaign_for_creators',
+  new_campaign_for_brands: 'new_campaign_for_brands',
   // Crew-specific (Crews v1 fires this bell-only to active crew members when a
   // crew campaign is posted). Mapping it adds email for CREW campaigns only —
   // no shared/standard type is remapped. Keep in sync with
@@ -61,6 +75,58 @@ const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Record<string, string> = {
   dragonshare_boost: 'dragonshare_boost',
   dragonshare_boost_receipt: 'dragonshare_boost_receipt',
   dragonshare_declined: 'dragonshare_declined',
+};
+
+// Types the PLATFORM emits about itself, never a user about another user.
+//
+// `can_notify_user` asks one question — may this caller contact this recipient at all —
+// and a broadcast type needs a second one it cannot answer: did a campaign of the caller's
+// actually go live? `send-campaign-publish-notifications` answers that by proving ownership
+// and `published` status before it fans out. A direct call proves nothing.
+//
+// Without this gate, mapping the two broadcast types above would newly hand any authenticated
+// caller a "New campaign available" email aimed at any contact who passes `can_notify_user`,
+// with the subject line and link taken from the request — and the
+// `new_campaign_for_creators` template interpolates `data.budget` and `data.platforms`
+// UNESCAPED (every other field goes through `esc.*`), so the request would reach the email
+// body as markup. Neither template was reachable from a user call before those map entries
+// existed; this keeps it that way.
+//
+// Deliberately a deny-list, and deliberately temporary. An allow-list would fail closed and
+// is the right end state, but inverting it means classifying every existing entry above as
+// user-emittable or not — misjudge `message_received` and real notifications stop. That
+// audit is its own change; this covers the types this commit made reachable.
+const SERVICE_ONLY_TYPES = new Set([
+  'new_campaign_for_creators',
+  'new_campaign_for_brands',
+]);
+
+// The two crew notifications that legitimately fire when the member is NOT active, mapped
+// to the membership status each one REQUIRES.
+//
+// `can_notify_user`'s crew clause requires `status = 'active'` (migration
+// 20260810193000) because an owner-created 'invited' row — whose `creator_id` is
+// unconstrained by `cgm_owner_insert` — otherwise manufactured a notification channel to
+// ANY user on the platform. Proven on prod: two INSERTs, no consent.
+//
+// But 'active' cannot be the rule for these two, because neither is active at the moment
+// it fires:
+//   * group_invitation      — the invite itself; status is 'invited' by definition.
+//   * group_membership_removed — `useCreatorGroupMembers.removeMember` UPDATEs the row to
+//     'removed' BEFORE dispatching the bell, so it is 'removed' at notify time.
+// Gating them on 'active' would have silently killed both (the #387 regression shape), and
+// relaxing the clause to IN ('active','invited','removed') would exclude only 'declined'
+// and fix nothing.
+//
+// So they are authorized HERE against the actual membership row instead — caller owns the
+// crew, recipient is the named member, status matches the type — and their copy is
+// COMPOSED SERVER-SIDE. That second half is what makes this safe rather than a shorter
+// route to the same hole: a forged 'invited' row then buys an attacker nothing but a
+// genuine-looking crew invitation in our own words, pointed at a fixed in-app URL — which
+// any business can already legitimately send. Same pattern as `content_liked` below.
+const CREW_COLD_CONTACT_TYPES: Record<string, 'invited' | 'removed'> = {
+  group_invitation: 'invited',
+  group_membership_removed: 'removed',
 };
 
 // Email templates a USER-authenticated caller may select explicitly via `emailType`.
@@ -134,6 +200,17 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
+    // Rejected before any DB work: both `type` and `isService` are already known here.
+    if (!isService && SERVICE_ONLY_TYPES.has(type)) {
+      console.warn(
+        `Blocked service-only notification type: actor=${callerId} recipient=${recipientId} type=${type}`,
+      );
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+
     // Service-role client for DB operations
     const admin = createClient(supabaseUrl, serviceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
@@ -174,6 +251,11 @@ const handler = async (req: Request): Promise<Response> => {
     // like a public post — so it is authorized against the REFERENCED POST instead: the
     // recipient must actually own the content being liked. That fact comes from the
     // database, not the request, so it is not client-assertable.
+    //
+    // `group_invitation` and `group_membership_removed` are the same shape for the same
+    // reason: both are cold contact by design (a business may invite any creator it finds),
+    // both fire at a NON-active membership status, and so both are authorized against the
+    // membership row with server-composed copy. See CREW_COLD_CONTACT_TYPES above.
     //
     // Everything else goes through `can_notify_user`, whose clause set was backtested
     // against all 91 actor-bearing rows in `push_notifications` (89 pass; the 2 that don't
@@ -216,6 +298,90 @@ const handler = async (req: Request): Promise<Response> => {
               likerName: liker,
               contentUrl: post!.post_url ?? post!.content_file_path ?? null,
             };
+          }
+        }
+      } else if (CREW_COLD_CONTACT_TYPES[type]) {
+        // Authorized against the membership row, not the relationship gate — see the
+        // CREW_COLD_CONTACT_TYPES header. Three facts must all hold, and every one of them
+        // is read from the database rather than asserted by the caller:
+        //   1. the caller OWNS the crew,
+        //   2. the recipient is a member of THAT crew,
+        //   3. the membership status is the one this notification type is about.
+        // (3) is a real tightening, but a bounded one, and the bound is worth stating
+        // precisely rather than overclaiming: it means the row must CURRENTLY be in the
+        // status the type is about, so an invite cannot be re-sent to a member who already
+        // accepted or declined. It does NOT establish that a `removed` member was ever
+        // actually in the crew — an owner may insert `invited` and then update to `removed`
+        // (`cgm_owner_update` permits exactly that), producing a "you're no longer in this
+        // crew" bell for someone who never joined. The client refuses to do this (it gates
+        // on `wasActive`); the server cannot yet prove it.
+        //
+        // The tempting guard — also require `responded_at IS NOT NULL` — was CHECKED AND
+        // REJECTED: `information_schema.column_privileges` shows `authenticated` holds
+        // UPDATE on `responded_at` itself, and `cgm_owner_update`'s WITH CHECK constrains
+        // only `status`. An RLS policy cannot pin a column (there is no OLD row in a
+        // policy); that needs column GRANTs, exactly as `campaign_invitations`
+        // (20260808010000) had to do. So `responded_at` is forgeable by the same owner and
+        // would have been decoration. Closing this properly means either revoking that
+        // column grant or recording membership history — its own change.
+        //
+        // Residual, stated plainly: an owner can put a crew-flavoured bell in any user's
+        // feed. It is bell-only for removal, server-worded for both, and points at a fixed
+        // in-app URL — the same bounded capability as sending an unsolicited invite, which
+        // the product already allows.
+        const requiredStatus = CREW_COLD_CONTACT_TYPES[type];
+        const groupId = (data as Record<string, unknown> | undefined)?.group_id;
+
+        if (typeof groupId === "string") {
+          const { data: crew, error: crewError } = await admin
+            .from("creator_groups")
+            .select("name, owner_id")
+            .eq("id", groupId)
+            .maybeSingle();
+          // Capture the error rather than only the row: a genuine DB fault would otherwise
+          // be indistinguishable from "this caller does not own that crew", and both would
+          // land on the same generic warn below with nothing to debug from.
+          if (crewError) console.error("crew notify: group lookup failed:", crewError);
+
+          if (crew && crew.owner_id === callerId) {
+            const { data: membership, error: membershipError } = await admin
+              .from("creator_group_members")
+              .select("status")
+              .eq("group_id", groupId)
+              .eq("creator_id", recipientId)
+              .maybeSingle();
+            if (membershipError) {
+              console.error("crew notify: membership lookup failed:", membershipError);
+            }
+            permitted = membership?.status === requiredStatus;
+
+            if (permitted) {
+              // Server-composed copy. The caller's title/body/actionUrl are discarded, so
+              // a forged membership row cannot carry an attacker's words or link. Mirrors
+              // the client wording in `src/lib/groups/groupMembers.ts` exactly, including
+              // its capitalisation difference between the two types.
+              const { data: ownerBusiness } = await admin
+                .from("business_profiles")
+                .select("business_name")
+                .eq("user_id", callerId)
+                .maybeSingle();
+              const groupName = crew.name ?? "a crew";
+
+              if (type === "group_invitation") {
+                const business = ownerBusiness?.business_name ?? "A business";
+                templatedTitle = "Crew invitation";
+                templatedBody = `${business} invited you to their crew "${groupName}"`;
+                templatedActionUrl = "/dashboard/creator/campaigns?crews=1";
+                templatedEmailData = { groupName, businessName: business };
+              } else {
+                // `group_membership_removed` is deliberately absent from
+                // NOTIFICATION_TYPE_TO_EMAIL_TYPE — bell-only, so no emailData.
+                const business = ownerBusiness?.business_name ?? "a business";
+                templatedTitle = "Crew update";
+                templatedBody = `You're no longer in ${business}'s crew "${groupName}"`;
+                templatedActionUrl = "/dashboard/creator/campaigns?crews=1";
+              }
+            }
           }
         }
       } else {
@@ -343,8 +509,16 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // 3. Send email if enabled (or forced)
+    //
+    // `forceDelivery` overrides the recipient's own email opt-out, so it is a PLATFORM
+    // capability, not a caller one — honouring it from a user-authenticated request let
+    // any such caller mail a recipient who had switched that category off, which is the
+    // one control the "no more than a business can already do" reasoning elsewhere in this
+    // file depends on. Verified before restricting: `forceDelivery` has ZERO callers —
+    // nothing in `src/`, and no other edge function passes it — so this removes a bypass
+    // and no behaviour.
     let emailSent = false;
-    if (forceDelivery || categoryPrefs.email) {
+    if ((isService && forceDelivery) || categoryPrefs.email) {
       // `emailType` is a raw template selector, so honouring it unchecked would let a user
       // send a recipient ANY transactional email in the catalogue — a payment receipt, a
       // hire confirmation — regardless of what actually happened.
@@ -401,7 +575,6 @@ const handler = async (req: Request): Promise<Response> => {
                 body: JSON.stringify({
                   type: resolvedEmailType,
                   data: {
-                    recipientUserId: recipientId,
                     ...(emailData ?? {}),
                     ...(data ?? {}),
                     // LAST on purpose. Server-composed fields must win: spread earlier,
@@ -409,6 +582,23 @@ const handler = async (req: Request): Promise<Response> => {
                     // the templated values, which defeated the whole point of templating
                     // this type. Null for every non-templated type, so a no-op there.
                     ...(templatedEmailData ?? {}),
+                    // ALSO last, and load-bearing: this is the ROUTING field — it decides
+                    // who the email is actually delivered to. It used to be written FIRST,
+                    // so the two caller-controlled spreads above silently overwrote it.
+                    //
+                    // That was a real redirect: `send-notification-email` guards
+                    // `data.recipientUserId !== callerUserId → 403`, but WE call it with the
+                    // service key, so it treats us as `isService` and skips that guard,
+                    // resolving the address from `profiles` for whatever id arrives. A
+                    // caller could authorize trivially against themselves (the
+                    // `p_actor = p_recipient` clause), then put someone else's id in `data`
+                    // and have a DragonCandy-branded email delivered to a third party —
+                    // with NO `push_notifications` row against them, so nothing on the
+                    // platform recorded that it happened.
+                    //
+                    // No legitimate caller in `src/` puts `recipientUserId` in
+                    // `data`/`emailData`, so pinning it here changes no working flow.
+                    recipientUserId: recipientId,
                   },
                 }),
               }

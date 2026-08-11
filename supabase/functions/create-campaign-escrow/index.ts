@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
 import { getOrgTakeRate } from "../_shared/platform-fee.ts";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -111,7 +111,7 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin")
       || Deno.env.get("PUBLIC_SITE_URL")
-      || "https://dragoncandy.io";
+      || "https://dragoncandy.com";
 
     // Build description based on delivery type
     const deliveryLabels: Record<string, string> = {

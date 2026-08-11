@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { createOutstandMcpBridge } from "../_shared/outstand-mcp.ts";
 import { getModelConfig } from "../_shared/model-routing.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
@@ -58,7 +58,12 @@ serve(async (req) => {
         supabase,
       });
 
-      if (!mcpBridge) continue;
+      // Skipping a user with no connected account is THIS caller's policy, and
+      // it used to be implicit in the bridge returning null. It is explicit now
+      // because donny-orchestrator needs the opposite behaviour: there, a user
+      // with no account is a user asking a question that deserves an honest
+      // answer, not silence. Behaviour here is unchanged.
+      if (!mcpBridge || !mcpBridge.hasConnectedAccount) continue;
 
       // Fetch recent metrics
       const metricsResult = await mcpBridge.callTool("social_get_account_metrics", {});

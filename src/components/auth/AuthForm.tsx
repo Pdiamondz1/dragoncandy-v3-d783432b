@@ -7,6 +7,7 @@ import { Eye, EyeOff, Store, Camera, Megaphone } from "lucide-react";
 import type { UserRole as Role } from "@/types/user";
 import { Label } from "@/components/ui/label";
 import { LandingButton } from "@/components/landing/LandingButton";
+import { publicOrigin } from '@/lib/publicOrigin';
 
 interface AuthFormProps {
   mode: "login" | "signup";
@@ -47,7 +48,7 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: `${publicOrigin()}/`,
             data: {
               role: role,
               email: email,

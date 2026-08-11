@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
 import { getOrgTakeRate } from "../_shared/platform-fee.ts";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -99,7 +99,7 @@ serve(async (req) => {
     const totalAmount = Math.round(amount * 100);
     logStep("Fee calculation", { amount, takeRate, platformFee: platformFee / 100, totalAmount: totalAmount / 100 });
 
-    const origin = req.headers.get("origin") || "https://dragoncandy-v3.lovable.app";
+    const origin = req.headers.get("origin") || "https://dragoncandy.com";
 
     // Create checkout session with dynamic price
     const session = await stripe.checkout.sessions.create({

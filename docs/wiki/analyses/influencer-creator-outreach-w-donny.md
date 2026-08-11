@@ -73,13 +73,13 @@ This is the killer feature. Donny does everything except press send.
 - Donny instantly generates a **personalized outreach message** referencing:
   - The creator's actual recent content ("I loved your reel about the new ramen spot on Washington St")
   - The specific campaign opportunity with rate, deliverables, and timeline
-  - A dragoncandy.io/join link with the campaign pre-attached
+  - A dragoncandy.com/join link with the campaign pre-attached
 - Restaurant reviews the message — edits if they want, or sends as-is
 - The platform opens the creator's Instagram/TikTok profile in a new tab with the message pre-copied to clipboard, ready to paste into their DMs
 
 **What Donny produces in one tap:**
 
-> "Hey @mariafoodieNJ — loved your reel at Deja Brew last week, the lighting was gorgeous 🔥 I'm the owner of Renzo's Italian on Washington St in Hoboken. I'm looking for a creator to shoot 2 Instagram Reels of our new summer menu — $250, your schedule, 5–7 days. Interested? Here's the campaign details: dragoncandy.io/c/abc123 — takes 30 seconds to apply!"
+> "Hey @mariafoodieNJ — loved your reel at Deja Brew last week, the lighting was gorgeous 🔥 I'm the owner of Renzo's Italian on Washington St in Hoboken. I'm looking for a creator to shoot 2 Instagram Reels of our new summer menu — $250, your schedule, 5–7 days. Interested? Here's the campaign details: dragoncandy.com/c/abc123 — takes 30 seconds to apply!"
 
 **This is already partially architecturally supported.** The `InviteToCampaignModal` already uses Donny to pre-populate invite messages for on-platform creators. Extending this to generate off-platform outreach messages is a relatively small lift.
 
@@ -91,7 +91,7 @@ A restaurant doesn't need a creator on the platform to build the campaign. Here'
 
 **Step 1 — Restaurant creates campaign as normal**
 - Donny generates the brief, sets deliverables, tier, budget
-- Campaign gets a unique shareable link: `dragoncandy.io/c/[campaign-id]`
+- Campaign gets a unique shareable link: `dragoncandy.com/c/[campaign-id]`
 - No creator needed yet
 
 **Step 2 — Donny generates the outreach package**
@@ -150,7 +150,7 @@ Here's what the complete Donny-powered off-platform creator experience looks lik
 - Restaurant picks one or asks Donny to refine ("show me someone who does more lifestyle, less food porn")
 - Donny generates the personalized outreach message + campaign link
 - Restaurant copies message, opens creator's profile, pastes and sends
-- Creator receives invite with dragoncandy.io/c/[id] link
+- Creator receives invite with dragoncandy.com/c/[id] link
 - Creator clicks, sees the campaign brief (no login required to preview)
 - Creator taps "Accept & Join" → creates account → campaign goes live
 - Escrow, delivery, payment — all standard DragonCandy flow
@@ -166,7 +166,7 @@ Here's what the complete Donny-powered off-platform creator experience looks lik
 
 **Short-term (1–4 weeks, minimal new infrastructure):**
 - Off-platform creator outreach message generator in Donny (extend existing `InviteToCampaignModal` Donny prompt)
-- Public campaign preview page (no-auth landing page for `dragoncandy.io/c/[id]`)
+- Public campaign preview page (no-auth landing page for `dragoncandy.com/c/[id]`)
 - "Accept & Join" single-flow creator onboarding via campaign link
 - Clipboard copy + profile deep-link opener for the restaurant's outreach step
 

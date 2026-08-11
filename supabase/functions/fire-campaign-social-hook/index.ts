@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { authorizeCampaignHook } from './authz.ts';
 
@@ -12,6 +12,25 @@ interface HookRequest {
 }
 
 const errMessage = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
+/**
+ * Social-account manager route for one of THIS function's parties.
+ *
+ * Note the vocabulary: `parties[]` below uses 'restaurant' | 'brand' | 'creator',
+ * which is neither the profile roles ('business_client' | 'content_creator' |
+ * 'brand') that routes.ts's socialRoute() expects, nor interchangeable with them.
+ * Mapping locally keeps the two from being silently conflated.
+ *
+ * 'brand' used to fall through to the business branch, so a brand sponsor's
+ * "Connect Outstand" / "Review Draft" CTA pointed at /dashboard/business/social —
+ * which sits behind BusinessRoute and redirects a brand user away. Caught by
+ * Codex on the primary CTA; the two secondary CTAs carried it already.
+ */
+function partySocialRoute(partyRole: string): string {
+  if (partyRole === 'creator') return '/dashboard/creator/social';
+  if (partyRole === 'brand') return '/dashboard/brand/social';
+  return '/dashboard/business/social'; // 'restaurant'
+}
 
 const STAGE_TEMPLATES: Record<number, string> = {
   1: 'New campaign live! {title} — share with your followers',
@@ -394,7 +413,7 @@ serve(async (req) => {
                     label: 'Review Draft',
                     variant: 'secondary',
                     action: 'navigate',
-                    payload: { route: party.role === 'creator' ? '/dashboard/creator/social' : '/dashboard/business/social' },
+                    payload: { route: partySocialRoute(party.role) },
                   },
                 ]
               : [
@@ -402,13 +421,15 @@ serve(async (req) => {
                     label: 'Connect Outstand',
                     variant: 'primary',
                     action: 'navigate',
-                    payload: { route: '/settings/social' },
+                    // Was '/settings/social' — not a route (no top-level /settings/*
+                    // exists), so this primary CTA 404'd outright.
+                    payload: { route: partySocialRoute(party.role) },
                   },
                   {
                     label: 'Review Draft',
                     variant: 'secondary',
                     action: 'navigate',
-                    payload: { route: party.role === 'creator' ? '/dashboard/creator/social' : '/dashboard/business/social' },
+                    payload: { route: partySocialRoute(party.role) },
                   },
                 ];
 

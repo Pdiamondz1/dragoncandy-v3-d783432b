@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { validateDonnyToken, requireScope } from "../_shared/auth.ts";
 import { getModelConfig, type ModelConfig } from "../_shared/model-routing.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
@@ -874,7 +874,7 @@ async function executeTool(
     return {
       result: {
         message:
-          "Live platform, revenue, and cost figures aren't available over Google Chat yet — open the AIOS dashboard at internal.dragoncandy.io for those. I can still pull the latest weekly brief, search the strategy library, and work with Workspace files and email drafts here.",
+          "Live platform, revenue, and cost figures aren't available over Google Chat yet — open the AIOS dashboard at internal.dragoncandy.com for those. I can still pull the latest weekly brief, search the strategy library, and work with Workspace files and email drafts here.",
       },
     };
   }
@@ -2082,7 +2082,9 @@ serve(async (req) => {
             error: "monthly_quota_exceeded",
             message: `You've used ${quotaCheck.used}/${quotaCheck.budget} Donny actions this month.`,
             tier: quotaCheck.tier,
-            upgrade_url: "/settings/billing",
+            // `/settings/billing` is not a route (no top-level /settings/* exists).
+            // Role-agnostic public pricing page, which is real.
+            upgrade_url: "/pricing",
           }),
           { status: 429, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
         );

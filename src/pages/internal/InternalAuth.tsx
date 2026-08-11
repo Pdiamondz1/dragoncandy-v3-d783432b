@@ -156,7 +156,7 @@ const InternalAuth = () => {
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@dragoncandy.io"
+              placeholder="you@dragoncandy.com"
               className="mt-1.5 w-full rounded-full border border-white/10 bg-dc-dark/60 px-5 py-3 text-sm text-white placeholder:text-white/30 outline-none transition-shadow focus:border-dc-teal/60 focus:shadow-[0_0_0_3px_rgba(77,217,192,0.18)]"
             />
 
@@ -203,10 +203,10 @@ const InternalAuth = () => {
               <br />
               Forgot your password?{' '}
               <a
-                href="https://dragoncandy.io/auth"
+                href="https://dragoncandy.com/auth"
                 className="text-dc-pink underline-offset-2 hover:underline"
               >
-                Reset it on dragoncandy.io
+                Reset it on dragoncandy.com
               </a>
             </p>
           </form>

@@ -17,7 +17,7 @@
 //   6. Redirect user back to settings page with success/error status
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -68,7 +68,7 @@ serve(async (req: Request) => {
   const TOAST_CLIENT_ID = Deno.env.get("TOAST_CLIENT_ID");
   const TOAST_CLIENT_SECRET = Deno.env.get("TOAST_CLIENT_SECRET");
   const TOAST_OAUTH_REDIRECT_URI = Deno.env.get("TOAST_OAUTH_REDIRECT_URI");
-  const DRAGONCANDY_APP_URL = Deno.env.get("DRAGONCANDY_APP_URL") || "https://dragoncandy.io";
+  const DRAGONCANDY_APP_URL = Deno.env.get("DRAGONCANDY_APP_URL") || "https://dragoncandy.com";
 
   if (!TOAST_OAUTH_TOKEN_URL || !TOAST_CLIENT_ID || !TOAST_CLIENT_SECRET || !TOAST_OAUTH_REDIRECT_URI) {
     return new Response(

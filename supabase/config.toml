@@ -224,6 +224,26 @@ verify_jwt = false
 [functions.notify-package-order]
 verify_jwt = false
 
+# Cron/automation caller: the post-merge RAG sync invokes this with a bearer key
+# (injected service-role key OR AIOS_INGEST_SECRET), not a user JWT, so the gateway
+# check must be off — the function self-gates via isAuthorizedIngest, and does so
+# BEFORE it constructs its service-role client. It runs verify_jwt=false on prod but
+# was UNDECLARED here, so a `supabase functions deploy` would have silently flipped
+# it to the platform default (true) and broken the sync. Same posture as
+# aios-report-ingest.
+#
+# NOT declared here: verify-recaptcha — it no longer exists. Its source was deleted
+# from this repo by 7d8ef4a4 ("remove CAPTCHA from login and signup pages"), but the
+# prod deployment was left running for months afterwards (v161, zero callers, no
+# in-body authorization). Deleted from prod 2026-08-09; the endpoint now 404s, which
+# completes docs/superpowers/plans/2026-04-30-remove-captcha-from-auth.md.
+#
+# The lesson worth keeping: "deleted from the repo" is not "deleted from prod" —
+# the same merged-is-not-deployed gap that this file's donny-knowledge-sync entry
+# guards against, pointing the other way.
+[functions.donny-knowledge-sync]
+verify_jwt = false
+
 # Provider-agnostic social gateway (Outstand + Zernio adapters). verify_jwt stays
 # TRUE — unlike the bespoke-auth functions above, the platform's standard Supabase
 # JWT check is exactly what's wanted here, layered UNDER the function's own tenant

@@ -1,16 +1,11 @@
-import { Fragment, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
 import { DonnyPanelHeader } from './DonnyPanelHeader';
 import { DonnyChatInput } from './DonnyChatInput';
-import { DonnyMessage } from './DonnyMessage';
-import { DonnyDateDivider } from './DonnyDateDivider';
-import { startsNewDayGroup } from './donnyTime';
-import { DonnyTypingIndicator } from './DonnyTypingIndicator';
+import { DonnyThread } from './DonnyThread';
 import { DonnyQuickChips } from './DonnyQuickChips';
 import { DonnyAvatar } from './DonnyAvatar';
 import { useDonnyContext } from '@/contexts/DonnyProvider';
 import { useVisualViewportOffset } from '@/hooks/useVisualViewportOffset';
-import { WebOnly } from '@/components/platform/WebOnly';
 
 export function DonnyChatView() {
   const {
@@ -24,6 +19,7 @@ export function DonnyChatView() {
     collapse,
     close,
     retry,
+    userRole,
   } = useDonnyContext();
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -60,54 +56,15 @@ export function DonnyChatView() {
             <p className="text-xs text-dc-text-muted mt-1">Ask me anything — find creators, manage campaigns, check analytics, or just brainstorm ideas.</p>
           </div>
         )}
-        {messages.map((msg, i) => (
-          <Fragment key={msg.id ?? i}>
-            {startsNewDayGroup(messages, i) && <DonnyDateDivider iso={msg.created_at} />}
-            <DonnyMessage
-              message={msg}
-              avatarState={avatarState}
-              isLatestAssistant={
-                msg.role === 'assistant' &&
-                (() => { const idx = messages.length - 1 - [...messages].reverse().findIndex((m) => m.role === 'assistant'); return idx >= 0 && idx < messages.length && i === idx; })()
-              }
-            />
-          </Fragment>
-        ))}
-        {isStreaming && !streamingContent && <DonnyTypingIndicator />}
-        {isStreaming && streamingContent && (
-          <div className="flex gap-2 items-end">
-            <DonnyAvatar size="sm" state="thinking" />
-            <div className="max-w-[80%]">
-              <div className="bg-dc-pink rounded-2xl rounded-bl-sm px-3.5 py-2.5">
-                <p className="donny-markdown text-sm text-dc-text leading-relaxed whitespace-pre-wrap">
-                  {streamingContent}
-                  <span className="inline-block w-1.5 h-4 bg-dc-text/40 animate-pulse ml-0.5 align-text-bottom" />
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-        {error && !isStreaming && (
-          <div className="mx-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-xs text-red-600">{error}</p>
-            <div className="flex gap-2 mt-1.5">
-              {error.includes('Upgrade') && (
-                <WebOnly>
-                  <Link to="/settings/billing"
-                    className="text-xs text-dc-teal font-semibold">
-                    Upgrade Plan
-                  </Link>
-                </WebOnly>
-              )}
-              {!error.includes('Upgrade') && (
-                <button type="button" onClick={retry}
-                  className="text-xs text-dc-teal font-semibold">
-                  Try Again
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+        <DonnyThread
+          messages={messages}
+          avatarState={avatarState}
+          isStreaming={isStreaming}
+          streamingContent={streamingContent}
+          error={error}
+          retry={retry}
+          userRole={userRole}
+        />
       </div>
 
       {/* Quick chips */}

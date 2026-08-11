@@ -1,5 +1,6 @@
-import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { SubAgentResult, UserContext } from "../types.ts";
+import { billingRoute } from "../routes.ts";
 
 // Hardcoded tier config — Deno cannot import from frontend code
 const TIER_FEATURES: Record<
@@ -119,13 +120,15 @@ export async function execute(
     };
 
     const suggestedActions: Array<{ label: string; route: string }> = [
-      { label: "View billing settings", route: "/settings/billing" },
+      { label: "View billing settings", route: billingRoute(userContext.user_role) },
     ];
 
     if (currentTier !== "enterprise" && currentIndex < tierOrder.length - 1) {
       suggestedActions.push({
         label: `Upgrade to ${TIER_FEATURES[tierOrder[currentIndex + 1]]?.name ?? "next tier"}`,
-        route: "/settings/billing/upgrade",
+        // No `/upgrade` sub-route exists anywhere — this path was dead twice over.
+        // Subscription changes happen on the org billing page itself.
+        route: billingRoute(userContext.user_role),
       });
     }
 
@@ -138,7 +141,7 @@ export async function execute(
     return {
       context: "Unable to fetch billing data at this time.",
       suggested_actions: [
-        { label: "View billing settings", route: "/settings/billing" },
+        { label: "View billing settings", route: billingRoute(userContext.user_role) },
       ],
     };
   }

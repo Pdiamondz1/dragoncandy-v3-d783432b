@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { TierComparisonGrid } from '@/components/pricing/TierComparisonGrid';
 import { SEO } from '@/components/SEO';
 import { TIER_ORDER, TIER_PRICES, type TierName } from '@/lib/pricing/tier-features';
+import { SALES_EMAIL, mailtoHref } from '@/lib/contactAddresses';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -96,7 +97,7 @@ const PricingPage = () => {
             SLA? Let's build a plan that fits your organization.
           </p>
           <a
-            href="mailto:sales@dragoncandy.io"
+            href={mailtoHref(SALES_EMAIL)}
             className="inline-flex items-center justify-center rounded-full bg-pink-500 px-8 py-2.5 font-semibold text-white hover:bg-dc-pink-accent-btn-hover"
           >
             Talk to Sales

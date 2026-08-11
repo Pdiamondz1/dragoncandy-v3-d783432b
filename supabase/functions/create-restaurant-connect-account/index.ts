@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { resolveOwnedOrgUnit } from "../_shared/org-unit-access.ts";
 import { isTestKey } from "../_shared/stripe-mode.ts";
@@ -56,7 +56,7 @@ serve(async (req) => {
     }
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const origin = req.headers.get("origin") || "https://dragoncandy.io";
+    const origin = req.headers.get("origin") || "https://dragoncandy.com";
 
     // `org_unit_id` is body-supplied and everything below runs on the SERVICE-ROLE client, so
     // `org_units`' active-member RLS never applies. This is the highest-blast-radius instance

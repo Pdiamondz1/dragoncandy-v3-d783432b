@@ -1,5 +1,5 @@
 // supabase/functions/resolve-dispute/index.ts
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
 import { calculatePlatformFee, getOrgTakeRate } from "../_shared/platform-fee.ts";

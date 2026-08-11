@@ -27,7 +27,7 @@ learning each business he serves and embedding into its daily rhythm. The bet: i
 the next era of marketing, the winners won't type at all — they'll just ask
 Donny, and let him handle the rest.
 
-DragonCandy (dragoncandy.io) is an AI-powered creator–business marketplace HQ'd
+DragonCandy (dragoncandy.com) is an AI-powered creator–business marketplace HQ'd
 in Hoboken, NJ, connecting three roles — Restaurant/Business, Content Creator,
 and Brand/Sponsor — through a hybrid marketplace model. Restaurants are the
 beachhead.
@@ -100,13 +100,110 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   handoff and payment flow; gates production launch. → `docs/SHIPPED_LOG.md`
 - **Outstand social media integration** — IG/TikTok/YouTube linking + delegated posting;
   phases 1–3 complete, phase 4 (analytics dashboard) still in scope. → `docs/SHIPPED_LOG.md`
-- **Apple App Store (Capacitor)** — iOS shell over the web app. Phase 1 shipped, Phase 2
-  (native camera capture) started; next push + share plugins, then TestFlight. Hard
-  prerequisite: a macOS/cloud-Mac build + an Apple Developer account ($99/yr).
-  → `docs/superpowers/specs/2026-06-01-apple-app-store-design.md`
+- **Domain migration `.io` → `.com`** — expand → switch → redirect → contract. **Phase 1
+  (EXPAND) shipped and gate-verified 2026-08-09** (#414, #415). **Phase 2 (SWITCH) code shipped
+  2026-08-10**: apex is canonical (`www` → apex 308, path/query preserving), `SEO.tsx`'s one
+  `SITE_URL` constant drives every canonical + `og:url`, eleven edge functions' redirect
+  fallbacks moved, and `DEFAULT_ORIGIN` flipped after Codex caught it missing — an omission the
+  wiki had **already flagged in writing** and nothing read. Auth-gated `.com` verified on both
+  viewports. Allow-lists deliberately keep BOTH TLDs. **Phase 2a config DONE 2026-08-10** — all
+  three secrets proven to hold exactly `https://dragoncandy.com` by SHA-256 digest equality
+  (`52bf7482…`), GoTrue Site URL confirmed `.com` by probe-with-unlisted-control, and the 16
+  changed edge functions canaried then deployed and boot-verified. **Phase 3 (REDIRECT) LIVE
+  2026-08-10**: all three `.io` hosts permanently **308** to their own `.com` counterpart
+  (`internal.` → `internal.`), path/query verbatim, and the `#access_token` **fragment proven to
+  survive in a real browser** — the check nothing on the wire can make. Done as a 307 first, then
+  promoted. Mail untouched (`notify.dragoncandy.io` was never attached to Vercel). **Phase 4
+  (CONTENT) MERGED (#431) AND APPLIED TO PROD 2026-08-10**: a forward-only `UPDATE` migration
+  moves the 3 signup help articles + the Dezzy SEO prompt — editing the applied seed migrations
+  would change nothing in prod — dry-run-proven in a rolled-back `DO`/`RAISE` block, then applied
+  and **verified by re-reading the rows**: all three signup articles `has_com=t has_io=f`, their
+  `search_vector` genuinely reindexed (the column is **not** generated, so a stale index was a real
+  hazard), Supabase storage URLs intact, playbook moved, and `gdpr-erasure` **untouched**. Plus 17
+  present-tense `.io` claims fixed across 13 docs under one rule: *undated present-tense claims
+  move, dated/historical text stays*. **Mailboxes deliberately untouched**
+  (`privacy@dragoncandy.io` et al.) — that is Phase 5, gated on a receive test, and the migration
+  *asserts* it moved no mailbox. **Ledger version drift, harmless:** the repo file is
+  `20260810140000` but MCP `apply_migration` stamped **`20260810140234`**, so a future
+  `supabase db push` will see the repo version as unapplied and re-run it — **proven a no-op**
+  (`rows_help=0 rows_playbook=0`, assertions pass) because every statement is filtered on
+  containing the old string. Same class as the Slice-2 entry recorded under `20260726024318`.
+  **`send-verification-email` (v231) + `manage-internal-users` (v11) DEPLOYED and boot-verified
+  2026-08-10**, closing the derived link labels — and the redeploy incidentally closed a
+  **pre-Phase-2 `_shared/origins.ts`** in `send-verification-email` (every verification email had
+  been going out with `<a href="…dragoncandy.com">dragoncandy.io</a>`, the mismatched-anchor shape
+  mail filters score as phishing) and added `capacitor://localhost` to its CORS allow-list.
+  **Phase 5a (MAIL — recipient addresses) SHIPPED 2026-08-10; 5b blocked on a $20/mo decision.**
+  The gate was "does the `.com` mailbox receive", and the obvious test could not answer it: an SMTP
+  `RCPT TO` probe returned **250 for all five target mailboxes AND for two nonsense control
+  addresses**, because Google's MX does not disclose recipient validity at `RCPT`. *Without the
+  controls it would have read as "all five confirmed" and licensed the flip.* (An earlier revision
+  of this line said `.com` **catch-alls** — it does not; the admin console shows no catch-all rule.
+  Mechanism corrected, conclusion unchanged.) `.io` was unprobeable the other way (IONOS `554
+  blocklisted`), so **neither TLD could be established by probing at all.** What cleared it was
+  **reading the Workspace admin console**: all five are **aliases on `dame@dragoncandy.com`** (active,
+  daily use) alongside `info@` and `appstore@`, in an org with 3 users and **zero groups** — which
+  establishes the *routing* rather than one delivery, strictly stronger than the planned receive
+  test. **Durable rule: when a probe cannot distinguish a true answer from a false one, no number of
+  runs makes it evidence — change instrument.** Shipped across **three stores with three release
+  mechanisms** (bundle: `src/lib/contactAddresses.ts`'s 3 constants + MDX prose + pitch deck +
+  internal placeholder; edge fn: `stripe-webhook`'s dispute `admin@`; DB: migration
+  `20260810170000` moving `help_articles.gdpr-erasure`'s `privacy@`, dry-run-proven on prod with
+  `search_vector` reindex confirmed). Also fixed a live `mailto:` encoding bug (8 of 32 prod help
+  titles carry a URL metacharacter; `DC Points & Creator Standing` truncated the subject to "Help:
+  DC Points") and 6 Phase-2 residuals naming the **website** in the legal pages, pitch deck and help
+  briefs. **5b (Resend `from:` ×8) is BLOCKED, and not on engineering:** the Resend account is on the
+  **free tier, limit 1 domain**, so adding `notify.dragoncandy.com` needs **Pro at $20/mo** — and
+  the free tier makes expand-then-switch **structurally impossible** (one slot ⇒ delete the working
+  warmed `.io` domain to add `.com` ⇒ a window with no verified sender where ALL transactional email
+  fails, no rollback, into `.com`'s **`p=quarantine`** DMARC vs `.io`'s `p=none`). **Pending
+  (2026-08-10):** the **$20/mo go/no-go on 5b**; and the `.com` **Search Console** property — note
+  `info@` turns out to be an **alias of `dame@`**, which IS signed in, so this may no longer be
+  blocked (Change of Address remains **impossible, not deferred** — no property ever existed).
+  Phase 6 (contract) **recommendation: don't** — all transactional mail still originates from
+  `notify.dragoncandy.io`. → `docs/wiki/concepts/domain-migration-io-to-com.md`
+- **Apple App Store (Capacitor)** — iOS shell over the web app. Phase 1 (foundation) +
+  Phase 2 (native camera + share sheet) shipped; the first-signed-build work (origin
+  seam so email/share/OAuth links work natively, `capacitor://localhost` trusted in the
+  edge-function CORS allow-list, bundle ID → `com.dragoncandy.app`, export-compliance
+  plist key) **MERGED as #425 on 2026-08-10** (`gh pr view 425` — this line previously read
+  "not yet merged", stale by the usual mechanism), and the `capacitor://localhost` CORS
+  widening rode along with the Phase 2 fleet deploy, verified live by preflight probe.
+  **Organization enrollment `5HA89RBHQH` SUBMITTED 2026-08-10** — this line previously read
+  "not started"; it is now with Apple, so the gate is their response, not ours. Apple verifies
+  an Organization enrollment partly by **visiting the company website**, and dragoncandy.com
+  named no legal entity anywhere — closed by **#439** (merged 2026-08-11): `Dragon Candy LLC ·
+  Hoboken, NJ` in the landing footer and the entity + full registered address in the Terms and
+  Privacy pages, off one `src/lib/legalEntity.ts` constant. That work also **removed** an
+  unproven "a New Jersey limited liability company" from the Terms — the IRS EIN letter attests
+  the name, LLC status and a *mailing* address but **never the state of formation**, and a
+  governing-law clause is not a formation claim; reinstating it needs the NJ Certificate of
+  Formation. **Pending:** Apple's approval of `5HA89RBHQH` (submitted, not granted); the
+  founder's Mac (arriving 2026-08-12) for the first physical-device build + on-device
+  verification; and a private-window look at the landing footer on prod (the signed-in session
+  redirects `/landing`, so it is verified at bundle level only).
+  → `docs/superpowers/specs/2026-08-09-ios-testflight-first-build-design.md`
+  · `docs/wiki/concepts/legal-entity-identity.md` · #439
 
 ### Built — awaiting founder go-live
 
+> **This section rots faster than anyone expects, and the 2026-08-07 sweep below did not stop it.**
+> Nine days later, on **2026-08-09**, a spot-check found **five of its entries already done** —
+> `LEADS_NOTIFY_EMAIL` (set 08-07), Donny-first dashboard #410 (merged, flag on, orchestrator
+> deployed), DC Points #378 (merged, chip rendering on prod), the `/settings` CTAs #409 (both edge
+> functions deployed), and notification authz #387/#396 (migrations + `can_notify_user` on `main`).
+> None of it was noticed, because **nothing here detects its own staleness** — it is a hand-written
+> list of claims about prod, and every one of them is written in the present tense. The 2026-08-09
+> discovery was accidental: the dashboard was observed rendering a feature this section called
+> pending.
+>
+> **So treat the whole section as suspect, not just old entries.** Before acting on ANY clause here,
+> verify it — `gh pr view <n>` for a merge, `list_edge_functions` + reading the **deployed source**
+> for a deploy, `supabase secrets list` for a secret (yes, secrets **are** listable — that myth cost
+> two days, see the Shipped lead-capture entry), and `pg_proc`/`information_schema` for a migration.
+> The cheapest of those is seconds. **A `**Pending:**` clause is a claim with an expiry date, and
+> the date on it is an expiry, not a warranty.**
+>
 > **Every `**Pending:**` clause below was re-verified against prod on 2026-08-07** — not against
 > the PR description or this file's own history. Eight entries were found already complete (merged
 > PRs, applied migrations, deployed functions) and moved to Shipped; the two that remained at that
@@ -117,60 +214,44 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 > proof the object exists (see [[Content Delivery State Machine]]) and "recorded ≠ actual" has
 > bitten this project before.
 
-- **`verify_jwt=true` is not authorization — 6 anon-key-reachable service-role edge functions** —
-  the anon key **is** a valid JWT and ships in the frontend bundle, so the platform default only
-  rejects a *missing* header and never establishes a user; any service-role function skipping
-  `auth.getUser()` answered **anyone on the internet** (proven on prod: 401 with no header, **200
-  with the public anon key**). A 100-function sweep found 18 candidates → 4 legitimately public,
-  8 authorized another way, **6 exposed**; both money functions (`resolve-dispute`,
-  `verify-package-order-escrow`) came back clean. Fixed per caller shape, not with one guard:
-  ingest gates, JWT-derived ids (`social-caption` fed `donny_cost_ledger`, the AI kill-switch's own
-  ledger), ownership assertions, and a per-event split for `dragonshare-notify` (browser-called
-  twice — a blanket guard would have broken submission and decline). Two unpaired-id defects fixed;
-  a read gate (`evaluateCampaignAccess`) replaced with a purpose-built write gate after review
-  caught a rejected applicant could mint signed URLs over private deliverables. The sweep's own
-  blind spot is the lesson — `fire-promotion-social-hook` was cleared by the regex because it calls
-  `getUser` and never checks ownership. **Pending (verified 2026-08-08):** merge PR, then **deploy
-  all 6** — they are code changes and inert until deployed. Also found: **zero Toast tables exist on
-  prod**, so §10's "Active integrations: Toast POS" is aspirational.
-  → `docs/wiki/concepts/anon-key-is-not-authorization.md` · #402
-- **`donny-dragonshare-score` UNDEPLOYED — an unauthorized cross-tenant service-role write** — the
-  authenticated caller was validated then **never used again**, so a body-supplied `post_id` reached
-  a service-role read *and* write of any tenant's post, with the audit row stamped to the **victim**;
-  `matchQuality` plus a plaintext `creatorPostCount` in `rationale` also made the target org's boost
-  count solvable. It was the hole in the DB's own guard (`trg_ds_posts_block_self_verify` blocks
-  authenticated non-admins from those exact columns, then waves through the service role). **Deleted,
-  not patched** — zero callers, webhook never wired (checked on prod: no cron, no `pg_proc`, no
-  `http_request` trigger), and it never ran once (`with_score=0, score_events=0`). **The hole is
-  CLOSED on prod (2026-08-08):** `supabase functions delete` run and verified two ways —
-  `get_edge_function` returns *Function not found* and a live POST to the endpoint returns **404**.
-  Codex raised deleting-source-alone as a `[P1]` and proposed a tombstone; undeploy was chosen
-  instead because nothing auto-deploys edge functions here, so a tombstone needs the same manual
-  deploy while *institutionalizing* the orphaned-endpoint anti-pattern. The sibling `landing-clips`
-  lead was **checked and refuted** (real consumer behind a deliberately-off flag) and kept — but
-  confirming that found a **real** defect: both its media URLs are creator-writable free text, so a
-  boosted creator could aim the anonymous homepage at any URL; `buildClips` plus the query now
-  origin-pin them to the public bucket. Two new pre-existing `[med]` write/forgery leads were filed
-  here (`fire-dragonshare-social-hook`, `dragonshare-notify`) and are **now fixed in #402**, which
-  also found they were reachable with the *public anon key*, not merely by an authenticated user.
-  **PR #399 is MERGED and the undeploy is done. Pending (verified 2026-08-08):** deploy the hardened
-  `landing-clips` — that half is a code change and is inert until deployed.
-  → `docs/wiki/concepts/service-role-data-exposure.md` · #399
-- **DC Points visibility (`/rewards`, chip, honest notification, Donny)** — a bell said
-  "+200 DC Points" with nowhere to click, points showed on two dashboards with no explanation, and
-  even the founder needed a SQL query to answer "what earned that." Ships a `/rewards` page
-  (balance, full-sentence tier gap, labeled history, a live `dre_config`-driven earn catalog), an
-  always-visible chip in both top bars, a caller-scoped `dre_my_standing()` RPC, a bell that names
-  its reason, and a Donny `rewards_agent` answering strictly from the caller's own standing.
-  Deliberately **earn-only** — a tier confers a public badge and nothing else ([[Honest Analytics]]).
-  Also closed a live leak: two never-built DRE engineering specs (referrals, streaks, redemption)
-  were reachable by consumer Donny via a NULL `donny_knowledge.scope`. **Pending (verified
-  2026-08-08):** 3 migrations applied + verified on prod; PR #378 open, and the mandatory Codex pass
-  is now **clean** — it took 3 rounds, two of which caught the same defect (a non-creator role
-  falling back to the business branch) in two different places, the second inside Donny's generated
-  prose where no UI review could see it. Awaiting the founder's merge, then deploy
-  `dre-award-engine` (`--no-verify-jwt`) and `donny-orchestrator` (without that flag).
-  → `docs/wiki/concepts/dragon-rewards-engine.md` · #378
+- **Donny's `social_*` tools repaired (7 calls → 0 successes → 4 working tools)** — Donny told the
+  founder he had "no visibility into which Instagram account is connected", sent him to find an
+  **"account ID"** on a page that displays none, and promised to post once he had it. The prod audit
+  overturned **two standing project claims**: instrumentation was never missing (`donny_tool_executions`
+  held 158 rows and had already recorded the answer), and the cause was never the fabricated
+  `account_id` — the bridge sent the **service-role key** where `outstand-proxy` runs `auth.getUser()`
+  on the anon client, so it 401'd before any account logic ran. Ships 7 tools → **4** (three had no
+  backing operation), `account_id` deleted from every schema and resolved server-side, and
+  `create_post`/`schedule_post` returning a **draft card the owner taps** — so the LLM structurally
+  cannot publish. Three measurement traps caught in review, all one shape (*a gate must be about the
+  same thing as the claim it licenses*): cumulative milestone rows summed (~3×, proven on prod post
+  `XDbxe`), both reads ungated on `verified_at` (6 fabricated all-zero rows would have cleared the
+  sample bar), and a user-wide gate licensing one account's engagement rate. **CT-4b closed** in the
+  same session: a published draft used to re-arm its own button on reload (a second tap = a duplicate
+  public post), now blocked by the append-only `donny_draft_publications` marker — migration
+  `20260809193254`, **applied and verified on prod**, with no change to any existing table's policies
+  or grants. Four **more** defects surfaced by the review loop *after* the work read as finished —
+  a scheduled post the product could not see (no `donny_scheduled_posts` row), an honest refusal that
+  was structurally unreachable, a failed account read still claiming "no account connected" (the
+  original complaint via a DB blip, where an earlier commit had added the error check, still returned
+  `[]`, and carried a comment claiming the whole fix), and one wrapper fed two different shapes by its
+  two branches. **Merged (#416, `d5cb594b`) and `donny-orchestrator` DEPLOYED 2026-08-09** — verified
+  by reading the **deployed source**, not the version: `accounts_unavailable`, `unwrapMcpPayload`,
+  `hasConnectedAccount`, `draft_id` and `donny_draft_publications` all present; the three dropped
+  tool names and all 25 `account_id` occurrences survive **only in comments** (zero schema
+  declarations, zero `required` entries). Unauthenticated POST → **401** and OPTIONS → 200, so
+  `verify_jwt` survived the deploy. A late catch at merge time: PR #415 had swept the tree from
+  `esm.sh` to `npm:` specifiers *because esm.sh was blocking redeploys*, and this branch's **new**
+  `_shared/outstand-accounts.ts` carried the old specifier — a rename pass cannot reach a file that
+  does not exist yet, so it would have re-broken the very redeploy this needed.
+  **Pending (2026-08-09):** the acceptance signal — a `status='success'` row in
+  `donny_tool_executions` for a `social_*` tool, which has **never existed** (baseline re-checked
+  post-deploy: 7 rows, all `error`, none since Aug 7, two for tools that no longer exist) and which
+  needs a real signed-in interaction to produce; and a both-viewport `verify-prod`. Note the CI edge
+  typecheck gate covers **none** of these `_shared` files (both importers are on `.typecheck-ignore`,
+  and #415 changed the protocol, not the versions, so the skew persists); a hand-run
+  `deno check` with a `main` baseline stands in for it.
+  → `docs/wiki/concepts/donny-social-tools.md` · #416
 - **DragonFeed uplift + sidebar double-active fix** — the "double-clicked button" was a
   **specificity** bug (each role's bare-root Dashboard href prefixed all ~26 child routes, in three
   copy-pasted navs) → one shared longest-match-wins `activeNavHref()`. The feed's four complaints
@@ -200,10 +281,12 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   than before" is the wrong bar; the test is whether the claim the code makes is true). Migrations
   `20260808010000`/`020000`/`030000` **applied**; `create-notification` **v47** deployed and
   **boot-verified on prod**; Codex clean at round 6; `edge-function-reviewer` PASS.
-  **Pending:** merge PR #387 and PR #396 (both open); and the **both-viewport visual pass on #382 is
-  still unrun** — it needs a signed-in prod session. Note the new paths have never run with a real
-  user JWT (zero prod traffic on this function), so they are proven at the SQL layer and
-  boot-verified, not exercised end-to-end. #396's final push used `--no-verify` (machine at 100% CPU
+  **#387 and #396 are MERGED** (verified 2026-08-09 on `origin/main`: all three migrations present
+  and `can_notify_user` referenced 3× in `create-notification/index.ts`) — this clause previously
+  said "both open". **Pending:** the **both-viewport visual pass on #382**, still unrun. Note the new
+  paths have never run with a real user JWT (zero prod traffic on this function), so they are proven
+  at the SQL layer and boot-verified, not exercised end-to-end — **merged is not exercised**, and
+  that distinction is the one this section keeps collapsing. #396's final push used `--no-verify` (machine at 100% CPU
   made the hook unfinishable; the skipped commits touch only `supabase/functions/` and `docs/`, both
   out of scope for the hook's `src/`-only typecheck and Vite build) — stated in the PR, and CI
   re-runs those checks plus the edge-function gate.
@@ -214,17 +297,131 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   **Pending:** register the Chat app, set `GOOGLE_CHAT_PROJECT_NUMBER` +
   `GOOGLE_ALLOWED_DOMAIN` — all blocked on creating the DragonCandy Workspace org.
   → `docs/superpowers/specs/2026-06-11-google-workspace-connections-design.md`
-- **Public landing — Dark-Luxe redesign + lead capture** — scoped-`.dark` rebuild + a
-  closed-anon-DML `leads` table and throttled `capture-lead` fn; both live on prod.
-  **Pending:** set the `LEADS_NOTIFY_EMAIL` edge secret — without it nobody is notified of a
-  captured lead. **Not verifiable from the repo or the DB** (edge secrets aren't listable), so this
-  one rests on founder knowledge, not a check — the only way to confirm it is the Supabase
-  dashboard. `leads` held **0 rows** as of 2026-08-07, so nothing has been lost yet; the cost is
-  that the *first* real lead lands silently.
-  → `docs/wiki/concepts/landing-lead-capture.md` · `feat/landing-luxe-redesign`
+> **Edge secrets ARE verifiable — `supabase secrets list --project-ref <ref>`.** The entry that
+> used to sit here claimed the opposite ("edge secrets aren't listable… rests on founder knowledge,
+> not a check") and on that basis was left unverified. It was wrong: the CLI returns every secret's
+> **name, SHA-256 digest and `updated_at`** — enough to prove presence and to detect a change,
+> without ever exposing a value. Checked 2026-08-09; `LEADS_NOTIFY_EMAIL` had in fact been set on
+> **2026-08-07**, so a `**Pending:**` clause outlived its truth by two days purely because a doc
+> discouraged the check. **A claim that something is unverifiable is itself a claim — verify it
+> before repeating it.** (Same class as [[Updated-At Trigger Drift]]'s `recorded ≠ actual`.)
 
 ### Shipped
 
+- **Every `href` in our transactional emails was caller-chosen — closed on prod (#442)** — ~30
+  templates built every link from caller-supplied `data` with no check, reachable because
+  `create-notification` spreads the request body **verbatim** and calls `send-notification-email`
+  with the **service key**, so the self-only 403 never applied. Whole-URL fields went into `href`
+  raw (attacker site, or `javascript:`); id fields were concatenated into paths, so a `"` closed
+  the attribute and wrote markup into the message. Closed by `_shared/emailLinks.ts`, whose
+  `safeLink` **discards the host rather than validating it** (parse relative to our origin, keep
+  only `pathname+search+hash`) — one rule covering absolute, protocol-relative, backslash,
+  userinfo, `javascript:`/`data:`, CRLF and encoded traversal at once. **29 tests**, confirmed
+  collected by CI (239→240 files). Two auth bugs went with it: **`"Bearer undefined"` promoted an
+  unauthenticated caller to SERVICE** (key read `as string`, no presence check — confirmed against
+  the **live** bundle), and the self-check **failed open on any caller with no email** on their
+  auth record. The regression it had to avoid: `budget: 0` is real (crew campaigns are free), so
+  `?? ''` would have printed "Budget: $0" on every free-campaign email — **escaping must not change
+  what renders**; money is *coerced* not escaped because two amounts sit in the subject. Authored
+  by a **parallel session** and left unmerged a day — **cherry-picked, not merged**, since the
+  branch predated the `.io`→`.com` migration in the same file. Reviewer completeness sweep: all 45
+  sinks enumerated, **zero** raw values remain. Codex clean; deployed and boot-verified.
+  → `docs/SHIPPED_LOG.md` · `docs/wiki/concepts/notification-delivery.md` · #442
+- **`can_notify_user`'s crew clause was forgeable — closed on prod (#440)** — no membership-status
+  filter, and since **any** user may create a crew (`WITH CHECK (owner_id = auth.uid())`) with an
+  **unconstrained `creator_id`**, two INSERTs bought a notification channel to **any user on the
+  platform**. Proven red on prod, then proven closed against the live function
+  (`forged_row_grants=f`, genuine accept still `t`, self-notify control `t`). Fixed in two halves,
+  because the obvious one-liner is a regression: the clause now requires `status='active'` (which
+  an **owner cannot write** — verified with a control: INSERT/UPDATE to active → 42501, UPDATE to
+  `removed` → succeeds, so it means *the creator accepted*), **plus** a row-authorized,
+  **server-worded** branch for the two crew notifications that fire at a non-active status
+  (`group_invitation` at `invited`, `group_membership_removed` at `removed`) — without that second
+  half it is the same hole by a shorter route. Two more live bugs closed en route: the internal
+  email call let a caller **overwrite `recipientUserId`** and redirect a branded email to a third
+  party with no bell row (service key ⇒ the self-only gate did not apply), and `forceDelivery`
+  overrode the recipient's opt-out for user callers (zero callers → service-only). Also discovered:
+  **the repo cannot rebuild this function** — ledger entry `20260808120130` has **no file in the
+  tree**, so a clean `db push` would have silently dropped two authorization clauses; this
+  migration codifies prod's real body. Deploy order was deliberately the **reverse** of the usual
+  rule (function first, migration second). `create-notification` **v53**; Codex clean.
+  → `docs/SHIPPED_LOG.md` · `docs/wiki/concepts/notification-delivery.md` · #440
+- **Donny-first business dashboard (Phases A + B + the shape corrections)** — the
+  `/dashboard/business` body is Donny: greeting, attention list, prompt box, three taps, with the
+  answer landing in-page. Scope set by a prod audit, not the mockup. The founder then corrected the
+  SHAPE twice from prod — the thread is now a bounded self-scrolling panel above the composer
+  (#429), the greeting collapses once a conversation runs, and every visit starts fresh by slicing
+  the shared conversation on a baseline **id** (#428). **Both-viewport check confirmed by the
+  founder on prod 2026-08-10** — the first time it has ever been run on this feature.
+  **Phase 3 — the CREATOR role — is PR #444, OPEN not merged (2026-08-10).** Same body for creators
+  (**two** taps, not three), old body preserved verbatim at a new `/dashboard/creator/overview`;
+  brand deliberately out of scope. The shared pieces are now role-generic — `DonnyHomeShell`,
+  `useDonnyHomeConversation`, `useDonnyHomeInteractions` — while the two builders stay siblings
+  (the roles rank by different rules). **Corrects a claim this file has been making:
+  `donny_tool_executions` cannot confirm a sub-agent tap for ANY role** — its insert sits inside the
+  `isSocialTool && mcpBridge` branch, so its emptiness is not evidence about consumer sub-agents,
+  including the taps Phase A shipped. Central defect: a **lifetime** `collaborationCount` gated
+  "nothing in flight" while 11 of 16 prod collaborations are `completed`, so a creator who *finished*
+  their work could see a **blank** attention region; the fix's own test then found the money-first
+  merge branch omitted the find-work item entirely. `billing_agent` is **wrong for creators** (serves
+  the restaurant catalog) — routed around, not fixed, and **still live**.
+  `stripe_onboarding_complete` now has **two disagreeing readers**, resolved by copy true in both
+  worlds rather than by plumbing. `DCTour` no longer spotlights a zero-size target (mechanism fix,
+  all three roles). A Codex **P1** claiming those financial columns are unreadable by `authenticated`
+  was **refuted on prod** by impersonation. **Pending:** merge; then the both-viewport `verify-prod`
+  — which for the creator role has **not** been run — including the first live exercise of the two
+  taps; and the RAG sync. **No per-role kill switch: merging #444 IS the creator launch**, and
+  rollback is a revert that takes the business dashboard with it.
+  → `docs/wiki/concepts/donny-first-dashboard.md` · #410, #411, #423, #428, #429, #444
+
+- **Donny's consumer RAG closed, then de-duplicated — the wiki no longer syncs to consumers at
+  all** — `EXCLUDE` was inert (gated on a `SYNC_CURATE=1` the unattended post-merge sync never
+  sets), so **107 of 112** wiki rows were consumer-reachable via `donny-orchestrator`'s
+  default-scope RAG → the `general` catch-all; the worst page was on neither list and states the
+  live user count, the vendor-by-vendor burn and "Stripe test mode". #434 inverted it to an
+  **empty `CONSUMER` allowlist**; #437 then stopped sending non-listed pages entirely, because
+  marking them internal duplicated rows `sync-internal-docs.mjs` + `wiki-merge-pr` already write
+  (**113 pages embedded twice, 109 byte-identical**). **Both merged and verified on prod
+  2026-08-10:** `donny_knowledge` 249 → **136**, `wiki:` namespace empty, consumer-reachable
+  **0**, 113 mirrors intact, merged-script sync `errors=0 orphans=0`. A read-only orphan check
+  replaces the self-healing the change cost. Codex found 2 on #434 (both mine), clean on #437.
+  → `docs/SHIPPED_LOG.md` · `docs/wiki/concepts/donny-rag-scope-boundary.md` · #434, #437
+- **Dead `/settings/*` CTAs fixed (12 across 10 files)** — every "Upgrade" (incl. the revenue path)
+  and "Connect Outstand" CTA 404'd; `isKnownRoute` never caught them because it only guards routes
+  the LLM **invents**. Merged `fef2b428`; `donny-orchestrator` + `fire-campaign-social-hook` both
+  **deployed 2026-08-09** in the post-#415 fleet redeploy.
+  → `docs/wiki/concepts/donny-data-and-quick-actions.md` · #409
+- **DC Points visibility (`/rewards`, chip, honest notification, Donny)** — a `/rewards` page, an
+  always-visible chip in both top bars, a caller-scoped `dre_my_standing()` RPC, a bell that names
+  its reason, and a Donny `rewards_agent` answering strictly from the caller's own standing.
+  Deliberately **earn-only** ([[Honest Analytics]]). Also closed a live leak: two never-built DRE
+  specs were reachable by consumer Donny via a NULL `donny_knowledge.scope`. **Live 2026-08-09** —
+  #378 merged (`/rewards` route + `dre_my_standing` callers on `main`), `dre-award-engine` and
+  `donny-orchestrator` both deployed, chip observed rendering on prod.
+  → `docs/wiki/concepts/dragon-rewards-engine.md` · #378
+- **Public landing — Dark-Luxe redesign + lead capture** — scoped-`.dark` rebuild + a closed-anon-DML
+  `leads` table and throttled `capture-lead` fn, both live on prod; `LEADS_NOTIFY_EMAIL` **set
+  2026-08-07, verified 2026-08-09** via `supabase secrets list` (see the note above — it was never
+  unverifiable). Lead capture never depended on it: the row is inserted first and the email is
+  best-effort, so an unset secret would have cost notification, never data.
+  → `docs/wiki/concepts/landing-lead-capture.md` · `feat/landing-luxe-redesign`
+- **`verify_jwt=true` is not authorization — 6 edge functions closed on prod** — the anon key **is** a
+  valid JWT and ships in the frontend bundle, so the platform default rejects only a *missing* header
+  and never establishes a user. A 100-function sweep found 6 genuinely exposed (both money functions
+  came back clean); each was fixed by caller shape, not one blanket guard. **All 6 deployed and
+  probe-verified 2026-08-08** — each flipped 200/404/400 → **401** with the public anon key, and
+  `fire-campaign-social-hook` returns an identical 401 for a real and a bogus campaign id (existence
+  oracle closed). Includes the pre-deploy gate's own catch (#404: a two-FK PostgREST embed that made
+  the sponsor-brand authorization arm dead code) and a parallel session's hardening (#403). The
+  7th function deployed that day, `landing-clips`, is **deliberately anonymous and still answers 200** —
+  it was hardened, not closed; see the entry below.
+  → `docs/wiki/concepts/anon-key-is-not-authorization.md` · #402, #403, #404
+- **`donny-dragonshare-score` undeployed; hardened `landing-clips` deployed** — an unauthorized
+  cross-tenant service-role write, deleted rather than patched (zero callers, never executed once);
+  endpoint now 404s. Its sibling lead was **refuted** but the check found a real defect — creator-
+  writable media URLs aimed the anonymous homepage anywhere — now origin-pinned in both the query and
+  `buildClips`, **deployed 2026-08-08** (v7, verified serving only own-bucket URLs).
+  → `docs/wiki/concepts/service-role-data-exposure.md` · #399
 - **`handle_updated_at()` restored from its prod-drifted stub** — the shared trigger's prod body was
   literally `-- Function logic here / RETURN NEW;`, so 35 triggers across 31 tables fired and changed
   nothing and `updated_at` sat frozen at `created_at`. Repo was never wrong (`recorded ≠ actual`, same

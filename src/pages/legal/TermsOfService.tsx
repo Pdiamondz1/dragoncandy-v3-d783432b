@@ -1,7 +1,11 @@
 import { LegalPageLayout } from './LegalPageLayout';
+import { PRIVACY_EMAIL } from '@/lib/contactAddresses';
+import { LEGAL_ENTITY_ADDRESS_LINES, LEGAL_ENTITY_NAME } from '@/lib/legalEntity';
 
-const LAST_UPDATED = 'June 6, 2026';
-const CONTACT_EMAIL = 'privacy@dragoncandy.io';
+// Bumped from June 6, 2026 when §1 changed to name the operating entity. §16 below
+// commits in writing to revising this date on an update, and naming the contracting
+// party is material — leaving it would have made the page contradict its own §16.
+const LAST_UPDATED = 'August 10, 2026';
 
 export default function TermsOfService() {
   return (
@@ -13,10 +17,10 @@ export default function TermsOfService() {
     >
       <p>
         These Terms of Service ("Terms") govern your access to and use of the DragonCandy
-        website at dragoncandy.io, our iOS application, and related services (collectively,
-        the "Service"), operated by DragonCandy ("DragonCandy," "we," "us," or "our"). By
-        creating an account or using the Service, you agree to these Terms. If you do not
-        agree, do not use the Service.
+        website at dragoncandy.com, our iOS application, and related services (collectively,
+        the "Service"), operated by {LEGAL_ENTITY_NAME} ("DragonCandy," "we," "us," or
+        "our"). By creating an account or using the Service, you agree to these Terms. If
+        you do not agree, do not use the Service.
       </p>
 
       <h2>1. Eligibility</h2>
@@ -161,7 +165,16 @@ export default function TermsOfService() {
       <h2>17. Contact Us</h2>
       <p>
         Questions about these Terms? Contact us at{' '}
-        <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+        <a href={`mailto:${PRIVACY_EMAIL}`}>{PRIVACY_EMAIL}</a>, or by mail:
+      </p>
+      <p>
+        {LEGAL_ENTITY_NAME}
+        {LEGAL_ENTITY_ADDRESS_LINES.map((line) => (
+          <span key={line}>
+            <br />
+            {line}
+          </span>
+        ))}
       </p>
     </LegalPageLayout>
   );

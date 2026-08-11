@@ -40,7 +40,7 @@ Copy the prompt below into Claude Code with the `/superpowers` and `/design-flow
 \superpowers:brainstorming
 \design-flow
 
-CONTEXT: DragonCandy (dragoncandy.io) is a two-sided marketplace connecting restaurants/businesses with content creators. It's built with React/TypeScript on Lovable.dev, Supabase backend, Tailwind CSS. The app goes LIVE in production next week.
+CONTEXT: DragonCandy (dragoncandy.com) is a two-sided marketplace connecting restaurants/businesses with content creators. It's built with React/TypeScript on Lovable.dev, Supabase backend, Tailwind CSS. The app goes LIVE in production next week.
 
 REFERENCE: See docs/DESIGN_SYSTEM.md for DragonCandy's design tokens and component patterns.
 

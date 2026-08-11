@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import { createClient } from "npm:@supabase/supabase-js@2.50.0";
 import { Resend } from "npm:resend@2.0.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import { htmlEscape } from "../_shared/htmlEscape.ts";
@@ -66,7 +66,7 @@ const handler = async (req: Request): Promise<Response> => {
             <li><strong>Launch and collaborate</strong> - Work directly with creators to bring your vision to life</li>
           </ol>
           <p style="margin-top: 20px;">
-            <a href="${Deno.env.get('APP_URL') || 'https://lovable.app'}/business-profile-setup" 
+            <a href="${Deno.env.get('APP_URL') || 'https://dragoncandy.com'}/business-profile-setup" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               Complete Your Profile
             </a>
@@ -84,7 +84,7 @@ const handler = async (req: Request): Promise<Response> => {
             <li><strong>Create amazing content</strong> - Get paid for doing what you love</li>
           </ol>
           <p style="margin-top: 20px;">
-            <a href="${Deno.env.get('APP_URL') || 'https://lovable.app'}/profile/creator" 
+            <a href="${Deno.env.get('APP_URL') || 'https://dragoncandy.com'}/profile/creator" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               Complete Your Profile
             </a>
@@ -102,7 +102,7 @@ const handler = async (req: Request): Promise<Response> => {
             <li><strong>Amplify your reach</strong> - Get your brand in front of engaged audiences</li>
           </ol>
           <p style="margin-top: 20px;">
-            <a href="${Deno.env.get('APP_URL') || 'https://lovable.app'}/profile/brand" 
+            <a href="${Deno.env.get('APP_URL') || 'https://dragoncandy.com'}/profile/brand" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               Complete Your Profile
             </a>

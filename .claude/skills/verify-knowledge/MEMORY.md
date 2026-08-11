@@ -21,6 +21,30 @@
   strictly *more* misleading than when it was frozen. Keep probing content. (Advisory: clarifies how
   to *read* (b); does not loosen it.) See [[Updated-At Trigger Drift]].
 
+- **[scope-is-not-freshness] Check (b) proves a page is PRESENT, never that it is reachable by the
+  RIGHT AUDIENCE — and the two failure modes look identical from here.** The probe queries
+  `donny_knowledge` with the service role and no scope predicate, so it returns a row whether that
+  row is `scope:'internal'`, `null`, or wrong. A page that leaks internal infra/ops content to
+  consumer Donny passes (b) exactly as cleanly as one correctly walled off.
+
+  **The default inverted on 2026-08-10, so what you are watching for inverted with it.**
+  `sync-wiki-to-donny.mjs` now marks **every** wiki page `scope:'internal'` unless its exact
+  `<dir>/<filename>` is in the `CONSUMER` allowlist, which is currently **empty** — so the correct
+  expectation is that every `wiki:%` row reads `internal`, and a `NULL` one is the anomaly. The two
+  denylists this replaced (`EXCLUDE`, gated behind a `SYNC_CURATE` flag the unattended post-merge
+  sync never set, and `FORCE_INTERNAL`) are **gone**; do not look for them. A denylist failed open —
+  it only held pages someone had enumerated — which is how 107 of 112 wiki rows sat consumer-reachable,
+  including the page stating the live user count, the vendor-by-vendor burn, and that Stripe was in
+  test mode.
+
+  So: read `scope` alongside the probe and say so in prose. Flag any `wiki:%` row at `scope NULL`,
+  and flag any addition to `CONSUMER` whose page has not been read end-to-end for content an end
+  user must not see. `SYNC_DRY_RUN=1 node supabase/scripts/sync-wiki-to-donny.mjs` prints the split
+  without POSTing. Report a scope miss as **advisory** (it is outside all three gated checks — do
+  NOT put it in `missing[]`), but do report it: it is a live data-exposure defect, not a docs nit.
+  (Advisory: adds a thing to watch; does not change any `met`.) See [[Dragon Rewards Engine (DRE)]]
+  for the precedent leak.
+
 - **[unmerged-branch] Validating a PRE-merge branch is legitimate — and (b) must stay anchored to
   `origin/main`.** `LAST_WIKI_SYNC` is defined on `origin/main`, so a branch's un-merged pages are
   correctly out of (b)'s scope: a `content ilike` probe returning `[]` for this session's pages is the
@@ -45,6 +69,90 @@
   conflicting **current** state, not on keyword staleness — a naive grep false-flags these critical.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-11] Post-merge verify for PR #445 (legal-entity knowledge-sync, after #439)
+- Output: verdict block `done:true` — all three checks met. (a) 114 pages on disk, **0** absent
+  from `index.md`; (b) content probe `Delaware-formed` → 2 rows; (c) the session's page in both
+  `index.md` and `log.md`.
+- Happened: ran as the loop-close after `sync:internal` (`inserted=1 updated=136 errors=0`).
+  Probe token was taken from the **added** lines of the newest in-scope revision on `origin/main`
+  (`5620d212`, first-parent diff) exactly as (b) specifies — `Delaware-formed`, hyphenated so it
+  cannot straddle a markdown line-wrap.
+- Worked: [scope-is-not-freshness] read as prose, and the picture is now the *expected* one for a
+  post-#437 wiki — **`wiki:%` namespace holds 0 rows** (the wiki reaches the RAG only as
+  `internal-*` via `sync-internal-docs.mjs`), 137/137 rows `scope='internal'`, and
+  **consumer-reachable = 0**. Nothing to flag.
+- Worked: [freshness-proxy] earned its keep in a new way. The new page was an **INSERT**, so its
+  `updated_at == created_at` and `ts_moved` read **false** — a timestamp gate would have
+  false-negatived on precisely the page just added. The advisory `RAG_LAST` was fresh
+  (2026-08-11T11:34:45Z) but played no part in the verdict.
+- Failed: nothing. One process note worth carrying, below.
+- Remember: **the post-merge RAG hook did NOT fire for this session, and the reason is
+  positional, not broken.** That hook runs only when the **main checkout** fast-forwards; the main
+  checkout was parked on `docs/capacitor-cors-sweep-spec` while *the worktree* held `main` (a
+  `gh pr merge --delete-branch` had switched it there). So [rag-sync]'s "don't hand-sync" advice
+  silently does not apply in that configuration — the sync had to be run by hand. The key file
+  `supabase/scripts/.env.sync.local` is **gitignored, so it does not exist in a worktree**; it was
+  copied in from the main checkout (verified `git check-ignore` first), used, and deleted. Check
+  `git worktree list` before assuming the hook covered a merge.
+
+### [2026-08-10] Post-merge verify for PR #435 (RAG scope boundary knowledge-sync, after #434)
+- Output: verdict `done:true` — all three met, `missing:[]`.
+- Happened: (a) 113 in-scope pages, index-incompleteness **0**. The contradiction half needed a
+  real judgment this time, because the session's own `log.md` entry *flagged* one: the new page
+  says the wiki is deliberately absent from the consumer RAG, while [[Self-Improving App]] says
+  "Donny retrieves them through the existing `match_donny_knowledge` RPC". **Not a
+  contradiction** — that sentence is audience-agnostic and `match_donny_knowledge` is exactly the
+  RPC internal Donny uses at internal scope, so no page asserts a conflicting *current* state
+  ([dated-analysis]'s test). A flagged nuance is not automatically a critical finding.
+  (b) newest in-scope revision `6df77138`; probe token **`internal_docs.archived_at`**, confirmed
+  present in the first-parent added lines AND on exactly **one** page on disk, so a hit cannot be
+  trivial → 1 row. Advisory `RAG_LAST` 2026-08-10 14:56Z corroborates. (c) both session pages
+  (`donny-rag-scope-boundary`, `knowledge-sync-automation`) in `index.md` and `log.md`.
+- Worked: the token-uniqueness pre-check again. The obvious candidates from the added lines were
+  `` `CONSUMER` ``, `` `EXCLUDE` ``, `` `donny_knowledge` `` — all of which live on other pages
+  and would have passed on content that predates this sync.
+- Failed: nothing gating.
+- Remember: **this validator's own passing condition is now scope-blind by design, and that is
+  correct.** Since PR #434 every `wiki:%` row is `scope='internal'`, and (b) probes with the
+  service role and no scope predicate, so it passes identically either way — exactly the
+  [scope-is-not-freshness] warning, now with the *expected* value inverted. Flag a `wiki:%` row at
+  `scope NULL` as advisory: it means either a sync ran from a pre-#434 checkout, or someone edited
+  the `CONSUMER` allowlist. Both are worth a sentence in prose; neither flips a `met`.
+
+### [2026-08-09] Post-merge verify for PR #418 (.com Phase 1 + esm.sh bundler outage knowledge-sync)
+- Output: verdict `done:true` — all three criteria met, `missing:[]`.
+- Happened: (a) 111 in-scope pages, index-incompleteness **0**. Contradiction half needed real work
+  this time because the session's subject IS a behaviour change ([claim-decay]): swept every
+  `esm.sh` mention in `docs/` + `.claude/` — all of them either document the incident or corroborate
+  it (`donny-social-tools.md` independently records PR #415 sweeping esm.sh→npm: "because esm.sh
+  specifiers were blocking redeploys"). **Nothing recommends esm.sh in the present tense**, so no
+  rot. `dragoncandy.com` appears in exactly one in-scope page (the new one), so no page asserts a
+  competing canonical-domain claim — `.io` is still canonical and every other page saying so is
+  correct. (b) newest in-scope revision = the merge itself (`942fa8a6`, 282 insertions / 0
+  deletions — both pages net-new); probed three tokens the revision **added** and which
+  `grep` confirms appear in **no other in-scope page**: `INTERNAL_APP_ORIGINS`=2,
+  `esm.sh/jose@5.9.6`=3, `caa7ca97`=2. (c) both pages in `index.md` + `log.md`, raw session
+  catalogued in Sources.
+- Worked: the token-uniqueness pre-check earned its keep in a new way. Both pages are 100%
+  additions, so *every* token is "added" and the [freshness-proxy] trap (a token that already lived
+  on an edited page) cannot arise — but a token could still be shared with an **older** page and
+  pass trivially. Grepping first showed all three tokens live only in the two new pages plus the
+  raw session, and `raw/` is never synced, so a `donny_knowledge` hit can only have come from this
+  sync. Also spot-checked the live claims per the [2026-08-02] Remember: `donny-auto-pilot` is
+  genuinely still v47 (entrypoint `_38`, untouched since June) and `verify-recaptcha` is absent
+  from `list_edge_functions`, so both present-tense claims in the new pages are true today.
+- Failed: nothing gating. One **advisory** worth stating: the caller had to repair a prod regression
+  found *before* this validator ran — a fleet redeploy pinned to a pre-merge commit silently
+  reverted another session's `donny-orchestrator` fix. All three checks here would have been green
+  throughout, exactly as the [2026-08-02] entry warns: a green verdict means "the knowledge layer
+  matches git", never "prod is correct".
+- Remember: **(b) proves a page is *present*, never that it is *reachable by the right audience*.**
+  Both new pages are `scope:'internal'`; the content probe passes identically whether scope is
+  `internal`, `null`, or garbage, because it queries the table with the service role and no scope
+  predicate. Had the caller's `FORCE_INTERNAL` fix been wrong, (b) would still have returned
+  `done:true` while consumer Donny happily served deploy runbooks and DNS details to restaurant
+  owners. → promoted to Lessons as [scope-is-not-freshness].
 
 ### [2026-08-08] Post-merge verify for PRs #385/#388/#391/#394 (handle_updated_at restore + status_changed_at anchors)
 - Output: verdict `done:true` — all three criteria met, `missing:[]`.

@@ -45,6 +45,20 @@ export function useDonny(options?: UseDonnyOptions) {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const isSendingRef = useRef(false);
   const lastUserMessage = useRef<string>("");
+  // Whether the `donny_messages` USER row for `lastUserMessage.current` was
+  // actually written.
+  //
+  // `isRetry` used to stand in for this fact, and the two diverge exactly where
+  // it matters. A send can fail BEFORE the insert — the `No active
+  // conversation` guard, the in-flight guard, or the insert statement itself
+  // erroring. Replaying any of those with `isRetry: true` skipped the insert,
+  // so the assistant row was persisted with no question above it. That is not
+  // cosmetic: `conversation_history` is assembled from these rows, so every
+  // later turn is briefed on an answer to a question Donny cannot see.
+  //
+  // Assigned in the same statement block as `lastUserMessage` below, so the
+  // pair can never describe different messages.
+  const lastUserMessageInserted = useRef(false);
 
   // Load or create conversation
   const { data: conversation } = useQuery({
@@ -78,7 +92,13 @@ export function useDonny(options?: UseDonnyOptions) {
   });
 
   // Load messages
-  const { data: messages = [] } = useQuery({
+  const {
+    data: messages = [],
+    isSuccess: messagesFetched,
+    isFetching: messagesFetching,
+    isError: messagesErrored,
+    refetch: refetchMessages,
+  } = useQuery({
     queryKey: ['donny-messages', conversation?.id],
     queryFn: async () => {
       if (!conversation) return [];
@@ -125,19 +145,33 @@ export function useDonny(options?: UseDonnyOptions) {
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async ({ content, isRetry = false }: { content: string; isRetry?: boolean }) => {
+      // Recorded BEFORE the guards, not after: retry() is gated on this ref, so
+      // a send that failed on the conversation guard used to leave it holding
+      // the PREVIOUS message — or, on the very first send, the empty string it
+      // is initialised with, which makes retry() a no-op and renders the error
+      // card's "Try Again" as a button that does nothing at all.
+      lastUserMessage.current = content;
+      // A genuinely new message has no row yet, so the pair is reset together
+      // with the text it describes — a stale `true` surviving into a new
+      // question would silently drop that question instead. A retry
+      // deliberately keeps what is known, because it replays the very message
+      // this pair already describes.
+      if (!isRetry) lastUserMessageInserted.current = false;
+
       if (!conversation || !user) throw new Error('No active conversation');
       if (isSendingRef.current) throw new Error('Message already in flight');
 
       isSendingRef.current = true;
-      lastUserMessage.current = content;
 
       setIsStreaming(true);
       setAvatarState('thinking');
       setStreamingContent('');
       setError(null);
 
-      // Insert user message locally first (skip on retry — message already exists)
-      if (!isRetry) {
+      // Insert the user message locally first. Skipped ONLY when this message's
+      // row is known to have been written — never merely because this
+      // invocation is a retry.
+      if (!lastUserMessageInserted.current) {
         const { error: insertError } = await supabase
           .from('donny_messages')
           .insert({
@@ -147,6 +181,10 @@ export function useDonny(options?: UseDonnyOptions) {
           });
 
         if (insertError) throw insertError;
+        // Recorded only AFTER the write lands, so the flag never claims a row
+        // that does not exist. In particular an insert that THREW leaves it
+        // false, so Retry writes the row.
+        lastUserMessageInserted.current = true;
       }
 
       // Get session for auth header
@@ -356,6 +394,32 @@ export function useDonny(options?: UseDonnyOptions) {
 
   const quickChips = DEFAULT_QUICK_CHIPS[profile?.role ?? 'business_client'] ?? [];
 
+  // Whether `messages` currently reflects the server — NOT the same question as
+  // `messages.length === 0`. The query defaults to `[]` and is
+  // `enabled: !!conversation`, so an empty array means "conversation still
+  // loading", "history query in flight", or "genuinely none", and only the
+  // third is a fact a caller can act on. A caller that must tell them apart —
+  // DonnyHome, which shows only the current visit — cannot do it from
+  // `messages`.
+  //
+  // `!isFetching` as well as `isSuccess`, because React Query keeps `isSuccess`
+  // true while a background refetch runs against CACHED data. With the thread
+  // already cached from the side panel, readiness would be announced over a
+  // stale array, and anything added since (another tab, another device) would
+  // land after a baseline taken from it. `isSuccess` alone answers "have we
+  // ever loaded"; this answers "is what I am holding current".
+  //
+  // A FAILED fetch is deliberately NOT loaded. Counting it as loaded was the
+  // obvious way to stop a failing query queueing sends forever, and it quietly
+  // reintroduced the very leak this flag exists to prevent: on error `data` is
+  // undefined, so `messages` is the `[]` default, a baseline taken from it says
+  // "no history", and the moment the query recovers the whole conversation
+  // counts as the current visit. (Codex, twice — the second time on my own
+  // fix.) The deadlock is real but it is the CALLER's to solve, with
+  // `messagesErrored` below, by telling the user rather than by pretending the
+  // empty array is an answer.
+  const messagesLoaded = messagesFetched && !messagesFetching;
+
   const state: DonnyState = {
     conversation: conversation ?? null,
     messages,
@@ -365,8 +429,17 @@ export function useDonny(options?: UseDonnyOptions) {
     error,
   };
 
+  const retryLoadMessages = useCallback(() => {
+    void refetchMessages();
+  }, [refetchMessages]);
+
   return {
     ...state,
+    messagesLoaded,
+    // The history load FAILED, as opposed to "has not finished". A surface that
+    // waits on `messagesLoaded` needs this to end the wait honestly.
+    messagesErrored,
+    retryLoadMessages,
     sendMessage,
     clearChat,
     archiveConversation,

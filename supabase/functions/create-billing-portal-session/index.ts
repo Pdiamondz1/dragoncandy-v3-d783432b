@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import Stripe from 'https://esm.sh/stripe@18.5.0';
 import { corsHeaders } from "../_shared/cors.ts";
 
@@ -12,7 +12,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY')!;
-    const siteUrl = Deno.env.get('PUBLIC_SITE_URL') || 'https://dragoncandy.io';
+    const siteUrl = Deno.env.get('PUBLIC_SITE_URL') || 'https://dragoncandy.com';
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const stripe = new Stripe(stripeSecretKey, { apiVersion: '2025-08-27.basil' });

@@ -21,7 +21,20 @@
 // unpinned `@2` resolves to a newer major-minor whose `SupabaseClient` is a structurally
 // incompatible class (`supabaseUrl` is protected), so every call site fails to type-check.
 // `_shared/flush-pending-balance.ts` pins for the same reason — follow it, don't diverge.
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+// `npm:`, not `esm.sh`. #415 moved the whole fleet off `esm.sh` because those specifiers
+// boot-fail on redeploy (WORKER_ERROR before the handler ever runs), and this file was
+// created after that sweep — so the sweep could not reach it. That is the #416 shape
+// exactly: a rename pass cannot touch a file that does not exist yet, and the miss only
+// surfaces when the function it is bundled into is next redeployed. Four money functions
+// bundle this one.
+//
+// The version pin stays: this type must resolve to the SAME major/minor the callers
+// construct at (`@2.57.2`), or `SupabaseClient` is structurally incompatible
+// (`supabaseUrl` is protected) and every call site fails to typecheck. `npm:` + pin is
+// what `_shared/flush-pending-balance.ts` does — which this file's own header cited as
+// its precedent while not actually matching it. 6 of the 7 `_shared` type-imports of
+// supabase-js were already on `npm:`; this was the lone outlier.
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2.57.2";
 
 /** Roles permitted to act on an org unit's payout configuration. */
 const PAYOUT_ROLES = ["owner", "admin"];

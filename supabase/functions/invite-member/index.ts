@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
 serve(async (req) => {
@@ -125,7 +125,7 @@ serve(async (req) => {
     } else {
       // New user: send magic link with org context
       const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
-        redirectTo: `https://dragoncandy.io/invite/accept?org=${org_id}&role=${role}&invited_by=${caller.id}`,
+        redirectTo: `https://dragoncandy.com/invite/accept?org=${org_id}&role=${role}&invited_by=${caller.id}`,
       });
 
       if (inviteError) {

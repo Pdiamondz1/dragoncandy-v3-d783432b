@@ -2,8 +2,8 @@
 title: Notification Delivery
 type: concept
 created: 2026-06-23
-updated: 2026-08-08
-sources: [2026-06-23-notification-email-audit.md, 2026-08-08-notification-and-invitation-authorization.md]
+updated: 2026-08-10
+sources: [2026-06-23-notification-email-audit.md, 2026-08-08-notification-and-invitation-authorization.md, 2026-08-10-can-notify-crew-clause.md, 2026-08-10-email-link-injection.md]
 tags: [notifications, email, edge-functions, auth, rls]
 ---
 # Notification Delivery
@@ -86,8 +86,18 @@ anywhere in `src/` was already the caller's own id, so no real call site changed
 **2. The recipient must be reachable — `can_notify_user(actor, recipient)`.** A
 `SECURITY DEFINER`, service-role-only SQL function over six relationships: self, campaign
 (owner ↔ applicant/collaborator/invitee, either direction), conversation, crew, org, and
-sponsorship. Membership clauses check the relationship is **live** — `left_at IS NULL`,
-`invitation_status='active'` — because a stale tie is not a current one.
+sponsorship. Membership clauses check the relationship is **live** — `left_at IS NULL`
+(conversation), `invitation_status='active'` (org), `status='active'` (crew) — because a
+stale tie is not a current one.
+
+> **Correction (2026-08-10, #440).** Until #440 that sentence was *false for the crew
+> clause*, which this page nonetheless described as live-checked. Crew membership carried
+> **no status filter at all**, and because `creator_groups` INSERT is
+> `WITH CHECK (owner_id = auth.uid())` (any user may create a crew) and `cgm_owner_insert`
+> leaves **`creator_id` unconstrained**, two INSERTs manufactured a channel from any
+> authenticated user to **any user on the platform**. Proven red on prod, then proven closed.
+> The lesson is not about crews: **a page that lists a control is not evidence the control
+> exists.** Read the deployed `pg_get_functiondef`, not the prose or the migration.
 
 The clause set was derived twice and cross-checked, which is the part worth copying:
 
@@ -112,6 +122,76 @@ legitimately reachable without a relationship, so it is authorized against the *
 post** (recipient must own it) rather than a relationship. Ownership being the only check
 would leave `title`/`body`/`actionUrl` as free text aimed at any post owner — the exact
 stranger-phishing vector — so for that type the server composes them.
+
+**The crew invite and removal work the same way, for the same reason (2026-08-10, #440).**
+`group_invitation` and `group_membership_removed` are cold contact by design — a business may
+invite any creator it finds — and both fire at a **non-active** membership status, so the
+`status='active'` clause cannot cover them:
+
+| type | status **at notify time** |
+|---|---|
+| `group_invitation` | `invited` — the invite itself |
+| `group_membership_removed` | `removed` — `removeMember` UPDATEs *before* dispatching |
+
+Gating those on `active` would have silently killed both (the #387 regression shape), and
+relaxing the clause to `IN ('active','invited','removed')` excludes only `declined` and fixes
+nothing. So they are authorized against the **membership row** (caller owns the crew,
+recipient is the named member, status matches the type) with **server-composed copy**.
+
+> **The server-composed half is what makes it a fix rather than a relocation.** Row
+> authorization alone would still mean "you may send anyone you can name in a crew row
+> arbitrary text" — the same hole by a shorter route. With the copy pinned, a forged row
+> buys nothing but a genuine-looking crew invitation *in our own words* at a fixed in-app
+> URL, which the product already permits.
+
+**Why `status='active'` is a real consent signal:** an owner **cannot write it**.
+`cgm_owner_insert` pins `'invited'`, `cgm_owner_update` pins `IN ('invited','removed')`, there
+is no self-UPDATE policy, and the only writer of `'active'` is `respond_to_group_invitation()`
+gated `creator_id = auth.uid()`. Proven on prod **with a control**, since two denials alone
+could mean a broken probe: INSERT active → 42501, UPDATE to active → 42501, UPDATE to
+`'removed'` → **succeeds**.
+
+### Every href was caller-chosen (2026-08-10, #442)
+
+The same reachability, a third time: because `create-notification` spreads the request body
+verbatim and calls `send-notification-email` **with the service key**, a user-authenticated
+caller reached the templates and the self-only gate did not apply. **Every `href` in ~30
+templates was built from that `data` and none was checked** — whole-URL fields (`actionUrl`,
+`campaignUrl`, `reviewUrl`) went into `href` raw, and id fields were concatenated into paths so
+a `"` closed the attribute and let the caller write markup into the message.
+
+Closed by `_shared/emailLinks.ts`: `link` (a path *we* composed), `safeLink` (a caller path
+forced back onto our origin), `pathSegment`, `safeImageUrl`.
+
+> **`safeLink` discards the host rather than validating it** — it parses relative to our own
+> origin and keeps only `pathname + search + hash`. That is why one rule covers absolute,
+> protocol-relative, backslash, userinfo, `javascript:`/`data:`, CRLF and encoded-traversal
+> spellings simultaneously. **Validation enumerates what is bad; discarding keeps only what is
+> good — a host that is never read cannot be smuggled.**
+
+29 tests assert **both** properties on every hostile input (stays-on-origin *and*
+cannot-break-out), since fixing one without the other still leaves a usable injection.
+
+Two auth bugs went with it: **`"Bearer undefined"` promoted an unauthenticated caller to
+SERVICE** (the key was read `as string` with no presence check — confirmed real by reading the
+live deployed bundle), and the self-check `to && callerEmail && …` **failed open on any caller
+with no email on their auth record** — latent at 0-of-42 users today, but one GoTrue toggle
+away from live.
+
+**And the regression it had to avoid:** `budget: 0` is a real value (crew campaigns are free and
+carry a literal `0`) behind a `data.budget ?` guard, so a naive `?? ''` would have printed
+"Budget: $0" on every free-campaign email. **Escaping must not change what renders.** Money is
+*coerced* rather than escaped, because two amounts sit in the **subject** — not markup, where
+`&amp;` renders literally and a CRLF is a header-injection primitive escaping cannot touch.
+
+**Also closed in #440 — the email could be redirected.** `recipientUserId` was spread **first**
+in the payload `create-notification` sends to `send-notification-email`, so the two
+caller-controlled spreads (`emailData`, `data`) overwrote it. Since that internal call uses the
+service key, the self-only gate documented at the top of this page **does not apply to it** — so
+a caller could authorize trivially against themselves (`p_actor = p_recipient`) and have a
+branded email delivered to a **third party, with no `push_notifications` row recording it**. Now
+pinned last. Separately, `forceDelivery` — which overrides the recipient's own opt-out — is now
+**service-only** (it had zero callers anywhere).
 
 ### Template selection is bound to the flow that justifies it
 
@@ -174,6 +254,21 @@ email.
   pass across the 32 call sites to close properly.
 - `can_notify_user`'s cold-contact coverage rests on an **ordering dependency** (conversation
   created before the notify fires), not on an explicit clause. Nothing enforces that order.
+- **A crew owner can still put a crew-flavoured bell in any user's feed** (#440, documented not
+  closed). The row-authorized branch requires the membership row to *currently* hold the status
+  the type is about, but an owner may insert `invited` naming anyone and then update to
+  `removed` — producing "you're no longer in this crew" for someone who never joined. Bounded:
+  bell-only for removal, server-worded for both, fixed in-app URL. The tempting guard —
+  additionally require `responded_at IS NOT NULL` — was **checked and rejected**:
+  `column_privileges` shows `authenticated` holds UPDATE on `responded_at`, and an RLS
+  `WITH CHECK` cannot pin a column (there is no `OLD` row in a policy), so it is forgeable by
+  the same owner. Closing it properly needs a column-grant revoke or membership history.
+- **The repo cannot rebuild `can_notify_user` from migrations.** `schema_migrations` records
+  `20260808120130 can_notify_user_active_relationships` with **no file in the tree** — applied
+  directly during #387/#396 and never written back — so the repo body lacked the conversation
+  and org clauses prod has. #440 codified prod's real body, but nothing reconciles the ledger
+  against `supabase/migrations/` in general. See [[Updated-At Trigger Drift]] for the same
+  `recorded ≠ actual` family in the other direction.
 - Findings in PR #161 were code-verified only — prod had no `send-notification-email`
   traffic in 24h (pre-revenue), so the 403s weren't observed at runtime.
 
