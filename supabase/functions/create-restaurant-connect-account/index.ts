@@ -71,7 +71,7 @@ serve(async (req) => {
     // fallback; a unit that exists and isn't yours is refused.
     let ownedOrgUnitId: string | null = null;
     if (org_unit_id) {
-      const access = await resolveOwnedOrgUnit(supabaseClient, org_unit_id, user.id);
+      const access = await resolveOwnedOrgUnit(supabaseClient, org_unit_id, user.id, "onboarding");
       if (access.ok) {
         ownedOrgUnitId = access.unit.id;
       } else if (access.reason === "lookup_failed") {

@@ -278,9 +278,25 @@ async function handleList(
     );
   }
 
+  // Explicit column list, not `*`. This is a SERVICE-ROLE read whose result goes straight back
+  // to the client, so `*` means "whatever columns this table grows in future". Own rows only
+  // (`user_id`), so `*` is not a leak today — naming the columns is what stops a future column
+  // from becoming one silently.
+  //
+  // Deliberately the table's CURRENT FULL column set (verified against prod
+  // `information_schema` 2026-08-11), not a narrower guess. Narrowing looked tempting —
+  // `metadata` carries provider payloads — but I could not establish from `src/` which fields
+  // this particular response feeds, and dropping one consumed by the calendar would fail as a
+  // silently-missing value rather than an error. Enumerating everything current gets the whole
+  // point of the change (a new column is not auto-exposed; adding it here is a deliberate act)
+  // at zero regression risk. Narrow it further only with the consumer list in hand.
   let query = supabaseAdmin
     .from("donny_scheduled_posts")
-    .select("*")
+    .select(
+      "id, user_id, campaign_id, platform, content_type, caption, media_urls, hashtags, " +
+        "scheduled_at, published_at, status, ai_suggested_time, ai_reasoning, metadata, " +
+        "created_at, updated_at, plan_group_id, plan_order, deliverable_id",
+    )
     .eq("user_id", userId)
     .gte("scheduled_at", start_date)
     .lte("scheduled_at", end_date)

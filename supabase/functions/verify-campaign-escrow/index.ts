@@ -142,24 +142,55 @@ serve(async (req) => {
     }
 
     // Priority 2: stored escrow_payment_intent_id
+    //
+    // This path needs the SAME campaign binding Priority 1 just gained, and for a reason that
+    // is easy to miss: `campaigns.escrow_payment_intent_id` is written by the campaign owner's
+    // own UPDATE (the policy is row-level, with no column GRANTs pinning escrow_* — the
+    // `campaign_invitations` 20260808010000 lesson, not yet applied to this table). So the
+    // stored id is CALLER-INFLUENCED, not a server-established fact.
+    //
+    // Without this check, closing Priority 1 would have moved the hole rather than shut it:
+    // write a known-paid `cs_`/`pi_` id — another campaign's, or a package order's — into the
+    // column, then verify, and an unfunded campaign flips to `held`. Binding here makes the
+    // stored id merely a *hint* about where to look, never the authority for whether this
+    // campaign was paid.
     if (!paymentSucceeded && campaign.escrow_payment_intent_id) {
       const storedId = campaign.escrow_payment_intent_id;
       if (storedId.startsWith('cs_')) {
         try {
           const session = await stripe.checkout.sessions.retrieve(storedId);
-          if (session.payment_status === 'paid') {
+          const bound =
+            session.metadata?.campaign_id === campaignId &&
+            session.metadata?.type === 'campaign_escrow';
+          if (session.payment_status === 'paid' && bound) {
             paymentSucceeded = true;
             actualPaymentIntentId = session.payment_intent as string;
             chargedAmountCents = session.amount_total ?? null;
+          } else if (session.payment_status === 'paid') {
+            logStep("REJECTED stored session: paid but not bound to this campaign", {
+              campaignId,
+              sessionCampaignId: session.metadata?.campaign_id ?? null,
+              sessionType: session.metadata?.type ?? null,
+              userId: user.id,
+            });
           }
         } catch (e) { /* skip */ }
       } else if (storedId.startsWith('pi_')) {
         try {
           const pi = await stripe.paymentIntents.retrieve(storedId);
-          if (pi.status === 'succeeded') {
+          // The PI carries the same metadata (Priority 3 already searches on it), so the same
+          // binding applies. `create-campaign-escrow` stamps it at session creation.
+          const bound = pi.metadata?.campaign_id === campaignId;
+          if (pi.status === 'succeeded' && bound) {
             paymentSucceeded = true;
             actualPaymentIntentId = storedId;
             chargedAmountCents = pi.amount ?? null;
+          } else if (pi.status === 'succeeded') {
+            logStep("REJECTED stored payment intent: succeeded but not bound to this campaign", {
+              campaignId,
+              piCampaignId: pi.metadata?.campaign_id ?? null,
+              userId: user.id,
+            });
           }
         } catch (e) { /* skip */ }
       }

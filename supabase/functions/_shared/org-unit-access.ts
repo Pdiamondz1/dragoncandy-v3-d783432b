@@ -36,8 +36,31 @@
 // supabase-js were already on `npm:`; this was the lone outlier.
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.57.2";
 
-/** Roles permitted to act on an org unit's payout configuration. */
+/**
+ * Roles permitted to READ or reconcile an org unit's payout configuration. Mirrors the
+ * predicate `boost-payment` already applies, deliberately, rather than inventing a second rule.
+ */
 const PAYOUT_ROLES = ["owner", "admin"];
+
+/**
+ * Roles permitted to MINT A STRIPE ONBOARDING LINK for a unit's connected account.
+ *
+ * Narrower than PAYOUT_ROLES on purpose. An `account_onboarding` link lets its holder complete
+ * or alter that account's onboarding — **including the payout bank details** — and the account
+ * sitting on a unit is frequently another individual's personal connected account, put there by
+ * the sync in `create-restaurant-connect-account` / `check-restaurant-payout-status`. Admitting
+ * org-wide `admin` there would leave the same payout-hijack primitive this module exists to
+ * close, one trust level down: any admin could redirect any colleague's payouts.
+ *
+ * Reading a balance is a different act from being handed the keys to change where money lands,
+ * so they get different predicates.
+ *
+ * Costs nothing today: measured on prod 2026-08-11, **all 24 `org_members` rows are
+ * `owner` + `active`** — there is not a single `admin` to lock out. Verified before tightening,
+ * because a tightening that silently strands real users is the failure mode this project keeps
+ * hitting.
+ */
+const ONBOARDING_ROLES = ["owner"];
 
 export interface OrgUnitRow {
   id: string;
@@ -68,7 +91,13 @@ export async function resolveOwnedOrgUnit(
   admin: SupabaseClient,
   orgUnitId: string,
   userId: string,
+  /**
+   * Which roles satisfy this call. Defaults to PAYOUT_ROLES (read/reconcile). Pass
+   * `"onboarding"` for anything that mints a Stripe onboarding link — see ONBOARDING_ROLES.
+   */
+  intent: "payout" | "onboarding" = "payout",
 ): Promise<OrgUnitAccess> {
+  const permittedRoles = intent === "onboarding" ? ONBOARDING_ROLES : PAYOUT_ROLES;
   const { data: unit, error: unitError } = await admin
     .from("org_units")
     .select("id, org_id, stripe_account_id, stripe_onboarding_complete, pending_balance")
@@ -94,7 +123,7 @@ export async function resolveOwnedOrgUnit(
     return { ok: false, reason: "lookup_failed" };
   }
   if (!membership) return { ok: false, reason: "not_a_member" };
-  if (!PAYOUT_ROLES.includes(membership.role)) return { ok: false, reason: "insufficient_role" };
+  if (!permittedRoles.includes(membership.role)) return { ok: false, reason: "insufficient_role" };
 
   return { ok: true, unit: unit as OrgUnitRow };
 }

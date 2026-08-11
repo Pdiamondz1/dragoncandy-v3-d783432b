@@ -49,7 +49,7 @@ serve(async (req) => {
     //
     // Proven on prod 2026-08-08 in a rolled-back transaction. See `_shared/org-unit-access.ts`.
     if (orgUnitId) {
-      const access = await resolveOwnedOrgUnit(supabaseClient, orgUnitId, user.id);
+      const access = await resolveOwnedOrgUnit(supabaseClient, orgUnitId, user.id, "onboarding");
       if (!access.ok && access.reason === "lookup_failed") {
         return new Response(JSON.stringify({ error: 'Authorization check unavailable' }), {
           status: 503,
