@@ -65,11 +65,28 @@ const handler = async (req: Request): Promise<Response> => {
       { auth: { persistSession: false } },
     );
 
+    // Ordered, not arbitrary. `customerEmail` + owner does not identify a SUBMISSION: the same
+    // customer can hold submissions on several of this caller's promotions, and `limit(1)` with
+    // no order picks whichever row the planner returns. The contact details then come from a
+    // row that may not be the one being reviewed — so approving promotion A could text the
+    // phone number attached to promotion B.
+    //
+    // This is bounded and NOT a cross-tenant issue: the `promotions.user_id` join means every
+    // candidate row already belongs to the caller, so the worst case is the caller's own stale
+    // contact detail, never another tenant's. Measured on prod 2026-08-11: **1 submission
+    // total, 0 (owner, email) pairs with more than one row** — so it is latent, not live.
+    //
+    // Ordering by newest makes the choice deterministic and picks the submission a reviewer is
+    // almost certainly acting on. The real fix is a `submissionId` in the request, which is
+    // deliberately NOT done here: the caller-facing contract was left unchanged on purpose so
+    // there is no window where a not-yet-deployed frontend and a deployed function disagree.
+    // Do it as its own change, frontend first.
     const { data: submission, error: submissionError } = await admin
       .from("promotion_submissions")
-      .select("customer_email, customer_phone, customer_name, promotions!inner(user_id)")
+      .select("customer_email, customer_phone, customer_name, created_at, promotions!inner(user_id)")
       .eq("customer_email", data.customerEmail)
       .eq("promotions.user_id", caller.id)
+      .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
