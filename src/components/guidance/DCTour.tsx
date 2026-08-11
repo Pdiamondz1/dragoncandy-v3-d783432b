@@ -26,9 +26,22 @@ export function DCTour({ steps, onComplete, onSkip }: DCTourProps) {
   const updateTargetRect = useCallback(() => {
     if (!step) return;
     const el = document.querySelector(step.target);
-    if (el) {
-      setTargetRect(el.getBoundingClientRect());
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const rect = el?.getBoundingClientRect();
+    // A target that exists but has no size is treated as ABSENT, not as a
+    // target. Several anchors wrap sections that hide themselves when they
+    // have nothing to show — NeedsAttentionSection does it with CSS `:has()`
+    // — so the wrapper survives in the DOM at zero height. Spotlighting it
+    // punches a ~16px hole in the dim layer and points an arrow at blank
+    // page, which is worse than not highlighting at all: the absent-target
+    // path below already degrades honestly to a centred popover with no
+    // cutout. Fixed here rather than per page because every role's tour can
+    // hit this, and a zero-size cutout is never what anyone wanted.
+    // BOTH dimensions, not either: the hidden wrapper is full-WIDTH and zero-
+    // HEIGHT, so an `||` here still spotlights it — which is how the first
+    // version of this fix failed its own test.
+    if (rect && rect.width > 0 && rect.height > 0) {
+      setTargetRect(rect);
+      el!.scrollIntoView({ behavior: "smooth", block: "center" });
     } else {
       setTargetRect(null);
     }

@@ -176,6 +176,7 @@ export const ROUTE_TEMPLATES: string[] = [
   "/dashboard/brand/messages/campaign/:id",
   // creator
   "/dashboard/creator",
+  "/dashboard/creator/overview",
   "/dashboard/creator/settings",
   "/dashboard/creator/campaigns",
   "/dashboard/creator/campaigns/:id",

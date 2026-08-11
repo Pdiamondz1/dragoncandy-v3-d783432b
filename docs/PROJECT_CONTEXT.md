@@ -169,9 +169,21 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   plist key) **MERGED as #425 on 2026-08-10** (`gh pr view 425` — this line previously read
   "not yet merged", stale by the usual mechanism), and the `capacitor://localhost` CORS
   widening rode along with the Phase 2 fleet deploy, verified live by preflight probe.
-  Pending: founder Apple enrollment (not started — this is the real gate) and the founder's
-  Mac (arriving 2026-08-12) for the first physical-device build + on-device verification.
+  **Organization enrollment `5HA89RBHQH` SUBMITTED 2026-08-10** — this line previously read
+  "not started"; it is now with Apple, so the gate is their response, not ours. Apple verifies
+  an Organization enrollment partly by **visiting the company website**, and dragoncandy.com
+  named no legal entity anywhere — closed by **#439** (merged 2026-08-11): `Dragon Candy LLC ·
+  Hoboken, NJ` in the landing footer and the entity + full registered address in the Terms and
+  Privacy pages, off one `src/lib/legalEntity.ts` constant. That work also **removed** an
+  unproven "a New Jersey limited liability company" from the Terms — the IRS EIN letter attests
+  the name, LLC status and a *mailing* address but **never the state of formation**, and a
+  governing-law clause is not a formation claim; reinstating it needs the NJ Certificate of
+  Formation. **Pending:** Apple's approval of `5HA89RBHQH` (submitted, not granted); the
+  founder's Mac (arriving 2026-08-12) for the first physical-device build + on-device
+  verification; and a private-window look at the landing footer on prod (the signed-in session
+  redirects `/landing`, so it is verified at bundle level only).
   → `docs/superpowers/specs/2026-08-09-ios-testflight-first-build-design.md`
+  · `docs/wiki/concepts/legal-entity-identity.md` · #439
 
 ### Built — awaiting founder go-live
 
@@ -341,7 +353,26 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   (#429), the greeting collapses once a conversation runs, and every visit starts fresh by slicing
   the shared conversation on a baseline **id** (#428). **Both-viewport check confirmed by the
   founder on prod 2026-08-10** — the first time it has ever been run on this feature.
-  → `docs/wiki/concepts/donny-first-dashboard.md` · #410, #411, #423, #428, #429
+  **Phase 3 — the CREATOR role — is PR #444, OPEN not merged (2026-08-10).** Same body for creators
+  (**two** taps, not three), old body preserved verbatim at a new `/dashboard/creator/overview`;
+  brand deliberately out of scope. The shared pieces are now role-generic — `DonnyHomeShell`,
+  `useDonnyHomeConversation`, `useDonnyHomeInteractions` — while the two builders stay siblings
+  (the roles rank by different rules). **Corrects a claim this file has been making:
+  `donny_tool_executions` cannot confirm a sub-agent tap for ANY role** — its insert sits inside the
+  `isSocialTool && mcpBridge` branch, so its emptiness is not evidence about consumer sub-agents,
+  including the taps Phase A shipped. Central defect: a **lifetime** `collaborationCount` gated
+  "nothing in flight" while 11 of 16 prod collaborations are `completed`, so a creator who *finished*
+  their work could see a **blank** attention region; the fix's own test then found the money-first
+  merge branch omitted the find-work item entirely. `billing_agent` is **wrong for creators** (serves
+  the restaurant catalog) — routed around, not fixed, and **still live**.
+  `stripe_onboarding_complete` now has **two disagreeing readers**, resolved by copy true in both
+  worlds rather than by plumbing. `DCTour` no longer spotlights a zero-size target (mechanism fix,
+  all three roles). A Codex **P1** claiming those financial columns are unreadable by `authenticated`
+  was **refuted on prod** by impersonation. **Pending:** merge; then the both-viewport `verify-prod`
+  — which for the creator role has **not** been run — including the first live exercise of the two
+  taps; and the RAG sync. **No per-role kill switch: merging #444 IS the creator launch**, and
+  rollback is a revert that takes the business dashboard with it.
+  → `docs/wiki/concepts/donny-first-dashboard.md` · #410, #411, #423, #428, #429, #444
 
 - **Donny's consumer RAG closed, then de-duplicated — the wiki no longer syncs to consumers at
   all** — `EXCLUDE` was inert (gated on a `SYNC_CURATE=1` the unattended post-merge sync never

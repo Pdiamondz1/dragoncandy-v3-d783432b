@@ -26,6 +26,177 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-10] The legal entity, stated on the public site — and a claim that shipped before it was checked
+
+**PR #439** (merged 2026-08-11 02:19 UTC, squash `2e492305`) · branch
+`feat/landing-footer-legal-entity` · 4 files, +100/−8 · no migration, no edge function, no RLS change.
+→ `docs/wiki/concepts/legal-entity-identity.md`
+
+**Why.** Apple Developer Program **Organization** enrollment `5HA89RBHQH` was submitted 2026-08-10.
+Apple verifies such an enrollment partly by **visiting the company website** and looking for evidence
+it belongs to the legal entity on the D-U-N-S record. dragoncandy.com stated **no legal entity
+anywhere** — no copyright line, no company name, no address; confirmed by grepping `src/` for the
+entity name, `Newark St` and `Hoboken, NJ 07030` and getting **zero matches**. A missing entity line
+is a common cause of enrollment stalling.
+
+**What the ask turned into.** It began as one footer line. Reading the legal pages found something
+larger: **neither named the legal entity.** `TermsOfService.tsx` §1 said the Service is *"operated by
+DragonCandy"* — a **brand name, not a company** — and `PrivacyPolicy.tsx` defined the controller the
+same way. A Terms of Service whose contracting party is a brand rather than an LLC is a weakness on
+its own terms; Apple is why it was noticed, not why it matters. Meanwhile `LegalPageLayout.tsx`'s own
+docstring says the legal pages exist to *"expose stable, indexable URLs for App Store Connect"* — they
+were built for this verification and were carrying none of the evidence. **A surface can be
+purpose-built for a job and still not do it.**
+
+**Shipped.** A new `src/lib/legalEntity.ts` feeds three surfaces: the landing footer
+(`© {year} Dragon Candy LLC · Hoboken, NJ`), and the Terms + Privacy pages, whose defining sentences
+now name the entity and whose "Contact Us" sections gained the entity plus the **full registered
+postal address**. City-only in the footer and full address in the legal pages is the same tradeoff
+resolved in opposite directions, each where that form is conventional. The constant exists for the
+same reason `contactAddresses.ts` does — eight scattered mail literals were eight chances to update
+seven — and because **a site whose entity name disagrees with itself is worse than one that omits
+it**: disagreement is exactly what a verifier checks, and it fails silently. D-U-N-S, phone and the
+EIN are deliberately unpublished; the EIN is kept out of the repo entirely.
+
+**The footer's shape was the design.** An abandoned draft from an earlier session had nested the line
+*inside* the logo/tagline cluster, which forces that cluster to `sm:items-start` and so modifies the
+existing desktop row. Shipped instead as a **sibling below** the row: **10 insertions, 0
+modifications**, existing row byte-identical, container classes mirroring the row's exactly so it
+*aligns* rather than approximates — measured, text starts at x=104px, the logo's exact left edge.
+
+**The claim that shipped and was then removed.** An intermediate commit wrote *"operated by Dragon
+Candy LLC, **a New Jersey limited liability company**"* into the operative sentence of the Terms. The
+founder then supplied the **IRS CP 575 B** EIN assignment letter (2025-06-02), and checking against it
+showed the four words were an **inference**. That letter attests the name (`DRAGON CANDY LLC`), that
+the entity is an LLC, that it files Form 1065 (multi-member), the responsible party
+(`JOSEPH CASTELO MBR`) and a Hoboken **mailing** address — but **never where the LLC was formed**; a
+Delaware-formed LLC with a New Jersey office is indistinguishable in it. And §15's New Jersey
+*governing-law* clause could not stand in either: **choice of law is not a formation claim.** The four
+words were removed rather than sourced from an inference, and `LEGAL_ENTITY_JURISDICTION` deleted
+outright, because an unused export is an invitation to re-add the claim. Reinstating it needs the **NJ
+Certificate of Formation**.
+
+**The two official records disagree.** The IRS letter has `33-41 NEWARK ST` with **no floor**; D&B has
+`33-41 Newark St., 5th Floor`. The site publishes the **D&B** form and that is correct — Apple matches
+the D-U-N-S record, and the letter's "use the address exactly as shown" instruction governs **federal
+tax filings**, not a website. Written into `legalEntity.ts` because the trap is asymmetric: a future
+editor who sees the letter will read "correcting" the site as diligence, and that edit breaks the only
+match that matters.
+
+**`LAST_UPDATED` had to move** (June 6 → August 10, 2026 on both pages). Terms §16 and Privacy §10
+each commit *in writing* to revising that date on an update, and changing the stated contracting party
+is material — leaving it would have made each page contradict its own amendment clause.
+
+**Verification.** Typecheck, eslint and build clean; Codex second review clean on all three passes.
+Desktop 1280px: footer row stays `flex-row`, line's text at x=104px. Post-merge on prod, `/terms` and
+`/privacy` both verified rendering the entity in the opening sentence, the full address in Contact Us
+and the new date, with `/terms` confirmed to carry **no formation claim** and §15 intact. Two
+verification notes worth carrying: **mobile was exercised in same-origin 316/386px `srcdoc` iframes**
+because `resize_window` resizes the window but leaves `innerWidth` pinned at 1280 here (a resize that
+does not move the viewport is *blocked*, not *passing*); and **the landing footer was never rendered
+on prod** — the founder's session is signed in, so `/landing` redirects to `/dashboard/creator` — so it
+was closed at bundle level by reading the deployed chunk, which is literally
+`const L="Dragon Candy LLC",o="Hoboken, NJ",E=["33-41 Newark St., 5th Floor","Hoboken, NJ 07030"];`
+with **no jurisdiction constant**, proving the removed claim absent from the shipped bundle and not
+merely from source.
+
+**Left open.** State of formation unestablished (needs the NJ Certificate of Formation); landing
+footer not visually confirmed on prod (a private window closes it); enrollment `5HA89RBHQH` submitted,
+**not approved**; only the landing page carries a footer, so the entity appears on three URLs rather
+than site-wide.
+
+## [2026-08-10] Donny-first creator dashboard (Phase 3) — and a gate that measured the wrong thing
+
+**PR #444** (open at time of writing) · branch `worktree-dc-donny-1st-creators` ·
+no migration, no RLS change, no edge-function deploy.
+→ `docs/wiki/concepts/donny-first-dashboard.md`
+
+**What shipped.** `/dashboard/creator` becomes the Donny-first body the business role already runs
+(#423, #426, #428, #429): greeting, attention list, prompt box, two taps. The old body is preserved
+**verbatim** at a new `/dashboard/creator/overview`, mirroring #411's `BusinessOverview` extraction.
+Brand is out of scope — `BRAND_ROLE_ENABLED` is false, so it could not be prod-verified either way.
+
+**The shared pieces are now genuinely role-generic**, which is the part that outlives this phase: a
+third role supplies its own hooks, builder and copy and edits none of `useDonnyHomeConversation`
+(conversation state), `DonnyHomeShell` (layout, no state), or `useDonnyHomeInteractions` (dismissal
+state, the two-pass build, view tracking, four handlers). The third was extracted during `/simplify`
+after two independent reviewers reached it separately — both containers carried byte-identical
+copies of ~65 lines with nothing to catch drift. The two **builders** were deliberately left as
+siblings: the roles rank by genuinely different rules, and collapsing them would mean a
+group-ordering mini-DSL for two call sites.
+
+**Two taps, not three, and the instrument that can never confirm them.** Only `rewards_agent` is
+verifiably creator-real. `billing_agent` resolves subscription context through `organizations`,
+which a creator does not have — it would hand a creator the **restaurant** subscription catalog and
+an "Upgrade to Starter" CTA (**a live defect this phase routes around rather than fixes**). And **no**
+agent can answer "find work" at all: `find_creators` returns creators, `campaign_agent` returns only
+campaigns the creator is already in. Both became route-based attention items. Separately:
+**`donny_tool_executions` cannot prove a sub-agent tap for any role** — its insert sits inside the
+`isSocialTool(toolName) && mcpBridge` branch, so no sub-agent has *ever* been logged, including the
+taps Phase A shipped. Its emptiness has been read as evidence about consumer sub-agents; it is an
+instrument that was never wired to the thing being measured.
+
+**The defect that mattered: one number answering two questions.** `collaborationCount` was a
+lifetime count used both to rank the payout row ("has this creator ever worked or earned" — correct)
+and to gate "nothing on your plate" ("is anything in flight" — wrong). On prod **11 of 16
+collaborations are already `completed`**, so a creator who simply finished their last campaign
+counted as busy, the find-work nudge never fired, and an onboarded creator in that state rendered
+**zero rows** in the flagship attention region — indistinguishable from a bug, on the platform's most
+valuable creators. Split into `collaborationCount` and `activeCollaborationCount`. **Writing the test
+then exposed a second half no review had named:** the `merged` array branched into two hand-written
+lists and the money-first one **omitted the find-work item entirely**, so it was unreachable for
+anyone who had ever worked, independent of the count. The body is now written once and
+`hasMoneyOrWork` decides only which *end* the payout row sits at.
+
+**Copy as the fix for a column that lies.** `creator_profiles.stripe_onboarding_complete` goes
+stale-**false** (#173 — the webhook never delivers), and the app now has **two disagreeing readers**:
+this hook's direct column read, and the self-healing live-Stripe verification behind
+`useTransactionReadiness`. Calling the verifier here was rejected (an external round-trip on the
+path gating first paint). The spec's original answer was silence for the ambiguous state, but that
+abandoned the largest reachable group — only **3 of 18** creators have completed onboarding. The
+founder chose the reword: every payout row that can meet an already-onboarded creator is worded to
+be true in both worlds — *"Check your payout setup so you can get paid"*, never *"you aren't set
+up"*. Only the never-started branch, where there is nothing to be stale about, says "set up".
+
+**Five review passes, each catching what the others missed — and two of the last three findings were
+errors in the fixes, not the original work.** The whole-branch review found the count defect and the
+silent payout branch. The scoped re-review found that my own new tour assertion was
+**unfalsifiable**: `childElementCount > 0` on the attention anchor is 1 in *every* state, because
+`DonnyHomeProposals`' `!children` early return is dead code for this container — it would have passed
+in exactly the case it was written to catch. Codex found two more: `cancelled` collaborations counted
+as evidence of earnings (ranking setup above value, contrary to `PROJECT_CONTEXT` §7), and `DCTour`
+**spotlighting a zero-height wrapper** — `NeedsAttentionSection` hides itself with CSS `:has()`, so
+the `data-tour` div survives at full width and zero height, and the tour punched a ~16px hole in the
+dim layer with an arrow pointing at blank page. Fixed at the **mechanism** (a zero-size target is now
+treated as absent, which already degrades honestly) rather than per page, since all three roles can
+hit it; the first guard used `||` and still spotlit the wrapper, because only its *height* collapses.
+First `DCTour` tests in the codebase.
+
+**A third Codex finding was refuted, and that is recorded on purpose.** Round 3 filed a **P1** saying
+`authenticated` cannot select `creator_profiles`' financial columns, which would mean the hook errors
+for every creator. It can: `column_privileges` grants all three, `useLocationReadiness` already does
+the same direct client read on `business_profiles` in production, and impersonating a real creator as
+role `authenticated` in a rolled-back block returns the row (`has_acct=t onboarding=f balance=360`).
+A false permissions claim nobody writes down simply gets raised again.
+
+**Also worth keeping:** `useTour` is role-keyed with **no page awareness**, and both creator pages
+render a `TourButton`, so every step must resolve on both — now enforced by a parity test, because
+that invariant rotting silently is exactly how the creator tour broke. And spec §4.6's safeguard
+("item E guarantees every creator has at least one row, so it is never empty") was **false**, and was
+the load-bearing reason the zero-size hazard was dismissed. **A safeguard resting on "in practice X
+never happens" is not a safeguard.**
+
+**Verification:** typecheck clean · lint 0 errors · build clean · **241 test files / 2406 tests
+passing**. `DonnyHome.test.tsx` reports **37 passed with the file untouched by the entire branch
+diff** — the proof that the extraction and the later refactor are a move, not a rewrite, and that the
+live business dashboard is behaviourally unchanged.
+
+**Open at time of writing:** the both-viewport `verify-prod`, including the first live exercise of
+the two taps (which `donny_tool_executions` structurally cannot confirm); and the Donny RAG sync
+after merge. **Note there is no per-role kill switch** — `DONNY_FIRST_DASHBOARD_ENABLED` is already
+`true` and both roles share it by documented choice, so **merging is the creator launch** and
+rollback is a code revert that also takes the founder-verified business dashboard with it.
+
 ## [2026-08-10] A user could choose the CTA link inside our transactional emails (#442)
 
 Every `href` in `send-notification-email`'s ~30 templates was built from caller-supplied `data`,

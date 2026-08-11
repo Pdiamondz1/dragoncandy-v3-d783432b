@@ -5,11 +5,16 @@
 
 ## Lessons (read FIRST every run; curated — rewrite/prune as they evolve)
 
-- **`index.md`'s Concepts section is duplicated on `main`** — every entry appears twice, one copy
-  mojibake-encoded (`â€"`) and one clean. So a new entry written once may not survive: **write it in
-  both copies** until the dedupe lands. PR **#412** (`chore/wiki-index-dedupe`, open as of
-  2026-08-09) collapses them; once merged, drop this lesson and write entries once. Sources,
-  Entities, Flow Diagrams and Analyses are **not** duplicated.
+- **The `index.md` Concepts duplication is GONE** (#412 merged; verified 2026-08-10 — one
+  `## Concepts` section, one hit per entry). Write each entry **once**. Superseded lesson removed.
+- **Check whether a session is a new subject or the next PHASE of an existing one.** Phase 3 of the
+  Donny-first dashboard compounded onto the existing concept page; a new page would have split one
+  narrative and duplicated its principles. The index summary then has to be *extended*, not
+  replaced — the old summary is still true, it is just no longer the whole story.
+- **Record refuted review findings, not just accepted ones.** A Codex P1 claiming `authenticated`
+  cannot select `creator_profiles`' financial columns was false (proven by prod impersonation).
+  A false claim about permissions that nobody writes down gets re-raised, and the next reader has
+  no way to know it was already checked.
 - **`log.md` is strictly reverse-chronological — PREPEND.** The skill text below says "append",
   which is wrong and has produced out-of-order entries near the bottom of the file.
   `docs/KNOWLEDGE_WIKI.md` is the authority here.
@@ -19,6 +24,24 @@
   notices until they trust the index.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-10] ingest — Donny-first dashboard Phase 3 (creator role)
+- Output: compounded `docs/wiki/concepts/donny-first-dashboard.md` (Phase 3 section, 6 new Known
+  Issues, 5 new See Also); `index.md` (1 Sources entry + extended Concepts summary); `log.md` top
+  entry.
+- Happened: ingested `raw/sessions/2026-08-10-donny-first-creator-dashboard.md` at the end of the
+  branch, with the last Codex round still running — so the raw source and the page both had to
+  absorb a finding that landed after the first draft.
+- Worked: compounding rather than creating. The page already owned the Phase A/B narrative, the
+  audit-before-design principle and the tap-honesty rule, all of which Phase 3 extends rather than
+  restates. Keeping the `DCTour` material here instead of spinning a thin page was right for the
+  same reason — the zero-size fix is a consequence of this dashboard's self-hiding section.
+- Failed: nearly wrote the index Concepts entry twice out of habit from the old duplication lesson.
+  Checked first (`grep -c`) and found #412 had merged, so the lesson was stale — a Lesson that is
+  never re-verified becomes a liability.
+- Remember: extend an existing index summary, don't replace it; and record REFUTED findings, since
+  a false permissions claim nobody wrote down will simply be raised again. → both promoted to
+  Lessons
 
 ### [2026-08-09] ingest — Donny `social_*` tools repair
 - Output: `docs/wiki/concepts/donny-social-tools.md` (new); updated [[Honest Analytics]],

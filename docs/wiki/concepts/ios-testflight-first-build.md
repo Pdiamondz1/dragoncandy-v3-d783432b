@@ -146,14 +146,30 @@ previously assumed, not just where it was made.
   and harmless, so mixed state costs nothing and nothing forces the issue. What the flip
   supplies is a *reason* to sweep that someone owns — the sweep itself is still unowned.
 - Push notifications and universal links (Slices A/D) remain out of scope — both need
-  Apple enrollment, which is itself gated on this branch's bundle-ID merge.
-- As of writing, Tasks 11–14 (founder Apple enrollment, the canaried edge-function
-  redeploy, and the physical-device build + on-device verification) have not run; the
-  branch is not yet merged.
+  Apple enrollment.
+  ~~"which is itself gated on this branch's bundle-ID merge"~~ — **corrected 2026-08-10:**
+  that gate is cleared. The branch merged as **#425** (verified via `gh pr view 425`:
+  MERGED 2026-08-10T06:58:20Z), and enrollment was **submitted the same day**
+  (Organization enrollment `5HA89RBHQH`). The blocker is now Apple's response, not ours.
+- ~~"As of writing, Tasks 11–14 … have not run; the branch is not yet merged."~~ —
+  **corrected 2026-08-10.** The branch **is** merged (#425), and the
+  `capacitor://localhost` CORS widening rode along with the domain-migration Phase 2
+  fleet deploy and was verified live by preflight probe, so the canaried redeploy is
+  done too. What genuinely remains: Apple's **approval** of `5HA89RBHQH` (submitted, not
+  granted) and the physical-device build + on-device verification, which waits on the
+  founder's Mac (expected 2026-08-12). Left struck rather than deleted because a reader
+  who acted on "not yet merged" needs to see it withdrawn.
+- **Apple verifies an Organization enrollment partly by visiting the company website**, and
+  until 2026-08-10 dragoncandy.com named no legal entity anywhere — a common cause of
+  enrollment stalling, and a dependency this page did not know it had. Closed by
+  [[Legal Entity Identity]] (PR #439). That page also owns a trap worth reading before
+  touching any published entity detail: the IRS and D&B records **disagree** on the
+  street line, and only the D&B form is the one Apple matches.
 
 ## See Also
 
 - [[Capacitor Native Shell]]
+- [[Legal Entity Identity]]
 - [[Domain Migration (.io → .com)]]
 - [[Edge-Function Deploy & Bundling]]
 - [[Payments Split by Surface]]

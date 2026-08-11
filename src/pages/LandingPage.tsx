@@ -9,6 +9,7 @@ import { HowItWorks } from "@/components/landing/HowItWorks";
 import { DonnySection } from "@/components/landing/DonnySection";
 import { FinalCTASection } from "@/components/landing/FinalCTASection";
 import { useAuth } from "@/hooks/useAuth";
+import { LEGAL_ENTITY_LOCALITY, LEGAL_ENTITY_NAME } from "@/lib/legalEntity";
 
 export default function LandingPage() {
   const { user, loading } = useAuth();
@@ -75,6 +76,16 @@ export default function LandingPage() {
             </Link>
           </nav>
         </div>
+        {/* Legal entity line. Deliberately a sibling BELOW the row above, not nested inside its
+            left cluster — nesting would force that cluster's alignment classes to change and
+            disturb the existing desktop row. Container classes mirror the row's exactly
+            (mx-auto max-w-6xl + the same px ramp) so it aligns to the logo's left edge on
+            desktop and the same gutters on mobile. text-xs steps down from the row's inherited
+            text-sm so it reads as subordinate; no pixel font / uppercase (the tagline owns that
+            treatment) and no extra divider. */}
+        <p className="mx-auto mt-8 max-w-6xl px-5 text-center text-xs text-landing-ink-soft sm:px-8 sm:text-left lg:px-12">
+          © {new Date().getFullYear()} {LEGAL_ENTITY_NAME} · {LEGAL_ENTITY_LOCALITY}
+        </p>
       </footer>
     </div>
   );

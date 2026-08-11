@@ -31,19 +31,19 @@ export const RESTAURANT_TOUR: TourStep[] = [
 
 export const CREATOR_TOUR: TourStep[] = [
   {
-    target: "[data-tour='profile-completion']",
-    title: "Complete your profile",
-    body: "Complete your profile to appear in more searches.",
-  },
-  {
     target: "[data-tour='browse-campaigns']",
-    title: "Browse campaigns",
-    body: "Tap any campaign to see the full brief. Apply with one tap.",
+    title: "Ask Donny for work",
+    body: "Tell Donny what you're looking for, or browse every open campaign.",
   },
   {
-    target: "[data-tour='dragonshare-nav']",
-    title: "DragonShare",
-    body: "Already post about restaurants? Get paid for it. Tap to learn how.",
+    target: "[data-tour='creator-attention']",
+    title: "What needs you",
+    body: "Invitations, content to start, and anything waiting on a reply — all here.",
+  },
+  {
+    target: "[data-tour='creator-secondary']",
+    title: "Your full dashboard",
+    body: "Earnings, DragonShare and your stats live on the full dashboard.",
   },
   {
     target: "[data-tour='donny-help']",
