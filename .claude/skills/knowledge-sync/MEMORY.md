@@ -5,6 +5,19 @@
 
 ## Lessons (read FIRST every run; curated — rewrite/prune as they evolve)
 
+- **[contradicts-existing-rule] When a session's evidence contradicts a rule already written in the
+  wiki, correcting that rule IS the knowledge-sync — and the index needs the same edit.** On
+  2026-08-11 the capacitor sweep measured, across all 98 functions, that `verify_jwt` does **not**
+  gate `OPTIONS`: three `verify_jwt=true` functions each answered an unauthenticated preflight with
+  200 and a handler-computed origin. [[Edge-Function Deploy & Bundling]] said the opposite ("verify
+  with the anon key — the gateway rejects an unauthenticated OPTIONS before the worker boots"), and
+  so did its **`index.md` blurb**, which is a retrieval surface in its own right and is easy to
+  leave stale after fixing the page. Quote the old text in place above the correction
+  (`docs/KNOWLEDGE_WIKI.md`: flag contradictions, never silently overwrite) so a future reader can
+  see the reversal and date it. **Before compounding onto a page, read its existing claims for
+  conflict with what you just measured** — the most valuable thing a session can contribute is
+  often deleting a wrong rule, not adding a right one.
+
 - **[scope-paths] Point the `[scope]` check at the branch's SOURCE paths, not just the core
   docs.** On 2026-08-10 the check ran clean against `PROJECT_CONTEXT.md`/`SHIPPED_LOG.md`/
   `docs/wiki/` — and `origin/main` had, that same morning, merged a **parallel implementation of
@@ -218,6 +231,38 @@
   from false*; here the instrument never addressed the question at all.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-11] Capacitor CORS sweep — 48 edge functions (`docs/capacitor-cors-sweep-spec`)
+
+**Output:** `docs/wiki/raw/sessions/2026-08-11-edge-function-capacitor-cors-sweep.md` → compounded
+onto `concepts/edge-function-deploy-bundling.md`; `log.md` entry `## [2026-08-11] ingest |
+[[Edge-Function Deploy & Bundling]] — the capacitor sweep, and a rule that was backwards`;
+`SHIPPED_LOG.md` prepend; `PROJECT_CONTEXT.md` §5 (Apple entry corrected in place + one Shipped line).
+
+**Happened:** knowledge-sync for a production-operations branch shipping **no application code** —
+48 edge functions redeployed, fleet 23 → 68 accepting `capacitor://localhost`, residual stale proven
+equal to the 15 excluded money functions by set comparison.
+
+**Worked:** `[new-page-vs-compound]` resolved cleanly — the existing page was the same *subject*
+(how a function reaches prod and how you know it did), so compounding was right and no new page was
+warranted. `[orphans]` by path: clean. `[codex-empty-diff]`: checked `git diff main...HEAD --stat`
+before trusting either Codex run; both non-empty (round 2 was 14 files / 2002 insertions), so the
+clean verdict is a real pass rather than a blank-run false assurance. `[status-correction]`: §5's
+Apple entry edited in place, not appended.
+
+**Failed:** two silent no-ops, both my own, both the same shape — an anchor that did not match, and
+`str.replace` failing **silently**. The `## Run Log` heading is actually `## Run log (newest first
+…)`, so this very entry no-opped on the first attempt and was only caught by grepping for it
+afterwards. Assert the anchor before replacing; verify the write landed. (Same class as the CRLF
+sweep in this session that reported "0 hits" having checked 0 files.)
+Codex found one real P2 in the probe harness — 5xx worker failures bucketed with benign 4xx
+refusals, hiding the exact failure the probe exists to catch. Fixed, re-run, clean. That file had
+the grouping wrong in **three** successive revisions, each an over-correction of the last; all
+three are now recorded in its comment.
+
+**Remember:** promoted `[contradicts-existing-rule]`. This run's main contribution was **deleting a
+wrong rule**, not adding a right one — and `index.md` repeated the same wrong claim, so a page-only
+fix would have left it live on the retrieval surface.
 
 ### [2026-08-10] Legal entity on the public site (`docs/knowledge-sync-legal-entity`, after #439 merged)
 - Output: NEW `docs/wiki/concepts/legal-entity-identity.md` + `raw/sessions/2026-08-10-legal-entity-public-site.md`;

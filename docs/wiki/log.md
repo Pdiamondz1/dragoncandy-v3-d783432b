@@ -1,5 +1,37 @@
 # Wiki Log
 
+## [2026-08-11] ingest | [[Edge-Function Deploy & Bundling]] — the capacitor sweep, and a rule that was backwards
+
+Ingested `raw/sessions/2026-08-11-edge-function-capacitor-cors-sweep.md` by **compounding onto
+[[Edge-Function Deploy & Bundling]]** — same subject (how a function reaches prod and how you know
+it did), not merely an adjacent one.
+
+**Contradiction found and corrected, not silently overwritten.** The page's "Deploy discipline"
+section instructed readers to verify with the **anon key**, on the stated grounds that an
+unauthenticated `OPTIONS` on a `verify_jwt=true` function is rejected by the gateway before the
+worker boots. Measured across all 98 functions, that is false: `match-creators`,
+`create-notification` and `donny-orchestrator` are all `verify_jwt=true` and each returned **200
+with a handler-computed `Access-Control-Allow-Origin`** to an `OPTIONS` bearing no auth header,
+while their POSTs got the gateway's 401. **`verify_jwt` does not gate `OPTIONS`.** The old text is
+quoted in place above the correction so the reversal is visible. The same claim was repeated in
+`index.md` and was corrected there too.
+
+Added: the sweep itself (48 functions; 23 → 68 accepting `capacitor://localhost`; residual stale
+proven equal to the excluded money set by set comparison rather than count); the hostile-origin
+control; why a POST 401 is a config assertion and not boot evidence; *a gate must be about the same
+thing as the claim it licenses* (the "not 5xx" plan defect on `suggest-package`); *a sweep must
+instrument its own coverage* (a CRLF-blinded scan reported 0 hits having checked 0 functions); the
+`.typecheck-ignore` list as the place latent compile errors hide (`donny-oauth-token`'s module-scope
+`oauthError` using a request-scoped `req`, TS2304, live since 2026-05-06); that only TS2304/TS2552
+matter at runtime while local `npm:` resolution failures are tooling artifacts; and that a redeploy
+ships everything merged since *that function's* last deploy.
+
+Known Issues gained six entries, including the correction that the excluded money functions are
+**not** UI-unreachable — 14 of 15 have `src/` call sites, and `create-campaign-escrow` is fixed
+while `verify-campaign-escrow` is stale, so a campaign checkout starts and fails at the verify leg.
+
+Pages updated: `concepts/edge-function-deploy-bundling.md`, `index.md`.
+
 ## [2026-08-10] ingest | [[Legal Entity Identity]] — a document can be authoritative and still not answer the question
 
 Ingested `raw/sessions/2026-08-10-legal-entity-public-site.md` as a **new concept page**, not a
