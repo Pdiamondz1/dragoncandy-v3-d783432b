@@ -8,6 +8,8 @@ export type NotificationType =
   | 'invitation_declined'
   | 'campaign_published'
   | 'campaign_cancelled'
+  | 'new_campaign_for_creators'
+  | 'new_campaign_for_brands'
   | 'group_campaign_posted'
   | 'group_invitation'
   | 'group_invite_accepted'
@@ -119,6 +121,18 @@ export const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Partial<Record<NotificationType, s
   invitation_declined: 'campaign_invitation_declined',
   campaign_published: 'campaign_published',
   campaign_cancelled: 'campaign_cancelled',
+  // The publish broadcast: when a PUBLIC campaign goes live, every completed creator and
+  // (if open_for_sponsorship) every brand hears about it. Emitted only by
+  // send-campaign-publish-notifications, which proves campaign ownership before fanning out.
+  //
+  // These are new NOTIFICATION types over pre-existing EMAIL templates of the same name. The
+  // templates have shipped for months; what never existed was the bell. The broadcast called
+  // send-notification-email directly, so across 24 published campaigns prod holds ZERO
+  // in-app rows for a campaign going live, and every send ignored `preferences_matrix` and
+  // `is_synthetic` — both of which live only in create-notification. Keep in sync with
+  // supabase/functions/create-notification/index.ts.
+  new_campaign_for_creators: 'new_campaign_for_creators',
+  new_campaign_for_brands: 'new_campaign_for_brands',
   // Crew-specific (Crews v1 fires this bell-only to active crew members when a
   // crew campaign is posted). Mapping it adds email for CREW campaigns only —
   // no shared/standard type is remapped. Keep in sync with

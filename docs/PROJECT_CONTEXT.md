@@ -296,6 +296,44 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **Every `href` in our transactional emails was caller-chosen — closed on prod (#442)** — ~30
+  templates built every link from caller-supplied `data` with no check, reachable because
+  `create-notification` spreads the request body **verbatim** and calls `send-notification-email`
+  with the **service key**, so the self-only 403 never applied. Whole-URL fields went into `href`
+  raw (attacker site, or `javascript:`); id fields were concatenated into paths, so a `"` closed
+  the attribute and wrote markup into the message. Closed by `_shared/emailLinks.ts`, whose
+  `safeLink` **discards the host rather than validating it** (parse relative to our origin, keep
+  only `pathname+search+hash`) — one rule covering absolute, protocol-relative, backslash,
+  userinfo, `javascript:`/`data:`, CRLF and encoded traversal at once. **29 tests**, confirmed
+  collected by CI (239→240 files). Two auth bugs went with it: **`"Bearer undefined"` promoted an
+  unauthenticated caller to SERVICE** (key read `as string`, no presence check — confirmed against
+  the **live** bundle), and the self-check **failed open on any caller with no email** on their
+  auth record. The regression it had to avoid: `budget: 0` is real (crew campaigns are free), so
+  `?? ''` would have printed "Budget: $0" on every free-campaign email — **escaping must not change
+  what renders**; money is *coerced* not escaped because two amounts sit in the subject. Authored
+  by a **parallel session** and left unmerged a day — **cherry-picked, not merged**, since the
+  branch predated the `.io`→`.com` migration in the same file. Reviewer completeness sweep: all 45
+  sinks enumerated, **zero** raw values remain. Codex clean; deployed and boot-verified.
+  → `docs/SHIPPED_LOG.md` · `docs/wiki/concepts/notification-delivery.md` · #442
+- **`can_notify_user`'s crew clause was forgeable — closed on prod (#440)** — no membership-status
+  filter, and since **any** user may create a crew (`WITH CHECK (owner_id = auth.uid())`) with an
+  **unconstrained `creator_id`**, two INSERTs bought a notification channel to **any user on the
+  platform**. Proven red on prod, then proven closed against the live function
+  (`forged_row_grants=f`, genuine accept still `t`, self-notify control `t`). Fixed in two halves,
+  because the obvious one-liner is a regression: the clause now requires `status='active'` (which
+  an **owner cannot write** — verified with a control: INSERT/UPDATE to active → 42501, UPDATE to
+  `removed` → succeeds, so it means *the creator accepted*), **plus** a row-authorized,
+  **server-worded** branch for the two crew notifications that fire at a non-active status
+  (`group_invitation` at `invited`, `group_membership_removed` at `removed`) — without that second
+  half it is the same hole by a shorter route. Two more live bugs closed en route: the internal
+  email call let a caller **overwrite `recipientUserId`** and redirect a branded email to a third
+  party with no bell row (service key ⇒ the self-only gate did not apply), and `forceDelivery`
+  overrode the recipient's opt-out for user callers (zero callers → service-only). Also discovered:
+  **the repo cannot rebuild this function** — ledger entry `20260808120130` has **no file in the
+  tree**, so a clean `db push` would have silently dropped two authorization clauses; this
+  migration codifies prod's real body. Deploy order was deliberately the **reverse** of the usual
+  rule (function first, migration second). `create-notification` **v53**; Codex clean.
+  → `docs/SHIPPED_LOG.md` · `docs/wiki/concepts/notification-delivery.md` · #440
 - **Donny-first business dashboard (Phases A + B + the shape corrections)** — the
   `/dashboard/business` body is Donny: greeting, attention list, prompt box, three taps, with the
   answer landing in-page. Scope set by a prod audit, not the mockup. The founder then corrected the
@@ -303,7 +341,26 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   (#429), the greeting collapses once a conversation runs, and every visit starts fresh by slicing
   the shared conversation on a baseline **id** (#428). **Both-viewport check confirmed by the
   founder on prod 2026-08-10** — the first time it has ever been run on this feature.
-  → `docs/wiki/concepts/donny-first-dashboard.md` · #410, #411, #423, #428, #429
+  **Phase 3 — the CREATOR role — is PR #444, OPEN not merged (2026-08-10).** Same body for creators
+  (**two** taps, not three), old body preserved verbatim at a new `/dashboard/creator/overview`;
+  brand deliberately out of scope. The shared pieces are now role-generic — `DonnyHomeShell`,
+  `useDonnyHomeConversation`, `useDonnyHomeInteractions` — while the two builders stay siblings
+  (the roles rank by different rules). **Corrects a claim this file has been making:
+  `donny_tool_executions` cannot confirm a sub-agent tap for ANY role** — its insert sits inside the
+  `isSocialTool && mcpBridge` branch, so its emptiness is not evidence about consumer sub-agents,
+  including the taps Phase A shipped. Central defect: a **lifetime** `collaborationCount` gated
+  "nothing in flight" while 11 of 16 prod collaborations are `completed`, so a creator who *finished*
+  their work could see a **blank** attention region; the fix's own test then found the money-first
+  merge branch omitted the find-work item entirely. `billing_agent` is **wrong for creators** (serves
+  the restaurant catalog) — routed around, not fixed, and **still live**.
+  `stripe_onboarding_complete` now has **two disagreeing readers**, resolved by copy true in both
+  worlds rather than by plumbing. `DCTour` no longer spotlights a zero-size target (mechanism fix,
+  all three roles). A Codex **P1** claiming those financial columns are unreadable by `authenticated`
+  was **refuted on prod** by impersonation. **Pending:** merge; then the both-viewport `verify-prod`
+  — which for the creator role has **not** been run — including the first live exercise of the two
+  taps; and the RAG sync. **No per-role kill switch: merging #444 IS the creator launch**, and
+  rollback is a revert that takes the business dashboard with it.
+  → `docs/wiki/concepts/donny-first-dashboard.md` · #410, #411, #423, #428, #429, #444
 
 - **Donny's consumer RAG closed, then de-duplicated — the wiki no longer syncs to consumers at
   all** — `EXCLUDE` was inert (gated on a `SYNC_CURATE=1` the unattended post-merge sync never

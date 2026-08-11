@@ -85,8 +85,8 @@ export function dismissalKey(proposalId: string): string {
   return `donnyProposalDismissed_${proposalId}`;
 }
 
-/** Route CTA, downgraded to null if the path is not real. */
-function routeCta(label: string, route: string): ProposalCta | null {
+/** Route CTA, downgraded to null if the path is not real. Exported for reuse by role-specific builders (e.g. `buildCreatorProposals`). */
+export function routeCta(label: string, route: string): ProposalCta | null {
   return isKnownDonnyRoute(route) ? { kind: 'route', label, route } : null;
 }
 

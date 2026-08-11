@@ -26,6 +26,244 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-10] Donny-first creator dashboard (Phase 3) — and a gate that measured the wrong thing
+
+**PR #444** (open at time of writing) · branch `worktree-dc-donny-1st-creators` ·
+no migration, no RLS change, no edge-function deploy.
+→ `docs/wiki/concepts/donny-first-dashboard.md`
+
+**What shipped.** `/dashboard/creator` becomes the Donny-first body the business role already runs
+(#423, #426, #428, #429): greeting, attention list, prompt box, two taps. The old body is preserved
+**verbatim** at a new `/dashboard/creator/overview`, mirroring #411's `BusinessOverview` extraction.
+Brand is out of scope — `BRAND_ROLE_ENABLED` is false, so it could not be prod-verified either way.
+
+**The shared pieces are now genuinely role-generic**, which is the part that outlives this phase: a
+third role supplies its own hooks, builder and copy and edits none of `useDonnyHomeConversation`
+(conversation state), `DonnyHomeShell` (layout, no state), or `useDonnyHomeInteractions` (dismissal
+state, the two-pass build, view tracking, four handlers). The third was extracted during `/simplify`
+after two independent reviewers reached it separately — both containers carried byte-identical
+copies of ~65 lines with nothing to catch drift. The two **builders** were deliberately left as
+siblings: the roles rank by genuinely different rules, and collapsing them would mean a
+group-ordering mini-DSL for two call sites.
+
+**Two taps, not three, and the instrument that can never confirm them.** Only `rewards_agent` is
+verifiably creator-real. `billing_agent` resolves subscription context through `organizations`,
+which a creator does not have — it would hand a creator the **restaurant** subscription catalog and
+an "Upgrade to Starter" CTA (**a live defect this phase routes around rather than fixes**). And **no**
+agent can answer "find work" at all: `find_creators` returns creators, `campaign_agent` returns only
+campaigns the creator is already in. Both became route-based attention items. Separately:
+**`donny_tool_executions` cannot prove a sub-agent tap for any role** — its insert sits inside the
+`isSocialTool(toolName) && mcpBridge` branch, so no sub-agent has *ever* been logged, including the
+taps Phase A shipped. Its emptiness has been read as evidence about consumer sub-agents; it is an
+instrument that was never wired to the thing being measured.
+
+**The defect that mattered: one number answering two questions.** `collaborationCount` was a
+lifetime count used both to rank the payout row ("has this creator ever worked or earned" — correct)
+and to gate "nothing on your plate" ("is anything in flight" — wrong). On prod **11 of 16
+collaborations are already `completed`**, so a creator who simply finished their last campaign
+counted as busy, the find-work nudge never fired, and an onboarded creator in that state rendered
+**zero rows** in the flagship attention region — indistinguishable from a bug, on the platform's most
+valuable creators. Split into `collaborationCount` and `activeCollaborationCount`. **Writing the test
+then exposed a second half no review had named:** the `merged` array branched into two hand-written
+lists and the money-first one **omitted the find-work item entirely**, so it was unreachable for
+anyone who had ever worked, independent of the count. The body is now written once and
+`hasMoneyOrWork` decides only which *end* the payout row sits at.
+
+**Copy as the fix for a column that lies.** `creator_profiles.stripe_onboarding_complete` goes
+stale-**false** (#173 — the webhook never delivers), and the app now has **two disagreeing readers**:
+this hook's direct column read, and the self-healing live-Stripe verification behind
+`useTransactionReadiness`. Calling the verifier here was rejected (an external round-trip on the
+path gating first paint). The spec's original answer was silence for the ambiguous state, but that
+abandoned the largest reachable group — only **3 of 18** creators have completed onboarding. The
+founder chose the reword: every payout row that can meet an already-onboarded creator is worded to
+be true in both worlds — *"Check your payout setup so you can get paid"*, never *"you aren't set
+up"*. Only the never-started branch, where there is nothing to be stale about, says "set up".
+
+**Five review passes, each catching what the others missed — and two of the last three findings were
+errors in the fixes, not the original work.** The whole-branch review found the count defect and the
+silent payout branch. The scoped re-review found that my own new tour assertion was
+**unfalsifiable**: `childElementCount > 0` on the attention anchor is 1 in *every* state, because
+`DonnyHomeProposals`' `!children` early return is dead code for this container — it would have passed
+in exactly the case it was written to catch. Codex found two more: `cancelled` collaborations counted
+as evidence of earnings (ranking setup above value, contrary to `PROJECT_CONTEXT` §7), and `DCTour`
+**spotlighting a zero-height wrapper** — `NeedsAttentionSection` hides itself with CSS `:has()`, so
+the `data-tour` div survives at full width and zero height, and the tour punched a ~16px hole in the
+dim layer with an arrow pointing at blank page. Fixed at the **mechanism** (a zero-size target is now
+treated as absent, which already degrades honestly) rather than per page, since all three roles can
+hit it; the first guard used `||` and still spotlit the wrapper, because only its *height* collapses.
+First `DCTour` tests in the codebase.
+
+**A third Codex finding was refuted, and that is recorded on purpose.** Round 3 filed a **P1** saying
+`authenticated` cannot select `creator_profiles`' financial columns, which would mean the hook errors
+for every creator. It can: `column_privileges` grants all three, `useLocationReadiness` already does
+the same direct client read on `business_profiles` in production, and impersonating a real creator as
+role `authenticated` in a rolled-back block returns the row (`has_acct=t onboarding=f balance=360`).
+A false permissions claim nobody writes down simply gets raised again.
+
+**Also worth keeping:** `useTour` is role-keyed with **no page awareness**, and both creator pages
+render a `TourButton`, so every step must resolve on both — now enforced by a parity test, because
+that invariant rotting silently is exactly how the creator tour broke. And spec §4.6's safeguard
+("item E guarantees every creator has at least one row, so it is never empty") was **false**, and was
+the load-bearing reason the zero-size hazard was dismissed. **A safeguard resting on "in practice X
+never happens" is not a safeguard.**
+
+**Verification:** typecheck clean · lint 0 errors · build clean · **241 test files / 2406 tests
+passing**. `DonnyHome.test.tsx` reports **37 passed with the file untouched by the entire branch
+diff** — the proof that the extraction and the later refactor are a move, not a rewrite, and that the
+live business dashboard is behaviourally unchanged.
+
+**Open at time of writing:** the both-viewport `verify-prod`, including the first live exercise of
+the two taps (which `donny_tool_executions` structurally cannot confirm); and the Donny RAG sync
+after merge. **Note there is no per-role kill switch** — `DONNY_FIRST_DASHBOARD_ENABLED` is already
+`true` and both roles share it by documented choice, so **merging is the creator launch** and
+rollback is a code revert that also takes the founder-verified business dashboard with it.
+
+## [2026-08-10] A user could choose the CTA link inside our transactional emails (#442)
+
+Every `href` in `send-notification-email`'s ~30 templates was built from caller-supplied `data`,
+and none of it was checked. Third link in the day's chain (#419 → #440 → #442), and the same
+reachability each time:
+
+> `create-notification` spreads the caller's request body **verbatim** into the payload it sends
+> `send-notification-email`, and calls it with the **service key** — so a user-authenticated caller
+> reaches those templates and the function's own "recipient must be self" 403, which exists
+> precisely to stop cross-user mail, **does not apply to the resulting message.**
+
+Whole-URL fields (`actionUrl`, `campaignUrl`, `reviewUrl`) went into `href` raw, so the CTA of a
+genuine DragonCandy email could point at an attacker's site or a `javascript:` scheme; id fields
+were concatenated into paths, so a `"` closed the attribute and let the caller write markup into
+the message body.
+
+**Not my work.** Both commits were authored by a **parallel session on 2026-08-09** and left with
+**no PR** for a day. Cherry-picked onto current `main` rather than merged, because the branch
+predated the `.io`→`.com` migration *in this same file* (branch 4 `.io`/0 `.com`; main 1/2) and a
+straight merge risked silently reintroducing `.io` on the hunks it touched. Verified after: both
+`.com` emblem images intact, `from:` correctly still `notify.dragoncandy.io` (Phase 5b is blocked
+on the $20/mo decision). *A parallel session's branch is not a merge candidate just because it
+exists — check what landed under it first.*
+
+**The fix** is `_shared/emailLinks.ts`: `link` (a path *we* composed), `safeLink` (a caller path
+forced back onto our origin), `pathSegment`, `safeImageUrl`.
+
+> **`safeLink` discards the host rather than validating it** — parses relative to our own origin,
+> keeps only `pathname + search + hash`. One rule therefore covers absolute, protocol-relative,
+> backslash, userinfo, `javascript:`/`data:`, CRLF and encoded-traversal spellings at once.
+> **Validation enumerates what is bad; discarding keeps only what is good.** A `toString`-bearing
+> object is rejected by a `typeof` check *before* `new URL` can stringify it — correct ordering,
+> easy to get wrong.
+
+**29 tests** assert **both** properties on every hostile input (stays-on-origin *and*
+cannot-break-out), because fixing one without the other still leaves a usable injection. Confirmed
+**collected by CI**, not merely runnable by hand: 239 → 240 files.
+
+**Two auth bugs fixed alongside.** `"Bearer undefined"` **promoted an unauthenticated caller to
+SERVICE** — the key was read `as string` with no presence check, so an unset secret made the
+comparison true for the one string an attacker would guess first, and service callers skip the
+same-inbox check entirely. Confirmed real by reading the **live v252 bundle**. And the self-check
+`to && callerEmail && …` **failed open on any caller with no email on their auth record** — latent
+at 0-of-42 users, but one GoTrue toggle (anonymous/phone sign-in) from live.
+
+**The regression it had to avoid:** `budget: 0` is a real value — crew campaigns are free and carry
+a literal `0` behind a `data.budget ?` guard — so a naive `?? ''` would have printed "Budget: $0"
+on every free-campaign email. **Escaping must not change what renders.** Money is *coerced* rather
+than escaped, because two amounts sit in the **subject**, which is not markup: `&amp;` renders
+literally and a CRLF is a header-injection primitive escaping cannot touch. That coercion also
+fixed a live crash — `data.amount.toFixed(2)` is typed `number` but arrives as JSON.
+
+**Review follow-ups (mine, on their work).** Fixed: `fileCount ?? 0` rendered "uploaded **0 new
+files**" under an H1 reading "New Deliverables!" — a *confident false statement*, worse than the
+obvious garbage it replaced; a **set but unparseable** `APP_URL` silently stripped the deep link
+from every completion email while the send still reported success; drifted comment line-refs
+replaced with **symbol** refs rather than corrected, since numbers drift again. Cleared with
+evidence, no change: the preserved `search`/`hash` needs an on-origin redirect sink to be
+exploitable and the only one (`AuthPage` `returnTo`) already gates on `ALLOWED_REDIRECT_ORIGINS`;
+`safeImageUrl` drops relative URLs but **0 of 10** prod `dragonshare_posts` have one.
+
+**Left open deliberately:** `safeImageUrl` pins the scheme but not the host (these images
+legitimately live on Supabase storage), so a creator-writable `post_url` could be a tracking pixel
+— same class as #399. Self-addressed today, so documented rather than fixed.
+
+**Verified:** `data-exposure-reviewer` completeness sweep — all 45 `href`/`src`/subject sinks
+enumerated, **zero** raw caller values remain; `edge-function-reviewer` PASS (transitive `_shared`
+= 4 files, all uploaded; zero `esm.sh`; no unrelated drift); **Codex clean**; 240 files / 2410
+tests green. Deployed and boot-verified, all 5 assets including the new `emailLinks.ts`.
+
+*Caveat recorded honestly:* the post-deploy `Bearer undefined` curl returns 401, but **would have
+before the fix too** (the secret is set, so the comparison fails either way) — a non-discriminating
+probe, same lesson as the Phase-5a SMTP `RCPT TO` run. The live-bundle read is what established it.
+
+→ `docs/wiki/concepts/notification-delivery.md` · #442
+
+## [2026-08-10] A crew invite nobody accepted was a notification channel to anyone (#440)
+
+`can_notify_user`'s crew clause carried **no membership-status filter**, so a channel to any
+user on the platform was manufacturable with two INSERTs and nobody's consent. Surfaced by the
+review of #419, which leaned on that gate.
+
+**Proven, not argued** — on prod, inside a rolled-back transaction, impersonating a real
+`business_client` against an unrelated `brand` user:
+
+```
+BEFORE  baseline=f  crew_insert=t  member_insert=t  after=t
+AFTER   forged_row_grants=f   after_genuine_accept=t   self_notify_CONTROL=t
+```
+
+Three facts composed into it: `creator_groups` INSERT is `WITH CHECK (owner_id = auth.uid())`
+(**any** authenticated user may create a crew — no role check); `cgm_owner_insert` leaves
+**`creator_id` entirely unconstrained**; and the clause filtered no status. The *actor* was
+never forgeable (`actorId` is JWT-derived) — the **words and the link were**, on any of the 26
+mapped types, i.e. a DragonCandy-branded transactional email with attacker-chosen copy.
+
+**Why `status='active'` is the right predicate:** an owner **cannot write it**. Verified on prod
+**with a control**, because two denials alone could just mean a broken probe — INSERT active →
+**42501**, UPDATE to active → **42501**, UPDATE to `'removed'` → **succeeds**. The only writer of
+`'active'` is `respond_to_group_invitation()`, gated `creator_id = auth.uid()`. So it means *the
+creator themselves accepted*.
+
+**Why that filter alone would have been a regression — the constraint the founder set.** Two crew
+notifications fire at a **non-active** status: `group_invitation` (`invited`) and
+`group_membership_removed` (`removed` — `removeMember` UPDATEs *before* dispatching). Gating them
+on `active` kills both (the #387 shape); relaxing to `IN ('active','invited','removed')` excludes
+only `declined` and fixes nothing. Both are now authorized against the **membership row** with
+**server-composed copy**. That second half is not polish: row authorization alone would still mean
+"you may send anyone you can name in a crew row arbitrary text" — the same hole by a shorter route.
+Mirrors the existing `content_liked` pattern.
+
+**Two more live bugs, found in review and fixed here:**
+- **The transactional email could be redirected.** `recipientUserId` was spread **first** in the
+  internal call to `send-notification-email`, so caller-controlled `data`/`emailData` overwrote it
+  — and because that call uses the service key, the self-only gate does not apply. A caller could
+  authorize against **themselves** (`p_actor = p_recipient`) and have a branded email delivered to
+  a **third party, with no `push_notifications` row recording it**. Now pinned last.
+- **`forceDelivery` overrode the recipient's email opt-out** for user callers — the one control the
+  "no more than a business can already do" reasoning depends on. Zero callers anywhere → service-only.
+
+**The repo could not rebuild prod's `can_notify_user`.** `schema_migrations` records
+`20260808120130 can_notify_user_active_relationships` with **no file in `supabase/migrations/`**
+(applied via MCP during #387/#396, never written back), so the repo body lacked the conversation
+`left_at` and org `invitation_status` clauses prod has. **A clean `supabase db push` would have
+produced the LOOSER function and silently dropped two authorization tightenings.**
+`recorded ≠ actual`, opposite direction from #325/#385. This migration codifies prod's real body.
+
+**One guard rejected:** requiring `responded_at IS NOT NULL` to prove prior membership.
+`column_privileges` shows `authenticated` holds UPDATE on `responded_at`, and RLS `WITH CHECK`
+cannot pin a column — forgeable by the same owner, so it would have been decoration. The
+overclaiming comment was corrected instead, and the residual stated plainly: an owner can still put
+a crew-flavoured bell in any user's feed (bell-only for removal, server-worded, fixed URL).
+
+**Deploy order was the REVERSE of the usual rule** — `create-notification` **first**, migration
+second, because the code change makes those two types stop consulting `can_notify_user` entirely,
+so they work under both function bodies. Migration-first would have 403'd every crew invite until
+the deploy landed.
+
+**Verified live:** `create-notification` **v53** boot-verified; migration applied; the original
+attack re-run against the live function returns `f`; ACL `anon=false auth=false service=true`;
+conversation/org/sponsorship clauses all intact. `edge-function-reviewer` PASS (`_shared`
+byte-compared to the live bundle, zero drift), `data-exposure-reviewer` 1 high + 3 low all
+addressed or explicitly rejected, **Codex clean**, 239 files / 2381 tests green.
+
+→ `docs/wiki/concepts/notification-delivery.md` · #440
+
 ## [2026-08-10] Domain migration Phase 5 (MAIL) — 5a shipped; 5b blocked on $20/mo
 
 Branch `feat/dotcom-phase5-mail` · `src/lib/contactAddresses.ts` (new) · migration

@@ -1,5 +1,90 @@
 # Wiki Log
 
+## [2026-08-10] ingest | [[Donny-First Dashboard]] Phase 3 — the creator role
+
+Ingested `raw/sessions/2026-08-10-donny-first-creator-dashboard.md` by **compounding onto the
+existing concept page**, not creating a new one. Phase 3 is the same feature reaching a second
+role, and the page already carries the Phase A/B history the creator work builds on — a separate
+page would have split one narrative and duplicated the audit-before-design principle, the
+tap-honesty rule and the flag discussion.
+
+The tour material stayed here too rather than becoming a thin `DCTour` page: the zero-size-target
+fix is a *consequence* of this dashboard's self-hiding attention section, and the page already
+owned the "both pages must resolve every anchor" invariant.
+
+Three durable claims this run corrected or established:
+- **`donny_tool_executions` cannot confirm a sub-agent tap for any role** — its insert sits inside
+  the `isSocialTool && mcpBridge` branch. This corrects how its emptiness has been read in
+  `PROJECT_CONTEXT.md` and on this page since Phase A.
+- **`stripe_onboarding_complete` now has two disagreeing readers in the frontend** — a direct
+  column read and a self-healing live-Stripe verification. Resolved by *copy*, not plumbing.
+- **A safeguard resting on "in practice X never happens" is not a safeguard** — the spec dismissed
+  the zero-size anchor hazard on exactly that basis, and the hazard was live.
+
+A Codex P1 claiming `authenticated` cannot select `creator_profiles`' financial columns was
+**refuted by prod impersonation** (rollback-wrapped: `has_acct=t onboarding=f balance=360`), and
+the refutation is recorded because the claim is the kind that would otherwise be repeated.
+
+Pages updated: [[Donny-First Dashboard]] (Phase 3 section, 6 new Known Issues, 5 new See Also),
+`index.md` (1 Sources entry + the Concepts summary), this log.
+
+## [2026-08-10] ingest | [[Notification Delivery]] — every href was caller-chosen (#442)
+
+Ingested `raw/sessions/2026-08-10-email-link-injection.md`, compounding onto
+[[Notification Delivery]] — third entry in one day on that page (#419 → #440 → #442), all
+tracing to the same structural fact it already documented: *the recommended path around the
+self-only gate has no gate of its own.*
+
+- New section "Every href was caller-chosen": ~30 templates built every `href` from
+  caller-supplied `data` with no check, reachable because `create-notification` spreads the
+  request body verbatim and calls with the **service key**.
+- Durable technique recorded: **`safeLink` discards the host rather than validating it** —
+  parse relative to our origin, keep only `pathname + search + hash`. One rule covers absolute,
+  protocol-relative, backslash, userinfo, `javascript:`/`data:`, CRLF and encoded traversal at
+  once. *Validation enumerates what is bad; discarding keeps only what is good.*
+- Recorded the **regression the fix had to avoid**: `budget: 0` is real (crew campaigns are
+  free), so `?? ''` would have printed "Budget: $0" on every free-campaign email —
+  **escaping must not change what renders** — and money is *coerced* not escaped because two
+  amounts sit in the subject, where `&amp;` renders literally and CRLF is header injection.
+- Two auth bugs recorded: `"Bearer undefined"` promoted an unauthenticated caller to SERVICE
+  (confirmed by reading the **live** bundle), and the self-check failed open on any caller with
+  no email on their auth record.
+- Process note kept: these commits came from a **parallel session** and sat unmerged for a day;
+  they were **cherry-picked, not merged**, because the branch predated the `.io`→`.com`
+  migration in the same file. *A parallel session's branch is not a merge candidate just
+  because it exists.*
+- The non-discriminating post-deploy probe is recorded as such, not as proof — same lesson as
+  the Phase-5a SMTP `RCPT TO` run.
+
+Pages updated: `concepts/notification-delivery.md`. No new page (compounded). No `index.md`
+change needed.
+
+## [2026-08-10] ingest | [[Notification Delivery]] — the crew clause was forgeable (#440)
+
+Ingested `raw/sessions/2026-08-10-can-notify-crew-clause.md` by **compounding onto
+[[Notification Delivery]]**, and **this entry corrects a claim that page itself made**, per the
+flag-contradictions rule:
+
+- The page stated membership clauses in `can_notify_user` check the relationship is **live**
+  (`left_at IS NULL`, `invitation_status='active'`). That was **false for the crew clause**,
+  which carried no status filter at all. A correction blockquote now sits at that sentence.
+- Because `creator_groups` INSERT is `WITH CHECK (owner_id = auth.uid())` and
+  `cgm_owner_insert` leaves `creator_id` unconstrained, **two INSERTs manufactured a
+  notification channel from any authenticated user to any user on the platform.** Proven red
+  on prod, then proven closed against the live function.
+- Durable lesson recorded: **a page that lists a control is not evidence the control exists** —
+  read the deployed `pg_get_functiondef`, not the prose and not the migration file.
+- Second durable lesson: the naive fix (`status='active'`) would have **silently killed crew
+  invitations and removals**, both of which fire at a non-active status. The page now carries
+  the status-at-notify-time table and the rule that row authorization without server-composed
+  copy is a *relocation*, not a fix.
+- Also recorded: `recipientUserId` was overwritable in the internal email call (a third-party
+  email redirect with no bell row), `forceDelivery` is now service-only, and the repo could not
+  rebuild `can_notify_user` because ledger entry `20260808120130` has no file in the tree.
+
+Pages updated: `concepts/notification-delivery.md`. No new page (compounded, per
+*compound-don't-duplicate*). No `index.md` change needed.
+
 ## [2026-08-10] ingest | [[Domain Migration (.io → .com)]] Phase 5a — mailboxes moved
 
 Ingested `raw/sessions/2026-08-10-dotcom-phase5a-mailboxes-shipped.md`, compounding onto the
