@@ -204,24 +204,34 @@ merge. **The local `main` checkout (`C:\GIT\dragoncandy-v3-d783432b`) does NOT a
 files you browse there go stale (they can drift 100+ commits behind `origin/main`). Vercel deploys
 from **GitHub `origin/main`**, not the local checkout, so prod stays current even when local main is stale.
 
-**After merging any PR, refresh the local main checkout** so its files match reality:
+**This refresh is AUTOMATIC — do not hand-run the raw git commands.** Two hooks in
+`.claude/settings.json` run `.claude/scripts/refresh-main.ps1`: `PostToolUse` gated on
+`Bash(gh pr merge *)`, and `SessionStart` as a catch-up for web-UI merges. Both are `async`, and
+the script always exits 0, so it can never block a turn or a merge. Every run is logged to
+`<git-common-dir>/refresh-main.log` — **read that log before concluding it did or didn't act.**
 
-```bash
-git -C "C:/GIT/dragoncandy-v3-d783432b" stash push -- README.md   # if it has local edits
-git -C "C:/GIT/dragoncandy-v3-d783432b" fetch origin
-git -C "C:/GIT/dragoncandy-v3-d783432b" merge --ff-only origin/main
-```
+**Never automate the bare `merge --ff-only origin/main`.** It does not check which branch the main
+checkout is on: if that checkout sits on a feature branch strictly *behind* `origin/main`, it
+fast-forwards **that feature branch** onto main and silently moves its pointer. A *diverged* branch
+is refused, which makes the flaw look safe — that is luck, not a guard. The script asserts the
+branch first, and handles three states: a **worktree holding `main`** (skip — git refuses to update
+a checked-out branch from elsewhere), the **main checkout on `main`** (fetch + `--ff-only`, the only
+path that updates files and fires the `post-merge` RAG sync; skipped when the tree is dirty), and
+the **main checkout on another branch** (`git fetch origin main:main` advances the *ref* only —
+files and RAG deliberately untouched, and the log says so).
 
-If the fast-forward aborts on "untracked working tree files would be overwritten," move those
-untracked files aside first. Core files (`CLAUDE.md`, `docs/PROJECT_CONTEXT.md`, `docs/wiki/`) appearing
-stale in the local folder almost always means this refresh step was skipped — not that the change was lost.
+When a run skips, the log names the blocker; the **`refresh-main`** skill documents the fix for each.
+Core files (`CLAUDE.md`, `docs/PROJECT_CONTEXT.md`, `docs/wiki/`) appearing stale in the local folder
+almost always means a refresh was skipped — not that the change was lost.
 
 **Donny's RAG auto-syncs on this refresh.** A committed `post-merge` git hook (source:
 `scripts/hooks/post-merge`, installed into the common `.git/hooks/` on `npm install` via the
 `prepare` → `scripts/install-hooks.mjs` step) watches the refresh above: when the **main** checkout
 fast-forwards and `docs/` changed, it runs `npm run sync:internal` + `npm run sync:wiki` in the
 background (log: `.git/knowledge-sync.log`), so `/internal/strategy` + Donny's `donny_knowledge` RAG
-stay current with no manual sync. It self-guards to the main checkout (skips worktrees) and never
+stay current with no manual sync — **but only on the fast-forward path above.** When the refresh took
+the ref-only path (main checkout busy on another branch) no merge happened, so this hook never fires
+and a `docs/` change needs a hand-run `npm run sync:internal`. It self-guards to the main checkout (skips worktrees) and never
 blocks the merge. The hook reads the key via `supabase/scripts/with-env.mjs` (a `SUPABASE_SECRET_KEY`
 env var wins, else the **gitignored** `supabase/scripts/.env.sync.local`) — so the key file (or a
 `setx`'d var) must exist locally for the auto-sync to fire. To sync by hand from the main checkout:

@@ -13,6 +13,22 @@
         ]
       }
     ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -File .claude/scripts/refresh-main.ps1",
+            "shell": "powershell",
+            "if": "Bash(gh pr merge *)",
+            "async": true,
+            "timeout": 120,
+            "statusMessage": "Refreshing local main..."
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "hooks": [
@@ -22,6 +38,18 @@
             "shell": "powershell",
             "timeout": 10,
             "statusMessage": "Recovering session context..."
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -File .claude/scripts/refresh-main.ps1",
+            "shell": "powershell",
+            "async": true,
+            "timeout": 120,
+            "statusMessage": "Refreshing local main..."
           }
         ]
       }
