@@ -1,5 +1,33 @@
 # Wiki Log
 
+## [2026-08-10] ingest | [[Legal Entity Identity]] — a document can be authoritative and still not answer the question
+
+Ingested `raw/sessions/2026-08-10-legal-entity-public-site.md` as a **new concept page**, not a
+compound onto [[iOS TestFlight First Build]]. Apple is what made the gap visible, but the subject
+is *which record is authoritative for which purpose* — a rule that outlives the enrollment and
+applies to payment processors, bank KYC and trademark filings. Compounding it onto the iOS page
+would have buried it as a retrieval key under a workstream that will close.
+
+**Corrected two decayed claims on [[iOS TestFlight First Build]]**, both verified against the PR
+state rather than the clause: its Known Issues said Apple enrollment was "gated on this branch's
+bundle-ID merge" and that "the branch is not yet merged" — #425 merged 2026-08-10T06:58:20Z
+(`gh pr view 425`) and enrollment was submitted the same day. Struck-and-explained rather than
+deleted, since a reader who acted on "not yet merged" needs to see it withdrawn. Also added the
+dependency that page did not know it had: Apple verifies partly by **visiting the website**, and
+the site named no entity.
+
+Three durable claims this run establishes:
+- **A governing-law clause is not a state-of-formation claim.** The branch shipped "a New Jersey
+  limited liability company" into the operative sentence of the Terms on the strength of a Hoboken
+  address plus §15's choice-of-law term. The IRS CP 575 B attests the name, LLC status, Form 1065
+  and a *mailing* address — never where the LLC was formed. Removed rather than sourced from an
+  inference, and the constant deleted so an unused export cannot invite its return.
+- **The IRS and D&B records disagree on the street line**, and the website must carry the **D&B**
+  form because that is what the D-U-N-S verification matches. The trap is asymmetric: a future
+  editor who sees the EIN letter will read "correcting" the site as diligence.
+- **Amendment clauses are load-bearing.** Terms §16 and Privacy §10 promise in writing to revise
+  "Last updated" on an update, so changing the contracting party forced the date to move.
+
 ## [2026-08-10] ingest | [[Donny-First Dashboard]] Phase 3 — the creator role
 
 Ingested `raw/sessions/2026-08-10-donny-first-creator-dashboard.md` by **compounding onto the
