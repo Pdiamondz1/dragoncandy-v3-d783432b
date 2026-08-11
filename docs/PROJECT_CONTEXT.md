@@ -169,9 +169,21 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   plist key) **MERGED as #425 on 2026-08-10** (`gh pr view 425` — this line previously read
   "not yet merged", stale by the usual mechanism), and the `capacitor://localhost` CORS
   widening rode along with the Phase 2 fleet deploy, verified live by preflight probe.
-  Pending: founder Apple enrollment (not started — this is the real gate) and the founder's
-  Mac (arriving 2026-08-12) for the first physical-device build + on-device verification.
+  **Organization enrollment `5HA89RBHQH` SUBMITTED 2026-08-10** — this line previously read
+  "not started"; it is now with Apple, so the gate is their response, not ours. Apple verifies
+  an Organization enrollment partly by **visiting the company website**, and dragoncandy.com
+  named no legal entity anywhere — closed by **#439** (merged 2026-08-11): `Dragon Candy LLC ·
+  Hoboken, NJ` in the landing footer and the entity + full registered address in the Terms and
+  Privacy pages, off one `src/lib/legalEntity.ts` constant. That work also **removed** an
+  unproven "a New Jersey limited liability company" from the Terms — the IRS EIN letter attests
+  the name, LLC status and a *mailing* address but **never the state of formation**, and a
+  governing-law clause is not a formation claim; reinstating it needs the NJ Certificate of
+  Formation. **Pending:** Apple's approval of `5HA89RBHQH` (submitted, not granted); the
+  founder's Mac (arriving 2026-08-12) for the first physical-device build + on-device
+  verification; and a private-window look at the landing footer on prod (the signed-in session
+  redirects `/landing`, so it is verified at bundle level only).
   → `docs/superpowers/specs/2026-08-09-ios-testflight-first-build-design.md`
+  · `docs/wiki/concepts/legal-entity-identity.md` · #439
 
 ### Built — awaiting founder go-live
 

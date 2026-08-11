@@ -199,7 +199,58 @@
   sessions generally: `[squash-drift]` and `[gap-claims]` already say a worktree serves stale
   *files*; this says a stale worktree can also ship stale *code to production*.
 
+- **[document-scope] A document that is authoritative about several facts is not authoritative
+  about every *adjacent* fact — ask what it attests, not what it makes plausible.** On 2026-08-10 a
+  branch shipped *"operated by Dragon Candy LLC, **a New Jersey limited liability company**"* into
+  the operative sentence of the Terms of Service. It felt safe: the company address is in Hoboken
+  and Terms §15 already chose New Jersey law. Both are irrelevant — the IRS **CP 575 B** EIN letter
+  attests the name, LLC status, Form 1065 and a *mailing* address but **never the state of
+  formation** (a Delaware-formed LLC with a NJ office is indistinguishable in it), and a
+  **choice-of-law clause is not a formation claim** (parties routinely choose the law of a state
+  they were not formed in). The words were removed rather than sourced from an inference, and the
+  constant behind them **deleted** so an unused export could not invite the claim back. Two
+  generalisations worth carrying: an **unused exported constant is a latent claim**, not dead code;
+  and when two official records disagree (here the IRS letter has no floor line, D&B has "5th
+  Floor"), **pick by consumer and write down why** — the site publishes the D&B form because Apple
+  matches the D-U-N-S record, so a future editor "correcting" it to the IRS form would break the
+  only match that matters while looking like diligence. Sibling of the
+  [[Domain Migration (.io → .com)]] rule *change instrument when a probe cannot distinguish true
+  from false*; here the instrument never addressed the question at all.
+
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-10] Legal entity on the public site (`docs/knowledge-sync-legal-entity`, after #439 merged)
+- Output: NEW `docs/wiki/concepts/legal-entity-identity.md` + `raw/sessions/2026-08-10-legal-entity-public-site.md`;
+  **corrected two decayed Known Issues** on `concepts/ios-testflight-first-build.md`; `index.md`
+  (1 Concepts + 1 Sources line); `log.md` top entry; `SHIPPED_LOG.md` prepended;
+  `PROJECT_CONTEXT.md` §5 Apple entry **edited in place**; + THIS entry and the
+  [document-scope] Lesson above.
+- Happened: ran after the code PR had already merged, so this is a paired follow-up rather than
+  riding in the same PR. [scope]/[scope-paths] both clean — HEAD was exactly `origin/main`, and
+  the source-path check (`src/pages/legal`, `src/lib/legalEntity.ts`, `LandingPage.tsx`) was
+  empty too.
+- Worked: **new page, not a compound** — the nearest neighbour was [[iOS TestFlight First Build]],
+  but Apple only made the gap *visible*; the subject is which record is authoritative for which
+  purpose, which outlives the enrollment and applies to any verifier. Straight application of
+  [new-page-vs-compound].
+- Worked: [status-correction] earned its keep in two places. The iOS page still said
+  *"the branch is not yet merged"* and that enrollment was *"gated on this branch's bundle-ID
+  merge"* — #425 merged 2026-08-10T06:58:20Z, verified with `gh pr view 425` rather than from the
+  clause. §5 said enrollment was *"not started"*; it was submitted the same day. Both struck-and-
+  explained, not deleted.
+- Worked: [wikilinks] caught **two of five** links wrong in the new page before commit —
+  `[[Help Center & Guidance]]` (real name `[[Help Center & Donny Guidance]]`) and
+  `[[Light App Kit]]` (real name `[[Light-App Kit]]`, hyphenated). Same recurring failure: writing
+  a link from memory of a page's *subject* rather than its catalogued display name. [orphans] by
+  path: **0**.
+- Failed: nothing gating. The bash `for` loop for both checks tripped the worktree-isolation guard
+  again (a past run recorded this); PowerShell ran both fine — **just reach for PowerShell first**
+  for any multi-file wiki check from a worktree.
+- Remember: the RAG step is **not** covered by the post-merge hook this time. That hook only fires
+  when the **main checkout** fast-forwards, and the main checkout is parked on
+  `docs/capacitor-cors-sweep-spec` while *this worktree* now holds `main` — so [rag-sync]'s "don't
+  hand-sync" assumption does not hold here. Sync must be run by hand (`sync:internal`, per
+  [wiki-is-internal]) after this merges, and verified with `content ilike`.
 
 ### [2026-08-10] Wiki RAG dedupe — compounding onto a page THIS session wrote (`docs/wiki-sync-dedupe`, after #437)
 - Output: `docs/wiki/concepts/donny-rag-scope-boundary.md` (updated, not a new page) + the

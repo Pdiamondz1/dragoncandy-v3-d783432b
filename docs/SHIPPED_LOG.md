@@ -26,6 +26,85 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-10] The legal entity, stated on the public site — and a claim that shipped before it was checked
+
+**PR #439** (merged 2026-08-11 02:19 UTC, squash `2e492305`) · branch
+`feat/landing-footer-legal-entity` · 4 files, +100/−8 · no migration, no edge function, no RLS change.
+→ `docs/wiki/concepts/legal-entity-identity.md`
+
+**Why.** Apple Developer Program **Organization** enrollment `5HA89RBHQH` was submitted 2026-08-10.
+Apple verifies such an enrollment partly by **visiting the company website** and looking for evidence
+it belongs to the legal entity on the D-U-N-S record. dragoncandy.com stated **no legal entity
+anywhere** — no copyright line, no company name, no address; confirmed by grepping `src/` for the
+entity name, `Newark St` and `Hoboken, NJ 07030` and getting **zero matches**. A missing entity line
+is a common cause of enrollment stalling.
+
+**What the ask turned into.** It began as one footer line. Reading the legal pages found something
+larger: **neither named the legal entity.** `TermsOfService.tsx` §1 said the Service is *"operated by
+DragonCandy"* — a **brand name, not a company** — and `PrivacyPolicy.tsx` defined the controller the
+same way. A Terms of Service whose contracting party is a brand rather than an LLC is a weakness on
+its own terms; Apple is why it was noticed, not why it matters. Meanwhile `LegalPageLayout.tsx`'s own
+docstring says the legal pages exist to *"expose stable, indexable URLs for App Store Connect"* — they
+were built for this verification and were carrying none of the evidence. **A surface can be
+purpose-built for a job and still not do it.**
+
+**Shipped.** A new `src/lib/legalEntity.ts` feeds three surfaces: the landing footer
+(`© {year} Dragon Candy LLC · Hoboken, NJ`), and the Terms + Privacy pages, whose defining sentences
+now name the entity and whose "Contact Us" sections gained the entity plus the **full registered
+postal address**. City-only in the footer and full address in the legal pages is the same tradeoff
+resolved in opposite directions, each where that form is conventional. The constant exists for the
+same reason `contactAddresses.ts` does — eight scattered mail literals were eight chances to update
+seven — and because **a site whose entity name disagrees with itself is worse than one that omits
+it**: disagreement is exactly what a verifier checks, and it fails silently. D-U-N-S, phone and the
+EIN are deliberately unpublished; the EIN is kept out of the repo entirely.
+
+**The footer's shape was the design.** An abandoned draft from an earlier session had nested the line
+*inside* the logo/tagline cluster, which forces that cluster to `sm:items-start` and so modifies the
+existing desktop row. Shipped instead as a **sibling below** the row: **10 insertions, 0
+modifications**, existing row byte-identical, container classes mirroring the row's exactly so it
+*aligns* rather than approximates — measured, text starts at x=104px, the logo's exact left edge.
+
+**The claim that shipped and was then removed.** An intermediate commit wrote *"operated by Dragon
+Candy LLC, **a New Jersey limited liability company**"* into the operative sentence of the Terms. The
+founder then supplied the **IRS CP 575 B** EIN assignment letter (2025-06-02), and checking against it
+showed the four words were an **inference**. That letter attests the name (`DRAGON CANDY LLC`), that
+the entity is an LLC, that it files Form 1065 (multi-member), the responsible party
+(`JOSEPH CASTELO MBR`) and a Hoboken **mailing** address — but **never where the LLC was formed**; a
+Delaware-formed LLC with a New Jersey office is indistinguishable in it. And §15's New Jersey
+*governing-law* clause could not stand in either: **choice of law is not a formation claim.** The four
+words were removed rather than sourced from an inference, and `LEGAL_ENTITY_JURISDICTION` deleted
+outright, because an unused export is an invitation to re-add the claim. Reinstating it needs the **NJ
+Certificate of Formation**.
+
+**The two official records disagree.** The IRS letter has `33-41 NEWARK ST` with **no floor**; D&B has
+`33-41 Newark St., 5th Floor`. The site publishes the **D&B** form and that is correct — Apple matches
+the D-U-N-S record, and the letter's "use the address exactly as shown" instruction governs **federal
+tax filings**, not a website. Written into `legalEntity.ts` because the trap is asymmetric: a future
+editor who sees the letter will read "correcting" the site as diligence, and that edit breaks the only
+match that matters.
+
+**`LAST_UPDATED` had to move** (June 6 → August 10, 2026 on both pages). Terms §16 and Privacy §10
+each commit *in writing* to revising that date on an update, and changing the stated contracting party
+is material — leaving it would have made each page contradict its own amendment clause.
+
+**Verification.** Typecheck, eslint and build clean; Codex second review clean on all three passes.
+Desktop 1280px: footer row stays `flex-row`, line's text at x=104px. Post-merge on prod, `/terms` and
+`/privacy` both verified rendering the entity in the opening sentence, the full address in Contact Us
+and the new date, with `/terms` confirmed to carry **no formation claim** and §15 intact. Two
+verification notes worth carrying: **mobile was exercised in same-origin 316/386px `srcdoc` iframes**
+because `resize_window` resizes the window but leaves `innerWidth` pinned at 1280 here (a resize that
+does not move the viewport is *blocked*, not *passing*); and **the landing footer was never rendered
+on prod** — the founder's session is signed in, so `/landing` redirects to `/dashboard/creator` — so it
+was closed at bundle level by reading the deployed chunk, which is literally
+`const L="Dragon Candy LLC",o="Hoboken, NJ",E=["33-41 Newark St., 5th Floor","Hoboken, NJ 07030"];`
+with **no jurisdiction constant**, proving the removed claim absent from the shipped bundle and not
+merely from source.
+
+**Left open.** State of formation unestablished (needs the NJ Certificate of Formation); landing
+footer not visually confirmed on prod (a private window closes it); enrollment `5HA89RBHQH` submitted,
+**not approved**; only the landing page carries a footer, so the entity appears on three URLs rather
+than site-wide.
+
 ## [2026-08-10] Donny-first creator dashboard (Phase 3) — and a gate that measured the wrong thing
 
 **PR #444** (open at time of writing) · branch `worktree-dc-donny-1st-creators` ·
