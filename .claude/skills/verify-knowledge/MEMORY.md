@@ -70,6 +70,32 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-08-11] Post-merge verify for PR #445 (legal-entity knowledge-sync, after #439)
+- Output: verdict block `done:true` — all three checks met. (a) 114 pages on disk, **0** absent
+  from `index.md`; (b) content probe `Delaware-formed` → 2 rows; (c) the session's page in both
+  `index.md` and `log.md`.
+- Happened: ran as the loop-close after `sync:internal` (`inserted=1 updated=136 errors=0`).
+  Probe token was taken from the **added** lines of the newest in-scope revision on `origin/main`
+  (`5620d212`, first-parent diff) exactly as (b) specifies — `Delaware-formed`, hyphenated so it
+  cannot straddle a markdown line-wrap.
+- Worked: [scope-is-not-freshness] read as prose, and the picture is now the *expected* one for a
+  post-#437 wiki — **`wiki:%` namespace holds 0 rows** (the wiki reaches the RAG only as
+  `internal-*` via `sync-internal-docs.mjs`), 137/137 rows `scope='internal'`, and
+  **consumer-reachable = 0**. Nothing to flag.
+- Worked: [freshness-proxy] earned its keep in a new way. The new page was an **INSERT**, so its
+  `updated_at == created_at` and `ts_moved` read **false** — a timestamp gate would have
+  false-negatived on precisely the page just added. The advisory `RAG_LAST` was fresh
+  (2026-08-11T11:34:45Z) but played no part in the verdict.
+- Failed: nothing. One process note worth carrying, below.
+- Remember: **the post-merge RAG hook did NOT fire for this session, and the reason is
+  positional, not broken.** That hook runs only when the **main checkout** fast-forwards; the main
+  checkout was parked on `docs/capacitor-cors-sweep-spec` while *the worktree* held `main` (a
+  `gh pr merge --delete-branch` had switched it there). So [rag-sync]'s "don't hand-sync" advice
+  silently does not apply in that configuration — the sync had to be run by hand. The key file
+  `supabase/scripts/.env.sync.local` is **gitignored, so it does not exist in a worktree**; it was
+  copied in from the main checkout (verified `git check-ignore` first), used, and deleted. Check
+  `git worktree list` before assuming the hook covered a merge.
+
 ### [2026-08-10] Post-merge verify for PR #435 (RAG scope boundary knowledge-sync, after #434)
 - Output: verdict `done:true` — all three met, `missing:[]`.
 - Happened: (a) 113 in-scope pages, index-incompleteness **0**. The contradiction half needed a
