@@ -26,6 +26,67 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-11] The iOS app's origin was merged into the allow-list and deployed nowhere — 48 functions swept
+
+Branch `docs/capacitor-cors-sweep-spec` · **no application code** — the deliverable is production
+state; the branch carries only the spec, plan, probe artifacts and a reusable probe harness.
+→ `docs/wiki/concepts/edge-function-deploy-bundling.md`
+
+**The gap.** PR #425 added `capacitor://localhost` to `_shared/origins.ts` so the Capacitor iOS
+shell could reach the backend. `_shared/*` is bundled into each function **at deploy time**, so
+that merged fix was inert in every function not redeployed since — about 60 of them. The founder's
+first physical-device build (2026-08-12) would have been testing the backend, not the build.
+
+**What shipped: 48 redeploys.** 45 CORS (1 canary `match-creators` → 24 bucket A → 10 → 10 bucket
+B), plus 2 carrying **#442**'s email CTA link-injection fix and 1 carrying **#444**'s new
+`/dashboard/creator/overview` route — both merged-but-never-deployed, found *because* this work
+was looking. Fleet went **23 → 68** accepting the origin; stale **60 → 15**; and the residual 15
+were proven equal to the deliberately-excluded money functions by **set comparison, not count** —
+equal counts with different membership is a failure that looks like a pass. Zero `verify_jwt`
+drift across all 98, zero regressions. Every stale bundle was also minting `.io` URLs, so this
+advanced the domain migration for 45 functions as a side effect.
+
+**The verification method is the reusable part.** An **unauthenticated `OPTIONS`** preflight is the
+sole boot criterion: `corsHeaders()` runs *inside* the handler, so a 200 echoing the sent origin
+proves the module graph loaded and our code ran. This **overturned a documented rule** — the wiki
+had said to verify with the anon key because the gateway rejects an unauthenticated `OPTIONS` on a
+`verify_jwt=true` function before boot. Measured across 98: false. `verify_jwt` does not gate
+`OPTIONS`. Both the concept page and `index.md` were corrected in place with the old text quoted.
+Two controls make the probe honest: a **hostile origin** (a reflector otherwise passes for the
+wrong reason — `verify-on-password-reset` does), and an **unswept function** (proves the probe
+discriminates rather than reporting success everywhere).
+
+**Three lessons the work paid for.**
+*A gate must be about the same thing as the claim it licenses* — the plan's "not 5xx" POST
+expectation encoded an unverified assumption about application error handling, and `suggest-package`
+tripped it; the pre-flight had validated `verify_jwt` **values**, not response **codes**.
+*A sweep must instrument its own coverage* — a scan of `.typecheck-ignore` reported "0 hits" having
+checked **zero** functions, blinded by mixed CRLF/LF endings; rerun with counters it read
+`checked=32, skipped=0, hits=1`. A check that examines nothing reports clean.
+*A redeploy ships everything merged since that function's last deploy*, not just your change.
+
+**Defects found, recorded not fixed.** `donny-oauth-token` returns a bare 500 on **every** error
+path — a module-scope `oauthError` referencing the request-scoped `req` (`deno check` says TS2304),
+live since #18 on 2026-05-06 and surviving because the file is line 27 of `.typecheck-ignore`.
+Proven *not* introduced by this sweep: the pre-sweep baseline shows an origin-*validated* fallback,
+which only post-#18 code produces. Also `suggest-package` answering auth failures with 500 rather
+than 401, `verify-on-password-reset` reflecting any origin (bounded — no `Allow-Credentials`, so
+hygiene not leak), and `create-package-order-escrow` still minting `.io`.
+
+**Known residual for the device test.** The spec claimed the excluded money functions were ones "no
+smoke test touches". That was an assumption about tester behaviour, not a property: 14 of the 15
+have `src/` call sites. `create-campaign-escrow` is fixed while `verify-campaign-escrow` is stale,
+so on device a campaign checkout *starts* and fails at the verify leg. Excluding them was still
+right; the risk wording was wrong. And the premise itself — that WKWebView enforces CORS on these
+calls at all — has never been tested on a device. Wednesday is its first real test.
+
+**Process.** Subagent-driven, one tranche per dispatch, task review after each, independent
+whole-branch review at the end (APPROVED). That reviewer verified scope discipline from **prod
+metadata** rather than our own record: exactly 47 functions had `updated_at` in the session window
+and **zero** were money functions — a check a correct-looking log cannot satisfy. One implementer
+returned BLOCKED correctly and was overruled on the merits; another's causal inference was wrong
+and was corrected. Subagent output is a lead, not a verdict.
+
 ## [2026-08-10] The legal entity, stated on the public site — and a claim that shipped before it was checked
 
 **PR #439** (merged 2026-08-11 02:19 UTC, squash `2e492305`) · branch

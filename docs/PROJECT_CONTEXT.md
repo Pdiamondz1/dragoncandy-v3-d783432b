@@ -167,8 +167,14 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   seam so email/share/OAuth links work natively, `capacitor://localhost` trusted in the
   edge-function CORS allow-list, bundle ID → `com.dragoncandy.app`, export-compliance
   plist key) **MERGED as #425 on 2026-08-10** (`gh pr view 425` — this line previously read
-  "not yet merged", stale by the usual mechanism), and the `capacitor://localhost` CORS
-  widening rode along with the Phase 2 fleet deploy, verified live by preflight probe.
+  "not yet merged", stale by the usual mechanism). **The `capacitor://localhost` CORS widening
+  did NOT "ride along with the Phase 2 fleet deploy" — this line said so, and it was wrong.**
+  `_shared/*` bundles at deploy time, so a full-fleet probe on 2026-08-10 found only **23 of 98**
+  functions carrying it and **60 still rejecting the iOS origin**; the earlier "verified live by
+  preflight probe" had checked a function that happened to be in the deployed minority. **Closed
+  2026-08-11 by a 48-function sweep** — 68 now accept the origin, and the only functions still
+  rejecting it are the 15 deliberately-excluded money ones (proven by set comparison, not count).
+  → `docs/wiki/concepts/edge-function-deploy-bundling.md`
   **Organization enrollment `5HA89RBHQH` SUBMITTED 2026-08-10** — this line previously read
   "not started"; it is now with Apple, so the gate is their response, not ours. Apple verifies
   an Organization enrollment partly by **visiting the company website**, and dragoncandy.com
@@ -308,6 +314,20 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **The iOS app's origin was merged into the allow-list and deployed nowhere — 48 functions swept**
+  — `_shared/*` bundles at **deploy time**, so #425's `capacitor://localhost` was inert in 60 of 98
+  functions. Swept 45 (canary → 24 → 10 → 10), plus 2 shipping #442 and 1 shipping #444, both
+  merged-but-never-deployed and found because this work was looking. Fleet **23 → 68**; residual
+  stale proven equal to the 15 excluded money functions by **set comparison, not count**; zero
+  `verify_jwt` drift, zero regressions; and every swept bundle's `DEFAULT_ORIGIN` moved `.io` →
+  `.com`. **Overturned a documented rule:** `verify_jwt` does **not** gate `OPTIONS`, so the
+  unauthenticated preflight — not the anon key — is the boot proof, with a hostile-origin control
+  because a reflector passes for the wrong reason. Left recorded not fixed: `donny-oauth-token`
+  500s on **every** error path (module-scope `oauthError` using a request-scoped `req`, live since
+  May, hidden by `.typecheck-ignore`), `suggest-package` answering auth failures with 500, and
+  `verify-campaign-escrow` stale while `create-campaign-escrow` is fixed — so on device a campaign
+  checkout starts and fails at the verify leg.
+  → `docs/SHIPPED_LOG.md` · `docs/wiki/concepts/edge-function-deploy-bundling.md`
 - **Every `href` in our transactional emails was caller-chosen — closed on prod (#442)** — ~30
   templates built every link from caller-supplied `data` with no check, reachable because
   `create-notification` spreads the request body **verbatim** and calls `send-notification-email`
