@@ -2,8 +2,8 @@
 title: Mobile Viewport & Fixed Positioning
 type: concept
 created: 2026-07-14
-updated: 2026-07-19
-sources: [2026-07-14-mobile-screenfit-fixed-position.md, 2026-07-16-donny-desktop-overlay.md, 2026-07-19-mobile-nav-modal-zindex.md]
+updated: 2026-08-14
+sources: [2026-07-14-mobile-screenfit-fixed-position.md, 2026-07-16-donny-desktop-overlay.md, 2026-07-19-mobile-nav-modal-zindex.md, 2026-08-14-ios-first-physical-device-build.md]
 tags: [mobile, ios, css, viewport, fixed-position, framer-motion, page-transition, desktop, flexbox, overscroll, portal, z-index]
 ---
 # Mobile Viewport & Fixed Positioning
@@ -159,6 +159,50 @@ button clears the ~56px nav bar + the floating Donny emblem + the home-indicator
 **Rule:** persistent app chrome is `z-40`, the Radix modal layer is `z-50` — never tie them. A
 new `fixed`/`sticky` bottom-anchored *in-page* bar must either live inside a modal or offset
 itself above the nav on mobile (`6rem + env(safe-area-inset-bottom)`).
+
+## 7. Top-anchored chrome needs `env(safe-area-inset-top)` — and only the native shell shows you
+
+Found on the **first physical-device build**, 2026-08-14 ([[iOS TestFlight First Build]]), on a
+real iPhone running iOS 26.6. The landing logo and hamburger rendered *on top of* the status-bar
+clock and the Dynamic Island.
+
+`index.html` sets **`viewport-fit=cover`**, so the layout viewport extends under the notch. Every
+element genuinely at the top of the viewport must pay that back. Across all of `src/`,
+`safe-area-inset-top` appeared **once** (`DonnyChatView.tsx:43`) against **eight** uses of
+`-bottom` — §2 and §6 above had taught the bottom half of the lesson and nothing had taught the top.
+
+**Why it hid for the entire life of the project, which is the transferable part.** In mobile Safari
+the browser's URL bar occupies exactly that space, so the page never sits under the status bar and
+`viewport-fit=cover` costs nothing. **The defect exists only in a chromeless `WKWebView`.** Neither
+`verify-prod`'s both-viewport pass, nor devtools responsive mode, nor a real iPhone *in Safari*
+could have surfaced it — the same "only the native shell can tell you" class as
+`window.location.origin` returning `capacitor://localhost`. **A web-only test matrix cannot find a
+web-invisible bug**; the native shell is a distinct target, not a smaller screen.
+
+**The fix is a judgment call per element, not a sweep.** 14 files carry `top-0` anchored elements
+and none padded the inset, but only five are real viewport chrome:
+
+| Padded — real chrome | Left alone — in-page `sticky top-0` |
+|---|---|
+| `MobileTopNav`, `landing/Header`, `PublicPageHeader`, `UpdateBanner` (`fixed top-0`), the mobile `ui/toast` viewport | `AgendaView`, `CampaignMetricsBar`, `CampaignBrowseContent`, `BrandCreators`, `HelpBriefPage` |
+
+The right column sticks *inside* a scroll container, below the real nav — padding those inserts a
+gap in the middle of the page. **`sticky top-0` does not mean "at the top of the viewport"; it
+means "at the top of my scroll container."** That distinction is the whole difference between the
+two columns.
+
+Preserve existing padding rather than replacing it — `pt-[calc(0.5rem+env(safe-area-inset-top))]`,
+not `pt-[env(safe-area-inset-top)]` — except where the element has none of its own
+(`landing/Header`), which takes the raw inset.
+
+**Scope the inset to the breakpoint where the element is actually on top.** `ui/toast`'s viewport is
+`top-0` at base but `sm:top-auto sm:bottom-0`, so it gets the inset at base and `sm:pt-4` to reset
+it; otherwise the desktop bottom-anchored toast carries a phantom top gap. Mirrors the
+desktop/mobile separation rule in `DESIGN_SYSTEM.md`.
+
+**Rule:** `fixed top-0`, or a `sticky top-0` that is page chrome, pads with
+`env(safe-area-inset-top)`. In-page section headers do not. The value is `0` on the web, so the
+change is a no-op there.
 
 ## Key Decisions
 

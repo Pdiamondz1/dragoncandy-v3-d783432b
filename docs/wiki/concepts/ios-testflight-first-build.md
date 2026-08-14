@@ -2,9 +2,9 @@
 title: iOS TestFlight First Build
 type: concept
 created: 2026-08-10
-updated: 2026-08-10
-sources: [raw/sessions/2026-08-09-ios-testflight-first-build.md]
-tags: [ios, capacitor, testflight, cors, origin, bundle-id]
+updated: 2026-08-14
+sources: [raw/sessions/2026-08-09-ios-testflight-first-build.md, raw/sessions/2026-08-14-ios-first-physical-device-build.md]
+tags: [ios, capacitor, testflight, cors, origin, bundle-id, safe-area, xcode]
 ---
 # iOS TestFlight First Build
 
@@ -124,6 +124,42 @@ updated to match. Same shape as the spec's own Finding 1 table drifting the same
 Known Issues below) — a decision made once needs to be re-asserted everywhere it was
 previously assumed, not just where it was made.
 
+## It ran on hardware (2026-08-14) — what the device taught that nothing else could
+
+The Mac arrived, enrollment was approved, and the app ran on a physical iPhone (iOS 26.6) for the
+first time. Boot, login and **Donny** all pass — the last of those is the end-to-end proof that the
+`capacitor://localhost` CORS path works, which no amount of local reasoning could establish.
+
+**The spec's biggest open risk was a non-issue, and only a build could say so.** Risk 3 read
+*"Apple's current minimum SDK is unverified and may force a Capacitor upgrade."* Xcode **26.6**
+compiled the project at **iOS 13.0 on Capacitor 6** with no error and no deprecation warning — read
+off the compiler invocation (`--deployment-target 13.0`,
+`--target-triple arm64-apple-ios13.0-simulator`), not inferred from a green build. No
+deployment-target bump, no Capacitor 7. Worth separating: the risk was correct to *hold* and cheap
+to *resolve*; its cost was entirely in planning.
+
+**The one real UI defect was invisible to every check this project already runs.** `index.html`
+sets `viewport-fit=cover`, so the layout viewport extends under the status bar and Dynamic Island —
+and `src/` used `safe-area-inset-top` exactly **once** against **eight** uses of `-bottom`. On the
+device the landing logo rendered on top of the clock. In mobile Safari the URL bar occupies that
+space, so the page never sits under the status bar and `viewport-fit=cover` costs nothing;
+**only a chromeless `WKWebView` exposes it.** Neither `verify-prod`'s both-viewport pass nor
+responsive emulation could ever have found it. Fixed across the five real chrome components and
+codified in `DESIGN_SYSTEM.md` — full mechanics and the padded/not-padded split in
+[[Mobile Viewport & Fixed Positioning]].
+
+**The repo could not build its own native features.** `npx cap sync ios` added
+`pod 'CapacitorCamera'` and `pod 'CapacitorShare'` to `ios/App/Podfile` — neither had ever been
+committed. A `pod install` without a preceding `cap sync` yields a build with **no camera and no
+share sheet**, the two features the device session existed to verify. Wrong in git since the
+scaffold; invisible because nobody had ever built the project. `Podfile.lock` and
+`App.xcworkspace/contents.xcworkspacedata` were untracked for the same reason and are now committed.
+
+**A whole class of gate can be missing on a new machine.** `codex` — the mandatory second reviewer —
+simply did not exist on the new Mac, and a branch could have been finished without anyone noticing
+its absence. Neither did the Supabase CLI or `gh`. **When the machine changes, the toolchain that
+enforces your rules is itself unverified**; check the enforcers, not just the code.
+
 ## Known Issues
 
 - **A completion notification sent from the iOS app deep-links its recipient to `.com`
@@ -145,6 +181,15 @@ previously assumed, not just where it was made.
   a non-redeployed function keeps emitting `.io` as its ACAO fallback, which is cosmetic
   and harmless, so mixed state costs nothing and nothing forces the issue. What the flip
   supplies is a *reason* to sweep that someone owns — the sweep itself is still unowned.
+  ~~"cosmetic and harmless"~~ — **corrected 2026-08-14: harmless on the WEB, fatal in the
+  native app.** A browser calling from `https://dragoncandy.com` gets its own origin
+  echoed and never notices. A `capacitor://localhost` caller gets `https://dragoncandy.io`,
+  `WKWebView` blocks the response, and supabase-js surfaces a **generic fetch error
+  indistinguishable from "this feature is broken on iOS"** — which is precisely the
+  diagnostic trap the spec's Phase 1b warned about. The 13 affected functions are the
+  payment surface, so on iOS today every payout, escrow, withdrawal and refund path fails
+  this way. The sweep is still unowned, but it is no longer optional-looking: **the same
+  mixed state that is cosmetic for the web is a broken feature for the shell.**
 - Push notifications and universal links (Slices A/D) remain out of scope — both need
   Apple enrollment.
   ~~"which is itself gated on this branch's bundle-ID merge"~~ — **corrected 2026-08-10:**
@@ -154,10 +199,24 @@ previously assumed, not just where it was made.
   **Cleared 2026-08-14: enrollment `5HA89RBHQH` is APPROVED** (founder-confirmed; exact
   approval date unrecorded). Apple is no longer a gate on anything.
 - ~~"As of writing, Tasks 11–14 … have not run; the branch is not yet merged."~~ —
-  **corrected 2026-08-10.** The branch **is** merged (#425), and the
+  **corrected 2026-08-10.** The branch **is** merged (#425), and ~~the
   `capacitor://localhost` CORS widening rode along with the domain-migration Phase 2
   fleet deploy and was verified live by preflight probe, so the canaried redeploy is
-  done too. ~~What genuinely remains: Apple's **approval** of `5HA89RBHQH` (submitted, not
+  done too.~~ **FALSIFIED 2026-08-14 — this is true of some functions and false of
+  thirteen.** Probing all 50 functions `src/` invokes, with a `https://dragoncandy.com`
+  control alongside each `capacitor://localhost` probe, found 13 that answer
+  `https://dragoncandy.io` for the native origin while correctly echoing `.com` for a
+  `.com` origin — i.e. they are on the Phase-1 allow-list but their bundled
+  `_shared/origins.ts` has no `NATIVE_APP_ORIGINS`. They are **almost exactly the money
+  surface**: `release-creator-payout`, `release-package-payout`,
+  `release-sponsorship-payout`, `withdraw-pending-balance`, `create-package-order-escrow`,
+  `verify-campaign-escrow`, `verify-package-order-escrow`, `verify-sponsorship-payment`,
+  `refund-package-order`, `check-creator-payout-status`, `disconnect-stripe-account`,
+  `get-stripe-dashboard-link`, `invoice-rush-surcharges`. **The lesson is about the
+  original verification, not the deploy:** "verified live by preflight probe" was true of
+  the function that was probed and got generalised to the fleet. A sample proves a sample —
+  and the `.com` control is what made this readable at all, since without it the `.io`
+  answer looks like a dead endpoint rather than a fallback. ~~What genuinely remains: Apple's **approval** of `5HA89RBHQH` (submitted, not
   granted) and the physical-device build + on-device verification, which waits on the
   founder's Mac (expected 2026-08-12).~~ **Both gates cleared 2026-08-14** — enrollment is
   approved, and the Mac arrived and is provisioned (Xcode 26.6, CocoaPods 1.17.0, pods
