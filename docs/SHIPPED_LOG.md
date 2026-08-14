@@ -101,9 +101,9 @@ with **no jurisdiction constant**, proving the removed claim absent from the shi
 merely from source.
 
 **Left open.** State of formation unestablished (needs the NJ Certificate of Formation); landing
-footer not visually confirmed on prod (a private window closes it); enrollment `5HA89RBHQH` submitted,
-**not approved**; only the landing page carries a footer, so the entity appears on three URLs rather
-than site-wide.
+footer not visually confirmed on prod (a private window closes it); ~~enrollment `5HA89RBHQH` submitted,
+**not approved**~~ — **approved, founder-confirmed 2026-08-14**; only the landing page carries a footer,
+so the entity appears on three URLs rather than site-wide.
 
 ## [2026-08-10] Donny-first creator dashboard (Phase 3) — and a gate that measured the wrong thing
 

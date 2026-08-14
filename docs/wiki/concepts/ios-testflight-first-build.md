@@ -150,15 +150,21 @@ previously assumed, not just where it was made.
   ~~"which is itself gated on this branch's bundle-ID merge"~~ — **corrected 2026-08-10:**
   that gate is cleared. The branch merged as **#425** (verified via `gh pr view 425`:
   MERGED 2026-08-10T06:58:20Z), and enrollment was **submitted the same day**
-  (Organization enrollment `5HA89RBHQH`). The blocker is now Apple's response, not ours.
+  (Organization enrollment `5HA89RBHQH`). ~~The blocker is now Apple's response, not ours.~~
+  **Cleared 2026-08-14: enrollment `5HA89RBHQH` is APPROVED** (founder-confirmed; exact
+  approval date unrecorded). Apple is no longer a gate on anything.
 - ~~"As of writing, Tasks 11–14 … have not run; the branch is not yet merged."~~ —
   **corrected 2026-08-10.** The branch **is** merged (#425), and the
   `capacitor://localhost` CORS widening rode along with the domain-migration Phase 2
   fleet deploy and was verified live by preflight probe, so the canaried redeploy is
-  done too. What genuinely remains: Apple's **approval** of `5HA89RBHQH` (submitted, not
+  done too. ~~What genuinely remains: Apple's **approval** of `5HA89RBHQH` (submitted, not
   granted) and the physical-device build + on-device verification, which waits on the
-  founder's Mac (expected 2026-08-12). Left struck rather than deleted because a reader
-  who acted on "not yet merged" needs to see it withdrawn.
+  founder's Mac (expected 2026-08-12).~~ **Both gates cleared 2026-08-14** — enrollment is
+  approved, and the Mac arrived and is provisioned (Xcode 26.6, CocoaPods 1.17.0, pods
+  resolved). What genuinely remains is now only the **build itself**: the first
+  physical-device build + on-device verification, which nothing external blocks. Left
+  struck rather than deleted because a reader who acted on "not yet merged" needs to see
+  it withdrawn.
 - **Apple verifies an Organization enrollment partly by visiting the company website**, and
   until 2026-08-10 dragoncandy.com named no legal entity anywhere — a common cause of
   enrollment stalling, and a dependency this page did not know it had. Closed by

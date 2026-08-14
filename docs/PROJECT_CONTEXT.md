@@ -83,7 +83,7 @@ delivery system stabilization that gated launch landed in late May 2026;
 remaining blockers are final bug resolution and payment-flow hardening.
 
 **Codebase scale** (as of 2026-06-13): 73 pages, 206 hooks, 80 edge functions.
-**Repo**: `C:\GIT\dragoncandy-v3-d783432b`
+**Repo**: `/Users/dwill/GIT/dragoncandy-v3-d783432b` (moved from Windows to macOS 2026-08-14)
 **Active integrations**: Toast POS, Stripe Connect, Outstand.so (social media —
 Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 (cost routing via backend edge functions).
@@ -178,10 +178,17 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   unproven "a New Jersey limited liability company" from the Terms — the IRS EIN letter attests
   the name, LLC status and a *mailing* address but **never the state of formation**, and a
   governing-law clause is not a formation claim; reinstating it needs the NJ Certificate of
-  Formation. **Pending:** Apple's approval of `5HA89RBHQH` (submitted, not granted); the
-  founder's Mac (arriving 2026-08-12) for the first physical-device build + on-device
-  verification; and a private-window look at the landing footer on prod (the signed-in session
-  redirects `/landing`, so it is verified at bundle level only).
+  Formation. **Organization enrollment `5HA89RBHQH` is APPROVED** — founder-confirmed
+  2026-08-14; this clause previously read "**Pending:** Apple's approval (submitted, not
+  granted)", which outlived its truth by the usual mechanism. Approval date not recorded (only
+  that it had landed by 2026-08-14); read it off the Apple Developer membership page before
+  any claim depends on it. **The founder's Mac has also arrived and is provisioned** — Xcode
+  26.6, CocoaPods 1.17.0, `pod install` resolved (Capacitor 6.2.1 + Cordova + Camera 6.1.3 +
+  Share 6.0.4), so both gates on the first signed build are now cleared. **Pending:** the first
+  physical-device build + on-device verification (now unblocked, not yet run); committing
+  `ios/App/Podfile.lock` + `App.xcworkspace/contents.xcworkspacedata`, which are untracked but
+  deliberately **not** gitignored; and a private-window look at the landing footer on prod (the
+  signed-in session redirects `/landing`, so it is verified at bundle level only).
   → `docs/superpowers/specs/2026-08-09-ios-testflight-first-build-design.md`
   · `docs/wiki/concepts/legal-entity-identity.md` · #439
 

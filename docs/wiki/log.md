@@ -1,5 +1,39 @@
 # Wiki Log
 
+## [2026-08-14] update | Apple enrollment approved + the Windows→macOS migration
+
+Two external state changes, neither of which any check would have caught — both arrived by the
+founder saying so.
+
+**Apple Organization enrollment `5HA89RBHQH` is APPROVED**, and the founder's Mac has arrived and
+is provisioned (Xcode 26.6, CocoaPods 1.17.0, `pod install` resolved: Capacitor 6.2.1, Cordova,
+Camera 6.1.3, Share 6.0.4). Both gates on the first signed iOS build are cleared; what remains is
+the build itself, which nothing external blocks. Updated [[iOS TestFlight First Build]] (two
+struck clauses), [[Legal Entity Identity]] (one), `PROJECT_CONTEXT.md` §5 and `SHIPPED_LOG.md`.
+Struck-and-explained rather than deleted, per the convention on those pages.
+
+**The approval date is not recorded** — only that it had landed by 2026-08-14. Read it off the
+Apple Developer membership page before any claim depends on it. Related: the founder quoted the
+Team ID from memory as `5HA89RBHGH` (G) against the ten recorded `5HA89RBHQH` (Q); the records
+were right. A ten-way agreement across files is still not the authority — Apple is — but it was
+enough to catch the slip.
+
+**Worth keeping from the approval itself:** Apple approving the enrollment is *consistent with*
+the #439 entity line having satisfied the verifier, but is **not evidence it was read at all**.
+The justification for that work rests on Apple's documented verification process, not on this
+outcome. Recording a favourable result as confirmation of the mechanism you hoped caused it is
+how a coincidence becomes a project belief.
+
+**Separately, the project moved from Windows to macOS**, and the audit found one defect that
+matters beyond the port: [[Worktree Cleanup]]'s live-session safety gate matched
+`CommandLine -match "--worktree"`, and on macOS the CLI process is plain `claude` carrying no such
+flag — so the gate returned "no live sessions" **while a session was demonstrably running in
+`DC-apple-IOS`**. It failed *open*, licensing exactly the deletion it exists to prevent. Replaced
+with an `lsof` cwd check, which found both live sessions. **A safety gate that cannot fail loudly
+is not a safety gate** — and a gate ported by translating its syntax rather than restating its
+intent will keep the shape and lose the meaning. Same family as [[Honest Analytics]]: the test is
+whether the check is about the same thing as the claim it licenses.
+
 ## [2026-08-10] ingest | [[Legal Entity Identity]] — a document can be authoritative and still not answer the question
 
 Ingested `raw/sessions/2026-08-10-legal-entity-public-site.md` as a **new concept page**, not a

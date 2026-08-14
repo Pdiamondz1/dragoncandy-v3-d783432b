@@ -115,8 +115,12 @@ repo, the PRs and every published page entirely.
   declined. Closed at bundle level instead — the deployed `legalEntity-*.js` chunk was read
   directly and contains exactly three constants and no jurisdiction constant — but a private-window
   look is the outstanding check.
-- **Apple enrollment `5HA89RBHQH` is submitted, not approved.** Whether the entity line satisfies
-  the verifier is unknown until Apple responds.
+- ~~**Apple enrollment `5HA89RBHQH` is submitted, not approved.** Whether the entity line satisfies
+  the verifier is unknown until Apple responds.~~ **Resolved 2026-08-14: the enrollment is
+  APPROVED** (founder-confirmed). Note what this does and does not establish — Apple approved the
+  enrollment, which is *consistent with* the entity line having satisfied the verifier but is not
+  evidence that it was read at all. The page's claim about *why* the footer work was needed stands
+  on Apple's documented verification process, not on this outcome.
 - **Only the landing page carries the footer.** `PublicPageHeader`-based pages and the help centre
   have no footer, so the entity appears on three URLs, not site-wide.
 
