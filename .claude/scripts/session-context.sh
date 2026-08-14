@@ -29,21 +29,41 @@ if [ -d "$handoff_dir" ]; then
     # would otherwise report all 19 handoffs as landing minutes ago.
     if [[ "$base" =~ ^([0-9]{4})-([0-9]{2})-([0-9]{2})(-([0-9]{6}))? ]]; then
       stamp="${BASH_REMATCH[5]}"
-      [ -n "$stamp" ] || stamp="000000"
+      if [ -n "$stamp" ]; then
+        has_time=1
+      else
+        # Date-only filename (8 of 19 handoffs today): the time is genuinely
+        # unknown, so pick the fallback that fails in the safe direction. At
+        # 000000 the window treats the file as written at midnight and drops it
+        # up to 24h early — a handoff written at 8pm two days ago vanishes at
+        # 8am rather than 8pm. End-of-day keeps it for its full 48h. A false
+        # include costs one extra line; a false exclude silently hides the
+        # context this script exists to surface.
+        stamp="235959"
+        has_time=0
+      fi
       key="${BASH_REMATCH[1]}${BASH_REMATCH[2]}${BASH_REMATCH[3]}${stamp}"
     else
       key="$(date -r "$file" +%Y%m%d%H%M%S 2>/dev/null)" || key="00000000000000"
+      has_time=1
     fi
     if [[ "$key" > "$cutoff" ]]; then
-      recent="${recent}${key}|${file}"$'\n'
+      recent="${recent}${key}|${has_time}|${file}"$'\n'
     fi
   done < <(find "$handoff_dir" -maxdepth 1 -type f -name '*.md' 2>/dev/null)
 
   if [ -n "$recent" ]; then
     echo "=== Recent Handoffs (last 48h) ==="
-    printf '%s' "$recent" | sort -r | while IFS='|' read -r key file; do
+    printf '%s' "$recent" | sort -r | while IFS='|' read -r key has_time file; do
       [ -n "$file" ] || continue
-      echo "- $(basename "$file") (${key:0:4}-${key:4:2}-${key:6:2} ${key:8:2}:${key:10:2})"
+      # Only print a clock time when the filename actually carried one — the
+      # 235959 above is a windowing fallback, not a measurement, and printing
+      # it would read as a real late-night timestamp.
+      if [ "$has_time" = "1" ]; then
+        echo "- $(basename "$file") (${key:0:4}-${key:4:2}-${key:6:2} ${key:8:2}:${key:10:2})"
+      else
+        echo "- $(basename "$file") (${key:0:4}-${key:4:2}-${key:6:2})"
+      fi
       summary="$(head -n 15 "$file" | grep -m1 -E '^##[[:space:]]+' | sed -E 's/^##[[:space:]]+//')"
       [ -n "$summary" ] && echo "  Summary: $summary"
     done
