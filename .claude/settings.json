@@ -18,8 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -File .claude/scripts/session-context.ps1",
-            "shell": "powershell",
+            "command": "bash .claude/scripts/session-context.sh",
             "timeout": 10,
             "statusMessage": "Recovering session context..."
           }

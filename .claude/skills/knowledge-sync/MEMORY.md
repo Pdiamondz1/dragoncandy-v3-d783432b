@@ -244,8 +244,13 @@
   a link from memory of a page's *subject* rather than its catalogued display name. [orphans] by
   path: **0**.
 - Failed: nothing gating. The bash `for` loop for both checks tripped the worktree-isolation guard
-  again (a past run recorded this); PowerShell ran both fine — **just reach for PowerShell first**
-  for any multi-file wiki check from a worktree.
+  again (a past run recorded this); PowerShell ran both fine — ~~just reach for PowerShell first
+  for any multi-file wiki check from a worktree~~. **Withdrawn 2026-08-14: the project moved to
+  macOS and there is no PowerShell.** The rule was treating the symptom anyway — the guard trips on
+  *shell complexity* (loops, `-C` redirects, `&&` chains), not on bash specifically, and it says so
+  in its own refusal message. Correct rule: **break the check into plain, separate commands**, or
+  put the loop in a script file under the scratchpad and run that. Confirmed still live on macOS —
+  the guard refused two compound commands during the Windows→macOS audit.
 - Remember: the RAG step is **not** covered by the post-merge hook this time. That hook only fires
   when the **main checkout** fast-forwards, and the main checkout is parked on
   `docs/capacitor-cors-sweep-spec` while *this worktree* now holds `main` — so [rag-sync]'s "don't

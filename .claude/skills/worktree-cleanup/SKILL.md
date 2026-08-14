@@ -21,9 +21,23 @@ agent-followed routine. Related: [[refresh-main]].
 2. **Clean** — `git -C <worktree> status --porcelain` empty. If dirty, first save any non-junk
    untracked `.md` docs onto a `chore/worktree-preserved-docs` branch; screenshots / `.temp/` /
    lockfile noise are disposable. Note `git stash list` (stashes are global, survive removal — but flag them).
-3. **No live session** — `Get-CimInstance Win32_Process | ? { $_.CommandLine -match "--worktree" }`
-   (PowerShell). NEVER remove a worktree (or delete its branch) with a live `claude.exe --worktree X`
-   process — it orphans that session. Skip it; tell the user. Never kill the session.
+3. **No live session** — list the working directory of every running `claude` process and treat
+   any worktree that appears as OFF LIMITS:
+
+   ```bash
+   lsof -a -d cwd -c claude -Fn | grep '^n' | sed 's/^n//' | sort -u
+   ```
+
+   NEVER remove a worktree (or delete its branch) while a session is live in it — it orphans that
+   session. Skip it; tell the user. Never kill the session.
+
+   **Do NOT match on a `--worktree` flag.** The old gate here was a PowerShell
+   `Get-CimInstance Win32_Process | ? { $_.CommandLine -match "--worktree" }`, and on macOS the
+   CLI process is plain `claude` with **no `--worktree` in its command line** — so that test
+   returns nothing even when a session IS live, i.e. it **fails open** and licenses exactly the
+   deletion this gate exists to prevent. Verified 2026-08-14: `pgrep -f -- --worktree` found
+   nothing while a session was demonstrably running in `DC-apple-IOS`, which the `lsof` cwd check
+   above found correctly. Match on the process's cwd, not on its arguments.
 4. **Not the current worktree** — you can't self-delete the one you're running in.
 
 ## Steps
@@ -38,7 +52,7 @@ agent-followed routine. Related: [[refresh-main]].
 
 ## Notes
 
-- Windows "Permission denied" / "Device or resource busy" on delete usually means a live
-  `claude.exe --worktree` process holds the dir — git still unregisters the worktree; the empty
-  shell deletes once that session closes.
+- "Permission denied" / "Device or resource busy" on delete usually means a live `claude` process
+  holds the dir as its cwd — git still unregisters the worktree; the empty shell deletes once that
+  session closes.
 - See [[feedback_delete_completed_worktrees]] in project memory for the rule's rationale.

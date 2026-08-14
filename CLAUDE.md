@@ -200,16 +200,19 @@ Push to `main` on GitHub → Vercel auto-deploys to dragoncandy.io (~1–3 min; 
 
 Work happens in **git worktrees** under `.claude/worktrees/` (30+ of them). A worktree is a
 **separate working directory** with its own branch; edits there reach `origin/main` only via PR
-merge. **The local `main` checkout (`C:\GIT\dragoncandy-v3-d783432b`) does NOT auto-update** — so the
+merge. **The local `main` checkout (`/Users/dwill/GIT/dragoncandy-v3-d783432b`) does NOT auto-update** — so the
 files you browse there go stale (they can drift 100+ commits behind `origin/main`). Vercel deploys
 from **GitHub `origin/main`**, not the local checkout, so prod stays current even when local main is stale.
 
 **After merging any PR, refresh the local main checkout** so its files match reality:
 
 ```bash
-git -C "C:/GIT/dragoncandy-v3-d783432b" stash push -- README.md   # if it has local edits
-git -C "C:/GIT/dragoncandy-v3-d783432b" fetch origin
-git -C "C:/GIT/dragoncandy-v3-d783432b" merge --ff-only origin/main
+# Derive the main checkout rather than hardcoding it — resolves from any worktree, and
+# survives the machine moving (it did: Windows -> macOS, 2026-08-14).
+MAIN="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+git -C "$MAIN" stash push -- README.md   # if it has local edits
+git -C "$MAIN" fetch origin
+git -C "$MAIN" merge --ff-only origin/main
 ```
 
 If the fast-forward aborts on "untracked working tree files would be overwritten," move those
@@ -223,8 +226,8 @@ fast-forwards and `docs/` changed, it runs `npm run sync:internal` + `npm run sy
 background (log: `.git/knowledge-sync.log`), so `/internal/strategy` + Donny's `donny_knowledge` RAG
 stay current with no manual sync. It self-guards to the main checkout (skips worktrees) and never
 blocks the merge. The hook reads the key via `supabase/scripts/with-env.mjs` (a `SUPABASE_SECRET_KEY`
-env var wins, else the **gitignored** `supabase/scripts/.env.sync.local`) — so the key file (or a
-`setx`'d var) must exist locally for the auto-sync to fire. To sync by hand from the main checkout:
+env var wins, else the **gitignored** `supabase/scripts/.env.sync.local`) — so the key file (or an
+`export`ed var in your shell profile) must exist locally for the auto-sync to fire. To sync by hand from the main checkout:
 `npm run sync:internal` (strategy/internal) or `npm run sync:wiki` (consumer RAG).
 
 **Recurring worktree routines are skills — use them, don't re-derive:** `refresh-main` (the

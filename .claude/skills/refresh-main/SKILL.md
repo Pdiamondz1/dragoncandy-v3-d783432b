@@ -5,7 +5,7 @@ description: "Fast-forward the local main checkout to origin/main after a PR mer
 
 # Refresh Local Main
 
-Work happens in worktrees; the local `main` checkout at `C:\GIT\dragoncandy-v3-d783432b`
+Work happens in worktrees; the local `main` checkout (`/Users/dwill/GIT/dragoncandy-v3-d783432b`)
 does **not** auto-update, so its files drift behind `origin/main` (can be 100+ commits).
 Vercel deploys from GitHub `origin/main`, so prod stays current even when local main is
 stale — but the files you browse locally go wrong. Run this after every merge. See
@@ -14,7 +14,9 @@ stale — but the files you browse locally go wrong. Run this after every merge.
 ## Steps
 
 ```bash
-MAIN="C:/GIT/dragoncandy-v3-d783432b"
+# Derive the main checkout instead of hardcoding it — this resolves correctly from any
+# worktree and survives the machine moving (it did, Windows -> macOS, 2026-08-14).
+MAIN="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
 # Stash README if it has local edits (it sometimes does)
 git -C "$MAIN" stash push -- README.md 2>/dev/null || true
 git -C "$MAIN" fetch origin
