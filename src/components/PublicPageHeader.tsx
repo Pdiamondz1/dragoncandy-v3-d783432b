@@ -16,7 +16,8 @@ export function PublicPageHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-between bg-white px-4 py-4 md:px-8">
+    // pt-[calc(...)] keeps py-4's 1rem and adds the notch inset on top — see DESIGN_SYSTEM.md.
+    <header className="sticky top-0 z-50 flex items-center justify-between bg-white px-4 py-4 pt-[calc(1rem+env(safe-area-inset-top))] md:px-8">
       <img
         src="/logo.webp"
         alt="DragonCandy"

@@ -52,7 +52,11 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
   // own dropdowns (OrgUnitSwitcher, notifications) are z-50 and open downward, so they still
   // render above it. Matches MobileBottomNav's z-40.
   return (
-    <header className={`sticky top-0 z-40 flex items-center justify-between px-4 py-2 ${bgClass} border-b border-border`}>
+    // `pt-[calc(...)]` pays back `viewport-fit=cover` (index.html): in the Capacitor WebView there
+    // is no browser chrome, so the layout viewport extends UNDER the status bar / Dynamic Island and
+    // this bar would render beneath the clock. Invisible on the web, where the URL bar occupies that
+    // space. Keeps py-2's 0.5rem and adds the inset on top. See DESIGN_SYSTEM.md.
+    <header className={`sticky top-0 z-40 flex items-center justify-between px-4 py-2 pt-[calc(0.5rem+env(safe-area-inset-top))] ${bgClass} border-b border-border`}>
       <Link to="/" className="flex-shrink-0">
         <img src={dragonCandyLogo} alt="DragonCandy" className="w-[64px] md:w-[120px] lg:w-[140px] h-auto" />
       </Link>

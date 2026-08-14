@@ -24,7 +24,9 @@ export function UpdateBanner() {
   if (!updateAvailable || dismissed) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-3 bg-dc-teal px-4 py-2 text-white text-sm font-medium shadow-md">
+    // `fixed top-0` in the native shell lands under the status bar — keep py-2's 0.5rem and add the
+    // notch inset on top. See DESIGN_SYSTEM.md.
+    <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-3 bg-dc-teal px-4 py-2 pt-[calc(0.5rem+env(safe-area-inset-top))] text-white text-sm font-medium shadow-md">
       <RefreshCw className="h-4 w-4 shrink-0" />
       <span>A new version of DragonCandy is available.</span>
       <button

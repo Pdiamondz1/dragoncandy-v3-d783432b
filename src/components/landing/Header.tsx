@@ -52,7 +52,11 @@ export const Header: React.FC = () => {
     // LandingPage wrapper no longer has an `overflow-x` (which would make it the scroll container
     // and break sticky). Transparent over the hero glow, frosted-white once scrolled for legibility.
     <header
-      className={`sticky top-0 z-50 transition-colors duration-300 ${
+      // `pt-[env(safe-area-inset-top)]` pays back `viewport-fit=cover` — in the native shell this
+      // bar otherwise sits under the status bar / Dynamic Island (observed on device 2026-08-14).
+      // The header itself carries no padding, so the raw inset is the whole correction; the inner
+      // div keeps its own py-3.5. Zero on the web. See DESIGN_SYSTEM.md.
+      className={`sticky top-0 z-50 pt-[env(safe-area-inset-top)] transition-colors duration-300 ${
         scrolled ? "bg-white/85 backdrop-blur-md" : "bg-transparent"
       }`}
     >
