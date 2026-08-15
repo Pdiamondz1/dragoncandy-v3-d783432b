@@ -1,5 +1,80 @@
 # Wiki Log
 
+## [2026-08-14] ingest | It ran on a phone — and the device falsified two things the docs believed
+
+Ingested `raw/sessions/2026-08-14-ios-first-physical-device-build.md`. **Compounded** onto
+[[iOS TestFlight First Build]] (new "It ran on hardware" section + two struck Known Issues) and
+[[Mobile Viewport & Fixed Positioning]] (new §7) — no new page, because both subjects already had
+one and the session changed what those pages assert rather than introducing a new topic.
+
+DragonCandy ran on real Apple hardware for the first time. Boot, login and Donny all pass; Donny
+is the end-to-end proof of the `capacitor://localhost` CORS path.
+
+**The spec's biggest open risk evaporated on contact.** Xcode 26.6 compiled iOS 13.0 on Capacitor 6
+with no error and no deprecation warning — read off `--deployment-target 13.0` in the compiler
+invocation rather than inferred from a green build. No target bump, no Capacitor 7.
+
+**The one real UI defect could not have been found any other way.** `viewport-fit=cover` extends the
+layout viewport under the notch; `src/` used `safe-area-inset-top` **once** against **eight**
+`-bottom`; the landing logo rendered on top of the status-bar clock. In mobile Safari the URL bar
+occupies that space, so the defect is *structurally invisible* on the web — no responsive mode, no
+both-viewport `verify-prod`, not even a real iPhone in Safari. Fixed on the 5 real chrome
+components and deliberately not on the 9 in-page `sticky top-0` headers, because `sticky top-0`
+means "top of my scroll container", not "top of the viewport".
+
+**Two documented claims were falsified and struck rather than deleted.** [[iOS TestFlight First
+Build]] said the `capacitor://localhost` widening "rode along with the Phase 2 fleet deploy … so
+the canaried redeploy is done too" — true of the function that was probed, false of **thirteen**,
+almost exactly the money surface. Established with a `https://dragoncandy.com` control alongside
+each native probe, which is what distinguishes "not allow-listed" from "dead endpoint". The
+companion claim that the un-swept remainder is "cosmetic and harmless" holds only for the web: in
+`WKWebView` the browser blocks the response and supabase-js reports a generic fetch error
+**indistinguishable from "this feature is broken on iOS"**. *A sample proves a sample.*
+
+Three more findings recorded on the source: the committed `Podfile` was missing both plugin pods,
+so `pod install` without `cap sync` builds an app with **no camera and no share sheet**; Node 26
+defines `localStorage` on `globalThis` and shadows jsdom's, breaking 50 tests that CI (Node 24)
+passes; and `codex` — the mandatory second reviewer — did not exist on the new machine at all.
+**When the machine changes, the tooling that enforces your rules is itself unverified.**
+
+Pages updated: [[iOS TestFlight First Build]], [[Mobile Viewport & Fixed Positioning]],
+`index.md` (1 Sources line + 2 Concepts entries), `SHIPPED_LOG.md`, `PROJECT_CONTEXT.md` §5,
+`DESIGN_SYSTEM.md` (top-inset rule, shipped with the code in `44688cb1`).
+
+## [2026-08-14] update | Apple enrollment approved + the Windows→macOS migration
+
+Two external state changes, neither of which any check would have caught — both arrived by the
+founder saying so.
+
+**Apple Organization enrollment `5HA89RBHQH` is APPROVED**, and the founder's Mac has arrived and
+is provisioned (Xcode 26.6, CocoaPods 1.17.0, `pod install` resolved: Capacitor 6.2.1, Cordova,
+Camera 6.1.3, Share 6.0.4). Both gates on the first signed iOS build are cleared; what remains is
+the build itself, which nothing external blocks. Updated [[iOS TestFlight First Build]] (two
+struck clauses), [[Legal Entity Identity]] (one), `PROJECT_CONTEXT.md` §5 and `SHIPPED_LOG.md`.
+Struck-and-explained rather than deleted, per the convention on those pages.
+
+**The approval date is not recorded** — only that it had landed by 2026-08-14. Read it off the
+Apple Developer membership page before any claim depends on it. Related: the founder quoted the
+Team ID from memory as `5HA89RBHGH` (G) against the ten recorded `5HA89RBHQH` (Q); the records
+were right. A ten-way agreement across files is still not the authority — Apple is — but it was
+enough to catch the slip.
+
+**Worth keeping from the approval itself:** Apple approving the enrollment is *consistent with*
+the #439 entity line having satisfied the verifier, but is **not evidence it was read at all**.
+The justification for that work rests on Apple's documented verification process, not on this
+outcome. Recording a favourable result as confirmation of the mechanism you hoped caused it is
+how a coincidence becomes a project belief.
+
+**Separately, the project moved from Windows to macOS**, and the audit found one defect that
+matters beyond the port: [[Worktree Cleanup]]'s live-session safety gate matched
+`CommandLine -match "--worktree"`, and on macOS the CLI process is plain `claude` carrying no such
+flag — so the gate returned "no live sessions" **while a session was demonstrably running in
+`DC-apple-IOS`**. It failed *open*, licensing exactly the deletion it exists to prevent. Replaced
+with an `lsof` cwd check, which found both live sessions. **A safety gate that cannot fail loudly
+is not a safety gate** — and a gate ported by translating its syntax rather than restating its
+intent will keep the shape and lose the meaning. Same family as [[Honest Analytics]]: the test is
+whether the check is about the same thing as the claim it licenses.
+
 ## [2026-08-10] ingest | [[Legal Entity Identity]] — a document can be authoritative and still not answer the question
 
 Ingested `raw/sessions/2026-08-10-legal-entity-public-site.md` as a **new concept page**, not a

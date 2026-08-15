@@ -26,6 +26,111 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-14] DragonCandy ran on a phone — and the phone falsified two things the docs believed
+
+Branch `worktree-DC-apple-IOS`, 5 commits · no migration, no RLS change, **no edge function
+deployed** · → `docs/wiki/concepts/ios-testflight-first-build.md` ·
+`docs/wiki/concepts/mobile-viewport-fixed-positioning.md` §7
+
+The founder's 14" MacBook Pro (M5) arrived and Apple Organization enrollment `5HA89RBHQH` was
+approved, clearing both named gates. The app was built, signed with the DRAGON CANDY LLC
+certificate (`UN975C2W85`), installed over cable and launched on a physical iPhone running iOS
+26.6 — the first time the Capacitor shell, native camera and native share sheet had existed on
+Apple hardware since shipping in June.
+
+**Toolchain, all of it absent beforehand:** Xcode 26.6 (+ iOS SDK 26.5 and an 8.52 GB Simulator
+runtime that Xcode 26 downloads separately), CocoaPods 1.17.0 via Homebrew, `gh`, `codex`, and
+**Node 24 alongside the machine's Node 26**. Three steps were GUI-and-human-only and no remote
+tooling removes them: `sudo xcodebuild -license accept` (which, once `Xcode.app` existed, broke
+`git`, Homebrew *and* CocoaPods until accepted), selecting the team + **Register Device** in
+Xcode's Signing pane, and enabling **Developer Mode** on the phone.
+
+**The spec's biggest open risk was a non-issue.** Risk 3 — "Apple's current minimum SDK is
+unverified and may force a Capacitor upgrade" — was the one claim the spec marked as neither
+grepped nor probed. Xcode 26.6 compiled **iOS 13.0 on Capacitor 6** with no error and no
+deprecation warning, read off the compiler invocation (`--deployment-target 13.0`,
+`--target-triple arm64-apple-ios13.0-simulator`) rather than inferred from a green build. The
+pre-authorized deployment-target bump was never needed.
+
+**The one real UI defect was structurally invisible to every check this project runs.**
+`index.html` sets `viewport-fit=cover`, so the layout viewport extends under the status bar and
+Dynamic Island — and across all of `src/`, `safe-area-inset-top` appeared **once**
+(`DonnyChatView.tsx:43`) against **eight** uses of `-bottom`. On the device the landing logo and
+hamburger rendered on top of the clock; the founder confirmed it, and confirmed the fix. In mobile
+Safari the URL bar occupies exactly that space, so `viewport-fit=cover` costs nothing and the page
+never sits under the status bar: **no responsive mode, no both-viewport `verify-prod`, not even a
+real iPhone in Safari could have surfaced this.** `DESIGN_SYSTEM.md` documented the bottom rule and
+was silent on the top — the design system had the same gap the code did, so the fix ships the rule
+with the padding.
+
+Padded the **5** elements genuinely at the top of the viewport (`MobileTopNav`, `landing/Header`,
+`PublicPageHeader`, `UpdateBanner`, the mobile `ui/toast` viewport), each preserving its existing
+padding via `pt-[calc(<existing>+env(safe-area-inset-top))]`. Deliberately did **not** pad the **9**
+in-page `sticky top-0` section headers (`AgendaView`, `CampaignMetricsBar`,
+`CampaignBrowseContent`, `BrandCreators`, `HelpBriefPage`) — those stick inside a scroll container
+below the real nav, where an inset inserts a gap mid-page. **`sticky top-0` means "top of my scroll
+container", not "top of the viewport".** The toast viewport is `top-0` at base but `sm:top-auto
+sm:bottom-0`, so its inset is scoped to base and reset with `sm:pt-4`.
+
+**A standing project claim was falsified.** Both `PROJECT_CONTEXT.md` §5 and the wiki said the
+`capacitor://localhost` CORS widening "rode along with the Phase 2 fleet deploy, verified live by
+preflight probe." Probing all 50 functions `src/` invokes — each with a `https://dragoncandy.com`
+control alongside the native probe — found **13 that answer `https://dragoncandy.io` to a
+`capacitor://localhost` origin while correctly echoing `.com` for a `.com` origin**, i.e. they are
+on the Phase-1 allow-list but their bundled `_shared/origins.ts` carries no `NATIVE_APP_ORIGINS`.
+They are almost exactly the money surface: `release-creator-payout`, `release-package-payout`,
+`release-sponsorship-payout`, `withdraw-pending-balance`, `create-package-order-escrow`,
+`verify-campaign-escrow`, `verify-package-order-escrow`, `verify-sponsorship-payment`,
+`refund-package-order`, `check-creator-payout-status`, `disconnect-stripe-account`,
+`get-stripe-dashboard-link`, `invoice-rush-surcharges`. In `WKWebView` this is a generic fetch
+error **indistinguishable from "payments are broken on iOS"**, which is exactly the diagnostic trap
+the spec's Phase 1b warned about — so the companion claim that mixed state is "cosmetic and
+harmless" is true on the web and false in the shell. **Not deployed this session:** a 13-function
+prod deploy of payment code is not a side effect of a UI fix. *The lesson is about the original
+verification, not the deploy — "verified by preflight probe" was true of the function that was
+probed and got generalised to the fleet. A sample proves a sample.*
+
+**The repo could not build its own native features.** `npx cap sync ios` added
+`pod 'CapacitorCamera'` and `pod 'CapacitorShare'` to `ios/App/Podfile`; neither had ever been
+committed. A `pod install` without a preceding `cap sync` produces a build with **no camera and no
+share sheet** — the two features the device session existed to verify. Wrong in git since the
+scaffold was generated, invisible because nobody had ever built the project. `Podfile.lock` and
+`App.xcworkspace/contents.xcworkspacedata` were untracked for the same reason; all now committed,
+along with the real app icon (1024×1024, alpha flattened onto `#1A1A2A` — iOS rejects icons with an
+alpha channel) and `DEVELOPMENT_TEAM`.
+
+**Node 26 silently breaks the test suite.** A fresh `npm install` then `npm run test` gave **50
+failures across 3 files**, all `localStorage is undefined` — not a repo bug and not lockfile drift.
+Homebrew installs **Node 26**; CI runs **Node 24**. Node 26 defines `localStorage` on `globalThis`
+as an accessor returning `undefined` without `--localstorage-file`, and Vitest's jsdom environment
+skips globals that already exist, so jsdom's real `localStorage` never lands. Proven, not reasoned:
+`'localStorage' in globalThis` is `true` on 26 and `false` on 24; under Node 24 the same suite is
+**243/243 files, 2443/2443 tests**. Separately, `npm run test` sweeps `.claude/worktrees/` because
+vitest's excludes are repo-relative, running ~30 other worktrees' suites — the honest invocation is
+`--exclude '**/.claude/**'`. **Neither is fixed here**; `.nvmrc` + a vitest exclude is a separate
+change.
+
+**Codex found one P2 and it was in the tooling, not the app.** `session-context.sh` fell back to
+`000000` for date-only handoff filenames, dropping them from the "last 48h" window up to 24 hours
+early — 8 of 19 handoffs are date-only. Fixed with end-of-day, but with the display separated from
+the windowing key, because `235959` printed as a clock time reads as a real late-night timestamp
+when the time is genuinely unknown. Round 2 clean.
+
+**On-device results:** #1 boot, #2 login, #3 **Donny** all PASS — Donny being the end-to-end proof
+of the CORS path. #7 safe area found broken, fixed, founder-confirmed. #5 share sheet is
+**code-verified only** (all three URL builders route through `publicOrigin()`, feeding all three
+`shareOrCopyLink` sites; the only raw `window.location.origin` uses left are the four the spec
+deliberately keeps). #4 camera, #6 purchase CTAs, #8 scrolling, #9 password reset **not run**.
+TestFlight itself not started — no App Store Connect record yet.
+
+**Process note.** Two Claude sessions ran in the same worktree simultaneously; the parallel one
+committed this session's uncommitted iOS files into its own commit (nothing lost — the committed
+icon's SHA-256 matches the built artifact exactly — but a `git commit -a` from either would have
+swept the other's in-flight work). And all four pre-existing commits were authored to a
+hostname-derived placeholder because git identity was unset on the new Mac; corrected by rebase to
+the canonical GitHub noreply, with tree hashes captured before and after and diffed to prove
+content was byte-unchanged.
+
 ## [2026-08-10] The legal entity, stated on the public site — and a claim that shipped before it was checked
 
 **PR #439** (merged 2026-08-11 02:19 UTC, squash `2e492305`) · branch
@@ -101,9 +206,9 @@ with **no jurisdiction constant**, proving the removed claim absent from the shi
 merely from source.
 
 **Left open.** State of formation unestablished (needs the NJ Certificate of Formation); landing
-footer not visually confirmed on prod (a private window closes it); enrollment `5HA89RBHQH` submitted,
-**not approved**; only the landing page carries a footer, so the entity appears on three URLs rather
-than site-wide.
+footer not visually confirmed on prod (a private window closes it); ~~enrollment `5HA89RBHQH` submitted,
+**not approved**~~ — **approved, founder-confirmed 2026-08-14**; only the landing page carries a footer,
+so the entity appears on three URLs rather than site-wide.
 
 ## [2026-08-10] Donny-first creator dashboard (Phase 3) — and a gate that measured the wrong thing
 
