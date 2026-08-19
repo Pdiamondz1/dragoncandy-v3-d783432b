@@ -96,6 +96,14 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### In flight
 
+- **Tech department build-out** — hiring a PM, designer and 2 developers (Adrian sourcing, Joe
+  raising); scope of work in `docs/DragonCandy_Tech_Department_Scope.md`. Audit-led first 90 days,
+  one senior owning the codebase, Linear for tickets. The readiness work shipped with it closed a
+  live hazard: **`npm run dev` connected to the PRODUCTION database** (tracked `.env` + a prod
+  fallback), plus the repo had no `CONTRIBUTING.md`/architecture map/first-week guide and a README
+  describing a product that does not exist. **Pending (2026-08-19):** merge #451; untracking `.env`
+  (needs Vercel-scope confirmation first — it may carry Maps/reCAPTCHA keys); rotating the committed
+  staging password. → `docs/wiki/concepts/local-prod-boundary.md` · #451
 - **Content delivery system stabilization** — bug-fixing the creator→business content
   handoff and payment flow; gates production launch. → `docs/SHIPPED_LOG.md`
 - **Outstand social media integration** — IG/TikTok/YouTube linking + delegated posting;
@@ -966,6 +974,10 @@ and cost ledger in `_shared/`.
 
 **Key project documents**:
 - `CLAUDE.md` — developer guidance + design system import
+- `CONTRIBUTING.md` — human-facing setup, change workflow and non-negotiables
+- `docs/ARCHITECTURE.md` — how the system fits together (map for a new engineer)
+- `docs/onboarding/first-week.md` — day-by-day to a new hire's first merged PR
+- `docs/DragonCandy_Tech_Department_Scope.md` — tech team goals, roles, ways of working, comp
 - `docs/SHIPPED_LOG.md` — full prose changelog of shipped work (not auto-loaded; §5 indexes it)
 - `docs/STRIPE_PRICES.md` — pricing source of truth
 - `docs/DragonCandy_Strategy_Briefing.md` — competitive strategy

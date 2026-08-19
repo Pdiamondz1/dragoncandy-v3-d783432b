@@ -1,5 +1,35 @@
 # Wiki Log
 
+## [2026-08-19] ingest | The repo could not be handed to anyone, and the guard that found out failed open
+
+Ingested `raw/sessions/2026-08-19-tech-department-scope-and-repo-joinability.md`. **New page**
+[[Local/Production Boundary & Repo Joinability]]; **compounded** onto [[QA CI/CD Gate]] (local stage
+added to the pipeline diagram, plus its own Lovable→Vercel drift corrected).
+
+The session was meant to produce a hiring document — `docs/DragonCandy_Tech_Department_Scope.md`,
+which it did. Auditing whether the repo was ready for staff is what found the rest: **for the whole
+life of the project, `npm run dev` connected to the production database.** Two independent causes,
+both pointing at prod — a **tracked** `.env` (in `.gitignore`, but `.gitignore` does not untrack an
+already-tracked file) and a prod fallback in `client.ts`. A hazard whose only mitigation was "there
+is only one of us" was about to stop being mitigated.
+
+**The guard's first version failed open.** Codex P1: an exact string comparison let
+`https://…supabase.co/` with a trailing slash through — same project — and so did casing, `:443`, a
+path, a query and a fragment. That is worse than no guard, because it also creates the belief the
+hazard is handled. Now compares hostnames, in a tested module that fails *closed* on unparseable
+input.
+
+The page split was deliberate: the durable lesson is the boundary and the fail-open rule, which will
+still be true next year; the hiring plan is a living core doc that will not be, so it stays in
+`docs/` rather than being copied into the wiki.
+
+Also corrected: [[QA CI/CD Gate]] had recorded the 2026-07-16 Vercel cutover in its Decisions
+section while its opening paragraph *and* its pipeline diagram both still said Lovable —
+**a supersession filed once but not applied.** Same drift was live in two runbooks.
+
+Pages created: `concepts/local-prod-boundary.md`.
+Pages updated: `concepts/qa-cicd-gate.md`, `index.md`.
+
 ## [2026-08-14] ingest | It ran on a phone — and the device falsified two things the docs believed
 
 Ingested `raw/sessions/2026-08-14-ios-first-physical-device-build.md`. **Compounded** onto
