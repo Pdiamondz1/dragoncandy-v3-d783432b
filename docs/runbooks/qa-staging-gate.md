@@ -14,7 +14,7 @@ worktree branch → open PR to main
   → E2E (.github/workflows/e2e.yml)      → job `smoke`: Playwright login + dashboard render, all roles
   → branch protection requires `verify` + `smoke` green
   → human reviews + clicks Merge          ← ship gate (no auto-merge)
-  → main → Lovable auto-deploys to dragoncandy.io (prod)
+  → main → Vercel auto-deploys to dragoncandy.com (prod)
 ```
 
 Merging stays a deliberate human action. The gate blocks merge until checks pass; it never auto-merges.
@@ -49,7 +49,7 @@ JSON
 |-------|-------|
 | Staging Supabase | project `dragoncandy-staging`, ref **`mhffqrawgizhprbobcta`** (`https://mhffqrawgizhprbobcta.supabase.co`) |
 | Prod Supabase (never touch from staging work) | `zocahiffooqdybdhguqv` |
-| Preview host | Vercel (per-PR previews). Prod is Lovable, unchanged. |
+| Preview host | Vercel (per-PR previews). Prod is also Vercel since 2026-07-15. |
 | Stripe | single sandbox `acct_1SkFixJi7lqzzhdM` (keys `…SkFixJi`) — publishable, secret, and webhook must all match |
 | AI-spend guard | dedicated `DragonCandy Staging` Anthropic workspace, hard **$25/mo** cap |
 
@@ -118,7 +118,7 @@ callers use `import.meta.env.VITE_SUPABASE_URL` with a prod fallback (see env-wi
 
 ## Sync step — run whenever schema or edge functions change
 
-Lovable ships the **frontend only**. Staging must be synced explicitly. Always pin the ref.
+Vercel ships the **frontend only**. Staging must be synced explicitly. Always pin the ref.
 
 ```bash
 # from repo root; SUPABASE_ACCESS_TOKEN + SUPABASE_DB_PASSWORD in env
@@ -142,7 +142,7 @@ helper are documented in project memory (`project_qa_staging_supabase`).
    ```
 2. **Vercel previews need the SPA fallback** in `vercel.json` (`/(.*) → /index.html`). Without it,
    every deep link (`/auth`, `/dashboard/*`) returns Vercel `404: NOT_FOUND`; only `/` works.
-   Don't delete `vercel.json`. Prod (Lovable) is unaffected by it.
+   Don't delete `vercel.json` — prod deploys from Vercel and depends on it.
 3. **Previews are behind Deployment Protection (401).** Playwright sends
    `x-vercel-protection-bypass` from `VERCEL_AUTOMATION_BYPASS_SECRET`. Anonymous access fails.
 4. **Fresh accounts redirect to `/profile/*`** (onboarding), not `/dashboard`, on first login — so
@@ -150,9 +150,14 @@ helper are documented in project memory (`project_qa_staging_supabase`).
 5. **Preview URLs aren't predictable** for long branch names (hashed alias). Get the real URL from
    `gh api repos/.../deployments/<id>/statuses` → `environment_url` (same value the e2e job reads
    from `deployment_status.environment_url`).
-6. **Env-wiring:** `src/integrations/supabase/client.ts` is Lovable-auto-generated; it must read
-   `VITE_SUPABASE_URL` (with a prod fallback), or a staging build silently talks to prod. Re-check
-   after any Lovable regeneration.
+6. **Env-wiring:** `src/integrations/supabase/client.ts` must read `VITE_SUPABASE_URL` (with a prod
+   fallback), or a staging build silently talks to prod.
+
+   ⚠️ **This file carries the local-dev safety guard** (added 2026-08-19) that stops `npm run dev`
+   connecting to production. Its header still says "automatically generated" from the Lovable era.
+   **If Lovable ever regenerates it, the guard is silently lost** — a fresh clone would go back to
+   reaching prod with no warning. Re-check this file after any Lovable regeneration, and confirm
+   `PROD_SUPABASE_URL` and the `VITE_ALLOW_PROD_FROM_LOCAL` block are still present.
 
 ## Running the e2e suite manually
 

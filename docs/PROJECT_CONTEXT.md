@@ -82,7 +82,7 @@ Supabase $45, OpenAI $25), Stripe in test mode. Production launch date TBD. The 
 delivery system stabilization that gated launch landed in late May 2026;
 remaining blockers are final bug resolution and payment-flow hardening.
 
-**Codebase scale** (as of 2026-06-13): 73 pages, 206 hooks, 80 edge functions.
+**Codebase scale** (as of 2026-08-19): 92 pages, 269 hooks, 98 edge functions.
 **Repo**: `/Users/dwill/GIT/dragoncandy-v3-d783432b` (moved from Windows to macOS 2026-08-14)
 **Active integrations**: Toast POS, Stripe Connect, Outstand.so (social media —
 Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
@@ -955,7 +955,7 @@ Apply to every recommendation, every prompt, every PR:
 **Frontend**: React 18 / TypeScript (strict), Vite, Tailwind CSS, shadcn/ui,
 Framer Motion, Vercel (prod hosting + per-PR staging previews), Lovable.dev (optional
 AI-edit surface via GitHub sync; no longer the host), GitHub.
-**Backend**: Supabase (70+ tables, 80 Deno Edge Functions, RLS, realtime),
+**Backend**: Supabase (70+ tables, 98 Deno Edge Functions, RLS, realtime),
 Stripe Connect (test mode).
 **AI**: Claude Sonnet 4 + Haiku for generation (cost routing via edge
 functions, backend only); OpenAI for embeddings (RAG/matching). Model routing
