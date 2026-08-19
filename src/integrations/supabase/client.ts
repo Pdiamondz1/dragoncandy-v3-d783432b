@@ -2,18 +2,62 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
+// The production Supabase project. Named so the dev guard below can recognise it —
+// this is the ONE place the prod ref should appear in src/.
+const PROD_SUPABASE_URL = "https://zocahiffooqdybdhguqv.supabase.co";
+
 // Source the Supabase project from env (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY)
 // so non-prod surfaces — e.g. the Vercel staging preview for the QA/CI-CD gate —
 // point at their own isolated backend. Falls back to the prod project when the env
-// vars are unset (Lovable's prod build sets them, so prod is unaffected). This keeps
-// client.ts consistent with the edge-function callers that already read these vars.
+// vars are unset (the Vercel Production scope sets them, so prod is unaffected). This
+// keeps client.ts consistent with the edge-function callers that already read these vars.
 export const SUPABASE_URL =
-  import.meta.env.VITE_SUPABASE_URL || "https://zocahiffooqdybdhguqv.supabase.co";
+  import.meta.env.VITE_SUPABASE_URL || PROD_SUPABASE_URL;
 // Exported so guest-facing surfaces (e.g. the public package checkout) can invoke an edge function AS ANON
 // even when a user is logged in — the public shareable link is a guest-checkout surface by design.
+//
+// Both names are accepted because the repo has historically disagreed with itself:
+// `.env`/`.env.example` define VITE_SUPABASE_PUBLISHABLE_KEY while every call site reads
+// VITE_SUPABASE_ANON_KEY. Accepting either is purely additive — no existing environment
+// that works today stops working.
 export const SUPABASE_PUBLISHABLE_KEY =
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvY2FoaWZmb29xZHliZGhndXF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5NzgzMzQsImV4cCI6MjA2NTU1NDMzNH0.bGhT6ft_zTbw-9v2Typi0wxzlfStg3sGiuPOor8Wfz8";
+
+// --- Local-development safety guard -----------------------------------------
+//
+// `npm run dev` used to connect to PRODUCTION. The tracked `.env` sets
+// VITE_SUPABASE_URL to the prod project, and the fallback above is the prod project
+// too, so a fresh clone reached live customer data with no warning and no opt-in.
+// Survivable while one person ran it; unacceptable the moment anyone is hired.
+//
+// This throws at import time in `npm run dev` only. Production and preview builds
+// (MODE 'production') and the vitest suite (MODE 'test') are untouched — their
+// behaviour is byte-for-byte what it was before this guard existed.
+//
+// Need prod data locally? Opt in explicitly, per session, and know what you are doing:
+//   VITE_ALLOW_PROD_FROM_LOCAL=true npm run dev
+if (
+  import.meta.env.DEV &&
+  import.meta.env.MODE !== 'test' &&
+  SUPABASE_URL === PROD_SUPABASE_URL &&
+  import.meta.env.VITE_ALLOW_PROD_FROM_LOCAL !== 'true'
+) {
+  throw new Error(
+    [
+      'Refusing to start: local dev is pointed at the PRODUCTION Supabase project.',
+      '',
+      'Create a .env.local pointing at staging (this file is gitignored):',
+      '  VITE_SUPABASE_URL=https://mhffqrawgizhprbobcta.supabase.co',
+      '  VITE_SUPABASE_ANON_KEY=<staging anon key>',
+      '',
+      'See docs/onboarding/first-week.md. If you genuinely need production data',
+      'locally, opt in for that session only:',
+      '  VITE_ALLOW_PROD_FROM_LOCAL=true npm run dev',
+    ].join('\n'),
+  );
+}
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
