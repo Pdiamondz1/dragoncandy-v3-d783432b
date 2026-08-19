@@ -82,7 +82,7 @@ Supabase $45, OpenAI $25), Stripe in test mode. Production launch date TBD. The 
 delivery system stabilization that gated launch landed in late May 2026;
 remaining blockers are final bug resolution and payment-flow hardening.
 
-**Codebase scale** (as of 2026-06-13): 73 pages, 206 hooks, 80 edge functions.
+**Codebase scale** (as of 2026-08-19): 92 pages, 269 hooks, 98 edge functions.
 **Repo**: `/Users/dwill/GIT/dragoncandy-v3-d783432b` (moved from Windows to macOS 2026-08-14)
 **Active integrations**: Toast POS, Stripe Connect, Outstand.so (social media —
 Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
@@ -96,6 +96,14 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### In flight
 
+- **Tech department build-out** — hiring a PM, designer and 2 developers (Adrian sourcing, Joe
+  raising); scope of work in `docs/DragonCandy_Tech_Department_Scope.md`. Audit-led first 90 days,
+  one senior owning the codebase, Linear for tickets. The readiness work shipped with it closed a
+  live hazard: **`npm run dev` connected to the PRODUCTION database** (tracked `.env` + a prod
+  fallback), plus the repo had no `CONTRIBUTING.md`/architecture map/first-week guide and a README
+  describing a product that does not exist. **Pending (2026-08-19):** merge #451; untracking `.env`
+  (needs Vercel-scope confirmation first — it may carry Maps/reCAPTCHA keys); rotating the committed
+  staging password. → `docs/wiki/concepts/local-prod-boundary.md` · #451
 - **Content delivery system stabilization** — bug-fixing the creator→business content
   handoff and payment flow; gates production launch. → `docs/SHIPPED_LOG.md`
 - **Outstand social media integration** — IG/TikTok/YouTube linking + delegated posting;
@@ -955,7 +963,7 @@ Apply to every recommendation, every prompt, every PR:
 **Frontend**: React 18 / TypeScript (strict), Vite, Tailwind CSS, shadcn/ui,
 Framer Motion, Vercel (prod hosting + per-PR staging previews), Lovable.dev (optional
 AI-edit surface via GitHub sync; no longer the host), GitHub.
-**Backend**: Supabase (70+ tables, 80 Deno Edge Functions, RLS, realtime),
+**Backend**: Supabase (70+ tables, 98 Deno Edge Functions, RLS, realtime),
 Stripe Connect (test mode).
 **AI**: Claude Sonnet 4 + Haiku for generation (cost routing via edge
 functions, backend only); OpenAI for embeddings (RAG/matching). Model routing
@@ -966,6 +974,10 @@ and cost ledger in `_shared/`.
 
 **Key project documents**:
 - `CLAUDE.md` — developer guidance + design system import
+- `CONTRIBUTING.md` — human-facing setup, change workflow and non-negotiables
+- `docs/ARCHITECTURE.md` — how the system fits together (map for a new engineer)
+- `docs/onboarding/first-week.md` — day-by-day to a new hire's first merged PR
+- `docs/DragonCandy_Tech_Department_Scope.md` — tech team goals, roles, ways of working, comp
 - `docs/SHIPPED_LOG.md` — full prose changelog of shipped work (not auto-loaded; §5 indexes it)
 - `docs/STRIPE_PRICES.md` — pricing source of truth
 - `docs/DragonCandy_Strategy_Briefing.md` — competitive strategy

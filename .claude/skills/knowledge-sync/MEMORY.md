@@ -219,6 +219,33 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-08-19] Tech department scope + the repo not being joinable (`feat/tech-department-scope`, bundled INTO #451)
+
+- **Output:** `docs/wiki/raw/sessions/2026-08-19-tech-department-scope-and-repo-joinability.md` →
+  new page `concepts/local-prod-boundary.md`, compounded onto `concepts/qa-cicd-gate.md`;
+  `index.md` (2 entries, 0 orphans), `log.md` top entry, `SHIPPED_LOG.md` top entry,
+  `PROJECT_CONTEXT.md` §5 In flight + §10 key documents.
+- **Happened:** a hiring document turned into a safety fix. Writing
+  `DragonCandy_Tech_Department_Scope.md` required auditing whether the repo was ready for staff; it
+  was not — `npm run dev` connected to PRODUCTION via a **tracked** `.env` plus a prod fallback in
+  `client.ts`. Fixed with a dev-only guard; **Codex P1 found the first version failed OPEN** (string
+  comparison, so a trailing slash bypassed it) → rewritten to compare hostnames in a tested module.
+- **Worked:** `[scope-paths]` ran clean and genuinely so — `origin/main` had not moved at all, so no
+  parallel-session collision this time. `[orphans]` returned 0. Splitting the durable lesson (the
+  boundary + fail-open rule) into the wiki while leaving the **living** hiring plan in `docs/` was
+  the right call — the plan will date within months, the lesson will not; copying it into the wiki
+  would have created a second copy to keep in sync.
+- **Failed:** nothing blocking. One near-miss worth noting: I wrote `[[Codex Second Review]]` into
+  the new page before checking `index.md` — **there is no such page**, so it would have shipped a
+  broken wikilink past the lint. Caught by grepping `index.md` for every `[[link]]` before commit.
+  **Do that grep as a step, not as a habit.**
+- **Remember:** the drift this session corrected has a shape worth naming — [[QA CI/CD Gate]] had
+  **recorded** the 2026-07-16 Lovable→Vercel cutover in its Decisions section while its opening
+  paragraph *and* its pipeline diagram both still asserted the old thing, and the same stale claim
+  was live in two runbooks. **A supersession filed once is not a supersession applied.** When
+  striking a claim, grep the page and its runbooks for every restatement of it — the struck line is
+  the one place you can be sure is right, and therefore the least useful place to check.
+
 ### [2026-08-14] iOS first physical-device build (`worktree-DC-apple-IOS`, riding IN the branch)
 - Output: NEW `raw/sessions/2026-08-14-ios-first-physical-device-build.md`; **compounded** onto
   [[iOS TestFlight First Build]] (new "It ran on hardware" section + **two struck Known Issues**) and

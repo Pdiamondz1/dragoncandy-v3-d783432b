@@ -30,12 +30,12 @@ Deep reference (secrets, sync, troubleshooting): `docs/runbooks/qa-staging-gate.
 5. **Wait for the gate.** `gh pr checks <#> --watch`, or read `mergeStateStatus`:
    `BLOCKED` = a required check (`verify`/`smoke`) pending or failing; `UNSTABLE` or `CLEAN`
    = required checks green, **merge enabled** (a red `lighthouse` is non-required, ignore it).
-6. **Merge** (your deliberate click) → `main` → Lovable auto-deploys to dragoncandy.io →
+6. **Merge** (your deliberate click) → `main` → Vercel auto-deploys to dragoncandy.com →
    verify prod (screenshot, console, desktop + mobile viewports).
 
 ## If the change touches the backend (DB schema or edge functions)
 
-Lovable ships the **frontend only**, so backend changes need explicit deploys — twice.
+Vercel ships the **frontend only**, so backend changes need explicit deploys — twice.
 
 1. Add the migration / edit the function under `supabase/`.
 2. **Sync staging** so the preview exercises it (always pin the staging ref):

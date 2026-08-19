@@ -26,6 +26,102 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-19] A tech scope of work — and the repo it turned out we could not hand to anyone
+
+**PR #451** · branch `feat/tech-department-scope` · Codex clean at round 2 · CI green
+
+A board thread (Dame / Joe / Adrian Vella, 2026-08-17→18) on adding tech staff: Adrian sourcing
+(designer Lubo, dev houses Root Codex and Alan Systems, EPAM pending), Joe raising the capital, and
+Dame committing in-thread to *"put together a tech scope of work."* Adrian's asks were specific —
+how senior, what stack, and *"how you want them to work .. not only in the code but also with qa,
+release, tickets"*, plus a **manifesto** designers can mock from and a **product person** to run
+the developer roadmap and the designers.
+
+**The deliverable is `docs/DragonCandy_Tech_Department_Scope.md`.** Decisions taken with the
+founder: one combined document rather than separate hiring and investor versions (one file cannot
+drift against itself, and Joe will show investors all three of it, the cost model and the staffing
+spec); **one senior engineer owning the codebase with contractors around them**; an **audit-led
+first 90 days** with PM and designer at day 0 and developers at day 30; Linear for tickets; comp
+included by region; Dame hands off gradually with the senior hire's success metric being *"ships to
+production without Dame within 60 days."* Every hire, dev houses included, starts on a **paid
+two-week scoped trial** — already the company rule in the staffing spec, and the only honest way to
+evaluate an agency.
+
+**The measured case for the hire, which is the most useful thing this session produced.** 1,174
+source files, 92 pages, 269 hooks, 98 edge functions, 389 migrations, 2,443 tests across 243 files,
+and 3,299 commits of which about 2,500 are Dame's. Commits per month: Mar 190 · Apr 751 · **May
+1,023** · Jun 431 · Jul 142 · **Aug 131** — an **87% fall from peak**. Not a motivation story; the
+complexity tax of one maintainer on 1,174 files with production-grade RLS. `PROJECT_CONTEXT.md` §4
+had been claiming 73 pages / 206 hooks / 80 functions since 2026-06-13.
+
+**Then the audit answered its own question the wrong way: the repo could not safely be given to
+anyone.**
+
+**`npm run dev` connected a fresh clone to PRODUCTION**, by two independent routes. `.env` is
+**tracked** — it sits in `.gitignore` but was committed before that rule existed, and `.gitignore`
+does not untrack an already-tracked file, so it ships in every clone pointing at
+`zocahiffooqdybdhguqv`. And `client.ts` **fell back to prod** when the variable was unset. Both the
+configured and unconfigured paths led to live customer data with no warning and no opt-in. Fine
+with one developer who wanted prod data anyway; a defect the moment anyone is hired — which is what
+this very session was arranging. **Checking `.gitignore` is not checking whether a file ships;**
+`git ls-files --error-unmatch` is.
+
+**The fix's first version failed OPEN, and Codex caught it.** The guard compared strings, so
+`https://zocahiffooqdybdhguqv.supabase.co/` — same project, one trailing slash — sailed through, as
+did different casing, an explicit `:443`, an added path, a query string and a fragment. **A safety
+control that fails open is worse than none, because it also manufactures the belief that the hazard
+is handled.** It now compares **hostnames**, extracted into `src/lib/supabaseEnvGuard.ts` with 19
+tests — covering every bypass above, plus lookalike hosts that merely *contain* the ref
+(`…dybdhguqvx.supabase.co`, `….supabase.co.evil.test`) which a substring check would have wrongly
+blocked, plus unparseable input which **fails closed**. Extracted rather than inlined because
+`client.ts` creates the client as an import side effect and still carries a Lovable-era
+*"automatically generated"* header — **a regeneration would silently drop the guard**, now noted in
+`qa-staging-gate.md`.
+
+Production behaviour is **proven** unchanged, not assumed: the guard is gated on
+`import.meta.env.DEV`, so Vite dead-code-eliminates it — grepping `dist/` for its message and for
+the staging host returns nothing — and the prod bundle still resolves to the prod project.
+`MODE !== 'test'` keeps the 243 test files working. Test results were confirmed identical with the
+change reverted (50 failures / 3 files either way — the pre-existing Node 26 jsdom issue), and CI on
+Node 24 then ran the whole suite green, which independently settles that those 50 are local-only.
+
+**Making the repo joinable.** There was no `CONTRIBUTING.md`, no architecture map and no first-week
+guide, so a new hire could not start. `README.md` was 268 lines describing a product that does not
+exist — a *"ChatGPT-4o Copilot"*, AI video scene detection, auto-captioning, LinkedIn/Facebook
+publishing — which a strong candidate reads, compares to the code, and draws conclusions from.
+`docs/product-roadmap.md` was dead at 0 of 72 tasks, describing a design system never built. Node
+was unpinned, so a new hire on Node 26 would have opened the repo to 50 red tests. All closed:
+`CONTRIBUTING.md`, `docs/ARCHITECTURE.md`, `docs/onboarding/first-week.md`,
+`.github/PULL_REQUEST_TEMPLATE.md`, bug + audit-finding issue templates, `.nvmrc` + `engines`, and a
+truthful README. **"Joinable" is invisible to whoever already knows the answers, and the only
+reliable detector is someone arriving — which is when it costs most.**
+
+**Drift corrected.** Both QA runbooks *and* [[QA CI/CD Gate]] still said prod deploys from Lovable;
+it has been Vercel since 2026-07-15. The wiki page had **recorded the cutover in its Decisions
+section while its opening paragraph and its pipeline diagram both still asserted the old thing** —
+a supersession filed once and not applied. Also found: the repo **disagrees with itself** on a
+Supabase key name (`.env`/`.env.example` define `VITE_SUPABASE_PUBLISHABLE_KEY`; every call site
+reads `VITE_SUPABASE_ANON_KEY`), which `client.ts` survived only via its hard-coded fallback while
+five hooks pass the variable straight into an `apikey` header with no fallback. `client.ts` now
+accepts either name.
+
+**A reconciliation that surfaced a decision, not just a number.** The first draft of the scope
+invented US salary bands while simultaneously instructing the reader that reconciliation with
+`DragonCandy_Capital_Raise_Cost_Model.md` was mandatory. Replaced with that model's figures verbatim
+— which exposed a real divergence for Joe: **this plan hires a Product Manager at month 0; the cost
+model hires one at month 6.** A direct consequence of making the 90 days audit-led, and it changes
+the shape of the early spend.
+
+**Deliberately not done.** `.env` remains **tracked**, though it is the root cause — untracking it
+first requires confirming Vercel's Production scope supplies all five `VITE_` variables rather than
+quietly relying on the committed file for Maps and reCAPTCHA, which could not be verified without
+dashboard access. **Deferred rather than guessed**; the guard closes the hazard without needing the
+answer. The committed staging password is still unrotated (three tracked files, already flagged
+compromised). The five hooks still read the env var directly. Not merged — merging to `main` is the
+project's deliberate human ship gate.
+
+→ `docs/wiki/concepts/local-prod-boundary.md` · `docs/DragonCandy_Tech_Department_Scope.md` · #451
+
 ## [2026-08-14] DragonCandy ran on a phone — and the phone falsified two things the docs believed
 
 Branch `worktree-DC-apple-IOS`, 5 commits · no migration, no RLS change, **no edge function
