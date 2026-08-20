@@ -42,12 +42,21 @@ function isSharedIdentity_(email) {
 function installAllSignatures() {
   var users = listDomainUsers_();
   var results = [];
+  var totalSharedInstalled = 0;
 
   for (var i = 0; i < users.length; i++) {
     var user = users[i];
     try {
-      var count = installForUser_(user);
-      results.push([new Date(), user.primaryEmail, user.title || '(no title)', 'ok', count + ' identities']);
+      var counts = installForUser_(user);
+      totalSharedInstalled += counts.shared;
+      results.push([
+        new Date(),
+        user.primaryEmail,
+        user.title || '(no title)',
+        'ok',
+        counts.total + ' identities',
+        counts.shared + ' shared',
+      ]);
     } catch (err) {
       // The Sheet write below (appendRunLog_) silently no-ops when LOG_SHEET_ID
       // isn't set, and catching here already suppresses the failure email Apps
@@ -55,8 +64,27 @@ function installAllSignatures() {
       // left: it lands in Apps Script Executions and Cloud Logging regardless
       // of whether the Sheet exists, so a bad run is never silent.
       console.error('installForUser_ failed for ' + user.primaryEmail + ': ' + err);
-      results.push([new Date(), user.primaryEmail, user.title || '(no title)', 'ERROR', String(err)]);
+      results.push([new Date(), user.primaryEmail, user.title || '(no title)', 'ERROR', String(err), '']);
     }
+  }
+
+  // SHARED_IDENTITIES only match here because they're currently sendAs aliases
+  // on dame@. The project plan converts them to real Google Groups, and a
+  // Group is not a sendAs identity -- once that happens this branch matches
+  // nothing for every user, every night, forever, and (without this check)
+  // the run still reports "ok" for everyone. Surface that loudly rather than
+  // relying on the README being read.
+  if (totalSharedInstalled === 0) {
+    console.warn(
+      'installAllSignatures: 0 shared-mailbox signatures installed across ' +
+        users.length +
+        ' user(s). Most likely cause: the SHARED_IDENTITIES addresses (support@, ' +
+        'sales@, etc.) are no longer Gmail send-as identities on any account -- ' +
+        'probably because they were converted to Google Groups, which do not ' +
+        'appear in settings/sendAs. Each member of the group must add and verify ' +
+        'the address themselves (Gmail Settings -> Accounts and Import -> Send ' +
+        'mail as) before a signature can be written to it.',
+    );
   }
 
   appendRunLog_(results);
@@ -81,13 +109,27 @@ function listDomainUsers_() {
       users.push({
         primaryEmail: u.primaryEmail,
         name: u.name && u.name.fullName ? u.name.fullName : u.primaryEmail,
-        title: u.organizations && u.organizations.length ? u.organizations[0].title : '',
+        title: primaryOrgTitle_(u.organizations),
       });
     });
     pageToken = page.nextPageToken;
   } while (pageToken);
 
   return users;
+}
+
+/**
+ * The Admin SDK Directory API does not guarantee organizations[0] is the
+ * user's primary organization -- a user with more than one entry can have
+ * their primary listed second (or later). Pick the entry marked primary;
+ * fall back to the first entry only when none is marked.
+ */
+function primaryOrgTitle_(organizations) {
+  if (!organizations || !organizations.length) return '';
+  for (var i = 0; i < organizations.length; i++) {
+    if (organizations[i].primary) return organizations[i].title || '';
+  }
+  return organizations[0].title || '';
 }
 
 /** Writes a signature to every send-as identity on one user's account. */
@@ -99,6 +141,7 @@ function installForUser_(user) {
   var token = getImpersonatedToken_(user.primaryEmail);
   var identities = gmailApi_(token, 'settings/sendAs', 'get').sendAs || [];
   var written = 0;
+  var sharedWritten = 0;
 
   for (var i = 0; i < identities.length; i++) {
     var identity = identities[i];
@@ -126,9 +169,10 @@ function installForUser_(user) {
       { signature: html },
     );
     written++;
+    if (shared) sharedWritten++;
   }
 
-  return written;
+  return { total: written, shared: sharedWritten };
 }
 
 function titleForShared_(email) {
