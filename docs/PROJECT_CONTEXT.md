@@ -96,6 +96,23 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### In flight
 
+- **Google Workspace corporate setup (Wave 1)** — the company's own Workspace: two shared drives,
+  nine Google Groups replacing personal aliases, brand assets, and email signatures that install
+  themselves. **The code half is built and unmerged; the admin-console half is not started and no
+  agent can do it** — shared drives, Groups, `adrian@`, and the service account are founder-only.
+  Shipped in the branch: PNG brand marks, a pure signature renderer (19 tests), and an Apps Script
+  installing signatures domain-wide nightly via domain-wide delegation, reading titles from the
+  **directory** so one place can be wrong instead of nine. Three founders' titles were in fact
+  stale in **nine** files — the live investor deck and all four `docs/hiring/` docs among them.
+  Two findings worth carrying: **webfonts do not render in email at all** (the brand type system
+  can only ever appear inside an image), and **a Google Group is not a send-as identity**, so the
+  planned alias→Group conversion would have made the installer report success while installing
+  zero shared-mailbox signatures — Codex refused the documentation-only fix an internal round had
+  accepted. **Pending (2026-08-20):** confirm the Workspace plan is Business Standard or above
+  (shared drives do not exist on Starter, and that collapses the whole structure); then the admin
+  spine; then Waves 2–3 (the People document set, and a *sendable* pitch deck — the current one is
+  a React component).
+  → `docs/wiki/concepts/workspace-email-signatures.md` · `docs/superpowers/specs/2026-08-20-google-workspace-corporate-setup-design.md`
 - **Tech department build-out** — hiring a PM, designer and 2 developers (Adrian sourcing, Joe
   raising); scope of work in `docs/DragonCandy_Tech_Department_Scope.md`. Audit-led first 90 days,
   one senior owning the codebase, Linear for tickets. The readiness work shipped with it closed a
@@ -337,7 +354,12 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   hub, Donny exports, metrics→Sheet. The `google-chat-donny` bot ships dark — **confirmed still
   dark 2026-08-07**: a POST to the function returns **HTTP 503**, so this entry is real.
   **Pending:** register the Chat app, set `GOOGLE_CHAT_PROJECT_NUMBER` +
-  `GOOGLE_ALLOWED_DOMAIN` — all blocked on creating the DragonCandy Workspace org.
+  `GOOGLE_ALLOWED_DOMAIN`. **This clause previously said all three were "blocked on creating
+  the DragonCandy Workspace org" — that blocker is GONE and had been for months.** The org
+  exists and has since at least 2026-08-10, recorded in `src/lib/contactAddresses.ts`, which
+  documents reading its admin console that day; the founder provisioned per-person mailboxes
+  on 2026-08-20. So this is now blocked on nothing but doing it — re-scope before acting on
+  it, because the reason it was parked no longer applies.
   → `docs/superpowers/specs/2026-06-11-google-workspace-connections-design.md`
 > **Edge secrets ARE verifiable — `supabase secrets list --project-ref <ref>`.** The entry that
 > used to sit here claimed the opposite ("edge secrets aren't listable… rests on founder knowledge,

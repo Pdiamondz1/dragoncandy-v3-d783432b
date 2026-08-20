@@ -1,5 +1,58 @@
 # Wiki Log
 
+## [2026-08-20] ingest | Email is not the web, and a Google Group is not a send-as identity
+
+Ingested `raw/sessions/2026-08-20-google-workspace-signatures-wave-1.md`. **New page**
+[[Workspace Email Signatures]], plus source [[Google Workspace Signatures Wave 1 Session]].
+Second session this week driven by hiring, after [[Local/Production Boundary & Repo Joinability]]
+and [[Cloud Platform Strategy]] — the founder set up the Workspace and asked for it to be
+organised properly before four people arrive.
+
+**The status split is the headline.** The code half shipped; the admin-console half — two shared
+drives, nine Google Groups, `adrian@`, the service account — **cannot be performed by any agent,
+connector or API available to a session**. That is not a limitation to work around, it is the
+shape of the work, and the plan marks every task AGENT / FOUNDER / BOTH so a subagent cannot
+claim a founder task is done.
+
+**Design knowledge worth keeping.** Webfonts do not render in email *at all* — DragonCandy's
+whole type system can only ever appear inside an image, which means signature options must be
+mocked in Arial or the mockup lies about the decision being made. Outlook for Windows renders
+mail with the Word engine (no WebP, no CSS layout). Dark-mode auto-inversion makes transparency
+load-bearing. Blocked images give the governing rule — **the image is never load-bearing** — and
+that rule is why the degrading design was chosen over the prettier one.
+
+**The finding that cost the most to see.** A Google Group is **not** a send-as identity. The
+shared addresses appear in Gmail's send-as list only because they are aliases on one account, and
+that list is exactly where the installer looks. The plan's own decision to convert them to Groups
+would therefore have made the installer report success while installing **zero** address-bearing
+signatures. An internal review round raised the hazard and accepted a **documentation-only** fix;
+**Codex refused it**, correctly — a doc does not make a silent failure visible. Resolved in three
+places at once: code warns, plan gains a founder step, spec records the interaction. And no
+automation can close it, because Gmail requires the account holder to complete verification.
+
+**Two traps that generalise.** *A 200 is not proof of a resource* — the signature's image URL
+returns HTTP 200 serving `index.html` before deploy, courtesy of the SPA catch-all, so a
+pre-deploy install caches a broken image behind a success status; check `content-type`. Same
+family as the `RCPT TO` lesson: when a probe cannot distinguish a true answer from a false one,
+change instrument. *A build step that exists is not one that runs* — the documented `clasp push`
+had no `.clasp.json` or `appsscript.json`, so it would have uploaded ES-module source and the
+vitest file, each a V8 syntax error failing the whole Apps Script project at load. The transform
+existed to prevent exactly that and was being bypassed by the documented procedure.
+
+**Also corrected:** three founders' titles, stale in **nine** files — `src/pitch/slides` (the live
+investor deck, where all three people were wrong) and all four `docs/hiring/` documents merged the
+day before in #452, which told candidates they report to a CPO who is the CTO.
+`Org_Staffing_Plan.html` was deliberately left alone: its labels encode a working arrangement
+across a three-phase org chart, not a title.
+
+**Refuted finding, recorded so it is not re-raised:** Codex's trailing-whitespace flag on
+`package.json` is not a defect — the file is CRLF on all 138 lines from this repo's Windows
+origin, and `git diff --check` reports the CR as trailing whitespace on any added line.
+
+Pages created: [[Workspace Email Signatures]], [[Google Workspace Signatures Wave 1 Session]]
+Pages updated: `index.md`
+
+
 ## [2026-08-20] ingest | A hiring pack that never held the money, and the cloud question answered instead of deferred
 
 Ingested `raw/sessions/2026-08-20-hiring-pack-and-cloud-platform-decision.md`. **New page**

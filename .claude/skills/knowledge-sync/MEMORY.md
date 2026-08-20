@@ -67,6 +67,14 @@
   `origin/main` having restructured PROJECT_CONTEXT under me (PR #294: §5 → index + `SHIPPED_LOG.md`);
   writing from the stale worktree would have produced an entry in the exact format #294 deleted, plus
   a conflict against a 100KB restructure. Rebase onto `origin/main` before authoring.
+- **[half-done-work] When a session builds only the half a machine CAN build, §5 must lead with
+  the split.** The 2026-08-20 Workspace session shipped a signature renderer and installer while
+  the shared drives, Google Groups and service account they depend on did not exist — and could
+  not be created by any agent, connector or API available to a session. An In-flight line that
+  describes the built half reads as "this is happening". The reader needs three facts in the
+  first sentence: what is built, what is not started, and that no agent can start it. Same
+  discipline as `[status-correction]`, applied to *scope* rather than *staleness*: a §5 line is
+  always loaded, so an over-reading of progress there costs every future session.
 - **[status-correction] A follow-up PR must EDIT the earlier §5 line, not append a second one.**
   §5 is an index of *current status* (its own header says "§5 wins on status"), and it is
   **always loaded**, so a stale entry there is worse than a stale one in `SHIPPED_LOG.md` — every
@@ -218,6 +226,32 @@
   from false*; here the instrument never addressed the question at all.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-20] Google Workspace Wave 1 (code half) — signatures, brand marks, nine stale titles
+- Output: `raw/sessions/2026-08-20-google-workspace-signatures-wave-1.md` → new concept
+  [[Workspace Email Signatures]] + source page; `index.md`; `log.md` top entry;
+  `SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5 In-flight entry + one stale clause corrected.
+- Happened: ran at branch finish, pre-merge, after Codex went clean at round 3.
+- Worked: the `[scope-paths]` lesson, run properly this time —
+  `git log HEAD..origin/main -- scripts/ public/brand/ src/pitch/ docs/hiring/ ...` came back
+  empty, so no parallel session had shipped this. Cost one command.
+- Worked: the `[gap-claims]` check before claiming a wiki gap — `git ls-tree origin/main` found
+  an existing `2026-06-20-aios-workspace-knowledge-merge` session, which on inspection is the
+  *product's* Drive integration, a different subject. Confirmed new-page rather than compound.
+- Worked: `[status-correction]` applied to someone else's entry. §5 said `google-chat-donny` was
+  "blocked on creating the DragonCandy Workspace org". The org has existed since at least
+  2026-08-10 — `src/lib/contactAddresses.ts` documents reading its admin console that day — so an
+  always-loaded doc had been telling every session a blocker was live for ~10 days after it
+  cleared. Edited in place, with the evidence, rather than appending.
+- Failed / notable: RAG sync deliberately NOT run — the branch is unmerged, and per `[rag-sync]`
+  the committed post-merge hook runs `sync:internal` + `sync:wiki` on the main fast-forward. The
+  verify-knowledge validator would be measuring an unmerged branch, so it is deferred to
+  post-merge rather than run against the wrong tree.
+- Remember: when the session's deliverable is only half of the planned work and the other half is
+  human-only, §5's entry must lead with that split. An In-flight line that describes the built
+  half reads as "this is happening"; the reader needs "this is built, that is not started, and no
+  agent can start it". → promoted to Lessons.
+
 
 ### [2026-08-19] Tech department scope + the repo not being joinable (`feat/tech-department-scope`, bundled INTO #451)
 

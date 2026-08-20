@@ -26,6 +26,101 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-20] Email is not the web — signatures that install themselves, and nine files that named the wrong CTO
+
+**Branch** `worktree-dc-google-workspace` · 11 commits · Codex clean at round 3 · 19 tests ·
+**not merged at time of writing, and only half the work**
+
+The founder set up DragonCandy's Google Workspace and asked for it to be organised "like an
+official cool corporate workspace" — Drive, documents, signatures, branding. Brainstormed to a
+spec (`2026-08-20-google-workspace-corporate-setup-design.md`), planned Wave 1, executed the
+four tasks an agent can actually do.
+
+**The status split is the most important line in this entry.** The *code* half is here. The
+*admin console* half — two shared drives, nine Google Groups, `adrian@dragoncandy.com`, the
+service account with domain-wide delegation — **cannot be performed by any agent, connector or
+API available to a session.** It is founder-owned and not started. Nothing described here is
+live. The plan marks every task AGENT / FOUNDER / BOTH for exactly this reason, with an explicit
+instruction that a subagent must not be allowed to report a FOUNDER task complete.
+
+**Shipped:** `public/brand/` PNG marks (104×122 and 440×512, alpha preserved);
+`scripts/workspace/signature.js` — a pure renderer with 19 tests; `scripts/workspace/Code.gs.js`
++ `build-gs.mjs` + a runbook — a Google Apps Script that reads the Workspace directory and writes
+every user's Gmail signature nightly via the Gmail API; and three founders' titles corrected
+across nine files. No migrations, no edge functions, no RLS changes.
+
+**Email is not the web, and nearly every design decision followed from that.** Gmail, Outlook
+and Apple Mail all strip `@font-face`, so Bricolage Grotesque / Instrument Sans / Silkscreen —
+the marketing identity the founder chose as the *company* identity — **cannot appear as text in
+a signature under any circumstances**, only inside an image. Signatures are Arial. A corollary
+that shaped how the options were presented: the mockups were rendered in Arial, because showing
+a founder a signature in a font the medium cannot render is a mockup that lies about the decision
+being made. Outlook for Windows uses the Word engine (no WebP — hence the PNG exports — and no
+CSS layout, hence tables). Dark-mode auto-inversion makes transparency load-bearing. And because
+many corporate inboxes block images by default, the governing rule is **the image is never
+load-bearing**: strip every image and the signature is still complete. That rule is why the
+degrading "Badge" design was chosen over the prettier lockup.
+
+**Google Workspace has no built-in signature management.** No admin setting applies a signature
+to everyone; the admin console's *Append footer* lands **below the entire quoted thread** and is
+not a signature. So the mechanism is the Gmail API plus a service account with domain-wide
+delegation — a genuine standing grant over every account in the domain, scoped to
+`gmail.settings.basic` only (the directory read runs as the script owner, a separate auth path;
+an earlier draft of the runbook would have had the reader delegate a domain-wide user-record read
+that nothing uses). Titles come from the **directory**, never a hardcoded list — one place a fact
+can be wrong, which is precisely the failure this session found nine instances of.
+
+**The sharpest finding, and Codex overruled me to get it.** A Google Group is **not** a send-as
+identity. `support@`, `sales@` et al. appear in Gmail's send-as list only because they are
+aliases on `dame@` — and that list is exactly where the installer looks. The same plan's decision
+to convert them to Groups would therefore have made the installer run, **report success, and
+install zero address-bearing signatures**, so the registered postal address would silently appear
+nowhere. An internal review round raised the hazard and accepted a **documentation-only** fix.
+Codex refused that, correctly: a doc does not make a silent failure visible. Now the code warns
+on a zero-shared run, the plan carries an explicit founder step, and the spec records why the two
+decisions interact. **No automation can close it** — Gmail requires the account holder to
+complete send-as verification.
+
+**Two traps that generalise past this work.** *A 200 is not proof of a resource*:
+`https://dragoncandy.com/brand/dc-mark-104.png` returns **HTTP 200 serving `index.html`** before
+the asset deploys, because of Vercel's SPA catch-all — so a pre-deploy install caches a broken
+image behind a success status. The check must be `content-type: image/png`. Same family as the
+`RCPT TO` lesson from the domain migration: when a probe cannot distinguish a true answer from a
+false one, change instrument. *A build step that exists is not a build step that runs*: the
+runbook documented `clasp push` while the repo shipped no `.clasp.json` and no `appsscript.json`,
+so clasp would have uploaded the ES-module source and the vitest file — each a V8 syntax error
+failing the whole Apps Script project at load. The transform existed specifically to prevent that
+and was being bypassed by the documented procedure.
+
+**Nine files named the wrong titles.** Dame is **CTO** (recorded as CPO), Juwan is **Co-founder**
+(recorded as Shareholder & Advisor), Joe is **CEO** (recorded in the deck as CRO). The plan named
+three files; a pre-flight scan found six more, including **all four `docs/hiring/` documents**
+merged the previous day in #452 — the pack Adrian forwards to candidates, telling applicants they
+report to a CPO who is the CTO — and `src/pitch/slides/slides.tsx`, the live investor deck, where
+all three people were wrong. Bounded away from the historical record on the domain migration's
+own rule (*undated present-tense claims move, dated and historical text stays*), so
+`docs/superpowers/**`, `docs/wiki/raw/**` and `docs/archive/**` keep the old titles.
+**`docs/DragonCandy_Org_Staffing_Plan.html` was deliberately left alone** and still says
+"Shareholder & Advisor": its labels encode a working arrangement across a three-phase org chart,
+not a title, and a pattern-match sweep would have destroyed the document's meaning.
+
+**One assumption, flagged rather than buried:** two *dated* bylines ("Written 2026-08-19 by
+Damon 'Dame' Williams, co-founder & CPO") were corrected on the assumption the repo recorded the
+title wrongly all along, rather than the title having changed this week. If it genuinely changed
+on 2026-08-20, those two now overstate when Dame became CTO.
+
+**Refuted finding, recorded so it is not re-raised:** Codex flagged trailing whitespace on the
+`package.json` line this work added. Not a defect — `package.json` is CRLF on all 138 lines from
+this repo's Windows origin, and `git diff --check` reports the CR as trailing whitespace on any
+added line in such a file. Converting it to LF would make it the only inconsistent line.
+
+**Gating everything:** shared drives require Business Standard or above. On Business Starter they
+do not exist and the whole two-drive structure collapses to a folder in one person's My Drive.
+Unverified at time of writing.
+
+→ `docs/wiki/concepts/workspace-email-signatures.md`
+
+
 ## [2026-08-19] A tech scope of work — and the repo it turned out we could not hand to anyone
 
 **PR #451** · branch `feat/tech-department-scope` · Codex clean at round 2 · CI green
