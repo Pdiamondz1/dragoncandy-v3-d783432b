@@ -96,27 +96,38 @@ Business Starter they do not exist, and §4 of the spec has no valid
 implementation — the fallback is a folder in `dame@`'s My Drive, which the spec
 records as materially worse because every file would be owned by one person.
 
-- [ ] **Step 1: Read the current plan**
+> **RESOLVED 2026-08-20 — the plan is Business Standard, founder-confirmed.** Shared drives
+> are included, so §4's two-drive structure holds as designed and Tasks 6–9 are unblocked.
+> No upgrade needed. Step 2 below is still worth thirty seconds (see why), but the gate is open.
+
+- [x] **Step 1: Read the current plan**
 
 Go to `admin.google.com` → **Billing** → **Subscriptions**. Read the plan name
 on the Google Workspace line.
 
+**Result: Business Standard.**
+
 - [ ] **Step 2: Confirm shared drives are actually available**
 
 Go to `drive.google.com` and look for **Shared drives** in the left sidebar.
-Presence of that section is the real test — the billing page tells you the SKU,
-the sidebar tells you whether the feature is switched on for your account.
 
-- [ ] **Step 3: Report the result**
+**Do this even though the SKU is confirmed.** The billing page tells you the plan
+includes the feature; the sidebar tells you whether it is switched on *for your
+account*. Admin → Apps → Google Workspace → Drive and Docs → **Sharing settings**
+has a per-OU toggle, *"Allow users to create shared drives"*, which an admin can
+turn off — and on some tenants it starts off. If the section is missing, that
+toggle is the first place to look, not the billing page.
 
-Paste back: the plan name, and whether "Shared drives" appears in the sidebar.
+- [x] **Step 3: Report the result**
 
-**STOP IF:** the plan is Business Starter, or the sidebar has no Shared drives
-section. Do not proceed to Task 6. Bring it back to the session — the choice is
-an upgrade (about $5/user/month more) versus falling back to a My Drive folder,
-and that is a founder decision, not an implementation detail.
+Plan name reported. Sidebar check outstanding (Step 2).
 
-**Tasks 2–5 do not depend on this** and can run in parallel.
+**STOP IF:** the sidebar has no Shared drives section *and* the sharing-settings
+toggle above cannot be turned on. Do not proceed to Task 6 in that case — the
+fallback is a My Drive folder, which the spec records as materially worse because
+every company file would be owned by one person's account.
+
+**Tasks 2–5 do not depend on this** and are already complete (PR #453).
 
 ---
 
