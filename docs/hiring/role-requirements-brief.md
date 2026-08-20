@@ -3,7 +3,7 @@
 **Safe to forward.** This document contains no salary or budget information. Send it to
 candidates, recruiters and development agencies as-is.
 
-Written 2026-08-20 by Damon "Dame" Williams, co-founder & CPO.
+Written 2026-08-20 by Damon "Dame" Williams, co-founder & CTO.
 Questions: Dame (product and technical) or Adrian Vella (sourcing).
 
 ---

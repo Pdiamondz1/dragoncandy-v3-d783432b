@@ -18,9 +18,9 @@ facts and roles below intact when adapting.
 
 - **Joe Castelo** — CEO. Seasoned entrepreneur; ran a production company and
   owns restaurants in Hoboken. The spark (March 2025).
-- **Juwan Robinson** — Shareholder & Advisor. Co-explored the original
+- **Juwan Robinson** — Co-founder. Co-explored the original
   content-creator-agency idea with Joe.
-- **Damon "Dame" Williams** — Co-founder & CPO. Senior software engineer,
+- **Damon "Dame" Williams** — Co-founder & CTO. Senior software engineer,
   remote out of Sweven in Hoboken; brought in for the AI/engineering bet.
 - The pivot: content-creator **agency → AI-run SaaS**. The three traded ideas
   for **weeks** before the shape settled.

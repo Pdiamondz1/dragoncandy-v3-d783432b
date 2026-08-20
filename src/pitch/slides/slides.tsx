@@ -483,17 +483,17 @@ export function SlideTeam({ index, total }: SlideProps) {
   const team = [
     {
       name: "Damon “Dame” Williams",
-      role: "Co-founder · CPO",
+      role: "Co-founder · CTO",
       body: "Product and platform — architect of the DragonCandy experience and the Donny AI intelligence layer.",
     },
     {
       name: "Joe Castelo",
-      role: "Co-founder · CRO",
+      role: "Co-founder · CEO",
       body: "Sales & partnerships. 70-year Hoboken hospitality family; award-winning operator and dealmaker.",
     },
     {
       name: "Juwan Robinson",
-      role: "Shareholder & Advisor",
+      role: "Co-founder",
       body: "Strategic guidance and capital network across the growth roadmap.",
     },
   ];

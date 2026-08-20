@@ -6,7 +6,7 @@
 Eastern).
 **Engagement:** Paid two-week trial → 6-month contract → extend or convert to permanent.
 **Start:** Target Q4 2026.
-**Reports to:** Dame Williams, co-founder & CPO.
+**Reports to:** Dame Williams, co-founder & CTO.
 
 ---
 

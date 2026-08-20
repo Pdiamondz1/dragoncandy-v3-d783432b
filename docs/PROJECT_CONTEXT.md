@@ -33,9 +33,9 @@ and Brand/Sponsor — through a hybrid marketplace model. Restaurants are the
 beachhead.
 
 **Co-founders**
-- Damon "Dame" Williams — co-founder, CPO
+- Damon "Dame" Williams — co-founder, CTO
 - Joe Castelo — CEO, Sales & Partnerships
-- Juwan Robinson — Shareholder & Advisor
+- Juwan Robinson — co-founder
 
 **Core product logic**
 - **Donny AI** is the intelligence layer: campaign generation, creator

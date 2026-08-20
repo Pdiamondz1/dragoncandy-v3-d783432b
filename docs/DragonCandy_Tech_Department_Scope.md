@@ -1,6 +1,6 @@
 # DragonCandy — Tech Team: What We Need, Who We Hire, How They Work
 
-**Confidential.** Written 2026-08-19 by Damon "Dame" Williams, co-founder & CPO.
+**Confidential.** Written 2026-08-19 by Damon "Dame" Williams, co-founder & CTO.
 For Joe (raising the money), Adrian (finding the people), and candidates under NDA.
 
 > **Section 7 is compensation. Remove it before you forward this to anyone outside the company.**

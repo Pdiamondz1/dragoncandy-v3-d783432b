@@ -5,7 +5,7 @@
 **Location:** United States, or working US hours. Our customers are American restaurant owners.
 **Engagement:** Paid two-week trial → 6-month contract → extend or convert to permanent.
 **Start:** Target Q4 2026. You start before the developers do.
-**Reports to:** Dame Williams, co-founder & CPO.
+**Reports to:** Dame Williams, co-founder & CTO.
 
 ---
 
