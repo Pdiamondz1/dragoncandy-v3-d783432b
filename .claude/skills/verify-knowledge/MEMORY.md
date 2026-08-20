@@ -70,6 +70,28 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-08-19] Tech department scope session (`feat/tech-department-scope`, PR #451, pre-merge)
+
+- **Output:** the verdict block emitted in-session — `done:false`, with (a) and (c) `met:true` and
+  (b) **BLOCKED**, not failed.
+- **Happened:** (a) 0 critical — the strict patterns (`Lovable auto-deploys`, `Lovable ships the`,
+  `Prod is Lovable`) return nothing anywhere; the only survivors are a struck `~~…~~` decision line,
+  the cutover runbook that legitimately narrates the history, and immutable `raw/`. Index-complete:
+  0 orphans by path. (c) both session pages (`concepts/local-prod-boundary.md` new,
+  `concepts/qa-cicd-gate.md` compounded) present in `index.md` and `log.md`.
+- **Failed:** (b) could not run. **No prod credential on this machine** — no
+  `supabase/scripts/.env.sync.local`, `SUPABASE_SECRET_KEY` unset — so `donny_knowledge` is
+  unreachable and the content probe could not be issued. Reported BLOCKED with `met:false` per the
+  rules, **not** passed by default.
+- **Remember:** a **pre-merge** run of this validator can essentially never return `done:true` on
+  (b), and that is correct rather than a defect. (b) compares the RAG to **`origin/main`**, the
+  branch's pages are not on `origin/main` yet, and the sync itself is the post-merge hook's job. The
+  useful pre-merge signal is (a) + (c); treat a blocked (b) here as *"re-run after merge"*, and do
+  **not** burn fix-loop iterations on it — the remediation is a credential plus a merge, neither of
+  which the loop can supply. Worth considering whether this skill should take an explicit
+  `pre-merge` mode that marks (b) `n/a` instead of `false`, so the verdict stops reading as a
+  failure when nothing is wrong.
+
 ### [2026-08-11] Post-merge verify for PR #445 (legal-entity knowledge-sync, after #439)
 - Output: verdict block `done:true` — all three checks met. (a) 114 pages on disk, **0** absent
   from `index.md`; (b) content probe `Delaware-formed` → 2 rows; (c) the session's page in both
