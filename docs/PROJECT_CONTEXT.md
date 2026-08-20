@@ -101,9 +101,24 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   one senior owning the codebase, Linear for tickets. The readiness work shipped with it closed a
   live hazard: **`npm run dev` connected to the PRODUCTION database** (tracked `.env` + a prod
   fallback), plus the repo had no `CONTRIBUTING.md`/architecture map/first-week guide and a README
-  describing a product that does not exist. **Pending (2026-08-19):** merge #451; untracking `.env`
-  (needs Vercel-scope confirmation first — it may carry Maps/reCAPTCHA keys); rotating the committed
-  staging password. → `docs/wiki/concepts/local-prod-boundary.md` · #451
+  describing a product that does not exist. **#451 MERGED** (`eac76c5d`, verified in prod) — this
+  line previously read "**Pending:** merge #451". **#452 (open, 2026-08-20)** adds the pieces the
+  scope doc structurally could not: a `docs/hiring/` pack that **never contained the money** (the
+  scope doc's "delete section 7 before forwarding" is a promise someone eventually forgets — verified
+  clean by `grep -rn '\$' docs/hiring/`), four postable job descriptions, and the **cloud decision**,
+  answered rather than deferred — *we are already on AWS and do not manage it* (Supabase deploys only
+  to AWS regions; Vercel's functions run on AWS), infra is **0.4–1.3% of projected revenue** at every
+  modelled scale point, and the 200K run used **27 of 90 DB connections**. The premise it was asked
+  under ("Azure is the most secure") did not survive checking, and the decisive evidence is negative:
+  **none of our real security defects were cloud defects — every one would have existed identically
+  on Azure.** Six numeric triggers + a staged exit (Team $599 → Enterprise BYO-cloud → self-host →
+  decompose) make it a decision with an expiry rather than a default. Also fixed the founder's stated
+  overlap hours (a "4 hour" window that yields 3) — **both timezones now printed everywhere so the
+  arithmetic is self-checking**. **Pending (2026-08-20):** merge #452; untracking `.env` (needs
+  Vercel-scope confirmation first — it may carry Maps/reCAPTCHA keys); rotating the committed staging
+  password; and reconciling the capacity report's **$49/mo** Supabase Small compute against
+  Supabase's published **$15** (remedy: read the invoice).
+  → `docs/wiki/concepts/local-prod-boundary.md` · `docs/wiki/concepts/cloud-platform-strategy.md` · #451, #452
 - **Content delivery system stabilization** — bug-fixing the creator→business content
   handoff and payment flow; gates production launch. → `docs/SHIPPED_LOG.md`
 - **Outstand social media integration** — IG/TikTok/YouTube linking + delegated posting;

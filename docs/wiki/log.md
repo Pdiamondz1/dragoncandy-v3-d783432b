@@ -1,5 +1,38 @@
 # Wiki Log
 
+## [2026-08-20] ingest | A hiring pack that never held the money, and the cloud question answered instead of deferred
+
+Ingested `raw/sessions/2026-08-20-hiring-pack-and-cloud-platform-decision.md`. **New page**
+[[Cloud Platform Strategy]]. Sibling to yesterday's [[Local/Production Boundary & Repo Joinability]] —
+same trigger, the hiring plan, auditing something nobody had looked at.
+
+**Two durable findings.**
+
+*"Remove section N before forwarding" is not a redaction strategy* — it is a promise someone will
+eventually forget to keep, and the moment they do there are two documents and only one is
+maintained. The scope doc from #451 carried compensation with exactly that instruction. Fixed by
+writing `docs/hiring/` as a **separate artifact that never contained the money** (verified
+mechanically: `grep -rn '\$' docs/hiring/` → nothing), rather than by trusting the instruction.
+
+*A technically-true answer that sets expectations wrongly costs more than an obviously wrong one,
+because nobody checks it.* Adrian's agency template had a `Cloud - aws` line. Filling it in as
+written would have been accurate — Supabase and Vercel both run on AWS — and would have produced
+infrastructure-engineer candidates for a company with no cloud account.
+
+**The cloud decision itself** is recorded on the new page with six numeric triggers and a staged
+exit. Its strongest evidence is negative and worth repeating: **none of our real security defects
+were cloud defects**, and the largest measured difference between clouds turns out to measure
+customer configuration rather than platform security.
+
+**Two numbers left deliberately unresolved rather than guessed:** the capacity report's $49/mo for
+Supabase Small compute versus Supabase's published $15 (remedy named — read the invoice), and the
+founder's "4 hours of overlap" stated alongside a window that yields 3. The second was caught before
+it reached a document going to a board member and four agencies; **the adopted remedy is to print
+both timezones everywhere so the arithmetic is self-checking rather than trusted.**
+
+Pages: **created** `concepts/cloud-platform-strategy.md`; **updated** `index.md`, `log.md`,
+`docs/PROJECT_CONTEXT.md` §5.
+
 ## [2026-08-19] ingest | The repo could not be handed to anyone, and the guard that found out failed open
 
 Ingested `raw/sessions/2026-08-19-tech-department-scope-and-repo-joinability.md`. **New page**

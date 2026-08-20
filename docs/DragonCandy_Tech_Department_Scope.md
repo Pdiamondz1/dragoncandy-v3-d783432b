@@ -5,6 +5,14 @@ For Joe (raising the money), Adrian (finding the people), and candidates under N
 
 > **Section 7 is compensation. Remove it before you forward this to anyone outside the company.**
 
+**There is a forwardable version of all of this.** `docs/hiring/` holds a short brief written for
+recruiters and development agencies, plus one job description per role. They contain **no salary
+information at all**, so they can be sent to anyone without editing:
+
+- `docs/hiring/role-requirements-brief.md` — the one-pager for Adrian to forward
+- `docs/hiring/senior-developer.md`, `mid-level-developer.md`, `product-manager.md`,
+  `ux-designer.md` — postable job descriptions
+
 ---
 
 ## The short version
@@ -179,6 +187,11 @@ the parts that move money.
   data.
 - Experience with Stripe payments or something similar
 - The judgment to work inside a large existing codebase instead of wanting to rewrite it
+- **Fluent with AI coding tools — Claude Code, Claude Cowork and OpenAI Codex.** This one is a hard
+  requirement rather than a preference, and it's worth explaining why. Every branch here is reviewed
+  automatically by Codex before a human is allowed to approve it, and by a second AI model before
+  that. Most of the existing code was written this way. A developer who won't use these tools can't
+  pass our pipeline and will be slower here than at their last job. Cursor experience is a bonus.
 
 The bar comes from the work, not from preference. Recent jobs here have included closing security
 holes that let one customer reach another's data, and making creator payouts safe against being
@@ -189,7 +202,8 @@ paid twice or not at all.
 ### Mid-Level Developer
 
 Works the audit list and bug fixes, reviewed by the senior developer. Solid React and TypeScript,
-willing to learn the database properly, and careful. Grows into owning part of the system.
+willing to learn the database properly, and careful. Grows into owning part of the system. Same AI
+tooling requirement as above — it applies to everyone who writes code here.
 
 ### What Dame does
 
@@ -214,6 +228,24 @@ metered, and is capped at 15% of revenue.
 **Phone app:** Capacitor, which wraps the website into a real iPhone app. Already runs on a device.
 
 **Other:** Outstand.so for social posting, Google Maps, Toast for restaurant point-of-sale.
+
+### Which cloud we're on — and why we're not moving
+
+**We're already on AWS, and we don't manage it.** Supabase runs only on AWS, and Vercel runs on AWS
+too. So the answer to "which cloud" is Amazon, indirectly. There is no cloud account to log into, no
+servers to patch, no Kubernetes. That's a large part of why one person could run this at all.
+
+**We're not planning to move, and we're not locked in.** Moving to a self-managed cloud would cost
+about a quarter of our senior developer's first year to optimise a line item worth **under 1% of
+revenue** at every scale we've modelled. Supabase is open source and offers a bring-your-own-cloud
+tier, so the exit exists if we need it.
+
+The full reasoning, the numbers, and the specific triggers that would change the answer are in
+`docs/superpowers/specs/2026-08-20-cloud-platform-strategy-design.md`. **Short version for an
+investor:** it's a decision we made and wrote down, not one we've avoided.
+
+One consequence for hiring: **we are not looking for a DevOps or cloud infrastructure engineer.** We
+need application and database depth.
 
 ### Where the difficulty actually is
 
@@ -295,6 +327,36 @@ into Donny's own knowledge. **The product learns from how it was built.**
 Two-week cycles. Planning Monday, demo Friday. Written updates by default rather than meetings —
 the team will span New Jersey and Europe. We keep meetings light on purpose, because the automated
 checks catch problems, not the meetings.
+
+### Working hours
+
+Central Europe is **6 hours ahead of US Eastern, all year round.** Both times are written out
+everywhere so nobody has to do the arithmetic.
+
+| | Central European | US Eastern |
+|---|---|---|
+| **Working day** | 12:00 – 18:00 | 06:00 – 12:00 |
+| **Meetings and calls** | 13:00 – 17:00 | 07:00 – 11:00 |
+
+That's about **three hours of live overlap** every day, placed in the European afternoon so nobody
+in Europe works late. Dame starts at 06:00 US Eastern to meet it. Adrian is in Malta, which is on
+the same clock as the rest of Central Europe.
+
+Everything outside that window is asynchronous and written.
+
+### Start date, length, and extending
+
+| | |
+|---|---|
+| **Start** | Target Q4 2026, gated on funding closing |
+| **Order** | Product manager and designer first. Developers 30 days later. |
+| **Trial** | **Paid two-week trial** on a real ticket from the audit backlog, at full rate |
+| **Initial term** | **6 months** after a successful trial |
+| **After that** | Extend, or convert to permanent |
+
+Six months is chosen deliberately. It's long enough that a development agency commits a good person
+rather than whoever is on the bench, it covers the audit and the fix work, and it gives us a clean
+exit if it isn't working.
 
 ### Why a good engineer would want this job
 
@@ -389,7 +451,12 @@ The code isn't safe to hand out yet. This is about a week of work and it's alrea
 **Joe** — money for a team costing $450–500K a year, ideally 18 months of runway. Because the audit
 comes first, the first 30 days are the cheapest. That helps stage the raise.
 
-**Adrian** — candidates for all four roles, weighted towards the senior developer.
+**Adrian** — candidates for all four roles, weighted towards the senior developer. Everything you
+asked for is answered in `docs/hiring/role-requirements-brief.md`, which has no money in it and is
+safe to forward exactly as it is. One correction to the template you sent: **don't tell people the
+cloud is AWS and leave it there.** It's technically true — Supabase and Vercel both run on AWS — but
+we don't operate a cloud account, so an agency will send us an infrastructure engineer we can't use.
+The brief says this properly.
 
 On the development agencies (Root Codex, Alan Systems, EPAM): they're welcome to bid, and the same
 paid two-week trial applies. But we need one person who owns the code and stays. An agency working
