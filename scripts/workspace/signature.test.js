@@ -3,6 +3,19 @@ import { renderSignature, escapeHtml, BRAND } from './signature.js';
 
 const DAME = { name: 'Damon Williams', title: 'CTO', email: 'dame@dragoncandy.com' };
 
+describe('BRAND', () => {
+  it('is frozen so Object.freeze cannot be accidentally removed', () => {
+    expect(Object.isFrozen(BRAND)).toBe(true);
+    const originalValue = BRAND.nameColor;
+    try {
+      BRAND.nameColor = '#000000';
+    } catch {
+      // in strict mode, assignment throws; we just want to verify the value didn't change
+    }
+    expect(BRAND.nameColor).toBe(originalValue);
+  });
+});
+
 describe('escapeHtml', () => {
   it('escapes the five characters that break HTML attributes and text', () => {
     expect(escapeHtml('&<>"\'')).toBe('&amp;&lt;&gt;&quot;&#39;');
