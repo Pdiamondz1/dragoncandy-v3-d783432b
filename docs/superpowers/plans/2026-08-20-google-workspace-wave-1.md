@@ -477,7 +477,7 @@ export function renderSignature({ name, title, email, includeAddress = false }) 
 npx vitest run scripts/workspace/signature.test.js
 ```
 
-Expected: PASS, 15 tests.
+Expected: PASS, 15 tests (16 after Task 3's fix round adds the BRAND-frozen test).
 
 - [ ] **Step 5: Eyeball the output once**
 
@@ -919,7 +919,7 @@ a plain global).
 npx vitest run scripts/workspace/signature.test.js
 ```
 
-Expected: PASS, 15 tests. The build step must not have changed the source.
+Expected: PASS, 16 tests. The build step must not have changed the source.
 
 - [ ] **Step 7: Ignore the generated directory**
 
