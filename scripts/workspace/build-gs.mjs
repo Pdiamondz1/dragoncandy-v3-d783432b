@@ -39,4 +39,29 @@ for (const [from, to] of [
   console.log(`  ${from} -> dist/${to}`);
 }
 
+// appsscript.json is the Apps Script project manifest -- clasp push requires
+// one at the root of whatever directory `rootDir` points at. Written here,
+// not hand-maintained, so it travels with the two generated .gs files.
+const manifest = {
+  timeZone: 'America/New_York',
+  exceptionLogging: 'STACKDRIVER',
+  runtimeVersion: 'V8',
+  dependencies: {
+    enabledAdvancedServices: [
+      {
+        userSymbol: 'AdminDirectory',
+        serviceId: 'admin',
+        version: 'directory_v1',
+      },
+    ],
+  },
+  oauthScopes: [
+    'https://www.googleapis.com/auth/admin.directory.user.readonly',
+    'https://www.googleapis.com/auth/script.external_request',
+    'https://www.googleapis.com/auth/spreadsheets',
+  ],
+};
+writeFileSync(join(dist, 'appsscript.json'), JSON.stringify(manifest, null, 2) + '\n');
+console.log('  (generated) -> dist/appsscript.json');
+
 console.log('Ready for: cd scripts/workspace && clasp push');

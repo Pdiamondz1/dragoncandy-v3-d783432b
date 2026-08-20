@@ -110,6 +110,40 @@ describe('renderSignature', () => {
     expect(html).not.toMatch(/\+?\d[\d\s().-]{8,}\d/);
   });
 
+  // --- showCompany option (shared-mailbox redundancy fix) ---
+
+  it('appends " · DragonCandy" to the title by default', () => {
+    const html = renderSignature(DAME);
+    expect(html).toContain('CTO &middot; DragonCandy');
+  });
+
+  it('omits the " · DragonCandy" suffix when showCompany is false', () => {
+    const html = renderSignature({
+      name: 'DragonCandy Support',
+      title: 'Shared mailbox',
+      email: 'support@dragoncandy.com',
+      includeAddress: true,
+      showCompany: false,
+    });
+    expect(html).toContain('>Shared mailbox<');
+    expect(html).not.toContain('&middot; DragonCandy');
+  });
+
+  it('keeps "DragonCandy" out of the rendered text more than once for a shared identity', () => {
+    const html = renderSignature({
+      name: 'DragonCandy Support',
+      title: 'Shared mailbox',
+      email: 'support@dragoncandy.com',
+      includeAddress: true,
+      showCompany: false,
+    });
+    // The image alt text also says "DragonCandy" -- strip the <img> tag before
+    // counting, since alt text isn't rendered text a recipient reads.
+    const textOnly = html.replace(/<img[^>]*>/, '');
+    const occurrences = (textOnly.match(/DragonCandy/g) || []).length;
+    expect(occurrences).toBe(1);
+  });
+
   // --- size ---
 
   it('stays well under the Gmail signature field cap', () => {

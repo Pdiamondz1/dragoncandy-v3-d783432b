@@ -61,9 +61,16 @@ function textRow(content, { size, color, weight = 'normal', lineHeight }) {
  * @param {string} person.email  Address this signature signs off as.
  * @param {boolean} [person.includeAddress]  True for shared send-as identities
  *   (sales@, legal@, privacy@ ...). Personal signatures never carry it.
+ * @param {boolean} [person.showCompany]  True appends " &middot; DragonCandy"
+ *   to the title line, e.g. "CTO &middot; DragonCandy" -- correct for a
+ *   personal signature, where the company name has not appeared yet. False
+ *   omits the suffix. Shared-mailbox names already read "DragonCandy Support",
+ *   so the suffix would repeat the company a second (or third, counting the
+ *   image alt) time in the same block; pass false there. Defaults to true so
+ *   every existing call site and test is byte-unchanged.
  * @returns {string} Signature HTML, safe to write to Gmail settings.sendAs.
  */
-export function renderSignature({ name, title, email, includeAddress = false }) {
+export function renderSignature({ name, title, email, includeAddress = false, showCompany = true }) {
   const safeName = escapeHtml(name);
   const safeTitle = escapeHtml(title);
   const safeEmail = escapeHtml(email);
@@ -74,7 +81,7 @@ export function renderSignature({ name, title, email, includeAddress = false }) 
 
   const rows = [
     textRow(safeName, { size: 14, color: BRAND.nameColor, weight: 'bold', lineHeight: 19 }),
-    textRow(`${safeTitle} &middot; ${BRAND.company}`, {
+    textRow(showCompany ? `${safeTitle} &middot; ${BRAND.company}` : safeTitle, {
       size: 13,
       color: BRAND.softColor,
       lineHeight: 18,

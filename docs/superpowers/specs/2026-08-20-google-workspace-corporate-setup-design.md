@@ -262,9 +262,11 @@ Taken verbatim from `tailwind.config.ts` — this spec introduces no new colours
 as Google Fonts, which is what makes them usable in Google Docs and Slides.
 
 **The two-tone rule** — a 3–4px bar, 62% `#F43F7F` then 38% `#2FC796` — is the
-recurring device tying signatures and templates together. In email it is built
-from two table cells with background colours, which every mail client renders
-correctly; this is why it can carry brand where a logo cannot.
+recurring device tying the document and deck templates (§7.4) together, and
+also appears in the Option C signature variant (§7.3). It is built from two
+table cells with background colours, which every mail client and Google Docs
+renders correctly. The shipped Option B signature (§7.3) does not carry the
+bar — the founder chose Option B specifically, without it.
 
 ### 7.2 Logo assets to produce
 

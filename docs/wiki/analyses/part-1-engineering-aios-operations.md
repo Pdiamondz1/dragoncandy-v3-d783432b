@@ -23,7 +23,7 @@ The core philosophy from our strategy docs: **AI agents do the work of 4–6 dev
 
 **The Engineering Team (NYC-metro rates, below-median seed comp):**
 
-- **Dame (Co-Founder/CPO)** — Day 0, always — product, architecture, Claude Code direction. $90–110K base
+- **Dame (Co-Founder/CTO)** — Day 0, always — product, architecture, Claude Code direction. $90–110K base
 - **AI Developer** — Month 0–1 — owns Donny AI, the fine-tuning roadmap, the AIOS super-agent program, and all 73 edge functions. $165K base / ~$215K loaded. This is the highest-leverage hire in the company
 - **Back-End Engineer** — Month 0–1 — database, functionality, Supabase, RLS, API integrations. $150K base / ~$195K loaded
 - **Front-End Engineer** — Month 1–2 — owns the UI/UX, the <10-keystroke North Star flows, iOS Capacitor surfaces. $140K base / ~$182K loaded

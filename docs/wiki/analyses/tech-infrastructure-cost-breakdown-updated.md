@@ -273,7 +273,7 @@ iOS Capacitor Phase 1 is already shipped. Incremental spend covers the Android w
 
 | Role | NYC Median Base | Loaded Annual Cost | Hire | Rationale |
 | :---- | :---- | :---- | :---- | :---- |
-| Back-End Engineer (DB / Functionality) | \~$180K | \~$234K | Mo 0–1 | Core build capacity alongside Dame (CPO) |
+| Back-End Engineer (DB / Functionality) | \~$180K | \~$234K | Mo 0–1 | Core build capacity alongside Dame (CTO) |
 | AI Developer | \~$180K | \~$234K | Mo 0–1 | Highest-leverage hire — owns Donny, model routing, the §4 program, fine-tuned model roadmap |
 | Front-End Engineer (UX/UI) | \~$175K | \~$228K | Mo 1–2 | Owns the \<10-keystroke North Star surfaces; “less typing \= more margin” UX thesis |
 | App Administrator / DevOps | \~$162K | \~$211K | Mo 2–3 | Runs scaling, uptime, auto-improvement agent compute (contract first, then FTE) |
@@ -281,7 +281,7 @@ iOS Capacitor Phase 1 is already shipped. Incremental spend covers the Android w
 | Product Manager | \~$175K | \~$228K | Mo 6 | Dame covers product early; formalize as surface area grows (contract → FTE) |
 | Sales AE (under Joe, CEO) | \~$80K base | \~$104K base / $150–180K OTE | Mo 4–6 | Gated: hired only after founder-led selling \+ paid ads prove a repeatable message |
 | Auto-Improvement Agents | compute | \~$1.5–3K/mo | Mo 0 | Bug-fix, maintenance, auto-scaling, security/perf scans — work of 4–6 devs, funded as AI compute, NOT headcount |
-| Founders — Dame (CPO) \+ Joe (CEO) | \~$90–110K ea | \~$120–140K ea | Mo 0 | Modest during runway per staffing plan Stage 2 |
+| Founders — Dame (CTO) \+ Joe (CEO) | \~$90–110K ea | \~$120–140K ea | Mo 0 | Modest during runway per staffing plan Stage 2 |
 | Bookkeeper | part-time | \~$20–30K/yr | Mo 0 | Part-time contract |
 
 ### **Staffing Summary (Option A — NYC Median)**

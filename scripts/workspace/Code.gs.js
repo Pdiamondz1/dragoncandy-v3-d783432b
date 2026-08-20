@@ -49,6 +49,12 @@ function installAllSignatures() {
       var count = installForUser_(user);
       results.push([new Date(), user.primaryEmail, user.title || '(no title)', 'ok', count + ' identities']);
     } catch (err) {
+      // The Sheet write below (appendRunLog_) silently no-ops when LOG_SHEET_ID
+      // isn't set, and catching here already suppresses the failure email Apps
+      // Script would otherwise send the trigger owner. console.error is what's
+      // left: it lands in Apps Script Executions and Cloud Logging regardless
+      // of whether the Sheet exists, so a bad run is never silent.
+      console.error('installForUser_ failed for ' + user.primaryEmail + ': ' + err);
       results.push([new Date(), user.primaryEmail, user.title || '(no title)', 'ERROR', String(err)]);
     }
   }
@@ -99,11 +105,18 @@ function installForUser_(user) {
     if (identity.verificationStatus === 'pending') continue;
 
     var shared = isSharedIdentity_(identity.sendAsEmail);
+    // Shared mailboxes fold the mailbox's purpose into the name line
+    // ("DragonCandy Support") and use a generic second line, with
+    // showCompany:false so renderSignature doesn't append "&middot; DragonCandy"
+    // a second time -- see signature.js and the note on renderSignature's
+    // showCompany option. Personal signatures are unaffected: shared stays
+    // false, showCompany defaults to true, output is byte-identical to before.
     var html = renderSignature({
-      name: shared ? 'DragonCandy' : user.name,
-      title: shared ? titleForShared_(identity.sendAsEmail) : user.title,
+      name: shared ? 'DragonCandy ' + titleForShared_(identity.sendAsEmail) : user.name,
+      title: shared ? 'Shared mailbox' : user.title,
       email: identity.sendAsEmail,
       includeAddress: shared,
+      showCompany: !shared,
     });
 
     gmailApi_(
@@ -214,7 +227,15 @@ function appendRunLog_(rows) {
   }
 }
 
-/** Run this by hand first. Reports what WOULD change, writes nothing. */
+/**
+ * Run this by hand first. Checks that the Admin SDK Directory read works and
+ * that every user has a title set. Writes nothing.
+ *
+ * What this does NOT check: it never mints an impersonation token, so it
+ * cannot detect a missing, malformed or revoked service-account key -- that
+ * only happens in installForUser_(), during a real install. A clean dryRun()
+ * does not mean the Gmail API side of this is working.
+ */
 function dryRun() {
   var users = listDomainUsers_();
   users.forEach(function (u) {
