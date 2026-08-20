@@ -1257,10 +1257,40 @@ function nobody will notice failing.
 `admin.google.com` → Directory → Users → `dame@` → User information → Email
 aliases. Expected: **empty**, or only aliases deliberately kept.
 
-- [ ] **Step 6: Report back**
+- [ ] **Step 6: Re-add each shared address as a send-as identity — Task 10 silently does nothing without this**
+
+**A Google Group is not a send-as identity.** While `support@`, `sales@` and the
+rest were *aliases on `dame@`*, they appeared automatically in Gmail's send-as
+list, which is how the signature script finds them. Converting them to Groups in
+Step 1 **removes them from every user's send-as list.**
+
+The consequence is specific and easy to miss: Task 10's installer will run,
+report success, and install **zero** shared-mailbox signatures — so the
+registered postal address that spec decision 7 puts on shared identities never
+appears anywhere. The script now logs a warning when this happens, but the
+warning is a smoke alarm, not a fix.
+
+For each person who should be able to send as a shared address, on **their own
+account**: Gmail → Settings → Accounts and Import → *Send mail as* → **Add
+another email address**. Enter the shared address, uncheck "Treat as an alias"
+only if they want replies to go to the Group, and complete the verification.
+
+Minimum set, matching the group memberships in Step 1:
+
+| Person | Should be able to send as |
+|---|---|
+| Dame | `support@`, `admin@`, `appstore@`, `privacy@`, `legal@`, `info@` |
+| Joe | `sales@`, `info@`, `privacy@`, `legal@` |
+
+**Nobody but the account holder can do this step** — Gmail requires the owner to
+complete verification, and no API and no admin can do it for them. That is why
+it is a founder task and not something the script can absorb.
+
+- [ ] **Step 7: Report back**
 
 Paste: the nine groups with their member counts, confirmation that all nine
-received an external test, and the `admin@` result from Step 4.
+received an external test, the `admin@` result from Step 4, and which shared
+addresses each person successfully added as a send-as identity in Step 6.
 
 ---
 
@@ -1372,8 +1402,13 @@ either fails, stop and bring it back — do not enable the trigger.
 
 - [ ] **Step 7: Verify a shared identity carries the address**
 
-If `joe@` has `sales@` as a send-as identity, send from it and confirm the
-signature reads `Sales · DragonCandy` and carries
+**Precondition — Task 8 Step 6 must be done first.** If the shared addresses were
+converted to Groups and nobody re-added them as send-as identities, there is
+nothing here to test: the installer will have found zero shared identities and
+logged a warning saying so. Check the run log for that warning before assuming
+this step failed for some other reason.
+
+Send from `sales@` on Joe's account and confirm the signature carries
 `33-41 Newark St., 5th Floor, Hoboken, NJ 07030`.
 
 Personal signatures must **not** show the address. Confirm Dame's does not.

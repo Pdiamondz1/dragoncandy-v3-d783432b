@@ -232,6 +232,25 @@ with legal response obligations attached.
 sends dispute alerts to it. That address must keep receiving throughout the
 migration; it is verified explicitly rather than assumed.
 
+**The conversion breaks §7.3's shared-mailbox signatures unless a manual step
+follows it, and that interaction is the sharpest edge in this spec.** A Google
+Group is *not* a send-as identity. These addresses appear in Gmail's send-as
+list today only because they are aliases on `dame@`; the moment they become
+Groups they disappear from it — and the send-as list is exactly where §7.5's
+installer looks for them. The installer would then run, report success, and
+install **zero** address-bearing signatures, so the registered address that
+decision 7 puts on shared identities would silently appear nowhere.
+
+So after the conversion, each member must add and verify each shared address on
+their own account (Gmail → Settings → Accounts and Import → *Send mail as*).
+**No API, admin or script can do this for them** — Gmail requires the account
+holder to complete verification, which is why it is a founder step rather than
+something the automation absorbs. The installer logs a warning when it finds no
+shared identities, but a warning reports the problem rather than preventing it.
+
+Found by the Codex second review, which correctly refused the documentation-only
+fix an earlier review round had accepted.
+
 ### 6.2 Adrian Vella's account
 
 Created as `adrian@dragoncandy.com`, title Board Member. Not a member of either
