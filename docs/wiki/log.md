@@ -1,5 +1,36 @@
 # Wiki Log
 
+## [2026-08-21] ingest | An alias is not a send-as identity either — the claim that did not survive its first run
+
+Ingested `raw/sessions/2026-08-21-workspace-wave-1-admin-half-and-sendas-correction.md`.
+**Updated** [[Workspace Email Signatures]] — three of its sections were falsified by the
+system's own first execution, one day after the page was written.
+
+The page's headline finding was that *a Google Group is not a send-as identity*, so the
+planned alias→Group conversion would silently break shared-mailbox signatures. The first real
+run reported **0 shared signatures with the aliases fully intact and no Group anywhere**: an
+alias is not a send-as identity either. The hazard described as a future consequence of a
+decision nobody had taken was the state on the day it was written, and Groups were never a
+prerequisite. Section retitled and rewritten with the reasoning inverted; the conclusion
+survives, its cause does not.
+
+Also corrected the page's claim that *"no API, admin or script"* could create a send-as
+identity — `users.settings.sendAs.create` exists and is available **only** to
+domain-wide-delegated service accounts, exactly what this system runs. The real constraint is
+scope (`gmail.settings.sharing`, where the delegation grants `gmail.settings.basic`), not
+capability. Both routes now recorded with their costs.
+
+Three "Known issues" moved to a resolved block rather than deleted — `Code.gs.js` "cannot be
+unit tested" (it can; 5 invariant tests now exist), "unproven against Google's real endpoints"
+(it ran, `4 × ok`), and "nothing is deployed" (#453 merged, trigger armed). Added **Outlook for
+Windows is untested and now untestable** as a standing gap, and a third trap: *a classifier is
+not an inventory, and its errors are asymmetric.*
+
+Durable lesson recorded twice over: **a claim that something is impossible is itself a claim.**
+Both pessimistic assertions on this page were wrong, and neither had been checked.
+
+→ #453, #454
+
 ## [2026-08-20] ingest | Email is not the web, and a Google Group is not a send-as identity
 
 Ingested `raw/sessions/2026-08-20-google-workspace-signatures-wave-1.md`. **New page**
