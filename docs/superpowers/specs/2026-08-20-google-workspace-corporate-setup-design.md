@@ -43,7 +43,7 @@ into whatever exists on their first day. Everything here is ordered against that
 |---|---|---|---|
 | Damon Williams | `dame@dragoncandy.com` | CTO | active |
 | Joe Castelo | `joe@dragoncandy.com` | CEO | active |
-| Juwan Robinson | `jay@dragoncandy.com` | Co-founder | active |
+| Juwan Robinson | `jay@dragoncandy.com` | Shareholder | active |
 | Adrian Vella | `adrian@dragoncandy.com` | Board Member | **not yet created** |
 
 "Juwan Robinson" is the public-facing form, confirmed in the interview — the

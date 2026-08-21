@@ -35,7 +35,7 @@ beachhead.
 **Co-founders**
 - Damon "Dame" Williams — co-founder, CTO
 - Joe Castelo — CEO, Sales & Partnerships
-- Juwan Robinson — co-founder
+- Juwan Robinson — Shareholder
 
 **Core product logic**
 - **Donny AI** is the intelligence layer: campaign generation, creator

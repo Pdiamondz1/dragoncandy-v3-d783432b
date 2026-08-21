@@ -36,7 +36,7 @@ Copied verbatim from the spec. Every task's requirements implicitly include thes
 - **Personal signatures carry no postal address and no phone.** Shared send-as identities carry the registered address. No phone number anywhere.
 - **Mark asset:** `https://dragoncandy.com/brand/dc-mark-104.png`, 104×122, displayed at 52×61, transparent background preserved.
 - **Signature size:** under 10,000 characters (Gmail's field cap).
-- **Roster and titles:** Damon Williams / `dame@` / CTO · Joe Castelo / `joe@` / CEO · Juwan Robinson / `jay@` / Co-founder · Adrian Vella / `adrian@` / Board Member. Public-facing form is "Juwan Robinson"; `jay` is a mailbox local-part, never a display name.
+- **Roster and titles:** Damon Williams / `dame@` / CTO · Joe Castelo / `joe@` / CEO · Juwan Robinson / `jay@` / Shareholder · Adrian Vella / `adrian@` / Board Member. Public-facing form is "Juwan Robinson"; `jay` is a mailbox local-part, never a display name.
 
 ### Known local-environment hazard
 
