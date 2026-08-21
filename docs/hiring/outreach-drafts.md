@@ -152,7 +152,13 @@ dame@dragoncandy.com · dragoncandy.com
 
 ---
 
-## Not drafted: EPAM
+## EPAM — PARKED 2026-08-21 (founder decision)
+
+**Not in this round. No action pending on anyone.** Reopen only if the two dev houses below
+don't work out, and if you do, reopen it as "does Adrian know someone inside", not as "fill in
+the form".
+
+The reasoning, kept so it doesn't have to be rediscovered:
 
 No email address exists. The only route in is the form at
 `epam.com/about/who-we-are/contact`, whose routing dropdown offers enterprise sales by region,
