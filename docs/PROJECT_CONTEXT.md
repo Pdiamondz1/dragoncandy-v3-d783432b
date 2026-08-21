@@ -35,7 +35,7 @@ beachhead.
 **Co-founders**
 - Damon "Dame" Williams — co-founder, CTO
 - Joe Castelo — CEO, Sales & Partnerships
-- Juwan Robinson — co-founder
+- Juwan Robinson — Shareholder
 
 **Core product logic**
 - **Donny AI** is the intelligence layer: campaign generation, creator
@@ -98,20 +98,28 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 - **Google Workspace corporate setup (Wave 1)** — the company's own Workspace: two shared drives,
   nine Google Groups replacing personal aliases, brand assets, and email signatures that install
-  themselves. **The code half is built and unmerged; the admin-console half is not started and no
-  agent can do it** — shared drives, Groups, `adrian@`, and the service account are founder-only.
-  Shipped in the branch: PNG brand marks, a pure signature renderer (19 tests), and an Apps Script
-  installing signatures domain-wide nightly via domain-wide delegation, reading titles from the
-  **directory** so one place can be wrong instead of nine. Three founders' titles were in fact
-  stale in **nine** files — the live investor deck and all four `docs/hiring/` docs among them.
-  Two findings worth carrying: **webfonts do not render in email at all** (the brand type system
-  can only ever appear inside an image), and **a Google Group is not a send-as identity**, so the
-  planned alias→Group conversion would have made the installer report success while installing
-  zero shared-mailbox signatures — Codex refused the documentation-only fix an internal round had
-  accepted. **Pending (2026-08-20):** confirm the Workspace plan is Business Standard or above
-  (shared drives do not exist on Starter, and that collapses the whole structure); then the admin
-  spine; then Waves 2–3 (the People document set, and a *sendable* pitch deck — the current one is
-  a React component).
+  themselves. **MERGED (#453, `d83fcbe3`, 2026-08-21) and the admin half is largely DONE** — this
+  line previously read "the code half is built and unmerged; the admin-console half is not started",
+  which outlived its truth within hours. Shipped: PNG brand marks, a pure signature renderer (19
+  tests), and an Apps Script installing signatures domain-wide nightly via domain-wide delegation,
+  reading titles from the **directory** so one place can be wrong instead of nine. Three founders'
+  titles were in fact stale in **nine** files — the live investor deck and all four `docs/hiring/`
+  docs among them. **Live on 2026-08-21:** both shared drives exist and hold 14 business documents
+  (hiring pack open, compensation Confidential — the split #452 designed, now enforced by
+  structure); signatures ran for all four users (`4 × ok`) and a daily 2–3am trigger is armed;
+  domain-wide delegation is proven by writing into mailboxes `dame@` cannot otherwise touch, which
+  is what `dryRun()` structurally could not show. **Task 8 (alias→Groups) deliberately skipped** —
+  one person actually uses DragonCandy email; the others need Drive access, not mailboxes.
+  Three findings worth carrying: **webfonts do not render in email at all** (the brand type system
+  can only ever appear inside an image); **Gmail iOS inverts dark text rather than leaving it**, so
+  the signature survives dark mode with no background colour set; and **neither a Google Group nor
+  an alias is a send-as identity** — the spec and README both claimed aliases *were*, and the first
+  real run refuted it at **0 shared signatures**. That is not a Groups risk, it is the present
+  state, and only the account holder can fix it (Gmail → Accounts and Import → Send mail as).
+  **Pending (2026-08-21):** the per-person send-as step for the shared addresses; **Outlook for
+  Windows is untested and now untestable** (no access) — treat the rendering matrix as four-of-five;
+  and Waves 2–3 (the People document set, and a *sendable* pitch deck — the current one is a React
+  component). Workspace plan confirmed Business Standard, so shared drives were never at risk.
   → `docs/wiki/concepts/workspace-email-signatures.md` · `docs/superpowers/specs/2026-08-20-google-workspace-corporate-setup-design.md`
 - **Tech department build-out** — hiring a PM, designer and 2 developers (Adrian sourcing, Joe
   raising); scope of work in `docs/DragonCandy_Tech_Department_Scope.md`. Audit-led first 90 days,

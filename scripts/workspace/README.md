@@ -110,25 +110,65 @@ Do not install a single signature until this prints `image/png`.
 8. **Add the trigger** — Triggers -> Add trigger -> `installAllSignatures`,
    time-driven, day timer, 2am-3am.
 
-## Shared identities depend on how support@/sales@/etc. are provisioned
+## Shared identities install ZERO signatures today, and that is expected
 
-Right now `support@`, `sales@`, `info@`, `admin@`, `privacy@`, `legal@` and
-`appstore@` are all **aliases on `dame@dragoncandy.com`**, which is why they
-show up in `dame@`'s `settings/sendAs` list and get a signature installed by
-`installForUser_`'s shared-identity branch.
+**An alias is not a send-as identity.** This is the single most important thing
+to know about the shared-identity branch, and an earlier revision of this file
+said the opposite.
 
-If these are ever converted to real Google Groups (see the corporate-setup
-spec's decision 9), **they will vanish from every user's sendAs list** — a
-Group is not a send-as identity. The shared-identity branch will quietly stop
-matching anything and those signatures will stop being installed, with no
-error anywhere.
+`support@`, `sales@`, `info@`, `admin@`, `privacy@`, `appstore@` and
+`founders@` are **aliases on `dame@dragoncandy.com`** — verified in the admin
+console 2026-08-21. Being an alias means mail addressed to them *arrives* in
+`dame@`'s inbox. It does **not** put them in `dame@`'s `settings/sendAs` list,
+and `sendAs` is exactly where `installForUser_`'s shared-identity branch looks.
 
-If that conversion happens: each person who should be able to send as a
-shared address needs to add and verify it themselves in Gmail (Settings ->
-Accounts and Import -> Send mail as). Only after that will the script find
-the identity in their `sendAs` list and install the shared signature for it.
-This is a manual step per person per address; nothing in this script can do
-it for them.
+(`SHARED_IDENTITIES` also lists `legal@`, which does not exist yet. That is
+deliberate — the list classifies company-versus-personal addresses rather than
+recording which ones exist, and an address missing from it is signed as
+*personal*. Listing one early is inert; listing one too few is a wrong
+signature on the day it is created.)
+
+So the current, correct behaviour is: `installAllSignatures()` reports
+**0 shared signatures installed**. That was observed on the first real run
+(2026-08-21). It is not a bug in this script and not a permissions problem —
+there is simply nothing for it to match.
+
+**To make shared signatures install**, the address has to become a send-as
+identity. There are two routes, and we are currently on neither.
+
+**Route A — the person does it.** Gmail -> Settings -> Accounts and Import ->
+"Send mail as" -> Add another email address. Manual, once per person per
+address, no code and no new permissions. This is the recommended route while
+only one or two addresses matter.
+
+**Route B — this script does it.** `POST settings/sendAs` (Gmail API
+`users.settings.sendAs.create`) can create the identity under the service
+account's existing domain-wide delegation. Two things to know before reaching
+for it:
+
+- **It needs a scope we have not granted.** `sendAs.create` requires
+  `https://www.googleapis.com/auth/gmail.settings.sharing`; the delegation
+  currently carries only `gmail.settings.basic`. Adding it means the service
+  account can configure *who any user in the domain may send mail as* —
+  materially wider than "can write signatures", and a founder decision rather
+  than an implementation detail.
+- **Same-domain addresses should not need email verification.** Google's docs
+  say the resource is created with `verificationStatus: accepted` unless
+  ownership verification is required, and it is not for an address in your own
+  domain. Untested here — nobody has run it.
+
+An earlier version of this file said no API could do this. That was wrong, and
+Codex caught it. What is true is that it costs a broader grant.
+
+The same constraint applies, for the same reason, if these addresses are ever
+converted to real Google Groups (corporate-setup spec, decision 9). A Group is
+not a send-as identity either. The conversion would therefore change nothing
+about this branch's behaviour, because it is already installing nothing —
+but it would remove the aliases, so anyone who *had* completed the manual
+send-as step would lose it.
+
+The installer warns when it installs zero shared signatures, so this stays
+visible rather than silent.
 
 ## Editing a signature
 

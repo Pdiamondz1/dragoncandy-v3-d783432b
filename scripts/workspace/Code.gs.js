@@ -21,8 +21,28 @@
 var DOMAIN = 'dragoncandy.com';
 
 /**
- * Send-as identities that represent the company rather than a person, and
- * therefore carry the registered postal address (spec decision 7).
+ * Addresses that represent the COMPANY rather than a person, and therefore
+ * carry the registered postal address (spec decision 7).
+ *
+ * THIS IS A CLASSIFIER, NOT AN INVENTORY. It is only ever consulted for an
+ * address that already appeared in somebody's sendAs list, so listing an
+ * address that does not exist yet is inert. Listing one too few is not:
+ * an unclassified company address is treated as PERSONAL, and would go out
+ * with an individual's name and title and no registered address on it.
+ *
+ * The asymmetry decides the contents — when in doubt, include the address.
+ * (Codex caught this: an earlier revision of this commit removed `legal@`
+ * because the alias does not exist today, which would have mis-signed it the
+ * day it was created.)
+ *
+ * Existing aliases on dame@, read from the admin console 2026-08-21: info,
+ * support, appstore, sales, privacy, admin, founders. `legal@` is planned
+ * rather than existing (spec Task 8) and is classified here in advance.
+ * `founders@` was missing from this list entirely — that was a real bug.
+ *
+ * An entry here is necessary but NOT sufficient for a signature to install:
+ * the address must also be a verified send-as identity in the individual's
+ * Gmail, which an alias is not on its own. See scripts/workspace/README.md.
  */
 var SHARED_IDENTITIES = [
   'support@dragoncandy.com',
@@ -32,6 +52,7 @@ var SHARED_IDENTITIES = [
   'privacy@dragoncandy.com',
   'legal@dragoncandy.com',
   'appstore@dragoncandy.com',
+  'founders@dragoncandy.com',
 ];
 
 function isSharedIdentity_(email) {
@@ -68,22 +89,30 @@ function installAllSignatures() {
     }
   }
 
-  // SHARED_IDENTITIES only match here because they're currently sendAs aliases
-  // on dame@. The project plan converts them to real Google Groups, and a
-  // Group is not a sendAs identity -- once that happens this branch matches
-  // nothing for every user, every night, forever, and (without this check)
-  // the run still reports "ok" for everyone. Surface that loudly rather than
-  // relying on the README being read.
+  // 0 shared is the EXPECTED state today, not a regression. SHARED_IDENTITIES
+  // are aliases on dame@, and an alias is not a sendAs identity -- so this
+  // branch matches nothing until someone completes the manual send-as step.
+  // Confirmed on the first real run, 2026-08-21. An earlier version of this
+  // comment blamed a future Google Groups conversion; that was the wrong
+  // diagnosis and would have sent an operator looking in the wrong place.
+  // Warn anyway: the day someone does the send-as step, this going quiet is
+  // how they know it worked, and if it later returns to 0 that is a real
+  // regression worth seeing.
   if (totalSharedInstalled === 0) {
     console.warn(
       'installAllSignatures: 0 shared-mailbox signatures installed across ' +
         users.length +
-        ' user(s). Most likely cause: the SHARED_IDENTITIES addresses (support@, ' +
-        'sales@, etc.) are no longer Gmail send-as identities on any account -- ' +
-        'probably because they were converted to Google Groups, which do not ' +
-        'appear in settings/sendAs. Each member of the group must add and verify ' +
-        'the address themselves (Gmail Settings -> Accounts and Import -> Send ' +
-        'mail as) before a signature can be written to it.',
+        ' user(s). This is expected unless someone has added a shared address ' +
+        'as a verified send-as identity. SHARED_IDENTITIES (support@, sales@, ' +
+        'founders@, ...) are ALIASES, and an alias does not appear in ' +
+        'settings/sendAs -- it only makes mail arrive. Two ways to fix it: ' +
+        '(a) the account holder adds the address themselves in Gmail Settings ' +
+        '-> Accounts and Import -> Send mail as; or (b) this script creates it ' +
+        'via settings/sendAs POST, which needs the gmail.settings.sharing ' +
+        'scope added to the delegation -- we grant only gmail.settings.basic ' +
+        'today, and that widening is a deliberate decision, not a detail. ' +
+        'Converting these addresses to Google Groups would NOT help -- a ' +
+        'Group is not a send-as identity either.',
     );
   }
 
@@ -177,6 +206,10 @@ function installForUser_(user) {
 
 function titleForShared_(email) {
   var local = String(email).split('@')[0];
+  // Every entry in SHARED_IDENTITIES needs a label here, including the ones
+  // that do not exist yet. The fallback returns the raw local part, which
+  // renders customer-facing as "DragonCandy founders" — lowercase, and visibly
+  // wrong. A test in signature.test.js enforces the pairing.
   var labels = {
     support: 'Support',
     sales: 'Sales',
@@ -185,6 +218,7 @@ function titleForShared_(email) {
     privacy: 'Privacy',
     legal: 'Legal',
     appstore: 'App Store',
+    founders: 'Founders',
   };
   return labels[local] || local;
 }

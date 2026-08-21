@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { renderSignature, escapeHtml, BRAND } from './signature.js';
 
 const DAME = { name: 'Damon Williams', title: 'CTO', email: 'dame@dragoncandy.com' };
@@ -149,5 +151,79 @@ describe('renderSignature', () => {
   it('stays well under the Gmail signature field cap', () => {
     const html = renderSignature({ ...DAME, includeAddress: true });
     expect(html.length).toBeLessThan(10000);
+  });
+});
+
+// --- Code.gs.js invariants -------------------------------------------------
+//
+// Code.gs.js is Apps Script, not a module: it declares `var`s and function
+// declarations and calls nothing at load time, so it can be evaluated here and
+// its values inspected. This block exists because the Codex review caught
+// `founders@` being added to SHARED_IDENTITIES with no matching label in
+// titleForShared_(), which would have rendered "DragonCandy founders" —
+// lowercase — to customers. A reviewer caught it once; this makes it
+// impossible to reintroduce silently.
+//
+// On the `new Function` below: the only thing interpolated is this repository's
+// own committed source file, read from a path derived from import.meta.url. It
+// is not user input, it never runs outside the test process, and it ships in no
+// bundle — `scripts/` is outside the Vite build. The alternative, regex-parsing
+// the array out of the file as text, is what actually would be fragile.
+
+function loadAppsScript() {
+  const src = readFileSync(
+    fileURLToPath(new URL('./Code.gs.js', import.meta.url)),
+    'utf8',
+  );
+  return new Function(
+    `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN };`,
+  )();
+}
+
+describe('Code.gs.js shared identities', () => {
+  const { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN } =
+    loadAppsScript();
+
+  it('gives every shared identity a title-cased display label', () => {
+    for (const email of SHARED_IDENTITIES) {
+      const local = email.split('@')[0];
+      const label = titleForShared_(email);
+      expect(
+        label,
+        `${email} has no entry in titleForShared_, so it renders as "DragonCandy ${local}"`,
+      ).not.toBe(local);
+      expect(label[0]).toBe(label[0].toUpperCase());
+    }
+  });
+
+  it('lists only lowercase addresses on the company domain', () => {
+    for (const email of SHARED_IDENTITIES) {
+      expect(email.endsWith(`@${DOMAIN}`)).toBe(true);
+      expect(email).toBe(email.toLowerCase());
+    }
+  });
+
+  it('has no duplicates', () => {
+    expect(new Set(SHARED_IDENTITIES).size).toBe(SHARED_IDENTITIES.length);
+  });
+
+  it('matches shared identities case-insensitively, and rejects personal ones', () => {
+    expect(isSharedIdentity_('SUPPORT@dragoncandy.com')).toBe(true);
+    expect(isSharedIdentity_('dame@dragoncandy.com')).toBe(false);
+  });
+
+  // SHARED_IDENTITIES is a classifier, not an inventory of existing aliases.
+  // An address missing from it is treated as personal — it would go out with an
+  // individual's name and title and no registered postal address. That is the
+  // expensive direction, so planned-but-not-yet-created addresses are listed in
+  // advance and must stay listed. Codex caught a revision that removed legal@
+  // on the grounds that the alias does not exist yet.
+  it('classifies planned company addresses before they exist', () => {
+    for (const email of ['legal@dragoncandy.com', 'founders@dragoncandy.com']) {
+      expect(
+        isSharedIdentity_(email),
+        `${email} must stay classified as shared, or it will be signed as personal mail the day it is created`,
+      ).toBe(true);
+    }
   });
 });
