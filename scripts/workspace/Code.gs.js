@@ -23,6 +23,15 @@ var DOMAIN = 'dragoncandy.com';
 /**
  * Send-as identities that represent the company rather than a person, and
  * therefore carry the registered postal address (spec decision 7).
+ *
+ * This list must match the aliases that actually exist in the admin console.
+ * Read there 2026-08-21: seven aliases on dame@ — info, support, appstore,
+ * sales, privacy, admin, founders. There is no legal@ (an earlier revision of
+ * this list invented one), and founders@ was missing.
+ *
+ * An entry here is necessary but NOT sufficient for a signature to install:
+ * the address must also be a send-as identity in the individual's Gmail, which
+ * an alias is not on its own. See scripts/workspace/README.md.
  */
 var SHARED_IDENTITIES = [
   'support@dragoncandy.com',
@@ -30,8 +39,8 @@ var SHARED_IDENTITIES = [
   'info@dragoncandy.com',
   'admin@dragoncandy.com',
   'privacy@dragoncandy.com',
-  'legal@dragoncandy.com',
   'appstore@dragoncandy.com',
+  'founders@dragoncandy.com',
 ];
 
 function isSharedIdentity_(email) {

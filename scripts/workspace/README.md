@@ -110,25 +110,42 @@ Do not install a single signature until this prints `image/png`.
 8. **Add the trigger** — Triggers -> Add trigger -> `installAllSignatures`,
    time-driven, day timer, 2am-3am.
 
-## Shared identities depend on how support@/sales@/etc. are provisioned
+## Shared identities install ZERO signatures today, and that is expected
 
-Right now `support@`, `sales@`, `info@`, `admin@`, `privacy@`, `legal@` and
-`appstore@` are all **aliases on `dame@dragoncandy.com`**, which is why they
-show up in `dame@`'s `settings/sendAs` list and get a signature installed by
-`installForUser_`'s shared-identity branch.
+**An alias is not a send-as identity.** This is the single most important thing
+to know about the shared-identity branch, and an earlier revision of this file
+said the opposite.
 
-If these are ever converted to real Google Groups (see the corporate-setup
-spec's decision 9), **they will vanish from every user's sendAs list** — a
-Group is not a send-as identity. The shared-identity branch will quietly stop
-matching anything and those signatures will stop being installed, with no
-error anywhere.
+`support@`, `sales@`, `info@`, `admin@`, `privacy@`, `appstore@` and
+`founders@` are **aliases on `dame@dragoncandy.com`** — verified in the admin
+console 2026-08-21. (There is no `legal@`; `SHARED_IDENTITIES` used to list one
+that has never existed.) Being an alias means mail addressed to them *arrives*
+in `dame@`'s inbox. It does **not** put them in `dame@`'s
+`settings/sendAs` list, and `sendAs` is exactly where `installForUser_`'s
+shared-identity branch looks.
 
-If that conversion happens: each person who should be able to send as a
-shared address needs to add and verify it themselves in Gmail (Settings ->
-Accounts and Import -> Send mail as). Only after that will the script find
-the identity in their `sendAs` list and install the shared signature for it.
-This is a manual step per person per address; nothing in this script can do
-it for them.
+So the current, correct behaviour is: `installAllSignatures()` reports
+**0 shared signatures installed**. That was observed on the first real run
+(2026-08-21). It is not a bug in this script and not a permissions problem —
+there is simply nothing for it to match.
+
+**To make shared signatures install**, each person who should send as a shared
+address must add and verify it themselves in Gmail: Settings -> Accounts and
+Import -> "Send mail as" -> Add another email address. Only after that does the
+address appear in their `sendAs` list, and only then will the next run install
+the shared signature for it. This is a manual step per person per address, and
+nothing in this script — or in the admin console, or in the Gmail API under
+domain-wide delegation — can perform it on their behalf.
+
+The same constraint applies, for the same reason, if these addresses are ever
+converted to real Google Groups (corporate-setup spec, decision 9). A Group is
+not a send-as identity either. The conversion would therefore change nothing
+about this branch's behaviour, because it is already installing nothing —
+but it would remove the aliases, so anyone who *had* completed the manual
+send-as step would lose it.
+
+The installer warns when it installs zero shared signatures, so this stays
+visible rather than silent.
 
 ## Editing a signature
 
