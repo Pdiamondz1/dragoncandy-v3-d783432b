@@ -77,22 +77,27 @@ function installAllSignatures() {
     }
   }
 
-  // SHARED_IDENTITIES only match here because they're currently sendAs aliases
-  // on dame@. The project plan converts them to real Google Groups, and a
-  // Group is not a sendAs identity -- once that happens this branch matches
-  // nothing for every user, every night, forever, and (without this check)
-  // the run still reports "ok" for everyone. Surface that loudly rather than
-  // relying on the README being read.
+  // 0 shared is the EXPECTED state today, not a regression. SHARED_IDENTITIES
+  // are aliases on dame@, and an alias is not a sendAs identity -- so this
+  // branch matches nothing until someone completes the manual send-as step.
+  // Confirmed on the first real run, 2026-08-21. An earlier version of this
+  // comment blamed a future Google Groups conversion; that was the wrong
+  // diagnosis and would have sent an operator looking in the wrong place.
+  // Warn anyway: the day someone does the send-as step, this going quiet is
+  // how they know it worked, and if it later returns to 0 that is a real
+  // regression worth seeing.
   if (totalSharedInstalled === 0) {
     console.warn(
       'installAllSignatures: 0 shared-mailbox signatures installed across ' +
         users.length +
-        ' user(s). Most likely cause: the SHARED_IDENTITIES addresses (support@, ' +
-        'sales@, etc.) are no longer Gmail send-as identities on any account -- ' +
-        'probably because they were converted to Google Groups, which do not ' +
-        'appear in settings/sendAs. Each member of the group must add and verify ' +
-        'the address themselves (Gmail Settings -> Accounts and Import -> Send ' +
-        'mail as) before a signature can be written to it.',
+        ' user(s). This is expected unless someone has added a shared address ' +
+        'as a verified send-as identity. SHARED_IDENTITIES (support@, sales@, ' +
+        'founders@, ...) are ALIASES, and an alias does not appear in ' +
+        'settings/sendAs -- it only makes mail arrive. To fix: the account ' +
+        'holder adds and verifies the address themselves in Gmail Settings -> ' +
+        'Accounts and Import -> Send mail as. No admin, API or script can do ' +
+        'this on their behalf. Converting these addresses to Google Groups ' +
+        'would NOT help -- a Group is not a send-as identity either.',
     );
   }
 
@@ -186,6 +191,11 @@ function installForUser_(user) {
 
 function titleForShared_(email) {
   var local = String(email).split('@')[0];
+  // Every entry in SHARED_IDENTITIES needs a label here. The fallback returns
+  // the raw local part, which renders customer-facing as "DragonCandy founders"
+  // — lowercase, and visibly wrong. `legal` is kept deliberately: the address
+  // does not exist yet but is a planned Group (spec Task 8), so the label is
+  // ready if it is ever created and added as a send-as identity.
   var labels = {
     support: 'Support',
     sales: 'Sales',
@@ -194,6 +204,7 @@ function titleForShared_(email) {
     privacy: 'Privacy',
     legal: 'Legal',
     appstore: 'App Store',
+    founders: 'Founders',
   };
   return labels[local] || local;
 }
