@@ -246,13 +246,24 @@ Converting to Groups would therefore change nothing about the installer's
 behaviour — it already installs nothing. What it *would* do is remove the
 aliases, costing anyone who had completed the manual send-as step below.
 
-So — now, not "after the conversion" — each member must add and verify each
-shared address on their own account (Gmail → Settings → Accounts and Import →
-*Send mail as*). **No API, admin or script can do this for them** — Gmail
-requires the account holder to complete verification, which is why it is a
-founder step rather than something the automation absorbs. The installer logs a
-warning when it finds no shared identities, but a warning reports the problem
-rather than preventing it.
+So — now, not "after the conversion" — the address has to be made a send-as
+identity before any shared signature can install. Either each member adds it on
+their own account (Gmail → Settings → Accounts and Import → *Send mail as*), or
+the installer creates it via `users.settings.sendAs.create`, which **is**
+available to a domain-wide-delegated service account like ours.
+
+**This paragraph previously said "No API, admin or script can do this for
+them." That is false, and Codex caught it.** What is true is the price: the
+create call requires the `gmail.settings.sharing` scope, and §7.5's delegation
+grants only `gmail.settings.basic`. Adding it lets the service account decide
+who in the domain may send mail as which address — a genuinely wider grant than
+writing signatures, and one to take deliberately rather than to reach for
+because it is convenient. Same-domain addresses should come back
+`verificationStatus: accepted` without an ownership email, but that is
+untested here.
+
+The installer logs a warning when it finds no shared identities, but a warning
+reports the problem rather than preventing it.
 
 **Decision 9 is therefore not a prerequisite for shared signatures, and never
 was.** Whoever picks this up next should do the send-as step for the addresses

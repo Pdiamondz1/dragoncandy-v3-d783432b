@@ -133,13 +133,32 @@ So the current, correct behaviour is: `installAllSignatures()` reports
 (2026-08-21). It is not a bug in this script and not a permissions problem —
 there is simply nothing for it to match.
 
-**To make shared signatures install**, each person who should send as a shared
-address must add and verify it themselves in Gmail: Settings -> Accounts and
-Import -> "Send mail as" -> Add another email address. Only after that does the
-address appear in their `sendAs` list, and only then will the next run install
-the shared signature for it. This is a manual step per person per address, and
-nothing in this script — or in the admin console, or in the Gmail API under
-domain-wide delegation — can perform it on their behalf.
+**To make shared signatures install**, the address has to become a send-as
+identity. There are two routes, and we are currently on neither.
+
+**Route A — the person does it.** Gmail -> Settings -> Accounts and Import ->
+"Send mail as" -> Add another email address. Manual, once per person per
+address, no code and no new permissions. This is the recommended route while
+only one or two addresses matter.
+
+**Route B — this script does it.** `POST settings/sendAs` (Gmail API
+`users.settings.sendAs.create`) can create the identity under the service
+account's existing domain-wide delegation. Two things to know before reaching
+for it:
+
+- **It needs a scope we have not granted.** `sendAs.create` requires
+  `https://www.googleapis.com/auth/gmail.settings.sharing`; the delegation
+  currently carries only `gmail.settings.basic`. Adding it means the service
+  account can configure *who any user in the domain may send mail as* —
+  materially wider than "can write signatures", and a founder decision rather
+  than an implementation detail.
+- **Same-domain addresses should not need email verification.** Google's docs
+  say the resource is created with `verificationStatus: accepted` unless
+  ownership verification is required, and it is not for an address in your own
+  domain. Untested here — nobody has run it.
+
+An earlier version of this file said no API could do this. That was wrong, and
+Codex caught it. What is true is that it costs a broader grant.
 
 The same constraint applies, for the same reason, if these addresses are ever
 converted to real Google Groups (corporate-setup spec, decision 9). A Group is

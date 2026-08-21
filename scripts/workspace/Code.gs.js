@@ -105,11 +105,14 @@ function installAllSignatures() {
         ' user(s). This is expected unless someone has added a shared address ' +
         'as a verified send-as identity. SHARED_IDENTITIES (support@, sales@, ' +
         'founders@, ...) are ALIASES, and an alias does not appear in ' +
-        'settings/sendAs -- it only makes mail arrive. To fix: the account ' +
-        'holder adds and verifies the address themselves in Gmail Settings -> ' +
-        'Accounts and Import -> Send mail as. No admin, API or script can do ' +
-        'this on their behalf. Converting these addresses to Google Groups ' +
-        'would NOT help -- a Group is not a send-as identity either.',
+        'settings/sendAs -- it only makes mail arrive. Two ways to fix it: ' +
+        '(a) the account holder adds the address themselves in Gmail Settings ' +
+        '-> Accounts and Import -> Send mail as; or (b) this script creates it ' +
+        'via settings/sendAs POST, which needs the gmail.settings.sharing ' +
+        'scope added to the delegation -- we grant only gmail.settings.basic ' +
+        'today, and that widening is a deliberate decision, not a detail. ' +
+        'Converting these addresses to Google Groups would NOT help -- a ' +
+        'Group is not a send-as identity either.',
     );
   }
 
