@@ -167,7 +167,10 @@ our size.
 
 1. Export the three hiring documents to PDF. The brief is ~1,600 words — too long to paste into
    an email body, and it loses its tables.
-2. `dame@dragoncandy.com` must have the signature block installed (Wave 1 Apps Script work).
+2. ~~`dame@dragoncandy.com` must have the signature block installed.~~ **Done (2026-08-21)** —
+   `dame@` and the other real user mailboxes carry their signature blocks; the sync PR is
+   merging. Real mailboxes only: a Google Group or an alias is not a send-as identity and cannot
+   carry one, so send from `dame@` rather than any alias if you want the signature to appear.
 3. Root Codex's own sensitivity: none known. **ALAN Systems: their co-founder and CTO, Aleksandra
    Czajka, died in 2024 and they keep an In Memoriam page — avoid any generic reference to "your
    CTO."**
