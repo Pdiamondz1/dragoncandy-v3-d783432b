@@ -5,7 +5,7 @@
 **Location:** Europe is fine. Working hours 12:00–18:00 Central European (06:00–12:00 US Eastern).
 **Engagement:** Paid two-week trial → 6-month contract → extend or convert to permanent.
 **Start:** Target Q4 2026. You start before the developers do.
-**Reports to:** Dame Williams, co-founder & CPO, then the Product Manager.
+**Reports to:** Dame Williams, co-founder & CTO, then the Product Manager.
 
 ---
 

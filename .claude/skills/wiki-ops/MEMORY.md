@@ -18,12 +18,41 @@
 - **`log.md` is strictly reverse-chronological — PREPEND.** The skill text below says "append",
   which is wrong and has produced out-of-order entries near the bottom of the file.
   `docs/KNOWLEDGE_WIKI.md` is the authority here.
+- **When a session's work is deliberately split between "an agent can do this" and "only a human
+  can do this", say so in the FIRST line of every artifact** — page, source page, index summary,
+  log entry. The 2026-08-20 Workspace session shipped a signature *renderer and installer* while
+  the shared drives, Google Groups and service account it depends on did not exist and could not
+  be created by any agent. A concept page that opens by describing the mechanism reads as a
+  description of a live system, and the next reader will act on it. Status belongs in the lede,
+  not in a Known Issues section at the bottom.
 - **A session's raw source keeps growing while the ingest runs.** When a review round lands new
   findings mid-session, update the raw file *and* the concept page *and* the index summary — an
   index line that stops at "two traps" when the page records three is the kind of drift nobody
   notices until they trust the index.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-20] ingest — Google Workspace signatures, Wave 1 (code half)
+- Output: new `docs/wiki/concepts/workspace-email-signatures.md` + source
+  `sources/google-workspace-signatures-wave-1-session.md`; `index.md` (1 Sources + 1 Concepts
+  entry); `log.md` top entry.
+- Happened: ingested `raw/sessions/2026-08-20-google-workspace-signatures-wave-1.md` at the end of
+  a branch whose work is deliberately HALF DONE — the admin-console tasks cannot be executed by any
+  agent. Writing status honestly was most of the editorial work.
+- Worked: a **new** page rather than compounding. The nearest existing page was the AIOS Workspace
+  *product* integration (`google-workspace-connections-session`), which is a different subject —
+  Donny reading Drive, not the company's own Workspace. Checking that first (per the
+  new-subject-vs-phase lesson) took one `ls` and avoided burying a distinct retrieval key.
+- Worked: recording the REFUTED Codex finding (the `package.json` CRLF "trailing whitespace") on
+  the page, per the standing lesson. It cost three lines and pre-empts the next reader re-raising it.
+- Failed: nothing broke, but the raw source needed a late edit — the Codex rounds landed two
+  findings AFTER the first draft, and the page, the index summary and the log entry all had to
+  absorb them. The existing `[raw-source-grows]` lesson predicted this exactly; it is now twice
+  observed and should be treated as the default, not the exception.
+- Remember: when a session's work is intentionally split between "agent can do" and "human must
+  do", say so in the FIRST line of every artifact (page, source, index summary, log entry). A
+  reader who takes the page as a description of a live system will act on it. → promoted to Lessons.
+
 
 ### [2026-08-10] ingest — Donny-first dashboard Phase 3 (creator role)
 - Output: compounded `docs/wiki/concepts/donny-first-dashboard.md` (Phase 3 section, 6 new Known

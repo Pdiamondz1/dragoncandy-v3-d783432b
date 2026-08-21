@@ -22,6 +22,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "typecheck:functions": "node scripts/check-edge-functions.mjs",
     "docs:scale": "node scripts/update-scale-numbers.mjs",
+    "build:workspace": "node scripts/workspace/build-gs.mjs",
     "preview:url": "node scripts/preview-url.mjs",
     "pitch:pdf": "vite build && node scripts/export-pitch-pdf.mjs",
     "pitch:preview": "vite build && vite preview --open /pitch",
