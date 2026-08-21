@@ -211,4 +211,19 @@ describe('Code.gs.js shared identities', () => {
     expect(isSharedIdentity_('SUPPORT@dragoncandy.com')).toBe(true);
     expect(isSharedIdentity_('dame@dragoncandy.com')).toBe(false);
   });
+
+  // SHARED_IDENTITIES is a classifier, not an inventory of existing aliases.
+  // An address missing from it is treated as personal — it would go out with an
+  // individual's name and title and no registered postal address. That is the
+  // expensive direction, so planned-but-not-yet-created addresses are listed in
+  // advance and must stay listed. Codex caught a revision that removed legal@
+  // on the grounds that the alias does not exist yet.
+  it('classifies planned company addresses before they exist', () => {
+    for (const email of ['legal@dragoncandy.com', 'founders@dragoncandy.com']) {
+      expect(
+        isSharedIdentity_(email),
+        `${email} must stay classified as shared, or it will be signed as personal mail the day it is created`,
+      ).toBe(true);
+    }
+  });
 });

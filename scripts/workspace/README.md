@@ -118,11 +118,15 @@ said the opposite.
 
 `support@`, `sales@`, `info@`, `admin@`, `privacy@`, `appstore@` and
 `founders@` are **aliases on `dame@dragoncandy.com`** — verified in the admin
-console 2026-08-21. (There is no `legal@`; `SHARED_IDENTITIES` used to list one
-that has never existed.) Being an alias means mail addressed to them *arrives*
-in `dame@`'s inbox. It does **not** put them in `dame@`'s
-`settings/sendAs` list, and `sendAs` is exactly where `installForUser_`'s
-shared-identity branch looks.
+console 2026-08-21. Being an alias means mail addressed to them *arrives* in
+`dame@`'s inbox. It does **not** put them in `dame@`'s `settings/sendAs` list,
+and `sendAs` is exactly where `installForUser_`'s shared-identity branch looks.
+
+(`SHARED_IDENTITIES` also lists `legal@`, which does not exist yet. That is
+deliberate — the list classifies company-versus-personal addresses rather than
+recording which ones exist, and an address missing from it is signed as
+*personal*. Listing one early is inert; listing one too few is a wrong
+signature on the day it is created.)
 
 So the current, correct behaviour is: `installAllSignatures()` reports
 **0 shared signatures installed**. That was observed on the first real run

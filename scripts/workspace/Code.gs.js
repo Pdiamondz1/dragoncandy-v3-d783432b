@@ -21,17 +21,28 @@
 var DOMAIN = 'dragoncandy.com';
 
 /**
- * Send-as identities that represent the company rather than a person, and
- * therefore carry the registered postal address (spec decision 7).
+ * Addresses that represent the COMPANY rather than a person, and therefore
+ * carry the registered postal address (spec decision 7).
  *
- * This list must match the aliases that actually exist in the admin console.
- * Read there 2026-08-21: seven aliases on dame@ — info, support, appstore,
- * sales, privacy, admin, founders. There is no legal@ (an earlier revision of
- * this list invented one), and founders@ was missing.
+ * THIS IS A CLASSIFIER, NOT AN INVENTORY. It is only ever consulted for an
+ * address that already appeared in somebody's sendAs list, so listing an
+ * address that does not exist yet is inert. Listing one too few is not:
+ * an unclassified company address is treated as PERSONAL, and would go out
+ * with an individual's name and title and no registered address on it.
+ *
+ * The asymmetry decides the contents — when in doubt, include the address.
+ * (Codex caught this: an earlier revision of this commit removed `legal@`
+ * because the alias does not exist today, which would have mis-signed it the
+ * day it was created.)
+ *
+ * Existing aliases on dame@, read from the admin console 2026-08-21: info,
+ * support, appstore, sales, privacy, admin, founders. `legal@` is planned
+ * rather than existing (spec Task 8) and is classified here in advance.
+ * `founders@` was missing from this list entirely — that was a real bug.
  *
  * An entry here is necessary but NOT sufficient for a signature to install:
- * the address must also be a send-as identity in the individual's Gmail, which
- * an alias is not on its own. See scripts/workspace/README.md.
+ * the address must also be a verified send-as identity in the individual's
+ * Gmail, which an alias is not on its own. See scripts/workspace/README.md.
  */
 var SHARED_IDENTITIES = [
   'support@dragoncandy.com',
@@ -39,6 +50,7 @@ var SHARED_IDENTITIES = [
   'info@dragoncandy.com',
   'admin@dragoncandy.com',
   'privacy@dragoncandy.com',
+  'legal@dragoncandy.com',
   'appstore@dragoncandy.com',
   'founders@dragoncandy.com',
 ];
@@ -191,11 +203,10 @@ function installForUser_(user) {
 
 function titleForShared_(email) {
   var local = String(email).split('@')[0];
-  // Every entry in SHARED_IDENTITIES needs a label here. The fallback returns
-  // the raw local part, which renders customer-facing as "DragonCandy founders"
-  // — lowercase, and visibly wrong. `legal` is kept deliberately: the address
-  // does not exist yet but is a planned Group (spec Task 8), so the label is
-  // ready if it is ever created and added as a send-as identity.
+  // Every entry in SHARED_IDENTITIES needs a label here, including the ones
+  // that do not exist yet. The fallback returns the raw local part, which
+  // renders customer-facing as "DragonCandy founders" — lowercase, and visibly
+  // wrong. A test in signature.test.js enforces the pairing.
   var labels = {
     support: 'Support',
     sales: 'Sales',
