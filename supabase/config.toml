@@ -54,6 +54,15 @@ verify_jwt = false
 [functions.check-restaurant-payout-status]
 verify_jwt = false
 
+# Declares the value prod ALREADY runs (verified live via list_edge_functions), it does not
+# change it. This function had no block at all, so its `true` was an undeclared platform
+# default while its three payout siblings above explicitly set `false` — config.toml silently
+# disagreeing with prod is the trap that has bitten this project before, so state it.
+# It self-gates in-body (Authorization header + auth.getUser) exactly like the siblings;
+# the gateway check is redundant-but-stricter, so `true` is kept rather than harmonised down.
+[functions.disconnect-stripe-account]
+verify_jwt = true
+
 [functions.get-watermarked-preview]
 verify_jwt = false
 

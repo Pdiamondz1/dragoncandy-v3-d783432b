@@ -180,9 +180,36 @@ async function handleUpdate(
     );
   }
 
+  // Whitelist the fields a caller may change. `updates` is typed above, but a TypeScript type
+  // is erased at runtime — spreading it into a SERVICE-ROLE `.update()` wrote whatever the body
+  // contained. Sending `updates: { user_id: "<victim>" }` reassigned this post into another
+  // user's schedule, carrying the attacker's caption and media, publishable to the victim's
+  // connected social accounts. `campaign_id`, `plan_group_id` and `metadata` were writable the
+  // same way.
+  //
+  // Note the ownership check above was correct and still lost: the table's UPDATE policy
+  // (`USING (user_id = auth.uid())`, no WITH CHECK — so Postgres reuses USING and pins
+  // `user_id`) would have blocked this outright. The service-role client is what bypassed it.
+  // Never spread a client object into a service-role write.
+  const ALLOWED_STATUSES = ["draft", "scheduled", "publishing", "published", "failed", "cancelled"];
+  const safeUpdates: Record<string, unknown> = {};
+  if (typeof updates.caption === "string") safeUpdates.caption = updates.caption;
+  if (typeof updates.scheduled_at === "string") safeUpdates.scheduled_at = updates.scheduled_at;
+  if (Array.isArray(updates.hashtags)) safeUpdates.hashtags = updates.hashtags;
+  if (typeof updates.status === "string") {
+    if (!ALLOWED_STATUSES.includes(updates.status)) {
+      return jsonResponse(req, { success: false, error: "Invalid status" }, 400);
+    }
+    safeUpdates.status = updates.status;
+  }
+
+  if (Object.keys(safeUpdates).length === 0) {
+    return jsonResponse(req, { success: false, error: "No updatable fields supplied" }, 400);
+  }
+
   const { data, error } = await supabaseAdmin
     .from("donny_scheduled_posts")
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update({ ...safeUpdates, updated_at: new Date().toISOString() })
     .eq("id", post_id)
     .select()
     .single();
@@ -251,9 +278,25 @@ async function handleList(
     );
   }
 
+  // Explicit column list, not `*`. This is a SERVICE-ROLE read whose result goes straight back
+  // to the client, so `*` means "whatever columns this table grows in future". Own rows only
+  // (`user_id`), so `*` is not a leak today — naming the columns is what stops a future column
+  // from becoming one silently.
+  //
+  // Deliberately the table's CURRENT FULL column set (verified against prod
+  // `information_schema` 2026-08-11), not a narrower guess. Narrowing looked tempting —
+  // `metadata` carries provider payloads — but I could not establish from `src/` which fields
+  // this particular response feeds, and dropping one consumed by the calendar would fail as a
+  // silently-missing value rather than an error. Enumerating everything current gets the whole
+  // point of the change (a new column is not auto-exposed; adding it here is a deliberate act)
+  // at zero regression risk. Narrow it further only with the consumer list in hand.
   let query = supabaseAdmin
     .from("donny_scheduled_posts")
-    .select("*")
+    .select(
+      "id, user_id, campaign_id, platform, content_type, caption, media_urls, hashtags, " +
+        "scheduled_at, published_at, status, ai_suggested_time, ai_reasoning, metadata, " +
+        "created_at, updated_at, plan_group_id, plan_order, deliverable_id",
+    )
     .eq("user_id", userId)
     .gte("scheduled_at", start_date)
     .lte("scheduled_at", end_date)

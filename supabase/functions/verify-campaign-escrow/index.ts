@@ -96,15 +96,53 @@ serve(async (req) => {
     let paymentSucceeded = false;
     let actualPaymentIntentId: string | null = null;
     let chargedAmountCents: number | null = null;
+    // The checkout session that actually PROVED this campaign was paid — not merely the one
+    // the caller sent. These diverge now that an unbound session is rejected: the request can
+    // carry session X (refused) while Priority 2 or 3 finds the real payment. Persisting the
+    // caller's id in that case would overwrite the campaign's authoritative reference with one
+    // we just declined to trust, poisoning later reconciliation and refunds. Only ever set
+    // where a session is accepted.
+    let verifiedSessionId: string | null = null;
 
-    // Priority 1: sessionId from URL
+    // Priority 1: sessionId from the request.
+    //
+    // `sessionId` is caller-supplied and, until this binding existed, the ONLY test was
+    // `payment_status === 'paid'` — the session was never tied to THIS campaign. Campaign
+    // ownership is checked above, so the caller owns the campaign; what they did not have to
+    // own was the payment. A business could pay once for something cheap (their own $5
+    // campaign, or a package order — the session id is handed to them in their own success
+    // URL) and then POST that same `sessionId` against an expensive campaign. It would flip to
+    // `escrow_status='held'`, publish→active, create the collaboration, and overwrite
+    // `escrow_payment_intent_id` with the unrelated payment — so a later refund would refund
+    // the wrong charge, and the platform would pay the creator out of its own balance for a
+    // campaign nobody funded. One paid session, unlimited campaigns.
+    //
+    // `create-campaign-escrow` already stamps `metadata.campaign_id` + `metadata.type` on the
+    // session, so the binding was available all along and simply never consulted. Priority 3
+    // below was already correctly scoped by `metadata['campaign_id']` — this makes Priority 1
+    // agree with it.
     if (sessionId) {
       try {
         const session = await stripe.checkout.sessions.retrieve(sessionId);
-        if (session.payment_status === 'paid') {
+        const sessionCampaignId = session.metadata?.campaign_id;
+        const sessionType = session.metadata?.type;
+        const boundToThisCampaign =
+          sessionCampaignId === campaignId && sessionType === 'campaign_escrow';
+
+        if (session.payment_status === 'paid' && boundToThisCampaign) {
           paymentSucceeded = true;
           actualPaymentIntentId = session.payment_intent as string;
           chargedAmountCents = session.amount_total ?? null;
+          verifiedSessionId = sessionId;
+        } else if (session.payment_status === 'paid') {
+          // Paid, but for something else. Do NOT accept it — and say so loudly, because the
+          // only way to reach here is to present a session that isn't this campaign's.
+          logStep("REJECTED session: paid but not bound to this campaign", {
+            campaignId,
+            sessionCampaignId: sessionCampaignId ?? null,
+            sessionType: sessionType ?? null,
+            userId: user.id,
+          });
         }
       } catch (e) {
         logStep("Session retrieval failed", { error: String(e) });
@@ -112,24 +150,56 @@ serve(async (req) => {
     }
 
     // Priority 2: stored escrow_payment_intent_id
+    //
+    // This path needs the SAME campaign binding Priority 1 just gained, and for a reason that
+    // is easy to miss: `campaigns.escrow_payment_intent_id` is written by the campaign owner's
+    // own UPDATE (the policy is row-level, with no column GRANTs pinning escrow_* — the
+    // `campaign_invitations` 20260808010000 lesson, not yet applied to this table). So the
+    // stored id is CALLER-INFLUENCED, not a server-established fact.
+    //
+    // Without this check, closing Priority 1 would have moved the hole rather than shut it:
+    // write a known-paid `cs_`/`pi_` id — another campaign's, or a package order's — into the
+    // column, then verify, and an unfunded campaign flips to `held`. Binding here makes the
+    // stored id merely a *hint* about where to look, never the authority for whether this
+    // campaign was paid.
     if (!paymentSucceeded && campaign.escrow_payment_intent_id) {
       const storedId = campaign.escrow_payment_intent_id;
       if (storedId.startsWith('cs_')) {
         try {
           const session = await stripe.checkout.sessions.retrieve(storedId);
-          if (session.payment_status === 'paid') {
+          const bound =
+            session.metadata?.campaign_id === campaignId &&
+            session.metadata?.type === 'campaign_escrow';
+          if (session.payment_status === 'paid' && bound) {
             paymentSucceeded = true;
             actualPaymentIntentId = session.payment_intent as string;
             chargedAmountCents = session.amount_total ?? null;
+            verifiedSessionId = storedId;
+          } else if (session.payment_status === 'paid') {
+            logStep("REJECTED stored session: paid but not bound to this campaign", {
+              campaignId,
+              sessionCampaignId: session.metadata?.campaign_id ?? null,
+              sessionType: session.metadata?.type ?? null,
+              userId: user.id,
+            });
           }
         } catch (e) { /* skip */ }
       } else if (storedId.startsWith('pi_')) {
         try {
           const pi = await stripe.paymentIntents.retrieve(storedId);
-          if (pi.status === 'succeeded') {
+          // The PI carries the same metadata (Priority 3 already searches on it), so the same
+          // binding applies. `create-campaign-escrow` stamps it at session creation.
+          const bound = pi.metadata?.campaign_id === campaignId;
+          if (pi.status === 'succeeded' && bound) {
             paymentSucceeded = true;
             actualPaymentIntentId = storedId;
             chargedAmountCents = pi.amount ?? null;
+          } else if (pi.status === 'succeeded') {
+            logStep("REJECTED stored payment intent: succeeded but not bound to this campaign", {
+              campaignId,
+              piCampaignId: pi.metadata?.campaign_id ?? null,
+              userId: user.id,
+            });
           }
         } catch (e) { /* skip */ }
       }
@@ -164,8 +234,13 @@ serve(async (req) => {
       status: 'published',
       escrow_payment_intent_id: actualPaymentIntentId,
     };
-    if (sessionId) {
-      updateFields.escrow_checkout_session_id = sessionId;
+    // `verifiedSessionId`, NOT the request's `sessionId`. Before rejection existed these were
+    // always the same value, so writing the caller's was harmless; now a request can carry a
+    // session we refused while the real payment is found by Priority 2 or 3, and writing the
+    // refused id would replace a good reference with a bad one. Left null when no session
+    // proved the payment (the PI-only paths), so the column is never overwritten with a guess.
+    if (verifiedSessionId) {
+      updateFields.escrow_checkout_session_id = verifiedSessionId;
     }
     const { error: updateError } = await supabaseClient
       .from('campaigns')

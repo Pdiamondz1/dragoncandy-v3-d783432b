@@ -183,12 +183,61 @@ serve(async (req) => {
       });
     }
 
+    // Bind the FILE to the collaboration that was just authorized.
+    //
+    // Everything above authorizes `collaboration_id`; the object signed below came from
+    // `file_path` + `bucket_name`, and until this check nothing ever joined the two. Anyone
+    // holding one collaboration of their own in an approved state could name ANY object in any
+    // private bucket and get a signed download URL for it. It also defeated two rules this
+    // function exists to enforce: the preview-vs-download ladder, and the
+    // `dispute_outcome='refund'` access revocation, both of which could be sidestepped by
+    // re-presenting a known path under a different, still-approved collaboration.
+    //
+    // Scoped to the collaboration's CREATOR, not merely its campaign. Campaign scope is one
+    // level too coarse: a campaign can carry several collaborations, so creator A — holding
+    // their own approved collaboration — could name creator B's `file_path` on the same
+    // campaign and have it signed with `download:true`. `file_uploads` has no
+    // `collaboration_id` (verified against prod `information_schema`), so `uploaded_by` is the
+    // available grain, and it is the correct one: every caller passes the collaboration whose
+    // work they are asking about, so a campaign owner previewing B still resolves B's files by
+    // passing B's collaboration.
+    //
+    // Storage RLS is NOT a second control to fall back on here — the service-role signature is
+    // the only door. (An earlier version of this comment said `campaign-deliverables` is
+    // service-role-only for SELECT per `20260425000000`; that is stale — `20260513000001`
+    // re-added a participant/org-member SELECT policy, and the two coexist. The conclusion is
+    // unchanged, but the reason is: RLS never sees a `createSignedUrl` made with the service
+    // role, whatever policies exist.)
+    const { data: fileRow, error: fileError } = await adminClient
+      .from('file_uploads')
+      .select('file_path, bucket_name')
+      .eq('campaign_id', collab.campaign_id)
+      .eq('uploaded_by', collab.creator_id)
+      .eq('file_path', file_path)
+      .eq('bucket_name', bucket_name)
+      .maybeSingle();
+
+    if (fileError) {
+      console.error('[get-watermarked-preview] file lookup failed:', fileError.message);
+      return new Response(JSON.stringify({ error: 'Authorization check unavailable' }), {
+        status: 503, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+      });
+    }
+    if (!fileRow) {
+      console.warn('[get-watermarked-preview] file not part of this collaboration', {
+        userId, collaboration_id, bucket_name,
+      });
+      return new Response(JSON.stringify({ error: 'File not found for this collaboration' }), {
+        status: 403, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+      });
+    }
+
     // Generate signed URL with appropriate expiry
     const expirySeconds = canDownload ? 3600 : 900;
     const signOptions = canDownload ? { download: true } : {};
     const { data: signedData, error: signError } = await adminClient.storage
-      .from(bucket_name)
-      .createSignedUrl(file_path, expirySeconds, signOptions);
+      .from(fileRow.bucket_name)
+      .createSignedUrl(fileRow.file_path, expirySeconds, signOptions);
 
     if (signError) {
       return new Response(JSON.stringify({ error: 'Failed to generate URL' }), {
