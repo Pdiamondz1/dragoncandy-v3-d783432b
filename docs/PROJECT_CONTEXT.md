@@ -115,8 +115,31 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   the signature survives dark mode with no background colour set; and **neither a Google Group nor
   an alias is a send-as identity** — the spec and README both claimed aliases *were*, and the first
   real run refuted it at **0 shared signatures**. That is not a Groups risk, it is the present
-  state, and only the account holder can fix it (Gmail → Accounts and Import → Send mail as).
-  **Pending (2026-08-21):** the per-person send-as step for the shared addresses; **Outlook for
+  state. **A fourth finding landed 2026-08-22 and corrects the third's remedy:** this line
+  previously said "only the account holder can fix it (Gmail → Accounts and Import → Send mail
+  as)". **Adding the identity by hand is not sufficient and is not free** — doing it returned
+  `403 Missing required scope ".../gmail.settings.sharing" for modifying non-primary SendAs`.
+  Google's reference lists `sendAs.update` as accepting `basic` **or** `sharing`, which is true
+  only of the **primary** identity and silent on the non-primary case every shared address falls
+  into. So both routes — by hand, or `sendAs.create` from the script — need the same wider scope,
+  which lets the service account decide **who may send mail as what for every user in the
+  domain**. Worse, acting on the wrong claim **caused a live regression**: three identities added
+  to `dame@` made the nightly run abort on the first unwritable one, so from 2026-08-21 it logged
+  `ERROR` and stopped refreshing even his own primary signature. **Closed by #456** (`b0f4e4de`,
+  merged 2026-08-22) — per-identity error isolation, a `PARTIAL` status distinct from `ok`/`ERROR`,
+  and a `SHARING_SCOPE_ENABLED` switch gating whether the JWT *requests* the wider scope (Codex
+  P1: granting it in the console alone changes nothing, and requesting one the delegation does not
+  carry fails the **entire** token exchange with `unauthorized_client` — hence default-off, and
+  hence an order that is not optional: **console first, property second**). 30 tests, was 19.
+  **The scope decision was made and the grant is DONE (2026-08-22)** — client
+  `117869070719843760682` now carries both `gmail.settings.basic` and `gmail.settings.sharing`,
+  verified on the delegation list page with `basic` intact. **Pending (2026-08-22):** `clasp push`
+  — #456 is merged but **not deployed**, so the live script still runs the pre-#456 code, requests
+  only `basic`, and `dame@` keeps erroring nightly (blocked on a `clasp login` reauth,
+  `invalid_rapt`); then `SHARING_SCOPE_ENABLED=true`, **deliberately not set yet** — a delegation
+  grant propagates on Google's schedule, and inside that window flipping the property produces the
+  same `unauthorized_client` total outage as doing the two steps out of order, so the sequence is
+  push → confirm `PARTIAL` → flip → re-run; **Outlook for
   Windows is untested and now untestable** (no access) — treat the rendering matrix as four-of-five;
   and Waves 2–3 (the People document set, and a *sendable* pitch deck — the current one is a React
   component). Workspace plan confirmed Business Standard, so shared drives were never at risk.

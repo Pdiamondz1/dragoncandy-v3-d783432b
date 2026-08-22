@@ -21,6 +21,15 @@ domain, indefinitely**. That is standard practice for this task and it is also
 a real standing grant. Its private key lives in Apps Script *script properties*
 and must never be committed to this repo.
 
+**As of 2026-08-22 that grant is wider than the minimum.** DragonCandy's
+delegation carries `gmail.settings.sharing` in addition to
+`gmail.settings.basic`, which means the account can also set **who may send
+mail as which address, for every user in the domain** — not merely rewrite
+signature HTML. That was a deliberate founder decision taken to make
+shared-mailbox signatures possible at all; it is reversible by removing the
+scope (see the ordering rules below), and it is the honest answer to the
+question in the next paragraph.
+
 If a new engineer asks "what can that service account do?" — this paragraph is
 the answer.
 
@@ -51,7 +60,13 @@ Do not install a single signature until this prints `image/png`.
 
        https://www.googleapis.com/auth/gmail.settings.basic
 
-   This is the **only** scope the delegation grant needs. The directory read
+   This is the only scope needed to sign **personal** mailboxes, which is what
+   a fresh setup does. Signing **shared** addresses additionally needs
+   `gmail.settings.sharing` — see "Shared identities" below, and add it only
+   once you actually want that. **DragonCandy's live delegation carries both
+   as of 2026-08-22**; this step describes the minimum, not our current state.
+
+   The directory read
    (`AdminDirectory.Users.list` in step 4) does not go through this JWT at
    all — it uses the Admin SDK Directory advanced service under the Apps
    Script project owner's own authorization, a separate auth path that needs
@@ -70,7 +85,7 @@ Do not install a single signature until this prints `image/png`.
    | `SA_CLIENT_EMAIL` | the service account's client email |
    | `SA_PRIVATE_KEY` | `private_key` from the JSON key, newlines as `\n` |
    | `LOG_SHEET_ID` | id of the run-log Sheet in `06 · Brand` |
-   | `SHARING_SCOPE_ENABLED` | leave unset. Only `true` after the delegation carries `gmail.settings.sharing` — see below, the order matters |
+   | `SHARING_SCOPE_ENABLED` | **still unset as of 2026-08-22.** The delegation now carries `gmail.settings.sharing` (granted 2026-08-22), so step 1 below is done — but do not set this until the post-#456 code is actually pushed. See below; the order matters |
 
 5. **Build, then set up clasp, then push.**
 
@@ -111,7 +126,7 @@ Do not install a single signature until this prints `image/png`.
 8. **Add the trigger** — Triggers -> Add trigger -> `installAllSignatures`,
    time-driven, day timer, 2am-3am.
 
-## Shared identities install ZERO signatures today, and that is expected
+## Shared identities: what installs, and why it is currently nothing
 
 **An alias is not a send-as identity.** This is the single most important thing
 to know about the shared-identity branch, and an earlier revision of this file
@@ -129,13 +144,27 @@ recording which ones exist, and an address missing from it is signed as
 *personal*. Listing one early is inert; listing one too few is a wrong
 signature on the day it is created.)
 
-So the current, correct behaviour is: `installAllSignatures()` reports
-**0 shared signatures installed**. That was observed on the first real run
-(2026-08-21). It is not a bug in this script and not a permissions problem —
-there is simply nothing for it to match.
+On the first real run (2026-08-21) `installAllSignatures()` reported **0 shared
+signatures installed**, and at that moment it was not a bug and not a
+permissions problem — there was simply nothing to match.
 
-**To make shared signatures install**, the address has to become a send-as
-identity. There are two routes, and we are currently on neither.
+**That is no longer the state, so do not diagnose from it.** Three of those
+addresses — `info@`, `support@`, `appstore@` — were added as real send-as
+identities on `dame@` on 2026-08-21, so they now *do* appear in his `sendAs`
+list and the shared branch *does* match them. What happens next depends
+entirely on which code is deployed:
+
+| Deployed code | `SHARING_SCOPE_ENABLED` | What `dame@` reports |
+|---|---|---|
+| pre-#456 | n/a (not read) | **`ERROR`** — one 403 aborts the whole user, so even his personal signature stops refreshing. **This is the live state as of 2026-08-22.** |
+| #456+ | unset / `false` | `PARTIAL`, 3 denied — personal signatures written, shared ones refused cleanly |
+| #456+ | `true` | `ok`, shared signatures installed |
+
+So `0 shared` is only the expected answer for a user with **no** shared
+identities. For `dame@`, the expected answer is now a denied count.
+
+**To make shared signatures install** for anyone else, the address has to
+become a send-as identity on their account too. There are two routes.
 
 **Both routes need the `gmail.settings.sharing` scope. Read this before
 planning around either one.** An earlier version of this file said Route A was
@@ -187,14 +216,28 @@ re-run, get the identical 403, and have no idea why.)
 1. **Admin console first.** Security → Access and data control → API controls →
    Domain-wide delegation → edit the existing client → add
    `https://www.googleapis.com/auth/gmail.settings.sharing` alongside
-   `gmail.settings.basic`.
+   `gmail.settings.basic`. **DONE 2026-08-22** — client
+   `117869070719843760682` now shows both scopes, verified on the list page.
+   (The edit dialog appends a row rather than replacing; check `basic` is
+   still present before authorizing, because losing it breaks everything.)
 2. **Then the script property.** Set `SHARING_SCOPE_ENABLED` to `true`.
+   **NOT done, deliberately** — see the propagation note below.
 
 **Do not reverse these.** Asking for a scope the delegation does not carry
 fails the *entire* token exchange with `unauthorized_client` — not just the
 shared identities, but every signature for every user. If that happens, set
 `SHARING_SCOPE_ENABLED` back to `false` and everything returns to working
 immediately; the error message says so too.
+
+**A granted scope is not an immediately usable one.** Google's domain-wide
+delegation changes propagate on their own schedule — minutes, sometimes
+longer. That is the same failure as step 2 running ahead of step 1, so treat
+"granted in the console" as the start of a window, not a green light. The
+safe sequence from here is: push the code, run `installAllSignatures()` and
+confirm it reports `PARTIAL` with a non-zero denied count (proving the basic
+path still works), *then* set the property, *then* run again. If the second
+run throws `unauthorized_client`, propagation has not finished — set the
+property back to `false`, wait, retry.
 
 To undo the whole thing later: set the property to `false` first, then remove
 the scope from the delegation. Same rule, reversed.

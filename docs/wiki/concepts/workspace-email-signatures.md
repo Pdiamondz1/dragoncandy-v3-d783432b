@@ -2,17 +2,30 @@
 title: Workspace Email Signatures
 type: concept
 created: 2026-08-20
-updated: 2026-08-20
-sources: [2026-08-20-google-workspace-signatures-wave-1.md]
+updated: 2026-08-22
+sources: [2026-08-20-google-workspace-signatures-wave-1.md, 2026-08-21-workspace-wave-1-admin-half-and-sendas-correction.md, 2026-08-22-sendas-scope-403-and-partial-status.md]
 tags: [google-workspace, email, branding, apps-script, automation, security]
 ---
 
 # Workspace Email Signatures
 
 Every DragonCandy employee's Gmail signature, generated from one template and installed
-automatically by a nightly Google Apps Script. Built 2026-08-20 as the code half of Wave 1
-of the corporate Workspace setup; the admin-console half (shared drives, Google Groups,
-`adrian@`, the service account) is founder-owned and outstanding at time of writing.
+automatically by a nightly Google Apps Script. Built 2026-08-20 as the code half of Wave 1 of
+the corporate Workspace setup.
+
+**Status, 2026-08-22.** The admin-console half — which no agent could do — is largely done: both
+shared drives exist and hold business documents, the service account has domain-wide delegation
+(`gmail.settings.basic`), and a daily 2–3am trigger is armed. It ran `4 × ok` on 2026-08-21.
+Google Groups (Task 8) were **deliberately skipped** rather than deferred; the sections below
+explain why that turned out not to matter. The `gmail.settings.sharing` scope **was granted on
+2026-08-22**, so the permission question is settled. Two things are genuinely open: **the merged
+#456 fix is not deployed** (`clasp push` blocked on a reauth), and **shared-mailbox signatures
+install nothing** until that push lands and `SHARING_SCOPE_ENABLED` is set — in that order. Both
+are in Known issues.
+
+*An earlier revision of this paragraph called the admin half "founder-owned and outstanding at
+time of writing", which stopped being true the next day — the same staleness mechanism this
+project keeps hitting in `PROJECT_CONTEXT.md` §5. Caught by Codex, 2026-08-22.*
 
 **The one-line summary: email is not the web, and almost every design decision here is a
 consequence of that.**
@@ -82,7 +95,12 @@ mode a directory lookup removes.
 **The security posture, stated plainly:** that service account can change Gmail settings for
 every account in the domain, indefinitely. Standard practice for the task, and a real
 standing grant. Its key lives in Apps Script script properties, never in the repo. The
-delegated grant is **only** `gmail.settings.basic` — the directory read runs through the
+delegated grant was `gmail.settings.basic` alone until **2026-08-22**, when
+`gmail.settings.sharing` was added — a deliberate founder decision, and a materially wider
+right: it lets the account set **who may send mail as which address for every user in the
+domain**, not merely rewrite signature HTML. It buys the shared-mailbox signatures and nothing
+else, and it is reversible by removing the scope (property to `false` first — see the ordering
+rules below). Notably the directory read is *not* part of any of this: it runs through the
 `AdminDirectory` advanced service under the script owner's own authorisation, a separate auth
 path. An earlier draft of the runbook told the reader to delegate
 `admin.directory.user.readonly` as well, which would have been a standing domain-wide right
@@ -109,9 +127,11 @@ That leaves the original conclusion standing but its reasoning inverted:
 
 - Groups genuinely are not send-as identities — but neither are aliases, so the conversion
   changes nothing here. **It was never a prerequisite for shared signatures.**
-- The `0 shared` outcome is **the expected state**, not a regression. The installer's warning
-  now says so, rather than sending an operator to look at a Groups migration that never
-  happened.
+- The `0 shared` outcome was **the expected state on 2026-08-21**, not a regression, and the
+  installer's warning was changed to say so rather than sending an operator to look at a Groups
+  migration that never happened. **That is no longer true and is the wrong thing to accept
+  today** — three real send-as identities were added to `dame@` the same day, so `0 shared`
+  for a user who has them now indicates a fault. See Known issues for the current matrix.
 - What the conversion *would* cost is the aliases themselves, so anyone who had completed the
   manual send-as step would lose it.
 
@@ -126,11 +146,16 @@ Google's own reference — is available **only** to service account clients with
 delegation, which is precisely what this system already runs.
 
 The real constraint is scope, not capability. `sendAs.create` requires
-`https://www.googleapis.com/auth/gmail.settings.sharing`; the delegation grants
-`gmail.settings.basic` only. Adding it lets the service account decide **who in the domain
-may send mail as which address** — materially wider than "can write signatures", and a
-founder's decision rather than an implementation detail. Same-domain addresses should return
-`verificationStatus: accepted` without an ownership email, but nobody has run it.
+`https://www.googleapis.com/auth/gmail.settings.sharing`, which at the time of writing the
+delegation did not carry. That scope lets the service account decide **who in the domain may
+send mail as which address** — materially wider than "can write signatures", and a founder's
+decision rather than an implementation detail.
+
+**That decision was taken on 2026-08-22: the scope is granted.** The delegation now carries
+both, so this paragraph describes the constraint as it *was*; the current grant is the two-scope
+one described under "The security posture" above. Same-domain addresses should return
+`verificationStatus: accepted` without an ownership email — confirmed by hand for the manual
+route on 2026-08-21, though `sendAs.create` itself has still never been run.
 
 So there are two routes — and a **third correction**, which is the one that finally cost
 something. This page said the manual route was free of new permissions. **Executing it
@@ -165,10 +190,58 @@ claim that something is impossible — or that something is free — is itself a
 only instrument that settles it is execution.* Same family as the `RCPT TO` probe and the
 "edge secrets aren't listable" myth that cost this project two days.
 
+### Granting a scope is two steps, and a runbook step that cannot work is worse than a missing one
+
+The correction above produced a follow-on defect worth its own note, because the shape recurs.
+
+The runbook's remedy was *"add `gmail.settings.sharing` to the domain-wide delegation"*. That is
+actionable, specific, and **inert** — the impersonation JWT hardcoded `gmail.settings.basic`, so
+an admin who followed it would grant the scope, re-run, receive the identical 403, and have
+nothing new to look at. Codex caught it. Documentation that instructs an action the code does
+not support is a trap, not a gap.
+
+The fix is a `SHARING_SCOPE_ENABLED` script property read by `requestedScopes_()`. **It defaults
+off, and the default is load-bearing:** requesting a scope the delegation does not carry fails
+the **entire** token exchange with `unauthorized_client` — not the shared identities, but every
+signature for every user. So enabling is ordered and the order is not optional:
+
+1. Admin console — add the scope to the existing delegation client.
+   **Done 2026-08-22**, both scopes verified present on client
+   `117869070719843760682`.
+2. *Then* set `SHARING_SCOPE_ENABLED=true`. **Not done**, and deliberately so
+   while the code is undeployed — see below.
+
+Reversing it takes the whole system down until the property is set back. Disabling runs the same
+rule backwards: property first, scope second. The README, the spec and the runtime error message
+all say so.
+
+**Generalisable: when a capability needs a grant in two independent systems, the default must be
+whichever value is safe while only one of them is configured.** Here that is off, because the
+half-configured failure is total rather than partial.
+
+**And a grant is not immediately a capability.** Domain-wide delegation changes propagate on
+Google's schedule — minutes, sometimes longer — so "granted in the console" opens a window
+rather than flipping a switch. Inside that window, step 2 produces exactly the same
+`unauthorized_client` total failure as doing the steps out of order. This is why the scope was
+granted on 2026-08-22 while `SHARING_SCOPE_ENABLED` was deliberately left unset: the code was
+undeployed anyway, so there was nothing to gain from racing it. The intended sequence is push →
+run and confirm `PARTIAL` with a non-zero denied count (which proves the `basic` path still
+works) → set the property → run again.
+
 ## Known issues
 
-- **Shared-mailbox signatures still install nothing**, and will until someone takes one of
-  the two routes above. `0 shared` is expected, not broken.
+- **Shared-mailbox signatures still install nothing.** The `gmail.settings.sharing` grant was
+  made 2026-08-22, so the *permission* half is settled — but the delegated JWT does not yet
+  request it (`SHARING_SCOPE_ENABLED` unset, and the code that reads it is undeployed).
+  **`0 shared` is no longer a safe thing to accept, though.** Three real send-as identities now
+  exist on `dame@`, so what a correct run reports depends on which code is live — `ERROR`
+  pre-#456, `PARTIAL` with 3 denied on #456 with the property off, `ok` with the property on.
+  A `0 shared` for a user who *has* shared identities means something is wrong. The matrix is in
+  `scripts/workspace/README.md`; read it before judging a run.
+- **#456 is merged and not deployed** (as of 2026-08-22). `clasp push` fails on a clasp
+  reauth (`invalid_grant` / `invalid_rapt`), so the **live Apps Script still runs pre-#456
+  code** and `dame@`'s nightly run keeps aborting on the first unwritable identity. Merged is
+  not deployed, and for Apps Script there is no CI that closes the gap.
 - **Outlook for Windows is untested and now untestable** — the account that could have
   checked it is gone. The rendering matrix is four-of-five (Gmail web light, Gmail web dark,
   Gmail iOS dark, images-disabled), not five-of-five. Do not describe it as verified.
