@@ -10,9 +10,20 @@ tags: [google-workspace, email, branding, apps-script, automation, security]
 # Workspace Email Signatures
 
 Every DragonCandy employee's Gmail signature, generated from one template and installed
-automatically by a nightly Google Apps Script. Built 2026-08-20 as the code half of Wave 1
-of the corporate Workspace setup; the admin-console half (shared drives, Google Groups,
-`adrian@`, the service account) is founder-owned and outstanding at time of writing.
+automatically by a nightly Google Apps Script. Built 2026-08-20 as the code half of Wave 1 of
+the corporate Workspace setup.
+
+**Status, 2026-08-22.** The admin-console half — which no agent could do — is largely done: both
+shared drives exist and hold business documents, the service account has domain-wide delegation
+(`gmail.settings.basic`), and a daily 2–3am trigger is armed. It ran `4 × ok` on 2026-08-21.
+Google Groups (Task 8) were **deliberately skipped** rather than deferred; the sections below
+explain why that turned out not to matter. Two things are genuinely open: **the merged #456 fix
+is not deployed** (`clasp push` blocked on a reauth), and **shared-mailbox signatures install
+nothing** pending a scope decision. Both are in Known issues.
+
+*An earlier revision of this paragraph called the admin half "founder-owned and outstanding at
+time of writing", which stopped being true the next day — the same staleness mechanism this
+project keeps hitting in `PROJECT_CONTEXT.md` §5. Caught by Codex, 2026-08-22.*
 
 **The one-line summary: email is not the web, and almost every design decision here is a
 consequence of that.**
