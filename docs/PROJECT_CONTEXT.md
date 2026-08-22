@@ -131,10 +131,15 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   P1: granting it in the console alone changes nothing, and requesting one the delegation does not
   carry fails the **entire** token exchange with `unauthorized_client` — hence default-off, and
   hence an order that is not optional: **console first, property second**). 30 tests, was 19.
-  **Pending (2026-08-22):** `clasp push` — #456 is merged but **not deployed**, so the live script
-  still runs the pre-#456 code and `dame@` keeps erroring nightly (blocked on a `clasp login`
-  reauth, `invalid_rapt`); then the founder's go/no-go on `gmail.settings.sharing`, which is the
-  only thing that makes shared signatures install at all; **Outlook for
+  **The scope decision was made and the grant is DONE (2026-08-22)** — client
+  `117869070719843760682` now carries both `gmail.settings.basic` and `gmail.settings.sharing`,
+  verified on the delegation list page with `basic` intact. **Pending (2026-08-22):** `clasp push`
+  — #456 is merged but **not deployed**, so the live script still runs the pre-#456 code, requests
+  only `basic`, and `dame@` keeps erroring nightly (blocked on a `clasp login` reauth,
+  `invalid_rapt`); then `SHARING_SCOPE_ENABLED=true`, **deliberately not set yet** — a delegation
+  grant propagates on Google's schedule, and inside that window flipping the property produces the
+  same `unauthorized_client` total outage as doing the two steps out of order, so the sequence is
+  push → confirm `PARTIAL` → flip → re-run; **Outlook for
   Windows is untested and now untestable** (no access) — treat the rendering matrix as four-of-five;
   and Waves 2–3 (the People document set, and a *sendable* pitch deck — the current one is a React
   component). Workspace plan confirmed Business Standard, so shared drives were never at risk.

@@ -70,7 +70,7 @@ Do not install a single signature until this prints `image/png`.
    | `SA_CLIENT_EMAIL` | the service account's client email |
    | `SA_PRIVATE_KEY` | `private_key` from the JSON key, newlines as `\n` |
    | `LOG_SHEET_ID` | id of the run-log Sheet in `06 · Brand` |
-   | `SHARING_SCOPE_ENABLED` | leave unset. Only `true` after the delegation carries `gmail.settings.sharing` — see below, the order matters |
+   | `SHARING_SCOPE_ENABLED` | **still unset as of 2026-08-22.** The delegation now carries `gmail.settings.sharing` (granted 2026-08-22), so step 1 below is done — but do not set this until the post-#456 code is actually pushed. See below; the order matters |
 
 5. **Build, then set up clasp, then push.**
 
@@ -187,14 +187,28 @@ re-run, get the identical 403, and have no idea why.)
 1. **Admin console first.** Security → Access and data control → API controls →
    Domain-wide delegation → edit the existing client → add
    `https://www.googleapis.com/auth/gmail.settings.sharing` alongside
-   `gmail.settings.basic`.
+   `gmail.settings.basic`. **DONE 2026-08-22** — client
+   `117869070719843760682` now shows both scopes, verified on the list page.
+   (The edit dialog appends a row rather than replacing; check `basic` is
+   still present before authorizing, because losing it breaks everything.)
 2. **Then the script property.** Set `SHARING_SCOPE_ENABLED` to `true`.
+   **NOT done, deliberately** — see the propagation note below.
 
 **Do not reverse these.** Asking for a scope the delegation does not carry
 fails the *entire* token exchange with `unauthorized_client` — not just the
 shared identities, but every signature for every user. If that happens, set
 `SHARING_SCOPE_ENABLED` back to `false` and everything returns to working
 immediately; the error message says so too.
+
+**A granted scope is not an immediately usable one.** Google's domain-wide
+delegation changes propagate on their own schedule — minutes, sometimes
+longer. That is the same failure as step 2 running ahead of step 1, so treat
+"granted in the console" as the start of a window, not a green light. The
+safe sequence from here is: push the code, run `installAllSignatures()` and
+confirm it reports `PARTIAL` with a non-zero denied count (proving the basic
+path still works), *then* set the property, *then* run again. If the second
+run throws `unauthorized_client`, propagation has not finished — set the
+property back to `false`, wait, retry.
 
 To undo the whole thing later: set the property to `false` first, then remove
 the scope from the delegation. Same rule, reversed.

@@ -192,7 +192,10 @@ the **entire** token exchange with `unauthorized_client` — not the shared iden
 signature for every user. So enabling is ordered and the order is not optional:
 
 1. Admin console — add the scope to the existing delegation client.
-2. *Then* set `SHARING_SCOPE_ENABLED=true`.
+   **Done 2026-08-22**, both scopes verified present on client
+   `117869070719843760682`.
+2. *Then* set `SHARING_SCOPE_ENABLED=true`. **Not done**, and deliberately so
+   while the code is undeployed — see below.
 
 Reversing it takes the whole system down until the property is set back. Disabling runs the same
 rule backwards: property first, scope second. The README, the spec and the runtime error message
@@ -202,11 +205,21 @@ all say so.
 whichever value is safe while only one of them is configured.** Here that is off, because the
 half-configured failure is total rather than partial.
 
+**And a grant is not immediately a capability.** Domain-wide delegation changes propagate on
+Google's schedule — minutes, sometimes longer — so "granted in the console" opens a window
+rather than flipping a switch. Inside that window, step 2 produces exactly the same
+`unauthorized_client` total failure as doing the steps out of order. This is why the scope was
+granted on 2026-08-22 while `SHARING_SCOPE_ENABLED` was deliberately left unset: the code was
+undeployed anyway, so there was nothing to gain from racing it. The intended sequence is push →
+run and confirm `PARTIAL` with a non-zero denied count (which proves the `basic` path still
+works) → set the property → run again.
+
 ## Known issues
 
-- **Shared-mailbox signatures still install nothing**, and will until someone takes one of
-  the two routes above — **both of which need `gmail.settings.sharing`**. `0 shared` is
-  expected, not broken.
+- **Shared-mailbox signatures still install nothing.** The `gmail.settings.sharing` grant was
+  made 2026-08-22, so the *permission* half is settled — but the delegated JWT does not yet
+  request it (`SHARING_SCOPE_ENABLED` unset, and the code that reads it is undeployed). `0
+  shared` remains expected, not broken, until both halves land.
 - **#456 is merged and not deployed** (as of 2026-08-22). `clasp push` fails on a clasp
   reauth (`invalid_grant` / `invalid_rapt`), so the **live Apps Script still runs pre-#456
   code** and `dame@`'s nightly run keeps aborting on the first unwritable identity. Merged is
