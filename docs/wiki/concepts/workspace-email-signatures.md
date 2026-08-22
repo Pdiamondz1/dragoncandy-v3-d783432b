@@ -2,8 +2,8 @@
 title: Workspace Email Signatures
 type: concept
 created: 2026-08-20
-updated: 2026-08-20
-sources: [2026-08-20-google-workspace-signatures-wave-1.md]
+updated: 2026-08-22
+sources: [2026-08-20-google-workspace-signatures-wave-1.md, 2026-08-21-workspace-wave-1-admin-half-and-sendas-correction.md, 2026-08-22-sendas-scope-403-and-partial-status.md]
 tags: [google-workspace, email, branding, apps-script, automation, security]
 ---
 
@@ -165,10 +165,41 @@ claim that something is impossible — or that something is free — is itself a
 only instrument that settles it is execution.* Same family as the `RCPT TO` probe and the
 "edge secrets aren't listable" myth that cost this project two days.
 
+### Granting a scope is two steps, and a runbook step that cannot work is worse than a missing one
+
+The correction above produced a follow-on defect worth its own note, because the shape recurs.
+
+The runbook's remedy was *"add `gmail.settings.sharing` to the domain-wide delegation"*. That is
+actionable, specific, and **inert** — the impersonation JWT hardcoded `gmail.settings.basic`, so
+an admin who followed it would grant the scope, re-run, receive the identical 403, and have
+nothing new to look at. Codex caught it. Documentation that instructs an action the code does
+not support is a trap, not a gap.
+
+The fix is a `SHARING_SCOPE_ENABLED` script property read by `requestedScopes_()`. **It defaults
+off, and the default is load-bearing:** requesting a scope the delegation does not carry fails
+the **entire** token exchange with `unauthorized_client` — not the shared identities, but every
+signature for every user. So enabling is ordered and the order is not optional:
+
+1. Admin console — add the scope to the existing delegation client.
+2. *Then* set `SHARING_SCOPE_ENABLED=true`.
+
+Reversing it takes the whole system down until the property is set back. Disabling runs the same
+rule backwards: property first, scope second. The README, the spec and the runtime error message
+all say so.
+
+**Generalisable: when a capability needs a grant in two independent systems, the default must be
+whichever value is safe while only one of them is configured.** Here that is off, because the
+half-configured failure is total rather than partial.
+
 ## Known issues
 
 - **Shared-mailbox signatures still install nothing**, and will until someone takes one of
-  the two routes above. `0 shared` is expected, not broken.
+  the two routes above — **both of which need `gmail.settings.sharing`**. `0 shared` is
+  expected, not broken.
+- **#456 is merged and not deployed** (as of 2026-08-22). `clasp push` fails on a clasp
+  reauth (`invalid_grant` / `invalid_rapt`), so the **live Apps Script still runs pre-#456
+  code** and `dame@`'s nightly run keeps aborting on the first unwritable identity. Merged is
+  not deployed, and for Apps Script there is no CI that closes the gap.
 - **Outlook for Windows is untested and now untestable** — the account that could have
   checked it is gone. The rendering matrix is four-of-five (Gmail web light, Gmail web dark,
   Gmail iOS dark, images-disabled), not five-of-five. Do not describe it as verified.

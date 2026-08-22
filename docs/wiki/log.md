@@ -1,5 +1,40 @@
 # Wiki Log
 
+## [2026-08-22] ingest | The remedy the page prescribed was also wrong, and following it broke production
+
+Ingested `raw/sessions/2026-08-22-sendas-scope-403-and-partial-status.md`.
+**Updated** [[Workspace Email Signatures]] and its `index.md` entry — for the third time in
+three days, and this time the correction is to the *fix*, not to the diagnosis.
+
+Yesterday's ingest established that an alias is not a send-as identity and pointed at two
+routes to fix it, describing the manual one as needing no new permissions. Executing it
+returned **403 — `Missing required scope ".../gmail.settings.sharing" for modifying
+non-primary SendAs`**. Google's reference lists `sendAs.update` as accepting `basic` *or*
+`sharing`; that holds for the **primary** identity only, and nothing documents the non-primary
+case that every shared address falls into. Both routes cost the same scope, so the manual route
+was never the cheap one.
+
+**It caused a live regression.** Three identities added by hand made the nightly run throw on
+the first unwritable one and abort the whole user — `ERROR` for `dame@` from 2026-08-21, with
+even his working primary signature no longer refreshed. A wrong claim about permissions removed
+a working feature rather than merely failing to add a new one.
+
+**New section: "Granting a scope is two steps."** The runbook's own remedy was inert — the JWT
+hardcoded `gmail.settings.basic`, so granting the scope in the console would have produced the
+identical 403 with nothing new to look at (Codex P1). Now gated by `SHARING_SCOPE_ENABLED`,
+defaulting **off**, because requesting an ungranted scope fails the *entire* token exchange and
+takes down every signature for every user. Console first, property second; reverse to disable.
+
+**Known issues** gained the deploy gap: #456 is merged (`b0f4e4de`) and **not deployed** —
+`clasp push` blocked on a clasp reauth — so the live Apps Script runs pre-#456 code. *Merged is
+not deployed*, and Apps Script has no CI that closes the gap.
+
+Durable lesson, now stated on the page: *a claim that something is impossible — or that
+something is free — is itself a claim, and the only instrument that settles it is execution.*
+Three claims, three refutations; the first two caught by reading and by review, the third only
+by running it, and only the third cost anything. Reviews catch claims that contradict something
+already written down; they cannot catch one that is merely untested and plausible.
+
 ## [2026-08-21] ingest | An alias is not a send-as identity either — the claim that did not survive its first run
 
 Ingested `raw/sessions/2026-08-21-workspace-wave-1-admin-half-and-sendas-correction.md`.
