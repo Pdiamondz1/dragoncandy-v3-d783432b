@@ -26,7 +26,7 @@ Confirm the whole toolchain works:
 npm run build && npm run typecheck && npm run lint && npm run test
 ```
 
-All four should pass. You should see roughly 2,481 tests pass.
+All four should pass. You should see roughly 2,492 tests pass.
 
 **Afternoon: use the product as all three people.** This matters more than reading code. Log into
 the staging environment as each test account and actually do the thing:

@@ -78,7 +78,7 @@ content delivery and payment flows aren't finished.
 | Screens | 92 |
 | Backend functions | 98 |
 | Database changes | 389 |
-| Automated tests | 2,481 |
+| Automated tests | 2,492 |
 | Total commits | 3,299 (about 2,500 by one person) |
 
 Here's how much work got done each month:
@@ -281,7 +281,7 @@ today — we're not making it up.
 ```
 write it on a branch
    →  open a pull request
-   →  automatic checks: does it build, does it typecheck, do all 2,481 tests pass
+   →  automatic checks: does it build, does it typecheck, do all 2,492 tests pass
    →  automatic preview website, connected to the test database
    →  automatic browser tests against that preview, as all three user types
    →  everything must be green — enforced automatically, nobody can skip it

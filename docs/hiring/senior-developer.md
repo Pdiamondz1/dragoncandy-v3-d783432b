@@ -32,7 +32,7 @@ choice, with about 30 organic users, and we have not set a launch date yet.
 | Screens | 92 |
 | Backend functions | 98 |
 | Database changes applied | 389 |
-| Automated tests | 2,481 |
+| Automated tests | 2,492 |
 | Commits | 3,299, roughly 2,500 by one person |
 
 This is a large, working codebase. Nobody is going to rewrite it. If your instinct on seeing a
@@ -116,7 +116,7 @@ layer. Begin reviewing the mid-level developer's work.
 - **Two-week cycles.** Monday planning, Friday demo. Minimal meetings.
 - **Linear** for tickets, synced with GitHub.
 - **Four environments:** local, per-branch preview, staging, production.
-- **Every change:** branch → pull request → automated checks (build, types, linting, 2,481 tests) →
+- **Every change:** branch → pull request → automated checks (build, types, linting, 2,492 tests) →
   preview site → AI review → human approval → live.
 - **Written and asynchronous by default.** Three hours of live overlap a day; the rest is writing.
 - **Done means done:** merged, checked on phone and desktop, verified in production, and the

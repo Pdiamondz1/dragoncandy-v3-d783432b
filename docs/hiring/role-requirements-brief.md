@@ -92,7 +92,7 @@ where the seniority requirement comes from:
 | Screens | 92 |
 | Backend functions | 98 |
 | Database changes applied | 389 |
-| Automated tests | 2,481 |
+| Automated tests | 2,492 |
 
 This is a large, real codebase. It is not a prototype, and nobody is going to rewrite it.
 
