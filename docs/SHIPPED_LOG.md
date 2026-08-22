@@ -79,10 +79,20 @@ something is impossible — or that something is free — is itself a claim, and
 that settles it is execution.* Same family as the `RCPT TO` probe and the "edge secrets aren't
 listable" myth that cost this project two days.
 
+**The scope decision was made the same day.** `gmail.settings.sharing` was granted on
+2026-08-22 — the delegation client now carries both scopes, verified on the list page with
+`basic` intact (the edit dialog appends a row rather than replacing, so confirming `basic`
+survived is not a formality). `SHARING_SCOPE_ENABLED` was **deliberately left unset**, for a
+reason worth its own line: **a granted scope is not immediately a usable one.** Delegation
+changes propagate on Google's schedule, and flipping the property inside that window produces
+the identical `unauthorized_client` total outage as doing the two steps out of order. The code
+that reads the property is undeployed anyway, so there was nothing to gain from racing it.
+
 **Left open, honestly:** #456 is merged and **not deployed** — `clasp push` is blocked on a
-`clasp login` reauth (`invalid_rapt`), so the live Apps Script still runs the pre-#456 code and
-`dame@` errors again every night until it lands. Shared signatures install nothing until the
-scope decision is made. Outlook for Windows remains untested and untestable.
+`clasp login` reauth (`invalid_rapt`), so the live Apps Script still runs the pre-#456 code,
+requests only `basic`, and `dame@` errors again every night until it lands. Then, in order:
+confirm the run reports `PARTIAL` with a non-zero denied count, set the property, re-run.
+Outlook for Windows remains untested and untestable.
 
 → `docs/wiki/concepts/workspace-email-signatures.md` · #455, #456
 
