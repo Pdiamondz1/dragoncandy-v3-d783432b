@@ -26,7 +26,7 @@ Confirm the whole toolchain works:
 npm run build && npm run typecheck && npm run lint && npm run test
 ```
 
-All four should pass. You should see roughly 2,443 tests pass.
+All four should pass. You should see roughly 2,492 tests pass.
 
 **Afternoon: use the product as all three people.** This matters more than reading code. Log into
 the staging environment as each test account and actually do the thing:
@@ -54,7 +54,7 @@ Then trace **one** feature end to end in the code. Campaign creation is a good o
 route in `src/App.tsx`, follow it into the page, into its hooks, into the Supabase call, and into
 the edge function Donny uses to generate it.
 
-Do not try to read the whole codebase. It is 1,174 files. Nobody holds it all.
+Do not try to read the whole codebase. It is 1,186 files. Nobody holds it all.
 
 ## Day 3 — Understand the two things that can hurt you
 

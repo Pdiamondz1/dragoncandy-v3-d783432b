@@ -143,7 +143,34 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   Vercel-scope confirmation first — it may carry Maps/reCAPTCHA keys); rotating the committed staging
   password; and reconciling the capacity report's **$49/mo** Supabase Small compute against
   Supabase's published **$15** (remedy: read the invoice).
-  → `docs/wiki/concepts/local-prod-boundary.md` · `docs/wiki/concepts/cloud-platform-strategy.md` · #451, #452
+  **Outreach to Adrian's referrals started 2026-08-21** — this entry previously said only "Adrian
+  sourcing", which was true and had stopped being the whole picture. Three of the four are a named
+  person with a direct address, so there was almost nothing to "discover": Root Codex (`fabio@`,
+  Root Codex Ltd, Msida, **Malta**), ALAN Systems (`lukasz.krain@`, Rybnik, **Poland**, trading
+  since 1999), and the designer **Lubo** (`lvatchkov@`, TheLubo, a solo consultancy, 20+ years).
+  All three were sent from `dame@dragoncandy.com` CC `adrian.vella.jobs@gmail.com` (details below),
+  with the hiring pack exported to PDF (`docs/hiring/pdf/`) because the repo is private and there is
+  **no public URL to link** — it has to be attached. **Adrian is not passing on an acquaintance at ALAN
+  Systems: he is one of four testimonials published on their own business page** ("Adrian Vella, CEO
+  TipicoUS"). And all three referrals come from **one iGaming network** — Root Codex builds casinos
+  and lists Casumo and LeoVegas, ALAN Systems references Tipico and GVC/bwin, Lubo lists iGaming —
+  which is real experience of high-traffic consumer products and payments, but **none of them shows
+  a three-sided marketplace**, so the drafts say so in the first email rather than on the third call.
+  **EPAM is PARKED (founder decision, 2026-08-21), and it is the wrong *shape*, not merely
+  expensive**: its intake form routes to enterprise sales by region, consulting, careers or partner
+  relations, and **nothing meaning "we would like to hire one of your engineers"** — 62,850+ staff,
+  345+ Forbes Global 2000 clients. Reopen only if the two houses fail, and then via a person, never
+  the form. Note the emails carry the scope doc's §9 position into first contact (one owner who
+  stays; a rotating team with nobody resident is the outcome we least want), so neither house
+  pitches the thing we would refuse. **All three SENT 2026-08-21** — Lubo 22:03, Root Codex 22:10,
+  ALAN Systems 22:12 UTC, Adrian CC'd, Joe BCC'd, each thread then forwarded to `adrian@`/`joe@`/
+  `jay@dragoncandy.com`. Note what went out quoted **1,174 source files / 2,443 tests**; the true
+  figures were **1,186 / 2,481**, found by the Codex pass the next day and corrected across the
+  pack, the scope doc and `onboarding/first-week.md` — **deliberately not corrected to the
+  recipients**, since the emails and their attachments agreed with each other and 12 files changes
+  no claim anyone would act on. **Pending:** replies; the PDF toolchain (pandoc + headless Chrome)
+  is **not committed**, so regenerating is two manual commands.
+  → `docs/hiring/outreach-drafts.md` · `docs/wiki/concepts/local-prod-boundary.md` · `docs/wiki/concepts/cloud-platform-strategy.md` · #451, #452
 - **Content delivery system stabilization** — bug-fixing the creator→business content
   handoff and payment flow; gates production launch. → `docs/SHIPPED_LOG.md`
 - **Outstand social media integration** — IG/TikTok/YouTube linking + delegated posting;
