@@ -140,9 +140,9 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   person with a direct address, so there was almost nothing to "discover": Root Codex (`fabio@`,
   Root Codex Ltd, Msida, **Malta**), ALAN Systems (`lukasz.krain@`, Rybnik, **Poland**, trading
   since 1999), and the designer **Lubo** (`lvatchkov@`, TheLubo, a solo consultancy, 20+ years).
-  Drafts sit in Gmail unsent, from `dame@dragoncandy.com` CC `adrian.vella.jobs@gmail.com`, with the
-  hiring pack now exported to PDF (`docs/hiring/pdf/`) because the repo is private and there is **no
-  public URL to link** — it has to be attached. **Adrian is not passing on an acquaintance at ALAN
+  All three were sent from `dame@dragoncandy.com` CC `adrian.vella.jobs@gmail.com` (details below),
+  with the hiring pack exported to PDF (`docs/hiring/pdf/`) because the repo is private and there is
+  **no public URL to link** — it has to be attached. **Adrian is not passing on an acquaintance at ALAN
   Systems: he is one of four testimonials published on their own business page** ("Adrian Vella, CEO
   TipicoUS"). And all three referrals come from **one iGaming network** — Root Codex builds casinos
   and lists Casumo and LeoVegas, ALAN Systems references Tipico and GVC/bwin, Lubo lists iGaming —
