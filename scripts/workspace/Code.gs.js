@@ -21,8 +21,28 @@
 var DOMAIN = 'dragoncandy.com';
 
 /**
- * Send-as identities that represent the company rather than a person, and
- * therefore carry the registered postal address (spec decision 7).
+ * Addresses that represent the COMPANY rather than a person, and therefore
+ * carry the registered postal address (spec decision 7).
+ *
+ * THIS IS A CLASSIFIER, NOT AN INVENTORY. It is only ever consulted for an
+ * address that already appeared in somebody's sendAs list, so listing an
+ * address that does not exist yet is inert. Listing one too few is not:
+ * an unclassified company address is treated as PERSONAL, and would go out
+ * with an individual's name and title and no registered address on it.
+ *
+ * The asymmetry decides the contents — when in doubt, include the address.
+ * (Codex caught this: an earlier revision of this commit removed `legal@`
+ * because the alias does not exist today, which would have mis-signed it the
+ * day it was created.)
+ *
+ * Existing aliases on dame@, read from the admin console 2026-08-21: info,
+ * support, appstore, sales, privacy, admin, founders. `legal@` is planned
+ * rather than existing (spec Task 8) and is classified here in advance.
+ * `founders@` was missing from this list entirely — that was a real bug.
+ *
+ * An entry here is necessary but NOT sufficient for a signature to install:
+ * the address must also be a verified send-as identity in the individual's
+ * Gmail, which an alias is not on its own. See scripts/workspace/README.md.
  */
 var SHARED_IDENTITIES = [
   'support@dragoncandy.com',
@@ -32,6 +52,7 @@ var SHARED_IDENTITIES = [
   'privacy@dragoncandy.com',
   'legal@dragoncandy.com',
   'appstore@dragoncandy.com',
+  'founders@dragoncandy.com',
 ];
 
 function isSharedIdentity_(email) {
@@ -43,18 +64,37 @@ function installAllSignatures() {
   var users = listDomainUsers_();
   var results = [];
   var totalSharedInstalled = 0;
+  var totalDenied = 0;
 
   for (var i = 0; i < users.length; i++) {
     var user = users[i];
     try {
       var counts = installForUser_(user);
       totalSharedInstalled += counts.shared;
+      totalDenied += counts.denied;
+
+      // PARTIAL is deliberately distinct from both ok and ERROR. A run where
+      // every writable identity was written but some were refused is neither
+      // a clean pass nor a failure, and collapsing it into either one is how
+      // a standing permissions gap becomes invisible.
+      var status = counts.failures.length ? 'PARTIAL' : counts.denied ? 'PARTIAL' : 'ok';
+      var detail = counts.total + ' identities';
+      if (counts.denied) {
+        detail += ', ' + counts.denied + ' denied (needs gmail.settings.sharing)';
+      }
+      if (counts.failures.length) {
+        detail += ', ' + counts.failures.length + ' failed: ' + counts.failures.join('; ');
+        console.error(
+          'installForUser_ partial for ' + user.primaryEmail + ': ' + counts.failures.join('; '),
+        );
+      }
+
       results.push([
         new Date(),
         user.primaryEmail,
         user.title || '(no title)',
-        'ok',
-        counts.total + ' identities',
+        status,
+        detail,
         counts.shared + ' shared',
       ]);
     } catch (err) {
@@ -68,23 +108,53 @@ function installAllSignatures() {
     }
   }
 
-  // SHARED_IDENTITIES only match here because they're currently sendAs aliases
-  // on dame@. The project plan converts them to real Google Groups, and a
-  // Group is not a sendAs identity -- once that happens this branch matches
-  // nothing for every user, every night, forever, and (without this check)
-  // the run still reports "ok" for everyone. Surface that loudly rather than
-  // relying on the README being read.
+  // 0 shared is the EXPECTED state today, not a regression. SHARED_IDENTITIES
+  // are aliases on dame@, and an alias is not a sendAs identity -- so this
+  // branch matches nothing until someone completes the manual send-as step.
+  // Confirmed on the first real run, 2026-08-21. An earlier version of this
+  // comment blamed a future Google Groups conversion; that was the wrong
+  // diagnosis and would have sent an operator looking in the wrong place.
+  // Warn anyway: the day someone does the send-as step, this going quiet is
+  // how they know it worked, and if it later returns to 0 that is a real
+  // regression worth seeing.
   if (totalSharedInstalled === 0) {
-    console.warn(
-      'installAllSignatures: 0 shared-mailbox signatures installed across ' +
-        users.length +
-        ' user(s). Most likely cause: the SHARED_IDENTITIES addresses (support@, ' +
-        'sales@, etc.) are no longer Gmail send-as identities on any account -- ' +
-        'probably because they were converted to Google Groups, which do not ' +
-        'appear in settings/sendAs. Each member of the group must add and verify ' +
-        'the address themselves (Gmail Settings -> Accounts and Import -> Send ' +
-        'mail as) before a signature can be written to it.',
-    );
+    if (totalDenied > 0) {
+      // The identities EXIST and we were refused. One cause, one fix.
+      console.warn(
+        'installAllSignatures: ' +
+          totalDenied +
+          ' send-as identity/identities were refused with 403 across ' +
+          users.length +
+          ' user(s), so 0 shared-mailbox signatures installed. The identities ' +
+          'exist and are verified -- we lack ' +
+          SCOPE_SHARING +
+          ', which Gmail requires to modify any NON-PRIMARY sendAs. FIXING ' +
+          'THIS TAKES TWO STEPS AND THE ORDER MATTERS: (1) add that scope to ' +
+          'the domain-wide delegation in the admin console, alongside ' +
+          'gmail.settings.basic; THEN (2) set the script property ' +
+          'SHARING_SCOPE_ENABLED=true so the impersonation JWT actually asks ' +
+          'for it. Step 1 alone changes nothing -- the token still comes back ' +
+          'without the scope and you get this same 403. Step 2 before step 1 ' +
+          'breaks every signature with unauthorized_client. NOTE the ' +
+          'consequence before doing either: that scope also lets this service ' +
+          'account set who may send as what, for every user in the domain.',
+      );
+    } else {
+      console.warn(
+        'installAllSignatures: 0 shared-mailbox signatures installed across ' +
+          users.length +
+          ' user(s), and nothing was refused -- so no shared address is a ' +
+          'send-as identity on any account. SHARED_IDENTITIES (support@, ' +
+          'sales@, founders@, ...) are ALIASES, and an alias does not appear ' +
+          'in settings/sendAs; it only makes mail arrive. The account holder ' +
+          'adds it in Gmail Settings -> Accounts and Import -> Send mail as ' +
+          '(or the script creates it via settings/sendAs POST). Either route ' +
+          'ALSO needs gmail.settings.sharing to write the signature ' +
+          'afterwards -- proven 2026-08-21, do not assume the manual route is ' +
+          'permission-free. Converting these to Google Groups would NOT help: ' +
+          'a Group is not a send-as identity either.',
+      );
+    }
   }
 
   appendRunLog_(results);
@@ -142,6 +212,8 @@ function installForUser_(user) {
   var identities = gmailApi_(token, 'settings/sendAs', 'get').sendAs || [];
   var written = 0;
   var sharedWritten = 0;
+  var denied = 0;
+  var failures = [];
 
   for (var i = 0; i < identities.length; i++) {
     var identity = identities[i];
@@ -162,21 +234,54 @@ function installForUser_(user) {
       showCompany: !shared,
     });
 
-    gmailApi_(
-      token,
-      'settings/sendAs/' + encodeURIComponent(identity.sendAsEmail),
-      'patch',
-      { signature: html },
-    );
-    written++;
-    if (shared) sharedWritten++;
+    // One unwritable identity must not cost this user their other signatures.
+    // Observed 2026-08-21: adding shared send-as identities to dame@ made the
+    // whole user throw, so his own primary signature stopped being refreshed
+    // and the nightly run logged ERROR with no counts at all. Attempt every
+    // identity, record what failed, and let the caller report it.
+    try {
+      gmailApi_(
+        token,
+        'settings/sendAs/' + encodeURIComponent(identity.sendAsEmail),
+        'patch',
+        { signature: html },
+      );
+      written++;
+      if (shared) sharedWritten++;
+    } catch (err) {
+      if (isMissingSharingScope_(err)) {
+        // Known, expected, and actionable — not a defect in this script.
+        denied++;
+      } else {
+        failures.push(identity.sendAsEmail + ': ' + err);
+      }
+    }
   }
 
-  return { total: written, shared: sharedWritten };
+  return { total: written, shared: sharedWritten, denied: denied, failures: failures };
+}
+
+/**
+ * Gmail refuses to patch a NON-PRIMARY sendAs with only gmail.settings.basic,
+ * and says so in the message rather than in any distinguishable code.
+ *
+ * This is the correction that cost the most to learn. Google's reference lists
+ * settings.sendAs.update as accepting `basic` OR `sharing`, which is true — of
+ * the PRIMARY identity. It says nothing about the non-primary case. The repo
+ * asserted twice, in writing, that adding the identity by hand needed no new
+ * permissions; running it returned 403 PERMISSION_DENIED. Read the docs, then
+ * run the thing.
+ */
+function isMissingSharingScope_(err) {
+  return String(err).indexOf('gmail.settings.sharing') !== -1;
 }
 
 function titleForShared_(email) {
   var local = String(email).split('@')[0];
+  // Every entry in SHARED_IDENTITIES needs a label here, including the ones
+  // that do not exist yet. The fallback returns the raw local part, which
+  // renders customer-facing as "DragonCandy founders" — lowercase, and visibly
+  // wrong. A test in signature.test.js enforces the pairing.
   var labels = {
     support: 'Support',
     sales: 'Sales',
@@ -185,6 +290,7 @@ function titleForShared_(email) {
     privacy: 'Privacy',
     legal: 'Legal',
     appstore: 'App Store',
+    founders: 'Founders',
   };
   return labels[local] || local;
 }
@@ -214,6 +320,35 @@ function gmailApi_(token, path, method, body) {
  * Mints an access token for `userEmail` using the delegated service account.
  * Signed JWT -> Google token endpoint, the standard domain-wide-delegation flow.
  */
+var SCOPE_BASIC = 'https://www.googleapis.com/auth/gmail.settings.basic';
+var SCOPE_SHARING = 'https://www.googleapis.com/auth/gmail.settings.sharing';
+
+/**
+ * Scopes to request in the impersonation JWT.
+ *
+ * Granting a scope in the admin console is only half of it — the JWT has to ASK
+ * for it too, or the token comes back without it and every non-primary sendAs
+ * patch still 403s with no clue why. (Codex P1, 2026-08-22. The warning text in
+ * this file previously told an operator to add the scope in the console and
+ * stop there, which would have produced an identical failure and a very bad
+ * afternoon.)
+ *
+ * It is NOT safe to simply request both always. Google rejects the whole token
+ * exchange with `unauthorized_client` if the JWT asks for a scope the
+ * delegation does not carry — so hardcoding both would break every signature,
+ * including the personal ones that work today, until an admin catches up.
+ *
+ * Hence the switch, and hence its default. Order of operations is: add the
+ * scope in the admin console FIRST, then set SHARING_SCOPE_ENABLED=true. Doing
+ * it the other way round takes the whole installer down.
+ */
+function requestedScopes_() {
+  var enabled = PropertiesService.getScriptProperties().getProperty('SHARING_SCOPE_ENABLED');
+  return String(enabled).toLowerCase() === 'true'
+    ? SCOPE_BASIC + ' ' + SCOPE_SHARING
+    : SCOPE_BASIC;
+}
+
 function getImpersonatedToken_(userEmail) {
   var props = PropertiesService.getScriptProperties();
   var clientEmail = props.getProperty('SA_CLIENT_EMAIL');
@@ -235,7 +370,7 @@ function getImpersonatedToken_(userEmail) {
     encode({
       iss: clientEmail,
       sub: userEmail,
-      scope: 'https://www.googleapis.com/auth/gmail.settings.basic',
+      scope: requestedScopes_(),
       aud: 'https://oauth2.googleapis.com/token',
       iat: now,
       exp: now + 3600,
@@ -256,7 +391,21 @@ function getImpersonatedToken_(userEmail) {
 
   var body = JSON.parse(response.getContentText());
   if (!body.access_token) {
-    throw new Error('token exchange failed for ' + userEmail + ': ' + response.getContentText());
+    var hint = '';
+    if (
+      response.getContentText().indexOf('unauthorized_client') !== -1 &&
+      requestedScopes_().indexOf(SCOPE_SHARING) !== -1
+    ) {
+      hint =
+        ' — LIKELY CAUSE: SHARING_SCOPE_ENABLED is true but ' +
+        SCOPE_SHARING +
+        ' has not been added to the domain-wide delegation in the admin ' +
+        'console. Add it there, or set SHARING_SCOPE_ENABLED=false to restore ' +
+        'the previous working state.';
+    }
+    throw new Error(
+      'token exchange failed for ' + userEmail + ': ' + response.getContentText() + hint,
+    );
   }
   return body.access_token;
 }

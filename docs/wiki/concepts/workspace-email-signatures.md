@@ -88,51 +88,113 @@ path. An earlier draft of the runbook told the reader to delegate
 `admin.directory.user.readonly` as well, which would have been a standing domain-wide right
 to read every user record that nothing uses.
 
-## A Google Group is not a send-as identity
+## Neither a Group nor an alias is a send-as identity
 
-**The sharpest interaction in this system, and it is invisible until it silently costs you.**
+**This section was wrong when first written, and the correction is the more useful lesson.**
 
-Shared addresses (`support@`, `sales@`, `legal@` …) appear in a user's Gmail send-as list
-**only because they are aliases on one person's account** — and the send-as list is exactly
-where the installer looks for them. Converting those aliases to real Google Groups, which the
-Workspace plan requires for perfectly good reasons, **removes them from every user's send-as
-list.**
+The original claim: shared addresses (`support@`, `sales@` …) appear in a user's Gmail
+send-as list *because they are aliases on one person's account*, so converting them to real
+Google Groups would remove them and silently break shared-mailbox signatures. The
+prescription followed: treat the alias→Group conversion as the hazard.
 
-The installer then runs, reports success, and installs **zero** address-bearing signatures.
-The registered postal address that policy puts on shared mailboxes appears nowhere, and
-nothing errors.
+**The first real run refuted it. `installAllSignatures()` reported 0 shared signatures —
+2026-08-21, with the aliases fully intact and no Group anywhere.**
 
-Three-part resolution, and the split is the point:
+An alias makes mail **arrive**. It does not create a send-as identity. The send-as list is
+exactly where the installer looks, so the shared branch had never matched anything and never
+could have. The failure written up as a future risk of a decision nobody had taken was the
+state on the day it was written.
 
-- **Code** — warn when a run installs zero shared identities, naming the likely cause. This
-  makes the failure visible. It cannot prevent it.
-- **Process** — after the conversion, each member re-adds and verifies each shared address on
-  their own account (Gmail → Settings → Accounts and Import → *Send mail as*).
-- **Docs** — the spec records why the two decisions interact, so the next reader does not
-  rediscover it in production.
+That leaves the original conclusion standing but its reasoning inverted:
 
-**No API, admin or script can do the re-adding.** Gmail requires the account holder to
-complete send-as verification. This is a genuine platform limit, not an automation gap — and
-worth knowing before someone promises to automate it.
+- Groups genuinely are not send-as identities — but neither are aliases, so the conversion
+  changes nothing here. **It was never a prerequisite for shared signatures.**
+- The `0 shared` outcome is **the expected state**, not a regression. The installer's warning
+  now says so, rather than sending an operator to look at a Groups migration that never
+  happened.
+- What the conversion *would* cost is the aliases themselves, so anyone who had completed the
+  manual send-as step would lose it.
+
+### It is automatable, at a price — the second correction
+
+The first version of this page also stated: *"No API, admin or script can do the re-adding.
+Gmail requires the account holder to complete send-as verification. This is a genuine
+platform limit."*
+
+**That is false, and Codex caught it.** `users.settings.sendAs.create` exists and — per
+Google's own reference — is available **only** to service account clients with domain-wide
+delegation, which is precisely what this system already runs.
+
+The real constraint is scope, not capability. `sendAs.create` requires
+`https://www.googleapis.com/auth/gmail.settings.sharing`; the delegation grants
+`gmail.settings.basic` only. Adding it lets the service account decide **who in the domain
+may send mail as which address** — materially wider than "can write signatures", and a
+founder's decision rather than an implementation detail. Same-domain addresses should return
+`verificationStatus: accepted` without an ownership email, but nobody has run it.
+
+So there are two routes — and a **third correction**, which is the one that finally cost
+something. This page said the manual route was free of new permissions. **Executing it
+returned 403:**
+
+```
+Missing required scope ".../auth/gmail.settings.sharing"
+for modifying non-primary SendAs
+```
+
+`gmail.settings.sharing` is required for **either** route. Google's reference lists
+`settings.sendAs.update` as accepting `basic` *or* `sharing` — true of the **primary**
+identity, and silent on the non-primary case that every shared address falls into. Adding
+the identity by hand therefore produces an identity the installer still cannot write to.
+
+**The cost of that discovery was a live regression.** Three send-as identities were added to
+`dame@` on 2026-08-21 on the strength of the wrong claim; from that moment the nightly 2am
+run logged `ERROR` for him and stopped refreshing even his own primary signature, because one
+unwritable identity aborted the whole user. Both halves are now fixed — the scope is named as
+mandatory, and the loop records a refusal and continues instead of throwing.
+
+**The durable lesson is not about Gmail, and it took three rounds to land.** This page
+asserted, in order: *only a Groups conversion breaks shared signatures* (wrong — aliases were
+never send-as identities); *no API can create a send-as identity* (wrong — `sendAs.create`
+exists for delegated service accounts); *the manual route needs no new permissions* (wrong —
+non-primary writes need `sharing`).
+
+The first two were caught by reading and by review. **The third was caught only by running
+it, and it is the one that broke production.** Reviews catch claims that contradict something
+already written down; they cannot catch a claim that is merely untested and plausible. *A
+claim that something is impossible — or that something is free — is itself a claim, and the
+only instrument that settles it is execution.* Same family as the `RCPT TO` probe and the
+"edge secrets aren't listable" myth that cost this project two days.
 
 ## Known issues
 
+- **Shared-mailbox signatures still install nothing**, and will until someone takes one of
+  the two routes above. `0 shared` is expected, not broken.
+- **Outlook for Windows is untested and now untestable** — the account that could have
+  checked it is gone. The rendering matrix is four-of-five (Gmail web light, Gmail web dark,
+  Gmail iOS dark, images-disabled), not five-of-five. Do not describe it as verified.
 - **A warning is not a gate.** If nobody reads the run log, a zero-shared-signature run still
-  passes unnoticed. The mitigation is that the founder step now sits in the plan *before* the
-  install step, not that the code prevents it.
-- **`Code.gs.js` has no unit tests and cannot have any** — it needs the Apps Script runtime.
-  The renderer is pure and carries 19 tests; the driver is deliberately kept thin enough to
-  review by eye. Its correctness is established by reading, a syntax check on the generated
-  output, and the founder's dry run.
-- **The whole thing is unproven against Google's real endpoints.** Delegation, token
-  exchange, the Admin SDK's `organizations[].primary` shape, and Gmail's acceptance of the
-  patched HTML have never executed. Everything to date is static review.
+  passes unnoticed.
 - **`dryRun()` does not authenticate**, so it passes cleanly with a missing or revoked
-  service-account key. Its comment says so; the limitation stands.
-- **Nothing is deployed.** At time of writing the branch is unmerged and the admin half is
-  not started.
+  service-account key. Its comment says so; the limitation stands. This is why the acceptance
+  signal was writing into *other people's* mailboxes, which `dryRun()` structurally cannot
+  demonstrate.
 
-## Two traps worth carrying to other work
+### Three "known issues" that were resolved and are recorded here so they are not re-raised
+
+- ~~**`Code.gs.js` has no unit tests and cannot have any** — it needs the Apps Script
+  runtime.~~ **Resolved 2026-08-21.** It is Apps Script with no top-level calls, so the file
+  loads in the test process and its values can be inspected — 5 invariant tests now pin
+  `SHARED_IDENTITIES` against `titleForShared_()`. The belief that it was untestable is what
+  let a missing label reach review. 24 tests total, up from 19.
+- ~~**The whole thing is unproven against Google's real endpoints.**~~ **Resolved
+  2026-08-21.** It ran: delegation, token exchange, the Admin SDK read and Gmail's acceptance
+  of the patched HTML all executed, `4 × ok`. Proven by signatures appearing in `joe@`,
+  `jay@` and `adrian@` — mailboxes `dame@` cannot otherwise touch, which is the only evidence
+  that distinguishes a working delegation from a broken one.
+- ~~**Nothing is deployed.**~~ **Merged (#453) and live 2026-08-21**, with a daily 2–3am
+  trigger armed. Corrections followed in #454.
+
+## Three traps worth carrying to other work
 
 **A 200 is not proof of a resource.** `https://dragoncandy.com/brand/dc-mark-104.png` returns
 **HTTP 200 serving `index.html`** before the asset deploys, because Vercel's SPA catch-all
@@ -147,6 +209,17 @@ would have uploaded the ES-module source and the vitest file, each a V8 syntax e
 the whole project at load. The transform existed specifically to prevent that and was being
 bypassed by the documented procedure. Generated output now includes `appsscript.json`, and
 the runbook pins `"rootDir": "dist"`.
+
+**A classifier is not an inventory, and the two errors are not symmetric.**
+`SHARED_IDENTITIES` decides how an address is *signed*, and is only ever consulted for
+addresses that already appeared in someone's send-as list. Listing an address that does not
+exist yet is therefore **inert** — nothing matches it. Omitting one is not: an unclassified
+company address is signed as *personal*, going out under an individual's name and title with
+no registered postal address. A cleanup pass removed `legal@` for the sensible-sounding
+reason that the alias does not exist; Codex refused it, correctly, because the day the
+address is created it would be mis-signed — on the mailbox that exists to receive legal
+correspondence. **When a list is a classifier, tidiness argues the wrong way: include the
+address you are unsure about.**
 
 ## A refuted finding, recorded so it is not re-raised
 

@@ -70,6 +70,7 @@ Do not install a single signature until this prints `image/png`.
    | `SA_CLIENT_EMAIL` | the service account's client email |
    | `SA_PRIVATE_KEY` | `private_key` from the JSON key, newlines as `\n` |
    | `LOG_SHEET_ID` | id of the run-log Sheet in `06 · Brand` |
+   | `SHARING_SCOPE_ENABLED` | leave unset. Only `true` after the delegation carries `gmail.settings.sharing` — see below, the order matters |
 
 5. **Build, then set up clasp, then push.**
 
@@ -110,25 +111,107 @@ Do not install a single signature until this prints `image/png`.
 8. **Add the trigger** — Triggers -> Add trigger -> `installAllSignatures`,
    time-driven, day timer, 2am-3am.
 
-## Shared identities depend on how support@/sales@/etc. are provisioned
+## Shared identities install ZERO signatures today, and that is expected
 
-Right now `support@`, `sales@`, `info@`, `admin@`, `privacy@`, `legal@` and
-`appstore@` are all **aliases on `dame@dragoncandy.com`**, which is why they
-show up in `dame@`'s `settings/sendAs` list and get a signature installed by
-`installForUser_`'s shared-identity branch.
+**An alias is not a send-as identity.** This is the single most important thing
+to know about the shared-identity branch, and an earlier revision of this file
+said the opposite.
 
-If these are ever converted to real Google Groups (see the corporate-setup
-spec's decision 9), **they will vanish from every user's sendAs list** — a
-Group is not a send-as identity. The shared-identity branch will quietly stop
-matching anything and those signatures will stop being installed, with no
-error anywhere.
+`support@`, `sales@`, `info@`, `admin@`, `privacy@`, `appstore@` and
+`founders@` are **aliases on `dame@dragoncandy.com`** — verified in the admin
+console 2026-08-21. Being an alias means mail addressed to them *arrives* in
+`dame@`'s inbox. It does **not** put them in `dame@`'s `settings/sendAs` list,
+and `sendAs` is exactly where `installForUser_`'s shared-identity branch looks.
 
-If that conversion happens: each person who should be able to send as a
-shared address needs to add and verify it themselves in Gmail (Settings ->
-Accounts and Import -> Send mail as). Only after that will the script find
-the identity in their `sendAs` list and install the shared signature for it.
-This is a manual step per person per address; nothing in this script can do
-it for them.
+(`SHARED_IDENTITIES` also lists `legal@`, which does not exist yet. That is
+deliberate — the list classifies company-versus-personal addresses rather than
+recording which ones exist, and an address missing from it is signed as
+*personal*. Listing one early is inert; listing one too few is a wrong
+signature on the day it is created.)
+
+So the current, correct behaviour is: `installAllSignatures()` reports
+**0 shared signatures installed**. That was observed on the first real run
+(2026-08-21). It is not a bug in this script and not a permissions problem —
+there is simply nothing for it to match.
+
+**To make shared signatures install**, the address has to become a send-as
+identity. There are two routes, and we are currently on neither.
+
+**Both routes need the `gmail.settings.sharing` scope. Read this before
+planning around either one.** An earlier version of this file said Route A was
+"manual, but permission-free". **It is not, and running it is what proved
+that:**
+
+```
+403 PERMISSION_DENIED
+Missing required scope "https://www.googleapis.com/auth/gmail.settings.sharing"
+for modifying non-primary SendAs
+```
+
+Google's reference lists `settings.sendAs.update` as accepting
+`gmail.settings.basic` **or** `gmail.settings.sharing`. That is true of the
+**primary** identity. Modifying any **non-primary** sendAs — which every shared
+address is — requires `sharing`, and no page says so. So adding the identity by
+hand gets you an identity this script still cannot write a signature to.
+
+**Route A — the person adds the identity.** Gmail -> Settings -> Accounts and
+Import -> "Send mail as" -> Add another email address. For a same-domain
+address this completes with no verification email. Fine as far as it goes, but
+the signature will not install until the scope is added.
+
+**Route B — this script does it.** `POST settings/sendAs` (Gmail API
+`users.settings.sendAs.create`) can create the identity under the service
+account's existing domain-wide delegation. Two things to know before reaching
+for it:
+
+- **It needs the same scope Route A needs**, so it is not a bigger ask —
+  `sendAs.create` and non-primary `sendAs.update` both require
+  `gmail.settings.sharing`. Once the scope is there, this route also covers
+  Joe, Juwan and Adrian without asking each of them to do anything.
+- **Same-domain addresses do not need email verification.** Confirmed by hand
+  on 2026-08-21: three addresses added to `dame@`, all accepted immediately,
+  no confirmation email.
+
+**What the scope actually costs, stated plainly:** it lets this service account
+set **who may send mail as what, for every user in the domain** — not just
+rewrite signature HTML. The key lives in a script property. That is the whole
+decision, and it is the founder's.
+
+### Turning the scope on — two steps, and the order is not optional
+
+Granting the scope in the admin console does **nothing on its own**. The
+impersonation JWT has to request it too, and this script deliberately does not
+by default. (Codex caught that; without it an admin would grant the scope,
+re-run, get the identical 403, and have no idea why.)
+
+1. **Admin console first.** Security → Access and data control → API controls →
+   Domain-wide delegation → edit the existing client → add
+   `https://www.googleapis.com/auth/gmail.settings.sharing` alongside
+   `gmail.settings.basic`.
+2. **Then the script property.** Set `SHARING_SCOPE_ENABLED` to `true`.
+
+**Do not reverse these.** Asking for a scope the delegation does not carry
+fails the *entire* token exchange with `unauthorized_client` — not just the
+shared identities, but every signature for every user. If that happens, set
+`SHARING_SCOPE_ENABLED` back to `false` and everything returns to working
+immediately; the error message says so too.
+
+To undo the whole thing later: set the property to `false` first, then remove
+the scope from the delegation. Same rule, reversed.
+
+An earlier version of this file said no API could create a send-as identity.
+That was wrong, and Codex caught it. Then it said the manual route was
+permission-free. That was also wrong, and only running it caught that one.
+
+The same constraint applies, for the same reason, if these addresses are ever
+converted to real Google Groups (corporate-setup spec, decision 9). A Group is
+not a send-as identity either. The conversion would therefore change nothing
+about this branch's behaviour, because it is already installing nothing —
+but it would remove the aliases, so anyone who *had* completed the manual
+send-as step would lose it.
+
+The installer warns when it installs zero shared signatures, so this stays
+visible rather than silent.
 
 ## Editing a signature
 

@@ -43,7 +43,7 @@ into whatever exists on their first day. Everything here is ordered against that
 |---|---|---|---|
 | Damon Williams | `dame@dragoncandy.com` | CTO | active |
 | Joe Castelo | `joe@dragoncandy.com` | CEO | active |
-| Juwan Robinson | `jay@dragoncandy.com` | Co-founder | active |
+| Juwan Robinson | `jay@dragoncandy.com` | Shareholder | active |
 | Adrian Vella | `adrian@dragoncandy.com` | Board Member | **not yet created** |
 
 "Juwan Robinson" is the public-facing form, confirmed in the interview — the
@@ -232,21 +232,58 @@ with legal response obligations attached.
 sends dispute alerts to it. That address must keep receiving throughout the
 migration; it is verified explicitly rather than assumed.
 
-**The conversion breaks §7.3's shared-mailbox signatures unless a manual step
-follows it, and that interaction is the sharpest edge in this spec.** A Google
-Group is *not* a send-as identity. These addresses appear in Gmail's send-as
-list today only because they are aliases on `dame@`; the moment they become
-Groups they disappear from it — and the send-as list is exactly where §7.5's
-installer looks for them. The installer would then run, report success, and
-install **zero** address-bearing signatures, so the registered address that
-decision 7 puts on shared identities would silently appear nowhere.
+**§7.3's shared-mailbox signatures install zero today, and the conversion is not
+what breaks them.** A Google Group is *not* a send-as identity — and neither is
+an alias. This paragraph previously claimed these addresses "appear in Gmail's
+send-as list today only because they are aliases on `dame@`". **That was wrong,
+and the first real run of the installer disproved it: 0 shared signatures
+installed, 2026-08-21.** An alias makes mail *arrive*; it does not create a
+send-as identity, and the send-as list is exactly where §7.5's installer looks.
+So the failure this section describes as a future risk of decision 9 is the
+present state, and the alias model causes it, not Groups.
 
-So after the conversion, each member must add and verify each shared address on
-their own account (Gmail → Settings → Accounts and Import → *Send mail as*).
-**No API, admin or script can do this for them** — Gmail requires the account
-holder to complete verification, which is why it is a founder step rather than
-something the automation absorbs. The installer logs a warning when it finds no
-shared identities, but a warning reports the problem rather than preventing it.
+Converting to Groups would therefore change nothing about the installer's
+behaviour — it already installs nothing. What it *would* do is remove the
+aliases, costing anyone who had completed the manual send-as step below.
+
+So — now, not "after the conversion" — the address has to be made a send-as
+identity before any shared signature can install. Either each member adds it on
+their own account (Gmail → Settings → Accounts and Import → *Send mail as*), or
+the installer creates it via `users.settings.sendAs.create`, which **is**
+available to a domain-wide-delegated service account like ours.
+
+**This paragraph previously said "No API, admin or script can do this for
+them." That is false, and Codex caught it.** It was then replaced with a claim
+that the manual route needed no new permissions — **also false, and only
+executing it caught that one.**
+
+`gmail.settings.sharing` is required either way, and this is the single most
+expensive thing learned in this whole workstream:
+
+```
+403 PERMISSION_DENIED
+Missing required scope ".../auth/gmail.settings.sharing"
+for modifying non-primary SendAs
+```
+
+Google's reference lists `settings.sendAs.update` as accepting `basic` **or**
+`sharing`, which holds for the **primary** identity only. Every shared address
+is non-primary, and no page states the distinction. So a hand-added identity is
+one this installer still cannot write to. §7.5's delegation grants
+`gmail.settings.basic`, which is why the nightly run began logging 403s the
+moment three identities were added to `dame@` on 2026-08-21.
+
+What the scope costs: the service account gains the ability to set **who may
+send mail as what, for every user in the domain**. Same-domain addresses were
+confirmed to need no ownership email — three added by hand, all accepted
+immediately.
+
+The installer logs a warning when it finds no shared identities, but a warning
+reports the problem rather than preventing it.
+
+**Decision 9 is therefore not a prerequisite for shared signatures, and never
+was.** Whoever picks this up next should do the send-as step for the addresses
+that matter and leave the Groups question to its own merits.
 
 Found by the Codex second review, which correctly refused the documentation-only
 fix an earlier review round had accepted.

@@ -26,6 +26,64 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-21] Wave 1 went live, and its first run disproved the documentation it shipped with
+
+**PRs** #453 (merged 11:35 UTC) and #454 (merged 21:00 UTC) · Codex clean at round 4 ·
+24 tests (was 19)
+
+The morning merged Wave 1. The afternoon ran it, and the run contradicted the page written to
+explain it.
+
+**The admin half, which no agent could do, got done.** Domain-wide delegation granted (one
+scope, `gmail.settings.basic`); a service-account key created, which needed a *project-scoped*
+exception to the `iam.managed.disableServiceAccountKeyCreation` org policy rather than an
+org-wide one; the Apps Script project pushed via `clasp`; three script properties set;
+`installAllSignatures()` run for all four users → **`4 × ok`**; a daily 2–3am trigger armed.
+
+**The acceptance signal was deliberately not the success message.** Signatures appeared in
+`joe@`, `jay@` and `adrian@` — mailboxes `dame@` cannot otherwise touch. That is the only
+observation that distinguishes live delegation from broken delegation, and `dryRun()`
+structurally cannot produce it: it never mints an impersonation token, so it passes cleanly
+against a missing or revoked key.
+
+**Then `0 shared`.** The installer's own warning blamed a Google Groups conversion — which
+had been *deliberately skipped*, so the diagnosis was structurally impossible. The real cause,
+read off the admin console: **an alias is not a send-as identity.** The seven shared addresses
+are aliases on `dame@`; an alias makes mail *arrive* and does not appear in `settings/sendAs`,
+which is exactly where the installer looks. So the shared branch had never matched anything
+and never could have.
+
+That falsified the spec and README, which both said these addresses appear in the send-as list
+*because* they are aliases, and framed the alias→Group conversion as the future hazard. **The
+hazard described as a consequence of a decision nobody had taken was the state on the day it
+was written.** Groups were never a prerequisite. Three copies corrected — spec, README, and
+the live `console.warn` an operator actually reads.
+
+**Codex found three real defects in #454, all mine.** (1) `founders@` was added to
+`SHARED_IDENTITIES` with no label in `titleForShared_()`, which falls through to the raw local
+part and would have rendered "DragonCandy founders", lowercase, to customers — fixed, and
+pinned by a test *verified by removing the label and watching it go red*. (2) Removing
+`legal@` because the alias does not exist was wrong: `isSharedIdentity_` is a **classifier**,
+so listing a nonexistent address is inert while omitting one gets it signed as *personal* —
+an individual's name and title, no registered address, on the legal mailbox. (3) "No API can
+create a send-as identity" was false — `users.settings.sendAs.create` is available *only* to
+domain-wide-delegated service accounts, exactly what we run; the constraint is scope
+(`gmail.settings.sharing` vs the `gmail.settings.basic` granted), not capability.
+
+**Also shipped that day, outside the PRs:** both shared drives populated with 14 business
+documents (hiring pack open, compensation Confidential — the split #452 designed, now enforced
+by structure instead of by remembering to delete §7); the domain-wide **profile-picture lock
+lifted** (*Directory settings → Profile editing*), which had been silently preventing every
+user in the domain from setting a photo; and **Gmail iOS dark mode confirmed passing** — the
+renderer sets no background colour, so dark-on-dark was the real risk, and Gmail's mobile
+client remaps the text rather than only inverting the background.
+
+**Left open, honestly:** shared-mailbox signatures still install nothing until someone takes
+the manual send-as route or widens the delegation scope; **Outlook for Windows is untested and
+now untestable** (no access), so the rendering matrix is four-of-five, not five-of-five.
+
+→ `docs/wiki/concepts/workspace-email-signatures.md` · #453, #454
+
 ## [2026-08-20] Email is not the web — signatures that install themselves, and nine files that named the wrong CTO
 
 **Branch** `worktree-dc-google-workspace` · 11 commits · Codex clean at round 3 · 19 tests ·
