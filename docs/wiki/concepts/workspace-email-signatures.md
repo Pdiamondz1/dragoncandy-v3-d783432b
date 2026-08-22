@@ -95,7 +95,12 @@ mode a directory lookup removes.
 **The security posture, stated plainly:** that service account can change Gmail settings for
 every account in the domain, indefinitely. Standard practice for the task, and a real
 standing grant. Its key lives in Apps Script script properties, never in the repo. The
-delegated grant is **only** `gmail.settings.basic` — the directory read runs through the
+delegated grant was `gmail.settings.basic` alone until **2026-08-22**, when
+`gmail.settings.sharing` was added — a deliberate founder decision, and a materially wider
+right: it lets the account set **who may send mail as which address for every user in the
+domain**, not merely rewrite signature HTML. It buys the shared-mailbox signatures and nothing
+else, and it is reversible by removing the scope (property to `false` first — see the ordering
+rules below). Notably the directory read is *not* part of any of this: it runs through the
 `AdminDirectory` advanced service under the script owner's own authorisation, a separate auth
 path. An earlier draft of the runbook told the reader to delegate
 `admin.directory.user.readonly` as well, which would have been a standing domain-wide right
