@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom";
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { render, cleanup, fireEvent, screen, within, act } from "@testing-library/react";
+import { render, cleanup, fireEvent, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { Header } from "./Header";
 
@@ -11,23 +11,6 @@ vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
   return { ...actual, useNavigate: () => navigateMock };
 });
-
-const SECTION_IDS = ["business", "creators", "how", "donny"];
-
-/** Header's nav buttons scroll-target these ids via `document.getElementById(...).scrollIntoView()`,
- * which jsdom doesn't implement — stub real target elements with their own spy. */
-function stubSections() {
-  const spies: Record<string, ReturnType<typeof vi.fn>> = {};
-  for (const id of SECTION_IDS) {
-    const el = document.createElement("div");
-    el.id = id;
-    const spy = vi.fn();
-    (el as unknown as { scrollIntoView: () => void }).scrollIntoView = spy;
-    document.body.appendChild(el);
-    spies[id] = spy;
-  }
-  return spies;
-}
 
 function setup() {
   return render(
@@ -39,9 +22,7 @@ function setup() {
 
 afterEach(() => {
   cleanup();
-  document.body.innerHTML = "";
   navigateMock.mockClear();
-  vi.useRealTimers();
 });
 
 describe("Header logo", () => {
@@ -55,85 +36,23 @@ describe("Header logo", () => {
   });
 });
 
-describe("Header desktop nav", () => {
-  it("scroll-links each of the four section buttons to its target", () => {
-    const spies = stubSections();
+describe("Header nav", () => {
+  it("renders the logo and a single Log in link, and no section nav", () => {
     setup();
-    const nav = screen.getByRole("navigation", { name: "Primary" });
 
-    fireEvent.click(within(nav).getByText("For businesses"));
-    expect(spies.business).toHaveBeenCalled();
+    const logo = screen.getByAltText("DragonCandy");
+    expect(logo.getAttribute("src")).toBe("/logo.webp");
 
-    fireEvent.click(within(nav).getByText("For creators"));
-    expect(spies.creators).toHaveBeenCalled();
-
-    fireEvent.click(within(nav).getByText("How it works"));
-    expect(spies.how).toHaveBeenCalled();
-
-    fireEvent.click(within(nav).getByText("Meet Donny"));
-    expect(spies.donny).toHaveBeenCalled();
+    expect(screen.queryByText("For businesses")).not.toBeInTheDocument();
+    expect(screen.queryByText("For creators")).not.toBeInTheDocument();
+    expect(screen.queryByText("How it works")).not.toBeInTheDocument();
+    expect(screen.queryByText("Meet Donny")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /menu/i })).not.toBeInTheDocument();
   });
 
-  it("routes Log in to /auth?mode=login and Get started to /auth?mode=signup", () => {
+  it("routes Log in to /auth?mode=login", () => {
     setup();
-    const nav = screen.getByRole("navigation", { name: "Primary" });
-
-    fireEvent.click(within(nav).getByText("Log in"));
+    fireEvent.click(screen.getByText("Log in"));
     expect(navigateMock).toHaveBeenCalledWith("/auth?mode=login");
-
-    fireEvent.click(within(nav).getByText("Get started"));
-    expect(navigateMock).toHaveBeenCalledWith("/auth?mode=signup");
-  });
-});
-
-describe("Header mobile Sheet menu", () => {
-  it("exposes the same four section links plus Log in and Get started once opened", () => {
-    setup();
-    fireEvent.click(screen.getByLabelText("Toggle menu"));
-
-    const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByText("For businesses")).toBeInTheDocument();
-    expect(within(dialog).getByText("For creators")).toBeInTheDocument();
-    expect(within(dialog).getByText("How it works")).toBeInTheDocument();
-    expect(within(dialog).getByText("Meet Donny")).toBeInTheDocument();
-    expect(within(dialog).getByText("Log in")).toBeInTheDocument();
-    expect(within(dialog).getByText("Get started")).toBeInTheDocument();
-  });
-
-  it("closes the sheet then scrolls to the section after clicking a mobile section link", () => {
-    vi.useFakeTimers();
-    const spies = stubSections();
-    setup();
-
-    fireEvent.click(screen.getByLabelText("Toggle menu"));
-    const dialog = screen.getByRole("dialog");
-    fireEvent.click(within(dialog).getByText("How it works"));
-
-    expect(spies.how).not.toHaveBeenCalled();
-    act(() => {
-      vi.advanceTimersByTime(400);
-    });
-    expect(spies.how).toHaveBeenCalled();
-  });
-
-  it("closes the sheet then navigates after clicking mobile Log in / Get started", () => {
-    vi.useFakeTimers();
-    setup();
-
-    fireEvent.click(screen.getByLabelText("Toggle menu"));
-    let dialog = screen.getByRole("dialog");
-    fireEvent.click(within(dialog).getByText("Log in"));
-    act(() => {
-      vi.advanceTimersByTime(400);
-    });
-    expect(navigateMock).toHaveBeenCalledWith("/auth?mode=login");
-
-    fireEvent.click(screen.getByLabelText("Toggle menu"));
-    dialog = screen.getByRole("dialog");
-    fireEvent.click(within(dialog).getByText("Get started"));
-    act(() => {
-      vi.advanceTimersByTime(400);
-    });
-    expect(navigateMock).toHaveBeenCalledWith("/auth?mode=signup");
   });
 });
