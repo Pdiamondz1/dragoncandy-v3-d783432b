@@ -336,7 +336,6 @@ export function resolveReelSource(
 
 The parameter is `clip`, not `reel`, on purpose — `reel` is already the name of the factory
 helper above it in the same module, and shadowing it would trip `no-shadow` and read badly.
-```
 
 The order alternates the two restaurants deliberately — five ABB clips in a row would read as one business's showreel rather than a marketplace.
 
