@@ -144,11 +144,16 @@ Google's own reference — is available **only** to service account clients with
 delegation, which is precisely what this system already runs.
 
 The real constraint is scope, not capability. `sendAs.create` requires
-`https://www.googleapis.com/auth/gmail.settings.sharing`; the delegation grants
-`gmail.settings.basic` only. Adding it lets the service account decide **who in the domain
-may send mail as which address** — materially wider than "can write signatures", and a
-founder's decision rather than an implementation detail. Same-domain addresses should return
-`verificationStatus: accepted` without an ownership email, but nobody has run it.
+`https://www.googleapis.com/auth/gmail.settings.sharing`, which at the time of writing the
+delegation did not carry. That scope lets the service account decide **who in the domain may
+send mail as which address** — materially wider than "can write signatures", and a founder's
+decision rather than an implementation detail.
+
+**That decision was taken on 2026-08-22: the scope is granted.** The delegation now carries
+both, so this paragraph describes the constraint as it *was*; the current grant is the two-scope
+one described under "The security posture" above. Same-domain addresses should return
+`verificationStatus: accepted` without an ownership email — confirmed by hand for the manual
+route on 2026-08-21, though `sendAs.create` itself has still never been run.
 
 So there are two routes — and a **third correction**, which is the one that finally cost
 something. This page said the manual route was free of new permissions. **Executing it
