@@ -132,13 +132,37 @@ may send mail as which address** — materially wider than "can write signatures
 founder's decision rather than an implementation detail. Same-domain addresses should return
 `verificationStatus: accepted` without an ownership email, but nobody has run it.
 
-So there are two routes and they are now both written down with their costs: the account
-holder does it by hand (no new permissions), or the script does it (one broader grant).
+So there are two routes — and a **third correction**, which is the one that finally cost
+something. This page said the manual route was free of new permissions. **Executing it
+returned 403:**
 
-**The durable lesson is not about Gmail.** Twice on this page, a limitation was asserted
-rather than checked, and both times the assertion was more pessimistic than reality — first
-"only Groups break this", then "no API can do this". *A claim that something is impossible is
-itself a claim, and needs the same evidence as a claim that it works.* Same class as the
+```
+Missing required scope ".../auth/gmail.settings.sharing"
+for modifying non-primary SendAs
+```
+
+`gmail.settings.sharing` is required for **either** route. Google's reference lists
+`settings.sendAs.update` as accepting `basic` *or* `sharing` — true of the **primary**
+identity, and silent on the non-primary case that every shared address falls into. Adding
+the identity by hand therefore produces an identity the installer still cannot write to.
+
+**The cost of that discovery was a live regression.** Three send-as identities were added to
+`dame@` on 2026-08-21 on the strength of the wrong claim; from that moment the nightly 2am
+run logged `ERROR` for him and stopped refreshing even his own primary signature, because one
+unwritable identity aborted the whole user. Both halves are now fixed — the scope is named as
+mandatory, and the loop records a refusal and continues instead of throwing.
+
+**The durable lesson is not about Gmail, and it took three rounds to land.** This page
+asserted, in order: *only a Groups conversion breaks shared signatures* (wrong — aliases were
+never send-as identities); *no API can create a send-as identity* (wrong — `sendAs.create`
+exists for delegated service accounts); *the manual route needs no new permissions* (wrong —
+non-primary writes need `sharing`).
+
+The first two were caught by reading and by review. **The third was caught only by running
+it, and it is the one that broke production.** Reviews catch claims that contradict something
+already written down; they cannot catch a claim that is merely untested and plausible. *A
+claim that something is impossible — or that something is free — is itself a claim, and the
+only instrument that settles it is execution.* Same family as the `RCPT TO` probe and the
 "edge secrets aren't listable" myth that cost this project two days.
 
 ## Known issues
