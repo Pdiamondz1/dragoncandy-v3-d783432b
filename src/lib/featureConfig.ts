@@ -1,5 +1,4 @@
 export const BRAND_ROLE_ENABLED = false;
-export const LANDING_VIDEO_BACKDROP_ENABLED = false;
 // Creator Packages (productized service packages + shareable link). LIVE as of 2026-08-05.
 // All go-live preconditions met:
 //  1. package-order migrations applied to prod (20260804120000–120900),
