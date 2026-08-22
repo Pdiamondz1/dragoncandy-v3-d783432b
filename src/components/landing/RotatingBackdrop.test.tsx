@@ -2,9 +2,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, cleanup, fireEvent, act } from "@testing-library/react";
 import { RotatingBackdrop } from "./RotatingBackdrop";
-import type { LandingClip } from "./landingClips";
+import type { LandingReel } from "./landingClips";
 
-const clip = (n: number): LandingClip => ({
+const clip = (n: number): LandingReel => ({
   src: `/landing/c${n}.mp4`,
   poster: `/landing/c${n}.jpg`,
 });
@@ -164,5 +164,55 @@ describe("RotatingBackdrop", () => {
     const img = container.querySelector("img") as HTMLImageElement;
     expect(img).toBeTruthy();
     expect(img.getAttribute("src")).toBe("/landing/c1.jpg");
+  });
+});
+
+function mockOrientation(isLandscape: boolean) {
+  const listeners: Array<(e: MediaQueryListEvent) => void> = [];
+  (window as unknown as { matchMedia: (q: string) => MediaQueryList }).matchMedia = (
+    query: string,
+  ) =>
+    ({
+      // reduced-motion must stay false so the video path renders
+      matches: query.includes("orientation") ? isLandscape : false,
+      media: query,
+      addEventListener: (_: string, cb: (e: MediaQueryListEvent) => void) => listeners.push(cb),
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      onchange: null,
+      dispatchEvent: () => false,
+    }) as unknown as MediaQueryList;
+}
+
+const wideReel = (n: number): LandingReel => ({
+  src: `/landing/reels/r${n}.mp4`,
+  poster: `/landing/reels/r${n}-poster.jpg`,
+  wide: `/landing/reels/r${n}-wide.mp4`,
+  widePoster: `/landing/reels/r${n}-wide-poster.jpg`,
+});
+
+describe("RotatingBackdrop — orientation", () => {
+  it("loads the wide encode in landscape", () => {
+    mockOrientation(true);
+    render(<RotatingBackdrop playlist={[wideReel(1), wideReel(2)]} />);
+    const active = document.querySelector('[data-testid="backdrop-layer-0"]') as HTMLVideoElement;
+    expect(active.src).toContain("/landing/reels/r1-wide.mp4");
+  });
+
+  it("loads the portrait encode in portrait", () => {
+    mockOrientation(false);
+    render(<RotatingBackdrop playlist={[wideReel(1), wideReel(2)]} />);
+    const active = document.querySelector('[data-testid="backdrop-layer-0"]') as HTMLVideoElement;
+    expect(active.src).toContain("/landing/reels/r1.mp4");
+    expect(active.src).not.toContain("-wide");
+  });
+
+  it("falls back to portrait in landscape when a reel has no wide encode", () => {
+    mockOrientation(true);
+    const { wide: _w, widePoster: _wp, ...noWide } = wideReel(1);
+    render(<RotatingBackdrop playlist={[noWide, wideReel(2)]} />);
+    const active = document.querySelector('[data-testid="backdrop-layer-0"]') as HTMLVideoElement;
+    expect(active.src).toContain("/landing/reels/r1.mp4");
   });
 });

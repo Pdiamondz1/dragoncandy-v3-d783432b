@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { LandingClip } from "./landingClips";
+import { resolveReelSource, type LandingReel } from "./landingClips";
 import { usePrefersReducedMotion } from "./usePrefersReducedMotion";
+import { useIsLandscape } from "./useIsLandscape";
 
 interface RotatingBackdropProps {
   /** Ordered playlist; each entry is a direct MP4 + still. Rotates in order, then loops. */
-  playlist: LandingClip[];
+  playlist: LandingReel[];
   className?: string;
 }
 
@@ -45,6 +46,7 @@ const MAX_DWELL_MS = 15000;
  */
 export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropProps) {
   const reduce = usePrefersReducedMotion();
+  const isLandscape = useIsLandscape();
   const clips = playlist.filter((c) => !!c.src);
   const len = clips.length;
   const rotating = !reduce && len > 1;
@@ -63,6 +65,10 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
   const layerClipRef = useRef<[number, number]>(layerClip);
   const inViewRef = useRef(true); // above the fold → assume in view until told otherwise
   const queueTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Mirrors `isLandscape` so async handlers (`handleEnded`, the watchdog) never read a stale
+  // closure — same pattern as `visibleRef`/`layerClipRef`. Initialised to the hook's own
+  // synchronous first value, so a rotating layer never resolves against a wrong default on mount.
+  const landscapeRef = useRef(isLandscape);
   useEffect(() => {
     visibleRef.current = visible;
   }, [visible]);
@@ -74,23 +80,34 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
     if (queueTimer.current) clearTimeout(queueTimer.current);
   }, []);
 
-  /** Point a layer's <video> at a clip (loading only when it changes) and play or pause it. */
+  /**
+   * Point a layer's <video> at a clip (loading only when the clip or orientation changes) and
+   * play or pause it. Clip and orientation are tracked as SEPARATE dataset keys so a same-clip
+   * orientation swap is distinguishable from a clip change — only a genuine clip change resets
+   * `currentTime`; an orientation flip keeps its place.
+   */
   const setLayerSource = useCallback(
     (layer: 0 | 1, clipIdx: number, play: boolean) => {
       const v = layerRefs[layer].current;
       const clip = clips[clipIdx];
       if (!v || !clip?.src) return;
-      const changed = v.dataset.clip !== String(clipIdx);
-      if (changed) {
-        v.src = clip.src;
-        v.poster = clip.poster ?? "";
+      const { src, poster } = resolveReelSource(clip, landscapeRef.current);
+      const orient = landscapeRef.current ? "w" : "p";
+      const clipChanged = v.dataset.clip !== String(clipIdx);
+      const orientChanged = v.dataset.orient !== orient;
+      if (clipChanged || orientChanged) {
+        const resumeAt = orientChanged && !clipChanged ? v.currentTime : 0;
+        v.src = src;
+        v.poster = poster ?? "";
         v.dataset.clip = String(clipIdx);
+        v.dataset.orient = orient;
         v.load(); // <source>/src swap needs an explicit load() to re-run resource selection
+        // Only a genuine clip change starts from the top. An orientation flip keeps its place.
+        v.currentTime = resumeAt;
       }
       if (play && inViewRef.current) {
-        // Only (re)start when the clip changed or the layer is idle — never restart a clip that
-        // is already playing (a parent re-render must not jump the active clip back to frame 0).
-        if (changed) v.currentTime = 0;
+        // Never restart a clip that is already playing (a parent re-render must not jump the
+        // active clip back to frame 0).
         if (v.paused) void v.play().catch(() => {});
       } else if (!play) {
         v.pause();
@@ -107,6 +124,18 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
     setLayerSource(0, 0, true);
     setLayerSource(1, nextIndex(0, len), false);
   }, [rotating, len, setLayerSource]);
+
+  // Keep landscapeRef in sync, and re-point both layers at their CURRENT clip indices when
+  // orientation changes — leaving `layerClip`/`visible` untouched, so a flip never restarts the
+  // rotation from clip 0 or jumps the playing clip back to frame 0 (setLayerSource's own
+  // clip-vs-orientation tracking handles the resume-in-place behaviour).
+  useEffect(() => {
+    landscapeRef.current = isLandscape;
+    if (!rotating) return;
+    const [c0, c1] = layerClipRef.current;
+    setLayerSource(0, c0, visibleRef.current === 0);
+    setLayerSource(1, c1, visibleRef.current === 1);
+  }, [isLandscape, rotating, setLayerSource]);
 
   // Advance the rotation off the visible layer. Fired on the active clip's `ended` AND on its
   // `error` (a clip that fails to load/decode never fires `ended`, so without the error path a
@@ -206,10 +235,11 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
   // Reduced motion → a still poster, no video fetch, no rotation.
   if (reduce) {
     const first = clips[0];
+    const { poster: firstPoster } = resolveReelSource(first, isLandscape);
     return (
       <div ref={wrapRef} className={wrapClass} aria-hidden>
-        {first.poster ? (
-          <img src={first.poster} alt="" className="h-full w-full object-cover" />
+        {firstPoster ? (
+          <img src={firstPoster} alt="" className="h-full w-full object-cover" />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-dc-teal/25 via-dc-dark to-dc-pink-accent/25" />
         )}
@@ -222,7 +252,7 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
     const only = clips[0];
     return (
       <div ref={wrapRef} className={wrapClass} aria-hidden>
-        <SingleClip clip={only} />
+        <SingleClip clip={only} isLandscape={isLandscape} />
       </div>
     );
   }
@@ -230,35 +260,56 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
   // Rotating → two crossfading layers.
   return (
     <div ref={wrapRef} className={wrapClass} aria-hidden>
-      {[0, 1].map((layer) => (
-        <video
-          key={layer}
-          ref={layerRefs[layer]}
-          data-testid={`backdrop-layer-${layer}`}
-          data-active={visible === layer}
-          muted
-          playsInline
-          preload="auto"
-          poster={clips[layerClip[layer]]?.poster}
-          onEnded={() => handleEnded(layer as 0 | 1)}
-          onError={() => handleEnded(layer as 0 | 1)}
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ease-in-out ${
-            visible === layer ? "opacity-100" : "opacity-0"
-          }`}
-        />
-      ))}
+      {[0, 1].map((layer) => {
+        const layerClipItem = clips[layerClip[layer]];
+        const layerPoster = layerClipItem
+          ? resolveReelSource(layerClipItem, isLandscape).poster
+          : undefined;
+        return (
+          <video
+            key={layer}
+            ref={layerRefs[layer]}
+            data-testid={`backdrop-layer-${layer}`}
+            data-active={visible === layer}
+            muted
+            playsInline
+            preload="auto"
+            poster={layerPoster}
+            onEnded={() => handleEnded(layer as 0 | 1)}
+            onError={() => handleEnded(layer as 0 | 1)}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ease-in-out ${
+              visible === layer ? "opacity-100" : "opacity-0"
+            }`}
+          />
+        );
+      })}
     </div>
   );
 }
 
 /** A single looping backdrop clip — imperative src + load() so it can't get stuck on an old clip. */
-function SingleClip({ clip }: { clip: LandingClip }) {
+function SingleClip({ clip, isLandscape }: { clip: LandingReel; isLandscape: boolean }) {
   const ref = useRef<HTMLVideoElement>(null);
+
+  // Swap the source when the clip or viewport orientation changes. `dataset.baseSrc` tracks the
+  // underlying (unresolved) clip identity so an orientation-only flip resumes in place rather
+  // than restarting from frame 0 — the same clip-vs-orientation distinction as the rotating layers.
   useEffect(() => {
     const v = ref.current;
     if (!v || !clip.src) return;
-    v.src = clip.src;
-    v.load();
+    const { src } = resolveReelSource(clip, isLandscape);
+    const resumeAt = v.dataset.baseSrc === clip.src ? v.currentTime : 0;
+    v.src = src;
+    v.dataset.baseSrc = clip.src;
+    v.load(); // <source>/src swap needs an explicit load() to re-run resource selection
+    v.currentTime = resumeAt;
+  }, [clip.src, isLandscape]);
+
+  // Pause off-screen / resume on-screen. Set up once per clip, independent of orientation, so a
+  // flip never tears down and recreates the observer mid-play.
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
     const play = () => void v.play().catch(() => {});
     if (typeof IntersectionObserver === "undefined") {
       play();
@@ -274,6 +325,8 @@ function SingleClip({ clip }: { clip: LandingClip }) {
       v.pause();
     };
   }, [clip.src]);
+
+  const { poster } = resolveReelSource(clip, isLandscape);
   return (
     <video
       ref={ref}
@@ -282,7 +335,7 @@ function SingleClip({ clip }: { clip: LandingClip }) {
       loop
       playsInline
       preload="auto"
-      poster={clip.poster}
+      poster={poster}
       className="h-full w-full object-cover"
     />
   );
