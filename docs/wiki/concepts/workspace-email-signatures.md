@@ -127,9 +127,11 @@ That leaves the original conclusion standing but its reasoning inverted:
 
 - Groups genuinely are not send-as identities — but neither are aliases, so the conversion
   changes nothing here. **It was never a prerequisite for shared signatures.**
-- The `0 shared` outcome is **the expected state**, not a regression. The installer's warning
-  now says so, rather than sending an operator to look at a Groups migration that never
-  happened.
+- The `0 shared` outcome was **the expected state on 2026-08-21**, not a regression, and the
+  installer's warning was changed to say so rather than sending an operator to look at a Groups
+  migration that never happened. **That is no longer true and is the wrong thing to accept
+  today** — three real send-as identities were added to `dame@` the same day, so `0 shared`
+  for a user who has them now indicates a fault. See Known issues for the current matrix.
 - What the conversion *would* cost is the aliases themselves, so anyone who had completed the
   manual send-as step would lose it.
 
@@ -230,8 +232,12 @@ works) → set the property → run again.
 
 - **Shared-mailbox signatures still install nothing.** The `gmail.settings.sharing` grant was
   made 2026-08-22, so the *permission* half is settled — but the delegated JWT does not yet
-  request it (`SHARING_SCOPE_ENABLED` unset, and the code that reads it is undeployed). `0
-  shared` remains expected, not broken, until both halves land.
+  request it (`SHARING_SCOPE_ENABLED` unset, and the code that reads it is undeployed).
+  **`0 shared` is no longer a safe thing to accept, though.** Three real send-as identities now
+  exist on `dame@`, so what a correct run reports depends on which code is live — `ERROR`
+  pre-#456, `PARTIAL` with 3 denied on #456 with the property off, `ok` with the property on.
+  A `0 shared` for a user who *has* shared identities means something is wrong. The matrix is in
+  `scripts/workspace/README.md`; read it before judging a run.
 - **#456 is merged and not deployed** (as of 2026-08-22). `clasp push` fails on a clasp
   reauth (`invalid_grant` / `invalid_rapt`), so the **live Apps Script still runs pre-#456
   code** and `dame@`'s nightly run keeps aborting on the first unwritable identity. Merged is
