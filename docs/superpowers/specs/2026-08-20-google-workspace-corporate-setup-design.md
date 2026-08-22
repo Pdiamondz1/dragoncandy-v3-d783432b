@@ -253,14 +253,30 @@ the installer creates it via `users.settings.sendAs.create`, which **is**
 available to a domain-wide-delegated service account like ours.
 
 **This paragraph previously said "No API, admin or script can do this for
-them." That is false, and Codex caught it.** What is true is the price: the
-create call requires the `gmail.settings.sharing` scope, and §7.5's delegation
-grants only `gmail.settings.basic`. Adding it lets the service account decide
-who in the domain may send mail as which address — a genuinely wider grant than
-writing signatures, and one to take deliberately rather than to reach for
-because it is convenient. Same-domain addresses should come back
-`verificationStatus: accepted` without an ownership email, but that is
-untested here.
+them." That is false, and Codex caught it.** It was then replaced with a claim
+that the manual route needed no new permissions — **also false, and only
+executing it caught that one.**
+
+`gmail.settings.sharing` is required either way, and this is the single most
+expensive thing learned in this whole workstream:
+
+```
+403 PERMISSION_DENIED
+Missing required scope ".../auth/gmail.settings.sharing"
+for modifying non-primary SendAs
+```
+
+Google's reference lists `settings.sendAs.update` as accepting `basic` **or**
+`sharing`, which holds for the **primary** identity only. Every shared address
+is non-primary, and no page states the distinction. So a hand-added identity is
+one this installer still cannot write to. §7.5's delegation grants
+`gmail.settings.basic`, which is why the nightly run began logging 403s the
+moment three identities were added to `dame@` on 2026-08-21.
+
+What the scope costs: the service account gains the ability to set **who may
+send mail as what, for every user in the domain**. Same-domain addresses were
+confirmed to need no ownership email — three added by hand, all accepted
+immediately.
 
 The installer logs a warning when it finds no shared identities, but a warning
 reports the problem rather than preventing it.

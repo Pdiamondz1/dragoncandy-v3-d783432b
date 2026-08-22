@@ -176,9 +176,45 @@ function loadAppsScript() {
     'utf8',
   );
   return new Function(
-    `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN };`,
+    `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN, isMissingSharingScope_ };`,
   )();
 }
+
+// The real 403 body Gmail returned on 2026-08-21, kept verbatim. Paraphrasing
+// it would make the test pass against a string we invented rather than the one
+// the API actually sends.
+const REAL_403 = `Error: Gmail API 403: {
+  "error": {
+    "code": 403,
+    "message": "Missing required scope \\"https://www.googleapis.com/auth/gmail.settings.sharing\\" for modifying non-primary SendAs",
+    "errors": [
+      {
+        "message": "Missing required scope \\"https://www.googleapis.com/auth/gmail.settings.sharing\\" for modifying non-primary SendAs",
+        "domain": "global",
+        "reason": "forbidden"
+      }
+    ],
+    "status": "PERMISSION_DENIED"
+  }
+}`;
+
+describe('Code.gs.js missing-scope detection', () => {
+  const { isMissingSharingScope_ } = loadAppsScript();
+
+  it('recognises the actual 403 Gmail returned for a non-primary sendAs', () => {
+    expect(isMissingSharingScope_(REAL_403)).toBe(true);
+    expect(isMissingSharingScope_(new Error(REAL_403))).toBe(true);
+  });
+
+  it('does not swallow unrelated failures', () => {
+    // These must stay visible as real failures rather than being filed as the
+    // known, expected permissions gap.
+    expect(isMissingSharingScope_('Error: Gmail API 500: backend error')).toBe(false);
+    expect(isMissingSharingScope_('Error: Gmail API 404: not found')).toBe(false);
+    expect(isMissingSharingScope_(new Error('network timeout'))).toBe(false);
+    expect(isMissingSharingScope_('Error: Gmail API 403: quotaExceeded')).toBe(false);
+  });
+});
 
 describe('Code.gs.js shared identities', () => {
   const { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN } =

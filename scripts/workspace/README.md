@@ -136,29 +136,49 @@ there is simply nothing for it to match.
 **To make shared signatures install**, the address has to become a send-as
 identity. There are two routes, and we are currently on neither.
 
-**Route A — the person does it.** Gmail -> Settings -> Accounts and Import ->
-"Send mail as" -> Add another email address. Manual, once per person per
-address, no code and no new permissions. This is the recommended route while
-only one or two addresses matter.
+**Both routes need the `gmail.settings.sharing` scope. Read this before
+planning around either one.** An earlier version of this file said Route A was
+"manual, but permission-free". **It is not, and running it is what proved
+that:**
+
+```
+403 PERMISSION_DENIED
+Missing required scope "https://www.googleapis.com/auth/gmail.settings.sharing"
+for modifying non-primary SendAs
+```
+
+Google's reference lists `settings.sendAs.update` as accepting
+`gmail.settings.basic` **or** `gmail.settings.sharing`. That is true of the
+**primary** identity. Modifying any **non-primary** sendAs — which every shared
+address is — requires `sharing`, and no page says so. So adding the identity by
+hand gets you an identity this script still cannot write a signature to.
+
+**Route A — the person adds the identity.** Gmail -> Settings -> Accounts and
+Import -> "Send mail as" -> Add another email address. For a same-domain
+address this completes with no verification email. Fine as far as it goes, but
+the signature will not install until the scope is added.
 
 **Route B — this script does it.** `POST settings/sendAs` (Gmail API
 `users.settings.sendAs.create`) can create the identity under the service
 account's existing domain-wide delegation. Two things to know before reaching
 for it:
 
-- **It needs a scope we have not granted.** `sendAs.create` requires
-  `https://www.googleapis.com/auth/gmail.settings.sharing`; the delegation
-  currently carries only `gmail.settings.basic`. Adding it means the service
-  account can configure *who any user in the domain may send mail as* —
-  materially wider than "can write signatures", and a founder decision rather
-  than an implementation detail.
-- **Same-domain addresses should not need email verification.** Google's docs
-  say the resource is created with `verificationStatus: accepted` unless
-  ownership verification is required, and it is not for an address in your own
-  domain. Untested here — nobody has run it.
+- **It needs the same scope Route A needs**, so it is not a bigger ask —
+  `sendAs.create` and non-primary `sendAs.update` both require
+  `gmail.settings.sharing`. Once the scope is there, this route also covers
+  Joe, Juwan and Adrian without asking each of them to do anything.
+- **Same-domain addresses do not need email verification.** Confirmed by hand
+  on 2026-08-21: three addresses added to `dame@`, all accepted immediately,
+  no confirmation email.
 
-An earlier version of this file said no API could do this. That was wrong, and
-Codex caught it. What is true is that it costs a broader grant.
+**What the scope actually costs, stated plainly:** it lets this service account
+set **who may send mail as what, for every user in the domain** — not just
+rewrite signature HTML. The key lives in a script property. That is the whole
+decision, and it is the founder's.
+
+An earlier version of this file said no API could create a send-as identity.
+That was wrong, and Codex caught it. Then it said the manual route was
+permission-free. That was also wrong, and only running it caught that one.
 
 The same constraint applies, for the same reason, if these addresses are ever
 converted to real Google Groups (corporate-setup spec, decision 9). A Group is

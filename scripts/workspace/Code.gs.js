@@ -64,18 +64,37 @@ function installAllSignatures() {
   var users = listDomainUsers_();
   var results = [];
   var totalSharedInstalled = 0;
+  var totalDenied = 0;
 
   for (var i = 0; i < users.length; i++) {
     var user = users[i];
     try {
       var counts = installForUser_(user);
       totalSharedInstalled += counts.shared;
+      totalDenied += counts.denied;
+
+      // PARTIAL is deliberately distinct from both ok and ERROR. A run where
+      // every writable identity was written but some were refused is neither
+      // a clean pass nor a failure, and collapsing it into either one is how
+      // a standing permissions gap becomes invisible.
+      var status = counts.failures.length ? 'PARTIAL' : counts.denied ? 'PARTIAL' : 'ok';
+      var detail = counts.total + ' identities';
+      if (counts.denied) {
+        detail += ', ' + counts.denied + ' denied (needs gmail.settings.sharing)';
+      }
+      if (counts.failures.length) {
+        detail += ', ' + counts.failures.length + ' failed: ' + counts.failures.join('; ');
+        console.error(
+          'installForUser_ partial for ' + user.primaryEmail + ': ' + counts.failures.join('; '),
+        );
+      }
+
       results.push([
         new Date(),
         user.primaryEmail,
         user.title || '(no title)',
-        'ok',
-        counts.total + ' identities',
+        status,
+        detail,
         counts.shared + ' shared',
       ]);
     } catch (err) {
@@ -99,21 +118,37 @@ function installAllSignatures() {
   // how they know it worked, and if it later returns to 0 that is a real
   // regression worth seeing.
   if (totalSharedInstalled === 0) {
-    console.warn(
-      'installAllSignatures: 0 shared-mailbox signatures installed across ' +
-        users.length +
-        ' user(s). This is expected unless someone has added a shared address ' +
-        'as a verified send-as identity. SHARED_IDENTITIES (support@, sales@, ' +
-        'founders@, ...) are ALIASES, and an alias does not appear in ' +
-        'settings/sendAs -- it only makes mail arrive. Two ways to fix it: ' +
-        '(a) the account holder adds the address themselves in Gmail Settings ' +
-        '-> Accounts and Import -> Send mail as; or (b) this script creates it ' +
-        'via settings/sendAs POST, which needs the gmail.settings.sharing ' +
-        'scope added to the delegation -- we grant only gmail.settings.basic ' +
-        'today, and that widening is a deliberate decision, not a detail. ' +
-        'Converting these addresses to Google Groups would NOT help -- a ' +
-        'Group is not a send-as identity either.',
-    );
+    if (totalDenied > 0) {
+      // The identities EXIST and we were refused. One cause, one fix.
+      console.warn(
+        'installAllSignatures: ' +
+          totalDenied +
+          ' send-as identity/identities were refused with 403 across ' +
+          users.length +
+          ' user(s), so 0 shared-mailbox signatures installed. The identities ' +
+          'exist and are verified -- the delegation is missing the scope ' +
+          'https://www.googleapis.com/auth/gmail.settings.sharing, which Gmail ' +
+          'requires to modify any NON-PRIMARY sendAs. Add it to the ' +
+          'domain-wide delegation next to gmail.settings.basic. NOTE the ' +
+          'consequence before you do: that scope also lets this service ' +
+          'account set who may send as what, for every user in the domain.',
+      );
+    } else {
+      console.warn(
+        'installAllSignatures: 0 shared-mailbox signatures installed across ' +
+          users.length +
+          ' user(s), and nothing was refused -- so no shared address is a ' +
+          'send-as identity on any account. SHARED_IDENTITIES (support@, ' +
+          'sales@, founders@, ...) are ALIASES, and an alias does not appear ' +
+          'in settings/sendAs; it only makes mail arrive. The account holder ' +
+          'adds it in Gmail Settings -> Accounts and Import -> Send mail as ' +
+          '(or the script creates it via settings/sendAs POST). Either route ' +
+          'ALSO needs gmail.settings.sharing to write the signature ' +
+          'afterwards -- proven 2026-08-21, do not assume the manual route is ' +
+          'permission-free. Converting these to Google Groups would NOT help: ' +
+          'a Group is not a send-as identity either.',
+      );
+    }
   }
 
   appendRunLog_(results);
@@ -171,6 +206,8 @@ function installForUser_(user) {
   var identities = gmailApi_(token, 'settings/sendAs', 'get').sendAs || [];
   var written = 0;
   var sharedWritten = 0;
+  var denied = 0;
+  var failures = [];
 
   for (var i = 0; i < identities.length; i++) {
     var identity = identities[i];
@@ -191,17 +228,46 @@ function installForUser_(user) {
       showCompany: !shared,
     });
 
-    gmailApi_(
-      token,
-      'settings/sendAs/' + encodeURIComponent(identity.sendAsEmail),
-      'patch',
-      { signature: html },
-    );
-    written++;
-    if (shared) sharedWritten++;
+    // One unwritable identity must not cost this user their other signatures.
+    // Observed 2026-08-21: adding shared send-as identities to dame@ made the
+    // whole user throw, so his own primary signature stopped being refreshed
+    // and the nightly run logged ERROR with no counts at all. Attempt every
+    // identity, record what failed, and let the caller report it.
+    try {
+      gmailApi_(
+        token,
+        'settings/sendAs/' + encodeURIComponent(identity.sendAsEmail),
+        'patch',
+        { signature: html },
+      );
+      written++;
+      if (shared) sharedWritten++;
+    } catch (err) {
+      if (isMissingSharingScope_(err)) {
+        // Known, expected, and actionable — not a defect in this script.
+        denied++;
+      } else {
+        failures.push(identity.sendAsEmail + ': ' + err);
+      }
+    }
   }
 
-  return { total: written, shared: sharedWritten };
+  return { total: written, shared: sharedWritten, denied: denied, failures: failures };
+}
+
+/**
+ * Gmail refuses to patch a NON-PRIMARY sendAs with only gmail.settings.basic,
+ * and says so in the message rather than in any distinguishable code.
+ *
+ * This is the correction that cost the most to learn. Google's reference lists
+ * settings.sendAs.update as accepting `basic` OR `sharing`, which is true — of
+ * the PRIMARY identity. It says nothing about the non-primary case. The repo
+ * asserted twice, in writing, that adding the identity by hand needed no new
+ * permissions; running it returned 403 PERMISSION_DENIED. Read the docs, then
+ * run the thing.
+ */
+function isMissingSharingScope_(err) {
+  return String(err).indexOf('gmail.settings.sharing') !== -1;
 }
 
 function titleForShared_(email) {
