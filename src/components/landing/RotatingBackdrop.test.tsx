@@ -167,22 +167,36 @@ describe("RotatingBackdrop", () => {
   });
 });
 
+/**
+ * Returns a `flip` control so tests can simulate a LIVE orientation change (not just a different
+ * value at mount): it re-invokes the `change` listener(s) `useIsLandscape` registered on the
+ * orientation media query, exactly as a real `matchMedia` "change" event would.
+ */
 function mockOrientation(isLandscape: boolean) {
   const listeners: Array<(e: MediaQueryListEvent) => void> = [];
+  let matches = isLandscape;
   (window as unknown as { matchMedia: (q: string) => MediaQueryList }).matchMedia = (
     query: string,
   ) =>
     ({
       // reduced-motion must stay false so the video path renders
-      matches: query.includes("orientation") ? isLandscape : false,
+      matches: query.includes("orientation") ? matches : false,
       media: query,
-      addEventListener: (_: string, cb: (e: MediaQueryListEvent) => void) => listeners.push(cb),
+      addEventListener: (_: string, cb: (e: MediaQueryListEvent) => void) => {
+        if (query.includes("orientation")) listeners.push(cb);
+      },
       removeEventListener: () => {},
       addListener: () => {},
       removeListener: () => {},
       onchange: null,
       dispatchEvent: () => false,
     }) as unknown as MediaQueryList;
+  return {
+    flip: (next: boolean) => {
+      matches = next;
+      listeners.forEach((cb) => cb({ matches: next } as MediaQueryListEvent));
+    },
+  };
 }
 
 const wideReel = (n: number): LandingReel => ({
@@ -214,5 +228,43 @@ describe("RotatingBackdrop — orientation", () => {
     render(<RotatingBackdrop playlist={[noWide, wideReel(2)]} />);
     const active = document.querySelector('[data-testid="backdrop-layer-0"]') as HTMLVideoElement;
     expect(active.src).toContain("/landing/reels/r1.mp4");
+  });
+
+  it("single-clip path resumes playback after a live orientation flip instead of freezing", () => {
+    const control = mockOrientation(false);
+    const playMock = HTMLMediaElement.prototype.play as unknown as {
+      mock: { calls: unknown[] };
+    };
+    const { getByTestId } = render(<RotatingBackdrop playlist={[wideReel(1)]} />);
+    const video = getByTestId("backdrop-single") as HTMLVideoElement;
+    expect(video.src).toContain("/landing/reels/r1.mp4");
+    const callsBeforeFlip = playMock.mock.calls.length;
+
+    act(() => {
+      control.flip(true);
+    });
+
+    // The resolved source changed (portrait -> wide) — the effect must reload...
+    expect(video.src).toContain("/landing/reels/r1-wide.mp4");
+    // ...and, being in view, resume playback itself rather than sitting paused on the poster.
+    expect(playMock.mock.calls.length).toBeGreaterThan(callsBeforeFlip);
+  });
+
+  it("single-clip path skips the reload when the resolved source is unchanged (no wide encode)", () => {
+    const control = mockOrientation(false);
+    const { wide: _w, widePoster: _wp, ...noWide } = wideReel(1);
+    const { getByTestId } = render(<RotatingBackdrop playlist={[noWide]} />);
+    const video = getByTestId("backdrop-single") as HTMLVideoElement;
+    const loadMock = HTMLMediaElement.prototype.load as unknown as {
+      mock: { calls: unknown[] };
+    };
+    const loadsBeforeFlip = loadMock.mock.calls.length;
+
+    act(() => {
+      control.flip(true); // no wide encode -> resolved source is identical in both orientations
+    });
+
+    expect(video.src).toContain("/landing/reels/r1.mp4");
+    expect(loadMock.mock.calls.length).toBe(loadsBeforeFlip); // no pointless reload
   });
 });

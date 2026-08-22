@@ -66,9 +66,13 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
   const inViewRef = useRef(true); // above the fold → assume in view until told otherwise
   const queueTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Mirrors `isLandscape` so async handlers (`handleEnded`, the watchdog) never read a stale
-  // closure — same pattern as `visibleRef`/`layerClipRef`. Initialised to the hook's own
-  // synchronous first value, so a rotating layer never resolves against a wrong default on mount.
+  // closure — same pattern as `visibleRef`/`layerClipRef`. Assigned during RENDER (not only in an
+  // effect): the "arm rotation" effect below runs in the same commit and reads this ref, so if the
+  // write happened only inside a later-declared effect, a commit where `isLandscape` changes
+  // together with `rotating`/`len` would let the arming effect run first against a stale value —
+  // exactly the double-fetch Ruling A exists to prevent.
   const landscapeRef = useRef(isLandscape);
+  landscapeRef.current = isLandscape;
   useEffect(() => {
     visibleRef.current = visible;
   }, [visible]);
@@ -125,12 +129,12 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
     setLayerSource(1, nextIndex(0, len), false);
   }, [rotating, len, setLayerSource]);
 
-  // Keep landscapeRef in sync, and re-point both layers at their CURRENT clip indices when
-  // orientation changes — leaving `layerClip`/`visible` untouched, so a flip never restarts the
-  // rotation from clip 0 or jumps the playing clip back to frame 0 (setLayerSource's own
-  // clip-vs-orientation tracking handles the resume-in-place behaviour).
+  // Re-point both layers at their CURRENT clip indices when orientation changes — leaving
+  // `layerClip`/`visible` untouched, so a flip never restarts the rotation from clip 0 or jumps
+  // the playing clip back to frame 0 (setLayerSource's own clip-vs-orientation tracking handles
+  // the resume-in-place behaviour). `landscapeRef` itself is kept current during render, above —
+  // not here — so this effect and the arming effect above never race on a stale ref value.
   useEffect(() => {
-    landscapeRef.current = isLandscape;
     if (!rotating) return;
     const [c0, c1] = layerClipRef.current;
     setLayerSource(0, c0, visibleRef.current === 0);
@@ -290,19 +294,29 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
 /** A single looping backdrop clip — imperative src + load() so it can't get stuck on an old clip. */
 function SingleClip({ clip, isLandscape }: { clip: LandingReel; isLandscape: boolean }) {
   const ref = useRef<HTMLVideoElement>(null);
+  const inViewRef = useRef(true); // above the fold → assume in view until told otherwise
 
-  // Swap the source when the clip or viewport orientation changes. `dataset.baseSrc` tracks the
-  // underlying (unresolved) clip identity so an orientation-only flip resumes in place rather
-  // than restarting from frame 0 — the same clip-vs-orientation distinction as the rotating layers.
+  // Swap the source only when the RESOLVED url actually changes — a reel with no `wide` encode
+  // resolves to the same file regardless of orientation, and reloading it would pointlessly
+  // interrupt an already-playing clip. `dataset.baseSrc` tracks the underlying (unresolved) clip
+  // identity so a genuine reload resumes in place on an orientation-only flip rather than
+  // restarting from frame 0 — the same clip-vs-orientation distinction as the rotating layers.
+  // `v.load()` pauses the element and nothing else re-triggers playback afterward (an already-
+  // observing IntersectionObserver does not re-fire on its own, and there is no `autoplay`), so
+  // this effect resumes playback itself, subject to the same in-view condition the observer
+  // effect maintains — otherwise an orientation flip permanently freezes the clip on its poster.
   useEffect(() => {
     const v = ref.current;
     if (!v || !clip.src) return;
     const { src } = resolveReelSource(clip, isLandscape);
+    if (v.dataset.resolvedSrc === src) return; // same file already loaded/playing — no-op
     const resumeAt = v.dataset.baseSrc === clip.src ? v.currentTime : 0;
     v.src = src;
     v.dataset.baseSrc = clip.src;
+    v.dataset.resolvedSrc = src;
     v.load(); // <source>/src swap needs an explicit load() to re-run resource selection
     v.currentTime = resumeAt;
+    if (inViewRef.current) void v.play().catch(() => {});
   }, [clip.src, isLandscape]);
 
   // Pause off-screen / resume on-screen. Set up once per clip, independent of orientation, so a
@@ -310,13 +324,20 @@ function SingleClip({ clip, isLandscape }: { clip: LandingReel; isLandscape: boo
   useEffect(() => {
     const v = ref.current;
     if (!v) return;
-    const play = () => void v.play().catch(() => {});
+    const play = () => {
+      inViewRef.current = true;
+      void v.play().catch(() => {});
+    };
+    const pause = () => {
+      inViewRef.current = false;
+      v.pause();
+    };
     if (typeof IntersectionObserver === "undefined") {
       play();
       return;
     }
     const io = new IntersectionObserver(
-      ([entry]) => (entry.isIntersecting ? play() : v.pause()),
+      ([entry]) => (entry.isIntersecting ? play() : pause()),
       { rootMargin: "150px 0px" },
     );
     io.observe(v);
