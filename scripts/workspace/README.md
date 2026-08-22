@@ -70,6 +70,7 @@ Do not install a single signature until this prints `image/png`.
    | `SA_CLIENT_EMAIL` | the service account's client email |
    | `SA_PRIVATE_KEY` | `private_key` from the JSON key, newlines as `\n` |
    | `LOG_SHEET_ID` | id of the run-log Sheet in `06 · Brand` |
+   | `SHARING_SCOPE_ENABLED` | leave unset. Only `true` after the delegation carries `gmail.settings.sharing` — see below, the order matters |
 
 5. **Build, then set up clasp, then push.**
 
@@ -175,6 +176,28 @@ for it:
 set **who may send mail as what, for every user in the domain** — not just
 rewrite signature HTML. The key lives in a script property. That is the whole
 decision, and it is the founder's.
+
+### Turning the scope on — two steps, and the order is not optional
+
+Granting the scope in the admin console does **nothing on its own**. The
+impersonation JWT has to request it too, and this script deliberately does not
+by default. (Codex caught that; without it an admin would grant the scope,
+re-run, get the identical 403, and have no idea why.)
+
+1. **Admin console first.** Security → Access and data control → API controls →
+   Domain-wide delegation → edit the existing client → add
+   `https://www.googleapis.com/auth/gmail.settings.sharing` alongside
+   `gmail.settings.basic`.
+2. **Then the script property.** Set `SHARING_SCOPE_ENABLED` to `true`.
+
+**Do not reverse these.** Asking for a scope the delegation does not carry
+fails the *entire* token exchange with `unauthorized_client` — not just the
+shared identities, but every signature for every user. If that happens, set
+`SHARING_SCOPE_ENABLED` back to `false` and everything returns to working
+immediately; the error message says so too.
+
+To undo the whole thing later: set the property to `false` first, then remove
+the scope from the delegation. Same rule, reversed.
 
 An earlier version of this file said no API could create a send-as identity.
 That was wrong, and Codex caught it. Then it said the manual route was

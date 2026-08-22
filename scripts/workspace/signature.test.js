@@ -170,14 +170,21 @@ describe('renderSignature', () => {
 // bundle — `scripts/` is outside the Vite build. The alternative, regex-parsing
 // the array out of the file as text, is what actually would be fragile.
 
-function loadAppsScript() {
+function loadAppsScript(scriptProperties = {}) {
   const src = readFileSync(
     fileURLToPath(new URL('./Code.gs.js', import.meta.url)),
     'utf8',
   );
+  // Minimal stand-in for the one Apps Script global the pure functions touch.
+  const PropertiesService = {
+    getScriptProperties: () => ({
+      getProperty: (k) => (k in scriptProperties ? scriptProperties[k] : null),
+    }),
+  };
   return new Function(
-    `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN, isMissingSharingScope_ };`,
-  )();
+    'PropertiesService',
+    `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN, isMissingSharingScope_, requestedScopes_, SCOPE_BASIC, SCOPE_SHARING };`,
+  )(PropertiesService);
 }
 
 // The real 403 body Gmail returned on 2026-08-21, kept verbatim. Paraphrasing
@@ -213,6 +220,42 @@ describe('Code.gs.js missing-scope detection', () => {
     expect(isMissingSharingScope_('Error: Gmail API 404: not found')).toBe(false);
     expect(isMissingSharingScope_(new Error('network timeout'))).toBe(false);
     expect(isMissingSharingScope_('Error: Gmail API 403: quotaExceeded')).toBe(false);
+  });
+});
+
+// Granting a scope in the admin console does nothing unless the impersonation
+// JWT also asks for it — Codex P1, 2026-08-22. And asking for one the
+// delegation lacks fails the whole token exchange with unauthorized_client, so
+// the default has to stay narrow.
+describe('Code.gs.js requested JWT scopes', () => {
+  it('requests only the basic scope by default', () => {
+    const { requestedScopes_, SCOPE_BASIC, SCOPE_SHARING } = loadAppsScript();
+    expect(requestedScopes_()).toBe(SCOPE_BASIC);
+    expect(requestedScopes_()).not.toContain(SCOPE_SHARING);
+  });
+
+  it('requests the sharing scope only when explicitly switched on', () => {
+    const on = loadAppsScript({ SHARING_SCOPE_ENABLED: 'true' });
+    expect(on.requestedScopes_()).toContain(on.SCOPE_BASIC);
+    expect(on.requestedScopes_()).toContain(on.SCOPE_SHARING);
+    // Space-separated, per the OAuth JWT assertion format.
+    expect(on.requestedScopes_()).toBe(on.SCOPE_BASIC + ' ' + on.SCOPE_SHARING);
+  });
+
+  it('stays narrow for every value that is not exactly true', () => {
+    // A typo in a script property must fail SAFE — toward the working state,
+    // not toward unauthorized_client and zero signatures domain-wide.
+    for (const v of ['false', 'TRUE ', 'yes', '1', '', 'True!', 'null']) {
+      const { requestedScopes_, SCOPE_BASIC } = loadAppsScript({ SHARING_SCOPE_ENABLED: v });
+      expect(requestedScopes_(), `SHARING_SCOPE_ENABLED=${JSON.stringify(v)}`).toBe(SCOPE_BASIC);
+    }
+  });
+
+  it('accepts case variations of true, since an admin types this by hand', () => {
+    for (const v of ['true', 'TRUE', 'True']) {
+      const { requestedScopes_, SCOPE_SHARING } = loadAppsScript({ SHARING_SCOPE_ENABLED: v });
+      expect(requestedScopes_(), `SHARING_SCOPE_ENABLED=${v}`).toContain(SCOPE_SHARING);
+    }
   });
 });
 

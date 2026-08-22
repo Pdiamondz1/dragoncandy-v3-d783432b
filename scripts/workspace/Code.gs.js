@@ -126,11 +126,17 @@ function installAllSignatures() {
           ' send-as identity/identities were refused with 403 across ' +
           users.length +
           ' user(s), so 0 shared-mailbox signatures installed. The identities ' +
-          'exist and are verified -- the delegation is missing the scope ' +
-          'https://www.googleapis.com/auth/gmail.settings.sharing, which Gmail ' +
-          'requires to modify any NON-PRIMARY sendAs. Add it to the ' +
-          'domain-wide delegation next to gmail.settings.basic. NOTE the ' +
-          'consequence before you do: that scope also lets this service ' +
+          'exist and are verified -- we lack ' +
+          SCOPE_SHARING +
+          ', which Gmail requires to modify any NON-PRIMARY sendAs. FIXING ' +
+          'THIS TAKES TWO STEPS AND THE ORDER MATTERS: (1) add that scope to ' +
+          'the domain-wide delegation in the admin console, alongside ' +
+          'gmail.settings.basic; THEN (2) set the script property ' +
+          'SHARING_SCOPE_ENABLED=true so the impersonation JWT actually asks ' +
+          'for it. Step 1 alone changes nothing -- the token still comes back ' +
+          'without the scope and you get this same 403. Step 2 before step 1 ' +
+          'breaks every signature with unauthorized_client. NOTE the ' +
+          'consequence before doing either: that scope also lets this service ' +
           'account set who may send as what, for every user in the domain.',
       );
     } else {
@@ -314,6 +320,35 @@ function gmailApi_(token, path, method, body) {
  * Mints an access token for `userEmail` using the delegated service account.
  * Signed JWT -> Google token endpoint, the standard domain-wide-delegation flow.
  */
+var SCOPE_BASIC = 'https://www.googleapis.com/auth/gmail.settings.basic';
+var SCOPE_SHARING = 'https://www.googleapis.com/auth/gmail.settings.sharing';
+
+/**
+ * Scopes to request in the impersonation JWT.
+ *
+ * Granting a scope in the admin console is only half of it — the JWT has to ASK
+ * for it too, or the token comes back without it and every non-primary sendAs
+ * patch still 403s with no clue why. (Codex P1, 2026-08-22. The warning text in
+ * this file previously told an operator to add the scope in the console and
+ * stop there, which would have produced an identical failure and a very bad
+ * afternoon.)
+ *
+ * It is NOT safe to simply request both always. Google rejects the whole token
+ * exchange with `unauthorized_client` if the JWT asks for a scope the
+ * delegation does not carry — so hardcoding both would break every signature,
+ * including the personal ones that work today, until an admin catches up.
+ *
+ * Hence the switch, and hence its default. Order of operations is: add the
+ * scope in the admin console FIRST, then set SHARING_SCOPE_ENABLED=true. Doing
+ * it the other way round takes the whole installer down.
+ */
+function requestedScopes_() {
+  var enabled = PropertiesService.getScriptProperties().getProperty('SHARING_SCOPE_ENABLED');
+  return String(enabled).toLowerCase() === 'true'
+    ? SCOPE_BASIC + ' ' + SCOPE_SHARING
+    : SCOPE_BASIC;
+}
+
 function getImpersonatedToken_(userEmail) {
   var props = PropertiesService.getScriptProperties();
   var clientEmail = props.getProperty('SA_CLIENT_EMAIL');
@@ -335,7 +370,7 @@ function getImpersonatedToken_(userEmail) {
     encode({
       iss: clientEmail,
       sub: userEmail,
-      scope: 'https://www.googleapis.com/auth/gmail.settings.basic',
+      scope: requestedScopes_(),
       aud: 'https://oauth2.googleapis.com/token',
       iat: now,
       exp: now + 3600,
@@ -356,7 +391,21 @@ function getImpersonatedToken_(userEmail) {
 
   var body = JSON.parse(response.getContentText());
   if (!body.access_token) {
-    throw new Error('token exchange failed for ' + userEmail + ': ' + response.getContentText());
+    var hint = '';
+    if (
+      response.getContentText().indexOf('unauthorized_client') !== -1 &&
+      requestedScopes_().indexOf(SCOPE_SHARING) !== -1
+    ) {
+      hint =
+        ' — LIKELY CAUSE: SHARING_SCOPE_ENABLED is true but ' +
+        SCOPE_SHARING +
+        ' has not been added to the domain-wide delegation in the admin ' +
+        'console. Add it there, or set SHARING_SCOPE_ENABLED=false to restore ' +
+        'the previous working state.';
+    }
+    throw new Error(
+      'token exchange failed for ' + userEmail + ': ' + response.getContentText() + hint,
+    );
   }
   return body.access_token;
 }
