@@ -88,11 +88,11 @@ where the seniority requirement comes from:
 
 | | |
 |---|---|
-| Source files | 1,174 |
+| Source files | 1,186 |
 | Screens | 92 |
 | Backend functions | 98 |
 | Database changes applied | 389 |
-| Automated tests | 2,443 |
+| Automated tests | 2,481 |
 
 This is a large, real codebase. It is not a prototype, and nobody is going to rewrite it.
 

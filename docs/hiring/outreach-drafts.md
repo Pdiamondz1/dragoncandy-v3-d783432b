@@ -1,10 +1,24 @@
-# Outreach drafts — development houses + designer
+# Outreach — development houses + designer
 
-Drafted 2026-08-21. **Nothing here has been sent.**
+**SENT 2026-08-21.** All three went out from `dame@dragoncandy.com`, CC
+`adrian.vella.jobs@gmail.com`, BCC Joe, and each thread was then forwarded to `adrian@` / `joe@` /
+`jay@dragoncandy.com`:
 
-All three go **from** `dame@dragoncandy.com`, **CC** `adrian.vella.jobs@gmail.com`.
-Attachments are PDF exports of the existing hiring pack — those documents already carry the
-architecture, the trial terms and the working hours, so the emails stay short deliberately.
+| Time (UTC) | To | Who |
+|---|---|---|
+| 22:03 | `lvatchkov@hotmail.com` | Lubo — designer |
+| 22:10 | `fabio@rootcodex.com` | Root Codex |
+| 22:12 | `lukasz.krain@alan-systems.com` | ALAN Systems |
+
+**The text below is the corrected copy, not a transcript of what was sent.** What actually went
+out quoted **1,174 source files and 2,443 tests**; the true figures on the day were **1,186** and
+**2,481**, corrected here and in the hiring pack the following day after Codex's review surfaced
+the drift. The sent emails and the PDFs attached to them were internally consistent with each
+other, and a 12-file difference does not change any claim either party would act on, so **no
+correction was sent to the recipients** — deliberately. Use the copy below for any further send.
+
+Attachments were PDF exports of the hiring pack — those documents already carry the architecture,
+the trial terms and the working hours, so the emails stay short deliberately.
 
 ---
 
@@ -69,7 +83,7 @@ He's copied here.
 
 I'm Dame Williams, co-founder and CTO of DragonCandy — a marketplace connecting businesses with
 content creators, live at dragoncandy.com, with an iPhone app already running on a device. I built
-it. That's precisely the problem: one person, 1,174 source files, 98 backend functions, 389
+it. That's precisely the problem: one person, 1,186 source files, 98 backend functions, 389
 database migrations applied. We're hiring a tech team, and Adrian is helping us find people.
 
 The brief is attached. It carries the full architecture and no commercial terms, so it's safe to
@@ -119,7 +133,7 @@ reference — his testimonial from his time at Tipico US is on your site.
 I'm Dame Williams, co-founder and CTO of DragonCandy — a marketplace connecting businesses with
 content creators. A restaurant gets a social media team without hiring one; a creator gets real
 paid work instead of chasing gig apps. It's live at dragoncandy.com, with an iPhone app already
-running on a device. I built it single-handed: 1,174 source files, 98 backend functions, 389
+running on a device. I built it single-handed: 1,186 source files, 98 backend functions, 389
 database migrations. That's the problem we're hiring to solve, and Adrian is helping us find the
 people.
 

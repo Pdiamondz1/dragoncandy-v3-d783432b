@@ -74,11 +74,11 @@ content delivery and payment flows aren't finished.
 
 | | |
 |---|---|
-| Source files | 1,174 |
+| Source files | 1,186 |
 | Screens | 92 |
 | Backend functions | 98 |
 | Database changes | 389 |
-| Automated tests | 2,443 |
+| Automated tests | 2,481 |
 | Total commits | 3,299 (about 2,500 by one person) |
 
 Here's how much work got done each month:
@@ -93,7 +93,7 @@ Aug    131  █████
 ```
 
 **That's an 87% drop since May.** It isn't a motivation problem. It's what happens when one person
-looks after 1,174 files. Every new feature costs more than the last one did.
+looks after 1,186 files. Every new feature costs more than the last one did.
 
 **This is the argument for hiring, and it's a fact rather than an opinion.**
 
@@ -281,7 +281,7 @@ today — we're not making it up.
 ```
 write it on a branch
    →  open a pull request
-   →  automatic checks: does it build, does it typecheck, do all 2,443 tests pass
+   →  automatic checks: does it build, does it typecheck, do all 2,481 tests pass
    →  automatic preview website, connected to the test database
    →  automatic browser tests against that preview, as all three user types
    →  everything must be green — enforced automatically, nobody can skip it
@@ -460,7 +460,7 @@ The brief says this properly.
 
 On the development agencies (Root Codex, Alan Systems, EPAM): they're welcome to bid, and the same
 paid two-week trial applies. But we need one person who owns the code and stays. An agency working
-in a 1,174-file system with this much security logic, and nobody resident who owns it, is the
+in a 1,186-file system with this much security logic, and nobody resident who owns it, is the
 outcome I'm most worried about.
 
 **Both of you** — read sections 3 and 4 and tell me where you disagree. The 90-day plan is

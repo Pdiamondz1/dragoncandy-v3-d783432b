@@ -71,7 +71,7 @@ except the senior developer.
 
 - **Two-week cycles.** Monday planning, Friday demo.
 - **Linear** for tickets, synced with GitHub.
-- **Every change:** branch → pull request → automated checks (build, types, linting, 2,443 tests) →
+- **Every change:** branch → pull request → automated checks (build, types, linting, 2,481 tests) →
   preview site → AI review → senior review → live.
 - **Written and asynchronous by default**, with about three hours of live overlap daily.
 - **Done means done:** merged, checked on phone and desktop, verified in production.
