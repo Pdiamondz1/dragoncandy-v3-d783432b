@@ -3,13 +3,17 @@ title: Account Completeness Engine
 type: concept
 created: 2026-08-23
 updated: 2026-08-23
-sources: [2026-08-23-account-completeness-engine.md]
+sources: [2026-08-23-account-completeness-engine.md, 2026-08-23-identity-verification.md]
 tags: [onboarding, readiness, stripe, fail-open, first-run, verification]
 ---
 # Account Completeness Engine
 
 One derived model answering "is this account ready to do X". Slice 1 of four in the signup/onboarding
 redesign. Lives at `src/lib/accountReadiness/`; shipped in PR #472 (`8889baef`, 2026-08-23).
+
+**Slice 2 ([[Identity & Address Verification]]) gave `phone_verified`, `identity_verified` and
+`address` real writers and corrected a defect this page's own "Known Issues" section used to
+understate — see that correction below.**
 
 ## Why it exists
 
@@ -85,11 +89,26 @@ sources — they track genuinely disjoint facts.
   precedent does not apply — those hit Supabase directly and have no hook seam.
 - `email_verified` will read `met` for essentially every current user, because `AuthForm` blocks
   unverified login. It stays in the table because slice 3's OAuth paths break that guarantee.
-- The gate has never actually run in production: `READINESS_GATE_ENABLED` does not exist in
-  `feature_flags`, so both call sites have been rendering children unconditionally since they shipped.
+- **Corrected 2026-08-23 (slice 2 review) — this bullet used to say the gate's inertness meant
+  nothing was blocking anyone, and that reasoning does not extend to the engine.**
+  `READINESS_GATE_ENABLED` genuinely has no `feature_flags` row, so `ReadinessGate` itself does pass
+  children through unconditionally. But `AccountChecklistRows` and `MissionChecklist` consume
+  `useAccountReadiness` **directly, with no flag at all**, and both render unconditionally on
+  `/dashboard/business` and `/dashboard/creator` — so a `required`, non-dismissible row IS visible to
+  every user regardless of the gate flag. Slice 1 shipped exactly that: `address` (0 of 30 `org_units`
+  had coordinates — no code path could ever satisfy it) and `phone_verified` (wired to a column with
+  no writer) were both `required` and permanently unmet for every account, missed by nine task
+  reviews and a Codex pass. Not a lockout, because nothing consumed the checklist to block an action —
+  but a visible, permanent, unclearable "you need to do this" for a thing no user could ever do,
+  which is precisely the failure this engine exists to delete. Slice 2 gave both keys real writers and
+  moved `phone_verified` to `recommended` per spec. The corrected rule: **"the gate is inert" is a
+  claim about `ReadinessGate` only — check every consumer of `useAccountReadiness` before concluding a
+  required tier is harmless, because a direct consumer with no flag is a live path.**
 
 ## See Also
 
+- [[Identity & Address Verification]] — slice 2; gives `phone_verified`/`identity_verified`/`address`
+  real writers and corrects the gate-inertness understatement above.
 - [[Anon Key Is Not Authorization]] — same lesson shape: a check that looks like a gate but is not one.
 - [[Updated-At Trigger Drift]] — the "recorded ≠ actual" class this engine removes for readiness.
 - [[Honest Analytics]] — sample-size gating; the same refusal to assert on unreachable data.

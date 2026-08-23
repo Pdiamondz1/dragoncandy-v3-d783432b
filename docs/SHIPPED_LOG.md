@@ -26,6 +26,167 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-23] Identity & verification (slice 2) — real writers for two impossible checklist rows, four instances of a stamp outliving its fact, and a corrected Ruling 9
+
+**Slice 2 of 4** in the signup/onboarding redesign (slice 1: [[Account Completeness Engine]], #472).
+Gives `phone_verified`, `identity_verified` and `address` — the readiness engine's three verification
+requirement keys — real writers for the first time. Branch `feat/identity-verification`, based on
+`origin/main` at `1ef6a534`; 19 commits, 2598 → 2658 tests across 247 → 252 files; typecheck/lint/build
+clean throughout. Full decision ledger (20 rulings, three later judged wrong or half-wrong and recorded
+as such): `.superpowers/sdd/2026-08-23-identity-verification/progress.md`.
+
+**Corrects a claim slice 1's own entry above made.** That entry's "Rollout posture is no-op" line
+reasoned `READINESS_GATE_ENABLED` having no `feature_flags` row meant nothing was blocking anyone. True
+of `ReadinessGate` only. `AccountChecklistRows`/`MissionChecklist` consume `useAccountReadiness`
+**directly, with no flag at all**, and both render unconditionally on `/dashboard/business` and
+`/dashboard/creator`. Slice 1 had in fact shipped two `required`, non-dismissible checklist rows —
+`address` (0 of 30 `org_units` had coordinates; no code path could ever satisfy it) and `phone_verified`
+(wired to a column with no writer) — visible and permanently unmet for every account from the moment it
+deployed. Not a lockout, since nothing consumed the checklist to gate an action, but exactly the
+"UI says one thing, truth says another" failure this whole engine exists to delete — missed by nine
+task reviews and a Codex pass on slice 1, found while investigating slice 2.
+
+**What shipped.** Migration `20260824110000` adds `identity_verified_at`, `tax_id_provided`,
+`stripe_requirements_due`, `stripe_disabled_reason` to `creator_profiles`/`business_profiles`/
+`org_units`, plus `address_verified_at`/`lat`/`lng` to `creator_profiles`/`org_units` (address is
+per-location on `org_units` for a business, not on the account-level `business_profiles`). All
+nullable, no default, no backfill — NULL means "we haven't heard from the authority yet", which the
+engine already renders as `unknown`, never a failure.
+
+**Two different server-write-only mechanisms, chosen by write-surface shape, not habit.**
+`profiles.phone`/`phone_verified_at` use the same table-wide-revoke-then-grant-back pattern as every
+prior `profiles` lockdown (`20260824100000`), because every client write to `profiles` passes a literal
+object — grep-enumerable. The other three tables use a per-table `BEFORE INSERT OR UPDATE` trigger
+instead (`20260824110000`, widened from UPDATE-only to also cover INSERT by `20260824111000` after a
+reviewer proved live on prod that deleting-and-reinserting a `creator_profiles` row forged
+`identity_verified_at`/`tax_id_provided`), because at least one write path per table is a
+runtime-computed object (`useOrgData.ts`'s caller-supplied partial) — an explicit grant list against a
+write surface that can't be enumerated is a silent-42501-in-production trap, which is exactly how a
+grant-based fix on `profiles` itself broke `dismissed_coachmarks` for one fix round mid-slice (a
+single-quote-only grep missed two double-quoted call sites).
+
+**A stamp outliving the fact it attests to, four separate times in one slice — the slice's real
+throughline.** (1) **Phone**: a naive "clear on any `phone` change" trigger would have silently broken
+verification itself, since the real write sets `phone` and `phone_verified_at` together in one
+statement and a `BEFORE UPDATE` trigger sees the composed NEW row — fixed with a dual condition
+(`NEW.phone IS DISTINCT FROM OLD.phone AND NEW.phone_verified_at IS NOT DISTINCT FROM
+OLD.phone_verified_at`, `20260824120000`) so a same-statement composite write survives and every other
+writer still clears it. (2) **Address**: the identical dual-condition trigger shape
+(`20260824150000`) on `creator_profiles`/`org_units`, with a genuine trigger-name-sort-order dependency
+(`guard_...` before `trg_clear_...`) documented rather than denied, after an earlier version of the
+migration comment claimed order "doesn't matter" when reversing it would hard-fail every legitimate
+address edit. (3) **Identity, on Stripe disconnect**: `disconnect-stripe-account` cleared 3 of 7
+Stripe-derived columns and missed `identity_verified_at`/`tax_id_provided`/`stripe_requirements_due`/
+`stripe_disabled_reason` — since disconnect-then-reconnect is a real flow and the reconnected account
+can be a *different legal entity*, the stale stamp would vouch for one Stripe never verified; fixed by
+clearing all four alongside the existing three (`8db1269a`). (4) **Identity, on revocation**: the
+derivation checked the historical `verifiedAt` stamp before `disabledReason`/`requirementsDue`, so an
+account Stripe disabled for `rejected.fraud` still rendered "identity verified" — fixed by re-ordering
+so revocation outranks the stamp (`d85b5874`). Four instances, three different mechanisms (two DB
+triggers, one application-level clear on a discrete action, one derivation reorder), because the shape
+of "what invalidates this" differed each time.
+
+**Fail open toward the user, fail closed toward the attacker — stated precisely, not just repeated.**
+Slice 1's "`unknown` never blocks" is correct for readiness display, where a false block costs a real
+person a real action. `verify-phone`'s SMS-send throttle initially inherited that instinct and was
+wrong to: any read error against the new `phone_verification_attempts` table logged and returned
+`[]`/`undefined`, which resolves as "allow" — so a transient blip would silently disable the only
+defense against SMS pumping while still returning 200s. Fixed to refuse the send on any read error
+instead, and the IP-salt fallback (a literal string committed to the repo — one cheap offline
+precomputation from full recovery) got the same treatment: refuse `start` entirely until the real
+secret exists rather than silently degrade. Same word, opposite correct default, decided by who bears
+the cost of being wrong.
+
+**New edge functions, both 503 by design.** `verify-phone` (Twilio Verify — not Programmable
+Messaging, a different product; only Verify's secret was ever going to work), two-client split
+(anon client validates the JWT only, service-role does every table op), per-user and per-IP fail-closed
+throttling, a NANP exclusion set for Caribbean/territory premium overlays (kept as cheap
+defense-in-depth; Twilio Verify's own Geo Permissions is the intended authoritative gate). `verify-address`
+(Google Geocoding), creator coordinates rounded to 2 decimal places (~1.1km) so the privacy guarantee
+is structural rather than dependent on which Google match type comes back, org-membership-checked
+writes (no body-supplied id treated as a grant, unlike the `outstand-proxy` shape this project has hit
+before). Neither has ever made a real call — `TWILIO_VERIFY_SERVICE_SID`, `PHONE_VERIFY_IP_SALT`, and
+`GOOGLE_MAPS_SERVER_API_KEY` are all unprovisioned, a founder-only pending item.
+
+**`stripe-webhook` mirrors Stripe's identity/KYC signal**, in a separate `Promise.all` gated
+`.is('identity_verified_at', null)` per row so a later `account.updated` event that proves nothing
+can't erase an earlier stamp. Caught before merge: the plan's own reference code checked
+`company.verification.status`, which **does not exist in the Stripe API** — only
+`individual.verification.status`, null unless `business_type === 'individual'`. Every restaurant
+onboarding as an LLC or corporation (the normal case) would have permanently failed identity
+verification no matter how fully Stripe verified them. Fixed by deriving company identity from
+`payouts_enabled === true && !disabled_reason` — Stripe does not enable payouts for an entity it hasn't
+verified, which is what this column is defined to record even though Stripe doesn't label it that way
+for companies.
+
+**Two `profiles` PII lockdowns, found to be two separate problems.** The planned one
+(`20260824100000`/`101000`) closes WRITE: `authenticated` held UPDATE on `phone_verified_at`, so any
+signed-in user could self-stamp "verified" with no SMS sent. A second, unplanned one
+(`20260824140000`) closes READ, found mid-slice while auditing `phone`'s exposure: RLS has no column
+granularity, and the "View messaging participants profiles" policy grants the WHOLE ROW to any
+messaging counterparty — with `authenticated` holding table-wide SELECT, that included `email` and,
+the moment `verify-phone` shipped, `phone`. Proven on prod (impersonation returned a real email; an
+unrelated control uuid returned 0 rows). The `phone` half was closed before it ever went live —
+`verify-phone` is `phone`'s first writer, so the same PR that would have created the exposure closed
+it. The `email` half was already live: two historical `REVOKE SELECT (email)` statements
+(`20260507130028`, `20260523234847`) turn out to have always been no-ops — a column-level REVOKE
+cannot override an outstanding table-wide GRANT in Postgres — the **4th recorded instance** of this
+exact mistake in this codebase. Fixed with table-level revoke + a 15-column grant-back (everything
+except `email`/`phone`) + a new `get_org_members_roster` RPC (SECURITY DEFINER, gated on active org
+membership) replacing a direct client read of `email` for the org-roster feature. The revoke migration
+is split from the RPC migration (`20260824135000`, RPC / `20260824140000`, revoke) and deliberately
+applied in two different windows relative to the Vercel deploy — the RPC before merge (the new
+frontend needs it to exist immediately), the revoke after (the OLD frontend, still live until deploy
+finishes, selects `email` directly and would break immediately if the revoke landed first).
+
+**Found and left explicitly out of scope: a live, unauthenticated IDOR.**
+`public.get_user_conversations(user_uuid, p_org_unit_id)` — body never references `auth.uid()`, every
+filter runs on the caller-supplied parameter, EXECUTE held by PUBLIC/anon/authenticated with no
+REVOKE. Verified with controls: impersonating a user whose own list is 1 row and passing a different
+user's id returned 13 rows; a nonexistent uuid returned 0 (rules out "ignores the parameter"); `set
+local role anon` with no JWT still returned 13 rows — needs no account at all. One `NULL full_name`
+away from also leaking raw email addresses (latent, not live — all 45 prod profiles currently have a
+`full_name`). Found while enumerating `profiles.email` readers for the read lockdown above; not this
+slice's to fix. Needs an owner.
+
+**Three defects originated in the plan/spec text itself, not the implementation, and were reproduced
+faithfully by per-task spec-compliance review each time** — `company.verification.status` above; an
+instruction to merge the identity signal into the same bulk Stripe-mirror `.update()` as the other
+columns, which would have spread `identity_verified_at: null` into every `account.updated` event and
+erased any stamp a prior event had legitimately earned (caught by reading the plan's own two
+contradictory sentences four lines apart); and an early "grandfather arm" for `address` that would have
+protected an empty set (0 of 30 `org_units` had coordinates) with dead defensive code.
+
+**The controller's own Ruling 9 was wrong**, and is recorded as such rather than quietly corrected: it
+concluded Task 8's `required` tiers were inert for the same reason given above (no
+`READINESS_GATE_ENABLED` row) — true of `ReadinessGate`, false of the engine's direct consumers, as
+described at the top of this entry. Caught only by the final whole-branch review, closed by extracting
+the identity-signal mapping into a tested `toIdentityContext` seam that previously had zero coverage
+(`d85b5874`). Two more rulings were partially wrong: Ruling 15 (the whole `20260824140000` migration
+needed to wait for the deploy — true for the revoke, wrong to bundle the backward-compatible RPC into
+the same file, since that left no apply order without a broken window); Ruling 5 (recorded that
+`withinCooldown` needed a test, never actually executed — `verify-phone`'s rate-limit guard genuinely
+has zero coverage, reconciled by a coincidental test-count match).
+
+**Process incident, recorded plainly.** A reviewer investigating an unrelated typecheck failure ran
+`git stash` on four `src/lib/accountReadiness/*` files while a different agent was actively editing
+those same files in the same worktree, then dropped the stash — its own "verified byte-identical
+restoration" was true of the moment it stashed and false of the net effect, since the tree kept
+changing underneath it. The implementer detected the loss independently and redid the work with
+per-edit verification. New rule: never run a file-writing agent concurrently with any agent that might
+touch the same paths in the same worktree, and tell every reviewer explicitly the tree may be live.
+
+**Pending at merge.** Nothing end-to-end verifiable — all three new-function secrets unprovisioned.
+`identity_verified` reads `unmet` (not `unknown`) for effectively every account until each gets a first
+`account.updated` webhook; inert only until `READINESS_GATE_ENABLED` gets a `feature_flags` row, a
+deliberate separate act this PR flags to the founder rather than silently enabling. `lat`/`lng` remain
+client-writable directly (only the stamp is guarded) — bounded, parked, not fixed; a reviewer's dissent
+on record that it deserves a date. Merge-time runbook: merge → wait for Vercel → apply
+`20260824140000` (profiles SELECT revoke) + `20260824150000` (address trigger, currently unapplied) →
+`supabase gen types` → deploy `verify-phone`/`verify-address`/`stripe-webhook`/`disconnect-stripe-account`
+→ verify org roster still loads.
+→ `docs/wiki/concepts/identity-verification.md` · `docs/wiki/concepts/account-completeness-engine.md` · `docs/wiki/concepts/service-role-data-exposure.md`
+
 ## [2026-08-23] Proving the RAG fix actually retrieves — and truncating the evidence while measuring a truncation bug
 
 [[RAG Document Chunking]] established that a third of the corpus had become reachable. It did not

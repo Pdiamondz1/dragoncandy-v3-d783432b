@@ -82,7 +82,8 @@ Supabase $45, OpenAI $25), Stripe in test mode. Production launch date TBD. The 
 delivery system stabilization that gated launch landed in late May 2026;
 remaining blockers are final bug resolution and payment-flow hardening.
 
-**Codebase scale** (as of 2026-08-19): 92 pages, 269 hooks, 98 edge functions.
+**Codebase scale** (as of 2026-08-23): 92 pages, 269 hooks, 100 edge functions (`verify-phone` +
+`verify-address` added by the identity-verification slice — both undeployed pending secrets).
 **Repo**: `/Users/dwill/GIT/dragoncandy-v3-d783432b` (moved from Windows to macOS 2026-08-14)
 **Active integrations**: Toast POS, Stripe Connect, Outstand.so (social media —
 Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
@@ -428,6 +429,17 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 > proof the object exists (see [[Content Delivery State Machine]]) and "recorded ≠ actual" has
 > bitten this project before.
 
+- **Identity & verification (slice 2 of 4, onboarding redesign)** — gives `phone_verified`/
+  `identity_verified`/`address` real writers, closes a `profiles` email/phone read exposure (4th
+  recorded column-REVOKE-no-op instance), and corrects a slice-1 defect (two `required` checklist rows
+  nothing could ever satisfy). Branch `feat/identity-verification`, 19 commits, tests green,
+  Codex second review still owed. **Pending (2026-08-23):** three secrets unprovisioned
+  (`TWILIO_VERIFY_SERVICE_SID`, `PHONE_VERIFY_IP_SALT`, `GOOGLE_MAPS_SERVER_API_KEY`) so nothing is
+  verifiable end-to-end; merge, then the two-migration + four-function merge-time runbook; a
+  `READINESS_GATE_ENABLED` flag-row decision (founder call — do we block existing unverified
+  accounts?); and a pre-existing unauthenticated IDOR (`get_user_conversations`) found in scope but
+  left for an owner outside this branch.
+  → `docs/wiki/concepts/identity-verification.md` · `docs/SHIPPED_LOG.md`
 - **Donny's `social_*` tools repaired (7 calls → 0 successes → 4 working tools)** — Donny told the
   founder he had "no visibility into which Instagram account is connected", sent him to find an
   **"account ID"** on a page that displays none, and promised to post once he had it. The prod audit
@@ -544,7 +556,8 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   the Codex second review**, at founder direction. **Pending (2026-08-23):** both-viewport prod
   verification — every changed surface is behind auth and **no test-account credentials exist in the
   memory system despite `CLAUDE.md` saying they do**; the Donny RAG sync; and slices 2-4 (identity &
-  verification, entry experience, depth).
+  verification, entry experience, depth). **Slice 2 (identity & verification) built — see "Built —
+  awaiting founder go-live" above**; this line previously named it only as a future slice.
   → `docs/wiki/concepts/account-completeness-engine.md` · #472
 - **Every `href` in our transactional emails was caller-chosen — closed on prod (#442)** — ~30
   templates built every link from caller-supplied `data` with no check, reachable because

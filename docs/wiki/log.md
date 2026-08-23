@@ -1,5 +1,33 @@
 # Wiki Log
 
+## [2026-08-23] ingest | Identity & Verification (slice 2 of 4, onboarding redesign)
+
+**Created** `docs/wiki/raw/sessions/2026-08-23-identity-verification.md` (session source) and
+[[Identity & Address Verification]] (`concepts/identity-verification.md`) — `phone_verified`,
+`identity_verified` and `address` get real writers; a stamp outlived the fact it attested to four
+separate times in one slice (phone, address, identity-on-Stripe-disconnect,
+identity-on-Stripe-revocation), closed by three different mechanisms; fail-open-toward-the-user vs.
+fail-closed-toward-the-attacker stated precisely; a 4th recorded instance of a column-level `REVOKE`
+being a no-op against a table-wide `GRANT`; three defects (including a Stripe field that does not
+exist) originated in the plan/spec text itself, not the implementation.
+
+**Updated** [[Account Completeness Engine]] (`concepts/account-completeness-engine.md`) — corrected
+a Known-Issues bullet that understated slice 1's own defect: the readiness gate being inert
+(`READINESS_GATE_ENABLED` has no flag row) does not mean the *engine* was inert, since
+`AccountChecklistRows`/`MissionChecklist` consume it directly with no flag. Slice 1 had shipped two
+permanently-unmet `required` checklist rows visible to every user from day one.
+
+**Updated** [[Service-Role Data Exposure]] (`concepts/service-role-data-exposure.md`) — added the 4th
+recorded column-level-`REVOKE`-is-a-no-op instance (`profiles.email`/`.phone`) and a new open
+instance, a live unauthenticated IDOR in `get_user_conversations` found while scoping the fix and left
+out of this slice's scope.
+
+Flagged, not silently resolved: this slice found (1) a pre-existing live unauthenticated IDOR needing
+an owner, (2) two pre-existing schema-drift reads that silently swallow errors
+(`useProfileNames.ts`, `donny-oauth-userinfo`), and (3) a pre-existing dead-code write to a
+nonexistent column (`useTour.ts`'s `onboarding_completed_at`). None fixed here; none silently
+dropped from the record either.
+
 ## [2026-08-23] analysis | A judge sees what you show it
 
 **Created** [[RAG Retrieval Evaluation]] (`concepts/rag-retrieval-evaluation.md`) and committed the
