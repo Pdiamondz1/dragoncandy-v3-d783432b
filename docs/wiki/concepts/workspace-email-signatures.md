@@ -3,7 +3,7 @@ title: Workspace Email Signatures
 type: concept
 created: 2026-08-20
 updated: 2026-08-23
-sources: [2026-08-20-google-workspace-signatures-wave-1.md, 2026-08-21-workspace-wave-1-admin-half-and-sendas-correction.md, 2026-08-22-sendas-scope-403-and-partial-status.md, 2026-08-23-shared-signatures-live.md, 2026-08-23-per-user-shared-signature-warning.md, 2026-08-23-signature-run-alert.md, 2026-08-23-signature-test-alert.md]
+sources: [2026-08-20-google-workspace-signatures-wave-1.md, 2026-08-21-workspace-wave-1-admin-half-and-sendas-correction.md, 2026-08-22-sendas-scope-403-and-partial-status.md, 2026-08-23-shared-signatures-live.md, 2026-08-23-per-user-shared-signature-warning.md, 2026-08-23-signature-run-alert.md, 2026-08-23-signature-test-alert.md, 2026-08-23-signature-alert-transport.md]
 tags: [google-workspace, email, branding, apps-script, automation, security]
 ---
 
@@ -328,8 +328,9 @@ half that actually delivers was uncovered while the suite looked healthy. That i
 the `runStatus_` mutation that went undetected by all 79 tests the day before: **a well-tested pure
 function sitting next to an untested impure one reads as coverage of both.** Twice now, the
 untested piece has been the one that decides whether anyone is told. The test loader now injects
-`MailApp` and records every send, so a test can assert that **nothing** went out — the half a "did
-it send?" stub cannot check.
+the mail service and records every send, so a test can assert that **nothing** went out — the half
+a "did it send?" stub cannot check. (It injected `MailApp` until 2026-08-23; the stub takes
+positional arguments now, because `GmailApp.sendEmail` does.)
 
 96 tests, was 86; four mutations each turn a test red. Codex clean at round 1.
 
@@ -355,7 +356,8 @@ it send?" stub cannot check.
   checked it is gone. The rendering matrix is four-of-five (Gmail web light, Gmail web dark,
   Gmail iOS dark, images-disabled), not five-of-five. Do not describe it as verified.
 - **A warning is still not a gate, though it now arrives.** As of 2026-08-23 a run with a
-  finding emails `ALERT_EMAIL` (MailApp, as the script owner — unrelated to the delegation),
+  finding emails `ALERT_EMAIL` (**GmailApp**, as the script owner — unrelated to the delegation;
+  it was `MailApp` until later the same day, which did not deliver at all — see below),
   naming each failed or degraded user with written/expected and the cause. It is deliberately
   silent on a clean run, because a nightly "all fine" trains its reader to filter the thread.
   **`ALERT_EMAIL` unset means nobody is told** and everything else still looks normal; the run
@@ -367,9 +369,10 @@ it send?" stub cannot check.
   at which point the alerts would follow them to a person who cannot fix an Apps Script
   authorization error. The alias buys a **stable indirection point**, not redundancy: it is a
   delivery label on `dame@`'s inbox, so if that account is suspended the alerts go with it.
-- **The alert has still never actually been received.** `sendTestAlert()` exists to fix that
-  (see below) and, as of 2026-08-23, **has not been run**. Until it has, the delivery path is
-  proven by unit tests against a stubbed `MailApp` and by nothing else.
+- ~~**The alert has still never actually been received.**~~ **Resolved 2026-08-23, and running
+  it found the alarm was broken.** `sendTestAlert()` was fired and the alert did not arrive —
+  `MailApp` reached **0 of 3** external recipients while reporting success. Closed by moving to
+  `GmailApp`; the alert has now been received. See *The alarm rang into a wall* below.
 - **`dryRun()` does not authenticate**, so it passes cleanly with a missing or revoked
   service-account key. Its comment says so; the limitation stands. This is why the acceptance
   signal was writing into *other people's* mailboxes, which `dryRun()` structurally cannot
@@ -389,6 +392,107 @@ it send?" stub cannot check.
   that distinguishes a working delegation from a broken one.
 - ~~**Nothing is deployed.**~~ **Merged (#453) and live 2026-08-21**, with a daily 2–3am
   trigger armed. Corrections followed in #454.
+
+## The alarm rang into a wall — `MailApp` is silently undeliverable here
+
+`sendTestAlert()` was built on 2026-08-23 so the alarm could be heard on demand. Firing it for the
+first time established that **the alarm had never worked**, and could not have worked on any day
+since it was built.
+
+**`MailApp.sendEmail` does not reach external recipients from this project. `GmailApp.sendEmail`
+does.** Measured on prod via Admin > Reporting > Email Log Search:
+
+| Transport | Recipients | Result |
+|---|---|---|
+| Gmail-composed, same sender | three external addresses, two providers | **3 of 3 Delivered** |
+| Apps Script `MailApp` | `dwilliams@harbormill.net`, `damewillie@gmail.com`, `damesonpoint@gmail.com` | **0 of 3**, each `Bounced` in 0.11–0.16s |
+| Apps Script `GmailApp` | `damesonpoint@gmail.com` | **Received** |
+
+One sender, one week, three addresses across two providers. The only variable that moves the
+outcome is the transport. *Why* Google's `MailApp` relay rejects these is **unknown** — the fix
+routes around the failure rather than explaining it.
+
+**The reason four rounds of work missed it: `MailApp` cannot report this failure.** It hands the
+message to Google and returns; the rejection arrives milliseconds later, outside the execution. So
+`sendRunAlert_` returned `true`, the log said "accepted for delivery", and the run was recorded a
+success — for every bounce. #463 and #466 improved *what the alert said* and *when it fired* while
+nobody had ever received one, and nothing in the system could have told them.
+
+This is why the transport is pinned by a **text assertion** on the source rather than a behavioural
+test. The property is unobservable at runtime: no stub and no `try/catch` can see a rejection that
+happens after the call returns, so the only defensible test is that the source says `GmailApp`.
+Mutation-verified — reverting to `MailApp` fails 6 tests, that one by name. 97 tests, was 96.
+
+Two implementation traps worth knowing before touching this: **the argument shapes differ**
+(`MailApp.sendEmail` takes one options object, `GmailApp.sendEmail` takes positional
+`(recipient, subject, body)`), so a symbol-only swap sends to `undefined` with every existing test
+still green; and the pin test's first version **failed on its own explanatory comment**, which
+discusses `MailApp` at length — it strips comments before matching, because a test that fails on
+documentation teaches the next person to loosen it.
+
+**The header tell.** The two routes are distinguishable from headers alone, which is the cheapest
+way to confirm which one a message took:
+
+| | `Message-Id` | `Received` |
+|---|---|---|
+| `MailApp` | `<autogen-java-<uuid>@google.com>` | — |
+| `GmailApp` | `<CA…@mail.gmail.com>` | `by gmailapi.google.com with HTTPREST` |
+
+The `@mail.gmail.com` family is what Gmail-composed mail carries.
+
+### DKIM was missing, was fixed, and was not the cause
+
+`dragoncandy.com` had **no DKIM record at all** — found while chasing this, and genuinely worth
+fixing. The key is generated, published at GoDaddy under `google._domainkey`, verified byte-exact
+against the **authoritative** nameserver and at 8.8.8.8, and the admin console reads
+"Authenticating email with DKIM". SPF and DMARC (`p=quarantine; adkim=r; aspf=r`) were already
+correct. Note the DNS lives in **Joe Castelo's GoDaddy account**, reached by delegate access.
+
+It was called the likely cause and it was not: the bounces did not change when it landed, and the
+RAW headers showed `d=dragoncandy.com; s=google` signing was already live. **A real defect found
+while chasing the wrong hypothesis is still a real defect — it is not a confirmation of it.**
+
+### `gmail.send` is correct here, and the documentation says otherwise
+
+The change swaps the manifest scope `script.send_mail` → `gmail.send`. Adding a scope invalidates
+the existing authorization, so the owner must re-consent by hand or the nightly trigger fails.
+
+**Codex flagged `gmail.send` as a P1**: Google's GmailApp reference lists `https://mail.google.com/`
+for `sendEmail` and never mentions `gmail.send`, so deployed sends "will fail with an authorization
+error and `sendRunAlert_` will silently return `false`". The documentation does say that. The
+prediction is still wrong, refuted two ways — the alert **sent and was received** on the deployed
+build, and the account's grant list reads *"Send email as you"* (`gmail.send`) with **no** *"Read,
+compose, send, and permanently delete all your email"* entry, which is the consent label for
+`https://mail.google.com/`. That scope is not granted; the send worked without it.
+
+Adopting the suggestion would have turned a send-only grant into **full read and delete over the
+owner's mailbox, to send one alert**. The narrow scope stays, with the evidence recorded in
+`build-gs.mjs` so the next reader does not re-derive the same "fix" from the docs.
+
+**The generalisable half:** a documentation-derived P1 is a hypothesis about runtime, and runtime is
+checkable. Reading the *granted* scope list is the control that separates "this works because the
+scope suffices" from "this works because something broader was granted" — the observation alone
+cannot distinguish those, and without the control the refutation would not have been safe to make.
+
+### Instrument discipline, learned twice in one session
+
+**Every sender-side signal said the mail was fine.** The execution log said accepted for delivery,
+the message appeared in Gmail's **Sent** folder, the API returned an id. All of those are the
+*sender's* view and none is evidence of delivery. Only the Email Log Search recipient row, or the
+recipient's own inbox, settles it. A related trap from the same day: mail addressed to `alerts@`,
+an alias of the sending account, files in **Sent** with no INBOX label — so "it's not in my inbox"
+was not evidence either.
+
+**And a missing bounce message is not evidence that nothing bounced.** A search of `dame@` found no
+NDR, from which the failure was wrongly placed at the receiving end; the log then showed an explicit
+`Bounced`. Google's relay rejected these before any NDR existed.
+
+**Then the mirror image.** Searching Email Log Search by the fixed message's `Message-ID` returned
+**0 results** — which reads as "never sent". Running the known-good `Message-ID` of an earlier
+bounce through the identical query returned **1**, proving the query worked and the zero was real
+(most likely indexing lag on a 20-minute-old message). The zero was not evidence of failure. This
+is the standing house rule, earned again: **when a probe returns zero, prove it could have returned
+non-zero.**
 
 ## Three traps worth carrying to other work
 

@@ -261,8 +261,24 @@ holds no Toast credentials. See §6.
   by design. It found the gap underneath: **`sendRunAlert_` had no tests at all**, because every
   test fed the pure composer beside it — the same shape as the `runStatus_` mutation the day
   before. 96 tests, was 86; Codex clean at round 1.
-  **Pending (2026-08-23):** `sendTestAlert()` has **never been run**, so delivery is proven
-  against a stubbed `MailApp` and nothing else; **`01 · Product` is populated (2026-08-23)** — this line previously read "stays empty
+  **`sendTestAlert()` was then run, and the alarm turned out to be broken (2026-08-23)** — this
+  line previously read "**Pending:** `sendTestAlert()` has never been run, so delivery is proven
+  against a stubbed `MailApp` and nothing else". Running it proved the opposite of unproven:
+  **`MailApp` reached 0 of 3 external recipients**, two providers, each `Bounced` within 0.16s,
+  while the same sender composing in Gmail reached 3 of 3 that week. `GmailApp` delivered. **The
+  alert had never worked, and `MailApp` structurally cannot say so** — it hands off to Google and
+  returns, so the rejection lands milliseconds later outside the execution and `sendRunAlert_`
+  returned `true` and logged success for every bounce. Fixed by `GmailApp.sendEmail` (**positional**
+  args — a symbol-only swap sends to `undefined` with every test still green) + scope
+  `script.send_mail` → `gmail.send`, pinned by a **text assertion** since the property is
+  unobservable at runtime; 97 tests, was 96. **Codex's P1 against the narrow scope was refuted by
+  the granted scope list** ("Send email as you", not the full-mailbox label) — taking it would have
+  traded send-only for read-and-delete over the owner's mailbox. **DKIM was entirely missing, is now
+  published and verified, and was NOT the cause** (the bounces did not change when it landed).
+  Durable: *every sender-side signal is the sender's view*, *a missing bounce message is not evidence
+  nothing bounced*, and the log's 0-result for the fixed message was only safely read after the same
+  query returned 1 for a known-good id. **Pending:** the nightly trigger has not yet fired on the new
+  transport. **`01 · Product` is populated (2026-08-23)** — this line previously read "stays empty
   because the candidate docs call Dame a 'solo technical founder' and name neither Joe nor Juwan".
   #468 fixed exactly that (all three named with roles, Joe's restaurants credited as the origin,
   "35+ tables" → 70+) and both docs are now Google Docs in the open drive. Staleness is handled by

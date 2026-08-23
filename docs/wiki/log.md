@@ -1,5 +1,39 @@
 # Wiki Log
 
+## [2026-08-23] update | The alarm rang into a wall
+
+Ingested `raw/sessions/2026-08-23-signature-alert-transport.md`. **Updated**
+[[Workspace Email Signatures]] with the transport finding, and corrected four claims on that page
+plus the `index.md` entry, all of which said the delivery path was merely unproven.
+
+It was not unproven. It was broken. Firing `sendTestAlert()` for the first time established that
+**`MailApp.sendEmail` does not reach external recipients from this project** — 0 of 3, two
+providers, each `Bounced` within 0.16s, while the same sender composing in Gmail reached 3 of 3
+that week. `GmailApp` delivered. The alarm had never worked on any day since it was built, and
+four rounds of improving *what it said* could not have discovered that, because **`MailApp` cannot
+report the failure**: it hands off to Google and returns, and the rejection arrives milliseconds
+later outside the execution, so the call returned `true` and the run logged success every time.
+
+Fixed by `GmailApp.sendEmail` — positional arguments, not `MailApp`'s options object, so a
+symbol-only swap would have sent to `undefined` with every existing test green — plus manifest
+scope `script.send_mail` → `gmail.send`. Pinned by a **text assertion** on the source, because the
+property is unobservable at runtime; mutation-verified. 97 tests, was 96.
+
+**Codex flagged the narrow scope as a P1** on documentation grounds and was refuted by reading the
+*granted* scope list, which shows "Send email as you" and not the full-mailbox label. Taking the
+advice would have traded send-only for read-and-delete over the owner's mailbox. Recorded in
+`build-gs.mjs` so it is not re-derived.
+
+**DKIM was missing, is now published and verified, and was not the cause** — the bounces did not
+change when it landed. A real defect found while chasing the wrong hypothesis is still a real
+defect; it is not a confirmation of it.
+
+Three instrument lessons, one shape. Every sender-side signal — execution log, Sent folder,
+returned id — is the *sender's* view and none is evidence of delivery. A missing non-delivery
+report is not evidence that nothing bounced. And the log search by the fixed message's
+`Message-ID` returned **0 results**, safely read only after the identical query returned 1 for a
+known-good id: **when a probe returns zero, prove it could have returned non-zero.**
+
 ## [2026-08-23] update | A guard that cannot fire looks exactly like one that works
 
 Ingested `raw/sessions/2026-08-23-rag-eval-automation.md`. **Updated** [[RAG Retrieval Evaluation]]
