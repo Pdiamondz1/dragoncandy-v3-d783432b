@@ -16,6 +16,7 @@ import { sanitizeNumericInput } from '@/lib/inputUtils';
 import { SkillsSelection } from '@/components/creator-profile/SkillsSelection';
 import { CreatorSocialMediaLinks } from '@/components/creator-profile/CreatorSocialMediaLinks';
 import { ConnectedAccountsList } from '@/components/outstand/ConnectedAccountsList';
+import { YouTubeAnalyticsCard } from '@/features/settings/YouTubeAnalyticsCard';
 import { PortfolioUpload } from '@/components/creator-profile/PortfolioUpload';
 import { AvatarUpload } from '@/components/creator-profile/AvatarUpload';
 import type { CreatorProfileFormData } from '@/hooks/useCreatorProfileForm';
@@ -259,6 +260,8 @@ export function CreatorSettingsSections({
         subtitle="Manage connected accounts & posting"
       >
         <ConnectedAccountsList role="creator" />
+
+        <YouTubeAnalyticsCard />
 
         <div className="border-t border-dc-teal/10 pt-4 mt-4">
           <details className="group">

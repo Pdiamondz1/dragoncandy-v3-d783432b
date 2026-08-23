@@ -29,6 +29,74 @@ queries of 53**, and every finding carries that line so a precise-looking number
 more authoritative than it is.
 
 
+## [2026-08-23] update | A signed state is not a browser, and 403 means two opposite things
+
+**New page** [[YouTube Analytics Connector]]. Built the read-only YouTube link the
+2026-08-23 scope decision called for: OAuth connect, disconnect, and a channel analytics
+read. Five Codex rounds produced six real findings, all mine, and two of them are worth
+carrying beyond this feature.
+
+**A signed state is not a browser.** The first build had Google redirect straight to an edge
+function running `verify_jwt = false`, authorized by an HMAC-signed state carrying the user
+id. That proves the state is one we minted; it proves nothing about *who is completing the
+flow*. An attacker starts a connect, receives an authorize URL naming their own user id,
+sends it to a victim, and the victim's YouTube tokens land under the attacker's account —
+a live feed of someone else's channel analytics. The code carried a comment asserting the
+**mirror** case (harmless: an attacker completing a victim's link connects their own
+channel to their own account) as though it were the whole analysis. Getting an attack's
+direction backwards is worse than not analysing it, because it reads as having been
+checked. Closed with the pattern the repo already had for Workspace and that this build
+simply did not follow: Google redirects to a **page inside the app**, which forwards the
+code with the user's own JWT, and `verifyState(state, expectedUserId)` requires the state
+to name that caller.
+
+**A fix is a change, and changes get reviewed.** Round 2 correctly made an analytics 403
+persist `needs_reconnect`, because otherwise the card kept saying "Connected" and hid the
+one button that recovers. Round 3 found what that created: Google returns 403 for quota too,
+so an hour of project-wide `quotaExceeded` would have told **every user on the platform** to
+reauthorize. Now classified by `error.errors[].reason` plus `RESOURCE_EXHAUSTED`, defaulting
+an unrecognised 403 to authorization because a refused connection is a state the user must
+act on and quota is the enumerable exception.
+
+Also recorded: a live Google grant is never abandoned (the token in hand is the only thing
+that could revoke it, so every non-storing exit revokes first, and disconnect revokes
+*before* deleting the row that holds the token); analytics rows are read by **column name**
+because `columnHeaders` order belongs to the response; and the [[Honest Analytics]] rules
+hold throughout — empty is zero rows rather than a row of zeros, `days_with_data` is
+reported instead of the 28 requested, and average view duration is derived from totals
+rather than averaged from daily averages.
+
+**Console, verified rather than assumed:** the YouTube Analytics API was enabled (without it
+`yt-analytics.readonly` 403s regardless of the code), and the redirect URI moved to
+`https://dragoncandy.com/youtube/callback`. A memory note claiming the consent screen
+"currently" declared `youtube.upload` was **wrong** — all three Data Access tables are
+empty, and a "drop youtube.upload" task had been sitting on the list for something that did
+not exist. Scopes are requested at runtime in the authorize URL; the Data Access page is the
+*declared* list Google reviews at verification time. Two different things.
+
+**Nothing is deployed.** The migration is unapplied, four edge functions are undeployed, and
+the flow has never run against real Google credentials.
+
+## [2026-08-23] update | Toast is not OAuth, and the application that had never been made
+
+**New page** [[Toast Partner Integration]]. Submitted Step 1 of the Toast integration partner
+application (API Documentation License Agreement, accepted as Dragon Candy LLC) — the item
+`PROJECT_CONTEXT.md` §6 had carried as "6–12 month timeline" without anyone starting it.
+
+Checking the ground first overturned two standing claims. **Toast POS was listed under "Active
+integrations" in two places and is not one** — no `TOAST_*` secret exists, so all six deployed
+`toast-*` edge functions answer `toast_not_configured` 503, and zero `%toast%` tables exist on
+prod. `SHIPPED_LOG.md` recorded that contradiction two weeks ago and nothing read it. And **the
+integration is built on an auth model Toast does not offer**: no authorize URL, no authorization
+code, no refresh token — `clientId`/`clientSecret` client-credentials login for a ~1-hour token,
+with restaurant access granted restaurant-side and addressed per request via
+`Toast-Restaurant-External-ID`. `toast-oauth-start`, `toast-oauth-callback` and
+`toast-token-refresh` each implement a flow that does not exist; the runbook troubleshoots an
+error code Toast cannot emit. The tell was structural — every Toast URL is an env var, because
+nobody had the docs to hardcode a host.
+
+**Updated** `PROJECT_CONTEXT.md` §4 (removed the false active-integration claim), §6 (the real
+application state, the auth finding, and the agreement's 2027-02-23 self-termination) and §10.
 ## [2026-08-23] analysis | A judge sees what you show it
 
 **Created** [[RAG Retrieval Evaluation]] (`concepts/rag-retrieval-evaluation.md`) and committed the
