@@ -50,7 +50,14 @@ export function controlSeparation(realTop1, controlTop1) {
  * standard way to make a retrieval change look better than it is — the newly-reachable documents
  * are exactly the ones nobody has judged yet.
  *
- * `results` is [{ docs: [documentId, ...] }] in rank order, one entry per query.
+ * `results` is [{ docs: [documentId, ...] }] in rank order, one entry per CHUNK.
+ *
+ * k COUNTS CHUNKS, because that is what `search_internal_knowledge` returns — ten rows, not ten
+ * distinct documents. An earlier version skipped duplicates and kept scanning until it had k
+ * distinct documents, which credited documents sitting at chunk-rank 11, 12, 15… that Donny never
+ * receives. That inflation is largest exactly in the chunk-heavy case this evaluator exists to
+ * assess, so it flattered the change it was measuring. Duplicates still collapse for CREDIT — one
+ * document cannot be found twice — but they consume their slots.
  */
 export function recallPrecision(results, labelsByQuery, kMax = 12) {
   const rows = [];
@@ -62,10 +69,9 @@ export function recallPrecision(results, labelsByQuery, kMax = 12) {
       relTotal += [...labels.values()].filter(Boolean).length;
       const seen = new Set();
       let hitsHere = 0;
-      for (const doc of r.docs) {
-        if (seen.has(doc)) continue;       // rank documents, not chunks
-        seen.add(doc);
-        if (seen.size > k) break;
+      for (const doc of r.docs.slice(0, k)) {   // k chunks, exactly as production returns
+        if (seen.has(doc)) continue;            // a repeat earns no second credit…
+        seen.add(doc);                          // …but it already cost a slot above
         if (!labels.has(doc)) { unknownInK++; continue; }
         judgedInK++;
         if (labels.get(doc)) { relFound++; hitsHere++; }

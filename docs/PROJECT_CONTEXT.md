@@ -102,14 +102,16 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   could not be tailored to it). **Controls run first**: 8 out-of-corpus queries score 0.164–0.280
   against real queries' 0.437–0.632, **0 of 8 above even the weakest real one**, so the rest of the
   report means something. **Chunking did not break what worked** — the old window's top document is
-  still top for **43/53**, and none fell out of top-10. **k=10 stays, now on evidence** (recall 78%
-  at k=5 vs 100% at k=10; 20% of relevant passages sat at ranks 10–12), replacing the arithmetic
-  guess it was set by. The judge-free measure: **12.3%** of k=10 hits are text past the old
-  24,000-char cut, on **32/53** queries. **Two method failures recorded as the durable part:**
+  still top for **43/53**, and none fell out of top-10. **k=10 stays, now on evidence** (recall 65%
+  at k=5 vs 91% at k=10 — dropping to 5 loses a third of the relevant material), replacing the
+  arithmetic guess it was set by. The judge-free measure: **12.3%** of k=10 hits are text past the old
+  24,000-char cut, on **32/53** queries. **Three method failures recorded as the durable part:**
   choosing k from similarity alone *failed outright* (0.404 at rank 20 against a 0.280 ceiling — in
   a one-company corpus there is no cutoff), and the first judging pass **truncated the evidence
   while measuring a truncation bug** (22 of 84 "not relevant" calls hid the query term past a
-  340-char excerpt; correcting it moved precision@12 32% → 42%). Limits are written down rather
+  340-char excerpt; correcting it moved precision@12 32% → 42%), and the recall metric itself
+  counted distinct *documents* where production returns *chunks*, crediting results Donny never
+  receives — with a unit test pinning the error in as many words. Limits are written down rather
   than buried: 7 labelled queries of 53, labels self-produced though blind, and no strict old-vs-new
   A/B because the function now refuses to emit a single 24,000-char embedding.
   → `docs/wiki/concepts/rag-retrieval-evaluation.md` · `feat/rag-eval-harness`

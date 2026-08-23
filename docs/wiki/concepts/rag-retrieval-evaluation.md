@@ -60,11 +60,16 @@ This one needs no labels and no judge, so it stands even where the numbers below
 Measured against 7 queries with hand-labelled relevance (55 judgments, at document level),
 committed at `supabase/scripts/rag-eval/labels.json`.
 
-| k | recall | precision | unjudged in k |
-|---|---|---|---|
-| 1 | 26% | 86% | 0 |
-| 5 | 78% | 51% | 0 |
-| **10** | **100%** | 42% | 15 |
+| k | recall | precision |
+|---|---|---|
+| 1 | 26% | 86% |
+| 5 | 65% | 60% |
+| **10** | **91%** | 44% |
+| 12 | 100% | 42% |
+
+**`k` counts CHUNKS, not distinct documents**, because that is what
+`search_internal_knowledge` returns. The first version of this metric skipped duplicates and kept
+scanning until it had `k` distinct documents — see the third method failure below.
 
 **Unjudged is reported, never silently counted as a miss.** A retrieved document with no label is
 neither hit nor miss. Treating unlabelled as irrelevant is the standard way to make a retrieval
@@ -78,13 +83,13 @@ is still ranked first for **43 of 53** queries; the other 10 stay inside the new
 fell out**. Document diversity dipped slightly (6.2 vs 6.6 distinct documents at k=10) — mild
 crowding, not drowning.
 
-**Keep k=10.** Recall is 78% at k=5 and 100% at k=10 over the labelled pool, and 20% of relevant
-passages sat at ranks 10–12. For a RAG feeding an LLM, recall dominates precision: the model can
+**Keep k=10.** Recall is **65% at k=5 and 91% at k=10** over the labelled pool — dropping to 5
+loses more than a third of the relevant material. For a RAG feeding an LLM, recall dominates precision: the model can
 ignore a weak passage, but not one it never sees. This replaces the arithmetic guess the row
 count was originally set by ([[RAG Document Chunking]]: mean chunk 4,162 chars against the old
 mean row of 10,111).
 
-## Two method failures worth more than the results
+## Three method failures worth more than the results
 
 **The label-free method for choosing k failed outright.** The plan was to pick k where similarity
 decays into the control band. It does not decay: mean similarity is still **0.404 at rank 20**
@@ -99,7 +104,15 @@ the query term *past* that cut. The clean specimen is the LoRA query: ranks 2 an
 Re-judging with the text centred on the match moved precision@12 from 32% to 42% — and recall@10
 *down*, because the denominator grew.
 
-The durable form: **a judge sees what you show it.** If you truncate, sample or summarise the
+**The metric itself was wrong, and its test pinned the error.** `recall@k` deduplicated documents
+and then kept scanning until it had `k` distinct ones — so a document sitting at chunk-rank 11 or
+15 was credited, though production returns ten *chunks* and Donny never receives it. The inflation
+is largest exactly in the chunk-heavy case this evaluator exists to assess, so the metric flattered
+the change it was measuring. Worse, a unit test asserted the wrong behaviour in as many words
+(*"ranks documents, not chunks"*), so the defect was pinned rather than caught. Correcting it moved
+recall@10 from 100% to **91%** and recall@5 from 78% to **65%**. Found by Codex at review round 6.
+
+The durable form of the first two: **a judge sees what you show it.** If you truncate, sample or summarise the
 evidence before assessing it, you have measured your excerpt, not the thing. Same family as
 [[RAG Document Chunking]]'s original defect and as the [[Knowledge-Sync Automation]] rule to
 verify by content.

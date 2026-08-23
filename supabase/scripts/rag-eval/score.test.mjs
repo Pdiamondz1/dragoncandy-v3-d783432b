@@ -47,10 +47,21 @@ describe("recallPrecision", () => {
     expect(k3.unknown).toBe(1);
   });
 
-  it("ranks documents, not chunks — a repeated document takes one slot", () => {
-    const rows = recallPrecision([{ query: "q", docs: ["A", "A", "A", "B"] }], labels, 2);
-    // Without dedup, A would fill both slots and B would never be reached at k=2.
-    expect(rows[1].recall).toBeCloseTo(1);
+  /**
+   * This test previously asserted the OPPOSITE — that A's three chunks collapsed to one slot and
+   * B was therefore reached at k=2, giving recall 1. That pinned a defect: production returns k
+   * CHUNKS, so a document filling the first three slots really does push B out of the top 2, and
+   * crediting B inflated recall exactly in the chunk-heavy case this evaluator exists to assess.
+   */
+  it("spends slots on chunks, so a repeated document pushes others out of the window", () => {
+    const rows = recallPrecision([{ query: "q", docs: ["A", "A", "A", "B"] }], labels, 4);
+    expect(rows[1].recall).toBeCloseTo(0.5);  // k=2 sees A, A -> only A of {A,B}
+    expect(rows[3].recall).toBeCloseTo(1);    // k=4 finally reaches B
+  });
+
+  it("gives a repeated document no second credit", () => {
+    const rows = recallPrecision([{ query: "q", docs: ["A", "A"] }], labels, 2);
+    expect(rows[1].recall).toBeCloseTo(0.5);  // not 1.0 — A found once, B never
   });
 
   it("recall climbs with k and never falls", () => {

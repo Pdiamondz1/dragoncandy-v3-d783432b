@@ -48,8 +48,8 @@ first, it is still ranked first for **43 of 53** queries; the other 10 stay insi
 **none fell out**. Document diversity dipped slightly (6.2 vs 6.6 distinct documents at k=10) — mild
 crowding, not drowning.
 
-**k=10 stays, now on evidence.** Recall is **78% at k=5 and 100% at k=10** over the labelled pool,
-and 20% of relevant passages sat at ranks 10–12. For a RAG feeding an LLM recall dominates
+**k=10 stays, now on evidence.** Recall is **65% at k=5 and 91% at k=10** over the labelled pool —
+dropping to 5 loses more than a third of the relevant material. For a RAG feeding an LLM recall dominates
 precision — the model can ignore a weak passage, but not one it never sees. That replaces the
 arithmetic guess the row count was originally set by.
 
@@ -57,7 +57,7 @@ arithmetic guess the row count was originally set by.
 24,000-char cut, and 32 of 53 queries surface at least one. That number stands even where the
 labels do not.
 
-**Two method failures worth more than the results.**
+**Three method failures worth more than the results.**
 
 The label-free way of choosing k **failed outright**. The plan was to pick k where similarity
 decays into the control band; it does not decay — mean similarity is still **0.404 at rank 20**
@@ -71,6 +71,14 @@ on an open model" several hundred characters in, and both were called irrelevant
 moved precision@12 from 32% to 42%, and recall@10 *down*, because the denominator grew. **A judge
 sees what you show it** — truncate the evidence and you have measured your excerpt.
 
+And the metric itself was wrong, with its own test pinning the error. `recall@k` deduplicated
+documents then kept scanning until it had k distinct ones, crediting documents at chunk-rank 11 or
+15 that production never returns — inflation largest in exactly the chunk-heavy case the evaluator
+exists to assess, so it flattered the change it measured. A unit test asserted the wrong behaviour
+in as many words ("ranks documents, not chunks"). Correcting it moved recall@10 from 100% to 91%
+and recall@5 from 78% to 65%; the conclusion (keep 10) survives and strengthens. Six Codex rounds,
+seven real findings on this harness alone, every one mine.
+
 Committed honestly: the harness reports *unjudged* documents as unjudged rather than counting them
 misses, since treating unlabelled as irrelevant is precisely how a retrieval change is made to look
 better than it is. Known limits are written into the page — 7 labelled queries of 53, labels
@@ -78,8 +86,8 @@ produced by the same agent that wrote the chunker (blind to rank and provenance,
 revealed after the fact, but not independent), June queries against a moved corpus, and no strict
 old-vs-new A/B because the function now refuses to emit a single 24,000-char embedding.
 
-8 tests on the pure scoring layer, including one asserting that an unlabelled document is neither
-hit nor miss.
+9 tests on the pure scoring layer, including one asserting that an unlabelled document is neither
+hit nor miss, and one asserting that a repeated document spends its slots.
 
 ## [2026-08-23] The comment was true, and about the wrong reader: a third of Donny's corpus was never embedded
 
