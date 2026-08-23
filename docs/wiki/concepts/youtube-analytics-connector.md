@@ -32,18 +32,45 @@ So these are **real zeros from 25 real rows** on a channel with no activity, not
 pretending to be data — the [[Honest Analytics]] distinction between "zero rows" and "a row of
 zeros", exercised for the first time.
 
-### What is still NOT proven, and it is not a small gap
+### Disconnect, revoke and re-consent — all exercised the same afternoon
 
-**The first-time consent screen was never seen.** Google went straight from the account chooser
-back to the app, because this Google account had already granted these scopes earlier the same
-day. So what is exercised is code-exchange -> channel-read -> store -> analytics-read. What is
-**not** exercised is the consent UI a new creator meets, including the *"Google hasn't verified
-this app"* interstitial that Testing-status External apps show. **A flow that skips consent is
-not a test of consent.**
+Both gaps this page listed an hour earlier are now closed, and closing the first one closed the
+second for free.
 
-**`youtube-disconnect` has never run.** The revoke-before-delete ordering — the part that
-guarantees a live Google grant is never stranded — is reviewed, type-checked and deployed, and
-has executed zero times.
+**`youtube-disconnect` ran at 17:30 UTC.** The row was deleted. That alone is the proof the
+revoke succeeded, *by construction*: the function only reaches the DELETE after Google returns
+`revoked` or `already_invalid`; a failed revoke returns 502 and deliberately keeps the row so the
+token survives for a retry. Row absent therefore means revoke succeeded — there is no path that
+produces an absent row and a live grant.
+
+**Google's own behaviour is the independent confirmation.** The first connect had sailed straight
+through with no consent screen. Immediately after disconnect, the same button dropped into the
+full account-chooser-then-consent flow. Google would not re-ask for a grant it still held, so the
+withdrawal reached Google's side rather than only ours. **A second, independent observer is worth
+more than a second look at your own state.**
+
+**Re-consent produced a genuinely new grant**, not a cached one: `connected_at` moved to
+17:31:49, and the stored `scopes` array came back in a *different order* from the first grant —
+an incidental detail, but one a cache would not produce. The analytics read then ran again against
+the new token (`last_synced_at` 17:33:07, `last_error` null).
+
+### Two things the consent screen actually showed, both contrary to what was expected
+
+**There was no "Google hasn't verified this app" interstitial.** This page and
+`PROJECT_CONTEXT.md` both predicted one for a Testing-status External app. Test users evidently
+get the ordinary screen; the warning presumably belongs to non-test users, who currently cannot
+reach the app at all. So that interstitial remains *unobserved and unobservable* until publishing
+status changes — not "verified absent".
+
+**The consent screen itemised only the email address.** It read *"Google will allow
+dragoncandy.com to access this info about you: dame@dragoncandy.com — Email address"*, and did not
+list the two YouTube scopes anywhere. Both were nevertheless granted, verified by reading the
+stored array back. Whether Google collapsed them or presented a second screen that auto-advanced
+is **not established** — it is recorded here as observed, unexplained behaviour rather than
+guessed at. The practical consequence is worth knowing: **do not treat what the consent screen
+lists as the definitive record of what was granted.** The granted-scope array on the token
+response is the only reliable source, which is exactly why this build reads it rather than
+assuming the request succeeded.
 
 ### Post-deploy review
 

@@ -34,6 +34,33 @@ report is not evidence that nothing bounced. And the log search by the fixed mes
 `Message-ID` returned **0 results**, safely read only after the identical query returned 1 for a
 known-good id: **when a probe returns zero, prove it could have returned non-zero.**
 
+## [2026-08-23] update | Google re-asking is better evidence than our own row being gone
+
+Exercised `youtube-disconnect` and then reconnected, closing both gaps the entry below listed.
+**Updated** [[YouTube Analytics Connector]], the index entry and `PROJECT_CONTEXT.md` §5.
+
+**Two independent proofs the revoke reached Google.** Ours: the row is gone, and the DELETE is
+only reachable after Google returns `revoked`/`already_invalid` — a failure returns 502 and keeps
+the row so the token survives for a retry, so there is no path producing an absent row and a live
+grant. Google's: the first connect had sailed straight through with no consent screen, and
+immediately after disconnect the same button dropped into a full account-chooser-and-consent flow.
+**Google would not re-ask for a grant it still held.** A second, independent observer beats a
+second look at your own state.
+
+**Re-consent produced a genuinely new grant** — `connected_at` moved, the scope array came back in
+a different order, and the analytics read ran again against the new token.
+
+**Two expectations were wrong, and both are recorded rather than quietly dropped.** There was no
+"Google hasn't verified this app" interstitial — test users get the ordinary screen, so that
+warning is *unobserved and unobservable* until publishing status changes, which is not the same as
+absent. And the consent screen **itemised only the email address** while granting both YouTube
+scopes anyway; whether Google collapsed them or auto-advanced a second screen is **not
+established**, and is written down as observed-unexplained rather than guessed.
+
+**The operational rule that falls out:** the consent screen is not the record of what was granted.
+The token response's scope array is — which is exactly why this build reads it back instead of
+assuming the request it sent is what it got.
+
 ## [2026-08-23] update | The proof it worked was a number that looked like a typo
 
 First real YouTube channel linked at 16:46 UTC. **Updated** [[YouTube Analytics Connector]], the

@@ -362,11 +362,21 @@ holds no Toast credentials. See §6.
   *"25 days of data"* against the 28 the code requested, because YouTube reports a day or two in
   arrears — `days_with_data` doing exactly what [[Honest Analytics]] requires. A fabricated or
   fallback response would have echoed 28, so the three zeros on the card are **real zeros from 25
-  real rows**, not an empty state dressed up as data. **What is still unproven is the first-time
-  consent UI:** Google skipped the consent screen entirely because this account had already
-  granted these scopes earlier the same day, so the code-exchange -> channel-read -> store ->
-  analytics-read path is exercised while the "Google hasn't verified this app" interstitial a new
-  creator will meet is not.
+  real rows**, not an empty state dressed up as data. **Disconnect, revoke and re-consent all followed the same
+  afternoon**, closing both gaps this entry listed an hour earlier. Disconnect deleted the row —
+  which *is* the proof the revoke succeeded, since the DELETE is only reached after Google returns
+  `revoked`/`already_invalid` and a failure keeps the row with its token. **Google's own behaviour
+  confirmed it independently:** the first connect had sailed through with no consent screen, and
+  immediately after disconnect the same button dropped into a full account-chooser-and-consent
+  flow — Google does not re-ask for a grant it still holds. Re-consent produced a genuinely new
+  grant (`connected_at` 17:31:49, scope array in a different order) and the analytics read ran
+  again against the new token. **Two expectations were wrong:** there was **no** "Google hasn't
+  verified this app" interstitial (test users get the ordinary screen; that warning is unobserved
+  and unobservable until publishing status changes), and the consent screen **itemised only the
+  email address** while granting both YouTube scopes anyway — recorded as observed-and-unexplained,
+  not guessed at. The lesson is operational: **the consent screen is not the record of what was
+  granted**; the token response's scope array is, which is why this build reads it back rather than
+  assuming the request succeeded.
   **Verified rather than assumed, because the migration's own header says not to trust its exit
   code:** table grants are exactly `postgres` + `service_role` (no `anon`, no `authenticated`, no
   `PUBLIC`), RLS enabled with **zero policies**, and the status function is `SECURITY DEFINER`
@@ -409,9 +419,7 @@ holds no Toast credentials. See §6.
   users, redirect URI exactly `https://dragoncandy.com/youtube/callback`, and the deployed
   `YOUTUBE_CLIENT_ID` **proven** to be this console client by hashing the client ID off the page
   and matching the secret's SHA-256 digest — identity confirmed without ever reading a secret
-  value. **Pending (2026-08-23), none of it code:** `disconnect` has still never been run, so the
-  revoke-before-delete path is reviewed and unexercised; the first-time consent screen is unseen
-  (above); declare the two read scopes on Data Access before submitting for verification; register
+  value. **Pending (2026-08-23), none of it code:** declare the two read scopes on Data Access before submitting for verification; register
   preview origins if the flow should work off the apex; and decide about **Publishing status**,
   because the 100-user cap is counted over the app's *lifetime* and is not resettable. **Expect
   this first connection to break around 2026-08-30** — refresh tokens die 7 days after consent
