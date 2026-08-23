@@ -54,6 +54,19 @@ verify_jwt = false
 [functions.check-restaurant-payout-status]
 verify_jwt = false
 
+# Stated explicitly rather than inherited. This function had NO entry here at all — the
+# only Stripe money function without one — so its posture was whatever the CLI default
+# happened to be rather than a decision anyone made. Probed on prod before writing this
+# line: an unauthenticated POST returns the GATEWAY's 401 (UNAUTHORIZED_NO_AUTH_HEADER),
+# not our own body, so the LIVE value is true, and the CLI default is also true, so
+# declaring it changes nothing today and pins it against a future default change.
+# An unauthenticated CORS preflight was verified to pass at this setting (OPTIONS -> 200,
+# with the live-and-in-use youtube-disconnect as a control), so the browser call path is
+# unaffected. The function additionally self-gates via auth.getUser(token); the gateway
+# check is the outer layer, never the authorization itself — the anon key is a valid JWT.
+[functions.disconnect-stripe-account]
+verify_jwt = true
+
 [functions.get-watermarked-preview]
 verify_jwt = false
 

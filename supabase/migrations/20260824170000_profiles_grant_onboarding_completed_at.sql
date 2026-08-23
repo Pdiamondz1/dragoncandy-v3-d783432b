@@ -18,6 +18,32 @@
 -- column appears in the granted set parsed from these migrations. That test runs in CI on
 -- every change, which is the property a one-shot migration assertion can never have.
 
+-- ---------------------------------------------------------------------------------
+-- PROD DRIFT, found when this migration first failed to apply (2026-08-23):
+--   ERROR: 42703: column "onboarding_completed_at" of relation "profiles" does not exist
+--
+-- Migration 20260427110000 is RECORDED in supabase_migrations.schema_migrations, and its
+-- repo file adds `onboarding_completed_at` and `dismissed_coachmarks` in ONE atomic
+-- `alter table ... add column, add column`. On prod, `dismissed_coachmarks` exists and
+-- `onboarding_completed_at` does not. A single ALTER cannot half-apply, so what ran against
+-- prod was not what the repo file says. Third recorded instance of `recorded ≠ actual` in
+-- this project, after the collaboration state machine (#325) and the handle_updated_at stub
+-- (#385). Verify objects, never the ledger.
+--
+-- Adding it here rather than dropping the write, because prod is the OUTLIER: the repo says
+-- this column exists, so staging, preview branches and any fresh environment already have
+-- it. Leaving prod diverged is what produced this failure. Additive and nullable, per the
+-- project rule on new columns.
+--
+-- HONEST NOTE ON WHAT THIS DOES *NOT* FIX. `onboarding_completed_at` is WRITE-ONLY:
+-- src/hooks/useTour.ts is the only writer and nothing in src/ reads it. Tour suppression
+-- runs off sessionStorage, so the tour re-arms every new session and has done since April.
+-- This migration makes the write SUCCEED; it does not make the tour remember anything.
+-- Whether tour completion should persist across sessions is a product decision, not a
+-- schema one, and is deliberately left to the founder rather than smuggled in here.
+alter table public.profiles
+  add column if not exists onboarding_completed_at timestamptz;
+
 grant update (
   onboarding_completed_at
 ) on public.profiles to authenticated;

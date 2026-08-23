@@ -1,5 +1,37 @@
 # Wiki Log
 
+## [2026-08-23] update | The identity slice went live, and the reviewer's best finding was wrong
+
+**Updated** [[Identity & Address Verification]] and `docs/PROJECT_CONTEXT.md` §5 after slice 2 merged
+(#484), its migrations were confirmed applied, and all five edge functions were deployed and
+boot-verified.
+
+**Two new sections, both about how a claim gets established rather than about identity.** The
+mandatory pre-deploy `edge-function-reviewer` pass filed a **high-severity** finding — the identity
+columns are not applied, so `stripe-webhook` will hard-throw on its first Connect webhook. Sound
+reasoning, false premise: the reviewer had no database access and read a `**Pending:**` clause in
+`PROJECT_CONTEXT.md` that was hours stale. Refuted against prod with controls that could have said
+no (an invented column name returns 42703; all 16 real ones answer). **Stale prose in an auto-loaded
+context file does not merely fail to help — it manufactures confident, well-argued, wrong findings,
+and a reviewing agent is the reader least able to know the expiry date has passed.**
+
+The other section sharpens *when a probe returns zero, prove it could have returned non-zero*. A
+no-argument call to the 5-parameter throttle RPC returned PGRST202 "not found" — the same answer an
+invented name gives — because PostgREST resolves overloads by argument name and a zero-arg call can
+never match. Re-probed with the real signature it returned 42501, and the invented name still
+returned PGRST202. **A negative result is informative only if the probe could have produced a
+positive one for the thing being asked about**; "returns the not-found error" and "is not there" are
+different claims. Sibling: the SMTP `RCPT TO` probe in [[Domain Migration .io → .com]].
+
+Also recorded: two of the reviewer's four findings were real. The **automatic** Stripe-detach path
+checked no errors on either `STRIPE_IDENTITY_RESET` write, so the eraser could fail while the
+function returned 200 saying "no account" and the row kept `identity_verified_at` pointing at a
+deleted Stripe account — this slice's own thesis, made silent one level up. And
+`disconnect-stripe-account` had no `config.toml` entry at all, so its `verify_jwt` was an inherited
+default rather than a decision.
+
+Pages updated: [[Identity & Address Verification]]
+
 ## [2026-08-23] ingest | A password cannot stop a signup
 
 Ingested `raw/sessions/2026-08-23-site-access-lockdown.md`. **Created**
