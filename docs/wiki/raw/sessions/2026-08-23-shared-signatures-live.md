@@ -10,7 +10,11 @@ established that both routes to shared-mailbox signatures need it.
 
 ## What happened, in order
 
-### 1. The scope grant (admin console)
+### 1. The scope grant (admin console) — 2026-08-22 evening
+
+*Note on dates: the grant and the deploy fall either side of midnight. The grant was made on
+2026-08-22 (~19:36 ET) and the runs on 2026-08-23 (02:24 and 02:39 ET). This file is named for
+the day the work completed.*
 
 Security → Access and data control → API controls → Domain-wide delegation → client
 `117869070719843760682`. The edit dialog **appends a row rather than replacing the set**, so the
@@ -55,8 +59,9 @@ from typing into that page, reasonably — the service-account private key sits 
 Verified persisted by reloading the settings page rather than trusting the "done".
 
 `installAllSignatures()` again → **`ok / 4 identities / 3 shared`** for `dame@`;
-`ok / 1 identity / 0 shared` for adrian, jay and joe. No `unauthorized_client`; roughly 40
-minutes had elapsed since the grant.
+`ok / 1 identity / 0 shared` for adrian, jay and joe. No `unauthorized_client`. About seven
+hours had elapsed since the grant (2026-08-22 19:36 ET → 2026-08-23 02:39 ET) — long enough that
+it bounds propagation from above and not at all from below.
 
 ## Verification approach
 
@@ -90,3 +95,11 @@ across five rounds. Date such lines and distrust them past their date.
 **Verify a reported "done" before acting on it.** Four times in three days a stated state
 disagreed with the actual one — a merge claimed that had not happened, a merge requested that
 already had, and two stale status clauses. Each check cost seconds.
+
+**An unmeasured interval is not a measurement.** The first draft of this write-up said "roughly
+40 minutes elapsed between the grant and the enabling run" — asserted from a sense of how long
+the session had felt, never computed. The real figure is about seven hours, off by an order of
+magnitude, and Codex caught it only because the dates in neighbouring sentences contradicted it.
+The number mattered: it was being offered as propagation evidence, and a seven-hour gap bounds
+propagation from above and not at all from below. Exactly the family of error this whole
+workstream has been about — a plausible claim nobody executed against.

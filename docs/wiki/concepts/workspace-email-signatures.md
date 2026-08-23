@@ -232,8 +232,9 @@ rather than flipping a switch. Inside that window, step 2 produces exactly the s
 granted on 2026-08-22 while `SHARING_SCOPE_ENABLED` was deliberately left unset: the code was
 undeployed anyway, so there was nothing to gain from racing it. The sequence run on 2026-08-23
 was push → confirm `PARTIAL` with a non-zero denied count → set the property → run again, with
-about 40 minutes between the grant and the enabling run and no `unauthorized_client`. One data
-point about propagation, not a guaranteed interval.
+about **seven hours** between the grant (2026-08-22 19:36 ET) and the enabling run (2026-08-23
+02:39 ET), with no `unauthorized_client`. That interval is too long to bound propagation from
+below — it is evidence that seven hours is enough, and evidence of nothing shorter.
 
 **The intermediate `PARTIAL` run is the load-bearing one, and it is worth keeping in any repeat
 of this.** It is the only observation that distinguishes *the scope fixed it* from *the scope

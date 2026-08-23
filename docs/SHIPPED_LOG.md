@@ -48,8 +48,9 @@ people's mailboxes" over a success message as the original acceptance signal.
 **Order is not optional and the failure is total, not partial.** Requesting a scope the
 delegation does not carry fails the *entire* token exchange with `unauthorized_client` — every
 signature for every user, not just the shared ones. Hence console first, property second, and a
-switch that defaults off. Roughly 40 minutes elapsed between grant and enabling run with no
-propagation failure: one data point, not a guaranteed interval.
+switch that defaults off. About **seven hours** separated the grant (8/22 19:36 ET) from the
+enabling run (8/23 02:39 ET) with no propagation failure — a gap long enough to say nothing
+about how fast propagation actually is, so it is not evidence that a short wait suffices.
 
 **Merged is not deployed.** #456 was correct in the repo for a full day while production ran the
 broken code, because `clasp push` needed a re-auth. Nothing detected it — Apps Script has no CI

@@ -243,9 +243,13 @@ works), *then* set the property, *then* run again. If that second run throws
 
 **That sequence was followed on 2026-08-23 and both runs are in the log Sheet**,
 which is why it is written down: `PARTIAL / 1 identity, 3 denied / 0 shared`,
-then `ok / 4 identities / 3 shared`. Roughly 40 minutes elapsed between the
-console grant and the enabling run, and no `unauthorized_client` occurred — one
-data point, not a guaranteed propagation time.
+then `ok / 4 identities / 3 shared`. About **seven hours** elapsed between the
+console grant (2026-08-22 19:36 ET) and the enabling run (2026-08-23 02:39 ET),
+with no `unauthorized_client`. That gap is long enough that it says **nothing**
+about how quickly propagation completes — do not read it as "40 minutes is
+enough" or any other short interval. If you need to move faster, the `PARTIAL`
+run is your instrument: it tells you the narrow path works, and a failed
+enabling run after it is diagnosable as propagation rather than breakage.
 
 **Keep the two-run shape if you ever redo this.** The `PARTIAL` run is not a
 formality: it is the only observation that separates "the scope fixed it" from
