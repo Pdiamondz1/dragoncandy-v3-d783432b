@@ -3,7 +3,7 @@ title: Mobile Viewport & Fixed Positioning
 type: concept
 created: 2026-07-14
 updated: 2026-08-23
-sources: [2026-07-14-mobile-screenfit-fixed-position.md, 2026-07-16-donny-desktop-overlay.md, 2026-07-19-mobile-nav-modal-zindex.md, 2026-08-14-ios-first-physical-device-build.md, 2026-08-23-landing-footer-ios-inset-and-reel-recut.md]
+sources: [2026-07-14-mobile-screenfit-fixed-position.md, 2026-07-16-donny-desktop-overlay.md, 2026-07-19-mobile-nav-modal-zindex.md, 2026-08-14-ios-first-physical-device-build.md, 2026-08-23-landing-footer-ios-inset-and-reel-recut.md, 2026-08-23-adrian-feedback-body-scroller-and-how-it-works.md]
 tags: [mobile, ios, css, viewport, fixed-position, framer-motion, page-transition, desktop, flexbox, overscroll, portal, z-index]
 ---
 # Mobile Viewport & Fixed Positioning
@@ -252,6 +252,60 @@ shrinking the shell would make every short dashboard page newly scrollable on mo
 **The lesson is the pair, not either half: refuting a claim on the surface where it was raised does
 not refute it on the surfaces where it was never tested.** The browser claim was false; the same
 family of bug was real one layer down, in the shell nobody had measured.
+
+## 9. `body` is the document's scroll container, and `AppShell` must be `100dvh` (2026-08-23)
+
+Reported from a real phone: *"when going on it on mobile I see the screen jumps if I scroll up or
+down, I think it's a bug."* It was, on **every page in the app**, and it is the finding a review had
+already raised and this page's author had refuted.
+
+**Which element scrolls.** `src/index.css` sets `body { height: 100%; overflow-x: hidden }`. Per
+spec, an `overflow-x` of `hidden` against a visible `overflow-y` computes `overflow-y` to **`auto`**
+— so body is a **fixed-height scroll box**, and anything taller than it makes **body** scroll.
+Not `<html>`, not `#root`, not `<main>`.
+
+`AppShell` was `flex h-screen` = `100vh`, and on iOS Safari `100vh` is the URL-bar-**collapsed**
+height. So the shell stood ~60–90px taller than body's box, body scrolled by exactly that, and
+scrolling collapsed the URL bar, which grew `100dvh`, which resized the page mid-gesture.
+
+Measured, by forcing the shell 80px over and asking every candidate which one moves:
+
+| element | scrollHeight | clientHeight | overflow | scrollTop after scroll |
+|---|---|---|---|---|
+| `html` | 753 | 753 | 0 | 0 |
+| **`body`** | **833** | **753** | **80** | **80** |
+| `#root` | 833 | 833 | 0 | 0 |
+| shell | 833 | 833 | 0 | 0 |
+| `main` | 833 | 833 | 0 | 0 |
+
+`window.scrollY` stayed **0** throughout.
+
+**Fix:** `AppShell` → `h-[100dvh]`. `DashboardLayout`'s two `min-h-screen` track it — they are
+inside `main` so they never scrolled body, but a `100vh` child of a `100dvh` `main` hands short
+pages the same dead scroll one container down. Pinned by `src/layoutViewportHeight.test.ts` as a
+**text** assertion, because jsdom has no layout engine to evaluate a CSS length.
+
+**Two ways the original refutation went wrong, either sufficient on its own:**
+
+1. **Wrong element.** It checked `main.scrollHeight`/`main.scrollTop`. `main` is not the scroller.
+2. **Wrong instrument.** It ran in device emulation, which has no collapsing URL bar, so
+   `100vh === 100dvh` and the gap under test is structurally zero there.
+
+**The lesson is not "test on a real device" — it is: when a probe returns zero, prove the probe
+could have returned non-zero.** The forced-overflow control above costs one line, and it identifies
+the scroller *and* demonstrates the instrument responds. Note this is the second iOS-only defect in
+two days that an emulator confidently reported absent (§8 was the first), and both were found only
+because a human looked at a real screen.
+
+**`docs/DESIGN_SYSTEM.md` carried the false premise in writing** — "the app document never scrolls
+(h-screen shell + inner overflow-auto main), so iOS Safari toolbars never collapse" — and has been
+corrected. A rule whose stated justification is false will be re-derived wrongly by whoever reads
+it next; §2 above states the same `dvh`-not-`vh` rule and is unaffected, because its reasoning was
+about the *unit*, not about the document.
+
+**Still open:** if the jump survives on a real phone, the remaining candidate is iOS rubber-band
+overscroll — a different mechanism, wanting `overscroll-behavior-y: none` on `body`, which is an
+app-wide behavioural change and was deliberately not bundled here.
 
 ## Key Decisions
 

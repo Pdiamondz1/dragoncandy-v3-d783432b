@@ -26,6 +26,71 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-23] The mobile jump was real, and it was the finding I refuted
+
+Adrian Vella sent three notes on the landing shipped that morning (#459). Two were design asks. The
+third — *"when going on it on mobile I see the screen jumps if I scroll up or down, I think it's a
+bug"* — was a real defect **on every page in the app**, and it was the Codex round-4 finding on
+#459 that I tested, declared not reproducible, and talked the founder out of fixing.
+
+**Which element scrolls.** `src/index.css` sets `body { height: 100%; overflow-x: hidden }`, and
+per spec an `overflow-x` of `hidden` against a visible `overflow-y` computes `overflow-y` to
+**`auto`**. So **body** is a fixed-height scroll box and anything taller than it scrolls body — not
+`<html>`, not `#root`, not `<main>`. `AppShell` was `flex h-screen` = `100vh`, which on iOS Safari
+is the URL-bar-**collapsed** height, so the shell stood ~60–90px taller than body's box. Body
+scrolled by exactly that, and scrolling collapsed the URL bar, which grew `100dvh`, which resized
+the page mid-gesture.
+
+Measured by forcing the shell 80px over and asking every candidate which one moves: body
+`scrollHeight` **833** vs `clientHeight` **753**, `scrollTop` → **80**; `html`, `#root`, the shell
+and `main` all report overflow **0** and refuse to scroll; `window.scrollY` stays **0** throughout.
+
+**Why the original refutation failed, twice over, either sufficient alone.** It checked
+`main.scrollHeight`/`main.scrollTop` — `main` is not the scroller. And it ran in device emulation,
+which has no collapsing URL bar, so `100vh === 100dvh` and the gap under test is structurally zero
+there. **The lesson is not "test on a real device" — it is: when a probe returns zero, prove the
+probe could have returned non-zero.** The forced-overflow control costs one line and would have
+caught both errors at once. Second iOS-only defect in two days that an emulator reported absent.
+
+Fixed at `AppShell` (`h-[100dvh]`), with `DashboardLayout`'s two `min-h-screen` tracking it — those
+sit inside `main` so they never scrolled body, but a `100vh` child of a `100dvh` `main` hands short
+dashboard pages the same dead scroll one container down. That regression was my original argument
+against the fix; it is answered by doing it in **both** places rather than neither. The landing's
+Suspense fallback moved too. Pinned by `src/layoutViewportHeight.test.ts` as a **text** assertion,
+because jsdom has no layout engine and no emulator can observe the gap. The 119 other
+`min-h-screen` usages are all inside `main`, cannot scroll body, and were left alone.
+
+**`DESIGN_SYSTEM.md` asserted the false premise in writing** — "the app document never scrolls
+(h-screen shell + inner overflow-auto main), so iOS Safari toolbars never collapse" — as did the
+wiki index and §8's "paired refutation". All three corrected in place with the correction beside
+them, because a rule carrying a false justification gets re-derived wrongly by whoever reads it
+next.
+
+**The two design asks.** An underlined *"Already have an account? Log in"* under the CTA — a link,
+not a second pill, because the page's premise is one call to action. Its mint is
+`landing-mint-line` (`#B8ECDA`), **not** the slogan's `#7BE3C0`: this is small text at 4.5:1 where
+the slogan is large text at 3.0:1, and measured across all sixteen encodes in the link's own band
+(0.603–0.635 of viewport, read off the rendered page, scrim 0.672) the bright mint reaches only
+**3.91** at p90 against the pale one's **4.62**. The design system's "too pale for video" note is
+about headlines and **inverts for small text** — both directions are now recorded so neither gets
+corrected into the other.
+
+And a **"Learn more"** pill in the footer, whose hard half was the destination: #459 deleted the
+six-section marketing page, so someone wanting to read before signing up had nowhere to go
+(`/pricing` answers cost, `/help` is post-signup support). Rather than point at the nearest wrong
+thing, this adds **`/how-it-works`** — how a campaign runs, who it is for, and what Donny does and
+does not do — light, on `PublicPageHeader`, the same shell as `/terms` and `/pricing`.
+
+Also corrected while in the file: `DESIGN_SYSTEM.md` still called the landing **unmerged** and
+described **ten** reels across **twenty** encodes; it merged that morning with **eight** and
+**sixteen**.
+
+**Verified:** both viewports, body overflow 0 on the landing and on a 2148px `/how-it-works` that
+scrolls inside `main` as designed; typecheck, build and lint (0 errors) clean; 2468 tests pass and
+the 45 failures are identical on a detached clean `origin/main` (documented Node 26 / jsdom
+`localStorage` issue, CI runs Node 24); Codex clean. **Not verified:** the iOS-Safari half — no
+browser, emulator or simulator can show it, since the WKWebView shell has no URL bar either.
+
 ## [2026-08-23] A warning is not a gate — the signature run now emails
 
 **PR** #463 (`4551483f`) · Codex clean at round 3 · 86 tests, was 63 · deployed

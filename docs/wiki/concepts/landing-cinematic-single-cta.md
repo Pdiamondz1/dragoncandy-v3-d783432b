@@ -3,7 +3,7 @@ title: Landing Cinematic Single-CTA Redesign
 type: concept
 created: 2026-08-22
 updated: 2026-08-23
-sources: [2026-08-22-landing-cinematic-single-cta.md, 2026-08-23-landing-footer-ios-inset-and-reel-recut.md]
+sources: [2026-08-22-landing-cinematic-single-cta.md, 2026-08-23-landing-footer-ios-inset-and-reel-recut.md, 2026-08-23-adrian-feedback-body-scroller-and-how-it-works.md]
 tags: [landing, frontend, video, design, tailwind]
 ---
 # Landing Cinematic Single-CTA Redesign
@@ -22,6 +22,49 @@ form are deleted outright (~20 files), not hidden. It also **revives** the video
 [[Landing Cinematic Video Redesign]] built and PR #293 had demoted to an opt-in flag: that flag
 (`LANDING_VIDEO_BACKDROP_ENABLED`) is gone, and the video *is* the page again — see Known Issues on
 that page for why "opt-in" and "deleted" are different postures, not the same idea revisited.
+
+## One CTA, and the two secondary ways out (2026-08-23, from Adrian Vella's feedback)
+
+The single-CTA premise survived contact with its first real critique, but it needed two additions
+and neither is a fill — a second filled button would make the page two calls to action.
+
+**"Already have an account? Log in"**, a plain underlined link directly under the pill. The note
+that prompted it was *"as if you are already registered it becomes very relevant"*, and it is
+correct: the header's Log in is small, top-right, and easy to miss on a page whose entire
+composition pulls the eye to the centre. Underlined rather than colour-only — colour is never an
+affordance by itself, and over moving footage it is the least reliable cue there is.
+
+**The mint here is not the slogan's mint, and that is the durable point.**
+`landing-mint-line-bright` (`#7BE3C0`) was chosen for text over video — but chosen for *large*
+text at a 3.0:1 bar. This link is small text at 4.5:1. Measured across all sixteen encodes in the
+link's own band (**0.603–0.635 of viewport**, read off the rendered page; scrim interpolates to
+**0.672** there):
+
+| colour | worst mean | worst p90 | clears 4.5:1? |
+|---|---|---|---|
+| white/90 (lead-in) | 7.26 | 5.27 | yes |
+| `#7BE3C0` | 5.49 | **3.91** | **no** |
+| `#B8ECDA` | 6.49 | **4.62** | yes |
+
+So it uses `landing-mint-line` (`#B8ECDA`) — the token the design system calls "too pale against
+skin/food tones on video". **That judgement is about headlines and inverts for small text**: paler
+means more contrast against a bright frame. Both notes are now in `DESIGN_SYSTEM.md` so neither
+gets "corrected" into the other. Same apparatus as the scrim sweep — brightest frame, mean and p90,
+never the single brightest pixel.
+
+**"Learn more"**, a bordered pill in the footer beside the legal links. The hard part was not the
+button but the destination: this redesign **deleted** the six-section marketing page, so someone
+who wanted to read before signing up had nowhere to go — `/pricing` answers what it costs, `/help`
+is written as post-signup support. Rather than point at the nearest wrong thing, it points at a new
+**`/how-it-works`**: how a campaign runs, who it is for, and what Donny does and does not do. Light,
+on `PublicPageHeader`, the same shell as `/terms` and `/pricing`; the landing stays the one dark
+public surface, and the register change is the same accepted seam as the signup screen.
+
+**A third note in the same message was a real bug, on every page rather than this one** — "the
+screen jumps if I scroll up or down" on mobile. `AppShell` was `h-screen`, `body` is the document's
+scroll container, and `100vh` overhangs it on iOS Safari. See
+[[Mobile Viewport & Fixed Positioning]] §9, including why the review finding that predicted it was
+wrongly refuted.
 
 ## Key Decisions
 
