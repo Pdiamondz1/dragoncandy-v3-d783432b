@@ -96,7 +96,10 @@ function collectDir(dir, sourcePrefix) {
       pages.push({
         source_id: chunkSourceId(base, i),
         content,
-        metadata: chunks.length > 1 ? { ...metadata, chunk: i, chunk_total: chunks.length } : metadata,
+        // `chunk_base` is on EVERY chunk, single-chunk documents included, because it is what
+        // the edge function matches siblings on — exactly, never as a LIKE pattern. A
+        // document that drops from 3 chunks to 1 still has to be able to find #1 and #2.
+        metadata: { ...metadata, chunk_base: base, ...(chunks.length > 1 ? { chunk: i, chunk_total: chunks.length } : {}) },
         scope: "internal",
         ...(i === 0 ? { full_content: raw, chunk_total: chunks.length } : {}),
       });

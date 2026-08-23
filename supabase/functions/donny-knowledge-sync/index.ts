@@ -131,9 +131,13 @@ serve(async (req) => {
   );
 
   // 2. Idempotent upsert per page, keyed on metadata.source_id.
-  // Chunk siblings of `base` are "<base>#1", "<base>#2", … The '#' is what keeps this from
-  // matching a DIFFERENT document whose id merely starts with the same text
-  // ("internal-doc:prd" must not sweep up "internal-doc:prd-v2").
+  // Every chunk of a document carries `metadata.chunk_base`, and siblings are found by matching
+  // it EXACTLY. The obvious alternative — `like('metadata->>source_id', `${base}#%`)` — is
+  // wrong on this data: `_` is a single-character LIKE wildcard and our ids are full of them
+  // (`internal-doc:DESIGN_SYSTEM`, `internal-doc:SHIPPED_LOG`, `internal-doc:DATABASE_SCHEMA`),
+  // so a pattern built from one id can match another document's chunks — and this list feeds
+  // DELETE. No filename collides today, but that is a property of the filenames, not of the
+  // code. Equality has no such failure mode.
   //
   // Returns the read error rather than swallowing it: an empty list from a FAILED read is
   // indistinguishable from an empty list from a successful one, and treating the first as the
@@ -143,12 +147,17 @@ serve(async (req) => {
       .from("donny_knowledge")
       .select("id, metadata")
       .eq("source_type", "wiki")
-      .like("metadata->>source_id", `${base}#%`);
+      .eq("metadata->>chunk_base", base);
     if (error) return { error: error.message, siblings: [] };
-    const siblings = (data ?? []).map((r: { id: string; metadata: Record<string, unknown> | null }) => ({
-      id: r.id,
-      index: Number.parseInt(String(r.metadata?.source_id ?? "").split("#")[1] ?? "", 10),
-    }));
+    const siblings = (data ?? [])
+      .map((r: { id: string; metadata: Record<string, unknown> | null }) => {
+        const id = String(r.metadata?.source_id ?? "");
+        // Chunk 0 keeps the unsuffixed id, so "no #" means index 0 — not "unparseable".
+        return { id: r.id, index: id.includes("#") ? Number.parseInt(id.split("#")[1], 10) : 0 };
+      })
+      // The base row is handled by its own exact-id delete; excluding it here keeps each
+      // caller's intent explicit rather than depending on ordering.
+      .filter((s) => s.index !== 0);
     return { error: null as string | null, siblings };
   };
 
