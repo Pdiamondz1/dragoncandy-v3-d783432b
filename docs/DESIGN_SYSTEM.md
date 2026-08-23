@@ -23,9 +23,20 @@ on iOS Safari and the whole screen scrolled anyway; see the shell rule under Des
 **One CTA, plus two secondary ways out.** "Get started" is the only pill. Under it sits a plain
 underlined "Already have an account? **Log in**" in `landing-mint-line` (`#B8ECDA`, *not* the
 slogan's `#7BE3C0` — small text needs 4.5:1, and the brighter mint measures 3.91 at p90 in that
-band against the paler one's 4.62), and the footer carries a bordered "Learn more" pill to
+band against the paler one's 4.62), and the footer carries a bordered **"How it works"** pill to
 `/how-it-works`. Neither is filled: a second fill makes the page two calls to action and the
-single-CTA premise is gone.
+single-CTA premise is gone. **The pill said "Learn more" and had to be renamed** — Lighthouse's
+`link-text` audit fails that string outright ("learn more", "click here", "read more" are its
+canonical non-descriptive link texts), which took the landing's SEO score to **0.92** against the
+CI gate's **0.95**, on one failing item. Name the destination; do not mask it with an `aria-label`.
+**Pink TEXT on white must be `dc-pink-accent-btn` (`#DB2777`, 4.60:1), not `dc-pink-accent`
+(`#EC4899`, 3.52:1)** — the table below lists the lighter token for "links, secondary button text",
+and it does not clear the 4.5:1 small-text bar as text on a white page. The `-btn` step is not only
+for fills.
+**Known, pre-existing, NOT fixed here:** the landing's own "Get started" pill is white on `#F43F7F`
+at **3.58:1** against 4.5:1 (18px, so the 3.0:1 large-text allowance does not apply). Lighthouse
+scores the landing's accessibility 96 for exactly this, and has since before the rebuild. Fixing it
+means darkening the brand pink or making the label larger/bolder — a brand decision, not a drive-by.
 `RotatingBackdrop` plays **eight** real reels — **five ABB, three Uncle Rocco** (this said ten,
 five and five until 2026-08-23; two Uncle Rocco reels were dropped for burned-in captions, so
 perfect alternation is arithmetically impossible and `landingClips.ts` holds a minimum-adjacency

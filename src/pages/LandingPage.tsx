@@ -74,12 +74,18 @@ export default function LandingPage() {
                 legal text without competing with the CTA. Border + slightly brighter text is the
                 whole difference; anything filled would read as a second call to action.
                 It sits in the footer's band, where the scrim is heaviest (to-landing-grape/95) and
-                white text measures 7.42:1 against the brightest frame across all encodes. */}
+                white text measures 7.42:1 against the brightest frame across all encodes.
+                The label is "How it works", NOT "Learn more" — which is what this shipped as, and
+                which failed Lighthouse's `link-text` audit outright (SEO 0.92 against a 0.95 gate,
+                one failing item, this link). "Learn more" is the canonical non-descriptive link
+                text: it tells a crawler nothing and reads to a screen reader, out of the link
+                list, as a link to nowhere in particular. Naming the destination fixes the audit
+                for the reason the audit exists rather than masking it with an aria-label. */}
             <Link
               to="/how-it-works"
               className="rounded-full border border-white/30 px-4 py-1.5 text-white/90 transition-colors hover:border-white/60 hover:text-white"
             >
-              Learn more
+              How it works
             </Link>
             <Link to="/terms" className="text-white/70 transition-colors hover:text-white">
               Terms

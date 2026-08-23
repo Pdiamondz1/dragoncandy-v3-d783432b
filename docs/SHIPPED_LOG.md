@@ -85,6 +85,35 @@ Also corrected while in the file: `DESIGN_SYSTEM.md` still called the landing **
 described **ten** reels across **twenty** encodes; it merged that morning with **eight** and
 **sixteen**.
 
+**The Lighthouse gate then failed, and it was mine.** SEO **0.92** against a 0.95 minimum,
+consistently across three runs and the first failure this workflow has had — one item: Lighthouse's
+`link-text` audit rejects **"Learn more"** outright, the canonical non-descriptive link text.
+Renamed to **"How it works"**, which names the destination; an `aria-label` would also have
+satisfied the audit, but naming the thing fixes it for the reason the audit exists.
+
+**Auditing the new page then found a defect on every page of the site.** The gate covers only
+`/landing`. Run against `/how-it-works` it returned 0.92 there too, on a different item: **two
+conflicting `<link rel="canonical">` tags**. `index.html` carried a hardcoded canonical pointing at
+`/landing` and a hardcoded `og:url` of the bare origin; `SEO.tsx` emits the correct per-route
+values, but react-helmet-async **appends** rather than replacing a static tag it did not create. So
+every page except `/landing` served two canonicals that disagreed — and conflicting canonicals are
+discarded rather than resolved, so the correct per-route value was being thrown away site-wide.
+`/landing` passed only because it is the one page where the static value happens to be right. This
+also falsifies a standing wiki claim that `SEO.tsx`'s `SITE_URL` is "the single constant every
+canonical link and `og:url` derives from" — corrected on [[Domain Migration .io → .com]].
+**A gate that tests one URL is evidence about one URL.**
+
+Both static tags removed. `/how-it-works` now scores **100 accessibility / 100 best practices /
+100 SEO**; the landing goes 0.92 → **1.00** SEO. Also fixed on the new page: `dc-pink-accent`
+(`#EC4899`) as text on white is **3.52:1** against the 4.5:1 small-text bar, four instances →
+`dc-pink-accent-btn` (`#DB2777`, **4.60:1**).
+
+**Found and deliberately NOT fixed:** the landing's "Get started" pill is white on `#F43F7F` at
+**3.58:1**, at 18px so the 3.0:1 large-text allowance does not apply. Pre-existing — it is why
+Lighthouse has scored the landing 96 on accessibility since before the rebuild — and closing it
+means darkening the brand pink or changing the CTA's weight, which is a brand decision rather than
+a drive-by in a feedback PR.
+
 **Verified:** both viewports, body overflow 0 on the landing and on a 2148px `/how-it-works` that
 scrolls inside `main` as designed; typecheck, build and lint (0 errors) clean; 2468 tests pass and
 the 45 failures are identical on a detached clean `origin/main` (documented Node 26 / jsdom

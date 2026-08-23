@@ -7,6 +7,14 @@ Ingested `raw/sessions/2026-08-23-adrian-feedback-body-scroller-and-how-it-works
 container; `AppShell` must be `h-[100dvh]`), [[Landing Cinematic Single-CTA Redesign]] (the two
 secondary CTAs and the size-dependent mint), `index.md` (five entries corrected, one added).
 
+**CI then found two more, one of them site-wide.** The Lighthouse gate failed at SEO 0.92: the
+footer pill said "Learn more", which Lighthouse's `link-text` audit rejects outright. Renamed to
+"How it works". Auditing the NEW page — which the gate does not cover — found **two conflicting
+canonical tags on every page of the site**: `index.html` hardcoded one pointing at `/landing` and
+Helmet appends rather than replaces, so the correct per-route value was discarded site-wide.
+`/landing` passed only because it is the one page where the static value is right. **Updated**
+[[Domain Migration .io → .com]], whose claim that `SITE_URL` drives *every* canonical was false.
+
 **Contradictions resolved, not silently overwritten.** Three claims this wiki asserted are now
 recorded as false with the correction beside them:
 1. "The app document never scrolls (h-screen shell + inner overflow-auto main), so iOS Safari

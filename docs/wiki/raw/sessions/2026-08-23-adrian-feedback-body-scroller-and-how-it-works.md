@@ -126,10 +126,53 @@ I was changing.
   WKWebView shell has no URL bar either, so `100vh === 100dvh` there too. Needs a real phone, and
   Adrian is the person who saw it.
 
+## CI caught two more, and one of them was site-wide
+
+The Lighthouse gate failed the PR at **SEO 0.92** against a 0.95 minimum — consistently across all
+three runs, and the first failure this workflow has had. It was mine, and it was one item:
+Lighthouse's **`link-text`** audit fails the string **"Learn more"** outright. It is the canonical
+non-descriptive link text — it tells a crawler nothing, and it reads to a screen reader, out of the
+link list, as a link to nowhere in particular. Renamed to **"How it works"**, which names the
+destination and is better copy anyway. An `aria-label` would also have satisfied the audit; naming
+the thing fixes it for the reason the audit exists.
+
+**Then auditing the new page — which CI does not cover — found a defect on every page of the site.**
+The gate only tests `/landing`. Running the same audit against `/how-it-works` returned SEO 0.92
+there too, on a different item: **two conflicting `<link rel="canonical">` tags**.
+
+`index.html` carried a hardcoded `canonical` pointing at `https://dragoncandy.com/landing`, and a
+hardcoded `og:url` pointing at the bare origin. `SEO.tsx` (react-helmet-async) emits the correct
+per-route values — but Helmet **appends**; it does not replace a static tag it did not create. So
+every page on the site except `/landing` shipped two canonicals that disagreed, and conflicting
+canonicals are discarded rather than resolved, which threw away the correct per-route value
+site-wide. `/landing` passed only because it is the one page where the static value happens to be
+right.
+
+Both static tags removed. The landing keeps SEO 1.00; `/how-it-works` goes to **100 accessibility,
+100 best practices, 100 SEO**.
+
+**The generalisable bit: a gate that tests one URL is evidence about one URL.** This one had been
+green on every previous run precisely because the only page it checks is the only page the bug
+spared.
+
+Also fixed on the new page: `dc-pink-accent` (`#EC4899`) as text on white measures **3.52:1**
+against the 4.5:1 small-text bar — four instances, the three step numbers and the "See pricing"
+link. Moved to `dc-pink-accent-btn` (`#DB2777`, **4.60:1**). The design system lists the lighter
+token for "links, secondary button text", which is wrong for text on a white page.
+
+**Found and deliberately not fixed:** the landing's "Get started" pill is white on `#F43F7F` at
+**3.58:1**, at 18px so the large-text allowance does not apply. Pre-existing — Lighthouse has
+scored the landing 96 on accessibility for this since before the rebuild — and fixing it means
+darkening the brand pink or changing the CTA's weight, which is a brand decision rather than a
+drive-by in a feedback PR.
+
 ## Left open
 
 - If the jump persists on a real phone, the remaining candidate is iOS rubber-band overscroll,
   which is a different mechanism and would want `overscroll-behavior-y: none` on `body` — an
   app-wide behavioural change, deliberately not bundled into a landing fix.
+- The landing's "Get started" CTA contrast (3.58:1) — a brand decision, see above.
+- The Lighthouse gate still tests only `/landing`. `/how-it-works` is new and uncovered; adding
+  URLs to `lighthouserc.cjs` would have caught the canonical bug years earlier.
 - 119 other `min-h-screen`/`h-screen` usages remain across `src/`. They are all inside `main` and
   none can scroll `body`; sweeping them would be a batch change with no reported symptom behind it.

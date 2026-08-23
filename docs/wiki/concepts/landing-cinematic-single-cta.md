@@ -52,13 +52,34 @@ means more contrast against a bright frame. Both notes are now in `DESIGN_SYSTEM
 gets "corrected" into the other. Same apparatus as the scrim sweep — brightest frame, mean and p90,
 never the single brightest pixel.
 
-**"Learn more"**, a bordered pill in the footer beside the legal links. The hard part was not the
+**"How it works"**, a bordered pill in the footer beside the legal links. **It shipped as "Learn
+more" and had to be renamed**: Lighthouse's `link-text` audit fails that string outright — it is
+the canonical non-descriptive link text — which took the landing's SEO score to **0.92** against
+the CI gate's **0.95**, on that one item. Name the destination rather than masking it with an
+`aria-label`. The hard part was not the
 button but the destination: this redesign **deleted** the six-section marketing page, so someone
 who wanted to read before signing up had nowhere to go — `/pricing` answers what it costs, `/help`
 is written as post-signup support. Rather than point at the nearest wrong thing, it points at a new
 **`/how-it-works`**: how a campaign runs, who it is for, and what Donny does and does not do. Light,
 on `PublicPageHeader`, the same shell as `/terms` and `/pricing`; the landing stays the one dark
 public surface, and the register change is the same accepted seam as the signup screen.
+
+**Auditing the new page found a defect on every page of the site.** The Lighthouse gate covers only
+`/landing`. Run against `/how-it-works`, it returned 0.92 there too on a different item: **two
+conflicting `<link rel="canonical">` tags**. `index.html` carried a hardcoded canonical pointing at
+`/landing` and a hardcoded `og:url` of the bare origin; `SEO.tsx` emits the correct per-route
+values, but Helmet **appends** rather than replacing a static tag it did not create. So every page
+except `/landing` served two canonicals that disagreed — and conflicting canonicals are discarded,
+not resolved. `/landing` passed only because it is the one page where the static value is right.
+Both removed; `/how-it-works` now scores **100 accessibility / 100 best practices / 100 SEO** and
+the landing keeps SEO 1.00. See [[Domain Migration .io → .com]], whose claim that `SITE_URL` drives
+*every* canonical is corrected there. **A gate that tests one URL is evidence about one URL.**
+
+Also fixed on the new page: `dc-pink-accent` (`#EC4899`) as text on white is **3.52:1** against the
+4.5:1 small-text bar (four instances) → `dc-pink-accent-btn` (`#DB2777`, **4.60:1**). **Found and
+deliberately not fixed:** the landing's own "Get started" pill is white on `#F43F7F` at **3.58:1**
+at 18px — pre-existing (it is why Lighthouse scores the landing 96 on accessibility), and fixing it
+means darkening the brand pink or changing the CTA's weight, which is a brand decision.
 
 **A third note in the same message was a real bug, on every page rather than this one** — "the
 screen jumps if I scroll up or down" on mobile. `AppShell` was `h-screen`, `body` is the document's

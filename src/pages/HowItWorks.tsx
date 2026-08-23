@@ -101,7 +101,11 @@ export default function HowItWorks() {
                 key={s.n}
                 className="rounded-2xl border border-dc-teal/15 bg-white p-6 shadow-dc-sm"
               >
-                <span className="font-pixel text-sm text-dc-pink-accent">{s.n}</span>
+                {/* dc-pink-accent-btn (#DB2777, 4.60:1 on white), not dc-pink-accent (#EC4899, 3.52:1).
+                    The lighter token is listed in DESIGN_SYSTEM.md for link/secondary text, but as
+                    text on white it does not clear the 4.5:1 small-text bar — measured by Lighthouse
+                    on this page, four instances. Use the -btn step for pink TEXT on white. */}
+                <span className="font-pixel text-sm text-dc-pink-accent-btn">{s.n}</span>
                 <h3 className="mt-3 font-display text-lg font-bold">{s.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-dc-text-muted">{s.body}</p>
               </li>
@@ -161,7 +165,7 @@ export default function HowItWorks() {
             </Link>
             <Link
               to="/pricing"
-              className="inline-flex items-center justify-center rounded-full border border-dc-teal/30 bg-white px-8 py-3 font-semibold text-dc-pink-accent transition-colors hover:border-dc-teal/50"
+              className="inline-flex items-center justify-center rounded-full border border-dc-teal/30 bg-white px-8 py-3 font-semibold text-dc-pink-accent-btn transition-colors hover:border-dc-teal/50"
             >
               See pricing
             </Link>
