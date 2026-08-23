@@ -1,205 +1,229 @@
-# Landing Video Backdrop — Clip Production Kit
+# Landing Video Backdrop — Reel Production Kit
 
-> How to produce, host, and wire the cinematic AI-video backdrops for the public landing
-> (`src/components/landing/*`). The code seam already ships; this is the founder-run
-> production guide. Concept: [[Landing Cinematic Video Redesign]].
+> How to produce the reels behind the public landing's hero (`src/components/landing/*`). The
+> landing is now **one dark, full-bleed video screen** — ten real restaurant reels rotating behind
+> a logo, an eyebrow, a slogan and a single CTA, not a page you scroll. This replaces the earlier
+> flag-gated, per-role, AI-generated hero system this file used to document; that system's history
+> lives in [[Landing Cinematic Video Redesign]] (superseded). Design rationale for the current dark
+> theme: `docs/DESIGN_SYSTEM.md`'s Theme section.
 
 ## The goal
 
-The hero is a full-bleed, morphing, **per-role** backdrop. Tapping a pill (Business / Creator /
-Brand) re-films the hero — headline **and** backdrop clip change together. Until real clips exist,
-each slot degrades to a branded gradient (ship-before-clips). Your job: generate 2–3 short silent
-loops, drop them behind a CDN, and paste the URLs into one file.
+`LandingHero` renders `RotatingBackdrop` unconditionally, full-bleed, behind the eyebrow/headline/
+CTA. There is no flag anymore — `LANDING_VIDEO_BACKDROP_ENABLED` is **deleted**, not turned off,
+because with the video as the entire page an "off" state would ship a blank homepage. Your job when
+the reel library needs to grow or change: pull the source clips, encode each one to the two sizes
+`RotatingBackdrop` consumes, and land them under the naming contract `landingClips.ts` expects.
 
-## Which slots are actually rendered
+**Current library (shipped, unmerged — see Provenance below): ten clips, five from ABB, five from
+Uncle Rocco, alternating in rotation order** so five clips from one business in a row never reads
+as that business's solo showreel. `LANDING_REELS` in `src/components/landing/landingClips.ts` is
+the registry; add a slug there when you add a clip here.
 
-`HeroSection` is the **only** consumer of a clip (`useLandingClip(content.clipKey)` → the
-full-bleed `VideoSlot variant="backdrop"`). The keys map like this:
+## Source — Google Drive, not reachable through the Drive MCP connection
 
-| Clip key | Where it shows | Priority |
-|---|---|---|
-| `hero.business` | Business pill (the default hero) | **Produce now** |
-| `hero.creator` | Creator pill | **Produce now** |
-| `hero.brand` | Brand pill — **hidden** behind `BRAND_ROLE_ENABLED` (off) | Produce when Brand launches |
-| `proof.reel` | **Nothing** — reserved key, no component renders it | Skip (don't produce) |
+Source: Google Drive folder `1IxVUMaFJRZbCh5GR9419GluYSfoR04MZ` ("DragonCandy Content"), shared
+with the founder's Chrome profile. **It is not reachable through the Drive MCP connection — the
+connected account has no access to this folder.** Files have to come down through the browser:
 
-So the immediate deliverable is **two clips** (business + creator). Brand is a ready-when-you-flip-the-flag bonus.
+1. `tabs_context_mcp` → `navigate` to `https://drive.google.com/drive/folders/1IxVUMaFJRZbCh5GR9419GluYSfoR04MZ`
+2. Select every file you need (click the first row, then `cmd+a`)
+3. Download — Drive delivers a `.zip` for a multi-file selection
+4. Unzip into a scratch directory, never the repo directly
+5. Close the tab
 
-## Universal specs (the non-negotiables)
+Downloading is an action, not a lookup — ask the user's explicit go-ahead first, naming the source
+and the size, before pulling anything down. The 2026-08-22 batch was ten files, ~37.9 MB, all
+720×1280 H.264 with audio, durations ranging 6.87s–33.53s.
 
-These clips sit **behind a dark gradient scrim** and under the headline/CTAs, so they can be
-heavily compressed and still look great. Every clip:
+## The two-encode recipe
 
-- **Format:** MP4, H.264 (High/Main profile), **`yuv420p` pixel format** — required for inline
-  autoplay on iOS/Safari. (A non-`yuv420p` MP4 silently won't play on iPhone.)
-- **Resolution:** 1920×1080 (16:9). No larger — weight matters more than pixels here.
-- **Frame rate:** 24 or 30 fps.
-- **Duration:** ~6s (4–8), designed to **loop seamlessly** (first frame ≈ last frame; slow
-  continuous motion). `<video loop>` hard-restarts — there is no ping-pong, so the motion itself
-  must wrap.
-- **Audio:** none (strip it — it's muted anyway and wastes bytes).
-- **Target size:** **≤ 2.5 MB** per clip. Behind the scrim, CRF 28–30 is invisible.
-- **Composition — center-safe:** the backdrop is `object-cover` full-bleed, so on phones (portrait)
-  **only the center vertical strip shows**, and the bottom ~40% is darkened by the scrim + covered
-  by the headline/CTAs. Put the subject/action **upper-center**; keep important detail off the far
-  edges and the very bottom. **No on-screen text** (the headline is the text). Avoid faces
-  lip-syncing (uncanny on loop) — hands, bodies, environments, and b-roll energy read best.
-- **Motion:** slow push-in / drift / ambient movement (steam, bokeh, fabric, light). No hard cuts,
-  no fast pans, nothing that "jumps" at the loop point.
-- **Consistency:** keep the same color grade / grain / teal+pink accent across all three so the
-  morph between roles feels like one film.
-
-## The pipeline (5 steps per clip)
-
-1. **Still — Nano Banana Pro** (Gemini image). Generate a gorgeous on-brand **16:9** hero still
-   (prompts below). The still is the foundation; iterate here until it's beautiful.
-2. **Animate — image-to-video.** Feed the still as the **first frame** into **Veo 3.1** (best
-   quality, use for the hero money-shots) or **Kling 2.x / Runway Gen-4** (faster/cheaper for
-   iterations and the Brand grid). Generate 5–8s with the motion prompt; pick the smoothest,
-   most loopable take.
-3. **Compress + strip audio — ffmpeg** (command below) → ≤ 2.5 MB, `yuv420p`, no audio.
-4. **Poster** — export the first frame (shows instantly + is the reduced-motion fallback).
-5. **Host + wire** — drop the `.mp4` + poster into `public/landing/`, add the URLs to
-   `landingClips.ts`, ship.
-
-### ffmpeg — compress + strip audio
+Every clip produces **four files**: a portrait (as-shot) MP4 + poster, and a wide (16:9-cropped)
+MP4 + poster. `$SRC` is the downloaded source, `$SLUG` the naming-contract slug (below), `$Y` the
+per-clip crop offset, `$TS`/`$TD` an optional trim start/duration (only needed if the source runs
+over 12s — see the cap below), and `$PT` the chosen poster timestamp:
 
 ```bash
-ffmpeg -i raw-business.mp4 -an \
-  -vf "scale=1920:-2,format=yuv420p" \
-  -c:v libx264 -profile:v high -crf 28 -preset slow \
-  -movflags +faststart \
-  hero-business.mp4
+OUT=public/landing/reels
+
+# Portrait — as shot, audio stripped, web-optimised. Add -ss $TS -t $TD before -c:v if trimming.
+ffmpeg -y -i "$SRC" -an [-ss $TS -t $TD] \
+  -c:v libx264 -crf 24 -preset slow -pix_fmt yuv420p \
+  -movflags +faststart "$OUT/$SLUG.mp4"
+
+# Wide — 16:9 crop at the chosen Y offset, same trim window, native 720 width (no upscale — the
+# source only has 720 columns of pixels either way).
+ffmpeg -y -i "$SRC" -an [-ss $TS -t $TD] -vf "crop=720:405:0:$Y" \
+  -c:v libx264 -crf 24 -preset slow -pix_fmt yuv420p \
+  -movflags +faststart "$OUT/$SLUG-wide.mp4"
+
+# Posters — a representative second per encode, chosen per clip (see below), never a blind default.
+ffmpeg -y -ss $PT -i "$OUT/$SLUG.mp4"      -frames:v 1 -q:v 4 "$OUT/$SLUG-poster.jpg"
+ffmpeg -y -ss $PT -i "$OUT/$SLUG-wide.mp4" -frames:v 1 -q:v 4 "$OUT/$SLUG-wide-poster.jpg"
 ```
 
-- `-an` strips audio · `format=yuv420p` = iOS-safe · `+faststart` = the video starts before it
-  fully downloads. If a clip is still > 2.5 MB, raise CRF to 30 or cap the bitrate:
-  `-maxrate 2.5M -bufsize 5M`.
+**`crf 24` is the starting point, not a fixed value** — the 2026-08-22 batch measured ~42.9 MB at
+`crf 24` (over the 40 MB ceiling below) and was re-tuned to `crf 26` for the whole batch, landing
+at 38 MB. Re-tune the same way if a future batch runs over.
 
-### ffmpeg — poster still
+**Known dimension quirk:** `crop=720:405:0:$Y` asks for height 405, which is odd. `-pix_fmt
+yuv420p` requires 4:2:0 chroma subsampling, which requires even width and height, so libx264
+silently rounds the crop down to **720×404**. This is not a bug and nothing reads the exact pixel
+count — it's the unavoidable intersection of `1280 × 9/16 = 405` (odd) and the also-mandatory
+`yuv420p`. Confirmed by direct `ffprobe` on every wide output in the 2026-08-22 batch.
+
+### Why the three flags are load-bearing, not optional
+
+- **`-an`** strips audio. The backdrop is `muted` in the DOM regardless, so any audio track in the
+  file is pure transferred weight with zero payback — bytes the visitor's connection pays for and
+  never hears.
+- **`-pix_fmt yuv420p`** is required for Safari to decode the file **at all**. A non-`yuv420p` MP4
+  doesn't degrade gracefully on iOS/Safari — it silently fails to play, and on a page whose entire
+  content is video, that's a blank hero for every iPhone visitor.
+- **`-movflags +faststart`** moves the `moov` atom (the file's index) to the front of the file, so
+  the browser can begin playback before the download finishes. Without it, playback waits for the
+  whole file — the difference between the hero painting immediately and the hero sitting on its
+  poster for however long the download takes.
+
+## The 12-second cap — and why it exists
+
+**Every reel in the library must be ≤ 12.000s.** This isn't a stylistic choice — it comes from
+`RotatingBackdrop`'s own stall watchdog:
+
+```
+const MAX_DWELL_MS = 15000; // src/components/landing/RotatingBackdrop.tsx
+```
+
+`RotatingBackdrop` force-advances whichever clip is on screen if it neither fires `ended` nor
+`error` within 15 seconds. That watchdog exists to stop an undecodable-but-silent clip (or a
+mid-play network stall) from freezing the rotation forever — its own comment states it's sized to
+comfortably outlast a normal ~6–10s backdrop clip so it never cuts a *healthy* clip short. It is a
+**stall backstop, not a pacer**.
+
+The 2026-08-22 source library broke that assumption: six of the ten raw clips ran longer than 15s
+(up to 33.53s), which would trip the watchdog mid-play and read as a stutter, not a clean cut. The
+fix was to trim every reel to a hand-picked ≤ 12s window during encoding — chosen alongside the
+crop offset, not by taking a blind first-12-seconds slice — rather than touch the watchdog's
+timing or well-tested code. Clips already at or under 12s are encoded whole with no trim flags.
+
+**Verify the cap, don't assume it.** A prior pass in this same batch shipped a clip at 12.066s
+because its 12.07s source duration was mis-classified as "already under the cap"; the fix was
+re-encoding with an explicit `-t 12` (see commit `21caeaf8`). `ffprobe`-check every output's
+duration before committing — see Verification below.
+
+## Choosing the crop offset, trim window, and poster — judgement, not mechanics
+
+**This step cannot be automated or defaulted.** A 720×1280 portrait clip cropped to 16:9 keeps
+only `720×404` — less than a third of the original frame — and a blanket centre crop (`y=437`) on
+food-focused footage routinely puts ceilings and tablecloths on screen instead of the food. Food
+framed low in the source often wants `y≈550`; a face, hands, or a storefront sign held high often
+wants `y≈300`.
+
+The only reliable method: **extract stills from the source every ~2 seconds and look at every one**
+before choosing anything. That's what surfaced, in the 2026-08-22 batch:
+
+- `abb-flatbread` and `abb-montauk-monday` both open with several seconds of non-food footage (a
+  chef talking to camera over dough prep; ocean/surf B-roll) — invisible unless you actually watch
+  the opening seconds, and both crops now skip that footage entirely via the trim window.
+- `uncle-rocco-new-menu` opens with an unrelated meme/car-crash clip stitched into the source file
+  itself — not introduced by anything in this pipeline, but invisible without watching frame by
+  frame.
+- `uncle-rocco-reopening`'s source has **no food shots anywhere in it** — it's the storefront
+  reopening (staff, the awning, the neon OPEN sign). Its crop (`y=300`) was chosen to keep the sign
+  and staff in frame rather than defaulting to a centre crop that would show mid-torso and nothing
+  else.
+
+Posters need the same treatment. Generate the whole batch at a default timestamp first (e.g.
+`-ss 3`), then **read every single poster** — don't ship the default blind. In the same batch, four
+of twenty posters landed on a weak or wrong frame (a dim wide shot, a blurry mid-transition frame,
+an ocean-water B-roll cutaway with no food or people in it, and — for `uncle-rocco-new-menu` — a
+frame still inside the stitched-in meme clip) and were moved to a stronger timestamp found by the
+same still-by-still read. The poster is the first thing every visitor sees, including everyone on
+a throttled connection who never gets past it.
+
+**Record every choice in the commit message** — slug, source duration, trim window, crop `y`, the
+poster timestamp (only if moved off the default), and a one-line *why*. This is a judgement call
+someone else will need to reproduce or extend; see commit `9c838050` (and its follow-up correction
+`21caeaf8`) for the format actually used.
+
+## Naming and location contract
+
+`public/landing/reels/`, kebab-case, business-prefixed. **The ten slugs below are the contract —
+`LANDING_REELS` in `src/components/landing/landingClips.ts` hardcodes them; a slug change here
+means a matching change there.**
+
+| Slug | Source clip |
+|---|---|
+| `abb-birria` | ABB — Birria Burger |
+| `abb-bread-pudding` | ABB — Bread Pudding |
+| `abb-flatbread` | ABB — Flatbread |
+| `abb-montauk-monday` | ABB — Montauk Monday |
+| `abb-paella` | ABB — Paella |
+| `uncle-rocco-brunch` | Uncle Rocco — Brunch |
+| `uncle-rocco-new-menu` | Uncle Rocco — New Menu Items! |
+| `uncle-rocco-pancakes` | Uncle Rocco — Pancakes |
+| `uncle-rocco-reopening` | Uncle Rocco — Reopening |
+| `uncle-rocco-steak-frites` | Uncle Rocco — Steak Frites |
+
+Four files per slug:
+
+```
+public/landing/reels/abb-birria.mp4              public/landing/reels/abb-birria-wide.mp4
+public/landing/reels/abb-birria-poster.jpg        public/landing/reels/abb-birria-wide-poster.jpg
+…
+```
+
+10 slugs × 4 files = **40 files total**. The registry's `reel(slug)` helper builds all four paths
+from the slug alone — adding a new clip means adding one `reel("new-slug")` call to `LANDING_REELS`
+once its four files exist under that name; nothing else in the naming scheme is configurable.
+
+## The 40 MB ceiling
+
+**Expected total: 30–40 MB, committed to the repo.** This is the entire homepage's payload — it
+ships to every visitor who lands on `/`. Report the real measured total after encoding; don't
+restate the target as if it were the result. The 2026-08-22 library measured **38 MB (38,944 KB)**
+at `crf 26` after the `crf 24` first pass came in at ~42.9 MB, over the ceiling.
+
+**If a future batch exceeds 40 MB, stop and re-tune (`-crf 26`, or higher) before committing.**
+Re-encoding one clip at a time and re-checking `du -sh` is cheaper than shipping an oversized
+homepage.
+
+## Verification
 
 ```bash
-ffmpeg -i hero-business.mp4 -frames:v 1 -q:v 3 hero-business-poster.jpg
+cd public/landing/reels
+for f in *.mp4; do
+  printf '%s\t' "$f"
+  ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$f"
+  ffprobe -v error -show_entries format=duration -of csv=p=0 "$f"
+  ffprobe -v error -select_streams a -show_entries stream=codec_type -of csv=p=0 "$f" \
+    | grep -q audio && echo "  !! AUDIO PRESENT" || true
+done
+du -sh .
+ls *.jpg | wc -l
 ```
 
-(Optionally convert to `.webp` for a smaller file.)
+Expected: 10 files at `720,1280` (portrait), 10 at `720,404` (wide — see the dimension quirk
+above), **every duration ≤ 12.000000**, no audio warnings, 20 posters, 30–40 MB total.
 
-## Hosting — direct MP4 (chosen path)
+## Provenance — what gates this going live
 
-For 4–8s silent loops, a single MP4 over a CDN beats HLS/Cloudflare Stream (which only Safari plays
-natively — everywhere else needs a player lib). Two options, simplest first:
-
-- **`public/` (recommended to start — zero setup).** Vercel serves `public/` at the site root over
-  its CDN, exactly like `/logo.webp`. Put files here:
-  ```
-  public/landing/hero-business.mp4
-  public/landing/hero-business-poster.jpg
-  public/landing/hero-creator.mp4
-  public/landing/hero-creator-poster.jpg
-  ```
-  → URLs are `/landing/hero-business.mp4`, etc. No account, no CORS, no code beyond the wiring.
-- **Cloudflare R2 (upgrade path).** When the library grows (or DragonFeed supplies real creator
-  clips), move the files to a public R2 bucket / custom domain and just change the URLs in
-  `landingClips.ts`. The seam doesn't care where the bytes live.
-
-## Wiring — the one file to edit
-
-`src/components/landing/landingClips.ts`. Fill the `src`/`poster` for the slots you've produced:
-
-```ts
-export const LANDING_CLIPS: Record<LandingClipKey, LandingClip> = {
-  "hero.business": {
-    src: "/landing/hero-business.mp4",
-    poster: "/landing/hero-business-poster.jpg",
-  },
-  "hero.creator": {
-    src: "/landing/hero-creator.mp4",
-    poster: "/landing/hero-creator-poster.jpg",
-  },
-  "hero.brand": {}, // fill when Brand launches (BRAND_ROLE_ENABLED)
-  "proof.reel": {}, // reserved — not rendered; leave empty
-};
-```
-
-A slot left `{}` keeps its gradient fallback — so you can ship business + creator now and add brand
-later with no other change.
-
-## Per-slot creative briefs + copy-paste prompts
-
-Brand palette to keep in every prompt: **teal `#4DD9C0`, pink `#F9A8D4`/`#EC4899`, charcoal
-`#1A1A2A`**, warm neutrals. Overall vibe: **Dark-Luxe cinematic** — moody lighting, shallow depth of
-field, filmic grade, premium.
-
-### 1 · `hero.business` — headline "Your business, always *filming.*"
-
-**Concept:** a local business made cinematic, with a creator's phone capturing it — "your business
-looks incredible on camera, effortlessly."
-
-**Still (Nano Banana Pro, 16:9):**
-> Cinematic dark-luxe editorial photograph, 16:9. A cozy local restaurant at golden hour: a chef's
-> hands plating a vibrant, colorful dish under warm key light, rich shallow depth of field, moody
-> charcoal (#1A1A2A) background falling into shadow. In the soft-focus foreground, a smartphone on a
-> small gimbal films the plate, its screen faintly glowing. Subtle teal (#4DD9C0) rim light and warm
-> amber highlights, filmic color grade, fine grain, premium food-cinematography look. Subject
-> centered. No text, no logos, no watermarks.
-
-**Motion (image-to-video, ~6s seamless loop):**
-> Slow, smooth cinematic push-in toward the plated dish. Thin wisps of steam rise gently and
-> continuously. The phone screen softly glows; a subtle rack-focus breathes between the phone and the
-> food. No camera shake, no cuts. Loops seamlessly — ends where it began.
-
-### 2 · `hero.creator` — headline "Get paid to make content you *love.*"
-
-**Concept:** a creator in flow, filming in a moody urban café — aspirational, confident, creative energy.
-
-**Still (Nano Banana Pro, 16:9):**
-> Cinematic dark-luxe editorial portrait, 16:9. A stylish young content creator holds a smartphone on
-> a gimbal, framing a shot in a moody, dimly lit urban café at night. Neon teal (#4DD9C0) and pink
-> (#EC4899) rim lighting sculpts their profile; warm bokeh city lights blur behind through a window.
-> Shallow depth of field, premium film grade, subtle grain, confident creative energy. Subject
-> centered. No text, no logos, no watermarks.
-
-**Motion (image-to-video, ~6s seamless loop):**
-> The creator slowly raises the phone to compose a shot — a gentle, natural handheld drift. Bokeh
-> lights twinkle and shift softly behind them; a light breeze moves a strand of hair and some fabric.
-> Warm and cinematic, no hard cuts. Seamless 6-second loop.
-
-### 3 · `hero.brand` — headline "Campaigns that scale *themselves.*" (produce when Brand launches)
-
-**Concept:** many creators / a glowing grid of vertical content — scale, network, momentum.
-
-**Still (Nano Banana Pro, 16:9):**
-> Cinematic dark-luxe tech-editorial visual, 16:9. A floating, staggered grid of glowing vertical
-> smartphone screens showing diverse, colorful short-form video (abstract, no readable text),
-> receding into soft bokeh. Teal (#4DD9C0) and pink (#EC4899) accent glow reflecting off dark glass,
-> deep charcoal (#1A1A2A) background, premium depth of field — front screens sharp, back screens
-> blurred. Centered composition. No readable text, no logos, no watermarks.
-
-**Motion (image-to-video, ~6s seamless loop):**
-> The grid of phone screens slowly parallax-drifts upward, front and back layers moving at different
-> speeds. Screens softly flicker as content changes; the teal/pink glow gently pulses. Smooth,
-> hypnotic, cinematic. Seamless loop — the upward drift wraps continuously.
-
-## QA checklist (before/after wiring)
-
-- [ ] **Desktop + mobile (portrait):** subject visible in the center strip; headline legible over the scrim.
-- [ ] **Weight:** each clip ≤ ~2.5 MB (DevTools → Network).
-- [ ] **Loop seam** isn't jarring (watch it loop 3–4×).
-- [ ] **iOS/Safari:** actually autoplays inline (confirms `yuv420p`).
-- [ ] **Reduced-motion:** with OS "Reduce motion" on, the **poster** shows and it does not autoplay.
-- [ ] **Poster-first:** throttle the network — the poster should paint before the video loads.
-- [ ] **No console errors**; no layout shift.
-
-## Cost / tooling note
-
-Nano Banana Pro (stills), Veo 3.1 (hero motion), Kling / Runway (volume) are external,
-per-generation costs — a few dollars across a handful of takes per slot. This is **creative/serving
-spend, not runtime AI spend**, so it does **not** count against the 15%-of-revenue AI kill-switch
-(that governs Donny/OpenAI runtime calls via `donny_cost_ledger`).
+The reels are real footage of two real Hoboken-area restaurants, ABB and Uncle Rocco, owned in
+Google Drive by an external account (`smithcharlie45@gmail.com`), not DragonCandy. **Publishing
+them on a public marketing site needs written permission from both businesses.** That gates
+merging `feat/landing-cinematic-single-cta` to `main` (which deploys), not the encode or the build
+— the pipeline above is safe to run and iterate on regardless of where that permission stands.
+**As of this writing, that permission has not been obtained and the branch is unmerged.** Do not
+treat anything in this file as evidence the reels are live.
 
 ## See also
 
-- `docs/wiki/concepts/landing-cinematic-video-redesign.md` — the seam + VideoSlot backdrop variant.
-- `src/components/landing/landingClips.ts` — the registry you edit.
-- `src/components/landing/VideoSlot.tsx` — the hardened backdrop player (poster-first, IO-gated,
-  reduced-motion safe).
+- `docs/DESIGN_SYSTEM.md` — Theme section, for why the landing is dark and how the seam into the
+  (light) signup flow is deliberate.
+- `docs/PROJECT_CONTEXT.md` §5 — current status of the branch and the permission blocker.
+- [[Landing Cinematic Video Redesign]] — the superseded flag-gated, per-role, AI-generated hero
+  system this replaced; historical context only.
+- `src/components/landing/landingClips.ts` — the registry (`LANDING_REELS`, the `reel()` helper,
+  `resolveReelSource`).
+- `src/components/landing/RotatingBackdrop.tsx` — the player: crossfading rotation, the
+  `MAX_DWELL_MS` stall watchdog, the reduced-motion/no-clips poster fallback.

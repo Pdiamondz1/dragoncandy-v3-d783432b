@@ -2,36 +2,69 @@
 
 > Screenshots of all screens are in the `/designs` folder. Always reference them when building or modifying UI.
 
-## Theme — Light app + entry, Dark only `/internal` (current, 2026-07-18)
+## Theme — Landing is dark and video-led; entry stays light; `/internal` stays dark (current, 2026-08-22)
 
-**The working app is LIGHT; the public landing, login/sign-up, and onboarding are LIGHT too —
-`/internal` (AIOS) is the only surface still dark.** After a brief experiment that forced the whole
-app dark (PR #269), founder feedback was that the dark *app* was too dark, some text unreadable,
-and the phased-rollout white patches looked unfinished — so the app was reverted to its **original
-light theme** (PRs #275 + #277). **2026-07-18:** the public landing dropped its own scoped `.dark`
-wrapper as part of the "Human-driven. AI-assisted." redesign (PR #293), and the
-`feat/auth-onboarding-landing-theme` branch carried that same light identity into **login/sign-up +
-the 5 auth siblings + onboarding** — the moment a visitor clicks "Get started" no longer drops them
-into a dark screen. Build/restyle **app** UI **light** (the `dc-*` palette below, `bg-white` cards,
-`dc-text`/`dc-text-muted` on light, pink/gray dashboard headers) — this now includes the landing
-AND the entry flow (see "Marketing + entry's own scoped identity" below for their additional,
-additive token/font layer).
+**This section used to say the public landing was light and shared one visual identity with
+login/sign-up and onboarding, and that `/internal` was the only surface still dark. Both claims
+are now false.** The landing was rebuilt as one full-bleed cinematic video screen
+(`feat/landing-cinematic-single-cta` — **unmerged**, blocked on written permission from the two
+restaurants whose footage it plays, ABB and Uncle Rocco; see `docs/PROJECT_CONTEXT.md` §5). Once
+merged, the landing joins `/internal` as a dark surface. **Login/sign-up and onboarding are
+unaffected by this — still light, unchanged from before.**
 
-**Dark surfaces (only this one):**
-- **`/internal` AIOS** — `InternalLayout` adds `dark` to `<html>` via its own inline `useEffect`
-  (`documentElement.classList.add('dark')`) for the route's lifetime. This is now the **only** place
-  `<html class="dark">` is ever set. The shared `useDarkHtml()` hook that used to also drive
-  auth/onboarding (`src/hooks/useDarkHtml.ts`) has been **deleted** — once those 7 surfaces (the 6
-  auth pages + `OnboardingWizard`) went light, nothing else ever called it; `/internal`'s toggle was
-  always its own independent mechanism, so removing the hook is a no-op for `/internal`.
+**The landing (`/`, `/home`, `/landing`).** `LandingPage.tsx`'s root is `bg-landing-grape`
+(`#241332`), not white — the file's own comment explains why: the hero's backdrop is dark video,
+so a white page background would flash behind it before the first frame paints. The page is one
+screen (`Header` + `LandingHero` + a thin footer) and does not scroll: `LandingHero` is
+`min-h-[100dvh]` (never `vh` — see the safe-area rule below, still load-bearing here). Inside it,
+`RotatingBackdrop` plays ten real reels (five ABB, five Uncle Rocco, alternating so no restaurant
+reads as a solo showreel) full-bleed behind the content (`-z-20`), under a `landing-grape` gradient
+scrim (`-z-10`) that darkens top and bottom so the eyebrow, headline and CTA stay legible over a
+bright frame. There is no feature flag gating this anymore: `LANDING_VIDEO_BACKDROP_ENABLED` was
+**deleted**, not flipped — with the video AS the page, an "off" state would ship a blank homepage.
+The real fallback for no-clips / a failed clip / `prefers-reduced-motion` is `RotatingBackdrop`'s
+own poster-still path, not a flag. Pipeline for producing the reels:
+`docs/runbooks/landing-video-backdrop-kit.md`.
+
+**Login/sign-up + onboarding stay light, on the same `landing-*` token/font system as before —
+nothing about them changed.** `AuthShell` (`src/components/auth/AuthShell.tsx`) is still
+`bg-white`; the 6 auth pages and `OnboardingWizard` still render on it. So the `landing-*` token
+system is still one shared identity across landing + entry — what changed is that the landing
+surface now paints those tokens **dark** while entry keeps painting them **light on white paper**.
+They are no longer one continuous visual surface, and that split is deliberate, not drift:
+
+**The seam between the dark video landing and the white signup screen is known and accepted, not
+an oversight.** The CTA ("Get started") goes to `/auth?mode=signup`, which already has its own
+role-selection step. Going from full-bleed dark video to a plain white form is a register change —
+marketing moment to transactional form — not a continuity bug waiting to be fixed.
+
+**`landing-mint-line-bright` (`#7BE3C0`) is the mint that survives as text over moving footage.**
+The brand fill `landing-mint` (`#2FC796`) vanishes against a lit dish or a bright frame; the
+existing `mint-line` (`#B8ECDA`) is brighter but reads too pale against skin/food tones on video.
+The hero slogan uses it for "Creators" (`landing-pink-line` `#F9BFD6` for "Restaurants") — see
+`tailwind.config.ts`'s `landing.*` group for the full ramp and the inline comment recording why the
+extra step exists.
+
+**Dark surfaces (now two, by two different mechanisms):**
+- **The landing hero** — a plain `bg-landing-grape` page root (`LandingPage.tsx`), not
+  `<html class="dark">`. It does **not** use the reusable dark-luxe kit below (`.dc-surface` /
+  `GlowBackdrop` / etc.) — it's the same `landing-*` token system entry uses, just applied dark, via
+  its own components (`Eyebrow`, `LandingButton`) local to `src/components/landing/`.
+- **`/internal` AIOS** — unchanged. `InternalLayout` adds `dark` to `<html>` via its own inline
+  `useEffect` (`documentElement.classList.add('dark')`) for the route's lifetime. This is still the
+  **only** place `<html class="dark">` is ever set. The shared `useDarkHtml()` hook that used to
+  also drive auth/onboarding (`src/hooks/useDarkHtml.ts`) remains deleted — once those 7 surfaces
+  (the 6 auth pages + `OnboardingWizard`) went light, nothing else ever called it; `/internal`'s
+  toggle was always its own independent mechanism, so the hook staying gone is a no-op for
+  `/internal`.
 
 `ThemeProvider` = `defaultTheme="light"` (NOT `forcedTheme` — a forced light would fight
-`InternalLayout`'s `<html class="dark">`; a forced dark makes the whole app dark). No light/dark
-toggle.
+`InternalLayout`'s `<html class="dark">`; a forced dark makes the whole app dark, including the
+authenticated app the landing/`/internal` split above does not touch). No light/dark toggle.
 
 **When building a NEW dark surface**, the reusable dark-luxe kit still lives in the codebase
-(currently unused by anything shipped — `/internal` has its own ops-deck styling, and auth/onboarding
-no longer use it): `.dc-surface`/`.dc-panel`/`.dc-field` classes, `dc-teal-pill`/`dc-ghost-pill`
+(currently unused by anything shipped — the landing hero and `/internal` each built their own dark
+treatment instead): `.dc-surface`/`.dc-panel`/`.dc-field` classes, `dc-teal-pill`/`dc-ghost-pill`
 button variants, `GlowBackdrop`/`Eyebrow` (`src/components/dark/`), the white-opacity text ramp
 (`text-white`→`/80`→`/60`→`/40`), teal+pink accents, and errors as `bg-red-500/10 text-red-300`.
 **Gotchas:** (1) a scoped-div `.dark` alone leaves `<body>` light → glows composite over white and
@@ -41,16 +74,20 @@ utilities → use explicit `border-white/15 bg-white/5 text-white placeholder:te
 (3) Dark-fill-as-text trap: `text-dc-dark`/`text-dc-teal-btn`/`text-dc-pink-accent-btn` are correct
 **on** a teal/pink/white fill but invisible as text on a dark page.
 
-Video backdrops remain landing-only, and are now **opt-in** (off by default — see below). Full
-mechanics + history: `docs/wiki/concepts/dark-luxe-app-theme.md`.
+Full mechanics + history: `docs/wiki/concepts/dark-luxe-app-theme.md` (predates this rebuild — read
+the landing-specific detail above first) and
+`docs/wiki/concepts/landing-cinematic-video-redesign.md` (describes the superseded, flag-gated,
+per-role static-hero design this replaced).
 
 ## Marketing + entry's own scoped identity (additive, never leaks into the app)
 
 The public landing (`src/pages/LandingPage.tsx` + `src/components/landing/*`) **and** the entry flow —
 login/sign-up (`src/pages/AuthPage.tsx` + the 5 siblings, `src/components/auth/*`) and onboarding
-(`src/components/onboarding/**`) — are light like the rest of the app, but they are **not** on the
-shared `dc-*`/Outfit system — together they carry **one** marketing visual identity, kept strictly
-additive so it can never regress the authenticated app:
+(`src/components/onboarding/**`) — are **not** on the shared `dc-*`/Outfit system used by the
+authenticated app — together they carry **one** marketing visual identity (tokens + fonts), kept
+strictly additive so it can never regress the authenticated app. **The landing now paints that
+identity dark; entry still paints it light** — see the Theme section above for the split and why
+the seam between them is intentional, not an inconsistency to fix:
 
 - **Tokens:** a `landing.*` Tailwind color group (`grape`, `pink`, `mint`, `yellow`, `lilac`, plus
   soft/line/ink variants) and matching `landing-pink`/`landing-mint` box-shadow tokens, added to
@@ -67,13 +104,14 @@ additive so it can never regress the authenticated app:
   `border-landing-line`, mint/pink focus rings) — "softened for forms," not pixel-everywhere.
 - **Only landing + entry components reference these tokens/fonts**, so nothing needs to be "scoped
   back out" the way the old `.dark` wrapper was — the app was never at risk of inheriting them.
-- **Video backdrop is opt-in, off by default.** `LANDING_VIDEO_BACKDROP_ENABLED` (in
-  `src/lib/featureConfig.ts`, mirrors `BRAND_ROLE_ENABLED`) gates the entire cinematic-video system
-  (`RotatingBackdrop`/`landingClips`/`VideoSlot`/`MediaSlot`) behind a single lazy-loaded
-  `HeroVideoBackdrop.tsx`. Default `false` — the shipped landing is a static, illustrative hero;
-  flipping the flag (plus real, non-AI footage) re-enables the video experience with zero other code
-  changes. See `docs/wiki/concepts/landing-human-driven-redesign.md`. Video backdrops are
-  landing-only — auth/onboarding never carry them.
+- **The video backdrop is no longer a flag — it IS the landing.** `LANDING_VIDEO_BACKDROP_ENABLED`
+  and the old flag-gated wrapper machinery (`HeroVideoBackdrop.tsx`, `VideoSlot`, `MediaSlot`) are
+  **deleted**, not toggled off — `LandingHero` renders `RotatingBackdrop` directly and
+  unconditionally, full-bleed behind the content. This section previously said the flag defaulted
+  off and the shipped landing was a static, illustrative hero; that was true through
+  `docs/wiki/concepts/landing-human-driven-redesign.md`'s redesign and is no longer true. Still
+  landing-only — auth/onboarding never carry it. Production pipeline for the reels themselves:
+  `docs/runbooks/landing-video-backdrop-kit.md`.
 
 ## Shared light-app kit (use these for the light app)
 
@@ -195,13 +233,15 @@ The **working app is uniformly white** — pages are `bg-white`, wrapped in the 
 + section spacing) inside the `DashboardLayout` shell (which owns padding). Accent color comes from
 **cards (teal-bordered), chips, badges, and CTAs — not page washes.** The old per-page pink/gray
 backgrounds are retired (they never matched the built app). Only the mobile top-nav keeps a subtle pink
-gradient. Login/sign-up/onboarding are light on the same scoped token/font system as the public
-landing; only `/internal` stays dark (see the Theme section).
+gradient. **The public landing is the one exception now:** it's a dark, full-bleed video screen on its
+own `landing-*` tokens (see the Theme section above). Login/sign-up and onboarding stay light on that
+same token/font system, unaffected; `/internal` stays dark.
 
 | Surface | Background |
 |-|-|
 | All authenticated app pages (dashboards, campaigns, browse, messaging, settings, DragonShare, profiles, …) | White (`#FFFFFF`) |
-| Public landing (`/`, `/home`, `/landing`) + login/sign-up + onboarding | White paper (`#FFFFFF`, the shared `landing-*`/`AuthShell` token/font system) |
+| Public landing (`/`, `/home`, `/landing`) | Dark (`landing-grape` `#241332`, full-bleed rotating video) |
+| Login/sign-up + onboarding | White paper (`#FFFFFF`, the shared `landing-*`/`AuthShell` token/font system) |
 | `/internal` (AIOS) | Dark charcoal (`#1A1A2A`) |
 
 ## Design Rules
