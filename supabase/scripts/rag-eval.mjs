@@ -13,16 +13,25 @@
 // chunks where it used to get whole documents, and five chunks can all come from one document.
 // "The text is in the database" was verified; "Donny finds it" was not. This is that check.
 //
+// AUTOMATED MODE. Set RAG_EVAL_JSON=<path> to also write a machine-readable result, which
+// rag-eval-report.mjs turns into an AIOS finding when a metric has moved past its tolerance. The
+// comparison against rag-eval/baseline.json runs either way and is printed; THIS SCRIPT NEVER
+// FAILS ON A REGRESSION — it measures and reports, and the reporting step decides what that means.
+// Keeping the exit code free of the verdict is what lets a human run it to see where things stand
+// without the tool pretending their curiosity was a build failure.
+//
 // AUTH. Needs SUPABASE_SECRET_KEY (same key as the sync scripts). Query embeddings need the same
 // model the index was built with; the OpenAI key is an edge secret, not available locally, so if
 // OPENAI_API_KEY is set this calls OpenAI directly, and otherwise it borrows the server's key by
 // writing short-lived internal-scope rows through donny-knowledge-sync and deleting them. Both
 // paths produce identical vectors. The borrowed path is announced, and cleans up on the way out.
 
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { rank, controlSeparation, recallPrecision, tailShare } from "./rag-eval/score.mjs";
+import {
+  rank, controlSeparation, recallPrecision, tailShare, compareToBaseline, hashQueries, hashLabels,
+} from "./rag-eval/score.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -309,3 +318,84 @@ console.log(`\n   k=5 recall ${(at5.recall * 100).toFixed(0)}%  vs  k=10 recall 
   `  — search_internal_knowledge currently asks for 10.`);
 console.log("   'unjudged-in-k' is the honest part: those documents were never assessed, so they");
 console.log("   count as neither hit nor miss. A large number means this report is guessing.");
+
+// ── 4. how stale is the benchmark? ───────────────────────────────────────────────────────────
+// The committed 53 are FIXED on purpose: change the denominator and nothing compares to the
+// baseline any more. But Donny keeps running real searches, so the set drifts away from live
+// usage whether or not anyone notices. Counting the queries we have never scored makes that
+// drift visible instead of silent. Reported only — the file is never rewritten from here.
+let unseenQueries = null;
+try {
+  const r = await fetch(
+    `${REST}donny_tool_executions?select=input&tool_name=eq.search_internal_knowledge&limit=2000`,
+    { headers: H },
+  );
+  if (r.ok) {
+    const known = new Set(real);
+    const live = new Set();
+    for (const row of await r.json()) {
+      const q = row?.input?.query;
+      if (typeof q === "string" && q.trim()) live.add(q.trim());
+    }
+    unseenQueries = { live: live.size, unseen: [...live].filter((q) => !known.has(q)).length };
+  }
+} catch { /* a drift statistic is not worth failing a measurement run over */ }
+console.log("\n4. BENCHMARK DRIFT");
+console.log(unseenQueries
+  ? `   ${unseenQueries.unseen} of ${unseenQueries.live} distinct live queries are not in the ` +
+    `committed set of ${real.length}.\n   Adding them changes the denominator, so it also means ` +
+    `re-recording baseline.json — deliberate, never automatic.`
+  : "   could not read donny_tool_executions; drift unknown this run.");
+
+// ── the machine-readable result, and the baseline comparison ─────────────────────────────────
+const result = {
+  generatedAt: new Date().toISOString(),
+  target: REST,
+  index: { chunks: index.length, documents: new Set(index.map((r) => r.doc)).size, located },
+  locatedShare: index.length ? located / index.length : 0,
+  controls: sep,
+  tail: Object.fromEntries([5, 10].map((k) => [`k${k}`,
+    tailShare(realR.map((r) => ({ offsets: r.hits.slice(0, k).map((h) => h.row.offset).filter((o) => o >= 0) })), OLD_CAP)])),
+  recall: rows,
+  recallAt5: at5.recall,
+  recallAt10: at10.recall,
+  precisionAt10: at10.precision,
+  realQueries: realR.length,
+  controlQueries: sep.controlCount,
+  labelledQueries: labelled,
+  // Identity, not just size. A baseline comparison that checks counts alone calls a run
+  // comparable after one query has been swapped for another — measuring a different benchmark
+  // and reporting confidently about it.
+  querySetHash: hashQueries({ real, control }),
+  labelSetHash: hashLabels(labelRows),
+  benchmarkDrift: unseenQueries,
+};
+
+const BASELINE_PATH = join(HERE, "rag-eval", "baseline.json");
+if (existsSync(BASELINE_PATH)) {
+  const baseline = JSON.parse(readFileSync(BASELINE_PATH, "utf8"));
+  result.baseline = { recordedAt: baseline.recordedAt, verdict: compareToBaseline(result, baseline) };
+  const v = result.baseline.verdict;
+  console.log(`\n5. AGAINST BASELINE (recorded ${baseline.recordedAt})`);
+  for (const n of v.notes) console.log(`   note: ${n}`);
+  for (const c of v.checks) {
+    console.log(`   ${c.breached ? "REGRESSED" : "ok       "} ${c.key.padEnd(26)} ` +
+      `baseline ${fmt(c.baseline)}  now ${fmt(c.observed)}  (tolerance ${fmt(c.tolerance)})`);
+  }
+  for (const u of v.unchecked ?? []) console.log(`   NOT CHECKED ${u.key.padEnd(26)} ${u.reason}`);
+  if (!v.comparable) console.log("   NOT COMPARABLE — see the note above.");
+  else if (v.regressions.length === 0) console.log("   no metric moved past its tolerance.");
+} else {
+  console.log(`\n5. AGAINST BASELINE\n   no baseline at ${BASELINE_PATH} — nothing to compare.`);
+}
+
+/** Short numbers stay integers; fractions get three places. Keeps the columns readable. */
+function fmt(n) {
+  return Number.isInteger(n) ? String(n) : n.toFixed(3);
+}
+
+const jsonOut = process.env.RAG_EVAL_JSON;
+if (jsonOut) {
+  writeFileSync(jsonOut, JSON.stringify(result, null, 2));
+  console.log(`\nwrote ${jsonOut}`);
+}

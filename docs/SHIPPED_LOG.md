@@ -7,10 +7,16 @@
 > **This file is deliberately NOT imported by `CLAUDE.md`.** It is not auto-loaded.
 > Read it on demand when you need the history behind a shipped feature.
 >
-> It *is* collected by `supabase/scripts/sync-internal-docs.mjs` (non-recursive
-> `docs/*.md` glob), so it reaches `/internal/strategy` and Internal Donny's RAG.
-> Note `MAX_EMBED_CHARS = 24_000`: content past that is stored and readable but not
-> embedded, so semantic retrieval covers only the newest entries.
+> It is collected by `supabase/scripts/sync-internal-docs.mjs` (non-recursive
+> `docs/*.md` glob) and reaches `/internal/strategy` — but it is **deliberately excluded
+> from the RAG** (`RAG_EXCLUDED`), so Internal Donny does not retrieve from it. This
+> header used to say the opposite, and then said semantic retrieval covered "only the
+> newest entries" because of a `MAX_EMBED_CHARS = 24_000` slice. **Both claims are dead**:
+> that slice was a defect, not a design (see [[RAG Document Chunking]]), and the sync now
+> chunks every document it embeds. This file is excluded because it is a session-by-session
+> changelog whose older entries are historical snapshots — see the next paragraph — and
+> retrieving one as current fact is exactly the failure mode. The exclusion is **printed by
+> the sync**, never silent.
 >
 > **Prose duplication with `docs/wiki/` is intentional and not a defect.** The wiki
 > holds the durable synthesis; this file holds the as-shipped session record. The
@@ -25,6 +31,117 @@
 > anything under "Shipped" is done. Where the two appear to disagree, §5 wins.
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
+
+## [2026-08-23] Automating the retrieval evaluation — and the shapes of a guard that cannot fire
+
+`npm run eval:rag` had been committed that morning and run exactly twice, both times by hand. The
+question was how to make it run itself. The answer is two layers, chosen because they catch
+different failures and only one of them needs a secret.
+
+**Layer 1 — pin the validated constants, per PR, no secrets.** The realistic regression is not the
+corpus drifting; it is somebody editing a number. `k` (10) and `TARGET_CHARS` (6,000) were both
+chosen by the evaluation, and nothing in the tree connected an edit to the measurement that
+justified it — put the 10 back to 5 and every test still passes while the wiki page goes on
+quoting recall figures for a configuration that no longer ships. `k` is now the named constant
+**`INTERNAL_RETRIEVAL_K`** in `donny-chat/index.ts`, and `rag-eval/pinned-constants.test.mjs`
+asserts its value **and that the call site passes the constant rather than a literal** — without
+that second assertion the pin can hold a correct value nothing reads, which is *worse* than no pin
+because it looks green. Proven by forcing it to 5. `HARD_MAX_CHARS` is deliberately not pinned: it
+guards the embedding model's token limit, a property of the API, not a finding of this evaluation.
+
+**Layer 2 — a monthly run against a committed baseline.** `.github/workflows/rag-eval.yml` (1st at
+07:00 UTC, plus `workflow_dispatch` with a `dry_run` input) re-runs the evaluation and files an
+AIOS finding through `aios-report-ingest` only when a metric moves past its tolerance. Four guards:
+control separation (tolerance 0, **critical** — if a control query beats the weakest real one,
+similarity has stopped discriminating and every other number is noise), recall@10 (0.10, high),
+located-share (0.15, medium — the index and the repository have drifted apart, usually a sync that
+quietly stopped running) and index size (80 chunks, high — the 2026-08-23 defect's own shape).
+Reference values live in `baseline.metrics`, tolerances in `baseline.thresholds`, so one number
+appears once. Findings are fingerprinted **per metric**, so a regression that persists bumps
+`occurrences` on one row instead of filing a fresh one every month.
+
+**The measurement never fails on a regression.** `rag-eval.mjs` measures, prints the comparison and
+exits 0; `rag-eval-report.mjs` decides what a measurement means and carries the verdict in its exit
+code. Splitting them is what lets a human run the evaluation to see where things stand without the
+tool treating their curiosity as a build failure — and makes it impossible to file a finding
+against production by accident.
+
+**Four decisions about how a guard fails, which are the durable part.**
+
+*Comparability is checked before anything is compared, and per metric.* Changing the query set
+makes nothing comparable — every figure shifts for a reason unrelated to retrieval quality.
+Changing the *label* set moves only the recall and precision denominators, so the control check —
+the one that makes every other number readable — still runs. Declaring the whole run incomparable
+there would throw away the most important check to protect the least reliable ones.
+
+*A threshold naming a metric the run does not produce is reported as unchecked.* It would otherwise
+sit there passing forever, which is indistinguishable from a guard that is working.
+
+*NOT COMPARABLE is itself a finding*, at medium. Silence there reads exactly like a clean month,
+and a guard that has quietly stopped guarding is the precise failure this whole workstream came out
+of — a truncating sync that reported `updated=142 errors=0` for two months.
+
+*The job never re-records its own baseline.* A guard that follows the observed value is a
+thermometer reporting room temperature no matter what the room is doing. Re-recording is a PR.
+
+**What automation cannot fix, said in the findings rather than buried.** Recall rests on **7
+labelled queries of 53**, so a scheduled job will measure those same 7 forever, precisely and
+narrowly. Every finding carries that coverage line, because a monthly report printing a precise
+recall figure without it reads far more authoritative than it is. What automation *does* get for
+free is drift: each run counts how many distinct live queries in `donny_tool_executions` are not in
+the committed 53. The set stays fixed on purpose — change the denominator and nothing compares to
+the baseline any more — so the count is reported and never acted on. Measured 0 of 53, which
+doubles as evidence the probe reads the right column at all rather than silently returning nothing.
+
+**Per-PR was considered for the full evaluation and rejected.** It measures the *deployed* index,
+which only changes after a merge and a sync: a per-PR run would score the same index over and over,
+need the prod key on every pull request, and write temporary rows to production dozens of times a
+day. Layer 1 is the per-PR half, and it needs no secret at all.
+
+**The workflow deliberately skips `npm ci`.** Every script on this path imports node builtins and
+local files only. Skipping the install removes a few minutes and, more to the point, removes a
+registry-resolution step from a job that has the prod key exported — the same reasoning
+`synthetic-weight.yml` records for never using `npx --yes`.
+
+**Codex found two holes, both mine, and both are the same mistake as the one being automated.**
+(1) *Comparability was decided by counting.* Swap one query for another, keep 53, and the run was
+declared comparable while measuring a different benchmark — reporting a clean month, or a
+regression, about something nobody recorded. Now the baseline records an **order-independent hash**
+of the query set and of the labels, and the run recomputes both; a baseline carrying no hash is
+*not comparable* rather than falling back to counts, since a compatibility fallback would reinstate
+the hole silently on exactly the files most likely to have drifted. (2) *A skipped check printed
+"no regression" and exited 0.* A threshold whose metric was renamed, or whose baseline figure went
+missing, or which needed labels that no longer match, was recorded as prose and then read as a
+clean month — a guard switched off, reported as success. Skipped checks are now structured data and
+file their own medium finding. That is the trap this very session wrote comments about and then
+left in the reporter one level up.
+
+**A clean month is silent, so the alarm had to be made audible on purpose.** Dispatching with
+`test_delivery` files one clearly-labelled low finding and **does not fail the run** — a red job
+meaning "the test passed" is the signal people learn to ignore. Proven against prod: first call
+`inserted: 1`, second `updated: 1`, which also demonstrates the fingerprinting that stops a
+persistent regression filing a fresh row every month. Same gap and same remedy as `sendTestAlert()`
+in the Workspace signature work, where four rounds went into an alert nobody had ever received.
+
+**Verification.** Three real prod runs (401 chunks / 143 documents, controls 0/8 above the weakest
+real query, recall@10 0.913, located 397/401, temporary rows cleaned up both times; the second ran
+against the new baseline and reported all four checks `ok`). **Forced controls on all eight report
+branches** — clean, three regressions, a query swapped with the count unchanged, a relabelling with
+the count unchanged, a threshold naming a metric that no longer exists, and no baseline at all —
+each firing at the right severity, with only the clean path exiting 0, because a run that prints
+"no regression" is not evidence the guard works. The committed-baseline tests recompute both hashes
+from the real files, so a baseline drifting away from `queries.json` or `labels.json` fails at PR
+time instead of turning every scheduled run into a silent NOT COMPARABLE. Tests 2,621 → **2,642**;
+typecheck and build clean. Codex clean at round 2.
+
+**Open at hand-off:** the scheduled run has **never fired**, and while the delivery path is proven
+for real, a *regression* finding has never been filed by the runner rather than by hand. The
+`rag-eval` GitHub Environment exists; `RAG_EVAL_SUPABASE_SECRET_KEY` has to be set in it by the
+account holder, since entering a credential is not something Claude does. Until it is, the run
+fails loudly at boot rather than reporting on nothing. And `donny-chat/index.ts` is on `.typecheck-ignore` with no local Deno, so its change
+(a module-level `const` and an identifier swap) is reviewed rather than compiled.
+
+→ `docs/wiki/concepts/rag-retrieval-evaluation.md` · `feat/rag-eval-automation`
 
 ## [2026-08-23] Proving the RAG fix actually retrieves — and truncating the evidence while measuring a truncation bug
 
