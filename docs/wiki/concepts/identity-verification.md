@@ -406,11 +406,66 @@ never run a file-writing agent concurrently with any agent that might touch the 
 every reviewer explicitly that the tree may be live and it must never stash, revert, or checkout
 anything.
 
+## A probe that cannot distinguish "absent" from "unmatched" is not evidence
+
+Verifying the deploy prerequisites produced a cleaner version of the standing rule *when a probe
+returns zero, prove it could have returned non-zero* — because this time a control caught the probe
+lying in the other direction.
+
+Checking whether `reserve_phone_verification_send` existed on prod, a `POST /rpc/…` with an empty
+body returned **PGRST202, "no matches were found in the schema cache"** — the identical response an
+invented function name gives. Read naively that says the migration never applied. It does not. The
+function takes **five required parameters**, and PostgREST resolves overloads by argument names, so a
+zero-argument call can never match it whether or not it exists. The result was an artefact of the
+question asked.
+
+Re-probed with the real five-argument signature it returned **42501, permission denied** — it exists
+and is correctly revoked from `anon` — while the same five-argument shape against an invented name
+still returned PGRST202. Only the second pairing is evidence, because only there does the control
+differ from the subject in exactly one respect: existence.
+
+The generalisation worth keeping: **a negative result is only informative if the probe could have
+produced a positive one for the thing you are asking about.** "Returns the not-found error" is not
+the same claim as "is not there", and the gap between them is where a false all-clear lives. The
+sibling instances are [[Domain Migration .io → .com]]'s SMTP `RCPT TO` probe (250 for real and
+nonsense addresses alike — *change instrument*) and this page's own [[Ask which gate, not whether it
+is green]].
+
+## The doc was the reviewer's source, and the doc was stale
+
+The mandatory pre-deploy `edge-function-reviewer` pass filed a **high-severity** finding: that
+migration `20260824110000` had not been applied, so `stripe-webhook` would hard-throw on its first
+Connect webhook and Stripe would retry-storm the endpoint. The reasoning was sound and the premise
+was false. The reviewer had no database access, so it did what a careful reader does — it read
+`PROJECT_CONTEXT.md`, found a `**Pending:**` clause saying the migration had not run, and reported
+it. That clause was hours stale.
+
+Two things follow. First, the finding was still worth its cost: it forced a verification pass that
+produced controls, and one of those controls caught the false negative described above. **A refuted
+finding that makes you prove something is not a wasted finding.** Second, `PROJECT_CONTEXT.md`'s
+own header warns that a `**Pending:**` clause is a claim with an expiry date — and a *reviewing
+agent* is exactly the reader least able to know the date has passed. Stale prose in a context file
+does not merely fail to help; it actively manufactures confident, well-argued, wrong findings.
+
 ## Known Issues / Pending
 
-- **Nothing is verifiable end-to-end.** `verify-phone` and `verify-address` both 503 by design —
-  `TWILIO_VERIFY_SERVICE_SID`, `PHONE_VERIFY_IP_SALT`, and `GOOGLE_MAPS_SERVER_API_KEY` are all
-  unprovisioned. No real SMS or geocode call has ever been made by this code.
+- **The functions are live; the providers are still unexercised.** All five deployed and
+  boot-verified 2026-08-23, and the three secrets are provisioned and two proven by digest against
+  the live Twilio account. But **no real SMS has been sent and no real address geocoded** — the
+  Twilio path is proven against a stubbed provider and nothing else. Twilio's **Primary Compliance
+  Profile** is a separate gate from funding the account and is not complete. Treat every claim about
+  end-to-end behaviour as reviewed, not exercised.
+- **`verify-address` has no throttle of any kind**, so the only bound on Google Geocoding spend is a
+  **daily quota cap set in the Google Cloud console** — not yet set. `verify-phone` has the atomic
+  RPC throttle; its sibling has nothing equivalent, and the asymmetry is not deliberate design so
+  much as unfinished work.
+- **`send-promotion-notification` reads the three Twilio secrets that were overwritten** with the new
+  account's credentials, and has not been re-checked since. It is the one other consumer of
+  `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_PHONE_NUMBER`.
+- **Two functions answer 500 where 401 is correct** — `disconnect-stripe-account` and
+  `check-restaurant-payout-status` throw missing/invalid-auth into a generic catch-all. Confirmed
+  live during boot verification. Pre-existing, not a leak, and deliberately not folded into a deploy;
+  it needs its own change.
 - **`READINESS_GATE_ENABLED` is now coupled to a secret, not just to a founder decision.** The
   `address` requirement is `required` and derives from a stamp, and until
   `GOOGLE_MAPS_SERVER_API_KEY` exists **no address can be verified at all** — so the requirement is

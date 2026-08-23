@@ -629,13 +629,47 @@ holds no Toast credentials. See §6.
   real, clean at round 7; two of the nine were defects a previous fix in the same loop introduced.
   It moved the SMS throttle out of TypeScript into an atomic SQL RPC
   (`reserve_phone_verification_send`), so that control now has **no automated coverage at all**, only
-  a hand-run rolled-back prod proof. **Pending (2026-08-23):** three secrets unprovisioned
-  (`TWILIO_VERIFY_SERVICE_SID`, `PHONE_VERIFY_IP_SALT`, `GOOGLE_MAPS_SERVER_API_KEY`) so nothing is
-  verifiable end-to-end; merge, then a **four-migration + five-function** merge-time runbook; a
-  `READINESS_GATE_ENABLED` flag-row decision (founder call — and it now needs the Maps key first,
-  since until then no address can be verified and the `required` address item is display-only); and a
-  pre-existing unauthenticated IDOR (`get_user_conversations`) found in scope but left for an owner
-  outside this branch.
+  a hand-run rolled-back prod proof. **MERGED (#484), MIGRATIONS APPLIED AND ALL FIVE FUNCTIONS
+  DEPLOYED 2026-08-23.** This line previously listed three unprovisioned secrets, an unrun merge-time
+  runbook and a "four-migration + five-function" deploy; all of it landed the same day, and the
+  clause outlived its truth by hours in the usual way.
+  **Every prerequisite was verified by OBJECT, never by the ledger and never by this file** — which
+  matters, because the mandatory pre-deploy `edge-function-reviewer` pass filed a **high-severity
+  finding that the identity columns were not applied and `stripe-webhook` would throw on its first
+  Connect webhook**, and it got that from the very clause above. Refuted against prod: all 16
+  identity/address columns answer on `creator_profiles`, `business_profiles` and `org_units`;
+  `phone_verification_attempts` answers **42501**, so the table exists AND the lockdown holds; and
+  `reserve_phone_verification_send` answers 42501 rather than "not found". Each probe carried a
+  control that could have said no — an invented column name returned **42703**, an invented function
+  name returned **PGRST202**. **One control caught a false negative in my own probe:** calling the
+  5-parameter throttle RPC with `{}` returns PGRST202 whether or not it exists, because no
+  zero-argument overload can ever match, so the first reading ("absent") was an artefact of the
+  question, not a fact about prod. *A probe that cannot distinguish absent from unmatched is not
+  evidence; re-probe with the real signature.*
+  Two of the reviewer's four findings were real and are fixed (#485): the two
+  `STRIPE_IDENTITY_RESET` writes on the **automatic** Stripe-detach path checked no errors at all,
+  so the eraser could fail while the function returned 200 reporting "no account" and the row kept
+  `identity_verified_at` pointing at a deleted Stripe account — the exact failure this slice exists
+  to close, made silent one level up. Logged rather than thrown, deliberately, because the contract
+  differs from the manual disconnect: there a button lied, here a status READ heals opportunistically
+  and a 500 would black out the payout UI over a blip the caller cannot fix. And
+  `disconnect-stripe-account` had **no `config.toml` entry at all** — the only Stripe money function
+  without one — so its posture was an inherited default; probed live (unauthenticated POST returns
+  the GATEWAY's 401, so the live value is `true`) and now declared. Codex clean at round 1.
+  **All five boot-verified after deploy, not merely uploaded:** every one answers with OUR JSON body
+  rather than the platform's, with a nonexistent name returning 404 as the control, and the public
+  anon key gets through none of them.
+  **Pending (2026-08-23):** nobody has completed an SMS round trip, so the Twilio path is proven
+  against a stubbed provider and nothing else (and the Twilio **Primary Compliance Profile** is a
+  separate gate from funding); no address has been geocoded end to end; a
+  `READINESS_GATE_ENABLED` flag-row decision (founder call — **do not enable it until a real address
+  verifies**, since until then the `required` address item is display-only); a **Google Cloud daily
+  quota cap on Geocoding**, which is the only bound on that spend because `verify-address` has no
+  throttle; `send-promotion-notification` still reads the three Twilio secrets that were overwritten
+  with the new account's, and has not been re-checked; two functions surface an unauthenticated
+  request as **500 rather than 401** (pre-existing, confirmed live, deliberately not folded into a
+  deploy); and the pre-existing unauthenticated IDOR (`get_user_conversations`) found in scope but
+  left for an owner outside this branch.
   → `docs/wiki/concepts/identity-verification.md` · `docs/SHIPPED_LOG.md`
 - **Donny's `social_*` tools repaired (7 calls → 0 successes → 4 working tools)** — Donny told the
   founder he had "no visibility into which Instagram account is connected", sent him to find an
