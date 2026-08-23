@@ -111,8 +111,8 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   rows and still sends less). `SHIPPED_LOG.md` is **excluded and printed**, not silently truncated.
   Chunking runs **server-side** because there are two producers and `wiki-merge-pr`'s
   `_shared/wiki-sync-payload.ts` carries that invariant in its own header and still broke it — script-
-  side chunking would have served a truncated head spliced onto a stale tail. Three Codex rounds,
-  three real findings, all mine; clean at round 4. **Pending (2026-08-23):** `donny-knowledge-sync`
+  side chunking would have served a truncated head spliced onto a stale tail. Six Codex rounds,
+  five real findings, all mine; clean at round 7. **Pending (2026-08-23):** `donny-knowledge-sync`
   must be **deployed before the branch merges** (the new script omits `content` for the unindexed
   document, which the old function 400s, failing its whole batch); then push, merge, run the sync and
   re-probe by content. → `docs/wiki/concepts/rag-document-chunking.md` · `fix/rag-doc-chunking`

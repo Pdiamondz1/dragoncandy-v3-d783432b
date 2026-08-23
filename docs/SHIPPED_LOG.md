@@ -79,7 +79,7 @@ a truncated whole-document row and left `#1…#N` in place: **a truncated head s
 stale tail**, worse than the bug being fixed. Fixing it in both producers would leave two things
 that must agree, so chunking moved to `donny-knowledge-sync` and callers now send a *document*.
 
-Three Codex rounds, three real findings, all mine. The other two were the same class as the
+Six Codex rounds, five real findings, all mine. Two were the same class as the
 original defect: `purgeRag()` swallowed every Supabase error, so a failed delete still recorded
 `skipped-unindexed` and the run finished `errors=0` with the document still retrievable; and
 `chunkSiblings()` returned `[]` on a **failed** read, indistinguishable from a genuinely empty
@@ -88,6 +88,13 @@ ids are full of them (`DESIGN_SYSTEM`, `SHIPPED_LOG`, `DATABASE_SCHEMA`) — on 
 DELETE. Checked rather than dismissed: **0 collisions across all 142 real ids today**, but that
 is a property of the filenames, not of the code, so it is now an exact `.eq()`.
 
+Two more were about batches. The embedding call still sent every chunk as one `input` array, and
+chunking is what makes the endpoint's AGGREGATE token cap reachable — documents used to arrive
+pre-truncated at 24k and now arrive whole — so requests are split at 400,000 chars with order
+preserved. And the new orphan check printed drift then exited 0, where its sibling script
+carries orphans into the exit code; this sync runs unattended from the post-merge hook, so
+stdout is a report with no reader.
+
 Also replaced a test assertion that pinned nothing: `wiki-sync-payload.test.ts` asserted
 `content.length <= 24_000` on a fixture far under it, and had never seen an oversize input.
 
@@ -95,7 +102,8 @@ Durable lesson, and it is not the chunking: **a mitigation has to reach the cons
 data.** "The full text is still in `internal_docs`" was accurate and irrelevant. Name the
 reader, not the store.
 
-8 new tests, controlled — restoring the truncation turns 5 of them red. 2,605 tests pass.
+13 new tests, controlled — restoring the truncation turns 5 red, and collapsing the embedding
+split turns another 3 red. 2,610 tests pass.
 
 ## [2026-08-23] One wrong axis, seven pages: the public logo and a dashboard that wasn't there
 

@@ -112,6 +112,13 @@ send a *document* and know nothing about chunks.
   them (`DESIGN_SYSTEM`, `SHIPPED_LOG`, `DATABASE_SCHEMA`), on a query feeding DELETE. There
   are 0 collisions across the 142 real ids **today** — checked, not assumed — but that is a
   property of the filenames, not of the code.
+- **Chunking made a NEW limit reachable.** The embedding endpoint caps total tokens across the
+  whole `input` array, not only per input. Documents used to arrive pre-truncated at 24k and now
+  arrive whole, so requests are split at 400,000 chars with order preserved — one request over
+  the cap fails every document in it, which is how a single 33 KB page stopped 41 unrelated
+  pages reaching the RAG on 2026-07-26.
+- **An unattended script's exit code is its only reader.** The orphan check printed drift and
+  exited 0. `console.error` from the post-merge hook goes into a log nobody opens.
 - **Report every purge failure.** `purgeRag()` originally swallowed Supabase errors, so a
   failed delete recorded `skipped-unindexed` and the run ended `errors=0` with the document
   still retrievable — the same silent-success shape as the truncation.
