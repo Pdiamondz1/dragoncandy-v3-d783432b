@@ -25,12 +25,41 @@
   be created by any agent. A concept page that opens by describing the mechanism reads as a
   description of a live system, and the next reader will act on it. Status belongs in the lede,
   not in a Known Issues section at the bottom.
+- **[wikilink-names] Grep every `[[wikilink]]` against `index.md` before committing a page.** On
+  2026-08-23 three of six links I wrote were plausible-but-wrong display names
+  (`[[QA & CI/CD Gate]]` vs the real `[[QA CI/CD Gate]]`; `[[Local/Prod Boundary]]` vs
+  `[[Local/Production Boundary & Repo Joinability]]`). Wikilinks resolve on **exact** display name,
+  and the schema treats an unresolved link as legitimate — it marks a page worth writing later. So
+  a typo'd link is indistinguishable from a deliberate forward reference: it never errors, it just
+  silently fails to connect, which is the single thing the wiki exists to do. One grep per link.
 - **A session's raw source keeps growing while the ingest runs.** When a review round lands new
   findings mid-session, update the raw file *and* the concept page *and* the index summary — an
   index line that stops at "two traps" when the page records three is the kind of drift nobody
   notices until they trust the index.
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
+
+### [2026-08-23] ingest — site access lockdown (private preview)
+- Output: new `docs/wiki/concepts/site-access-lockdown.md` + raw source
+  `raw/sessions/2026-08-23-site-access-lockdown.md`; `index.md` (1 Sources + 1 Concepts entry);
+  `log.md` top entry; back-link added to `concepts/anon-key-is-not-authorization.md`.
+- Happened: ingested a branch that is **built and not live**, and whose central mechanism is
+  production-only and has therefore never executed. Most of the editorial work was keeping that
+  distinction visible in every artifact rather than letting the page read as a description of a
+  running system.
+- Worked: a **new** page, not a compound onto [[verify_jwt Is Not Authorization]]. That page is
+  about a platform gate that looks like an auth check; this one is about deliberately gating the
+  whole site. They share one fact (the anon key is public) and are cross-linked both ways — the
+  right relationship for two subjects, per `[new-page-vs-compound]`.
+- Failed: **three of six wikilinks I wrote did not resolve.** I wrote plausible display names from
+  memory — `[[Local/Prod Boundary]]`, `[[QA & CI/CD Gate]]`, `[[Domain Migration .io to .com]]` —
+  against the real `[[Local/Production Boundary & Repo Joinability]]`, `[[QA CI/CD Gate]]`,
+  `[[Domain Migration (.io → .com)]]`. Caught by grepping each one against `index.md` before
+  committing.
+- Remember: **grep every `[[wikilink]]` against `index.md` before committing a page.** A wikilink
+  is resolved by exact display name, and a near-miss is indistinguishable from a link to a page
+  that does not exist yet — which the schema treats as legitimate. So broken links do not announce
+  themselves; they just silently fail to connect, which is the one thing the wiki exists to do.
 
 ### [2026-08-20] ingest — Google Workspace signatures, Wave 1 (code half)
 - Output: new `docs/wiki/concepts/workspace-email-signatures.md` + source
