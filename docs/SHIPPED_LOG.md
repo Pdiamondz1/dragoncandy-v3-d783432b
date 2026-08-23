@@ -34,10 +34,14 @@
 
 ## [2026-08-23] A password cannot stop a signup: locking the site to a private preview
 
-**Built and reviewed. NOT live** — the branch is unmerged, no PR is open, and none of the four
-Vercel variables is set. **The gate is production-only by design, so none of its wiring has ever
-executed** — not on a preview, not in CI, not locally. Proven: `gate/decide.ts` and its 26 unit
-tests. Assumed: what Vercel does with them.
+**Built and reviewed. NOT live** — PR #482 open, none of the four Vercel variables set.
+
+**An early draft of this entry said the gate "is production-only by design, so none of its wiring
+has ever executed — not on a preview, not in CI, not locally." That was false, and the belief hid a
+total outage.** Separate two things: the gate's *behaviour* is production-only (a preview sets
+`VERCEL_ENV='preview'`, so `decide()` passes everyone), but Vercel **imports and runs the middleware
+on every preview request**. The first preview deploy returned **500 on every request**. See
+"Node ESM does not add extensions" below — it is the most transferable thing in this entry.
 
 dragoncandy.com was public and not ready to be. The obvious framing — "put a password on it so
 nobody can sign up" — is wrong at the premise, and getting that right determined everything else.
@@ -132,11 +136,31 @@ the heredoc its last task writes; a fix wave updated only part of it, leaving th
 exact revocation claim the correction existed to kill. Replaced with a pointer — **one copy of an
 operational document**.
 
-**What is not proven, and stays that way until the deploy:** that Vercel picks up a file-convention
-`middleware.ts` in a Vite project on this plan, that the `nodejs` runtime resolves `node:process`,
-that the matcher applies as written, and that browsers replay Basic credentials to every same-origin
-subresource for the whole session. The Lighthouse 1.00 was measured locally — **the first green
-`lighthouse-ci.yml` on the PR is the proof, and merging on a skipped Lighthouse job throws it away.**
+**Node ESM does not add extensions, and Vercel does not bundle middleware — the most transferable
+thing here.** `import { decide } from './gate/decide'` type-checks, passes 2,756 tests, builds
+clean, and **crashes the middleware on Vercel**. The platform transpiles `middleware.ts` to
+`middleware.js` and runs it as **Node ESM without bundling**; Node's ESM resolver does not append
+extensions, so the import throws `ERR_MODULE_NOT_FOUND` at module load. That surfaces as
+`MIDDLEWARE_INVOCATION_FAILED` and **500 on every request the matcher covers** — here, everything.
+In production it would have been a total outage arriving the instant the deployment went live, and
+**`SITE_GATE_ENABLED` could not have rescued it**, because the crash happens before any gate logic
+runs. The fix is one character group: `'./gate/decide.js'` (TypeScript maps it back to the `.ts`
+file under `moduleResolution: bundler`, which is precisely why nothing local caught it).
+
+**What caught it was the e2e smoke suite**, driving a real browser against the PR's preview
+deployment. It failed on `waiting for locator('a:has-text("Log in")')`; the page it was waiting on
+said *"This Routing Middleware has crashed."* A job that looks like it only covers login was the
+only thing in the pipeline loading the real deployed middleware. **The rule: a local toolchain that
+resolves imports for you cannot tell you whether the deployment target will.** Vite, Vitest and
+`tsc` all resolve extensionless specifiers; Node ESM does not. Anything the platform runs *without*
+bundling needs explicit extensions, and no amount of local green proves it.
+
+**What is still not proven, and stays that way until the deploy:** that a real browser's prompt
+admits and then replays Basic credentials to every same-origin subresource for the whole session,
+that the `#access_token` fragment survives the challenge in practice, and that the
+`/landing/reels/(.*)` public cache rule behaves across a per-visitor gate. The Lighthouse 1.00 was
+measured locally — **the first green `lighthouse-ci.yml` on the PR is the proof, and merging on a
+skipped Lighthouse job throws it away.**
 
 Review record: six task reviews (0 Critical each), a final whole-branch review (1 Critical, 5
 Important, 4 Minor — all closed), a scoped re-review (all ten closed, 3 residuals, all closed), and

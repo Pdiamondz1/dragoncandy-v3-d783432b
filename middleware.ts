@@ -8,8 +8,16 @@
  * so no gate response can be served from cache to the wrong visitor.
  *
  * This file deliberately holds no logic. Everything decidable lives in
- * `gate/decide.ts`, which is unit-tested; the gate is production-only and
- * therefore cannot be exercised on a preview deploy.
+ * `gate/decide.ts`, which is unit-tested.
+ *
+ * Separate the two things people conflate here. The gate's BEHAVIOUR is
+ * production-only — on a preview `VERCEL_ENV` is `'preview'`, so `decide()`
+ * returns `pass` and nobody is ever challenged. But this file's WIRING runs on
+ * every preview: Vercel picks it up, the module is imported, `decide()` is
+ * called, and `next()` continues. So a preview proves the wiring and proves
+ * nothing about the gate. It earned that distinction — an extensionless import
+ * here crashed the middleware on a preview and 500'd every request, which is a
+ * total outage in production, and the e2e smoke suite is what caught it.
  *
  * Rollback: set SITE_GATE_ENABLED=0 in the Vercel dashboard AND redeploy — an
  * environment-variable change does not reach a deployment that is already
@@ -20,7 +28,14 @@
  */
 import process from 'node:process';
 import { next } from '@vercel/functions';
-import { decide } from './gate/decide';
+// The `.js` extension is REQUIRED and is not a typo. Vercel transpiles this file
+// to `middleware.js` and runs it as Node ESM without bundling, and Node's ESM
+// resolver does not add extensions — an extensionless specifier throws
+// ERR_MODULE_NOT_FOUND at import time, which crashes the middleware and 500s
+// EVERY request through it. TypeScript maps `./gate/decide.js` back to
+// `gate/decide.ts` under `moduleResolution: bundler`, so the typecheck is
+// unaffected. Verified on a real preview deployment, 2026-08-23.
+import { decide } from './gate/decide.js';
 
 export const config = {
   // Node.js, not the default 'edge'. Two reasons: `node:process` does not

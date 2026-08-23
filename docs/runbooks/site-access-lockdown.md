@@ -75,8 +75,21 @@ Layer 1 creates the account, Layer 2 challenges the link it sends.
 
 ## Verifying on production
 
-The gate is production-only, so **none of this can be checked on a preview
-deploy.** Run every check below after merging, in a private window.
+The gate's **behaviour** is production-only — on a preview `VERCEL_ENV` is
+`'preview'`, so the gate passes everyone and none of the checks below would mean
+anything there. Run them after merging, in a private window.
+
+**But the middleware's wiring DOES run on every preview, so check that first and
+do not skip it.** This section used to say nothing could be checked on a preview,
+and that cost us: an extensionless import crashed the middleware on the first
+preview deploy and returned **500 on every request** — a total outage had it
+reached production. Before merging any change to `middleware.ts` or `gate/`:
+
+- [ ] Open the PR's preview deployment. If it 500s with
+      `MIDDLEWARE_INVOCATION_FAILED`, the middleware is crashing — read the logs
+      (Vercel → the deployment → Logs, source `edge-middleware`) before anything else.
+- [ ] Confirm the e2e smoke job passed. It exercises the preview through a real
+      browser, which is how the crash above was found.
 
 - [ ] `curl -sI https://dragoncandy.com/ | head -1` → `HTTP/2 401`
 - [ ] `curl -sI https://dragoncandy.com/robots.txt | head -1` → `HTTP/2 200`

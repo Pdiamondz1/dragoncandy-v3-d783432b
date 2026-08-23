@@ -527,12 +527,21 @@ holds no Toast credentials. See §6.
   absence**, reopening the site while the dashboard read locked. Also deleted the dead client-side
   gate, which kept `dragoncandy2026` as a bundled string constant and allowlisted `/auth`.
   Three Codex passes (last clean), a whole-branch review and a scoped re-review; 2,756 tests.
-  **Pending (2026-08-23):** open and merge the PR; **a green `lighthouse-ci.yml` on it is a hard
-  merge gate** (the 1.00 was measured locally, never by CI); then, in this order, set the four
-  Production-scope variables → deploy → run the runbook's 12 checks → only then disable Supabase
-  signup. **Nothing about the middleware's wiring has ever executed** — it is production-only by
-  design, so Vercel picking up a root `middleware.ts` in a Vite project on this plan, the `nodejs`
-  runtime resolving `node:process`, and the matcher applying as written are all still assumptions.
+  **The claim that this could not be tested before production was FALSE, and it hid a total
+  outage.** The gate's *behaviour* is production-only (a preview sets `VERCEL_ENV='preview'`, so it
+  passes everyone), but Vercel **imports and runs the middleware on every preview request** — and
+  the first preview deploy returned **500 on every request** (`MIDDLEWARE_INVOCATION_FAILED`).
+  Cause: Vercel transpiles `middleware.ts` to `middleware.js` and runs it as **Node ESM without
+  bundling**, and Node's ESM resolver does not add extensions, so `import … from './gate/decide'`
+  threw `ERR_MODULE_NOT_FOUND` at module load — before any gate logic, so `SITE_GATE_ENABLED` could
+  not have rescued it. Typecheck, 2,756 tests and the build were all green, because Vite/Vitest/tsc
+  all resolve extensionless specifiers. **Caught by the e2e smoke suite**, which drives a real
+  browser against the preview. Fixed with `'./gate/decide.js'`. **Durable rule: a local toolchain
+  that resolves imports for you cannot tell you whether the deployment target will.**
+  **Pending (2026-08-23):** merge PR #482; **a green `lighthouse-ci.yml` AND a green e2e smoke on it
+  are hard merge gates** (the Lighthouse 1.00 was measured locally, never by CI); then, in this
+  order, set the four Production-scope variables → deploy → run the runbook's checks → only then
+  disable Supabase signup.
   Note `/promo/:id` now challenges (founder confirmed no QR is live; documented, deliberately not
   allowlisted) and every Supabase invite must travel with the password or as a `?k=` link.
   → `docs/wiki/concepts/site-access-lockdown.md` · `docs/runbooks/site-access-lockdown.md`

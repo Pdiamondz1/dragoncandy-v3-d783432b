@@ -291,8 +291,21 @@ existing RLS.
   and an incorrect `?k=` diverge; a forged cookie is rejected; an expired cookie
   is rejected; a correct Basic credential passes; an absent header challenges.
   Query parameters other than `k` survive the bypass redirect.
-- **Preview deploy** — the gate is production-only, so it cannot be proven on a
-  preview. Verify on production immediately after merge: an incognito window gets
+- **Preview deploy** — separate the gate's BEHAVIOUR from the middleware's WIRING.
+  The behaviour is production-only: on a preview `VERCEL_ENV` is `'preview'`, so
+  `decide()` returns `pass` and nobody is challenged. **The wiring is not** — the
+  module is imported and run on every preview request, so a preview does prove that
+  Vercel picks up a root `middleware.ts` in this Vite project, that the runtime
+  resolves its imports, and that `next()` continues to the origin.
+  **This section originally claimed nothing could be proven on a preview, and that
+  was wrong in a way that mattered.** An extensionless `import { decide } from
+  './gate/decide'` crashed the middleware on the first preview deploy —
+  `ERR_MODULE_NOT_FOUND`, `MIDDLEWARE_INVOCATION_FAILED`, **500 on every request** —
+  because Vercel transpiles to `middleware.js` and runs it as Node ESM without
+  bundling, and Node's ESM resolver does not add extensions. In production that is a
+  total outage. The e2e smoke suite caught it, and it was only looking at the login
+  page. **Read the preview's middleware logs before merging.**
+  Then verify on production immediately after merge: an incognito window gets
   the prompt; the password admits; `/assets/*` `401`s without the cookie;
   `robots.txt` returns 200 without it; `/pitch?k=…` opens directly and `/pitch`
   does not.

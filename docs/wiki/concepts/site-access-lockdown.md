@@ -8,12 +8,21 @@ tags: [security, vercel, middleware, authentication, supabase, lighthouse, priva
 ---
 # Site Access Lockdown (Private Preview)
 
-**Status (2026-08-23): built, reviewed, and NOT live.** The branch is unmerged, no PR is open, and
-none of the four Vercel variables is set. **The gate is production-only by design, so nothing about
-its wiring has ever executed** — not on a preview deploy, not in CI, not locally. What is proven is
-the decision logic (26 unit tests) and the documents. What is assumed is everything Vercel does with
-them. Read the "What cannot be proven before production" section before trusting any of this as a
-description of a running system.
+**Status (2026-08-23): built, reviewed, PR #482 open, and NOT live.** None of the four Vercel
+variables is set.
+
+**Separate the gate's BEHAVIOUR from the middleware's WIRING — this page originally conflated them
+and the conflation hid a total outage.** The behaviour is production-only: on a preview
+`VERCEL_ENV` is `'preview'`, so `decide()` returns `pass` and nobody is challenged. **The wiring is
+not production-only.** Vercel imports and runs `middleware.ts` on every preview request, so a
+preview proves that Vercel picks up a root `middleware.ts` in a Vite project, that the runtime
+resolves its imports, and that `next()` continues to the origin.
+
+That distinction was learned the expensive way. This page's first version said the wiring "has never
+executed — not on a preview deploy, not in CI, not locally", and on the strength of that nobody
+looked at the preview. The preview was returning **500 on every request**
+(`MIDDLEWARE_INVOCATION_FAILED`) because of an extensionless import. See
+"Node ESM does not add extensions" below.
 
 The runbook is `docs/runbooks/site-access-lockdown.md` and is the single source of truth for the
 cutover. This page is the *why*.
@@ -186,14 +195,43 @@ a password screen in front of the native app, which serves from `capacitor://loc
 asks Vercel for HTML at all. Deleted, and `CLAUDE.md`'s provider hierarchy corrected, since it had
 gone on documenting the component.
 
-## What cannot be proven before production
+## Node ESM does not add extensions, and Vercel does not bundle middleware
 
-The gate is production-only by design. Four things stay assumed until the deploy:
+`import { decide } from './gate/decide'` type-checks, passes every unit test, builds clean, and
+**crashes the middleware on Vercel**. The platform transpiles `middleware.ts` to `middleware.js` and
+runs it as **Node ESM without bundling**, and Node's ESM resolver does not append extensions. The
+import throws `ERR_MODULE_NOT_FOUND` at module load, which surfaces as
+`MIDDLEWARE_INVOCATION_FAILED` and **500 on every request the matcher covers** — here, everything.
 
-- that Vercel picks up a file-convention `middleware.ts` in a **Vite** project on this account's plan
-- that the `nodejs` runtime resolves `node:process`
-- that the matcher regex is applied as written
-- that `next()` continues to the origin (review reduced this from a guess to the documented contract)
+In production that is a total outage, arriving the instant the deployment goes live and unfixable by
+the `SITE_GATE_ENABLED` kill switch, because the crash happens before any of the gate's logic runs.
+
+The fix is one character group: `'./gate/decide.js'`. TypeScript maps `.js` back to the `.ts` file
+under `moduleResolution: bundler`, so the typecheck is unaffected — which is exactly why nothing
+local caught it.
+
+**What caught it was the e2e smoke suite**, which drives a real browser against the PR's preview
+deployment and failed with "waiting for locator('a:has-text(\"Log in\")')". The page it was waiting
+on said *"This Routing Middleware has crashed."* A test that looks like it only covers login is the
+only thing in the pipeline that loads the real deployed middleware.
+
+**The generalisable rule: a local toolchain that resolves imports for you cannot tell you whether
+the deployment target will.** Vite, Vitest and `tsc` all resolve extensionless specifiers. Node ESM
+does not. Any file the platform runs *without* bundling — middleware, edge config, a raw ESM script —
+needs explicit extensions, and no amount of local green proves it.
+
+## What still cannot be proven before production
+
+The gate's *behaviour* is production-only, so these stay assumed until the deploy:
+
+- that a real browser's Basic-credential prompt admits and then replays credentials to every
+  same-origin subresource — bundle chunks, fonts, the landing reels — for the whole session
+- that the `#access_token` fragment on a password-reset link survives the challenge in practice
+- that the `/landing/reels/(.*)` public cache rule behaves across a per-visitor gate
+
+The wiring items that used to sit in this list — Vercel picking up the file, the runtime resolving
+imports, the matcher applying, `next()` continuing — **are provable on a preview**, and one of them
+was proven false there.
 
 Also unmeasured: that browsers replay Basic credentials to every same-origin subresource — bundle
 chunks, fonts, the landing reels — for the whole session. This is how Chrome, Firefox and Safari
