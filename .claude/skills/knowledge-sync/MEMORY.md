@@ -227,6 +227,46 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-08-22] Landing cinematic single-CTA (`feat/landing-cinematic-single-cta`, UNMERGED — scoped to steps 2/3/4 only)
+
+- Output: `raw/sessions/2026-08-22-landing-cinematic-single-cta.md` → new page
+  [[Landing Cinematic Single-CTA Redesign]]; supersession notes added in place to
+  [[Landing "Human-driven. AI-assisted." Redesign]] and [[Landing Cinematic Video Redesign]];
+  `index.md` (1 Sources + 1 Concepts entry + 2 Concepts entries corrected, 0 orphans by path);
+  `log.md` top entry; `SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5 verified accurate,
+  left untouched (no edit needed).
+- Happened: run at the controller's explicit direction, scoped to steps 2/3/4 only — **no RAG
+  sync**, because the branch is unmerged and the RAG syncs from `main` via the post-merge hook.
+  Stated explicitly in `log.md` and this entry so a later run doesn't read the absence as a miss.
+- Worked: **the branch had already partially knowledge-synced itself before I ran.** Commit
+  `40d525c3` on this same branch had already corrected `docs/DESIGN_SYSTEM.md` and
+  `docs/runbooks/landing-video-backdrop-kit.md` to describe the new dark landing, and
+  `docs/PROJECT_CONTEXT.md` §5 already carried one accurate In-flight line (including a correction
+  to the *prior* redesign's Shipped entry, done in-branch). Checking before writing meant I did not
+  duplicate either — only the wiki layer (raw session, concept pages, index, log) and
+  `SHIPPED_LOG.md` were actually missing. **Verify what a branch already self-corrected before
+  assuming the knowledge-sync step starts from zero** — a session mid-branch may already have done
+  doc hygiene as part of a "final review fix wave," which this branch's own commit history showed
+  plainly in `git log --oneline main..HEAD`.
+- Worked: ran the `[scope-ordering]`-style check on core docs even though the controller had only
+  pre-cleared the `[scope-paths]` src check. `origin/main` was 4 commits ahead on
+  `docs/SHIPPED_LOG.md` / `docs/PROJECT_CONTEXT.md` / `docs/wiki/` (PRs #455/#456/#457/#458, an
+  unrelated Workspace-signatures thread). Given the branch is blocked on external restaurant
+  permission with no ETA, rebasing onto `origin/main` before writing was judged NOT worth the risk
+  of touching `src/` (explicitly out of scope) — so the sync was written on top of the stale local
+  copies as-is, accepting that the SHIPPED_LOG/log.md prepend points will conflict at merge time.
+  **New Lesson candidate, not yet promoted (only one data point): when a branch is blocked on a
+  non-engineering, no-ETA gate, core-doc drift found by the scope check is a merge-time problem to
+  accept, not a reason to rebase a branch you were told not to touch outside docs.**
+- Failed: nothing gating. Two-encode reel assets (`public/landing/reels/*`) were listed in the raw
+  session's affected-files section from `git diff --stat` only — never opened or played, per the
+  "docs and wiki only" scope; their existence is recorded, their content is not verified.
+- Remember: the session's own most transferable finding was a CODE lesson (a stall-watchdog armed
+  on "told to play" instead of "actually playing," discovered only because a later commit shrank
+  the clip-length assumption the timer's margin was sized against) — captured on the new concept
+  page and in `SHIPPED_LOG.md`, not promoted into this skill's Lessons because it is about video
+  playback correctness, not about how to run a knowledge-sync.
+
 ### [2026-08-20] Google Workspace Wave 1 (code half) — signatures, brand marks, nine stale titles
 - Output: `raw/sessions/2026-08-20-google-workspace-signatures-wave-1.md` → new concept
   [[Workspace Email Signatures]] + source page; `index.md`; `log.md` top entry;

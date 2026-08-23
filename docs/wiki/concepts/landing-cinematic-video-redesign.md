@@ -2,8 +2,8 @@
 title: Landing Cinematic Video Redesign
 type: concept
 created: 2026-07-16
-updated: 2026-07-18
-sources: [2026-07-16-landing-cinematic-video-redesign.md, 2026-07-17-dragonfeed-backdrop-adapter.md, 2026-07-17-landing-backdrop-mov-fix.md, 2026-07-18-landing-joe-redesign.md]
+updated: 2026-08-22
+sources: [2026-07-16-landing-cinematic-video-redesign.md, 2026-07-17-dragonfeed-backdrop-adapter.md, 2026-07-17-landing-backdrop-mov-fix.md, 2026-07-18-landing-joe-redesign.md, 2026-08-22-landing-cinematic-single-cta.md]
 tags: [landing, frontend, video, design, tailwind, dragonfeed]
 ---
 # Landing Cinematic Video Redesign
@@ -20,6 +20,19 @@ tags: [landing, frontend, video, design, tailwind, dragonfeed]
 > "6-section page" framing no longer describe what a logged-out visitor sees by default. See the
 > new page's "Video system preserved, not deleted" decision for the two concrete wiring changes
 > (single fixed `hero.business` key, light scrim) since this page was written.
+>
+> **2026-08-22 update: the video system this page documents is being revived as the default page,
+> not merely reused opt-in.** [[Landing Cinematic Single-CTA Redesign]] (`feat/landing-cinematic-
+> single-cta`, **UNMERGED**, blocked on restaurant footage permission) deletes
+> `LANDING_VIDEO_BACKDROP_ENABLED` entirely and makes `RotatingBackdrop` the whole page again — but
+> simplified from what this page describes: **curated-only** (the DragonFeed dynamic-clip merge and
+> `useLandingBackdropPlaylist` are deleted, not just unused), **no per-role keys** (`heroRole.ts`
+> and the semantic-key `landingClips` API are gone — one curated 10-reel registry, no role
+> switching), and a **new orientation-aware encode choice** (portrait vs. a per-clip 16:9 crop) that
+> did not exist in this page's design. The HEVC `.mov` exclusion and the 15s max-dwell watchdog
+> documented below both carry forward; the watchdog's arming logic was further hardened on that
+> branch (arms on layer-active, additionally resets on `playing`) after a 12s-per-clip cap ate the
+> margin it was originally sized against.
 
 The 2026-07-16 evolution of the public landing (`src/components/landing/*` +
 `src/pages/LandingPage.tsx`) from the Dark-Luxe rebuild ([[Landing Redesign & Public Lead Capture]])

@@ -1,5 +1,46 @@
 # Wiki Log
 
+## [2026-08-22] ingest | Landing rebuilt as one dark video screen — flag deleted, doors deleted, and a watchdog margin bug Codex caught
+
+Ingested `raw/sessions/2026-08-22-landing-cinematic-single-cta.md`. **New page**
+[[Landing Cinematic Single-CTA Redesign]], plus source [[Landing Cinematic Single-CTA Redesign
+Session]]. Updated (not new) [[Landing "Human-driven. AI-assisted." Redesign]] and
+[[Landing Cinematic Video Redesign]] with supersession notes — both edited in place per
+"flag contradictions explicitly," not silently overwritten.
+
+**Branch is UNMERGED** — `feat/landing-cinematic-single-cta`, blocked on written permission from
+ABB and Uncle Rocco for their footage. Nothing in this ingest describes the live site; dragoncandy.io
+still serves the PR #293 light two-door landing until this merges.
+
+**The transferable finding is a margin bug in a safety mechanism, not a UI change.**
+`RotatingBackdrop`'s 15s stall watchdog exists to force-advance a clip that never fires `ended` or
+`error`. The new 12s-per-clip cap left only ~3s of margin against it, and the watchdog armed on a
+layer becoming *active* rather than on playback actually *starting* — slow-connection startup
+buffering alone could eat that margin and cut a healthy clip. Codex (the mandatory second reviewer)
+caught it as a P2. The fix keeps arming on layer-active (the backstop for a clip that never starts
+at all) and additionally resets on the `playing` event — the tempting one-line alternative (arm only
+on `playing`) would have converted a bounded 15s stall into a permanent freeze for any clip that
+never fires `playing`. Recorded on the new page because the pattern — a mitigation's timing margin
+is a claim about its inputs, and needs re-verifying whenever an input (here, clip length) changes —
+outlives this specific watchdog.
+
+**Two encodes per reel, chosen by viewport orientation and verified live on both surfaces** (desktop
+served `-wide`, a 390×844 emulated device served portrait) — not merely coded and assumed. Crop
+windows were hand-picked per clip by watching the footage (`y` 300–650 across ten clips), not a
+blind centre crop.
+
+**The video-backdrop feature flag was deleted, not left off-by-default** — with the video as the
+whole page, an "off" state ships a blank homepage, which is an outage costumed as a kill switch.
+
+**Not verified, recorded explicitly:** the design spec's brightest-frame contrast check (§7) has not
+been run across the ten clips.
+
+`index.md` (1 Sources line + 1 new Concepts entry + 2 Concepts entries corrected in place, 0
+orphans by path). `SHIPPED_LOG.md` prepended. `PROJECT_CONTEXT.md` §5 already carried an accurate
+one-line In-flight entry from an earlier task in this same branch — verified accurate, left
+untouched. RAG sync deliberately **not run** — branch unmerged; the committed post-merge hook syncs
+on the `main` fast-forward after merge, per the `[rag-sync]` skill lesson.
+
 ## [2026-08-20] ingest | Email is not the web, and a Google Group is not a send-as identity
 
 Ingested `raw/sessions/2026-08-20-google-workspace-signatures-wave-1.md`. **New page**
