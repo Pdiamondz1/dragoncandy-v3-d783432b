@@ -105,8 +105,9 @@ domain**, not merely rewrite signature HTML. It buys the shared-mailbox signatur
 else, and the *grant* is reversible by removing the scope (property to `false` first — see the
 ordering rules below). **Reversing the grant does not un-install anything**: signatures already
 written to a sendAs record live in Gmail, not in this script, so they keep going out until
-somebody clears them — and clearing them requires the scope you just revoked. Remove the
-signatures first, then the scope. Notably the directory read is *not* part of any of this: it runs through the
+somebody clears them. Revoking the scope does not block that — a mailbox owner can always clear
+a signature by hand in Gmail settings — but it does end *this automation's* ability to do it, so
+a scripted cleanup has to happen before the revoke, not after. Notably the directory read is *not* part of any of this: it runs through the
 `AdminDirectory` advanced service under the script owner's own authorisation, a separate auth
 path. An earlier draft of the runbook told the reader to delegate
 `admin.directory.user.readonly` as well, which would have been a standing domain-wide right
@@ -131,15 +132,18 @@ state on the day it was written.
 
 That leaves the original conclusion standing but its reasoning inverted:
 
-- Groups genuinely are not send-as identities — but neither are aliases, so the conversion
-  changes nothing here. **It was never a prerequisite for shared signatures.**
+- Groups genuinely are not send-as identities — but neither are aliases, so the conversion was
+  never a *prerequisite* for shared signatures, which was the original claim's real error.
 - The `0 shared` outcome was **the expected state on 2026-08-21**, not a regression, and the
   installer's warning was changed to say so rather than sending an operator to look at a Groups
   migration that never happened. **That is no longer true and is the wrong thing to accept
   today** — three real send-as identities were added to `dame@` the same day, so `0 shared`
   for a user who has them now indicates a fault. See Known issues for the current matrix.
-- What the conversion *would* cost is the aliases themselves, so anyone who had completed the
-  manual send-as step would lose it.
+- **What the conversion would cost is no longer hypothetical.** It removes the aliases, and
+  `info@`, `support@` and `appstore@` are now real send-as identities built on them. Converting
+  would strip all three and their signatures, taking `dame@` from `4 identities / 3 shared` back
+  to `1 identity / 0 shared`. Re-cost decision 9 against that, not against the 2026-08-21 state
+  in which the conversion genuinely cost nothing.
 
 ### It is automatable, at a price — the second correction
 

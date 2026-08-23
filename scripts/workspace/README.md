@@ -278,22 +278,30 @@ the flag still `true`:
   `settings/sendAs/{email}` call the installer uses. There is no helper for this
   in `Code.gs`; it would need writing.
 
-Order matters here too: revoke the scope first and you lose the ability to
-clear them, leaving stale signatures you cannot reach through this tooling.
+Order matters here too: revoke the scope first and **this automation** can no
+longer clear them. That is a limit of the tooling, not of Gmail — the mailbox
+owner can always clear a signature by hand in Gmail settings. But it means a
+scripted cleanup becomes impossible, so clear first, revoke second.
 
 An earlier version of this file said no API could create a send-as identity.
 That was wrong, and Codex caught it. Then it said the manual route was
 permission-free. That was also wrong, and only running it caught that one.
 
-The same constraint applies, for the same reason, if these addresses are ever
-converted to real Google Groups (corporate-setup spec, decision 9). A Group is
-not a send-as identity either. The conversion would therefore change nothing
-about this branch's behaviour, because it is already installing nothing —
-but it would remove the aliases, so anyone who *had* completed the manual
-send-as step would lose it.
+**If these addresses are ever converted to real Google Groups** (corporate-setup
+spec, decision 9), the cost is now concrete rather than hypothetical. A Group is
+not a send-as identity either, and the conversion removes the aliases the three
+working send-as identities were built on. So `info@`, `support@` and `appstore@`
+would stop being send-as identities on `dame@`, their signatures would go with
+them, and the run would drop from `4 identities / 3 shared` back to
+`1 identity / 0 shared`.
 
-The installer warns when it installs zero shared signatures, so this stays
-visible rather than silent.
+*An earlier revision of this paragraph said the conversion "would change nothing,
+because it is already installing nothing." That was true on 2026-08-21 and stopped
+being true on 2026-08-23.* Re-cost the conversion against the live state, not
+against this sentence.
+
+The installer warns when it installs zero shared signatures for a user who has
+shared identities, so a regression here stays visible rather than silent.
 
 ## Editing a signature
 
