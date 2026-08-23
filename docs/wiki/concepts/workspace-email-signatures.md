@@ -314,9 +314,13 @@ original acceptance signal.
 - **Outlook for Windows is untested and now untestable** — the account that could have
   checked it is gone. The rendering matrix is four-of-five (Gmail web light, Gmail web dark,
   Gmail iOS dark, images-disabled), not five-of-five. Do not describe it as verified.
-- **A warning is not a gate.** If nobody reads the run log, a degraded run still passes
-  unnoticed. The *scoping* of that warning was fixed on 2026-08-23 — see below — but its
-  delivery mechanism is still "a line in Cloud Logging that someone has to look at".
+- **A warning is still not a gate, though it now arrives.** As of 2026-08-23 a run with a
+  finding emails `ALERT_EMAIL` (MailApp, as the script owner — unrelated to the delegation),
+  naming each failed or degraded user with written/expected and the cause. It is deliberately
+  silent on a clean run, because a nightly "all fine" trains its reader to filter the thread.
+  **`ALERT_EMAIL` unset means nobody is told** and everything else still looks normal; the run
+  logs that. And nothing *blocks* on the alert — an email is a stronger nudge than a log line,
+  not a gate.
 - **`dryRun()` does not authenticate**, so it passes cleanly with a missing or revoked
   service-account key. Its comment says so; the limitation stands. This is why the acceptance
   signal was writing into *other people's* mailboxes, which `dryRun()` structurally cannot

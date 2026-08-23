@@ -85,6 +85,7 @@ Do not install a single signature until this prints `image/png`.
    | `SA_CLIENT_EMAIL` | the service account's client email |
    | `SA_PRIVATE_KEY` | `private_key` from the JSON key, newlines as `\n` |
    | `LOG_SHEET_ID` | id of the run-log Sheet in `06 · Brand` |
+   | `ALERT_EMAIL` | comma-separated addresses to email when a run has a finding. **Unset means nobody is told** — the run logs a warning saying so |
    | `SHARED_BASELINE` | **written by the script, do not hand-edit casually.** JSON high-water mark of shared signatures installed per user, e.g. `{"dame@dragoncandy.com":3}`. It is how a *removed* send-as identity is still detected as missing. Clear a user's entry to accept a deliberate removal, otherwise it warns nightly |
    | `SHARING_SCOPE_ENABLED` | **`true` since 2026-08-23.** Both steps below are done and shared-mailbox signatures install. Setting it `false` stops *future* shared writes — it does **not** remove signatures already installed; see "Turning it back off" |
 
@@ -361,8 +362,41 @@ The first attempt at fixing it then derived "expected" from the live sendAs list
 and so could not see a removal at all. Both were caught in review, and both
 passed every test that existed when they were written.
 
-Still true, and not fixed by any of this: **a warning is not a gate.** If nobody
-reads the log, a degraded run still passes.
+### The alert — because a warning is not a gate
+
+Everything above improves what the warning *says*. None of it makes anyone read
+it, and a line in Cloud Logging is seen only by someone who goes looking. So a
+run with a finding also **emails** `ALERT_EMAIL`.
+
+- **It fires on two things**: users who failed outright (no signature written at
+  all) and users who are degraded (shared signatures missing). The subject
+  carries both counts; the body names every user, the written/expected numbers,
+  and the cause.
+- **It is silent on a clean run, on purpose.** A nightly "all fine" trains its
+  recipient to filter the thread, and then the one that matters is filtered too.
+- **`ALERT_EMAIL` unset means nobody is told**, which is worse than it sounds
+  because everything else still looks normal. The run logs a warning saying the
+  alert had somewhere to go and nowhere to send it.
+- **A standing regression emails every night** until it is fixed or the
+  `SHARED_BASELINE` entry is cleared. That is deliberate: the alternative is
+  alerting on the transition only, and a transition alert missed at 2am is gone.
+- **It cannot fail the run.** The signatures are already written by the time it
+  sends; a mail error is caught and logged. Trading the run log for a
+  notification would be the wrong way round.
+
+**Mail is sent by MailApp as the SCRIPT OWNER**, not by the service account —
+nothing to do with the domain-wide delegation, and it does not touch anyone
+else's mailbox.
+
+> ⚠️ **Deploying this re-triggers authorization.** It adds the
+> `script.send_mail` scope to the manifest, and Apps Script invalidates the
+> existing grant when the scope set changes. After `clasp push`, **open the
+> editor and run `installAllSignatures` once by hand** to re-consent. Until you
+> do, the nightly trigger fails with an authorization error — a failure mode
+> that looks nothing like a signature problem.
+
+Still true, and not fixed by any of this: an email is a stronger nudge than a
+log line, but it is still not a gate. Nothing blocks on it.
 
 ## Editing a signature
 

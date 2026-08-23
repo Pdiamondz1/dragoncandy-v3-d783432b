@@ -183,7 +183,7 @@ function loadAppsScript(scriptProperties = {}) {
   };
   return new Function(
     'PropertiesService',
-    `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN, isMissingSharingScope_, requestedScopes_, SCOPE_BASIC, SCOPE_SHARING, sharedRegressions_, formatRegression_, nextSharedBaseline_, sharedExpectation_, readSharedBaseline_ };`,
+    `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN, isMissingSharingScope_, requestedScopes_, SCOPE_BASIC, SCOPE_SHARING, sharedRegressions_, formatRegression_, nextSharedBaseline_, sharedExpectation_, readSharedBaseline_, runAlert_, alertRecipients_ };`,
   )(PropertiesService);
 }
 
@@ -629,5 +629,89 @@ describe('sharedRegressions_ cause classification', () => {
     const r = one({ email: 'a@x.com', sharedWritten: 2, sharedSeen: 3, denied: 5 });
     expect(r.unexplained).toBe(0);
     expect(r.cause).toBe('scope');
+  });
+});
+
+// A warning is only read by someone who goes looking. runAlert_ is the
+// decision half of the delivery fix and is kept pure so the question "when do
+// we wake somebody up" is testable; MailApp and script properties are not.
+describe('runAlert_', () => {
+  const { runAlert_ } = loadAppsScript();
+  const degraded = (over) => ({
+    email: 'dame@dragoncandy.com',
+    written: 0,
+    expected: 3,
+    denied: 3,
+    cause: 'scope',
+    unexplained: 0,
+    ...over,
+  });
+
+  it('is silent on a clean run', () => {
+    expect(
+      runAlert_([], [], 4),
+      'a nightly all-fine mail trains its recipient to filter it, and then the real one is filtered too',
+    ).toBeNull();
+  });
+
+  it('tolerates missing arguments', () => {
+    expect(runAlert_(undefined, undefined, 0)).toBeNull();
+  });
+
+  it('fires when a user is degraded', () => {
+    const a = runAlert_([degraded()], [], 4);
+    expect(a).not.toBeNull();
+    expect(a.subject).toContain('1 degraded');
+    expect(a.body).toContain('dame@dragoncandy.com (0/3)');
+  });
+
+  it('fires when a user failed outright, even with nothing degraded', () => {
+    const a = runAlert_([], ['joe@dragoncandy.com'], 4);
+    expect(a.subject).toContain('1 failed');
+    expect(a.body).toContain('NO SIGNATURE WRITTEN AT ALL');
+    expect(a.body).toContain('joe@dragoncandy.com');
+  });
+
+  it('reports both counts when both happen', () => {
+    const a = runAlert_([degraded()], ['joe@dragoncandy.com'], 4);
+    expect(a.subject).toContain('1 failed');
+    expect(a.subject).toContain('1 degraded');
+  });
+
+  it('names the cause so the reader is not sent to the wrong fix', () => {
+    expect(runAlert_([degraded({ cause: 'scope' })], [], 4).body).toContain('gmail.settings.sharing');
+    expect(runAlert_([degraded({ cause: 'other', denied: 0 })], [], 4).body).toContain('deleted');
+    const mixed = runAlert_([degraded({ cause: 'mixed', denied: 2, unexplained: 1 })], [], 4).body;
+    expect(mixed).toContain('will not finish the job');
+  });
+
+  it('says what "expected" means, since a deleted identity is the confusing case', () => {
+    expect(runAlert_([degraded()], [], 4).body).toContain('SHARED_BASELINE');
+  });
+});
+
+describe('alertRecipients_', () => {
+  it('is empty when unset — the caller must warn rather than silently skip', () => {
+    const { alertRecipients_ } = loadAppsScript();
+    expect(alertRecipients_()).toEqual([]);
+  });
+
+  it('splits a comma-separated list and trims', () => {
+    const { alertRecipients_ } = loadAppsScript({
+      ALERT_EMAIL: ' dame@dragoncandy.com , joe@dragoncandy.com ',
+    });
+    expect(alertRecipients_()).toEqual(['dame@dragoncandy.com', 'joe@dragoncandy.com']);
+  });
+
+  it('drops blanks and junk without an @, so MailApp is never handed an empty address', () => {
+    const { alertRecipients_ } = loadAppsScript({
+      ALERT_EMAIL: 'dame@dragoncandy.com,,   ,notanemail',
+    });
+    expect(alertRecipients_()).toEqual(['dame@dragoncandy.com']);
+  });
+
+  it('returns empty for a property that is only separators', () => {
+    const { alertRecipients_ } = loadAppsScript({ ALERT_EMAIL: ' , , ' });
+    expect(alertRecipients_()).toEqual([]);
   });
 });
