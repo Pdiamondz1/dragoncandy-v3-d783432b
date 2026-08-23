@@ -1,0 +1,277 @@
+[
+ {
+  "query": "kill-switch thresholds",
+  "doc": "internal-concepts:security-definer-advisor-triage",
+  "relevant": false
+ },
+ {
+  "query": "kill-switch thresholds",
+  "doc": "internal-concepts:founder-playbooks",
+  "relevant": true
+ },
+ {
+  "query": "kill-switch thresholds",
+  "doc": "internal-concepts:synthetic-load-proof",
+  "relevant": false
+ },
+ {
+  "query": "kill-switch thresholds",
+  "doc": "internal-concepts:synthetic-weight-engine",
+  "relevant": false
+ },
+ {
+  "query": "kill-switch thresholds",
+  "doc": "internal-concepts:anon-key-is-not-authorization",
+  "relevant": true
+ },
+ {
+  "query": "kill-switch thresholds",
+  "doc": "internal-analyses:north-star-kpi-scorecard",
+  "relevant": true
+ },
+ {
+  "query": "kill-switch thresholds",
+  "doc": "internal-concepts:domain-migration-io-to-com",
+  "relevant": false
+ },
+ {
+  "query": "kill-switch thresholds",
+  "doc": "internal-doc:PROJECT_CONTEXT",
+  "relevant": false
+ },
+ {
+  "query": "pricing tiers subscription revenue ARPU restaurant creator brand projections",
+  "doc": "internal-analyses:part-1-the-human-marketing-team",
+  "relevant": false
+ },
+ {
+  "query": "pricing tiers subscription revenue ARPU restaurant creator brand projections",
+  "doc": "internal-analyses:tech-infrastructure-cost-breakdown-updated",
+  "relevant": false
+ },
+ {
+  "query": "pricing tiers subscription revenue ARPU restaurant creator brand projections",
+  "doc": "internal-doc:DragonCandy_Pricing_Profitability_Briefing_v2",
+  "relevant": false
+ },
+ {
+  "query": "pricing tiers subscription revenue ARPU restaurant creator brand projections",
+  "doc": "internal-concepts:pricing-architecture",
+  "relevant": true
+ },
+ {
+  "query": "pricing tiers subscription revenue ARPU restaurant creator brand projections",
+  "doc": "internal-doc:DragonCandy_Moat_Playbook",
+  "relevant": false
+ },
+ {
+  "query": "pricing tiers subscription revenue ARPU restaurant creator brand projections",
+  "doc": "internal-doc:DragonCandy_Capital_Raise_Cost_Model",
+  "relevant": false
+ },
+ {
+  "query": "infrastructure costs scaling compute tiers Supabase Vercel Lovable hosting monthly cost",
+  "doc": "internal-concepts:take-rate-ladder",
+  "relevant": false
+ },
+ {
+  "query": "infrastructure costs scaling compute tiers Supabase Vercel Lovable hosting monthly cost",
+  "doc": "internal-doc:DragonCandy_Infrastructure_Capacity_Report",
+  "relevant": false
+ },
+ {
+  "query": "infrastructure costs scaling compute tiers Supabase Vercel Lovable hosting monthly cost",
+  "doc": "internal-doc:prd",
+  "relevant": false
+ },
+ {
+  "query": "infrastructure costs scaling compute tiers Supabase Vercel Lovable hosting monthly cost",
+  "doc": "internal-analyses:tech-infrastructure-cost-breakdown-updated",
+  "relevant": true
+ },
+ {
+  "query": "infrastructure costs scaling compute tiers Supabase Vercel Lovable hosting monthly cost",
+  "doc": "internal-concepts:cloud-platform-strategy",
+  "relevant": true
+ },
+ {
+  "query": "infrastructure costs scaling compute tiers Supabase Vercel Lovable hosting monthly cost",
+  "doc": "internal-doc:DragonCandy_Capital_Raise_Cost_Model",
+  "relevant": true
+ },
+ {
+  "query": "infrastructure costs scaling compute tiers Supabase Vercel Lovable hosting monthly cost",
+  "doc": "internal-concepts:pricing-architecture",
+  "relevant": false
+ },
+ {
+  "query": "Donny super agent R&D fine tuning LoRA campaign accumulation milestones public API standalone assistant phased",
+  "doc": "internal-doc:PROJECT_CONTEXT",
+  "relevant": false
+ },
+ {
+  "query": "Donny super agent R&D fine tuning LoRA campaign accumulation milestones public API standalone assistant phased",
+  "doc": "internal-doc:DragonCandy_Capital_Raise_Cost_Model",
+  "relevant": true
+ },
+ {
+  "query": "Donny super agent R&D fine tuning LoRA campaign accumulation milestones public API standalone assistant phased",
+  "doc": "internal-analyses:the-core-idea-two-agents-one-company",
+  "relevant": true
+ },
+ {
+  "query": "Donny super agent R&D fine tuning LoRA campaign accumulation milestones public API standalone assistant phased",
+  "doc": "internal-concepts:donny-first-dashboard",
+  "relevant": false
+ },
+ {
+  "query": "Donny super agent R&D fine tuning LoRA campaign accumulation milestones public API standalone assistant phased",
+  "doc": "internal-concepts:ai-creator-matching",
+  "relevant": false
+ },
+ {
+  "query": "Donny super agent R&D fine tuning LoRA campaign accumulation milestones public API standalone assistant phased",
+  "doc": "internal-entities:donny-ai",
+  "relevant": true
+ },
+ {
+  "query": "Donny super agent R&D fine tuning LoRA campaign accumulation milestones public API standalone assistant phased",
+  "doc": "internal-concepts:donny-data-and-quick-actions",
+  "relevant": false
+ },
+ {
+  "query": "Donny super agent R&D fine tuning LoRA campaign accumulation milestones public API standalone assistant phased",
+  "doc": "internal-concepts:campaign-generation-creativity",
+  "relevant": false
+ },
+ {
+  "query": "Donny super agent R&D fine tuning LoRA campaign accumulation milestones public API standalone assistant phased",
+  "doc": "internal-analyses:tech-infrastructure-cost-breakdown-updated",
+  "relevant": true
+ },
+ {
+  "query": "Donny AI tools capabilities outreach campaign creation external third party creator invite onboarding",
+  "doc": "internal-analyses:dame-ai-part-1-what-it-is",
+  "relevant": false
+ },
+ {
+  "query": "Donny AI tools capabilities outreach campaign creation external third party creator invite onboarding",
+  "doc": "internal-concepts:data-flywheel",
+  "relevant": false
+ },
+ {
+  "query": "Donny AI tools capabilities outreach campaign creation external third party creator invite onboarding",
+  "doc": "internal-analyses:the-core-idea-two-agents-one-company",
+  "relevant": false
+ },
+ {
+  "query": "Donny AI tools capabilities outreach campaign creation external third party creator invite onboarding",
+  "doc": "internal-analyses:influencer-creator-outreach-w-donny",
+  "relevant": true
+ },
+ {
+  "query": "Donny AI tools capabilities outreach campaign creation external third party creator invite onboarding",
+  "doc": "internal-entities:donny-ai",
+  "relevant": true
+ },
+ {
+  "query": "Donny AI tools capabilities outreach campaign creation external third party creator invite onboarding",
+  "doc": "internal-doc:Content_Delivery_Social_Posting_System",
+  "relevant": false
+ },
+ {
+  "query": "Donny AI tools capabilities outreach campaign creation external third party creator invite onboarding",
+  "doc": "internal-concepts:ai-creator-matching",
+  "relevant": false
+ },
+ {
+  "query": "Donny AI tools capabilities outreach campaign creation external third party creator invite onboarding",
+  "doc": "internal-doc:DragonCandy_Engineering_Blueprint",
+  "relevant": false
+ },
+ {
+  "query": "Donny AI agent capabilities tools automation self-improving",
+  "doc": "internal-doc:PROJECT_CONTEXT",
+  "relevant": true
+ },
+ {
+  "query": "Donny AI agent capabilities tools automation self-improving",
+  "doc": "internal-analyses:dame-ai-part-1-what-it-is",
+  "relevant": false
+ },
+ {
+  "query": "Donny AI agent capabilities tools automation self-improving",
+  "doc": "internal-analyses:the-core-idea-two-agents-one-company",
+  "relevant": true
+ },
+ {
+  "query": "Donny AI agent capabilities tools automation self-improving",
+  "doc": "internal-doc:DATABASE_SCHEMA",
+  "relevant": true
+ },
+ {
+  "query": "Donny AI agent capabilities tools automation self-improving",
+  "doc": "internal-concepts:self-improving-app",
+  "relevant": true
+ },
+ {
+  "query": "Donny AI agent capabilities tools automation self-improving",
+  "doc": "internal-concepts:dezzy-agent-playbook-suite",
+  "relevant": false
+ },
+ {
+  "query": "Donny AI agent capabilities tools automation self-improving",
+  "doc": "internal-concepts:donny-data-and-quick-actions",
+  "relevant": false
+ },
+ {
+  "query": "Donny AI agent capabilities tools automation self-improving",
+  "doc": "internal-entities:donny-ai",
+  "relevant": true
+ },
+ {
+  "query": "Donny AI agent capabilities tools automation self-improving",
+  "doc": "internal-analyses:dame-ai-part-2-architecture-and-build",
+  "relevant": true
+ },
+ {
+  "query": "Donny AI agent capabilities tools automation self-improving",
+  "doc": "internal-concepts:ai-creator-matching",
+  "relevant": true
+ },
+ {
+  "query": "minimum viable liquidity creator restaurant ratio density metro market launch Palm Beach creator supply",
+  "doc": "internal-analyses:the-honest-framing-first",
+  "relevant": false
+ },
+ {
+  "query": "minimum viable liquidity creator restaurant ratio density metro market launch Palm Beach creator supply",
+  "doc": "internal-doc:DragonCandy_Moat_Playbook",
+  "relevant": true
+ },
+ {
+  "query": "minimum viable liquidity creator restaurant ratio density metro market launch Palm Beach creator supply",
+  "doc": "internal-doc:product-vision",
+  "relevant": false
+ },
+ {
+  "query": "minimum viable liquidity creator restaurant ratio density metro market launch Palm Beach creator supply",
+  "doc": "internal-analyses:part-1-the-human-marketing-team",
+  "relevant": true
+ },
+ {
+  "query": "minimum viable liquidity creator restaurant ratio density metro market launch Palm Beach creator supply",
+  "doc": "internal-doc:DragonCandy_Capital_Raise_Cost_Model",
+  "relevant": true
+ },
+ {
+  "query": "minimum viable liquidity creator restaurant ratio density metro market launch Palm Beach creator supply",
+  "doc": "internal-doc:gtm",
+  "relevant": false
+ },
+ {
+  "query": "minimum viable liquidity creator restaurant ratio density metro market launch Palm Beach creator supply",
+  "doc": "internal-doc:DragonCandy_Pricing_Profitability_Briefing_v2",
+  "relevant": false
+ }
+]
