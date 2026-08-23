@@ -10,6 +10,7 @@ import {
 } from '@/lib/storage/uploadProfileAsset';
 import { clearSignedUrlCache } from '@/hooks/useSignedUrl';
 import { clearProfileCache } from '@/hooks/useProfileData';
+import { requestCreatorAddressVerification } from '@/lib/verifyAddress';
 import type { CreatorProfileFormData } from './useCreatorProfileForm';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -102,6 +103,16 @@ export const useCreatorProfileSubmit = () => {
             .upsert(profileData);
 
       if (error) throw error;
+
+      // Best-effort, fire-and-forget: never block or fail the save on a geocode
+      // outcome — the profile is already saved by the write above. See
+      // src/lib/verifyAddress.ts. Only fires when city AND country are present; the
+      // function itself re-checks this and no-ops otherwise.
+      void requestCreatorAddressVerification({
+        city: formData.city,
+        country: formData.country,
+        postalCode: formData.postal_code,
+      });
 
       if (avatarUrl) {
         await supabase

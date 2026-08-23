@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tansta
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { requestBusinessAddressVerification } from '@/lib/verifyAddress';
 import type { Organization, OrgUnit, OrgMember } from '@/types/org';
 
 // ── Query key constants ──────────────────────────────────────────────────────
@@ -237,8 +238,15 @@ export function useCreateOrgUnit(orgId?: string | null) {
         .single();
 
       if (error) throw error;
-      return data as unknown as OrgUnit;
+      const unit = data as unknown as OrgUnit;
 
+      // Best-effort, fire-and-forget: never block or fail the save on a geocode
+      // outcome. See src/lib/verifyAddress.ts.
+      if (payload.address) {
+        void requestBusinessAddressVerification({ orgUnitId: unit.id, address: payload.address });
+      }
+
+      return unit;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: KEYS.orgUnits(orgId ?? undefined) });
@@ -271,8 +279,16 @@ export function useUpdateOrgUnit() {
         .single();
 
       if (error) throw error;
-      return data as unknown as OrgUnit;
+      const unit = data as unknown as OrgUnit;
 
+      // Only re-verify when THIS call actually changed the address — not on every
+      // unrelated field update (e.g. renaming a location). Best-effort, fire-and-forget:
+      // see src/lib/verifyAddress.ts.
+      if (updates.address !== undefined && updates.address) {
+        void requestBusinessAddressVerification({ orgUnitId: unit.id, address: updates.address });
+      }
+
+      return unit;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: KEYS.orgUnits(data.org_id) });

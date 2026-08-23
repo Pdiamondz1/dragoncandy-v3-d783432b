@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAutoDetect } from '@/hooks/useAutoDetect';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadProfileAsset } from '@/lib/storage/uploadProfileAsset';
+import { requestCreatorAddressVerification } from '@/lib/verifyAddress';
 import { toast } from 'sonner';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { LandingButton } from '@/components/landing/LandingButton';
@@ -210,6 +211,15 @@ export function OnboardingWizard() {
           is_completed: true,
         }, { onConflict: 'user_id' });
         if (error) throw error;
+
+        // Best-effort, fire-and-forget: never block or fail onboarding on a geocode
+        // outcome. See src/lib/verifyAddress.ts. Onboarding has no postal code field —
+        // only auto-detected city/country.
+        void requestCreatorAddressVerification({
+          city: locationData.city,
+          country: locationData.country,
+          postalCode: null,
+        });
       } else {
         const { error } = await supabase.from('business_profiles').upsert({
           user_id: user.id,

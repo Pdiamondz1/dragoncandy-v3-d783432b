@@ -250,3 +250,7 @@ verify_jwt = true
 # the frontend bundle, so verify_jwt=true alone would not be authorization here.
 [functions.verify-phone]
 verify_jwt = false
+
+# Same reasoning as verify-phone above: does its own auth.getUser(token) check.
+[functions.verify-address]
+verify_jwt = false
