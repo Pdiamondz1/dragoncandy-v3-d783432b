@@ -169,6 +169,85 @@ self-reported: typecheck clean, **2,756 tests across 255 files**, build clean.
 No migration, no RLS change, no edge-function change. Dependency added: `@vercel/functions@3.9.5`.
 → `docs/wiki/concepts/site-access-lockdown.md` · `docs/runbooks/site-access-lockdown.md`
 
+## 2026-08-23 — The signature alarm rang into a wall: `MailApp` → `GmailApp`
+
+**The alert had never worked.** `sendTestAlert()`, built the same day so the alarm could be heard
+on demand, was fired for the first time and nothing arrived. What that established was not a
+configuration slip but that **`MailApp.sendEmail` is silently undeliverable to external recipients
+from this project.**
+
+Measured on prod via Admin > Reporting > Email Log Search:
+
+| Transport | Recipients | Result |
+|---|---|---|
+| Gmail-composed, same sender | three external addresses, two providers | **3 of 3 Delivered** |
+| Apps Script `MailApp` | `dwilliams@harbormill.net`, `damewillie@gmail.com`, `damesonpoint@gmail.com` | **0 of 3**, each `Bounced` in 0.11–0.16s |
+| Apps Script `GmailApp` | `damesonpoint@gmail.com` | **Received** |
+
+One sender, one week, three addresses across two providers — the only variable that moves the
+outcome is the transport. *Why* Google's relay rejects `MailApp` here is **unknown**; the fix routes
+around it rather than explaining it.
+
+**Why four rounds of work on this exact feature missed it: `MailApp` cannot report the failure.** It
+hands the message to Google and returns; the rejection arrives milliseconds later, outside the
+execution. `sendRunAlert_` returned `true`, the log said "accepted for delivery", the run recorded a
+success — for every bounce. #463 and #466 improved *what the alert said* and *when it fired* while
+nobody had ever received one, and nothing in the system could have told them.
+
+**Shipped:** `sendRunAlert_` calls `GmailApp.sendEmail(recipient, subject, body)` — **positional**,
+where `MailApp.sendEmail` takes one options object, so a symbol-only swap would have sent to
+`undefined` with every existing test still green. Manifest scope `script.send_mail` → `gmail.send`
+(which invalidates the authorization; the owner must re-consent by hand or the nightly trigger
+fails). The transport is pinned by a **text assertion on the source**, because the property is
+unobservable at runtime — no stub and no `try/catch` can see a rejection that happens after the call
+returns. Mutation-verified: reverting to `MailApp` fails 6 tests, that one by name. **97 tests, was
+96.** The pin's first version failed on its own explanatory comment, which discusses `MailApp` at
+length; it strips comments before matching, because a test that fails on documentation teaches the
+next person to loosen it.
+
+**A Codex P1, refuted.** Codex flagged `gmail.send` on documentation grounds — Google's GmailApp
+reference lists `https://mail.google.com/` for `sendEmail` and never mentions `gmail.send` —
+predicting deployed sends would fail authorization and `sendRunAlert_` would silently return
+`false`. The documentation does say that; the prediction is wrong. Refuted two ways: the alert
+**sent and was received** on the deployed build, and the account's grant list reads *"Send email as
+you"* (`gmail.send`) with **no** *"Read, compose, send, and permanently delete all your email"* — the
+consent label for `https://mail.google.com/`. That scope is not granted and the send worked without
+it. Adopting the advice would have converted a send-only grant into **full read and delete over the
+owner's mailbox, to send one alert**. Evidence recorded in `build-gs.mjs`. Codex clean at round 2.
+The transferable half: **a documentation-derived P1 is a hypothesis about runtime, and runtime is
+checkable** — reading the *granted* scope is the control separating "the scope suffices" from
+"something broader was granted", and the observation alone cannot distinguish those.
+
+**DKIM was missing, was fixed, and was not the cause.** `dragoncandy.com` had no DKIM record at all
+— found while chasing this, genuinely worth fixing, now generated, published at GoDaddy under
+`google._domainkey` (the DNS lives in Joe Castelo's account, via delegate access), and verified
+byte-exact against the **authoritative** nameserver and at 8.8.8.8. SPF and DMARC were already
+correct. It was called the likely cause and it was not: the bounces did not change when it landed,
+and RAW headers showed `d=dragoncandy.com; s=google` signing was already live. **A real defect found
+while chasing the wrong hypothesis is still a real defect — it is not a confirmation of it.**
+
+**Instrument discipline, learned twice in one session.** Every sender-side signal said the mail was
+fine — execution log "accepted for delivery", a copy in Gmail's **Sent** folder, an id returned by
+the API. All are the *sender's* view; none is evidence of delivery. (Related trap: mail to `alerts@`,
+an alias of the sending account, files in Sent with no INBOX label, so "not in my inbox" was not
+evidence either.) A search finding **no bounce message** led to wrongly placing the failure at the
+receiving end — Google's relay rejected these before any NDR existed, so **a missing non-delivery
+report is not evidence that nothing bounced**. Then the mirror image: searching the log by the fixed
+message's `Message-ID` returned **0 results**, which reads as "never sent" — safely interpreted only
+after the identical query returned **1** for a known-good id, proving the query worked and the zero
+was real (most likely indexing lag). **When a probe returns zero, prove it could have returned
+non-zero.**
+
+**The header tell**, worth keeping: `MailApp` produces `Message-Id: <autogen-java-<uuid>@google.com>`;
+`GmailApp` produces `<CA…@mail.gmail.com>` with `Received: … by gmailapi.google.com with HTTPREST`.
+The `@mail.gmail.com` family is what Gmail-composed mail carries, so one header identifies the route.
+
+**Still open:** the nightly trigger has not yet fired on the new transport (manual and triggered runs
+share one authorization, so it should hold, but it is unobserved); `script.send_mail` remains in the
+grant list as residue and will not be requested on a fresh consent.
+
+→ `docs/wiki/concepts/workspace-email-signatures.md`
+
 
 ## [2026-08-23] Automating the retrieval evaluation — and the shapes of a guard that cannot fire
 

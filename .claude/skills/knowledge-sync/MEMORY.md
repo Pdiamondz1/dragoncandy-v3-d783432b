@@ -247,6 +247,35 @@
   start of the session.** On a repo with 30+ worktrees the gap between "I checked" and "I edit" is
   long enough for two PRs to land; here it was three.
 
+### [2026-08-23] Signature alert transport — `MailApp` → `GmailApp` (`fix/signature-alert-gmailapp-transport`)
+
+**Output:** `docs/wiki/raw/sessions/2026-08-23-signature-alert-transport.md` →
+[[Workspace Email Signatures]] §"The alarm rang into a wall"; `log.md` *"The alarm rang into a
+wall"*; `SHIPPED_LOG.md` prepended; `PROJECT_CONTEXT.md` §5 Workspace line and `index.md` tail both
+corrected in place.
+
+**Happened.** Compounded onto the existing signatures page rather than opening a new one — same
+subject (the installer's alert path). Corrected **five** stale claims across four files, every one
+of them asserting the delivery path was merely *unproven* when it was in fact broken.
+
+**Worked.** `[scope]` and `[scope-paths]` both paid: 8 commits behind `origin/main`, rebased before
+authoring, and `git log HEAD..origin/main -- scripts/workspace/` confirmed no parallel session on
+the same files. `git ls-tree origin/main -- raw/sessions/` also surfaced an existing
+`2026-08-23-signature-test-alert.md`, so this run wrote a distinct source instead of duplicating it.
+
+**Failed.** Nothing in the sync. But `[new-page-vs-compound]` needed a check it does not mention:
+the `FAIL_CHARS` ceiling it cites as a reason to split has been **removed** by #474's chunking, so
+at 29KB that argument no longer applies. The lesson's conclusion held; its reasoning is one step
+stale.
+
+**Remember.**
+- **`FAIL_CHARS` is gone** (#474 chunks instead of skipping). Page length is a readability argument
+  now, not a retrieval one — do not split a long page citing a skip that no longer happens.
+- **When a session falsifies a `**Pending:**` clause instead of completing it, say which way it
+  went.** "Pending → done" and "Pending → we ran it and found it broken" are different facts, and
+  a §5 reader needs the second one. The clause here read "delivery is proven against a stubbed
+  `MailApp` and nothing else", which was accurate and still understated the risk: the thing it
+  called unproven was already broken in production.
 
 ### [2026-08-22] Landing cinematic single-CTA (`feat/landing-cinematic-single-cta`, UNMERGED — scoped to steps 2/3/4 only)
 
