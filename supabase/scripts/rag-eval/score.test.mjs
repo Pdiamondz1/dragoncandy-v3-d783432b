@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { cosine, rank, controlSeparation, recallPrecision, tailShare } from "./score.mjs";
+import {
+  cosine, rank, controlSeparation, recallPrecision, tailShare, compareToBaseline, hashSet,
+  hashQueries, hashLabels,
+} from "./score.mjs";
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const readJson = (f) => JSON.parse(readFileSync(join(HERE, f), "utf8"));
 
 const vec = (...xs) => xs;
 
@@ -79,5 +88,188 @@ describe("tailShare", () => {
     expect(t.beyond).toBe(2);
     expect(t.total).toBe(5);
     expect(t.queriesTouched).toBe(1);
+  });
+});
+
+describe("compareToBaseline", () => {
+  // A minimal baseline with one guard of each direction, so the tests exercise the mechanism
+  // rather than the committed numbers (those get their own consistency check further down).
+  const baseline = {
+    recordedAt: "2026-01-01",
+    querySetSize: 53,
+    labelledQueries: 7,
+    querySetHash: "qqqq",
+    labelSetHash: "llll",
+    metrics: { controlsAboveWeakestReal: 0, recallAt10: 0.9, indexChunks: 400 },
+    thresholds: {
+      controlsAboveWeakestReal: { tolerance: 0, higherIsBetter: false, severity: "critical", summary: "c" },
+      recallAt10: { tolerance: 0.1, higherIsBetter: true, needsLabels: true, severity: "high", summary: "r" },
+      indexChunks: { tolerance: 80, higherIsBetter: true, severity: "high", summary: "i" },
+    },
+  };
+  const run = (over = {}) => ({
+    realQueries: 53,
+    labelledQueries: 7,
+    querySetHash: "qqqq",
+    labelSetHash: "llll",
+    controls: { controlsAboveWeakestReal: 0 },
+    recallAt10: 0.9,
+    locatedShare: 0.99,
+    index: { chunks: 400 },
+    ...over,
+  });
+
+  it("passes a run that matches the baseline", () => {
+    const v = compareToBaseline(run(), baseline);
+    expect(v.comparable).toBe(true);
+    expect(v.regressions).toEqual([]);
+    expect(v.checks.every((c) => !c.breached)).toBe(true);
+  });
+
+  it("flags a control that beats the weakest real query, at critical", () => {
+    // The one check that makes every other number readable: if this fires, nothing else means
+    // anything, which is why its tolerance is zero rather than "a couple is fine".
+    const v = compareToBaseline(run({ controls: { controlsAboveWeakestReal: 1 } }), baseline);
+    expect(v.regressions.map((r) => [r.key, r.severity])).toEqual([["controlsAboveWeakestReal", "critical"]]);
+  });
+
+  it("is direction-aware: metrics moving the GOOD way are never regressions", () => {
+    // Without this, a recall of 1.0 against a baseline of 0.9 reads as a 0.1 move and trips the
+    // tolerance — an alert every time the thing being guarded improves.
+    const v = compareToBaseline(run({ recallAt10: 1.0, index: { chunks: 900 } }), baseline);
+    expect(v.regressions).toEqual([]);
+  });
+
+  it("refuses to compare anything when the query set changed", () => {
+    // Every figure shifts with the denominator. Reporting "no regressions" here would be a lie
+    // told confidently, which is worse than reporting nothing.
+    const v = compareToBaseline(run({ querySetHash: "other", recallAt10: 0.1 }), baseline);
+    expect(v.comparable).toBe(false);
+    expect(v.regressions).toEqual([]);
+    expect(v.notes.join(" ")).toMatch(/query set changed/);
+  });
+
+  it("notices a SWAPPED query even though every count is unchanged", () => {
+    // The hole a count-based check leaves: 53 queries in, 53 queries out, different queries. The
+    // run would have been declared comparable and reported confidently on a benchmark nobody
+    // recorded. Codex found this; it is the reason comparability is decided by identity.
+    const v = compareToBaseline(run({ querySetHash: "one-query-swapped" }), baseline);
+    expect(v.comparable).toBe(false);
+  });
+
+  it("refuses to compare when the baseline carries no query identity at all", () => {
+    // Falling back to counts "for compatibility" would reinstate exactly the hole above, and do
+    // it silently, on the older files most likely to have drifted.
+    const { querySetHash: _drop, ...noHash } = baseline;
+    const v = compareToBaseline(run(), noHash);
+    expect(v.comparable).toBe(false);
+    expect(v.notes.join(" ")).toMatch(/querySetHash is missing/);
+  });
+
+  it("drops only the label-dependent checks when the label set changed", () => {
+    // Labels move recall's denominator; they have nothing to do with control separation. Marking
+    // the whole run incomparable would throw away the check that matters most.
+    const v = compareToBaseline(
+      run({ labelSetHash: "relabelled", recallAt10: 0.1, controls: { controlsAboveWeakestReal: 3 } }),
+      baseline,
+    );
+    expect(v.comparable).toBe(true);
+    expect(v.regressions.map((r) => r.key)).toEqual(["controlsAboveWeakestReal"]);
+    expect(v.checks.map((c) => c.key)).not.toContain("recallAt10");
+  });
+
+  it("records every skipped check structurally, not only as prose", () => {
+    // A threshold that did not run is a guard switched off. As a printed note it reads as a clean
+    // month; the reporter can only turn it into a finding if it arrives as data.
+    const v = compareToBaseline(run({ labelSetHash: "relabelled" }), {
+      ...baseline,
+      metrics: { ...baseline.metrics, indexChunks: undefined },
+      thresholds: {
+        ...baseline.thresholds,
+        madeUp: { tolerance: 0, higherIsBetter: true, severity: "low", summary: "x" },
+      },
+    });
+    expect(v.unchecked.map((u) => u.key).sort()).toEqual(["indexChunks", "madeUp", "recallAt10"]);
+    for (const u of v.unchecked) expect(u.reason.length).toBeGreaterThan(10);
+  });
+
+  it("flags a threshold naming a metric the run does not measure", () => {
+    // A guard over a metric that never arrives sits there passing forever, which is
+    // indistinguishable from a guard that is working.
+    const v = compareToBaseline(run(), {
+      ...baseline,
+      metrics: { ...baseline.metrics, madeUp: 1 },
+      thresholds: { ...baseline.thresholds, madeUp: { tolerance: 0, higherIsBetter: true, severity: "low", summary: "x" } },
+    });
+    expect(v.unchecked.map((u) => u.key)).toContain("madeUp");
+    expect(v.checks.map((c) => c.key)).not.toContain("madeUp");
+  });
+
+  it("flags a threshold with no baseline figure to compare against", () => {
+    const v = compareToBaseline(run(), { ...baseline, metrics: { controlsAboveWeakestReal: 0, indexChunks: 400 } });
+    expect(v.unchecked.map((u) => u.key)).toContain("recallAt10");
+    expect(v.checks.map((c) => c.key)).not.toContain("recallAt10");
+  });
+});
+
+describe("the committed baseline", () => {
+  const baseline = readJson("baseline.json");
+
+  it("matches the IDENTITY of the query set the evaluation will actually run", () => {
+    // Recomputed from the real committed files. If these drift apart, every scheduled run comes
+    // back NOT COMPARABLE — a guard that has quietly stopped guarding, reported as a note nobody
+    // is reading at 07:00 on the first of the month. Counts are asserted too, because the
+    // messages quote them and a stale count makes a correct verdict read wrong.
+    const queries = readJson("queries.json");
+    expect(baseline.querySetHash).toBe(hashQueries(queries));
+    expect(baseline.querySetSize).toBe(queries.real.length);
+    expect(baseline.controlSetSize).toBe(queries.control.length);
+  });
+
+  it("matches the IDENTITY of the labels the evaluation will actually score", () => {
+    const labels = readJson("labels.json");
+    expect(baseline.labelSetHash).toBe(hashLabels(labels));
+    expect(baseline.labelledQueries).toBe(new Set(labels.map((l) => l.query)).size);
+  });
+
+  it("gives every threshold a baseline figure, a severity and a direction", () => {
+    for (const [key, spec] of Object.entries(baseline.thresholds)) {
+      expect(typeof baseline.metrics[key], `metrics.${key}`).toBe("number");
+      expect(["critical", "high", "medium", "low"], `severity of ${key}`).toContain(spec.severity);
+      expect(typeof spec.higherIsBetter, `higherIsBetter of ${key}`).toBe("boolean");
+      expect(typeof spec.tolerance, `tolerance of ${key}`).toBe("number");
+      expect(spec.summary.length, `summary of ${key}`).toBeGreaterThan(40);
+    }
+  });
+});
+
+describe("hashSet", () => {
+  it("is order-independent, so reordering a file is not a change", () => {
+    // Reordering queries.json does not change what is being measured, and a guard that fires on
+    // a diff-only edit is a guard people learn to ignore.
+    expect(hashSet(["b", "a", "c"])).toBe(hashSet(["a", "b", "c"]));
+  });
+
+  it("separates members that concatenate to the same string", () => {
+    // Without a delimiter, ["ab","c"] and ["a","bc"] hash identically — two different benchmarks
+    // reading as one.
+    expect(hashSet(["ab", "c"])).not.toBe(hashSet(["a", "bc"]));
+  });
+
+  it("changes when one member is swapped", () => {
+    expect(hashSet(["a", "b"])).not.toBe(hashSet(["a", "z"]));
+  });
+});
+
+describe("hashQueries / hashLabels", () => {
+  it("distinguishes a real query from a control with the same text", () => {
+    // Moving a query between the two lists changes what is being measured; the namespacing is
+    // what makes that visible.
+    expect(hashQueries({ real: ["x"], control: [] })).not.toBe(hashQueries({ real: [], control: ["x"] }));
+  });
+
+  it("changes when a single relevance judgment is flipped", () => {
+    const rows = [{ query: "q", doc: "d", relevant: true }];
+    expect(hashLabels(rows)).not.toBe(hashLabels([{ query: "q", doc: "d", relevant: false }]));
   });
 });
