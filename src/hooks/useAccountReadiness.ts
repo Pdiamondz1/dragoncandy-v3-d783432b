@@ -23,10 +23,10 @@ interface Options {
    * a gate that is stale costs money. See spec §5.2.
    *
    * The live query shares the exact ['payout-status', role, orgUnitId] cache key
-   * used by useTransactionReadiness / StripeConnectSetup's invalidation, so it MUST
-   * cache the same PayoutStatusData shape those consumers write — two different
-   * shapes under one key is a last-write-wins corruption trap. StripeFacts is
-   * derived from it locally, never cached under this key.
+   * used by StripeConnectSetup's invalidation, so it MUST cache the same
+   * PayoutStatusData shape that consumer writes — two different shapes under
+   * one key is a last-write-wins corruption trap. StripeFacts is derived from
+   * it locally, never cached under this key.
    */
   liveStripe?: boolean;
   enabled?: boolean;
@@ -122,9 +122,9 @@ export function useAccountReadiness(role: AccountRole, opts: Options = {}): UseA
     staleTime: 60_000,
   });
 
-  // Shares the ['payout-status', role, orgUnitId] key with useTransactionReadiness
-  // and StripeConnectSetup's invalidateQueries — so it caches the full
-  // PayoutStatusData shape those consumers expect, not a narrowed one.
+  // Shares the ['payout-status', role, orgUnitId] key with StripeConnectSetup's
+  // invalidateQueries — so it caches the full PayoutStatusData shape that
+  // consumer expects, not a narrowed one.
   const liveStripeQuery = useQuery({
     queryKey: ['payout-status', payoutRole, null],
     queryFn: async (): Promise<PayoutStatusData> => {
