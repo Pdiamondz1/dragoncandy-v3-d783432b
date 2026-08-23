@@ -170,7 +170,7 @@ describe('renderSignature', () => {
 // bundle — `scripts/` is outside the Vite build. The alternative, regex-parsing
 // the array out of the file as text, is what actually would be fragile.
 
-function loadAppsScript(scriptProperties = {}, mailAppOverride = null) {
+function loadAppsScript(scriptProperties = {}, gmailAppOverride = null) {
   const src = readFileSync(
     fileURLToPath(new URL('./Code.gs.js', import.meta.url)),
     'utf8',
@@ -184,17 +184,21 @@ function loadAppsScript(scriptProperties = {}, mailAppOverride = null) {
   // Every send is recorded rather than discarded, so a test can assert that
   // NOTHING went out — which is the half that a "did it send?" stub cannot
   // check, and the half that matters for the no-recipient paths.
+  //
+  // The stub takes POSITIONAL arguments because GmailApp.sendEmail does --
+  // MailApp's single-options-object form would silently record {to: undefined}
+  // and every assertion below would still pass against a broken call.
   const sent = [];
-  const MailApp = mailAppOverride || {
-    sendEmail: (options) => {
-      sent.push(options);
+  const GmailApp = gmailAppOverride || {
+    sendEmail: (to, subject, body) => {
+      sent.push({ to, subject, body });
     },
   };
   const api = new Function(
     'PropertiesService',
-    'MailApp',
+    'GmailApp',
     `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN, isMissingSharingScope_, requestedScopes_, SCOPE_BASIC, SCOPE_SHARING, sharedRegressions_, formatRegression_, nextSharedBaseline_, sharedExpectation_, readSharedBaseline_, runAlert_, alertRecipients_, runStatus_, sendRunAlert_, sendTestAlert };`,
-  )(PropertiesService, MailApp);
+  )(PropertiesService, GmailApp);
   return { ...api, sent };
 }
 
@@ -645,7 +649,7 @@ describe('sharedRegressions_ cause classification', () => {
 
 // A warning is only read by someone who goes looking. runAlert_ is the
 // decision half of the delivery fix and is kept pure so the question "when do
-// we wake somebody up" is testable; MailApp and script properties are not.
+// we wake somebody up" is testable; GmailApp and script properties are not.
 describe('runAlert_', () => {
   const { runAlert_ } = loadAppsScript();
   const degraded = (over) => ({
@@ -714,7 +718,7 @@ describe('alertRecipients_', () => {
     expect(alertRecipients_()).toEqual(['dame@dragoncandy.com', 'joe@dragoncandy.com']);
   });
 
-  it('drops blanks and junk without an @, so MailApp is never handed an empty address', () => {
+  it('drops blanks and junk without an @, so GmailApp is never handed an empty address', () => {
     const { alertRecipients_ } = loadAppsScript({
       ALERT_EMAIL: 'dame@dragoncandy.com,,   ,notanemail',
     });
@@ -870,6 +874,30 @@ describe('sendRunAlert_', () => {
       result = gas.sendRunAlert_('subj', 'body');
     }).not.toThrow();
     expect(result).toBe(false);
+  });
+
+  // A TEXT assertion, because the thing being pinned is unobservable at
+  // runtime: MailApp accepts the send and returns cleanly, and the rejection
+  // arrives milliseconds later where no test and no `try` can see it. Measured
+  // on prod 2026-08-23 -- MailApp reached 0 of 3 external recipients across two
+  // providers while the script logged success every time. Nothing about the
+  // shape of the call reveals that, so nothing but this test can defend it.
+  it('sends via GmailApp, never MailApp -- MailApp is silently undeliverable externally', () => {
+    const src = readFileSync(
+      fileURLToPath(new URL('./Code.gs.js', import.meta.url)),
+      'utf8',
+    );
+    // Comments are stripped first, because the code above this call
+    // deliberately DISCUSSES MailApp at length -- and on the first run this
+    // assertion failed on that prose, which is a false positive that would have
+    // trained the next person to loosen the test.
+    const code = src
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('\n')
+      .filter((line) => !line.trim().startsWith('//'))
+      .join('\n');
+    const calls = code.match(/\b(GmailApp|MailApp)\.sendEmail\b/g) || [];
+    expect(calls).toEqual(['GmailApp.sendEmail']);
   });
 });
 
