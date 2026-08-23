@@ -1534,7 +1534,13 @@ npm run test
 npm run build
 ```
 
-Expected: typecheck clean, lint clean, all tests pass (2,857 existing plus roughly 33 new), build succeeds.
+Expected: lint clean, all tests pass (2,857 existing plus roughly 33 new), build succeeds.
+
+**Typecheck carries exactly one known pre-existing failure and no others:**
+`middleware.ts(30,22): Cannot find module '@vercel/functions'`. That package is declared
+in `package.json` but absent from this worktree's `node_modules`; it belongs to the site-gate
+work (PR #482), not to this plan. Treat any *additional* typecheck error as a failure. Do not
+run `npm install` to clear it — that is out of scope and churns the lockfile mid-plan.
 
 - [ ] **Step 2: Confirm the confidential module is not in the public bundle**
 
