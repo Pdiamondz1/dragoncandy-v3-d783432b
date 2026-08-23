@@ -1,5 +1,27 @@
 # Wiki Log
 
+## [2026-08-23] ingest | Stale, contradicted, and wrong-about-people are three different problems
+
+Ingested `raw/sessions/2026-08-23-product-docs-published.md`. No concept page created — the
+durable content is a distinction, recorded here and in `docs/SHIPPED_LOG.md`.
+
+Publishing the two product docs to the open shared drive turned up **three failure modes that look
+alike and need different remedies.** *Stale* — old numbers — is fixed by a date. *Contradicted* — a
+section describing a system that is not the one that shipped — is fixed by a pointer at the
+authoritative file, never by a better summary. *Wrong-about-people* — a founder narrative naming
+one of three co-founders — is fixed only by a rewrite, and is the only one of the three that should
+block publication outright.
+
+The sharpest moment: Codex caught the SUPERSEDED note **committing the error it was written to
+fix**, by asserting a single app-wide theme when the real design system is surface-specific. **A
+summary of a source of truth is a copy, and copies rot** — §5 was itself once an accurate summary.
+The note now points rather than summarises, and says so explicitly.
+
+Also recorded: the main checkout was sitting on `codex/new-UX-flow`, six merges behind, while
+`main` was held by a worktree — so the standing `refresh-main` instruction would have
+fast-forwarded a review branch. And **publish-then-sync is drift**: the notes reached the Google
+Docs before the repo, and closing that gap needed its own commit.
+
 ## [2026-08-23] ingest | Three notes from a real phone, and the scroller I measured twice without finding
 
 Ingested `raw/sessions/2026-08-23-adrian-feedback-body-scroller-and-how-it-works.md`.
