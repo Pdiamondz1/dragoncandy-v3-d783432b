@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { blendedSubscription, blendedTakeRate, avgCampaignValue, projectMonth, type TierMix } from './project';
+import { OPERATING, UNIT_ECONOMICS } from './assumptions';
 
 const ALL_GROWTH: TierMix = { free: 0, starter: 0, growth: 1, pro: 0 };
 const HALF_AND_HALF: TierMix = { free: 0, starter: 0.5, growth: 0.5, pro: 0 };
@@ -68,4 +69,21 @@ describe('projectMonth', () => {
     expect(r.costOfRevenue).toBeCloseTo(2_661.875, 6);
     expect(r.grossProfit).toBeCloseTo(46_456.875, 6);
   });
+});
+
+describe('the AI cost cap', () => {
+  const MIX: TierMix = { free: 0.3, starter: 0.4, growth: 0.25, pro: 0.05 };
+
+  it.each([10, 100, 1_000, 10_000])(
+    'keeps AI spend under the 15%% revenue cap at %i restaurants',
+    (restaurants) => {
+      const m = projectMonth({ month: 0, restaurants, mix: MIX });
+      const aiSpend = restaurants * UNIT_ECONOMICS.aiCostPerCustomerMonth.value;
+      const capDollars = m.totalRevenue * OPERATING.aiCostCapPctOfRevenue.value;
+      expect(
+        aiSpend,
+        `AI spend $${aiSpend.toFixed(2)} exceeds the cap $${capDollars.toFixed(2)} at ${restaurants} restaurants`,
+      ).toBeLessThanOrEqual(capDollars);
+    },
+  );
 });
