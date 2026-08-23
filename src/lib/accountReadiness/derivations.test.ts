@@ -4,7 +4,7 @@ import {
   deriveEmailVerified, deriveProfileBasics, derivePhoneVerified,
   deriveIdentityVerified, deriveAddress, deriveCreatorAddress,
   deriveStripe, deriveSocialLinked, deriveLocations, deriveTeam,
-  deriveSkills, deriveBio, derivePortfolio,
+  deriveSkills, deriveBio, derivePortfolio, identityRequirements,
 } from './derivations';
 
 const base: ReadinessContext = {
@@ -212,4 +212,75 @@ describe('creator requirements', () => {
     expect(deriveBio({ ...base, creator: { ...base.creator!, bio: '  ' } }).status).toBe('unmet'));
   it('portfolio unmet when empty', () =>
     expect(derivePortfolio({ ...base, creator: { ...base.creator!, portfolioUrls: [] } }).status).toBe('unmet'));
+});
+
+/**
+ * Codex second review, round 3 (P2): `stripe_requirements_due` mirrors EVERY outstanding
+ * Stripe requirement, so payment-setup items were being reported as identity failures —
+ * a missing bank account rendered as "Verify your identity", at `required` tier.
+ */
+describe('identityRequirements', () => {
+  it('drops a missing bank account — that is deriveStripe\'s job, not identity\'s', () => {
+    expect(identityRequirements(['external_account'])).toEqual([]);
+  });
+
+  it('drops ToS acceptance and its dotted sub-keys', () => {
+    expect(identityRequirements(['tos_acceptance.date', 'tos_acceptance.ip'])).toEqual([]);
+  });
+
+  it('keeps genuine identity/KYC requirements', () => {
+    expect(identityRequirements(['individual.verification.document'])).toEqual([
+      'individual.verification.document',
+    ]);
+    expect(identityRequirements(['company.tax_id'])).toEqual(['company.tax_id']);
+  });
+
+  it('keeps identity items while dropping payment ones in the same batch', () => {
+    expect(
+      identityRequirements(['external_account', 'individual.id_number', 'tos_acceptance.date']),
+    ).toEqual(['individual.id_number']);
+  });
+
+  it('keeps an UNKNOWN key — a denylist must fail toward over-reporting, never toward "verified"', () => {
+    expect(identityRequirements(['some.future.stripe.key'])).toEqual(['some.future.stripe.key']);
+  });
+
+  it('does not drop a key that merely starts with a denied word', () => {
+    // `external_account_holder` is not `external_account`; prefix matching must respect
+    // the dot boundary or it silently swallows unrelated keys.
+    expect(identityRequirements(['external_account_holder_identity'])).toEqual([
+      'external_account_holder_identity',
+    ]);
+  });
+});
+
+describe('deriveIdentityVerified with mixed requirements', () => {
+  const ctx = (identity: { verifiedAt: string | null; requirementsDue: string[]; disabledReason: string | null }) =>
+    ({ role: 'content_creator', dismissed: [], identity }) as never;
+
+  it('stays MET for a verified account whose only outstanding item is a bank account', () => {
+    const s = deriveIdentityVerified(
+      ctx({ verifiedAt: '2026-08-01T00:00:00Z', requirementsDue: ['external_account'], disabledReason: null }),
+    );
+    expect(s.status).toBe('met');
+  });
+
+  it('is UNMET when a real identity document is outstanding, even if also verified before', () => {
+    const s = deriveIdentityVerified(
+      ctx({
+        verifiedAt: '2026-08-01T00:00:00Z',
+        requirementsDue: ['individual.verification.document'],
+        disabledReason: null,
+      }),
+    );
+    expect(s.status).toBe('unmet');
+  });
+
+  it('still lets a disabled_reason outrank everything', () => {
+    const s = deriveIdentityVerified(
+      ctx({ verifiedAt: '2026-08-01T00:00:00Z', requirementsDue: ['external_account'], disabledReason: 'rejected.fraud' }),
+    );
+    expect(s.status).toBe('unmet');
+    expect(s.detail).toBe('rejected.fraud');
+  });
 });

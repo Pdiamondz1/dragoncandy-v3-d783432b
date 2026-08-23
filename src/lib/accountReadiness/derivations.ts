@@ -99,11 +99,45 @@ export function deriveIdentityVerified(ctx: ReadinessContext): RequirementState 
   // Fraud prevention is the stated reason this whole slice exists, so a live
   // `disabled_reason` or an outstanding requirement wins over a historical stamp.
   if (disabledReason) return { status: 'unmet', detail: disabledReason };
-  if (requirementsDue.length > 0) {
-    return { status: 'unmet', detail: `Stripe needs: ${requirementsDue.join(', ')}` };
+  const identityDue = identityRequirements(requirementsDue);
+  if (identityDue.length > 0) {
+    return { status: 'unmet', detail: `Stripe needs: ${identityDue.join(', ')}` };
   }
   if (verifiedAt) return MET;
   return UNMET;
+}
+
+/**
+ * Stripe requirement keys that are NOT about identity.
+ *
+ * `stripe_requirements_due` mirrors every `currently_due`/`past_due` field Stripe reports,
+ * which includes payment-setup items — a missing bank account (`external_account`) or an
+ * unaccepted ToS. Feeding those into the identity derivation labelled a banking task
+ * "Verify your identity", duplicated `deriveStripe` (which already covers payment setup),
+ * and — because identity is a `required` tier item — would have blocked actions for a
+ * reason that has nothing to do with identity. Found by the Codex second review.
+ *
+ * A DENYLIST, deliberately, not an allowlist of known identity keys. The two fail in
+ * opposite directions when Stripe introduces a key we have never seen:
+ *   - allowlist  -> the new key is ignored -> we render "identity verified" while identity
+ *                   work is genuinely outstanding. A false positive on a fraud signal.
+ *   - denylist   -> the new key counts as identity -> we over-report unmet. Annoying, and
+ *                   visible, and safe.
+ * This slice exists for fraud prevention, so an unknown key must never resolve toward
+ * "verified". Add to this list only keys that are demonstrably about payments or account
+ * settings rather than about who someone is.
+ */
+const NON_IDENTITY_REQUIREMENT_PREFIXES = [
+  'external_account',
+  'tos_acceptance',
+  'business_profile',
+  'settings',
+] as const;
+
+export function identityRequirements(due: readonly string[]): string[] {
+  return due.filter(
+    (key) => !NON_IDENTITY_REQUIREMENT_PREFIXES.some((p) => key === p || key.startsWith(`${p}.`)),
+  );
 }
 
 export function deriveStripe(ctx: ReadinessContext): RequirementState {
