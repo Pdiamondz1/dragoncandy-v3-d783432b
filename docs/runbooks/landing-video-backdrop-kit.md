@@ -177,6 +177,19 @@ public/landing/reels/abb-birria-poster.jpg        public/landing/reels/abb-birri
 from the slug alone — adding a new clip means adding one `reel("new-slug")` call to `LANDING_REELS`
 once its four files exist under that name; nothing else in the naming scheme is configurable.
 
+**These URLs are slug-stable, not content-fingerprinted — and that's deliberate, not an oversight.**
+Because `LANDING_REELS` hardcodes the slug, a re-encode of an existing clip (e.g. trimming it under
+the 12s cap, or a crop fix) reuses the same filename rather than getting a new hashed one. That's a
+real, recurring case here: `uncle-rocco-new-menu` was re-encoded on this branch for exactly that
+reason. It means the file at a given URL can change without the URL changing, so `vercel.json`'s
+`Cache-Control` for `/landing/reels/(.*)` is deliberately **not** `immutable` and uses a modest
+`max-age=86400` (one day hard cache — a normal repeat visit still costs no requests) plus
+`stale-while-revalidate=604800` (a week of serving the old file while refetching in the background).
+That combination lets a re-encode of an existing slug reach returning visitors in about a day without
+a thundering herd on the origin the moment it changes. If this ever gets re-litigated: the fix for a
+slow-propagating re-encode is not `immutable`, and switching to content-fingerprinted filenames is a
+bigger change than the naming contract above warrants — see `src/components/landing/landingClips.ts`.
+
 ## The 40 MB ceiling
 
 **Expected total: 30–40 MB, committed to the repo.** This is the entire homepage's payload — it
