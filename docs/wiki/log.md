@@ -175,6 +175,44 @@ report is not evidence that nothing bounced. And the log search by the fixed mes
 `Message-ID` returned **0 results**, safely read only after the identical query returned 1 for a
 known-good id: **when a probe returns zero, prove it could have returned non-zero.**
 
+## [2026-08-23] update | "Both are sensitive" was never checkable from here
+
+Declared the two YouTube scopes on Google's Data Access page. **Updated**
+[[YouTube Analytics Connector]] and `PROJECT_CONTEXT.md` §5.
+
+**The correction.** These docs said "Both are **sensitive**, not restricted, so verification needs
+brand review and not the paid CASA assessment." Google's own classification, read off the page
+after declaring them:
+
+| Scope | Tier |
+|---|---|
+| `yt-analytics.readonly` | non-sensitive |
+| `youtube.readonly` | sensitive — approval required |
+| restricted | none |
+
+Only one is sensitive. **The conclusion survived and the reasoning did not** — verification really
+is brand review rather than CASA, but because *neither scope is restricted*, which is a different
+property from how many are sensitive. Anyone planning against the old sentence would have
+over-estimated the review burden by a whole scope and attributed the CASA exemption to the wrong
+thing.
+
+**Why it survived so long:** it was never checkable from the repo. "Both are sensitive" is cheap to
+write, reads as carefully verified, and stays unfalsified until someone declares the scopes in
+Google's console. The console contradicted it the first time anyone looked. Same family as the
+`Pending:` clauses that outlive their truth — a claim whose only evidence lives in a system nobody
+opens.
+
+**A save trap worth recording.** The scope panel's "Update" only *stages* the selection; the real
+save is a separate button at the bottom of the page, below the justification and demo-video
+sections. After Update the page renders both scopes sitting in their tables looking saved. Reload
+and they are gone. The first attempt was lost to exactly that, and caught only by reloading instead
+of trusting the post-save render.
+
+Also saved: a 947-char justification. **Not** saved: the demo video, which is awkward rather than
+tedious — Google requires the unverified-app screen to appear in it and forbids recording against
+production traffic, so with the app now in production it needs a separate test project or a hidden
+staging route.
+
 ## [2026-08-23] update | One screen is not the flow: correcting yesterday's hour-old finding
 
 Published the Google Cloud app to **production** and re-minted the connection. **Updated**
