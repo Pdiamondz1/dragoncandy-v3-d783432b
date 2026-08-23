@@ -5,14 +5,38 @@
 import { MARKET, TRAJECTORY } from './assumptions';
 import { projectMonth, type TierMix } from './project';
 
+/**
+ * The two conditions `isLiquid` actually tests. Both are computed over a campaign's whole
+ * open window (`MARKET.campaignOpenDays`) — there is no 48-hour slice anywhere in this
+ * arithmetic. An earlier version of this constant also carried `withinHours: 48`, describing
+ * `minApplicantsPerCampaign` as "3 applicants within 48 hours." That was a Codex P1 finding
+ * (2026-08-23): the label promised a responsiveness window the code never computed, so a
+ * reader could believe an approval-speed guarantee this model does not support.
+ *
+ * The fix is the label, not the arithmetic. Scaling `applicantsPerCampaign` into a 48-hour
+ * slice would require an arrival-curve assumption we have no evidence for — applications to a
+ * newly posted campaign plausibly front-load rather than arriving uniformly across the open
+ * window, and inventing a distribution to force a "within 48 hours" number is exactly the
+ * plausible-but-unfounded figure this model exists to avoid. The quantity already computed
+ * — applicants per campaign over its full open window — is the one that answers the question
+ * that matters pre-launch: does a business posting a campaign get a real choice of creators.
+ * "Within 48 hours" is a RESPONSIVENESS property, only measurable from real post-launch data.
+ * See `POST_LAUNCH_RESPONSIVENESS_TARGET_HOURS` below.
+ */
 export const LIQUIDITY_THRESHOLD = {
-  /** A posted campaign must draw at least this many applicants... */
+  /** A posted campaign must draw at least this many qualified applicants over its open window. */
   minApplicantsPerCampaign: 3,
-  /** ...within this many hours. */
-  withinHours: 48,
   /** And a creator opening the app must see at least this many campaigns in range. */
   minCampaignsVisibleToCreator: 5,
 } as const;
+
+/**
+ * NOT part of `isLiquid`'s pass/fail test — this model has no arrival-curve assumption to
+ * compute it from. Recorded here as the operational target to START MEASURING once real
+ * applicant-arrival timestamps exist post-launch (our own schema can compute it the day we
+ * launch), not as a condition this financial model enforces today.
+ */
+export const POST_LAUNCH_RESPONSIVENESS_TARGET_HOURS = 48;
 
 export interface LiquidityState {
   readonly restaurants: number;
@@ -39,6 +63,10 @@ export function isLiquid(restaurants: number, creators: number): LiquidityState 
   const campaignsPerMonth = restaurants * MARKET.campaignsPerRestaurantPerMonth.value;
   const openCampaigns = campaignsPerMonth * (MARKET.campaignOpenDays.value / 30);
   const applications = creators * MARKET.applicationsPerCreatorPerMonth.value;
+  // Applicants a single campaign draws over its ENTIRE open window (MARKET.campaignOpenDays,
+  // currently 14 days) — not within any fixed hours-since-posted slice. No arrival-curve
+  // assumption exists in this model to compute a sub-window figure honestly, so none is
+  // computed here; see the comment on LIQUIDITY_THRESHOLD above.
   const applicantsPerCampaign = campaignsPerMonth === 0 ? 0 : applications / campaignsPerMonth;
 
   return {

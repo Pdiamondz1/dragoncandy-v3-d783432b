@@ -22,6 +22,7 @@ import {
   isLiquid,
   monthsToLiquidity,
   LIQUIDITY_THRESHOLD,
+  POST_LAUNCH_RESPONSIVENESS_TARGET_HOURS,
   threeYearTrajectory,
 } from '../src/pitch/model/derive';
 import {
@@ -81,7 +82,7 @@ lines.push('');
 
 lines.push('## Marketplace liquidity — Hoboken');
 lines.push('');
-lines.push(`Liquidity means a posted campaign draws at least ${LIQUIDITY_THRESHOLD.minApplicantsPerCampaign} applicants within ${LIQUIDITY_THRESHOLD.withinHours} hours, and a creator opening the app sees at least ${LIQUIDITY_THRESHOLD.minCampaignsVisibleToCreator} campaigns in range. Both are computable from our own schema the day we launch.`);
+lines.push(`Liquidity means a posted campaign draws at least ${LIQUIDITY_THRESHOLD.minApplicantsPerCampaign} qualified applicants over its open window (${MARKET.campaignOpenDays.value} days), and a creator opening the app sees at least ${LIQUIDITY_THRESHOLD.minCampaignsVisibleToCreator} campaigns in range. Both are computable from our own schema the day we launch. A ${POST_LAUNCH_RESPONSIVENESS_TARGET_HOURS}-hour responsiveness target is a separate, real goal — but it is not part of this liquidity test, because we have no arrival-curve data yet to compute it honestly; we'll start measuring it once real applicant timestamps exist post-launch.`);
 lines.push('');
 lines.push('Creator supply is tracked separately from restaurant supply, because a shortage on');
 lines.push('either side alone stops the market working.');

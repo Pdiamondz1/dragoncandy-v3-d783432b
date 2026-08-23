@@ -57,7 +57,7 @@
 
 ## Marketplace liquidity — Hoboken
 
-Liquidity means a posted campaign draws at least 3 applicants within 48 hours, and a creator opening the app sees at least 5 campaigns in range. Both are computable from our own schema the day we launch.
+Liquidity means a posted campaign draws at least 3 qualified applicants over its open window (14 days), and a creator opening the app sees at least 5 campaigns in range. Both are computable from our own schema the day we launch. A 48-hour responsiveness target is a separate, real goal — but it is not part of this liquidity test, because we have no arrival-curve data yet to compute it honestly; we'll start measuring it once real applicant timestamps exist post-launch.
 
 Creator supply is tracked separately from restaurant supply, because a shortage on
 either side alone stops the market working.

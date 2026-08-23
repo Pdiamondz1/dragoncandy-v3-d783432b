@@ -5,16 +5,45 @@ import {
   businessStepTable,
   threeYearTrajectory,
   LIQUIDITY_THRESHOLD,
+  POST_LAUNCH_RESPONSIVENESS_TARGET_HOURS,
 } from './derive';
 import type { TierMix } from './project';
 
 const MIX: TierMix = { free: 0.3, starter: 0.4, growth: 0.25, pro: 0.05 };
 
 describe('liquidity definition', () => {
-  it('states both sides of the threshold explicitly', () => {
+  it('states both sides of the enforced threshold explicitly, and nothing else', () => {
+    // Only these two keys exist on LIQUIDITY_THRESHOLD — no `withinHours`. A 48-hour
+    // responsiveness figure was removed from this object (Codex P1, 2026-08-23): the label
+    // claimed it, but isLiquid() never computed a within-hours slice, only applicants over
+    // the campaign's full open window. See the comment on LIQUIDITY_THRESHOLD in derive.ts.
+    expect(Object.keys(LIQUIDITY_THRESHOLD).sort()).toEqual(
+      ['minApplicantsPerCampaign', 'minCampaignsVisibleToCreator'].sort(),
+    );
     expect(LIQUIDITY_THRESHOLD.minApplicantsPerCampaign).toBe(3);
-    expect(LIQUIDITY_THRESHOLD.withinHours).toBe(48);
     expect(LIQUIDITY_THRESHOLD.minCampaignsVisibleToCreator).toBe(5);
+  });
+
+  it('keeps the 48-hour figure as a separate, clearly-unmodeled post-launch target', () => {
+    // Exported independently of LIQUIDITY_THRESHOLD so it can never be read as part of the
+    // pass/fail test — it's an instrumentation target to start measuring after launch, not a
+    // condition this model enforces.
+    expect(POST_LAUNCH_RESPONSIVENESS_TARGET_HOURS).toBe(48);
+  });
+
+  it("liquid depends on exactly the two computed conditions, nothing labeled but unmodeled", () => {
+    // Flip each computed condition independently and confirm it alone controls `liquid`.
+    // This is the assertion the finding asked for: the pass/fail test depends only on
+    // `openCampaigns` and `applicantsPerCampaign` — never on an hours-since-posted figure
+    // that isn't tracked anywhere in this module.
+    const barelyLiquid = isLiquid(10, 40); // 11.667 open, 3.2 applicants/campaign — both pass.
+    expect(barelyLiquid.liquid).toBe(true);
+
+    const tooFewOpen = isLiquid(1, 4); // 1.167 open (fails), applicants would pass alone.
+    expect(tooFewOpen.liquid).toBe(false);
+
+    const tooFewApplicants = isLiquid(10, 20); // 11.667 open (passes), 1.6 applicants (fails).
+    expect(tooFewApplicants.liquid).toBe(false);
   });
 });
 

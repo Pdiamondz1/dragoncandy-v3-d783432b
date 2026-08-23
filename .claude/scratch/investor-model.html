@@ -872,7 +872,7 @@
         </div>
         <div class="ramp-track" aria-hidden="true"><span class="ramp-fill" id="ramFill" style="width:8.3%"></span></div>
         <p class="liquidity-detail" id="liquidityDetail">
-          Liquid means ≥5 campaigns open at once and ≥3 applicants per campaign. At <b>2</b> restaurants and <b>8</b> creators added per month, both clear in month <b>3</b>.
+          Liquid means ≥5 campaigns open at once and ≥3 applicants per campaign over its open window (14 days) — not within any fixed hours-since-posted slice; we don't have arrival-curve data yet to compute that honestly. At <b>2</b> restaurants and <b>8</b> creators added per month, both clear in month <b>3</b>.
         </p>
       </div>
     </section>
@@ -1097,7 +1097,7 @@
       pill.className = "liquidity-pill liquid";
       fill.className = "ramp-fill";
       fill.style.width = Math.max(4, (liq.month / 36) * 100) + "%";
-      detail.innerHTML = "Liquid means ≥ 5 campaigns open at once and ≥ 3 applicants per campaign. At <b>" +
+      detail.innerHTML = "Liquid means ≥ 5 campaigns open at once and ≥ 3 applicants per campaign over its open window (14 days) — not within any fixed hours-since-posted slice. At <b>" +
         state.restaurantsAdded + "</b> restaurant" + (state.restaurantsAdded === 1 ? "" : "s") + " and <b>" +
         state.creatorsAdded + "</b> creator" + (state.creatorsAdded === 1 ? "" : "s") +
         " added per month, both clear in month <b>" + liq.month + "</b>.";
@@ -1106,7 +1106,7 @@
       pill.className = "liquidity-pill neutral";
       fill.className = "ramp-fill neutral";
       fill.style.width = "100%";
-      detail.innerHTML = "Liquid means ≥ 5 campaigns open at once and ≥ 3 applicants per campaign. At <b>" +
+      detail.innerHTML = "Liquid means ≥ 5 campaigns open at once and ≥ 3 applicants per campaign over its open window (14 days) — not within any fixed hours-since-posted slice. At <b>" +
         state.restaurantsAdded + "</b> restaurant" + (state.restaurantsAdded === 1 ? "" : "s") + " and <b>" +
         state.creatorsAdded + "</b> creator" + (state.creatorsAdded === 1 ? "" : "s") +
         " added per month, creator supply never catches up — more restaurants makes the shortage worse, not better. That's a real answer at this ratio, not an error.";
