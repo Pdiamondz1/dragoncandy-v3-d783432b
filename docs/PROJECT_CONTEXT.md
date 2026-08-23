@@ -136,11 +136,13 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   printing "no regression" is not evidence the guard works. Because a clean month is silent, dispatching with
   `test_delivery` files one labelled low finding **without failing the run** — proven against prod
   (`inserted:1`, then `updated:1`, which also proves the fingerprint that stops monthly duplicates);
-  the same gap `sendTestAlert()` closed for the Workspace alert. **Pending (2026-08-23):** the
-  scheduled run has **never fired**, and no *regression* finding has been filed by the runner rather
-  than by hand; the `rag-eval` GitHub Environment exists but `RAG_EVAL_SUPABASE_SECRET_KEY` must be
-  set in it by the account holder (until then it fails loudly at boot rather than reporting on
-  nothing).
+  the same gap `sendTestAlert()` closed for the Workspace alert.
+  **The runner is proven end to end (2026-08-23).** This entry said `RAG_EVAL_SUPABASE_SECRET_KEY`
+  "must be set in it by the account holder", and that was already false minutes after it merged: the
+  secret is set in the `rag-eval` Environment, and the first dispatched run read prod, returned all
+  four guards `ok`, filed its finding (`updated:1`) and exited 0 — so the boot-failure caveat never
+  applied in practice. **Still pending:** the *scheduled* trigger has never fired (first: 1 Sept,
+  07:00 UTC), and no *regression* finding has been filed by the runner rather than by hand.
   → `docs/wiki/concepts/rag-retrieval-evaluation.md` · `feat/rag-eval-harness`, `feat/rag-eval-automation`
 - **A third of Donny's internal corpus was never embedded** — `sync-internal-docs.mjs` sliced every
   document at 24,000 chars under a comment reading *"embed input is truncated; full_content is not"*,
