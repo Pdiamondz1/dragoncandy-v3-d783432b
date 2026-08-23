@@ -85,7 +85,7 @@ Do not install a single signature until this prints `image/png`.
    | `SA_CLIENT_EMAIL` | the service account's client email |
    | `SA_PRIVATE_KEY` | `private_key` from the JSON key, newlines as `\n` |
    | `LOG_SHEET_ID` | id of the run-log Sheet in `06 · Brand` |
-   | `SHARING_SCOPE_ENABLED` | **still unset as of 2026-08-22.** The delegation now carries `gmail.settings.sharing` (granted 2026-08-22), so step 1 below is done — but do not set this until the post-#456 code is actually pushed. See below; the order matters |
+   | `SHARING_SCOPE_ENABLED` | **`true` since 2026-08-23.** Both steps below are done and shared-mailbox signatures install. Setting it `false` stops *future* shared writes — it does **not** remove signatures already installed; see "Turning it back off" |
 
 5. **Build, then set up clasp, then push.**
 
@@ -126,7 +126,7 @@ Do not install a single signature until this prints `image/png`.
 8. **Add the trigger** — Triggers -> Add trigger -> `installAllSignatures`,
    time-driven, day timer, 2am-3am.
 
-## Shared identities: what installs, and why it is currently nothing
+## Shared identities: what installs, and what it took to get there
 
 **An alias is not a send-as identity.** This is the single most important thing
 to know about the shared-identity branch, and an earlier revision of this file
@@ -156,12 +156,15 @@ entirely on which code is deployed:
 
 | Deployed code | `SHARING_SCOPE_ENABLED` | What `dame@` reports |
 |---|---|---|
-| pre-#456 | n/a (not read) | **`ERROR`** — one 403 aborts the whole user, so even his personal signature stops refreshing. **This is the live state as of 2026-08-22.** |
-| #456+ | unset / `false` | `PARTIAL`, 3 denied — personal signatures written, shared ones refused cleanly |
-| #456+ | `true` | `ok`, shared signatures installed |
+| pre-#456 | n/a (not read) | `ERROR` — one 403 aborts the whole user, so even his personal signature stops refreshing. Observed 8/21 and 8/22. |
+| #456+ | unset / `false` | `PARTIAL`, 3 denied — personal signatures written, shared ones refused cleanly. Observed 8/23. |
+| #456+ | `true` | `ok`, shared signatures installed. **This is the live state as of 2026-08-23** — `ok / 4 identities / 3 shared`. |
+
+All three rows were observed in that order, and they are in the log Sheet.
 
 So `0 shared` is only the expected answer for a user with **no** shared
-identities. For `dame@`, the expected answer is now a denied count.
+identities — which is everyone except `dame@`. For him the expected answer is
+now **`4 identities / 3 shared`**, and anything less means something regressed.
 
 **To make shared signatures install** for anyone else, the address has to
 become a send-as identity on their account too. There are two routes.
@@ -221,7 +224,7 @@ re-run, get the identical 403, and have no idea why.)
    (The edit dialog appends a row rather than replacing; check `basic` is
    still present before authorizing, because losing it breaks everything.)
 2. **Then the script property.** Set `SHARING_SCOPE_ENABLED` to `true`.
-   **NOT done, deliberately** — see the propagation note below.
+   **DONE 2026-08-23.**
 
 **Do not reverse these.** Asking for a scope the delegation does not carry
 fails the *entire* token exchange with `unauthorized_client` — not just the
@@ -229,32 +232,93 @@ shared identities, but every signature for every user. If that happens, set
 `SHARING_SCOPE_ENABLED` back to `false` and everything returns to working
 immediately; the error message says so too.
 
-**A granted scope is not an immediately usable one.** Google's domain-wide
-delegation changes propagate on their own schedule — minutes, sometimes
-longer. That is the same failure as step 2 running ahead of step 1, so treat
-"granted in the console" as the start of a window, not a green light. The
-safe sequence from here is: push the code, run `installAllSignatures()` and
-confirm it reports `PARTIAL` with a non-zero denied count (proving the basic
-path still works), *then* set the property, *then* run again. If the second
-run throws `unauthorized_client`, propagation has not finished — set the
-property back to `false`, wait, retry.
+**A granted scope may not be an immediately usable one.** Google's domain-wide
+delegation changes propagate on their own schedule, so treat "granted in the
+console" as the start of a window rather than a green light. The safe sequence
+is: push the code, run `installAllSignatures()` and confirm it reports
+`PARTIAL` with a non-zero denied count (which proves the `basic` path still
+works), *then* set the property, *then* run again. If that second run throws
+`unauthorized_client`, propagation has not finished — set the property back to
+`false`, wait, retry.
 
-To undo the whole thing later: set the property to `false` first, then remove
-the scope from the delegation. Same rule, reversed.
+**That sequence was followed on 2026-08-23 and both runs are in the log Sheet**,
+which is why it is written down: `PARTIAL / 1 identity, 3 denied / 0 shared`,
+then `ok / 4 identities / 3 shared`. About **seven hours** elapsed between the
+console grant (2026-08-22 19:36 ET) and the enabling run (2026-08-23 02:39 ET),
+with no `unauthorized_client`. That gap is long enough that it says **nothing**
+about how quickly propagation completes — do not read it as "40 minutes is
+enough" or any other short interval. If you need to move faster, the `PARTIAL`
+run is your instrument: it tells you the narrow path works, and a failed
+enabling run after it is diagnosable as propagation rather than breakage.
+
+**Keep the two-run shape if you ever redo this.** The `PARTIAL` run is not a
+formality: it is the only observation that separates "the scope fixed it" from
+"the scope hid a still-broken loop". Skip it and a success at the end proves
+strictly less.
+
+### Turning it back off — and what that does not do
+
+To undo: set `SHARING_SCOPE_ENABLED` to `false` first, *then* remove the scope
+from the delegation. Same ordering rule, reversed.
+
+**That stops future shared-identity writes. It does not remove the signatures
+already installed.** They live on the sendAs records in Gmail, not in this
+script, so after disabling the flag `info@`, `support@` and `appstore@` keep
+sending the signature they last received, indefinitely, while every subsequent
+run reports `PARTIAL` with a denied count. An operator who reads "disabled" as
+"removed" will be wrong about what is going out.
+
+To actually remove them, do one of these while the scope is still granted and
+the flag still `true`:
+
+- **In bulk, via the API** — PATCH each identity's `signature` to an empty
+  string through the same `settings/sendAs/{email}` call the installer uses.
+  There is no helper for this in `Code.gs`; it would need writing. This is the
+  reliable route, because it targets exactly the field the installer wrote.
+- **Delete the send-as identity** — Gmail → Settings → Accounts and Import →
+  "Send mail as" → *delete*. Blunt (the address stops being usable as a sender)
+  but unambiguous, and it stops the installer matching it.
+- **By hand in the UI** — Gmail → Settings → **General → Signature**, *not* the
+  "edit info" dialog on the send-as address, which only covers display name and
+  reply-to. **Caveat: this path is unverified.** Gmail's General tab manages
+  named signatures with per-address defaults, and the exact correspondence
+  between those and the `sendAs[].signature` field this script writes has not
+  been checked on a real account. Confirm before relying on it, or use the API
+  route above.
+
+Order matters here too: revoke the scope first and **this automation** can no
+longer clear them. That is a limit of the tooling, not of Gmail — the mailbox
+owner can always clear a signature by hand in Gmail settings. But it means a
+scripted cleanup becomes impossible, so clear first, revoke second.
 
 An earlier version of this file said no API could create a send-as identity.
 That was wrong, and Codex caught it. Then it said the manual route was
 permission-free. That was also wrong, and only running it caught that one.
 
-The same constraint applies, for the same reason, if these addresses are ever
-converted to real Google Groups (corporate-setup spec, decision 9). A Group is
-not a send-as identity either. The conversion would therefore change nothing
-about this branch's behaviour, because it is already installing nothing —
-but it would remove the aliases, so anyone who *had* completed the manual
-send-as step would lose it.
+**If these addresses are ever converted to real Google Groups** (corporate-setup
+spec, decision 9), the cost is now concrete rather than hypothetical. A Group is
+not a send-as identity either, and the conversion removes the aliases the three
+working send-as identities were built on. So `info@`, `support@` and `appstore@`
+would stop being send-as identities on `dame@`, their signatures would go with
+them, and the run would drop from `4 identities / 3 shared` back to
+`1 identity / 0 shared`.
 
-The installer warns when it installs zero shared signatures, so this stays
-visible rather than silent.
+*An earlier revision of this paragraph said the conversion "would change nothing,
+because it is already installing nothing." That was true on 2026-08-21 and stopped
+being true on 2026-08-23.* Re-cost the conversion against the live state, not
+against this sentence.
+
+**The zero-shared warning is aggregate, not per user** (`Code.gs.js`: `if
+(totalSharedInstalled === 0)`). Today that is equivalent to a per-user check,
+because `dame@` is the only account with shared identities — if he loses all
+three, the domain total hits zero and the warning fires.
+
+**It stops being equivalent the moment a second user gets a shared identity.**
+After that, `dame@` could lose all three and the run would stay silent as long
+as somebody else still installed one. Whoever adds the second user should either
+add per-user detection or accept that the warning is a domain-level canary only.
+The per-user numbers are always in the log Sheet regardless; it is the automatic
+warning that is coarse.
 
 ## Editing a signature
 
