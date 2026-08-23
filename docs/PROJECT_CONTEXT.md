@@ -85,8 +85,8 @@ stale silently; re-read the invoices before quoting this anywhere. Production la
 delivery system stabilization that gated launch landed in late May 2026;
 remaining blockers are final bug resolution and payment-flow hardening.
 
-**Codebase scale** (as of 2026-08-23): 92 pages, 269 hooks, 100 edge functions (`verify-phone` +
-`verify-address` added by the identity-verification slice — both undeployed pending secrets).
+**Codebase scale** (as of 2026-08-23): 95 pages, 272 hooks, 104 edge functions. `verify-phone` +
+`verify-address` were added by the identity-verification slice — both undeployed pending secrets.
 **Repo**: `/Users/dwill/GIT/dragoncandy-v3-d783432b` (moved from Windows to macOS 2026-08-14)
 **Active integrations**: Stripe Connect, Outstand.so (social media —
 Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
@@ -1426,7 +1426,7 @@ Apply to every recommendation, every prompt, every PR:
 **Frontend**: React 18 / TypeScript (strict), Vite, Tailwind CSS, shadcn/ui,
 Framer Motion, Vercel (prod hosting + per-PR staging previews), Lovable.dev (optional
 AI-edit surface via GitHub sync; no longer the host), GitHub.
-**Backend**: Supabase (70+ tables, 98 Deno Edge Functions, RLS, realtime),
+**Backend**: Supabase (70+ tables, 104 Deno Edge Functions, RLS, realtime),
 Stripe Connect (test mode).
 **AI**: Claude Sonnet 4 + Haiku for generation (cost routing via edge
 functions, backend only); OpenAI for embeddings (RAG/matching). Model routing

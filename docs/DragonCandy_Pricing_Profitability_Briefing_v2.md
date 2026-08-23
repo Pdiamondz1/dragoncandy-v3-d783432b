@@ -38,18 +38,18 @@ Before we talk about projections, here's exactly where DragonCandy stands right 
 |--------|--------------|
 | Users on platform | ~30 (organic, zero marketing spend) |
 | Paying customers | 0 (pre-revenue; Stripe is in test mode) |
-| Monthly operating cost | ~$295/month total |
+| Monthly operating cost | ~$572/month total (was ~$295 before Outstand's price rose — see §5) |
 | Marketing spend to date | $0 |
 | Team size | 1 (founder + AI development tools) |
 | Platform status | Fully built, feature-complete for launch |
 
-**Our entire platform runs for less than $300/month.** That's $295 split across four tools: Claude AI ($200), OpenAI ($20), Lovable.dev hosting ($50), and Supabase database ($25). There is no payroll, no office, no ad spend. Every feature described in this document is built and live on dragoncandy.com — we are pre-revenue by choice, not by capability.
+**Our entire platform runs for about $572/month.** That's split across five tools: Claude AI ($200), Outstand.so ($249), Lovable.dev hosting ($50), Supabase database ($45), and OpenAI ($20). This used to read "less than $300/month, $295 split across four tools" — Outstand raised its price from $67 to $249 and the Supabase figure was itself stale ($25 vs. the real $45), and nothing re-checks a cost figure, so the total was wrong by ~$277 for an unknown stretch (see §5). There is no payroll, no office, no ad spend. Every feature described in this document is built and live on dragoncandy.com — we are pre-revenue by choice, not by capability.
 
 ### What This Document Explains, in Plain English
 
 - Exactly what DragonCandy does for each of the three customer types: restaurants, creators, and brand sponsors — verified against the actual working software, not a wish list.
 - How much we charge today, what we recommend changing, and what each customer actually gets.
-- How much it costs us to find and sign up one of each type of customer (restaurant, creator, brand) — starting from our real $295/month baseline.
+- How much it costs us to find and sign up one of each type of customer (restaurant, creator, brand) — starting from our real $572/month baseline.
 - What we will spend on marketing, and why we don't need a giant marketing budget.
 - Our three-year revenue, costs, and profit forecast — starting honestly from zero.
 - How we build a business "moat" and keep AI as our advantage instead of letting it make us obsolete.
@@ -58,7 +58,7 @@ Before we talk about projections, here's exactly where DragonCandy stands right 
 
 > **1. We don't need venture capital.**
 >
-> 85% of bootstrapped business software companies become profitable. Only 46% of venture-backed ones do. We can hit profit at $3M in revenue. A funded competitor would need $10M+ because of the team they'd be forced to hire. We already run the entire platform for $295/month — that's our burn rate.
+> 85% of bootstrapped business software companies become profitable. Only 46% of venture-backed ones do. We can hit profit at $3M in revenue. A funded competitor would need $10M+ because of the team they'd be forced to hire. We already run the entire platform for $572/month — that's our burn rate.
 
 > **2. The AI behind Donny is cheaper than the email it sends.**
 >
@@ -195,6 +195,12 @@ Every service above maps to one or more of our four revenue streams. This is how
 
 DragonCandy currently charges customers two ways: a monthly subscription (like Netflix), plus a 5% cut on every campaign that flows through the platform (like Uber's percentage on each ride). This section walks through what we charge today and what each tier actually unlocks.
 
+> **Superseded 2026-08-23.** The tiers below ($199 / $499 / $999, flat 5% take rate) describe
+> April 2026. The hybrid ladder this document recommends in §4 **shipped in May** — live
+> pricing is $149 / $449 / $899 with take rates of 10 / 7 / 5 / 3 / 2%, per
+> `docs/STRIPE_PRICES.md`, `supabase/functions/_shared/platform-fee.ts` and migration
+> `20260507000001`. Read §4 as describing the current state, not a proposal.
+
 ### The Current Tiers, in Plain English
 
 These are the exact prices in the live app at dragoncandy.io as of April 2026:
@@ -310,12 +316,13 @@ Before we project future costs, here's exactly what DragonCandy costs to run rig
 | Claude AI (Max plan) | $200 | Powers Donny AI assistant, campaign brief generation, creator matching, and all AI development |
 | OpenAI subscription | $20 | Supplementary AI for specific tasks |
 | Lovable.dev hosting | $50 | Hosts the dragoncandy.io website and app |
-| Supabase (Pro plan) | $25 | Database, authentication, file storage, real-time messaging, edge functions (56 serverless functions) |
-| **TOTAL** | **$295/month** | **Entire platform operating cost** |
+| Supabase (Pro plan) | $45 | Database, authentication, file storage, real-time messaging, edge functions (56 serverless functions) |
+| Outstand.so | $249 | Social media integration (Instagram, TikTok, YouTube) |
+| **TOTAL** | **$572/month** | **Entire platform operating cost** |
 
-That's $3,540 per year to run a platform with campaign management, AI matching, real-time messaging, escrow payments, Toast POS integration, file management with watermarks, team management, and 42 backend functions.
+That's $6,864 per year to run a platform with campaign management, AI matching, real-time messaging, escrow payments, file management with watermarks, team management, and 42 backend functions. (A live connection to Toast's POS system does not exist — six `toast-*` edge functions are deployed but every one answers `toast_not_configured` 503, and no `%toast%` table exists on prod; see `docs/PROJECT_CONTEXT.md` §6.)
 
-For context: Toast (a restaurant SaaS company) spends approximately $1.2 billion per year on operations. We spend $3,540. Obviously we're at a different scale, but the ratio shows how lean a modern AI-powered platform can be.
+For context: Toast (a restaurant SaaS company) spends approximately $1.2 billion per year on operations. We spend $6,864. Obviously we're at a different scale, but the ratio shows how lean a modern AI-powered platform can be.
 
 ### What One Customer Costs Us to Serve
 
@@ -385,11 +392,11 @@ Brand sponsors are the slowest to sign up but most valuable when they do. Averag
 
 | | Today (Pre-Launch) | At 250 Users | At 1,000 Customers |
 |-|-------------------|-----------------|-------------------|
-| **Infrastructure** | $295/mo | $544-$764/mo | $1,269-$2,089/mo |
+| **Infrastructure** | $572/mo | $544-$764/mo | $1,269-$2,089/mo |
 | **Marketing** | $0 | $2,000-$4,000/mo | $7,000-$15,000/mo |
 | **Payroll** | $0 | $0-$15,000/mo (1 hire) | $45,000-$75,000/mo (3-5 hires) |
 | **AI costs (Donny)** | Included in Claude sub | $200-$400/mo | $800-$1,600/mo |
-| **TOTAL** | **$295/mo** | **$2,744-$20,164/mo** | **$54,069-$93,689/mo** |
+| **TOTAL** | **$572/mo** | **$2,744-$20,164/mo** | **$54,069-$93,689/mo** |
 | **Revenue** | $0 | ~$87,700/mo | $750,000-$800,000/mo |
 | **Profit margin** | N/A | 77-97% | 88-93% |
 
@@ -468,7 +475,7 @@ Focus: 2-3 metro markets. Onboard creators first, restaurants second. Manual pla
 
 | Line Item | Launch Year |
 |----------|------------|
-| Starting point | $0 revenue, ~30 users, $295/mo operating cost |
+| Starting point | $0 revenue, ~30 users, $572/mo operating cost |
 | Paying restaurant customers (end of year) | 100-200 |
 | Blended ARPU per month | $250 |
 | Annual recurring revenue (ARR) at year end | $300K-$600K |
