@@ -22,6 +22,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "typecheck:functions": "node scripts/check-edge-functions.mjs",
     "docs:scale": "node scripts/update-scale-numbers.mjs",
+    "model:doc": "npx tsx scripts/generate-investor-model.ts",
     "build:workspace": "node scripts/workspace/build-gs.mjs",
     "preview:url": "node scripts/preview-url.mjs",
     "pitch:pdf": "vite build && node scripts/export-pitch-pdf.mjs",
