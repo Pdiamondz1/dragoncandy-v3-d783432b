@@ -1,0 +1,88 @@
+name: rag-retrieval-eval
+
+# Monthly retrieval-quality check for Donny's internal RAG.
+#
+# WHAT IT GUARDS. `npm run eval:rag` scores retrieval over 53 real queries taken from
+# `donny_tool_executions` and compares the result to `supabase/scripts/rag-eval/baseline.json`.
+# It exists because of a defect that ran for two months while every signal read green: a third of
+# the internal corpus was truncated away before embedding, and the sync reported `updated=142
+# errors=0` throughout (docs/wiki/concepts/rag-document-chunking.md). Unit tests cannot see that
+# class of failure — it lives in the deployed index, not in the code — so something has to look.
+#
+# WHY MONTHLY, AND NOT PER PR. This measures the DEPLOYED index, which only changes after a merge
+# and a sync. A per-PR run would score the same index over and over, need the prod key on every
+# pull request, and write temporary rows to production dozens of times a day. The per-PR half of
+# this guard is `supabase/scripts/rag-eval/pinned-constants.test.mjs`, which needs no secrets and
+# catches the likely regression: somebody editing k or the chunk size.
+#
+# REPORT-ONLY. A clean run files nothing and is silent by design. A regression files an AIOS
+# finding through `aios-report-ingest` (the audited choke point that can only write briefings and
+# findings) and fails the job, so it shows up red as well as in /internal/findings. Nothing here
+# writes to a threshold, a baseline or the query set.
+#
+# FAIL-CLOSED. With no secret in the environment, rag-eval.mjs exits 1 at boot with a message
+# rather than producing a report about nothing.
+#
+# SECRET. `RAG_EVAL_SUPABASE_SECRET_KEY` lives in the `rag-eval` GitHub Environment — the same
+# prod key the sync scripts use, which is also what `aios-report-ingest` accepts as a bearer. Its
+# own environment rather than a shared one so this job's access can be revoked on its own.
+# To pause the routine: comment out the `schedule` below. `workflow_dispatch` still works.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Measure and compare, but never file a finding"
+        type: boolean
+        default: false
+  schedule:
+    # Monthly, 1st at 07:00 UTC — between the Dezzy press scout (08:00) and nothing else, so the
+    # three 1st-of-month routines do not contend. Monthly rather than weekly because the corpus
+    # moves over weeks, and a guard that cries wolf gets muted.
+    - cron: "0 7 1 * *"
+
+concurrency:
+  group: rag-eval
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    # A GitHub Environment scopes the prod key to this workflow and lets it be revoked alone.
+    environment: rag-eval
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      # Deliberately NO `npm ci`. Every script on this path imports node builtins and local files
+      # only — nothing from node_modules. Skipping the install removes a few minutes and, more to
+      # the point, removes a registry-resolution step from a job that has the prod key exported.
+
+      - name: Measure retrieval quality
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.RAG_EVAL_SUPABASE_SECRET_KEY }}
+          RAG_EVAL_JSON: ${{ runner.temp }}/rag-eval.json
+        run: node supabase/scripts/with-env.mjs rag-eval.mjs
+
+      - name: Keep the numbers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rag-eval-result
+          path: ${{ runner.temp }}/rag-eval.json
+          if-no-files-found: ignore
+          retention-days: 90
+
+      - name: File a finding if a metric moved
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.RAG_EVAL_SUPABASE_SECRET_KEY }}
+          RAG_EVAL_JSON: ${{ runner.temp }}/rag-eval.json
+          # Through an env var, never interpolated into the shell command — a crafted input must
+          # not be able to reach the secret exported alongside it.
+          RAG_EVAL_DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: node supabase/scripts/with-env.mjs rag-eval-report.mjs

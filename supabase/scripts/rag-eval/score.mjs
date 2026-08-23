@@ -105,3 +105,83 @@ export function tailShare(results, cap = 24_000) {
   }
   return { beyond, total, share: total ? beyond / total : 0, queriesTouched, queries: results.length };
 }
+
+/**
+ * Compare one run against the committed baseline (rag-eval/baseline.json).
+ *
+ * The point of automating this evaluation is NOT to re-derive the same numbers every month — it
+ * is to notice when they move. So the reference figures and the tolerances both live in the
+ * baseline file, beside each other, where a human can retune them without editing code.
+ *
+ * `baseline.metrics[key]` is the reference value; `baseline.thresholds[key]` says how far it may
+ * move and in which direction that is bad. Tolerances are ABSOLUTE in the metric's own units — a
+ * mix of absolute and relative ones reads fine and gets misapplied.
+ *
+ * COMPARABILITY IS CHECKED BEFORE ANYTHING IS COMPARED, and it is checked per metric rather than
+ * for the run as a whole:
+ *
+ *  - Change the query set and every figure shifts for a reason that has nothing to do with
+ *    retrieval quality. Nothing is comparable; say so and stop.
+ *  - Change the LABEL set and the recall/precision denominators move, but the control separation
+ *    and the index size do not depend on labels at all. Those stay comparable. Declaring the whole
+ *    run incomparable there would throw away the check that matters most.
+ *
+ * A silently-wrong comparison is worse than no comparison: it reads as "nothing regressed".
+ */
+export function compareToBaseline(result, baseline) {
+  const out = { comparable: true, notes: [], regressions: [], checks: [] };
+
+  if (result.realQueries !== baseline.querySetSize) {
+    out.comparable = false;
+    out.notes.push(
+      `query set changed (${baseline.querySetSize} -> ${result.realQueries}); every figure shifts ` +
+      `with it, so this run cannot be compared. Re-record baseline.json against the new set.`,
+    );
+    return out;
+  }
+
+  // Labels changed => recall/precision denominators changed. Those become incomparable; the
+  // label-free checks below are unaffected and still run.
+  const labelsMatch = result.labelledQueries === baseline.labelledQueries;
+  if (!labelsMatch) {
+    out.notes.push(
+      `labelled queries changed (${baseline.labelledQueries} -> ${result.labelledQueries}); ` +
+      `recall and precision are not comparable this run. The label-free checks still are.`,
+    );
+  }
+
+  const observedBy = {
+    controlsAboveWeakestReal: result.controls.controlsAboveWeakestReal,
+    recallAt10: result.recallAt10,
+    locatedShare: result.locatedShare,
+    indexChunks: result.index.chunks,
+  };
+
+  for (const [key, spec] of Object.entries(baseline.thresholds ?? {})) {
+    const observed = observedBy[key];
+    if (observed === undefined) {
+      // A threshold naming a metric this run does not produce would otherwise sit there passing
+      // forever — a guard that cannot fire, which is indistinguishable from a guard that passes.
+      out.notes.push(`threshold '${key}' names a metric this run does not measure; not checked.`);
+      continue;
+    }
+    if (spec.needsLabels && !labelsMatch) continue;
+    const base = baseline.metrics?.[key];
+    if (typeof base !== "number") {
+      out.notes.push(`baseline.metrics.${key} is missing; '${key}' not checked.`);
+      continue;
+    }
+    // Direction-aware: a control-overlap COUNT going up is bad, a recall going down is.
+    const worseBy = spec.higherIsBetter ? base - observed : observed - base;
+    const breached = worseBy > spec.tolerance;
+    out.checks.push({ key, baseline: base, observed, worseBy, tolerance: spec.tolerance, breached });
+    if (breached) {
+      out.regressions.push({
+        key, severity: spec.severity, baseline: base, observed,
+        tolerance: spec.tolerance, summary: spec.summary,
+      });
+    }
+  }
+
+  return out;
+}

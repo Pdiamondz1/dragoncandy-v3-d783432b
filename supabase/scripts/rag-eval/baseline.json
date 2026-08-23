@@ -1,0 +1,54 @@
+{
+  "recordedAt": "2026-08-23",
+  "recordedAgainst": "prod donny_knowledge, scope=internal, 401 chunks / 143 documents",
+  "note": "Reference figures for `npm run eval:rag`. The scheduled run (.github/workflows/rag-eval.yml) compares against these and files an AIOS finding only when a metric moves past its tolerance. RE-RECORD THIS FILE whenever the query set, the label set, k, or the chunk size changes — all four make the old figures describe a configuration that no longer ships. Re-recording is a deliberate act with a PR behind it, never something a scheduled job does to itself: a baseline that follows the observed value is a thermometer that reports room temperature no matter what the room is doing.",
+
+  "querySetSize": 53,
+  "controlSetSize": 8,
+  "labelledQueries": 7,
+
+  "metrics": {
+    "controlsAboveWeakestReal": 0,
+    "recallAt10": 0.913,
+    "locatedShare": 0.99,
+    "indexChunks": 401
+  },
+
+  "context": {
+    "note": "Recorded for the record and shown in a finding. NOT guarded — nothing below fires an alert.",
+    "recallAt5": 0.652,
+    "precisionAt10": 0.4375,
+    "tailShareAt10": 0.1226,
+    "indexDocuments": 143,
+    "realTop1Range": [0.437, 0.632],
+    "controlTop1Range": [0.164, 0.28]
+  },
+
+  "thresholds": {
+    "controlsAboveWeakestReal": {
+      "tolerance": 0,
+      "higherIsBetter": false,
+      "severity": "critical",
+      "summary": "A control query — about a subject the corpus genuinely does not cover — now scores above the weakest real query. Similarity has stopped discriminating, so every other number in the report is noise. Check the embedding model and the sync before reading anything else."
+    },
+    "recallAt10": {
+      "tolerance": 0.1,
+      "higherIsBetter": true,
+      "needsLabels": true,
+      "severity": "high",
+      "summary": "Donny's top 10 chunks are returning less of the known-relevant material than when this was measured. The likely causes, in order: k was changed, the chunk size was changed, or the corpus grew enough that relevant passages are being crowded out."
+    },
+    "locatedShare": {
+      "tolerance": 0.15,
+      "higherIsBetter": true,
+      "severity": "medium",
+      "summary": "A large share of indexed chunks can no longer be found in the source files they claim to come from. That means the index and the repository have drifted apart — most often a sync that has not run, or has been failing quietly."
+    },
+    "indexChunks": {
+      "tolerance": 80,
+      "higherIsBetter": true,
+      "severity": "high",
+      "summary": "The internal index has shrunk materially. Documents are reaching Donny in no form at all — the same class of defect as the 2026-08-23 truncation, which was likewise silent in every signal the sync itself produced."
+    }
+  }
+}
