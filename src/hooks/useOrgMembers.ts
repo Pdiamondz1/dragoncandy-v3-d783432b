@@ -9,12 +9,6 @@ type InviteResult = {
   error?: string;
 };
 
-type ProfileJoin = {
-  full_name: string | null;
-  email: string | null;
-  avatar_url: string | null;
-} | null;
-
 type MemberRow = {
   id: string;
   org_id: string;
@@ -25,7 +19,9 @@ type MemberRow = {
   invited_at: string | null;
   joined_at: string | null;
   last_active_at: string | null;
-  profiles: ProfileJoin;
+  full_name: string | null;
+  email: string | null;
+  avatar_url: string | null;
 };
 
 function mapRowToMember(row: MemberRow): OrgMember {
@@ -39,9 +35,9 @@ function mapRowToMember(row: MemberRow): OrgMember {
     invited_at: row.invited_at,
     joined_at: row.joined_at,
     last_active_at: row.last_active_at,
-    full_name: row.profiles?.full_name ?? null,
-    email: row.profiles?.email ?? undefined,
-    avatar_url: row.profiles?.avatar_url ?? null,
+    full_name: row.full_name,
+    email: row.email ?? undefined,
+    avatar_url: row.avatar_url,
   };
 }
 
@@ -51,17 +47,16 @@ export function useOrgMembers(orgId: string | undefined) {
     queryFn: async (): Promise<OrgMember[]> => {
       if (!orgId) return [];
 
-      const { data, error } = await supabase
-        .from('org_members')
-        .select(`
-          id, org_id, user_id, role, invited_by,
-          invitation_status, invited_at, joined_at, last_active_at,
-          profiles!org_members_user_id_fkey (full_name, email, avatar_url)
-        `)
-        .eq('org_id', orgId)
-        .neq('invitation_status', 'suspended')
-        .order('role', { ascending: true })
-        .order('joined_at', { ascending: true });
+      // `profiles.email` is not client-select-granted at the table/column level
+      // (see 20260824140000_profiles_select_column_lockdown.sql) -- a direct
+      // `.from('org_members').select('...profiles!fkey(email)')` embed can no longer
+      // reach it. get_org_members_roster is a SECURITY DEFINER RPC scoped to orgs the
+      // caller is an ACTIVE member of; it reads profiles.email with the function
+      // owner's privileges, not the caller's grants.
+      const { data, error } = await supabase.rpc(
+        'get_org_members_roster' as never,
+        { p_org_id: orgId } as never
+      );
 
       if (error) throw error;
 
