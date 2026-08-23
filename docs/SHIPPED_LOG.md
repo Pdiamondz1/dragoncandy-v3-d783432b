@@ -104,6 +104,52 @@ reader, not the store.
 
 13 new tests, controlled — restoring the truncation turns 5 red, and collapsing the embedding
 split turns another 3 red. 2,610 tests pass.
+## [2026-08-23] Account completeness engine (slice 1) — one derived model, and the three defects the plan itself shipped
+
+**Slice 1 of 4** in the signup/onboarding redesign. Replaces two overlapping half-systems that tracked
+the same facts different ways and could disagree: `deriveReadiness`/`ReadinessGate` (live-derived, but
+only ever knew Stripe and social) and `MissionChecklist`/`profiles.first_run_missions` (a stored JSONB
+blob of booleans written optimistically by whichever page the user happened to visit). A stored boolean
+disagreeing with live truth is this project's recurring failure class — same shape as
+[[Updated-At Trigger Drift]] and [[Content Delivery State Machine]].
+
+**What shipped.** `src/lib/accountReadiness/` — a pure engine with four requirement states
+(`met`/`unmet`/`pending`/`unknown`), two tiers (`required`/`recommended`, the latter dismissible and
+never gating), a per-role requirement table, and an **action registry** so `ReadinessGate` takes
+`action="apply_campaign"` instead of `require={{stripe:true}}`. `useAccountReadiness` assembles live
+facts, with a deliberate **read split**: the checklist uses the cheap mirrored
+`stripe_onboarding_complete` column, the gate pays for the authoritative Stripe read — a briefly stale
+checklist is harmless, a stale gate costs money. Both share the `['payout-status', role, orgUnitId]`
+key `StripeConnectSetup` invalidates, so **same key requires same shape**: the hook caches the full
+`PayoutStatusData` and derives the narrow facts locally. Three renderings, no new surfaces. Migration
+`20260823120000` adds three nullable `profiles` columns (`phone`, `phone_verified_at`,
+`dismissed_requirements` — deliberately NOT reusing `dismissed_coachmarks`, since two arrays of opaque
+string keys sharing one column means a coachmark silently dismissing a requirement with no type error).
+
+**The safety contract:** `unknown` never blocks and never renders as a failure. A total API outage
+must produce zero outstanding items and zero blocked actions. Only a definitive `met` counts toward
+any tally.
+
+**Three defects came from the plan text itself, and the review loop caught all three.** (1) A
+**sentinel UUID fabricated a fact**: `.eq('org_id', profile?.org_id ?? '00000000-…')` — `profile`
+resolves after `user`, so the query *succeeded* with `count: 0` and derived `unmet`, telling users to
+"Invite your team" during a window when we did not know whether they had one. **Untestable by
+construction** (the test globally mocked `useQuery`, so no `queryFn` ever ran); fixed by skipping the
+read until `org_id` is known, adding it to the query key, and extracting a directly testable fetch —
+then *proving* the regression test fails against the original code. (2) The plan would have **stranded
+users in first-run mode**: `isFirstRun` ends only when `completed_at` is stamped, which happens only
+when the four surviving page-visit mission keys flip true, so rendering derived rows alone would let
+the checklist read 5/5 while the dashboard disagreed. (3) **Three tests that could not fail**, two
+guarding the branch's headline behaviour — each fix carries a break-and-restore proof.
+
+**Rollout posture is no-op:** `READINESS_GATE_ENABLED` does not exist in `feature_flags`, so the gate
+renders children unconditionally — and has done since it originally shipped.
+
+**Merged without the Codex second review**, at the founder's explicit direction after being told what
+that skipped. PR #472 → `8889baef`; deployed 2026-08-23 10:53 UTC. Prod verification of the changed
+surfaces is still owed — every one is behind auth, and no test-account credentials exist in the
+project memory system despite `CLAUDE.md` saying they do.
+→ `docs/wiki/concepts/account-completeness-engine.md` · #472
 
 ## [2026-08-23] One wrong axis, seven pages: the public logo and a dashboard that wasn't there
 

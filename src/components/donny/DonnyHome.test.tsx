@@ -101,10 +101,25 @@ vi.mock('@/components/reviews/RatingPromptManager', () => ({
 vi.mock('@/components/reviews/SponsorshipRatingPromptManager', () => ({
   SponsorshipRatingPromptManager: () => <div data-testid="sponsorship-rating-prompt" />,
 }));
-// Hits Supabase via React Query (useAccountReadiness); render nothing so this
-// suite stays a unit test with no QueryClientProvider needed.
-vi.mock('@/components/account/AccountChecklistRows', () => ({
-  AccountChecklistRows: () => <div data-testid="account-checklist-rows" />,
+// AccountChecklistRows itself is left real — it has an exported hook seam
+// (useAccountReadiness), unlike RatingPromptManager/SponsorshipRatingPromptManager
+// above, which hit Supabase directly. Mocking the HOOK rather than the
+// component means the containment test below exercises the real render tree
+// (real slot div, real rows) without needing a QueryClientProvider — the mock
+// replaces useAccountReadiness before it ever reaches React Query.
+const accountReadiness = vi.hoisted(() => ({
+  current: {
+    requirements: [] as unknown[],
+    required: [] as unknown[],
+    recommended: [] as unknown[],
+    outstanding: [] as unknown[],
+    missingFor: () => [] as unknown[],
+    isBlocked: () => false,
+    dismiss: vi.fn(),
+  },
+}));
+vi.mock('@/hooks/useAccountReadiness', () => ({
+  useAccountReadiness: () => accountReadiness.current,
 }));
 vi.mock('@/components/DashboardLayout', () => ({
   DashboardLayout: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -188,6 +203,10 @@ beforeEach(() => {
   donnyState.isStreaming = false;
   donnyState.streamingContent = '';
   donnyState.error = null;
+  accountReadiness.current = {
+    requirements: [], required: [], recommended: [], outstanding: [],
+    missingFor: () => [], isBlocked: () => false, dismiss: vi.fn(),
+  };
 });
 
 describe('DonnyHome — greeting', () => {
@@ -789,6 +808,30 @@ describe('DonnyHome — page-level behaviour', () => {
     const sponsorshipPrompt = screen.getByTestId('sponsorship-rating-prompt');
     expect(ratingPrompt.closest('[data-attention-slot]')).not.toBeNull();
     expect(sponsorshipPrompt.closest('[data-attention-slot]')).not.toBeNull();
+    expect(screen.getAllByText('Needs your attention')).toHaveLength(1);
+  });
+
+  it('keeps AccountChecklistRows INSIDE the attention frame too', () => {
+    // Same containment question as above, asked of #472's new child. There
+    // must be an outstanding requirement or AccountChecklistRows returns null
+    // and there is nothing to find a slot for.
+    accountReadiness.current = {
+      requirements: [{
+        key: 'stripe_onboarding', tier: 'required', label: 'Set up payouts',
+        why: 'Connect Stripe to get paid.', resolve: { route: '/settings/payouts' },
+        state: { status: 'unmet' },
+      }],
+      required: [], recommended: [],
+      outstanding: [{
+        key: 'stripe_onboarding', tier: 'required', label: 'Set up payouts',
+        why: 'Connect Stripe to get paid.', resolve: { route: '/settings/payouts' },
+        state: { status: 'unmet' },
+      }],
+      missingFor: () => [], isBlocked: () => false, dismiss: vi.fn(),
+    };
+    renderHome();
+    const checklistRow = screen.getByText('Set up payouts');
+    expect(checklistRow.closest('[data-attention-slot]')).not.toBeNull();
     expect(screen.getAllByText('Needs your attention')).toHaveLength(1);
   });
 

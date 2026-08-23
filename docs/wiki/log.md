@@ -16,6 +16,20 @@ Cross-links added on [[Knowledge-Sync Automation]] and [[Donny RAG Scope Boundar
 latter's "the internal copy handles the same page gracefully (truncate-embed, full markdown
 preserved in internal_docs)" claim is the defect stated as a mitigation, and is corrected
 there and in the script comment it came from.
+## [2026-08-23] ingest | One derived model, and the three defects my own plan shipped
+
+Ingested `raw/sessions/2026-08-23-account-completeness-engine.md`. **Created** [[Account Completeness
+Engine]]. Slice 1 of the signup/onboarding redesign: a pure readiness engine replacing two overlapping
+half-systems. The durable material is less the engine than what the review loop caught in the PLAN:
+a sentinel UUID that turned an unread org into a definitive `count:0` (fabricating "no team" during a
+loading window — and untestable by construction, since the test globally mocked `useQuery`); a
+checklist that could read 5/5 while `isFirstRun` stayed true, because only four page-visit mission
+keys stamp `completed_at` and the plan stopped rendering them; and three tests whose setup was
+identical to a neighbour's, two of them guarding the branch's headline behaviour. Also recorded:
+`supabase db push` here would re-run **234** local-only migrations against prod (PROJECT_CONTEXT
+documents this for one), and a `git push` reporting `* [new branch]` left 19 commits off the remote
+because a concurrent session owned the branch name.
+
 
 ## [2026-08-23] ingest | Stale, contradicted, and wrong-about-people are three different problems
 
