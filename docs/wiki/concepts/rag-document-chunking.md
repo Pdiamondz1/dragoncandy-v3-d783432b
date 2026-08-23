@@ -8,8 +8,8 @@ tags: [donny-rag, knowledge-sync, edge-functions, embeddings, silent-failure]
 ---
 # RAG Document Chunking
 
-How a repo document becomes rows in `donny_knowledge` — and the three years' worth of habit
-that had to change to stop a third of the corpus being thrown away in silence.
+How a repo document becomes rows in `donny_knowledge` — and why, from 2026-06-11 to
+2026-08-23, a third of the corpus was thrown away without a single signal saying so.
 
 ## The defect this page exists because of
 
