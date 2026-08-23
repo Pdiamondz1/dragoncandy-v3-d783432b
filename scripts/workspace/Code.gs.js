@@ -162,7 +162,12 @@ function installAllSignatures() {
     var byScope = [];
     var byOther = [];
     for (var d = 0; d < degraded.length; d++) {
-      (degraded[d].denied > 0 ? byScope : byOther).push(formatRegression_(degraded[d]));
+      var g = degraded[d];
+      // 'mixed' lands in both lists on purpose: part of what is missing is the
+      // scope and part is not, and an operator told only about the scope will
+      // grant it, see the count improve, and stop looking.
+      if (g.cause === 'scope' || g.cause === 'mixed') byScope.push(formatRegression_(g));
+      if (g.cause === 'other' || g.cause === 'mixed') byOther.push(formatRegression_(g));
     }
 
     var msg =
@@ -176,7 +181,9 @@ function installAllSignatures() {
     }
     if (byOther.length) {
       msg +=
-        ' NOT explained by the scope (nothing 403d for these users): ' +
+        ' NOT explained by the scope (a user listed in both lines is missing ' +
+        'signatures for BOTH reasons -- fixing the scope will not finish the ' +
+        'job): ' +
         byOther.join(', ') +
         '. Check the run log for per-identity failures, and check whether the ' +
         'send-as identities were deleted or reverted to pending verification. ' +
@@ -218,7 +225,15 @@ function installAllSignatures() {
   // against, so updating it first would compare this run to itself. And never
   // at all when the stored value could not be read -- see readSharedBaseline_.
   if (baselineRead.usable) {
-    writeSharedBaseline_(nextSharedBaseline_(perUser, baseline));
+    try {
+      writeSharedBaseline_(nextSharedBaseline_(perUser, baseline));
+    } catch (err) {
+      // A property-quota or service error here must not cost the durable Sheet
+      // record of a run whose signatures have already been written. Losing the
+      // baseline update degrades the NEXT run's detection; losing the log loses
+      // the evidence of THIS one. (Codex P2, 2026-08-23.)
+      console.error('Could not persist SHARED_BASELINE, continuing: ' + err);
+    }
   }
 
   appendRunLog_(results);
@@ -390,11 +405,20 @@ function sharedRegressions_(perUser, baseline) {
     // and a comment cheerfully describing it.)
     var expected = sharedExpectation_(r, baseline);
     if (expected > 0 && r.sharedWritten < expected) {
+      var denied = r.denied || 0;
+      // How many missing signatures the scope does NOT account for. A user can
+      // hit both causes at once -- one identity 403s while another was deleted
+      // -- and reporting only the scope would send the operator to grant a
+      // permission that fixes part of the problem and then declare victory.
+      // (Codex P2, 2026-08-23.)
+      var unexplained = Math.max(0, expected - r.sharedWritten - denied);
       out.push({
         email: r.email,
         written: r.sharedWritten,
         expected: expected,
-        denied: r.denied || 0,
+        denied: denied,
+        unexplained: unexplained,
+        cause: denied > 0 ? (unexplained > 0 ? 'mixed' : 'scope') : 'other',
       });
     }
   }

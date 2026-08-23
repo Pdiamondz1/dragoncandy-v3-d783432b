@@ -344,7 +344,13 @@ Two states, and the warnings do not overlap:
   identities returned a missing-scope 403 get the two-step scope fix; users who
   failed for any other reason get a "this is NOT the known permissions gap"
   pointer instead. Partitioned per user rather than per run, because a 403 on one
-  account must not decide the remediation printed for another.
+  account must not decide the remediation printed for another — and the denials
+  counted are shared-identity denials only, since a user may hold an unrelated
+  non-primary address that 403s for the same reason.
+  **A user can appear in both lines.** If part of what is missing was refused for
+  scope and part was not, the cause is `mixed` and both remedies are printed:
+  otherwise an operator grants the scope, sees the count improve, and stops
+  looking while signatures are still missing.
 - **Nobody has any shared identity at all** → the alias-is-not-a-send-as-identity
   explanation. Correct and non-alarming on a fresh domain.
 

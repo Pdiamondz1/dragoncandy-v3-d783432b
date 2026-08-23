@@ -585,3 +585,49 @@ describe('shared-only denial classification', () => {
     expect(r.denied).toBe(3);
   });
 });
+
+// A user can be degraded by BOTH causes at once — one identity 403s while
+// another was deleted. Reporting only the scope would have an operator grant a
+// domain-wide permission, watch the count improve, and stop looking while
+// signatures were still missing. Codex, 2026-08-23.
+describe('sharedRegressions_ cause classification', () => {
+  const { sharedRegressions_ } = loadAppsScript();
+  const one = (record, baseline) => sharedRegressions_([record], baseline || {})[0];
+
+  it("calls it 'scope' when denials account for every missing signature", () => {
+    const r = one({ email: 'a@x.com', sharedWritten: 0, sharedSeen: 3, denied: 3 });
+    expect(r.cause).toBe('scope');
+    expect(r.unexplained).toBe(0);
+  });
+
+  it("calls it 'other' when nothing was denied", () => {
+    const r = one({ email: 'a@x.com', sharedWritten: 0, sharedSeen: 0, denied: 0 }, { 'a@x.com': 3 });
+    expect(r.cause).toBe('other');
+    expect(r.unexplained).toBe(3);
+  });
+
+  it("calls it 'mixed' when denials explain only part of the gap", () => {
+    // 3 expected, 0 written, 2 refused for scope — the third is something else.
+    const r = one({ email: 'a@x.com', sharedWritten: 0, sharedSeen: 2, denied: 2 }, { 'a@x.com': 3 });
+    expect(r.cause).toBe('mixed');
+    expect(
+      r.unexplained,
+      'the scope explains 2 of the 3; the remaining 1 needs a different fix',
+    ).toBe(1);
+  });
+
+  it('still counts a partial write correctly', () => {
+    // 4 expected, 1 written, 3 refused — scope explains all of the rest.
+    const r = one({ email: 'a@x.com', sharedWritten: 1, sharedSeen: 4, denied: 3 });
+    expect(r.cause).toBe('scope');
+    expect(r.unexplained).toBe(0);
+  });
+
+  it('never reports a negative unexplained count', () => {
+    // denied larger than the gap (an identity was denied AND later written on
+    // a retry, say) must not produce a nonsense negative.
+    const r = one({ email: 'a@x.com', sharedWritten: 2, sharedSeen: 3, denied: 5 });
+    expect(r.unexplained).toBe(0);
+    expect(r.cause).toBe('scope');
+  });
+});
