@@ -54,23 +54,36 @@ more than a second look at your own state.**
 an incidental detail, but one a cache would not produce. The analytics read then ran again against
 the new token (`last_synced_at` 17:33:07, `last_error` null).
 
-### Two things the consent screen actually showed, both contrary to what was expected
+### The consent flow is TWO screens, and a partial revoke hides the second
 
-**There was no "Google hasn't verified this app" interstitial.** This page and
-`PROJECT_CONTEXT.md` both predicted one for a Testing-status External app. Test users evidently
-get the ordinary screen; the warning presumably belongs to non-test users, who currently cannot
-reach the app at all. So that interstitial remains *unobserved and unobservable* until publishing
-status changes — not "verified absent".
+**This section previously claimed "the consent screen itemised only the email address" and filed
+it as observed-unexplained. That was an artefact of an incomplete revoke, and the explanation
+arrived within the hour.** Google's consent is two screens:
 
-**The consent screen itemised only the email address.** It read *"Google will allow
-dragoncandy.com to access this info about you: dame@dragoncandy.com — Email address"*, and did not
-list the two YouTube scopes anywhere. Both were nevertheless granted, verified by reading the
-stored array back. Whether Google collapsed them or presented a second screen that auto-advanced
-is **not established** — it is recorded here as observed, unexplained behaviour rather than
-guessed at. The practical consequence is worth knowing: **do not treat what the consent screen
-lists as the definitive record of what was granted.** The granted-scope array on the token
-response is the only reliable source, which is exactly why this build reads it rather than
-assuming the request succeeded.
+1. **Identity** — *"Google will allow dragoncandy.com to access this info about you:
+   dame@dragoncandy.com, Email address"*, with Cancel / Continue.
+2. **Scopes** — *"dragoncandy.com wants to access your Google Account"*, itemising exactly
+   **"View your YouTube account"** and **"View YouTube Analytics reports for your YouTube
+   content"**, with Cancel / Allow.
+
+Screen 2 is skipped when the account already holds those scopes. Only after a full revoke —
+which is what `youtube-disconnect` performs — do both appear. So the earlier observation was not
+wrong about what was on screen; it was wrong to treat one screen as the whole flow.
+
+**Screen 2 is the user-facing proof the integration cannot post.** Both entries read *View*.
+Nothing about uploading, publishing, or managing videos appears, because no such scope is
+requested.
+
+The operational rule stands regardless, and for a better reason than before: **the consent screen
+is not the record of what was granted** — a flow can legitimately skip a screen. The granted-scope
+array on the token response is the only reliable source, which is why this build reads it back
+rather than assuming the request succeeded.
+
+**Still no "Google hasn't verified this app" interstitial**, in Testing *or* immediately after
+publishing to production. Recorded as not-observed rather than absent: the app has 1 user, the
+scopes are unapproved, and Google's own console says that screen appears when a request includes
+unapproved scopes. It may be propagation delay, or it may not apply to this scope set at this
+scale. Do not promise a creator they will not see it.
 
 ### Post-deploy review
 
