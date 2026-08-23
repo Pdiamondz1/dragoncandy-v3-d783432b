@@ -57,6 +57,52 @@ pages (`/terms`, `/privacy`, `/pricing`, 404, help articles) found no sibling in
 Both fixes are pinned by new tests, and **both pins were controlled** — re-introducing each bug was
 observed to turn its test red, then reverted. `HelpCenter.test.tsx` asserts the word "dashboard"
 appears **nowhere** on the page with no session, rather than checking one button's label.
+## [2026-08-23] The product docs are published — and stale turned out to be the easy half
+
+**PRs** #468 (`c12862fd`) + #470 (`adc401f7`) · Codex clean at round 2 on both · live in
+`01 · Product` on the `DragonCandy — Open` shared drive
+
+`01 · Product` was empty and two candidate documents existed. Both were stale — the PRD's last
+substantive edit was 2026-06-01 — which was expected and is what a dated banner is for.
+
+**What actually gated publication was not staleness.** `product-vision.md` described Dame as a
+**"solo technical founder"**, and neither document named Joe Castelo or Juwan Robinson anywhere,
+while `PROJECT_CONTEXT.md` §1 lists them as CEO and Shareholder. Joe can read that drive and Adrian
+will. **Stale is a different problem from wrong-about-people:** old numbers can be dated and
+published, a document that erases two co-founders cannot. Escalated rather than uploaded; the
+founder chose to fix and publish. All three are now named with roles, Joe's Hoboken restaurants
+credited as the problem the product was built to solve (which is the actual origin story, not a
+courtesy), and "35+ tables" corrected to 70+ in both docs.
+
+**Then the same distinction cut a second time.** Three sections are not merely old but **actively
+contradicted by the shipped system**: product-vision **§5** (one dark-mode Inter/JetBrains system
+with `dragon-*` tokens — used nowhere), PRD **§2** (says Lovable deploys prod; Vercel has since
+2026-07-15) and PRD **§3** (`gig_assignments`, `creative_briefs`, `payments`, `notifications`, none
+of which exist; wrong role values). A banner handles stale; a contradicted section needs a
+**SUPERSEDED note pointing at the authoritative file**. The design one is the live risk — a
+designer is being hired and §5 is the first thing they would read.
+
+**Codex caught me committing the error I was fixing.** Round 1 of that note asserted "the app is
+light, `dc-*`, Outfit/Pacifico" — true of the authenticated app, **false for the landing** (dark,
+video-led, Bricolage/Instrument/Silkscreen) and `/internal`. One wrong summary swapped for another.
+The note now refuses to summarise at all: it states the system is **surface-specific**, points at
+`DESIGN_SYSTEM.md`, and says not to trust any one-liner — *because a summary of that file is how §5
+came to be wrong in the first place.* **A summary of a source of truth is a copy, and copies rot;
+the correct replacement for a rotted summary is a pointer, not a better summary.**
+
+**Two traps worth carrying.** The first commit normalised both files **CRLF → LF** as a side effect
+of the Python editing script — 3,584 lines rewritten to change 24, caught by Codex and redone with
+`newline='\r\n'`. And #470's Lighthouse failure was performance **`NaN` across all three runs** on
+a docs-only change: `NaN` is a page-load failure, not a score regression, so it was re-run
+unchanged rather than chased. Passed.
+
+**Order of operations, disclosed:** the SUPERSEDED notes went into the Google Docs first and the
+repo second, so #470 exists to close what would otherwise be repo-vs-drive drift — the same failure
+class the notes are about. One residual divergence is recorded rather than hidden: the published
+Vision's §5 has its palette and typography detail condensed while the repo keeps the full text. It
+is inside a section marked do-not-build-from, so it was judged not worth a third upload.
+
+→ `docs/product-vision.md` · `docs/prd.md` · #468, #470
 
 ## [2026-08-23] The mobile jump was real, and it was the finding I refuted
 
