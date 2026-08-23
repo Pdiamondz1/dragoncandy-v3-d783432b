@@ -73,10 +73,37 @@ export const OPERATING = {
       'because it is what scripts/update-scale-numbers.mjs (and therefore PROJECT_CONTEXT.md) counts.',
   }),
   edgeFunctions: measured({ value: 104, unit: 'functions', label: 'Edge functions', source: "ls -d supabase/functions/*/ | grep -v _shared | wc -l", asOf: '2026-08-23' }),
-  sourceFiles: measured({ value: 1182, unit: 'files', label: 'TypeScript source files', source: "find src -type f \\( -name '*.ts' -o -name '*.tsx' \\) | wc -l", asOf: '2026-08-23' }),
+  sourceFiles: measured({
+    value: 1193,
+    unit: 'files',
+    label: 'TypeScript source files',
+    source: "find src -type f \\( -name '*.ts' -o -name '*.tsx' \\) | wc -l",
+    asOf: '2026-08-23',
+    note: 'Re-read 2026-08-23 during the final fix wave — was 1182, then briefly 1192 mid-wave. The ' +
+      'count includes this model\'s own files (src/pitch/model/*.ts and its tests), so it moves as ' +
+      'the model itself grows. A shell command that reproduces in under a second and disagrees with ' +
+      'itself on the same commit is not stale in the MAX_MEASURED_AGE_DAYS sense — it needs to be ' +
+      're-run at the end of a work session, not just within 90 days.',
+  }),
   migrations: measured({ value: 402, unit: 'files', label: 'Database migrations', source: 'ls supabase/migrations/*.sql | wc -l', asOf: '2026-08-23' }),
-  tests: measured({ value: 2857, unit: 'tests', label: 'Passing tests', source: 'npx vitest run', asOf: '2026-08-23' }),
-  testFiles: measured({ value: 262, unit: 'files', label: 'Test files', source: 'npx vitest run', asOf: '2026-08-23' }),
+  tests: measured({
+    value: 2923,
+    unit: 'tests',
+    label: 'Passing tests',
+    source: 'npx vitest run',
+    asOf: '2026-08-23',
+    note: 'Re-read 2026-08-23 during the final fix wave — was 2857. Includes this model\'s own test ' +
+      'suite (src/pitch/model/*.test.ts), which grew during the same wave that measures it.',
+  }),
+  testFiles: measured({
+    value: 268,
+    unit: 'files',
+    label: 'Test files',
+    source: 'npx vitest run',
+    asOf: '2026-08-23',
+    note: 'Re-read 2026-08-23 during the final fix wave — was 262. Includes this model\'s own test ' +
+      'files, same caveat as `tests` above.',
+  }),
   aiCostCapPctOfRevenue: measured({
     value: 0.15,
     unit: 'fraction',
@@ -102,12 +129,14 @@ export const MARKET = {
     label: 'Campaigns per restaurant per month',
     source: 'src/pitch/model/assumptions.ts',
   }),
-  creatorsPerRestaurant: benchmarked({
+  creatorsPerRestaurant: modeled({
     value: 4,
     unit: 'creators',
     label: 'Creators needed per restaurant',
     source: 'docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 5)',
-    note: 'Stated there as a 3-5 range; 4 is the midpoint.',
+    note: 'Retagged from BENCHMARKED 2026-08-23 — the source is our own Pricing Briefing, not an ' +
+      'external comparable; "benchmarked" was doing service for "we wrote it down somewhere else." ' +
+      'Stated there as a 3-5 range; 4 is the midpoint.',
   }),
   applicationsPerCreatorPerMonth: modeled({
     value: 2,
@@ -122,11 +151,38 @@ export const MARKET = {
     source: 'src/pitch/model/assumptions.ts',
     note: 'Drives how many campaigns are open CONCURRENTLY, which is what a creator actually sees.',
   }),
+  /**
+   * Paid-tier conversion mix. Added to the register 2026-08-23 — it previously lived only as an
+   * untagged `const MIX` literal in scripts/generate-investor-model.ts, with no provenance and no
+   * appearance in the generated document, despite driving 78% of headline revenue at 100
+   * businesses ($21,680 of $27,755). It asserts 70% paid conversion from a base of zero paying
+   * customers; MODELED, not BENCHMARKED, because nothing external backs this split. The four
+   * values must sum to 1 — see `tierMix.test.ts`.
+   */
+  tierMixFree: modeled({ value: 0.30, unit: 'fraction', label: 'Tier mix — Free', source: 'src/pitch/model/assumptions.ts' }),
+  tierMixStarter: modeled({ value: 0.40, unit: 'fraction', label: 'Tier mix — Starter', source: 'src/pitch/model/assumptions.ts' }),
+  tierMixGrowth: modeled({ value: 0.25, unit: 'fraction', label: 'Tier mix — Growth', source: 'src/pitch/model/assumptions.ts' }),
+  tierMixPro: modeled({ value: 0.05, unit: 'fraction', label: 'Tier mix — Pro', source: 'src/pitch/model/assumptions.ts' }),
 } satisfies Record<string, Assumption<number>>;
 
 export const UNIT_ECONOMICS = {
-  restaurantCacLow: benchmarked({ value: 500, unit: 'USD', label: 'Restaurant acquisition cost, low', source: 'docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 5)' }),
-  restaurantCacHigh: benchmarked({ value: 1500, unit: 'USD', label: 'Restaurant acquisition cost, high', source: 'docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 5)' }),
+  restaurantCacLow: modeled({
+    value: 500,
+    unit: 'USD',
+    label: 'Restaurant acquisition cost, low',
+    source: 'docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 5)',
+    note: 'Retagged from BENCHMARKED 2026-08-23 — the source line reads "Blended target CAC for ' +
+      'restaurants," i.e. a goal we set for ourselves, not an observed cost. DragonCandy has never ' +
+      'acquired a paying customer, so no restaurant CAC has ever actually been paid.',
+  }),
+  restaurantCacHigh: modeled({
+    value: 1500,
+    unit: 'USD',
+    label: 'Restaurant acquisition cost, high',
+    source: 'docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 5)',
+    note: 'Retagged from BENCHMARKED 2026-08-23 — same "Blended target CAC" line as the low end: a ' +
+      'target, not an observed cost, from a company with zero paying customers.',
+  }),
   monthlyChurn: benchmarked({
     value: 0.04,
     unit: 'fraction/month',
@@ -136,19 +192,30 @@ export const UNIT_ECONOMICS = {
   }),
   stripePctFee: benchmarked({ value: 0.029, unit: 'fraction', label: 'Stripe percentage fee', source: 'https://stripe.com/pricing' }),
   stripeFixedFee: benchmarked({ value: 0.30, unit: 'USD/transaction', label: 'Stripe fixed fee', source: 'https://stripe.com/pricing' }),
-  aiCostPerCustomerMonth: benchmarked({
+  aiCostPerCustomerMonth: modeled({
     value: 1.20,
     unit: 'USD/month',
     label: 'AI cost per customer per month',
     source: 'docs/DragonCandy_Infrastructure_Capacity_Report.md (section 4)',
-    note: 'Stated there as a $0.80-$1.60 range (average ~$1.20); 1.20 is that average/midpoint.',
+    note: 'Retagged from BENCHMARKED 2026-08-23 — the source is our own capacity report, not an ' +
+      'external comparable, and that report is itself known to carry stale Outstand/Supabase/OpenAI ' +
+      'cost baselines (docs/DragonCandy_Pricing_Profitability_Briefing_v2.md around line 410 says so ' +
+      'explicitly: "that report\'s own 250/1,000-user tables still carry the same stale ' +
+      'Outstand-omission and Supabase/OpenAI baseline this correction fixes here; it has not yet been ' +
+      'updated to match"). Stated there as a $0.80-$1.60 range (average ~$1.20); 1.20 is that ' +
+      'average/midpoint.',
   }),
-  infraCostPerCustomerMonth: benchmarked({
+  infraCostPerCustomerMonth: modeled({
     value: 0.20,
     unit: 'USD/month',
     label: 'Infrastructure cost per customer per month',
     source: 'docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 5, "What One Customer Costs Us to Serve")',
-    note: '0.20 is the midpoint of a stated $0.10-$0.30 range.',
+    note: 'Retagged from BENCHMARKED 2026-08-23 — the source is our own Pricing Briefing, not an ' +
+      'external comparable. 0.20 is the midpoint of a stated $0.10-$0.30 range. That source computes ' +
+      'it as a FIXED cost amortized across users ("$74/month spread across users," falling to ~$0.07 ' +
+      'at 1,000 users) — this model instead multiplies it by business count as a marginal per-business ' +
+      'rate, which overstates it at large scale and understates it at small scale. See the Scale ' +
+      'section note in the generated document.',
   }),
 } satisfies Record<string, Assumption<number>>;
 

@@ -392,24 +392,24 @@ Brand sponsors are the slowest to sign up but most valuable when they do. Averag
 
 | | Today (Pre-Launch) | At 250 Users | At 1,000 Customers |
 |-|-------------------|-----------------|-------------------|
-| **Infrastructure** | $569/mo | $818-$1,043/mo | $1,593-$2,543/mo |
+| **Infrastructure** | $569/mo | $618-$643/mo | $793-$943/mo |
 | **Marketing** | $0 | $2,000-$4,000/mo | $7,000-$15,000/mo |
 | **Payroll** | $0 | $0-$15,000/mo (1 hire) | $45,000-$75,000/mo (3-5 hires) |
 | **AI costs (Donny)** | Included in Claude sub | $200-$400/mo | $800-$1,600/mo |
-| **TOTAL** | **$569/mo** | **$3,018-$20,443/mo** | **$54,393-$94,143/mo** |
+| **TOTAL** | **$569/mo** | **$2,818-$20,043/mo** | **$53,593-$92,543/mo** |
 | **Revenue** | $0 | ~$87,700/mo | $750,000-$800,000/mo |
-| **Profit margin** | N/A | 77-97% | 87-93% |
+| **Profit margin** | N/A | 77-97% | 88-93% |
 
 *(Corrected 2026-08-23 — a Codex P2 finding: the prior 250-user and 1,000-customer Infrastructure figures ($544-$764/mo and $1,269-$2,089/mo) omitted the Outstand.so line entirely and used stale Supabase ($25, not $45) and OpenAI ($20, not $25) baselines — carried over unchanged from the companion **DragonCandy Infrastructure Capacity Report**, which predates the 2026-08-23 cost-baseline correction. That made the 250-user figure read as low as $544/mo, BELOW today's already-corrected $569/mo baseline, which is not physically possible — costs don't drop before a single new user is served. Recomputed here from the corrected component list (Lovable $50, Anthropic/Claude Max $200, Outstand $249, Supabase $45, OpenAI $25 = $569 today), applying the Capacity Report's own stated scaling deltas on top of the corrected baseline:*
 
 - *Supabase: $45 base + $49/mo (MICRO→SMALL compute, needed by 250 users) = $94/mo at 250 users; $45 + $199/mo (→LARGE, needed by 1,000 users) + $0-$100/mo optional read-replica = $244-$344/mo at 1,000 users.*
 - *OpenAI: the Capacity Report's own 250-user estimate was "$20-$40" against its stated $20 baseline (roughly 1x-2x) — applied to the corrected $25 baseline, that's $25-$50/mo at 250 users. The Report gives no explicit 1,000-user OpenAI figure; $50-$100/mo here is a flagged extrapolation (2x-4x baseline, following the same growth pattern the Report uses for Donny AI's own 250→1,000 usage), not a sourced number — treat it as the least-certain line in this table.*
 - *Outstand.so ($249/mo) and Lovable.dev ($50/mo) are carried flat at every scale point — the Capacity Report gives no basis for either scaling with user count (Outstand is a flat integration subscription; Lovable is described as static hosting, "250 users is nothing").*
-- *Claude Max ($200/mo, development) and the separate Anthropic API production-usage estimate ($200-$400/mo at 250 users, $800-$1,600/mo at 1,000 — unchanged from the Capacity Report, and identical to the "AI costs (Donny)" row above it) are both carried over unchanged; this table's structure keeps them as it always has, i.e. both are part of "Infrastructure" here even though "AI costs (Donny)" restates the same production-usage number as its own row — that pre-existing structure is unchanged by this fix and is noted, not resolved, here.*
+- *Claude Max ($200/mo, development) stays part of "Infrastructure" at every scale point. The separate Anthropic API production-usage estimate ($200-$400/mo at 250 users, $800-$1,600/mo at 1,000) does NOT — it was previously carried in both this row and the "AI costs (Donny)" row above it, and the TOTAL summed both, double-counting it. That is fixed here (2026-08-23): the production-usage estimate now lives only in "AI costs (Donny)"; Infrastructure carries Lovable + Claude Max + Outstand + Supabase + OpenAI and nothing else. TOTAL moved accordingly (was $3,018-$20,443/mo and $54,393-$94,143/mo before the fix); Profit margin at 1,000 customers moved from 87-93% to 88-93% — every other displayed figure was insensitive to the correction at its printed precision.*
 
 Every scaled Infrastructure figure above is now greater than today's $569/mo baseline, as it must be.
 
-The key insight: our costs scale slowly while revenue scales fast. Infrastructure costs run roughly 0.9-1.2% of revenue at 250 users, dropping to roughly 0.2-0.3% at 1,000 users. That's the SaaS model at its best. A detailed infrastructure capacity assessment is available in the companion document: **DragonCandy Infrastructure Capacity Report (May 2026)** — note that report's own 250/1,000-user tables still carry the same stale Outstand-omission and Supabase/OpenAI baseline this correction fixes here; it has not yet been updated to match.
+The key insight: our costs scale slowly while revenue scales fast. Infrastructure costs run roughly 0.7-0.73% of revenue at 250 users, dropping to roughly 0.10-0.13% at 1,000 users. That's the SaaS model at its best. A detailed infrastructure capacity assessment is available in the companion document: **DragonCandy Infrastructure Capacity Report (May 2026)** — note that report's own 250/1,000-user tables still carry the same stale Outstand-omission and Supabase/OpenAI baseline this correction fixes here; it has not yet been updated to match.
 
 > **Key infrastructure decision:** Before scaling past 75 users, we must upgrade our database compute from MICRO ($25/mo) to SMALL ($74/mo) — a $49/month increase. This doubles our database memory and increases simultaneous connection capacity by 50%. The upgrade is a 2-click process with zero downtime. See the Infrastructure Capacity Report for the full scaling roadmap.
 
@@ -577,7 +577,7 @@ Customers don't pay for software. They pay for outcomes. A restaurant owner star
 Once Donny AI is built, the cost of generating the 1,000th campaign brief is the same as the 1st (~$0.018 in API fees). Restaurants pay for the brief; we pay Anthropic pennies for the inference.
 
 **2. We don't pay the creator out of pocket.**
-In a marketplace, the creator's compensation is a passthrough — the restaurant pays the creator, we just take a cut. Yelp pays for clicks; we don't. Toast pays for hardware; we don't. Our cost of revenue is the platform itself, which is fixed.
+In a marketplace, the creator's compensation is a passthrough — the restaurant pays the creator, we just take a cut. Yelp pays for clicks; we don't. Toast pays for hardware; we don't. Our cost of revenue is the platform itself — Stripe processing fees on GMV plus AI/infrastructure serving cost per customer — and it scales with usage, not a fixed number regardless of volume. (Corrected 2026-08-23 — this previously said "which is fixed," the opposite of `src/pitch/model/project.ts`'s `costOfRevenue`, which is entirely variable. What's genuinely fixed is the vendor floor underneath it — today's $569/mo of subscriptions — which sits outside cost of revenue and is disclosed separately in the investor model's Scale section.)
 
 **3. Restaurants come to us through creators (not paid ads).**
 Every creator on the platform is an evangelist for us to every restaurant they work with. Our CAC drops as our creator base grows. The opposite of how every other restaurant SaaS works.

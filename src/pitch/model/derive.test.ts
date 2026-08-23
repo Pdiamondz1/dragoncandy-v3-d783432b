@@ -4,6 +4,7 @@ import {
   monthsToLiquidity,
   businessStepTable,
   threeYearTrajectory,
+  unitEconomics,
   LIQUIDITY_THRESHOLD,
   POST_LAUNCH_RESPONSIVENESS_TARGET_HOURS,
 } from './derive';
@@ -109,6 +110,41 @@ describe('businessStepTable', () => {
     expect(rows.map((r) => r.businesses)).toEqual([100, 1000, 10000]);
     expect(rows[0].annualRevenue).toBeCloseTo(rows[0].monthlyRevenue * 12, 10);
     expect(rows[1].monthlyRevenue).toBeGreaterThan(rows[0].monthlyRevenue);
+  });
+});
+
+describe('unitEconomics', () => {
+  // Hand-derived, not asserted against the implementation's own formula (same discipline as the
+  // Year 1 EBITDA pin above). At MIX = {free:.3, starter:.4, growth:.25, pro:.05}:
+  //   blendedSubscription = .4*149 + .25*449 + .05*899 = 216.8
+  //   blendedTakeRate     = .3*.10 + .4*.07 + .25*.05 + .05*.03 = 0.072
+  //   avgCampaignValue    = (75+150)/2 * 3 = 337.5; gmv/business = 2.5*337.5 = 843.75
+  //   totalRevenue/business  = 216.8 + 843.75*0.072 = 216.8 + 60.75 = 277.55
+  //   stripeCost/business    = 843.75*0.029 + 2.5*0.30 = 24.46875 + 0.75 = 25.21875
+  //   serveCost/business     = 1.20 + 0.20 = 1.40
+  //   grossProfit/business   = 277.55 - (25.21875 + 1.40) = 250.93125
+  //   lifetime = 1/0.04 = 25 months; ltv = 250.93125 * 25 = 6273.28125
+  //   ltv:cac @ $500  = 12.5465625 (~12.5:1); @ $1500 = 4.1821875 (~4.2:1)
+  //   payback @ $500  = 1.9925776... months; @ $1500  = 5.9777329... months (~6.0)
+  it('pins gross profit, LTV, LTV:CAC and CAC payback to independently hand-derived figures', () => {
+    const u = unitEconomics(MIX);
+    expect(u.grossProfitPerBusinessPerMonth).toBeCloseTo(250.93125, 6);
+    expect(u.customerLifetimeMonths).toBe(25);
+    expect(u.ltv).toBeCloseTo(6273.28125, 6);
+    expect(u.ltvToCacAtCacLow).toBeCloseTo(12.5465625, 6);
+    expect(u.ltvToCacAtCacHigh).toBeCloseTo(4.1821875, 6);
+    expect(u.cacPaybackMonthsAtCacLow).toBeCloseTo(1.9925776, 5);
+    expect(u.cacPaybackMonthsAtCacHigh).toBeCloseTo(5.9777329, 5);
+  });
+
+  it('clears both kill-switch guardrails from PROJECT_CONTEXT.md section 3 at both ends of the CAC band', () => {
+    const u = unitEconomics(MIX);
+    // LTV:CAC >= 2:1
+    expect(u.ltvToCacAtCacLow).toBeGreaterThanOrEqual(2);
+    expect(u.ltvToCacAtCacHigh).toBeGreaterThanOrEqual(2);
+    // CAC payback <= 12 months
+    expect(u.cacPaybackMonthsAtCacLow).toBeLessThanOrEqual(12);
+    expect(u.cacPaybackMonthsAtCacHigh).toBeLessThanOrEqual(12);
   });
 });
 

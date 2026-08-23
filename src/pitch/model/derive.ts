@@ -2,7 +2,7 @@
  * The three views Adrian asked for that no existing document answers: when Hoboken becomes a
  * working market, and what 100 / 1,000 / 10,000 businesses mean financially.
  */
-import { MARKET, TRAJECTORY } from './assumptions';
+import { MARKET, TRAJECTORY, UNIT_ECONOMICS } from './assumptions';
 import { projectMonth, type TierMix } from './project';
 
 /**
@@ -24,7 +24,7 @@ import { projectMonth, type TierMix } from './project';
  * See `POST_LAUNCH_RESPONSIVENESS_TARGET_HOURS` below.
  */
 export const LIQUIDITY_THRESHOLD = {
-  /** A posted campaign must draw at least this many qualified applicants over its open window. */
+  /** A posted campaign must draw at least this many applicants over its open window. */
   minApplicantsPerCampaign: 3,
   /** And a creator opening the app must see at least this many campaigns in range. */
   minCampaignsVisibleToCreator: 5,
@@ -129,6 +129,52 @@ export function businessStepTable(steps: readonly number[], mix: TierMix): StepR
       creators: m.creators,
     };
   });
+}
+
+export interface UnitEconomics {
+  /** Gross profit for one business, one month, at the given tier mix. */
+  readonly grossProfitPerBusinessPerMonth: number;
+  /** 1 / monthlyChurn — the expected number of months a customer stays. */
+  readonly customerLifetimeMonths: number;
+  readonly ltv: number;
+  /** LTV:CAC using the LOW end of the CAC band — the more favorable ratio. */
+  readonly ltvToCacAtCacLow: number;
+  /** LTV:CAC using the HIGH end of the CAC band — the more conservative ratio. */
+  readonly ltvToCacAtCacHigh: number;
+  /** Months to recover CAC using the LOW end of the CAC band. */
+  readonly cacPaybackMonthsAtCacLow: number;
+  /** Months to recover CAC using the HIGH end of the CAC band. */
+  readonly cacPaybackMonthsAtCacHigh: number;
+}
+
+/**
+ * LTV:CAC and CAC payback. The deck (`src/pitch/slides/slides.tsx`) asserts "LTV:CAC >= 2:1" and
+ * "CAC payback <= 12 mo" as guardrails, and `docs/PROJECT_CONTEXT.md` section 3 makes both
+ * kill-switches — but nothing in this model computed either figure until 2026-08-23, even though
+ * the register held every ingredient (`UNIT_ECONOMICS.restaurantCacLow/High`, `.monthlyChurn`).
+ *
+ * `restaurantCacLow`/`restaurantCacHigh` are MODELED, not measured (see the note on those rows in
+ * `assumptions.ts` — the source states them as a *target*, and DragonCandy has never acquired a
+ * paying customer). So this is a projection measured against a projection, not two independent
+ * measurements, and the generated document says so.
+ *
+ * Lifetime is `1 / monthlyChurn` — the standard closed-form expected lifetime of a geometric
+ * churn process, not a simulation. Gross profit per business excludes operating expense, matching
+ * `businessStepTable` above.
+ */
+export function unitEconomics(mix: TierMix): UnitEconomics {
+  const grossProfitPerBusinessPerMonth = projectMonth({ month: 0, restaurants: 1, mix }).grossProfit;
+  const customerLifetimeMonths = 1 / UNIT_ECONOMICS.monthlyChurn.value;
+  const ltv = grossProfitPerBusinessPerMonth * customerLifetimeMonths;
+  return {
+    grossProfitPerBusinessPerMonth,
+    customerLifetimeMonths,
+    ltv,
+    ltvToCacAtCacLow: ltv / UNIT_ECONOMICS.restaurantCacLow.value,
+    ltvToCacAtCacHigh: ltv / UNIT_ECONOMICS.restaurantCacHigh.value,
+    cacPaybackMonthsAtCacLow: UNIT_ECONOMICS.restaurantCacLow.value / grossProfitPerBusinessPerMonth,
+    cacPaybackMonthsAtCacHigh: UNIT_ECONOMICS.restaurantCacHigh.value / grossProfitPerBusinessPerMonth,
+  };
 }
 
 export interface TrajectoryYear {

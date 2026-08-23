@@ -5,6 +5,13 @@
 
 > Public-safe: budget and raise omitted. Regenerate with `--confidential` to include them.
 
+> **The live deck at `/pitch` is superseded by this model on the ask.** `src/pitch/slides/slides.tsx`
+> still shows the earlier priced-seed framing — "~$3M seed", "Raising $2.5–3.5M · ~$12–15M
+> post-money" — computed before this register existed. This model derives a materially smaller
+> required raise (regenerate with `--confidential` for the figure). Rebuilding the deck is out of scope here (a later plan
+> owns it); until then, treat this document as the current number and the deck as pending an
+> update.
+
 ## Assumptions
 
 | Input | Value | Unit | Provenance | Source | Read |
@@ -23,25 +30,29 @@
 | Page components (`pageComponents`) | 95 | files | MEASURED | `find src/pages -name '*.tsx' \| wc -l` | 2026-08-23 |
 | React hooks (`hooks`) | 272 | files | MEASURED | `find src/hooks -name 'use*.ts' -o -name 'use*.tsx' \| wc -l` | 2026-08-23 |
 | Edge functions (`edgeFunctions`) | 104 | functions | MEASURED | `ls -d supabase/functions/*/ \| grep -v _shared \| wc -l` | 2026-08-23 |
-| TypeScript source files (`sourceFiles`) | 1182 | files | MEASURED | `find src -type f \( -name '*.ts' -o -name '*.tsx' \) \| wc -l` | 2026-08-23 |
+| TypeScript source files (`sourceFiles`) | 1193 | files | MEASURED | `find src -type f \( -name '*.ts' -o -name '*.tsx' \) \| wc -l` | 2026-08-23 |
 | Database migrations (`migrations`) | 402 | files | MEASURED | `ls supabase/migrations/*.sql \| wc -l` | 2026-08-23 |
-| Passing tests (`tests`) | 2857 | tests | MEASURED | `npx vitest run` | 2026-08-23 |
-| Test files (`testFiles`) | 262 | files | MEASURED | `npx vitest run` | 2026-08-23 |
+| Passing tests (`tests`) | 2923 | tests | MEASURED | `npx vitest run` | 2026-08-23 |
+| Test files (`testFiles`) | 268 | files | MEASURED | `npx vitest run` | 2026-08-23 |
 | AI spend cap as share of revenue (`aiCostCapPctOfRevenue`) | 0.15 | fraction | MEASURED | `docs/PROJECT_CONTEXT.md (section 8)` | 2026-08-23 |
 | Standard delivery, low band (`campaignPriceStandardLow`) | 75 | USD/deliverable | MEASURED | `src/lib/campaignPricing.ts (TIER_PRICE_BANDS)` | 2026-08-23 |
 | Standard delivery, high band (`campaignPriceStandardHigh`) | 150 | USD/deliverable | MEASURED | `src/lib/campaignPricing.ts (TIER_PRICE_BANDS)` | 2026-08-23 |
 | Deliverables per campaign (`deliverablesPerCampaign`) | 3 | deliverables | MODELED | `src/pitch/model/assumptions.ts` | — |
 | Campaigns per restaurant per month (`campaignsPerRestaurantPerMonth`) | 2.5 | campaigns/month | MODELED | `src/pitch/model/assumptions.ts` | — |
-| Creators needed per restaurant (`creatorsPerRestaurant`) | 4 | creators | BENCHMARKED | `docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 5)` | — |
+| Creators needed per restaurant (`creatorsPerRestaurant`) | 4 | creators | MODELED | `docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 5)` | — |
 | Campaign applications per active creator per month (`applicationsPerCreatorPerMonth`) | 2 | applications/month | MODELED | `src/pitch/model/assumptions.ts` | — |
 | Days a campaign stays open for applications (`campaignOpenDays`) | 14 | days | MODELED | `src/pitch/model/assumptions.ts` | — |
-| Restaurant acquisition cost, low (`restaurantCacLow`) | 500 | USD | BENCHMARKED | `docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 5)` | — |
-| Restaurant acquisition cost, high (`restaurantCacHigh`) | 1500 | USD | BENCHMARKED | `docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 5)` | — |
+| Tier mix — Free (`tierMixFree`) | 0.3 | fraction | MODELED | `src/pitch/model/assumptions.ts` | — |
+| Tier mix — Starter (`tierMixStarter`) | 0.4 | fraction | MODELED | `src/pitch/model/assumptions.ts` | — |
+| Tier mix — Growth (`tierMixGrowth`) | 0.25 | fraction | MODELED | `src/pitch/model/assumptions.ts` | — |
+| Tier mix — Pro (`tierMixPro`) | 0.05 | fraction | MODELED | `src/pitch/model/assumptions.ts` | — |
+| Restaurant acquisition cost, low (`restaurantCacLow`) | 500 | USD | MODELED | `docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 5)` | — |
+| Restaurant acquisition cost, high (`restaurantCacHigh`) | 1500 | USD | MODELED | `docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 5)` | — |
 | Monthly customer churn (`monthlyChurn`) | 0.04 | fraction/month | BENCHMARKED | `docs/PROJECT_CONTEXT.md (section 3, 2025 SMB SaaS benchmark 3-5%/month)` | — |
 | Stripe percentage fee (`stripePctFee`) | 0.029 | fraction | BENCHMARKED | `https://stripe.com/pricing` | — |
 | Stripe fixed fee (`stripeFixedFee`) | 0.3 | USD/transaction | BENCHMARKED | `https://stripe.com/pricing` | — |
-| AI cost per customer per month (`aiCostPerCustomerMonth`) | 1.2 | USD/month | BENCHMARKED | `docs/DragonCandy_Infrastructure_Capacity_Report.md (section 4)` | — |
-| Infrastructure cost per customer per month (`infraCostPerCustomerMonth`) | 0.2 | USD/month | BENCHMARKED | `docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 5, "What One Customer Costs Us to Serve")` | — |
+| AI cost per customer per month (`aiCostPerCustomerMonth`) | 1.2 | USD/month | MODELED | `docs/DragonCandy_Infrastructure_Capacity_Report.md (section 4)` | — |
+| Infrastructure cost per customer per month (`infraCostPerCustomerMonth`) | 0.2 | USD/month | MODELED | `docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 5, "What One Customer Costs Us to Serve")` | — |
 | Year 1 revenue, low (`year1RevenueLow`) | 300000 | USD/year | MODELED | `docs/PROJECT_CONTEXT.md (section 3)` | — |
 | Year 1 revenue, high (`year1RevenueHigh`) | 600000 | USD/year | MODELED | `docs/PROJECT_CONTEXT.md (section 3)` | — |
 | Year 2 revenue, low (`year2RevenueLow`) | 2000000 | USD/year | MODELED | `docs/PROJECT_CONTEXT.md (section 3)` | — |
@@ -57,7 +68,7 @@
 
 ## Marketplace liquidity — Hoboken
 
-Liquidity means a posted campaign draws at least 3 qualified applicants over its open window (14 days), and a creator opening the app sees at least 5 campaigns in range. Both are computable from our own schema the day we launch. A 48-hour responsiveness target is a separate, real goal — but it is not part of this liquidity test, because we have no arrival-curve data yet to compute it honestly; we'll start measuring it once real applicant timestamps exist post-launch.
+Liquidity means a posted campaign draws at least 3 applicants over its open window (14 days), and a creator opening the app sees at least 5 campaigns in range. Both are computable from our own schema the day we launch. A 48-hour responsiveness target is a separate, real goal — but it is not part of this liquidity test, because we have no arrival-curve data yet to compute it honestly; we'll start measuring it once real applicant timestamps exist post-launch.
 
 Creator supply is tracked separately from restaurant supply, because a shortage on
 either side alone stops the market working.
@@ -85,7 +96,19 @@ restaurant count — more restaurants make the shortage worse, not better:
 - 2 restaurants/month at 3 creators each: **never liquid within 36 months**.
 - 2 restaurants/month at 4 creators each: **liquid in month 3**.
 
+### How much headroom the headline number has
+
+At the target 4:1 creator-to-restaurant ratio, "applicants per campaign" (3.2) clears the 3.0 threshold by only 6.25% headroom — set entirely by two MODELED constants sourced to this same file (`applicationsPerCreatorPerMonth` and `campaignsPerRestaurantPerMonth`). The tipping points, moving one at a time and holding the other fixed:
+
+- Applications per creator per month below **~1.88** (currently 2.0): Hoboken never becomes liquid, at any restaurant count.
+- Campaigns per restaurant per month above **~2.67** (currently 2.5): same failure — more campaigns per restaurant dilutes applicants per campaign faster than restaurant count can compensate.
+
+Both hold everything else fixed at the target ratio. This is a statement about how thin the
+headline margin is, not a prediction that either constant will move.
+
 ## Scale — what 100 / 1,000 / 10,000 businesses mean
+
+Paid-conversion mix (MODELED, registered as `tierMixFree/Starter/Growth/Pro`): 30.0% free, 40.0% starter, 25.0% growth, 5.0% pro. This asserts 70% paid conversion from a base of zero paying customers today — every revenue figure below is downstream of it.
 
 Average campaign value is $338, derived from the app's own per-deliverable price bands.
 
@@ -95,11 +118,51 @@ not a calendar-time projection of when we reach that count. The Year 3 trajector
 ($7–12M) and the 10,000-business annual figure here (~$33M) are not in tension; they answer
 "what does the business look like at this size" versus "what do we expect by this date."
 
-| Businesses | Creators | Monthly campaign volume | Monthly revenue | Annual revenue | Gross margin |
+| Businesses | Creators | Monthly GMV | Monthly revenue | Annual revenue | Gross margin |
 |---:|---:|---:|---:|---:|---:|
 | 100 | 400 | $84,375 | $27,755 | $333,060 | 90.4% |
 | 1,000 | 4,000 | $843,750 | $277,550 | $3,330,600 | 90.4% |
 | 10,000 | 40,000 | $8,437,500 | $2,775,500 | $33,306,000 | 90.4% |
+
+**Monthly churn (4.0%, kill-switch at 6%/mo) is not modeled anywhere in this table.** `monthlyChurn` sits in the
+assumptions register, but no formula in `project.ts` consumes it — this table and the liquidity
+ramp above both assume zero attrition. That understates the real difficulty of reaching a given
+business count, though it turns out not to move the headline liquidity date: applying 4%/month
+churn to the 2-restaurants/month ramp (a continuous-decay model, stock(t) = (rate/churn) × (1 −
+e^(−churn×t))) puts month-3 restaurant stock at about **5.65**, still comfortably above the
+**4.29** restaurants the open-campaigns condition requires — "liquid in month 3" survives.
+
+**The 90.4% gross margin at 100 businesses excludes any fixed platform cost** —
+`costOfRevenue` in `project.ts` is purely variable (Stripe fees on GMV plus a per-business
+serve cost). Layering in a fixed floor changes the picture at this scale: today's real vendor
+floor (`OPERATING.burnMonthly`, $569/mo) brings the 100-business margin to
+**88.4%**; the model's own budgeted platform line in `confidential.ts`
+(`burnMonthly × 3` = $1,707/mo, sized for launch load) brings it to
+**84.3%**. `costOfRevenue` itself is intentionally left unchanged —
+folding a fixed cost into it would ripple through every other reviewed figure in this document.
+This gap narrows fast with scale, since a fixed cost divided by more revenue shrinks toward zero.
+
+## Unit economics — LTV:CAC and CAC payback
+
+`src/pitch/slides/slides.tsx` asserts "LTV:CAC ≥ 2:1 · CAC payback ≤ 12 mo" as guardrails, and
+`docs/PROJECT_CONTEXT.md` section 3 makes both kill-switches. Neither was computed anywhere in
+this model until now.
+
+**Restaurant CAC is a MODELED target, not an observed cost** — DragonCandy has never acquired a
+paying customer, and the source line in the Pricing Briefing literally reads "Blended target CAC
+for restaurants." So this section is a projection measured against a projection, not two
+independent measurements.
+
+Gross profit per business per month (at the mix above): **$251**.
+Expected customer lifetime at 4.0%/mo churn (1 ÷ churn): **25.0 months**.
+Lifetime value: **$6,273**.
+
+| Restaurant CAC | LTV:CAC | CAC payback |
+|---:|---:|---:|
+| $500 (low) | 12.5:1 | 2.0 months |
+| $1,500 (high) | 4.2:1 | 6.0 months |
+
+Both ends of the CAC band clear both guardrails.
 
 ## Three-year trajectory
 

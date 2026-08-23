@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { findStale, MAX_MEASURED_AGE_DAYS } from './types';
-import { REGISTER, PRICING, TIER_TAKE_RATES } from './assumptions';
+import { REGISTER, PRICING, TIER_TAKE_RATES, MARKET } from './assumptions';
 
 describe('the assumptions register', () => {
   it('has no stale MEASURED rows', () => {
@@ -43,5 +43,15 @@ describe('the assumptions register', () => {
     expect(PRICING.starter.value).toBe(149);
     expect(PRICING.growth.value).toBe(449);
     expect(PRICING.pro.value).toBe(899);
+  });
+
+  // The tier mix drives 78% of headline revenue at 100 businesses ($21,680 of $27,755) and used
+  // to live as an untagged literal in scripts/generate-investor-model.ts. Registered 2026-08-23.
+  // A mix that silently doesn't sum to 1 understates or overstates every revenue figure derived
+  // from it, the same failure mode `assertMixSumsToOne` in project.ts guards against at runtime.
+  it('sums the tier mix to exactly 1', () => {
+    const total =
+      MARKET.tierMixFree.value + MARKET.tierMixStarter.value + MARKET.tierMixGrowth.value + MARKET.tierMixPro.value;
+    expect(total).toBeCloseTo(1, 10);
   });
 });

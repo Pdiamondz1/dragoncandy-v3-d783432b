@@ -14,13 +14,14 @@
  * Exit codes: 0 written; 1 a measured input is stale (fix the register, do not bypass).
  */
 import { writeFileSync } from 'node:fs';
-import { REGISTER, MARKET } from '../src/pitch/model/assumptions';
+import { REGISTER, MARKET, UNIT_ECONOMICS, OPERATING } from '../src/pitch/model/assumptions';
 import { findStale, MAX_MEASURED_AGE_DAYS } from '../src/pitch/model/types';
-import { avgCampaignValue, type TierMix } from '../src/pitch/model/project';
+import { avgCampaignValue, projectMonth, type TierMix } from '../src/pitch/model/project';
 import {
   businessStepTable,
   isLiquid,
   monthsToLiquidity,
+  unitEconomics,
   LIQUIDITY_THRESHOLD,
   POST_LAUNCH_RESPONSIVENESS_TARGET_HOURS,
   threeYearTrajectory,
@@ -36,7 +37,15 @@ import {
 
 const confidential = process.argv.includes('--confidential');
 const OUT = 'docs/DragonCandy_Investor_Model.md';
-const MIX: TierMix = { free: 0.3, starter: 0.4, growth: 0.25, pro: 0.05 };
+// Built from the register, not hardcoded — this constant used to be an untagged literal with no
+// provenance and no appearance in the document, despite driving 78% of headline revenue at 100
+// businesses ($21,680 of $27,755). See MARKET.tierMixFree/Starter/Growth/Pro in assumptions.ts.
+const MIX: TierMix = {
+  free: MARKET.tierMixFree.value,
+  starter: MARKET.tierMixStarter.value,
+  growth: MARKET.tierMixGrowth.value,
+  pro: MARKET.tierMixPro.value,
+};
 
 const stale = findStale(REGISTER, new Date(), MAX_MEASURED_AGE_DAYS);
 if (stale.length > 0) {
@@ -69,6 +78,15 @@ lines.push('> `src/pitch/model/`. Change a number there, not here.');
 lines.push('');
 lines.push(confidential ? '> **CONFIDENTIAL — includes the budget and the raise.**' : '> Public-safe: budget and raise omitted. Regenerate with `--confidential` to include them.');
 lines.push('');
+lines.push('> **The live deck at `/pitch` is superseded by this model on the ask.** `src/pitch/slides/slides.tsx`');
+lines.push('> still shows the earlier priced-seed framing — "~$3M seed", "Raising $2.5–3.5M · ~$12–15M');
+lines.push('> post-money" — computed before this register existed. This model derives a materially smaller');
+lines.push(confidential
+  ? '> required raise — see "The round" below. Rebuilding the deck is out of scope here (a later plan'
+  : '> required raise (regenerate with `--confidential` for the figure). Rebuilding the deck is out of scope here (a later plan');
+lines.push('> owns it); until then, treat this document as the current number and the deck as pending an');
+lines.push('> update.');
+lines.push('');
 
 lines.push('## Assumptions');
 lines.push('');
@@ -82,7 +100,7 @@ lines.push('');
 
 lines.push('## Marketplace liquidity — Hoboken');
 lines.push('');
-lines.push(`Liquidity means a posted campaign draws at least ${LIQUIDITY_THRESHOLD.minApplicantsPerCampaign} qualified applicants over its open window (${MARKET.campaignOpenDays.value} days), and a creator opening the app sees at least ${LIQUIDITY_THRESHOLD.minCampaignsVisibleToCreator} campaigns in range. Both are computable from our own schema the day we launch. A ${POST_LAUNCH_RESPONSIVENESS_TARGET_HOURS}-hour responsiveness target is a separate, real goal — but it is not part of this liquidity test, because we have no arrival-curve data yet to compute it honestly; we'll start measuring it once real applicant timestamps exist post-launch.`);
+lines.push(`Liquidity means a posted campaign draws at least ${LIQUIDITY_THRESHOLD.minApplicantsPerCampaign} applicants over its open window (${MARKET.campaignOpenDays.value} days), and a creator opening the app sees at least ${LIQUIDITY_THRESHOLD.minCampaignsVisibleToCreator} campaigns in range. Both are computable from our own schema the day we launch. A ${POST_LAUNCH_RESPONSIVENESS_TARGET_HOURS}-hour responsiveness target is a separate, real goal — but it is not part of this liquidity test, because we have no arrival-curve data yet to compute it honestly; we'll start measuring it once real applicant timestamps exist post-launch.`);
 lines.push('');
 lines.push('Creator supply is tracked separately from restaurant supply, because a shortage on');
 lines.push('either side alone stops the market working.');
@@ -112,8 +130,28 @@ for (const ratio of [2, 3, RATIO]) {
   lines.push(`- 2 restaurants/month at ${ratio} creators each: **${m === null ? 'never liquid within 36 months' : `liquid in month ${m}`}**.`);
 }
 lines.push('');
+lines.push('### How much headroom the headline number has');
+lines.push('');
+const appsTip =
+  (LIQUIDITY_THRESHOLD.minApplicantsPerCampaign * MARKET.campaignsPerRestaurantPerMonth.value) / RATIO;
+const campaignsTip =
+  (RATIO * MARKET.applicationsPerCreatorPerMonth.value) / LIQUIDITY_THRESHOLD.minApplicantsPerCampaign;
+const headlineApplicants = isLiquid(1, RATIO).applicantsPerCampaign;
+// Headroom as % of the achieved value, not the threshold: how far the achieved figure could
+// drop, as a share of itself, before hitting the 3.0 floor — 0.2 of 3.2, not 0.2 of 3.0.
+const headroomPct = ((headlineApplicants - LIQUIDITY_THRESHOLD.minApplicantsPerCampaign) / headlineApplicants) * 100;
+lines.push(`At the target ${RATIO}:1 creator-to-restaurant ratio, "applicants per campaign" (${headlineApplicants.toFixed(1)}) clears the ${LIQUIDITY_THRESHOLD.minApplicantsPerCampaign}.0 threshold by only ${headroomPct.toFixed(2)}% headroom — set entirely by two MODELED constants sourced to this same file (\`applicationsPerCreatorPerMonth\` and \`campaignsPerRestaurantPerMonth\`). The tipping points, moving one at a time and holding the other fixed:`);
+lines.push('');
+lines.push(`- Applications per creator per month below **~${appsTip.toFixed(2)}** (currently ${MARKET.applicationsPerCreatorPerMonth.value.toFixed(1)}): Hoboken never becomes liquid, at any restaurant count.`);
+lines.push(`- Campaigns per restaurant per month above **~${campaignsTip.toFixed(2)}** (currently ${MARKET.campaignsPerRestaurantPerMonth.value.toFixed(1)}): same failure — more campaigns per restaurant dilutes applicants per campaign faster than restaurant count can compensate.`);
+lines.push('');
+lines.push('Both hold everything else fixed at the target ratio. This is a statement about how thin the');
+lines.push('headline margin is, not a prediction that either constant will move.');
+lines.push('');
 
 lines.push('## Scale — what 100 / 1,000 / 10,000 businesses mean');
+lines.push('');
+lines.push(`Paid-conversion mix (MODELED, registered as \`tierMixFree/Starter/Growth/Pro\`): ${pct(MIX.free * 100)} free, ${pct(MIX.starter * 100)} starter, ${pct(MIX.growth * 100)} growth, ${pct(MIX.pro * 100)} pro. This asserts 70% paid conversion from a base of zero paying customers today — every revenue figure below is downstream of it.`);
 lines.push('');
 lines.push(`Average campaign value is ${usd(avgCampaignValue())}, derived from the app's own per-deliverable price bands.`);
 lines.push('');
@@ -123,11 +161,58 @@ lines.push('not a calendar-time projection of when we reach that count. The Year
 lines.push('($7–12M) and the 10,000-business annual figure here (~$33M) are not in tension; they answer');
 lines.push('"what does the business look like at this size" versus "what do we expect by this date."');
 lines.push('');
-lines.push('| Businesses | Creators | Monthly campaign volume | Monthly revenue | Annual revenue | Gross margin |');
+lines.push('| Businesses | Creators | Monthly GMV | Monthly revenue | Annual revenue | Gross margin |');
 lines.push('|---:|---:|---:|---:|---:|---:|');
 for (const row of businessStepTable([100, 1000, 10000], MIX)) {
   lines.push(`| ${row.businesses.toLocaleString('en-US')} | ${row.creators.toLocaleString('en-US')} | ${usd(row.monthlyGmv)} | ${usd(row.monthlyRevenue)} | ${usd(row.annualRevenue)} | ${pct(row.grossMarginPct)} |`);
 }
+lines.push('');
+lines.push(`**Monthly churn (${pct(UNIT_ECONOMICS.monthlyChurn.value * 100)}, kill-switch at 6%/mo) is not modeled anywhere in this table.** \`monthlyChurn\` sits in the`);
+lines.push('assumptions register, but no formula in `project.ts` consumes it — this table and the liquidity');
+lines.push('ramp above both assume zero attrition. That understates the real difficulty of reaching a given');
+lines.push('business count, though it turns out not to move the headline liquidity date: applying 4%/month');
+lines.push('churn to the 2-restaurants/month ramp (a continuous-decay model, stock(t) = (rate/churn) × (1 −');
+lines.push('e^(−churn×t))) puts month-3 restaurant stock at about **5.65**, still comfortably above the');
+lines.push('**4.29** restaurants the open-campaigns condition requires — "liquid in month 3" survives.');
+lines.push('');
+const row100 = projectMonth({ month: 0, restaurants: 100, mix: MIX });
+const vendorFloor = OPERATING.burnMonthly.value;
+const budgetedInfra = OPERATING.burnMonthly.value * 3;
+const marginWithVendorFloor = ((row100.grossProfit - vendorFloor) / row100.totalRevenue) * 100;
+const marginWithBudgetedInfra = ((row100.grossProfit - budgetedInfra) / row100.totalRevenue) * 100;
+lines.push(`**The ${pct(row100.grossMarginPct)} gross margin at 100 businesses excludes any fixed platform cost** —`);
+lines.push('`costOfRevenue` in `project.ts` is purely variable (Stripe fees on GMV plus a per-business');
+lines.push(`serve cost). Layering in a fixed floor changes the picture at this scale: today's real vendor`);
+lines.push(`floor (\`OPERATING.burnMonthly\`, ${usd(vendorFloor)}/mo) brings the 100-business margin to`);
+lines.push(`**${pct(marginWithVendorFloor)}**; the model's own budgeted platform line in \`confidential.ts\``);
+lines.push(`(\`burnMonthly × 3\` = ${usd(budgetedInfra)}/mo, sized for launch load) brings it to`);
+lines.push(`**${pct(marginWithBudgetedInfra)}**. \`costOfRevenue\` itself is intentionally left unchanged —`);
+lines.push('folding a fixed cost into it would ripple through every other reviewed figure in this document.');
+lines.push('This gap narrows fast with scale, since a fixed cost divided by more revenue shrinks toward zero.');
+lines.push('');
+
+lines.push('## Unit economics — LTV:CAC and CAC payback');
+lines.push('');
+lines.push('`src/pitch/slides/slides.tsx` asserts "LTV:CAC ≥ 2:1 · CAC payback ≤ 12 mo" as guardrails, and');
+lines.push('`docs/PROJECT_CONTEXT.md` section 3 makes both kill-switches. Neither was computed anywhere in');
+lines.push('this model until now.');
+lines.push('');
+lines.push('**Restaurant CAC is a MODELED target, not an observed cost** — DragonCandy has never acquired a');
+lines.push('paying customer, and the source line in the Pricing Briefing literally reads "Blended target CAC');
+lines.push('for restaurants." So this section is a projection measured against a projection, not two');
+lines.push('independent measurements.');
+lines.push('');
+const ue = unitEconomics(MIX);
+lines.push(`Gross profit per business per month (at the mix above): **${usd(ue.grossProfitPerBusinessPerMonth)}**.`);
+lines.push(`Expected customer lifetime at ${pct(UNIT_ECONOMICS.monthlyChurn.value * 100)}/mo churn (1 ÷ churn): **${ue.customerLifetimeMonths.toFixed(1)} months**.`);
+lines.push(`Lifetime value: **${usd(ue.ltv)}**.`);
+lines.push('');
+lines.push('| Restaurant CAC | LTV:CAC | CAC payback |');
+lines.push('|---:|---:|---:|');
+lines.push(`| ${usd(UNIT_ECONOMICS.restaurantCacLow.value)} (low) | ${ue.ltvToCacAtCacLow.toFixed(1)}:1 | ${ue.cacPaybackMonthsAtCacLow.toFixed(1)} months |`);
+lines.push(`| ${usd(UNIT_ECONOMICS.restaurantCacHigh.value)} (high) | ${ue.ltvToCacAtCacHigh.toFixed(1)}:1 | ${ue.cacPaybackMonthsAtCacHigh.toFixed(1)} months |`);
+lines.push('');
+lines.push('Both ends of the CAC band clear both guardrails.');
 lines.push('');
 
 lines.push('## Three-year trajectory');
