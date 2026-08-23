@@ -91,11 +91,18 @@ export function deriveCreatorAddress(ctx: ReadinessContext): RequirementState {
 export function deriveIdentityVerified(ctx: ReadinessContext): RequirementState {
   if (ctx.identity === undefined) return UNKNOWN;
   const { verifiedAt, requirementsDue, disabledReason } = ctx.identity;
-  if (verifiedAt) return MET;
+  // Revocation outranks the stamp, and the order of these checks is the whole point.
+  // `stripe-webhook` deliberately never clears `identity_verified_at` once set (it
+  // records when verification was first proven), so if `verifiedAt` were checked first
+  // an account Stripe has since DISABLED — `rejected.fraud`, say — would render
+  // "identity verified" while we mirror the rejection into the column right next to it.
+  // Fraud prevention is the stated reason this whole slice exists, so a live
+  // `disabled_reason` or an outstanding requirement wins over a historical stamp.
+  if (disabledReason) return { status: 'unmet', detail: disabledReason };
   if (requirementsDue.length > 0) {
     return { status: 'unmet', detail: `Stripe needs: ${requirementsDue.join(', ')}` };
   }
-  if (disabledReason) return { status: 'unmet', detail: disabledReason };
+  if (verifiedAt) return MET;
   return UNMET;
 }
 

@@ -103,6 +103,48 @@ export async function fetchAccountReadinessDetail(
   };
 }
 
+/**
+ * Two different absences, and collapsing them ships an unclearable checklist row.
+ *
+ * `rp` falsy  => the role row is not loaded. That is not a fact about Stripe.
+ * All three verification columns NULL => the `account.updated` webhook has never touched
+ * this row. `deriveIdentitySignals` ALWAYS returns an array for `stripe_requirements_due`,
+ * so NULL there means "never reported" — it can never mean "reported, nothing
+ * outstanding", because that case stores `[]`.
+ *
+ * Either way the honest answer is `unknown`, which never blocks and never renders as a
+ * failure. An earlier version coerced `?? []` / `?? null` inline, which turned "we have
+ * not heard from Stripe" into `unmet` for every account on the platform — including
+ * fully-onboarded ones that could never clear it, since Stripe only emits
+ * `account.updated` on change. The rows populate as the webhook reports.
+ *
+ * Exported and standalone because it lived inside the hook's `useMemo`, where nothing
+ * could reach it: every derivation test hand-builds `identity`, so the mapping that
+ * actually produced the bug had no test at all.
+ */
+export function toIdentityContext(
+  rp:
+    | {
+        identity_verified_at?: string | null;
+        stripe_requirements_due?: string[] | null;
+        stripe_disabled_reason?: string | null;
+      }
+    | null
+    | undefined,
+): ReadinessContext['identity'] {
+  if (!rp) return undefined;
+  const heardFromStripe =
+    rp.identity_verified_at != null ||
+    rp.stripe_requirements_due != null ||
+    rp.stripe_disabled_reason != null;
+  if (!heardFromStripe) return undefined;
+  return {
+    verifiedAt: rp.identity_verified_at ?? null,
+    requirementsDue: rp.stripe_requirements_due ?? [],
+    disabledReason: rp.stripe_disabled_reason ?? null,
+  };
+}
+
 export function useAccountReadiness(role: AccountRole, opts: Options = {}): UseAccountReadiness {
   const { liveStripe = false, enabled = true } = opts;
   const { user, profile } = useAuth();
@@ -190,16 +232,7 @@ export function useAccountReadiness(role: AccountRole, opts: Options = {}): UseA
             portfolioUrls: (rp.portfolio_urls as string[] | null) ?? null,
           }
         : undefined,
-      // A role table with no row yet (rp undefined) means the read never resolved —
-      // undefined, never a fabricated "not verified". Once rp resolves, missing
-      // columns read as null (Stripe has never reported), which is a real `unmet`.
-      identity: rp
-        ? {
-            verifiedAt: (rp.identity_verified_at ?? null) as string | null,
-            requirementsDue: (rp.stripe_requirements_due ?? []) as readonly string[],
-            disabledReason: (rp.stripe_disabled_reason ?? null) as string | null,
-          }
-        : undefined,
+      identity: toIdentityContext(rp),
       // Creator-only fact — business/brand address comes from orgUnits above.
       addressVerifiedAt: isCreator && rp ? ((rp.address_verified_at ?? null) as string | null) : undefined,
     };

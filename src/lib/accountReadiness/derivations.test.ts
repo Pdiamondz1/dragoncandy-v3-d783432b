@@ -91,6 +91,38 @@ describe('deriveCreatorAddress', () => {
 });
 
 describe('deriveIdentityVerified', () => {
+  /**
+   * Revocation outranks the stamp. `stripe-webhook` never clears identity_verified_at
+   * once set, so if verifiedAt were checked first, an account Stripe has DISABLED would
+   * render "identity verified" while we mirror the rejection into the adjacent column.
+   * Fraud prevention is the stated reason this slice exists.
+   */
+  it('is unmet when Stripe has disabled the account, even though a stamp survives', () => {
+    const s = deriveIdentityVerified({
+      ...base,
+      identity: {
+        verifiedAt: '2026-08-24T00:00:00Z',
+        requirementsDue: [],
+        disabledReason: 'rejected.fraud',
+      },
+    });
+    expect(s.status).toBe('unmet');
+    expect(s.detail).toBe('rejected.fraud');
+  });
+
+  it('is unmet when a requirement is outstanding, even though a stamp survives', () => {
+    const s = deriveIdentityVerified({
+      ...base,
+      identity: {
+        verifiedAt: '2026-08-24T00:00:00Z',
+        requirementsDue: ['individual.id_number'],
+        disabledReason: null,
+      },
+    });
+    expect(s.status).toBe('unmet');
+    expect(s.detail).toContain('individual.id_number');
+  });
+
   it('is unknown when we have not heard from Stripe', () =>
     expect(deriveIdentityVerified({ ...base, identity: undefined }).status).toBe('unknown'));
 
