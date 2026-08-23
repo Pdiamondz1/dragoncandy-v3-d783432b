@@ -715,3 +715,51 @@ describe('alertRecipients_', () => {
     expect(alertRecipients_()).toEqual([]);
   });
 });
+
+// Per-identity isolation means a failed write no longer throws — including a
+// failure on the user's OWN primary signature. Without this category that
+// reaches only the log, so a user whose signature silently stopped updating
+// would generate no alert at all unless they also had a shared regression.
+// Codex P1, 2026-08-23.
+describe('runAlert_ per-identity write failures', () => {
+  const { runAlert_ } = loadAppsScript();
+  const partial = [
+    { email: 'joe@dragoncandy.com', failures: ['joe@dragoncandy.com: Error: Gmail API 500'] },
+  ];
+
+  it('fires on a write failure alone, with nothing failed and nothing degraded', () => {
+    const a = runAlert_([], [], 4, partial);
+    expect(
+      a,
+      'a primary-signature failure must not be visible only in the log — that is the whole point of the alert',
+    ).not.toBeNull();
+    expect(a.subject).toContain('1 with write errors');
+  });
+
+  it('names the user and quotes the underlying error', () => {
+    const body = runAlert_([], [], 4, partial).body;
+    expect(body).toContain('joe@dragoncandy.com');
+    expect(body).toContain('Gmail API 500');
+    expect(body).toContain('PRIMARY');
+  });
+
+  it('still silent when all three categories are empty', () => {
+    expect(runAlert_([], [], 4, [])).toBeNull();
+  });
+
+  it('counts all three categories in the subject', () => {
+    const a = runAlert_(
+      [{ email: 'a@x.com', written: 0, expected: 3, denied: 3, cause: 'scope', unexplained: 0 }],
+      ['b@x.com'],
+      4,
+      partial,
+    );
+    expect(a.subject).toContain('1 failed');
+    expect(a.subject).toContain('1 with write errors');
+    expect(a.subject).toContain('1 degraded');
+  });
+
+  it('is backward compatible with callers that omit the argument', () => {
+    expect(runAlert_([], [], 4)).toBeNull();
+  });
+});

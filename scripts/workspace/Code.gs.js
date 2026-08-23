@@ -70,6 +70,13 @@ function installAllSignatures() {
   // have no counts for them), but a user getting NO signature is at least as
   // alarming as a degraded one, so the alert has to know about them.
   var failedUsers = [];
+  // Users where SOME identity write failed for a reason that is not the
+  // missing scope. Per-identity isolation (added so one bad identity cannot
+  // cost a user their other signatures) has a side effect: a failure on the
+  // PRIMARY identity no longer throws, so without this it would reach only the
+  // log. Alerting on shared regressions alone would miss a user whose own
+  // signature silently stopped updating. (Codex P1, 2026-08-23.)
+  var partialUsers = [];
   // Read before the loop: the Sheet's written/expected column uses the same
   // expectation as the warning, and both must survive an identity being
   // removed. See sharedExpectation_.
@@ -104,6 +111,7 @@ function installAllSignatures() {
         detail += ', ' + counts.denied + ' denied (needs gmail.settings.sharing)';
       }
       if (counts.failures.length) {
+        partialUsers.push({ email: user.primaryEmail, failures: counts.failures });
         detail += ', ' + counts.failures.length + ' failed: ' + counts.failures.join('; ');
         console.error(
           'installForUser_ partial for ' + user.primaryEmail + ': ' + counts.failures.join('; '),
@@ -229,7 +237,7 @@ function installAllSignatures() {
   // A warning in Cloud Logging is only seen by someone who goes looking. This
   // is the delivery half: the same finding, pushed. Deliberately silent on a
   // clean run -- an alert that arrives nightly regardless is one nobody reads.
-  var alert = runAlert_(degraded, failedUsers, users.length);
+  var alert = runAlert_(degraded, failedUsers, users.length, partialUsers);
   if (alert) sendRunAlert_(alert.subject, alert.body);
 
   // After the check, never before: the baseline is what the check compares
@@ -515,13 +523,15 @@ function writeSharedBaseline_(next) {
  * Silent on a clean run on purpose. A nightly "all fine" mail trains its
  * recipient to filter it, and then the one that matters is filtered too.
  */
-function runAlert_(degraded, failedUsers, userCount) {
+function runAlert_(degraded, failedUsers, userCount, partialUsers) {
   degraded = degraded || [];
   failedUsers = failedUsers || [];
-  if (!degraded.length && !failedUsers.length) return null;
+  partialUsers = partialUsers || [];
+  if (!degraded.length && !failedUsers.length && !partialUsers.length) return null;
 
   var parts = [];
   if (failedUsers.length) parts.push(failedUsers.length + ' failed');
+  if (partialUsers.length) parts.push(partialUsers.length + ' with write errors');
   if (degraded.length) parts.push(degraded.length + ' degraded');
   var subject = '[DragonCandy signatures] ' + parts.join(', ') + ' of ' + userCount + ' users';
 
@@ -535,6 +545,23 @@ function runAlert_(degraded, failedUsers, userCount) {
       failedUsers.join('\n  ') +
       '\n\nThese users threw before any identity was written. Their signatures ' +
       'are whatever they were before this run -- possibly stale, possibly absent.\n\n';
+  }
+
+  if (partialUsers.length) {
+    body +=
+      'IDENTITY WRITES FAILED (' +
+      partialUsers.length +
+      '), not a permissions issue:\n';
+    for (var q = 0; q < partialUsers.length; q++) {
+      body += '  ' + partialUsers[q].email + ':\n';
+      for (var f = 0; f < partialUsers[q].failures.length; f++) {
+        body += '    ' + partialUsers[q].failures[f] + '\n';
+      }
+    }
+    body +=
+      '\nThis includes the PRIMARY identity. A user can appear here with their ' +
+      'own signature not updated at all, which no other line in this mail would ' +
+      'show.\n\n';
   }
 
   if (degraded.length) {

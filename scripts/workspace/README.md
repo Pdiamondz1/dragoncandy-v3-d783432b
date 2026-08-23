@@ -368,10 +368,13 @@ Everything above improves what the warning *says*. None of it makes anyone read
 it, and a line in Cloud Logging is seen only by someone who goes looking. So a
 run with a finding also **emails** `ALERT_EMAIL`.
 
-- **It fires on two things**: users who failed outright (no signature written at
-  all) and users who are degraded (shared signatures missing). The subject
-  carries both counts; the body names every user, the written/expected numbers,
-  and the cause.
+- **It fires on three things**: users who failed outright (no signature written
+  at all), users where an individual identity write failed, and users who are
+  degraded (shared signatures missing). The subject carries all three counts;
+  the body names every user, the written/expected numbers, and the cause.
+  The middle category exists because per-identity isolation means a failure on
+  someone's **own primary signature** no longer throws — without it, a user
+  whose signature silently stopped updating would produce no alert at all.
 - **It is silent on a clean run, on purpose.** A nightly "all fine" trains its
   recipient to filter the thread, and then the one that matters is filtered too.
 - **`ALERT_EMAIL` unset means nobody is told**, which is worse than it sounds
