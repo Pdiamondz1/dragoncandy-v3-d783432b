@@ -29,6 +29,15 @@ jobs:
           # Valid presets are perf | experimental | desktop. The config defaults
           # to mobile (no preset), so desktop is selected here.
           LHCI_COLLECT__SETTINGS__PRESET: desktop
+          # public/robots.txt is `Disallow: /` while the site is in private preview,
+          # which fails the is-crawlable audit and takes categories:seo to 0.69.
+          # This MUST be an env var, not `collect.settings` in lighthouserc.cjs:
+          # an LHCI_COLLECT__SETTINGS__* env var REPLACES the whole settings object
+          # from the config file (measured 2026-08-23 — skipAudits arrived as null
+          # in the report), so the file's copy is silently dropped for any job that
+          # also sets the preset. Set on both jobs so neither depends on the other's
+          # shape. Remove at public launch with public/robots.txt.
+          LHCI_COLLECT__SETTINGS__SKIP_AUDITS: is-crawlable
 
       - name: Lighthouse CI — Mobile
         uses: treosh/lighthouse-ci-action@v12
@@ -42,3 +51,12 @@ jobs:
           # nudge toward improvement, not a merge gate. a11y/best-practices/SEO still
           # gate at `error` via lighthouserc.cjs (all 1.00 on mobile).
           LHCI_ASSERT__ASSERTIONS__CATEGORIES_PERFORMANCE: 'warn,minScore,0.85'
+          # public/robots.txt is `Disallow: /` while the site is in private preview,
+          # which fails the is-crawlable audit and takes categories:seo to 0.69.
+          # This MUST be an env var, not `collect.settings` in lighthouserc.cjs:
+          # an LHCI_COLLECT__SETTINGS__* env var REPLACES the whole settings object
+          # from the config file (measured 2026-08-23 — skipAudits arrived as null
+          # in the report), so the file's copy is silently dropped for any job that
+          # also sets the preset. Set on both jobs so neither depends on the other's
+          # shape. Remove at public launch with public/robots.txt.
+          LHCI_COLLECT__SETTINGS__SKIP_AUDITS: is-crawlable
