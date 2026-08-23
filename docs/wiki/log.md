@@ -1,7 +1,8 @@
 # Wiki Log
 
-## [2026-08-23] update | It works — and the run that proves it is the middle one, not the last
+## [2026-08-23] ingest | It works — and the run that proves it is the middle one, not the last
 
+Ingested `raw/sessions/2026-08-23-shared-signatures-live.md`.
 **Updated** [[Workspace Email Signatures]] and its `index.md` entry. Three days of successive
 corrections closed: `clasp push` deployed #456, the founder approved `gmail.settings.sharing`,
 the property was set, and `dame@`'s run logged **`ok / 4 identities / 3 shared`**.

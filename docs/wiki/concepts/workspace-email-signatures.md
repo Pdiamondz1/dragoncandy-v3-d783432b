@@ -2,8 +2,8 @@
 title: Workspace Email Signatures
 type: concept
 created: 2026-08-20
-updated: 2026-08-22
-sources: [2026-08-20-google-workspace-signatures-wave-1.md, 2026-08-21-workspace-wave-1-admin-half-and-sendas-correction.md, 2026-08-22-sendas-scope-403-and-partial-status.md]
+updated: 2026-08-23
+sources: [2026-08-20-google-workspace-signatures-wave-1.md, 2026-08-21-workspace-wave-1-admin-half-and-sendas-correction.md, 2026-08-22-sendas-scope-403-and-partial-status.md, 2026-08-23-shared-signatures-live.md]
 tags: [google-workspace, email, branding, apps-script, automation, security]
 ---
 
