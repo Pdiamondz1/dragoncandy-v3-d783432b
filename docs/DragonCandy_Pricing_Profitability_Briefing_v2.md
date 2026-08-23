@@ -38,18 +38,18 @@ Before we talk about projections, here's exactly where DragonCandy stands right 
 |--------|--------------|
 | Users on platform | ~30 (organic, zero marketing spend) |
 | Paying customers | 0 (pre-revenue; Stripe is in test mode) |
-| Monthly operating cost | ~$572/month total (was ~$295 before Outstand's price rose — see §5) |
+| Monthly operating cost | ~$569/month total (was ~$295 before Outstand's price rose — see §5) |
 | Marketing spend to date | $0 |
 | Team size | 1 (founder + AI development tools) |
 | Platform status | Fully built, feature-complete for launch |
 
-**Our entire platform runs for about $572/month.** That's split across five tools: Claude AI ($200), Outstand.so ($249), Lovable.dev hosting ($50), Supabase database ($45), and OpenAI ($20). This used to read "less than $300/month, $295 split across four tools" — Outstand raised its price from $67 to $249 and the Supabase figure was itself stale ($25 vs. the real $45), and nothing re-checks a cost figure, so the total was wrong by ~$277 for an unknown stretch (see §5). There is no payroll, no office, no ad spend. Every feature described in this document is built and live on dragoncandy.com — we are pre-revenue by choice, not by capability.
+**Our entire platform runs for about $569/month.** That's split across five tools: Claude AI ($200), Outstand.so ($249), Lovable.dev hosting ($50), Supabase database ($45), and OpenAI ($25). This used to read "less than $300/month, $295 split across four tools," and briefly $572 after that — Outstand raised its price from $67 to $249, the Supabase figure was itself stale ($25 vs. the real $45), and the OpenAI row was off by $5; nothing re-checks a cost figure, so the total drifted for an unknown stretch and the $572 revision didn't even reconcile with its own listed components (see §5). There is no payroll, no office, no ad spend. Every feature described in this document is built and live on dragoncandy.com — we are pre-revenue by choice, not by capability.
 
 ### What This Document Explains, in Plain English
 
 - Exactly what DragonCandy does for each of the three customer types: restaurants, creators, and brand sponsors — verified against the actual working software, not a wish list.
 - How much we charge today, what we recommend changing, and what each customer actually gets.
-- How much it costs us to find and sign up one of each type of customer (restaurant, creator, brand) — starting from our real $572/month baseline.
+- How much it costs us to find and sign up one of each type of customer (restaurant, creator, brand) — starting from our real $569/month baseline.
 - What we will spend on marketing, and why we don't need a giant marketing budget.
 - Our three-year revenue, costs, and profit forecast — starting honestly from zero.
 - How we build a business "moat" and keep AI as our advantage instead of letting it make us obsolete.
@@ -58,7 +58,7 @@ Before we talk about projections, here's exactly where DragonCandy stands right 
 
 > **1. We don't need venture capital.**
 >
-> 85% of bootstrapped business software companies become profitable. Only 46% of venture-backed ones do. We can hit profit at $3M in revenue. A funded competitor would need $10M+ because of the team they'd be forced to hire. We already run the entire platform for $572/month — that's our burn rate.
+> 85% of bootstrapped business software companies become profitable. Only 46% of venture-backed ones do. We can hit profit at $3M in revenue. A funded competitor would need $10M+ because of the team they'd be forced to hire. We already run the entire platform for $569/month — that's our burn rate.
 
 > **2. The AI behind Donny is cheaper than the email it sends.**
 >
@@ -314,15 +314,15 @@ Before we project future costs, here's exactly what DragonCandy costs to run rig
 | Expense | Monthly Cost | What It Does |
 |---------|-------------|-------------|
 | Claude AI (Max plan) | $200 | Powers Donny AI assistant, campaign brief generation, creator matching, and all AI development |
-| OpenAI subscription | $20 | Supplementary AI for specific tasks |
+| OpenAI subscription | $25 | Supplementary AI for specific tasks |
 | Lovable.dev hosting | $50 | Hosts the dragoncandy.io website and app |
-| Supabase (Pro plan) | $45 | Database, authentication, file storage, real-time messaging, edge functions (56 serverless functions) |
+| Supabase (Pro plan) | $45 | Database, authentication, file storage, real-time messaging, edge functions (104 serverless functions) |
 | Outstand.so | $249 | Social media integration (Instagram, TikTok, YouTube) |
-| **TOTAL** | **$572/month** | **Entire platform operating cost** |
+| **TOTAL** | **$569/month** | **Entire platform operating cost** |
 
-That's $6,864 per year to run a platform with campaign management, AI matching, real-time messaging, escrow payments, file management with watermarks, team management, and 42 backend functions. (A live connection to Toast's POS system does not exist — six `toast-*` edge functions are deployed but every one answers `toast_not_configured` 503, and no `%toast%` table exists on prod; see `docs/PROJECT_CONTEXT.md` §6.)
+That's $6,828 per year to run a platform with campaign management, AI matching, real-time messaging, escrow payments, file management with watermarks, team management, and 104 backend functions. (A live connection to Toast's POS system does not exist — six `toast-*` edge functions are deployed but every one answers `toast_not_configured` 503, and no `%toast%` table exists on prod; see `docs/PROJECT_CONTEXT.md` §6.)
 
-For context: Toast (a restaurant SaaS company) spends approximately $1.2 billion per year on operations. We spend $6,864. Obviously we're at a different scale, but the ratio shows how lean a modern AI-powered platform can be.
+For context: Toast (a restaurant SaaS company) spends approximately $1.2 billion per year on operations. We spend $6,828. Obviously we're at a different scale, but the ratio shows how lean a modern AI-powered platform can be.
 
 ### What One Customer Costs Us to Serve
 
@@ -392,11 +392,11 @@ Brand sponsors are the slowest to sign up but most valuable when they do. Averag
 
 | | Today (Pre-Launch) | At 250 Users | At 1,000 Customers |
 |-|-------------------|-----------------|-------------------|
-| **Infrastructure** | $572/mo | $544-$764/mo | $1,269-$2,089/mo |
+| **Infrastructure** | $569/mo | $544-$764/mo | $1,269-$2,089/mo |
 | **Marketing** | $0 | $2,000-$4,000/mo | $7,000-$15,000/mo |
 | **Payroll** | $0 | $0-$15,000/mo (1 hire) | $45,000-$75,000/mo (3-5 hires) |
 | **AI costs (Donny)** | Included in Claude sub | $200-$400/mo | $800-$1,600/mo |
-| **TOTAL** | **$572/mo** | **$2,744-$20,164/mo** | **$54,069-$93,689/mo** |
+| **TOTAL** | **$569/mo** | **$2,744-$20,164/mo** | **$54,069-$93,689/mo** |
 | **Revenue** | $0 | ~$87,700/mo | $750,000-$800,000/mo |
 | **Profit margin** | N/A | 77-97% | 88-93% |
 
@@ -475,7 +475,7 @@ Focus: 2-3 metro markets. Onboard creators first, restaurants second. Manual pla
 
 | Line Item | Launch Year |
 |----------|------------|
-| Starting point | $0 revenue, ~30 users, $572/mo operating cost |
+| Starting point | $0 revenue, ~30 users, $569/mo operating cost |
 | Paying restaurant customers (end of year) | 100-200 |
 | Blended ARPU per month | $250 |
 | Annual recurring revenue (ARR) at year end | $300K-$600K |
@@ -618,7 +618,7 @@ This is the most underrated moat. Federal law requires sponsored content to be d
 
 **Layer 7: Built Feature Depth**
 
-As of 2026-08-23 (this line previously said April 2026 and gave different, lower counts than the Codebase verification note below — the two disagreed inside this same document), DragonCandy has 104 edge functions, 274 React hooks, 95 page components, 1,182 source files, and 2,857 tests, with live integrations across Stripe, Outstand.so (social publishing), and Supabase Realtime — Toast is a submitted partner application, not a live integration (see Layer 3 above). This isn't a weekend vibe-code project — it's thousands of hours of development covering campaign management, escrow payments, real-time messaging, content watermarking, team management, multi-unit locations, QR promotional campaigns, DragonShare content monetization, and a 21-tool AI agent. Someone can clone the landing page. They cannot clone the operational depth.
+As of 2026-08-23 (this line previously said April 2026 and gave different, lower counts than the Codebase verification note below — the two disagreed inside this same document), DragonCandy has 104 edge functions, 272 React hooks, 95 page components, 1,182 source files, and 2,857 tests, with live integrations across Stripe, Outstand.so (social publishing), and Supabase Realtime — Toast is a submitted partner application, not a live integration (see Layer 3 above). This isn't a weekend vibe-code project — it's thousands of hours of development covering campaign management, escrow payments, real-time messaging, content watermarking, team management, multi-unit locations, QR promotional campaigns, DragonShare content monetization, and a 21-tool AI agent. Someone can clone the landing page. They cannot clone the operational depth.
 
 ### How We Stay Current with the AI Landscape
 
@@ -786,7 +786,7 @@ This is the most important ask, and the hardest. The math only works if we resis
 
 **Escrow:** A payment arrangement where money is held by a third party (Stripe, in our case) until both sides of a transaction confirm the work is done. Protects both the buyer and the seller.
 
-**Edge Function:** A small piece of server code that runs on demand (like a vending machine — put in a request, get back a result). DragonCandy has 56 of these handling everything from AI chat to payment processing.
+**Edge Function:** A small piece of server code that runs on demand (like a vending machine — put in a request, get back a result). DragonCandy has 104 of these handling everything from AI chat to payment processing.
 
 **POS (Point of Sale):** The system a restaurant uses to ring up customers. Toast is a popular POS. A partnership application is pending with Toast (submitted 2026-08-23); if it's granted, promotional discount codes created on DragonCandy would be trackable and redeemable at the restaurant's actual cash register. No such integration exists today.
 
@@ -805,7 +805,7 @@ All financial benchmarks and competitive comparisons in this document are drawn 
 - Donny Super Agent Roadmap (multi-surface AI strategy).
 - Lovable.dev Pricing Analysis (current state assessment).
 
-**Codebase verification:** All feature status labels (LIVE / IN DEV / PLANNED) were verified against the DragonCandy codebase (`/Users/dwill/GIT/dragoncandy-v3-d783432b` — the repo moved from Windows to macOS on 2026-08-14, so the drive-letter path above no longer applies). As of 2026-08-23, the codebase contains 95 page components, 274 custom hooks, 104 Supabase edge functions, 1,182 source files, and 2,857 tests, with live integrations with Stripe, Claude AI, and Outstand.so (social media management); Toast is a submitted partner application, not a live POS integration (see Layer 3 above). Infrastructure capacity verified against live Supabase production metrics on May 9, 2026.
+**Codebase verification:** All feature status labels (LIVE / IN DEV / PLANNED) were verified against the DragonCandy codebase (`/Users/dwill/GIT/dragoncandy-v3-d783432b` — the repo moved from Windows to macOS on 2026-08-14, so the drive-letter path above no longer applies). As of 2026-08-23, the codebase contains 95 page components, 272 custom hooks, 104 Supabase edge functions, 1,182 source files, and 2,857 tests, with live integrations with Stripe, Claude AI, and Outstand.so (social media management); Toast is a submitted partner application, not a live POS integration (see Layer 3 above). Infrastructure capacity verified against live Supabase production metrics on May 9, 2026.
 
 *Restaurant marketing data from Deloitte Digital 2025 "State of Social." Take-rate benchmarks from public filings of Fiverr, Upwork, ShopMy, Faire, Agentio. AI cost benchmarks from current Anthropic API pricing.*
 

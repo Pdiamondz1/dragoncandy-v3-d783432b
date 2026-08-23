@@ -53,11 +53,14 @@ plan says "raise capital to pull that same lean team forward by ~18 months."
 
 ### 2.1 Today (grounded)
 
-Current burn **~$572/mo** (as of 2026-08-23): Lovable $50, Anthropic $200, **Outstand $249**,
-Supabase $45, OpenAI $25. This line read **~$390/mo** until 2026-08-23 — Outstand raised its
-price from $67 and nothing re-checks a cost figure, so it was wrong by ~$182 for an unknown
-stretch. The live figure is now `OPERATING.burnMonthly` in `src/pitch/model/assumptions.ts`,
-where a test fails if it goes 90 days unread.
+Current burn **~$569/mo** (as of 2026-08-23): Lovable $50, Anthropic $200, **Outstand $249**,
+Supabase $45, OpenAI $25 — sums to $569. This line, and `docs/PROJECT_CONTEXT.md` §4, briefly
+stated **$572**, which did not reconcile with these same five components; both were corrected the
+same day, and the $3 gap is unresolved pending an invoice check. Before that this line read
+**~$390/mo** until 2026-08-23 — Outstand raised its price from $67 and nothing re-checks a cost
+figure, so it was wrong by ~$182 for an unknown stretch. The live figure is now
+`OPERATING.burnMonthly` in `src/pitch/model/assumptions.ts`, where a test fails if it goes 90 days
+unread.
 
 The Capacity Report's baseline is **$295/mo** excluding Outstand
 (`docs/DragonCandy_Infrastructure_Capacity_Report.md`). DB upgrade **MICRO→SMALL (+$49/mo)** is

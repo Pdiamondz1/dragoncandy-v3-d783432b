@@ -17,11 +17,11 @@
 | Starter tier take rate (`takeRate_starter`) | 0.07 | fraction | MEASURED | `supabase/functions/stripe-webhook/index.ts (TIER_TAKE_RATES)` | 2026-08-23 |
 | Growth tier take rate (`takeRate_growth`) | 0.05 | fraction | MEASURED | `supabase/functions/stripe-webhook/index.ts (TIER_TAKE_RATES)` | 2026-08-23 |
 | Pro tier take rate (`takeRate_pro`) | 0.03 | fraction | MEASURED | `supabase/functions/stripe-webhook/index.ts (TIER_TAKE_RATES)` | 2026-08-23 |
-| Monthly operating cost (`burnMonthly`) | 572 | USD/month | MEASURED | `vendor invoices \| Lovable 50 + Anthropic 200 + Outstand 249 + Supabase 45 + OpenAI 25` | 2026-08-23 |
+| Monthly operating cost (`burnMonthly`) | 569 | USD/month | MEASURED | `vendor invoices \| Lovable 50 + Anthropic 200 + Outstand 249 + Supabase 45 + OpenAI 25` | 2026-08-23 |
 | Paying customers (`payingCustomers`) | 0 | accounts | MEASURED | `docs/PROJECT_CONTEXT.md (section 4)` | 2026-08-23 |
 | Registered users (`registeredUsers`) | 30 | accounts | MEASURED | `docs/PROJECT_CONTEXT.md (section 4)` | 2026-08-23 |
 | Page components (`pageComponents`) | 95 | files | MEASURED | `find src/pages -name '*.tsx' \| wc -l` | 2026-08-23 |
-| React hooks (`hooks`) | 274 | files | MEASURED | `find src/hooks -name '*.ts' -o -name '*.tsx' \| wc -l` | 2026-08-23 |
+| React hooks (`hooks`) | 272 | files | MEASURED | `find src/hooks -name 'use*.ts' -o -name 'use*.tsx' \| wc -l` | 2026-08-23 |
 | Edge functions (`edgeFunctions`) | 104 | functions | MEASURED | `ls -d supabase/functions/*/ \| grep -v _shared \| wc -l` | 2026-08-23 |
 | TypeScript source files (`sourceFiles`) | 1182 | files | MEASURED | `find src -type f \( -name '*.ts' -o -name '*.tsx' \) \| wc -l` | 2026-08-23 |
 | Database migrations (`migrations`) | 402 | files | MEASURED | `ls supabase/migrations/*.sql \| wc -l` | 2026-08-23 |

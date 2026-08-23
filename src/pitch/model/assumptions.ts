@@ -35,12 +35,15 @@ export const TIER_TAKE_RATES: Record<TierName, Assumption<number>> = {
 
 export const OPERATING = {
   burnMonthly: measured({
-    value: 572,
+    value: 569,
     unit: 'USD/month',
     label: 'Monthly operating cost',
     source: 'vendor invoices | Lovable 50 + Anthropic 200 + Outstand 249 + Supabase 45 + OpenAI 25',
     asOf: '2026-08-23',
-    note: 'Was $390 in the capital-raise cost model for two months after Outstand rose $67 to $249.',
+    note: 'Was $390 in the capital-raise cost model for two months after Outstand rose $67 to $249. ' +
+      'PROJECT_CONTEXT.md then briefly stated $572, which did not reconcile with its own five ' +
+      'enumerated components (the same five above, which sum to $569) — we use the component sum ' +
+      'here because it is the checkable figure; the $3 gap is unresolved and needs an invoice check.',
   }),
   payingCustomers: measured({
     value: 0,
@@ -59,7 +62,16 @@ export const OPERATING = {
     note: 'NOT yet confirmed against prod. To verify: select count(*) from profiles. Organic, unpaid. Approximate in PROJECT_CONTEXT; re-count before quoting precisely.',
   }),
   pageComponents: measured({ value: 95, unit: 'files', label: 'Page components', source: "find src/pages -name '*.tsx' | wc -l", asOf: '2026-08-23' }),
-  hooks: measured({ value: 274, unit: 'files', label: 'React hooks', source: "find src/hooks -name '*.ts' -o -name '*.tsx' | wc -l", asOf: '2026-08-23' }),
+  hooks: measured({
+    value: 272,
+    unit: 'files',
+    label: 'React hooks',
+    source: "find src/hooks -name 'use*.ts' -o -name 'use*.tsx' | wc -l",
+    asOf: '2026-08-23',
+    note: 'A raw file count of the same directory (every *.ts/*.tsx, not just use*) gives 274 — the ' +
+      'other two files are campaignAvailability.ts and its test. The use* convention is authoritative ' +
+      'because it is what scripts/update-scale-numbers.mjs (and therefore PROJECT_CONTEXT.md) counts.',
+  }),
   edgeFunctions: measured({ value: 104, unit: 'functions', label: 'Edge functions', source: "ls -d supabase/functions/*/ | grep -v _shared | wc -l", asOf: '2026-08-23' }),
   sourceFiles: measured({ value: 1182, unit: 'files', label: 'TypeScript source files', source: "find src -type f \\( -name '*.ts' -o -name '*.tsx' \\) | wc -l", asOf: '2026-08-23' }),
   migrations: measured({ value: 402, unit: 'files', label: 'Database migrations', source: 'ls supabase/migrations/*.sql | wc -l', asOf: '2026-08-23' }),

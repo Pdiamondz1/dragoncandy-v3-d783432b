@@ -76,12 +76,14 @@ paid campaign in under 60 seconds.
 
 ## 4. Current State
 
-Pre-revenue by choice. ~30 organic users, $0 paying customers, **~$572/mo
+Pre-revenue by choice. ~30 organic users, $0 paying customers, **~$569/mo
 operating cost** (as of 2026-08-23: Lovable $50, Anthropic $200, **Outstand.so $249**,
-Supabase $45, OpenAI $25), Stripe in test mode. This line read **~$390/mo** with
-Outstand at **$67** until 2026-08-23 — Outstand raised its price and nothing re-checks
-a cost figure, so it was wrong by ~$182 for an unknown stretch. Vendor pricing goes
-stale silently; re-read the invoices before quoting this anywhere. Production launch date TBD. The content
+Supabase $45, OpenAI $25 — sums to $569; this line briefly stated $572, which did not
+reconcile with these same five components, until corrected the same day, and the $3
+gap is unresolved pending an invoice check), Stripe in test mode. This line read
+**~$390/mo** with Outstand at **$67** until 2026-08-23 — Outstand raised its price and
+nothing re-checks a cost figure, so it was wrong by ~$182 for an unknown stretch.
+Vendor pricing goes stale silently; re-read the invoices before quoting this anywhere. Production launch date TBD. The content
 delivery system stabilization that gated launch landed in late May 2026;
 remaining blockers are final bug resolution and payment-flow hardening.
 
