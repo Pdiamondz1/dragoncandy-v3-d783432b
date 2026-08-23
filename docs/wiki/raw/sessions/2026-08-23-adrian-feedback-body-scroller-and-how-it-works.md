@@ -166,6 +166,30 @@ scored the landing 96 on accessibility for this since before the rebuild — and
 darkening the brand pink or changing the CTA's weight, which is a brand decision rather than a
 drive-by in a feedback PR.
 
+## The shell fix was incomplete, and Codex found the thread
+
+Codex's second pass flagged a **P2**: the shared lazy-route Suspense fallback in `AnimatedRoutes`
+was still `min-h-screen` inside the now-`100dvh` shell, so any uncached route chunk recreates the
+dead scroll while it loads. Correct, and reading on from it found **two worse ones** it had not
+flagged — both in `AppLayout`, and both of which **return directly, bypassing `AppShell` entirely**:
+
+- the `/pitch` Suspense fallback, and
+- the session-hint splash shown while auth resolves.
+
+Because those bypass the shell, their `100vh` lands on the chain to `<body>` and overflows the
+**document**, not merely `main`. The splash is the worst of the three: it renders on **public**
+paths for a returning visitor — i.e. **on the landing page during every warm load**, which is
+exactly the scenario the report came from. So the original fix had closed the steady state and left
+the loading state open on the very page that was reported.
+
+All three moved to `min-h-[100dvh]`, and the pin widened from "the shell is `h-[100dvh]`" to
+"**no `100vh` survives anywhere in `App.tsx`**", comments stripped before asserting so the
+explanatory comments naming those classes cannot make the assertion unfailable.
+
+**And the new assertion was itself controlled**, per the lesson above: injecting `min-h-screen`
+into the shell's className made it fail, reverting made it pass. A guard nobody has watched fail is
+a guard nobody has tested.
+
 ## Left open
 
 - If the jump persists on a real phone, the remaining candidate is iOS rubber-band overscroll,

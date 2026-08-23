@@ -108,6 +108,18 @@ Both static tags removed. `/how-it-works` now scores **100 accessibility / 100 b
 (`#EC4899`) as text on white is **3.52:1** against the 4.5:1 small-text bar, four instances →
 `dc-pink-accent-btn` (`#DB2777`, **4.60:1**).
 
+**The shell fix was incomplete, and Codex found the thread.** Its P2: the shared lazy-route
+Suspense fallback was still `min-h-screen` inside the now-`100dvh` shell, so any uncached chunk
+recreates the dead scroll while it loads. Reading on from it found **two worse ones** it had not
+flagged — the `/pitch` fallback and the session-hint splash, both of which **return directly from
+`AppLayout`, bypassing `AppShell`**, so their `100vh` overflows the **document** rather than merely
+`main`. The splash renders on **public** paths while auth resolves for a returning visitor — i.e.
+**on the landing during every warm load**, the exact scenario reported. The original fix had closed
+the steady state and left the loading state open on the very page in question. All three moved to
+`min-h-[100dvh]`, and the pin widened from "the shell is `h-[100dvh]`" to "**no `100vh` survives
+anywhere in `App.tsx`**". That new assertion was itself controlled — injecting `min-h-screen` made
+it fail, reverting made it pass; *a guard nobody has watched fail is a guard nobody has tested.*
+
 **Found and deliberately NOT fixed:** the landing's "Get started" pill is white on `#F43F7F` at
 **3.58:1**, at 18px so the 3.0:1 large-text allowance does not apply. Pre-existing — it is why
 Lighthouse has scored the landing 96 on accessibility since before the rebuild — and closing it

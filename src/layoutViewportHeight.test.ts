@@ -45,6 +45,25 @@ describe('viewport-height chain above <main>', () => {
     expect(src).not.toContain('min-h-screen bg-landing-grape');
   });
 
+  it('leaves no 100vh anywhere in App.tsx, including the loading fallbacks', () => {
+    const src = read('src/App.tsx');
+
+    // Three fallbacks were missed by the first pass at this fix — one found by Codex, two by
+    // reading on from it. The /pitch Suspense fallback and the session-hint splash return
+    // DIRECTLY from AppLayout, bypassing AppShell, so their height lands on the chain to <body>
+    // and overflows the DOCUMENT rather than merely `main`. The splash is the worst of the three:
+    // it renders on PUBLIC paths while auth resolves for a returning visitor — i.e. on the landing
+    // during every warm load, exactly the scenario the "screen jumps" report came from.
+    //
+    // Strip comments first: the ones in App.tsx legitimately name these classes to explain why
+    // they are gone, and without this the assertion could never fail.
+    const code = src
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/.*$/gm, '$1');
+    expect(code).not.toMatch(/\bmin-h-screen\b/);
+    expect(code).not.toMatch(/\bh-screen\b/);
+  });
+
   it('DashboardLayout tracks the shell rather than re-introducing 100vh inside it', () => {
     // main is overflow-auto, so a 100vh child here does not scroll BODY — but it does hand every
     // short dashboard page ~80px of dead scroll inside main on iOS Safari, which is the same

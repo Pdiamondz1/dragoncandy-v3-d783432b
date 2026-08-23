@@ -303,6 +303,14 @@ corrected. A rule whose stated justification is false will be re-derived wrongly
 it next; §2 above states the same `dvh`-not-`vh` rule and is unaffected, because its reasoning was
 about the *unit*, not about the document.
 
+**The steady state is not the whole surface — check the LOADING states too.** The first pass at
+this fix corrected `AppShell` and `DashboardLayout` and left three `min-h-screen` loading fallbacks
+in `App.tsx`. Two of them (`/pitch`'s Suspense fallback and the session-hint splash) **return
+directly from `AppLayout`, bypassing `AppShell`**, so their `100vh` overflows the **document**, not
+merely `main` — and the splash renders on **public** paths while auth resolves for a returning
+visitor, i.e. on the landing during every warm load, the exact scenario reported. The pin is
+therefore "**no `100vh` survives anywhere in `App.tsx`**", not "the shell is `h-[100dvh]`".
+
 **Still open:** if the jump survives on a real phone, the remaining candidate is iOS rubber-band
 overscroll — a different mechanism, wanting `overscroll-behavior-y: none` on `body`, which is an
 app-wide behavioural change and was deliberately not bundled here.

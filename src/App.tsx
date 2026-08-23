@@ -192,8 +192,13 @@ function AnimatedRoutes() {
     return <Navigate to="/internal" replace />;
   }
 
+  // The fallback is min-h-[100dvh], not min-h-screen: it renders INSIDE `main` (100dvh), so a
+  // 100vh child hands `main` up to ~80px of dead scroll on iOS Safari while a route chunk loads —
+  // and scrolling that collapses the URL bar, which resizes the page. Milder than the body-level
+  // cases in AppLayout (it cannot scroll body), but the same defect one container down. Caught by
+  // Codex on the PR that fixed the shell.
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Spinner /></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-[100dvh]"><Spinner /></div>}>
       <PageTransition locationKey={location.pathname}>
         <Routes location={location}>
           {/* Landing is lazy (kept out of the initial bundle); its fallback is dark
@@ -473,7 +478,9 @@ function AppLayout() {
     return (
       <Suspense
         fallback={
-          <div className="flex min-h-screen items-center justify-center bg-dc-dark">
+          // min-h-[100dvh]: /pitch bypasses AppShell, so this is a direct child of the chain to
+          // <body> (height:100%) and 100vh here overflows the DOCUMENT, not just `main`.
+          <div className="flex min-h-[100dvh] items-center justify-center bg-dc-dark">
             <Spinner className="h-10 w-10 border-teal-400" />
           </div>
         }
@@ -485,7 +492,11 @@ function AppLayout() {
 
   if (loading && isPublic && hasSessionHint()) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center">
+      // min-h-[100dvh] — the worst of the three. This also bypasses AppShell, AND it renders on
+      // PUBLIC paths (the landing) while auth resolves for a returning visitor, which is exactly
+      // the scenario the "screen jumps" report came from. At 100vh it overflowed <body> during
+      // every warm load of the landing page.
+      <div className="min-h-[100dvh] bg-white flex flex-col items-center justify-center">
         <img src="/logo.webp" alt="DragonCandy" className="h-16 w-auto mb-6" />
         <Spinner className="h-10 w-10 border-teal-400" />
       </div>
