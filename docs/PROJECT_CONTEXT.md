@@ -538,6 +538,47 @@ holds no Toast credentials. See §6.
 > proof the object exists (see [[Content Delivery State Machine]]) and "recorded ≠ actual" has
 > bitten this project before.
 
+- **Site locked to a private preview — built and reviewed, and NO part of it is switched on** —
+  the code half is done; the go-live half is **entirely founder action and cannot be done by any
+  agent** (approve/merge the PR, set four Vercel variables, flip one Supabase toggle). The premise
+  is the thing to carry: **a password cannot stop a signup** — `VITE_SUPABASE_ANON_KEY` ships in the
+  bundle and `supabase.co` never traverses Vercel, so **turning off Supabase's "Allow new users to
+  sign up" is the load-bearing control** and the edge password is the lesser of the two. That
+  password is HTTP Basic at the edge (Vercel Routing Middleware: `middleware.ts` over a pure,
+  26-test `gate/decide.ts`), answering **401 and never a redirect**, because a 401 re-requests the
+  identical URL so a password-reset link's `#access_token` fragment survives. It **fails closed**,
+  so deleting the variables is the WRONG rollback — `SITE_GATE_ENABLED` is the lever, and it needs a
+  **redeploy** to take effect (an env-var change does not reach a running deployment; four documents
+  claimed otherwise). Rule from a real defect: **only allowlist a path with a real file under
+  `public/`** — `/.well-known/*` had none and `vercel.json` rewrites unmatched paths to
+  `/index.html`, so it served the whole SPA bundle to anonymous browsers. Three more caught in
+  review: the Lighthouse `is-crawlable` exemption was **inert where it was written** (a category
+  assertion reads a score computed at collect time — 0.69 vs 1.00 measured — and the obvious fix
+  ALSO fails because an `LHCI_COLLECT__SETTINGS__*` env var replaces the config file's whole
+  `settings` object); bare `undefined` is a **Next.js** continue convention, not the
+  framework-agnostic one (`next()` from `@vercel/functions`, or every authorised request breaks in
+  production where no preview can show it); and `VERCEL_ENV !== 'production'` was **fail-open on
+  absence**, reopening the site while the dashboard read locked. Also deleted the dead client-side
+  gate, which kept `dragoncandy2026` as a bundled string constant and allowlisted `/auth`.
+  Three Codex passes (last clean), a whole-branch review and a scoped re-review; 2,756 tests.
+  **The claim that this could not be tested before production was FALSE, and it hid a total
+  outage.** The gate's *behaviour* is production-only (a preview sets `VERCEL_ENV='preview'`, so it
+  passes everyone), but Vercel **imports and runs the middleware on every preview request** — and
+  the first preview deploy returned **500 on every request** (`MIDDLEWARE_INVOCATION_FAILED`).
+  Cause: Vercel transpiles `middleware.ts` to `middleware.js` and runs it as **Node ESM without
+  bundling**, and Node's ESM resolver does not add extensions, so `import … from './gate/decide'`
+  threw `ERR_MODULE_NOT_FOUND` at module load — before any gate logic, so `SITE_GATE_ENABLED` could
+  not have rescued it. Typecheck, 2,756 tests and the build were all green, because Vite/Vitest/tsc
+  all resolve extensionless specifiers. **Caught by the e2e smoke suite**, which drives a real
+  browser against the preview. Fixed with `'./gate/decide.js'`. **Durable rule: a local toolchain
+  that resolves imports for you cannot tell you whether the deployment target will.**
+  **Pending (2026-08-23):** merge PR #482; **a green `lighthouse-ci.yml` AND a green e2e smoke on it
+  are hard merge gates** (the Lighthouse 1.00 was measured locally, never by CI); then, in this
+  order, set the four Production-scope variables → deploy → run the runbook's checks → only then
+  disable Supabase signup.
+  Note `/promo/:id` now challenges (founder confirmed no QR is live; documented, deliberately not
+  allowlisted) and every Supabase invite must travel with the password or as a `?k=` link.
+  → `docs/wiki/concepts/site-access-lockdown.md` · `docs/runbooks/site-access-lockdown.md`
 - **Identity & verification (slice 2 of 4, onboarding redesign)** — gives `phone_verified`/
   `identity_verified`/`address` real writers, closes a `profiles` email/phone read exposure (4th
   recorded column-REVOKE-no-op instance), and corrects a slice-1 defect (two `required` checklist rows

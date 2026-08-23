@@ -76,8 +76,15 @@ ErrorBoundary → ThemeProvider → QueryClientProvider → LazyMotion → AuthP
         └─ BrowserRouter → AppLayout
             ├─ Public paths: AppShell directly
             └─ Authenticated paths: DonnyProviderWithAuth → AuthenticatedShell (3-hr inactivity timeout)
-                → AppShell (SiteGateGuard → AnimatedRoutes + HelpBriefDrawer + DonnyDesktopPanel)
+                → AppShell (AnimatedRoutes + HelpBriefDrawer + DonnyDesktopPanel)
 ```
+
+**There is no site gate in this tree any more.** `SiteGateGuard` used to wrap
+`AnimatedRoutes` here; it was deleted in the private-preview work. A gate rendered by
+the app cannot gate the app — the bundle has already been served by the time it runs,
+and it shipped its own password as a string constant inside that bundle. The site
+password now lives at the edge, in `middleware.ts` + `gate/decide.ts`, which run before
+the SPA is served at all. See `docs/runbooks/site-access-lockdown.md`.
 
 ### Three User Roles
 
@@ -194,7 +201,7 @@ Never commit actual values. Reference `.env.local` locally.
 
 ## Deployment
 
-Push to `main` on GitHub → Vercel auto-deploys to dragoncandy.io (~1–3 min; cut over from Lovable hosting 2026-07-15 — `docs/runbooks/vercel-prod-cutover.md`). Test locally with `npm run dev` before pushing. Vercel env-var scopes are load-bearing: **Production** scope = prod Supabase, **Preview** scope = staging Supabase (the QA-gate previews).
+Push to `main` on GitHub → Vercel auto-deploys to dragoncandy.com (~1–3 min; cut over from Lovable hosting 2026-07-15 — `docs/runbooks/vercel-prod-cutover.md`; dragoncandy.io now 308-redirects to dragoncandy.com). Test locally with `npm run dev` before pushing. Vercel env-var scopes are load-bearing: **Production** scope = prod Supabase, **Preview** scope = staging Supabase (the QA-gate previews).
 
 ### Worktree workflow — refresh local main after every merge
 

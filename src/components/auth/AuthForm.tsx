@@ -8,6 +8,7 @@ import type { UserRole as Role } from "@/types/user";
 import { Label } from "@/components/ui/label";
 import { LandingButton } from "@/components/landing/LandingButton";
 import { publicOrigin } from '@/lib/publicOrigin';
+import { signupErrorMessage } from '@/lib/signupDisabled';
 
 interface AuthFormProps {
   mode: "login" | "signup";
@@ -59,7 +60,7 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
 
         if (signupError) {
           console.error('❌ AuthForm: Signup error:', signupError);
-          onError(signupError.message);
+          onError(signupErrorMessage(signupError));
           setLoading(false);
           return;
         }

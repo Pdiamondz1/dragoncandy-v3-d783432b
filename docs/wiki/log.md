@@ -1,5 +1,44 @@
 # Wiki Log
 
+## [2026-08-23] ingest | A password cannot stop a signup
+
+Ingested `raw/sessions/2026-08-23-site-access-lockdown.md`. **Created**
+[[Site Access Lockdown (Private Preview)]] (`concepts/site-access-lockdown.md`). **Updated**
+[[verify_jwt Is Not Authorization]] with a cross-reference, and `CLAUDE.md`, whose provider
+hierarchy still documented the `SiteGateGuard` this work deleted.
+
+**Status is the first thing the page says: built, reviewed, and not live.** The branch is unmerged,
+no PR is open, no variables are set — and the gate is production-only by design, so none of its
+wiring has ever executed. Proven: `gate/decide.ts` and its 26 unit tests. Assumed: everything
+Vercel does with them.
+
+The premise decided the design. A front-end or edge password **cannot stop a signup** — the anon key
+ships in the browser bundle and `supabase.co` never traverses Vercel — so closing Supabase signup is
+the load-bearing control and the password is the lesser of the two. The gate answers **401, never a
+redirect**, because a 401 re-requests the identical URL and a password-reset link's `#access_token`
+fragment survives; a redirect drops it and breaks resets silently. It fails closed, which makes
+"delete the variables" the wrong rollback and is why `SITE_GATE_ENABLED` exists.
+
+Nine defects are recorded, and four are worth the page on their own. **Only allowlist a path with a
+real file under `public/`** — `/.well-known/*` had none, and `vercel.json` rewrites unmatched paths
+to `/index.html`, so it served the entire SPA bundle to anonymous browsers. The **Lighthouse
+exemption was inert where it was written**: an LHCI category assertion reads a score Lighthouse
+computed at collect time, so silencing an audit cannot change it (measured 0.69 vs 1.00) — and the
+obvious fix also fails, because an `LHCI_COLLECT__SETTINGS__*` env var replaces the config file's
+whole `settings` object. Returning bare **`undefined` is a Next.js convention**, not the
+framework-agnostic continue signal. And `VERCEL_ENV !== 'production'` was **fail-open on absence**,
+sitting ahead of all the fail-closed logic — the site would reopen while the dashboard read locked.
+
+Two method notes generalise past this branch. A stale `vite preview` from the main checkout was
+holding the port `lighthouserc.cjs` points at, so a local audit would have graded someone else's
+build and read green — **when a probe returns the wrong thing, suspect the instrument**. And the red
+half of a red-green cycle was honestly recorded as SKIPPED, after which an unobserved
+"Expected: PASS" travelled all the way to the merge gate; **a pipeline will launder a skipped check
+into an assertion.**
+
+Pages created: [[Site Access Lockdown (Private Preview)]]
+Pages updated: [[verify_jwt Is Not Authorization]]
+
 ## [2026-08-23] update | Identity & Verification — the review loop that ran after the ingest below
 
 The ingest immediately below was written at commit `e9e71096`. **Eight more commits landed after it**
