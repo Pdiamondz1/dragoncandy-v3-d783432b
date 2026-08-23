@@ -143,6 +143,67 @@ report is not evidence that nothing bounced. And the log search by the fixed mes
 `Message-ID` returned **0 results**, safely read only after the identical query returned 1 for a
 known-good id: **when a probe returns zero, prove it could have returned non-zero.**
 
+## [2026-08-23] update | Google re-asking is better evidence than our own row being gone
+
+Exercised `youtube-disconnect` and then reconnected, closing both gaps the entry below listed.
+**Updated** [[YouTube Analytics Connector]], the index entry and `PROJECT_CONTEXT.md` §5.
+
+**Two independent proofs the revoke reached Google.** Ours: the row is gone, and the DELETE is
+only reachable after Google returns `revoked`/`already_invalid` — a failure returns 502 and keeps
+the row so the token survives for a retry, so there is no path producing an absent row and a live
+grant. Google's: the first connect had sailed straight through with no consent screen, and
+immediately after disconnect the same button dropped into a full account-chooser-and-consent flow.
+**Google would not re-ask for a grant it still held.** A second, independent observer beats a
+second look at your own state.
+
+**Re-consent produced a genuinely new grant** — `connected_at` moved, the scope array came back in
+a different order, and the analytics read ran again against the new token.
+
+**Two expectations were wrong, and both are recorded rather than quietly dropped.** There was no
+"Google hasn't verified this app" interstitial — test users get the ordinary screen, so that
+warning is *unobserved and unobservable* until publishing status changes, which is not the same as
+absent. And the consent screen **itemised only the email address** while granting both YouTube
+scopes anyway; whether Google collapsed them or auto-advanced a second screen is **not
+established**, and is written down as observed-unexplained rather than guessed.
+
+**The operational rule that falls out:** the consent screen is not the record of what was granted.
+The token response's scope array is — which is exactly why this build reads it back instead of
+assuming the request it sent is what it got.
+
+## [2026-08-23] update | The proof it worked was a number that looked like a typo
+
+First real YouTube channel linked at 16:46 UTC. **Updated** [[YouTube Analytics Connector]], the
+index entry and `PROJECT_CONTEXT.md` §5, all of which said "never exercised".
+
+**What the run proved.** Channel `UC1DnGrwxLBaQkU4hQG1MsCw` stored under `dame@dragoncandy.com`,
+exactly two read scopes and no write scope, `status=active`, `last_error=null`, `last_synced_at`
+stamped 51 seconds after connect.
+
+**How we know the figures are real rather than a fallback.** The card shows three zeros, which
+on its own is indistinguishable from a broken read. The line under them says **"25 days of
+data"** — against the **28** the code requested. YouTube reports a day or two in arrears, so 25
+is what genuinely came back. Any fabricated, cached or error-path response would have echoed the
+number requested. That mismatch is the whole proof, and it exists only because `days_with_data`
+reports what arrived instead of what was asked for. **Design a surface so that working and
+broken look different**, and a zero stops being ambiguous.
+
+**What the run did NOT prove, stated because it would be easy to skip.** Google never showed a
+consent screen — the account had already granted these scopes earlier the same day — so the
+first-time consent UI, including the "Google hasn't verified this app" interstitial every new
+creator will meet, is untested. A flow that skips consent is not a test of consent. And
+`youtube-disconnect` has still never run, so revoke-before-delete is reviewed and unexercised.
+
+**Post-deploy review.** Four `edge-function-reviewer` agents, one per function: PASS on all four,
+zero issues. All eight deployed files downloaded from prod and diffed byte-identical against the
+repo, which settles `_shared` bundling with evidence rather than inference. Console identity
+confirmed by hashing the client ID off the page and matching the deployed secret's SHA-256
+digest — proving *which* OAuth client is wired up without ever reading a secret.
+
+**One reviewer finding rejected, and it generalises.** An agent reported `PROJECT_CONTEXT.md`
+still called the functions undeployed; it had been corrected hours earlier. A subagent's
+auto-imported project context is a snapshot from session start, so it can be **staler than the
+working tree**. Trust subagents on code they read; verify them on documentation.
+
 ## [2026-08-23] update | A merge is not a deploy, and a 401 is not a boot
 
 Merged #477, applied migration `20260823170000` to prod, and deployed the four YouTube edge

@@ -13,11 +13,83 @@ A per-user, **read-only** link to a creator's or business's YouTube channel, sup
 analytics [[Outstand Social Media Integration]] never shipped. Outstand keeps publishing;
 this reads. Nothing in it can post, and the granted scopes could not if it tried.
 
-**State as of 2026-08-23: merged (#477), applied and deployed — but never exercised.** The
-migration is on prod, the four edge functions are `v1 ACTIVE` with `verify_jwt=true`, and both
-Google-side prerequisites are done (see Console State below). What has *not* happened is a
-consent round trip: nobody has clicked Connect, so no token has ever been issued, stored,
-refreshed or revoked. Everything below is verified structure, not observed behaviour.
+**State as of 2026-08-23: merged (#477), applied, deployed, and WORKING END TO END.** The
+first real channel was linked at **16:46 UTC** — `UC1DnGrwxLBaQkU4hQG1MsCw` ("DragonCandy"),
+stored under `dame@dragoncandy.com`, `status=active`, `last_error=null`, and `last_synced_at`
+stamped **51 seconds** after `connected_at`. This page said "never exercised" for about an hour
+after the deploy.
+
+Granted scopes are exactly `youtube.readonly`, `yt-analytics.readonly`, `openid`, `email` —
+**no write scope**, confirmed by reading the stored array back rather than trusting the request.
+
+### The evidence that the numbers are real
+
+The card renders Views 0, Hours watched 0, Subscribers 0 — and the line under them reads
+**"25 days of data"** against the **28** the code asked for. YouTube reports a day or two in
+arrears, so 25 is what actually came back. That single mismatch is the proof: a fabricated
+response, a fallback, or an error path dressed as data would have echoed the number requested.
+So these are **real zeros from 25 real rows** on a channel with no activity, not an empty state
+pretending to be data — the [[Honest Analytics]] distinction between "zero rows" and "a row of
+zeros", exercised for the first time.
+
+### Disconnect, revoke and re-consent — all exercised the same afternoon
+
+Both gaps this page listed an hour earlier are now closed, and closing the first one closed the
+second for free.
+
+**`youtube-disconnect` ran at 17:30 UTC.** The row was deleted. That alone is the proof the
+revoke succeeded, *by construction*: the function only reaches the DELETE after Google returns
+`revoked` or `already_invalid`; a failed revoke returns 502 and deliberately keeps the row so the
+token survives for a retry. Row absent therefore means revoke succeeded — there is no path that
+produces an absent row and a live grant.
+
+**Google's own behaviour is the independent confirmation.** The first connect had sailed straight
+through with no consent screen. Immediately after disconnect, the same button dropped into the
+full account-chooser-then-consent flow. Google would not re-ask for a grant it still held, so the
+withdrawal reached Google's side rather than only ours. **A second, independent observer is worth
+more than a second look at your own state.**
+
+**Re-consent produced a genuinely new grant**, not a cached one: `connected_at` moved to
+17:31:49, and the stored `scopes` array came back in a *different order* from the first grant —
+an incidental detail, but one a cache would not produce. The analytics read then ran again against
+the new token (`last_synced_at` 17:33:07, `last_error` null).
+
+### Two things the consent screen actually showed, both contrary to what was expected
+
+**There was no "Google hasn't verified this app" interstitial.** This page and
+`PROJECT_CONTEXT.md` both predicted one for a Testing-status External app. Test users evidently
+get the ordinary screen; the warning presumably belongs to non-test users, who currently cannot
+reach the app at all. So that interstitial remains *unobserved and unobservable* until publishing
+status changes — not "verified absent".
+
+**The consent screen itemised only the email address.** It read *"Google will allow
+dragoncandy.com to access this info about you: dame@dragoncandy.com — Email address"*, and did not
+list the two YouTube scopes anywhere. Both were nevertheless granted, verified by reading the
+stored array back. Whether Google collapsed them or presented a second screen that auto-advanced
+is **not established** — it is recorded here as observed, unexplained behaviour rather than
+guessed at. The practical consequence is worth knowing: **do not treat what the consent screen
+lists as the definitive record of what was granted.** The granted-scope array on the token
+response is the only reliable source, which is exactly why this build reads it rather than
+assuming the request succeeded.
+
+### Post-deploy review
+
+A four-agent `edge-function-reviewer` pass (one per function, each also reading its `_shared`
+dependencies, `config.toml` and the migration) returned **PASS on all four, zero issues**. It
+independently confirmed the explicit-JWT `getUser(token)` form, that a foreign `channel_id`
+yields 404 rather than another tenant's data, that `isQuotaFailure` is genuinely reached before
+the `needs_reconnect` branch, and that the upsert's `onConflict` matches the migration's UNIQUE
+constraint.
+
+Separately, all eight deployed files — the four `index.ts` plus every `_shared` module — were
+downloaded from prod and diffed **byte-identical** against the repo. That settles the `_shared`
+bundling question with evidence rather than inference.
+
+**One reviewer finding was rejected**, and the reason generalises: it reported that
+`PROJECT_CONTEXT.md` still called the functions undeployed, which was false — the file had been
+corrected hours earlier. A subagent's auto-imported project context is a **snapshot from session
+start**, so it can be staler than the working tree. Treat subagent claims about *documentation*
+as unverified; its claims about code it actually read are fine.
 
 ### What "verified" meant here
 
