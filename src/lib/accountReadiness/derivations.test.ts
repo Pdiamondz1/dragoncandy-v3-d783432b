@@ -90,6 +90,10 @@ describe('recommended items are satisfiable by dismissal', () => {
     expect(deriveTeam({ ...base, orgMemberCount: 1, dismissed: ['team'] }).status).toBe('met'));
   it('locations is met once dismissed', () =>
     expect(deriveLocations({ ...base, orgUnits: [{ ...base.orgUnits![0], address: null }], dismissed: ['locations'] }).status).toBe('met'));
+  it('locations is met once dismissed, even when the source is unreadable', () =>
+    expect(deriveLocations({ ...base, orgUnits: undefined, dismissed: ['locations'] }).status).toBe('met'));
+  it('portfolio is met once dismissed, even when the source is unreadable', () =>
+    expect(derivePortfolio({ ...base, creator: undefined, dismissed: ['portfolio'] }).status).toBe('met'));
 });
 
 describe('deriveLocations — every unit needs an address, not a count', () => {
