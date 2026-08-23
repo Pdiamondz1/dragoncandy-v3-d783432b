@@ -11,6 +11,7 @@
 // Usage (via the npm aliases):
 //   npm run sync:internal     # → sync-internal-docs.mjs   (/internal/strategy + internal RAG)
 //   npm run sync:wiki         # → sync-wiki-to-donny.mjs    (consumer Donny RAG)
+//   npm run eval:rag          # → rag-eval.mjs              (retrieval quality report)
 // To target staging instead of prod, set DONNY_SYNC_URL before running (env wins).
 //
 // NEVER commit a key. .env.sync.local matches .gitignore (`.env.*.local` + explicit entry).
@@ -25,7 +26,7 @@ const PROD_SYNC_URL =
   "https://zocahiffooqdybdhguqv.supabase.co/functions/v1/donny-knowledge-sync";
 
 // Only these targets may be run through the wrapper.
-const ALLOWED = new Set(["sync-internal-docs.mjs", "sync-wiki-to-donny.mjs"]);
+const ALLOWED = new Set(["sync-internal-docs.mjs", "sync-wiki-to-donny.mjs", "rag-eval.mjs"]);
 
 // 1. Load the gitignored secret file without overriding anything already in the env.
 if (existsSync(ENV_FILE)) {

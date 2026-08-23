@@ -1,5 +1,23 @@
 # Wiki Log
 
+## [2026-08-23] analysis | A judge sees what you show it
+
+**Created** [[RAG Retrieval Evaluation]] (`concepts/rag-retrieval-evaluation.md`) and committed the
+harness at `supabase/scripts/rag-eval.mjs` (`npm run eval:rag`), with the 53-query set and the
+relevance labels beside it.
+
+[[RAG Document Chunking]] proved the text was reachable; this asks whether Donny finds it. Controls
+separate cleanly (0/8 out-of-corpus queries beat the weakest real one), chunking did not break what
+worked (old top document still top for 43/53, none fell out of top-10), and k=10 is kept on evidence
+rather than arithmetic (recall **65% at k=5, 91% at k=10** after that metric was corrected).
+
+Three failures recorded because they outlast the numbers: choosing k from similarity alone **does
+not work** here — 0.404 at rank 20 against a 0.280 control ceiling, no cutoff to find; the first
+judging pass truncated passages to 340 chars and so **repeated the very defect it was measuring**,
+with 22 of 84 "not relevant" calls hiding the query term past the cut; and the recall metric counted
+distinct *documents* where production returns *chunks*, crediting results Donny never receives, with
+a unit test pinning the error in as many words.
+
 ## [2026-08-23] ingest | The comment was true, and about the wrong reader
 
 Ingested `raw/sessions/2026-08-23-rag-doc-chunking.md`. **Created**

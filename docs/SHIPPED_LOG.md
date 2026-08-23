@@ -26,6 +26,69 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-23] Proving the RAG fix actually retrieves — and truncating the evidence while measuring a truncation bug
+
+[[RAG Document Chunking]] established that a third of the corpus had become reachable. It did not
+establish that Donny *finds* it. `npm run eval:rag` now answers that, and the harness is committed
+rather than left in scratch files.
+
+**The query set is real.** 53 distinct queries pulled from `donny_tool_executions` where
+`tool_name='search_internal_knowledge'` — every internal search Donny has ever run since June. They
+predate this work and could not have been tailored to it. They are keyword bags rather than natural
+questions because that is what the LLM actually emits, which makes them the right distribution.
+
+**Controls run first, because the rest is meaningless without them.** Eight queries about subjects
+the corpus does not cover — sourdough hydration, Byzantine iconoclasm, oboe reed gouging, Hohmann
+transfers — score **0.164–0.280** at top-1 against real queries' **0.437–0.632**. **Zero of eight
+beat even the weakest real query.** Reported as an overlap count, not a comparison of means: two
+distributions can differ in mean and still overlap completely, and the overlap is what matters.
+
+**Chunking did not break what already worked.** Taking the document the old 24k window ranked
+first, it is still ranked first for **43 of 53** queries; the other 10 stay inside the new top-10;
+**none fell out**. Document diversity dipped slightly (6.2 vs 6.6 distinct documents at k=10) — mild
+crowding, not drowning.
+
+**k=10 stays, now on evidence.** Recall is **65% at k=5 and 91% at k=10** over the labelled pool —
+dropping to 5 loses more than a third of the relevant material. For a RAG feeding an LLM recall dominates
+precision — the model can ignore a weak passage, but not one it never sees. That replaces the
+arithmetic guess the row count was originally set by.
+
+**The objective measure needs no judge at all:** 12.3% of k=10 hits are text beyond the old
+24,000-char cut, and 32 of 53 queries surface at least one. That number stands even where the
+labels do not.
+
+**Three method failures worth more than the results.**
+
+The label-free way of choosing k **failed outright**. The plan was to pick k where similarity
+decays into the control band; it does not decay — mean similarity is still **0.404 at rank 20**
+against a 0.280 ceiling, with 53/53 queries clearing it. In a corpus entirely about one company,
+everything is somewhat related to everything, so relevance labels were not optional.
+
+And the first judging pass **truncated the evidence while measuring a truncation bug**. Passages
+were cut to 340 characters to save reading, and **22 of 84** marked "not relevant" contained the
+query term past that cut. The clean specimen is the LoRA query: ranks 2 and 5 both say "LoRA/QLoRA
+on an open model" several hundred characters in, and both were called irrelevant. Correcting it
+moved precision@12 from 32% to 42%, and recall@10 *down*, because the denominator grew. **A judge
+sees what you show it** — truncate the evidence and you have measured your excerpt.
+
+And the metric itself was wrong, with its own test pinning the error. `recall@k` deduplicated
+documents then kept scanning until it had k distinct ones, crediting documents at chunk-rank 11 or
+15 that production never returns — inflation largest in exactly the chunk-heavy case the evaluator
+exists to assess, so it flattered the change it measured. A unit test asserted the wrong behaviour
+in as many words ("ranks documents, not chunks"). Correcting it moved recall@10 from 100% to 91%
+and recall@5 from 78% to 65%; the conclusion (keep 10) survives and strengthens. Six Codex rounds,
+seven real findings on this harness alone, every one mine.
+
+Committed honestly: the harness reports *unjudged* documents as unjudged rather than counting them
+misses, since treating unlabelled as irrelevant is precisely how a retrieval change is made to look
+better than it is. Known limits are written into the page — 7 labelled queries of 53, labels
+produced by the same agent that wrote the chunker (blind to rank and provenance, hidden mapping
+revealed after the fact, but not independent), June queries against a moved corpus, and no strict
+old-vs-new A/B because the function now refuses to emit a single 24,000-char embedding.
+
+9 tests on the pure scoring layer, including one asserting that an unlabelled document is neither
+hit nor miss, and one asserting that a repeated document spends its slots.
+
 ## [2026-08-23] The comment was true, and about the wrong reader: a third of Donny's corpus was never embedded
 
 Found by accident, at the end of unrelated work. #469 had merged, main was refreshed, and the

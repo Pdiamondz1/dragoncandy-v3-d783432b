@@ -96,6 +96,25 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### In flight
 
+- **Retrieval quality measured, not assumed** — chunking proved the text was reachable; it did not
+  prove Donny *finds* it. `npm run eval:rag` now answers that against **53 real queries** taken from
+  `donny_tool_executions` (every internal search Donny has ever run — they predate the work and
+  could not be tailored to it). **Controls run first**: 8 out-of-corpus queries score 0.164–0.280
+  against real queries' 0.437–0.632, **0 of 8 above even the weakest real one**, so the rest of the
+  report means something. **Chunking did not break what worked** — the old window's top document is
+  still top for **43/53**, and none fell out of top-10. **k=10 stays, now on evidence** (recall 65%
+  at k=5 vs 91% at k=10 — dropping to 5 loses a third of the relevant material), replacing the
+  arithmetic guess it was set by. The judge-free measure: **12.3%** of k=10 hits are text past the old
+  24,000-char cut, on **32/53** queries. **Three method failures recorded as the durable part:**
+  choosing k from similarity alone *failed outright* (0.404 at rank 20 against a 0.280 ceiling — in
+  a one-company corpus there is no cutoff), and the first judging pass **truncated the evidence
+  while measuring a truncation bug** (22 of 84 "not relevant" calls hid the query term past a
+  340-char excerpt; correcting it moved precision@12 32% → 42%), and the recall metric itself
+  counted distinct *documents* where production returns *chunks*, crediting results Donny never
+  receives — with a unit test pinning the error in as many words. Limits are written down rather
+  than buried: 7 labelled queries of 53, labels self-produced though blind, and no strict old-vs-new
+  A/B because the function now refuses to emit a single 24,000-char embedding.
+  → `docs/wiki/concepts/rag-retrieval-evaluation.md` · `feat/rag-eval-harness`
 - **A third of Donny's internal corpus was never embedded** — `sync-internal-docs.mjs` sliced every
   document at 24,000 chars under a comment reading *"embed input is truncated; full_content is not"*,
   which is true and describes the **wrong consumer**: `full_content` goes to `internal_docs`, and
@@ -112,7 +131,10 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   Chunking runs **server-side** because there are two producers and `wiki-merge-pr`'s
   `_shared/wiki-sync-payload.ts` carries that invariant in its own header and still broke it — script-
   side chunking would have served a truncated head spliced onto a stale tail. Six Codex rounds,
-  five real findings, all mine; clean at round 7. **Pending (2026-08-23):** `donny-knowledge-sync`
+  five real findings, all mine; clean at round 7. **Deployed, merged and verified on prod 2026-08-23** (#474, #475): 144 documents
+  -> 401 rows, `errors=0`, a re-run idempotent at `inserted=0 updated=401`, and the content probe
+  that returned zero rows that morning now resolving. **Retrieval quality since measured** — see
+  the evaluation entry below. Was: `donny-knowledge-sync`
   must be **deployed before the branch merges** (the new script omits `content` for the unindexed
   document, which the old function 400s, failing its whole batch); then push, merge, run the sync and
   re-probe by content. → `docs/wiki/concepts/rag-document-chunking.md` · `fix/rag-doc-chunking`
