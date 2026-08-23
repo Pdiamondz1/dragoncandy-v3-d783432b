@@ -59,8 +59,10 @@ const DRY_RUN = process.env.SYNC_DRY_RUN === "1";
 //      `sync-internal-docs.mjs` already writes — measured on prod, **113 pages embedded twice,
 //      109 of them byte-identical** — so internal Donny could spend two of its five RAG slots on
 //      one page, and every sync paid double the embedding cost. It also subjected the duplicate
-//      to this script's hard `FAIL_CHARS` skip, while the internal copy handles the same page
-//      gracefully (truncate-embed at MAX_EMBED_CHARS, full markdown preserved in `internal_docs`).
+//      to this script's hard `FAIL_CHARS` skip. (That clause used to add "while the internal copy
+//      handles the same page gracefully — truncate-embed with the full markdown preserved in
+//      internal_docs". That was wrong: `internal_docs` is not what Donny retrieves from, so the
+//      truncated half was the only half he could see. Both paths now chunk instead.)
 //
 // TO PUBLISH A PAGE TO CONSUMERS: read it end to end first and edit out anything an end user must
 // not read — then add its exact "<dir>/<filename>" here. Preview with
@@ -142,34 +144,36 @@ if (missingConsumer.length > 0) {
   );
 }
 
-// One oversized page fails its WHOLE batch (the embedding call sends the batch as a single
-// `input` array, so OpenAI's 8,192-token-per-input limit rejects all 50). On 2026-07-26 a
-// 33 KB concepts page did exactly that: "Invalid 'input[8]': maximum input length is 8192
-// tokens" → 41 unrelated pages never reached the RAG. A page published HERE cannot use the
-// truncate-embed-but-store-full trick sync-internal-docs.mjs relies on, because that trick needs
-// `full_content`, which donny-knowledge-sync rejects on anything but internal scope — and a
-// consumer page is by definition not internal scope. So a published page must be kept small.
-// This applies only to the allowlist: since PR #436 an unlisted page is not sent at all, so its
-// size is `sync-internal-docs.mjs`'s business, where oversize degrades to a truncated embed with
-// the full markdown still readable in `internal_docs` instead of a hard skip.
-// Calibrated empirically, NOT theoretically — the char:token ratio varies with how much code,
-// table pipe and symbol a page carries, so these are the observed data points:
-//   29,865 chars — synced fine (analyses/…dre-full-system-spec.md)
-//   33,369 chars — REJECTED  (concepts/synthetic-weight-engine.md, before its split)
-// The cliff is somewhere between. Re-calibrate here if a page under FAIL_CHARS still 502s.
-const FAIL_CHARS = 31_000;
+// HISTORY, and why the hard size gate that used to live here is gone.
+//
+// One oversized page used to fail its WHOLE batch: the embedding call sends the batch as a
+// single `input` array, so OpenAI's 8,192-token-per-input limit rejected all of them. On
+// 2026-07-26 a 33 KB concepts page did exactly that — "Invalid 'input[8]': maximum input length
+// is 8192 tokens" → 41 unrelated pages never reached the RAG. The empirical cliff sat between
+// 29,865 chars (synced fine) and 33,369 (rejected), so this file skipped anything over 31,000.
+//
+// donny-knowledge-sync now chunks every page it receives (_shared/chunk-doc.ts), which removes
+// the cliff rather than avoiding it: no single embedding input is anywhere near the limit, so
+// there is nothing left for a size gate to protect and skipping a page would simply drop it.
+//
+// The sibling claim in this block is also dead: it said a consumer page could not use "the
+// truncate-embed-but-store-full trick sync-internal-docs.mjs relies on". That trick was never a
+// trick, it was a defect — the truncated half was the only half Donny could retrieve — and it
+// no longer exists on either path.
 const WARN_CHARS = 24_000;
 
-// An oversized page is SKIPPED, never fatal: the other pages still sync and the exit code
-// carries the failure. Blocking the whole run would reproduce the very defect this guards.
-const oversized = pages.filter((p) => p.content.length > FAIL_CHARS);
-for (const p of pages.filter((p) => p.content.length > WARN_CHARS && p.content.length <= FAIL_CHARS)) {
-  console.warn(`WARNING: ${p.source_id} is ${p.content.length} chars — approaching the embedding ceiling. Split it soon.`);
+// THE HARD SKIP IS GONE — donny-knowledge-sync now chunks (see _shared/chunk-doc.ts), so a long
+// page becomes several rows instead of one oversize embedding input, and the cliff above is no
+// longer reachable. Skipping it would now DROP a page for no reason, which is the same
+// content-loss class this comment block was written to prevent.
+//
+// The warning stays, because size is still a signal about the PAGE even when it is no longer a
+// risk to the sync: a wiki page over this length is usually covering two subjects and reads
+// better split into focused siblings.
+for (const p of pages.filter((p) => p.content.length > WARN_CHARS)) {
+  console.warn(`WARNING: ${p.source_id} is ${p.content.length} chars — it will be chunked, but a page this size usually covers two subjects. Consider splitting it.`);
 }
-for (const p of oversized) {
-  console.error(`SKIPPING ${p.source_id} — ${p.content.length} chars exceeds ~${FAIL_CHARS}; it would fail its entire batch. Split it into focused siblings (a page this size is usually covering two subjects) and re-run.`);
-}
-const syncable = pages.filter((p) => p.content.length <= FAIL_CHARS);
+const syncable = pages;
 
 // Always report what is being published. Compare against the DB after a sync:
 //   select coalesce(scope,'NULL'), count(*) from donny_knowledge
@@ -182,7 +186,7 @@ console.log(
 for (const p of pages) console.log(`  consumer: ${p.source_id}`);
 
 if (DRY_RUN) {
-  console.log(`\nDry run — nothing sent. ${pages.length} pages scanned, ${oversized.length} oversized.`);
+  console.log(`\nDry run — nothing sent. ${pages.length} pages scanned.`);
   process.exit(missingConsumer.length > 0 ? 1 : 0);
 }
 
@@ -242,7 +246,7 @@ try {
   console.warn(`Orphan check skipped — ${(e instanceof Error ? e.message : String(e))}`);
 }
 
-console.log(`Found ${pages.length} in-scope wiki pages${oversized.length ? ` (${oversized.length} skipped as oversized)` : ""}. Syncing to ${URL} ...`);
+console.log(`Found ${pages.length} in-scope wiki pages. Syncing to ${URL} ...`);
 
 let inserted = 0, updated = 0, errors = 0;
 for (let i = 0; i < syncable.length; i += BATCH) {
@@ -264,13 +268,13 @@ for (let i = 0; i < syncable.length; i += BATCH) {
   console.log(`Batch ${i / BATCH + 1}: +${json.inserted} inserted, ~${json.updated} updated, ${json.errors} errors`);
 }
 
-console.log(`\nDone. inserted=${inserted} updated=${updated} errors=${errors} skipped=${oversized.length} orphans=${orphanCount}`);
+console.log(`\nDone. inserted=${inserted} updated=${updated} errors=${errors} orphans=${orphanCount}`);
 
 // `process.exitCode`, NOT `process.exit()`. Since the orphan check added a second fetch host,
 // calling process.exit() here tore the process down while undici still held a pooled socket,
 // which on Windows aborts with `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)` and a
 // 127 — masking the 1 this line means to return. Setting exitCode lets the loop drain and exit
 // with the intended status.
-if (errors > 0 || oversized.length > 0 || missingConsumer.length > 0 || orphanCount > 0) {
+if (errors > 0 || missingConsumer.length > 0 || orphanCount > 0) {
   process.exitCode = 1;
 }

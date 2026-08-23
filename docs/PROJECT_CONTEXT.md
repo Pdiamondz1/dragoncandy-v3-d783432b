@@ -96,6 +96,26 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### In flight
 
+- **A third of Donny's internal corpus was never embedded** — `sync-internal-docs.mjs` sliced every
+  document at 24,000 chars under a comment reading *"embed input is truncated; full_content is not"*,
+  which is true and describes the **wrong consumer**: `full_content` goes to `internal_docs`, and
+  `donny-orchestrator/rag.ts` returns `donny_knowledge.content` on both its paths and never reads it.
+  Prod, 2026-08-23: **723,128 of 2,168,995 chars (33%) reached Donny in no form at all**, 14 rows
+  pinned at exactly 24,000, unchanged since 2026-06-11 — `DESIGN_SYSTEM.md` cut mid-sentence in the
+  safe-area rule, dropping every design rule after it including three written that morning. **Silent
+  in every signal the run produced** (`updated=142 errors=0`, `updated_at` moved); found only by
+  following the `knowledge-sync` skill's own rule to verify by CONTENT. Now chunked at ~6k on heading
+  boundaries with chunk 0 keeping the unsuffixed `source_id` (so no existing row is orphaned),
+  `chunk_base` for exact sibling lookup, and stale siblings deleted when a document shrinks; reading
+  got cheaper too (one retrieval could push 120k chars, so `search_internal_knowledge` went 5 → 10
+  rows and still sends less). `SHIPPED_LOG.md` is **excluded and printed**, not silently truncated.
+  Chunking runs **server-side** because there are two producers and `wiki-merge-pr`'s
+  `_shared/wiki-sync-payload.ts` carries that invariant in its own header and still broke it — script-
+  side chunking would have served a truncated head spliced onto a stale tail. Six Codex rounds,
+  five real findings, all mine; clean at round 7. **Pending (2026-08-23):** `donny-knowledge-sync`
+  must be **deployed before the branch merges** (the new script omits `content` for the unindexed
+  document, which the old function 400s, failing its whole batch); then push, merge, run the sync and
+  re-probe by content. → `docs/wiki/concepts/rag-document-chunking.md` · `fix/rag-doc-chunking`
 - **Landing rebuilt as one dark, full-bleed cinematic screen** — logo, eyebrow, slogan, single
   "Get started" CTA over **eight** real rotating ABB + Uncle Rocco reels (this line said *ten*
   until 2026-08-23), replacing the six-section light page, the contact form and the video-backdrop

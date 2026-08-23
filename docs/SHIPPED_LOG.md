@@ -26,6 +26,84 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-23] The comment was true, and about the wrong reader: a third of Donny's corpus was never embedded
+
+Found by accident, at the end of unrelated work. #469 had merged, main was refreshed, and the
+post-merge hook reported `updated=142 errors=0`. Every signal said the knowledge layer was
+current. The `knowledge-sync` skill says to verify by **content, never by `max(updated_at)`** —
+following that literally, searching `donny_knowledge` for a string written into
+`DESIGN_SYSTEM.md` that morning returned **zero rows**.
+
+`sync-internal-docs.mjs` sent `${title}\n\n${body}`.slice(0, 24_000)`. The comment beside it
+read `// embed input is truncated; full_content is not`. **That is true and it describes the
+wrong consumer.** `full_content` is upserted into `internal_docs`, which only the
+`/internal/strategy` viewer reads; `donny-orchestrator/rag.ts` returns
+`donny_knowledge.content` on **both** its paths — the cosine RPC and the FTS fallback — and
+never touches `internal_docs`. The mitigation named in the comment never reached the reader it
+was meant to protect.
+
+Measured on prod: **142 documents, 2,168,995 chars, 1,445,867 embedded — 723,128 (33%) reaching
+Donny in no form at all**, across 14 rows pinned at exactly 24,000. `SHIPPED_LOG.md` 5%,
+`PROJECT_CONTEXT.md` 26%, `prd.md` 39%, `DATABASE_SCHEMA.md` 51%, `DESIGN_SYSTEM.md` 78% — that
+last one cut off mid-sentence inside the safe-area rule, so every design rule written after it,
+including the three added that morning, was absent. In place since **2026-06-11**.
+
+**Documents are now chunked** at ~6,000 chars on markdown heading boundaries, each chunk
+carrying the document name so a chunk retrieved alone still says what it is. Chunk 0 keeps the
+**unsuffixed `source_id`** and chunk N takes `<id>#N` — the property that makes it deployable
+rather than destructive, since nothing here deletes a row whose id stopped being produced, so
+renaming all 142 ids would have stranded all 142 rows. `metadata.chunk_base` on every row gives
+exact sibling lookup, and siblings past the current total are deleted when a document shrinks
+(6 chunks → 4 otherwise leaves `#4` and `#5` served as current text).
+
+**Chunking is cheaper to read, not only more complete.** At the old cap one retrieval could push
+**120,000 characters** into Donny's prompt. Mean chunk is 4,162 chars against the old mean row of
+10,111, so `search_internal_knowledge` went 5 → **10** rows and still sends less text (~42k vs
+~51k) while covering more distinct material — a change that was required, not optional: at 5
+rows a chunked corpus can return five pieces of one document where it used to return five
+documents.
+
+**`SHIPPED_LOG.md` is excluded from the RAG rather than chunked** (`index_in_rag: false`). At
+505k chars it would be 85 of ~400 rows — a quarter of the index, all raw changelog, competing
+for retrieval slots with wiki pages written specifically for retrieval. It stays fully readable
+in `internal_docs`. The distinction that matters is that this is a **deliberate exclusion
+printed on every run**, where the thing it replaces was a silent truncation.
+
+**Chunking runs server-side, and that was the part worth getting right.** The first
+implementation chunked in the sync script; Codex found why that fails at review round 3. There
+are **two producers** — `wiki-merge-pr` builds its payload through
+`_shared/wiki-sync-payload.ts`, whose own header requires it to *"reproduce the EXACT
+per-wiki-page payload `sync-internal-docs.mjs` POSTs"*, and it still truncated. After a full
+sync created continuation chunks, an incremental merge→sync would have overwritten chunk 0 with
+a truncated whole-document row and left `#1…#N` in place: **a truncated head spliced onto a
+stale tail**, worse than the bug being fixed. Fixing it in both producers would leave two things
+that must agree, so chunking moved to `donny-knowledge-sync` and callers now send a *document*.
+
+Six Codex rounds, five real findings, all mine. Two were the same class as the
+original defect: `purgeRag()` swallowed every Supabase error, so a failed delete still recorded
+`skipped-unindexed` and the run finished `errors=0` with the document still retrievable; and
+`chunkSiblings()` returned `[]` on a **failed** read, indistinguishable from a genuinely empty
+one. Also caught: sibling lookup used `LIKE`, where `_` is a single-character wildcard and our
+ids are full of them (`DESIGN_SYSTEM`, `SHIPPED_LOG`, `DATABASE_SCHEMA`) — on a query feeding
+DELETE. Checked rather than dismissed: **0 collisions across all 142 real ids today**, but that
+is a property of the filenames, not of the code, so it is now an exact `.eq()`.
+
+Two more were about batches. The embedding call still sent every chunk as one `input` array, and
+chunking is what makes the endpoint's AGGREGATE token cap reachable — documents used to arrive
+pre-truncated at 24k and now arrive whole — so requests are split at 400,000 chars with order
+preserved. And the new orphan check printed drift then exited 0, where its sibling script
+carries orphans into the exit code; this sync runs unattended from the post-merge hook, so
+stdout is a report with no reader.
+
+Also replaced a test assertion that pinned nothing: `wiki-sync-payload.test.ts` asserted
+`content.length <= 24_000` on a fixture far under it, and had never seen an oversize input.
+
+Durable lesson, and it is not the chunking: **a mitigation has to reach the consumer of the
+data.** "The full text is still in `internal_docs`" was accurate and irrelevant. Name the
+reader, not the store.
+
+13 new tests, controlled — restoring the truncation turns 5 red, and collapsing the embedding
+split turns another 3 red. 2,610 tests pass.
 ## [2026-08-23] Account completeness engine (slice 1) — one derived model, and the three defects the plan itself shipped
 
 **Slice 1 of 4** in the signup/onboarding redesign. Replaces two overlapping half-systems that tracked
