@@ -121,8 +121,31 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   the signature survives dark mode with no background colour set; and **neither a Google Group nor
   an alias is a send-as identity** — the spec and README both claimed aliases *were*, and the first
   real run refuted it at **0 shared signatures**. That is not a Groups risk, it is the present
-  state, and only the account holder can fix it (Gmail → Accounts and Import → Send mail as).
-  **Pending (2026-08-21):** the per-person send-as step for the shared addresses; **Outlook for
+  state. **A fourth finding landed 2026-08-22 and corrects the third's remedy:** this line
+  previously said "only the account holder can fix it (Gmail → Accounts and Import → Send mail
+  as)". **Adding the identity by hand is not sufficient and is not free** — doing it returned
+  `403 Missing required scope ".../gmail.settings.sharing" for modifying non-primary SendAs`.
+  Google's reference lists `sendAs.update` as accepting `basic` **or** `sharing`, which is true
+  only of the **primary** identity and silent on the non-primary case every shared address falls
+  into. So both routes — by hand, or `sendAs.create` from the script — need the same wider scope,
+  which lets the service account decide **who may send mail as what for every user in the
+  domain**. Worse, acting on the wrong claim **caused a live regression**: three identities added
+  to `dame@` made the nightly run abort on the first unwritable one, so from 2026-08-21 it logged
+  `ERROR` and stopped refreshing even his own primary signature. **Closed by #456** (`b0f4e4de`,
+  merged 2026-08-22) — per-identity error isolation, a `PARTIAL` status distinct from `ok`/`ERROR`,
+  and a `SHARING_SCOPE_ENABLED` switch gating whether the JWT *requests* the wider scope (Codex
+  P1: granting it in the console alone changes nothing, and requesting one the delegation does not
+  carry fails the **entire** token exchange with `unauthorized_client` — hence default-off, and
+  hence an order that is not optional: **console first, property second**). 30 tests, was 19.
+  **The scope decision was made and the grant is DONE (2026-08-22)** — client
+  `117869070719843760682` now carries both `gmail.settings.basic` and `gmail.settings.sharing`,
+  verified on the delegation list page with `basic` intact. **Pending (2026-08-22):** `clasp push`
+  — #456 is merged but **not deployed**, so the live script still runs the pre-#456 code, requests
+  only `basic`, and `dame@` keeps erroring nightly (blocked on a `clasp login` reauth,
+  `invalid_rapt`); then `SHARING_SCOPE_ENABLED=true`, **deliberately not set yet** — a delegation
+  grant propagates on Google's schedule, and inside that window flipping the property produces the
+  same `unauthorized_client` total outage as doing the two steps out of order, so the sequence is
+  push → confirm `PARTIAL` → flip → re-run; **Outlook for
   Windows is untested and now untestable** (no access) — treat the rendering matrix as four-of-five;
   and Waves 2–3 (the People document set, and a *sendable* pitch deck — the current one is a React
   component). Workspace plan confirmed Business Standard, so shared drives were never at risk.
@@ -149,7 +172,34 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   Vercel-scope confirmation first — it may carry Maps/reCAPTCHA keys); rotating the committed staging
   password; and reconciling the capacity report's **$49/mo** Supabase Small compute against
   Supabase's published **$15** (remedy: read the invoice).
-  → `docs/wiki/concepts/local-prod-boundary.md` · `docs/wiki/concepts/cloud-platform-strategy.md` · #451, #452
+  **Outreach to Adrian's referrals started 2026-08-21** — this entry previously said only "Adrian
+  sourcing", which was true and had stopped being the whole picture. Three of the four are a named
+  person with a direct address, so there was almost nothing to "discover": Root Codex (`fabio@`,
+  Root Codex Ltd, Msida, **Malta**), ALAN Systems (`lukasz.krain@`, Rybnik, **Poland**, trading
+  since 1999), and the designer **Lubo** (`lvatchkov@`, TheLubo, a solo consultancy, 20+ years).
+  All three were sent from `dame@dragoncandy.com` CC `adrian.vella.jobs@gmail.com` (details below),
+  with the hiring pack exported to PDF (`docs/hiring/pdf/`) because the repo is private and there is
+  **no public URL to link** — it has to be attached. **Adrian is not passing on an acquaintance at ALAN
+  Systems: he is one of four testimonials published on their own business page** ("Adrian Vella, CEO
+  TipicoUS"). And all three referrals come from **one iGaming network** — Root Codex builds casinos
+  and lists Casumo and LeoVegas, ALAN Systems references Tipico and GVC/bwin, Lubo lists iGaming —
+  which is real experience of high-traffic consumer products and payments, but **none of them shows
+  a three-sided marketplace**, so the drafts say so in the first email rather than on the third call.
+  **EPAM is PARKED (founder decision, 2026-08-21), and it is the wrong *shape*, not merely
+  expensive**: its intake form routes to enterprise sales by region, consulting, careers or partner
+  relations, and **nothing meaning "we would like to hire one of your engineers"** — 62,850+ staff,
+  345+ Forbes Global 2000 clients. Reopen only if the two houses fail, and then via a person, never
+  the form. Note the emails carry the scope doc's §9 position into first contact (one owner who
+  stays; a rotating team with nobody resident is the outcome we least want), so neither house
+  pitches the thing we would refuse. **All three SENT 2026-08-21** — Lubo 22:03, Root Codex 22:10,
+  ALAN Systems 22:12 UTC, Adrian CC'd, Joe BCC'd, each thread then forwarded to `adrian@`/`joe@`/
+  `jay@dragoncandy.com`. Note what went out quoted **1,174 source files / 2,443 tests**; the true
+  figures were **1,186 / 2,481**, found by the Codex pass the next day and corrected across the
+  pack, the scope doc and `onboarding/first-week.md` — **deliberately not corrected to the
+  recipients**, since the emails and their attachments agreed with each other and 12 files changes
+  no claim anyone would act on. **Pending:** replies; the PDF toolchain (pandoc + headless Chrome)
+  is **not committed**, so regenerating is two manual commands.
+  → `docs/hiring/outreach-drafts.md` · `docs/wiki/concepts/local-prod-boundary.md` · `docs/wiki/concepts/cloud-platform-strategy.md` · #451, #452
 - **Content delivery system stabilization** — bug-fixing the creator→business content
   handoff and payment flow; gates production launch. → `docs/SHIPPED_LOG.md`
 - **Outstand social media integration** — IG/TikTok/YouTube linking + delegated posting;

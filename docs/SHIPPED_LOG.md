@@ -26,6 +26,76 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-22] The fix I documented wouldn't have worked, and following it broke production
+
+**PRs** #455 (knowledge-sync) and #456 (`b0f4e4de`) · Codex clean after one P1 · 30 tests (was 24)
+
+Yesterday's entry closes by saying shared-mailbox signatures need "the manual send-as route or a
+wider delegation scope", as if those were alternatives. They are not. Doing the manual route is
+what proved it:
+
+```
+403 PERMISSION_DENIED
+Missing required scope ".../auth/gmail.settings.sharing" for modifying non-primary SendAs
+```
+
+**Google's reference is not wrong, it is silent.** `settings.sendAs.update` does accept
+`gmail.settings.basic` **or** `gmail.settings.sharing` — for the **primary** identity. Every
+shared address is non-primary, and no page states the distinction. So adding the identity by
+hand yields an identity this installer still cannot write to, and **both** routes cost the same
+scope. That scope is not a formality: it lets the service account decide who may send mail as
+what, for every user in the domain, off a key living in a script property. It is a founder
+decision, not an implementation detail.
+
+**The discovery cost a live regression, which is the part worth remembering.** Three send-as
+identities were added to `dame@` on 2026-08-21 on the strength of the wrong claim. From that
+moment the nightly 2am run threw on the first unwritable identity and aborted the whole user —
+so it logged `ERROR` and stopped refreshing even his own working primary signature. A wrong
+claim about permissions did not merely fail to add a feature; it removed one that worked.
+
+**#456 fixes both halves.** The install loop now isolates per identity: a missing-scope 403 is
+classified (`isMissingSharingScope_`), counted as `denied`, and the loop continues — while four
+unrelated error shapes are deliberately *not* swallowed, pinned by tests. `installAllSignatures`
+gained a **`PARTIAL`** status distinct from both `ok` and `ERROR`, so "wrote what it could, and
+here is what it refused" stops reading as success or as failure.
+
+**Codex's P1 was the one that mattered, and it was about a doc being executable.** The runbook
+said "add `gmail.settings.sharing` to the delegation" — but the JWT hardcoded
+`gmail.settings.basic`, so an admin would grant the scope, re-run, get the identical 403, and
+have nothing to look at. Now `requestedScopes_()` reads a `SHARING_SCOPE_ENABLED` script
+property. It defaults **off**, and that default is load-bearing: requesting a scope the
+delegation does not carry fails the **entire** token exchange with `unauthorized_client` — not
+the shared identities, *every* signature for *every* user. Hence an order that is not optional
+(console first, property second), stated in the README, the spec, and the error message itself.
+
+**The durable lesson took three rounds to land, and only the third cost anything.** This work
+asserted, in order: *only a Groups conversion breaks shared signatures* (wrong — aliases were
+never send-as identities); *no API can create a send-as identity* (wrong — `sendAs.create`
+exists for delegated service accounts); *the manual route needs no new permissions* (wrong —
+non-primary writes need `sharing`). The first two were caught by reading and by review. **The
+third was caught only by running it.** Reviews catch claims that contradict something already
+written down; they cannot catch a claim that is merely untested and plausible. *A claim that
+something is impossible — or that something is free — is itself a claim, and the only instrument
+that settles it is execution.* Same family as the `RCPT TO` probe and the "edge secrets aren't
+listable" myth that cost this project two days.
+
+**The scope decision was made the same day.** `gmail.settings.sharing` was granted on
+2026-08-22 — the delegation client now carries both scopes, verified on the list page with
+`basic` intact (the edit dialog appends a row rather than replacing, so confirming `basic`
+survived is not a formality). `SHARING_SCOPE_ENABLED` was **deliberately left unset**, for a
+reason worth its own line: **a granted scope is not immediately a usable one.** Delegation
+changes propagate on Google's schedule, and flipping the property inside that window produces
+the identical `unauthorized_client` total outage as doing the two steps out of order. The code
+that reads the property is undeployed anyway, so there was nothing to gain from racing it.
+
+**Left open, honestly:** #456 is merged and **not deployed** — `clasp push` is blocked on a
+`clasp login` reauth (`invalid_rapt`), so the live Apps Script still runs the pre-#456 code,
+requests only `basic`, and `dame@` errors again every night until it lands. Then, in order:
+confirm the run reports `PARTIAL` with a non-zero denied count, set the property, re-run.
+Outlook for Windows remains untested and untestable.
+
+→ `docs/wiki/concepts/workspace-email-signatures.md` · #455, #456
+
 ## [2026-08-22] Landing becomes one dark video screen, and a safety margin the redesign silently ate
 
 **Branch `feat/landing-cinematic-single-cta` — UNMERGED.** Blocked on written permission from the
@@ -113,6 +183,64 @@ work. Spec: `docs/superpowers/specs/2026-08-22-landing-page-cinematic-single-cta
 `docs/superpowers/specs/2026-08-22-landing-cinematic-single-cta.md` (ten tasks, tree green after
 each).
 → `docs/wiki/concepts/landing-cinematic-single-cta.md` · `feat/landing-cinematic-single-cta`
+
+## [2026-08-21] Wave 1 went live, and its first run disproved the documentation it shipped with
+
+**PRs** #453 (merged 11:35 UTC) and #454 (merged 21:00 UTC) · Codex clean at round 4 ·
+24 tests (was 19)
+
+The morning merged Wave 1. The afternoon ran it, and the run contradicted the page written to
+explain it.
+
+**The admin half, which no agent could do, got done.** Domain-wide delegation granted (one
+scope, `gmail.settings.basic`); a service-account key created, which needed a *project-scoped*
+exception to the `iam.managed.disableServiceAccountKeyCreation` org policy rather than an
+org-wide one; the Apps Script project pushed via `clasp`; three script properties set;
+`installAllSignatures()` run for all four users → **`4 × ok`**; a daily 2–3am trigger armed.
+
+**The acceptance signal was deliberately not the success message.** Signatures appeared in
+`joe@`, `jay@` and `adrian@` — mailboxes `dame@` cannot otherwise touch. That is the only
+observation that distinguishes live delegation from broken delegation, and `dryRun()`
+structurally cannot produce it: it never mints an impersonation token, so it passes cleanly
+against a missing or revoked key.
+
+**Then `0 shared`.** The installer's own warning blamed a Google Groups conversion — which
+had been *deliberately skipped*, so the diagnosis was structurally impossible. The real cause,
+read off the admin console: **an alias is not a send-as identity.** The seven shared addresses
+are aliases on `dame@`; an alias makes mail *arrive* and does not appear in `settings/sendAs`,
+which is exactly where the installer looks. So the shared branch had never matched anything
+and never could have.
+
+That falsified the spec and README, which both said these addresses appear in the send-as list
+*because* they are aliases, and framed the alias→Group conversion as the future hazard. **The
+hazard described as a consequence of a decision nobody had taken was the state on the day it
+was written.** Groups were never a prerequisite. Three copies corrected — spec, README, and
+the live `console.warn` an operator actually reads.
+
+**Codex found three real defects in #454, all mine.** (1) `founders@` was added to
+`SHARED_IDENTITIES` with no label in `titleForShared_()`, which falls through to the raw local
+part and would have rendered "DragonCandy founders", lowercase, to customers — fixed, and
+pinned by a test *verified by removing the label and watching it go red*. (2) Removing
+`legal@` because the alias does not exist was wrong: `isSharedIdentity_` is a **classifier**,
+so listing a nonexistent address is inert while omitting one gets it signed as *personal* —
+an individual's name and title, no registered address, on the legal mailbox. (3) "No API can
+create a send-as identity" was false — `users.settings.sendAs.create` is available *only* to
+domain-wide-delegated service accounts, exactly what we run; the constraint is scope
+(`gmail.settings.sharing` vs the `gmail.settings.basic` granted), not capability.
+
+**Also shipped that day, outside the PRs:** both shared drives populated with 14 business
+documents (hiring pack open, compensation Confidential — the split #452 designed, now enforced
+by structure instead of by remembering to delete §7); the domain-wide **profile-picture lock
+lifted** (*Directory settings → Profile editing*), which had been silently preventing every
+user in the domain from setting a photo; and **Gmail iOS dark mode confirmed passing** — the
+renderer sets no background colour, so dark-on-dark was the real risk, and Gmail's mobile
+client remaps the text rather than only inverting the background.
+
+**Left open, honestly:** shared-mailbox signatures still install nothing until someone takes
+the manual send-as route or widens the delegation scope; **Outlook for Windows is untested and
+now untestable** (no access), so the rendering matrix is four-of-five, not five-of-five.
+
+→ `docs/wiki/concepts/workspace-email-signatures.md` · #453, #454
 
 ## [2026-08-20] Email is not the web — signatures that install themselves, and nine files that named the wrong CTO
 

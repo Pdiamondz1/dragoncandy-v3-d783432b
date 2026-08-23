@@ -1,5 +1,40 @@
 # Wiki Log
 
+## [2026-08-22] ingest | The remedy the page prescribed was also wrong, and following it broke production
+
+Ingested `raw/sessions/2026-08-22-sendas-scope-403-and-partial-status.md`.
+**Updated** [[Workspace Email Signatures]] and its `index.md` entry — for the third time in
+three days, and this time the correction is to the *fix*, not to the diagnosis.
+
+Yesterday's ingest established that an alias is not a send-as identity and pointed at two
+routes to fix it, describing the manual one as needing no new permissions. Executing it
+returned **403 — `Missing required scope ".../gmail.settings.sharing" for modifying
+non-primary SendAs`**. Google's reference lists `sendAs.update` as accepting `basic` *or*
+`sharing`; that holds for the **primary** identity only, and nothing documents the non-primary
+case that every shared address falls into. Both routes cost the same scope, so the manual route
+was never the cheap one.
+
+**It caused a live regression.** Three identities added by hand made the nightly run throw on
+the first unwritable one and abort the whole user — `ERROR` for `dame@` from 2026-08-21, with
+even his working primary signature no longer refreshed. A wrong claim about permissions removed
+a working feature rather than merely failing to add a new one.
+
+**New section: "Granting a scope is two steps."** The runbook's own remedy was inert — the JWT
+hardcoded `gmail.settings.basic`, so granting the scope in the console would have produced the
+identical 403 with nothing new to look at (Codex P1). Now gated by `SHARING_SCOPE_ENABLED`,
+defaulting **off**, because requesting an ungranted scope fails the *entire* token exchange and
+takes down every signature for every user. Console first, property second; reverse to disable.
+
+**Known issues** gained the deploy gap: #456 is merged (`b0f4e4de`) and **not deployed** —
+`clasp push` blocked on a clasp reauth — so the live Apps Script runs pre-#456 code. *Merged is
+not deployed*, and Apps Script has no CI that closes the gap.
+
+Durable lesson, now stated on the page: *a claim that something is impossible — or that
+something is free — is itself a claim, and the only instrument that settles it is execution.*
+Three claims, three refutations; the first two caught by reading and by review, the third only
+by running it, and only the third cost anything. Reviews catch claims that contradict something
+already written down; they cannot catch one that is merely untested and plausible.
+
 ## [2026-08-22] ingest | Landing rebuilt as one dark video screen — flag deleted, doors deleted, and a watchdog margin bug Codex caught
 
 Ingested `raw/sessions/2026-08-22-landing-cinematic-single-cta.md`. **New page**
@@ -40,6 +75,37 @@ orphans by path). `SHIPPED_LOG.md` prepended. `PROJECT_CONTEXT.md` §5 already c
 one-line In-flight entry from an earlier task in this same branch — verified accurate, left
 untouched. RAG sync deliberately **not run** — branch unmerged; the committed post-merge hook syncs
 on the `main` fast-forward after merge, per the `[rag-sync]` skill lesson.
+
+## [2026-08-21] ingest | An alias is not a send-as identity either — the claim that did not survive its first run
+
+Ingested `raw/sessions/2026-08-21-workspace-wave-1-admin-half-and-sendas-correction.md`.
+**Updated** [[Workspace Email Signatures]] — three of its sections were falsified by the
+system's own first execution, one day after the page was written.
+
+The page's headline finding was that *a Google Group is not a send-as identity*, so the
+planned alias→Group conversion would silently break shared-mailbox signatures. The first real
+run reported **0 shared signatures with the aliases fully intact and no Group anywhere**: an
+alias is not a send-as identity either. The hazard described as a future consequence of a
+decision nobody had taken was the state on the day it was written, and Groups were never a
+prerequisite. Section retitled and rewritten with the reasoning inverted; the conclusion
+survives, its cause does not.
+
+Also corrected the page's claim that *"no API, admin or script"* could create a send-as
+identity — `users.settings.sendAs.create` exists and is available **only** to
+domain-wide-delegated service accounts, exactly what this system runs. The real constraint is
+scope (`gmail.settings.sharing`, where the delegation grants `gmail.settings.basic`), not
+capability. Both routes now recorded with their costs.
+
+Three "Known issues" moved to a resolved block rather than deleted — `Code.gs.js` "cannot be
+unit tested" (it can; 5 invariant tests now exist), "unproven against Google's real endpoints"
+(it ran, `4 × ok`), and "nothing is deployed" (#453 merged, trigger armed). Added **Outlook for
+Windows is untested and now untestable** as a standing gap, and a third trap: *a classifier is
+not an inventory, and its errors are asymmetric.*
+
+Durable lesson recorded twice over: **a claim that something is impossible is itself a claim.**
+Both pessimistic assertions on this page were wrong, and neither had been checked.
+
+→ #453, #454
 
 ## [2026-08-20] ingest | Email is not the web, and a Google Group is not a send-as identity
 
