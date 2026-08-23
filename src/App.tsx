@@ -423,6 +423,18 @@ function hasSessionHint(): boolean {
   }
 }
 
+// Only the LANDING routes. Every other public page — /pricing, /terms, /privacy, /help and
+// /how-it-works — deliberately renders through the authenticated shell, and has always done so.
+//
+// A review flagged /how-it-works's absence here as a defect, predicting authenticated chrome on a
+// marketing page and a shrunken desktop layout. Neither reproduces, measured logged-out at 1440px:
+// `main` is 1440 of the shell's 1440 (DonnyDesktopPanel is a `fixed` overlay since PR #236, so it
+// cannot take flex width — DESIGN_SYSTEM.md §4), and the shell's only children are the skip link
+// and <main> (the panel and HelpBriefDrawer both render null with no session).
+//
+// It is also the wrong shape of fix: adding one sibling and not the other four would make the set
+// mean neither "landing" nor "public". For a SIGNED-IN visitor the current behaviour is the
+// intended one — they keep their app chrome while reading /help or /pricing.
 const PUBLIC_PATHS = new Set(['/', '/home', '/landing']);
 
 function AuthenticatedShell({ children }: { children: React.ReactNode }) {
