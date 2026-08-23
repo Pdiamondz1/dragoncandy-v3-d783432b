@@ -21,7 +21,6 @@ import { InternalRoute } from "@/components/InternalRoute";
 import { isInternalHost, isAllowedOnInternalHost } from "@/lib/internalHost";
 import { Spinner } from "@/components/ui/spinner";
 
-import { SiteGateGuard } from "@/components/SiteGateGuard";
 import { Navigate } from "react-router-dom";
 import { PACKAGES_ENABLED } from "@/lib/featureConfig";
 import { CollaborationRedirect } from './components/CollaborationRedirect';
@@ -469,9 +468,7 @@ function AppShell() {
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-black focus:underline">Skip to main content</a>
       <main id="main-content" className="flex-1 overflow-auto">
         <UpdateBanner />
-        <SiteGateGuard>
-          <AnimatedRoutes />
-        </SiteGateGuard>
+        <AnimatedRoutes />
         {showDonny && <ErrorBoundary level="widget" fallback={null}><Suspense fallback={null}><HelpBriefDrawer /></Suspense></ErrorBoundary>}
       </main>
       {showDonny && <ErrorBoundary level="widget" fallback={null}><Suspense fallback={null}><DonnyDesktopPanel /></Suspense></ErrorBoundary>}
@@ -484,7 +481,8 @@ function AppLayout() {
   const { pathname } = useLocation();
   const isPublic = PUBLIC_PATHS.has(pathname);
 
-  // Standalone, unlisted investor deck — no AppShell/nav/Donny/SiteGate/auth chrome.
+  // Standalone, unlisted investor deck — no AppShell/nav/Donny/auth chrome. Note
+  // it is NOT exempt from the edge password: reach it with /pitch?k=<token>.
   // Still nested under ThemeProvider/QueryClient/LazyMotion/BrowserRouter (all above AppLayout).
   if (pathname === "/pitch" || pathname.startsWith("/pitch/")) {
     return (
