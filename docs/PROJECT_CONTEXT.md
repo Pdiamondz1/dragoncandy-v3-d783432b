@@ -346,9 +346,24 @@ holds no Toast credentials. See §6.
 - **YouTube read-only analytics connector** — the first direct platform API built under the
   2026-08-23 scope decision (Outstand publishes; direct APIs measure). Per-user OAuth connect,
   disconnect, and a channel analytics read, on `youtube.readonly` + `yt-analytics.readonly` and
-  nothing that can post. **BUILT AND DEPLOYED NOWHERE (2026-08-23):** migration `20260823170000`
-  unapplied, four edge functions undeployed, never run against real Google credentials — treat
-  every claim below as reviewed, not exercised. Codex clean at round 5; six real findings, all mine.
+  nothing that can post. **MERGED, APPLIED AND DEPLOYED 2026-08-23** (#477) — this line read
+  "BUILT AND DEPLOYED NOWHERE" until the same afternoon. Migration `20260823170000` applied to
+  prod, ledger row recorded by hand (**not** `supabase db push` — the ledger has diverged by 234
+  files, and this migration's `CREATE TRIGGER` is not idempotent, so an unrecorded version would
+  fail on re-run); four edge functions deployed, all `v1 ACTIVE` with `verify_jwt=true`. **Still
+  never run against real Google credentials** — every claim below is reviewed and structurally
+  verified, not exercised end to end. Codex clean at round 5; six real findings, all mine.
+  **Verified rather than assumed, because the migration's own header says not to trust its exit
+  code:** table grants are exactly `postgres` + `service_role` (no `anon`, no `authenticated`, no
+  `PUBLIC`), RLS enabled with **zero policies**, and the status function is `SECURITY DEFINER`
+  granted to `authenticated` + `service_role` but **not `anon`**. The boot probe carries its own
+  control — a nonexistent function name returns **404** where all four return **401**, so the 401
+  distinguishes "registered" from "absent"; and a request bearing the public anon key (a valid JWT
+  naming no user) returns **our** JSON body, `{"error":"unauthorized"}`, not the gateway's, which
+  is what proves the modules actually loaded. **A merge is not a deploy, and this one shipped a
+  visible defect for ~20 minutes:** the frontend went live ahead of the migration, so
+  `youtube_connection_status()` 404'd and every creator and business opening Settings saw the
+  card's red error branch. Ship the schema before the UI that reads it.
   **The design turns on one of them.** The first build had Google redirect straight to an edge
   function with `verify_jwt = false`, authorized by an HMAC-signed state — but a signature proves
   the state is *ours*, not that the browser completing consent is the one that started it. An
@@ -375,11 +390,13 @@ holds no Toast credentials. See §6.
   declared `youtube.upload` was **wrong** — all three Data Access tables are empty, so a "drop
   youtube.upload" task had been sitting on the list for something that did not exist; scopes are
   requested at runtime in the authorize URL, while Data Access is the *declared* list Google reviews
-  at verification. **Pending (2026-08-23):** apply the migration (NOT via `supabase db push` — the
-  ledger has diverged by 234 files); deploy the four functions; confirm `dame@dragoncandy.com` is
-  still a listed test user (the app is in **Testing**, so anyone unlisted gets an error, not a
-  consent screen); declare the two read scopes on Data Access before submitting for verification;
-  and register preview origins if the flow should work off the apex. **Expect every connection to
+  at verification. **Pending (2026-08-23), all of it console-side or unexercised:** nobody has
+  completed a consent round trip, so the connect / callback / disconnect / analytics path has never
+  run against Google; confirm `dame@dragoncandy.com` is still a listed test user (the app is in
+  **Testing**, so anyone unlisted gets an error, not a consent screen); declare the two read scopes
+  on Data Access before submitting for verification; and register preview origins if the flow should
+  work off the apex. Also unrun: CLAUDE.md's `edge-function-reviewer` gate, which this session was
+  configured not to spawn — the deploy went out without it. **Expect every connection to
   drop 7 days after consent** — Google expires refresh tokens for External + Testing apps on that
   schedule, and that is a console setting, not a bug in the refresh code.
   → `docs/wiki/concepts/youtube-analytics-connector.md`

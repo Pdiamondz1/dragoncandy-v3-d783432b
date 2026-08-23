@@ -13,9 +13,44 @@ A per-user, **read-only** link to a creator's or business's YouTube channel, sup
 analytics [[Outstand Social Media Integration]] never shipped. Outstand keeps publishing;
 this reads. Nothing in it can post, and the granted scopes could not if it tried.
 
-**State as of 2026-08-23: built, reviewed, and deployed nowhere.** The migration is
-unapplied, all four edge functions are undeployed, and the flow has never run against real
-Google credentials. Both Google-side prerequisites *are* done (see Console State below).
+**State as of 2026-08-23: merged (#477), applied and deployed — but never exercised.** The
+migration is on prod, the four edge functions are `v1 ACTIVE` with `verify_jwt=true`, and both
+Google-side prerequisites are done (see Console State below). What has *not* happened is a
+consent round trip: nobody has clicked Connect, so no token has ever been issued, stored,
+refreshed or revoked. Everything below is verified structure, not observed behaviour.
+
+### What "verified" meant here
+
+The migration's own header says not to trust its exit code, so each gate was read back:
+
+| Check | Result |
+|---|---|
+| Table grants | exactly `postgres` (owner) + `service_role` — no `anon`, `authenticated` or `PUBLIC` |
+| RLS | enabled, **zero policies** — the gate that holds even if a later migration re-grants |
+| Status function | `SECURITY DEFINER`, granted `authenticated` + `service_role`, **not `anon`** |
+| Function boot | all four return **401** unauthenticated; a nonexistent slug returns **404** |
+| Module load | with the public anon key the body is **ours** (`{"error":"unauthorized"}`), not the gateway's |
+| RPC | `youtube_connection_status()` returns `[]`, `jsonb_typeof` = `array` |
+
+The last two are the ones that carry weight. A 401 alone proves nothing — the gateway emits it
+before the function runs — so the control (404 on a bogus slug) is what makes it evidence the
+function is registered, and the anon-key probe is what proves the module actually loaded and our
+own auth check ran. **Prove a probe could have returned something else**, the rule
+[[Mobile Viewport & Fixed Positioning]] §9 records from the scroll bug the same week.
+
+### The ordering defect this shipped
+
+The PR merged the frontend and the migration together, but only code deploys on merge — a
+migration does not. For roughly twenty minutes `youtube_connection_status()` did not exist while
+the card that calls it was live, so `useYouTubeConnections` threw and every creator and business
+opening Settings saw the red *"Could not check your YouTube connection"* branch. The card's error
+handling worked exactly as designed; the sequencing was wrong. **Ship the schema before the UI
+that reads it** — and when describing a merge that needs a migration, "inert" is the wrong word.
+
+The ledger row was written by hand rather than by `supabase db push` ([[supabase-db-push-is-unsafe]] —
+the ledger has diverged by 234 files). That step is not optional bookkeeping here: this
+migration's `CREATE TRIGGER` has no `IF NOT EXISTS`, so an unrecorded version would fail the
+whole batch the next time anyone pushes.
 
 ## Why it exists
 

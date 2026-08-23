@@ -34,6 +34,39 @@ report is not evidence that nothing bounced. And the log search by the fixed mes
 `Message-ID` returned **0 results**, safely read only after the identical query returned 1 for a
 known-good id: **when a probe returns zero, prove it could have returned non-zero.**
 
+## [2026-08-23] update | A merge is not a deploy, and a 401 is not a boot
+
+Merged #477, applied migration `20260823170000` to prod, and deployed the four YouTube edge
+functions. **Updated** [[YouTube Analytics Connector]], the index entry and `PROJECT_CONTEXT.md`
+§5, all three of which said "built and deployed nowhere".
+
+**Two things worth keeping.**
+
+*A merge is not a deploy.* The PR carried the frontend and the migration in one commit, but only
+code ships on merge — a migration does not. For ~20 minutes `youtube_connection_status()` did not
+exist while the card that calls it was live, so every creator and business opening Settings saw
+the red "Could not check your YouTube connection" branch. I had described the merge as shipping
+"inert" code, which was wrong in exactly the direction that mattered. Ship the schema before the
+UI that reads it.
+
+*A 401 is not a boot.* All four functions answered 401 to an unauthenticated POST, which is what
+you want to see — and proves almost nothing, because the gateway emits it before the function
+runs. Two probes made it evidence: a **control** (a nonexistent slug returns 404, so 401
+distinguishes registered from absent), and a request bearing the public anon key — a valid JWT
+naming no user — which came back with **our** JSON body rather than the gateway's, proving the
+modules actually loaded and our own auth check ran. Same shape as the scroll-probe rule from
+earlier this week: when a probe returns the expected answer, prove it could have returned
+another.
+
+Also: the ledger row was written by hand, because `db push` is unsafe here (234-file divergence)
+and this migration's `CREATE TRIGGER` has no `IF NOT EXISTS` — an unrecorded version would fail
+the next push. And the count was wrong in five places: it is **four** edge functions, not five.
+
+Deno installed locally (2.9.5) — `check-edge-functions.mjs` now runs here, 70 functions clean.
+
+Not done: no consent round trip has ever run, so nothing has touched Google; and CLAUDE.md's
+`edge-function-reviewer` gate did not run before the deploy.
+
 ## [2026-08-23] update | A guard that cannot fire looks exactly like one that works
 
 Ingested `raw/sessions/2026-08-23-rag-eval-automation.md`. **Updated** [[RAG Retrieval Evaluation]]
