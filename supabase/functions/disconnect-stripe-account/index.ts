@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { STRIPE_IDENTITY_RESET } from "../_shared/stripe-identity-reset.ts";
 
 const logStep = (step: string, details?: unknown) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -124,10 +125,11 @@ serve(async (req) => {
         // Stripe hasn't verified. tax_id_provided goes to null (not false):
         // null means "Stripe said nothing", which is the honest state after
         // a disconnect; false would assert Stripe reported something.
-        identity_verified_at: null,
-        tax_id_provided: null,
-        stripe_requirements_due: null,
-        stripe_disabled_reason: null,
+        //
+        // Shared with the AUTOMATIC detach path in check-restaurant-payout-status.
+        // These were separate copies until the Codex second review found that fixing
+        // this one had left that one stamped — see _shared/stripe-identity-reset.ts.
+        ...STRIPE_IDENTITY_RESET,
       });
 
     for (const [key, value] of Object.entries(sourceFilter)) {
