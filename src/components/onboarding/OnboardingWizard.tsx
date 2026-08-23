@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAutoDetect } from '@/hooks/useAutoDetect';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadProfileAsset } from '@/lib/storage/uploadProfileAsset';
+import { requestCreatorAddressVerification } from '@/lib/verifyAddress';
 import { toast } from 'sonner';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { LandingButton } from '@/components/landing/LandingButton';
@@ -197,6 +198,26 @@ export function OnboardingWizard() {
       if (profileError) throw profileError;
 
       if (role === 'content_creator') {
+        // Read the address as stored BEFORE this write (Finding A, task-7 fix round 2):
+        // this path is not onboarding-only — /profile/setup is gated only by
+        // VerifiedRoute (email verification), with no is_completed check, and
+        // LeaveOrgSheet.tsx navigates an existing business/creator user straight back
+        // to it. So a RETURNING creator whose address has NOT changed can hit this
+        // upsert, and firing verify-address unconditionally would let a transient
+        // geocode failure strip a real, still-true stamp for a reason unrelated to
+        // their address — the same bug Finding 2 (fix round 1) closed in
+        // useCreatorProfileSubmit.ts. A failed pre-read is treated as UNCHANGED (skip
+        // re-verification), never as CHANGED — never guess in the direction that risks
+        // stripping a true stamp.
+        const { data: existingCreator, error: existingCreatorError } = await supabase
+          .from('creator_profiles')
+          .select('city, country')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (existingCreatorError) {
+          console.error('Error reading existing creator address before save:', existingCreatorError);
+        }
+
         const { error } = await supabase.from('creator_profiles').upsert({
           user_id: user.id,
           creator_name: name.trim(),
@@ -210,6 +231,38 @@ export function OnboardingWizard() {
           is_completed: true,
         }, { onConflict: 'user_id' });
         if (error) throw error;
+
+        // A read ERROR must resolve to "unchanged" (skip) — never to "no existing row"
+        // (which would fire). `.maybeSingle()` returns `data: null, error: null` for a
+        // genuine "no row found" (a real first-time creator, correctly counted as
+        // changed) and `data: null, error: <PostgrestError>` for a failed read — those
+        // two null-data cases must NOT be conflated, or a transient read failure would
+        // fire speculatively, exactly the bug this guard exists to close.
+        const addressChanged = existingCreatorError
+          ? false
+          : !existingCreator
+            ? true
+            : (existingCreator.city ?? null) !== locationData.city ||
+              (existingCreator.country ?? null) !== locationData.country;
+
+        // Best-effort, fire-and-forget: never block or fail onboarding on a geocode
+        // outcome. See src/lib/verifyAddress.ts. Fired AFTER the upsert above, which is
+        // load-bearing: the edge function reads the STORED row, so calling first would
+        // verify the previous address.
+        //
+        // Onboarding has no postal code field, and this wizard's upsert therefore leaves
+        // any postal code a returning creator already saved through the full profile
+        // editor untouched. That used to matter: the client sent postalCode: null, the
+        // function matched `.is('postal_code', null)`, the stored '07030' did not match,
+        // and the account became silently and permanently unverifiable. The function now
+        // reads and matches the row's own postal code, so an omission here cannot
+        // desynchronise anything.
+        if (addressChanged) {
+          void requestCreatorAddressVerification({
+            city: locationData.city,
+            country: locationData.country,
+          });
+        }
       } else {
         const { error } = await supabase.from('business_profiles').upsert({
           user_id: user.id,

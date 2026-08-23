@@ -85,7 +85,8 @@ stale silently; re-read the invoices before quoting this anywhere. Production la
 delivery system stabilization that gated launch landed in late May 2026;
 remaining blockers are final bug resolution and payment-flow hardening.
 
-**Codebase scale** (as of 2026-08-19): 92 pages, 269 hooks, 98 edge functions.
+**Codebase scale** (as of 2026-08-23): 92 pages, 269 hooks, 100 edge functions (`verify-phone` +
+`verify-address` added by the identity-verification slice — both undeployed pending secrets).
 **Repo**: `/Users/dwill/GIT/dragoncandy-v3-d783432b` (moved from Windows to macOS 2026-08-14)
 **Active integrations**: Stripe Connect, Outstand.so (social media —
 Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
@@ -537,6 +538,22 @@ holds no Toast credentials. See §6.
 > proof the object exists (see [[Content Delivery State Machine]]) and "recorded ≠ actual" has
 > bitten this project before.
 
+- **Identity & verification (slice 2 of 4, onboarding redesign)** — gives `phone_verified`/
+  `identity_verified`/`address` real writers, closes a `profiles` email/phone read exposure (4th
+  recorded column-REVOKE-no-op instance), and corrects a slice-1 defect (two `required` checklist rows
+  nothing could ever satisfy). Branch `feat/identity-verification`, 27 commits, 11 migrations, tests
+  green. **Codex second review DONE** — this line said "still owed": seven rounds, nine findings, all
+  real, clean at round 7; two of the nine were defects a previous fix in the same loop introduced.
+  It moved the SMS throttle out of TypeScript into an atomic SQL RPC
+  (`reserve_phone_verification_send`), so that control now has **no automated coverage at all**, only
+  a hand-run rolled-back prod proof. **Pending (2026-08-23):** three secrets unprovisioned
+  (`TWILIO_VERIFY_SERVICE_SID`, `PHONE_VERIFY_IP_SALT`, `GOOGLE_MAPS_SERVER_API_KEY`) so nothing is
+  verifiable end-to-end; merge, then a **four-migration + five-function** merge-time runbook; a
+  `READINESS_GATE_ENABLED` flag-row decision (founder call — and it now needs the Maps key first,
+  since until then no address can be verified and the `required` address item is display-only); and a
+  pre-existing unauthenticated IDOR (`get_user_conversations`) found in scope but left for an owner
+  outside this branch.
+  → `docs/wiki/concepts/identity-verification.md` · `docs/SHIPPED_LOG.md`
 - **Donny's `social_*` tools repaired (7 calls → 0 successes → 4 working tools)** — Donny told the
   founder he had "no visibility into which Instagram account is connected", sent him to find an
   **"account ID"** on a page that displays none, and promised to post once he had it. The prod audit
@@ -653,7 +670,8 @@ holds no Toast credentials. See §6.
   the Codex second review**, at founder direction. **Pending (2026-08-23):** both-viewport prod
   verification — every changed surface is behind auth and **no test-account credentials exist in the
   memory system despite `CLAUDE.md` saying they do**; the Donny RAG sync; and slices 2-4 (identity &
-  verification, entry experience, depth).
+  verification, entry experience, depth). **Slice 2 (identity & verification) built — see "Built —
+  awaiting founder go-live" above**; this line previously named it only as a future slice.
   → `docs/wiki/concepts/account-completeness-engine.md` · #472
 - **Every `href` in our transactional emails was caller-chosen — closed on prod (#442)** — ~30
   templates built every link from caller-supplied `data` with no check, reachable because

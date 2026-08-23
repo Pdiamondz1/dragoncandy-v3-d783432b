@@ -47,7 +47,7 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
         const parentSenderIds = [...new Set(parentMessages.map(m => m.sender_id))];
         const { data: parentProfilesData } = await supabase
           .from('profiles')
-          .select('id, full_name, email')
+          .select('id, full_name')
           .in('id', parentSenderIds);
         
         parentProfiles = parentProfilesData || [];
