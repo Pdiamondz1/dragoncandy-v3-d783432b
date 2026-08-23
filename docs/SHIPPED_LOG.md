@@ -26,6 +26,38 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-23] One wrong axis, seven pages: the public logo and a dashboard that wasn't there
+
+Two founder reports on the surfaces #465 had just added to.
+
+**The logo was ~3x too big on every public page but the landing.** `/logo.webp` is a stacked badge,
+**280 x 326** intrinsic — **taller than it is wide** (aspect 0.859). `PublicPageHeader` sized it by
+**width** (`w-[100px] md:w-[120px] lg:w-[140px] h-auto`), and on a portrait asset a width class
+does not cap the height, it multiplies it: measured **140 x 163** against the landing header's
+**48 x 56**, inflating the bar to **195px**. The landing was the only page that looked right
+because it is the only one that sizes by height. One wrong axis, visibly wrong on `/how-it-works`,
+`/terms`, `/privacy`, `/help`, `/pricing`, 404 and both public profile pages at once.
+
+Both headers now carry the identical `h-12 w-auto lg:h-14`. Verified rendered on all four reported
+pages: **48 x 56**, header **88px**, and **41 x 48 / 80px** at 390 mobile — matching the landing on
+both viewports.
+
+A second defect sat in the same three lines: `width={140} height={47}` describes an aspect of
+**2.98** against the real **0.859**. Those attributes exist to reserve the box before the image
+loads, so at the wrong ratio they reserved the wrong shape and *caused* the layout shift they are
+meant to prevent. Corrected to the real 280/326.
+
+**`/help` promised a dashboard to people who have never had one.** It is linked from the landing
+footer and reachable with no session, and it said "Back to Dashboard" (and "Return to Dashboard" in
+the empty state) to everyone. The destination was never wrong — `/` redirects a signed-in user
+onward — so only the label lied. Both are now gated on `useAuth()`'s `user`, and signed-in visitors
+go to `/dashboard` directly instead of bouncing through the landing. A sweep of the other public
+pages (`/terms`, `/privacy`, `/pricing`, 404, help articles) found no sibling instance.
+
+Both fixes are pinned by new tests, and **both pins were controlled** — re-introducing each bug was
+observed to turn its test red, then reverted. `HelpCenter.test.tsx` asserts the word "dashboard"
+appears **nowhere** on the page with no session, rather than checking one button's label.
+
 ## [2026-08-23] The mobile jump was real, and it was the finding I refuted
 
 Adrian Vella sent three notes on the landing shipped that morning (#459). Two were design asks. The

@@ -18,13 +18,24 @@ export function PublicPageHeader() {
   return (
     // pt-[calc(...)] keeps py-4's 1rem and adds the notch inset on top — see DESIGN_SYSTEM.md.
     <header className="sticky top-0 z-50 flex items-center justify-between bg-white px-4 py-4 pt-[calc(1rem+env(safe-area-inset-top))] md:px-8">
+      {/* Sized by HEIGHT and matched to the landing header (h-12 / lg:h-14), because /logo.webp is
+          a stacked badge that is TALLER THAN WIDE — 280x326 intrinsic, aspect 0.859. Sizing it by
+          width, as this did (`w-[100px] md:w-[120px] lg:w-[140px] h-auto`), therefore multiplies
+          the height: 140 wide rendered 163 TALL against the landing's 56, and inflated this header
+          to 195px. Every public page but the landing carried it.
+
+          The width/height attributes are the intrinsic 280x326, not the 140x47 they were. Those
+          attributes exist to reserve the box before the image loads; at an aspect of 2.98 against
+          the real 0.859 they reserved the wrong shape and CAUSED the layout shift they are meant
+          to prevent. If the asset is ever replaced, re-read its real dimensions rather than
+          copying these. */}
       <img
         src="/logo.webp"
         alt="DragonCandy"
-        width={140}
-        height={47}
+        width={280}
+        height={326}
         fetchPriority="high"
-        className="w-[100px] md:w-[120px] lg:w-[140px] h-auto cursor-pointer transition-transform duration-200 hover:scale-105"
+        className="h-12 w-auto lg:h-14 cursor-pointer transition-transform duration-200 hover:scale-105"
         onClick={() => navigate('/')}
       />
 

@@ -330,4 +330,24 @@ same token/font system, unaffected; `/internal` stays dark.
   `100dvh` `main` hands short pages the same dead scroll one container down — so `DashboardLayout` tracks
   the shell. Pinned by `src/layoutViewportHeight.test.ts`, as a text assertion, because jsdom has no layout
   engine to evaluate a CSS length. See `docs/wiki/concepts/mobile-viewport-fixed-positioning.md` (§9).
+* **Size `/logo.webp` by HEIGHT (`h-12 w-auto lg:h-14`), never by width — it is taller than it is
+  wide.** The asset is a stacked badge, **280 x 326** intrinsic (aspect **0.859**), so a width
+  class does not cap it, it *multiplies* it: `w-[140px] h-auto` rendered **163px tall** against the
+  landing header's **56**, and inflated `PublicPageHeader` to a 195px bar. That header is shared by
+  every public page except the landing — `/how-it-works`, `/terms`, `/privacy`, `/help`,
+  `/pricing`, 404 and the public profiles — so one wrong axis was visibly wrong on seven surfaces
+  at once, and the landing (which sizes by height) was the only one that looked right.
+  Founder-reported 2026-08-23. Both headers now use the identical `h-12 w-auto lg:h-14`;
+  `PublicPageHeader.test.tsx` pins it and asserts the two files stay in step.
+  **The `width`/`height` attributes must be the asset's REAL intrinsic size** (280/326, not the
+  140/47 they carried). They exist to reserve the box before the image loads; at the wrong aspect
+  they reserve the wrong shape and cause the layout shift they are meant to prevent. Re-read the
+  real dimensions if the asset is ever replaced rather than copying the numbers.
+* **A public page may not promise a dashboard.** `/help` is linked from the landing footer and is
+  reachable with no session, and it told every visitor "Back to Dashboard" — including people who
+  have never had one (founder-reported 2026-08-23, same pass as the logo). The *destination* was
+  fine (`/` redirects a signed-in user onward); only the label lied. Gate the copy on `useAuth()`'s
+  `user` and point signed-in visitors at `/dashboard` directly. When adding any CTA to a public
+  surface, ask what it reads as with no session — `HelpCenter.test.tsx` now asserts the word
+  "dashboard" appears nowhere on the page when logged out.
 * **App chrome sits BELOW the modal layer — never tie `z-50`** — persistent app chrome (`MobileBottomNav`, `MobileTopNav`, desktop header, `DonnyDesktopPanel`) is **`z-40`**; the Radix modal layer (every `Sheet`/`Dialog`/`AlertDialog`/`Popover`/`Dropdown`/`Tooltip`) is **`z-50`**; `DonnyMobileSheet` is `z-[60]/[61]`; toasts are `z-[100]`. At `z-50` the nav tied the modal layer and (both portal to `<body>`) its opaque bar painted over bottom-sheet action buttons on iOS Safari. A new **non-modal in-page** `fixed`/`sticky` bottom bar that coexists with the nav (e.g. `StickyApplyCTA`) must offset itself above the nav on mobile — `bottom-[calc(6rem+env(safe-area-inset-bottom))] md:bottom-0` (the `6rem` mirrors the content area's `pb-24` nav-clearance) — or live inside a modal. See `docs/wiki/concepts/mobile-viewport-fixed-positioning.md` (§6).

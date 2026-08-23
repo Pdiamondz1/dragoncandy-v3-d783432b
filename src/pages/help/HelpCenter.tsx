@@ -9,6 +9,7 @@ import { SEO } from "@/components/SEO";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PublicPageHeader } from '@/components/PublicPageHeader';
 import { rankHelpArticles, type HelpArticle } from "@/lib/helpSearch";
+import { useAuth } from "@/hooks/useAuth";
 
 const CATEGORIES = [
   { key: "getting_started", label: "Getting Started", icon: BookOpen },
@@ -27,6 +28,7 @@ const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
 
 export default function HelpCenter() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [openCategories, setOpenCategories] = useState<Set<string>>(
     new Set(CATEGORIES.map((c) => c.key))
@@ -85,14 +87,19 @@ export default function HelpCenter() {
       />
       <PageHeader>
         <div className="max-w-2xl lg:max-w-3xl mx-auto">
+          {/* /help is PUBLIC — reachable from the landing footer with no session — so this label
+              cannot assume a dashboard exists. It said "Back to Dashboard" to everyone, including
+              signed-out visitors who have never had one. The destination was always '/', which is
+              correct for both (the landing redirects a signed-in user onward), so only the label
+              and the explicit target needed to become auth-aware. */}
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate('/')}
+            onClick={() => navigate(user ? '/dashboard' : '/')}
             className="mb-4 -ml-2 text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="mr-1 h-4 w-4" />
-            Back to Dashboard
+            {user ? 'Back to Dashboard' : 'Back to home'}
           </Button>
           <h1 className="text-2xl lg:text-3xl font-bold text-dc-dark mb-2">
             Help Center
@@ -224,9 +231,9 @@ export default function HelpCenter() {
             <Button
               variant="outline"
               className="rounded-full mt-2"
-              onClick={() => navigate('/')}
+              onClick={() => navigate(user ? '/dashboard' : '/')}
             >
-              Return to Dashboard
+              {user ? 'Return to Dashboard' : 'Back to home'}
             </Button>
           </div>
         )}
