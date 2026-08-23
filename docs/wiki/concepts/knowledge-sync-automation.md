@@ -2,7 +2,7 @@
 title: Knowledge-Sync Automation
 type: concept
 created: 2026-06-22
-updated: 2026-06-22
+updated: 2026-08-23
 sources: [2026-06-21-origin-story-and-sync-automation.md]
 tags: [knowledge-sync, donny-rag, strategy-library, git-hooks, dev-workflow, supabase]
 ---
@@ -12,6 +12,13 @@ The mechanical plumbing that keeps Donny's knowledge (`donny_knowledge` RAG + th
 `internal_docs` strategy-library viewer) current with the repo's `docs/` — **without pasting
 the prod service-role secret on the command line**. This is the operational counterpart to
 [[Self-Improving App]] (which is the AI *content* loop); this page is the *sync* loop.
+
+> **2026-08-23 — the sync truncated every document at 24,000 chars, and said nothing.** The
+> comment on the slice read "embed input is truncated; full_content is not", which is true and
+> about `internal_docs` — a store Donny's retrieval never reads. 33% of the corpus reached him
+> in no form at all. Chunking now happens in `donny-knowledge-sync`; see
+> [[RAG Document Chunking]]. **This page's own instruction to verify by CONTENT, not by
+> `updated_at`, is the only reason it was found** — the run reported `updated=142 errors=0`.
 
 Built 2026-06-21 (PRs #156/#157/#158). No schema, RLS, edge-function, or secret changes — pure
 dev tooling over the existing `donny-knowledge-sync` edge function and the two sync scripts

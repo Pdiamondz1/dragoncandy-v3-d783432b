@@ -3,7 +3,12 @@
 // donny-knowledge-sync, so a merge→sync and the nightly cron hit the same rows.
 // Dependency-free → Vitest runs it in CI.
 
-const MAX_EMBED_CHARS = 24_000;
+// No truncation here, and no chunking either. `content` is the whole document; donny-knowledge-sync
+// splits it into rows via _shared/chunk-doc.ts. This file used to slice at 24,000 chars, which
+// meant an oversize page reached Donny with its tail missing — and once the full sync started
+// chunking, a slice here would ALSO have overwritten chunk 0 with a truncated whole-document row
+// while leaving the previous continuation chunks in place, serving a truncated head spliced onto
+// a stale tail. Both failure modes are gone because neither producer decides anything.
 
 export interface SyncPage {
   source_id: string;
@@ -34,7 +39,7 @@ export function buildSyncPage(path: string, raw: string): SyncPage {
   const title = fm.title ?? slug;
   return {
     source_id: `internal-${folder}:${slug}`,
-    content: `${title}\n\n${body}`.slice(0, MAX_EMBED_CHARS),
+    content: `${title}\n\n${body}`,
     metadata: { title, type: fm.type ?? 'internal_doc', path: norm, tags: fm.tags ?? '' },
     scope: 'internal',
     full_content: raw,

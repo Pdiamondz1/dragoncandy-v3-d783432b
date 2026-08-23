@@ -74,18 +74,25 @@ deliberately publishes it.
 `sync-wiki-to-donny.mjs` has one, and since #437 the `wiki:<dir>/<slug>` namespace holds only
 what the allowlist publishes — today, nothing. Internal Donny reads the mirror.
 
-The two paths also differ in how they handle a large page, which matters more than it looks:
+**CORRECTED 2026-08-23 — this section described a defect as a mitigation.** It read:
 
-| | `internal-<dir>:<slug>` | `wiki:<dir>/<slug>` |
-|---|---|---|
-| Oversize behaviour | embeds the first `MAX_EMBED_CHARS` (24,000), keeps the **full** markdown in `internal_docs` | **hard-skips at `FAIL_CHARS` (31,000)** and exits 1 |
-| Why the difference | `full_content` is accepted, because the page is internal scope | `full_content` is rejected on anything but internal scope, and a consumer page is by definition not internal |
+> | Oversize behaviour | embeds the first `MAX_EMBED_CHARS` (24,000), keeps the **full** markdown
+> in `internal_docs` | **hard-skips at `FAIL_CHARS` (31,000)** and exits 1 |
+>
+> …an oversize page degrades to a truncated embed with its full text still readable in
+> `internal_docs` — so splitting is now a retrieval-quality improvement (tail coverage, focused
+> units), not a fix for a broken sync.
 
-That asymmetry is why the four oversize pages were once queued for splitting: the **duplicate**
-was the copy that would hard-fail, not the one anyone reads. With the duplicate gone, an oversize
-page degrades to a truncated embed with its full text still readable in `internal_docs` — so
-splitting is now a retrieval-quality improvement (tail coverage, focused units), not a fix for a
-broken sync.
+**The sync was broken.** `internal_docs` is read by the `/internal/strategy` viewer and by
+nothing else; `donny-orchestrator/rag.ts` returns `donny_knowledge.content` on both its paths
+and never touches it. "Still readable in `internal_docs`" was true of a human with the viewer
+open and false of the reader the sentence was about. Measured on prod that day: **723,128 of
+2,168,995 chars — 33% of the corpus — reached Donny in no form at all.**
+
+Both paths now **chunk** rather than truncate or skip, in `donny-knowledge-sync` itself, so
+neither producer decides anything about size. `FAIL_CHARS` is gone (with chunking there is no
+cliff to protect, and skipping would simply drop a page); `MAX_EMBED_CHARS` is gone. Splitting a
+long page by hand is once again only a readability choice. See [[RAG Document Chunking]].
 
 ## The wiki is not consumer material, and that is not a gap
 

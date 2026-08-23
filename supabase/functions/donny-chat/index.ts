@@ -897,7 +897,13 @@ async function executeTool(
     // --- Internal (AIOS) tools ---
     case "search_internal_knowledge": {
       const embedding = await embedQuery(args.query);
-      const chunks = await retrieveContext(internalCtx!.userClient, args.query, embedding, 5, "internal");
+      // 10, not the default 5, because the internal corpus is CHUNKED and the consumer one is
+      // not (sync-internal-docs.mjs splits a document into ~6k pieces; sync-wiki-to-donny.mjs
+      // sends whole pages). At 5 rows this call could return five pieces of one document where
+      // it used to return five separate documents. This is still LESS text than before, not
+      // more: measured 2026-08-23 the mean chunk is 4,162 chars against the old mean row of
+      // 10,111, so 10 chunks is ~42k where 5 rows was ~51k.
+      const chunks = await retrieveContext(internalCtx!.userClient, args.query, embedding, 10, "internal");
       return { result: { chunks, count: chunks.length } };
     }
 
