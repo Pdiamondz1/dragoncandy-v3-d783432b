@@ -36,7 +36,10 @@ jobs:
           # from the config file (measured 2026-08-23 — skipAudits arrived as null
           # in the report), so the file's copy is silently dropped for any job that
           # also sets the preset. Set on both jobs so neither depends on the other's
-          # shape. Remove at public launch with public/robots.txt.
+          # shape. The scalar is fine: LHCI coerces it, and a real run's report
+          # came back with configSettings.skipAudits == ["is-crawlable"], the
+          # audit absent from the report and categories:seo 1.00.
+          # Remove at public launch with public/robots.txt.
           LHCI_COLLECT__SETTINGS__SKIP_AUDITS: is-crawlable
 
       - name: Lighthouse CI — Mobile
@@ -58,5 +61,8 @@ jobs:
           # from the config file (measured 2026-08-23 — skipAudits arrived as null
           # in the report), so the file's copy is silently dropped for any job that
           # also sets the preset. Set on both jobs so neither depends on the other's
-          # shape. Remove at public launch with public/robots.txt.
+          # shape. The scalar is fine: LHCI coerces it, and a real run's report
+          # came back with configSettings.skipAudits == ["is-crawlable"], the
+          # audit absent from the report and categories:seo 1.00.
+          # Remove at public launch with public/robots.txt.
           LHCI_COLLECT__SETTINGS__SKIP_AUDITS: is-crawlable

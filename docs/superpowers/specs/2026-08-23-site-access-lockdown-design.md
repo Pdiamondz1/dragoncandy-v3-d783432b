@@ -286,7 +286,7 @@ existing RLS.
 ## Testing
 
 - **Unit** — the middleware's decision function is extracted as a pure
-  `decide(request, env)` returning `pass | challenge | bypass` and tested
+  `decide(request, env)` returning `pass | challenge | redirect` and tested
   directly: non-production passes; each allowlisted static path passes; a correct
   and an incorrect `?k=` diverge; a forged cookie is rejected; an expired cookie
   is rejected; a correct Basic credential passes; an absent header challenges.

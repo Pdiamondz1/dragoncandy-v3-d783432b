@@ -990,139 +990,20 @@ The remaining work happens in the Vercel and Supabase dashboards and cannot be d
 
 Create `docs/runbooks/site-access-lockdown.md`:
 
-````markdown
-# Runbook — site access lockdown (private preview)
+**The runbook shipped. Read it at `docs/runbooks/site-access-lockdown.md` —
+that file is the single source of truth, and this plan deliberately no longer
+carries a copy of it.**
 
-Design: `docs/superpowers/specs/2026-08-23-site-access-lockdown-design.md`
+A copy used to live here, and it drifted. Four corrections made to the runbook
+after the final review — that revoking access takes two different levers, that
+every Supabase invite has to travel with the password, that `/promo/:id` now
+challenges, and the `/_vercel/` check — reached the runbook and not this copy,
+so the copy went on stating the exact claim one of those corrections exists to
+kill. Anyone regenerating the runbook from here would have reinstated it.
 
-## What is switched on
-
-Two independent layers. **Both are needed**; neither substitutes for the other.
-
-1. **Supabase public signup off** — the only control that stops account
-   creation. The `VITE_SUPABASE_ANON_KEY` ships in the browser bundle, so anyone
-   can POST straight at the auth endpoint without ever loading a page served by
-   Vercel. Requests to `supabase.co` never traverse Vercel, so no middleware can
-   see them.
-2. **An edge password on the production hosts** — stops discovery and casual
-   poking. It does not protect Supabase.
-
-## Generating the secrets
-
-Run locally, once. Keep the output in the password manager, not in git:
-
-```bash
-node -e "console.log('SITE_GATE_SECRET=' + crypto.randomUUID() + crypto.randomUUID())"
-node -e "console.log('SITE_BYPASS_TOKEN=' + crypto.randomUUID())"
-```
-
-Choose `SITE_PASSWORD` yourself — it is the one a human types.
-
-## Vercel variables
-
-Project `dragoncandy-v3-d783432b`, team `dragon-candy-s-projects`.
-Dashboard → Settings → Environment Variables. **Production scope only.**
-
-| Variable | Value |
-|---|---|
-| `SITE_GATE_ENABLED` | `1` |
-| `SITE_PASSWORD` | the shared password |
-| `SITE_BYPASS_TOKEN` | generated above |
-| `SITE_GATE_SECRET` | generated above |
-
-**Never prefix any of these with `VITE_`.** A `VITE_` variable is compiled into
-the browser bundle, which would publish the password.
-
-**An environment-variable change does not reach a deployment that is already
-running.** Vercel's own documentation is explicit: *"Changes to environment
-variables are not applied to previous deployments, they only apply to new
-deployments."* So after setting or changing any of these, redeploy — Deployments
-→ ⋯ → **Redeploy**, reusing the existing build; nothing needs rebuilding. From
-the CLI: `vercel redeploy --prod`.
-
-That cuts both ways, so the sequence matters: set all four variables **first**,
-and only then deploy the change that ships `middleware.ts`. A deployment that
-goes out ahead of them runs with them unset, and with `SITE_GATE_ENABLED` absent
-the gate does nothing — the site ships open while the dashboard looks locked
-down.
-
-## Supabase
-
-Dashboard → Authentication → Sign In / Providers → turn **off** "Allow new users
-to sign up".
-
-Creating an account after this:
-
-- Dashboard → Authentication → Users → **Invite user**, or
-- `auth.admin.inviteUserByEmail` from a service-role edge function.
-
-## Verifying on production
-
-The gate is production-only, so **none of this can be checked on a preview
-deploy.** Run every check below after merging, in a private window.
-
-- [ ] `curl -sI https://dragoncandy.com/ | head -1` → `HTTP/2 401`
-- [ ] `curl -sI https://dragoncandy.com/robots.txt | head -1` → `HTTP/2 200`
-- [ ] `curl -s https://dragoncandy.com/robots.txt` → `Disallow: /`
-- [ ] `curl -sI https://dragoncandy.com/sitemap.xml | head -1` → `HTTP/2 401`
-- [ ] `curl -sI -u ":$SITE_PASSWORD" https://dragoncandy.com/ | head -1` → `HTTP/2 200`
-- [ ] A bundle asset is refused anonymously. Take a real filename from the page
-      source after logging in, then: `curl -sI https://dragoncandy.com/assets/<file>.js | head -1` → `HTTP/2 401`
-- [ ] `curl -sI "https://dragoncandy.com/pitch?k=$SITE_BYPASS_TOKEN" | head -1` → `HTTP/2 302`,
-      and the response carries `Set-Cookie: dc_gate=...`
-- [ ] `curl -sI https://dragoncandy.com/pitch | head -1` → `HTTP/2 401`
-- [ ] In a browser: `https://dragoncandy.com` prompts, the password admits, the
-      landing page renders, and the console is clean. Check desktop **and**
-      mobile viewports (`CLAUDE.md`).
-- [ ] Reels still play, and are not served stale to an anonymous visitor:
-      `curl -sI https://dragoncandy.com/landing/reels/<file> | head -1` → `HTTP/2 401`
-- [ ] **The password-reset round trip.** Request a reset for a real account,
-      open the emailed link, enter the site password at the prompt, and confirm
-      the page loads *with a session* and the password can actually be changed.
-      This is the most important check here: it is what the `401`-not-redirect
-      design exists to protect, and a redirect-based gate would fail it silently.
-- [ ] Signup is refused: attempt to create an account and confirm the invite-only
-      message appears rather than "Signups not allowed for this instance".
-
-## Rollback
-
-Set `SITE_GATE_ENABLED` to `0` in the Vercel dashboard, **then redeploy** —
-Deployments → ⋯ → **Redeploy** (the existing build is fine), or
-`vercel redeploy --prod`. The variable change alone changes nothing: Vercel
-applies environment variables to new deployments only, never to one already
-running. No git operation is involved either way.
-
-**Do not roll back by deleting `SITE_PASSWORD`.** The gate fails closed, so a
-missing password challenges every request — that locks everyone out instead of
-opening the site. This is deliberate: a silently reopened site goes unnoticed for
-weeks, a locked one for seconds.
-
-If the middleware itself is broken rather than misconfigured, revert the commit
-adding `middleware.ts` and redeploy; with no middleware present Vercel serves the
-site exactly as before.
-
-## Known limits, stated so nobody rediscovers them
-
-- **The native iOS app is not gated.** It serves from `capacitor://localhost` and
-  never asks Vercel for HTML, so the middleware never sees it. Anyone with a
-  TestFlight build reaches the app without the site password.
-- **There is no logout.** Browsers cache Basic credentials per origin and realm.
-  Clearing an admitted visitor means changing `SITE_PASSWORD`.
-- **The bypass token grants the whole site**, not one page, for the cookie's
-  30-day life. `/pitch?k=…` is a quieter second password, not a scoped share.
-- **`internal.dragoncandy.com` is gated too.** Stakeholders see the password
-  prompt before the `/internal` admin login. `/internal`'s own authorization is
-  unchanged.
-- **A manual Playwright run against production now needs credentials.** Pass
-  them via `httpCredentials`; do not commit the password into
-  `playwright.config.ts`. CI is unaffected — `e2e.yml` runs against Preview
-  deployments, which the gate deliberately skips.
-- **At public launch**, three things revert together: `SITE_GATE_ENABLED=0` (plus
-  the redeploy that makes it real), `public/robots.txt`, and the `is-crawlable`
-  skip — which lives in two places, the env var on both jobs in
-  `.github/workflows/lighthouse-ci.yml` and the `collect.settings` default in
-  `lighthouserc.cjs`.
-````
+Two copies of an operational document is the same defect class this branch
+already shipped twice: a document asserting something the code does not do.
+One copy, and a pointer.
 
 - [ ] **Step 2: Commit the runbook**
 

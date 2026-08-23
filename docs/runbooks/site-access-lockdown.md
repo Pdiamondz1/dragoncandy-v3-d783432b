@@ -112,6 +112,14 @@ deploy.** Run every check below after merging, in a private window.
       NOT return HTML. (Do not "fix" this by narrowing the matcher — it exists so
       Vercel's own toolbar and protection endpoints keep working.)
 
+      **If it does return HTML**, the platform is not absorbing that prefix and
+      the `/(.*)` → `/index.html` rewrite is serving the SPA shell to anonymous
+      browsers. The response is to exclude the real platform prefixes instead of
+      the whole namespace — `_vercel/insights` and `_vercel/speed-insights` are
+      the ones this project could ever use — and re-run the check. Widening the
+      matcher back out is not a fix; it is the same hole this check exists to
+      find. If neither is in use, the exclusion can go entirely.
+
 ## Rollback
 
 Set `SITE_GATE_ENABLED` to `0` in the Vercel dashboard, **then redeploy** —
