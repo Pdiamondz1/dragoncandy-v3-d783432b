@@ -25,9 +25,19 @@ import { fileURLToPath } from "node:url";
 import { rank, controlSeparation, recallPrecision, tailShare } from "./rag-eval/score.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const PROJECT = "zocahiffooqdybdhguqv";
-const REST = `https://${PROJECT}.supabase.co/rest/v1/`;
-const SYNC = `https://${PROJECT}.supabase.co/functions/v1/donny-knowledge-sync`;
+
+// TARGET comes from DONNY_SYNC_URL, exactly as the sync scripts take it — `with-env.mjs`
+// documents that variable as the way to point at staging instead of prod. Hardcoding the prod
+// ref here would silently ignore that override and write rows into production for someone who
+// believed they were pointed at staging. This script CREATES AND DELETES rows, so the target has
+// to be the one the caller chose.
+const SYNC = process.env.DONNY_SYNC_URL
+  ?? "https://zocahiffooqdybdhguqv.supabase.co/functions/v1/donny-knowledge-sync";
+const REST = SYNC.replace(/\/functions\/v1\/.*$/, "/rest/v1/");
+if (REST === SYNC) {
+  console.error(`DONNY_SYNC_URL does not look like a functions endpoint: ${SYNC}`);
+  process.exit(1);
+}
 const OLD_CAP = 24_000;   // the truncation point this change removed
 const K_MAX = 12;
 
@@ -114,6 +124,7 @@ if (openai) {
   vectors = (await r.json()).data.map((d) => d.embedding);
 } else {
   console.log("no OPENAI_API_KEY — borrowing the server's key via short-lived internal rows (deleted below)");
+  let mintError = null;
   const id = (i) => `internal-doc:ZZZ_RAGEVAL_Q${String(i).padStart(3, "0")}`;
   const path = (i) => `docs/ZZZ_RAGEVAL_Q${String(i).padStart(3, "0")}.md`;
   const pages = all.map((x, i) => ({
@@ -124,11 +135,16 @@ if (openai) {
     for (let i = 0; i < pages.length; i += 40) {
       const r = await fetch(SYNC, { method: "POST", headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ pages: pages.slice(i, i + 40) }) });
       const b = await r.json();
-      if (!r.ok || b.errors) { console.error(`mint failed: ${r.status} errors=${b.errors}`); process.exit(1); }
+      // THROW, never process.exit(): exit() skips `finally`, so a failure here would leave the
+      // temporary rows in place — retrievable by internal Donny — which is precisely what the
+      // cleanup below exists to prevent.
+      if (!r.ok || b.errors) throw new Error(`mint failed: ${r.status} errors=${b.errors}`);
     }
     const rows = await (await fetch(`${REST}donny_knowledge?select=metadata,embedding&metadata->>source_id=like.internal-doc:ZZZ_RAGEVAL_Q*&limit=500`, { headers: H })).json();
     const byId = new Map(rows.map((r) => [r.metadata.source_id, parseVec(r.embedding)]));
     vectors = all.map((_, i) => byId.get(id(i)));
+  } catch (e) {
+    mintError = e;
   } finally {
     // Always clean up, including on failure — a leaked row is retrievable by internal Donny.
     for (let i = 0; i < pages.length; i++) {
@@ -138,6 +154,8 @@ if (openai) {
     const leftover = await (await fetch(`${REST}donny_knowledge?select=id&metadata->>source_id=like.internal-doc:ZZZ_RAGEVAL_Q*`, { headers: H })).json();
     console.log(`temporary rows cleaned up${leftover.length ? ` — ${leftover.length} LEFT BEHIND, prune them` : ""}`);
   }
+  // Surfaced only after cleanup has run, so the failure is reported AND the rows are gone.
+  if (mintError) { console.error(String(mintError.message ?? mintError)); process.exit(1); }
 }
 if (vectors.some((v) => !v)) { console.error("some query embeddings are missing; aborting"); process.exit(1); }
 
