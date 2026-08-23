@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Rocket, Shield, Save } from 'lucide-react';
 import { publicOrigin } from '@/lib/publicOrigin';
+import { signupErrorMessage, isSignupDisabledError } from '@/lib/signupDisabled';
 
 interface AuthenticationModalProps {
   isOpen: boolean;
@@ -59,7 +60,13 @@ export const AuthenticationModal: React.FC<AuthenticationModalProps> = ({
       onSuccess?.();
       onClose();
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Authentication failed';
+      // Only the signup path can produce signup_disabled; a signin failure must
+      // keep its own message, or a wrong password would read as "invite only".
+      const message = isSignupDisabledError(error)
+        ? signupErrorMessage(error)
+        : error instanceof Error
+          ? error.message
+          : 'Authentication failed';
       toast.error(message);
     } finally {
       setIsLoading(false);
