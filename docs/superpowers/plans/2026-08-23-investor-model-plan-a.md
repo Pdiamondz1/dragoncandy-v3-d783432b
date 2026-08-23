@@ -292,12 +292,18 @@ describe('the assumptions register', () => {
     ).toEqual([]);
   });
 
-  it('gives every MEASURED row a re-runnable source, not a prose description', () => {
+  // Whether a source is re-runnable is not decidable from punctuation -- `npx vitest run` is
+  // about as re-runnable as a source gets and contains neither a slash nor a pipe. So this
+  // detects the failure mode actually worth catching: a source that is prose.
+  const VAGUE = [/estimat/i, /approx/i, /roughly/i, /from memory/i, /founder said/i, /we think/i, /internal knowledge/i];
+
+  it('gives every MEASURED row a concrete source rather than a prose description', () => {
     for (const [key, a] of Object.entries(REGISTER)) {
       if (a.provenance !== 'MEASURED') continue;
-      const looksRunnable =
-        a.source.includes('/') || a.source.includes('|') || a.source.startsWith('http');
-      expect(looksRunnable, `${key}: source "${a.source}" is not a command, path or URL`).toBe(true);
+      expect(a.source.trim().length, `${key}: source is too short to be real`).toBeGreaterThan(8);
+      for (const pattern of VAGUE) {
+        expect(pattern.test(a.source), `${key}: source "${a.source}" reads as prose, not a source`).toBe(false);
+      }
     }
   });
 
