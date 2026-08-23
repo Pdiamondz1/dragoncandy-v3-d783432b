@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveVerifiedAddress, CREATOR_PRECISION, BUSINESS_PRECISION } from './resolveVerifiedAddress';
+import { resolveVerifiedAddress, isGeocodeAnswer, CREATOR_PRECISION, BUSINESS_PRECISION } from './resolveVerifiedAddress';
 
 // Identical cases to src/lib/geocodeVerification.test.ts — this file exists because
 // this module is a deliberate duplicate (see the comment in resolveVerifiedAddress.ts),
@@ -55,5 +55,37 @@ describe('resolveVerifiedAddress (edge function copy)', () => {
   it('returns null when a matched result has no geometry.location', () => {
     const r = { results: [{ types: ['street_address'] }] };
     expect(resolveVerifiedAddress(r, BUSINESS_PRECISION)).toBeNull();
+  });
+});
+
+/**
+ * Codex second review, round 2 (P1): Google returns HTTP 200 with a JSON `status` for most
+ * failures, so an `resp.ok` check alone let OVER_QUERY_LIMIT and REQUEST_DENIED through as
+ * "no result" — and the write path clears address_verified_at/lat/lng on no result. A quota
+ * blip therefore revoked still-true verifications; a bad key would have revoked them
+ * platform-wide.
+ */
+describe('isGeocodeAnswer', () => {
+  it('treats OK as an answer', () => {
+    expect(isGeocodeAnswer('OK')).toBe(true);
+  });
+
+  it('treats ZERO_RESULTS as an answer — "does not resolve" is a real fact about the address', () => {
+    expect(isGeocodeAnswer('ZERO_RESULTS')).toBe(true);
+  });
+
+  it.each(['OVER_QUERY_LIMIT', 'OVER_DAILY_LIMIT', 'REQUEST_DENIED', 'INVALID_REQUEST', 'UNKNOWN_ERROR'])(
+    'refuses %s — a fact about our quota/key/request, not about the address',
+    (status) => {
+      expect(isGeocodeAnswer(status)).toBe(false);
+    },
+  );
+
+  it('refuses a missing status rather than assuming OK', () => {
+    expect(isGeocodeAnswer(undefined)).toBe(false);
+  });
+
+  it('refuses an unrecognised status', () => {
+    expect(isGeocodeAnswer('SOMETHING_NEW')).toBe(false);
   });
 });

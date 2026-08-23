@@ -72,3 +72,30 @@ export function resolveVerifiedAddress(
     verifiedAt: new Date().toISOString(),
   };
 }
+
+/**
+ * Is this Google Geocoding `status` an ANSWER about the address, or a fact about US?
+ *
+ * Google signals almost every failure as HTTP 200 with a JSON `status`, so an `resp.ok`
+ * check catches essentially nothing. Only two statuses say something about the address:
+ *
+ *   OK           — it resolved.
+ *   ZERO_RESULTS — it genuinely does not resolve.
+ *
+ * Everything else (OVER_QUERY_LIMIT, OVER_DAILY_LIMIT, REQUEST_DENIED, INVALID_REQUEST,
+ * UNKNOWN_ERROR) describes our quota, our key, or our request. Those must never reach the
+ * write path, because the write is DESTRUCTIVE: an unresolved geocode stores
+ * address_verified_at/lat/lng = null. Treating a quota blip as "no result" would revoke a
+ * still-true verification for every caller who saved during it; treating a misconfigured
+ * key that way would revoke verification platform-wide until someone noticed.
+ *
+ * A missing status is treated as a non-answer, never as OK — an unrecognised body must not
+ * be able to clear a stamp.
+ *
+ * Found by the Codex second review. It is the fourth instance on this branch of one rule:
+ * a stamp may only be changed by something that is actually a fact about the thing it
+ * attests to.
+ */
+export function isGeocodeAnswer(status: string | undefined): boolean {
+  return status === 'OK' || status === 'ZERO_RESULTS';
+}

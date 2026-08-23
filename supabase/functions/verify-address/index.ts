@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { resolveVerifiedAddress, CREATOR_PRECISION, BUSINESS_PRECISION } from "./resolveVerifiedAddress.ts";
+import { resolveVerifiedAddress, isGeocodeAnswer, CREATOR_PRECISION, BUSINESS_PRECISION } from "./resolveVerifiedAddress.ts";
 import {
   planCreatorVerification,
   planBusinessVerification,
@@ -74,6 +74,13 @@ interface GeocodeApiResult {
 
 interface GeocodeApiResponse {
   results?: GeocodeApiResult[];
+  /**
+   * Google's own outcome enum, returned WITH HTTP 200 for every failure short of a
+   * transport error: OK, ZERO_RESULTS, OVER_QUERY_LIMIT, OVER_DAILY_LIMIT, REQUEST_DENIED,
+   * INVALID_REQUEST, UNKNOWN_ERROR. Optional in the type because a malformed body could
+   * omit it, and an absent status must be treated as a non-answer, never as OK.
+   */
+  status?: string;
 }
 
 const json = (req: Request, status: number, body: Record<string, unknown>) =>
@@ -219,6 +226,27 @@ const handler = async (req: Request): Promise<Response> => {
       return json(req, 502, { error: "Could not verify address. Please try again." });
     }
     geocoded = (await resp.json()) as GeocodeApiResponse;
+
+    // Google Geocoding signals most failures as HTTP 200 with a JSON `status`, so
+    // `resp.ok` above catches almost nothing. Only OK and ZERO_RESULTS are ANSWERS about
+    // the address; every other status is a fact about US (quota, key, malformed request)
+    // and says nothing about whether the address is real.
+    //
+    // That distinction is load-bearing rather than tidy, because the write below is
+    // DESTRUCTIVE: an unresolved geocode writes address_verified_at/lat/lng = null. So
+    // treating OVER_QUERY_LIMIT as "no result" would revoke a still-true verification for
+    // every caller whose save happened during a quota blip — and REQUEST_DENIED, a
+    // misconfigured key, would revoke verification platform-wide until someone noticed.
+    // Refuse instead: write nothing, return retryable, leave the existing stamp alone.
+    //
+    // ZERO_RESULTS is deliberately NOT in this branch — it is a real answer ("this
+    // address does not resolve"), and clearing the stamp is the correct response to it.
+    if (!isGeocodeAnswer(geocoded.status)) {
+      // `status` is a fixed Google enum, never caller data, so it is safe to log; the
+      // address and key are still never logged (see the note below).
+      console.error("verify-address: Google Geocoding returned a non-answer status", geocoded.status);
+      return json(req, 502, { error: "Could not verify address. Please try again." });
+    }
   } catch (err) {
     // Do NOT log `err` (or any string built from the request) here. Deno's fetch
     // failure messages, and `err.cause`, embed the full request URL — which carries

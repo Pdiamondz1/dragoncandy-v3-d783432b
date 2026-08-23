@@ -281,6 +281,7 @@ export function useUpdateOrgUnit() {
       // backwards: the fact is unchanged and the stamp is destroyed anyway.
       // Mirrors the pre-read guard useCreatorProfileSubmit.ts already does.
       let previousAddress: string | null = null;
+      let previousAddressKnown = false;
       if (updates.address !== undefined) {
         const { data: existing, error: existingError } = await supabase
           .from('org_units')
@@ -288,13 +289,19 @@ export function useUpdateOrgUnit() {
           .eq('id', id)
           .maybeSingle();
         if (existingError) {
-          // Unknown prior value. Fall through to the comparison below with
-          // previousAddress still null, which errs toward re-verifying — the
-          // conservative direction: a redundant geocode costs a request, a skipped
-          // one leaves a real address change unverified.
+          // We do NOT know the prior value, so we cannot tell whether the address changed.
+          // Do not re-verify speculatively. An earlier version of this comment argued that
+          // re-verifying "errs toward the conservative direction, since a redundant geocode
+          // only costs a request" — that was wrong, and Codex caught it. The verify path is
+          // DESTRUCTIVE: an unresolved geocode writes address_verified_at/lat/lng = null.
+          // So a failed pre-read plus the modal's routinely-resubmitted unchanged address
+          // would revoke a still-valid stamp during a plain rename. Skipping costs a real
+          // address change going unverified until the next save; proceeding costs a true
+          // fact being erased. Skip.
           console.error('Error reading existing org_unit address before save:', existingError);
         } else {
           previousAddress = existing?.address ?? null;
+          previousAddressKnown = true;
         }
       }
 
@@ -314,7 +321,7 @@ export function useUpdateOrgUnit() {
       // equality is what made the server-side predicate wrong in the first place.
       // Best-effort, fire-and-forget: see src/lib/verifyAddress.ts.
       const addressChanged =
-        updates.address !== undefined && (previousAddress ?? '') !== (updates.address ?? '');
+        previousAddressKnown && (previousAddress ?? '') !== (updates.address ?? '');
       if (addressChanged && updates.address) {
         void requestBusinessAddressVerification({ orgUnitId: unit.id, address: updates.address });
       }
