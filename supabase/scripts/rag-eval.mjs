@@ -53,7 +53,23 @@ const TEMP_DOC_PREFIX = "docs/ZZZ_RAGEVAL_";
 // which would abort one of them with missing embeddings, or worse, hand it vectors from rows the
 // other run had overwritten. The final cleanup touches only THIS run's tag; the startup sweep
 // deliberately skips it, since anything carrying it belongs to a run still in progress.
-const RUN = `${process.pid.toString(36)}${Date.now().toString(36)}`;
+// The tag encodes its own birth time in base 36, so ANY run can tell a stale row from one a
+// concurrent run is still using without needing a timestamp column or a lock. Sparing only the
+// current run's tag was not enough — it treated a live foreign run as stale and deleted rows out
+// from under it, which is the collision the tag exists to prevent.
+const RUN = `${process.pid.toString(36)}-${Date.now().toString(36)}`;
+
+// A tag younger than this may belong to a run still in progress; older is abandoned. Generous
+// against the whole-run wall clock (~1 min), because deleting a live run's rows is far worse
+// than leaving an abandoned one for the next pass.
+const STALE_AFTER_MS = 15 * 60 * 1000;
+
+/** Birth time encoded in a "<pid36>-<millis36>" tag, or null if it does not parse. */
+function tagAgeMs(id, prefix) {
+  const tag = id.slice(prefix.length).split("_")[0];
+  const millis = Number.parseInt(tag.split("-")[1] ?? "", 36);
+  return Number.isFinite(millis) && millis > 0 ? Date.now() - millis : null;
+}
 const RUN_PREFIX = `${TEMP_PREFIX}${RUN}_`;
 const RUN_DOC_PREFIX = `${TEMP_DOC_PREFIX}${RUN}_`;
 
@@ -101,7 +117,12 @@ async function sweep(only, spare) {
       if (!idStr.startsWith(prefix)) continue;   // literal re-check; the filter above is a LIKE
       const tag = table === "internal_docs" ? RUN_DOC_PREFIX : RUN_PREFIX;
       if (only && !idStr.startsWith(tag)) continue;    // this run's rows only
-      if (spare && idStr.startsWith(tag)) continue;    // never touch a live run's rows
+      if (spare) {
+        // Spare anything recent enough to belong to a run still in flight — including another
+        // process's. An unparseable tag predates this scheme, so it is certainly abandoned.
+        const age = tagAgeMs(idStr, table === "internal_docs" ? TEMP_DOC_PREFIX : TEMP_PREFIX);
+        if (age !== null && age < STALE_AFTER_MS) continue;
+      }
       const d = await fetch(`${REST}${table}?${keyName}=eq.${encodeURIComponent(row[keyName])}`, { method: "DELETE", headers: H });
       if (!d.ok) failed++;
     }
@@ -112,10 +133,13 @@ async function sweep(only, spare) {
   const leftRag = await (await fetch(`${REST}donny_knowledge?select=id,metadata&metadata->>source_id=like.${scope}*`, { headers: H })).json();
   const leftDocs = await (await fetch(`${REST}internal_docs?select=path&path=like.${scopeDoc}*`, { headers: H })).json();
   // A concurrent run's rows are not this run's problem, so they do not count as leftovers.
+  // A row belonging to a live foreign run is not a leak, so it is not counted as one.
+  const stillOurs = (id, pfx, runPfx) => (only ? id.startsWith(runPfx)
+    : (() => { const a = tagAgeMs(id, pfx); return a === null || a >= STALE_AFTER_MS; })());
   const nRag = Array.isArray(leftRag)
-    ? leftRag.filter((r) => { const i = String(r.metadata?.source_id ?? ""); return only ? i.startsWith(RUN_PREFIX) : !i.startsWith(RUN_PREFIX); }).length : -1;
+    ? leftRag.filter((r) => stillOurs(String(r.metadata?.source_id ?? ""), TEMP_PREFIX, RUN_PREFIX)).length : -1;
   const nDocs = Array.isArray(leftDocs)
-    ? leftDocs.filter((r) => (only ? r.path.startsWith(RUN_DOC_PREFIX) : !r.path.startsWith(RUN_DOC_PREFIX))).length : -1;
+    ? leftDocs.filter((r) => stillOurs(r.path, TEMP_DOC_PREFIX, RUN_DOC_PREFIX)).length : -1;
   if (failed === 0 && nRag === 0 && nDocs === 0) return null;
   return `cleanup incomplete — ${failed} DELETE(s) failed, ${nRag} donny_knowledge and ${nDocs} ` +
     `internal_docs row(s) remain. Prune: delete from donny_knowledge where ` +
@@ -165,7 +189,7 @@ if (stale > 0) {
 // missed an interrupted run that cleared its RAG rows but left internal_docs behind — invisible
 // to that counter and, on the OPENAI_API_KEY path, never swept at all. Two SELECTs when clean.
 {
-  const err = await sweepTempRows({ spare: true });   // never touch a concurrent run's rows
+  const err = await sweepTempRows({ spare: true });   // spare anything a live run may own
   if (err) console.warn(`startup sweep: ${err}`);
   else if (stale > 0) console.log("  leftovers removed (verified by re-reading both tables)");
 }
