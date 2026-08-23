@@ -13,7 +13,8 @@ import { measured, benchmarked, modeled, type Assumption } from './types';
 export type TierName = 'free' | 'starter' | 'growth' | 'pro';
 
 const STRIPE_PRICES = 'docs/STRIPE_PRICES.md';
-const PLATFORM_FEE = 'supabase/functions/_shared/platform-fee.ts';
+const TAKE_RATE_LADDER = 'supabase/functions/stripe-webhook/index.ts (TIER_TAKE_RATES)';
+const TAKE_RATE_LADDER_FREE = 'supabase/functions/stripe-webhook/index.ts (TIER_TAKE_RATES) + supabase/functions/_shared/platform-fee.ts (PLATFORM_FEE_RATE)';
 const PRICE_BANDS = 'src/lib/campaignPricing.ts (TIER_PRICE_BANDS)';
 
 /** Monthly subscription price by tier, in dollars. Live in the app. */
@@ -26,10 +27,10 @@ export const PRICING: Record<TierName, Assumption<number>> = {
 
 /** Platform take rate by tier, as a fraction of campaign value. Live in the app. */
 export const TIER_TAKE_RATES: Record<TierName, Assumption<number>> = {
-  free: measured({ value: 0.10, unit: 'fraction', label: 'Free tier take rate', source: PLATFORM_FEE, asOf: '2026-08-23' }),
-  starter: measured({ value: 0.07, unit: 'fraction', label: 'Starter tier take rate', source: PLATFORM_FEE, asOf: '2026-08-23' }),
-  growth: measured({ value: 0.05, unit: 'fraction', label: 'Growth tier take rate', source: PLATFORM_FEE, asOf: '2026-08-23' }),
-  pro: measured({ value: 0.03, unit: 'fraction', label: 'Pro tier take rate', source: PLATFORM_FEE, asOf: '2026-08-23' }),
+  free: measured({ value: 0.10, unit: 'fraction', label: 'Free tier take rate', source: TAKE_RATE_LADDER_FREE, asOf: '2026-08-23' }),
+  starter: measured({ value: 0.07, unit: 'fraction', label: 'Starter tier take rate', source: TAKE_RATE_LADDER, asOf: '2026-08-23' }),
+  growth: measured({ value: 0.05, unit: 'fraction', label: 'Growth tier take rate', source: TAKE_RATE_LADDER, asOf: '2026-08-23' }),
+  pro: measured({ value: 0.03, unit: 'fraction', label: 'Pro tier take rate', source: TAKE_RATE_LADDER, asOf: '2026-08-23' }),
 };
 
 export const OPERATING = {
@@ -128,12 +129,14 @@ export const UNIT_ECONOMICS = {
     unit: 'USD/month',
     label: 'AI cost per customer per month',
     source: 'docs/DragonCandy_Infrastructure_Capacity_Report.md (section 4)',
+    note: 'Stated there as a $0.80-$1.60 range (average ~$1.20); 1.20 is that average/midpoint.',
   }),
   infraCostPerCustomerMonth: benchmarked({
     value: 0.20,
     unit: 'USD/month',
     label: 'Infrastructure cost per customer per month',
-    source: 'docs/DragonCandy_Infrastructure_Capacity_Report.md (section 5)',
+    source: 'docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 5, "What One Customer Costs Us to Serve")',
+    note: '0.20 is the midpoint of a stated $0.10-$0.30 range.',
   }),
 } satisfies Record<string, Assumption<number>>;
 
