@@ -432,7 +432,19 @@ holds no Toast credentials. See §6.
   users, redirect URI exactly `https://dragoncandy.com/youtube/callback`, and the deployed
   `YOUTUBE_CLIENT_ID` **proven** to be this console client by hashing the client ID off the page
   and matching the secret's SHA-256 digest — identity confirmed without ever reading a secret
-  value. **Pending (2026-08-23), none of it code:** declare the two read scopes on Data Access before submitting for verification; register
+  value. **Data Access declared 2026-08-23**, and Google's classification **corrects a claim these
+  docs carried**: it is not "both sensitive". `yt-analytics.readonly` is **non-sensitive**,
+  `youtube.readonly` is **sensitive / approval required**, and **restricted is empty** — which is
+  the line that actually matters, since restricted scopes are what pull in the paid CASA security
+  assessment. Conclusion unchanged (brand review, not CASA); the reasoning was wrong, and the
+  reasoning is what anyone would plan against. A **947-char justification is saved**; the **demo
+  video is not**, and it is awkward rather than tedious — Google requires the unverified-app screen
+  to appear in it and forbids recording against production traffic, so with the app now *in
+  production* it needs a separate test project or a hidden staging route. **A save trap worth
+  knowing:** the scope panel's "Update" only *stages* the change; the real save is a separate button
+  at the page bottom, below the justification and video sections, so the first attempt looked saved,
+  reloaded empty, and was only caught by reloading instead of trusting the post-save render.
+  **Pending (2026-08-23), none of it code:** the demo video; register
   preview origins if the flow should work off the apex; and decide about **Publishing status**,
   because the 100-user cap is counted over the app's *lifetime* and is not resettable. **The 7-day expiry no longer applies** to the current connection: it
   was re-minted at 18:26:06 after the app went to production. Tokens issued *before* that flip were

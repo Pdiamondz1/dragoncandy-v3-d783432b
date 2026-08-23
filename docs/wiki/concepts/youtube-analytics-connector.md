@@ -151,10 +151,29 @@ Requesting **both** read scopes is load-bearing, not belt-and-braces:
 
 Asking for one without the other produces a connector that looks fine and answers half the
 questions. A test pins the scope list, because adding a write scope means a new Google
-verification — that should be a decision, not a slip. Both are **sensitive**, not
-restricted, so verification needs Google's brand review and **not** the paid CASA security
-assessment; a restricted scope would change the cost of this integration by thousands of
-dollars.
+verification — that should be a decision, not a slip.
+
+**Google's own classification, read off the Data Access page after declaring them
+(2026-08-23):**
+
+| Scope | Google's tier | Consequence |
+|---|---|---|
+| `yt-analytics.readonly` | **non-sensitive** | triggers nothing |
+| `youtube.readonly` | **sensitive** — "Approval required" | requires verification |
+| — | **restricted: none** | no CASA assessment |
+
+**This corrects a claim this page made until the scopes were actually declared: "Both are
+sensitive."** Only one is. The *conclusion* was right — verification here is Google's brand
+review, not the paid CASA security assessment, because **neither scope is restricted** and
+restricted scopes are what pull CASA in. But the reasoning was wrong, and the reasoning is
+what anyone planning against this would have used: it over-stated the review burden by a
+whole scope, and it attributed the CASA exemption to the wrong property (sensitive-vs-
+restricted, not how many are sensitive).
+
+Worth noting how the error survived: "both are sensitive" is the kind of claim that reads as
+carefully checked, is cheap to write, and stays unfalsified as long as nobody declares the
+scopes. It was only ever checkable in Google's console, and the console said otherwise the
+first time anyone looked.
 
 ## The security shape: why Google redirects to a PAGE, not an edge function
 
