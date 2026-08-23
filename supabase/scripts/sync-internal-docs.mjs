@@ -30,8 +30,8 @@ const WIKI_DIRS = ["concepts", "entities", "analyses"].map((d) => `docs/wiki/${d
 // Documents stored for /internal/strategy but deliberately NOT embedded.
 //
 // SHIPPED_LOG.md is 505,021 chars — a quarter of the whole internal corpus — of raw,
-// newest-first changelog. Chunked like everything else it would be 85 of ~276 rows, all of it
-// history that the wiki concept pages already synthesise, competing for the 5 slots
+// newest-first changelog. Chunked like everything else it would be ~85 of ~480 rows, all of it
+// history that the wiki concept pages already synthesise, competing for the rows
 // `retrieveContext` returns. The wiki is the layer built for retrieval; this is the layer built
 // for reading. It stays fully readable in the strategy viewer.
 //
@@ -88,8 +88,6 @@ function collectDir(dir, sourcePrefix) {
       continue;
     }
 
-    // One page per chunk. `full_content` rides on chunk 0 ONLY: it is the whole document, and
-    // sending it on all six chunks would upsert the same internal_docs row six times per run.
     // The WHOLE document, untruncated. donny-knowledge-sync splits it into rows — see
     // _shared/chunk-doc.ts for why chunking lives there and not here.
     pages.push({ source_id: base, content: `${title}\n\n${body}`, metadata, scope: "internal", full_content: raw });
@@ -129,6 +127,8 @@ if (DRY_RUN) {
 console.log(`Syncing to ${URL} ...`);
 
 let inserted = 0, updated = 0, errors = 0, unindexedCount = 0, chunkCount = 0;
+/** Set by the orphan check below; carried into the exit code so drift is never a silent pass. */
+let orphanCount = 0;
 const split = [];
 for (let i = 0; i < pages.length; i += BATCH) {
   const batch = pages.slice(i, i + BATCH);
@@ -160,7 +160,7 @@ for (const s of split.sort((a, b) => b.chunks - a.chunks)) {
 }
 console.log(
   `\nDone. documents=${pages.length} rows=${chunkCount} inserted=${inserted} updated=${updated} ` +
-  `unindexed=${unindexedCount} errors=${errors}`,
+  `unindexed=${unindexedCount} errors=${errors} orphans=${orphanCount}`,
 );
 
 // ── Orphan check (READ-ONLY) ─────────────────────────────────────────────────────────────────
@@ -194,6 +194,7 @@ try {
       .map((r) => r.metadata?.chunk_base ?? r.metadata?.source_id)
       .filter((id) => typeof id === "string" && !expected.has(id));
     const orphanDocs = [...new Set(orphans)]; // several chunks can share one dead document
+    orphanCount = orphanDocs.length;
     if (orphanDocs.length > 0) {
       const list = orphanDocs.map((id) => `'${id}'`).join(", ");
       console.error(
@@ -220,4 +221,7 @@ try {
 // `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)` and REPLACES the exit code (an
 // intended 1 was observed surfacing as 127). This path only runs when errors > 0 — i.e. exactly
 // when the post-merge hook and CI need the code to be trustworthy.
-if (errors > 0) process.exitCode = 1;
+// Orphans count toward the exit code, matching sync-wiki-to-donny.mjs. Reporting drift on
+// stdout and then exiting 0 is a report nobody reads: this runs UNATTENDED from the
+// post-merge hook, so the exit code is the only signal with a reader.
+if (errors > 0 || orphanCount > 0) process.exitCode = 1;
