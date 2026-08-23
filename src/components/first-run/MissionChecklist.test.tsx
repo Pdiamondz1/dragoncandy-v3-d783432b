@@ -45,7 +45,12 @@ describe('MissionChecklist', () => {
   it('does not lock a later item just because an earlier one is unmet', () => {
     setRequirements([req('profile_basics', 'unmet'), req('stripe', 'met')]);
     const { getByText } = render(<MissionChecklist role="content_creator" onSkip={() => {}} />);
-    expect(getByText('Do stripe').closest('[data-requirement-row]')?.getAttribute('data-status')).toBe('met');
+    // Assert on the COMPUTED status (`data-item-status`, from itemStatus()),
+    // not the raw `data-status` (the requirement's own state, which a
+    // positional lock would never touch). `stripe` is `met` regardless of
+    // `profile_basics` being unmet — a reintroduced N-1-before-N lock would
+    // drag this to 'locked'.
+    expect(getByText('Do stripe').closest('[data-requirement-row]')?.getAttribute('data-item-status')).toBe('completed');
   });
 
   it('renders unknown as a neutral checking row, never as a failure', () => {
@@ -53,7 +58,11 @@ describe('MissionChecklist', () => {
     const { getByText } = render(<MissionChecklist role="content_creator" onSkip={() => {}} />);
     const row = getByText('Do stripe').closest('[data-requirement-row]');
     expect(row?.getAttribute('data-status')).toBe('unknown');
-    expect(row?.className).not.toContain('red');
+    // The wrapper `<div>` never carries style classes — MissionItem's own root
+    // element (the row's first child) is what actually paints the row, so
+    // assert there rather than on the always-empty wrapper className.
+    const styledElement = row?.firstElementChild as HTMLElement | null;
+    expect(styledElement?.className).not.toContain('red');
     // Ruling 2: an unknown row must say "Checking…", never its `why` copy —
     // at half opacity, "Because you need X" reads as an unactionable to-do.
     expect(getByText('Checking…')).toBeTruthy();

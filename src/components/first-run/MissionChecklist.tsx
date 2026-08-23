@@ -107,7 +107,16 @@ export function MissionChecklist({ role, onSkip }: MissionChecklistProps) {
         {requirements.map((req) => {
           const status = itemStatus(req);
           return (
-            <div key={req.key} data-requirement-row data-status={req.state.status}>
+            <div
+              key={req.key}
+              data-requirement-row
+              data-status={req.state.status}
+              // The computed visual status, distinct from the raw `data-status`
+              // above (which is the requirement's own state and says nothing
+              // about lock/unlock). This is what a positional-lock regression
+              // would actually change — see MissionChecklist.test.tsx.
+              data-item-status={status}
+            >
               <MissionItem
                 emoji={req.tier === 'recommended' ? '✨' : '📋'}
                 title={req.label}
