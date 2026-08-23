@@ -391,6 +391,38 @@ run with a finding also **emails** `ALERT_EMAIL`.
 nothing to do with the domain-wide delegation, and it does not touch anyone
 else's mailbox.
 
+#### Proving the alarm rings: `sendTestAlert()`
+
+Run it from the editor's function dropdown. It emails whatever `ALERT_EMAIL`
+currently holds and writes nothing else — no signature, no baseline, no row in
+the log Sheet.
+
+It exists because **a clean run is silent**, so the delivery path is exercised
+only by a run that has a finding — which, if everything works, should be rare.
+That can leave it untested for months, and an alarm nobody has heard ring is
+indistinguishable from one that does not work. Run it after changing
+`ALERT_EMAIL`, after granting a new OAuth scope, and after any `clasp push` that
+touches the manifest.
+
+It goes **through `sendRunAlert_`**, not around it. A test that builds its own
+`MailApp` call would prove MailApp works, which was never in doubt; what is in
+doubt is whether *this* script's authorization, *this* property and *this*
+recipient list deliver. If it ever stops calling `sendRunAlert_`, it stops being
+a test.
+
+It **throws** where a real run only warns — on no usable recipient, and on a
+refused send. `installAllSignatures` must not die over a notification; this
+function's only job *is* the notification, so those are failed tests rather than
+footnotes. That second case matters most: `sendRunAlert_` swallows delivery
+errors by design, so without the check a broken mail path would finish **green**
+and read as a pass.
+
+> **A green execution is not the result — the mail arriving is.** All the
+> function can prove is that the send was *accepted*; mail can still be
+> filtered, spam-foldered or ignored. Go and look in the inbox. Treating the
+> green run as the answer rebuilds the exact "nobody was told" failure this
+> whole section exists to fix.
+
 > ⚠️ **Deploying this re-triggers authorization.** It adds the
 > `script.send_mail` scope to the manifest, and Apps Script invalidates the
 > existing grant when the scope set changes. After `clasp push`, **open the
