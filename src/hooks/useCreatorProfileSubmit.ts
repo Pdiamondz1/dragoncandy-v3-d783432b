@@ -56,6 +56,26 @@ export const useCreatorProfileSubmit = () => {
         ? formData.languages_spoken.split(',').map(lang => lang.trim()).filter(Boolean)
         : [];
 
+      // Read the address fields as stored BEFORE this write, so we can tell after the
+      // write whether THIS save actually changed the address (Finding 2, task-7 fix
+      // round 1: without this guard, verify-address fires on every save — including an
+      // unrelated bio edit — and a transient geocode failure would silently strip a
+      // previously earned, still-true verification). Only meaningful for an update; a
+      // brand-new profile has no prior address to compare against.
+      let previousAddress: { city: string | null; country: string | null; postal_code: string | null } | null = null;
+      if (isUpdate) {
+        const { data: existing, error: existingError } = await supabase
+          .from('creator_profiles')
+          .select('city, country, postal_code')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (existingError) {
+          console.error('Error reading existing address before save:', existingError);
+        } else {
+          previousAddress = existing;
+        }
+      }
+
       // Prepare the data object
       const profileData = {
         user_id: user.id,
@@ -104,15 +124,30 @@ export const useCreatorProfileSubmit = () => {
 
       if (error) throw error;
 
-      // Best-effort, fire-and-forget: never block or fail the save on a geocode
-      // outcome — the profile is already saved by the write above. See
-      // src/lib/verifyAddress.ts. Only fires when city AND country are present; the
-      // function itself re-checks this and no-ops otherwise.
-      void requestCreatorAddressVerification({
-        city: formData.city,
-        country: formData.country,
-        postalCode: formData.postal_code,
-      });
+      // Only re-verify when THIS save actually changed the address — mirrors
+      // useUpdateOrgUnit's guard (Finding 2, task-7 fix round 1). A brand-new profile
+      // (isUpdate === false) always counts as changed — there is no prior address to
+      // compare against. If the pre-read above failed (previousAddress stays null on
+      // an update), treat it as UNCHANGED rather than guessing: firing speculatively
+      // risks stripping a previously earned, still-true stamp on an unrelated save
+      // (e.g. a bio edit) if the geocode attempt then fails transiently — the exact
+      // bug this guard exists to close. Best-effort, fire-and-forget either way: never
+      // block or fail the save on a geocode outcome. See src/lib/verifyAddress.ts.
+      const addressChanged = !isUpdate
+        ? true
+        : previousAddress !== null && (
+            (previousAddress.city ?? '') !== (formData.city ?? '') ||
+            (previousAddress.country ?? '') !== (formData.country ?? '') ||
+            (previousAddress.postal_code ?? '') !== (formData.postal_code ?? '')
+          );
+
+      if (addressChanged) {
+        void requestCreatorAddressVerification({
+          city: formData.city,
+          country: formData.country,
+          postalCode: formData.postal_code,
+        });
+      }
 
       if (avatarUrl) {
         await supabase

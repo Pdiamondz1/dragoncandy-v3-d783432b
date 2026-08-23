@@ -172,15 +172,23 @@ const handler = async (req: Request): Promise<Response> => {
 
   let geocoded: GeocodeApiResponse;
   try {
-    const url = `${GEOCODE_BASE}?address=${encodeURIComponent(queryText)}&key=${apiKey}`;
-    const resp = await fetch(url);
+    // URLSearchParams, not manual string interpolation — correctness (proper escaping),
+    // not the security fix below by itself.
+    const params = new URLSearchParams({ address: queryText, key: apiKey });
+    const resp = await fetch(`${GEOCODE_BASE}?${params.toString()}`);
     if (!resp.ok) {
       console.error("verify-address: Google Geocoding request failed", resp.status);
       return json(req, 502, { error: "Could not verify address. Please try again." });
     }
     geocoded = (await resp.json()) as GeocodeApiResponse;
   } catch (err) {
-    console.error("verify-address: Google Geocoding request threw", err);
+    // Do NOT log `err` (or any string built from the request) here. Deno's fetch
+    // failure messages, and `err.cause`, embed the full request URL — which carries
+    // the caller's address AND the unrestricted GOOGLE_MAPS_SERVER_API_KEY in its
+    // query string. Logging the error object on a transient network error would write
+    // both a secret and someone's home address into staff-readable function logs.
+    // Match the resp.status-only log above: log only the error's name/class.
+    console.error("verify-address: Google Geocoding request threw", err instanceof Error ? err.name : "unknown");
     return json(req, 502, { error: "Could not verify address. Please try again." });
   }
 
