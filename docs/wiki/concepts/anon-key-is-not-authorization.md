@@ -202,3 +202,5 @@ bytes you are no longer shipping — re-run the gate rather than carrying the ve
 - [[Cross-Tenant Proxy Authorization]] — the provider-key equivalent: a grant may rest only on a fact
   the client cannot assert
 - [[Lovable Edge-Function Deploy Gap]] — these fixes are inert until deployed
+- [[Site Access Lockdown (Private Preview)]] — the same anon-key fact seen from the product side: it
+  is why an edge password cannot stop a signup, and why closing Supabase signup is the real control

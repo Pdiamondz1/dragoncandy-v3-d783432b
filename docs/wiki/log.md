@@ -1,5 +1,44 @@
 # Wiki Log
 
+## [2026-08-23] ingest | A password cannot stop a signup
+
+Ingested `raw/sessions/2026-08-23-site-access-lockdown.md`. **Created**
+[[Site Access Lockdown (Private Preview)]] (`concepts/site-access-lockdown.md`). **Updated**
+[[verify_jwt Is Not Authorization]] with a cross-reference, and `CLAUDE.md`, whose provider
+hierarchy still documented the `SiteGateGuard` this work deleted.
+
+**Status is the first thing the page says: built, reviewed, and not live.** The branch is unmerged,
+no PR is open, no variables are set — and the gate is production-only by design, so none of its
+wiring has ever executed. Proven: `gate/decide.ts` and its 26 unit tests. Assumed: everything
+Vercel does with them.
+
+The premise decided the design. A front-end or edge password **cannot stop a signup** — the anon key
+ships in the browser bundle and `supabase.co` never traverses Vercel — so closing Supabase signup is
+the load-bearing control and the password is the lesser of the two. The gate answers **401, never a
+redirect**, because a 401 re-requests the identical URL and a password-reset link's `#access_token`
+fragment survives; a redirect drops it and breaks resets silently. It fails closed, which makes
+"delete the variables" the wrong rollback and is why `SITE_GATE_ENABLED` exists.
+
+Nine defects are recorded, and four are worth the page on their own. **Only allowlist a path with a
+real file under `public/`** — `/.well-known/*` had none, and `vercel.json` rewrites unmatched paths
+to `/index.html`, so it served the entire SPA bundle to anonymous browsers. The **Lighthouse
+exemption was inert where it was written**: an LHCI category assertion reads a score Lighthouse
+computed at collect time, so silencing an audit cannot change it (measured 0.69 vs 1.00) — and the
+obvious fix also fails, because an `LHCI_COLLECT__SETTINGS__*` env var replaces the config file's
+whole `settings` object. Returning bare **`undefined` is a Next.js convention**, not the
+framework-agnostic continue signal. And `VERCEL_ENV !== 'production'` was **fail-open on absence**,
+sitting ahead of all the fail-closed logic — the site would reopen while the dashboard read locked.
+
+Two method notes generalise past this branch. A stale `vite preview` from the main checkout was
+holding the port `lighthouserc.cjs` points at, so a local audit would have graded someone else's
+build and read green — **when a probe returns the wrong thing, suspect the instrument**. And the red
+half of a red-green cycle was honestly recorded as SKIPPED, after which an unobserved
+"Expected: PASS" travelled all the way to the merge gate; **a pipeline will launder a skipped check
+into an assertion.**
+
+Pages created: [[Site Access Lockdown (Private Preview)]]
+Pages updated: [[verify_jwt Is Not Authorization]]
+
 ## [2026-08-23] update | Identity & Verification — the review loop that ran after the ingest below
 
 The ingest immediately below was written at commit `e9e71096`. **Eight more commits landed after it**
@@ -103,6 +142,97 @@ returned id — is the *sender's* view and none is evidence of delivery. A missi
 report is not evidence that nothing bounced. And the log search by the fixed message's
 `Message-ID` returned **0 results**, safely read only after the identical query returned 1 for a
 known-good id: **when a probe returns zero, prove it could have returned non-zero.**
+
+## [2026-08-23] update | One screen is not the flow: correcting yesterday's hour-old finding
+
+Published the Google Cloud app to **production** and re-minted the connection. **Updated**
+[[YouTube Analytics Connector]], the index entry and `PROJECT_CONTEXT.md` §5.
+
+**A correction to an entry written an hour earlier.** I recorded that "the consent screen itemised
+only the email address" and filed it as observed-but-unexplained. The flow is **two screens**:
+identity (email / Continue), then scopes (*"View your YouTube account"*, *"View YouTube Analytics
+reports for your YouTube content"* / Allow). Screen 2 is skipped when the account already holds
+those scopes, which is exactly what was happening. Only a **full** revoke surfaces it. The
+observation was accurate about what was on screen and wrong to treat one screen as the whole flow
+— **an incomplete observation reported as a complete one is the same failure as a wrong one**.
+
+Screen 2 is worth knowing about for its own sake: both entries read *View*, which is the
+**user-facing** proof the integration cannot post. Everything else we have is internal.
+
+**The operational rule survives with a better justification.** It was "the consent screen is not
+the record of what was granted, because it might not list everything." It is now "…because a flow
+can legitimately skip a screen." Same rule, sounder reason: read the token response's scope array.
+
+**On publishing.** Production stops the 7-day refresh-token expiry *going forward* and does **not**
+lift the 100-user cap — Google's console states the cap covers unapproved sensitive scopes over the
+project lifetime and cannot be reset. Only verification lifts it. The existing token had been
+minted under Testing rules, so it was disconnected and re-minted rather than assumed to inherit the
+new policy; publishing does not retroactively extend an issued token.
+
+**Still no "Google hasn't verified this app" interstitial** in either status. Recorded as
+not-observed rather than absent — 1 user, unapproved scopes, possible propagation delay. Do not
+promise a creator they will not see it.
+
+## [2026-08-23] update | Google re-asking is better evidence than our own row being gone
+
+Exercised `youtube-disconnect` and then reconnected, closing both gaps the entry below listed.
+**Updated** [[YouTube Analytics Connector]], the index entry and `PROJECT_CONTEXT.md` §5.
+
+**Two independent proofs the revoke reached Google.** Ours: the row is gone, and the DELETE is
+only reachable after Google returns `revoked`/`already_invalid` — a failure returns 502 and keeps
+the row so the token survives for a retry, so there is no path producing an absent row and a live
+grant. Google's: the first connect had sailed straight through with no consent screen, and
+immediately after disconnect the same button dropped into a full account-chooser-and-consent flow.
+**Google would not re-ask for a grant it still held.** A second, independent observer beats a
+second look at your own state.
+
+**Re-consent produced a genuinely new grant** — `connected_at` moved, the scope array came back in
+a different order, and the analytics read ran again against the new token.
+
+**Two expectations were wrong, and both are recorded rather than quietly dropped.** There was no
+"Google hasn't verified this app" interstitial — test users get the ordinary screen, so that
+warning is *unobserved and unobservable* until publishing status changes, which is not the same as
+absent. And the consent screen **itemised only the email address** while granting both YouTube
+scopes anyway; whether Google collapsed them or auto-advanced a second screen is **not
+established**, and is written down as observed-unexplained rather than guessed.
+
+**The operational rule that falls out:** the consent screen is not the record of what was granted.
+The token response's scope array is — which is exactly why this build reads it back instead of
+assuming the request it sent is what it got.
+
+## [2026-08-23] update | The proof it worked was a number that looked like a typo
+
+First real YouTube channel linked at 16:46 UTC. **Updated** [[YouTube Analytics Connector]], the
+index entry and `PROJECT_CONTEXT.md` §5, all of which said "never exercised".
+
+**What the run proved.** Channel `UC1DnGrwxLBaQkU4hQG1MsCw` stored under `dame@dragoncandy.com`,
+exactly two read scopes and no write scope, `status=active`, `last_error=null`, `last_synced_at`
+stamped 51 seconds after connect.
+
+**How we know the figures are real rather than a fallback.** The card shows three zeros, which
+on its own is indistinguishable from a broken read. The line under them says **"25 days of
+data"** — against the **28** the code requested. YouTube reports a day or two in arrears, so 25
+is what genuinely came back. Any fabricated, cached or error-path response would have echoed the
+number requested. That mismatch is the whole proof, and it exists only because `days_with_data`
+reports what arrived instead of what was asked for. **Design a surface so that working and
+broken look different**, and a zero stops being ambiguous.
+
+**What the run did NOT prove, stated because it would be easy to skip.** Google never showed a
+consent screen — the account had already granted these scopes earlier the same day — so the
+first-time consent UI, including the "Google hasn't verified this app" interstitial every new
+creator will meet, is untested. A flow that skips consent is not a test of consent. And
+`youtube-disconnect` has still never run, so revoke-before-delete is reviewed and unexercised.
+
+**Post-deploy review.** Four `edge-function-reviewer` agents, one per function: PASS on all four,
+zero issues. All eight deployed files downloaded from prod and diffed byte-identical against the
+repo, which settles `_shared` bundling with evidence rather than inference. Console identity
+confirmed by hashing the client ID off the page and matching the deployed secret's SHA-256
+digest — proving *which* OAuth client is wired up without ever reading a secret.
+
+**One reviewer finding rejected, and it generalises.** An agent reported `PROJECT_CONTEXT.md`
+still called the functions undeployed; it had been corrected hours earlier. A subagent's
+auto-imported project context is a snapshot from session start, so it can be **staler than the
+working tree**. Trust subagents on code they read; verify them on documentation.
 
 ## [2026-08-23] update | A merge is not a deploy, and a 401 is not a boot
 

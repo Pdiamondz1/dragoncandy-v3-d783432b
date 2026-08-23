@@ -227,6 +227,26 @@
 
 ## Run log (newest first — add each new entry at the TOP; never edit/delete past entries)
 
+### [2026-08-23] site access lockdown (private preview)
+- Output: `docs/wiki/raw/sessions/2026-08-23-site-access-lockdown.md` →
+  `concepts/site-access-lockdown.md`; `SHIPPED_LOG.md` entry; `PROJECT_CONTEXT.md` §5 under
+  "Built — awaiting founder go-live"; `CLAUDE.md` provider hierarchy corrected. Commit `b795167e`.
+- Happened: branch built an edge password gate and DELETED the client-side `SiteGateGuard`.
+- Worked: **the `[superseded-mechanism]` lesson paid for itself on the first check.** The branch
+  removed a component, so I grepped the core docs for it before finishing — and `CLAUDE.md`'s
+  provider hierarchy, which is auto-loaded into every session, still documented `SiteGateGuard` as
+  part of the tree. Nothing else would have caught it: the code review only sees the diff, and the
+  diff does not contain `CLAUDE.md`.
+- Worked: `[scope]` — merged `origin/main` BEFORE authoring, which mattered more than usual. It had
+  advanced **three** commits during the session (another worktree pushed #477/#479), two of which
+  touched `PROJECT_CONTEXT.md` and `docs/wiki/log.md` — the exact files this step edits. Authoring
+  first would have produced conflicts in an always-loaded doc.
+- Failed: nothing in this step, but note the RAG sync is NOT run here — per `[rag-sync]` the
+  post-merge hook does it on the main checkout, which a worktree session cannot touch.
+- Remember: **check `origin/main` for movement immediately before editing core docs, not at the
+  start of the session.** On a repo with 30+ worktrees the gap between "I checked" and "I edit" is
+  long enough for two PRs to land; here it was three.
+
 ### [2026-08-23] Signature alert transport — `MailApp` → `GmailApp` (`fix/signature-alert-gmailapp-transport`)
 
 **Output:** `docs/wiki/raw/sessions/2026-08-23-signature-alert-transport.md` →

@@ -351,9 +351,45 @@ holds no Toast credentials. See §6.
   "BUILT AND DEPLOYED NOWHERE" until the same afternoon. Migration `20260823170000` applied to
   prod, ledger row recorded by hand (**not** `supabase db push` — the ledger has diverged by 234
   files, and this migration's `CREATE TRIGGER` is not idempotent, so an unrecorded version would
-  fail on re-run); four edge functions deployed, all `v1 ACTIVE` with `verify_jwt=true`. **Still
-  never run against real Google credentials** — every claim below is reviewed and structurally
-  verified, not exercised end to end. Codex clean at round 5; six real findings, all mine.
+  fail on re-run); four edge functions deployed, all `v1 ACTIVE` with `verify_jwt=true`.
+  **WORKING END TO END — first real channel linked 2026-08-23 16:46 UTC**; this line read "still
+  never run against real Google credentials" for about an hour after the deploy. Channel
+  `UC1DnGrwxLBaQkU4hQG1MsCw` ("DragonCandy") is stored under `dame@dragoncandy.com` with exactly
+  the two read scopes plus `openid`/`email` and **no write scope**, `status=active`,
+  `last_error=null`, and `last_synced_at` stamped **51 seconds** after `connected_at` — so the
+  analytics read reached Google and returned. Codex clean at round 5; six real findings, all mine;
+  a four-agent `edge-function-reviewer` pass afterwards returned **PASS on all four with zero
+  issues**. **The most convincing evidence is a number that looks like a typo:** the card reads
+  *"25 days of data"* against the 28 the code requested, because YouTube reports a day or two in
+  arrears — `days_with_data` doing exactly what [[Honest Analytics]] requires. A fabricated or
+  fallback response would have echoed 28, so the three zeros on the card are **real zeros from 25
+  real rows**, not an empty state dressed up as data. **Disconnect, revoke and re-consent all followed the same
+  afternoon**, closing both gaps this entry listed an hour earlier. Disconnect deleted the row —
+  which *is* the proof the revoke succeeded, since the DELETE is only reached after Google returns
+  `revoked`/`already_invalid` and a failure keeps the row with its token. **Google's own behaviour
+  confirmed it independently:** the first connect had sailed through with no consent screen, and
+  immediately after disconnect the same button dropped into a full account-chooser-and-consent
+  flow — Google does not re-ask for a grant it still holds. Re-consent produced a genuinely new
+  grant (`connected_at` 17:31:49, scope array in a different order) and the analytics read ran
+  again against the new token. **PUBLISHED TO PRODUCTION 2026-08-23 18:20 UTC** — publishing
+  status is now *In production* (reversible via "Back to testing"), which stops the 7-day refresh
+  token expiry for tokens issued from here on. It does **not** lift the 100-user cap: Google's own
+  console says the cap applies to *unapproved* sensitive scopes over the project's lifetime and
+  "cannot be reset or changed" — only verification lifts it. The existing token had been minted
+  under Testing rules, so it was **deliberately retired and re-minted** (disconnect + reconnect,
+  fresh grant at 18:26:06) rather than assuming it silently inherited the new policy.
+  **A claim this entry made an hour earlier was wrong and is corrected here:** the consent flow is
+  **two screens**, not one. Screen 1 is identity (email, Continue); **screen 2 itemises the scopes
+  as "View your YouTube account" and "View YouTube Analytics reports for your YouTube content"** —
+  both *View*, which is the user-facing proof this cannot post. Screen 2 is skipped when the
+  account already holds the scopes, which is why it went unseen until a **full** revoke forced it.
+  The earlier note was not wrong about what was on screen; it was wrong to treat one screen as the
+  whole flow. The operational rule survives with a better reason: **the consent screen is not the
+  record of what was granted** — a flow can legitimately skip a screen — so the token response's
+  scope array is the only reliable source, which is why this build reads it back. **Still no
+  "Google hasn't verified this app" interstitial** in Testing or immediately after publishing;
+  recorded as not-observed rather than absent (1 user, unapproved scopes, possible propagation
+  delay), so do not promise a creator they will not see it.
   **Verified rather than assumed, because the migration's own header says not to trust its exit
   code:** table grants are exactly `postgres` + `service_role` (no `anon`, no `authenticated`, no
   `PUBLIC`), RLS enabled with **zero policies**, and the status function is `SECURITY DEFINER`
@@ -391,13 +427,19 @@ holds no Toast credentials. See §6.
   declared `youtube.upload` was **wrong** — all three Data Access tables are empty, so a "drop
   youtube.upload" task had been sitting on the list for something that did not exist; scopes are
   requested at runtime in the authorize URL, while Data Access is the *declared* list Google reviews
-  at verification. **Pending (2026-08-23), all of it console-side or unexercised:** nobody has
-  completed a consent round trip, so the connect / callback / disconnect / analytics path has never
-  run against Google; confirm `dame@dragoncandy.com` is still a listed test user (the app is in
-  **Testing**, so anyone unlisted gets an error, not a consent screen); declare the two read scopes
-  on Data Access before submitting for verification; and register preview origins if the flow should
-  work off the apex. Also unrun: CLAUDE.md's `edge-function-reviewer` gate, which this session was
-  configured not to spawn — the deploy went out without it. **Expect every connection to
+  at verification. **Console state read back 2026-08-23:** publishing status **In production** (was Testing until 18:20 UTC), user type
+  **External**, **1 of the 100 lifetime user cap** used, `dame@dragoncandy.com` present in Test
+  users, redirect URI exactly `https://dragoncandy.com/youtube/callback`, and the deployed
+  `YOUTUBE_CLIENT_ID` **proven** to be this console client by hashing the client ID off the page
+  and matching the secret's SHA-256 digest — identity confirmed without ever reading a secret
+  value. **Pending (2026-08-23), none of it code:** declare the two read scopes on Data Access before submitting for verification; register
+  preview origins if the flow should work off the apex; and decide about **Publishing status**,
+  because the 100-user cap is counted over the app's *lifetime* and is not resettable. **The 7-day expiry no longer applies** to the current connection: it
+  was re-minted at 18:26:06 after the app went to production. Tokens issued *before* that flip were
+  Testing-era and would still have died around 2026-08-30 — publishing does not retroactively
+  extend an already-issued token, which is why the reconnect was done rather than assumed away. **A second "Connect YouTube" button now sits beside the first:** the
+  red Outstand one publishes, the teal one measures. Both correct, both doing different jobs, and
+  nothing on the buttons themselves says which is which. **Expect every connection to
   drop 7 days after consent** — Google expires refresh tokens for External + Testing apps on that
   schedule, and that is a console setting, not a bug in the refresh code.
   → `docs/wiki/concepts/youtube-analytics-connector.md`
@@ -538,6 +580,47 @@ holds no Toast credentials. See §6.
 > proof the object exists (see [[Content Delivery State Machine]]) and "recorded ≠ actual" has
 > bitten this project before.
 
+- **Site locked to a private preview — built and reviewed, and NO part of it is switched on** —
+  the code half is done; the go-live half is **entirely founder action and cannot be done by any
+  agent** (approve/merge the PR, set four Vercel variables, flip one Supabase toggle). The premise
+  is the thing to carry: **a password cannot stop a signup** — `VITE_SUPABASE_ANON_KEY` ships in the
+  bundle and `supabase.co` never traverses Vercel, so **turning off Supabase's "Allow new users to
+  sign up" is the load-bearing control** and the edge password is the lesser of the two. That
+  password is HTTP Basic at the edge (Vercel Routing Middleware: `middleware.ts` over a pure,
+  26-test `gate/decide.ts`), answering **401 and never a redirect**, because a 401 re-requests the
+  identical URL so a password-reset link's `#access_token` fragment survives. It **fails closed**,
+  so deleting the variables is the WRONG rollback — `SITE_GATE_ENABLED` is the lever, and it needs a
+  **redeploy** to take effect (an env-var change does not reach a running deployment; four documents
+  claimed otherwise). Rule from a real defect: **only allowlist a path with a real file under
+  `public/`** — `/.well-known/*` had none and `vercel.json` rewrites unmatched paths to
+  `/index.html`, so it served the whole SPA bundle to anonymous browsers. Three more caught in
+  review: the Lighthouse `is-crawlable` exemption was **inert where it was written** (a category
+  assertion reads a score computed at collect time — 0.69 vs 1.00 measured — and the obvious fix
+  ALSO fails because an `LHCI_COLLECT__SETTINGS__*` env var replaces the config file's whole
+  `settings` object); bare `undefined` is a **Next.js** continue convention, not the
+  framework-agnostic one (`next()` from `@vercel/functions`, or every authorised request breaks in
+  production where no preview can show it); and `VERCEL_ENV !== 'production'` was **fail-open on
+  absence**, reopening the site while the dashboard read locked. Also deleted the dead client-side
+  gate, which kept `dragoncandy2026` as a bundled string constant and allowlisted `/auth`.
+  Three Codex passes (last clean), a whole-branch review and a scoped re-review; 2,756 tests.
+  **The claim that this could not be tested before production was FALSE, and it hid a total
+  outage.** The gate's *behaviour* is production-only (a preview sets `VERCEL_ENV='preview'`, so it
+  passes everyone), but Vercel **imports and runs the middleware on every preview request** — and
+  the first preview deploy returned **500 on every request** (`MIDDLEWARE_INVOCATION_FAILED`).
+  Cause: Vercel transpiles `middleware.ts` to `middleware.js` and runs it as **Node ESM without
+  bundling**, and Node's ESM resolver does not add extensions, so `import … from './gate/decide'`
+  threw `ERR_MODULE_NOT_FOUND` at module load — before any gate logic, so `SITE_GATE_ENABLED` could
+  not have rescued it. Typecheck, 2,756 tests and the build were all green, because Vite/Vitest/tsc
+  all resolve extensionless specifiers. **Caught by the e2e smoke suite**, which drives a real
+  browser against the preview. Fixed with `'./gate/decide.js'`. **Durable rule: a local toolchain
+  that resolves imports for you cannot tell you whether the deployment target will.**
+  **Pending (2026-08-23):** merge PR #482; **a green `lighthouse-ci.yml` AND a green e2e smoke on it
+  are hard merge gates** (the Lighthouse 1.00 was measured locally, never by CI); then, in this
+  order, set the four Production-scope variables → deploy → run the runbook's checks → only then
+  disable Supabase signup.
+  Note `/promo/:id` now challenges (founder confirmed no QR is live; documented, deliberately not
+  allowlisted) and every Supabase invite must travel with the password or as a `?k=` link.
+  → `docs/wiki/concepts/site-access-lockdown.md` · `docs/runbooks/site-access-lockdown.md`
 - **Identity & verification (slice 2 of 4, onboarding redesign)** — gives `phone_verified`/
   `identity_verified`/`address` real writers, closes a `profiles` email/phone read exposure (4th
   recorded column-REVOKE-no-op instance), and corrects a slice-1 defect (two `required` checklist rows
