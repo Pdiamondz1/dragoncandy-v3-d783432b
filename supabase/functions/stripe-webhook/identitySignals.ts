@@ -72,3 +72,30 @@ function deriveVerifiedAt(account: AccountLike, disabledReason: string | null): 
   }
   return null;
 }
+
+/**
+ * Throws if any Supabase write in a batch returned an error.
+ *
+ * A Supabase query resolves with `{ error }` instead of rejecting, so `await Promise.all([...])`
+ * completes successfully even when every write inside it failed. That makes the natural-looking
+ * code silently acknowledge a webhook whose whole purpose was to record something.
+ *
+ * Named and exported rather than inlined so the behaviour is testable without a database:
+ * the failure this guards against is invisible in the happy path by construction.
+ */
+export function assertNoWriteErrors(
+  label: string,
+  results: ReadonlyArray<{ error: { message?: string } | null }>,
+): void {
+  const messages = results
+    .map((r) => r.error?.message)
+    .filter((m): m is string => typeof m === 'string' && m.length > 0);
+  if (messages.length > 0) {
+    throw new Error(`${label}: ${messages.length} write(s) failed: ${messages.join('; ')}`);
+  }
+  // An error object with no message still counts as a failure — never let an
+  // unrecognised error shape read as success.
+  if (results.some((r) => r.error != null) && messages.length === 0) {
+    throw new Error(`${label}: write failed with an unrecognised error shape`);
+  }
+}

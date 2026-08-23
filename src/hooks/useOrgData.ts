@@ -271,6 +271,33 @@ export function useUpdateOrgUnit() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: UpdateOrgUnitInput) => {
+      // Read the stored address BEFORE the write, so we can tell afterwards whether THIS
+      // call actually changed it. Presence in the payload is not change: AddEditUnitModal
+      // always sends the current `address`, so a rename or a primary-flag toggle arrives
+      // with it too. Re-verifying on those is not merely wasted spend — verify-address
+      // writes `address_verified_at: null` when a geocode comes back unresolved, so one
+      // transient Google blip during an unrelated edit would silently REVOKE a still-true
+      // verification. That is the "a stamp must not outlive the fact" rule running
+      // backwards: the fact is unchanged and the stamp is destroyed anyway.
+      // Mirrors the pre-read guard useCreatorProfileSubmit.ts already does.
+      let previousAddress: string | null = null;
+      if (updates.address !== undefined) {
+        const { data: existing, error: existingError } = await supabase
+          .from('org_units')
+          .select('address')
+          .eq('id', id)
+          .maybeSingle();
+        if (existingError) {
+          // Unknown prior value. Fall through to the comparison below with
+          // previousAddress still null, which errs toward re-verifying — the
+          // conservative direction: a redundant geocode costs a request, a skipped
+          // one leaves a real address change unverified.
+          console.error('Error reading existing org_unit address before save:', existingError);
+        } else {
+          previousAddress = existing?.address ?? null;
+        }
+      }
+
       const { data, error } = await supabase
         .from('org_units')
         .update({ ...updates, updated_at: new Date().toISOString() })
@@ -281,10 +308,14 @@ export function useUpdateOrgUnit() {
       if (error) throw error;
       const unit = data as unknown as OrgUnit;
 
-      // Only re-verify when THIS call actually changed the address — not on every
-      // unrelated field update (e.g. renaming a location). Best-effort, fire-and-forget:
-      // see src/lib/verifyAddress.ts.
-      if (updates.address !== undefined && updates.address) {
+      // Fire only when the address genuinely CHANGED, comparing against the value read
+      // above rather than merely checking that one was submitted. Compared raw (not
+      // trimmed) because that is how both values are stored — normalising one side of an
+      // equality is what made the server-side predicate wrong in the first place.
+      // Best-effort, fire-and-forget: see src/lib/verifyAddress.ts.
+      const addressChanged =
+        updates.address !== undefined && (previousAddress ?? '') !== (updates.address ?? '');
+      if (addressChanged && updates.address) {
         void requestBusinessAddressVerification({ orgUnitId: unit.id, address: updates.address });
       }
 

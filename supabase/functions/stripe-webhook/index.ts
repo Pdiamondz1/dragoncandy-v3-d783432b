@@ -5,7 +5,7 @@ import { writePaymentEvent } from "../_shared/payment-events.ts";
 import { fulfillBoost } from "../_shared/fulfill-boost.ts";
 import { flushPendingBalance } from "../_shared/flush-pending-balance.ts";
 import { webhookSigningSecrets } from "../_shared/webhook-secrets.ts";
-import { deriveIdentitySignals } from "./identitySignals.ts";
+import { deriveIdentitySignals, assertNoWriteErrors } from "./identitySignals.ts";
 
 const logStep = (step: string, details?: any) => {
   console.log(`[STRIPE-WEBHOOK] ${step}${details ? ' - ' + JSON.stringify(details) : ''}`);
@@ -404,7 +404,18 @@ serve(async (req) => {
         // Updating all three by stripe_account_id is idempotent — a table with no
         // matching row is a harmless no-op. (Previously org_units was never synced,
         // which left restaurant-location flags stale.)
-        await Promise.all([
+        // A Supabase query resolves with { error } rather than rejecting, so Promise.all
+        // succeeds even when every write inside it failed. Acknowledging the event then
+        // tells Stripe the signal was mirrored when it was not — and because Stripe emits
+        // account.updated only ON CHANGE, there may be no later event to repair it: the
+        // account sits permanently unverified in our mirror while verified at Stripe.
+        // So these results are inspected and a failure THROWS, which fails the webhook and
+        // lets Stripe's own retry be the repair path.
+        //
+        // Deliberately the opposite policy from the pending-balance flush below, which is
+        // explicitly non-fatal. The difference is whether a retry can fix it: a flush has
+        // the onboarding-return poll as a backstop, this mirror has no backstop at all.
+        assertNoWriteErrors("account signal mirror", await Promise.all([
           supabase.from("creator_profiles")
             .update({ stripe_onboarding_complete: onboardingComplete, ...signals })
             .eq("stripe_account_id", account.id),
@@ -414,14 +425,19 @@ serve(async (req) => {
           supabase.from("org_units")
             .update({ stripe_onboarding_complete: onboardingComplete, ...signals })
             .eq("stripe_account_id", account.id),
-        ]);
+        ]));
 
         // Stamp identity_verified_at once, and only once: write it only while it is
         // still NULL, and only when Stripe has actually reported verification. A
         // second account.updated event after verification must never touch this
         // column again — see the comment above.
         if (identity_verified_at) {
-          await Promise.all([
+          // Same reasoning as the mirror above, and stronger here: this is the ONLY
+          // writer of identity_verified_at, and it only ever fires while the column is
+          // still NULL. A swallowed failure here is not a stale value, it is a stamp that
+          // never gets written at all — and the readiness engine renders that account as
+          // never having been verified, indefinitely.
+          assertNoWriteErrors("identity_verified_at stamp", await Promise.all([
             supabase.from("creator_profiles")
               .update({ identity_verified_at })
               .eq("stripe_account_id", account.id)
@@ -434,7 +450,7 @@ serve(async (req) => {
               .update({ identity_verified_at })
               .eq("stripe_account_id", account.id)
               .is("identity_verified_at", null),
-          ]);
+          ]));
         }
 
         // Now payout-ready → release any held pending_balance. Never fail the

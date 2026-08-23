@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deriveIdentitySignals } from './identitySignals';
+import { deriveIdentitySignals, assertNoWriteErrors } from './identitySignals';
 
 const base = { charges_enabled: true, payouts_enabled: true } as never;
 
@@ -94,5 +94,51 @@ describe('deriveIdentitySignals', () => {
       requirements: { currently_due: [], past_due: [], disabled_reason: null },
     } as never);
     expect(s.identity_verified_at).toBeNull();
+  });
+});
+
+/**
+ * `assertNoWriteErrors` exists because `await Promise.all([...supabase writes])` resolves
+ * successfully even when every write inside it failed — Supabase returns `{ error }`
+ * rather than rejecting. Found by the Codex second review: the stripe-webhook was
+ * acknowledging account.updated to Stripe while the identity mirror had not been written,
+ * and because Stripe emits that event only ON CHANGE there may be no later event to repair it.
+ */
+describe('assertNoWriteErrors', () => {
+  it('passes when every write succeeded', () => {
+    expect(() => assertNoWriteErrors('mirror', [{ error: null }, { error: null }])).not.toThrow();
+  });
+
+  it('throws when one write in the batch failed — the case Promise.all hides', () => {
+    expect(() =>
+      assertNoWriteErrors('mirror', [
+        { error: null },
+        { error: { message: 'permission denied for table org_units' } },
+        { error: null },
+      ]),
+    ).toThrow(/permission denied for table org_units/);
+  });
+
+  it('reports how many failed, so one failure is not mistaken for total failure', () => {
+    expect(() =>
+      assertNoWriteErrors('mirror', [
+        { error: { message: 'a' } },
+        { error: { message: 'b' } },
+      ]),
+    ).toThrow(/2 write\(s\) failed/);
+  });
+
+  it('throws on an error object carrying no message — an unrecognised shape is not success', () => {
+    expect(() => assertNoWriteErrors('mirror', [{ error: {} }])).toThrow(/unrecognised error shape/);
+  });
+
+  it('names the batch, so a webhook log says WHICH mirror failed', () => {
+    expect(() =>
+      assertNoWriteErrors('identity_verified_at stamp', [{ error: { message: 'boom' } }]),
+    ).toThrow(/identity_verified_at stamp/);
+  });
+
+  it('treats an empty batch as success', () => {
+    expect(() => assertNoWriteErrors('mirror', [])).not.toThrow();
   });
 });
