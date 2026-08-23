@@ -121,7 +121,7 @@ function invitationProposals(items: CreatorInvitation[]): DonnyProposal[] {
  *
  * Note for whoever edits this next: the app now holds two answers to "is this
  * creator's Stripe ready" — this column read, and the self-healing verification
- * behind `useTransactionReadiness`. They can disagree. Word accordingly.
+ * behind `useAccountReadiness`. They can disagree. Word accordingly.
  */
 function payoutProposals(payout: CreatorPayoutState): DonnyProposal[] {
   if (payout.onboardingComplete) return [];

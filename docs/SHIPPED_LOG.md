@@ -26,6 +26,794 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-23] Proving the RAG fix actually retrieves — and truncating the evidence while measuring a truncation bug
+
+[[RAG Document Chunking]] established that a third of the corpus had become reachable. It did not
+establish that Donny *finds* it. `npm run eval:rag` now answers that, and the harness is committed
+rather than left in scratch files.
+
+**The query set is real.** 53 distinct queries pulled from `donny_tool_executions` where
+`tool_name='search_internal_knowledge'` — every internal search Donny has ever run since June. They
+predate this work and could not have been tailored to it. They are keyword bags rather than natural
+questions because that is what the LLM actually emits, which makes them the right distribution.
+
+**Controls run first, because the rest is meaningless without them.** Eight queries about subjects
+the corpus does not cover — sourdough hydration, Byzantine iconoclasm, oboe reed gouging, Hohmann
+transfers — score **0.164–0.280** at top-1 against real queries' **0.437–0.632**. **Zero of eight
+beat even the weakest real query.** Reported as an overlap count, not a comparison of means: two
+distributions can differ in mean and still overlap completely, and the overlap is what matters.
+
+**Chunking did not break what already worked.** Taking the document the old 24k window ranked
+first, it is still ranked first for **43 of 53** queries; the other 10 stay inside the new top-10;
+**none fell out**. Document diversity dipped slightly (6.2 vs 6.6 distinct documents at k=10) — mild
+crowding, not drowning.
+
+**k=10 stays, now on evidence.** Recall is **65% at k=5 and 91% at k=10** over the labelled pool —
+dropping to 5 loses more than a third of the relevant material. For a RAG feeding an LLM recall dominates
+precision — the model can ignore a weak passage, but not one it never sees. That replaces the
+arithmetic guess the row count was originally set by.
+
+**The objective measure needs no judge at all:** 12.3% of k=10 hits are text beyond the old
+24,000-char cut, and 32 of 53 queries surface at least one. That number stands even where the
+labels do not.
+
+**Three method failures worth more than the results.**
+
+The label-free way of choosing k **failed outright**. The plan was to pick k where similarity
+decays into the control band; it does not decay — mean similarity is still **0.404 at rank 20**
+against a 0.280 ceiling, with 53/53 queries clearing it. In a corpus entirely about one company,
+everything is somewhat related to everything, so relevance labels were not optional.
+
+And the first judging pass **truncated the evidence while measuring a truncation bug**. Passages
+were cut to 340 characters to save reading, and **22 of 84** marked "not relevant" contained the
+query term past that cut. The clean specimen is the LoRA query: ranks 2 and 5 both say "LoRA/QLoRA
+on an open model" several hundred characters in, and both were called irrelevant. Correcting it
+moved precision@12 from 32% to 42%, and recall@10 *down*, because the denominator grew. **A judge
+sees what you show it** — truncate the evidence and you have measured your excerpt.
+
+And the metric itself was wrong, with its own test pinning the error. `recall@k` deduplicated
+documents then kept scanning until it had k distinct ones, crediting documents at chunk-rank 11 or
+15 that production never returns — inflation largest in exactly the chunk-heavy case the evaluator
+exists to assess, so it flattered the change it measured. A unit test asserted the wrong behaviour
+in as many words ("ranks documents, not chunks"). Correcting it moved recall@10 from 100% to 91%
+and recall@5 from 78% to 65%; the conclusion (keep 10) survives and strengthens. Six Codex rounds,
+seven real findings on this harness alone, every one mine.
+
+Committed honestly: the harness reports *unjudged* documents as unjudged rather than counting them
+misses, since treating unlabelled as irrelevant is precisely how a retrieval change is made to look
+better than it is. Known limits are written into the page — 7 labelled queries of 53, labels
+produced by the same agent that wrote the chunker (blind to rank and provenance, hidden mapping
+revealed after the fact, but not independent), June queries against a moved corpus, and no strict
+old-vs-new A/B because the function now refuses to emit a single 24,000-char embedding.
+
+9 tests on the pure scoring layer, including one asserting that an unlabelled document is neither
+hit nor miss, and one asserting that a repeated document spends its slots.
+
+## [2026-08-23] The comment was true, and about the wrong reader: a third of Donny's corpus was never embedded
+
+Found by accident, at the end of unrelated work. #469 had merged, main was refreshed, and the
+post-merge hook reported `updated=142 errors=0`. Every signal said the knowledge layer was
+current. The `knowledge-sync` skill says to verify by **content, never by `max(updated_at)`** —
+following that literally, searching `donny_knowledge` for a string written into
+`DESIGN_SYSTEM.md` that morning returned **zero rows**.
+
+`sync-internal-docs.mjs` sent `${title}\n\n${body}`.slice(0, 24_000)`. The comment beside it
+read `// embed input is truncated; full_content is not`. **That is true and it describes the
+wrong consumer.** `full_content` is upserted into `internal_docs`, which only the
+`/internal/strategy` viewer reads; `donny-orchestrator/rag.ts` returns
+`donny_knowledge.content` on **both** its paths — the cosine RPC and the FTS fallback — and
+never touches `internal_docs`. The mitigation named in the comment never reached the reader it
+was meant to protect.
+
+Measured on prod: **142 documents, 2,168,995 chars, 1,445,867 embedded — 723,128 (33%) reaching
+Donny in no form at all**, across 14 rows pinned at exactly 24,000. `SHIPPED_LOG.md` 5%,
+`PROJECT_CONTEXT.md` 26%, `prd.md` 39%, `DATABASE_SCHEMA.md` 51%, `DESIGN_SYSTEM.md` 78% — that
+last one cut off mid-sentence inside the safe-area rule, so every design rule written after it,
+including the three added that morning, was absent. In place since **2026-06-11**.
+
+**Documents are now chunked** at ~6,000 chars on markdown heading boundaries, each chunk
+carrying the document name so a chunk retrieved alone still says what it is. Chunk 0 keeps the
+**unsuffixed `source_id`** and chunk N takes `<id>#N` — the property that makes it deployable
+rather than destructive, since nothing here deletes a row whose id stopped being produced, so
+renaming all 142 ids would have stranded all 142 rows. `metadata.chunk_base` on every row gives
+exact sibling lookup, and siblings past the current total are deleted when a document shrinks
+(6 chunks → 4 otherwise leaves `#4` and `#5` served as current text).
+
+**Chunking is cheaper to read, not only more complete.** At the old cap one retrieval could push
+**120,000 characters** into Donny's prompt. Mean chunk is 4,162 chars against the old mean row of
+10,111, so `search_internal_knowledge` went 5 → **10** rows and still sends less text (~42k vs
+~51k) while covering more distinct material — a change that was required, not optional: at 5
+rows a chunked corpus can return five pieces of one document where it used to return five
+documents.
+
+**`SHIPPED_LOG.md` is excluded from the RAG rather than chunked** (`index_in_rag: false`). At
+505k chars it would be 85 of ~400 rows — a quarter of the index, all raw changelog, competing
+for retrieval slots with wiki pages written specifically for retrieval. It stays fully readable
+in `internal_docs`. The distinction that matters is that this is a **deliberate exclusion
+printed on every run**, where the thing it replaces was a silent truncation.
+
+**Chunking runs server-side, and that was the part worth getting right.** The first
+implementation chunked in the sync script; Codex found why that fails at review round 3. There
+are **two producers** — `wiki-merge-pr` builds its payload through
+`_shared/wiki-sync-payload.ts`, whose own header requires it to *"reproduce the EXACT
+per-wiki-page payload `sync-internal-docs.mjs` POSTs"*, and it still truncated. After a full
+sync created continuation chunks, an incremental merge→sync would have overwritten chunk 0 with
+a truncated whole-document row and left `#1…#N` in place: **a truncated head spliced onto a
+stale tail**, worse than the bug being fixed. Fixing it in both producers would leave two things
+that must agree, so chunking moved to `donny-knowledge-sync` and callers now send a *document*.
+
+Six Codex rounds, five real findings, all mine. Two were the same class as the
+original defect: `purgeRag()` swallowed every Supabase error, so a failed delete still recorded
+`skipped-unindexed` and the run finished `errors=0` with the document still retrievable; and
+`chunkSiblings()` returned `[]` on a **failed** read, indistinguishable from a genuinely empty
+one. Also caught: sibling lookup used `LIKE`, where `_` is a single-character wildcard and our
+ids are full of them (`DESIGN_SYSTEM`, `SHIPPED_LOG`, `DATABASE_SCHEMA`) — on a query feeding
+DELETE. Checked rather than dismissed: **0 collisions across all 142 real ids today**, but that
+is a property of the filenames, not of the code, so it is now an exact `.eq()`.
+
+Two more were about batches. The embedding call still sent every chunk as one `input` array, and
+chunking is what makes the endpoint's AGGREGATE token cap reachable — documents used to arrive
+pre-truncated at 24k and now arrive whole — so requests are split at 400,000 chars with order
+preserved. And the new orphan check printed drift then exited 0, where its sibling script
+carries orphans into the exit code; this sync runs unattended from the post-merge hook, so
+stdout is a report with no reader.
+
+Also replaced a test assertion that pinned nothing: `wiki-sync-payload.test.ts` asserted
+`content.length <= 24_000` on a fixture far under it, and had never seen an oversize input.
+
+Durable lesson, and it is not the chunking: **a mitigation has to reach the consumer of the
+data.** "The full text is still in `internal_docs`" was accurate and irrelevant. Name the
+reader, not the store.
+
+13 new tests, controlled — restoring the truncation turns 5 red, and collapsing the embedding
+split turns another 3 red. 2,610 tests pass.
+## [2026-08-23] Account completeness engine (slice 1) — one derived model, and the three defects the plan itself shipped
+
+**Slice 1 of 4** in the signup/onboarding redesign. Replaces two overlapping half-systems that tracked
+the same facts different ways and could disagree: `deriveReadiness`/`ReadinessGate` (live-derived, but
+only ever knew Stripe and social) and `MissionChecklist`/`profiles.first_run_missions` (a stored JSONB
+blob of booleans written optimistically by whichever page the user happened to visit). A stored boolean
+disagreeing with live truth is this project's recurring failure class — same shape as
+[[Updated-At Trigger Drift]] and [[Content Delivery State Machine]].
+
+**What shipped.** `src/lib/accountReadiness/` — a pure engine with four requirement states
+(`met`/`unmet`/`pending`/`unknown`), two tiers (`required`/`recommended`, the latter dismissible and
+never gating), a per-role requirement table, and an **action registry** so `ReadinessGate` takes
+`action="apply_campaign"` instead of `require={{stripe:true}}`. `useAccountReadiness` assembles live
+facts, with a deliberate **read split**: the checklist uses the cheap mirrored
+`stripe_onboarding_complete` column, the gate pays for the authoritative Stripe read — a briefly stale
+checklist is harmless, a stale gate costs money. Both share the `['payout-status', role, orgUnitId]`
+key `StripeConnectSetup` invalidates, so **same key requires same shape**: the hook caches the full
+`PayoutStatusData` and derives the narrow facts locally. Three renderings, no new surfaces. Migration
+`20260823120000` adds three nullable `profiles` columns (`phone`, `phone_verified_at`,
+`dismissed_requirements` — deliberately NOT reusing `dismissed_coachmarks`, since two arrays of opaque
+string keys sharing one column means a coachmark silently dismissing a requirement with no type error).
+
+**The safety contract:** `unknown` never blocks and never renders as a failure. A total API outage
+must produce zero outstanding items and zero blocked actions. Only a definitive `met` counts toward
+any tally.
+
+**Three defects came from the plan text itself, and the review loop caught all three.** (1) A
+**sentinel UUID fabricated a fact**: `.eq('org_id', profile?.org_id ?? '00000000-…')` — `profile`
+resolves after `user`, so the query *succeeded* with `count: 0` and derived `unmet`, telling users to
+"Invite your team" during a window when we did not know whether they had one. **Untestable by
+construction** (the test globally mocked `useQuery`, so no `queryFn` ever ran); fixed by skipping the
+read until `org_id` is known, adding it to the query key, and extracting a directly testable fetch —
+then *proving* the regression test fails against the original code. (2) The plan would have **stranded
+users in first-run mode**: `isFirstRun` ends only when `completed_at` is stamped, which happens only
+when the four surviving page-visit mission keys flip true, so rendering derived rows alone would let
+the checklist read 5/5 while the dashboard disagreed. (3) **Three tests that could not fail**, two
+guarding the branch's headline behaviour — each fix carries a break-and-restore proof.
+
+**Rollout posture is no-op:** `READINESS_GATE_ENABLED` does not exist in `feature_flags`, so the gate
+renders children unconditionally — and has done since it originally shipped.
+
+**Merged without the Codex second review**, at the founder's explicit direction after being told what
+that skipped. PR #472 → `8889baef`; deployed 2026-08-23 10:53 UTC. Prod verification of the changed
+surfaces is still owed — every one is behind auth, and no test-account credentials exist in the
+project memory system despite `CLAUDE.md` saying they do.
+→ `docs/wiki/concepts/account-completeness-engine.md` · #472
+
+## [2026-08-23] One wrong axis, seven pages: the public logo and a dashboard that wasn't there
+
+Two founder reports on the surfaces #465 had just added to.
+
+**The logo was ~3x too big on every public page but the landing.** `/logo.webp` is a stacked badge,
+**280 x 326** intrinsic — **taller than it is wide** (aspect 0.859). `PublicPageHeader` sized it by
+**width** (`w-[100px] md:w-[120px] lg:w-[140px] h-auto`), and on a portrait asset a width class
+does not cap the height, it multiplies it: measured **140 x 163** against the landing header's
+**48 x 56**, inflating the bar to **195px**. The landing was the only page that looked right
+because it is the only one that sizes by height. One wrong axis, visibly wrong on `/how-it-works`,
+`/terms`, `/privacy`, `/help`, `/pricing`, 404 and both public profile pages at once.
+
+Both headers now carry the identical `h-12 w-auto lg:h-14`. Verified rendered on all four reported
+pages: **48 x 56**, header **88px**, and **41 x 48 / 80px** at 390 mobile — matching the landing on
+both viewports.
+
+A second defect sat in the same three lines: `width={140} height={47}` describes an aspect of
+**2.98** against the real **0.859**. Those attributes exist to reserve the box before the image
+loads, so at the wrong ratio they reserved the wrong shape and *caused* the layout shift they are
+meant to prevent. Corrected to the real 280/326.
+
+**`/help` promised a dashboard to people who have never had one.** It is linked from the landing
+footer and reachable with no session, and it said "Back to Dashboard" (and "Return to Dashboard" in
+the empty state) to everyone. The destination was never wrong — `/` redirects a signed-in user
+onward — so only the label lied. Both are now gated on `useAuth()`'s `user`, and signed-in visitors
+go to `/dashboard` directly instead of bouncing through the landing. A sweep of the other public
+pages (`/terms`, `/privacy`, `/pricing`, 404, help articles) found no sibling instance.
+
+Both fixes are pinned by new tests, and **both pins were controlled** — re-introducing each bug was
+observed to turn its test red, then reverted. `HelpCenter.test.tsx` asserts the word "dashboard"
+appears **nowhere** on the page with no session, rather than checking one button's label.
+## [2026-08-23] The product docs are published — and stale turned out to be the easy half
+
+**PRs** #468 (`c12862fd`) + #470 (`adc401f7`) · Codex clean at round 2 on both · live in
+`01 · Product` on the `DragonCandy — Open` shared drive
+
+`01 · Product` was empty and two candidate documents existed. Both were stale — the PRD's last
+substantive edit was 2026-06-01 — which was expected and is what a dated banner is for.
+
+**What actually gated publication was not staleness.** `product-vision.md` described Dame as a
+**"solo technical founder"**, and neither document named Joe Castelo or Juwan Robinson anywhere,
+while `PROJECT_CONTEXT.md` §1 lists them as CEO and Shareholder. Joe can read that drive and Adrian
+will. **Stale is a different problem from wrong-about-people:** old numbers can be dated and
+published, a document that erases two co-founders cannot. Escalated rather than uploaded; the
+founder chose to fix and publish. All three are now named with roles, Joe's Hoboken restaurants
+credited as the problem the product was built to solve (which is the actual origin story, not a
+courtesy), and "35+ tables" corrected to 70+ in both docs.
+
+**Then the same distinction cut a second time.** Three sections are not merely old but **actively
+contradicted by the shipped system**: product-vision **§5** (one dark-mode Inter/JetBrains system
+with `dragon-*` tokens — used nowhere), PRD **§2** (says Lovable deploys prod; Vercel has since
+2026-07-15) and PRD **§3** (`gig_assignments`, `creative_briefs`, `payments`, `notifications`, none
+of which exist; wrong role values). A banner handles stale; a contradicted section needs a
+**SUPERSEDED note pointing at the authoritative file**. The design one is the live risk — a
+designer is being hired and §5 is the first thing they would read.
+
+**Codex caught me committing the error I was fixing.** Round 1 of that note asserted "the app is
+light, `dc-*`, Outfit/Pacifico" — true of the authenticated app, **false for the landing** (dark,
+video-led, Bricolage/Instrument/Silkscreen) and `/internal`. One wrong summary swapped for another.
+The note now refuses to summarise at all: it states the system is **surface-specific**, points at
+`DESIGN_SYSTEM.md`, and says not to trust any one-liner — *because a summary of that file is how §5
+came to be wrong in the first place.* **A summary of a source of truth is a copy, and copies rot;
+the correct replacement for a rotted summary is a pointer, not a better summary.**
+
+**Two traps worth carrying.** The first commit normalised both files **CRLF → LF** as a side effect
+of the Python editing script — 3,584 lines rewritten to change 24, caught by Codex and redone with
+`newline='\r\n'`. And #470's Lighthouse failure was performance **`NaN` across all three runs** on
+a docs-only change: `NaN` is a page-load failure, not a score regression, so it was re-run
+unchanged rather than chased. Passed.
+
+**Order of operations, disclosed:** the SUPERSEDED notes went into the Google Docs first and the
+repo second, so #470 exists to close what would otherwise be repo-vs-drive drift — the same failure
+class the notes are about. One residual divergence is recorded rather than hidden: the published
+Vision's §5 has its palette and typography detail condensed while the repo keeps the full text. It
+is inside a section marked do-not-build-from, so it was judged not worth a third upload.
+
+→ `docs/product-vision.md` · `docs/prd.md` · #468, #470
+
+## [2026-08-23] The mobile jump was real, and it was the finding I refuted
+
+Adrian Vella sent three notes on the landing shipped that morning (#459). Two were design asks. The
+third — *"when going on it on mobile I see the screen jumps if I scroll up or down, I think it's a
+bug"* — was a real defect **on every page in the app**, and it was the Codex round-4 finding on
+#459 that I tested, declared not reproducible, and talked the founder out of fixing.
+
+**Which element scrolls.** `src/index.css` sets `body { height: 100%; overflow-x: hidden }`, and
+per spec an `overflow-x` of `hidden` against a visible `overflow-y` computes `overflow-y` to
+**`auto`**. So **body** is a fixed-height scroll box and anything taller than it scrolls body — not
+`<html>`, not `#root`, not `<main>`. `AppShell` was `flex h-screen` = `100vh`, which on iOS Safari
+is the URL-bar-**collapsed** height, so the shell stood ~60–90px taller than body's box. Body
+scrolled by exactly that, and scrolling collapsed the URL bar, which grew `100dvh`, which resized
+the page mid-gesture.
+
+Measured by forcing the shell 80px over and asking every candidate which one moves: body
+`scrollHeight` **833** vs `clientHeight` **753**, `scrollTop` → **80**; `html`, `#root`, the shell
+and `main` all report overflow **0** and refuse to scroll; `window.scrollY` stays **0** throughout.
+
+**Why the original refutation failed, twice over, either sufficient alone.** It checked
+`main.scrollHeight`/`main.scrollTop` — `main` is not the scroller. And it ran in device emulation,
+which has no collapsing URL bar, so `100vh === 100dvh` and the gap under test is structurally zero
+there. **The lesson is not "test on a real device" — it is: when a probe returns zero, prove the
+probe could have returned non-zero.** The forced-overflow control costs one line and would have
+caught both errors at once. Second iOS-only defect in two days that an emulator reported absent.
+
+Fixed at `AppShell` (`h-[100dvh]`), with `DashboardLayout`'s two `min-h-screen` tracking it — those
+sit inside `main` so they never scrolled body, but a `100vh` child of a `100dvh` `main` hands short
+dashboard pages the same dead scroll one container down. That regression was my original argument
+against the fix; it is answered by doing it in **both** places rather than neither. The landing's
+Suspense fallback moved too. Pinned by `src/layoutViewportHeight.test.ts` as a **text** assertion,
+because jsdom has no layout engine and no emulator can observe the gap. The 119 other
+`min-h-screen` usages are all inside `main`, cannot scroll body, and were left alone.
+
+**`DESIGN_SYSTEM.md` asserted the false premise in writing** — "the app document never scrolls
+(h-screen shell + inner overflow-auto main), so iOS Safari toolbars never collapse" — as did the
+wiki index and §8's "paired refutation". All three corrected in place with the correction beside
+them, because a rule carrying a false justification gets re-derived wrongly by whoever reads it
+next.
+
+**The two design asks.** An underlined *"Already have an account? Log in"* under the CTA — a link,
+not a second pill, because the page's premise is one call to action. Its mint is
+`landing-mint-line` (`#B8ECDA`), **not** the slogan's `#7BE3C0`: this is small text at 4.5:1 where
+the slogan is large text at 3.0:1, and measured across all sixteen encodes in the link's own band
+(0.603–0.635 of viewport, read off the rendered page, scrim 0.672) the bright mint reaches only
+**3.91** at p90 against the pale one's **4.62**. The design system's "too pale for video" note is
+about headlines and **inverts for small text** — both directions are now recorded so neither gets
+corrected into the other.
+
+And a **"Learn more"** pill in the footer, whose hard half was the destination: #459 deleted the
+six-section marketing page, so someone wanting to read before signing up had nowhere to go
+(`/pricing` answers cost, `/help` is post-signup support). Rather than point at the nearest wrong
+thing, this adds **`/how-it-works`** — how a campaign runs, who it is for, and what Donny does and
+does not do — light, on `PublicPageHeader`, the same shell as `/terms` and `/pricing`.
+
+Also corrected while in the file: `DESIGN_SYSTEM.md` still called the landing **unmerged** and
+described **ten** reels across **twenty** encodes; it merged that morning with **eight** and
+**sixteen**.
+
+**The Lighthouse gate then failed, and it was mine.** SEO **0.92** against a 0.95 minimum,
+consistently across three runs and the first failure this workflow has had — one item: Lighthouse's
+`link-text` audit rejects **"Learn more"** outright, the canonical non-descriptive link text.
+Renamed to **"How it works"**, which names the destination; an `aria-label` would also have
+satisfied the audit, but naming the thing fixes it for the reason the audit exists.
+
+**Auditing the new page then found a defect on every page of the site.** The gate covers only
+`/landing`. Run against `/how-it-works` it returned 0.92 there too, on a different item: **two
+conflicting `<link rel="canonical">` tags**. `index.html` carried a hardcoded canonical pointing at
+`/landing` and a hardcoded `og:url` of the bare origin; `SEO.tsx` emits the correct per-route
+values, but react-helmet-async **appends** rather than replacing a static tag it did not create. So
+every page except `/landing` served two canonicals that disagreed — and conflicting canonicals are
+discarded rather than resolved, so the correct per-route value was being thrown away site-wide.
+`/landing` passed only because it is the one page where the static value happens to be right. This
+also falsifies a standing wiki claim that `SEO.tsx`'s `SITE_URL` is "the single constant every
+canonical link and `og:url` derives from" — corrected on [[Domain Migration .io → .com]].
+**A gate that tests one URL is evidence about one URL.**
+
+Both static tags removed. `/how-it-works` now scores **100 accessibility / 100 best practices /
+100 SEO**; the landing goes 0.92 → **1.00** SEO. Also fixed on the new page: `dc-pink-accent`
+(`#EC4899`) as text on white is **3.52:1** against the 4.5:1 small-text bar, four instances →
+`dc-pink-accent-btn` (`#DB2777`, **4.60:1**).
+
+**The shell fix was incomplete, and Codex found the thread.** Its P2: the shared lazy-route
+Suspense fallback was still `min-h-screen` inside the now-`100dvh` shell, so any uncached chunk
+recreates the dead scroll while it loads. Reading on from it found **two worse ones** it had not
+flagged — the `/pitch` fallback and the session-hint splash, both of which **return directly from
+`AppLayout`, bypassing `AppShell`**, so their `100vh` overflows the **document** rather than merely
+`main`. The splash renders on **public** paths while auth resolves for a returning visitor — i.e.
+**on the landing during every warm load**, the exact scenario reported. The original fix had closed
+the steady state and left the loading state open on the very page in question. All three moved to
+`min-h-[100dvh]`, and the pin widened from "the shell is `h-[100dvh]`" to "**no `100vh` survives
+anywhere in `App.tsx`**". That new assertion was itself controlled — injecting `min-h-screen` made
+it fail, reverting made it pass; *a guard nobody has watched fail is a guard nobody has tested.*
+
+**The "Get started" contrast, surfaced here and then closed on the founder's call.** The pill was
+white on `landing-pink` (`#F43F7F`) at **3.58:1** against the 4.5:1 its 18px label needs — the
+reason Lighthouse had scored the landing 96 on accessibility since before the rebuild. Flagged as a
+brand decision rather than a drive-by; the founder asked for it fixed *using the brand colour*.
+
+Two candidates, both already in the `landing.*` ramp: darken the fill to `landing-pink-ink`
+(`#C22760`, **5.60:1** with white), or keep `#F43F7F` and put the label in `landing-grape`
+(**4.83:1**). The second shipped, on two grounds. It leaves the **brand colour byte-identical** —
+only the label moves — and it keeps the CTA bright against a **dark video** page, which is the
+entire reason that pink is there; `#C22760` sits close to the grape scrim and recedes exactly where
+the button most needs to pop. It also matches the sibling `mint` variant, grape-on-fill at 8.01:1
+since it was written, so the component loses an exception rather than gaining one.
+
+The landing now scores **100 accessibility / 100 best practices / 100 SEO**, from 96 / 100 / 92 at
+the start of the session. An existing test asserting `text-white` failed on the change — the guard
+working — and was updated beside a new one carrying the measurement and the rejected alternative,
+so nobody restores white text without re-measuring.
+
+**Verified:** both viewports, body overflow 0 on the landing and on a 2148px `/how-it-works` that
+scrolls inside `main` as designed; typecheck, build and lint (0 errors) clean; 2468 tests pass and
+the 45 failures are identical on a detached clean `origin/main` (documented Node 26 / jsdom
+`localStorage` issue, CI runs Node 24); Codex clean. **Not verified:** the iOS-Safari half — no
+browser, emulator or simulator can show it, since the WKWebView shell has no URL bar either.
+## [2026-08-23] The last step of building an alarm is hearing it ring
+
+**PR** #466 (`0d54d28d`) · Codex clean at **round 1** · 96 tests, was 86 · deployed
+
+Four rounds went into the signature alert — what it says, which users it names, which causes count
+as non-clean, where it goes. Every one improved a message **nobody had ever received**. The first
+successful run after the scope grant (all four users `ok`, `dame@` at 4 identities / 3/3 shared)
+proved the signatures install and proved *nothing* about whether the alarm reaches anyone, because
+a clean run is silent by design. The delivery path is exercised only by a run that has a finding —
+which, if everything works, should be rare.
+
+`sendTestAlert()` emails whatever `ALERT_EMAIL` holds and writes nothing else: no signature, no
+baseline, no Sheet row. Permanent rather than throwaway — the question returns every time that
+property changes, a scope is granted, or the manifest moves.
+
+**Three design points, each load-bearing.** It calls **`sendRunAlert_`, not `MailApp`** — a test
+that builds its own send proves MailApp works, which was never in doubt; what is in doubt is
+whether *this* script's authorization, *this* property and *this* recipient list deliver. It
+**throws where a real run only warns**, on no usable recipient and on a refused send, because
+`installAllSignatures` must not die over a notification while this function's only job *is* the
+notification. And **a green execution is not the result — the mail arriving is**: all it can prove
+is that the send was accepted, so the console line says to go and look. That middle point is the
+sharp one: `sendRunAlert_` swallows delivery errors by design, so unchecked, a broken mail path
+finishes **green and reads as a pass** — the same "nobody was told" failure rebuilt one level up.
+
+**The coverage gap it exposed transfers further than the feature.** `sendRunAlert_` had **no tests
+at all**. Every existing test fed `runAlert_` — the pure composer — and stopped there, leaving the
+half that actually delivers uncovered while the suite looked healthy. Identical in shape to the
+`runStatus_` mutation that went undetected by all 79 tests the previous day: **a well-tested pure
+function next to an untested impure one reads as coverage of both**, and twice now the untested
+piece was the one deciding whether anyone is told. The loader now injects `MailApp` and records
+every send, so a test can assert that **nothing** went out — the half a "did it send?" stub cannot
+check. Mutation-checked four ways.
+
+**`ALERT_EMAIL` is `alerts@dragoncandy.com`**, a new alias rather than one of the seven existing
+ones. `admin@` already carries Stripe dispute alerts (`stripe-webhook/index.ts:511`); the published
+inbound addresses are the ones `contactAddresses.ts` flags as wanting to become a shared mailbox
+someone else covers, at which point alerts follow them to a person who cannot fix an Apps Script
+authorization error. The alias buys a stable indirection point, **not redundancy** — it is a
+delivery label on `dame@`'s inbox.
+
+**Two of my own claims were falsified in the same session**, both worth keeping. An alias did
+**not** become a fifth send-as identity — a finding already written on the concept page, which I
+failed to apply to an alias I had just recommended creating; *reading is not consulting*. And the
+Sheet **had** recorded the run while Chrome served a cached render across two full reloads, caught
+only by reading the same file through the Drive API; *agreement between two readings from the same
+cache is not corroboration.*
+
+**Pending:** `sendTestAlert()` **has never been run** — the executions list ends at
+`installAllSignatures`. Until it has, the delivery path is proven by unit tests against a stubbed
+`MailApp` and by nothing else.
+
+→ `docs/wiki/concepts/workspace-email-signatures.md` · #466
+
+## [2026-08-23] A warning is not a gate — the signature run now emails
+
+**PR** #463 (`4551483f`) · Codex clean at round 3 · 86 tests, was 63 · deployed
+
+"A warning is not a gate" had been written into the known issues three times without being
+closed. Every round improved what the warning *said*; none of it made anyone read it. A
+`console.warn` lands in Cloud Logging, which is seen only by someone who goes looking.
+
+A run with a finding now emails `ALERT_EMAIL` via `MailApp`, as the **script owner** — unrelated
+to the domain-wide delegation, and it touches nobody else's mailbox.
+
+**Four choices, each load-bearing.** Silent on a clean run, because a nightly "all fine" trains
+its recipient to filter the thread and then the one that matters is filtered too. A standing
+regression emails **every night** until fixed, because the alternative is alerting on the
+transition and a transition alert missed at 2am is gone. It **cannot fail the run** — signatures
+are already written by then, and trading the run log for a notification is backwards. And
+`ALERT_EMAIL` unset means nobody is told while everything else looks normal, so that case logs
+explicitly instead of skipping.
+
+**Codex found two, and the second changed the shape.** A failed **primary** signature raised no
+alert (a consequence of the earlier per-identity isolation: it is caught, not thrown, so the user
+was in no category while their own signature silently stopped updating). Then a scope denial on a
+non-company address raised none either. Two holes in two rounds meant enumerating causes was
+wrong; the alert now takes **every user whose run was not a clean `ok`**, keyed off the same
+status the Sheet records, so it cannot fall behind the status logic because it *is* the status
+logic.
+
+**The test finding is worth more than the feature.** Mutating the previous inline
+`status !== 'ok'` collection went **undetected by all 79 tests** — every test touching that path
+fed `runAlert_` directly, leaving the collection uncovered. The predicate looked too trivial to
+test and it decided both the Sheet column and whether anyone is told. Extracted as `runStatus_`
+and mutation-checked.
+
+**Deploy note:** this adds `script.send_mail`, and Apps Script invalidates the existing grant when
+the scope set changes, so the owner must run the function once by hand to re-consent or the
+nightly trigger fails with an authorization error that looks nothing like a signature problem.
+
+Also that day: `adrian@` demoted to Content manager on the Confidential drive (verified through
+the API, not the UI that made the change); `joe@` deliberately left as Manager, since removing a
+co-founder's ability to manage members is a governance decision rather than housekeeping.
+
+**Left open on purpose:** `01 · Product` stays empty — see the entry below on why the candidate
+documents could not be published as they stand.
+
+→ `docs/wiki/concepts/workspace-email-signatures.md` · #463
+
+## [2026-08-23] The product docs cannot go in the shared drive as they stand
+
+Not a shipped change — a finding, recorded because acting on it later needs the reasoning.
+
+`01 · Product` in the open shared drive is empty and was to be filled from `docs/prd.md` and
+`docs/product-vision.md`. Both are stale, which was expected and manageable with a dated banner:
+the PRD's last substantive edit was 2026-06-01, and the vision's only recent touch was the
+mechanical `.io`→`.com` pass.
+
+**What was not expected:** `product-vision.md` line 15 describes Dame as a **"solo technical
+founder"**, and *neither document mentions Joe Castelo or Juwan Robinson anywhere*, while
+`PROJECT_CONTEXT.md` §1 lists them as CEO and Shareholder. Both documents also state a "35+ table"
+backend against a current 70+.
+
+Joe has access to that drive and Adrian will. Publishing a founder narrative that erases two
+co-founders is not a staleness problem with a banner-shaped fix; it is worse than an empty folder.
+Escalated to the founder rather than uploaded, edited, or quietly skipped.
+
+**The distinction worth keeping: stale is a different problem from wrong-about-people.** Old
+numbers can be dated and published. A document that omits your co-founders cannot.
+
+→ `docs/product-vision.md` · `docs/prd.md`
+
+## [2026-08-23] Every defect was a scoping error, and every buggy version passed the tests
+
+**PR** #461 (`298465ce`) · Codex clean at round 5 · 63 tests, was 30 · deployed and verified live
+
+#460 recorded a latent bug and the founder said fix it now. The "0 shared signatures installed"
+warning fired on `totalSharedInstalled === 0` — a **domain aggregate**. With exactly one account
+holding shared identities that is indistinguishable from a per-user check, which is why nobody
+noticed. With two it is not: `dame@` could lose every shared signature and the run would stay
+silent because somebody else still installed one. **The warning would have gone quiet precisely
+as the feature grew.**
+
+Fixing it took five Codex rounds and seven defects, six of them introduced by my own fixes. The
+striking thing is that **not one was a wrong calculation** — every single one was a question of
+*what the condition was computed over*:
+
+- **P1, and the sharpest:** the first fix derived "expected" from the identities present *right
+  now*. Delete a user's send-as identities and the denominator falls to zero alongside the
+  numerator, so the run reads clean. **An expectation recomputed from current state is blind to
+  exactly the change it exists to catch.** I had written that limitation into a code comment and
+  shipped it anyway.
+- The Sheet ignored the baseline the warning used, so a removal warned as `0/3` and was *logged*
+  as plain `0 shared` — indistinguishable from a user who never had any. Warnings scroll away;
+  the Sheet is what remains, and it was the one telling the smaller truth.
+- Denials were counted across all non-primary addresses, so an unrelated 403 would blame the
+  scope for a signature that had actually been deleted.
+- A corrupt baseline was silently **overwritten**, erasing every high-water mark permanently.
+- Mixed causes reported as pure scope — grant the permission, watch the count improve, stop
+  looking.
+- A baseline-write failure killed the run log for a run whose signatures were already written.
+
+**What shipped:** `sharedExpectation_` = `max(present now, SHARED_BASELINE[user])`, called by
+both the warning and the Sheet so they cannot disagree; a persisted per-user high-water mark that
+never decreases on its own, because the drop *is* the signal; degraded users named as
+`user@ (written/expected)` and partitioned into `scope` / `other` / `mixed`, with a mixed user
+printed in both remediation lines.
+
+**Tests were checked by mutation, not by passing.** Reintroducing the aggregate semantics turns
+three red; reverting the denominator to live-only turns the two removal tests red; making the
+unset-baseline case unusable turns its test red. That step earned its keep here — **every buggy
+version passed the entire suite as it stood when it was written**. One test asserts the two
+callers of `sharedExpectation_` *agree* rather than testing each alone, because the Sheet defect
+was disagreement between two individually correct computations.
+
+**Deployed and verified**, not merely merged: `clasp push`, run clean with no warning, Sheet row
+`ok / 4 identities / 3/3 shared`, `SHARED_BASELINE` populated in script properties.
+
+**Not fixed, and stated as such:** a warning is not a gate. Delivery is still a line in Cloud
+Logging that somebody has to read.
+
+→ `docs/wiki/concepts/workspace-email-signatures.md` · #460, #461
+
+## [2026-08-23] Shared-mailbox signatures install, and the middle run is the one that proves it
+
+**PR** #460 (knowledge-sync, Codex clean at round 4) · no code change — this entry is a deploy
+and two configuration steps, both performed in Google's consoles
+
+Three days of corrections ended in a working system. `clasp push` landed #456, the founder
+approved `gmail.settings.sharing`, and `dame@`'s final run logged **`ok / 4 identities /
+3 shared`** — `info@`, `support@` and `appstore@` now send with the DragonCandy signature. The
+other three users report `ok / 1 identity / 0 shared`, which is correct: nobody else has a
+shared identity.
+
+**The sequence mattered more than any single step.** Grant the scope in the admin console;
+deploy; run and confirm **`PARTIAL / 1 identity, 3 denied / 0 shared`**; *then* set
+`SHARING_SCOPE_ENABLED=true`; run again. Both runs are in the log Sheet, and **the middle one is
+load-bearing.** It is the only observation that separates *the scope fixed it* from *the scope
+masked a loop that was still broken* — had the enabling run been done alone, the success at the
+end would have proven strictly less. Same reasoning as choosing "signatures appear in other
+people's mailboxes" over a success message as the original acceptance signal.
+
+**Order is not optional and the failure is total, not partial.** Requesting a scope the
+delegation does not carry fails the *entire* token exchange with `unauthorized_client` — every
+signature for every user, not just the shared ones. Hence console first, property second, and a
+switch that defaults off. About **seven hours** separated the grant (8/22 19:36 ET) from the
+enabling run (8/23 02:39 ET) with no propagation failure — a gap long enough to say nothing
+about how fast propagation actually is, so it is not evidence that a short wait suffices.
+
+**Merged is not deployed.** #456 was correct in the repo for a full day while production ran the
+broken code, because `clasp push` needed a re-auth. Nothing detected it — Apps Script has no CI
+joining the repo to the live script, and the only thing that surfaced it was going to push. The
+nightly run failed twice in that window on a bug that was already fixed.
+
+**Codex took five rounds on the docs, four real P2s, all one shape.** Granting the scope made a
+dozen present-tense sentences false at once, scattered across the README, the concept page, the
+wiki index and this log — including "0 shared is expected", which had been true two days earlier
+and had become the wrong thing to accept. The wiki page's own status paragraph has now been
+wrong twice in three days by the same mechanism. **A dated status line on a RAG-fed page is a
+liability with a short half-life**; date it, and distrust it past its date.
+
+**Left open:** shared identities exist on no account but `dame@` — extending them is per-person,
+and the granted scope now permits either route. Outlook for Windows remains untested and
+untestable; the rendering matrix is four-of-five.
+
+→ `docs/wiki/concepts/workspace-email-signatures.md` · #453, #454, #455, #456, #458, #460
+
+## [2026-08-22] The fix I documented wouldn't have worked, and following it broke production
+
+**PRs** #455 (knowledge-sync) and #456 (`b0f4e4de`) · Codex clean after one P1 · 30 tests (was 24)
+
+Yesterday's entry closes by saying shared-mailbox signatures need "the manual send-as route or a
+wider delegation scope", as if those were alternatives. They are not. Doing the manual route is
+what proved it:
+
+```
+403 PERMISSION_DENIED
+Missing required scope ".../auth/gmail.settings.sharing" for modifying non-primary SendAs
+```
+
+**Google's reference is not wrong, it is silent.** `settings.sendAs.update` does accept
+`gmail.settings.basic` **or** `gmail.settings.sharing` — for the **primary** identity. Every
+shared address is non-primary, and no page states the distinction. So adding the identity by
+hand yields an identity this installer still cannot write to, and **both** routes cost the same
+scope. That scope is not a formality: it lets the service account decide who may send mail as
+what, for every user in the domain, off a key living in a script property. It is a founder
+decision, not an implementation detail.
+
+**The discovery cost a live regression, which is the part worth remembering.** Three send-as
+identities were added to `dame@` on 2026-08-21 on the strength of the wrong claim. From that
+moment the nightly 2am run threw on the first unwritable identity and aborted the whole user —
+so it logged `ERROR` and stopped refreshing even his own working primary signature. A wrong
+claim about permissions did not merely fail to add a feature; it removed one that worked.
+
+**#456 fixes both halves.** The install loop now isolates per identity: a missing-scope 403 is
+classified (`isMissingSharingScope_`), counted as `denied`, and the loop continues — while four
+unrelated error shapes are deliberately *not* swallowed, pinned by tests. `installAllSignatures`
+gained a **`PARTIAL`** status distinct from both `ok` and `ERROR`, so "wrote what it could, and
+here is what it refused" stops reading as success or as failure.
+
+**Codex's P1 was the one that mattered, and it was about a doc being executable.** The runbook
+said "add `gmail.settings.sharing` to the delegation" — but the JWT hardcoded
+`gmail.settings.basic`, so an admin would grant the scope, re-run, get the identical 403, and
+have nothing to look at. Now `requestedScopes_()` reads a `SHARING_SCOPE_ENABLED` script
+property. It defaults **off**, and that default is load-bearing: requesting a scope the
+delegation does not carry fails the **entire** token exchange with `unauthorized_client` — not
+the shared identities, *every* signature for *every* user. Hence an order that is not optional
+(console first, property second), stated in the README, the spec, and the error message itself.
+
+**The durable lesson took three rounds to land, and only the third cost anything.** This work
+asserted, in order: *only a Groups conversion breaks shared signatures* (wrong — aliases were
+never send-as identities); *no API can create a send-as identity* (wrong — `sendAs.create`
+exists for delegated service accounts); *the manual route needs no new permissions* (wrong —
+non-primary writes need `sharing`). The first two were caught by reading and by review. **The
+third was caught only by running it.** Reviews catch claims that contradict something already
+written down; they cannot catch a claim that is merely untested and plausible. *A claim that
+something is impossible — or that something is free — is itself a claim, and the only instrument
+that settles it is execution.* Same family as the `RCPT TO` probe and the "edge secrets aren't
+listable" myth that cost this project two days.
+
+**The scope decision was made the same day.** `gmail.settings.sharing` was granted on
+2026-08-22 — the delegation client now carries both scopes, verified on the list page with
+`basic` intact (the edit dialog appends a row rather than replacing, so confirming `basic`
+survived is not a formality). `SHARING_SCOPE_ENABLED` was **deliberately left unset**, for a
+reason worth its own line: **a granted scope is not immediately a usable one.** Delegation
+changes propagate on Google's schedule, and flipping the property inside that window produces
+the identical `unauthorized_client` total outage as doing the two steps out of order. The code
+that reads the property is undeployed anyway, so there was nothing to gain from racing it.
+
+**Left open, honestly:** #456 is merged and **not deployed** — `clasp push` is blocked on a
+`clasp login` reauth (`invalid_rapt`), so the live Apps Script still runs the pre-#456 code,
+requests only `basic`, and `dame@` errors again every night until it lands. Then, in order:
+confirm the run reports `PARTIAL` with a non-zero denied count, set the property, re-run.
+Outlook for Windows remains untested and untestable.
+
+→ `docs/wiki/concepts/workspace-email-signatures.md` · #455, #456
+
+## [2026-08-22] Landing becomes one dark video screen, and a safety margin the redesign silently ate
+
+**Branch `feat/landing-cinematic-single-cta` — UNMERGED.** Blocked on written permission from the
+two restaurants (ABB, Uncle Rocco) whose footage the reels use. This entry records a finished
+build, not a live change — dragoncandy.io still serves the light, two-door "Human-driven.
+AI-assisted." landing (PR #293) until this merges.
+
+**Amended 2026-08-23 — the footer stopped being white, and that exposed an iOS bug.** The founder
+saw the shipped page and said the white band across the bottom could not stay. The footer is now
+transparent with no top border, and `RotatingBackdrop` moved from `LandingHero` up to the page
+wrapper so the footage runs edge to edge behind it; `LandingHero` paints no background at all.
+Legibility was measured, not assumed: against the brightest frame in the footer's band across all
+twenty encodes, worst case is **7.42:1** for `text-white/70` over the scrim's heaviest stop
+(`to-landing-grape/95`), versus 4.5:1 required for normal-size text — several reels hit literal
+pure white in that band and still clear it.
+
+Removing the white footer then revealed a **second** white band, on iOS only, that had been there
+all along. `capacitor.config.ts` set `ios.contentInset: 'always'`, under which WebKit shrinks
+`documentElement.clientHeight` by the top safe-area inset while `innerHeight`, `100vh` and `100dvh`
+all keep reporting the full height. Measured inside the real WKWebView (iPhone 17 Pro simulator):
+`innerHeight` **840**, `documentElement.clientHeight` **778**, `safe-area-inset-top` **62** — and
+778 = 840 − 62 exactly. Content sized to `100dvh` overhung the document box by ~96pt, the
+webview's own white background showed through beneath it, and it **clipped the footer's
+Terms/Privacy/Help links**. Fixed with `contentInset: 'never'`: the app already pays back
+`env(safe-area-*)` in CSS everywhere it matters, so insetting natively too was two mechanisms
+solving one problem and disagreeing on the answer. Afterwards all four numbers agree at 874, the
+insets still report 62/34, and the light `/terms` page is unchanged. **The bug was live for every
+page in the app** — `AppShell` is `h-screen` — and invisible only because every other surface is
+white. Changing the palette is what surfaced it. Not reproducible in any browser or emulator.
+
+Two findings left for the founder rather than fixed: **five of the ten reels carry burned-in
+captions** from their original social posts ("What I mean by: 'Wanna grab brunch?'", "This and an
+iced latte.", "THE COAL OVEN", "Steak Frites", and a stitched-in meme), and the worst of them sits
+where the slogan sits; the desktop 16:9 crops remove two but keep four. And the reels are **36 MB
+inside a 54 MB iOS binary** — two-thirds of the app is a landing page a signed-in user never sees.
+
+16 commits, 129 files, +2353/−3894. The public landing collapses from six scrollable sections plus
+a contact form to **one screen**: a fixed logo header, a full-bleed video hero (ten real ABB +
+Uncle Rocco reels, rotating, curated only — no user uploads), an eyebrow, a slogan, and a single
+"Get started" CTA. ~20 files of dead code deleted outright, not hidden behind a flag: the six old
+sections, `HeroDoors`, `VideoSlot`/`MediaSlot`, `heroRole.ts`, the DragonFeed dynamic-clip merge
+(`useLandingBackdropPlaylist`), and — once its only producer was gone — `pendingBrief`.
+
+**The role question wasn't rebuilt, it moved.** The old hero asked "Business, Creator, or Brand?"
+on the landing itself. The new hero asks nothing; its one CTA goes to `/auth?mode=signup`, which
+already has a `role-selection` step for a missing `?role=`, built on a prior branch for an
+unrelated reason. Deleting the on-landing doors cost zero new code — it just relocated the question
+to a screen already built to ask it.
+
+**Two encodes per reel, chosen by viewport orientation — and proven live on both surfaces, not
+just written to spec.** Source footage is 720×1280 portrait. Desktop gets a per-clip 16:9 crop
+whose window (`y` 300–650 across the ten clips) was chosen by **watching each clip**, not a blind
+centre crop — food framed low wants `y≈550`, a face or sign held high wants `y≈300`; a centre crop
+(`y=437`) routinely frames ceiling or tablecloth instead of the subject. Phones get the uncropped
+as-shot file. Verified in-browser: desktop served the `-wide` encodes; a 390×844 emulated device
+served the portrait ones.
+
+**Every reel capped at 12 seconds, and the cap's own justification hid a margin bug the mandatory
+second reviewer caught.** `RotatingBackdrop`'s `MAX_DWELL_MS` (15s) force-advances a clip that
+neither fires `ended` nor `error` — a backstop against an undecodable-but-silent codec or a
+mid-play stall, sized to comfortably outlast a healthy ~6–10s clip. The 12s cap was meant to keep
+every clip well inside that ceiling, but the watchdog **armed the instant a layer became active**
+(told to play), not when playback actually **started** — against a 12s clip that leaves only ~3s of
+margin, which slow-connection startup buffering alone can exceed, force-advancing a clip that was
+merely slow to start, not broken. Codex flagged it as a P2 (commit `c0b78766`). The fix keeps
+arming on layer-active (still the correct backstop for a clip that genuinely never starts) and
+additionally resets the timer on the layer's `playing` event, so a slow-starting clip gets its full
+15s dwell measured from real playback start. **The tempting one-line alternative — arm only on
+`playing`** — would have been strictly worse: a clip that never fires `playing` at all would then
+never arm any timer, turning a bounded 15s stall into a permanent freeze. The transferable rule: a
+mitigation's timing margin is a claim about its inputs, and it needs re-checking every time an
+input it depends on (here, clip length) changes — dropping the assumed length from ~6–10s to a
+strict 12s cap silently consumed the margin the original 15s figure was sized against.
+
+**The feature flag was deleted, not left off-by-default.** `LANDING_VIDEO_BACKDROP_ENABLED` made
+sense when video was optional set-dressing on a working light hero. Here the video **is** the
+page — an "off" state would ship a blank homepage, which is an outage wearing a kill-switch
+costume, not an actual one. The real fallback (no clips / a failed clip / `prefers-reduced-motion`)
+is `RotatingBackdrop`'s own poster-still path, confirmed by observation: with reduced motion
+forced, zero `<video>` elements mounted and the network log showed no media requests.
+
+**A whole-branch review, run after every per-task review had already passed, found three defects
+no single task's review could see — each was a mismatch BETWEEN files, not a bug within one**
+(commit `73948f0f`): the page **scrolled** despite being built as one screen (a `min-h-screen`
+wrapper stacked with a sticky header and a `min-h-[100dvh]` hero — the exact `vh`-family unit the
+design system forbids for bottom-anchored UI — fixed with an absolute header + `flex-1` hero +
+`shrink-0` footer); a **white cold-load flash** because both surfaces that paint before the now-dark
+landing renders (`App.tsx`'s Suspense fallback, `index.html`'s prerendered splash) were still
+hard-coded white from the prior light design; and a **spec-vs-plan disagreement that read as a
+contradiction until correctly scoped** — the spec said "thin white footer," the plan said keep
+`bg-landing-grape`, and both were right because they meant different elements (the footer bar vs.
+the page wrapper behind it). Spec won on the footer itself.
+
+**`generate-anonymous-brief` is now orphaned and was deliberately left deployed, not undeployed.**
+Its only caller — the landing's brief-preview flow — was deleted with the six sections; it still
+spends real Anthropic tokens per call if reached directly. Recorded as a cost-visibility follow-up
+in the spec rather than fixed here, since undeploying is a separate decision from a landing rebuild
+and the function costs nothing while nothing calls it.
+
+**The design spec's brightest-frame-contrast check (§7) has been run.** Method: all ten reels
+sampled at their brightest sampled frame in the vertical middle band — where the scrim is thinnest
+(40%) and the slogan sits — composited over `landing-grape`, then scored by WCAG contrast ratio.
+Worst case across the whole library: white 6.24:1, pink (`#F9BFD6`) 4.00:1, mint (`#7BE3C0`)
+4.04:1; tightest clip is `abb-montauk-monday` (a bright ocean frame). The slogan is large display
+text (3.0:1 required) — every clip clears it with margin, and white also clears the stricter
+4.5:1 normal-text bar. Caveat: only the PORTRAIT encodes were sampled (the emulated viewport used
+was portrait); the desktop wide crops are a different subset of the same footage and remain
+unsampled. Footage permission from ABB and Uncle Rocco has still **not** been obtained; that gates
+the merge, not the build.
+
+`docs/DESIGN_SYSTEM.md` and `docs/runbooks/landing-video-backdrop-kit.md` were corrected in-branch
+(commit `40d525c3`) to describe the dark, video-led landing; this entry does not duplicate that
+work. Spec: `docs/superpowers/specs/2026-08-22-landing-page-cinematic-single-cta-design.md`. Plan:
+`docs/superpowers/specs/2026-08-22-landing-cinematic-single-cta.md` (ten tasks, tree green after
+each).
+→ `docs/wiki/concepts/landing-cinematic-single-cta.md` · `feat/landing-cinematic-single-cta`
+
 ## [2026-08-21] Wave 1 went live, and its first run disproved the documentation it shipped with
 
 **PRs** #453 (merged 11:35 UTC) and #454 (merged 21:00 UTC) · Codex clean at round 4 ·

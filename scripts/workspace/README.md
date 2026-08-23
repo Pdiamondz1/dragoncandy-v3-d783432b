@@ -21,6 +21,15 @@ domain, indefinitely**. That is standard practice for this task and it is also
 a real standing grant. Its private key lives in Apps Script *script properties*
 and must never be committed to this repo.
 
+**As of 2026-08-22 that grant is wider than the minimum.** DragonCandy's
+delegation carries `gmail.settings.sharing` in addition to
+`gmail.settings.basic`, which means the account can also set **who may send
+mail as which address, for every user in the domain** — not merely rewrite
+signature HTML. That was a deliberate founder decision taken to make
+shared-mailbox signatures possible at all; it is reversible by removing the
+scope (see the ordering rules below), and it is the honest answer to the
+question in the next paragraph.
+
 If a new engineer asks "what can that service account do?" — this paragraph is
 the answer.
 
@@ -51,7 +60,13 @@ Do not install a single signature until this prints `image/png`.
 
        https://www.googleapis.com/auth/gmail.settings.basic
 
-   This is the **only** scope the delegation grant needs. The directory read
+   This is the only scope needed to sign **personal** mailboxes, which is what
+   a fresh setup does. Signing **shared** addresses additionally needs
+   `gmail.settings.sharing` — see "Shared identities" below, and add it only
+   once you actually want that. **DragonCandy's live delegation carries both
+   as of 2026-08-22**; this step describes the minimum, not our current state.
+
+   The directory read
    (`AdminDirectory.Users.list` in step 4) does not go through this JWT at
    all — it uses the Admin SDK Directory advanced service under the Apps
    Script project owner's own authorization, a separate auth path that needs
@@ -70,7 +85,9 @@ Do not install a single signature until this prints `image/png`.
    | `SA_CLIENT_EMAIL` | the service account's client email |
    | `SA_PRIVATE_KEY` | `private_key` from the JSON key, newlines as `\n` |
    | `LOG_SHEET_ID` | id of the run-log Sheet in `06 · Brand` |
-   | `SHARING_SCOPE_ENABLED` | leave unset. Only `true` after the delegation carries `gmail.settings.sharing` — see below, the order matters |
+   | `ALERT_EMAIL` | comma-separated addresses to email when a run has a finding. **Unset means nobody is told** — the run logs a warning saying so |
+   | `SHARED_BASELINE` | **written by the script, do not hand-edit casually.** JSON high-water mark of shared signatures installed per user, e.g. `{"dame@dragoncandy.com":3}`. It is how a *removed* send-as identity is still detected as missing. Clear a user's entry to accept a deliberate removal, otherwise it warns nightly |
+   | `SHARING_SCOPE_ENABLED` | **`true` since 2026-08-23.** Both steps below are done and shared-mailbox signatures install. Setting it `false` stops *future* shared writes — it does **not** remove signatures already installed; see "Turning it back off" |
 
 5. **Build, then set up clasp, then push.**
 
@@ -111,7 +128,7 @@ Do not install a single signature until this prints `image/png`.
 8. **Add the trigger** — Triggers -> Add trigger -> `installAllSignatures`,
    time-driven, day timer, 2am-3am.
 
-## Shared identities install ZERO signatures today, and that is expected
+## Shared identities: what installs, and what it took to get there
 
 **An alias is not a send-as identity.** This is the single most important thing
 to know about the shared-identity branch, and an earlier revision of this file
@@ -129,13 +146,32 @@ recording which ones exist, and an address missing from it is signed as
 *personal*. Listing one early is inert; listing one too few is a wrong
 signature on the day it is created.)
 
-So the current, correct behaviour is: `installAllSignatures()` reports
-**0 shared signatures installed**. That was observed on the first real run
-(2026-08-21). It is not a bug in this script and not a permissions problem —
-there is simply nothing for it to match.
+On the first real run (2026-08-21) `installAllSignatures()` reported **0 shared
+signatures installed**, and at that moment it was not a bug and not a
+permissions problem — there was simply nothing to match.
 
-**To make shared signatures install**, the address has to become a send-as
-identity. There are two routes, and we are currently on neither.
+**That is no longer the state, so do not diagnose from it.** Three of those
+addresses — `info@`, `support@`, `appstore@` — were added as real send-as
+identities on `dame@` on 2026-08-21, so they now *do* appear in his `sendAs`
+list and the shared branch *does* match them. What happens next depends
+entirely on which code is deployed:
+
+| Deployed code | `SHARING_SCOPE_ENABLED` | What `dame@` reports |
+|---|---|---|
+| pre-#456 | n/a (not read) | `ERROR` — one 403 aborts the whole user, so even his personal signature stops refreshing. Observed 8/21 and 8/22. |
+| #456+ | unset / `false` | `PARTIAL`, 3 denied — personal signatures written, shared ones refused cleanly. Observed 8/23. |
+| #456+ | `true` | `ok`, shared signatures installed. **This is the live state as of 2026-08-23** — logged `ok / 4 identities / 3 shared`. |
+
+All three rows were observed in that order, and they are in the log Sheet.
+
+So `0 shared` is only the expected answer for a user with **no** shared
+identities — which is everyone except `dame@`. For him the expected answer is
+now **`4 identities`** with **`3/3 shared`**, and anything less means something
+regressed. (The shared column changed format on 2026-08-23, from a bare count to
+`written/expected` — rows logged before that read `3 shared`.)
+
+**To make shared signatures install** for anyone else, the address has to
+become a send-as identity on their account too. There are two routes.
 
 **Both routes need the `gmail.settings.sharing` scope. Read this before
 planning around either one.** An earlier version of this file said Route A was
@@ -187,8 +223,12 @@ re-run, get the identical 403, and have no idea why.)
 1. **Admin console first.** Security → Access and data control → API controls →
    Domain-wide delegation → edit the existing client → add
    `https://www.googleapis.com/auth/gmail.settings.sharing` alongside
-   `gmail.settings.basic`.
+   `gmail.settings.basic`. **DONE 2026-08-22** — client
+   `117869070719843760682` now shows both scopes, verified on the list page.
+   (The edit dialog appends a row rather than replacing; check `basic` is
+   still present before authorizing, because losing it breaks everything.)
 2. **Then the script property.** Set `SHARING_SCOPE_ENABLED` to `true`.
+   **DONE 2026-08-23.**
 
 **Do not reverse these.** Asking for a scope the delegation does not carry
 fails the *entire* token exchange with `unauthorized_client` — not just the
@@ -196,22 +236,202 @@ shared identities, but every signature for every user. If that happens, set
 `SHARING_SCOPE_ENABLED` back to `false` and everything returns to working
 immediately; the error message says so too.
 
-To undo the whole thing later: set the property to `false` first, then remove
-the scope from the delegation. Same rule, reversed.
+**A granted scope may not be an immediately usable one.** Google's domain-wide
+delegation changes propagate on their own schedule, so treat "granted in the
+console" as the start of a window rather than a green light. The safe sequence
+is: push the code, run `installAllSignatures()` and confirm it reports
+`PARTIAL` with a non-zero denied count (which proves the `basic` path still
+works), *then* set the property, *then* run again. If that second run throws
+`unauthorized_client`, propagation has not finished — set the property back to
+`false`, wait, retry.
+
+**That sequence was followed on 2026-08-23 and both runs are in the log Sheet**,
+which is why it is written down: `PARTIAL / 1 identity, 3 denied / 0 shared`,
+then `ok / 4 identities / 3 shared`. About **seven hours** elapsed between the
+console grant (2026-08-22 19:36 ET) and the enabling run (2026-08-23 02:39 ET),
+with no `unauthorized_client`. That gap is long enough that it says **nothing**
+about how quickly propagation completes — do not read it as "40 minutes is
+enough" or any other short interval. If you need to move faster, the `PARTIAL`
+run is your instrument: it tells you the narrow path works, and a failed
+enabling run after it is diagnosable as propagation rather than breakage.
+
+**Keep the two-run shape if you ever redo this.** The `PARTIAL` run is not a
+formality: it is the only observation that separates "the scope fixed it" from
+"the scope hid a still-broken loop". Skip it and a success at the end proves
+strictly less.
+
+### Turning it back off — and what that does not do
+
+To undo: set `SHARING_SCOPE_ENABLED` to `false` first, *then* remove the scope
+from the delegation. Same ordering rule, reversed.
+
+**That stops future shared-identity writes. It does not remove the signatures
+already installed.** They live on the sendAs records in Gmail, not in this
+script, so after disabling the flag `info@`, `support@` and `appstore@` keep
+sending the signature they last received, indefinitely, while every subsequent
+run reports `PARTIAL` with a denied count. An operator who reads "disabled" as
+"removed" will be wrong about what is going out.
+
+To actually remove them, do one of these while the scope is still granted and
+the flag still `true`:
+
+- **In bulk, via the API** — PATCH each identity's `signature` to an empty
+  string through the same `settings/sendAs/{email}` call the installer uses.
+  There is no helper for this in `Code.gs`; it would need writing. This is the
+  reliable route, because it targets exactly the field the installer wrote.
+- **Delete the send-as identity** — Gmail → Settings → Accounts and Import →
+  "Send mail as" → *delete*. Blunt (the address stops being usable as a sender)
+  but unambiguous, and it stops the installer matching it.
+- **By hand in the UI** — Gmail → Settings → **General → Signature**, *not* the
+  "edit info" dialog on the send-as address, which only covers display name and
+  reply-to. **Caveat: this path is unverified.** Gmail's General tab manages
+  named signatures with per-address defaults, and the exact correspondence
+  between those and the `sendAs[].signature` field this script writes has not
+  been checked on a real account. Confirm before relying on it, or use the API
+  route above.
+
+Order matters here too: revoke the scope first and **this automation** can no
+longer clear them. That is a limit of the tooling, not of Gmail — the mailbox
+owner can always clear a signature by hand in Gmail settings. But it means a
+scripted cleanup becomes impossible, so clear first, revoke second.
 
 An earlier version of this file said no API could create a send-as identity.
 That was wrong, and Codex caught it. Then it said the manual route was
 permission-free. That was also wrong, and only running it caught that one.
 
-The same constraint applies, for the same reason, if these addresses are ever
-converted to real Google Groups (corporate-setup spec, decision 9). A Group is
-not a send-as identity either. The conversion would therefore change nothing
-about this branch's behaviour, because it is already installing nothing —
-but it would remove the aliases, so anyone who *had* completed the manual
-send-as step would lose it.
+**If these addresses are ever converted to real Google Groups** (corporate-setup
+spec, decision 9), the cost is now concrete rather than hypothetical. A Group is
+not a send-as identity either, and the conversion removes the aliases the three
+working send-as identities were built on. So `info@`, `support@` and `appstore@`
+would stop being send-as identities on `dame@`, their signatures would go with
+them, and the run would drop from `4 identities` / `3/3 shared` back to
+`1 identity` / `0 shared`.
 
-The installer warns when it installs zero shared signatures, so this stays
-visible rather than silent.
+*An earlier revision of this paragraph said the conversion "would change nothing,
+because it is already installing nothing." That was true on 2026-08-21 and stopped
+being true on 2026-08-23.* Re-cost the conversion against the live state, not
+against this sentence.
+
+**The zero-shared warning is per user** (`sharedRegressions_` in `Code.gs.js`).
+A user who has shared send-as identities and did not get all their signatures is
+named as `user@ (written/expected)`, and that fires regardless of what the rest
+of the domain installed. The log Sheet's shared column is `written/expected`
+(`3/3 shared`) for the same reason: `0 shared` is correct for a user with none
+and alarming for a user with three, and a bare count cannot tell those apart.
+
+**Where "expected" comes from matters, and this is the subtle part.** It is
+`max(identities present now, SHARED_BASELINE[user])` — computed by
+`sharedExpectation_`, which both the warning and the Sheet column call, so the
+two can never disagree about what expected means. Using only the live count
+would make the check blind to the worst case — delete a user's send-as
+identities and the live count falls to zero alongside the written count, so the
+run looks clean. `SHARED_BASELINE` is a per-user high-water mark of shared
+signatures successfully installed, and it **never decreases on its own**: a drop
+is the signal, so letting the baseline follow it down would erase the evidence
+one run later and reduce a standing regression to one warning nobody was awake
+for. To accept a deliberate removal, clear that user from the property.
+
+**If the property is unreadable, the script leaves it alone.** Malformed JSON,
+or JSON that is not an object, turns regression detection off for that run and
+says so in the log — but the stored value is *not* overwritten. Overwriting it
+with this run's counts would discard every high-water mark, and if identities
+were already missing their expectations would be gone permanently and the next
+run would look healthy. Failing to read costs one run of detection; failing to
+preserve costs it forever.
+
+Two states, and the warnings do not overlap:
+
+- **Someone is degraded** → named per user, **partitioned by cause**. Users whose
+  identities returned a missing-scope 403 get the two-step scope fix; users who
+  failed for any other reason get a "this is NOT the known permissions gap"
+  pointer instead. Partitioned per user rather than per run, because a 403 on one
+  account must not decide the remediation printed for another — and the denials
+  counted are shared-identity denials only, since a user may hold an unrelated
+  non-primary address that 403s for the same reason.
+  **A user can appear in both lines.** If part of what is missing was refused for
+  scope and part was not, the cause is `mixed` and both remedies are printed:
+  otherwise an operator grants the scope, sees the count improve, and stops
+  looking while signatures are still missing.
+- **Nobody has any shared identity at all** → the alias-is-not-a-send-as-identity
+  explanation. Correct and non-alarming on a fresh domain.
+
+History, since both errors were scoping errors and the shape recurs: the check
+was domain-aggregate until 2026-08-23 (`if (totalSharedInstalled === 0)`), which
+equals a per-user check only while exactly one account holds shared identities.
+The first attempt at fixing it then derived "expected" from the live sendAs list
+and so could not see a removal at all. Both were caught in review, and both
+passed every test that existed when they were written.
+
+### The alert — because a warning is not a gate
+
+Everything above improves what the warning *says*. None of it makes anyone read
+it, and a line in Cloud Logging is seen only by someone who goes looking. So a
+run with a finding also **emails** `ALERT_EMAIL`.
+
+- **It fires on three things**: users who failed outright (no signature written
+  at all), users where an individual identity write failed, and users who are
+  degraded (shared signatures missing). The subject carries all three counts;
+  the body names every user, the written/expected numbers, and the cause.
+  The middle category exists because per-identity isolation means a failure on
+  someone's **own primary signature** no longer throws — without it, a user
+  whose signature silently stopped updating would produce no alert at all.
+- **It is silent on a clean run, on purpose.** A nightly "all fine" trains its
+  recipient to filter the thread, and then the one that matters is filtered too.
+- **`ALERT_EMAIL` unset means nobody is told**, which is worse than it sounds
+  because everything else still looks normal. The run logs a warning saying the
+  alert had somewhere to go and nowhere to send it.
+- **A standing regression emails every night** until it is fixed or the
+  `SHARED_BASELINE` entry is cleared. That is deliberate: the alternative is
+  alerting on the transition only, and a transition alert missed at 2am is gone.
+- **It cannot fail the run.** The signatures are already written by the time it
+  sends; a mail error is caught and logged. Trading the run log for a
+  notification would be the wrong way round.
+
+**Mail is sent by MailApp as the SCRIPT OWNER**, not by the service account —
+nothing to do with the domain-wide delegation, and it does not touch anyone
+else's mailbox.
+
+#### Proving the alarm rings: `sendTestAlert()`
+
+Run it from the editor's function dropdown. It emails whatever `ALERT_EMAIL`
+currently holds and writes nothing else — no signature, no baseline, no row in
+the log Sheet.
+
+It exists because **a clean run is silent**, so the delivery path is exercised
+only by a run that has a finding — which, if everything works, should be rare.
+That can leave it untested for months, and an alarm nobody has heard ring is
+indistinguishable from one that does not work. Run it after changing
+`ALERT_EMAIL`, after granting a new OAuth scope, and after any `clasp push` that
+touches the manifest.
+
+It goes **through `sendRunAlert_`**, not around it. A test that builds its own
+`MailApp` call would prove MailApp works, which was never in doubt; what is in
+doubt is whether *this* script's authorization, *this* property and *this*
+recipient list deliver. If it ever stops calling `sendRunAlert_`, it stops being
+a test.
+
+It **throws** where a real run only warns — on no usable recipient, and on a
+refused send. `installAllSignatures` must not die over a notification; this
+function's only job *is* the notification, so those are failed tests rather than
+footnotes. That second case matters most: `sendRunAlert_` swallows delivery
+errors by design, so without the check a broken mail path would finish **green**
+and read as a pass.
+
+> **A green execution is not the result — the mail arriving is.** All the
+> function can prove is that the send was *accepted*; mail can still be
+> filtered, spam-foldered or ignored. Go and look in the inbox. Treating the
+> green run as the answer rebuilds the exact "nobody was told" failure this
+> whole section exists to fix.
+
+> ⚠️ **Deploying this re-triggers authorization.** It adds the
+> `script.send_mail` scope to the manifest, and Apps Script invalidates the
+> existing grant when the scope set changes. After `clasp push`, **open the
+> editor and run `installAllSignatures` once by hand** to re-consent. Until you
+> do, the nightly trigger fails with an authorization error — a failure mode
+> that looks nothing like a signature problem.
+
+Still true, and not fixed by any of this: an email is a stronger nudge than a
+log line, but it is still not a gate. Nothing blocks on it.
 
 ## Editing a signature
 

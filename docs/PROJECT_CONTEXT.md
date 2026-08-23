@@ -103,6 +103,85 @@ holds no Toast credentials. See §6.
 
 ### In flight
 
+- **Retrieval quality measured, not assumed** — chunking proved the text was reachable; it did not
+  prove Donny *finds* it. `npm run eval:rag` now answers that against **53 real queries** taken from
+  `donny_tool_executions` (every internal search Donny has ever run — they predate the work and
+  could not be tailored to it). **Controls run first**: 8 out-of-corpus queries score 0.164–0.280
+  against real queries' 0.437–0.632, **0 of 8 above even the weakest real one**, so the rest of the
+  report means something. **Chunking did not break what worked** — the old window's top document is
+  still top for **43/53**, and none fell out of top-10. **k=10 stays, now on evidence** (recall 65%
+  at k=5 vs 91% at k=10 — dropping to 5 loses a third of the relevant material), replacing the
+  arithmetic guess it was set by. The judge-free measure: **12.3%** of k=10 hits are text past the old
+  24,000-char cut, on **32/53** queries. **Three method failures recorded as the durable part:**
+  choosing k from similarity alone *failed outright* (0.404 at rank 20 against a 0.280 ceiling — in
+  a one-company corpus there is no cutoff), and the first judging pass **truncated the evidence
+  while measuring a truncation bug** (22 of 84 "not relevant" calls hid the query term past a
+  340-char excerpt; correcting it moved precision@12 32% → 42%), and the recall metric itself
+  counted distinct *documents* where production returns *chunks*, crediting results Donny never
+  receives — with a unit test pinning the error in as many words. Limits are written down rather
+  than buried: 7 labelled queries of 53, labels self-produced though blind, and no strict old-vs-new
+  A/B because the function now refuses to emit a single 24,000-char embedding.
+  → `docs/wiki/concepts/rag-retrieval-evaluation.md` · `feat/rag-eval-harness`
+- **A third of Donny's internal corpus was never embedded** — `sync-internal-docs.mjs` sliced every
+  document at 24,000 chars under a comment reading *"embed input is truncated; full_content is not"*,
+  which is true and describes the **wrong consumer**: `full_content` goes to `internal_docs`, and
+  `donny-orchestrator/rag.ts` returns `donny_knowledge.content` on both its paths and never reads it.
+  Prod, 2026-08-23: **723,128 of 2,168,995 chars (33%) reached Donny in no form at all**, 14 rows
+  pinned at exactly 24,000, unchanged since 2026-06-11 — `DESIGN_SYSTEM.md` cut mid-sentence in the
+  safe-area rule, dropping every design rule after it including three written that morning. **Silent
+  in every signal the run produced** (`updated=142 errors=0`, `updated_at` moved); found only by
+  following the `knowledge-sync` skill's own rule to verify by CONTENT. Now chunked at ~6k on heading
+  boundaries with chunk 0 keeping the unsuffixed `source_id` (so no existing row is orphaned),
+  `chunk_base` for exact sibling lookup, and stale siblings deleted when a document shrinks; reading
+  got cheaper too (one retrieval could push 120k chars, so `search_internal_knowledge` went 5 → 10
+  rows and still sends less). `SHIPPED_LOG.md` is **excluded and printed**, not silently truncated.
+  Chunking runs **server-side** because there are two producers and `wiki-merge-pr`'s
+  `_shared/wiki-sync-payload.ts` carries that invariant in its own header and still broke it — script-
+  side chunking would have served a truncated head spliced onto a stale tail. Six Codex rounds,
+  five real findings, all mine; clean at round 7. **Deployed, merged and verified on prod 2026-08-23** (#474, #475): 144 documents
+  -> 401 rows, `errors=0`, a re-run idempotent at `inserted=0 updated=401`, and the content probe
+  that returned zero rows that morning now resolving. **Retrieval quality since measured** — see
+  the evaluation entry below. Was: `donny-knowledge-sync`
+  must be **deployed before the branch merges** (the new script omits `content` for the unindexed
+  document, which the old function 400s, failing its whole batch); then push, merge, run the sync and
+  re-probe by content. → `docs/wiki/concepts/rag-document-chunking.md` · `fix/rag-doc-chunking`
+- **Landing rebuilt as one dark, full-bleed cinematic screen** — logo, eyebrow, slogan, single
+  "Get started" CTA over **eight** real rotating ABB + Uncle Rocco reels (this line said *ten*
+  until 2026-08-23), replacing the six-section light page, the contact form and the video-backdrop
+  feature flag. The footer is **transparent** — it shipped as an opaque white band, the founder
+  overruled that on sight, and removing it exposed an iOS-only white band underneath that had been
+  live for every page in the app: `contentInset: 'always'` shrinks `documentElement.clientHeight`
+  by the top safe-area inset (840 vs 778 measured in a real WKWebView) while viewport units keep
+  reporting the full height, so `AppShell`'s `h-screen` overhung the document box. Closed by
+  `contentInset: 'never'` — the CSS already pays back `env(safe-area-*)` everywhere. Five reels
+  also carried burned-in captions from their original posts; three were trimmed to a clean window
+  and two dropped, which re-brightened the library enough to force the scrim's middle stop 40% →
+  60% to keep the accent words above 3.0:1. Library 36 MB → 16 MB, iOS binary 54 MB → 39 MB.
+  Verified on desktop, mobile (both orientations) and the iOS shell on simulator; Codex clean.
+  `docs/DESIGN_SYSTEM.md` and `docs/runbooks/landing-video-backdrop-kit.md` updated to match.
+  **MERGED 2026-08-23 (#459, `2c87ba99`) and live** — this line read "**UNMERGED** — blocked on
+  written permission from ABB and Uncle Rocco" until the founder confirmed permission.
+  **Adrian Vella's feedback on the shipped page then found a real bug I had refuted in writing.**
+  "The screen jumps if I scroll up or down" on mobile was live on **every page in the app**:
+  `body{height:100%;overflow-x:hidden}` computes `overflow-y` to `auto`, so **body** — not `<html>`,
+  not `<main>` — is the document's scroll container, and `AppShell`'s `h-screen` (`100vh` = the
+  URL-bar-**collapsed** height on iOS Safari) overhung it by ~60–90px; scrolling that gap collapsed
+  the bar, grew `100dvh`, and resized the page mid-gesture. This is the Codex finding on #459 that
+  I tested and talked the founder out of: the probe measured `main` (**not** the scroller) in an
+  emulator (**no URL bar, so `100vh === 100dvh` and the gap is structurally zero there**). Forced
+  control: body 833/753 → `scrollTop` 80, while html/#root/shell/main all read overflow 0 and
+  `window.scrollY` stays 0. **Durable rule: when a probe returns zero, prove it could have returned
+  non-zero.** Closed at `AppShell` with `DashboardLayout` tracking it (the regression I had cited as
+  the reason not to fix it — answered by fixing both, not neither), pinned by a text assertion since
+  jsdom has no layout engine. `DESIGN_SYSTEM.md`, the wiki index and §8's "paired refutation" all
+  asserted the false premise and are corrected in place. Shipped with it: an underlined "Log in"
+  under the CTA in the **pale** mint `#B8ECDA` (small text needs 4.5:1; the slogan's `#7BE3C0`
+  measures 3.91 at p90 there against 4.62 — *the "too pale for video" note is about headlines and
+  inverts for small text*), and a "Learn more" pill pointing at a **new `/how-it-works`**, built
+  because the rebuild had deleted the only page explaining the product. **Pending:** the iOS-Safari
+  half is unverifiable in any browser, emulator or simulator — it needs a real phone, and the
+  residual candidate if it persists is rubber-band overscroll (`overscroll-behavior-y`), left out
+  as an app-wide behavioural change. → `feat/landing-adrian-feedback` · #459
 - **Google Workspace corporate setup (Wave 1)** — the company's own Workspace: two shared drives,
   nine Google Groups replacing personal aliases, brand assets, and email signatures that install
   themselves. **MERGED (#453, `d83fcbe3`, 2026-08-21) and the admin half is largely DONE** — this
@@ -122,8 +201,49 @@ holds no Toast credentials. See §6.
   the signature survives dark mode with no background colour set; and **neither a Google Group nor
   an alias is a send-as identity** — the spec and README both claimed aliases *were*, and the first
   real run refuted it at **0 shared signatures**. That is not a Groups risk, it is the present
-  state, and only the account holder can fix it (Gmail → Accounts and Import → Send mail as).
-  **Pending (2026-08-21):** the per-person send-as step for the shared addresses; **Outlook for
+  state. **A fourth finding landed 2026-08-22 and corrects the third's remedy:** this line
+  previously said "only the account holder can fix it (Gmail → Accounts and Import → Send mail
+  as)". **Adding the identity by hand is not sufficient and is not free** — doing it returned
+  `403 Missing required scope ".../gmail.settings.sharing" for modifying non-primary SendAs`.
+  Google's reference lists `sendAs.update` as accepting `basic` **or** `sharing`, which is true
+  only of the **primary** identity and silent on the non-primary case every shared address falls
+  into. So both routes — by hand, or `sendAs.create` from the script — need the same wider scope,
+  which lets the service account decide **who may send mail as what for every user in the
+  domain**. Worse, acting on the wrong claim **caused a live regression**: three identities added
+  to `dame@` made the nightly run abort on the first unwritable one, so from 2026-08-21 it logged
+  `ERROR` and stopped refreshing even his own primary signature. **Closed by #456** (`b0f4e4de`,
+  merged 2026-08-22) — per-identity error isolation, a `PARTIAL` status distinct from `ok`/`ERROR`,
+  and a `SHARING_SCOPE_ENABLED` switch gating whether the JWT *requests* the wider scope (Codex
+  P1: granting it in the console alone changes nothing, and requesting one the delegation does not
+  carry fails the **entire** token exchange with `unauthorized_client` — hence default-off, and
+  hence an order that is not optional: **console first, property second**). 30 tests, was 19.
+  **COMPLETE 2026-08-23 — shared-mailbox signatures install** (scope granted, #456 deployed,
+  `SHARING_SCOPE_ENABLED=true`, final run `ok / 4 identities / 3 shared`); this line previously
+  listed the deploy and the property as pending and both landed within hours.
+  A latent bug found in review and closed the same day (#461): the regression warning was scoped
+  to the **domain**, not the user, so it would have gone quiet exactly as the feature grew —
+  five Codex rounds, seven defects, all of them scoping errors rather than wrong calculations.
+  The delivery gap is closed too (#463): a run with a finding now **emails** `ALERT_EMAIL`, since
+  three rounds of improving what the warning said never made anyone read it.
+  **Both closed the same day:** `ALERT_EMAIL` is `alerts@dragoncandy.com` (a **new** alias — the
+  seven existing ones are each already spoken for), the re-consent ran clean (4 users `ok`), and
+  #466 added `sendTestAlert()` so the alarm can be *heard* on demand rather than only when it
+  fires — four rounds had gone into an alert nobody had ever received, and a clean run is silent
+  by design. It found the gap underneath: **`sendRunAlert_` had no tests at all**, because every
+  test fed the pure composer beside it — the same shape as the `runStatus_` mutation the day
+  before. 96 tests, was 86; Codex clean at round 1.
+  **Pending (2026-08-23):** `sendTestAlert()` has **never been run**, so delivery is proven
+  against a stubbed `MailApp` and nothing else; **`01 · Product` is populated (2026-08-23)** — this line previously read "stays empty
+  because the candidate docs call Dame a 'solo technical founder' and name neither Joe nor Juwan".
+  #468 fixed exactly that (all three named with roles, Joe's restaurants credited as the origin,
+  "35+ tables" → 70+) and both docs are now Google Docs in the open drive. Staleness is handled by
+  dated banners naming *specifically* what was corrected, plus SUPERSEDED notes on the three
+  sections that are not merely old but actively contradicted: product-vision §5 (a dark-mode
+  Inter/`dragon-*` design system that is not what shipped), PRD §2 (says Lovable deploys prod;
+  Vercel has since 2026-07-15) and PRD §3 (June table names — `gig_assignments`,
+  `creative_briefs`, `payments` — none of which exist). **Stale is a different problem from
+  wrong**: old numbers get a banner, a contradicted section gets a pointer at the authoritative
+  file; shared identities exist on **no account but `dame@`**; **Outlook for
   Windows is untested and now untestable** (no access) — treat the rendering matrix as four-of-five;
   and Waves 2–3 (the People document set, and a *sendable* pitch deck — the current one is a React
   component). Workspace plan confirmed Business Standard, so shared drives were never at risk.
@@ -150,11 +270,38 @@ holds no Toast credentials. See §6.
   Vercel-scope confirmation first — it may carry Maps/reCAPTCHA keys); rotating the committed staging
   password; and reconciling the capacity report's **$49/mo** Supabase Small compute against
   Supabase's published **$15** (remedy: read the invoice).
-  → `docs/wiki/concepts/local-prod-boundary.md` · `docs/wiki/concepts/cloud-platform-strategy.md` · #451, #452
+  **Outreach to Adrian's referrals started 2026-08-21** — this entry previously said only "Adrian
+  sourcing", which was true and had stopped being the whole picture. Three of the four are a named
+  person with a direct address, so there was almost nothing to "discover": Root Codex (`fabio@`,
+  Root Codex Ltd, Msida, **Malta**), ALAN Systems (`lukasz.krain@`, Rybnik, **Poland**, trading
+  since 1999), and the designer **Lubo** (`lvatchkov@`, TheLubo, a solo consultancy, 20+ years).
+  All three were sent from `dame@dragoncandy.com` CC `adrian.vella.jobs@gmail.com` (details below),
+  with the hiring pack exported to PDF (`docs/hiring/pdf/`) because the repo is private and there is
+  **no public URL to link** — it has to be attached. **Adrian is not passing on an acquaintance at ALAN
+  Systems: he is one of four testimonials published on their own business page** ("Adrian Vella, CEO
+  TipicoUS"). And all three referrals come from **one iGaming network** — Root Codex builds casinos
+  and lists Casumo and LeoVegas, ALAN Systems references Tipico and GVC/bwin, Lubo lists iGaming —
+  which is real experience of high-traffic consumer products and payments, but **none of them shows
+  a three-sided marketplace**, so the drafts say so in the first email rather than on the third call.
+  **EPAM is PARKED (founder decision, 2026-08-21), and it is the wrong *shape*, not merely
+  expensive**: its intake form routes to enterprise sales by region, consulting, careers or partner
+  relations, and **nothing meaning "we would like to hire one of your engineers"** — 62,850+ staff,
+  345+ Forbes Global 2000 clients. Reopen only if the two houses fail, and then via a person, never
+  the form. Note the emails carry the scope doc's §9 position into first contact (one owner who
+  stays; a rotating team with nobody resident is the outcome we least want), so neither house
+  pitches the thing we would refuse. **All three SENT 2026-08-21** — Lubo 22:03, Root Codex 22:10,
+  ALAN Systems 22:12 UTC, Adrian CC'd, Joe BCC'd, each thread then forwarded to `adrian@`/`joe@`/
+  `jay@dragoncandy.com`. Note what went out quoted **1,174 source files / 2,443 tests**; the true
+  figures were **1,186 / 2,481**, found by the Codex pass the next day and corrected across the
+  pack, the scope doc and `onboarding/first-week.md` — **deliberately not corrected to the
+  recipients**, since the emails and their attachments agreed with each other and 12 files changes
+  no claim anyone would act on. **Pending:** replies; the PDF toolchain (pandoc + headless Chrome)
+  is **not committed**, so regenerating is two manual commands.
+  → `docs/hiring/outreach-drafts.md` · `docs/wiki/concepts/local-prod-boundary.md` · `docs/wiki/concepts/cloud-platform-strategy.md` · #451, #452
 - **YouTube read-only analytics connector** — the first direct platform API built under the
   2026-08-23 scope decision (Outstand publishes; direct APIs measure). Per-user OAuth connect,
   disconnect, and a channel analytics read, on `youtube.readonly` + `yt-analytics.readonly` and
-  nothing that can post. **BUILT AND DEPLOYED NOWHERE (2026-08-23):** migration `20260823120000`
+  nothing that can post. **BUILT AND DEPLOYED NOWHERE (2026-08-23):** migration `20260823170000`
   unapplied, five edge functions undeployed, never run against real Google credentials — treat
   every claim below as reviewed, not exercised. Codex clean at round 5; six real findings, all mine.
   **The design turns on one of them.** The first build had Google redirect straight to an edge
@@ -427,6 +574,25 @@ holds no Toast credentials. See §6.
 
 ### Shipped
 
+- **Account completeness engine (slice 1 of the onboarding redesign)** — one derived model for "is
+  this account ready to do X", replacing two half-systems that tracked the same facts different ways
+  and could disagree (live `deriveReadiness`/`ReadinessGate` + the stored `first_run_missions` blob —
+  the same "recorded ≠ actual" class as [[Updated-At Trigger Drift]]). Four states where **`unknown`
+  never blocks and never renders as a failure**, so a total API outage yields zero outstanding items
+  and zero blocked actions; `required`/`recommended` tiers; an action registry so `ReadinessGate` takes
+  `action="apply_campaign"` rather than `require={{stripe:true}}`. Deliberate read split — the
+  checklist uses the cheap mirrored Stripe column, the gate pays for the authoritative read, sharing
+  one cache key and therefore one shape. Migration `20260823120000` adds three nullable `profiles`
+  columns (`phone`, `phone_verified_at`, `dismissed_requirements`). **Three defects came from the plan
+  text itself**, all caught by the review loop: a sentinel UUID that made an unread org resolve to a
+  definitive `count:0` (→ "Invite your team" during a loading window, and untestable by construction);
+  a checklist that could read 5/5 while `isFirstRun` stayed true (only four page-visit mission keys
+  stamp `completed_at`); and three tests whose setup was identical to a neighbour's. **Merged WITHOUT
+  the Codex second review**, at founder direction. **Pending (2026-08-23):** both-viewport prod
+  verification — every changed surface is behind auth and **no test-account credentials exist in the
+  memory system despite `CLAUDE.md` saying they do**; the Donny RAG sync; and slices 2-4 (identity &
+  verification, entry experience, depth).
+  → `docs/wiki/concepts/account-completeness-engine.md` · #472
 - **Every `href` in our transactional emails was caller-chosen — closed on prod (#442)** — ~30
   templates built every link from caller-supplied `data` with no check, reachable because
   `create-notification` spreads the request body **verbatim** and calls `send-notification-email`
@@ -746,9 +912,11 @@ holds no Toast credentials. See §6.
   `donny-orchestrator`'s `donny_tool_executions` insert (columns that did not exist + a missing
   NOT NULL `message_id`) → deployed v69. → `docs/wiki/concepts/reading-agent-traces.md` · #292, #296
 - **Public landing — "Human-driven. AI-assisted." redesign** — full visual + messaging rebuild
-  to the founder mockup; landing rejoins the light app on its own additive `landing-*` tokens +
-  fonts. The cinematic-video system is preserved but opt-in behind
-  `LANDING_VIDEO_BACKDROP_ENABLED` (default off).
+  to the founder mockup; at the time, landing rejoined the light app on its own additive
+  `landing-*` tokens + fonts, with the cinematic-video system preserved but opt-in behind
+  `LANDING_VIDEO_BACKDROP_ENABLED` (default off). **Superseded 2026-08-22** by the
+  cinematic single-CTA redesign — the landing is dark again (`bg-landing-grape`) and the video
+  backdrop is the default experience, not an opt-in flag; see that entry for the current state.
   → `docs/wiki/concepts/landing-human-driven-redesign.md` · #293
 - **Auth session management** — loading guard, 3-hour inactivity timeout, session-hint
   cleanup. → `docs/SHIPPED_LOG.md`

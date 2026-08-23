@@ -1,5 +1,19 @@
 # PRD — DragonCandy
 
+> **Status: last substantively revised 2026-06-01.** Published to the
+> `DragonCandy — Open` shared drive on 2026-08-23 with the founder section and
+> the backend figures corrected; everything else predates the 2026-08 codebase
+> and has not been re-checked. Treat product direction here as the June
+> position, not today's. Current state lives in `docs/PROJECT_CONTEXT.md` §4.
+>
+> **Three areas are known to be superseded — do not build from them:**
+> **§2 hosting** says Lovable.dev deploys production; it does not — production
+> moved to **Vercel** on 2026-07-15 (Lovable remains only an optional AI-edit
+> surface). **§3 Data Model** is the June design, not the shipped schema — see
+> the note on that section. **§2 Cost Estimate** predates the current vendor
+> set. For anything architectural, `docs/ARCHITECTURE.md` and
+> `docs/DATABASE_SCHEMA.md` are authoritative.
+
 ## 1. Overview
 
 ### Product Summary
@@ -25,6 +39,11 @@ Time from business sign-up to first campaign creation: under 10 minutes. AI brie
 ---
 
 ## 2. Technical Architecture
+
+> **Partly superseded.** The Supabase/Stripe/AI shape below is still accurate.
+> The **hosting** claims are not: production deploys from GitHub `main` to
+> **Vercel**, not Lovable.dev. The **cost estimate** predates the current vendor
+> set. See `docs/ARCHITECTURE.md`.
 
 ### Architecture Overview
 
@@ -66,7 +85,7 @@ graph TB
 | Layer | Choice | Rationale |
 |-------|--------|-----------|
 | Frontend | React/TypeScript (Lovable.dev) | Already built and deployed with GitHub integration. Rich ecosystem for interactive marketplace UI. |
-| Backend | Supabase | Already in production with 35+ tables. Provides auth, real-time, storage, and edge functions. |
+| Backend | Supabase | Already in production — 70+ tables and 98 edge functions as of 2026-08 (this row read "35+ tables" when written in June). Provides auth, real-time, storage, and edge functions. |
 | Database | PostgreSQL (Supabase) | Already in production. Handles complex relational data across the three-sided marketplace. |
 | Auth | Supabase Auth | Already integrated. Email/password and social login with role-based access control. |
 | Payments | Stripe Connect | Already integrated in test mode. Marketplace payments with platform fee collection and creator payouts. |
@@ -179,6 +198,16 @@ Monthly costs at low scale (under 1,000 users, first 6 months):
 ---
 
 ## 3. Data Model
+
+> **SUPERSEDED — do not build from this section.** The tables, columns and role
+> values below are the June 2026 design, not the shipped schema. The real
+> equivalents are `campaign_applications` and `campaign_collaborations` (not
+> `gig_assignments`), `campaign_brief_generations` (not `creative_briefs`),
+> `file_uploads` (not `content_deliverables`), `payment_events` (not
+> `payments`), and `push_notifications` (not `notifications`). Roles are
+> `content_creator` / `business_client` / `brand`, not `creator` / `business` /
+> `brand`. The authoritative source is `docs/DATABASE_SCHEMA.md` (70+ tables).
+> Section 3 is retained for historical context only.
 
 ### Entity Definitions
 

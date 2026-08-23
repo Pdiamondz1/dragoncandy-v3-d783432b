@@ -34,6 +34,31 @@ vi.mock('@/hooks/useTour', () => ({
 vi.mock('@/components/reviews/RatingPromptManager', () => ({
   RatingPromptManager: () => <div data-testid="rating-prompt" />,
 }));
+// AccountChecklistRows itself is left real — unlike RatingPromptManager above
+// (which hits Supabase directly and has no exported hook seam), it reads
+// through useAccountReadiness, so mocking the HOOK lets the real component
+// render (real slot div, real rows) with no QueryClientProvider needed.
+const accountReadiness = vi.hoisted(() => ({
+  current: {
+    requirements: [{
+      key: 'stripe_onboarding', tier: 'required', label: 'Set up payouts',
+      why: 'Connect Stripe to get paid.', resolve: { route: '/settings/payouts' },
+      state: { status: 'unmet' },
+    }],
+    required: [], recommended: [],
+    outstanding: [{
+      key: 'stripe_onboarding', tier: 'required', label: 'Set up payouts',
+      why: 'Connect Stripe to get paid.', resolve: { route: '/settings/payouts' },
+      state: { status: 'unmet' },
+    }],
+    missingFor: () => [] as unknown[],
+    isBlocked: () => false,
+    dismiss: vi.fn(),
+  },
+}));
+vi.mock('@/hooks/useAccountReadiness', () => ({
+  useAccountReadiness: () => accountReadiness.current,
+}));
 
 // The four creator hooks CreatorDonnyHome reads: one invitation and one
 // collaboration, so item D and item A both render and the attention region is
@@ -145,5 +170,20 @@ describe('CREATOR_TOUR anchors resolve on both creator pages', () => {
       rows.length,
       'creator-attention renders no proposal rows — the section self-hides, so the tour would spotlight a zero-height element'
     ).toBeGreaterThan(0);
+  });
+
+  it('keeps AccountChecklistRows INSIDE the creator attention frame, not beside it', () => {
+    // Same containment question as the business dashboard's equivalent test
+    // (DonnyHome.test.tsx): a copy-paste error putting AccountChecklistRows as
+    // a sibling of DonnyHomeProposals, rather than a child, would still leave
+    // the row's text present in the DOM — only an ancestor query catches it.
+    // The mock above supplies an outstanding requirement so there is a row to
+    // find a slot for.
+    const donnyHome = renderCreatorDonnyHome().container;
+    const checklistRow = donnyHome.querySelector('[data-tour="creator-attention"]');
+    expect(checklistRow, '[data-tour="creator-attention"] missing from CreatorDonnyHome').not.toBeNull();
+    const row = Array.from(donnyHome.querySelectorAll('p')).find((p) => p.textContent === 'Set up payouts');
+    expect(row, 'AccountChecklistRows row not found').not.toBeUndefined();
+    expect(row!.closest('[data-attention-slot]')).not.toBeNull();
   });
 });

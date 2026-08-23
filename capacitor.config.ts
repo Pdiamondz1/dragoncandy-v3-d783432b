@@ -12,7 +12,16 @@ const config: CapacitorConfig = {
     // URL scheme. The served origin stays capacitor://localhost because we do not
     // set `server.iosScheme`. The Task 5 CSP (capacitor://localhost) is therefore correct.
     scheme: 'DragonCandy',
-    contentInset: 'always',
+    // 'never', not 'always'. With 'always' WebKit shrinks documentElement.clientHeight by the
+    // top safe-area inset (measured on an iPhone 17 Pro simulator: innerHeight 840 vs
+    // clientHeight 778, safeTop 62), so anything sized to a viewport unit — 100dvh here,
+    // h-screen in AppShell — is taller than the document box and the webview's own white
+    // background shows through beneath it. That band was invisible while the landing footer was
+    // itself white; making the footer transparent exposed it.
+    // The app already pays back env(safe-area-inset-*) in CSS everywhere it matters
+    // (DESIGN_SYSTEM.md), so insetting natively as well was doing the same job twice and
+    // disagreeing about the answer. Pick one: CSS.
+    contentInset: 'never',
   },
 };
 

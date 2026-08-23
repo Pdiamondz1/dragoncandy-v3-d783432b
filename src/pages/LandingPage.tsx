@@ -2,12 +2,9 @@ import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 import { Header } from "@/components/landing/Header";
-import { HeroSection } from "@/components/landing/HeroSection";
-import { PositioningBand } from "@/components/landing/PositioningBand";
-import { ValuesSection } from "@/components/landing/ValuesSection";
-import { HowItWorks } from "@/components/landing/HowItWorks";
-import { DonnySection } from "@/components/landing/DonnySection";
-import { FinalCTASection } from "@/components/landing/FinalCTASection";
+import { LandingHero } from "@/components/landing/LandingHero";
+import { RotatingBackdrop } from "@/components/landing/RotatingBackdrop";
+import { LANDING_REELS } from "@/components/landing/landingClips";
 import { useAuth } from "@/hooks/useAuth";
 import { LEGAL_ENTITY_LOCALITY, LEGAL_ENTITY_NAME } from "@/lib/legalEntity";
 
@@ -22,70 +19,85 @@ export default function LandingPage() {
   }, [user, loading, navigate]);
 
   return (
-    <div className="dc-landing relative isolate min-h-screen bg-white text-landing-ink font-instrument">
-      {/* Ambient top glow behind the header + hero, so the sticky header shares the hero's soft
-          pink/mint lighting instead of reading as a flat white bar. Behind content via -z-10 and
-          the wrapper's `isolate` stacking context. NOTE: overflow-x clipping lives on `<main>`
-          below, NOT this wrapper — an overflow value here would make it a scroll container and
-          break the header's `sticky top-0` (it would stick to the wrapper, not `#main-content`). */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] overflow-hidden">
-        <div className="absolute -top-28 -left-24 h-80 w-80 rounded-full bg-landing-pink/15 blur-3xl" />
-        <div className="absolute -top-16 right-0 h-72 w-72 rounded-full bg-landing-mint/10 blur-3xl" />
-      </div>
-
+    // bg-landing-grape (not bg-white) — the backdrop is dark video, so a white page background
+    // would flash behind it before the first frame paints.
+    // relative + isolate + flex column + min-h-[100dvh] (not min-h-screen/100vh — iOS 100vh >
+    // 100dvh, which alone would overflow on mobile): the header is an absolute overlay taken out
+    // of flow, the hero flexes to fill remaining space, and the footer sits shrink-0 at the true
+    // bottom — one screen, no scroll, with overflow left un-clipped as a safety valve for
+    // pathological viewports. `isolate` gives the page its own stacking context so the backdrop's
+    // negative z-index paints above this element's own background rather than behind it.
+    <div className="dc-landing relative isolate flex min-h-[100dvh] flex-col bg-landing-grape text-white font-instrument">
       <SEO
         title="DragonCandy — Human-driven. AI-assisted."
-        description="DragonCandy connects business owners with talented social media creators — and gives both the tools to run and grow their businesses. AI assists. Humans drive."
+        description="Real restaurants and real creators building content together, powered by Donny. AI assists. Humans drive."
         path="/landing"
+      />
+
+      {/* The footage backs the WHOLE page, not just the hero. It used to live inside LandingHero,
+          which left the footer as an opaque white band across the bottom of a page whose entire
+          premise is one full-bleed cinematic screen. Mounting it here lets the video run edge to
+          edge and the legal line float over it. */}
+      <RotatingBackdrop playlist={LANDING_REELS} className="-z-20" />
+
+      {/* Scrim. Darker at top and bottom so the header, the CTA and the footer stay legible over
+          a bright frame; lighter through the middle so the footage still reads as footage. The
+          bottom stop is the heaviest because the footer's text is the smallest on the page and
+          therefore needs the highest contrast ratio.
+          The middle stop is 60%, not the 40% this shipped with. Re-cutting the reel library —
+          `abb-flatbread` became a coal-oven fire, `uncle-rocco-new-menu` an outdoor daylight
+          street — raised the brightest frames enough that the pink and mint accent words fell to
+          1.88:1 and 1.90:1 across the brightest 10% of the band behind them, against the 3.0:1
+          that large text needs. 60% is the lowest stop that clears 3.0 on BOTH the mean of the
+          brightest frame and that frame's 90th percentile; 40/50/55 all clear the mean and fail
+          the percentile. Measured per reel, not estimated — see the runbook. */}
+      <div
+        aria-hidden
+        className="absolute inset-0 -z-10 bg-gradient-to-b from-landing-grape/70 via-landing-grape/60 to-landing-grape/95"
       />
 
       <Header />
 
-      {/* overflow-x-hidden lives HERE (not on the wrapper) so it clips off-screen content
-          (e.g. the lead-form honeypot at left-[-9999px]) against the app shell's #main-content
-          scroller WITHOUT becoming the sticky header's scroll container. */}
-      <main className="overflow-x-hidden">
-        <HeroSection />
-        <PositioningBand />
-        <ValuesSection />
-        <HowItWorks />
-        <DonnySection />
-        <FinalCTASection />
-      </main>
+      <LandingHero />
 
-      <footer className="border-t border-landing-line py-10">
-        <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-5 text-sm sm:flex-row sm:justify-between sm:px-8 lg:px-12">
-          <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
-            <img src="/logo.webp" alt="DragonCandy" className="h-6 w-auto" />
-            <span className="font-pixel text-[11px] uppercase tracking-[0.14em] text-landing-ink-soft">
-              DragonCandy · Human-driven. AI-assisted.
-            </span>
-          </div>
+      {/* Transparent by design — no background, no top border. Both would re-draw the seam this
+          footer was changed to remove. Legibility comes from the scrim above, measured against
+          each reel's brightest frame rather than assumed. */}
+      <footer className="shrink-0 py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-5 text-xs sm:flex-row sm:px-8 lg:px-12">
+          <p className="text-white/70">
+            © {new Date().getFullYear()} {LEGAL_ENTITY_NAME} · {LEGAL_ENTITY_LOCALITY}
+          </p>
           <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-            <a href="#join" className="text-landing-ink-soft transition-colors hover:text-landing-ink">
-              Contact
-            </a>
-            <Link to="/terms" className="text-landing-ink-soft transition-colors hover:text-landing-ink">
+            {/* A pill, not a plain link — the page asks for a signup and nothing else, so the one
+                affordance for "explain this to me before I commit" has to be findable next to the
+                legal text without competing with the CTA. Border + slightly brighter text is the
+                whole difference; anything filled would read as a second call to action.
+                It sits in the footer's band, where the scrim is heaviest (to-landing-grape/95) and
+                white text measures 7.42:1 against the brightest frame across all encodes.
+                The label is "How it works", NOT "Learn more" — which is what this shipped as, and
+                which failed Lighthouse's `link-text` audit outright (SEO 0.92 against a 0.95 gate,
+                one failing item, this link). "Learn more" is the canonical non-descriptive link
+                text: it tells a crawler nothing and reads to a screen reader, out of the link
+                list, as a link to nowhere in particular. Naming the destination fixes the audit
+                for the reason the audit exists rather than masking it with an aria-label. */}
+            <Link
+              to="/how-it-works"
+              className="rounded-full border border-white/30 px-4 py-1.5 text-white/90 transition-colors hover:border-white/60 hover:text-white"
+            >
+              How it works
+            </Link>
+            <Link to="/terms" className="text-white/70 transition-colors hover:text-white">
               Terms
             </Link>
-            <Link to="/privacy" className="text-landing-ink-soft transition-colors hover:text-landing-ink">
+            <Link to="/privacy" className="text-white/70 transition-colors hover:text-white">
               Privacy
             </Link>
-            <Link to="/help" className="text-landing-ink-soft transition-colors hover:text-landing-ink">
+            <Link to="/help" className="text-white/70 transition-colors hover:text-white">
               Help
             </Link>
           </nav>
         </div>
-        {/* Legal entity line. Deliberately a sibling BELOW the row above, not nested inside its
-            left cluster — nesting would force that cluster's alignment classes to change and
-            disturb the existing desktop row. Container classes mirror the row's exactly
-            (mx-auto max-w-6xl + the same px ramp) so it aligns to the logo's left edge on
-            desktop and the same gutters on mobile. text-xs steps down from the row's inherited
-            text-sm so it reads as subordinate; no pixel font / uppercase (the tagline owns that
-            treatment) and no extra divider. */}
-        <p className="mx-auto mt-8 max-w-6xl px-5 text-center text-xs text-landing-ink-soft sm:px-8 sm:text-left lg:px-12">
-          © {new Date().getFullYear()} {LEGAL_ENTITY_NAME} · {LEGAL_ENTITY_LOCALITY}
-        </p>
       </footer>
     </div>
   );

@@ -13,17 +13,10 @@ import { CreatorDonnyHome } from '@/components/donny/CreatorDonnyHome';
 import CreatorOverview from './CreatorOverview';
 
 const CreatorDashboard = () => {
-  const { missions, isFirstRun, completeMission, skipMissions } = useFirstRunMissions();
+  const { isFirstRun, skipMissions } = useFirstRunMissions();
 
-  if (isFirstRun && missions) {
-    return (
-      <FirstRunDashboard
-        role="content_creator"
-        missions={missions}
-        onCompleteMission={completeMission}
-        onSkip={skipMissions}
-      />
-    );
+  if (isFirstRun) {
+    return <FirstRunDashboard role="content_creator" onSkip={skipMissions} />;
   }
 
   if (!DONNY_FIRST_DASHBOARD_ENABLED) {

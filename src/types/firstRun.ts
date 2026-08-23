@@ -2,26 +2,29 @@ import type { Json } from '@/integrations/supabase/types';
 
 export type UserRole = 'business_client' | 'content_creator' | 'brand';
 
+/**
+ * ONLY non-derivable "did the user look at this once" events live here.
+ * Everything with a row to derive from — payments, portfolio, campaigns,
+ * applications, sponsorships — is now a derived requirement in
+ * src/lib/accountReadiness. Two writers for one fact is the drift class this
+ * project has already been bitten by twice.
+ *
+ * The column is NOT dropped and legacy blobs keep parsing: removed keys are
+ * simply ignored.
+ */
 export interface RestaurantMissions {
   browse_inspiration: boolean;
-  create_campaign: boolean;
-  launch_campaign: boolean;
-  setup_payments: boolean;
   completed_at?: string;
 }
 
 export interface CreatorMissions {
   view_campaigns: boolean;
-  add_portfolio: boolean;
-  apply_campaign: boolean;
-  setup_payouts: boolean;
   completed_at?: string;
 }
 
 export interface BrandMissions {
   select_style: boolean;
   browse_creators: boolean;
-  create_sponsorship: boolean;
   completed_at?: string;
 }
 
@@ -45,13 +48,11 @@ export function parseFirstRunMissions(
   switch (role) {
     case 'business_client':
       if ('browse_inspiration' in obj) {
-        if (!('setup_payments' in obj)) (obj as Record<string, unknown>).setup_payments = false;
         return obj as unknown as RestaurantMissions;
       }
       break;
     case 'content_creator':
       if ('view_campaigns' in obj) {
-        if (!('setup_payouts' in obj)) (obj as Record<string, unknown>).setup_payouts = false;
         return obj as unknown as CreatorMissions;
       }
       break;
@@ -65,18 +66,23 @@ export function parseFirstRunMissions(
 export function getInitialMissions(role: UserRole): RoleMissions {
   switch (role) {
     case 'business_client':
-      return { browse_inspiration: false, create_campaign: false, launch_campaign: false, setup_payments: false };
+      return { browse_inspiration: false };
     case 'content_creator':
-      return { view_campaigns: false, add_portfolio: false, apply_campaign: false, setup_payouts: false };
+      return { view_campaigns: false };
     case 'brand':
-      return { select_style: false, browse_creators: false, create_sponsorship: false };
+      return { select_style: false, browse_creators: false };
   }
 }
 
 export function areMissionsComplete(missions: RoleMissions): boolean {
   if ('completed_at' in missions && missions.completed_at) return true;
   const { completed_at: _completed_at, ...flags } = missions as unknown as Record<string, unknown>;
-  return Object.values(flags).every((v) => v === true);
+  // Legacy blobs carry keys that are now derived; a stale `false` on one of them
+  // must not keep a user in first-run forever.
+  const live = Object.entries(flags).filter(([k]) =>
+    ['browse_inspiration', 'view_campaigns', 'select_style', 'browse_creators'].includes(k),
+  );
+  return live.length > 0 && live.every(([, v]) => v === true);
 }
 
 export const BRAND_CONTENT_STYLES = [

@@ -1,5 +1,18 @@
 # Product Vision — DragonCandy
 
+> **Status: last substantively revised 2026-06-01.** Published to the
+> `DragonCandy — Open` shared drive on 2026-08-23 with the founder section and
+> the backend figures corrected; everything else predates the 2026-08 codebase
+> and has not been re-checked. Treat product direction here as the June
+> position, not today's. Current state lives in `docs/PROJECT_CONTEXT.md` §4.
+>
+> **Section 5 (Design Direction) is known to be superseded.** It describes a
+> single dark-mode-first Inter/JetBrains system with `dragon-*` tokens. Nothing
+> in the shipped app uses those tokens or those fonts, and the real system is
+> **surface-specific** — the landing, the entry flow, the authenticated app and
+> `/internal` do not share one theme. Read `docs/DESIGN_SYSTEM.md`; do not build
+> from section 5 and do not rely on any one-line summary of what replaced it.
+
 ## 1. Vision & Mission
 
 ### Vision Statement
@@ -10,13 +23,13 @@ Every local restaurant has a thriving social media presence powered by content c
 
 DragonCandy connects content creators, restaurants, and brand sponsors through an AI-powered marketplace that automates the entire content pipeline — from creative brief to published post — in under 24 hours.
 
-### Founder's Why
+### Founders' Why
 
-Dame has been building DragonCandy from the ground up as a solo technical founder, combining deep product thinking with hands-on development. Through multiple design iterations, production-breaking incidents, and hard-won recovery strategies, Dame has developed the disciplined, incremental approach that separates products that ship from products that stall.
+DragonCandy is built by three co-founders: **Damon "Dame" Williams** (CTO), who owns the product and the code; **Joe Castelo** (CEO, Sales & Partnerships), whose Hoboken restaurants are the problem this was built to solve; and **Juwan Robinson** (Shareholder). Dame combines deep product thinking with hands-on development, and through multiple design iterations, production-breaking incidents and hard-won recovery strategies has developed the disciplined, incremental approach that separates products that ship from products that stall.
 
-The motivation is clear: there's a massive gap in how restaurants and small businesses get social media content. It's either too expensive (agencies charging $3K–5K/month), too slow (weeks of back-and-forth), or too low quality (blurry phone photos posted once a month). Meanwhile, talented content creators struggle to find consistent paid work, and brands pour money into influencer campaigns with murky ROI. The three-sided marketplace that connects all of these parties doesn't exist yet — and Dame has the technical chops and marketplace intuition to build it.
+The motivation is clear: there's a massive gap in how restaurants and small businesses get social media content. It's either too expensive (agencies charging $3K–5K/month), too slow (weeks of back-and-forth), or too low quality (blurry phone photos posted once a month). Meanwhile, talented content creators struggle to find consistent paid work, and brands pour money into influencer campaigns with murky ROI. The three-sided marketplace that connects all of these parties doesn't exist yet — and the founding team has both halves of what building it takes: Dame the technical depth, Joe the operator's view from inside the restaurants this is for.
 
-Dame's background in tech and product management, combined with firsthand experience architecting DragonCandy's 35+ table Supabase backend, campaign workflows, and Stripe payment integration, means this isn't theoretical. The foundation is already built. The next step is making it exceptional.
+Dame's background in tech and product management, combined with firsthand experience architecting DragonCandy's Supabase backend (70+ tables and 98 edge functions as of 2026-08; this document said "35+ tables" when it was written in June), campaign workflows, and Stripe payment integration, means this isn't theoretical. The foundation is already built. The next step is making it exceptional.
 
 ### Core Values
 
@@ -42,7 +55,7 @@ Dame's background in tech and product management, combined with firsthand experi
 
 ### Success Looks Like
 
-In 12 months, DragonCandy is the go-to platform in its launch city. 500+ active creators compete for gigs, knowing they'll earn $200–500/week consistently. 100+ restaurants have replaced their dead Instagram accounts with professional, creator-made content that actually drives foot traffic. Regional food brands sponsor campaigns through DragonCandy because the ROI dashboard shows them exactly how many new customers each campaign generated. The platform processes $100K+/month in transactions, Dame has a small team, and DragonCandy is expanding to its second city with investors interested. The app is featured in both restaurant industry trade publications and creator economy newsletters as the platform that finally cracked local content delivery.
+In 12 months, DragonCandy is the go-to platform in its launch city. 500+ active creators compete for gigs, knowing they'll earn $200–500/week consistently. 100+ restaurants have replaced their dead Instagram accounts with professional, creator-made content that actually drives foot traffic. Regional food brands sponsor campaigns through DragonCandy because the ROI dashboard shows them exactly how many new customers each campaign generated. The platform processes $100K+/month in transactions, the founders have grown a small team around them, and DragonCandy is expanding to its second city with investors interested. The app is featured in both restaurant industry trade publications and creator economy newsletters as the platform that finally cracked local content delivery.
 
 ---
 
@@ -361,6 +374,16 @@ DragonCandy is the first platform designed specifically for local content delive
 ---
 
 ## 5. Design Direction
+
+> **SUPERSEDED — do not build from this section.** Every token and font named
+> below (`dragon-*`, Inter, JetBrains Mono) is unused in the shipped app.
+> Critically, the real design system is **not one theme**: it differs by surface
+> — the public landing, the login/onboarding flow, the authenticated app and
+> `/internal` each have their own treatment, and which one applies depends on
+> where you are working. `docs/DESIGN_SYSTEM.md` is the authoritative source and
+> is deliberately not summarised here, because a summary of it is how this
+> section came to be wrong in the first place. Retained for historical context
+> only.
 
 ### Design Philosophy
 

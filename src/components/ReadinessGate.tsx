@@ -1,39 +1,52 @@
 import { type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTransactionReadiness, type ReadinessRole } from '@/hooks/useTransactionReadiness';
+import { useAccountReadiness } from '@/hooks/useAccountReadiness';
 import { useReadinessGateEnabled } from '@/hooks/useReadinessGateEnabled';
 import { ReadinessChecklistCard } from '@/components/ReadinessChecklistCard';
+import type { AccountRole } from '@/lib/accountReadiness';
+import type { GatedAction } from '@/lib/accountReadiness';
+
+export type ReadinessRole = 'creator' | 'business';
 
 interface ReadinessGateProps {
   role: ReadinessRole;
-  require: { stripe?: boolean; social?: boolean };
+  /** What the user is trying to do. The keys it demands live in ACTION_REQUIREMENTS. */
+  action: GatedAction;
   mode: 'hard' | 'soft';
-  inline?: boolean;
-  orgUnitId?: string | null;
   children: ReactNode;
   softHint?: ReactNode;
 }
 
-export function ReadinessGate({ role, require, mode, orgUnitId = null, children, softHint }: ReadinessGateProps) {
+const ACCOUNT_ROLE: Record<ReadinessRole, AccountRole> = {
+  creator: 'content_creator',
+  business: 'business_client',
+};
+
+export function ReadinessGate({ role, action, mode, children, softHint }: ReadinessGateProps) {
   const enabled = useReadinessGateEnabled();
   const navigate = useNavigate();
-  const r = useTransactionReadiness(role, {
-    requireStripe: require.stripe ?? false,
-    requireSocial: require.social ?? false,
-    orgUnitId,
-    enabled,
-  });
+  // liveStripe: the gate is the surface where being wrong costs money, so it
+  // pays for the authoritative read rather than trusting the mirrored column.
+  const r = useAccountReadiness(ACCOUNT_ROLE[role], { liveStripe: true, enabled });
 
   if (!enabled) return <>{children}</>;
 
-  const goToSetup = () => navigate(`/dashboard/${role === 'creator' ? 'creator' : 'business'}/settings?section=payments`);
+  const missing = r.missingFor(action);
+  const blocked = missing.length > 0;
 
   if (mode === 'soft') {
-    return <>{children}{r.shouldBlock && (softHint ?? null)}</>;
+    return <>{children}{blocked && (softHint ?? null)}</>;
   }
 
-  if (r.shouldBlock && (r.status === 'no_account' || r.status === 'verification_pending' || r.status === 'reconnect_needed')) {
-    return <ReadinessChecklistCard status={r.status} role={role} onFinishSetup={goToSetup} />;
-  }
-  return <>{children}</>;
+  if (!blocked) return <>{children}</>;
+
+  const first = missing[0];
+  const status = first.state.status === 'pending' ? 'verification_pending' : 'no_account';
+  return (
+    <ReadinessChecklistCard
+      status={status}
+      role={role}
+      onFinishSetup={() => navigate(first.resolve.route)}
+    />
+  );
 }

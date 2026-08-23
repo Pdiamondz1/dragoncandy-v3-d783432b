@@ -380,7 +380,7 @@ const CampaignDetailsPage: React.FC = () => {
               </>
             );
             return isPaid ? (
-              <ReadinessGate role="creator" require={{ stripe: true }} mode="hard" inline>
+              <ReadinessGate role="creator" action="apply_campaign" mode="hard">
                 {applyControls}
               </ReadinessGate>
             ) : (

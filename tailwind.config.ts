@@ -58,6 +58,9 @@ export default {
 					line: '#EFE8F5',
 					'pink-line': '#F9BFD6',
 					'mint-line': '#B8ECDA',
+					// Brighter than `mint-line`, dimmer than `mint`. The only mint that stays legible as
+					// TEXT over moving footage — `landing-mint` (#2FC796) vanishes against a lit dish.
+					'mint-line-bright': '#7BE3C0',
 					'pink-ink': '#C22760',
 					'mint-ink': '#1E9C73',
 				},

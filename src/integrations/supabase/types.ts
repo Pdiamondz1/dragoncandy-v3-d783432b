@@ -5219,6 +5219,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           dismissed_coachmarks: string[] | null
+          dismissed_requirements: string[] | null
           donny_system_conversation_id: string | null
           email: string
           email_verified: boolean | null
@@ -5226,6 +5227,8 @@ export type Database = {
           full_name: string | null
           id: string
           org_id: string | null
+          phone: string | null
+          phone_verified_at: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string | null
         }
@@ -5235,6 +5238,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           dismissed_coachmarks?: string[] | null
+          dismissed_requirements?: string[] | null
           donny_system_conversation_id?: string | null
           email: string
           email_verified?: boolean | null
@@ -5242,6 +5246,8 @@ export type Database = {
           full_name?: string | null
           id: string
           org_id?: string | null
+          phone?: string | null
+          phone_verified_at?: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
         }
@@ -5251,6 +5257,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           dismissed_coachmarks?: string[] | null
+          dismissed_requirements?: string[] | null
           donny_system_conversation_id?: string | null
           email?: string
           email_verified?: boolean | null
@@ -5258,6 +5265,8 @@ export type Database = {
           full_name?: string | null
           id?: string
           org_id?: string | null
+          phone?: string | null
+          phone_verified_at?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
         }

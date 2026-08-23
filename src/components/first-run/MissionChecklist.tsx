@@ -1,82 +1,147 @@
+import { useNavigate } from 'react-router-dom';
+import { useAccountReadiness } from '@/hooks/useAccountReadiness';
+import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
+import type { AccountRole, ResolvedRequirement } from '@/lib/accountReadiness';
 import { MissionItem } from './MissionItem';
-import type { UserRole, RoleMissions } from '@/types/firstRun';
 
 interface MissionChecklistProps {
-  role: UserRole;
-  missions: RoleMissions;
-  onMissionGo: (missionKey: string) => void;
+  role: AccountRole;
   onSkip: () => void;
 }
 
-interface MissionDef {
+interface ViewMissionDef {
   key: string;
   emoji: string;
   title: string;
   subtitle: string;
+  route: string;
 }
 
-const MISSION_DEFS: Record<UserRole, MissionDef[]> = {
+/**
+ * The four "did the user look at this once" events that have no row anywhere
+ * to derive from (spec §7) — kept alongside, not merged into, the derived
+ * requirements below. This is not the two-systems duplication the readiness
+ * engine deletes: the derived requirements and these view-events track
+ * disjoint facts, and the user just sees one combined list.
+ *
+ * Keys and routes mirror the map that used to live in
+ * FirstRunDashboard.handleMissionGo, trimmed to the four keys
+ * areMissionsComplete() still counts.
+ */
+const VIEW_MISSION_DEFS: Record<AccountRole, ViewMissionDef[]> = {
   business_client: [
-    { key: 'browse_inspiration', emoji: '👀', title: 'Get inspired', subtitle: 'See what creators are making' },
-    { key: 'create_campaign', emoji: '🪄', title: 'Create with Donny', subtitle: 'Donny does the work' },
-    { key: 'launch_campaign', emoji: '🚀', title: 'Launch & attract creators', subtitle: 'Creators start applying' },
-    { key: 'setup_payments', emoji: '💳', title: 'Set up payments', subtitle: 'Pay creators securely' },
+    {
+      key: 'browse_inspiration',
+      emoji: '👀',
+      title: 'Get inspired',
+      subtitle: 'See what creators are making',
+      route: '/dashboard/business/campaigns/create',
+    },
   ],
   content_creator: [
-    { key: 'view_campaigns', emoji: '👀', title: "See what's out there", subtitle: 'Campaigns matched to your skills' },
-    { key: 'add_portfolio', emoji: '📸', title: 'Show your best work', subtitle: 'Add 1 portfolio piece' },
-    { key: 'apply_campaign', emoji: '🚀', title: 'Apply to a campaign', subtitle: 'Your first pitch' },
-    { key: 'setup_payouts', emoji: '💳', title: 'Set up payouts', subtitle: 'Get paid to your bank account' },
+    {
+      key: 'view_campaigns',
+      emoji: '👀',
+      title: "See what's out there",
+      subtitle: 'Campaigns matched to your skills',
+      route: '/dashboard/creator/campaigns',
+    },
   ],
   brand: [
-    { key: 'select_style', emoji: '🎨', title: 'Pick your vibe', subtitle: 'What content style fits your brand?' },
-    { key: 'browse_creators', emoji: '🔍', title: 'Meet your matches', subtitle: 'Creators who fit your style' },
-    { key: 'create_sponsorship', emoji: '💰', title: 'Sponsor a campaign', subtitle: 'Your first brand deal' },
+    {
+      key: 'select_style',
+      emoji: '🎨',
+      title: 'Pick your vibe',
+      subtitle: 'What content style fits your brand?',
+      route: '/dashboard/brand/style-picker',
+    },
+    {
+      key: 'browse_creators',
+      emoji: '🔍',
+      title: 'Meet your matches',
+      subtitle: 'Creators who fit your style',
+      route: '/dashboard/brand/creators',
+    },
   ],
 };
 
-function getMissionStatus(
-  missions: RoleMissions,
-  missionKey: string,
-  defs: MissionDef[]
-): 'active' | 'locked' | 'completed' {
-  const value = (missions as unknown as Record<string, unknown>)[missionKey];
-  if (value === true) return 'completed';
-
-  const idx = defs.findIndex((d) => d.key === missionKey);
-  if (idx === 0) return 'active';
-
-  const prevKey = defs[idx - 1].key;
-  const prevDone = (missions as unknown as Record<string, unknown>)[prevKey] === true;
-  return prevDone ? 'active' : 'locked';
+/** Maps a derived status onto MissionItem's visual vocabulary. */
+function itemStatus(req: ResolvedRequirement): 'active' | 'locked' | 'completed' {
+  if (req.state.status === 'met') return 'completed';
+  // `unknown` is deliberately 'locked' — the muted, non-actionable treatment.
+  // It must never look like a failure and must never offer a GO button, because
+  // we do not actually know there is anything to do.
+  if (req.state.status === 'unknown') return 'locked';
+  return 'active';
 }
 
-export function MissionChecklist({ role, missions, onMissionGo, onSkip }: MissionChecklistProps) {
-  const defs = MISSION_DEFS[role];
+export function MissionChecklist({ role, onSkip }: MissionChecklistProps) {
+  const navigate = useNavigate();
+  const { requirements } = useAccountReadiness(role);
+  const { missions } = useFirstRunMissions();
   const accentColor = role === 'brand' ? 'pink' : 'teal';
-  const completedCount = defs.filter((d) => (missions as unknown as Record<string, unknown>)[d.key] === true).length;
+
+  // View-event missions have no `unknown` state — the blob is either loaded
+  // or there is nothing to show yet (Ruling 1). Don't render a row for a fact
+  // we haven't loaded.
+  const missionsRecord = missions as unknown as Record<string, unknown> | null | undefined;
+  const viewDefs = missionsRecord ? VIEW_MISSION_DEFS[role] : [];
+
+  // Only a definitive `met` (derived) or `true` (view-event) counts. A green
+  // tally built on unreachable sources is the exact drift this engine exists
+  // to prevent.
+  const completedCount =
+    requirements.filter((r) => r.state.status === 'met').length +
+    viewDefs.filter((d) => missionsRecord?.[d.key] === true).length;
+  const totalCount = requirements.length + viewDefs.length;
 
   return (
     <div className="bg-white rounded-2xl p-4">
       <div className="flex justify-between items-center mb-3">
         <span className="text-sm font-bold text-gray-900">Your Missions</span>
         <span className={`text-xs font-semibold ${accentColor === 'pink' ? 'text-pink-500' : 'text-teal-500'}`}>
-          {completedCount} / {defs.length}
+          {completedCount} / {totalCount}
         </span>
       </div>
       <div className="flex flex-col gap-2">
-        {defs.map((def) => {
-          const status = getMissionStatus(missions, def.key, defs);
+        {requirements.map((req) => {
+          const status = itemStatus(req);
           return (
-            <MissionItem
-              key={def.key}
-              emoji={def.emoji}
-              title={def.title}
-              subtitle={def.subtitle}
-              status={status}
-              accentColor={accentColor}
-              onGo={status === 'active' ? () => onMissionGo(def.key) : undefined}
-            />
+            <div
+              key={req.key}
+              data-requirement-row
+              data-status={req.state.status}
+              // The computed visual status, distinct from the raw `data-status`
+              // above (which is the requirement's own state and says nothing
+              // about lock/unlock). This is what a positional-lock regression
+              // would actually change — see MissionChecklist.test.tsx.
+              data-item-status={status}
+            >
+              <MissionItem
+                emoji={req.tier === 'recommended' ? '✨' : '📋'}
+                title={req.label}
+                subtitle={req.state.status === 'unknown' ? 'Checking…' : (req.state.detail ?? req.why)}
+                status={status}
+                accentColor={accentColor}
+                onGo={status === 'active' ? () => navigate(req.resolve.route) : undefined}
+              />
+            </div>
+          );
+        })}
+        {viewDefs.map((def) => {
+          const isDone = missionsRecord?.[def.key] === true;
+          const status: 'active' | 'completed' = isDone ? 'completed' : 'active';
+          return (
+            <div key={def.key} data-mission-row data-status={status}>
+              <MissionItem
+                emoji={def.emoji}
+                title={def.title}
+                subtitle={def.subtitle}
+                status={status}
+                accentColor={accentColor}
+                onGo={status === 'active' ? () => navigate(def.route) : undefined}
+              />
+            </div>
           );
         })}
       </div>
