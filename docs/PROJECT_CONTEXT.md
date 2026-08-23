@@ -76,18 +76,25 @@ paid campaign in under 60 seconds.
 
 ## 4. Current State
 
-Pre-revenue by choice. ~30 organic users, $0 paying customers, ~$390/mo
-operating cost (as of 2026-06-07: Lovable $50, Anthropic $200, Outstand.so $67,
-Supabase $45, OpenAI $25), Stripe in test mode. Production launch date TBD. The content
+Pre-revenue by choice. ~30 organic users, $0 paying customers, **~$572/mo
+operating cost** (as of 2026-08-23: Lovable $50, Anthropic $200, **Outstand.so $249**,
+Supabase $45, OpenAI $25), Stripe in test mode. This line read **~$390/mo** with
+Outstand at **$67** until 2026-08-23 — Outstand raised its price and nothing re-checks
+a cost figure, so it was wrong by ~$182 for an unknown stretch. Vendor pricing goes
+stale silently; re-read the invoices before quoting this anywhere. Production launch date TBD. The content
 delivery system stabilization that gated launch landed in late May 2026;
 remaining blockers are final bug resolution and payment-flow hardening.
 
 **Codebase scale** (as of 2026-08-23): 92 pages, 269 hooks, 100 edge functions (`verify-phone` +
 `verify-address` added by the identity-verification slice — both undeployed pending secrets).
 **Repo**: `/Users/dwill/GIT/dragoncandy-v3-d783432b` (moved from Windows to macOS 2026-08-14)
-**Active integrations**: Toast POS, Stripe Connect, Outstand.so (social media —
+**Active integrations**: Stripe Connect, Outstand.so (social media —
 Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
-(cost routing via backend edge functions).
+(cost routing via backend edge functions). **Toast POS is NOT active and never
+has been** — this line listed it until 2026-08-23. Six `toast-*` edge functions
+are deployed on prod but every one answers `toast_not_configured` 503 (no
+`TOAST_*` secrets exist), zero `%toast%` tables exist on prod, and DragonCandy
+holds no Toast credentials. See §6.
 
 ## 5. Active Workstreams
 
@@ -115,7 +122,36 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   receives — with a unit test pinning the error in as many words. Limits are written down rather
   than buried: 7 labelled queries of 53, labels self-produced though blind, and no strict old-vs-new
   A/B because the function now refuses to emit a single 24,000-char embedding.
-  → `docs/wiki/concepts/rag-retrieval-evaluation.md` · `feat/rag-eval-harness`
+  **It now runs itself (2026-08-23).** Two layers, because they catch different failures and only
+  one needs a secret. Per PR and secret-free, a test pins `k` and `TARGET_CHARS` to the values this
+  measured — `k` is the named constant **`INTERNAL_RETRIEVAL_K`**, and the test asserts the *call
+  site uses it*, since a pin holding a value nothing reads is worse than no pin because it looks
+  green. Monthly (1st, 07:00 UTC), `.github/workflows/rag-eval.yml` re-runs the evaluation against
+  a committed `baseline.json` and files an AIOS finding only when a metric passes its tolerance —
+  four guards, fingerprinted per metric so a persistent regression bumps `occurrences` instead of
+  filing monthly duplicates. The measurement itself **never fails on a regression**; the reporting
+  step carries the verdict, so a human can run it without the tool treating curiosity as a build
+  failure. Four decisions about *how a guard fails* are the durable part: comparability is checked
+  **before** anything is compared, **per metric** (a changed label set costs the recall
+  denominators, not the control check) and **by identity rather than count** — Codex found that
+  counting lets one query be swapped for another while the run still calls itself comparable, so
+  the baseline now carries order-independent hashes of the query and label sets; **two kinds of
+  silence are themselves findings** (*not comparable*, and a configured threshold that did not run
+  — either reads exactly like a clean month, which is this pipeline's own defect one level up);
+  and the job **never re-records its own baseline** — a guard that follows the observed value is a
+  thermometer reporting room temperature. Automation cannot fix the real weakness (7 labelled queries of 53), so every finding
+  prints that line. Verified by **forced controls on all eight report branches**, since a run
+  printing "no regression" is not evidence the guard works. Because a clean month is silent, dispatching with
+  `test_delivery` files one labelled low finding **without failing the run** — proven against prod
+  (`inserted:1`, then `updated:1`, which also proves the fingerprint that stops monthly duplicates);
+  the same gap `sendTestAlert()` closed for the Workspace alert.
+  **The runner is proven end to end (2026-08-23).** This entry said `RAG_EVAL_SUPABASE_SECRET_KEY`
+  "must be set in it by the account holder", and that was already false minutes after it merged: the
+  secret is set in the `rag-eval` Environment, and the first dispatched run read prod, returned all
+  four guards `ok`, filed its finding (`updated:1`) and exited 0 — so the boot-failure caveat never
+  applied in practice. **Still pending:** the *scheduled* trigger has never fired (first: 1 Sept,
+  07:00 UTC), and no *regression* finding has been filed by the runner rather than by hand.
+  → `docs/wiki/concepts/rag-retrieval-evaluation.md` · `feat/rag-eval-harness`, `feat/rag-eval-automation`
 - **A third of Donny's internal corpus was never embedded** — `sync-internal-docs.mjs` sliced every
   document at 24,000 chars under a comment reading *"embed input is truncated; full_content is not"*,
   which is true and describes the **wrong consumer**: `full_content` goes to `internal_docs`, and
@@ -226,8 +262,24 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   by design. It found the gap underneath: **`sendRunAlert_` had no tests at all**, because every
   test fed the pure composer beside it — the same shape as the `runStatus_` mutation the day
   before. 96 tests, was 86; Codex clean at round 1.
-  **Pending (2026-08-23):** `sendTestAlert()` has **never been run**, so delivery is proven
-  against a stubbed `MailApp` and nothing else; **`01 · Product` is populated (2026-08-23)** — this line previously read "stays empty
+  **`sendTestAlert()` was then run, and the alarm turned out to be broken (2026-08-23)** — this
+  line previously read "**Pending:** `sendTestAlert()` has never been run, so delivery is proven
+  against a stubbed `MailApp` and nothing else". Running it proved the opposite of unproven:
+  **`MailApp` reached 0 of 3 external recipients**, two providers, each `Bounced` within 0.16s,
+  while the same sender composing in Gmail reached 3 of 3 that week. `GmailApp` delivered. **The
+  alert had never worked, and `MailApp` structurally cannot say so** — it hands off to Google and
+  returns, so the rejection lands milliseconds later outside the execution and `sendRunAlert_`
+  returned `true` and logged success for every bounce. Fixed by `GmailApp.sendEmail` (**positional**
+  args — a symbol-only swap sends to `undefined` with every test still green) + scope
+  `script.send_mail` → `gmail.send`, pinned by a **text assertion** since the property is
+  unobservable at runtime; 97 tests, was 96. **Codex's P1 against the narrow scope was refuted by
+  the granted scope list** ("Send email as you", not the full-mailbox label) — taking it would have
+  traded send-only for read-and-delete over the owner's mailbox. **DKIM was entirely missing, is now
+  published and verified, and was NOT the cause** (the bounces did not change when it landed).
+  Durable: *every sender-side signal is the sender's view*, *a missing bounce message is not evidence
+  nothing bounced*, and the log's 0-result for the fixed message was only safely read after the same
+  query returned 1 for a known-good id. **Pending:** the nightly trigger has not yet fired on the new
+  transport. **`01 · Product` is populated (2026-08-23)** — this line previously read "stays empty
   because the candidate docs call Dame a 'solo technical founder' and name neither Joe nor Juwan".
   #468 fixed exactly that (all three named with roles, Joe's restaurants credited as the origin,
   "35+ tables" → 70+) and both docs are now Google Docs in the open drive. Staleness is handled by
@@ -292,6 +344,63 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   no claim anyone would act on. **Pending:** replies; the PDF toolchain (pandoc + headless Chrome)
   is **not committed**, so regenerating is two manual commands.
   → `docs/hiring/outreach-drafts.md` · `docs/wiki/concepts/local-prod-boundary.md` · `docs/wiki/concepts/cloud-platform-strategy.md` · #451, #452
+- **YouTube read-only analytics connector** — the first direct platform API built under the
+  2026-08-23 scope decision (Outstand publishes; direct APIs measure). Per-user OAuth connect,
+  disconnect, and a channel analytics read, on `youtube.readonly` + `yt-analytics.readonly` and
+  nothing that can post. **MERGED, APPLIED AND DEPLOYED 2026-08-23** (#477) — this line read
+  "BUILT AND DEPLOYED NOWHERE" until the same afternoon. Migration `20260823170000` applied to
+  prod, ledger row recorded by hand (**not** `supabase db push` — the ledger has diverged by 234
+  files, and this migration's `CREATE TRIGGER` is not idempotent, so an unrecorded version would
+  fail on re-run); four edge functions deployed, all `v1 ACTIVE` with `verify_jwt=true`. **Still
+  never run against real Google credentials** — every claim below is reviewed and structurally
+  verified, not exercised end to end. Codex clean at round 5; six real findings, all mine.
+  **Verified rather than assumed, because the migration's own header says not to trust its exit
+  code:** table grants are exactly `postgres` + `service_role` (no `anon`, no `authenticated`, no
+  `PUBLIC`), RLS enabled with **zero policies**, and the status function is `SECURITY DEFINER`
+  granted to `authenticated` + `service_role` but **not `anon`**. The boot probe carries its own
+  control — a nonexistent function name returns **404** where all four return **401**, so the 401
+  distinguishes "registered" from "absent"; and a request bearing the public anon key (a valid JWT
+  naming no user) returns **our** JSON body, `{"error":"unauthorized"}`, not the gateway's, which
+  is what proves the modules actually loaded. **A merge is not a deploy, and this one shipped a
+  visible defect for ~20 minutes:** the frontend went live ahead of the migration, so
+  `youtube_connection_status()` 404'd and every creator and business opening Settings saw the
+  card's red error branch. Ship the schema before the UI that reads it.
+  **The design turns on one of them.** The first build had Google redirect straight to an edge
+  function with `verify_jwt = false`, authorized by an HMAC-signed state — but a signature proves
+  the state is *ours*, not that the browser completing consent is the one that started it. An
+  attacker could start a connect, send the authorize URL to a victim, and have the **victim's**
+  YouTube tokens stored under the **attacker's** account. The code carried a comment asserting the
+  harmless *mirror* case as though it were the whole analysis; **an attack direction stated
+  backwards reads as having been checked.** Fixed with the pattern this repo already had for
+  Workspace and this build simply did not follow: Google redirects to a **page inside the app**
+  (`/youtube/callback`), which forwards the code with the user's own JWT, and `verifyState` requires
+  the state to name that caller. Second finding worth carrying: **HTTP 403 means two opposite
+  things** — round 2 correctly made an analytics 403 persist `needs_reconnect` (else the card kept
+  saying "Connected" and hid the only recovery button), and round 3 found that Google returns 403
+  for quota too, so one hour of `quotaExceeded` would have told **every user on the platform** to
+  reauthorize. A fix is a change, and changes get reviewed. Also holding: a live Google grant is
+  never abandoned (every non-storing exit revokes first; disconnect revokes *before* deleting the
+  row that holds the only token); analytics rows are read **by column name**, because
+  `columnHeaders` order belongs to the response and a positional read shifts every figure the day a
+  metric is added; and the [[Honest Analytics]] rules — empty is zero rows not a row of zeros,
+  `days_with_data` is reported rather than the 28 requested (YouTube reports a day or two in
+  arrears), and average view duration is derived from totals rather than averaged from daily
+  averages. **Console work DONE and verified by reading it back (2026-08-23):** YouTube Analytics
+  API enabled (without it `yt-analytics.readonly` 403s regardless of the code), and the redirect URI
+  moved to `https://dragoncandy.com/youtube/callback`. A memory note claiming the consent screen
+  declared `youtube.upload` was **wrong** — all three Data Access tables are empty, so a "drop
+  youtube.upload" task had been sitting on the list for something that did not exist; scopes are
+  requested at runtime in the authorize URL, while Data Access is the *declared* list Google reviews
+  at verification. **Pending (2026-08-23), all of it console-side or unexercised:** nobody has
+  completed a consent round trip, so the connect / callback / disconnect / analytics path has never
+  run against Google; confirm `dame@dragoncandy.com` is still a listed test user (the app is in
+  **Testing**, so anyone unlisted gets an error, not a consent screen); declare the two read scopes
+  on Data Access before submitting for verification; and register preview origins if the flow should
+  work off the apex. Also unrun: CLAUDE.md's `edge-function-reviewer` gate, which this session was
+  configured not to spawn — the deploy went out without it. **Expect every connection to
+  drop 7 days after consent** — Google expires refresh tokens for External + Testing apps on that
+  schedule, and that is a console setting, not a bug in the refresh code.
+  → `docs/wiki/concepts/youtube-analytics-connector.md`
 - **Content delivery system stabilization** — bug-fixing the creator→business content
   handoff and payment flow; gates production launch. → `docs/SHIPPED_LOG.md`
 - **Outstand social media integration** — IG/TikTok/YouTube linking + delegated posting;
@@ -1082,7 +1191,35 @@ boundaries (see `.claude/handoffs/`).
   then replication scorecard for metro 2.
 - Fine-tuning Donny on proprietary data once 1,000–5,000 campaigns
   accumulate (LoRA on open-source models).
-- Toast partnership application (6–12 month timeline).
+- **Toast integration partnership — APPLICATION FULLY SUBMITTED 2026-08-23.** All three steps
+  done in one session: the API Documentation License Agreement (accepted as Dragon Candy LLC),
+  Toast's confirmation email, and the **Integration Request Application** itself. Toast's
+  confirmation states **up to 30 days for a response** (~2026-09-22). Declared: Commerce
+  category, target 1–15 locations, Read & Write access, no other POS integrations, `$0` revenue
+  stated openly as pre-launch, and an integration scoped in writing to *create/manage a discount*
+  + *receive a redemption event* — guest PII, payment data, labor data and menu-wide write access
+  explicitly disclaimed, since Toast's privacy/security/legal teams gate sandbox credentials.
+  **The license agreement self-terminates six months from the Effective Date — 2027-02-23 —
+  unless the application is accepted or rejected first** (§3(d)); the 30-day reply window leaves
+  comfortable margin, but if it lapses, re-accept and continue. **Toast's CRM has DragonCandy
+  under `support@dragoncandy.com`, not `dame@`** — the confirmation was addressed there despite
+  `dame@` being entered; same mailbox, but a rep may reply to a thread nobody watches. Full
+  process is 8 stages (Application → Discovery → Partner
+  Agreement → Development Kickoff → Certification → Alpha → Beta → GA); sandbox credentials
+  need compliance/privacy/security/legal sign-off **and a signed partner agreement**, production
+  credentials need a one-hour certification demo. Hence the 6–12 month timeline.
+  **The Toast code already in this repo is built on the wrong auth model.** Toast has no OAuth:
+  no authorize URL, no user redirect, no authorization code, no refresh token. A partner POSTs
+  `clientId` + `clientSecret` + `userAccessType: TOAST_MACHINE_CLIENT` to
+  `/authentication/v1/authentication/login` for a ~1-hour bearer token and re-logs-in on expiry;
+  restaurant access is granted restaurant-side (Toast Web → Integrations → Browse & purchase →
+  Add Now) and addressed per request via the `Toast-Restaurant-External-ID` header. So
+  `toast-oauth-start` (redirect), `toast-oauth-callback` (code exchange) and `toast-token-refresh`
+  (30-min refresh-token cron) each model a flow that does not exist, `toast_connections.refresh_token`
+  is a dead column, and `docs/runbooks/toast.md` §1 troubleshoots `invalid_grant` errors Toast
+  cannot emit. Nothing is broken today because it is all deployed dark and fails closed. Plan on
+  rewriting the auth layer when sandbox credentials arrive — not on setting two secrets.
+  → `docs/wiki/concepts/toast-partner-integration.md`
 - Trademark filings: DragonCandy, Donny AI, DragonDash (Classes 35 & 42).
 - Provisional patents: campaign-from-URL system, AI-scored matching pipeline.
 - Schema triage (resolved 2026-06-07): the `campaign_status` enum lacks
@@ -1200,7 +1337,8 @@ Stripe Connect (test mode).
 functions, backend only); OpenAI for embeddings (RAG/matching). Model routing
 and cost ledger in `_shared/`.
 **Social**: Outstand.so (Instagram, TikTok, YouTube integration).
-**Integrations**: Toast POS (restaurant discounts), Google Maps (geocoding).
+**Integrations**: Google Maps (geocoding). (Toast POS is aspirational, not
+active — see §4 and §6.)
 **Knowledge management**: NotebookLM.
 
 **Key project documents**:

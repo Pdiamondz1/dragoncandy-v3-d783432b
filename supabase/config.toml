@@ -254,3 +254,30 @@ verify_jwt = false
 # Same reasoning as verify-phone above: does its own auth.getUser(token) check.
 [functions.verify-address]
 verify_jwt = false
+
+# Called by the app's /youtube/callback PAGE, not by Google — which is exactly
+# why it requires a JWT. Google's redirect lands on a page inside DragonCandy,
+# and that page forwards the code here with the user's own session; verifyState
+# then requires the signed state to name that same user. Without an
+# authenticated caller the flow is open to OAuth account-linking CSRF (start a
+# connect, send the authorize URL to a victim, receive their tokens under your
+# own account), which a signed state alone does not close.
+[functions.youtube-oauth-callback]
+verify_jwt = true
+
+# Stated explicitly rather than inherited, so it reads as a decision: this one
+# IS called by fetch from the app and must have an authenticated caller — the
+# user_id it signs into the state comes from that JWT and from nothing else.
+[functions.youtube-oauth-start]
+verify_jwt = true
+
+# Called by fetch from the app; the row it deletes is scoped by the caller's own
+# user id, so an authenticated caller is required. Stated explicitly for the
+# same reason as youtube-oauth-start.
+[functions.youtube-disconnect]
+verify_jwt = true
+
+# Read-only analytics for the signed-in user; the connection it reads is scoped
+# by the caller's own user id, so an authenticated caller is required.
+[functions.youtube-analytics]
+verify_jwt = true

@@ -541,7 +541,7 @@ function writeSharedBaseline_(next) {
  * Composes the alert for a run, or null if there is nothing worth sending.
  *
  * Pure, so the decision of WHEN to wake somebody up is unit-testable. The
- * sending itself (MailApp, script properties) is not, and is kept to the thin
+ * sending itself (GmailApp, script properties) is not, and is kept to the thin
  * sendRunAlert_ below.
  *
  * Silent on a clean run on purpose. A nightly "all fine" mail trains its
@@ -621,7 +621,7 @@ function alertRecipients_() {
       return x.trim();
     })
     .filter(function (x) {
-      // Not validation -- just refusing to hand MailApp obvious junk. A bad
+      // Not validation -- just refusing to hand GmailApp obvious junk. A bad
       // address is the recipient's problem to notice; an empty string is ours.
       return x.length > 0 && x.indexOf('@') !== -1;
     });
@@ -644,7 +644,29 @@ function sendRunAlert_(subject, body) {
     return false;
   }
   try {
-    MailApp.sendEmail({ to: to.join(','), subject: subject, body: body });
+    // GmailApp, NOT MailApp. Both send as the script owner, but they leave
+    // Google by different routes, and only one of them arrives.
+    //
+    // Measured on prod 2026-08-23, via Admin > Reporting > Email Log Search:
+    // MailApp reached 0 of 3 external recipients (two gmail.com addresses and
+    // one self-hosted domain), every one "Bounced" within 0.16s. The same
+    // sender, composing in Gmail, reached 3 of 3 the same week. The variable is
+    // the transport, not the recipient, the domain, or DKIM -- DKIM was missing
+    // and is now configured, and the bounces did not change.
+    //
+    // Then confirmed the other way: with this line, the same recipient that had
+    // bounced under MailApp received the alert. The Message-Id also changes
+    // family, autogen-java-...@google.com -> ...@mail.gmail.com, which is the
+    // cheapest way to tell from headers alone which route a message took.
+    //
+    // MailApp CANNOT REPORT THIS. It hands off to Google and returns; the
+    // rejection happens milliseconds later, out of the script's sight. So this
+    // call returned true, and logged success, for every one of those failures.
+    // Do not "simplify" this back to MailApp because the code looks the same.
+    //
+    // Argument shape differs on purpose: MailApp.sendEmail takes one options
+    // object, GmailApp.sendEmail takes positional (recipient, subject, body).
+    GmailApp.sendEmail(to.join(','), subject, body);
     return true;
   } catch (err) {
     console.error('Could not send the alert email to ' + to.join(', ') + ': ' + err);
@@ -844,8 +866,8 @@ function dryRun() {
  * leave the path untested for months, and an alarm nobody has heard ring is
  * indistinguishable from one that does not work. This is how you hear it.
  *
- * WHY IT GOES THROUGH sendRunAlert_ instead of calling MailApp itself. A test
- * that builds its own send proves MailApp works, which was never in doubt. What
+ * WHY IT GOES THROUGH sendRunAlert_ instead of calling GmailApp itself. A test
+ * that builds its own send proves GmailApp works, which was never in doubt. What
  * is in doubt is whether THIS script's authorization, THIS property and THIS
  * recipient list deliver -- so it has to be the same code the real alert uses.
  * If this function ever stops calling sendRunAlert_, it stops being a test.

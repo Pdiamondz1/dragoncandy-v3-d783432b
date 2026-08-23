@@ -70,6 +70,170 @@ an owner, (2) two pre-existing schema-drift reads that silently swallow errors
 nonexistent column (`useTour.ts`'s `onboarding_completed_at`). None fixed here; none silently
 dropped from the record either.
 
+## [2026-08-23] update | The alarm rang into a wall
+
+Ingested `raw/sessions/2026-08-23-signature-alert-transport.md`. **Updated**
+[[Workspace Email Signatures]] with the transport finding, and corrected four claims on that page
+plus the `index.md` entry, all of which said the delivery path was merely unproven.
+
+It was not unproven. It was broken. Firing `sendTestAlert()` for the first time established that
+**`MailApp.sendEmail` does not reach external recipients from this project** — 0 of 3, two
+providers, each `Bounced` within 0.16s, while the same sender composing in Gmail reached 3 of 3
+that week. `GmailApp` delivered. The alarm had never worked on any day since it was built, and
+four rounds of improving *what it said* could not have discovered that, because **`MailApp` cannot
+report the failure**: it hands off to Google and returns, and the rejection arrives milliseconds
+later outside the execution, so the call returned `true` and the run logged success every time.
+
+Fixed by `GmailApp.sendEmail` — positional arguments, not `MailApp`'s options object, so a
+symbol-only swap would have sent to `undefined` with every existing test green — plus manifest
+scope `script.send_mail` → `gmail.send`. Pinned by a **text assertion** on the source, because the
+property is unobservable at runtime; mutation-verified. 97 tests, was 96.
+
+**Codex flagged the narrow scope as a P1** on documentation grounds and was refuted by reading the
+*granted* scope list, which shows "Send email as you" and not the full-mailbox label. Taking the
+advice would have traded send-only for read-and-delete over the owner's mailbox. Recorded in
+`build-gs.mjs` so it is not re-derived.
+
+**DKIM was missing, is now published and verified, and was not the cause** — the bounces did not
+change when it landed. A real defect found while chasing the wrong hypothesis is still a real
+defect; it is not a confirmation of it.
+
+Three instrument lessons, one shape. Every sender-side signal — execution log, Sent folder,
+returned id — is the *sender's* view and none is evidence of delivery. A missing non-delivery
+report is not evidence that nothing bounced. And the log search by the fixed message's
+`Message-ID` returned **0 results**, safely read only after the identical query returned 1 for a
+known-good id: **when a probe returns zero, prove it could have returned non-zero.**
+
+## [2026-08-23] update | A merge is not a deploy, and a 401 is not a boot
+
+Merged #477, applied migration `20260823170000` to prod, and deployed the four YouTube edge
+functions. **Updated** [[YouTube Analytics Connector]], the index entry and `PROJECT_CONTEXT.md`
+§5, all three of which said "built and deployed nowhere".
+
+**Two things worth keeping.**
+
+*A merge is not a deploy.* The PR carried the frontend and the migration in one commit, but only
+code ships on merge — a migration does not. For ~20 minutes `youtube_connection_status()` did not
+exist while the card that calls it was live, so every creator and business opening Settings saw
+the red "Could not check your YouTube connection" branch. I had described the merge as shipping
+"inert" code, which was wrong in exactly the direction that mattered. Ship the schema before the
+UI that reads it.
+
+*A 401 is not a boot.* All four functions answered 401 to an unauthenticated POST, which is what
+you want to see — and proves almost nothing, because the gateway emits it before the function
+runs. Two probes made it evidence: a **control** (a nonexistent slug returns 404, so 401
+distinguishes registered from absent), and a request bearing the public anon key — a valid JWT
+naming no user — which came back with **our** JSON body rather than the gateway's, proving the
+modules actually loaded and our own auth check ran. Same shape as the scroll-probe rule from
+earlier this week: when a probe returns the expected answer, prove it could have returned
+another.
+
+Also: the ledger row was written by hand, because `db push` is unsafe here (234-file divergence)
+and this migration's `CREATE TRIGGER` has no `IF NOT EXISTS` — an unrecorded version would fail
+the next push. And the count was wrong in five places: it is **four** edge functions, not five.
+
+Deno installed locally (2.9.5) — `check-edge-functions.mjs` now runs here, 70 functions clean.
+
+Not done: no consent round trip has ever run, so nothing has touched Google; and CLAUDE.md's
+`edge-function-reviewer` gate did not run before the deploy.
+
+## [2026-08-23] update | A guard that cannot fire looks exactly like one that works
+
+Ingested `raw/sessions/2026-08-23-rag-eval-automation.md`. **Updated** [[RAG Retrieval Evaluation]]
+with how it now runs unattended.
+
+Two layers. Per PR and needing no secret, `rag-eval/pinned-constants.test.mjs` ties `k` and
+`TARGET_CHARS` to the evaluation that chose them — `k` became the named constant
+`INTERNAL_RETRIEVAL_K`, and the test asserts the **call site uses it**, because a pin holding a
+correct value that nothing reads is worse than no pin at all. Monthly, `.github/workflows/rag-eval.yml`
+re-runs the evaluation against a committed baseline and files an AIOS finding only when a number
+moves.
+
+The design decisions that outlast the numbers: comparability is checked **before** anything is
+compared, **per metric** (a changed label set costs the recall denominators, not the control check),
+and **by identity rather than count** — Codex found that counting lets one query be swapped for
+another while the run still calls itself comparable, so the baseline now carries order-independent
+hashes of both sets; **two kinds of silence are themselves findings** (*not comparable*, and a
+configured threshold that did not run — either reads exactly like a clean month); and the job never
+re-records its own baseline — a guard that follows the observed value is a thermometer reporting
+room temperature no matter what the room is doing.
+
+Both Codex findings were the mistake being automated, one level up: a comparison that could not
+tell two different benchmarks apart, and a guard that reported success while switched off.
+
+What automation cannot fix is stated in the findings themselves: recall rests on **7 labelled
+queries of 53**, and every finding carries that line so a precise-looking number never reads as
+more authoritative than it is.
+
+
+## [2026-08-23] update | A signed state is not a browser, and 403 means two opposite things
+
+**New page** [[YouTube Analytics Connector]]. Built the read-only YouTube link the
+2026-08-23 scope decision called for: OAuth connect, disconnect, and a channel analytics
+read. Five Codex rounds produced six real findings, all mine, and two of them are worth
+carrying beyond this feature.
+
+**A signed state is not a browser.** The first build had Google redirect straight to an edge
+function running `verify_jwt = false`, authorized by an HMAC-signed state carrying the user
+id. That proves the state is one we minted; it proves nothing about *who is completing the
+flow*. An attacker starts a connect, receives an authorize URL naming their own user id,
+sends it to a victim, and the victim's YouTube tokens land under the attacker's account —
+a live feed of someone else's channel analytics. The code carried a comment asserting the
+**mirror** case (harmless: an attacker completing a victim's link connects their own
+channel to their own account) as though it were the whole analysis. Getting an attack's
+direction backwards is worse than not analysing it, because it reads as having been
+checked. Closed with the pattern the repo already had for Workspace and that this build
+simply did not follow: Google redirects to a **page inside the app**, which forwards the
+code with the user's own JWT, and `verifyState(state, expectedUserId)` requires the state
+to name that caller.
+
+**A fix is a change, and changes get reviewed.** Round 2 correctly made an analytics 403
+persist `needs_reconnect`, because otherwise the card kept saying "Connected" and hid the
+one button that recovers. Round 3 found what that created: Google returns 403 for quota too,
+so an hour of project-wide `quotaExceeded` would have told **every user on the platform** to
+reauthorize. Now classified by `error.errors[].reason` plus `RESOURCE_EXHAUSTED`, defaulting
+an unrecognised 403 to authorization because a refused connection is a state the user must
+act on and quota is the enumerable exception.
+
+Also recorded: a live Google grant is never abandoned (the token in hand is the only thing
+that could revoke it, so every non-storing exit revokes first, and disconnect revokes
+*before* deleting the row that holds the token); analytics rows are read by **column name**
+because `columnHeaders` order belongs to the response; and the [[Honest Analytics]] rules
+hold throughout — empty is zero rows rather than a row of zeros, `days_with_data` is
+reported instead of the 28 requested, and average view duration is derived from totals
+rather than averaged from daily averages.
+
+**Console, verified rather than assumed:** the YouTube Analytics API was enabled (without it
+`yt-analytics.readonly` 403s regardless of the code), and the redirect URI moved to
+`https://dragoncandy.com/youtube/callback`. A memory note claiming the consent screen
+"currently" declared `youtube.upload` was **wrong** — all three Data Access tables are
+empty, and a "drop youtube.upload" task had been sitting on the list for something that did
+not exist. Scopes are requested at runtime in the authorize URL; the Data Access page is the
+*declared* list Google reviews at verification time. Two different things.
+
+**Nothing is deployed.** The migration is unapplied, four edge functions are undeployed, and
+the flow has never run against real Google credentials.
+
+## [2026-08-23] update | Toast is not OAuth, and the application that had never been made
+
+**New page** [[Toast Partner Integration]]. Submitted Step 1 of the Toast integration partner
+application (API Documentation License Agreement, accepted as Dragon Candy LLC) — the item
+`PROJECT_CONTEXT.md` §6 had carried as "6–12 month timeline" without anyone starting it.
+
+Checking the ground first overturned two standing claims. **Toast POS was listed under "Active
+integrations" in two places and is not one** — no `TOAST_*` secret exists, so all six deployed
+`toast-*` edge functions answer `toast_not_configured` 503, and zero `%toast%` tables exist on
+prod. `SHIPPED_LOG.md` recorded that contradiction two weeks ago and nothing read it. And **the
+integration is built on an auth model Toast does not offer**: no authorize URL, no authorization
+code, no refresh token — `clientId`/`clientSecret` client-credentials login for a ~1-hour token,
+with restaurant access granted restaurant-side and addressed per request via
+`Toast-Restaurant-External-ID`. `toast-oauth-start`, `toast-oauth-callback` and
+`toast-token-refresh` each implement a flow that does not exist; the runbook troubleshoots an
+error code Toast cannot emit. The tell was structural — every Toast URL is an env var, because
+nobody had the docs to hardcode a host.
+
+**Updated** `PROJECT_CONTEXT.md` §4 (removed the false active-integration claim), §6 (the real
+application state, the auth finding, and the agreement's 2027-02-23 self-termination) and §10.
 ## [2026-08-23] analysis | A judge sees what you show it
 
 **Created** [[RAG Retrieval Evaluation]] (`concepts/rag-retrieval-evaluation.md`) and committed the

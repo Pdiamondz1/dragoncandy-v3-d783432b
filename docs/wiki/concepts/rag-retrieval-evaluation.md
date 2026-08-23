@@ -117,6 +117,90 @@ evidence before assessing it, you have measured your excerpt, not the thing. Sam
 [[RAG Document Chunking]]'s original defect and as the [[Knowledge-Sync Automation]] rule to
 verify by content.
 
+## How it runs unattended
+
+Two layers, because they catch different things and only one of them needs a key.
+
+**Per PR, no secrets — `rag-eval/pinned-constants.test.mjs`.** The likely regression is not the
+corpus drifting; it is somebody editing a number. `k` and `TARGET_CHARS` were both chosen by this
+evaluation, and nothing else in the tree connected an edit to the measurement that justified it:
+put the 10 back to 5 and every test still passed while this page went on quoting recall figures
+for a configuration that no longer shipped. `k` is now the named constant `INTERNAL_RETRIEVAL_K`
+in `donny-chat/index.ts`, and the test pins its value **and** asserts the call site passes the
+constant rather than a literal — without that second assertion the pin can hold a correct value
+that nothing reads, which is worse than no pin because it looks green.
+
+**Monthly, with the prod key — `.github/workflows/rag-eval.yml`.** Runs the evaluation on the 1st
+at 07:00 UTC, compares against `rag-eval/baseline.json`, and files an AIOS finding only when a
+metric moves past its tolerance. Report-only, through `aios-report-ingest`, like every other
+routine. A clean month files nothing and is silent by design.
+
+Per-PR was considered for the full evaluation and rejected: it measures the **deployed** index,
+which only changes after a merge and a sync, so a per-PR run would score the same index over and
+over, need the prod key on every pull request, and write temporary rows to production dozens of
+times a day.
+
+### What the baseline guards, and what it deliberately does not
+
+| metric | tolerance | severity | what a breach means |
+|---|---|---|---|
+| `controlsAboveWeakestReal` | 0 | critical | Similarity stopped discriminating. Every other number is noise. |
+| `recallAt10` | 0.10 | high | Donny's top 10 carry less of the known-relevant material. |
+| `locatedShare` | 0.15 | medium | Index and repository have drifted apart — usually a sync that quietly stopped running. |
+| `indexChunks` | 80 | high | The corpus shrank. Documents are reaching Donny in no form at all — the 2026-08-23 defect's own shape. |
+
+Reference values live in `baseline.metrics`, tolerances in `baseline.thresholds`, so one number
+appears once. Comparability is checked **before** anything is compared, and **per metric**:
+changing the query set makes nothing comparable, but changing the *label* set moves only the
+recall and precision denominators, so the control check — the one that matters most — still runs.
+
+**Comparability is decided by IDENTITY, not by count.** The baseline records a hash of the query
+set and of the labels; the run recomputes both. Counting was the first design and it leaves a
+hole Codex found: swap one query for another and the count is still 53, so the run is declared
+comparable while measuring a different benchmark — and reports a clean month, or a regression,
+about something nobody recorded. The hashes are order-independent, because reordering
+`queries.json` is not a change to what is being measured and a guard that fires on a diff-only
+edit gets muted. A baseline carrying no hash at all is **not comparable** rather than falling back
+to counts: a compatibility fallback would reinstate the hole silently, on exactly the older files
+most likely to have drifted.
+
+**Two kinds of silence are themselves findings.** *Not comparable* files at medium. So does a
+configured threshold that **did not run** — because the metric was renamed, its baseline figure is
+missing, or the label set moved and took the label-dependent checks with it. Left as a printed
+note, either one reads as a clean month, which is the same shape as the defect this pipeline
+exists to catch, reintroduced one level up. The reporter is allowed to be quiet in exactly one
+state: every configured threshold ran, and every one stayed inside its tolerance.
+
+**The baseline is never re-recorded by the job.** A guard that follows the observed value is a
+thermometer reporting room temperature no matter what the room is doing. Re-recording is a PR.
+
+### Proving the alarm can be heard
+
+A clean month files nothing, so the path from the runner to `/internal/findings` is never
+exercised until the month something breaks — and that is when you find out it was never wired.
+Dispatching the workflow with **`test_delivery`** on files one clearly-labelled low finding and
+**does not fail the run**: a red job that means "the test passed" is exactly the signal people
+learn to ignore. Its fingerprint is fixed (`rag-eval:delivery-test`), so repeated tests bump one
+row rather than littering the list.
+
+Proven against prod on 2026-08-23: first call `inserted: 1`, second `updated: 1` — which also
+demonstrates the per-metric fingerprinting that stops a persistent regression from filing a fresh
+row every month. (The same gap, and the same remedy, as `sendTestAlert()` in
+[[Workspace Email Signatures]]: four rounds had gone into an alert nobody had ever received.)
+
+### What automation cannot fix
+
+Recall rests on **7 labelled queries of 53**. A scheduled job will measure those same 7 forever,
+precisely and narrowly — so every finding carries the coverage line, and a monthly report that
+printed a recall figure without it would read far more authoritative than it is. Extending
+`rag-eval/labels.json` needs judgment and ideally an independent judge.
+
+What automation does get for free is **drift**: the run counts how many distinct live queries in
+`donny_tool_executions` are not in the committed 53. The committed set stays fixed on purpose —
+change the denominator and nothing compares to the baseline any more — so the count is reported
+and never acted on. On 2026-08-23 it was 0 of 53, which doubles as a check that the probe reads
+the right column at all.
+
 ## Known Issues
 
 - **Seven labelled queries out of 53.** Small. Confidence intervals are wide and the recall
@@ -131,6 +215,10 @@ verify by content.
   measured gain is a **floor**. A raw `OPENAI_API_KEY` would close this.
 - **Queries are from June** against a corpus that has moved. Fine for a comparison where both
   sides face the same corpus; it means absolute recall understates.
+- **The scheduled run has never fired.** The reporter is proven by forced controls on all eight
+  branches, and its delivery path is proven for real (a test finding reached prod, twice,
+  deduplicating on the second) — but no cron has executed, and a *regression* finding has never
+  been filed by the runner rather than by hand.
 - **Embedding without a local OpenAI key** works by writing short-lived internal-scope rows
   through `donny-knowledge-sync` and deleting them in a `finally`. Set `OPENAI_API_KEY` to skip
   that path entirely.
@@ -140,5 +228,7 @@ verify by content.
 - [[RAG Document Chunking]] — the change this evaluates, and why the corpus was a third missing
 - [[Knowledge-Sync Automation]] — the sync pipeline, and the verify-by-content rule
 - [[Donny RAG Scope Boundary]] — who can retrieve what from the same table
+- [[AIOS Runtime Spend Source-of-Truth]] — the other report-only routine whose whole value is
+  that it stays quiet until something is wrong
 - [[Honest Analytics]] — the same discipline applied to user-facing numbers: state the sample
   size, gate on it, never report a claim the data cannot carry
