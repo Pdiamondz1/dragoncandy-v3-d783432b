@@ -1,5 +1,31 @@
 # Wiki Log
 
+## [2026-08-23] ingest | Seven scoping errors in one warning, and not one wrong calculation
+
+Ingested `raw/sessions/2026-08-23-per-user-shared-signature-warning.md`.
+**Updated** [[Workspace Email Signatures]] — the "regression warning was scoped to the wrong
+thing" section, plus Known issues.
+
+Closing the latent bug this page recorded hours earlier took five Codex rounds and seven
+defects, six of them introduced by the fixes themselves. Worth the page space because of what
+they had in common: **every one was a question of what a condition was computed over, and not
+one was a wrong calculation.**
+
+The sharpest is now stated as a rule: *an expectation recomputed from current state is blind to
+exactly the change it exists to catch.* Deriving "how many should this user have" from the
+identities present right now means a deletion drops numerator and denominator together and reads
+as healthy. It is fixed with a persisted high-water mark that never decreases on its own, since
+the drop is the signal.
+
+Also recorded: **when two code paths must agree, test the agreement** — the Sheet and the warning
+each computed "expected" correctly and differently, and only a test comparing them catches that;
+and **prefer the failure that loses less**, which decided two designs here (refuse to overwrite
+an unreadable baseline; swallow a baseline-write error so the run log survives).
+
+And the methodological one: **a test that has never failed has not been shown to test anything.**
+Three mutations were run to prove the new tests bite. Every buggy version of this function passed
+the whole suite as it stood when it was written.
+
 ## [2026-08-23] ingest | It works — and the run that proves it is the middle one, not the last
 
 Ingested `raw/sessions/2026-08-23-shared-signatures-live.md`.
