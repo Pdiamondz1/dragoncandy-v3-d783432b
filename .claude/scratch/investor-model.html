@@ -330,6 +330,27 @@
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   }
 
+  .control-derived {
+    margin: 0;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--accent-bright);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .disclosure-note {
+    margin: 0;
+    padding: 0.8rem 1rem;
+    border-left: 3px solid var(--benchmarked);
+    background: var(--benchmarked-wash);
+    border-radius: 0 8px 8px 0;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    max-width: 74ch;
+  }
+  .disclosure-note b { color: var(--ink); font-weight: 700; }
+
   input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
@@ -477,7 +498,7 @@
     border-radius: 999px;
   }
   .liquidity-pill.liquid { color: var(--measured); background: var(--measured-wash); }
-  .liquidity-pill.stuck { color: var(--negative); background: var(--negative-wash); }
+  .liquidity-pill.neutral { color: var(--scenario); background: var(--scenario-wash); }
 
   .liquidity-detail { font-size: 0.8rem; color: var(--ink-soft); }
   .liquidity-detail b { color: var(--ink); font-weight: 600; }
@@ -495,7 +516,7 @@
     background: var(--accent);
     border-radius: 999px;
   }
-  .ramp-fill.stuck { background: var(--negative); }
+  .ramp-fill.neutral { background: var(--scenario); }
 
   /* ---------- Ledger sections ---------- */
 
@@ -714,6 +735,7 @@
             <output for="deliverables" id="deliverablesOut">3</output>
           </div>
           <p class="control-source">src/pitch/model/assumptions.ts</p>
+          <p class="control-derived" id="avgCampaignValueOut">→ $337.50 avg. campaign value — derived: ($75 + $150) ÷ 2 × 3 deliverables</p>
         </div>
 
         <div class="control">
@@ -797,6 +819,21 @@
         </div>
       </div>
 
+      <div class="control-group">
+        <p class="group-title">Operating expense</p>
+        <div class="control">
+          <div class="control-head">
+            <label for="opex">Monthly operating expense</label>
+            <span class="badge badge-modeled">Modeled</span>
+          </div>
+          <div class="control-row">
+            <input type="range" id="opex" min="0" max="500000" step="5000" value="0">
+            <output for="opex" id="opexOut">$0</output>
+          </div>
+          <p class="control-source">payroll, marketing, legal — everything below the gross-profit line; defaults to $0 because none of it is sourced per month</p>
+        </div>
+      </div>
+
     </section>
 
     <section class="panel outputs" aria-label="Live outputs">
@@ -821,6 +858,11 @@
           <span class="stat-value num" id="outGmv">$84,375</span>
           <span class="stat-sub" id="outCampaignCount">250 campaigns / mo</span>
         </div>
+        <div class="stat-tile">
+          <span class="stat-label">EBITDA / month</span>
+          <span class="stat-value num" id="outEbitda">$25,093</span>
+          <span class="stat-sub" id="outEbitdaNote">gross profit − $0 opex = gross profit, since opex is $0</span>
+        </div>
       </div>
 
       <div class="liquidity-card">
@@ -839,6 +881,7 @@
   <section class="ledger-section" aria-label="Scale table">
     <h2 class="serif">What 100 / 1,000 / 10,000 businesses looks like</h2>
     <p class="section-note">Steady-state economics at a fixed business count for one month, annualized — not a calendar-time projection of when we reach that count. Recomputes from the campaign-engine and tier-mix controls above; independent of the "businesses" scenario slider.</p>
+    <p class="disclosure-note">Monthly churn is <b>benchmarked at 4%</b> (kill-switch threshold 6% — docs/PROJECT_CONTEXT.md §3), but it is <b>not modelled</b> in any figure below. No formula on this page applies a churn drag. So read this table as what the business looks like while holding a business count, not as a forecast net of the customers who leave along the way — a reader who assumes churn is already baked in is reading these numbers more favorably than they should.</p>
     <div class="table-scroll">
       <table class="ledger">
         <thead>
@@ -882,7 +925,8 @@
     creators: 4,
     mix: { free: 30, starter: 40, growth: 25, pro: 5 },
     restaurantsAdded: 2,
-    creatorsAdded: 8
+    creatorsAdded: 8,
+    opex: 0
   };
 
   var state = {
@@ -892,7 +936,8 @@
     creators: DEFAULTS.creators,
     mix: Object.assign({}, DEFAULTS.mix),
     restaurantsAdded: DEFAULTS.restaurantsAdded,
-    creatorsAdded: DEFAULTS.creatorsAdded
+    creatorsAdded: DEFAULTS.creatorsAdded,
+    opex: DEFAULTS.opex
   };
 
   // ---------- formatting ----------
@@ -988,6 +1033,7 @@
   var mixOuts = { free: $("mixFreeOut"), starter: $("mixStarterOut"), growth: $("mixGrowthOut"), pro: $("mixProOut") };
   var restaurantsAddedEl = $("restaurantsAdded"), restaurantsAddedOut = $("restaurantsAddedOut");
   var creatorsAddedEl = $("creatorsAdded"), creatorsAddedOut = $("creatorsAddedOut");
+  var opexEl = $("opex"), opexOut = $("opexOut");
 
   var mixBar = $("mixBar");
 
@@ -1004,11 +1050,16 @@
     });
     restaurantsAddedOut.textContent = String(state.restaurantsAdded);
     creatorsAddedOut.textContent = String(state.creatorsAdded);
+    opexOut.textContent = money(state.opex);
 
     var spans = mixBar.querySelectorAll("span");
     TIER_KEYS.forEach(function (k, i) {
       spans[i].style.width = state.mix[k] + "%";
     });
+
+    var avgCampaignValue = ((75 + 150) / 2) * state.deliverables;
+    $("avgCampaignValueOut").textContent = "→ " + avgCampaignValue.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }) +
+      " avg. campaign value — derived: ($75 + $150) ÷ 2 × " + state.deliverables + " deliverable" + (state.deliverables === 1 ? "" : "s");
   }
 
   function renderOutputs() {
@@ -1026,6 +1077,16 @@
     var gm = $("outGrossMargin");
     gm.parentElement.querySelector(".stat-value") === gm && (gm.className = "stat-value num" + (r.grossMarginPct < 0 ? " negative" : ""));
 
+    // EBITDA = gross profit minus operating expense. At opex $0 this equals gross profit —
+    // shown explicitly so it never reads as gross profit quietly relabelled.
+    var ebitda = r.grossProfit - state.opex;
+    var ebitdaEl = $("outEbitda");
+    ebitdaEl.textContent = money(ebitda);
+    ebitdaEl.className = "stat-value num" + (ebitda < 0 ? " negative" : "");
+    $("outEbitdaNote").textContent = state.opex === 0
+      ? "= gross profit (" + money(r.grossProfit) + "), since opex is $0"
+      : money(r.grossProfit) + " gross profit − " + money(state.opex) + " opex";
+
     // liquidity
     var liq = computeLiquidity(36);
     var pill = $("liquidityPill");
@@ -1042,13 +1103,13 @@
         " added per month, both clear in month <b>" + liq.month + "</b>.";
     } else {
       pill.textContent = "Never liquid within 36 months";
-      pill.className = "liquidity-pill stuck";
-      fill.className = "ramp-fill stuck";
+      pill.className = "liquidity-pill neutral";
+      fill.className = "ramp-fill neutral";
       fill.style.width = "100%";
       detail.innerHTML = "Liquid means ≥ 5 campaigns open at once and ≥ 3 applicants per campaign. At <b>" +
         state.restaurantsAdded + "</b> restaurant" + (state.restaurantsAdded === 1 ? "" : "s") + " and <b>" +
         state.creatorsAdded + "</b> creator" + (state.creatorsAdded === 1 ? "" : "s") +
-        " added per month, creator supply never catches up — more restaurants makes the shortage worse, not better.";
+        " added per month, creator supply never catches up — more restaurants makes the shortage worse, not better. That's a real answer at this ratio, not an error.";
     }
   }
 
@@ -1186,6 +1247,10 @@
     state.creatorsAdded = Number(creatorsAddedEl.value);
     renderAll();
   });
+  opexEl.addEventListener("input", function () {
+    state.opex = Number(opexEl.value);
+    renderAll();
+  });
 
   $("resetBtn").addEventListener("click", function () {
     state = {
@@ -1195,7 +1260,8 @@
       creators: DEFAULTS.creators,
       mix: Object.assign({}, DEFAULTS.mix),
       restaurantsAdded: DEFAULTS.restaurantsAdded,
-      creatorsAdded: DEFAULTS.creatorsAdded
+      creatorsAdded: DEFAULTS.creatorsAdded,
+      opex: DEFAULTS.opex
     };
     businessesEl.value = state.businessesPos;
     campaignsEl.value = state.campaigns;
@@ -1204,6 +1270,7 @@
     TIER_KEYS.forEach(function (k) { mixEls[k].value = state.mix[k]; });
     restaurantsAddedEl.value = state.restaurantsAdded;
     creatorsAddedEl.value = state.creatorsAdded;
+    opexEl.value = state.opex;
     renderAll();
   });
 
