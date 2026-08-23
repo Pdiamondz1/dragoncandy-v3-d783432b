@@ -28,8 +28,8 @@
 
 ## [2026-08-23] Shared-mailbox signatures install, and the middle run is the one that proves it
 
-**PRs** #458 (knowledge-sync, Codex clean at round 5) · no code change — this entry is a
-deploy and two configuration steps
+**PR** #460 (knowledge-sync, Codex clean at round 4) · no code change — this entry is a deploy
+and two configuration steps, both performed in Google's consoles
 
 Three days of corrections ended in a working system. `clasp push` landed #456, the founder
 approved `gmail.settings.sharing`, and `dame@`'s final run logged **`ok / 4 identities /
@@ -67,7 +67,7 @@ liability with a short half-life**; date it, and distrust it past its date.
 and the granted scope now permits either route. Outlook for Windows remains untested and
 untestable; the rendering matrix is four-of-five.
 
-→ `docs/wiki/concepts/workspace-email-signatures.md` · #453, #454, #455, #456, #458
+→ `docs/wiki/concepts/workspace-email-signatures.md` · #453, #454, #455, #456, #458, #460
 
 ## [2026-08-22] The fix I documented wouldn't have worked, and following it broke production
 
