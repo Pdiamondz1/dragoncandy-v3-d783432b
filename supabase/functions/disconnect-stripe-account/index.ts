@@ -118,6 +118,16 @@ serve(async (req) => {
         stripe_account_id: null,
         stripe_onboarding_complete: false,
         disconnected_stripe_account_id: stripeAccountId,
+        // Stripe-derived verification signals must not survive the account
+        // they were verified on — a reconnect can attach a different legal
+        // entity, and identity_verified_at must never vouch for a party
+        // Stripe hasn't verified. tax_id_provided goes to null (not false):
+        // null means "Stripe said nothing", which is the honest state after
+        // a disconnect; false would assert Stripe reported something.
+        identity_verified_at: null,
+        tax_id_provided: null,
+        stripe_requirements_due: null,
+        stripe_disabled_reason: null,
       });
 
     for (const [key, value] of Object.entries(sourceFilter)) {
