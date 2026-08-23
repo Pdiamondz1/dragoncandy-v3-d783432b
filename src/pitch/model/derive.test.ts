@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { isLiquid, monthsToLiquidity, businessStepTable, LIQUIDITY_THRESHOLD } from './derive';
+import {
+  isLiquid,
+  monthsToLiquidity,
+  businessStepTable,
+  threeYearTrajectory,
+  LIQUIDITY_THRESHOLD,
+} from './derive';
 import type { TierMix } from './project';
 
 const MIX: TierMix = { free: 0.3, starter: 0.4, growth: 0.25, pro: 0.05 };
@@ -74,5 +80,44 @@ describe('businessStepTable', () => {
     expect(rows.map((r) => r.businesses)).toEqual([100, 1000, 10000]);
     expect(rows[0].annualRevenue).toBeCloseTo(rows[0].monthlyRevenue * 12, 10);
     expect(rows[1].monthlyRevenue).toBeGreaterThan(rows[0].monthlyRevenue);
+  });
+});
+
+describe('threeYearTrajectory', () => {
+  it('returns one row per year, 1 through 3, in order', () => {
+    const rows = threeYearTrajectory();
+    expect(rows.map((r) => r.year)).toEqual([1, 2, 3]);
+  });
+
+  // Pinned to hardcoded literals rather than recomputed from the register, on purpose --
+  // Task 3 found and fixed a test that re-derived the implementation's own subtraction instead
+  // of asserting an independently-known answer. revenueLow=300000, totalCostHigh=830000 =>
+  // ebitdaLow=-530000; revenueHigh=600000, totalCostLow=590000 => ebitdaHigh=10000.
+  it('pins the Year 1 EBITDA band to -530,000 .. +10,000', () => {
+    const [year1] = threeYearTrajectory();
+    expect(year1.revenueLow).toBe(300000);
+    expect(year1.revenueHigh).toBe(600000);
+    expect(year1.totalCostLow).toBe(590000);
+    expect(year1.totalCostHigh).toBe(830000);
+    expect(year1.ebitdaLow).toBe(-530000);
+    expect(year1.ebitdaHigh).toBe(10000);
+  });
+
+  // The source document's own summary calls Year 1 "Breakeven to slight loss" -- on its own
+  // line-item costs that isn't true, a $530K loss on $300K of revenue is not slight. Pinned so
+  // the fact stays visible rather than becoming a pleasant assumption nobody checks.
+  it('shows Year 1 downside is a real loss, not a slight one', () => {
+    const [year1] = threeYearTrajectory();
+    expect(year1.ebitdaLow).toBeLessThan(0);
+  });
+
+  it('pairs low revenue with high cost for the downside, and high revenue with low cost for the upside', () => {
+    // Year 1 is already pinned to literals above; this checks years 2 and 3 stay internally
+    // consistent without re-deriving the Year 1 answer a second time.
+    const [, year2, year3] = threeYearTrajectory();
+    expect(year2.ebitdaLow).toBe(year2.revenueLow - year2.totalCostHigh);
+    expect(year2.ebitdaHigh).toBe(year2.revenueHigh - year2.totalCostLow);
+    expect(year3.ebitdaLow).toBe(year3.revenueLow - year3.totalCostHigh);
+    expect(year3.ebitdaHigh).toBe(year3.revenueHigh - year3.totalCostLow);
   });
 });

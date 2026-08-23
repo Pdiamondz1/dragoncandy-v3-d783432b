@@ -2,7 +2,7 @@
  * The three views Adrian asked for that no existing document answers: when Hoboken becomes a
  * working market, and what 100 / 1,000 / 10,000 businesses mean financially.
  */
-import { MARKET } from './assumptions';
+import { MARKET, TRAJECTORY } from './assumptions';
 import { projectMonth, type TierMix } from './project';
 
 export const LIQUIDITY_THRESHOLD = {
@@ -101,4 +101,62 @@ export function businessStepTable(steps: readonly number[], mix: TierMix): StepR
       creators: m.creators,
     };
   });
+}
+
+export interface TrajectoryYear {
+  readonly year: 1 | 2 | 3;
+  readonly revenueLow: number;
+  readonly revenueHigh: number;
+  /**
+   * All-in cost, not operating expense alone. The cited line-item breakdown includes Stripe
+   * fees, AI and infrastructure spend alongside payroll, marketing and legal, so `opex` would
+   * misstate what this contains.
+   */
+  readonly totalCostLow: number;
+  readonly totalCostHigh: number;
+  readonly ebitdaLow: number;
+  readonly ebitdaHigh: number;
+}
+
+/**
+ * The three-year revenue/cost/EBITDA bands the investor advisor asked for by name. Low EBITDA
+ * pairs low revenue with HIGH cost (the worst case); high EBITDA pairs high revenue with LOW
+ * cost (the best case) — pairing low revenue with low cost would understate the downside.
+ */
+export function threeYearTrajectory(): TrajectoryYear[] {
+  const years: Array<{
+    year: 1 | 2 | 3;
+    revenueLow: number;
+    revenueHigh: number;
+    totalCostLow: number;
+    totalCostHigh: number;
+  }> = [
+    {
+      year: 1,
+      revenueLow: TRAJECTORY.year1RevenueLow.value,
+      revenueHigh: TRAJECTORY.year1RevenueHigh.value,
+      totalCostLow: TRAJECTORY.year1CostLow.value,
+      totalCostHigh: TRAJECTORY.year1CostHigh.value,
+    },
+    {
+      year: 2,
+      revenueLow: TRAJECTORY.year2RevenueLow.value,
+      revenueHigh: TRAJECTORY.year2RevenueHigh.value,
+      totalCostLow: TRAJECTORY.year2CostLow.value,
+      totalCostHigh: TRAJECTORY.year2CostHigh.value,
+    },
+    {
+      year: 3,
+      revenueLow: TRAJECTORY.year3RevenueLow.value,
+      revenueHigh: TRAJECTORY.year3RevenueHigh.value,
+      totalCostLow: TRAJECTORY.year3CostLow.value,
+      totalCostHigh: TRAJECTORY.year3CostHigh.value,
+    },
+  ];
+
+  return years.map((y) => ({
+    ...y,
+    ebitdaLow: y.revenueLow - y.totalCostHigh,
+    ebitdaHigh: y.revenueHigh - y.totalCostLow,
+  }));
 }

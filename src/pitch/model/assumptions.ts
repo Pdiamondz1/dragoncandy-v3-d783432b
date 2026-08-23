@@ -140,6 +140,95 @@ export const UNIT_ECONOMICS = {
   }),
 } satisfies Record<string, Assumption<number>>;
 
+const PROJECT_CONTEXT_TARGETS = 'docs/PROJECT_CONTEXT.md (section 3)';
+const COST_BREAKDOWN = 'docs/DragonCandy_Pricing_Profitability_Briefing_v2.md (section 7, "The Cost Breakdown" table, line 520)';
+
+/**
+ * Three-year revenue and cost bands, our own forward projections — not a benchmark, not a
+ * measurement of anything that exists yet. Feeds `threeYearTrajectory()` in `derive.ts`.
+ */
+export const TRAJECTORY = {
+  year1RevenueLow: modeled({
+    value: 300000,
+    unit: 'USD/year',
+    label: 'Year 1 revenue, low',
+    source: PROJECT_CONTEXT_TARGETS,
+    note: 'docs/DragonCandy_Pricing_Profitability_Briefing_v2.md section 7 states the same three-year ranges independently, so they are corroborated across two documents.',
+  }),
+  year1RevenueHigh: modeled({
+    value: 600000,
+    unit: 'USD/year',
+    label: 'Year 1 revenue, high',
+    source: PROJECT_CONTEXT_TARGETS,
+  }),
+  year2RevenueLow: modeled({
+    value: 2000000,
+    unit: 'USD/year',
+    label: 'Year 2 revenue, low',
+    source: PROJECT_CONTEXT_TARGETS,
+  }),
+  year2RevenueHigh: modeled({
+    value: 4500000,
+    unit: 'USD/year',
+    label: 'Year 2 revenue, high',
+    source: PROJECT_CONTEXT_TARGETS,
+  }),
+  year3RevenueLow: modeled({
+    value: 7000000,
+    unit: 'USD/year',
+    label: 'Year 3 revenue, low',
+    source: PROJECT_CONTEXT_TARGETS,
+  }),
+  year3RevenueHigh: modeled({
+    value: 12000000,
+    unit: 'USD/year',
+    label: 'Year 3 revenue, high',
+    source: PROJECT_CONTEXT_TARGETS,
+  }),
+  year1CostLow: modeled({
+    value: 590000,
+    unit: 'USD/year',
+    label: 'Year 1 cost, low',
+    source: COST_BREAKDOWN,
+    note:
+      'This document contradicts itself on cost. Its per-year summary tables (lines 476, 490, 504) state ' +
+      '$480-600K / $1.5-2M / $2.5-3.5M, while its own line-item breakdown (line 520) states ' +
+      '$590-830K / $1.1-1.8M / $2.2-3.8M -- they disagree in both directions, the breakdown is higher in ' +
+      'Year 1 and lower in Years 2 and 3. We use the line-item breakdown because it is built from enumerable ' +
+      'components (payroll, infrastructure, AI, Stripe, marketing, legal) rather than asserted as a single number.',
+  }),
+  year1CostHigh: modeled({
+    value: 830000,
+    unit: 'USD/year',
+    label: 'Year 1 cost, high',
+    source: COST_BREAKDOWN,
+  }),
+  year2CostLow: modeled({
+    value: 1100000,
+    unit: 'USD/year',
+    label: 'Year 2 cost, low',
+    source: COST_BREAKDOWN,
+  }),
+  year2CostHigh: modeled({
+    value: 1800000,
+    unit: 'USD/year',
+    label: 'Year 2 cost, high',
+    source: COST_BREAKDOWN,
+  }),
+  year3CostLow: modeled({
+    value: 2200000,
+    unit: 'USD/year',
+    label: 'Year 3 cost, low',
+    source: COST_BREAKDOWN,
+  }),
+  year3CostHigh: modeled({
+    value: 3800000,
+    unit: 'USD/year',
+    label: 'Year 3 cost, high',
+    source: COST_BREAKDOWN,
+  }),
+} satisfies Record<string, Assumption<number>>;
+
 /** Flat view of everything, for staleness checking and document generation. */
 export const REGISTER: Readonly<Record<string, Assumption<number>>> = {
   ...Object.fromEntries(Object.entries(PRICING).map(([k, v]) => [`price_${k}`, v])),
@@ -147,4 +236,5 @@ export const REGISTER: Readonly<Record<string, Assumption<number>>> = {
   ...OPERATING,
   ...MARKET,
   ...UNIT_ECONOMICS,
+  ...TRAJECTORY,
 };
