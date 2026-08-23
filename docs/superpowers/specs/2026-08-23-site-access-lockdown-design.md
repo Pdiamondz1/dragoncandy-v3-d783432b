@@ -72,9 +72,11 @@ works for this Vite SPA. It runs before routing, so it fires ahead of the
 
 Behaviour, in order:
 
-1. **Not production → pass.** Gate only when `process.env.VERCEL_ENV === 'production'`.
+1. **Not production, or not enabled → pass.** Gate only when
+   `VERCEL_ENV === 'production'` **and** `SITE_GATE_ENABLED === '1'`.
    Preview deployments are already covered by Vercel's own SSO protection;
    double-gating them adds nothing and breaks the E2E smoke suite (below).
+   `SITE_GATE_ENABLED` is the kill switch — see Rollback.
 2. **Static allowlist → pass.** `/robots.txt`, `/favicon.ico`, `/.well-known/*`,
    `/apple-app-site-association`. These are the Apple and crawler verification
    files. None of them serves the SPA shell or any bundle chunk, so allowlisting
@@ -88,9 +90,22 @@ Behaviour, in order:
 4. **Valid gate cookie → pass.** An HMAC of an expiry timestamp, signed with
    `SITE_GATE_SECRET`, `HttpOnly` + `Secure` + `SameSite=Lax`, 30-day lifetime.
    A plain "unlocked=true" cookie is forgeable in devtools and is not used.
-5. **`Authorization: Basic` matching `SITE_PASSWORD` → set the gate cookie, pass.**
+5. **`Authorization: Basic` matching `SITE_PASSWORD` → pass, and set no cookie.**
 6. **Otherwise → `401` with `WWW-Authenticate: Basic realm="DragonCandy private
    preview"`**, `Cache-Control: private, no-store`.
+
+**Only the `?k=` branch mints a cookie, and it is the only branch that can.** A
+framework-agnostic middleware signals "continue to the origin" by returning
+`undefined`, and there is no documented way to attach a `Set-Cookie` header to
+that. This costs nothing, because a browser caches Basic credentials per origin
+and realm and resends them automatically on every subsequent request — the cookie
+would be redundant. It is needed only on the bypass-link path, where no
+credentials are ever supplied, and that path already returns a real `302` response
+to hang the header on.
+
+A consequence worth stating: because the browser holds the credentials rather than
+a cookie we control, **there is no server-side logout**. Clearing an admitted
+visitor requires changing `SITE_PASSWORD`.
 
 Every gate response carries `Cache-Control: private, no-store` so the CDN never
 caches a `401` for an authorised visitor or an authorised body for an anonymous
@@ -104,9 +119,20 @@ Environment variables, all **Production scope only**, none prefixed `VITE_`
 
 | Variable | Purpose |
 |---|---|
+| `SITE_GATE_ENABLED` | Kill switch. The gate runs only when this is exactly `1` |
 | `SITE_PASSWORD` | The shared password |
 | `SITE_BYPASS_TOKEN` | The `?k=` value for shared links |
-| `SITE_GATE_SECRET` | HMAC key signing the gate cookie |
+| `SITE_GATE_SECRET` | HMAC key signing the gate cookie and comparing secrets |
+
+**The gate fails closed.** If it is enabled in production but `SITE_PASSWORD` or
+`SITE_GATE_SECRET` is missing, every request is challenged and nobody — including
+the founder — gets in. That is deliberate. The alternative, passing traffic when a
+variable is absent, means a typo'd or deleted variable silently reopens the site
+with no signal at all, which is the exact failure mode this codebase has been
+bitten by repeatedly (see `PROJECT_CONTEXT.md` §5 on `handle_updated_at`). A
+locked-out site is noticed in seconds; a silently unlocked one is not noticed for
+weeks. `SITE_GATE_ENABLED` exists so that recovery does not depend on guessing
+which variable is wrong.
 
 #### Why a `401` challenge and not a redirect to a gate page
 
@@ -235,9 +261,18 @@ existing RLS.
 
 ## Rollback
 
-Delete the three environment variables, or return `undefined` unconditionally
-from the middleware, and redeploy. Re-enabling signup is one Supabase toggle.
-Neither has a data migration, and nothing in this design writes to the database.
+Set `SITE_GATE_ENABLED` to `0` in the Vercel dashboard. Vercel applies an
+environment-variable change to the running production deployment without a
+rebuild, so this is the fastest lever and needs no git operation. **Do not roll
+back by deleting `SITE_PASSWORD`** — the gate fails closed, so that locks
+everyone out rather than opening the site.
+
+If the middleware itself is broken rather than misconfigured, revert the commit
+that adds `middleware.ts` and redeploy; with no middleware present, Vercel serves
+the site exactly as it does today.
+
+Re-enabling signup is one Supabase toggle. Nothing in this design writes to the
+database, so there is no migration to reverse.
 
 ## Out of scope
 
