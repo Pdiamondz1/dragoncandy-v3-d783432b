@@ -179,7 +179,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
 
   return (
     <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
-      <div className="min-h-screen flex w-full bg-background overflow-x-hidden font-outfit">
+      <div className="min-h-[100dvh] flex w-full bg-background overflow-x-hidden font-outfit">
         {/* Sidebar — desktop only */}
         <div className="hidden md:block">
           <AppSidebar userRole={userRole} />
@@ -298,7 +298,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
             </header>
           )}
 
-          <div className={`${isMobile ? 'flex-1 min-h-screen overflow-x-hidden pt-4 pb-24 px-4 w-full min-w-0 max-w-full' : 'flex-1 p-6 lg:p-8'} animate-fade-in`}>
+          <div className={`${isMobile ? 'flex-1 min-h-[100dvh] overflow-x-hidden pt-4 pb-24 px-4 w-full min-w-0 max-w-full' : 'flex-1 p-6 lg:p-8'} animate-fade-in`}>
             <ErrorBoundary level="page">
               {children}
             </ErrorBoundary>

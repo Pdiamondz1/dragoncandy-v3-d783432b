@@ -82,6 +82,21 @@ describe("LandingPage", () => {
     expect(footer.textContent).toContain("Hoboken, NJ");
 
     const hrefs = [...footer.querySelectorAll("a")].map((a) => a.getAttribute("href"));
-    expect(hrefs).toEqual(["/terms", "/privacy", "/help"]);
+    expect(hrefs).toEqual(["/how-it-works", "/terms", "/privacy", "/help"]);
+  });
+
+  it("offers a way to read about the product before signing up", async () => {
+    const { container } = await setup();
+
+    // The landing sells and asks for a signup; it cannot also explain the product on one screen.
+    // Deleting the old six-section marketing page left nobody a way to read first, which is what
+    // this points at. If /how-it-works is ever removed, this fails rather than shipping a 404 in
+    // the footer.
+    const footer = container.querySelector("footer")!;
+    const learnMore = [...footer.querySelectorAll("a")].find(
+      (a) => a.textContent?.trim() === "Learn more",
+    );
+    expect(learnMore).toBeDefined();
+    expect(learnMore!.getAttribute("href")).toBe("/how-it-works");
   });
 });

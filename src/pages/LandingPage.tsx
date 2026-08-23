@@ -69,6 +69,18 @@ export default function LandingPage() {
             © {new Date().getFullYear()} {LEGAL_ENTITY_NAME} · {LEGAL_ENTITY_LOCALITY}
           </p>
           <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+            {/* A pill, not a plain link — the page asks for a signup and nothing else, so the one
+                affordance for "explain this to me before I commit" has to be findable next to the
+                legal text without competing with the CTA. Border + slightly brighter text is the
+                whole difference; anything filled would read as a second call to action.
+                It sits in the footer's band, where the scrim is heaviest (to-landing-grape/95) and
+                white text measures 7.42:1 against the brightest frame across all encodes. */}
+            <Link
+              to="/how-it-works"
+              className="rounded-full border border-white/30 px-4 py-1.5 text-white/90 transition-colors hover:border-white/60 hover:text-white"
+            >
+              Learn more
+            </Link>
             <Link to="/terms" className="text-white/70 transition-colors hover:text-white">
               Terms
             </Link>

@@ -103,6 +103,7 @@ const HelpBriefPage = lazy(() => import("./pages/help/promotions/HelpBriefPage")
 const HelpCenter = lazy(() => import("./pages/help/HelpCenter"));
 const HelpArticlePage = lazy(() => import("./pages/help/HelpArticlePage"));
 const PricingPage = lazy(() => import("./pages/PricingPage"));
+const HowItWorks = lazy(() => import("./pages/HowItWorks"));
 const PrivacyPolicy = lazy(() => import("./pages/legal/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("./pages/legal/TermsOfService"));
 const ContentCalendar = lazy(() => import("./pages/ContentCalendar"));
@@ -198,9 +199,9 @@ function AnimatedRoutes() {
           {/* Landing is lazy (kept out of the initial bundle); its fallback is dark
               (bg-landing-grape) so it stays seamless with the dark cinematic landing page —
               never a white flash. */}
-          <Route path="/" element={<Suspense fallback={<div className="min-h-screen bg-landing-grape" />}><LandingPage /></Suspense>} />
-          <Route path="/home" element={<Suspense fallback={<div className="min-h-screen bg-landing-grape" />}><LandingPage /></Suspense>} />
-          <Route path="/landing" element={<Suspense fallback={<div className="min-h-screen bg-landing-grape" />}><LandingPage /></Suspense>} />
+          <Route path="/" element={<Suspense fallback={<div className="min-h-[100dvh] bg-landing-grape" />}><LandingPage /></Suspense>} />
+          <Route path="/home" element={<Suspense fallback={<div className="min-h-[100dvh] bg-landing-grape" />}><LandingPage /></Suspense>} />
+          <Route path="/landing" element={<Suspense fallback={<div className="min-h-[100dvh] bg-landing-grape" />}><LandingPage /></Suspense>} />
           {/* Internal host gets the founders-only login (no signup surface) */}
           <Route path="/auth" element={isInternalHost() ? <InternalAuth /> : <AuthPage />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
@@ -215,6 +216,7 @@ function AnimatedRoutes() {
           <Route path="/help" element={<HelpCenter />} />
           <Route path="/help/:slug" element={<HelpArticlePage />} />
           <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
 
@@ -436,7 +438,17 @@ function AppShell() {
   const showDonny = !PUBLIC_PATHS.has(pathname) && !pathname.startsWith('/internal');
 
   return (
-    <div className="flex h-screen">
+    // h-[100dvh], NOT h-screen (100vh). `body` is height:100% with overflow-x:hidden, which
+    // computes overflow-y to `auto` — so BODY is this document's scroll container, not <html>
+    // and not <main>. On iOS Safari 100vh is the URL-bar-COLLAPSED height, so an h-screen shell
+    // stands ~60-90px taller than body's box and body scrolls by exactly that much. Scrolling it
+    // collapses the URL bar, which grows 100dvh, which resizes the page under the user's finger:
+    // the "screen jumps when I scroll" report of 2026-08-23. Measured, with the shell forced 80px
+    // over: body.scrollHeight 833 vs clientHeight 753, body.scrollTop moves to 80, while html,
+    // #root, this div and main ALL report overflow 0 and refuse to scroll. Probe the right
+    // element — window.scrollY stays 0 throughout and reads as "no scrolling".
+    // Invisible in every emulator: with no collapsing URL bar, 100vh === 100dvh and the gap is 0.
+    <div className="flex h-[100dvh]">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-black focus:underline">Skip to main content</a>
       <main id="main-content" className="flex-1 overflow-auto">
         <UpdateBanner />
