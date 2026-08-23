@@ -174,6 +174,20 @@ state: every configured threshold ran, and every one stayed inside its tolerance
 **The baseline is never re-recorded by the job.** A guard that follows the observed value is a
 thermometer reporting room temperature no matter what the room is doing. Re-recording is a PR.
 
+### Proving the alarm can be heard
+
+A clean month files nothing, so the path from the runner to `/internal/findings` is never
+exercised until the month something breaks — and that is when you find out it was never wired.
+Dispatching the workflow with **`test_delivery`** on files one clearly-labelled low finding and
+**does not fail the run**: a red job that means "the test passed" is exactly the signal people
+learn to ignore. Its fingerprint is fixed (`rag-eval:delivery-test`), so repeated tests bump one
+row rather than littering the list.
+
+Proven against prod on 2026-08-23: first call `inserted: 1`, second `updated: 1` — which also
+demonstrates the per-metric fingerprinting that stops a persistent regression from filing a fresh
+row every month. (The same gap, and the same remedy, as `sendTestAlert()` in
+[[Workspace Email Signatures]]: four rounds had gone into an alert nobody had ever received.)
+
 ### What automation cannot fix
 
 Recall rests on **7 labelled queries of 53**. A scheduled job will measure those same 7 forever,
@@ -201,11 +215,10 @@ the right column at all.
   measured gain is a **floor**. A raw `OPENAI_API_KEY` would close this.
 - **Queries are from June** against a corpus that has moved. Fine for a comparison where both
   sides face the same corpus; it means absolute recall understates.
-- **The scheduled run has never fired.** The workflow and the reporter are proven by forced
-  controls — each of the five report branches was made to fire against a doctored result, and
-  the clean path exits 0 — but no cron has executed and no finding has ever been filed from
-  one. It also needs `RAG_EVAL_SUPABASE_SECRET_KEY` in a `rag-eval` GitHub Environment; until
-  that exists the run fails loudly at boot rather than reporting on nothing.
+- **The scheduled run has never fired.** The reporter is proven by forced controls on all eight
+  branches, and its delivery path is proven for real (a test finding reached prod, twice,
+  deduplicating on the second) — but no cron has executed, and a *regression* finding has never
+  been filed by the runner rather than by hand.
 - **Embedding without a local OpenAI key** works by writing short-lived internal-scope rows
   through `donny-knowledge-sync` and deleting them in a `finally`. Set `OPENAI_API_KEY` to skip
   that path entirely.

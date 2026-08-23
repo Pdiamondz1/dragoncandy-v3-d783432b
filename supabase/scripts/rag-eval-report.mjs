@@ -19,6 +19,12 @@
 // Findings are fingerprinted PER METRIC (`rag-eval:<metric>`), so a regression that persists
 // across months bumps `occurrences` on one row instead of filing a fresh one each time, and each
 // metric can be triaged and resolved on its own.
+//
+// PROVING DELIVERY. A clean month files nothing, so the path from here to /internal/findings is
+// never exercised until the month something breaks — and that is when you discover the alarm was
+// never wired. `RAG_EVAL_TEST_FINDING=1` files one clearly-labelled low finding so the alarm can
+// be HEARD on demand. It does not suppress the real checks and does not fail the run on its own:
+// a successful delivery test is a success.
 
 import { readFileSync } from "node:fs";
 
@@ -35,6 +41,10 @@ const SYNC = process.env.DONNY_SYNC_URL
 const INGEST = process.env.AIOS_INGEST_URL ?? SYNC.replace(/\/[^/]+$/, "/aios-report-ingest");
 const KEY = process.env.AIOS_INGEST_KEY ?? process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 const DRY = process.env.RAG_EVAL_DRY_RUN === "1";
+const TEST_DELIVERY = process.env.RAG_EVAL_TEST_FINDING === "1";
+// The one fingerprint that is not a metric. Fixed, so repeated tests bump one row rather
+// than littering the findings list with identical rows nobody will resolve.
+const TEST_FINGERPRINT = "rag-eval:delivery-test";
 
 const result = JSON.parse(readFileSync(JSON_PATH, "utf8"));
 const verdict = result.baseline?.verdict;
@@ -69,6 +79,24 @@ function contextBlock() {
 }
 
 const findings = [];
+
+if (TEST_DELIVERY) {
+  // Deliberately first, so it is the line you see in the job log when you asked for a test.
+  findings.push({
+    severity: "low",
+    title: "Test: RAG evaluation alert delivery",
+    summary_md:
+      "**This is a test, not a problem.** Somebody ran `.github/workflows/rag-eval.yml` with " +
+      "`test_delivery` on (or set `RAG_EVAL_TEST_FINDING=1` locally) to confirm that a real " +
+      "regression would actually reach this page.\n\nIf you are reading this, the path works: " +
+      "resolve it.\n\nIt exists because a clean month files nothing, so the delivery path is " +
+      "otherwise never exercised until the month something breaks — which is when you find out " +
+      "the alarm was never wired.\n" +
+      contextBlock(),
+    fingerprint: TEST_FINGERPRINT,
+    source: "rag-eval",
+  });
+}
 
 if (!verdict) {
   // No baseline at all. Worth saying once — a comparison that never happens is not a pass.
@@ -137,6 +165,12 @@ if (!verdict) {
   }
 }
 
+// A delivery test is not a problem, so it must not turn the run red on its own — otherwise the
+// only way to prove the alarm works is to fake a failure, and a red run that means "the test
+// passed" is precisely the kind of signal people learn to ignore.
+const problems = findings.filter((f) => f.fingerprint !== TEST_FINGERPRINT);
+const failCode = problems.length > 0 ? 1 : 0;
+
 if (findings.length === 0) {
   const checked = verdict.checks.map((c) => c.key).join(", ");
   console.log(`no regression — ${verdict.checks.length} check(s) within tolerance (${checked}).`);
@@ -151,7 +185,7 @@ for (const f of findings) console.log(`  [${f.severity}] ${f.title}`);
 
 if (DRY) {
   console.log("\nRAG_EVAL_DRY_RUN=1 — nothing filed.");
-  process.exit(1);
+  process.exit(failCode);
 }
 if (!KEY) {
   // Exit non-zero: a reporting step that quietly files nothing is the failure this whole
@@ -171,6 +205,7 @@ if (!r.ok) {
   process.exit(1);
 }
 console.log(`\nfiled at ${INGEST}: ${body.slice(0, 300)}`);
-// Non-zero so the scheduled run goes red. The finding is the durable record; the red run is what
-// makes someone look at it this week rather than next quarter.
-process.exit(1);
+// Non-zero when there is a real problem, so the scheduled run goes red: the finding is the
+// durable record, and the red run is what makes someone look at it this week rather than next
+// quarter. A delivery test on its own exits 0 — see `problems` above.
+process.exit(failCode);

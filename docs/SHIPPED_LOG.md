@@ -116,6 +116,13 @@ clean month — a guard switched off, reported as success. Skipped checks are no
 file their own medium finding. That is the trap this very session wrote comments about and then
 left in the reporter one level up.
 
+**A clean month is silent, so the alarm had to be made audible on purpose.** Dispatching with
+`test_delivery` files one clearly-labelled low finding and **does not fail the run** — a red job
+meaning "the test passed" is the signal people learn to ignore. Proven against prod: first call
+`inserted: 1`, second `updated: 1`, which also demonstrates the fingerprinting that stops a
+persistent regression filing a fresh row every month. Same gap and same remedy as `sendTestAlert()`
+in the Workspace signature work, where four rounds went into an alert nobody had ever received.
+
 **Verification.** Three real prod runs (401 chunks / 143 documents, controls 0/8 above the weakest
 real query, recall@10 0.913, located 397/401, temporary rows cleaned up both times; the second ran
 against the new baseline and reported all four checks `ok`). **Forced controls on all eight report
@@ -127,10 +134,11 @@ from the real files, so a baseline drifting away from `queries.json` or `labels.
 time instead of turning every scheduled run into a silent NOT COMPARABLE. Tests 2,621 → **2,642**;
 typecheck and build clean. Codex clean at round 2.
 
-**Open at hand-off:** the scheduled run has **never fired** and no finding has ever been filed from
-one — everything above is proven by forced controls. It needs `RAG_EVAL_SUPABASE_SECRET_KEY` in a
-`rag-eval` GitHub Environment; until that exists the run fails loudly at boot rather than reporting
-on nothing. And `donny-chat/index.ts` is on `.typecheck-ignore` with no local Deno, so its change
+**Open at hand-off:** the scheduled run has **never fired**, and while the delivery path is proven
+for real, a *regression* finding has never been filed by the runner rather than by hand. The
+`rag-eval` GitHub Environment exists; `RAG_EVAL_SUPABASE_SECRET_KEY` has to be set in it by the
+account holder, since entering a credential is not something Claude does. Until it is, the run
+fails loudly at boot rather than reporting on nothing. And `donny-chat/index.ts` is on `.typecheck-ignore` with no local Deno, so its change
 (a module-level `const` and an identifier swap) is reviewed rather than compiled.
 
 → `docs/wiki/concepts/rag-retrieval-evaluation.md` · `feat/rag-eval-automation`

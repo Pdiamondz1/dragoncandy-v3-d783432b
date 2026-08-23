@@ -20,6 +20,10 @@ name: rag-retrieval-eval
 # findings) and fails the job, so it shows up red as well as in /internal/findings. Nothing here
 # writes to a threshold, a baseline or the query set.
 #
+# BECAUSE a clean run is silent, the delivery path is never exercised until the month something
+# breaks. Dispatch with `test_delivery` on to file one clearly-labelled low finding and confirm
+# the alarm can actually be heard. It does not fail the run.
+#
 # FAIL-CLOSED. With no secret in the environment, rag-eval.mjs exits 1 at boot with a message
 # rather than producing a report about nothing.
 #
@@ -33,6 +37,13 @@ on:
     inputs:
       dry_run:
         description: "Measure and compare, but never file a finding"
+        type: boolean
+        default: false
+      test_delivery:
+        # A clean month files nothing, so the path to /internal/findings is never exercised until
+        # the month something breaks — which is when you discover the alarm was never wired. This
+        # files one clearly-labelled low finding and does NOT fail the run.
+        description: "Also file a test finding, to prove alerts actually arrive"
         type: boolean
         default: false
   schedule:
@@ -85,4 +96,5 @@ jobs:
           # Through an env var, never interpolated into the shell command — a crafted input must
           # not be able to reach the secret exported alongside it.
           RAG_EVAL_DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+          RAG_EVAL_TEST_FINDING: ${{ inputs.test_delivery && '1' || '0' }}
         run: node supabase/scripts/with-env.mjs rag-eval-report.mjs

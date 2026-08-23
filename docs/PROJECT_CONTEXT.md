@@ -133,10 +133,14 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   and the job **never re-records its own baseline** — a guard that follows the observed value is a
   thermometer reporting room temperature. Automation cannot fix the real weakness (7 labelled queries of 53), so every finding
   prints that line. Verified by **forced controls on all eight report branches**, since a run
-  printing "no regression" is not evidence the guard works. **Pending (2026-08-23):** the scheduled
-  run has **never fired** and no finding has ever been filed from one; it needs
-  `RAG_EVAL_SUPABASE_SECRET_KEY` in a `rag-eval` GitHub Environment (until then it fails loudly at
-  boot rather than reporting on nothing).
+  printing "no regression" is not evidence the guard works. Because a clean month is silent, dispatching with
+  `test_delivery` files one labelled low finding **without failing the run** — proven against prod
+  (`inserted:1`, then `updated:1`, which also proves the fingerprint that stops monthly duplicates);
+  the same gap `sendTestAlert()` closed for the Workspace alert. **Pending (2026-08-23):** the
+  scheduled run has **never fired**, and no *regression* finding has been filed by the runner rather
+  than by hand; the `rag-eval` GitHub Environment exists but `RAG_EVAL_SUPABASE_SECRET_KEY` must be
+  set in it by the account holder (until then it fails loudly at boot rather than reporting on
+  nothing).
   → `docs/wiki/concepts/rag-retrieval-evaluation.md` · `feat/rag-eval-harness`, `feat/rag-eval-automation`
 - **A third of Donny's internal corpus was never embedded** — `sync-internal-docs.mjs` sliced every
   document at 24,000 chars under a comment reading *"embed input is truncated; full_content is not"*,

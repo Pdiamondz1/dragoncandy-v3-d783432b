@@ -100,6 +100,15 @@ now returns a structured `unchecked[]` and the reporter files its own medium fin
 is the trap the session wrote explicit comments about, reintroduced one level up in the code that
 reads those comments' output.
 
+## Making the alarm audible (added during setup)
+
+A clean month files nothing, so the delivery path is never exercised until the month something
+breaks. `test_delivery` (workflow input) / `RAG_EVAL_TEST_FINDING=1` files one clearly-labelled low
+finding, fingerprint `rag-eval:delivery-test`, and **does not fail the run** — a red job that means
+"the test passed" is the kind of signal people learn to ignore. Directly borrowed from
+`sendTestAlert()` in the Workspace signature work, where four rounds went into an alert nobody had
+ever received.
+
 ## Verification
 
 - Three real prod runs of the evaluation: 401 chunks / 143 documents, controls 0/8 above the
@@ -111,14 +120,23 @@ reads those comments' output.
   path exits 0.
 - Three committed-baseline tests keep `baseline.json` in step with `queries.json` and
   `labels.json`; drift there would make every scheduled run come back NOT COMPARABLE.
+- **Delivery proven against prod, not stubbed:** the test finding reached `aios-report-ingest`
+  (`inserted:1`), and a second run returned `updated:1`, proving the fingerprint that stops a
+  persistent regression from filing a fresh row every month. Exit code 0 both times; with a real
+  regression alongside it, 1.
+- `rag-eval` GitHub Environment created.
 - `npm run typecheck`, `npm run test` (2,642 pass, was 2,621), `npm run build` — clean.
 
 ## Known gaps at hand-off
 
-- **The scheduled run has never fired**, and no finding has ever been filed from one. Proven by
-  forced controls only.
-- Needs `RAG_EVAL_SUPABASE_SECRET_KEY` in a `rag-eval` GitHub Environment. Until it exists the
-  run fails loudly at boot (the eval already exits 1 with a message when the key is unset) rather
-  than reporting on nothing.
+- **The scheduled run has never fired**, and no *regression* finding has been filed by the runner
+  rather than by hand.
+- `RAG_EVAL_SUPABASE_SECRET_KEY` must be set in the `rag-eval` environment by the account holder —
+  entering a credential is not something Claude does. Until it exists the run fails loudly at boot
+  (the eval already exits 1 with a message when the key is unset) rather than reporting on nothing.
+- Pushing the workflow file needs a token with the `workflow` scope (`gh auth refresh -s workflow`);
+  the session token carries only `gist, read:org, repo`.
+- **A test finding is sitting on `/internal/findings`** (`Test: RAG evaluation alert delivery`,
+  low, occurrences 2). It is meant to be resolved.
 - `donny-chat/index.ts` is on `.typecheck-ignore`, and there is no local Deno, so the change is
   reviewed rather than compiled. It is a module-level `const` plus an identifier swap.
