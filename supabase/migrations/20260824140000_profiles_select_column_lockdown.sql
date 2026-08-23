@@ -1,4 +1,5 @@
--- Close the SELECT path on profiles PII.
+-- Close the TABLE SELECT path on profiles PII. It does NOT close every path -- see the
+-- "What this does not close" note at the bottom of this header before relying on it.
 --
 -- RLS has no column granularity, and the "View messaging participants profiles" policy
 -- grants the whole row to any messaging counterparty. With table-wide SELECT held by
@@ -20,6 +21,36 @@
 -- grep here -- the `dismissed_coachmarks` incident on the UPDATE/INSERT lockdown
 -- (20260824100000) happened because a fresh single-quote-only grep missed a
 -- double-quoted call site. dismissed_coachmarks IS on this list.
+--
+-- ---------------------------------------------------------------------------------
+-- WHAT THIS DOES NOT CLOSE. Read this before citing this migration as the fix.
+--
+-- A REVOKE on the table does nothing to a SECURITY DEFINER function, which runs with
+-- its owner's privileges and bypasses both grants and RLS. Two such functions still
+-- reach profiles.email after this migration lands. Both are PRE-EXISTING and neither
+-- is touched here:
+--
+--   1. get_user_conversations(user_uuid, p_org_unit_id) -- 20260609010000. A live
+--      IDOR, verified on prod 2026-08-23. Its body references auth.uid() NOWHERE and
+--      every filter runs on the caller-supplied user_uuid; EXECUTE is held by PUBLIC,
+--      anon and authenticated with no REVOKE. Measured, with controls: a caller whose
+--      own list is 1 row read 13 rows belonging to two other users; a nonexistent uuid
+--      returned 0, ruling out "it ignores the parameter"; and `set local role anon`
+--      with no JWT returned 13 rows, so it needs no account at all. It exposes
+--      conversation ids, campaign ids and unread counts. Its other_participant_name is
+--      COALESCE(..., p.full_name, p.email, ...), so it is one NULL full_name away from
+--      returning addresses -- all 45 profiles currently have a full_name, so that half
+--      is latent, not live. Do not restate it as "returns raw email".
+--
+--   2. get_recipient_email(p_user_id) -- 20260523234847. SECURITY DEFINER, granted to
+--      authenticated, returns another user's email to any messaging counterparty. Used
+--      deliberately by src/lib/recipientEmail.ts. Whether that is a feature or a leak
+--      is an open product question, not a settled one.
+--
+-- So: this migration closes the anon/table-wide path, which was the broad exposure and
+-- the one that would have published every verified phone number. It does not make
+-- profiles.email unreachable, and nothing here should be read as claiming it does.
+-- ---------------------------------------------------------------------------------
 
 revoke select on public.profiles from anon, authenticated;
 
