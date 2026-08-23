@@ -5,17 +5,25 @@
 // - Service-role only (writes to donny_knowledge, which is service-role RLS).
 // - Embeds each page with OpenAI text-embedding-3-small (1536d), matching the
 //   existing embedding path so retrieval (match_donny_knowledge) just works.
-// - Idempotent: one row per wiki page, keyed on metadata.source_id
-//   ("wiki:<path>"). Re-syncing a page updates its row instead of duplicating.
+// - Idempotent, keyed on metadata.source_id ("wiki:<path>"). Re-syncing updates rather than
+//   duplicating.
+//
+// CHUNKING HAPPENS HERE, not in the callers. A page longer than the chunker's target is stored
+// as several rows: chunk 0 under the plain source_id and chunk N under "<id>#N". Callers send a
+// DOCUMENT and know nothing about chunks — which is the point. There are two producers
+// (`sync-internal-docs.mjs` for the full sync, `_shared/wiki-sync-payload.ts` for the
+// merge→sync path), and an earlier version of this that chunked in the script only made them
+// disagree: an incremental update would overwrite chunk 0 with a truncated whole-document row
+// and leave the previous continuation chunks in place, serving a truncated head spliced onto a
+// stale tail. See _shared/chunk-doc.ts for the full account.
 //
 // Request body: { pages: [{ source_id, content, metadata, scope?, full_content?,
-//                           index_in_rag?, chunk_total? }], userId? }
-//   source_id     e.g. "wiki:concepts/self-improving-app". A document too long for one
-//                 embedding arrives as several pages: chunk 0 keeps the plain id and chunk N
-//                 carries "<id>#N", so a single-chunk document updates its existing row rather
-//                 than orphaning it.
-//   content       text to embed + store (title + body). Required unless index_in_rag is false.
-//   metadata      { title, type, path, tags? } — stored alongside; source_id is added.
+//                           index_in_rag? }], userId? }
+//   source_id     e.g. "wiki:concepts/self-improving-app" — the DOCUMENT id, not a chunk id.
+//   content       the document text to chunk, embed and store. Required unless index_in_rag
+//                 is false.
+//   metadata      { title, type, path, tags? } — stored alongside; source_id, chunk_base and
+//                 (when the document splits) chunk/chunk_total are added here.
 //   scope         'internal' marks the row internal-only (AIOS): RLS + the scoped
 //                 match_donny_knowledge keep it out of consumer Donny entirely.
 //   full_content  internal pages only — full markdown additionally upserted into
@@ -25,13 +33,11 @@
 //                 belong in the strategy viewer but not in retrieval (SHIPPED_LOG.md is 505k
 //                 chars of raw changelog — a quarter of the corpus — that the wiki already
 //                 synthesises). Internal scope only; requires full_content.
-//   chunk_total   how many chunks this document produced. Sent on chunk 0 so a document that
-//                 SHRANK has its now-unproduced siblings deleted; without it, a stale chunk
-//                 stays retrievable forever because nothing else ever removes a row.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { chunkDocument, chunkSourceId } from "../_shared/chunk-doc.ts";
 import { logEmbeddingCost } from "../_shared/cost-ledger.ts";
 import { isAuthorizedIngest } from "../_shared/ingest-auth.ts";
 import { sha256Hex } from "./hash.ts";
@@ -46,7 +52,6 @@ interface WikiPage {
   scope?: "internal";
   full_content?: string;
   index_in_rag?: boolean;
-  chunk_total?: number;
 }
 
 /** A page is embedded and stored in donny_knowledge unless it explicitly opts out. */
@@ -98,24 +103,29 @@ serve(async (req) => {
     if (!isIndexed(p) && (p.scope !== "internal" || !p.full_content)) {
       return json({ error: "index_in_rag:false requires scope 'internal' and full_content" }, 400);
     }
-    if (p.chunk_total !== undefined && (!Number.isInteger(p.chunk_total) || p.chunk_total < 1)) {
-      return json({ error: "chunk_total must be a positive integer" }, 400);
-    }
   }
 
   const openaiKey = Deno.env.get("OPENAI_API_KEY");
   if (!openaiKey) return json({ error: "OPENAI_API_KEY not configured" }, 500);
 
-  // 1. Batch-embed the indexed pages in one OpenAI call (order is preserved).
-  //    Unindexed pages are skipped here, not sent-and-discarded: `embeddingFor` maps a page
-  //    back to its own vector, so a batch mixing the two kinds cannot shift the alignment.
-  const indexedPages = pages.filter(isIndexed);
+  // 1. Chunk every indexed page, then batch-embed all the chunks in one OpenAI call.
+  //    Each chunk is keyed back to its page and index, so a batch mixing indexed and unindexed
+  //    pages — or documents that split into different numbers of chunks — cannot shift the
+  //    alignment between a chunk and its vector.
+  const chunkPlan = pages.filter(isIndexed).flatMap((page) => {
+    const label = typeof page.metadata?.title === "string" && page.metadata.title
+      ? page.metadata.title
+      : page.source_id;
+    const chunks = chunkDocument(page.content!, label);
+    return chunks.map((content, index) => ({ page, index, total: chunks.length, content }));
+  });
+
   const embeddings: number[][] = [];
-  if (indexedPages.length > 0) {
+  if (chunkPlan.length > 0) {
     const embedResp = await fetch("https://api.openai.com/v1/embeddings", {
       method: "POST",
       headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: EMBED_MODEL, input: indexedPages.map((p) => p.content) }),
+      body: JSON.stringify({ model: EMBED_MODEL, input: chunkPlan.map((c) => c.content) }),
     });
     if (!embedResp.ok) {
       return json({ error: "Embedding API failed", details: await embedResp.text() }, 502);
@@ -123,7 +133,12 @@ serve(async (req) => {
     const embedData = await embedResp.json();
     embeddings.push(...embedData.data.map((d: { embedding: number[] }) => d.embedding));
   }
-  const embeddingFor = (page: WikiPage) => embeddings[indexedPages.indexOf(page)];
+  const chunksByPage = new Map<WikiPage, { index: number; total: number; content: string; embedding: number[] }[]>();
+  chunkPlan.forEach((c, i) => {
+    const list = chunksByPage.get(c.page) ?? [];
+    list.push({ index: c.index, total: c.total, content: c.content, embedding: embeddings[i] });
+    chunksByPage.set(c.page, list);
+  });
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -260,55 +275,64 @@ serve(async (req) => {
       continue;
     }
 
-    // A row written with a null embedding is invisible to the cosine RPC while still counting
-    // as "updated" — the exact silent-success shape this whole change exists to remove. The
-    // index arithmetic above should make this unreachable; refuse the write if it is not.
-    const embedding = embeddingFor(page);
-    if (!embedding) {
-      results.push({ source_id: page.source_id, action: "error", error: "no embedding for page" });
+    const chunks = chunksByPage.get(page) ?? [];
+    if (chunks.length === 0) {
+      results.push({ source_id: page.source_id, action: "error", error: "page produced no chunks" });
       continue;
     }
 
-    const row = {
-      content: page.content,
-      embedding,
-      source_type: "wiki",
-      scope: page.scope === "internal" ? "internal" : null,
-      metadata: { ...(page.metadata ?? {}), source_id: page.source_id },
-    };
+    for (const chunk of chunks) {
+      const chunkId = chunkSourceId(page.source_id, chunk.index);
 
-    const { data: existing, error: selErr } = await supabase
-      .from("donny_knowledge")
-      .select("id")
-      .eq("source_type", "wiki")
-      .eq("metadata->>source_id", page.source_id)
-      .maybeSingle();
+      // A row written with a null embedding is invisible to the cosine RPC while still counting
+      // as "updated" — the exact silent-success shape this whole change exists to remove. The
+      // plan/embedding arithmetic above should make this unreachable; refuse the write if not.
+      if (!chunk.embedding) {
+        results.push({ source_id: chunkId, action: "error", error: "no embedding for chunk" });
+        continue;
+      }
 
-    if (selErr) {
-      results.push({ source_id: page.source_id, action: "error", error: selErr.message });
-      continue;
-    }
+      const row = {
+        content: chunk.content,
+        embedding: chunk.embedding,
+        source_type: "wiki",
+        scope: page.scope === "internal" ? "internal" : null,
+        metadata: {
+          ...(page.metadata ?? {}),
+          source_id: chunkId,
+          // On EVERY chunk, single-chunk documents included: it is what sibling lookup matches
+          // on, and a document dropping from 3 chunks to 1 still has to find #1 and #2.
+          chunk_base: page.source_id,
+          ...(chunk.total > 1 ? { chunk: chunk.index, chunk_total: chunk.total } : {}),
+        },
+      };
 
-    if (existing) {
-      const { error } = await supabase.from("donny_knowledge").update(row).eq("id", existing.id);
+      const { data: existing, error: selErr } = await supabase
+        .from("donny_knowledge")
+        .select("id")
+        .eq("source_type", "wiki")
+        .eq("metadata->>source_id", chunkId)
+        .maybeSingle();
+
+      if (selErr) {
+        results.push({ source_id: chunkId, action: "error", error: selErr.message });
+        continue;
+      }
+
+      const { error } = existing
+        ? await supabase.from("donny_knowledge").update(row).eq("id", existing.id)
+        : await supabase.from("donny_knowledge").insert(row);
       results.push(
         error
-          ? { source_id: page.source_id, action: "error", error: error.message }
-          : { source_id: page.source_id, action: "updated" },
-      );
-    } else {
-      const { error } = await supabase.from("donny_knowledge").insert(row);
-      results.push(
-        error
-          ? { source_id: page.source_id, action: "error", error: error.message }
-          : { source_id: page.source_id, action: "inserted" },
+          ? { source_id: chunkId, action: "error", error: error.message }
+          : { source_id: chunkId, action: existing ? "updated" : "inserted" },
       );
     }
 
     // A document that SHRANK — 6 chunks last sync, 4 this one — leaves "#4" and "#5" behind,
-    // and nothing else in this system ever deletes a row. Sent only on chunk 0 (the id with no
-    // '#'), so this runs once per document rather than once per chunk.
-    if (page.chunk_total !== undefined && !page.source_id.includes("#")) {
+    // and nothing else in this system ever deletes a row.
+    {
+      const total = chunks[0].total;
       const { error: readErr, siblings } = await chunkSiblings(page.source_id);
       // Reported under a distinct label so it cannot be mistaken for the upsert's own result,
       // which already succeeded. A stale chunk left behind is served as current text.
@@ -320,7 +344,7 @@ serve(async (req) => {
         for (const s of siblings) {
           // A sibling whose index does not parse is not one this sync produced; leave it for
           // the orphan report rather than guessing.
-          if (!Number.isInteger(s.index) || s.index < page.chunk_total) continue;
+          if (!Number.isInteger(s.index) || s.index < total) continue;
           const { error } = await supabase.from("donny_knowledge").delete().eq("id", s.id);
           if (error) fail(error.message);
         }
@@ -329,7 +353,10 @@ serve(async (req) => {
   }
 
   // 3. Best-effort cost logging (~chars/4 token estimate). Never blocks the sync.
-  const approxTokens = Math.ceil(pages.reduce((n, p) => n + (p.content?.length ?? 0), 0) / 4);
+  //    Counts what was actually SENT to the embedding API — the chunks, including their
+  //    part-of prefixes — not the pages, which is neither what was billed nor what was
+  //    truncated away back when this counted whole documents against a 24k slice.
+  const approxTokens = Math.ceil(chunkPlan.reduce((n, c) => n + c.content.length, 0) / 4);
   await logEmbeddingCost(supabase, {
     userId,
     edgeFunction: "donny-knowledge-sync",
@@ -344,5 +371,15 @@ serve(async (req) => {
   const errors = results.filter((r) => r.action === "error").length;
   // `skipped` stays archived-only: existing callers read it as "archived", so folding a second
   // meaning into it would silently change what they report. Unindexed gets its own counter.
-  return json({ synced: inserted + updated, inserted, updated, skipped, unindexed, errors, results });
+  //
+  // `chunks` and `split` let a caller SEE the chunking it no longer performs. The truncation
+  // this replaced was invisible precisely because the response said nothing about it.
+  const split = [...chunksByPage.entries()]
+    .filter(([, cs]) => cs.length > 1)
+    .map(([p, cs]) => ({ source_id: p.source_id, chunks: cs.length }));
+  return json({
+    synced: inserted + updated,
+    inserted, updated, skipped, unindexed, errors,
+    chunks: chunkPlan.length, split, results,
+  });
 });

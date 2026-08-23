@@ -20,7 +20,6 @@
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { chunkDocument, chunkSourceId, HARD_MAX_CHARS } from "./chunk-doc.mjs";
 
 const URL = process.env.DONNY_SYNC_URL;
 const KEY = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -91,19 +90,9 @@ function collectDir(dir, sourcePrefix) {
 
     // One page per chunk. `full_content` rides on chunk 0 ONLY: it is the whole document, and
     // sending it on all six chunks would upsert the same internal_docs row six times per run.
-    const chunks = chunkDocument(title, body);
-    chunks.forEach((content, i) => {
-      pages.push({
-        source_id: chunkSourceId(base, i),
-        content,
-        // `chunk_base` is on EVERY chunk, single-chunk documents included, because it is what
-        // the edge function matches siblings on — exactly, never as a LIKE pattern. A
-        // document that drops from 3 chunks to 1 still has to be able to find #1 and #2.
-        metadata: { ...metadata, chunk_base: base, ...(chunks.length > 1 ? { chunk: i, chunk_total: chunks.length } : {}) },
-        scope: "internal",
-        ...(i === 0 ? { full_content: raw, chunk_total: chunks.length } : {}),
-      });
-    });
+    // The WHOLE document, untruncated. donny-knowledge-sync splits it into rows — see
+    // _shared/chunk-doc.ts for why chunking lives there and not here.
+    pages.push({ source_id: base, content: `${title}\n\n${body}`, metadata, scope: "internal", full_content: raw });
   }
   return pages;
 }
@@ -118,40 +107,29 @@ const pages = [
 // Say what is actually happening. The truncation this replaced was invisible in every signal
 // the run produced — `updated=142 errors=0` with a third of the corpus never embedded — so the
 // counts below name each category rather than reporting one total that hides the others.
-const docCount = new Set(pages.map((p) => p.metadata.path)).size;
 const unindexed = pages.filter((p) => p.index_in_rag === false);
-const multi = pages.filter((p) => p.chunk_total > 1);
+const embedChars = pages.reduce((n, p) => n + (p.content?.length ?? 0), 0);
+const sourceChars = pages.reduce((n, p) => n + p.full_content.length, 0);
 console.log(
-  `Found ${docCount} internal documents -> ${pages.length - unindexed.length} embedded chunk(s)` +
-  `, ${unindexed.length} stored unindexed.`,
+  `Found ${pages.length} internal documents — ${pages.length - unindexed.length} to embed, ` +
+  `${unindexed.length} stored unindexed.`,
 );
-for (const p of multi) console.log(`  chunked: ${p.metadata.path} -> ${p.chunk_total} chunks`);
 for (const p of unindexed) console.log(`  unindexed (internal_docs only): ${p.metadata.path}`);
-
-// Nothing may go out oversize. A chunk past the embedding cliff 502s its ENTIRE batch, so one
-// bad document would take 19 good ones down with it — fail here, where the message names the
-// file, rather than in an OpenAI error that names nothing.
-const oversize = pages.filter((p) => p.content && p.content.length > HARD_MAX_CHARS);
-if (oversize.length > 0) {
-  for (const p of oversize) console.error(`OVERSIZE ${p.source_id}: ${p.content.length} > ${HARD_MAX_CHARS}`);
-  console.error("chunkDocument must not emit a chunk this large — fix the chunker, do not raise the cap.");
-  process.exit(1);
-}
+console.log(
+  `Sending ${embedChars} of ${sourceChars} source chars for embedding ` +
+  `(${Math.round((embedChars / sourceChars) * 100)}%; the remainder is the unindexed document ` +
+  `above plus stripped frontmatter). Chunking happens server-side — the response reports it.`,
+);
 
 if (DRY_RUN) {
-  const embedChars = pages.reduce((n, p) => n + (p.content?.length ?? 0), 0);
-  const sourceChars = [...new Set(pages.map((p) => p.metadata.path))]
-    .reduce((n, path) => n + readFileSync(path, "utf8").length, 0);
-  console.log(
-    `\nDry run — nothing sent. ${embedChars} of ${sourceChars} source chars embedded ` +
-    `(${Math.round((embedChars / sourceChars) * 100)}%; the rest is the unindexed document above).`,
-  );
+  console.log("\nDry run — nothing sent.");
   process.exit(0);
 }
 
 console.log(`Syncing to ${URL} ...`);
 
-let inserted = 0, updated = 0, errors = 0, unindexedCount = 0;
+let inserted = 0, updated = 0, errors = 0, unindexedCount = 0, chunkCount = 0;
+const split = [];
 for (let i = 0; i < pages.length; i += BATCH) {
   const batch = pages.slice(i, i + BATCH);
   const resp = await fetch(URL, {
@@ -169,10 +147,21 @@ for (let i = 0; i < pages.length; i += BATCH) {
   updated += json.updated ?? 0;
   errors += json.errors ?? 0;
   unindexedCount += json.unindexed ?? 0;
+  chunkCount += json.chunks ?? 0;
+  for (const s of json.split ?? []) split.push(s);
   console.log(`Batch ${i / BATCH + 1}: +${json.inserted} inserted, ~${json.updated} updated, ${json.errors} errors`);
 }
 
-console.log(`\nDone. inserted=${inserted} updated=${updated} unindexed=${unindexedCount} errors=${errors}`);
+// Print what the server did with each document. The truncation this replaced was invisible in
+// every signal the run produced — `updated=142 errors=0` while a third of the corpus was never
+// embedded — so a run now has to say how many rows each document became.
+for (const s of split.sort((a, b) => b.chunks - a.chunks)) {
+  console.log(`  chunked: ${s.source_id} -> ${s.chunks} rows`);
+}
+console.log(
+  `\nDone. documents=${pages.length} rows=${chunkCount} inserted=${inserted} updated=${updated} ` +
+  `unindexed=${unindexedCount} errors=${errors}`,
+);
 
 // ── Orphan check (READ-ONLY) ─────────────────────────────────────────────────────────────────
 //
@@ -189,26 +178,33 @@ console.log(`\nDone. inserted=${inserted} updated=${updated} unindexed=${unindex
 try {
   const restUrl = URL.replace(/\/functions\/v1\/.*$/, "/rest/v1/donny_knowledge");
   const resp = await fetch(
-    `${restUrl}?select=metadata->>source_id&scope=eq.internal`,
+    `${restUrl}?select=metadata&scope=eq.internal`,
     { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } },
   );
   if (!resp.ok) {
     console.warn(`Orphan check skipped — donny_knowledge read returned ${resp.status}.`);
   } else {
     const rows = await resp.json();
+    // Compare DOCUMENTS, not rows. A row is legitimate if the document it belongs to is still
+    // produced, and `chunk_base` is how a continuation chunk names that document. Comparing raw
+    // source_ids would flag every "<id>#N" as an orphan, since no producer emits those ids.
+    // Rows written before chunking existed have no chunk_base and are their own base.
     const expected = new Set(pages.filter((p) => p.index_in_rag !== false).map((p) => p.source_id));
     const orphans = rows
-      .map((r) => r["source_id"] ?? r["?column?"])
+      .map((r) => r.metadata?.chunk_base ?? r.metadata?.source_id)
       .filter((id) => typeof id === "string" && !expected.has(id));
-    if (orphans.length > 0) {
+    const orphanDocs = [...new Set(orphans)]; // several chunks can share one dead document
+    if (orphanDocs.length > 0) {
+      const list = orphanDocs.map((id) => `'${id}'`).join(", ");
       console.error(
-        `\nORPHANED rows — ${orphans.length} internal row(s) this run does not produce. They are ` +
-        `still retrievable by internal Donny and nothing updates them.\n` +
-        orphans.slice(0, 15).map((id) => `  - ${id}`).join("\n") +
-        (orphans.length > 15 ? `\n  … and ${orphans.length - 15} more` : "") +
-        `\nPrune with:\n  delete from donny_knowledge where scope = 'internal' ` +
-        `and metadata->>'source_id' in (${orphans.slice(0, 15).map((id) => `'${id}'`).join(", ")}` +
-        `${orphans.length > 15 ? ", …" : ""});`,
+        `\nORPHANED — ${orphanDocs.length} internal document(s) this run does not produce, ` +
+        `across ${orphans.length} row(s). They are still retrievable by internal Donny and ` +
+        `nothing updates them.\n` +
+        orphanDocs.slice(0, 15).map((id) => `  - ${id}`).join("\n") +
+        (orphanDocs.length > 15 ? `\n  … and ${orphanDocs.length - 15} more` : "") +
+        `\nPrune with (matches chunks via chunk_base, and pre-chunking rows via source_id):\n` +
+        `  delete from donny_knowledge where scope = 'internal'\n` +
+        `    and coalesce(metadata->>'chunk_base', metadata->>'source_id') in (${list});`,
       );
     } else {
       console.log("Orphan check: no unproduced internal rows.");

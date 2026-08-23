@@ -35,7 +35,23 @@ describe('buildSyncPage', () => {
     expect(page.metadata.title).toBe('Pricing Ladder');
     expect(page.metadata.type).toBe('analysis');
     expect(page.content.startsWith('Pricing Ladder\n\n')).toBe(true); // `${title}\n\n${body}`
-    expect(page.content.length).toBeLessThanOrEqual(24_000);
+  });
+
+  /**
+   * This used to slice `content` at 24,000 chars, and the assertion here was
+   * `expect(page.content.length).toBeLessThanOrEqual(24_000)` — which passed on every fixture
+   * because no fixture was that big, so it pinned nothing. The slice was a real defect twice
+   * over: an oversize page reached Donny with its tail missing, and once the full sync began
+   * chunking, a truncated whole-document row here would have overwritten chunk 0 while the
+   * previous continuation chunks stayed, splicing a truncated head onto a stale tail.
+   *
+   * donny-knowledge-sync chunks; this file must hand it everything and decide nothing.
+   */
+  it('sends the whole document, however long — chunking is the server side job', () => {
+    const body = 'x'.repeat(40_000);
+    const page = buildSyncPage('docs/wiki/concepts/huge.md', `---\ntitle: Huge\n---\n${body}`);
+    expect(page.content).toBe(`Huge\n\n${body}`);
+    expect(page.content.length).toBeGreaterThan(24_000);
   });
   it('falls back to slug for title and internal_doc for type when frontmatter is absent', () => {
     const page = buildSyncPage('docs/wiki/concepts/auth-model.md', '# Auth\n\nx');
