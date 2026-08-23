@@ -150,16 +150,27 @@ Three new files under `src/pitch/model/`:
 password gate ships (PR #482, built and reviewed, **not merged and not switched on**).
 The current slides are tolerable in public; a full P&L and SAFE terms are not.
 
-Therefore the deck renders in two layers. The public-safe layer (story, product, market,
-team) renders unauthenticated. The confidential layer — Financials, the Ask, the runway
-and the unit economics — renders only for an authenticated internal user, using the same
-`is_internal_user()` boundary `/internal` already uses. Unauthenticated, those slides
-render a placeholder, not the numbers.
+Therefore the deck renders in two layers, split at **build time, not at runtime**.
 
-**The PDF is the presentation medium, not the URL.** Joe exports the deck while signed in
-as an internal user, which is when the confidential layer renders; the resulting PDF is
-complete and is what he presents and sends. He never needs to be logged in during a
-pitch. The live `/pitch` URL exists for the team and for a demo link, not for delivery.
+An earlier revision of this section gated the confidential slides on `is_internal_user()`,
+the same boundary `/internal` uses. **That was wrong twice over.** First, a runtime auth
+check still ships the numbers inside the public JS chunk and merely hides them — which is
+precisely what this section exists to prevent. Second, `scripts/export-pitch-pdf.mjs`
+drives an **anonymous** headless Chromium (`browser.newPage()`, no `storageState`, no
+sign-in), so an auth gate would have produced a PDF with the financials blanked out, and
+there are no test-account credentials in the memory system to sign it in with.
+
+So the confidential figures live in `src/pitch/model/confidential.ts`, imported **only**
+from behind `import.meta.env.VITE_PITCH_CONFIDENTIAL`. Vite statically replaces that
+expression in a production build and drops the dead branch, so the default public bundle
+does not contain the P&L, the runway, or the SAFE terms in any form — not hidden, absent.
+Verified by an assertion over `dist/` (see the plan), not by inspection.
+
+**The PDF is the presentation medium, not the URL.** Joe (or Damon) runs
+`VITE_PITCH_CONFIDENTIAL=1 npm run pitch:pdf` locally to produce the complete deck; the
+resulting PDF is what he presents and sends, and no sign-in is involved at any point. The
+default `npm run pitch:pdf` produces the public-safe deck. The live `/pitch` URL exists
+for the team and for a demo link, not for delivery.
 
 **Hard dependency: do not send the `/pitch` URL to any investor until #482 is merged and
 `SITE_GATE_ENABLED` is on.** Until then, the PDF export is the only sendable form.
@@ -182,8 +193,22 @@ campaign draws at least 3 qualified applicants within 48 hours* **and** *a creat
 the app sees at least 5 campaigns within range*. Both are computable from our own schema
 (`campaigns`, `campaign_applications`, `creator_profiles.lat/lng`) on day one — which
 makes this the one forward-looking claim in the deck that converts from `MODELED` to
-`MEASURED` the moment we launch. Months-to-threshold then falls out of Hoboken's real
-restaurant count and the 3–5 creators-per-restaurant ratio.
+`MEASURED` the moment we launch.
+
+**Two modelling constraints, found while writing the plan, are what stop this slide being
+meaningless.** First, **creator count must be an independent input, not a multiple of the
+restaurant count.** Deriving it as `restaurants × creatorsPerRestaurant` makes
+applicants-per-campaign a *constant* — `creatorsPerRestaurant × applicationsPerCreator ÷
+campaignsPerRestaurant`, with the restaurant count cancelling out — so half the threshold
+always holds or never holds, the test collapses to a restaurant count, and Hoboken reads
+as liquid at **two** customers. Independent ramps are also just true: the two sides are
+acquired through different channels at different speeds, and creator-side lag is what
+actually kills local marketplaces. The model must be able to answer *"more restaurants
+will not fix this"*, and with a derived creator count it structurally cannot.
+
+Second, **campaigns are counted as concurrently open, not as monthly flow** — a creator
+sees what is accepting applications now, so `openCampaigns = restaurants ×
+campaignsPerMonth × (campaignOpenDays / 30)`.
 
 **100 / 1,000 / 10,000 businesses.** Revenue, gross margin and EBITDA at each step, with
 the tier mix stated as an explicit assumption rather than buried in a blended ARPU.
