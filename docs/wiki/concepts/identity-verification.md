@@ -11,7 +11,13 @@ tags: [onboarding, readiness, stripe, verification, rls, security, twilio, geoco
 Slice 2 of 4 in the signup/onboarding redesign (slice 1: [[Account Completeness Engine]]). Gives the
 readiness engine's `phone_verified`, `identity_verified` and `address` requirement keys real writers,
 and closes several PII-exposure holes discovered while doing it. Branch `feat/identity-verification`,
-based on `origin/main` at `1ef6a534`. Full session detail: `docs/wiki/raw/sessions/2026-08-23-identity-verification.md`.
+based on `origin/main` at `1ef6a534` — 27 commits, **11 migrations**, 256 test files / 2721 tests.
+Full session detail: `docs/wiki/raw/sessions/2026-08-23-identity-verification.md`, whose ADDENDUM
+covers the eight commits of review fixes that landed after the first knowledge-sync pass.
+
+**Seven Codex rounds produced nine findings**, plus two earlier Codex P1s and three blocking defects
+from an internal re-review of the fix for those P1s. Clean at round 7. Most of the durable material
+on this page comes from that loop rather than from the original build.
 
 ## The core rule this slice enforces
 
@@ -24,8 +30,10 @@ Completeness Engine]] already renders as `unknown`, not a failure.
 
 ## A stamp must never outlive the fact it attests to
 
-This slice hit that exact failure mode **four times**, closed by three different mechanisms because
-the shape of "what invalidates this fact" differed each time:
+This slice hit that exact failure mode **five times**, closed by four different mechanisms because
+the shape of "what invalidates this fact" differed each time. (This section said *four* until the
+Codex second review found the fifth — see the note after the list, which is the part worth
+remembering.)
 
 1. **Phone.** A DB trigger (`20260824120000`) clears `phone_verified_at` when `phone` changes —
    *except* when both are written in the same statement, which is how the real verify-phone write
@@ -58,11 +66,26 @@ the shape of "what invalidates this fact" differed each time:
    `rejected.fraud` still rendered "identity verified" in the checklist. Fixed by re-ordering the
    derivation so revocation outranks the stamp — the one-line fix that matters most, since fraud
    prevention is the stated reason this slice exists.
+5. **Identity, on AUTOMATIC Stripe detach.** `check-restaurant-payout-status` clears a stale Stripe
+   reference when Stripe answers 404 / `account_invalid` — and cleared only `stripe_account_id` and
+   `stripe_onboarding_complete`. All four Stripe-derived identity signals survived, so a business
+   whose Stripe account had been **deleted** kept rendering as identity-verified. Found by the Codex
+   second review, at round 5, *after* #3 had been fixed.
 
-**The pattern repeating four times in one slice is itself the lesson**, not a coincidence to shrug
+**That a fifth instance existed at all is the evidence, not a footnote.** Instances 1–4 were each
+closed in isolation, and #5 exists precisely because #3 (the *manual* disconnect) was fixed without
+anyone asking whether there was an automatic detach path too. **Fixing instances one at a time does
+not close a class.** So the reset stopped being a column list written out at each site and became
+`supabase/functions/_shared/stripe-identity-reset.ts` — one `STRIPE_IDENTITY_RESET` constant that
+both detach paths spread into the same `.update()` that nulls `stripe_account_id`, so detach and
+reset cannot half-apply and the next detach path inherits it rather than becoming a third copy that
+drifts.
+
+**The pattern repeating five times in one slice is itself the lesson**, not a coincidence to shrug
 off: whenever a slice adds a "this was proven true" column, it also creates the obligation to find
-and close every event that makes the proof stop being true. Adding the producer without the eraser is
-exactly how #1 and #3 above happened.
+and close every event that makes the proof stop being true — as a set, enumerated once, not
+discovered one review round at a time. Adding the producer without a complete set of erasers is
+exactly how #1, #3 and #5 above happened.
 
 ## Fail open toward the user, fail closed toward the attacker
 
@@ -78,6 +101,16 @@ cap would silently disable the *only* defense against SMS pumping while still re
 to refuse the send on any read error instead. **That whole read-then-decide shape is now gone** —
 the Codex P1 pass replaced it with the atomic `reserve_phone_verification_send` RPC (migration
 `20260824160000`), and `exceedsSendLimit` / `withinCooldown` were **deleted**, not left orphaned.
+
+The RPC is where the decision lives now: `SECURITY DEFINER`, `search_path = public`, service-role
+only, counting and inserting under two `pg_advisory_xact_lock`s taken in a **fixed order** (user key,
+then ip key — a fixed order turns two callers sharing an IP into a queue rather than a deadlock
+cycle). It mirrors `record_crew_activity`'s fix for the identical race shape (`20260710120010`). The
+slot is reserved **before** Twilio is called, and if Twilio then fails the caller flips that same row
+to `'rejected'` rather than deleting it, so a failed send still consumes quota — hence the count
+predicate `outcome IN ('sent','rejected')`, never `'sent'` alone. `rateLimit.ts` now holds only the
+three constants (passed to the RPC as parameters) and `isAllowedCountry`; its header says in as many
+words not to re-add a TypeScript throttle helper, because a second decision site is a second answer.
 The fail-closed rule survived the move intact: a failed or null RPC result refuses the send with a
 503. The IP-salt fallback got the identical treatment for the identical reason:
 the "fallback" salt was a literal string committed to the repo, so hashing IPs against it was one
@@ -175,17 +208,148 @@ faithfully by implementers, passing per-task spec-compliance review each time:
 All three needed a reviewer (or the controller) to check the plan/spec against the actual API or the
 actual runtime semantics, not just check the diff against the plan.
 
-## A brief that names one call site is a hypothesis, not an inventory
+## A brief that names one call site is a hypothesis, not an inventory — and the same enumeration failed three times
 
 `OnboardingWizard.tsx` upserts `creator_profiles` **directly**, bypassing
 `useCreatorProfileSubmit.ts` — the hook the plan's brief named as *the* creator save path. This gap
 was found and closed twice in the same task: once for wiring `verify-address` into both paths (Task 7
 round 1), and again for the change-detection guard that must fire only when the address actually
 changed (Task 7 round 2) — the SAME call site catching the team out on the SAME defect class twice.
-The precedent this echoes: the `dismissed_coachmarks` write-lockdown regression happened because a
-grep for `from('profiles')` with single quotes missed two double-quoted call sites — different
-mechanism, same root cause (a completeness claim built on one search or one named site is a claim
-about the search, not about the code).
+
+The `profiles` lockdown then failed the same way **three more times**, all by one enumeration:
+
+1. `dismissed_coachmarks` (`Coachmark.tsx`) — missed by the write-lockdown grep, which assumed
+   single-quoted `from('profiles')`. Fixed mid-slice by `20260824101000`.
+2. `onboarding_completed_at` (`useTour.ts`) — missed by the *same* grep for the *same* reason, both
+   call sites being double-quoted. Found by Codex round 1, fixed by `20260824170000`. Completing the
+   product tour was 42501-ing on prod: the tour reported success, recorded nothing, and re-armed the
+   next session.
+3. `useProfileNames` — missed by the read lockdown's inventory, because it reads columns that do not
+   exist at all (see the next section).
+
+**All three failed SILENTLY, and for one shared reason: none of those call sites checks the error
+Supabase returns.** A missing grant produces a 42501 that the app then discards, so the defect is
+invisible in every signal the product emits — which is why a human grep is not a control here even
+when it is careful. The durable half of the fix is `src/lib/profilesWriteGrants.test.ts`: it
+re-derives the write surface from `src/` **quote-agnostically** on every CI run and asserts each
+written column appears in the granted set **parsed out of the migrations** — never a copy of the
+list, because a copy is a third enumeration to keep in sync, which is the original problem. Round 4
+extended it to SELECT. A completeness claim built on one search or one named site is a claim about
+the search, not about the code; the only durable version of such a claim re-derives itself.
+
+## A finding can be right in its conclusion and wrong in its mechanism
+
+Codex round 4 flagged the SELECT lockdown as breaking `useProfileNames`, which selects
+`first_name, last_name, username`. The hook **is** broken and silently so — and the lockdown neither
+caused it nor worsened it. Those three columns **do not exist on `profiles` and never have**:
+verified three independent ways before acting (no migration creates them; absent from the regenerated
+types; absent from the read lockdown's own column inventory). PostgREST rejected the whole query with
+42703 every time it ran, the hook discarded `error` and fell back to `data ?? []`, and every caller
+silently got an empty map and rendered truncated user ids.
+
+The distinction was not academic. **Codex's proposed remedy — grant SELECT on those three columns —
+would have failed the migration outright.** Fixed to `full_name` instead, with the error thrown
+rather than swallowed, so a query that *cannot* answer stops being indistinguishable from one that
+answered "nobody has a name". **Verify the mechanism, because the remedy follows from the mechanism,
+not from the conclusion.**
+
+Extending the grants test to SELECT immediately found a second one: `AuthContext`'s connection probe
+ran `select('count', { count: 'exact', head: true })`, where `count` is a PostgREST idiom and not a
+column — a probe that runs on every profile fetch and **throws** on failure, sitting directly in
+front of auth for every user. Now counts `id`, a real granted column.
+
+## Ask which gate, not whether it is green
+
+Two failures of this shape, one slice:
+
+- `check-restaurant-payout-status` is on `.typecheck-ignore`, so the "68 functions clean" result said
+  **nothing at all** about the round-5 change to that file. Checked directly with `deno check`: 4
+  errors, pre-existing at lines 199–200 and untouched — which is why the file is ignored. **A green
+  gate that does not cover the file you changed is not evidence about your change.**
+- "typecheck clean" was reported truthfully and was true — of `tsc -p tsconfig.app.json`, which
+  covers `src/` only and never looks at edge functions. `npm run typecheck:functions` (CI,
+  `ci.yml:51`) was simultaneously **red with 11 errors, all in `verify-phone`** — a function this
+  branch introduces, so relative to `main` this branch is what turns CI red. "Pre-existing on the
+  branch that introduced the file" is not pre-existing. Fixed properly rather than by adding a new
+  security-sensitive function to `.typecheck-ignore` (all 11 had one cause:
+  `ReturnType<typeof createClient>` resolves a generic function's type parameters to their
+  *constraints* — `unknown`/`never` — not their defaults; the bare imported `SupabaseClient` type is
+  the pattern `outstand-proxy` and others already pass under). **Two different gates share one word.**
+
+## A destructive write needs an ANSWER, not merely a non-error
+
+Three findings in this slice are the same shape: something that is not an answer was being treated as
+one, and the code then wrote on it.
+
+- **Google Geocoding signals almost every failure as HTTP 200 with a JSON `status`**, so the `resp.ok`
+  check caught essentially nothing. `OVER_QUERY_LIMIT`, `REQUEST_DENIED`, `INVALID_REQUEST` and
+  `UNKNOWN_ERROR` all fell through as "no result" — and no result writes
+  `address_verified_at`/`lat`/`lng` = null. A quota blip would have revoked still-true verifications
+  for every caller who saved during it; a misconfigured key would have revoked verification
+  platform-wide until someone noticed. Only `OK` and `ZERO_RESULTS` are answers *about the address*;
+  every other status is a fact about **us**. `ZERO_RESULTS` deliberately stays on the write path —
+  "does not resolve" is a real answer and clearing the stamp is the correct response to it. Extracted
+  as `isGeocodeAnswer`; a missing or unrecognised status is refused, never assumed OK.
+- **A comment of ours was itself the defect.** When the `org_units` address pre-read fails we do not
+  know whether the address changed, and the code argued that re-verifying anyway "errs toward the
+  conservative direction, since a redundant geocode only costs a request". Backwards: the verify path
+  is **destructive**, so speculative re-verification is the damaging direction. Now tracked as
+  `previousAddressKnown` and skipped when unknown. **Slice 1's "`unknown` never blocks" governs
+  DISPLAY; it does not license a WRITE.**
+- **A Supabase query resolves with `{ error }` rather than rejecting**, so `stripe-webhook`'s
+  `await Promise.all([...])` succeeded even when every mirror write inside it had failed — and Stripe
+  was told the signal was mirrored when it was not. Stripe emits `account.updated` only **on change**,
+  so there may be no later event to repair it. Both batches now go through `assertNoWriteErrors`,
+  which throws so Stripe's own retry becomes the repair path — deliberately the opposite policy from
+  the pending-balance flush directly below it, which stays non-fatal because it has the
+  onboarding-return poll as a backstop and this mirror has none.
+
+Related, and the same instinct one level up: `stripe_requirements_due` mirrors *every* outstanding
+Stripe requirement, so payment-setup items (`external_account`, `tos_acceptance`) were rendering as
+"Verify your identity" — mislabelling the task, duplicating `deriveStripe`, and blocking actions on a
+`required` tier for a banking issue. Filtered through `identityRequirements`, a **denylist** of
+non-identity prefixes rather than an allowlist of known identity keys, because the two fail in
+opposite directions on a Stripe key nobody has seen before: an allowlist ignores it and renders
+"identity verified" while identity work is outstanding — a false positive on a fraud signal — where a
+denylist over-reports unmet, which is annoying, visible and safe. **This slice exists for fraud
+prevention, so an unknown key must never resolve toward "verified".**
+
+## "Unmet for effectively every account" is a finding, not a reassurance
+
+It appeared twice in this one slice, and was misread as reassurance the first time.
+
+1. **Ruling 9.** The `required` identity tier was reasoned inert because `READINESS_GATE_ENABLED` has
+   no `feature_flags` row — true of `ReadinessGate`, false of `AccountChecklistRows` /
+   `MissionChecklist`, which consume the engine directly with no flag at all.
+2. **Codex round 6.** `address` is `required` and derives from `address_verified_at`, a column added
+   with **no backfill**, so every pre-existing location starts NULL. The round-1 change-guard —
+   correct in itself — then removed the only way out, by making a re-save of an unchanged address a
+   no-op. `useUpdateOrgUnit` now also fires verification when a location has **never** been verified,
+   even with the address unchanged: safe for exactly the reason the guard exists, since a row with no
+   stamp has nothing to lose. Verified rows keep the protection; unverified rows get the path back.
+
+Shipped with #2: all three address requirements relabelled **"Add your address" → "Confirm your
+address"**. They derive from a *stamp*, not from whether an address exists, so a business that filled
+its address in months ago still reads unmet — and telling it to "add" one is false on its face and
+sends the user hunting for a field they already completed.
+
+## Re-run the reviewer after every fix round — a fix is not inert
+
+Two of the nine Codex findings were defects **our own previous fix in the same loop had introduced**:
+the "conservative direction" comment above (round 2), and the change-guard that removed the only way
+to satisfy a required item (round 6). A third, larger instance sits just before the loop: the first
+`verify-address` forgery fix introduced the two silent permanent failures described below. A fix
+changes the system, so it deserves the same independent look the original code got.
+
+Related and recorded: the Codex round-2 P1 (the `verify-phone` throttle race) **overturned a call
+that had been explicitly made and written down** — an internal reviewer raised the read-then-insert
+race and it was parked as non-blocking, on the grounds that the bypass is "bounded by concurrency".
+That is not a bound: the attacker chooses the concurrency, and each request is a billed SMS. **The
+error was grading the finding on how hard it is to exploit rather than on what it costs when
+exploited** — for a financial control those are different questions, and only the second one decides
+whether it blocks a merge. Two independent reviewers reached the same finding; the first was
+overridden, and the second ran only because CLAUDE.md makes the Codex pass mandatory rather than
+discretionary.
 
 ## Compare the row against ITSELF, never against the caller's copy of it
 
@@ -247,6 +411,21 @@ anything.
 - **Nothing is verifiable end-to-end.** `verify-phone` and `verify-address` both 503 by design —
   `TWILIO_VERIFY_SERVICE_SID`, `PHONE_VERIFY_IP_SALT`, and `GOOGLE_MAPS_SERVER_API_KEY` are all
   unprovisioned. No real SMS or geocode call has ever been made by this code.
+- **`READINESS_GATE_ENABLED` is now coupled to a secret, not just to a founder decision.** The
+  `address` requirement is `required` and derives from a stamp, and until
+  `GOOGLE_MAPS_SERVER_API_KEY` exists **no address can be verified at all** — so the requirement is
+  display-only, which is safe, and would stop being safe the instant the gate is armed. Nothing may
+  arm that flag until the key is provisioned **and** existing locations have actually been verified.
+  (Existing accounts do now have a path — `useUpdateOrgUnit` re-fires verification for a location
+  that has never been verified even when the address is unchanged — but the path leads to a 503
+  until the key lands.)
+- **Two migrations were added after the first knowledge-sync pass**: `20260824160000`
+  (`reserve_phone_verification_send`, recorded explicitly as NOT applied) and `20260824170000` (the
+  `onboarding_completed_at` grant-back, with no record either way — verify before assuming). Total on
+  the branch is 11.
+- **The merge-time deploy list has five functions, not four.** `check-restaurant-payout-status`
+  now imports `_shared/stripe-identity-reset.ts`, so it deploys alongside `verify-phone`,
+  `verify-address`, `stripe-webhook` and `disconnect-stripe-account`.
 - **`identity_verified` reads `unmet` (not `unknown`) for effectively every account** until Stripe's
   `account.updated` webhook fires per account. Inert only until `READINESS_GATE_ENABLED` gets a
   `feature_flags` row — a deliberate separate act the PR must flag to the founder, since turning that

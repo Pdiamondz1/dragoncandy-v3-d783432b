@@ -432,13 +432,18 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 - **Identity & verification (slice 2 of 4, onboarding redesign)** — gives `phone_verified`/
   `identity_verified`/`address` real writers, closes a `profiles` email/phone read exposure (4th
   recorded column-REVOKE-no-op instance), and corrects a slice-1 defect (two `required` checklist rows
-  nothing could ever satisfy). Branch `feat/identity-verification`, 19 commits, tests green,
-  Codex second review still owed. **Pending (2026-08-23):** three secrets unprovisioned
+  nothing could ever satisfy). Branch `feat/identity-verification`, 27 commits, 11 migrations, tests
+  green. **Codex second review DONE** — this line said "still owed": seven rounds, nine findings, all
+  real, clean at round 7; two of the nine were defects a previous fix in the same loop introduced.
+  It moved the SMS throttle out of TypeScript into an atomic SQL RPC
+  (`reserve_phone_verification_send`), so that control now has **no automated coverage at all**, only
+  a hand-run rolled-back prod proof. **Pending (2026-08-23):** three secrets unprovisioned
   (`TWILIO_VERIFY_SERVICE_SID`, `PHONE_VERIFY_IP_SALT`, `GOOGLE_MAPS_SERVER_API_KEY`) so nothing is
-  verifiable end-to-end; merge, then the two-migration + four-function merge-time runbook; a
-  `READINESS_GATE_ENABLED` flag-row decision (founder call — do we block existing unverified
-  accounts?); and a pre-existing unauthenticated IDOR (`get_user_conversations`) found in scope but
-  left for an owner outside this branch.
+  verifiable end-to-end; merge, then a **four-migration + five-function** merge-time runbook; a
+  `READINESS_GATE_ENABLED` flag-row decision (founder call — and it now needs the Maps key first,
+  since until then no address can be verified and the `required` address item is display-only); and a
+  pre-existing unauthenticated IDOR (`get_user_conversations`) found in scope but left for an owner
+  outside this branch.
   → `docs/wiki/concepts/identity-verification.md` · `docs/SHIPPED_LOG.md`
 - **Donny's `social_*` tools repaired (7 calls → 0 successes → 4 working tools)** — Donny told the
   founder he had "no visibility into which Instagram account is connected", sent him to find an

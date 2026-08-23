@@ -1,5 +1,47 @@
 # Wiki Log
 
+## [2026-08-23] update | Identity & Verification — the review loop that ran after the ingest below
+
+The ingest immediately below was written at commit `e9e71096`. **Eight more commits landed after it**
+and parts of that record described mechanisms that no longer exist. This pass corrects them rather
+than leaving the knowledge layer describing deleted code.
+
+**Updated** `docs/wiki/raw/sessions/2026-08-23-identity-verification.md` — appended a clearly-marked
+**ADDENDUM**; nothing above it was rewritten. Covers the review sequence (2 Codex P1s → 3 blocking
+findings from an internal re-review of that fix → **nine findings across seven Codex rounds**, clean
+at round 7) and each finding's durable lesson.
+
+**Updated** [[Identity & Address Verification]] (`concepts/identity-verification.md`) — five new
+sections and three corrections. The stamp/fact rule now reads **five** instances, not four: the fifth
+is the *automatic* Stripe detach (`check-restaurant-payout-status`), and it exists precisely because
+the manual disconnect was fixed in isolation — so the reset became one shared
+`_shared/stripe-identity-reset.ts` constant. **Fixing instances one at a time does not close a class.**
+New material: the same `profiles` enumeration failing three times and always silently (closed by a CI
+test that re-derives the write surface quote-agnostically, not by a fourth careful grep); a finding
+can be right in its conclusion and wrong in its mechanism (Codex was right that `useProfileNames` is
+broken, wrong about why, and its proposed remedy would have failed the migration — verify the
+mechanism, because the remedy follows from it); ask which gate, not whether it is green; a destructive
+write needs an ANSWER, not merely a non-error (geocode `status`, a Supabase `{ error }` that does not
+reject, and payment requirements read as identity failures); "unmet for effectively every account" is
+a finding rather than a reassurance, twice in one slice; and re-run the reviewer after every fix round
+— two of the nine findings were defects a previous fix in the same loop introduced.
+
+**Updated** `docs/SHIPPED_LOG.md`, `docs/PROJECT_CONTEXT.md` §5 and `docs/DATABASE_SCHEMA.md` to the
+final state: 27 commits, **11 migrations**, 256 files / 2721 tests, a five-function deploy list, and
+`reserve_phone_verification_send` documented alongside `phone_verification_attempts`.
+
+**Contradiction flagged, not silently resolved.** The ingest below records, as flagged item (3), "a
+pre-existing dead-code write to a nonexistent column (`useTour.ts`'s `onboarding_completed_at`)".
+**That is wrong.** The column exists — `20260427110000_tour_coachmark_state.sql` adds it. It is absent
+from `src/integrations/supabase/types.ts`, i.e. the generated types are stale, which is how it read as
+nonexistent. The write was real, the write lockdown broke it, and `20260824170000` grants it back.
+Flagged item (2), `useProfileNames.ts`, was correct and is now fixed rather than merely recorded.
+
+Also corrected in place: the concept page's Known Issues named `withinCooldown` as the coverage gap.
+That function no longer exists, and the accurate gap is broader and worse — **the whole send throttle
+is SQL now, so it cannot be tested under Vitest at all** and is proven only by a hand-run,
+rolled-back prod script.
+
 ## [2026-08-23] ingest | Identity & Verification (slice 2 of 4, onboarding redesign)
 
 **Created** `docs/wiki/raw/sessions/2026-08-23-identity-verification.md` (session source) and

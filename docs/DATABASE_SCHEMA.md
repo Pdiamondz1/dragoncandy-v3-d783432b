@@ -143,18 +143,53 @@
 > write shape: `update ... set phone = $1, phone_verified_at = now()`). Without the dual condition, that
 > single-statement composite write would see `phone` changed and null the very stamp it was just handed
 > — verification would appear to succeed and silently never record. **`identity_verified_at` has no
-> trigger equivalent** — there is no single column whose change should invalidate it; instead
-> `disconnect-stripe-account` clears all four Stripe-derived columns explicitly when a Stripe account is
-> disconnected (an application action, not a column change), because a reconnected account can be a
-> different legal entity and a stale stamp would vouch for one Stripe never verified.
+> trigger equivalent** — there is no single column whose change should invalidate it; instead the
+> detach paths clear all four Stripe-derived columns explicitly (an application action, not a column
+> change), because a reconnected account can be a different legal entity and a stale stamp would vouch
+> for one Stripe never verified. **There are TWO such paths, not one**: the manual
+> `disconnect-stripe-account`, and the automatic `check-restaurant-payout-status`, which clears a stale
+> reference when Stripe answers 404 / `account_invalid`. The second was found by the Codex second review
+> only because the first had been fixed in isolation — so both now spread the shared
+> `STRIPE_IDENTITY_RESET` constant (`supabase/functions/_shared/stripe-identity-reset.ts`) into the same
+> `.update()` that nulls `stripe_account_id`, and detach and reset cannot half-apply. Any future detach
+> path must do the same.
 >
 > **`phone_verification_attempts`** (`20260824130000`) — per-user and per-IP SMS-send throttle audit
 > log for `verify-phone` (`id`, `user_id` FK `auth.users` ON DELETE CASCADE, `ip_hash`, `action` ∈
 > `start`/`check`, `outcome` ∈ `sent`/`approved`/`rejected`/`throttled`/`blocked_country`,
 > `created_at`). No client access at all — RLS enabled, `service_role`-only policy, `revoke all …
-> from public, anon, authenticated`. The throttle reads this table and **fails CLOSED** (refuses the
-> send) on any read error — the opposite default from the readiness engine's "`unknown` never blocks",
-> because here the risk of a false "allow" is our own carrier bill, not a user's blocked action.
+> from public, anon, authenticated`. The throttle **fails CLOSED** (refuses the send) on any error —
+> the opposite default from the readiness engine's "`unknown` never blocks", because here the risk of
+> a false "allow" is our own carrier bill, not a user's blocked action.
+>
+> **`reserve_phone_verification_send(p_user_id uuid, p_ip_hash text, p_limit int, p_window_seconds
+> int, p_cooldown_seconds int) returns jsonb`** (`20260824160000`, SECURITY DEFINER,
+> `search_path=public`, `revoke execute … from public, anon, authenticated` + `grant … to
+> service_role`) — the throttle DECISION, moved out of application code. `verify-phone` originally
+> read this table, decided in TypeScript (`exceedsSendLimit` / `withinCooldown`), then called Twilio
+> and inserted the `'sent'` row afterwards: a check-then-act race in which N concurrent `start`
+> requests all read the same pre-limit history and all sent, bypassing both the daily cap and the
+> cooldown on a function whose threat model is SMS-pumping fraud. Raised by an internal review and
+> parked as non-blocking; raised again independently as a **Codex P1**, which was right. Both helpers
+> are now **deleted** — `rateLimit.ts` keeps only the three constants (passed in as the `p_limit` /
+> `p_window_seconds` / `p_cooldown_seconds` parameters) and `isAllowedCountry`.
+>
+> The RPC counts and inserts **atomically** under two `pg_advisory_xact_lock`s taken in a **fixed
+> order** (user key, then ip key), mirroring `record_crew_activity`'s fix for the same race shape
+> (`20260710120010`); the fixed order makes two callers sharing an IP a queue rather than a deadlock
+> cycle. It reserves the `'sent'` row **before** Twilio is called; if Twilio then fails, the caller
+> flips that same row to `'rejected'` via a plain service-role UPDATE rather than deleting it, so a
+> failed send still consumes quota — hence the count predicate is `outcome IN ('sent','rejected')`,
+> **never `'sent'` alone**. `'throttled'` and `'blocked_country'` are excluded from the count: neither
+> ever reserved a slot, and both are written by the CALLER, not by this function (its decline branches
+> return without writing anything). Returns `{reserved, reason}` plus `attempt_id` on success; a null
+> or errored result refuses the send with a 503.
+>
+> **It has no automated test, and cannot have one under Vitest** — the decision is now SQL and needs a
+> database. Proven only by a hand-run, rolled-back prod script across five scenarios (service-role
+> guard enforced; 3 reservations then a refused 4th with zero extra rows; back-to-back cooldown
+> declines; a 2-minute-old cooldown allows; two users sharing one `ip_hash` throttle on the IP
+> dimension independently of their per-user counts), confirmed absent afterward with zero rows leaked.
 >
 > **`get_org_members_roster(p_org_id uuid)`** (`20260824135000`, SECURITY DEFINER, `search_path=public`,
 > revoked from `public, anon`, granted to `authenticated`) — replaces a direct client SELECT of
@@ -166,12 +201,31 @@
 > questions.
 >
 > **Two `profiles` PII lockdowns — write and read are separate problems, closed separately.**
-> 1. **Write** (`20260824100000` + `20260824101000`): `revoke update, insert on public.profiles from
->    authenticated, anon`, then `grant update (<7 cols>)` / `grant insert (<5 cols>)` — an explicit list
->    enumerated from every client write site in `src/` (grep in **all** quote styles; a single-quote-only
->    grep missed `dismissed_coachmarks`' double-quoted call site and broke a live UI mutation for one fix
->    round, fixed by the follow-up `20260824101000` rather than editing the applied migration). Closes
->    `phone_verified_at` client self-stamping.
+> 1. **Write** (`20260824100000` + `20260824101000` + `20260824170000`): `revoke update, insert on
+>    public.profiles from authenticated, anon`, then `grant update (<cols>)` / `grant insert (<5 cols>)`
+>    — an explicit list enumerated from every client write site in `src/`. Closes `phone_verified_at`
+>    client self-stamping.
+>
+>    **That enumeration then failed TWICE, identically, and both failures were silent.** The grep
+>    assumed single-quoted `from('profiles')` and both missed call sites use double quotes:
+>    `dismissed_coachmarks` (`Coachmark.tsx`), which broke a live UI mutation and was closed by the
+>    follow-up `20260824101000`; and `onboarding_completed_at` (`useTour.ts`), found by the Codex second
+>    review and closed by `20260824170000`. Neither call site checks the error Supabase returns, so each
+>    surfaced as a 42501 that the app discarded — `useTour.completeMutation` reported success, recorded
+>    nothing, and re-armed the tour next session. Each fix is a NEW migration; the applied ones are never
+>    edited.
+>
+>    **A human grep that has failed twice the same way is not a control**, so the durable half lives in
+>    `src/lib/profilesWriteGrants.test.ts`: it re-derives the write surface from `src/`
+>    **quote-agnostically** on every CI run and asserts every written column appears in the granted set
+>    **parsed out of these migrations** — deliberately not a copy of the list, since a copy is a third
+>    enumeration to keep in sync. Extended to cover SELECT (the read lockdown below) after a third
+>    instance of the same class: `useProfileNames` selected `first_name, last_name, username`, columns
+>    that **do not exist on `profiles` and never have** — a 42703 the hook swallowed via `data ?? []`.
+>    Note the corollary for that column list: `onboarding_completed_at` exists (created by
+>    `20260427110000_tour_coachmark_state.sql`) but is **absent from
+>    `src/integrations/supabase/types.ts`**, so a "does this column exist" check against the generated
+>    types alone will get it wrong. Regenerate types before trusting them for that question.
 > 2. **Read** (`20260824140000`, applied AFTER the Vercel deploy of the code that depends on it — see
 >    below): `revoke select on public.profiles from anon, authenticated`, then `grant select (<15
 >    cols>)` omitting `email` and `phone`. RLS has no column granularity — the "View messaging
@@ -191,6 +245,13 @@
 > 2/3/4's additive migrations, which were safe to apply on the spot. `20260824135000` (the RPC) is
 > backward-COMPATIBLE and applies BEFORE merge, since the new frontend needs it to exist the instant it
 > deploys. See [[Identity & Address Verification]] for the full merge-time runbook.
+>
+> **The slice ships 11 migrations in total** (`20260824100000`, `101000`, `110000`, `111000`, `120000`,
+> `130000`, `135000`, `140000`, `150000`, `160000`, `170000`) — the last two added by the Codex second
+> review. `140000`, `150000` and `160000` are confirmed **not applied**; `170000` has no record either
+> way, so verify before assuming. The merge-time deploy list is five
+> edge functions: `verify-phone`, `verify-address`, `stripe-webhook`, `disconnect-stripe-account` and
+> `check-restaurant-payout-status` (which gained `_shared/stripe-identity-reset.ts` at Codex round 5).
 
 ## Campaigns & Marketplace
 

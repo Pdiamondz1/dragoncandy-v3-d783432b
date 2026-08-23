@@ -280,3 +280,236 @@ actually happened yet — verify before relying on it. `20260824140000` (the pro
 and `20260824150000` (the address re-verification trigger) are confirmed **not yet applied** —
 both were proven correct only inside rolled-back transactions, deliberately, per Ruling 15 and the
 merge-time runbook above.
+
+---
+
+# ADDENDUM (2026-08-23, later the same day): the review loop that ran AFTER this file was written
+
+Everything above was written at commit `e9e71096` — the knowledge-sync commit — and is preserved
+verbatim as the record of the slice as it stood at that moment. **Eight further commits landed after
+it**, and parts of the text above describe mechanisms that no longer exist. This addendum is the
+correction; where it contradicts the sections above, the addendum is the current state and the
+contradiction is named rather than edited away.
+
+**Branch state at the end:** 27 commits, 11 migrations, 256 test files / 2721 tests passing,
+typecheck / `typecheck:functions` (68 functions) / lint / build all clean. Ledger now 1372 lines and
+28 rulings (was 1258 / 20).
+
+## The review sequence, in order
+
+| Commit | Source | Findings |
+|---|---|---|
+| `44a9dc11` | Codex P1 pass | 2 (verify-address forgery, verify-phone throttle race) |
+| `39205a42` | internal re-review of that fix | 3 blocking (verify-address CAS, CI typecheck gate) |
+| `63548867` | Codex round 1 | 3 (1 P1, 2 P2) |
+| `3fc30644` | Codex round 2 | 2 (1 P1, 1 P2) |
+| `09fb7538` | Codex round 3 | 1 (P2) |
+| `3497a2ce` | Codex round 4 | 1 (P1) — which immediately exposed a second |
+| `249b409d` | Codex round 5 | 1 (P1) |
+| `658c411d` | Codex round 6 | 1 (P1) |
+| — | Codex round 7 | clean |
+
+Nine findings across the seven Codex rounds, every one real, every one ours. Two of the nine (round 2
+P2, round 6 P1) were **defects our own previous fix in the same loop had introduced**.
+
+## What the sections above now get wrong, and the correction
+
+**1. `exceedsSendLimit` / `withinCooldown` no longer exist.** The "Fail-open vs fail-closed" section
+describes an application-code throttle decision taken over a prior read of
+`phone_verification_attempts`. That shape was the bug, not just its fail-open default: read-then-act
+is a check-then-act race, so N concurrent `start` requests all read the same pre-limit history and
+all sent. The threat model this function states is SMS-pumping fraud, so the quantity being bypassed
+is billed carrier charges.
+
+The decision moved into SQL. `reserve_phone_verification_send` (migration `20260824160000`,
+`SECURITY DEFINER`, `search_path = public`, service-role only) counts and inserts **atomically**
+under two `pg_advisory_xact_lock`s taken in a fixed order (user key, then ip key — a fixed order
+turns two callers sharing an IP into a queue rather than a deadlock cycle). It mirrors
+`record_crew_activity`'s fix for the identical race shape (`20260710120010`). The reservation happens
+**before** Twilio is called; if Twilio then fails, the caller flips that same row to `'rejected'`
+rather than deleting it, so a failed send still consumes quota — fail closed toward our own bill. The
+count predicate is therefore `outcome IN ('sent','rejected')`, never `'sent'` alone.
+`exceedsSendLimit` and `withinCooldown` were **deleted** along with their three tests;
+`rateLimit.ts` now holds only the three constants (which index.ts passes to the RPC as parameters)
+and `isAllowedCountry`.
+
+Proven on prod inside `begin; … rollback;` across five scenarios — service-role guard enforced, 3
+reservations then a refused 4th with zero extra rows, back-to-back cooldown declines, a 2-minute-old
+cooldown allows, and two users sharing one `ip_hash` throttle on the IP dimension independently of
+their per-user counts. Confirmed absent afterward, zero rows leaked.
+
+**2. `verify-address` no longer takes address fields from the caller at all.** The first forgery fix
+conditioned the write on the fields the CALLER submitted. That closed the attack and opened two
+silent, permanent failures, because the caller's copy and the stored row are produced by different
+code paths that normalize differently: `OnboardingWizard.tsx` upserts `{city, country, timezone}`
+with no `postal_code`, leaving a stored `'07030'` behind while the client verified with
+`postalCode: null`; and `useCreatorProfileSubmit.ts` / `useOrgData.ts` store city/country/address
+**untrimmed** while the client helper sent them trimmed. Either disagreement yields zero matched
+rows, which the code correctly treats as "not an error" — so the account becomes permanently
+unverifiable with no user-visible signal.
+
+The remedy is deliberately not a field-by-field patch. The server now **reads the stored row,
+geocodes exactly what it read, and conditions the write on those exact stored values** — a
+compare-and-set of the row against itself. The request body carries only `{role}` (plus `orgUnitId`
+for a business, which names a row and is then authorized against active owner/admin org membership).
+The address fields were **removed** rather than accepted-and-ignored: a field that is parsed but
+unused invites the next edit to trust it again. That also closes the original forgery *structurally*
+— a caller who cannot name an address cannot cause one to be geocoded — rather than by comparison.
+The planning half is a pure, unit-tested module (`verify-address/storedAddress.ts`): predicate values
+verbatim, geocode query text trimmed, a missing row distinguished from a blank address, and
+`.is(col, null)` chosen from what is stored rather than from whether a request field was omitted.
+
+**3. The stamp/fact rule hit FIVE times, not four.** The fifth is the **automatic** Stripe detach
+path: `check-restaurant-payout-status` clears a stale Stripe reference when Stripe answers 404 /
+`account_invalid`, but cleared only `stripe_account_id` and `stripe_onboarding_complete`. All four
+Stripe-derived identity signals survived, so a business whose Stripe account had been **deleted**
+kept rendering as identity-verified.
+
+That a fifth instance existed at all is the evidence that fixing instances one at a time does not
+close a class: instances 1–4 were each closed in isolation, and the manual disconnect path was fixed
+without anyone noticing there was an automatic one. So the reset became
+`supabase/functions/_shared/stripe-identity-reset.ts` — a single `STRIPE_IDENTITY_RESET` constant
+both paths spread into the same `.update()` that nulls `stripe_account_id`, so detach and reset
+cannot half-apply and the next detach path inherits it instead of becoming a third copy.
+
+## The other findings, and what each one teaches
+
+**The same enumeration failed three times, always silently.** The `profiles` write-lockdown grant-back
+list was built by grepping for `from('profiles')` in single quotes. It missed `dismissed_coachmarks`
+(`Coachmark.tsx`, fixed by `20260824101000` mid-slice) and then missed `onboarding_completed_at`
+(`useTour.ts`, Codex round 1, fixed by `20260824170000`) — both double-quoted. Then the SELECT
+lockdown's inventory missed `useProfileNames`, a query reading columns that do not exist. All three
+failed silently, for one shared reason: **none of those call sites checks the error Supabase
+returns**, so a missing grant produces a 42501 and no signal at all. `useTour.completeMutation`
+reported success, recorded nothing, and re-armed the tour next session.
+
+A human grep that has failed twice identically is not a control, so the durable half of the fix is
+`src/lib/profilesWriteGrants.test.ts`: it re-derives the write surface from `src/` quote-agnostically
+on every CI run and asserts each written column appears in the granted set **parsed out of the
+migrations**, rather than duplicating the list (a copy would be a third enumeration to keep in sync).
+Round 4 extended it to SELECT.
+
+**A finding can be right in its conclusion and wrong in its mechanism — and the remedy follows from
+the mechanism.** Codex round 4 flagged the SELECT lockdown as breaking `useProfileNames`, which
+selects `first_name, last_name, username`. The hook is indeed broken and silently so — but it has
+been since it was written, because **those three columns do not exist on `profiles` and never have**.
+Verified three independent ways before acting: no migration creates them, they are absent from the
+regenerated types, and they are absent from the read lockdown's own column inventory. PostgREST
+rejected the whole query with 42703 every time it ran; the hook discarded `error` and fell back to
+`data ?? []`, so every caller silently got an empty map and rendered truncated user ids. Codex's
+proposed remedy — grant SELECT on those columns — **would have failed the migration outright**.
+Fixed to `full_name`, with the error now thrown rather than swallowed.
+
+Extending the grants test to SELECT then immediately found a second one: `AuthContext`'s connection
+probe ran `select('count', { count: 'exact', head: true })`, where `count` is a PostgREST idiom and
+not a column. That probe runs on every profile fetch and **throws** on failure, so it sat directly in
+front of auth for every user. Now counts `id`, a real granted column.
+
+**A green gate that does not cover the file you changed is not evidence about your change.**
+`check-restaurant-payout-status` is on `.typecheck-ignore`, so the "68 functions clean" result said
+nothing whatsoever about the round-5 fix. Checked directly with `deno check`: 4 errors, all
+pre-existing at lines 199–200 (`balance.pending.reduce`) and untouched — which is why the file is
+ignored in the first place. `disconnect-stripe-account` is not ignored and is covered.
+
+A related distinction, from `39205a42`: the implementer reported "typecheck clean" truthfully, and it
+was clean — of `tsc -p tsconfig.app.json`, which covers `src/` only and does not look at edge
+functions at all. `npm run typecheck:functions` was simultaneously **red with 11 errors, all in
+`verify-phone`** — a function this branch introduces, so relative to `main` this branch is what turns
+CI red. "Pre-existing on the branch that introduced the file" is not pre-existing. Fixed properly
+rather than by adding a new security-sensitive function to `.typecheck-ignore`; all 11 had one cause
+(`ReturnType<typeof createClient>` resolves a generic function's type parameters to their
+*constraints*, `unknown`/`never`, not their defaults — the bare imported `SupabaseClient` type is the
+pattern `outstand-proxy` and others already use). **Two different gates share one word: ask which
+gate, not whether it is green.**
+
+**Google Geocoding signals almost every failure as HTTP 200 with a JSON `status`**, so the `resp.ok`
+check caught essentially nothing. `OVER_QUERY_LIMIT`, `REQUEST_DENIED`, `INVALID_REQUEST` and
+`UNKNOWN_ERROR` all fell through as "no result" — and the write path stores
+`address_verified_at`/`lat`/`lng` = null on no result. A quota blip would therefore have revoked
+still-true verifications for every caller who saved during it, and a misconfigured key would have
+revoked verification platform-wide until someone noticed. Only `OK` and `ZERO_RESULTS` are answers
+**about the address**; everything else is a fact about us. `ZERO_RESULTS` deliberately stays on the
+write path — "does not resolve" is a real answer and clearing the stamp is the correct response.
+Extracted as `isGeocodeAnswer`; a missing or unrecognised status is refused, never assumed OK.
+
+**A comment of ours was itself a defect (round 2, P2).** When the `org_units` address pre-read fails
+we do not know whether the address changed, and the previous commit's comment argued that
+re-verifying anyway "errs toward the conservative direction, since a redundant geocode only costs a
+request". That is backwards: the verify path is **destructive**, so speculative re-verification is
+the damaging direction. With the modal resubmitting an unchanged address, a failed pre-read plus an
+unresolved geocode revokes a valid stamp during a plain rename. Now tracked as
+`previousAddressKnown` and skipped when unknown. Slice 1's "`unknown` never blocks" governs
+**display**; it does not license a **write**.
+
+**A Supabase query resolves with `{ error }` rather than rejecting (round 1, P2).** So
+`await Promise.all([...])` in `stripe-webhook` succeeded even when every mirror write inside it had
+failed, and Stripe was told the signal was mirrored when it was not — and Stripe emits
+`account.updated` only **on change**, so there may be no later event to repair it. Both batches now
+go through `assertNoWriteErrors`, which throws so Stripe's own retry becomes the repair path. This is
+deliberately the opposite policy from the pending-balance flush directly below it, which stays
+non-fatal because it has the onboarding-return poll as a backstop and this mirror has none.
+
+**Payment requirements were reading as identity failures (round 3, P2).** `stripe_requirements_due`
+mirrors *every* outstanding Stripe requirement, so a missing bank account (`external_account`) or an
+unaccepted ToS rendered as "Verify your identity" — mislabelling the task, duplicating `deriveStripe`,
+and, because identity is a `required` item, blocking actions for a banking issue. Filtered through
+`identityRequirements`, a **denylist** of non-identity prefixes rather than an allowlist of known
+identity keys. The two fail in opposite directions on a Stripe key we have never seen: an allowlist
+ignores it and renders "identity verified" while identity work is outstanding — a false positive on a
+fraud signal — whereas a denylist over-reports unmet, which is annoying, visible and safe. This slice
+exists for fraud prevention, so an unknown key must never resolve toward "verified". Prefix matching
+respects the dot boundary so `external_account_holder_identity` is not swallowed by `external_account`.
+
+**"Unmet for effectively every account" is a finding, not a reassurance — and it appeared twice.**
+The first time was Ruling 9 (the `required` tier read as inert because `READINESS_GATE_ENABLED` has
+no flag row — true of `ReadinessGate`, false of the checklist components that consume the engine
+directly). The second was Codex round 6: `address` is `required` and derives from
+`address_verified_at`, a column added with **no backfill**, so every pre-existing location starts
+NULL — and the round-1 change-guard, correct in itself, removed the only way out by making a re-save
+of an unchanged address a no-op. `useUpdateOrgUnit` now also fires verification when a location has
+**never** been verified, even if the address is unchanged; that is safe for exactly the reason the
+guard exists, since a row with no stamp has nothing to lose. Shipped with it: all three address
+requirements relabelled **"Add your address" → "Confirm your address"**, because they derive from a
+stamp rather than from whether an address exists, and telling an account that typed its address
+months ago to "add" one is false on its face.
+
+## Corrections to the record above
+
+- **The four-times framing is now five.** Sections "What shipped", "The pattern that repeated four
+  times", and the ruling ledger all say four. The fifth is identity-on-auto-detach, above.
+- **`withinCooldown` is no longer the coverage gap.** The accurate gap is broader and worse: the
+  **whole** send throttle is now SQL and has **no automated test**, because Vitest cannot reach a
+  database. It is proven only by the hand-run, rolled-back prod script described above.
+  `rateLimit.test.ts` still covers `isAllowedCountry`, the only pure decision left. The three
+  `exceedsSendLimit` tests were deleted with their subject rather than kept green against code
+  nothing calls.
+- **The Wiki log's flagged item (3) is wrong.** It records `useTour.ts`'s `onboarding_completed_at`
+  as "a pre-existing dead-code write to a nonexistent column". The column **does exist** — migration
+  `20260427110000_tour_coachmark_state.sql` adds it. What is true is that it is absent from
+  `src/integrations/supabase/types.ts`, i.e. the generated types are stale, which is how it read as
+  nonexistent. The write was real, and the write lockdown broke it; `20260824170000` grants it back.
+  (Flagged item (2), `useProfileNames.ts`, was correct and is now fixed rather than merely recorded.)
+- **Migration count is 11, not 9.** Added since: `20260824160000` (the reserve RPC, recorded
+  explicitly as NOT applied) and `20260824170000` (the `onboarding_completed_at` grant — no record of
+  application either way; verify before assuming).
+- **The deploy list gained a fifth function.** `check-restaurant-payout-status` now imports
+  `_shared/stripe-identity-reset.ts` and must deploy alongside `verify-phone`, `verify-address`,
+  `stripe-webhook` and `disconnect-stripe-account`.
+- **The address `required` item is now satisfiable by an existing account**, via the `neverVerified`
+  branch — but only once `GOOGLE_MAPS_SERVER_API_KEY` exists. Until then no address can be verified
+  at all, so the requirement is display-only. That is safe, and would stop being safe the moment
+  `READINESS_GATE_ENABLED` is armed. Nothing may arm that flag until the key is provisioned **and**
+  existing locations have actually been verified.
+
+## The standing note on the loop itself
+
+Nine findings across seven rounds, every one real. Two of them were defects introduced by our **own**
+prior fix inside the same review loop — which is the argument for re-running an independent reviewer
+after every fix round, rather than assuming a fix is inert. And the round-2 P1 overturned a call that
+had been explicitly made and recorded (the throttle race, parked as non-blocking on the grounds that
+the bypass was "bounded by concurrency"). It is not a bound: the attacker chooses the concurrency,
+and each request is a billed SMS. **The error was grading a finding on how hard it is to exploit
+rather than on what it costs when exploited** — for a financial control those are different
+questions, and only the second decides whether it blocks a merge. Two independent reviewers reached
+that finding and the first was overridden; the second only ran because CLAUDE.md makes the Codex pass
+mandatory rather than discretionary.
