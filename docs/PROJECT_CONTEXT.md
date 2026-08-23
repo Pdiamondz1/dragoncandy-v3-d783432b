@@ -134,6 +134,9 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   **COMPLETE 2026-08-23 — shared-mailbox signatures install** (scope granted, #456 deployed,
   `SHARING_SCOPE_ENABLED=true`, final run `ok / 4 identities / 3 shared`); this line previously
   listed the deploy and the property as pending and both landed within hours.
+  A latent bug found in review and closed the same day (#461): the regression warning was scoped
+  to the **domain**, not the user, so it would have gone quiet exactly as the feature grew —
+  five Codex rounds, seven defects, all of them scoping errors rather than wrong calculations.
   **Pending (2026-08-23):** shared identities exist on **no account but `dame@`**; **Outlook for
   Windows is untested and now untestable** (no access) — treat the rendering matrix as four-of-five;
   and Waves 2–3 (the People document set, and a *sendable* pitch deck — the current one is a React
