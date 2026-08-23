@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ShieldAlert } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 import { ProfileCompletionBar } from '@/components/settings/ProfileCompletionBar';
 import { CreatorSettingsSections } from '@/components/settings/CreatorSettingsSections';
 import { useCreatorProfileForm } from '@/hooks/useCreatorProfileForm';
@@ -21,7 +20,6 @@ import { PageBody } from '@/components/app/PageBody';
 
 const CreatorSettings = () => {
   const { submitProfile } = useCreatorProfileSubmit();
-  const { completeMission } = useFirstRunMissions();
   const [searchParams] = useSearchParams();
   const [activeSection, setActiveSection] = useState<string | undefined>(
     searchParams.get('section') ?? undefined
@@ -47,7 +45,6 @@ const CreatorSettings = () => {
     if (success) {
       setAvatarFile(null);
       toast.success('Saved', { duration: 1500 });
-      if (portfolioPaths.length > 0) completeMission('add_portfolio');
     }
   };
 
