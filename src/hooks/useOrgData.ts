@@ -105,7 +105,7 @@ export function useOrgUnits(orgId?: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('org_units')
-        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url')
+        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url, address_verified_at')
         .eq('org_id', orgId!)
         .is('deleted_at', null)
         .order('is_primary', { ascending: false })

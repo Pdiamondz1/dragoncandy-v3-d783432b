@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import type { ReadinessContext } from './types';
 import {
-  deriveEmailVerified, deriveProfileBasics, derivePhoneVerified, deriveAddress,
+  deriveEmailVerified, deriveProfileBasics, derivePhoneVerified,
+  deriveIdentityVerified, deriveAddress, deriveCreatorAddress,
   deriveStripe, deriveSocialLinked, deriveLocations, deriveTeam,
   deriveSkills, deriveBio, derivePortfolio,
 } from './derivations';
@@ -13,11 +14,16 @@ const base: ReadinessContext = {
   imageUrl: 'https://example.test/logo.png',
   phoneVerifiedAt: '2026-08-23T00:00:00Z',
   dismissed: [],
-  orgUnits: [{ id: 'u1', address: '1 Main St, Hoboken NJ', lat: 40.7, lng: -74.0, isPrimary: true }],
+  orgUnits: [{
+    id: 'u1', address: '1 Main St, Hoboken NJ', lat: 40.7, lng: -74.0, isPrimary: true,
+    addressVerifiedAt: '2026-08-24T00:00:00Z',
+  }],
   orgMemberCount: 2,
   stripe: { hasAccount: true, onboardingComplete: true },
   socialActiveCount: 1,
   creator: { skills: ['photography'], bio: 'I shoot food.', portfolioUrls: ['https://example.test/1'] },
+  identity: { verifiedAt: '2026-08-24T00:00:00Z', requirementsDue: [], disabledReason: null },
+  addressVerifiedAt: '2026-08-24T00:00:00Z',
 };
 
 describe('derivations — the fail-open contract', () => {
@@ -25,7 +31,9 @@ describe('derivations — the fail-open contract', () => {
     ['emailVerified', deriveEmailVerified],
     ['displayName',   deriveProfileBasics],
     ['phoneVerifiedAt', derivePhoneVerified],
+    ['identity',      deriveIdentityVerified],
     ['orgUnits',      deriveAddress],
+    ['addressVerifiedAt', deriveCreatorAddress],
     ['stripe',        deriveStripe],
     ['socialActiveCount', deriveSocialLinked],
     ['orgUnits',      deriveLocations],
@@ -60,14 +68,64 @@ describe('derivePhoneVerified', () => {
 });
 
 describe('deriveAddress', () => {
-  it('met when the primary unit has address and coordinates', () =>
+  it('met when the primary unit is address-verified', () =>
     expect(deriveAddress(base).status).toBe('met'));
-  it('unmet when the address is blank', () =>
-    expect(deriveAddress({ ...base, orgUnits: [{ ...base.orgUnits![0], address: '' }] }).status).toBe('unmet'));
-  it('unmet when coordinates are missing', () =>
-    expect(deriveAddress({ ...base, orgUnits: [{ ...base.orgUnits![0], lat: null }] }).status).toBe('unmet'));
+  it('unmet when the primary unit has an address but no stamp', () =>
+    expect(deriveAddress({ ...base, orgUnits: [{ ...base.orgUnits![0], addressVerifiedAt: null }] }).status).toBe('unmet'));
+  /** Text and coordinates alone prove nothing — a client can write both directly. */
+  it('unmet even with address text and coordinates present, absent the stamp', () =>
+    expect(deriveAddress({
+      ...base,
+      orgUnits: [{ ...base.orgUnits![0], address: '1 Main St', lat: 40.7, lng: -74.0, addressVerifiedAt: null }],
+    }).status).toBe('unmet'));
   it('unknown — not unmet — for an account with no org row at all', () =>
     expect(deriveAddress({ ...base, orgUnits: [] }).status).toBe('unknown'));
+});
+
+describe('deriveCreatorAddress', () => {
+  it('met when the stamp is set', () => expect(deriveCreatorAddress(base).status).toBe('met'));
+  it('unmet when the stamp is null', () =>
+    expect(deriveCreatorAddress({ ...base, addressVerifiedAt: null }).status).toBe('unmet'));
+  it('recommended — satisfiable by dismissal, even when the source is unreadable', () =>
+    expect(deriveCreatorAddress({ ...base, addressVerifiedAt: undefined, dismissed: ['address'] }).status).toBe('met'));
+});
+
+describe('deriveIdentityVerified', () => {
+  it('is unknown when we have not heard from Stripe', () =>
+    expect(deriveIdentityVerified({ ...base, identity: undefined }).status).toBe('unknown'));
+
+  /** NULL from Stripe is "not verified yet", which is a real answer — unlike absent. */
+  it('is unmet when Stripe has reported and the stamp is null', () =>
+    expect(deriveIdentityVerified({
+      ...base, identity: { verifiedAt: null, requirementsDue: ['individual.id_number'], disabledReason: null },
+    }).status).toBe('unmet'));
+
+  it('names the outstanding requirement in the detail so the copy can be specific', () => {
+    const s = deriveIdentityVerified({
+      ...base, identity: { verifiedAt: null, requirementsDue: ['individual.id_number'], disabledReason: null },
+    });
+    expect(s.detail).toContain('individual.id_number');
+  });
+
+  it('is met when the stamp is set', () =>
+    expect(deriveIdentityVerified({
+      ...base, identity: { verifiedAt: '2026-08-24T00:00:00Z', requirementsDue: [], disabledReason: null },
+    }).status).toBe('met'));
+
+  /** required tier: no dismissal path exists at all — nothing to test for it. */
+});
+
+describe('derivePhoneVerified — dismissal ordering', () => {
+  /**
+   * Dismissal must be checked BEFORE the undefined check, or a dismissed recommendation
+   * reappears whenever its source is briefly unreachable. Same ordering bug the slice-1
+   * review caught in three derivations. phone_verified moved to `recommended` this slice
+   * (Ruling 10 — spec §6), which makes it dismissible for the first time.
+   */
+  it('stays dismissed even while the source is unresolved', () => {
+    const s = derivePhoneVerified({ ...base, phoneVerifiedAt: undefined, dismissed: ['phone_verified'] });
+    expect(s.status).toBe('met');
+  });
 });
 
 describe('deriveStripe', () => {
@@ -82,6 +140,8 @@ describe('deriveStripe', () => {
 });
 
 describe('recommended items are satisfiable by dismissal', () => {
+  it('phone_verified is met once dismissed, even when the source is unreadable', () =>
+    expect(derivePhoneVerified({ ...base, phoneVerifiedAt: undefined, dismissed: ['phone_verified'] }).status).toBe('met'));
   it('social_linked is met once dismissed, even with no accounts', () =>
     expect(deriveSocialLinked({ ...base, socialActiveCount: 0, dismissed: ['social_linked'] }).status).toBe('met'));
   it('social_linked is met once dismissed, even when the source is unreadable', () =>
@@ -102,7 +162,7 @@ describe('deriveLocations — every unit needs an address, not a count', () => {
   it('unmet the moment a second location is added without an address', () =>
     expect(deriveLocations({ ...base, orgUnits: [
       base.orgUnits![0],
-      { id: 'u2', address: null, lat: null, lng: null, isPrimary: false },
+      { id: 'u2', address: null, lat: null, lng: null, isPrimary: false, addressVerifiedAt: null },
     ] }).status).toBe('unmet'));
 });
 

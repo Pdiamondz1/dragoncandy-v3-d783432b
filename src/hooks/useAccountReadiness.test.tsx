@@ -48,6 +48,8 @@ const baseCtx: ReadinessContext = {
   stripe: undefined,
   socialActiveCount: undefined,
   creator: undefined,
+  identity: undefined,
+  addressVerifiedAt: undefined,
 };
 
 describe('useAccountReadiness', () => {

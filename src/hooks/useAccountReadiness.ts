@@ -63,10 +63,14 @@ export async function fetchAccountReadinessDetail(
     supabase.from('profiles')
       .select('email_verified, phone_verified_at, dismissed_requirements, org_id')
       .eq('id', userId).maybeSingle(),
+    // identity_verified_at / stripe_requirements_due / stripe_disabled_reason exist on
+    // BOTH role tables (Task 3). address_verified_at exists on creator_profiles only —
+    // a business/brand's address lives per-location on org_units instead (see
+    // OrgUnitFacts.addressVerifiedAt), so it is never selected here for that table.
     supabase.from(table)
       .select(isCreator
-        ? 'creator_name, avatar_url, bio, skills, portfolio_urls, stripe_account_id, stripe_onboarding_complete'
-        : 'business_name, logo_url, stripe_account_id, stripe_onboarding_complete')
+        ? 'creator_name, avatar_url, bio, skills, portfolio_urls, stripe_account_id, stripe_onboarding_complete, identity_verified_at, stripe_requirements_due, stripe_disabled_reason, address_verified_at'
+        : 'business_name, logo_url, stripe_account_id, stripe_onboarding_complete, identity_verified_at, stripe_requirements_due, stripe_disabled_reason')
       .eq('user_id', userId).maybeSingle(),
   ]);
 
@@ -174,6 +178,7 @@ export function useAccountReadiness(role: AccountRole, opts: Options = {}): UseA
       dismissed: (prof?.dismissed_requirements as string[] | null) ?? [],
       orgUnits: orgUnits?.map((u) => ({
         id: u.id, address: u.address, lat: u.lat, lng: u.lng, isPrimary: u.is_primary,
+        addressVerifiedAt: u.address_verified_at,
       })),
       orgMemberCount: detail.data?.memberCount,
       stripe: liveStripe ? live : mirrored,
@@ -185,6 +190,18 @@ export function useAccountReadiness(role: AccountRole, opts: Options = {}): UseA
             portfolioUrls: (rp.portfolio_urls as string[] | null) ?? null,
           }
         : undefined,
+      // A role table with no row yet (rp undefined) means the read never resolved —
+      // undefined, never a fabricated "not verified". Once rp resolves, missing
+      // columns read as null (Stripe has never reported), which is a real `unmet`.
+      identity: rp
+        ? {
+            verifiedAt: (rp.identity_verified_at ?? null) as string | null,
+            requirementsDue: (rp.stripe_requirements_due ?? []) as readonly string[],
+            disabledReason: (rp.stripe_disabled_reason ?? null) as string | null,
+          }
+        : undefined,
+      // Creator-only fact — business/brand address comes from orgUnits above.
+      addressVerifiedAt: isCreator && rp ? ((rp.address_verified_at ?? null) as string | null) : undefined,
     };
     return computeAccountReadiness(ctx);
   }, [role, isCreator, liveStripe, detail.data, liveStripeQuery.data, orgUnits, socialAccounts]);

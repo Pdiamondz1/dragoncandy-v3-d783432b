@@ -1,6 +1,7 @@
 import type { AccountRole, RequirementDef } from './types';
 import {
-  deriveEmailVerified, deriveProfileBasics, derivePhoneVerified, deriveAddress,
+  deriveEmailVerified, deriveProfileBasics, derivePhoneVerified,
+  deriveIdentityVerified, deriveAddress, deriveCreatorAddress,
   deriveStripe, deriveSocialLinked, deriveLocations, deriveTeam,
   deriveSkills, deriveBio, derivePortfolio,
 } from './derivations';
@@ -16,11 +17,22 @@ const emailVerified = (route: string): RequirementDef => ({
   derive: deriveEmailVerified, resolve: { route },
 });
 
+// Recommended, not required (spec §6) — a real writer only exists as of this
+// slice (verify-phone), and gating pre-existing accounts on a signal nobody
+// could satisfy until today is exactly the "UI says one thing, the truth says
+// another" failure this engine exists to close.
 const phoneVerified = (route: string): RequirementDef => ({
-  key: 'phone_verified', tier: 'required',
+  key: 'phone_verified', tier: 'recommended',
   label: 'Verify your phone',
   why: 'So people you work with can reach you when a shoot is happening.',
   derive: derivePhoneVerified, resolve: { route },
+});
+
+const identityVerified = (route: string, why: string): RequirementDef => ({
+  key: 'identity_verified', tier: 'required',
+  label: 'Verify your identity',
+  why,
+  derive: deriveIdentityVerified, resolve: { route: `${route}?section=payments` },
 });
 
 const stripe = (route: string, why: string): RequirementDef => ({
@@ -47,6 +59,7 @@ export const ROLE_REQUIREMENTS: Record<AccountRole, readonly RequirementDef[]> =
       derive: deriveProfileBasics, resolve: { route: BUSINESS_SETTINGS },
     },
     phoneVerified(BUSINESS_SETTINGS),
+    identityVerified(BUSINESS_SETTINGS, 'Stripe requires this before it can release payments to creators.'),
     {
       key: 'address', tier: 'required',
       label: 'Add your address',
@@ -78,6 +91,7 @@ export const ROLE_REQUIREMENTS: Record<AccountRole, readonly RequirementDef[]> =
       derive: deriveProfileBasics, resolve: { route: CREATOR_SETTINGS },
     },
     phoneVerified(CREATOR_SETTINGS),
+    identityVerified(CREATOR_SETTINGS, 'Stripe requires this before it can pay you.'),
     {
       key: 'skills', tier: 'required',
       label: 'Pick what you create',
@@ -92,6 +106,12 @@ export const ROLE_REQUIREMENTS: Record<AccountRole, readonly RequirementDef[]> =
     },
     stripe(CREATOR_SETTINGS, 'So you get paid to your bank account when work is approved.'),
     socialLinked(CREATOR_SETTINGS),
+    {
+      key: 'address', tier: 'recommended',
+      label: 'Add your address',
+      why: 'So businesses near you can find you — and shoots can be scheduled around where you actually are.',
+      derive: deriveCreatorAddress, resolve: { route: CREATOR_SETTINGS },
+    },
     {
       key: 'portfolio', tier: 'recommended',
       label: 'Show your best work',
@@ -109,6 +129,13 @@ export const ROLE_REQUIREMENTS: Record<AccountRole, readonly RequirementDef[]> =
       derive: deriveProfileBasics, resolve: { route: BRAND_SETTINGS },
     },
     phoneVerified(BRAND_SETTINGS),
+    identityVerified(BRAND_SETTINGS, 'Stripe requires this before it can fund sponsorships.'),
+    {
+      key: 'address', tier: 'required',
+      label: 'Add your address',
+      why: 'So restaurants and creators near you can find you.',
+      derive: deriveAddress, resolve: { route: '/dashboard/brand/products' },
+    },
     stripe(BRAND_SETTINGS, 'So you can fund sponsorships without a delay.'),
     socialLinked(BRAND_SETTINGS),
   ],

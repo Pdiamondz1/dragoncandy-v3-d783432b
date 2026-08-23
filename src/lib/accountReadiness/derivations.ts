@@ -37,11 +37,28 @@ export function deriveProfileBasics(ctx: ReadinessContext): RequirementState {
   return nonEmpty(ctx.displayName) && nonEmpty(ctx.imageUrl) ? MET : UNMET;
 }
 
+/**
+ * `phone_verified` moved to `recommended` this slice (spec §6) — Task 5 gave it a
+ * real writer for the first time, and gating pre-existing accounts on a signal
+ * nobody could satisfy until today would be a permanent false failure. Recommended
+ * means dismissible, so dismissal is checked first, matching every other
+ * recommended derivation in this file.
+ */
 export function derivePhoneVerified(ctx: ReadinessContext): RequirementState {
+  if (dismissed(ctx, 'phone_verified')) return MET;
   if (ctx.phoneVerifiedAt === undefined) return UNKNOWN;
   return ctx.phoneVerifiedAt ? MET : UNMET;
 }
 
+/**
+ * Business/brand address — per-location, on org_units. Keys off
+ * `address_verified_at` alone (not "has an address and coordinates"): a
+ * client can write `address`/`lat`/`lng` directly, but only the server
+ * (verify-address, after a successful geocode) can set the stamp, and a DB
+ * trigger nulls the stamp the instant the underlying address changes. So the
+ * stamp — not the presence of text or coordinates — is the only fact that
+ * means "this address was actually confirmed."
+ */
 export function deriveAddress(ctx: ReadinessContext): RequirementState {
   if (ctx.orgUnits === undefined) return UNKNOWN;
   const primary = ctx.orgUnits.find((u) => u.isPrimary) ?? ctx.orgUnits[0];
@@ -49,8 +66,37 @@ export function deriveAddress(ctx: ReadinessContext): RequirementState {
   // coverage for older accounts is assumed rather than proven — so this is
   // "we cannot tell", not "they have no address".
   if (!primary) return UNKNOWN;
-  const complete = nonEmpty(primary.address) && primary.lat !== null && primary.lng !== null;
-  return complete ? MET : UNMET;
+  return primary.addressVerifiedAt ? MET : UNMET;
+}
+
+/**
+ * Creator's own address — a single account-level stamp on creator_profiles,
+ * unlike business/brand where an org can have several locations. Recommended
+ * tier, so dismissal is checked first (same reasoning as the other
+ * recommended derivations above).
+ */
+export function deriveCreatorAddress(ctx: ReadinessContext): RequirementState {
+  if (dismissed(ctx, 'address')) return MET;
+  if (ctx.addressVerifiedAt === undefined) return UNKNOWN;
+  return ctx.addressVerifiedAt ? MET : UNMET;
+}
+
+/**
+ * Stripe's identity/KYC signal, mirrored (never a stored tax ID or number).
+ * `ctx.identity === undefined` means we have not heard from Stripe at all —
+ * `unknown`. Once Stripe HAS reported, `verifiedAt: null` is a genuine
+ * `unmet`, not an absence: NULL from Stripe is a real answer. `required`
+ * tier for every role, so there is no dismissal check here.
+ */
+export function deriveIdentityVerified(ctx: ReadinessContext): RequirementState {
+  if (ctx.identity === undefined) return UNKNOWN;
+  const { verifiedAt, requirementsDue, disabledReason } = ctx.identity;
+  if (verifiedAt) return MET;
+  if (requirementsDue.length > 0) {
+    return { status: 'unmet', detail: `Stripe needs: ${requirementsDue.join(', ')}` };
+  }
+  if (disabledReason) return { status: 'unmet', detail: disabledReason };
+  return UNMET;
 }
 
 export function deriveStripe(ctx: ReadinessContext): RequirementState {
