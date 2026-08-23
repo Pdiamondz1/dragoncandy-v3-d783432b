@@ -39,6 +39,17 @@ if (!ANTHROPIC_API_KEY) {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+// How many chunks `search_internal_knowledge` retrieves. **This number was measured, not chosen.**
+// `npm run eval:rag` scores retrieval over 53 real queries taken from `donny_tool_executions`, and
+// at k=5 recall is 65% against 91% at k=10 — dropping to 5 loses more than a third of the relevant
+// material. For a RAG feeding an LLM recall dominates precision: the model can ignore a weak
+// passage, but not one it never sees.
+//
+// It is a named constant so a test can pin it. If you change it, RE-RUN THE EVALUATION and update
+// docs/wiki/concepts/rag-retrieval-evaluation.md — otherwise that page states a figure for a
+// configuration that no longer ships.
+const INTERNAL_RETRIEVAL_K = 10;
+
 // All 21 tool definitions in Anthropic format
 const TOOL_DEFINITIONS = [
   // --- Campaign Tools ---
@@ -897,13 +908,12 @@ async function executeTool(
     // --- Internal (AIOS) tools ---
     case "search_internal_knowledge": {
       const embedding = await embedQuery(args.query);
-      // 10, not the default 5, because the internal corpus is CHUNKED and the consumer one is
-      // not (sync-internal-docs.mjs splits a document into ~6k pieces; sync-wiki-to-donny.mjs
-      // sends whole pages). At 5 rows this call could return five pieces of one document where
-      // it used to return five separate documents. This is still LESS text than before, not
-      // more: measured 2026-08-23 the mean chunk is 4,162 chars against the old mean row of
-      // 10,111, so 10 chunks is ~42k where 5 rows was ~51k.
-      const chunks = await retrieveContext(internalCtx!.userClient, args.query, embedding, 10, "internal");
+      // Above the default 5, because the internal corpus is CHUNKED and the consumer one is not
+      // (sync-internal-docs.mjs splits a document into ~6k pieces; sync-wiki-to-donny.mjs sends
+      // whole pages), so at 5 rows this call could return five pieces of one document where it
+      // used to return five separate documents. That was the ARGUMENT for raising it; the value
+      // itself now rests on the measurement recorded at INTERNAL_RETRIEVAL_K.
+      const chunks = await retrieveContext(internalCtx!.userClient, args.query, embedding, INTERNAL_RETRIEVAL_K, "internal");
       return { result: { chunks, count: chunks.length } };
     }
 
