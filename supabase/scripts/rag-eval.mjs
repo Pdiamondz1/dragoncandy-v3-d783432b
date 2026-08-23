@@ -47,6 +47,7 @@ const K_MAX = 12;
 // corrupt the controls, the tail share and the recall figures all at once — a report that looks
 // spectacular and means nothing.
 const TEMP_PREFIX = "internal-doc:ZZZ_RAGEVAL_Q";
+const TEMP_DOC_PREFIX = "docs/ZZZ_RAGEVAL_Q";
 
 const KEY = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!KEY) {
@@ -55,6 +56,43 @@ if (!KEY) {
 }
 const H = { apikey: KEY, Authorization: `Bearer ${KEY}` };
 const parseVec = (e) => (typeof e === "string" ? JSON.parse(e) : e);
+
+/**
+ * Delete every temporary evaluation row, from THIS run and from any earlier interrupted one, and
+ * verify by re-reading. Returns null when both tables come back empty, or a message otherwise.
+ *
+ * Lives at top level, and runs on BOTH embedding paths. It used to sit inside the borrowed-key
+ * branch, so a run with OPENAI_API_KEY set printed the warning promising a sweep and then never
+ * swept — leaving internal-scope rows containing the query text retrievable indefinitely.
+ *
+ * Rows are read first and deleted BY ID, never by the `like` pattern used to find them: `_` is a
+ * single-character LIKE wildcard, this prefix is full of them, and this is a DELETE.
+ */
+async function sweepTempRows() {
+  let failed = 0;
+  for (const [table, sel, filter, keyName, prefix] of [
+    ["donny_knowledge", "id,metadata", `metadata->>source_id=like.${TEMP_PREFIX}*`, "id", TEMP_PREFIX],
+    ["internal_docs", "path", "path=like.docs/ZZZ_RAGEVAL_Q*", "path", TEMP_DOC_PREFIX],
+  ]) {
+    const rows = await (await fetch(`${REST}${table}?select=${sel}&${filter}`, { headers: H })).json();
+    if (!Array.isArray(rows)) { failed++; continue; }
+    for (const row of rows) {
+      const idStr = table === "internal_docs" ? row.path : String(row.metadata?.source_id ?? "");
+      if (!idStr.startsWith(prefix)) continue;   // literal re-check; the filter above is a LIKE
+      const d = await fetch(`${REST}${table}?${keyName}=eq.${encodeURIComponent(row[keyName])}`, { method: "DELETE", headers: H });
+      if (!d.ok) failed++;
+    }
+  }
+  // Verified by RE-READING both tables, not by trusting the DELETE responses.
+  const leftRag = await (await fetch(`${REST}donny_knowledge?select=id&metadata->>source_id=like.${TEMP_PREFIX}*`, { headers: H })).json();
+  const leftDocs = await (await fetch(`${REST}internal_docs?select=path&path=like.docs/ZZZ_RAGEVAL_Q*`, { headers: H })).json();
+  const nRag = Array.isArray(leftRag) ? leftRag.length : -1;
+  const nDocs = Array.isArray(leftDocs) ? leftDocs.length : -1;
+  if (failed === 0 && nRag === 0 && nDocs === 0) return null;
+  return `cleanup incomplete — ${failed} DELETE(s) failed, ${nRag} donny_knowledge and ${nDocs} ` +
+    `internal_docs row(s) remain. Prune: delete from donny_knowledge where ` +
+    `metadata->>'source_id' like '${TEMP_PREFIX}%';`;
+}
 
 const { real, control } = JSON.parse(readFileSync(join(HERE, "rag-eval", "queries.json"), "utf8"));
 const labelRows = JSON.parse(readFileSync(join(HERE, "rag-eval", "labels.json"), "utf8"));
@@ -87,8 +125,9 @@ for (let offset = 0; ; offset += 50) {
 console.log(`index: ${index.length} chunks, ${new Set(index.map((r) => r.doc)).size} documents`);
 if (stale > 0) {
   console.warn(`WARNING: ${stale} leftover evaluation row(s) found and excluded from the index — a ` +
-    `previous run was interrupted before cleanup. The cleanup below sweeps every row carrying the ` +
-    `prefix, not just this run's, so they go too.`);
+    `previous run was interrupted before cleanup. Sweeping them now.`);
+  const err = await sweepTempRows();
+  console.log(err ? `  ${err}` : "  leftovers removed (verified by re-reading both tables)");
 }
 
 // ── where does each chunk sit in its source document? ────────────────────────────────────────
@@ -161,51 +200,8 @@ if (openai) {
     mintError = e;
   } finally {
     // Always clean up, including on failure — a leaked row is retrievable by internal Donny.
-    // Every DELETE is checked: an ignored non-2xx here means the script reports success while
-    // the rows it wrote are still being served, which is the failure this block exists to avoid.
-    let delFailed = 0;
-    for (let i = 0; i < pages.length; i++) {
-      for (const url of [
-        `${REST}donny_knowledge?metadata->>source_id=eq.${encodeURIComponent(id(i))}`,
-        `${REST}internal_docs?path=eq.${encodeURIComponent(path(i))}`,
-      ]) {
-        const d = await fetch(url, { method: "DELETE", headers: H });
-        if (!d.ok) delFailed++;
-      }
-    }
-    // Sweep any row carrying the prefix, not only this run's ids — an earlier interrupted run
-    // leaves rows this run never enumerated, and they are unambiguously this script's own
-    // artifacts. Deleted BY ID after a read, never by a `like` pattern: `_` is a single-character
-    // LIKE wildcard and the prefix is full of them, and this is a DELETE.
-    for (const [table, sel, filter] of [
-      ["donny_knowledge", "id,metadata", `metadata->>source_id=like.${TEMP_PREFIX}*`],
-      ["internal_docs", "path", "path=like.docs/ZZZ_RAGEVAL_Q*"],
-    ]) {
-      const rows = await (await fetch(`${REST}${table}?select=${sel}&${filter}`, { headers: H })).json();
-      if (!Array.isArray(rows)) continue;
-      for (const row of rows) {
-        // Re-check the prefix literally, because the pattern above is a LIKE and this is a DELETE.
-        const keyName = table === "internal_docs" ? "path" : "id";
-        const idStr = table === "internal_docs" ? row.path : String(row.metadata?.source_id ?? "");
-        const literal = table === "internal_docs" ? idStr.startsWith("docs/ZZZ_RAGEVAL_Q") : idStr.startsWith(TEMP_PREFIX);
-        if (!literal) continue;
-        const d = await fetch(`${REST}${table}?${keyName}=eq.${encodeURIComponent(row[keyName])}`, { method: "DELETE", headers: H });
-        if (!d.ok) delFailed++;
-      }
-    }
-
-    // Verified by RE-READING both tables, not by trusting the DELETE responses.
-    const leftRag = await (await fetch(`${REST}donny_knowledge?select=id&metadata->>source_id=like.${TEMP_PREFIX}*`, { headers: H })).json();
-    const leftDocs = await (await fetch(`${REST}internal_docs?select=path&path=like.docs/ZZZ_RAGEVAL_Q*`, { headers: H })).json();
-    const leftN = (Array.isArray(leftRag) ? leftRag.length : 1) + (Array.isArray(leftDocs) ? leftDocs.length : 1);
-    if (leftN > 0 || delFailed > 0) {
-      cleanupError = `cleanup incomplete — ${delFailed} DELETE(s) failed, ` +
-        `${Array.isArray(leftRag) ? leftRag.length : "?"} donny_knowledge and ` +
-        `${Array.isArray(leftDocs) ? leftDocs.length : "?"} internal_docs row(s) remain. ` +
-        `Prune: delete from donny_knowledge where metadata->>'source_id' like '${TEMP_PREFIX}%';`;
-    } else {
-      console.log("temporary rows cleaned up (verified by re-reading both tables)");
-    }
+    cleanupError = await sweepTempRows();
+    if (!cleanupError) console.log("temporary rows cleaned up (verified by re-reading both tables)");
   }
   // Surfaced only after cleanup has run, so the failure is reported AND the rows are gone.
   if (cleanupError) console.error(cleanupError);
