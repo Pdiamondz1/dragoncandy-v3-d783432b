@@ -366,10 +366,17 @@ holds no Toast credentials. See §6.
   real rows**, not an empty state dressed up as data. **Disconnect, revoke and re-consent all followed the same
   afternoon**, closing both gaps this entry listed an hour earlier. Disconnect deleted the row —
   which *is* the proof the revoke succeeded, since the DELETE is only reached after Google returns
-  `revoked`/`already_invalid` and a failure keeps the row with its token. **Google's own behaviour
-  confirmed it independently:** the first connect had sailed through with no consent screen, and
-  immediately after disconnect the same button dropped into a full account-chooser-and-consent
-  flow — Google does not re-ask for a grant it still holds. Re-consent produced a genuinely new
+  `revoked`/`already_invalid` and a failure keeps the row with its token. **A second piece of evidence was cited here and is
+  withdrawn:** this entry said "Google's own behaviour confirmed it independently — the first
+  connect had sailed through with no consent screen, and immediately after disconnect the same
+  button dropped into a full consent flow; Google does not re-ask for a grant it still holds."
+  **That is not evidence of anything**, because `buildAuthUrl` sends **`prompt=consent`** on every
+  authorization, and Google's docs are explicit that the "only the first time" behaviour applies
+  when `prompt` is **omitted**. The consent flow appears every time either way, revoke or no
+  revoke. The revoke is still proven — by the code path, where the DELETE is reached only after
+  Google returns `revoked`/`already_invalid` — which was the stronger evidence all along; the
+  "independent confirmation" merely felt like corroboration because it was a second observation.
+  **Two observations of the same thing are not two pieces of evidence.** Re-consent produced a genuinely new
   grant (`connected_at` 17:31:49, scope array in a different order) and the analytics read ran
   again against the new token. **PUBLISHED TO PRODUCTION 2026-08-23 18:20 UTC** — publishing
   status is now *In production* (reversible via "Back to testing"), which stops the 7-day refresh
@@ -381,10 +388,17 @@ holds no Toast credentials. See §6.
   **A claim this entry made an hour earlier was wrong and is corrected here:** the consent flow is
   **two screens**, not one. Screen 1 is identity (email, Continue); **screen 2 itemises the scopes
   as "View your YouTube account" and "View YouTube Analytics reports for your YouTube content"** —
-  both *View*, which is the user-facing proof this cannot post. Screen 2 is skipped when the
-  account already holds the scopes, which is why it went unseen until a **full** revoke forced it.
-  The earlier note was not wrong about what was on screen; it was wrong to treat one screen as the
-  whole flow. The operational rule survives with a better reason: **the consent screen is not the
+  both *View*, which is the user-facing proof this cannot post. The earlier note was not wrong about what was on
+  screen; it was wrong to treat one screen as the whole flow. **This correction then carried a
+  wrong mechanism of its own, caught by the Codex second review the same day:** it said screen 2 is
+  "skipped when the account already holds the scopes, which is why it went unseen until a full
+  revoke forced it". `buildAuthUrl` sends **`prompt=consent`** unconditionally, and per Google's
+  OAuth docs that value means *prompt the user for consent* regardless of prior grants — the
+  "prompted only the first time your project requests access" behaviour is what you get when
+  `prompt` is **omitted**. So screen 2 appears on **every** connect for this app; it went unseen
+  because nobody looked past screen 1, and the revoke had nothing to do with it. **A hypothesis
+  invented to explain a gap in observation, written down as mechanism, survived a correction pass
+  because that pass was about how many screens there are and not about why.** The operational rule survives with a better reason: **the consent screen is not the
   record of what was granted** — a flow can legitimately skip a screen — so the token response's
   scope array is the only reliable source, which is why this build reads it back. **Still no
   "Google hasn't verified this app" interstitial** in Testing or immediately after publishing;
@@ -445,9 +459,11 @@ holds no Toast credentials. See §6.
   the end-to-end flow including the OAuth grant, the consent screen showing the exact scopes, each
   scope demonstrably used, and the submitted app's name and branding. It is recordable today against
   production with no new infrastructure — a fourth Google-console claim corrected in one day, the
-  same shape as the other three. **The one real trap: the consent flow's second screen — the scope
-  itemisation, which IS the requirement — is skipped when the account already holds the scopes**, so
-  the recording must start from a revoked grant or it contains no consent screen at all. Procedure
+  same shape as the other three. **Recording it needs no revoke and no disconnect** — `prompt=consent` is
+  sent on every authorization so the scope screen always appears, and the card's connect button is
+  always present (labelled "Connect another channel" once a channel is linked). An earlier draft of
+  this very entry said the take "must start from a revoked grant"; Codex refuted it against the
+  code. Procedure
   and the full requirement list: `docs/runbooks/google-oauth-demo-video.md`, which also flags a
   conflict nothing else connected — **the site gate allowlists exactly `/robots.txt` and
   `/favicon.ico`, so switching the private preview on makes the homepage and `/privacy` answer 401,

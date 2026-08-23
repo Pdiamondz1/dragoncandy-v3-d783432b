@@ -40,38 +40,46 @@ the client ID. That last one is asserted confidently by several third-party guid
 on neither Google page, so treat it as cheap insurance rather than a rule — keep the URL bar
 in frame anyway, it costs nothing.
 
-## The one non-obvious step: revoke first
+## No revoke, no disconnect — and why the first draft said otherwise
 
-Requirement 2 is the one this build can silently fail. **Google's consent flow is two screens,
-and the second is skipped when the account already holds the scopes** — recorded in
-`docs/wiki/concepts/youtube-analytics-connector.md`. Screen 1 is identity (pick an account,
-Continue). Screen 2 is the scope itemisation:
+Requirement 2 is the consent screen, and Google's flow puts it on the **second** of two screens.
+Screen 1 is identity (pick an account, Continue). Screen 2 itemises the scopes:
 
 - "View your YouTube account"
 - "View YouTube Analytics reports for your YouTube content"
 
-Screen 2 **is** requirement 2. `dame@dragoncandy.com` currently holds both scopes, so starting
-a recording from the connected state produces a video with no consent screen in it — which
-Google rejects.
+**Screen 2 appears on every connect for this app**, including a reconnect by an account that
+already holds both scopes. `buildAuthUrl` sends **`prompt=consent`** unconditionally
+(`supabase/functions/_shared/youtube.ts`), and Google's OAuth documentation is explicit that
+`consent` means *prompt the user for consent*, while *"if you don't specify this parameter, the
+user will be prompted only the first time your project requests access."* We always specify it.
 
-So the recording has to start from a genuinely revoked grant:
+You also do not need to disconnect to reach the button: `YouTubeAnalyticsCard` renders it
+whichever state the card is in, labelled **"Connect another channel"** once a channel is linked.
 
-1. Open `/settings` and press **Disconnect** on the YouTube card. `youtube-disconnect` revokes
-   at Google *before* it deletes the row, so the grant is really gone rather than merely
-   forgotten locally.
-2. Confirm at <https://myaccount.google.com/permissions> that DragonCandy no longer appears.
-   Do not skip this. A failed revoke leaves both the row and the grant in place, and the flow
-   will skip screen 2 again — which you will only discover after recording.
+**The first draft of this runbook opened with a mandatory revoke**, on the strength of a claim in
+`docs/wiki/concepts/youtube-analytics-connector.md` that screen 2 is "skipped when the account
+already holds those scopes". That describes an app which *omits* `prompt` — not this one. The
+Codex second review caught it against the code before this runbook was merged, which is worth
+recording: the claim had already been through a same-day correction pass and read as settled, so
+nothing internal was going to re-open it. **Do not revoke a working production grant to satisfy a
+requirement that is already met.**
+
+One cheap check while recording, since it costs nothing: if screen 2 does **not** appear in your
+take, stop. That would mean `prompt=consent` is not reaching Google — a real defect, not a
+recording problem.
 
 ## Recording
 
 One take, roughly 60–90 seconds, no cuts. Cuts read as omissions.
 
-1. **Start signed in, on `/settings`**, with the YouTube analytics card visible in its
-   disconnected state. This satisfies requirement 4 — app name and branding on screen — and
-   establishes that the recording is our app.
-2. **Press "Connect YouTube" — the teal one.** The red button beside it is Outstand and it
-   publishes; nothing on the buttons themselves says which is which.
+1. **Start signed in, on `/settings`**, with the YouTube analytics card visible. This satisfies
+   requirement 4 — app name and branding on screen — and establishes that the recording is our
+   app. Starting from the connected state is fine. (If you want the button to read "Connect
+   YouTube" rather than "Connect another channel", disconnect first — but that is a presentation
+   choice that costs you the live grant, not a Google requirement.)
+2. **Press the teal connect button.** The red button beside it is Outstand and it publishes;
+   nothing on the buttons themselves says which is which.
 3. **Screen 1** — account chooser. Pick `dame@dragoncandy.com`.
 4. **Screen 2** — hold here for two or three seconds with both scope lines legible. This is
    the frame the reviewer is looking for. Then Allow.

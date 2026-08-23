@@ -66,9 +66,24 @@ arrived within the hour.** Google's consent is two screens:
    **"View your YouTube account"** and **"View YouTube Analytics reports for your YouTube
    content"**, with Cancel / Allow.
 
-Screen 2 is skipped when the account already holds those scopes. Only after a full revoke —
-which is what `youtube-disconnect` performs — do both appear. So the earlier observation was not
-wrong about what was on screen; it was wrong to treat one screen as the whole flow.
+So the earlier observation was not wrong about what was on screen; it was wrong to treat one
+screen as the whole flow.
+
+**This page then asserted a mechanism for that which is false, and the Codex second review caught
+it the same day.** It said: *"Screen 2 is skipped when the account already holds those scopes.
+Only after a full revoke — which is what `youtube-disconnect` performs — do both appear."*
+`buildAuthUrl` sends **`prompt=consent`** on every authorization
+(`supabase/functions/_shared/youtube.ts`), and Google's OAuth documentation is explicit: `consent`
+means *prompt the user for consent*, while *"if you don't specify this parameter, the user will be
+prompted only the first time your project requests access."* The skipping behaviour belongs to
+apps that **omit** `prompt`. This one never does, so **screen 2 appears on every connect** —
+first, second, and reconnect-after-revoke alike. Screen 2 went unseen because nobody looked past
+screen 1; the revoke that appeared to summon it was a coincidence of sequence.
+
+Worth naming the shape, because it is the more expensive half: **a hypothesis invented to explain
+a gap in observation, written down as mechanism, and then carried through a correction pass
+untouched** — because that pass was about *how many* screens there are, not about *why*. A
+correction inherits every claim it does not explicitly re-examine.
 
 **Screen 2 is the user-facing proof the integration cannot post.** Both entries read *View*.
 Nothing about uploading, publishing, or managing videos appears, because no such scope is
@@ -331,18 +346,23 @@ OAuth grant, the complete consent screen showing the exact scopes requested, eac
 scope demonstrably used, and the same app name and branding as submitted. The video is
 recordable against production today, with nothing new built.
 
-The trap that **is** real is documented two sections up and is easy to walk into while
-recording: the consent flow's second screen is the scope itemisation, and it is skipped when the
-account already holds the scopes. That screen **is** requirement 2. Recording from the connected
-state therefore produces a video with no consent screen in it, which Google rejects — so the
-take has to start from a revoked grant. Full procedure, plus the anonymous-reachability conflict
-between Google's homepage/privacy-policy requirement and the site gate's two-path allowlist:
+Requirement 2 is the one a build like this could plausibly fail, and the first draft of the
+runbook said the take "has to start from a revoked grant" so that the scope screen would appear.
+**Codex refuted that against the code**, and it is the second section of this page that was wrong,
+not the runbook's reading of it: `prompt=consent` is sent on every authorization, so the scope
+screen always appears, and the card's connect button is always present (labelled "Connect another
+channel" once a channel is linked). **The demo video needs no revoke and no disconnect.** Full
+procedure, plus the anonymous-reachability conflict between Google's homepage/privacy-policy
+requirement and the site gate's two-path allowlist:
 `docs/runbooks/google-oauth-demo-video.md`.
 
-**Four claims about this one console have now been corrected in a single day**: one consent
-screen taken for the whole flow, "both scopes are sensitive", a `youtube.upload` declaration
-that never existed, and this one. None was checkable from inside the repository, and each read
-as verified because it was specific. The rule that survives all four — **when a claim's only
+**Five claims about this one console were corrected in a single day**: one consent screen taken
+for the whole flow, "both scopes are sensitive", a `youtube.upload` declaration that never
+existed, the demo-video requirements, and the `prompt=consent` mechanism above. The first four
+were not checkable from inside the repository and each read as verified because it was specific.
+**The fifth was different, and that is the useful part** — it was checkable here all along, in
+sixteen characters of `youtube.ts`, and it took an independent reviewer to look, because by then
+the claim had been through a correction pass and read as settled. The rule that survives all four — **when a claim's only
 evidence lives in someone else's console or on someone else's documentation page, go and read
 it; do not paraphrase it from memory into a document that will be planned against.**
 
