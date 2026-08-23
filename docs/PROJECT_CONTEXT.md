@@ -485,6 +485,25 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### Shipped
 
+- **Account completeness engine (slice 1 of the onboarding redesign)** — one derived model for "is
+  this account ready to do X", replacing two half-systems that tracked the same facts different ways
+  and could disagree (live `deriveReadiness`/`ReadinessGate` + the stored `first_run_missions` blob —
+  the same "recorded ≠ actual" class as [[Updated-At Trigger Drift]]). Four states where **`unknown`
+  never blocks and never renders as a failure**, so a total API outage yields zero outstanding items
+  and zero blocked actions; `required`/`recommended` tiers; an action registry so `ReadinessGate` takes
+  `action="apply_campaign"` rather than `require={{stripe:true}}`. Deliberate read split — the
+  checklist uses the cheap mirrored Stripe column, the gate pays for the authoritative read, sharing
+  one cache key and therefore one shape. Migration `20260823120000` adds three nullable `profiles`
+  columns (`phone`, `phone_verified_at`, `dismissed_requirements`). **Three defects came from the plan
+  text itself**, all caught by the review loop: a sentinel UUID that made an unread org resolve to a
+  definitive `count:0` (→ "Invite your team" during a loading window, and untestable by construction);
+  a checklist that could read 5/5 while `isFirstRun` stayed true (only four page-visit mission keys
+  stamp `completed_at`); and three tests whose setup was identical to a neighbour's. **Merged WITHOUT
+  the Codex second review**, at founder direction. **Pending (2026-08-23):** both-viewport prod
+  verification — every changed surface is behind auth and **no test-account credentials exist in the
+  memory system despite `CLAUDE.md` saying they do**; the Donny RAG sync; and slices 2-4 (identity &
+  verification, entry experience, depth).
+  → `docs/wiki/concepts/account-completeness-engine.md` · #472
 - **Every `href` in our transactional emails was caller-chosen — closed on prod (#442)** — ~30
   templates built every link from caller-supplied `data` with no check, reachable because
   `create-notification` spreads the request body **verbatim** and calls `send-notification-email`

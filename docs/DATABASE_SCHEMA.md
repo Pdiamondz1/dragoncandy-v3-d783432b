@@ -65,7 +65,7 @@
 
 | Table | Purpose |
 |-|-|
-| `profiles` | Core user profiles (linked to Supabase auth). Includes `first_run_missions` JSONB for onboarding state. |
+| `profiles` | Core user profiles (linked to Supabase auth). Includes `first_run_missions` JSONB for onboarding state (narrowed 2026-08-23 — see the note below), plus `phone` / `phone_verified_at` / `dismissed_requirements` for the account completeness engine. |
 | `creator_profiles` | Extended profile data for content creators |
 | `business_profiles` | Extended profile data for brands/businesses |
 | `profile_views` | Tracks who viewed which profiles |
@@ -74,6 +74,34 @@
 | `email_verification_tokens` | Email verification flow |
 | `feature_flags` | Per-user or global feature toggles |
 | `user_roles` | RBAC role assignments (`app_role` enum). Queried via the `has_role()` security-definer function so RLS policies stay non-recursive. |
+
+> **Account completeness columns (`20260823120000`, applied to prod 2026-08-23).** Three nullable
+> `profiles` columns, no default and no backfill — a volatile default would rewrite every row, and
+> `NULL` is a meaningful "never set". See [[Account Completeness Engine]].
+>
+> | Column | Type | Meaning |
+> |---|---|---|
+> | `phone` | `text` | Captured number. No OTP, no capture UI, no provider yet — that is slice 2. |
+> | `phone_verified_at` | `timestamptz` | The instant phone ownership was **proven**. `NULL` = not verified. Never a boolean set optimistically. |
+> | `dismissed_requirements` | `text[]` | Requirement keys the user dismissed. **Recommended tier only** — a required item is never dismissible. |
+>
+> **`dismissed_requirements` is deliberately NOT the existing `dismissed_coachmarks` column.** Both are
+> arrays of opaque string keys, so sharing one means a coachmark key colliding with a requirement key
+> silently dismisses the wrong thing, with **no type error** to catch it.
+>
+> **`phone_verified_at` is a timestamp, not a flag, for the same reason every other anchor in this file
+> is** — a boolean can be set by anything optimistic; an instant records that something was proven.
+> Confirm no public view exposes either phone column before adding one: `phone` is contact PII, and the
+> `public_*` views are anon-reachable.
+>
+> **`first_run_missions` narrowed in the same work.** Only four keys are still written and only they
+> count toward `areMissionsComplete`: `browse_inspiration`, `view_campaigns`, `select_style`,
+> `browse_creators` — pure "did the user look at this once" events with no row anywhere to derive from.
+> Everything else (`setup_payments`, `add_portfolio`, `create_campaign`, `apply_campaign`, …) is now
+> **derived** and **no derived requirement may read the blob** (enforced by test). The column stays;
+> legacy rows keep reading fine. **Those four keys are load-bearing:** `isFirstRun` never consults the
+> engine, so `completed_at` — and therefore leaving first-run mode — depends entirely on them.
+
 
 ## Campaigns & Marketplace
 
