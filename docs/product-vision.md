@@ -5,6 +5,13 @@
 > the backend figures corrected; everything else predates the 2026-08 codebase
 > and has not been re-checked. Treat product direction here as the June
 > position, not today's. Current state lives in `docs/PROJECT_CONTEXT.md` §4.
+>
+> **Section 5 (Design Direction) is known to be superseded.** It describes a
+> single dark-mode-first Inter/JetBrains system with `dragon-*` tokens. Nothing
+> in the shipped app uses those tokens or those fonts, and the real system is
+> **surface-specific** — the landing, the entry flow, the authenticated app and
+> `/internal` do not share one theme. Read `docs/DESIGN_SYSTEM.md`; do not build
+> from section 5 and do not rely on any one-line summary of what replaced it.
 
 ## 1. Vision & Mission
 
@@ -367,6 +374,16 @@ DragonCandy is the first platform designed specifically for local content delive
 ---
 
 ## 5. Design Direction
+
+> **SUPERSEDED — do not build from this section.** Every token and font named
+> below (`dragon-*`, Inter, JetBrains Mono) is unused in the shipped app.
+> Critically, the real design system is **not one theme**: it differs by surface
+> — the public landing, the login/onboarding flow, the authenticated app and
+> `/internal` each have their own treatment, and which one applies depends on
+> where you are working. `docs/DESIGN_SYSTEM.md` is the authoritative source and
+> is deliberately not summarised here, because a summary of it is how this
+> section came to be wrong in the first place. Retained for historical context
+> only.
 
 ### Design Philosophy
 
