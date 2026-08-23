@@ -40,15 +40,63 @@
 -- clear_phone_verification's shape — they fire only when an UPDATE statement's SET
 -- list includes one of the named columns, which is also why no INSERT branch is
 -- needed here: Task 3's guard triggers (20260824111000) already reject any non-
--- service-role INSERT that sets address_verified_at/lat/lng to a non-NULL value, so a
--- forged stamp can never enter on row creation in the first place. UPSERT/ON CONFLICT
--- DO UPDATE routes through the UPDATE branch (documented in DATABASE_SCHEMA.md's note
--- on the collaboration-state-machine restoration), so it is covered.
+-- service-role INSERT that sets address_verified_at to a non-NULL value, so a forged
+-- STAMP can never enter on row creation. CORRECTED (task-7 fix round 2, Finding C):
+-- an earlier version of this comment claimed the guard also covers lat/lng on INSERT.
+-- It does not — read the live guard body (guard_creator_profiles_verification_columns /
+-- guard_org_units_verification_columns, 20260824111000) directly: it checks
+-- identity_verified_at, tax_id_provided, stripe_requirements_due,
+-- stripe_disabled_reason and address_verified_at only. lat/lng are client-writable on
+-- both INSERT and UPDATE today — a real, ALREADY-KNOWN gap, not a mistake in this
+-- trigger (Ruling 18 in progress.md, corrected here in fix round 2 — an earlier
+-- version of this comment cited the wrong ruling number and overstated its
+-- conclusion). Ruling 18 did NOT decide "a forged coordinate proves nothing" —
+-- nothing that reads address_verified_at is fooled (the readiness engine is
+-- unaffected, since it gates on the stamp), BUT "Find Creators near me" is a live
+-- feature that ranks on proximity and does NOT consult the stamp, so a planted
+-- coordinate would place a creator in search results for a city they are not in.
+-- Ruling 18 PARKED this — a marketplace-integrity issue with a bounded blast radius
+-- (this migration's own trigger nulls lat/lng alongside the stamp on any legitimate
+-- address edit, which bounds how long a planted value can survive), not something it
+-- dismissed as harmless. Do not paper over the gap; closing it, if ever needed, is a
+-- separate migration and a separate decision. UPSERT/ON CONFLICT DO UPDATE routes
+-- through the UPDATE branch (documented
+-- in DATABASE_SCHEMA.md's note on the collaboration-state-machine restoration), so it
+-- is covered by the two triggers below.
 --
 -- Not SECURITY DEFINER — these functions only assign to NEW, nothing privileged
 -- happens inside them, so DEFINER would be an elevation with no benefit (same
 -- reasoning as 20260824111000's drop and 20260824120000's drop). Plain invoker
 -- default, search_path pinned.
+--
+-- ORDERING DEPENDENCY WITH TASK 3'S GUARD TRIGGERS — real, not incidental, and it is
+-- CORRECT ONLY BECAUSE OF THE TRIGGER NAMES. CORRECTED (task-7 fix round 2, Finding
+-- B): an earlier version of this migration's fix-round-1 report claimed trigger firing
+-- ORDER between Task 3's guard (guard_creator_profiles_verification_columns /
+-- guard_org_units_verification_columns) and these two clearing triggers does not
+-- matter for correctness. That is false. Postgres fires same-event BEFORE triggers on
+-- one table in ALPHABETICAL ORDER BY TRIGGER NAME. "guard_..." sorts before
+-- "trg_clear_...", so on every table the guard runs FIRST, while NEW still holds the
+-- CLIENT's original submitted row (address_verified_at untouched, so NEW = OLD on that
+-- column) — the guard's condition is false and it passes. THEN this migration's
+-- trigger runs, sees the address column(s) changed, and nulls
+-- address_verified_at/lat/lng.
+--
+-- If the order were reversed — e.g. either trigger renamed so it no longer sorts
+-- guard-first — a ROUTINE, LEGITIMATE client address change would start hard-failing
+-- for any row that currently carries a stamp. Walk it through: the clearing trigger
+-- would run first, see the address column(s) changed, and null
+-- NEW.address_verified_at. If OLD.address_verified_at was non-NULL (a real prior
+-- verification), NEW.address_verified_at (now NULL) is DISTINCT FROM
+-- OLD.address_verified_at. The guard trigger then runs second, sees exactly that
+-- distinctness — which it can no longer tell apart from a forged client write — and
+-- raises "verification columns are server-write-only" on a client caller who never
+-- touched address_verified_at at all.
+--
+-- So: do not rename either trigger without re-verifying that "guard_*" still sorts
+-- before "trg_clear_*_address_verification" on both creator_profiles and org_units.
+-- This is not merely convenient — it is what makes a legitimate address edit and a
+-- forged verification write distinguishable at all.
 
 create or replace function public.clear_creator_address_verification()
 returns trigger
