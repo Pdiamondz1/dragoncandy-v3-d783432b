@@ -8,14 +8,26 @@
 // - Idempotent: one row per wiki page, keyed on metadata.source_id
 //   ("wiki:<path>"). Re-syncing a page updates its row instead of duplicating.
 //
-// Request body: { pages: [{ source_id, content, metadata, scope?, full_content? }], userId? }
-//   source_id     e.g. "wiki:concepts/self-improving-app"
-//   content       text to embed + store (title + body)
+// Request body: { pages: [{ source_id, content, metadata, scope?, full_content?,
+//                           index_in_rag?, chunk_total? }], userId? }
+//   source_id     e.g. "wiki:concepts/self-improving-app". A document too long for one
+//                 embedding arrives as several pages: chunk 0 keeps the plain id and chunk N
+//                 carries "<id>#N", so a single-chunk document updates its existing row rather
+//                 than orphaning it.
+//   content       text to embed + store (title + body). Required unless index_in_rag is false.
 //   metadata      { title, type, path, tags? } — stored alongside; source_id is added.
 //   scope         'internal' marks the row internal-only (AIOS): RLS + the scoped
 //                 match_donny_knowledge keep it out of consumer Donny entirely.
 //   full_content  internal pages only — full markdown additionally upserted into
 //                 internal_docs (keyed on metadata.path) for the strategy viewer.
+//   index_in_rag  false = store in internal_docs ONLY; do not embed, and delete any existing
+//                 donny_knowledge row for this id and its chunk siblings. For documents that
+//                 belong in the strategy viewer but not in retrieval (SHIPPED_LOG.md is 505k
+//                 chars of raw changelog — a quarter of the corpus — that the wiki already
+//                 synthesises). Internal scope only; requires full_content.
+//   chunk_total   how many chunks this document produced. Sent on chunk 0 so a document that
+//                 SHRANK has its now-unproduced siblings deleted; without it, a stale chunk
+//                 stays retrievable forever because nothing else ever removes a row.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -29,11 +41,16 @@ const SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000000"; // system sync, n
 
 interface WikiPage {
   source_id: string;
-  content: string;
+  content?: string;
   metadata?: Record<string, unknown>;
   scope?: "internal";
   full_content?: string;
+  index_in_rag?: boolean;
+  chunk_total?: number;
 }
+
+/** A page is embedded and stored in donny_knowledge unless it explicitly opts out. */
+const isIndexed = (p: WikiPage) => p.index_in_rag !== false;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders(req) });
@@ -65,8 +82,9 @@ serve(async (req) => {
     return json({ error: "pages must be an array of 1-100 items" }, 400);
   }
   for (const p of pages) {
-    if (!p?.source_id || typeof p.content !== "string" || !p.content.trim()) {
-      return json({ error: "each page needs a source_id and non-empty content" }, 400);
+    if (!p?.source_id) return json({ error: "each page needs a source_id" }, 400);
+    if (isIndexed(p) && (typeof p.content !== "string" || !p.content.trim())) {
+      return json({ error: "each indexed page needs non-empty content" }, 400);
     }
     if (p.scope !== undefined && p.scope !== "internal") {
       return json({ error: "scope must be 'internal' or omitted" }, 400);
@@ -74,22 +92,38 @@ serve(async (req) => {
     if (p.full_content !== undefined && p.scope !== "internal") {
       return json({ error: "full_content is only valid on internal pages" }, 400);
     }
+    // Opting out of the RAG only makes sense for a doc that still has somewhere to live.
+    // Without full_content on an internal page, index_in_rag:false would store the document
+    // nowhere at all while reporting success.
+    if (!isIndexed(p) && (p.scope !== "internal" || !p.full_content)) {
+      return json({ error: "index_in_rag:false requires scope 'internal' and full_content" }, 400);
+    }
+    if (p.chunk_total !== undefined && (!Number.isInteger(p.chunk_total) || p.chunk_total < 1)) {
+      return json({ error: "chunk_total must be a positive integer" }, 400);
+    }
   }
 
   const openaiKey = Deno.env.get("OPENAI_API_KEY");
   if (!openaiKey) return json({ error: "OPENAI_API_KEY not configured" }, 500);
 
-  // 1. Batch-embed every page in one OpenAI call (order is preserved).
-  const embedResp = await fetch("https://api.openai.com/v1/embeddings", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: EMBED_MODEL, input: pages.map((p) => p.content) }),
-  });
-  if (!embedResp.ok) {
-    return json({ error: "Embedding API failed", details: await embedResp.text() }, 502);
+  // 1. Batch-embed the indexed pages in one OpenAI call (order is preserved).
+  //    Unindexed pages are skipped here, not sent-and-discarded: `embeddingFor` maps a page
+  //    back to its own vector, so a batch mixing the two kinds cannot shift the alignment.
+  const indexedPages = pages.filter(isIndexed);
+  const embeddings: number[][] = [];
+  if (indexedPages.length > 0) {
+    const embedResp = await fetch("https://api.openai.com/v1/embeddings", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: EMBED_MODEL, input: indexedPages.map((p) => p.content) }),
+    });
+    if (!embedResp.ok) {
+      return json({ error: "Embedding API failed", details: await embedResp.text() }, 502);
+    }
+    const embedData = await embedResp.json();
+    embeddings.push(...embedData.data.map((d: { embedding: number[] }) => d.embedding));
   }
-  const embedData = await embedResp.json();
-  const embeddings: number[][] = embedData.data.map((d: { embedding: number[] }) => d.embedding);
+  const embeddingFor = (page: WikiPage) => embeddings[indexedPages.indexOf(page)];
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -97,7 +131,26 @@ serve(async (req) => {
   );
 
   // 2. Idempotent upsert per page, keyed on metadata.source_id.
-  const results: { source_id: string; action: "inserted" | "updated" | "error" | "skipped-archived"; error?: string }[] = [];
+  // Chunk siblings of `base` are "<base>#1", "<base>#2", … The '#' is what keeps this from
+  // matching a DIFFERENT document whose id merely starts with the same text
+  // ("internal-doc:prd" must not sweep up "internal-doc:prd-v2").
+  const chunkSiblings = async (base: string) => {
+    const { data } = await supabase
+      .from("donny_knowledge")
+      .select("id, metadata")
+      .eq("source_type", "wiki")
+      .like("metadata->>source_id", `${base}#%`);
+    return (data ?? []).map((r: { id: string; metadata: Record<string, unknown> | null }) => ({
+      id: r.id,
+      index: Number.parseInt(String(r.metadata?.source_id ?? "").split("#")[1] ?? "", 10),
+    }));
+  };
+
+  const results: {
+    source_id: string;
+    action: "inserted" | "updated" | "error" | "skipped-archived" | "skipped-unindexed";
+    error?: string;
+  }[] = [];
   for (let i = 0; i < pages.length; i++) {
     const page = pages[i];
 
@@ -148,18 +201,46 @@ serve(async (req) => {
       }
     }
 
+    // Both exits below must clear the chunk siblings as well as the base row. Deleting only
+    // the exact source_id would leave "<id>#1…#N" retrievable — the doc would read as removed
+    // while most of its text was still being served.
+    const purgeRag = async () => {
+      await supabase.from("donny_knowledge").delete()
+        .eq("source_type", "wiki").eq("metadata->>source_id", page.source_id);
+      const siblings = await chunkSiblings(page.source_id);
+      for (const s of siblings) {
+        await supabase.from("donny_knowledge").delete().eq("id", s.id);
+      }
+    };
+
+    // Stored for the strategy viewer, deliberately kept out of retrieval. The internal_docs
+    // upsert above already ran, so the document is not lost — only unindexed.
+    if (!isIndexed(page)) {
+      await purgeRag();
+      results.push({ source_id: page.source_id, action: "skipped-unindexed" });
+      continue;
+    }
+
     // KEYSTONE: archived internal docs stay OUT of the RAG. Self-heal any stray
     // row, then skip the embed/upsert so re-sync never resurrects the doc.
     if (archived) {
-      await supabase.from("donny_knowledge").delete()
-        .eq("source_type", "wiki").eq("metadata->>source_id", page.source_id);
+      await purgeRag();
       results.push({ source_id: page.source_id, action: "skipped-archived" });
+      continue;
+    }
+
+    // A row written with a null embedding is invisible to the cosine RPC while still counting
+    // as "updated" — the exact silent-success shape this whole change exists to remove. The
+    // index arithmetic above should make this unreachable; refuse the write if it is not.
+    const embedding = embeddingFor(page);
+    if (!embedding) {
+      results.push({ source_id: page.source_id, action: "error", error: "no embedding for page" });
       continue;
     }
 
     const row = {
       content: page.content,
-      embedding: embeddings[i],
+      embedding,
       source_type: "wiki",
       scope: page.scope === "internal" ? "internal" : null,
       metadata: { ...(page.metadata ?? {}), source_id: page.source_id },
@@ -192,10 +273,23 @@ serve(async (req) => {
           : { source_id: page.source_id, action: "inserted" },
       );
     }
+
+    // A document that SHRANK — 6 chunks last sync, 4 this one — leaves "#4" and "#5" behind,
+    // and nothing else in this system ever deletes a row. Sent only on chunk 0 (the id with no
+    // '#'), so this runs once per document rather than once per chunk.
+    if (page.chunk_total !== undefined && !page.source_id.includes("#")) {
+      for (const s of await chunkSiblings(page.source_id)) {
+        // A sibling whose index does not parse is not one this sync produced; leave it for the
+        // orphan report rather than guessing.
+        if (Number.isInteger(s.index) && s.index >= page.chunk_total) {
+          await supabase.from("donny_knowledge").delete().eq("id", s.id);
+        }
+      }
+    }
   }
 
   // 3. Best-effort cost logging (~chars/4 token estimate). Never blocks the sync.
-  const approxTokens = Math.ceil(pages.reduce((n, p) => n + p.content.length, 0) / 4);
+  const approxTokens = Math.ceil(pages.reduce((n, p) => n + (p.content?.length ?? 0), 0) / 4);
   await logEmbeddingCost(supabase, {
     userId,
     edgeFunction: "donny-knowledge-sync",
@@ -206,6 +300,9 @@ serve(async (req) => {
   const inserted = results.filter((r) => r.action === "inserted").length;
   const updated = results.filter((r) => r.action === "updated").length;
   const skipped = results.filter((r) => r.action === "skipped-archived").length;
+  const unindexed = results.filter((r) => r.action === "skipped-unindexed").length;
   const errors = results.filter((r) => r.action === "error").length;
-  return json({ synced: inserted + updated, inserted, updated, skipped, errors, results });
+  // `skipped` stays archived-only: existing callers read it as "archived", so folding a second
+  // meaning into it would silently change what they report. Unindexed gets its own counter.
+  return json({ synced: inserted + updated, inserted, updated, skipped, unindexed, errors, results });
 });
