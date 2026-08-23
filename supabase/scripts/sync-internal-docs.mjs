@@ -158,11 +158,6 @@ for (let i = 0; i < pages.length; i += BATCH) {
 for (const s of split.sort((a, b) => b.chunks - a.chunks)) {
   console.log(`  chunked: ${s.source_id} -> ${s.chunks} rows`);
 }
-console.log(
-  `\nDone. documents=${pages.length} rows=${chunkCount} inserted=${inserted} updated=${updated} ` +
-  `unindexed=${unindexedCount} errors=${errors} orphans=${orphanCount}`,
-);
-
 // ── Orphan check (READ-ONLY) ─────────────────────────────────────────────────────────────────
 //
 // Nothing in this pipeline deletes a row whose source_id simply stopped being produced, so a
@@ -215,13 +210,23 @@ try {
   console.warn(`Orphan check skipped — ${e instanceof Error ? e.message : String(e)}`);
 }
 
+// The summary prints AFTER the orphan check, not before it. It used to print first and read
+// `orphans=0` while the check underneath then reported one — the first live run said exactly
+// that. A summary that contradicts the paragraph below it is worse than no summary: anything
+// derived from a later step has to be printed after that step has run.
+console.log(
+  `\nDone. documents=${pages.length} rows=${chunkCount} inserted=${inserted} updated=${updated} ` +
+  `unindexed=${unindexedCount} errors=${errors} orphans=${orphanCount}`,
+);
+
+// Orphans count toward the exit code, matching sync-wiki-to-donny.mjs. Reporting drift on stdout
+// and then exiting 0 is a report nobody reads: this runs UNATTENDED from the post-merge hook, so
+// the exit code is the only signal with a reader.
+//
 // `process.exitCode`, NOT `process.exit()` — same fix as sync-wiki-to-donny.mjs (#437). Calling
 // process.exit() here tears the process down while undici still holds a pooled socket from the
 // fetch loop above; on Windows that aborts with
 // `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)` and REPLACES the exit code (an
-// intended 1 was observed surfacing as 127). This path only runs when errors > 0 — i.e. exactly
-// when the post-merge hook and CI need the code to be trustworthy.
-// Orphans count toward the exit code, matching sync-wiki-to-donny.mjs. Reporting drift on
-// stdout and then exiting 0 is a report nobody reads: this runs UNATTENDED from the
-// post-merge hook, so the exit code is the only signal with a reader.
+// intended 1 was observed surfacing as 127) — exactly when the post-merge hook and CI need the
+// code to be trustworthy.
 if (errors > 0 || orphanCount > 0) process.exitCode = 1;
