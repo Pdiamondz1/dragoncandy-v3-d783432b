@@ -101,6 +101,32 @@ that page for why "opt-in" and "deleted" are different postures, not the same id
   was portrait); the desktop wide crops are a different subset of the same footage and have not
   been sampled.
 
+- **The `AppShell` `100vh` vs `100dvh` finding does not reproduce, and the "obvious" fix would have
+  been a regression.** Codex round 4 reported that `AppShell`'s `<div className="flex h-screen">`
+  (`100vh`) wrapping the landing's `min-h-[100dvh]` leaves "unused scrollable space below the
+  footer" on mobile Safari, potentially exposing the shell background. The mechanism was
+  simulated directly — shell pinned to `100vh`, wrapper to `100dvh`, at 60/100/140px of chrome on a
+  390×844 viewport — and in every case `main.scrollHeight === main.clientHeight`, `main.scrollTop`
+  refused to move, and the footer's bottom landed exactly at the visible edge. **A container taller
+  than its content produces no overflow; "unused space" is not "scrollable space."** The dead region
+  between `100dvh` and `100vh` sits *under* Safari's toolbar, where it is not visible, and it is
+  `body`'s white beneath an already-white footer. The probe was controlled — forcing the wrapper to
+  2000px produced 1432px of overflow and genuine scrolling on the same instruments — so the zeroes
+  are measurements, not a broken check. Headroom before any scroll is possible: natural content
+  height is 372px at 390px wide and 465px at 320px wide, against a 568px shell on the smallest
+  phone still in use. **And the one-word fix would have been worse than the defect:**
+  `DashboardLayout` is `min-h-screen` (`100vh`) *inside* that container, so shrinking the shell to
+  `100dvh` would make every short dashboard page newly scrollable on mobile Safari — trading a
+  non-issue on one page for a real one across the authenticated app. The portable lesson is the one
+  this project keeps relearning from the other direction ([[Mobile Viewport & Fixed Positioning]]):
+  a reviewer's mechanism can be plausible, internally consistent, and still false — and the only
+  instrument that settles it is execution, not agreement.
+
+- **Cosmetic, ≤320px only:** the `Eyebrow` marker (an 8×8 `bg-current` square) orphans to the far
+  left when the eyebrow text wraps to two lines. Single-line and correctly inline at 390px and
+  above. Unfixed on purpose — `Eyebrow` is shared with the auth and onboarding surfaces, so it is
+  its own small change, not a drive-by in a landing branch.
+
 ## Not Verified
 
 - **Restaurant footage permission is not obtained** — the reason the branch is unmerged. This is a
