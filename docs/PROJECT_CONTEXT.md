@@ -331,7 +331,7 @@ holds no Toast credentials. See §6.
   2026-08-23 scope decision (Outstand publishes; direct APIs measure). Per-user OAuth connect,
   disconnect, and a channel analytics read, on `youtube.readonly` + `yt-analytics.readonly` and
   nothing that can post. **BUILT AND DEPLOYED NOWHERE (2026-08-23):** migration `20260823170000`
-  unapplied, five edge functions undeployed, never run against real Google credentials — treat
+  unapplied, four edge functions undeployed, never run against real Google credentials — treat
   every claim below as reviewed, not exercised. Codex clean at round 5; six real findings, all mine.
   **The design turns on one of them.** The first build had Google redirect straight to an edge
   function with `verify_jwt = false`, authorized by an HMAC-signed state — but a signature proves
@@ -360,7 +360,7 @@ holds no Toast credentials. See §6.
   youtube.upload" task had been sitting on the list for something that did not exist; scopes are
   requested at runtime in the authorize URL, while Data Access is the *declared* list Google reviews
   at verification. **Pending (2026-08-23):** apply the migration (NOT via `supabase db push` — the
-  ledger has diverged by 234 files); deploy the five functions; confirm `dame@dragoncandy.com` is
+  ledger has diverged by 234 files); deploy the four functions; confirm `dame@dragoncandy.com` is
   still a listed test user (the app is in **Testing**, so anyone unlisted gets an error, not a
   consent screen); declare the two read scopes on Data Access before submitting for verification;
   and register preview origins if the flow should work off the apex. **Expect every connection to

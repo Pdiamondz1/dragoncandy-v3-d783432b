@@ -14,7 +14,7 @@ analytics [[Outstand Social Media Integration]] never shipped. Outstand keeps pu
 this reads. Nothing in it can post, and the granted scopes could not if it tried.
 
 **State as of 2026-08-23: built, reviewed, and deployed nowhere.** The migration is
-unapplied, all five edge functions are undeployed, and the flow has never run against real
+unapplied, all four edge functions are undeployed, and the flow has never run against real
 Google credentials. Both Google-side prerequisites *are* done (see Console State below).
 
 ## Why it exists
@@ -179,9 +179,11 @@ verification → publish.
 - The analytics summary currently renders **in Settings**, which is not where analytics
   belong. It is the smallest honest consumer of the endpoint; the real home is the analytics
   dashboard still outstanding as Outstand phase 4.
-- `deno` is not installed locally, so the five edge functions have never been type-checked
-  here. They are deliberately **off** `supabase/functions/.typecheck-ignore`, so CI checks
-  them — and CI is the first thing that will.
+- ~~`deno` is not installed locally~~ — installed 2026-08-23 (Homebrew, deno 2.9.5), and
+  `node scripts/check-edge-functions.mjs` now runs here: **70 functions clean**, the four
+  YouTube ones among them. They are deliberately **off**
+  `supabase/functions/.typecheck-ignore`, so CI checks them too. A clean type-check is not a
+  clean run: nothing here has executed against Google.
 - `_shared/youtube-connection.ts` types its Supabase client loosely, so a wrong column name
   there fails at runtime rather than at compile time.
 

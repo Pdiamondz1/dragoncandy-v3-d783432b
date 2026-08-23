@@ -74,7 +74,7 @@ empty, and a "drop youtube.upload" task had been sitting on the list for somethi
 not exist. Scopes are requested at runtime in the authorize URL; the Data Access page is the
 *declared* list Google reviews at verification time. Two different things.
 
-**Nothing is deployed.** The migration is unapplied, five edge functions are undeployed, and
+**Nothing is deployed.** The migration is unapplied, four edge functions are undeployed, and
 the flow has never run against real Google credentials.
 
 ## [2026-08-23] update | Toast is not OAuth, and the application that had never been made
