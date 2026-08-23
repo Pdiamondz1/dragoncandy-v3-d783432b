@@ -1561,6 +1561,13 @@ Plan A ends here. Report to the founders:
 2. Months to Hoboken liquidity at 1, 2 and 4 restaurants per month.
 3. Revenue and margin at 100 / 1,000 / 10,000 businesses.
 4. The five inputs from spec §8 that Plan B cannot start without: SAFE terms, team bios with real track records, whether Uncle Rocco's has agreed to *use* the platform or only to let us use their footage, Adrian's consent to be named as an advisor, and a countable Hoboken restaurant number.
+5. **Two register rows carried from `PROJECT_CONTEXT.md` and never confirmed against prod:**
+   `payingCustomers` (0) and `registeredUsers` (~30). The Supabase MCP query tools require an
+   interactive OAuth grant requesting `database:write` and `secrets:read`, which was judged
+   disproportionate for confirming two small numbers and is the account holder's decision to
+   make. Each row's `note` carries the query to run. Ask the founder to confirm both, or run
+   the queries with prod access. **If `payingCustomers` is not 0, escalate** — Stripe is in
+   test mode, so a non-zero would mean live charges exist.
 
 **Do not begin Plan B until the founders have reviewed the numbers and supplied those five inputs.**
 
