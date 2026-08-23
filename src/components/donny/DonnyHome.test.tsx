@@ -101,6 +101,11 @@ vi.mock('@/components/reviews/RatingPromptManager', () => ({
 vi.mock('@/components/reviews/SponsorshipRatingPromptManager', () => ({
   SponsorshipRatingPromptManager: () => <div data-testid="sponsorship-rating-prompt" />,
 }));
+// Hits Supabase via React Query (useAccountReadiness); render nothing so this
+// suite stays a unit test with no QueryClientProvider needed.
+vi.mock('@/components/account/AccountChecklistRows', () => ({
+  AccountChecklistRows: () => <div data-testid="account-checklist-rows" />,
+}));
 vi.mock('@/components/DashboardLayout', () => ({
   DashboardLayout: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));

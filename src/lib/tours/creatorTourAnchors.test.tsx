@@ -34,6 +34,11 @@ vi.mock('@/hooks/useTour', () => ({
 vi.mock('@/components/reviews/RatingPromptManager', () => ({
   RatingPromptManager: () => <div data-testid="rating-prompt" />,
 }));
+// Hits Supabase via React Query (useAccountReadiness); not under test here and
+// no QueryClientProvider is set up in this suite.
+vi.mock('@/components/account/AccountChecklistRows', () => ({
+  AccountChecklistRows: () => <div data-testid="account-checklist-rows" />,
+}));
 
 // The four creator hooks CreatorDonnyHome reads: one invitation and one
 // collaboration, so item D and item A both render and the attention region is
