@@ -77,6 +77,13 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
   // watchdog effect below re-arms its timer from that moment. See MAX_DWELL_MS's comment.
   const [playSignal, setPlaySignal] = useState(0);
 
+  // Bumped by the IntersectionObserver callback whenever the backdrop transitions back into
+  // view — a dependency purely so the watchdog effect below re-arms its timer the instant
+  // visibility resumes, mirroring `playSignal`. `inViewRef` itself is a ref and so cannot drive
+  // that re-arm on its own; the observer callback is the one place visibility actually changes,
+  // so it is the only place that can trigger it. See the watchdog effect below.
+  const [viewSignal, setViewSignal] = useState(0);
+
   // Refs mirror state so the async `ended`/observer handlers never read a stale closure.
   const visibleRef = useRef<0 | 1>(0);
   const layerClipRef = useRef<[number, number]>(layerClip);
@@ -235,11 +242,24 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
   //    of from whenever it became active. See MAX_DWELL_MS's comment for why that gap matters.
   // A normal advance (`ended`/`error` → handleEnded → setVisible) changes `visible`, which
   // re-runs this effect and clears the prior timer either way — so a healthy clip never trips it.
+  //
+  // Off-screen suppression: while the backdrop is out of view the IntersectionObserver effect
+  // below has paused both layers, so a forced "advance" would just load and preload additional
+  // reels for a screen nobody can see — defeating the whole point of pausing. Guarded twice,
+  // because `inViewRef` is a ref and changing it does NOT by itself cancel an already-armed
+  // timer: (1) don't arm a new timer while off-screen, and (2) if a timer was armed while
+  // in-view and visibility drops before it fires, check again inside the callback before
+  // advancing. `viewSignal` re-arms the timer (full window) the instant the observer reports a
+  // return to view, so the stall backstop is intact again immediately — not only once a
+  // `playing`/`visible` change happens to fire.
   useEffect(() => {
-    if (!rotating) return;
-    const t = setTimeout(() => handleEnded(visibleRef.current), MAX_DWELL_MS);
+    if (!rotating || !inViewRef.current) return;
+    const t = setTimeout(() => {
+      if (!inViewRef.current) return;
+      handleEnded(visibleRef.current);
+    }, MAX_DWELL_MS);
     return () => clearTimeout(t);
-  }, [visible, playSignal, rotating, handleEnded]);
+  }, [visible, playSignal, viewSignal, rotating, handleEnded]);
 
   // Pause off-screen / resume the active layer on-screen (battery + CPU). Only relevant in
   // rotating mode; the single-clip and reduced-motion paths self-manage (SingleClip / static img).
@@ -250,8 +270,10 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
       ([entry]) => {
         inViewRef.current = entry.isIntersecting;
         const active = layerRefs[visibleRef.current].current;
-        if (entry.isIntersecting) void active?.play().catch(() => {});
-        else {
+        if (entry.isIntersecting) {
+          void active?.play().catch(() => {});
+          setViewSignal((n) => n + 1); // re-arm the stall watchdog now that we're visible again
+        } else {
           layer0Ref.current?.pause();
           layer1Ref.current?.pause();
         }

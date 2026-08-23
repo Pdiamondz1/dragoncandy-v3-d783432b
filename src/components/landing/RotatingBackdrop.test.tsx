@@ -9,6 +9,44 @@ const clip = (n: number): LandingReel => ({
   poster: `/landing/c${n}.jpg`,
 });
 
+// jsdom implements no IntersectionObserver at all, so without this the component's own
+// `typeof IntersectionObserver === "undefined"` guard skips the pause/resume effect entirely —
+// which is why the suite never exercised off-screen behaviour until now. This mock never fires
+// its callback on its own; tests drive visibility explicitly via `instances.at(-1).callback(...)`.
+class MockIntersectionObserver {
+  static instances: MockIntersectionObserver[] = [];
+  callback: IntersectionObserverCallback;
+  observe = vi.fn();
+  disconnect = vi.fn();
+  unobserve = vi.fn();
+  takeRecords = vi.fn(() => []);
+  root = null;
+  rootMargin = "";
+  thresholds: number[] = [];
+  constructor(callback: IntersectionObserverCallback) {
+    this.callback = callback;
+    MockIntersectionObserver.instances.push(this);
+  }
+}
+
+function installIntersectionObserverMock() {
+  MockIntersectionObserver.instances = [];
+  (globalThis as unknown as { IntersectionObserver: unknown }).IntersectionObserver =
+    MockIntersectionObserver;
+}
+
+function uninstallIntersectionObserverMock() {
+  delete (globalThis as unknown as { IntersectionObserver?: unknown }).IntersectionObserver;
+}
+
+function fireIntersection(isIntersecting: boolean) {
+  const observer = MockIntersectionObserver.instances.at(-1);
+  observer?.callback(
+    [{ isIntersecting } as IntersectionObserverEntry],
+    observer as unknown as IntersectionObserver,
+  );
+}
+
 beforeEach(() => {
   // jsdom implements none of these on HTMLMediaElement; the component drives them imperatively.
   vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined as unknown as void);
@@ -197,6 +235,65 @@ describe("RotatingBackdrop", () => {
       expect(getByTestId("backdrop-layer-0").getAttribute("data-active")).toBe("false");
     } finally {
       vi.useRealTimers();
+    }
+  });
+
+  it("suppresses the max-dwell watchdog while off-screen — no forced advance", () => {
+    // The IntersectionObserver effect pauses both layers off-screen; the watchdog must not keep
+    // force-advancing (and loading new reels) for a backdrop nobody can see.
+    vi.useFakeTimers();
+    installIntersectionObserverMock();
+    try {
+      const { getByTestId } = render(<RotatingBackdrop playlist={[clip(1), clip(2), clip(3)]} />);
+      expect(getByTestId("backdrop-layer-0").getAttribute("data-active")).toBe("true");
+
+      act(() => {
+        fireIntersection(false); // scrolled out of view
+      });
+      act(() => {
+        vi.advanceTimersByTime(15100); // would have force-advanced if still armed
+      });
+
+      expect(getByTestId("backdrop-layer-0").getAttribute("data-active")).toBe("true");
+      expect(getByTestId("backdrop-layer-1").getAttribute("data-active")).toBe("false");
+    } finally {
+      vi.useRealTimers();
+      uninstallIntersectionObserverMock();
+    }
+  });
+
+  it("re-arms the max-dwell watchdog once the backdrop returns on-screen", () => {
+    // Coming back into view must fully restore the stall backstop — including for a clip that
+    // never fires `playing` at all — not merely leave it permanently disarmed.
+    vi.useFakeTimers();
+    installIntersectionObserverMock();
+    try {
+      const { getByTestId } = render(<RotatingBackdrop playlist={[clip(1), clip(2), clip(3)]} />);
+
+      act(() => {
+        fireIntersection(false); // off-screen
+      });
+      act(() => {
+        vi.advanceTimersByTime(10000); // time passes while hidden — must not count toward dwell
+      });
+      act(() => {
+        fireIntersection(true); // back on-screen — full window re-armed from now
+      });
+
+      // Not yet elapsed since returning to view.
+      act(() => {
+        vi.advanceTimersByTime(10000);
+      });
+      expect(getByTestId("backdrop-layer-0").getAttribute("data-active")).toBe("true");
+
+      // Full MAX_DWELL_MS since the return-to-view re-arm: the backstop fires.
+      act(() => {
+        vi.advanceTimersByTime(5100);
+      });
+      expect(getByTestId("backdrop-layer-1").getAttribute("data-active")).toBe("true");
+    } finally {
+      vi.useRealTimers();
+      uninstallIntersectionObserverMock();
     }
   });
 
