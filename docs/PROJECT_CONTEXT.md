@@ -184,9 +184,17 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   test fed the pure composer beside it — the same shape as the `runStatus_` mutation the day
   before. 96 tests, was 86; Codex clean at round 1.
   **Pending (2026-08-23):** `sendTestAlert()` has **never been run**, so delivery is proven
-  against a stubbed `MailApp` and nothing else; **`01 · Product` stays empty** — the candidate docs call Dame a "solo technical
-  founder" and name neither Joe nor Juwan, so they cannot be published to a drive the co-founders
-  read; shared identities exist on **no account but `dame@`**; **Outlook for
+  against a stubbed `MailApp` and nothing else; **`01 · Product` is populated (2026-08-23)** — this line previously read "stays empty
+  because the candidate docs call Dame a 'solo technical founder' and name neither Joe nor Juwan".
+  #468 fixed exactly that (all three named with roles, Joe's restaurants credited as the origin,
+  "35+ tables" → 70+) and both docs are now Google Docs in the open drive. Staleness is handled by
+  dated banners naming *specifically* what was corrected, plus SUPERSEDED notes on the three
+  sections that are not merely old but actively contradicted: product-vision §5 (a dark-mode
+  Inter/`dragon-*` design system that is not what shipped), PRD §2 (says Lovable deploys prod;
+  Vercel has since 2026-07-15) and PRD §3 (June table names — `gig_assignments`,
+  `creative_briefs`, `payments` — none of which exist). **Stale is a different problem from
+  wrong**: old numbers get a banner, a contradicted section gets a pointer at the authoritative
+  file; shared identities exist on **no account but `dame@`**; **Outlook for
   Windows is untested and now untestable** (no access) — treat the rendering matrix as four-of-five;
   and Waves 2–3 (the People document set, and a *sendable* pitch deck — the current one is a React
   component). Workspace plan confirmed Business Standard, so shared drives were never at risk.
