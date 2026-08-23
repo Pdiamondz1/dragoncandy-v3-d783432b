@@ -211,16 +211,22 @@ if (DRY_RUN) {
 try {
   const restUrl = URL.replace(/\/functions\/v1\/.*$/, "/rest/v1/donny_knowledge");
   const resp = await fetch(
-    `${restUrl}?select=scope,metadata->>source_id&metadata->>source_id=like.wiki:*`,
+    `${restUrl}?select=scope,metadata&metadata->>source_id=like.wiki:*`,
     { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } },
   );
   if (!resp.ok) {
     console.warn(`Orphan check skipped — donny_knowledge read returned ${resp.status}.`);
   } else {
     const rows = await resp.json();
+    // Compare DOCUMENTS, not rows. donny-knowledge-sync chunks a long page into
+    // `wiki:<dir>/<slug>` plus `wiki:<dir>/<slug>#1…#N`, and no producer ever emits those
+    // suffixed ids — so an exact source_id comparison would report every continuation chunk of
+    // a legitimately published page as an orphan, exit the unattended sync non-zero, and print
+    // DELETE SQL for live consumer content. `chunk_base` names the document a chunk belongs to;
+    // rows written before chunking existed have none and are their own base.
     const expected = new Set(pages.map((p) => p.source_id));
     const orphans = rows
-      .map((r) => ({ id: r["source_id"] ?? r["?column?"], scope: r.scope }))
+      .map((r) => ({ id: r.metadata?.chunk_base ?? r.metadata?.source_id, scope: r.scope }))
       .filter((r) => typeof r.id === "string" && !expected.has(r.id));
     if (orphans.length > 0) {
       // Report the scope per row rather than asserting one. These rows are unmaintained either
@@ -235,9 +241,12 @@ try {
         (orphans.length > 10 ? `\n  … and ${orphans.length - 10} more` : "") +
         `\n${reachable.length} of them are CONSUMER-RETRIEVABLE (scope null).` +
         `${reachable.length === 0 ? " None are a live exposure — this is cleanup, not a leak." : " That IS a live exposure."}` +
-        `\nPrune with:\n` +
+        `\nPrune with (chunk_base catches a chunked page's continuation rows; source_id ` +
+        `catches rows written before chunking existed):\n` +
         `  delete from donny_knowledge where metadata->>'source_id' like 'wiki:%';\n` +
-        `(add "and metadata->>'source_id' not in (…)" if the allowlist is non-empty).`
+        `(if the allowlist is non-empty, add "and coalesce(metadata->>'chunk_base', ` +
+        `metadata->>'source_id') not in (…)" — never filter on source_id alone, which would ` +
+        `spare a published page's chunk 0 and delete all of its continuation chunks).`
       );
       orphanCount = orphans.length;
     }
