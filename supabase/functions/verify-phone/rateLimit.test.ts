@@ -20,6 +20,20 @@ describe('isAllowedCountry', () => {
     expect(isAllowedCountry('+447700900123', ['US'])).toBe(false);
     expect(isAllowedCountry('+447700900123', ['US', 'GB'])).toBe(true);
   });
+
+  it('rejects NANP Caribbean/premium overlays that share +1 with the US and Canada', () => {
+    // Finding 2 (fix round 1): a bare '+1' prefix match does not distinguish these
+    // from a real US/CA number — the North American Numbering Plan shares +1 across
+    // ~20 non-US/CA participants, and these are the dominant SMS-pumping target class
+    // the migration header comment itself names.
+    expect(isAllowedCountry('+12425550123', ['US'])).toBe(false); // Bahamas
+    expect(isAllowedCountry('+18095550123', ['US'])).toBe(false); // Dominican Republic
+    expect(isAllowedCountry('+18765550123', ['US'])).toBe(false); // Jamaica
+  });
+
+  it('still accepts an ordinary US number after the NANP overlay exclusion', () => {
+    expect(isAllowedCountry('+19175550123', ['US'])).toBe(true);
+  });
 });
 
 describe('exceedsSendLimit', () => {
