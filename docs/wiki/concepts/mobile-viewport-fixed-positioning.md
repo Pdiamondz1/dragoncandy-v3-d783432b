@@ -2,8 +2,8 @@
 title: Mobile Viewport & Fixed Positioning
 type: concept
 created: 2026-07-14
-updated: 2026-08-14
-sources: [2026-07-14-mobile-screenfit-fixed-position.md, 2026-07-16-donny-desktop-overlay.md, 2026-07-19-mobile-nav-modal-zindex.md, 2026-08-14-ios-first-physical-device-build.md]
+updated: 2026-08-23
+sources: [2026-07-14-mobile-screenfit-fixed-position.md, 2026-07-16-donny-desktop-overlay.md, 2026-07-19-mobile-nav-modal-zindex.md, 2026-08-14-ios-first-physical-device-build.md, 2026-08-23-landing-footer-ios-inset-and-reel-recut.md]
 tags: [mobile, ios, css, viewport, fixed-position, framer-motion, page-transition, desktop, flexbox, overscroll, portal, z-index]
 ---
 # Mobile Viewport & Fixed Positioning
@@ -203,6 +203,55 @@ desktop/mobile separation rule in `DESIGN_SYSTEM.md`.
 **Rule:** `fixed top-0`, or a `sticky top-0` that is page chrome, pads with
 `env(safe-area-inset-top)`. In-page section headers do not. The value is `0` on the web, so the
 change is a no-op there.
+
+## 8. In the iOS shell, `contentInset` must be `'never'` — CSS owns the safe areas, or the native layer does, never both (2026-08-23)
+
+`capacitor.config.ts` set `ios.contentInset: 'always'`. Under that setting WebKit shrinks
+**`documentElement.clientHeight` by the top safe-area inset**, while `innerHeight`, `100vh` and
+`100dvh` all keep reporting the full height. Measured inside a real WKWebView on an iPhone 17 Pro
+simulator, by injecting a diagnostic into the installed app bundle:
+
+```
+innerHeight               = 840
+documentElement.clientHeight = 778      <-- 840 - 62
+safe-area-inset-top       = 62
+safe-area-inset-bottom    = 34
+```
+
+So anything sized to a viewport unit is **taller than the document box**, and the webview's own
+**white** background shows through underneath it — about 96pt here. On the landing page that band
+clipped the footer's Terms / Privacy / Help links.
+
+**This was live for every page in the app.** `AppShell` is `flex h-screen` (`100vh`), so the
+overhang existed everywhere; it was invisible purely because every other surface in the app is
+white, and so was the band. It became visible only when the landing footer stopped being white
+([[Landing Cinematic Single-CTA Redesign]]). **A defect hidden by a coincidence of palette is
+still a defect.**
+
+Fixed by `contentInset: 'never'`. The app already pays back `env(safe-area-*)` in CSS on every
+surface that needs it (§7 above), so insetting natively as well was two mechanisms solving one
+problem and disagreeing about the answer. Afterwards `innerHeight`, `clientHeight`, the page
+wrapper and the footer's bottom all agree at 874, `env(safe-area-*)` still reports 62/34 so
+existing CSS padding is untouched, and the light `/terms` page renders unchanged.
+
+**Not reproducible in any browser or emulator** — same class as §7. Emulated viewports have no
+native scroll-view inset, so `clientHeight` and `innerHeight` are always equal there. It needs the
+real WKWebView.
+
+**A related refutation worth keeping, because it is the same numbers pointing the other way.** A
+review had claimed the `AppShell` `100vh` / landing `100dvh` mismatch left "unused scrollable space
+below the footer" on **mobile Safari**. Tested directly — shell pinned to `100vh`, wrapper to
+`100dvh`, at 60/100/140px of browser chrome — and it does not reproduce: `main.scrollHeight ===
+main.clientHeight` in every case and `main.scrollTop` refuses to move, because **a container taller
+than its content produces no overflow**. "Unused space" is not "scrollable space". The probe was
+controlled (forcing the wrapper to 2000px produced 1432px of overflow and real scrolling on the
+same instruments). The one-word fix proposed there — `h-screen` → `h-[100dvh]` — would also have
+been a **regression**: `DashboardLayout` is `min-h-screen` (`100vh`) *inside* that container, so
+shrinking the shell would make every short dashboard page newly scrollable on mobile Safari.
+
+**The lesson is the pair, not either half: refuting a claim on the surface where it was raised does
+not refute it on the surfaces where it was never tested.** The browser claim was false; the same
+family of bug was real one layer down, in the shell nobody had measured.
 
 ## Key Decisions
 

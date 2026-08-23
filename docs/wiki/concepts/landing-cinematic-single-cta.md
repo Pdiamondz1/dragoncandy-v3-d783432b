@@ -2,8 +2,8 @@
 title: Landing Cinematic Single-CTA Redesign
 type: concept
 created: 2026-08-22
-updated: 2026-08-22
-sources: [2026-08-22-landing-cinematic-single-cta.md]
+updated: 2026-08-23
+sources: [2026-08-22-landing-cinematic-single-cta.md, 2026-08-23-landing-footer-ios-inset-and-reel-recut.md]
 tags: [landing, frontend, video, design, tailwind]
 ---
 # Landing Cinematic Single-CTA Redesign

@@ -1,5 +1,37 @@
 # Wiki Log
 
+## [2026-08-23] ingest | The white band, the one iOS was hiding, and five reels talking over the slogan
+
+Ingested `raw/sessions/2026-08-23-landing-footer-ios-inset-and-reel-recut.md`.
+**Updated** [[Landing Cinematic Single-CTA Redesign]] and [[Mobile Viewport & Fixed Positioning]]
+(new §8). No new page — both findings belong on pages that already exist.
+
+The landing footer shipped as an opaque white band and was overruled on sight. Making it
+transparent exposed a **second** white band, on iOS only, that had been live for every page in the
+app: `contentInset: 'always'` shrinks `documentElement.clientHeight` by the top safe-area inset
+(840 vs 778, inset 62, measured inside a real WKWebView) while `innerHeight`/`100vh`/`100dvh` keep
+reporting the full height, so `AppShell`'s `h-screen` overhangs the document box. Invisible for as
+long as every surface above it was also white. **A defect hidden by a coincidence of palette is
+still a defect.**
+
+The paired lesson is sharper than either half. A review had claimed the same `100vh`/`100dvh`
+mismatch caused a scroll on **mobile Safari**; that was measured and refuted (a container taller
+than its content produces no overflow — "unused space" is not "scrollable space"), and the obvious
+one-word shell fix would have regressed every short dashboard page. Having refuted it there, the
+class was treated as closed. It was not. **Refuting a claim on the surface where it was raised does
+not refute it on the surfaces where it was never tested.**
+
+Separately, five of ten reels carried burned-in captions from their original social posts — found
+by sampling every reel into a contact sheet, not by watching, because captions come and go in under
+a second and the eye forgives them in motion in a way it does not when frozen behind a headline.
+Three trimmed to a clean window, two dropped. That re-cut changed which frames exist and
+re-brightened the library, dropping the pink and mint accents to 1.88:1 / 1.90:1 at p90 against a
+3.0:1 bar — **trimming a clip is a contrast change, not just a length change**. Scrim middle stop
+40% → 60%, the lowest clearing 3.0 on both the brightest frame's mean and its p90.
+
+Two of my own predictions corrected in the runbook: CRF moved only −31% (cutting runtime did more),
+and `du -sh` over-states this directory by 5 MB because it counts allocated blocks.
+
 ## [2026-08-22] ingest | The remedy the page prescribed was also wrong, and following it broke production
 
 Ingested `raw/sessions/2026-08-22-sendas-scope-403-and-partial-status.md`.
