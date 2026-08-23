@@ -143,6 +143,59 @@ scrolls inside `main` as designed; typecheck, build and lint (0 errors) clean; 2
 the 45 failures are identical on a detached clean `origin/main` (documented Node 26 / jsdom
 `localStorage` issue, CI runs Node 24); Codex clean. **Not verified:** the iOS-Safari half — no
 browser, emulator or simulator can show it, since the WKWebView shell has no URL bar either.
+## [2026-08-23] The last step of building an alarm is hearing it ring
+
+**PR** #466 (`0d54d28d`) · Codex clean at **round 1** · 96 tests, was 86 · deployed
+
+Four rounds went into the signature alert — what it says, which users it names, which causes count
+as non-clean, where it goes. Every one improved a message **nobody had ever received**. The first
+successful run after the scope grant (all four users `ok`, `dame@` at 4 identities / 3/3 shared)
+proved the signatures install and proved *nothing* about whether the alarm reaches anyone, because
+a clean run is silent by design. The delivery path is exercised only by a run that has a finding —
+which, if everything works, should be rare.
+
+`sendTestAlert()` emails whatever `ALERT_EMAIL` holds and writes nothing else: no signature, no
+baseline, no Sheet row. Permanent rather than throwaway — the question returns every time that
+property changes, a scope is granted, or the manifest moves.
+
+**Three design points, each load-bearing.** It calls **`sendRunAlert_`, not `MailApp`** — a test
+that builds its own send proves MailApp works, which was never in doubt; what is in doubt is
+whether *this* script's authorization, *this* property and *this* recipient list deliver. It
+**throws where a real run only warns**, on no usable recipient and on a refused send, because
+`installAllSignatures` must not die over a notification while this function's only job *is* the
+notification. And **a green execution is not the result — the mail arriving is**: all it can prove
+is that the send was accepted, so the console line says to go and look. That middle point is the
+sharp one: `sendRunAlert_` swallows delivery errors by design, so unchecked, a broken mail path
+finishes **green and reads as a pass** — the same "nobody was told" failure rebuilt one level up.
+
+**The coverage gap it exposed transfers further than the feature.** `sendRunAlert_` had **no tests
+at all**. Every existing test fed `runAlert_` — the pure composer — and stopped there, leaving the
+half that actually delivers uncovered while the suite looked healthy. Identical in shape to the
+`runStatus_` mutation that went undetected by all 79 tests the previous day: **a well-tested pure
+function next to an untested impure one reads as coverage of both**, and twice now the untested
+piece was the one deciding whether anyone is told. The loader now injects `MailApp` and records
+every send, so a test can assert that **nothing** went out — the half a "did it send?" stub cannot
+check. Mutation-checked four ways.
+
+**`ALERT_EMAIL` is `alerts@dragoncandy.com`**, a new alias rather than one of the seven existing
+ones. `admin@` already carries Stripe dispute alerts (`stripe-webhook/index.ts:511`); the published
+inbound addresses are the ones `contactAddresses.ts` flags as wanting to become a shared mailbox
+someone else covers, at which point alerts follow them to a person who cannot fix an Apps Script
+authorization error. The alias buys a stable indirection point, **not redundancy** — it is a
+delivery label on `dame@`'s inbox.
+
+**Two of my own claims were falsified in the same session**, both worth keeping. An alias did
+**not** become a fifth send-as identity — a finding already written on the concept page, which I
+failed to apply to an alias I had just recommended creating; *reading is not consulting*. And the
+Sheet **had** recorded the run while Chrome served a cached render across two full reloads, caught
+only by reading the same file through the Drive API; *agreement between two readings from the same
+cache is not corroboration.*
+
+**Pending:** `sendTestAlert()` **has never been run** — the executions list ends at
+`installAllSignatures`. Until it has, the delivery path is proven by unit tests against a stubbed
+`MailApp` and by nothing else.
+
+→ `docs/wiki/concepts/workspace-email-signatures.md` · #466
 
 ## [2026-08-23] A warning is not a gate — the signature run now emails
 

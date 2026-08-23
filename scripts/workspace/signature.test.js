@@ -170,7 +170,7 @@ describe('renderSignature', () => {
 // bundle — `scripts/` is outside the Vite build. The alternative, regex-parsing
 // the array out of the file as text, is what actually would be fragile.
 
-function loadAppsScript(scriptProperties = {}) {
+function loadAppsScript(scriptProperties = {}, mailAppOverride = null) {
   const src = readFileSync(
     fileURLToPath(new URL('./Code.gs.js', import.meta.url)),
     'utf8',
@@ -181,10 +181,21 @@ function loadAppsScript(scriptProperties = {}) {
       getProperty: (k) => (k in scriptProperties ? scriptProperties[k] : null),
     }),
   };
-  return new Function(
+  // Every send is recorded rather than discarded, so a test can assert that
+  // NOTHING went out — which is the half that a "did it send?" stub cannot
+  // check, and the half that matters for the no-recipient paths.
+  const sent = [];
+  const MailApp = mailAppOverride || {
+    sendEmail: (options) => {
+      sent.push(options);
+    },
+  };
+  const api = new Function(
     'PropertiesService',
-    `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN, isMissingSharingScope_, requestedScopes_, SCOPE_BASIC, SCOPE_SHARING, sharedRegressions_, formatRegression_, nextSharedBaseline_, sharedExpectation_, readSharedBaseline_, runAlert_, alertRecipients_, runStatus_ };`,
-  )(PropertiesService);
+    'MailApp',
+    `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN, isMissingSharingScope_, requestedScopes_, SCOPE_BASIC, SCOPE_SHARING, sharedRegressions_, formatRegression_, nextSharedBaseline_, sharedExpectation_, readSharedBaseline_, runAlert_, alertRecipients_, runStatus_, sendRunAlert_, sendTestAlert };`,
+  )(PropertiesService, MailApp);
+  return { ...api, sent };
 }
 
 // The real 403 body Gmail returned on 2026-08-21, kept verbatim. Paraphrasing
@@ -814,5 +825,106 @@ describe('runStatus_', () => {
   it('tolerates a missing failures array', () => {
     expect(runStatus_({ denied: 0 })).toBe('ok');
     expect(runStatus_({ denied: 3 })).toBe('PARTIAL');
+  });
+});
+
+// sendRunAlert_ is the ONLY thing standing between a finding and silence, and
+// until now nothing exercised it -- every test fed runAlert_ (which composes)
+// and stopped there. Its contract has two halves that pull in opposite
+// directions: it must deliver, and it must never throw, because installAllSignatures
+// calls it AFTER the signatures are written and a mail error must not cost the
+// run its log.
+describe('sendRunAlert_', () => {
+  it('sends one mail to the configured recipient and reports success', () => {
+    const gas = loadAppsScript({ ALERT_EMAIL: 'alerts@dragoncandy.com' });
+    expect(gas.sendRunAlert_('subj', 'body')).toBe(true);
+    expect(gas.sent).toHaveLength(1);
+    expect(gas.sent[0].to).toBe('alerts@dragoncandy.com');
+    expect(gas.sent[0].subject).toBe('subj');
+    expect(gas.sent[0].body).toBe('body');
+  });
+
+  it('joins multiple recipients into a single mail rather than one each', () => {
+    const gas = loadAppsScript({ ALERT_EMAIL: 'a@x.com, b@x.com' });
+    expect(gas.sendRunAlert_('subj', 'body')).toBe(true);
+    expect(gas.sent).toHaveLength(1);
+    expect(gas.sent[0].to).toBe('a@x.com,b@x.com');
+  });
+
+  it('reports failure and sends NOTHING when no recipient is configured', () => {
+    const gas = loadAppsScript({});
+    expect(gas.sendRunAlert_('subj', 'body')).toBe(false);
+    expect(gas.sent).toHaveLength(0);
+  });
+
+  // The load-bearing guarantee: a mail outage must not take the run with it.
+  // The signatures are already written by the time this is called.
+  it('swallows a delivery error and returns false instead of throwing', () => {
+    const gas = loadAppsScript({ ALERT_EMAIL: 'alerts@dragoncandy.com' }, {
+      sendEmail: () => {
+        throw new Error('Service invoked too many times for one day: email');
+      },
+    });
+    let result;
+    expect(() => {
+      result = gas.sendRunAlert_('subj', 'body');
+    }).not.toThrow();
+    expect(result).toBe(false);
+  });
+});
+
+// sendTestAlert exists because a clean run is silent, so the delivery path is
+// exercised only by a run that has a finding -- rare, if everything works. Its
+// whole value is being trustworthy about failure, so these tests are mostly
+// about the ways it must NOT finish green.
+describe('sendTestAlert', () => {
+  it('sends through the real alert path, to the configured address', () => {
+    const gas = loadAppsScript({ ALERT_EMAIL: 'alerts@dragoncandy.com' });
+    expect(gas.sendTestAlert()).toEqual(['alerts@dragoncandy.com']);
+    expect(gas.sent).toHaveLength(1);
+    expect(gas.sent[0].to).toBe('alerts@dragoncandy.com');
+  });
+
+  // A test alert that a recipient cannot tell from a real one is worse than no
+  // test alert -- someone will go looking for a broken signature.
+  it('marks itself TEST in the subject', () => {
+    const gas = loadAppsScript({ ALERT_EMAIL: 'alerts@dragoncandy.com' });
+    gas.sendTestAlert();
+    expect(gas.sent[0].subject).toContain('[TEST]');
+  });
+
+  it('names the recipients in the body, so a wrong address is visible in the mail itself', () => {
+    const gas = loadAppsScript({ ALERT_EMAIL: 'a@x.com,b@x.com' });
+    gas.sendTestAlert();
+    expect(gas.sent[0].body).toContain('a@x.com, b@x.com');
+  });
+
+  // A real run only warns here and carries on. This one must fail: its only
+  // job is the notification, so "nobody configured" is a failed test.
+  it('throws, and sends nothing, when ALERT_EMAIL is unset', () => {
+    const gas = loadAppsScript({});
+    expect(() => gas.sendTestAlert()).toThrow(/ALERT_EMAIL/);
+    expect(gas.sent).toHaveLength(0);
+  });
+
+  it('throws when ALERT_EMAIL holds only entries alertRecipients_ discards', () => {
+    // No "@", so the filter drops it and there is genuinely nobody to mail --
+    // a state that looks configured in the properties table.
+    const gas = loadAppsScript({ ALERT_EMAIL: 'not-an-address, ,' });
+    expect(() => gas.sendTestAlert()).toThrow(/ALERT_EMAIL/);
+    expect(gas.sent).toHaveLength(0);
+  });
+
+  // The one that matters most. sendRunAlert_ swallows delivery errors by
+  // design, so without this check a broken mail path finishes GREEN and reads
+  // as a passing test -- rebuilding the exact "nobody was told" failure the
+  // alert exists to prevent.
+  it('throws when the send is refused, rather than finishing green', () => {
+    const gas = loadAppsScript({ ALERT_EMAIL: 'alerts@dragoncandy.com' }, {
+      sendEmail: () => {
+        throw new Error('Service invoked too many times for one day: email');
+      },
+    });
+    expect(() => gas.sendTestAlert()).toThrow(/NOT sent/);
   });
 });

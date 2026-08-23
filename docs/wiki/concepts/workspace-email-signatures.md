@@ -3,7 +3,7 @@ title: Workspace Email Signatures
 type: concept
 created: 2026-08-20
 updated: 2026-08-23
-sources: [2026-08-20-google-workspace-signatures-wave-1.md, 2026-08-21-workspace-wave-1-admin-half-and-sendas-correction.md, 2026-08-22-sendas-scope-403-and-partial-status.md, 2026-08-23-shared-signatures-live.md, 2026-08-23-per-user-shared-signature-warning.md, 2026-08-23-signature-run-alert.md]
+sources: [2026-08-20-google-workspace-signatures-wave-1.md, 2026-08-21-workspace-wave-1-admin-half-and-sendas-correction.md, 2026-08-22-sendas-scope-403-and-partial-status.md, 2026-08-23-shared-signatures-live.md, 2026-08-23-per-user-shared-signature-warning.md, 2026-08-23-signature-run-alert.md, 2026-08-23-signature-test-alert.md]
 tags: [google-workspace, email, branding, apps-script, automation, security]
 ---
 
@@ -293,6 +293,46 @@ been run alone, a success at the end would have proven strictly less — the sam
 using *signatures appearing in other people's mailboxes* rather than a success message as the
 original acceptance signal.
 
+### The last step of building an alarm is hearing it ring
+
+Four rounds went into this alert — what it says, which users it names, which causes it treats as
+non-clean, which address it goes to. Every one of them improved a message **nobody had ever
+received**. The first successful run after the scope grant (2026-08-23, all four users `ok`)
+proved the signatures install and proved *nothing* about whether the alarm reaches anyone, because
+a clean run is silent by design. That is the trap: the delivery path is exercised only by a run
+that has a finding, which — if everything works — should be rare.
+
+`sendTestAlert()` (#466) emails whatever `ALERT_EMAIL` currently holds and writes nothing else.
+Permanent rather than throwaway, because the question returns every time the property changes, a
+scope is granted, or the manifest moves.
+
+Three design points, each load-bearing:
+
+- **It calls `sendRunAlert_`, not `MailApp`.** A test that builds its own send proves MailApp
+  works, which was never in doubt. What is in doubt is whether *this* script's authorization,
+  *this* property and *this* recipient list deliver. If it ever stops calling `sendRunAlert_`, it
+  stops being a test.
+- **It throws where a real run only warns** — on no usable recipient, and on a refused send.
+  `installAllSignatures` must not die over a notification; the signatures are already written by
+  the time it fires. This function's only job *is* the notification. The refused-send case is the
+  one that matters: `sendRunAlert_` swallows delivery errors **by design**, so unchecked, a broken
+  mail path finishes **green and reads as a pass** — the same "nobody was told" failure, rebuilt
+  one level up.
+- **A green execution is not the result — the mail arriving is.** All the function can prove is
+  that the send was *accepted*; mail can still be filtered or spam-foldered. The console line says
+  so and tells you to go and look.
+
+**And the coverage gap it exposed is the more transferable finding.** `sendRunAlert_` had **no
+tests at all**. Every existing test fed `runAlert_` — the pure composer — and stopped there, so the
+half that actually delivers was uncovered while the suite looked healthy. That is the same shape as
+the `runStatus_` mutation that went undetected by all 79 tests the day before: **a well-tested pure
+function sitting next to an untested impure one reads as coverage of both.** Twice now, the
+untested piece has been the one that decides whether anyone is told. The test loader now injects
+`MailApp` and records every send, so a test can assert that **nothing** went out — the half a "did
+it send?" stub cannot check.
+
+96 tests, was 86; four mutations each turn a test red. Codex clean at round 1.
+
 ## Known issues
 
 - **Shared signatures exist only on `dame@`.** `info@`, `support@` and `appstore@` were added
@@ -320,7 +360,16 @@ original acceptance signal.
   silent on a clean run, because a nightly "all fine" trains its reader to filter the thread.
   **`ALERT_EMAIL` unset means nobody is told** and everything else still looks normal; the run
   logs that. And nothing *blocks* on the alert — an email is a stronger nudge than a log line,
-  not a gate.
+  not a gate. `ALERT_EMAIL` is `alerts@dragoncandy.com`, a **new** alias on `dame@` rather than
+  one of the seven that already existed: `admin@` already carries Stripe dispute alerts, and the
+  published inbound addresses (`support@`, `privacy@`, `legal@`, `sales@`, `info@`) are the ones
+  `src/lib/contactAddresses.ts` flags as wanting to become a shared mailbox someone else covers —
+  at which point the alerts would follow them to a person who cannot fix an Apps Script
+  authorization error. The alias buys a **stable indirection point**, not redundancy: it is a
+  delivery label on `dame@`'s inbox, so if that account is suspended the alerts go with it.
+- **The alert has still never actually been received.** `sendTestAlert()` exists to fix that
+  (see below) and, as of 2026-08-23, **has not been run**. Until it has, the delivery path is
+  proven by unit tests against a stubbed `MailApp` and by nothing else.
 - **`dryRun()` does not authenticate**, so it passes cleanly with a missing or revoked
   service-account key. Its comment says so; the limitation stands. This is why the acceptance
   signal was writing into *other people's* mailboxes, which `dryRun()` structurally cannot

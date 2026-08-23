@@ -61,6 +61,29 @@ re-brightened the library, dropping the pink and mint accents to 1.88:1 / 1.90:1
 Two of my own predictions corrected in the runbook: CRF moved only −31% (cutting runtime did more),
 and `du -sh` over-states this directory by 5 MB because it counts allocated blocks.
 
+## [2026-08-23] ingest | The last step of building an alarm is hearing it ring
+
+Ingested `raw/sessions/2026-08-23-signature-test-alert.md`.
+**Updated** [[Workspace Email Signatures]] — the alert now has a way to be *heard*, and the
+`ALERT_EMAIL` choice is recorded with its reasoning.
+
+Four rounds went into an alert nobody had ever received. The first clean run after the scope grant
+proved the signatures install and nothing about whether the alarm reaches anyone — because a clean
+run is silent by design, so the delivery path is exercised only by a run that has a finding.
+`sendTestAlert()` (#466) closes it, going **through** `sendRunAlert_` rather than around it, and
+throwing where a real run only warns.
+
+The transferable finding is the coverage gap underneath: **`sendRunAlert_` had no tests at all.**
+Every test fed `runAlert_`, the pure composer, and stopped — so a well-tested pure function sitting
+next to an untested impure one read as coverage of both. Identical in shape to the `runStatus_`
+mutation that slipped past all 79 tests the day before, and twice now the untested piece has been
+the one deciding whether anyone is told.
+
+Two of my own claims were falsified the same session and are recorded on the source: an alias did
+**not** become a fifth send-as identity (a finding already written on that very page — *reading is
+not consulting*), and the Sheet **had** recorded the run while Chrome served a cached render across
+two full reloads (*agreement between two readings from the same cache is not corroboration*).
+
 ## [2026-08-23] ingest | Improving what an alarm says is not the same as making it audible
 
 Ingested `raw/sessions/2026-08-23-signature-run-alert.md`.

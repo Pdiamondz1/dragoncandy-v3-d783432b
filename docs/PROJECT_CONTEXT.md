@@ -176,9 +176,15 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   five Codex rounds, seven defects, all of them scoping errors rather than wrong calculations.
   The delivery gap is closed too (#463): a run with a finding now **emails** `ALERT_EMAIL`, since
   three rounds of improving what the warning said never made anyone read it.
-  **Pending (2026-08-23):** set `ALERT_EMAIL` and re-consent to the new mail scope (adding it
-  invalidates the old grant, so the nightly trigger fails until the owner runs the function once
-  by hand); **`01 · Product` stays empty** — the candidate docs call Dame a "solo technical
+  **Both closed the same day:** `ALERT_EMAIL` is `alerts@dragoncandy.com` (a **new** alias — the
+  seven existing ones are each already spoken for), the re-consent ran clean (4 users `ok`), and
+  #466 added `sendTestAlert()` so the alarm can be *heard* on demand rather than only when it
+  fires — four rounds had gone into an alert nobody had ever received, and a clean run is silent
+  by design. It found the gap underneath: **`sendRunAlert_` had no tests at all**, because every
+  test fed the pure composer beside it — the same shape as the `runStatus_` mutation the day
+  before. 96 tests, was 86; Codex clean at round 1.
+  **Pending (2026-08-23):** `sendTestAlert()` has **never been run**, so delivery is proven
+  against a stubbed `MailApp` and nothing else; **`01 · Product` stays empty** — the candidate docs call Dame a "solo technical
   founder" and name neither Joe nor Juwan, so they cannot be published to a drive the co-founders
   read; shared identities exist on **no account but `dame@`**; **Outlook for
   Windows is untested and now untestable** (no access) — treat the rendering matrix as four-of-five;

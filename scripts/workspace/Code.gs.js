@@ -832,3 +832,81 @@ function dryRun() {
   });
   return users;
 }
+
+/**
+ * Sends a test alert to whatever ALERT_EMAIL currently holds. Run it from the
+ * editor after changing that property, after granting a new OAuth scope, or any
+ * time you want to know the alarm still rings.
+ *
+ * WHY THIS IS PERMANENT rather than a throwaway. A clean run is silent by
+ * design (see runAlert_), so the delivery path is exercised only by a run that
+ * has a finding -- which, if everything else works, should be rare. That can
+ * leave the path untested for months, and an alarm nobody has heard ring is
+ * indistinguishable from one that does not work. This is how you hear it.
+ *
+ * WHY IT GOES THROUGH sendRunAlert_ instead of calling MailApp itself. A test
+ * that builds its own send proves MailApp works, which was never in doubt. What
+ * is in doubt is whether THIS script's authorization, THIS property and THIS
+ * recipient list deliver -- so it has to be the same code the real alert uses.
+ * If this function ever stops calling sendRunAlert_, it stops being a test.
+ *
+ * WHY IT THROWS where a real run only warns. installAllSignatures must not fail
+ * over a notification -- its job is writing signatures, and they are already
+ * written by the time the alert is attempted. This function's ONLY job is the
+ * notification, so "nobody is configured" and "the send was refused" are failed
+ * tests, not footnotes.
+ *
+ * WHAT A GREEN RUN DOES NOT PROVE, and this is the whole point: it proves the
+ * send was ACCEPTED, not that anything arrived. Mail can still be filtered,
+ * spam-foldered or ignored. The result of this test is the message showing up
+ * somewhere you would notice -- so the console line below tells you to go and
+ * look rather than declaring success. Treating a green execution as a pass
+ * rebuilds the exact failure this alert exists to fix.
+ *
+ * Writes nothing else: no signature, no baseline, no row in the log Sheet.
+ */
+function sendTestAlert() {
+  var to = alertRecipients_();
+  if (!to.length) {
+    throw new Error(
+      'ALERT_EMAIL is unset or holds nothing usable, so there is nobody to ' +
+        'test. Set it to a comma-separated address list in Project Settings > ' +
+        'Script Properties. (Entries without an "@" are dropped -- see ' +
+        'alertRecipients_.)',
+    );
+  }
+
+  var sent = sendRunAlert_(
+    '[TEST] DragonCandy signature alert -- no action needed',
+    'This is a TEST of the signature-installer alert, sent by hand from the ' +
+      'Apps Script editor. Nothing is wrong.\n\n' +
+      'What it means: the alarm can reach this address. What it does NOT ' +
+      'mean: that signatures are currently installing correctly -- the run ' +
+      'log Sheet is the place for that.\n\n' +
+      'A real alert never says TEST in the subject, and always names the ' +
+      'users affected.\n\n' +
+      'Sent to: ' +
+      to.join(', ') +
+      '\n',
+  );
+
+  // sendRunAlert_ swallows failures on purpose, so its false is the only
+  // signal that the send was refused. Left unchecked, a broken mail path would
+  // finish green and read as a pass.
+  if (!sent) {
+    throw new Error(
+      'The test alert was NOT sent to ' +
+        to.join(', ') +
+        '. sendRunAlert_ logged the reason immediately above this error.',
+    );
+  }
+
+  console.log(
+    'Test alert accepted for delivery to ' +
+      to.join(', ') +
+      '. This is NOT the result: go and confirm it arrived somewhere you ' +
+      'would actually notice. If it is not there, check spam before ' +
+      'suspecting the script.',
+  );
+  return to;
+}
