@@ -350,9 +350,23 @@ holds no Toast credentials. See §6.
   "BUILT AND DEPLOYED NOWHERE" until the same afternoon. Migration `20260823170000` applied to
   prod, ledger row recorded by hand (**not** `supabase db push` — the ledger has diverged by 234
   files, and this migration's `CREATE TRIGGER` is not idempotent, so an unrecorded version would
-  fail on re-run); four edge functions deployed, all `v1 ACTIVE` with `verify_jwt=true`. **Still
-  never run against real Google credentials** — every claim below is reviewed and structurally
-  verified, not exercised end to end. Codex clean at round 5; six real findings, all mine.
+  fail on re-run); four edge functions deployed, all `v1 ACTIVE` with `verify_jwt=true`.
+  **WORKING END TO END — first real channel linked 2026-08-23 16:46 UTC**; this line read "still
+  never run against real Google credentials" for about an hour after the deploy. Channel
+  `UC1DnGrwxLBaQkU4hQG1MsCw` ("DragonCandy") is stored under `dame@dragoncandy.com` with exactly
+  the two read scopes plus `openid`/`email` and **no write scope**, `status=active`,
+  `last_error=null`, and `last_synced_at` stamped **51 seconds** after `connected_at` — so the
+  analytics read reached Google and returned. Codex clean at round 5; six real findings, all mine;
+  a four-agent `edge-function-reviewer` pass afterwards returned **PASS on all four with zero
+  issues**. **The most convincing evidence is a number that looks like a typo:** the card reads
+  *"25 days of data"* against the 28 the code requested, because YouTube reports a day or two in
+  arrears — `days_with_data` doing exactly what [[Honest Analytics]] requires. A fabricated or
+  fallback response would have echoed 28, so the three zeros on the card are **real zeros from 25
+  real rows**, not an empty state dressed up as data. **What is still unproven is the first-time
+  consent UI:** Google skipped the consent screen entirely because this account had already
+  granted these scopes earlier the same day, so the code-exchange -> channel-read -> store ->
+  analytics-read path is exercised while the "Google hasn't verified this app" interstitial a new
+  creator will meet is not.
   **Verified rather than assumed, because the migration's own header says not to trust its exit
   code:** table grants are exactly `postgres` + `service_role` (no `anon`, no `authenticated`, no
   `PUBLIC`), RLS enabled with **zero policies**, and the status function is `SECURITY DEFINER`
@@ -390,13 +404,20 @@ holds no Toast credentials. See §6.
   declared `youtube.upload` was **wrong** — all three Data Access tables are empty, so a "drop
   youtube.upload" task had been sitting on the list for something that did not exist; scopes are
   requested at runtime in the authorize URL, while Data Access is the *declared* list Google reviews
-  at verification. **Pending (2026-08-23), all of it console-side or unexercised:** nobody has
-  completed a consent round trip, so the connect / callback / disconnect / analytics path has never
-  run against Google; confirm `dame@dragoncandy.com` is still a listed test user (the app is in
-  **Testing**, so anyone unlisted gets an error, not a consent screen); declare the two read scopes
-  on Data Access before submitting for verification; and register preview origins if the flow should
-  work off the apex. Also unrun: CLAUDE.md's `edge-function-reviewer` gate, which this session was
-  configured not to spawn — the deploy went out without it. **Expect every connection to
+  at verification. **Console state read back 2026-08-23:** publishing status **Testing**, user type
+  **External**, **1 of the 100 lifetime user cap** used, `dame@dragoncandy.com` present in Test
+  users, redirect URI exactly `https://dragoncandy.com/youtube/callback`, and the deployed
+  `YOUTUBE_CLIENT_ID` **proven** to be this console client by hashing the client ID off the page
+  and matching the secret's SHA-256 digest — identity confirmed without ever reading a secret
+  value. **Pending (2026-08-23), none of it code:** `disconnect` has still never been run, so the
+  revoke-before-delete path is reviewed and unexercised; the first-time consent screen is unseen
+  (above); declare the two read scopes on Data Access before submitting for verification; register
+  preview origins if the flow should work off the apex; and decide about **Publishing status**,
+  because the 100-user cap is counted over the app's *lifetime* and is not resettable. **Expect
+  this first connection to break around 2026-08-30** — refresh tokens die 7 days after consent
+  while the app is in Testing. **A second "Connect YouTube" button now sits beside the first:** the
+  red Outstand one publishes, the teal one measures. Both correct, both doing different jobs, and
+  nothing on the buttons themselves says which is which. **Expect every connection to
   drop 7 days after consent** — Google expires refresh tokens for External + Testing apps on that
   schedule, and that is a console setting, not a bug in the refresh code.
   → `docs/wiki/concepts/youtube-analytics-connector.md`

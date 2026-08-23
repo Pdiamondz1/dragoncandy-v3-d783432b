@@ -13,11 +13,56 @@ A per-user, **read-only** link to a creator's or business's YouTube channel, sup
 analytics [[Outstand Social Media Integration]] never shipped. Outstand keeps publishing;
 this reads. Nothing in it can post, and the granted scopes could not if it tried.
 
-**State as of 2026-08-23: merged (#477), applied and deployed — but never exercised.** The
-migration is on prod, the four edge functions are `v1 ACTIVE` with `verify_jwt=true`, and both
-Google-side prerequisites are done (see Console State below). What has *not* happened is a
-consent round trip: nobody has clicked Connect, so no token has ever been issued, stored,
-refreshed or revoked. Everything below is verified structure, not observed behaviour.
+**State as of 2026-08-23: merged (#477), applied, deployed, and WORKING END TO END.** The
+first real channel was linked at **16:46 UTC** — `UC1DnGrwxLBaQkU4hQG1MsCw` ("DragonCandy"),
+stored under `dame@dragoncandy.com`, `status=active`, `last_error=null`, and `last_synced_at`
+stamped **51 seconds** after `connected_at`. This page said "never exercised" for about an hour
+after the deploy.
+
+Granted scopes are exactly `youtube.readonly`, `yt-analytics.readonly`, `openid`, `email` —
+**no write scope**, confirmed by reading the stored array back rather than trusting the request.
+
+### The evidence that the numbers are real
+
+The card renders Views 0, Hours watched 0, Subscribers 0 — and the line under them reads
+**"25 days of data"** against the **28** the code asked for. YouTube reports a day or two in
+arrears, so 25 is what actually came back. That single mismatch is the proof: a fabricated
+response, a fallback, or an error path dressed as data would have echoed the number requested.
+So these are **real zeros from 25 real rows** on a channel with no activity, not an empty state
+pretending to be data — the [[Honest Analytics]] distinction between "zero rows" and "a row of
+zeros", exercised for the first time.
+
+### What is still NOT proven, and it is not a small gap
+
+**The first-time consent screen was never seen.** Google went straight from the account chooser
+back to the app, because this Google account had already granted these scopes earlier the same
+day. So what is exercised is code-exchange -> channel-read -> store -> analytics-read. What is
+**not** exercised is the consent UI a new creator meets, including the *"Google hasn't verified
+this app"* interstitial that Testing-status External apps show. **A flow that skips consent is
+not a test of consent.**
+
+**`youtube-disconnect` has never run.** The revoke-before-delete ordering — the part that
+guarantees a live Google grant is never stranded — is reviewed, type-checked and deployed, and
+has executed zero times.
+
+### Post-deploy review
+
+A four-agent `edge-function-reviewer` pass (one per function, each also reading its `_shared`
+dependencies, `config.toml` and the migration) returned **PASS on all four, zero issues**. It
+independently confirmed the explicit-JWT `getUser(token)` form, that a foreign `channel_id`
+yields 404 rather than another tenant's data, that `isQuotaFailure` is genuinely reached before
+the `needs_reconnect` branch, and that the upsert's `onConflict` matches the migration's UNIQUE
+constraint.
+
+Separately, all eight deployed files — the four `index.ts` plus every `_shared` module — were
+downloaded from prod and diffed **byte-identical** against the repo. That settles the `_shared`
+bundling question with evidence rather than inference.
+
+**One reviewer finding was rejected**, and the reason generalises: it reported that
+`PROJECT_CONTEXT.md` still called the functions undeployed, which was false — the file had been
+corrected hours earlier. A subagent's auto-imported project context is a **snapshot from session
+start**, so it can be staler than the working tree. Treat subagent claims about *documentation*
+as unverified; its claims about code it actually read are fine.
 
 ### What "verified" meant here
 
