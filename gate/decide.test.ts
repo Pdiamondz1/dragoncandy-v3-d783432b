@@ -98,7 +98,7 @@ describe('decide — Basic credentials', () => {
     }
   });
 
-  it('sets no cookie on a Basic pass — middleware cannot deliver one', async () => {
+  it('sets no cookie on a Basic pass — the browser replays the credentials itself', async () => {
     const d = await decide(req('/', { authorization: basic('a', PASSWORD) }), ON);
     expect(d).toEqual({ kind: 'pass' });
   });

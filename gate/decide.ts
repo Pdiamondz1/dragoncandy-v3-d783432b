@@ -10,10 +10,12 @@
  *  - It fails CLOSED. Missing configuration challenges every request instead of
  *    passing traffic. A silently reopened site is not noticed for weeks; a
  *    locked-out one is noticed immediately, and `SITE_GATE_ENABLED` unlocks it.
- *  - Only the `?k=` branch returns a cookie. Framework-agnostic middleware
- *    continues by returning `undefined`, which has no response to carry a
- *    `Set-Cookie`. Basic credentials do not need one — browsers cache them per
- *    origin and realm and resend them automatically.
+ *  - Only the `?k=` branch returns a cookie, because only that branch needs one.
+ *    A browser caches Basic credentials per origin and realm and replays them
+ *    on every subsequent request, so a cookie there would be redundant. The
+ *    bypass link supplies no credentials, so the cookie is what carries the
+ *    visitor forward. (This is not a technical limit: `next({ headers })` from
+ *    `@vercel/functions` can set response headers on a pass. We choose not to.)
  *  - It never asks for a redirect to a gate page. A `401` makes the browser
  *    re-request the SAME url, preserving the `#access_token` fragment that
  *    Supabase password-reset links carry. A redirect would drop it.
