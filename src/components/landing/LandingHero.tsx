@@ -8,12 +8,16 @@ import { LANDING_REELS } from "./landingClips";
  * one CTA. `isolate` gives the section its own stacking context so the backdrop's -z-10 paints
  * above the section background rather than behind it.
  *
- * Height is `dvh`, never `vh` — the app document never scrolls, so iOS toolbars never collapse
- * and `vh` overshoots the visible area (DESIGN_SYSTEM.md).
+ * `flex-1` (not `min-h-[100dvh]`) — the page itself is the single `min-h-[100dvh]` flex column
+ * now (see LandingPage.tsx), with the header absolutely overlaid and the footer shrink-0 below;
+ * this section fills whatever's left. Claiming the full viewport height here too would push the
+ * footer off-screen. `dvh` still governs the OUTER wrapper for the same reason as before — the
+ * app document never scrolls, so iOS toolbars never collapse and `vh` overshoots the visible
+ * area (DESIGN_SYSTEM.md).
  */
 export function LandingHero() {
   return (
-    <section className="relative isolate flex min-h-[100dvh] flex-col items-center justify-center overflow-hidden bg-landing-grape px-5 text-center sm:px-8">
+    <section className="relative isolate flex flex-1 flex-col items-center justify-center overflow-hidden bg-landing-grape px-5 text-center sm:px-8">
       <RotatingBackdrop playlist={LANDING_REELS} className="-z-20" />
 
       {/* Scrim. Darker top and bottom so the header and the CTA stay legible over a bright

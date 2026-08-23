@@ -18,13 +18,20 @@ const CROSSFADE_MS = 700;
  * Max time a single clip may hold the screen before the rotation force-advances. A clip that
  * neither fires `ended` nor `error` (e.g. an undecodable HEVC clip a browser shows black for
  * without erroring, or a mid-play network stall) would otherwise freeze the backdrop forever.
- * Comfortably longer than a normal backdrop clip (~6–10s) so it never cuts a healthy one short —
- * it's a stall backstop, not a pacer.
+ * It's a stall backstop, not a pacer — sized to comfortably outlast a normal backdrop clip so it
+ * never cuts a healthy one short.
+ *
+ * This is the reason the reel library is capped at 12s per clip: this constant is a limit on the
+ * PLAYER, and 12s is the encoding-time limit chosen to stay comfortably under it (see
+ * `docs/runbooks/landing-video-backdrop-kit.md` §"The 12-second cap — and why it exists"). If you
+ * are about to add a reel longer than 12s, either trim it or raise this constant first — a longer
+ * clip trips the watchdog mid-play and reads as a stutter, not a clean cut.
  */
 const MAX_DWELL_MS = 15000;
 
 /**
- * Full-bleed cinematic hero backdrop that rotates through a per-role playlist with a crossfade.
+ * Full-bleed cinematic hero backdrop that rotates through the landing's reel playlist with a
+ * crossfade.
  *
  * Rendering paths:
  * - **rotating** (motion allowed AND playlist has >1 clip): two stacked `<video>` layers. The
@@ -40,9 +47,6 @@ const MAX_DWELL_MS = 15000;
  *
  * Sources are assigned imperatively via refs + `video.load()` (not a declarative `<source>`),
  * because swapping a `<source>` child does NOT re-run a `<video>`'s resource selection.
- *
- * Reset-on-role-switch is handled by the parent keying this component on the role, so each role
- * mounts a fresh instance starting at clip 0 — no cross-role playlist bookkeeping needed here.
  */
 export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropProps) {
   const reduce = usePrefersReducedMotion();
@@ -175,7 +179,8 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
       // Defer swapping the OUTGOING layer's source until the fade finishes. It stays on the
       // last frame of the clip that just ended (fading out) instead of flashing the next clip's
       // first frame; once fully hidden we point it at the queued clip and preload it for the
-      // next cycle. The next `ended` is ~8-10s away, so preload lead time is ample.
+      // next cycle. The next `ended` is up to 12s away (the reel library's hard cap), so preload
+      // lead time is ample.
       const queued = nextIndex(incoming, len);
       if (queueTimer.current) clearTimeout(queueTimer.current);
       queueTimer.current = setTimeout(() => {

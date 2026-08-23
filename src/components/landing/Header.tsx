@@ -11,15 +11,18 @@ export const Header: React.FC = () => {
   };
 
   return (
-    // `sticky top-0` sticks to the app shell's scrolling `#main-content`. The bar is
-    // permanently transparent now — there's video behind it, not a scrolling page of
-    // colored sections to frost over.
+    // `absolute inset-x-0 top-0` overlays the header on the hero instead of occupying flow
+    // space — the page is a single non-scrolling screen now, so `sticky` (which still reserves
+    // its own row) would push the hero down and cost a slice of the one viewport we have. The
+    // bar is permanently transparent — there's video behind it, not a scrolling page of colored
+    // sections to frost over. `z-40`, not `z-50`: app chrome must stay below the Radix modal
+    // layer (DESIGN_SYSTEM.md).
     <header
       // `pt-[env(safe-area-inset-top)]` pays back `viewport-fit=cover` — in the native shell this
       // bar otherwise sits under the status bar / Dynamic Island (observed on device 2026-08-14).
       // The header itself carries no padding, so the raw inset is the whole correction; the inner
       // div keeps its own py-3.5. Zero on the web. See DESIGN_SYSTEM.md.
-      className="sticky top-0 z-50 bg-transparent pt-[env(safe-area-inset-top)]"
+      className="absolute inset-x-0 top-0 z-40 bg-transparent pt-[env(safe-area-inset-top)]"
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5 sm:px-8 lg:px-12">
         <button

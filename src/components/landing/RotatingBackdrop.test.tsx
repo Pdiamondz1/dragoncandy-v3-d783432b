@@ -267,4 +267,47 @@ describe("RotatingBackdrop — orientation", () => {
     expect(video.src).toContain("/landing/reels/r1.mp4");
     expect(loadMock.mock.calls.length).toBe(loadsBeforeFlip); // no pointless reload
   });
+
+  it("two-layer path: a live orientation change does not reset the rotation index", () => {
+    // Distinct from the single-clip tests above — this exercises the two-layer effect that
+    // re-points BOTH layers at their CURRENT clip indices on an orientation flip, deliberately
+    // leaving `layerClip`/`visible` untouched. Advance the rotation past the mount-time [0, 1]
+    // indices first, so a bug that reset to clips 0/1 would be distinguishable from "unchanged".
+    vi.useFakeTimers();
+    try {
+      const control = mockOrientation(false); // start portrait
+      const { getByTestId } = render(
+        <RotatingBackdrop playlist={[wideReel(1), wideReel(2), wideReel(3)]} />,
+      );
+
+      // Advance once: layer 0 (c1) ends -> layer 1 (already preloaded with c2) becomes active.
+      act(() => {
+        fireEvent.ended(getByTestId("backdrop-layer-0"));
+      });
+      // Let the deferred post-crossfade queue fire: the now-hidden layer 0 swaps to clip index 2
+      // (r3) for the next cycle, so the layer indices are [2, 1] — no longer the mount-time [0, 1].
+      act(() => {
+        vi.advanceTimersByTime(800);
+      });
+      expect((getByTestId("backdrop-layer-0") as HTMLVideoElement).src).toContain(
+        "/landing/reels/r3.mp4",
+      );
+      expect(getByTestId("backdrop-layer-1").getAttribute("data-active")).toBe("true");
+
+      // Live orientation flip.
+      act(() => {
+        control.flip(true);
+      });
+
+      // Both layers must reload the WIDE encode of their CURRENT clip (r3 / r2) — not reset back
+      // to the mount-time clips (r1 / r2).
+      const l0 = getByTestId("backdrop-layer-0") as HTMLVideoElement;
+      const l1 = getByTestId("backdrop-layer-1") as HTMLVideoElement;
+      expect(l0.src).toContain("/landing/reels/r3-wide.mp4");
+      expect(l1.src).toContain("/landing/reels/r2-wide.mp4");
+      expect(l0.src).not.toContain("r1-wide");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

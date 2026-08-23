@@ -705,9 +705,11 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `donny-orchestrator`'s `donny_tool_executions` insert (columns that did not exist + a missing
   NOT NULL `message_id`) → deployed v69. → `docs/wiki/concepts/reading-agent-traces.md` · #292, #296
 - **Public landing — "Human-driven. AI-assisted." redesign** — full visual + messaging rebuild
-  to the founder mockup; landing rejoins the light app on its own additive `landing-*` tokens +
-  fonts. The cinematic-video system is preserved but opt-in behind
-  `LANDING_VIDEO_BACKDROP_ENABLED` (default off).
+  to the founder mockup; at the time, landing rejoined the light app on its own additive
+  `landing-*` tokens + fonts, with the cinematic-video system preserved but opt-in behind
+  `LANDING_VIDEO_BACKDROP_ENABLED` (default off). **Superseded 2026-08-22** by the
+  cinematic single-CTA redesign — the landing is dark again (`bg-landing-grape`) and the video
+  backdrop is the default experience, not an opt-in flag; see that entry for the current state.
   → `docs/wiki/concepts/landing-human-driven-redesign.md` · #293
 - **Auth session management** — loading guard, 3-hour inactivity timeout, session-hint
   cleanup. → `docs/SHIPPED_LOG.md`

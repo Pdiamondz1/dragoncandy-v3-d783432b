@@ -233,6 +233,15 @@ via `className`, exactly as every existing consumer does.** Do not touch `Eyebro
 anonymous, already hardened and origin-pinned (PR #399). **Leave it deployed.** Undeploying is a
 separate decision with its own review; note it as a follow-up rather than doing it here.
 
+`generate-anonymous-brief` (edge function) also loses its only caller when `BriefGeneratorPreview`
+is deleted (`grep -rln "generate-anonymous-brief" src` returns nothing post-branch). Unlike
+`landing-clips`, it is anonymously reachable **and** spends Anthropic tokens per call, so once this
+branch ships, 100% of its future traffic is non-user traffic on a surface nobody is watching. It
+already has a daily cap and a honeypot, so this is a cost-visibility gap, not an open hole. **Leave
+it deployed** for the same reason as `landing-clips` — undeploying is a separate decision with its
+own review — but the undeploy decision needs to actually get made rather than forgotten; track it
+alongside `landing-clips` as a follow-up.
+
 `leads`, `capture-lead`, `useSubmitLead` — kept in the repo, unreachable from the landing page.
 
 ---
