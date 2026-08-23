@@ -32,6 +32,15 @@ describe('decide — when the gate is off', () => {
     expect(d.kind).toBe('pass');
   });
 
+  it('does NOT pass when VERCEL_ENV is absent — absence is treated as production', async () => {
+    // VERCEL_ENV is a system variable: it disappears if the project stops
+    // exposing system variables, and `vercel deploy --prebuilt` never sets it.
+    // Absence must fall through to the fail-closed path, not reopen the site.
+    expect((await decide(req('/'), { ...ON, vercelEnv: undefined })).kind).toBe('challenge');
+    // With the switch on and nothing else configured, that path challenges too.
+    expect((await decide(req('/'), { enabled: '1' })).kind).toBe('challenge');
+  });
+
   it('passes when the kill switch is not exactly "1"', async () => {
     expect((await decide(req('/'), { ...ON, enabled: '0' })).kind).toBe('pass');
     expect((await decide(req('/'), { ...ON, enabled: undefined })).kind).toBe('pass');

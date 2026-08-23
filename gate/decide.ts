@@ -165,7 +165,15 @@ export async function decide(
 ): Promise<GateDecision> {
   // Preview deployments carry Vercel's own SSO protection already; gating them
   // again would break the e2e smoke suite for nothing.
-  if (env.vercelEnv !== 'production') return { kind: 'pass' };
+  //
+  // An ABSENT `VERCEL_ENV` is treated as production and falls through to the
+  // fail-closed path below. `VERCEL_ENV` is a system environment variable: it is
+  // there only while the project's "Automatically expose System Environment
+  // Variables" setting is on, and it is not injected at all by
+  // `vercel deploy --prebuilt`. A bare `!== 'production'` therefore passes every
+  // request the moment that value goes missing — the site reopens while
+  // `SITE_GATE_ENABLED` still reads `1` in the dashboard and nothing looks wrong.
+  if (env.vercelEnv && env.vercelEnv !== 'production') return { kind: 'pass' };
   if (env.enabled !== '1') return { kind: 'pass' };
 
   const url = new URL(request.url);
