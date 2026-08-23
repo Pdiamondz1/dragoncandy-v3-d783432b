@@ -243,3 +243,10 @@ verify_jwt = false
 # decision rather than an oversight. Mirrors live outstand-proxy (also verify_jwt=true).
 [functions.social-proxy]
 verify_jwt = true
+
+# Phone verification (Twilio Verify). Bespoke-auth, like create-restaurant-connect-
+# account above: verify_jwt=false, and the function does its own auth.getUser(token)
+# check against the caller's own JWT. The anon key is itself a valid JWT and ships in
+# the frontend bundle, so verify_jwt=true alone would not be authorization here.
+[functions.verify-phone]
+verify_jwt = false
