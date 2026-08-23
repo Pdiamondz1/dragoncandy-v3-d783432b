@@ -119,7 +119,7 @@ Once a restaurant signs up, they land on a dashboard — basically a homepage ju
 | **Content Approval Workflow** | LIVE | Review deliverables from creators with file previews (watermarked for unreleased content). Approve content or request revisions in one click. Track revision history. | Subscription fee |
 | **Stripe Escrow Payment** | LIVE | Money is held safely by Stripe (the payment company) until the content is delivered and the restaurant approves it. Both sides protected. We never touch the money directly. Automatic 14-day release after approval. | Take rate |
 | **In-App Messaging** | LIVE | Built-in chat between restaurant and creator. Direct conversations and campaign-group threads. Typing indicators, message reactions, and unread count tracking. | Subscription fee |
-| **Toast POS Integration** | LIVE | Connect your Toast point-of-sale system to DragonCandy. Create QR-code-based video promotion campaigns. Customers scan QR codes, submit video content, and receive discount codes redeemable at the register. Toast tracks redemptions automatically. | Subscription fee (moat) |
+| **Toast POS Integration** | PLANNED | A partner integration application was submitted to Toast 2026-08-23 (reply window up to 30 days). Once approved, the plan is QR-code-based video promotion campaigns: customers scan QR codes, submit video content, and receive discount codes redeemable at the register, tracked automatically. Nothing here exists on prod today — six `toast-*` edge functions are deployed but every one answers `toast_not_configured` 503, and no `%toast%` table exists. | Subscription fee (moat, once live) |
 | **Promotional Tools (QR Campaigns)** | LIVE | Create promotional campaigns where customers submit video reviews in exchange for discount codes. Auto-approve workflows, pending review queues, approved video galleries. Track which codes are used. | Subscription fee |
 | **DragonShare (Boost Creators)** | LIVE | View organic posts creators have already made about your business. Approve posts, boost them to wider audiences, and pay creators for the exposure. A new way to get content without commissioning it. | Boost fees |
 | **Team & Organization Management** | LIVE | Invite team members with role-based access (owner, admin, standard). Manage seats, track who's active or invited. Required for any business with more than one person involved in marketing. | Per-seat fees |
@@ -555,7 +555,7 @@ Customers don't pay for software. They pay for outcomes. A restaurant owner star
 | Content turnaround: 2-4 weeks via DM and email | DragonDash same-day for time-sensitive moments |
 | FTC compliance risk: $51,744/violation exposure | Auto-tagged compliance built into every campaign (PLANNED) |
 | ROI attribution: blind | Performance dashboard with attribution |
-| QR video campaigns: doesn't exist | Toast-integrated QR promos with discount tracking (LIVE) |
+| QR video campaigns: doesn't exist | Toast-integrated QR promos with discount tracking (PLANNED — Toast partner application submitted 2026-08-23, not yet live) |
 | Customer content collection: manual | DragonShare organic content pipeline (LIVE) |
 
 > **The math:** a typical restaurant on Growth pays $449/mo and replaces $1,500-$3,500/mo of fragmented spending while getting outcomes they couldn't buy at any price (same-day creator content, AI campaign generation, QR promotional tools, content approval with watermarks, attribution data).
@@ -598,9 +598,11 @@ Every campaign that runs through DragonCandy generates data — which creator + 
 
 In every metro market, once we have ~30 creators and ~10 restaurants, the ratio works (3:1 to 5:1 creators per restaurant). New creators show up because that's where the gigs are. New restaurants show up because that's where the creators are. It compounds. A competitor would have to recruit BOTH sides at the same time, in the same city — chicken-and-egg in hard mode. DoorDash beat their competitors by going city-by-city building density, not by raising more money.
 
-**Layer 3: Ecosystem Integration (NOW LIVE)**
+**Layer 3: Ecosystem Integration**
 
-DragonCandy already connects to Toast (POS) with full OAuth integration, QR code campaigns, discount redemption tracking, and automatic token refresh. We also integrate with Stripe Connect for payments and escrow. Planned integrations: Square (POS), Google Business Profile, Meta, and TikTok APIs. Once a restaurant has their POS connected, switching costs go from "sign up somewhere else" to "rebuild every integration." That's months of work for a customer to leave us. Each integration takes 2-6 months to certify (Toast alone took 6+ months). We're already through the hardest one.
+DragonCandy already connects to Stripe Connect for payments and escrow, and to Outstand.so for social publishing and analytics across Instagram, TikTok, and YouTube. A restaurant that has connected payouts and social accounts already faces real switching costs — "sign up somewhere else" becomes "rebuild every integration" — without any POS connection in the picture.
+
+Toast is not yet part of that story, and this document previously said otherwise. What's actually true as of 2026-08-23: a partner integration application was submitted to Toast, with a reply window of up to 30 days. Toast has no OAuth at all — no authorize URL, no user redirect, no authorization code, no refresh token — so a partner authenticates with a client-credentials login (client ID + secret) for a roughly one-hour bearer token and re-logs-in on expiry. Toast's own process runs 8 stages (Application → Discovery → Partner Agreement → Development Kickoff → Certification → Alpha → Beta → GA); we have cleared stage 1. Sandbox credentials need compliance/privacy/security/legal sign-off and a signed partner agreement; production credentials need a certification demo. Realistic timeline is 6-12 months. Planned integrations: Toast + Square (POS), Google Business Profile, Meta, and TikTok APIs.
 
 **Layer 4: Legal & IP Protection**
 
@@ -616,7 +618,7 @@ This is the most underrated moat. Federal law requires sponsored content to be d
 
 **Layer 7: Built Feature Depth**
 
-As of April 2026, DragonCandy has 42 edge functions, 140+ React hooks, 63 page components, and integrations across Stripe, Toast, and Supabase Realtime. This isn't a weekend vibe-code project — it's thousands of hours of development covering campaign management, escrow payments, real-time messaging, content watermarking, team management, multi-unit locations, QR promotional campaigns, DragonShare content monetization, and a 21-tool AI agent. Someone can clone the landing page. They cannot clone the operational depth.
+As of 2026-08-23 (this line previously said April 2026 and gave different, lower counts than the Codebase verification note below — the two disagreed inside this same document), DragonCandy has 104 edge functions, 274 React hooks, 95 page components, 1,182 source files, and 2,857 tests, with live integrations across Stripe, Outstand.so (social publishing), and Supabase Realtime — Toast is a submitted partner application, not a live integration (see Layer 3 above). This isn't a weekend vibe-code project — it's thousands of hours of development covering campaign management, escrow payments, real-time messaging, content watermarking, team management, multi-unit locations, QR promotional campaigns, DragonShare content monetization, and a 21-tool AI agent. Someone can clone the landing page. They cannot clone the operational depth.
 
 ### How We Stay Current with the AI Landscape
 
@@ -786,7 +788,7 @@ This is the most important ask, and the hardest. The math only works if we resis
 
 **Edge Function:** A small piece of server code that runs on demand (like a vending machine — put in a request, get back a result). DragonCandy has 56 of these handling everything from AI chat to payment processing.
 
-**POS (Point of Sale):** The system a restaurant uses to ring up customers. Toast is a popular POS. Our integration means promotional discount codes created on DragonCandy can be tracked and redeemed at the restaurant's actual cash register.
+**POS (Point of Sale):** The system a restaurant uses to ring up customers. Toast is a popular POS. A partnership application is pending with Toast (submitted 2026-08-23); if it's granted, promotional discount codes created on DragonCandy would be trackable and redeemable at the restaurant's actual cash register. No such integration exists today.
 
 **Take-Rate Ladder:** A pricing model where the platform's percentage fee decreases as the customer pays a higher subscription. This gives customers a financial reason to upgrade — they save on take rate fees by paying a higher monthly subscription. Used by Upwork, Fiverr, Faire, and ShopMy.
 
@@ -803,7 +805,7 @@ All financial benchmarks and competitive comparisons in this document are drawn 
 - Donny Super Agent Roadmap (multi-surface AI strategy).
 - Lovable.dev Pricing Analysis (current state assessment).
 
-**Codebase verification:** All feature status labels (LIVE / IN DEV / PLANNED) were verified against the DragonCandy codebase (C:\GIT\dragoncandy-v3-d783432b). The codebase contains 63 page components, 140+ custom hooks, 56 Supabase edge functions, and integrations with Stripe, Toast POS, Claude AI, and Outstand.so (social media management). Infrastructure capacity verified against live Supabase production metrics on May 9, 2026.
+**Codebase verification:** All feature status labels (LIVE / IN DEV / PLANNED) were verified against the DragonCandy codebase (`/Users/dwill/GIT/dragoncandy-v3-d783432b` — the repo moved from Windows to macOS on 2026-08-14, so the drive-letter path above no longer applies). As of 2026-08-23, the codebase contains 95 page components, 274 custom hooks, 104 Supabase edge functions, 1,182 source files, and 2,857 tests, with live integrations with Stripe, Claude AI, and Outstand.so (social media management); Toast is a submitted partner application, not a live POS integration (see Layer 3 above). Infrastructure capacity verified against live Supabase production metrics on May 9, 2026.
 
 *Restaurant marketing data from Deloitte Digital 2025 "State of Social." Take-rate benchmarks from public filings of Fiverr, Upwork, ShopMy, Faire, Agentio. AI cost benchmarks from current Anthropic API pricing.*
 
