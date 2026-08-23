@@ -160,11 +160,28 @@ against the 4.5:1 small-text bar — four instances, the three step numbers and 
 link. Moved to `dc-pink-accent-btn` (`#DB2777`, **4.60:1**). The design system lists the lighter
 token for "links, secondary button text", which is wrong for text on a white page.
 
-**Found and deliberately not fixed:** the landing's "Get started" pill is white on `#F43F7F` at
-**3.58:1**, at 18px so the large-text allowance does not apply. Pre-existing — Lighthouse has
-scored the landing 96 on accessibility for this since before the rebuild — and fixing it means
-darkening the brand pink or changing the CTA's weight, which is a brand decision rather than a
-drive-by in a feedback PR.
+**The "Get started" contrast, found here and then fixed on the founder's call.** The pill was
+white on `landing-pink` (`#F43F7F`) at **3.58:1** against the 4.5:1 its 18px label needs — the
+reason Lighthouse had scored the landing 96 on accessibility since before the rebuild. Flagged as a
+brand decision rather than a drive-by; the founder asked for it fixed *using the brand colour*.
+
+Two candidates, both already in the `landing.*` ramp:
+
+| option | ratio | verdict |
+|---|---|---|
+| darken the fill to `landing-pink-ink` `#C22760`, keep white | **5.60:1** | rejected |
+| keep `#F43F7F`, label in `landing-grape` `#241332` | **4.83:1** | shipped |
+
+The second wins on two counts. It leaves the **brand colour itself byte-identical** — only the
+label moves — and it keeps the CTA bright against a **dark video** page, which is the whole reason
+that pink is there. `#C22760` sits close to the grape scrim and recedes exactly where the button
+most needs to pop. It also matches the sibling `mint` variant, which has always been grape-on-fill
+(8.01:1), so the component becomes internally consistent rather than gaining an exception.
+
+The landing now scores **100 accessibility / 100 best practices / 100 SEO**, from 96 / 100 / 92 at
+the start of the session. An existing test asserting `text-white` failed on the change — the guard
+working — and was updated alongside a new one carrying the measurement and the rejected
+alternative, so nobody "restores" white text without re-measuring.
 
 ## The shell fix was incomplete, and Codex found the thread
 
@@ -195,7 +212,6 @@ a guard nobody has tested.
 - If the jump persists on a real phone, the remaining candidate is iOS rubber-band overscroll,
   which is a different mechanism and would want `overscroll-behavior-y: none` on `body` — an
   app-wide behavioural change, deliberately not bundled into a landing fix.
-- The landing's "Get started" CTA contrast (3.58:1) — a brand decision, see above.
 - The Lighthouse gate still tests only `/landing`. `/how-it-works` is new and uncovered; adding
   URLs to `lighthouserc.cjs` would have caught the canonical bug years earlier.
 - 119 other `min-h-screen`/`h-screen` usages remain across `src/`. They are all inside `main` and

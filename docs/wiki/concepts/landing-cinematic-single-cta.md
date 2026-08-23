@@ -8,15 +8,17 @@ tags: [landing, frontend, video, design, tailwind]
 ---
 # Landing Cinematic Single-CTA Redesign
 
-> **UNMERGED (`feat/landing-cinematic-single-cta`), blocked on written permission from ABB and
-> Uncle Rocco for their footage.** The build is finished; go-live is not. dragoncandy.io still
-> serves [[Landing "Human-driven. AI-assisted." Redesign]] (PR #293) until this merges. Nothing on
-> this page describes the live site.
+> **MERGED 2026-08-23 as #459 (`2c87ba99`) and LIVE.** This banner read "**UNMERGED**, blocked on
+> written permission from ABB and Uncle Rocco for their footage... Nothing on this page describes
+> the live site" until the founder confirmed permission and it shipped. It is now the live
+> dragoncandy.com landing, and [[Landing "Human-driven. AI-assisted." Redesign]] (PR #293) is the
+> page that no longer describes anything live.
 
 The 2026-08-22 rebuild of the public landing (`src/pages/LandingPage.tsx` +
-`src/components/landing/*`) into **one screen**: a fixed logo header, a full-bleed video hero (ten
-real restaurant reels rotating behind an eyebrow, a slogan, and a single "Get started" CTA), and a
-transparent footer the footage runs behind. **Supersedes** [[Landing "Human-driven. AI-assisted." Redesign]] as the design this
+`src/components/landing/*`) into **one screen**: a fixed logo header, a full-bleed video hero
+(**eight** real restaurant reels — it shipped as ten, and the caption re-cut dropped two — rotating
+behind an eyebrow, a slogan, and a single "Get started" CTA), and a transparent footer the footage
+runs behind. **Supersedes** [[Landing "Human-driven. AI-assisted." Redesign]] as the design this
 branch will ship once merged — that page's light, two-door, six-section landing and its contact
 form are deleted outright (~20 files), not hidden. It also **revives** the video-backdrop machinery
 [[Landing Cinematic Video Redesign]] built and PR #293 had demoted to an opt-in flag: that flag
@@ -76,10 +78,16 @@ the landing keeps SEO 1.00. See [[Domain Migration .io → .com]], whose claim t
 *every* canonical is corrected there. **A gate that tests one URL is evidence about one URL.**
 
 Also fixed on the new page: `dc-pink-accent` (`#EC4899`) as text on white is **3.52:1** against the
-4.5:1 small-text bar (four instances) → `dc-pink-accent-btn` (`#DB2777`, **4.60:1**). **Found and
-deliberately not fixed:** the landing's own "Get started" pill is white on `#F43F7F` at **3.58:1**
-at 18px — pre-existing (it is why Lighthouse scores the landing 96 on accessibility), and fixing it
-means darkening the brand pink or changing the CTA's weight, which is a brand decision.
+4.5:1 small-text bar (four instances) → `dc-pink-accent-btn` (`#DB2777`, **4.60:1**).
+
+**And the "Get started" pill's own contrast, closed on the founder's call.** White on
+`landing-pink` (`#F43F7F`) was **3.58:1** at 18px — the reason Lighthouse had scored the landing 96
+on accessibility since before the rebuild. Fixed by putting the label in `landing-grape`
+(**4.83:1**) rather than darkening the fill to `landing-pink-ink` (`#C22760`, 5.60:1 with white):
+the brand colour stays **byte-identical**, and the bright pink is what makes the CTA pop off dark
+video — `#C22760` recedes into the scrim. It also matches the `mint` variant, grape-on-fill since
+it was written (8.01:1), so the component loses an exception rather than gaining one. Landing now
+**100 accessibility / 100 best practices / 100 SEO**, from 96 / 100 / 92.
 
 **A third note in the same message was a real bug, on every page rather than this one** — "the
 screen jumps if I scroll up or down" on mobile. `AppShell` was `h-screen`, `body` is the document's

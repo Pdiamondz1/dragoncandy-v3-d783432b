@@ -120,11 +120,23 @@ the steady state and left the loading state open on the very page in question. A
 anywhere in `App.tsx`**". That new assertion was itself controlled — injecting `min-h-screen` made
 it fail, reverting made it pass; *a guard nobody has watched fail is a guard nobody has tested.*
 
-**Found and deliberately NOT fixed:** the landing's "Get started" pill is white on `#F43F7F` at
-**3.58:1**, at 18px so the 3.0:1 large-text allowance does not apply. Pre-existing — it is why
-Lighthouse has scored the landing 96 on accessibility since before the rebuild — and closing it
-means darkening the brand pink or changing the CTA's weight, which is a brand decision rather than
-a drive-by in a feedback PR.
+**The "Get started" contrast, surfaced here and then closed on the founder's call.** The pill was
+white on `landing-pink` (`#F43F7F`) at **3.58:1** against the 4.5:1 its 18px label needs — the
+reason Lighthouse had scored the landing 96 on accessibility since before the rebuild. Flagged as a
+brand decision rather than a drive-by; the founder asked for it fixed *using the brand colour*.
+
+Two candidates, both already in the `landing.*` ramp: darken the fill to `landing-pink-ink`
+(`#C22760`, **5.60:1** with white), or keep `#F43F7F` and put the label in `landing-grape`
+(**4.83:1**). The second shipped, on two grounds. It leaves the **brand colour byte-identical** —
+only the label moves — and it keeps the CTA bright against a **dark video** page, which is the
+entire reason that pink is there; `#C22760` sits close to the grape scrim and recedes exactly where
+the button most needs to pop. It also matches the sibling `mint` variant, grape-on-fill at 8.01:1
+since it was written, so the component loses an exception rather than gaining one.
+
+The landing now scores **100 accessibility / 100 best practices / 100 SEO**, from 96 / 100 / 92 at
+the start of the session. An existing test asserting `text-white` failed on the change — the guard
+working — and was updated beside a new one carrying the measurement and the rejected alternative,
+so nobody restores white text without re-measuring.
 
 **Verified:** both viewports, body overflow 0 on the landing and on a 2148px `/how-it-works` that
 scrolls inside `main` as designed; typecheck, build and lint (0 errors) clean; 2468 tests pass and

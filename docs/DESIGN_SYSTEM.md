@@ -33,10 +33,16 @@ CI gate's **0.95**, on one failing item. Name the destination; do not mask it wi
 (`#EC4899`, 3.52:1)** — the table below lists the lighter token for "links, secondary button text",
 and it does not clear the 4.5:1 small-text bar as text on a white page. The `-btn` step is not only
 for fills.
-**Known, pre-existing, NOT fixed here:** the landing's own "Get started" pill is white on `#F43F7F`
-at **3.58:1** against 4.5:1 (18px, so the 3.0:1 large-text allowance does not apply). Lighthouse
-scores the landing's accessibility 96 for exactly this, and has since before the rebuild. Fixing it
-means darkening the brand pink or making the label larger/bolder — a brand decision, not a drive-by.
+**Filled landing buttons carry `text-landing-grape`, never white — and the brand pink is
+unchanged.** The "Get started" pill was white on `landing-pink` (`#F43F7F`) at **3.58:1** against
+the 4.5:1 its label needs (18px, so the 3.0:1 large-text allowance does not apply); Lighthouse
+scored the landing's accessibility **96** for exactly this, and had since before the rebuild.
+Grape on the same pink is **4.83:1**, so the fix costs nothing but the label colour — **the fill is
+byte-identical**. It also matches the `mint` variant, which has always been grape-on-fill (8.01:1).
+Darkening the fill to `landing-pink-ink` (`#C22760`, 5.60:1 with white) was the alternative and was
+**rejected**: the page behind this button is dark video, and the bright pink is what makes the CTA
+pop off it — `#C22760` sits close to the grape scrim and recedes. Landing accessibility is now
+**100**. Pinned in `LandingButton.test.tsx`; re-measure before putting white back.
 `RotatingBackdrop` plays **eight** real reels — **five ABB, three Uncle Rocco** (this said ten,
 five and five until 2026-08-23; two Uncle Rocco reels were dropped for burned-in captions, so
 perfect alternation is arithmetically impossible and `landingClips.ts` holds a minimum-adjacency
