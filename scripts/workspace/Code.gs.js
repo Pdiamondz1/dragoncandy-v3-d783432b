@@ -77,6 +77,9 @@ function installAllSignatures() {
         email: user.primaryEmail,
         sharedWritten: counts.shared,
         sharedSeen: counts.sharedSeen,
+        // Per user, not domain-wide. A 403 on someone else's account must not
+        // decide the remediation printed for this one. (Codex P2, 2026-08-23.)
+        denied: counts.denied,
       });
 
       // PARTIAL is deliberately distinct from both ok and ERROR. A run where
@@ -120,7 +123,7 @@ function installAllSignatures() {
 
   // The scope-fix message is the same wherever it is needed, so build it once.
   var SCOPE_FIX =
-    ' The identities exist and are verified -- we lack ' +
+    ' Those identities exist and are verified -- we lack ' +
     SCOPE_SHARING +
     ', which Gmail requires to modify any NON-PRIMARY sendAs. FIXING THIS ' +
     'TAKES TWO STEPS AND THE ORDER MATTERS: (1) add that scope to the ' +
@@ -133,37 +136,49 @@ function installAllSignatures() {
     'either: that scope also lets this service account set who may send as ' +
     'what, for every user in the domain.';
 
-  // Two mutually exclusive states, checked most-alarming first.
+  // Two mutually exclusive states, most alarming first.
   //
-  // An earlier version keyed everything off the domain aggregate
-  // (totalSharedInstalled === 0), which is equivalent to a per-user check
-  // only while exactly ONE account holds shared identities. With two, a user
-  // could lose every shared signature and the run would stay silent because
-  // somebody else still installed one. Codex caught that 2026-08-23.
-  var degraded = sharedRegressions_(perUser);
+  // This used to key off the domain aggregate (totalSharedInstalled === 0),
+  // which equals a per-user check only while exactly ONE account holds shared
+  // identities. With two, a user could lose every shared signature and the run
+  // would stay silent because somebody else still installed one -- the warning
+  // would have gone quiet precisely as the feature grew. Codex, 2026-08-23.
+  var baseline = readSharedBaseline_();
+  var degraded = sharedRegressions_(perUser, baseline);
 
   if (degraded.length) {
-    // A user HAS shared identities and did not get all their signatures.
-    // This is the regression signal, and it is per user by construction --
-    // it fires no matter what the rest of the domain managed to install.
-    console.warn(
+    // Partition by CAUSE, because the two have different fixes and printing
+    // the scope remedy for a user whose failure had nothing to do with the
+    // scope sends the operator to the wrong place.
+    var byScope = [];
+    var byOther = [];
+    for (var d = 0; d < degraded.length; d++) {
+      (degraded[d].denied > 0 ? byScope : byOther).push(formatRegression_(degraded[d]));
+    }
+
+    var msg =
       'installAllSignatures: shared-mailbox signatures are MISSING for ' +
-        degraded.length +
-        ' user(s) -- ' +
-        degraded.join(', ') +
-        ' (written/expected). These accounts have shared send-as identities ' +
-        'that did not receive a signature.' +
-        (totalDenied > 0
-          ? SCOPE_FIX
-          : ' Nothing was refused with a missing-scope 403, so this is NOT ' +
-            'the known permissions gap -- check the run log for per-identity ' +
-            'failures, and check whether the identities were removed or set ' +
-            'back to pending verification.'),
-    );
+      degraded.length +
+      ' user(s), shown as written/expected. Expected counts come from the ' +
+      'identities present now AND from SHARED_BASELINE, so a removed identity ' +
+      'still counts as missing rather than vanishing from the check.';
+    if (byScope.length) {
+      msg += ' REFUSED FOR LACK OF SCOPE: ' + byScope.join(', ') + '.' + SCOPE_FIX;
+    }
+    if (byOther.length) {
+      msg +=
+        ' NOT explained by the scope (nothing 403d for these users): ' +
+        byOther.join(', ') +
+        '. Check the run log for per-identity failures, and check whether the ' +
+        'send-as identities were deleted or reverted to pending verification. ' +
+        'If the removal was deliberate, clear those users from the ' +
+        'SHARED_BASELINE script property or this will warn every night.';
+    }
+    console.warn(msg);
   } else if (totalSharedSeen === 0) {
-    // Nobody has a shared send-as identity at all. Correct and non-alarming
-    // for a fresh domain, and the state here until 2026-08-21: these
-    // addresses are ALIASES, and an alias is not a send-as identity.
+    // Nobody has a shared send-as identity at all. Correct and non-alarming on
+    // a fresh domain, and the state here until 2026-08-21: these addresses are
+    // ALIASES, and an alias is not a send-as identity.
     console.warn(
       'installAllSignatures: no shared address is a send-as identity on any ' +
         'of the ' +
@@ -182,13 +197,17 @@ function installAllSignatures() {
           ? ' NOTE: ' +
             totalDenied +
             ' non-primary identity/identities WERE refused with a ' +
-            'missing-scope 403 even though none of them is a recognised ' +
-            'shared address -- somebody has a non-primary sendAs outside ' +
+            'missing-scope 403 despite none being a recognised shared ' +
+            'address -- somebody has a non-primary sendAs outside ' +
             'SHARED_IDENTITIES.' +
             SCOPE_FIX
           : ''),
     );
   }
+
+  // After the check, never before: the baseline is what the check compares
+  // against, so updating it first would compare this run to itself.
+  writeSharedBaseline_(nextSharedBaseline_(perUser, baseline));
 
   appendRunLog_(results);
   return results;
@@ -326,15 +345,76 @@ function installForUser_(user) {
  * @param {Array<{email: string, sharedWritten: number, sharedSeen: number}>} perUser
  * @return {Array<string>} "user@ (written/seen)" for each degraded user
  */
-function sharedRegressions_(perUser) {
+function sharedRegressions_(perUser, baseline) {
+  baseline = baseline || {};
   var out = [];
   for (var i = 0; i < perUser.length; i++) {
     var r = perUser[i];
-    if (r.sharedSeen > 0 && r.sharedWritten < r.sharedSeen) {
-      out.push(r.email + ' (' + r.sharedWritten + '/' + r.sharedSeen + ')');
+    // The denominator must NOT come only from what we can see right now.
+    // Deriving it from the current sendAs list makes the check blind to the
+    // worst case: delete a user's shared identities and sharedSeen falls to 0
+    // alongside sharedWritten, so nothing looks wrong. The high-water baseline
+    // is what remembers those signatures used to exist. (Codex P1, 2026-08-23
+    // -- the first version of this function shipped with exactly that hole,
+    // and a comment cheerfully describing it.)
+    var expected = Math.max(r.sharedSeen, baseline[r.email] || 0);
+    if (expected > 0 && r.sharedWritten < expected) {
+      out.push({
+        email: r.email,
+        written: r.sharedWritten,
+        expected: expected,
+        denied: r.denied || 0,
+      });
     }
   }
   return out;
+}
+
+/** "user@ (1/3)" -- the shape the warning and the tests both want. */
+function formatRegression_(r) {
+  return r.email + ' (' + r.written + '/' + r.expected + ')';
+}
+
+/**
+ * High-water mark of shared signatures successfully installed per user.
+ *
+ * Never decreases on its own. A drop IS the signal, so letting the baseline
+ * follow it down would erase the evidence one run later and turn a standing
+ * regression into a single warning nobody was awake for. To accept a
+ * deliberate removal, edit or delete the SHARED_BASELINE script property.
+ *
+ * Users absent from this run (their installForUser_ threw) keep their entry,
+ * so an outage cannot quietly reset expectations either.
+ */
+function nextSharedBaseline_(perUser, baseline) {
+  var out = {};
+  var source = baseline || {};
+  for (var k in source) {
+    if (Object.prototype.hasOwnProperty.call(source, k)) out[k] = source[k];
+  }
+  for (var i = 0; i < perUser.length; i++) {
+    var r = perUser[i];
+    out[r.email] = Math.max(out[r.email] || 0, r.sharedWritten);
+  }
+  return out;
+}
+
+function readSharedBaseline_() {
+  var raw = PropertiesService.getScriptProperties().getProperty('SHARED_BASELINE');
+  if (!raw) return {};
+  try {
+    var parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (err) {
+    // Fail open rather than throw: a corrupt baseline must not stop signatures
+    // installing. It costs regression detection for this run, so say so.
+    console.warn('SHARED_BASELINE is not valid JSON, ignoring it this run: ' + err);
+    return {};
+  }
+}
+
+function writeSharedBaseline_(next) {
+  PropertiesService.getScriptProperties().setProperty('SHARED_BASELINE', JSON.stringify(next));
 }
 
 /**

@@ -85,6 +85,7 @@ Do not install a single signature until this prints `image/png`.
    | `SA_CLIENT_EMAIL` | the service account's client email |
    | `SA_PRIVATE_KEY` | `private_key` from the JSON key, newlines as `\n` |
    | `LOG_SHEET_ID` | id of the run-log Sheet in `06 · Brand` |
+   | `SHARED_BASELINE` | **written by the script, do not hand-edit casually.** JSON high-water mark of shared signatures installed per user, e.g. `{"dame@dragoncandy.com":3}`. It is how a *removed* send-as identity is still detected as missing. Clear a user's entry to accept a deliberate removal, otherwise it warns nightly |
    | `SHARING_SCOPE_ENABLED` | **`true` since 2026-08-23.** Both steps below are done and shared-mailbox signatures install. Setting it `false` stops *future* shared writes — it does **not** remove signatures already installed; see "Turning it back off" |
 
 5. **Build, then set up clasp, then push.**
@@ -312,25 +313,37 @@ against this sentence.
 
 **The zero-shared warning is per user** (`sharedRegressions_` in `Code.gs.js`).
 A user who has shared send-as identities and did not get all their signatures is
-named in the warning as `user@ (written/expected)`, and that fires regardless of
-what the rest of the domain installed.
+named as `user@ (written/expected)`, and that fires regardless of what the rest
+of the domain installed. The log Sheet's shared column is `written/expected`
+(`3/3 shared`) for the same reason: `0 shared` is correct for a user with none
+and alarming for a user with three, and a bare count cannot tell those apart.
 
-It was domain-aggregate until 2026-08-23 (`if (totalSharedInstalled === 0)`),
-which is equivalent to a per-user check only while exactly one account holds
-shared identities — with two, one user could lose everything in silence because
-somebody else still installed one. `sharedRegressions_` is pure and unit-tested
-for exactly that case; the log Sheet's shared column is now `written/expected`
-(`3/3 shared`) rather than a bare count, for the same reason — `0 shared` is
-correct for a user with none and alarming for a user with three, and a bare
-number cannot tell those apart.
+**Where "expected" comes from matters, and this is the subtle part.** It is
+`max(identities present now, SHARED_BASELINE[user])`. Using only the live count
+would make the check blind to the worst case — delete a user's send-as
+identities and the live count falls to zero alongside the written count, so the
+run looks clean. `SHARED_BASELINE` is a per-user high-water mark of shared
+signatures successfully installed, and it **never decreases on its own**: a drop
+is the signal, so letting the baseline follow it down would erase the evidence
+one run later and reduce a standing regression to one warning nobody was awake
+for. To accept a deliberate removal, clear that user from the property.
 
 Two states, and the warnings do not overlap:
 
-- **Someone is degraded** → named per user, with the scope fix appended if any
-  identity was refused with a 403, and a "this is not the known permissions gap"
-  pointer if none was.
+- **Someone is degraded** → named per user, **partitioned by cause**. Users whose
+  identities returned a missing-scope 403 get the two-step scope fix; users who
+  failed for any other reason get a "this is NOT the known permissions gap"
+  pointer instead. Partitioned per user rather than per run, because a 403 on one
+  account must not decide the remediation printed for another.
 - **Nobody has any shared identity at all** → the alias-is-not-a-send-as-identity
   explanation. Correct and non-alarming on a fresh domain.
+
+History, since both errors were scoping errors and the shape recurs: the check
+was domain-aggregate until 2026-08-23 (`if (totalSharedInstalled === 0)`), which
+equals a per-user check only while exactly one account holds shared identities.
+The first attempt at fixing it then derived "expected" from the live sendAs list
+and so could not see a removal at all. Both were caught in review, and both
+passed every test that existed when they were written.
 
 Still true, and not fixed by any of this: **a warning is not a gate.** If nobody
 reads the log, a degraded run still passes.

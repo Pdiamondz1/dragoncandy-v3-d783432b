@@ -239,22 +239,40 @@ per-user check, which is why nobody noticed. With two it is not: `dame@` could l
 signatures and the run would stay silent because somebody else still installed one. The warning
 would have gone quiet at precisely the moment the feature grew.
 
-Fixed by `sharedRegressions_(perUser)` — pure, so vitest can reach it (`installAllSignatures`
-needs `AdminDirectory` and a live impersonation token, so the decision would otherwise be
-untestable), and returning `user@ (written/expected)` for anyone whose shared identities did not
-all get a signature. `installForUser_` now also reports `sharedSeen`, the denominator, and the
-log Sheet's shared column became `3/3 shared` rather than a bare `3` — **`0 shared` is correct
-for a user with none and alarming for a user with three, and a bare count cannot tell those
-apart.**
+Fixed by `sharedRegressions_(perUser, baseline)` — pure, so vitest can reach it
+(`installAllSignatures` needs `AdminDirectory` and a live impersonation token, so the decision
+would otherwise be untestable), returning `user@ (written/expected)` for anyone whose shared
+identities did not all get a signature. The log Sheet's shared column became `3/3 shared` rather
+than a bare `3` for the same reason: **`0 shared` is correct for a user with none and alarming
+for a user with three, and a bare count cannot tell those apart.**
 
-The tests were checked by mutation, not just by passing: reintroducing the aggregate semantics
-turns three of them red, including the named case where one user is degraded while another
-installs successfully. **A test that has never failed has not been shown to test anything** —
-the aggregate version passed the entire suite as it stood.
+**Then the first fix turned out to have the same disease, one level down.** It derived
+"expected" from `sharedSeen` — the shared identities present in the sendAs list *right now*. So
+the worst case stayed invisible: delete a user's send-as identities and the denominator falls to
+zero alongside the numerator, and the run reads clean. **A check whose expectation is recomputed
+from current state cannot detect a change in that state.** Caught by Codex as a P1, on a
+function written specifically to close the previous scoping hole.
 
-The general lesson is about *scope of a check*, not about signatures: a condition computed over
-a population is only equivalent to a per-member condition while the population has one member,
-and nothing warns you when it grows.
+The expectation is now `max(identities present now, SHARED_BASELINE[user])`, where
+`SHARED_BASELINE` is a persisted per-user high-water mark that **never decreases on its own** — a
+drop is the signal, so letting the baseline follow it down would erase the evidence one run later
+and reduce a standing regression to a single warning nobody was awake for. Accepting a deliberate
+removal is an explicit act: clear that user from the script property.
+
+A second finding in the same pass: the remediation text was chosen from a **domain-wide** denied
+count, so one user's missing-scope 403 would tell an operator to fix the scope for a different
+user whose failure had nothing to do with it. Degraded users are now partitioned by cause and
+each group gets its own remedy.
+
+Tests were checked by mutation rather than by passing. Reintroducing the aggregate semantics
+turns three red; reverting the denominator to live-only turns the two removal tests red.
+**A test that has never failed has not been shown to test anything** — every buggy version here
+passed the whole suite as it stood at the time.
+
+The general lesson is about *what a check is scoped to*, and it bit twice in one function: a
+condition computed over a population equals a per-member condition only while the population has
+one member, and nothing tells you when it grows; and an expectation derived from current state is
+blind to exactly the change it exists to catch.
 
 **And a grant is not immediately a capability.** Domain-wide delegation changes propagate on
 Google's schedule — minutes, sometimes longer — so "granted in the console" opens a window
