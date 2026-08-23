@@ -15,12 +15,21 @@ unaffected by this — still light, unchanged from before.**
 **The landing (`/`, `/home`, `/landing`).** `LandingPage.tsx`'s root is `bg-landing-grape`
 (`#241332`), not white — the file's own comment explains why: the hero's backdrop is dark video,
 so a white page background would flash behind it before the first frame paints. The page is one
-screen (`Header` + `LandingHero` + a thin footer) and does not scroll: `LandingHero` is
-`min-h-[100dvh]` (never `vh` — see the safe-area rule below, still load-bearing here). Inside it,
+screen (`Header` + `LandingHero` + a transparent footer) and does not scroll: the page wrapper is
+`min-h-[100dvh]` (never `vh` — see the safe-area rule below, still load-bearing here), the header
+is an absolute overlay, `LandingHero` is `flex-1`, and the footer is `shrink-0`.
 `RotatingBackdrop` plays ten real reels (five ABB, five Uncle Rocco, alternating so no restaurant
-reads as a solo showreel) full-bleed behind the content (`-z-20`), under a `landing-grape` gradient
-scrim (`-z-10`) that darkens top and bottom so the eyebrow, headline and CTA stay legible over a
-bright frame. There is no feature flag gating this anymore: `LANDING_VIDEO_BACKDROP_ENABLED` was
+reads as a solo showreel) full-bleed behind the whole page (`-z-20`), under a `landing-grape`
+gradient scrim (`-z-10`) that darkens top and bottom so the eyebrow, headline, CTA and footer stay
+legible over a bright frame.
+
+**The backdrop is mounted on the PAGE, not on the hero, and the footer paints nothing.** It used
+to sit inside `LandingHero` with an opaque `bg-white` footer beneath it, which drew a hard white
+band across the bottom of a page whose entire premise is one full-bleed cinematic screen. The
+footer now carries no background and no top border — either one re-draws that seam — and its text
+is `text-white/70`, legible off the scrim's heaviest stop (`to-landing-grape/95`). Measured, not
+assumed: against the brightest frame in the footer's band across all twenty encodes, the worst
+case is **7.42:1**, versus the 4.5:1 WCAG requirement for normal-size text. There is no feature flag gating this anymore: `LANDING_VIDEO_BACKDROP_ENABLED` was
 **deleted**, not flipped — with the video AS the page, an "off" state would ship a blank homepage.
 The real fallback for no-clips / a failed clip / `prefers-reduced-motion` is `RotatingBackdrop`'s
 own poster-still path, not a flag. Pipeline for producing the reels:
@@ -260,4 +269,16 @@ same token/font system, unaffected; `/internal` stays dark.
 * **Bottom-anchored mobile UI: `dvh` + safe-area, never `vh`** — the app document never scrolls (h-screen shell + inner overflow-auto main), so iOS Safari toolbars never collapse and `vh` exceeds the visible height. Size bottom sheets with `dvh`/`svh` and pad bottom-fixed footers/navs with `env(safe-area-inset-bottom)`. Never put a transform (or `will-change: transform`) on an ancestor of `position:fixed` UI — `PageTransition` is opacity-only by contract; portal hand-rolled overlays to `document.body`. See `docs/wiki/concepts/mobile-viewport-fixed-positioning.md`.
 * **Top-anchored chrome needs `env(safe-area-inset-top)` — and only the NATIVE app can show you** — `index.html` sets `viewport-fit=cover`, so the layout viewport extends **under** the status bar and Dynamic Island. Every element that is genuinely at the top of the viewport (`fixed top-0`, or a `sticky top-0` that is page chrome rather than an in-page section header) must pay that back: `pt-[env(safe-area-inset-top)]` when it has no top padding of its own, or `pt-[calc(<existing>+env(safe-area-inset-top))]` to preserve it. **This is invisible on the web** — mobile Safari's URL bar occupies that space, so the page never sits under the status bar and `viewport-fit=cover` costs nothing. It appears only in a chromeless `WKWebView`, which is why it survived until the first physical-device build (2026-08-14) and why no amount of browser testing would have caught it. Applied to `MobileTopNav`, `landing/Header`, `PublicPageHeader`, `UpdateBanner` and the mobile `ui/toast` viewport. **Do NOT pad in-page `sticky top-0` headers** (`AgendaView`, `CampaignMetricsBar`, `CampaignBrowseContent`, `BrandCreators`, `HelpBriefPage`) — they stick *inside* a scroll container below the real nav, so an inset there inserts a gap mid-page. For a viewport that moves side to side by breakpoint (the toast is `top-0` at base, `sm:top-auto sm:bottom-0`), scope the inset to the breakpoint where it is actually on top and reset it after (`sm:pt-4`). The mirror of the bottom rule above.
 * **Desktop side-panels/drawers overlay, never steal flex width** — a docked panel meant to coexist with full-width page content (e.g. the Donny desktop panel) must be a **`fixed` overlay** (`fixed inset-y-0 right-0 z-40`), not an in-flow `flex-shrink-0` sibling of the `flex-1` `<main>`. An in-flow panel subtracts its width from `<main>`, and because pages use **viewport** breakpoints (not container queries) the grids keep their wide-screen column counts at a too-narrow width and crush their cards ("squish"). A `fixed` panel leaves the flex flow so `<main>` keeps 100% width. See `docs/wiki/concepts/mobile-viewport-fixed-positioning.md` (§4).
+* **In the iOS shell, `contentInset` must be `'never'` — the CSS owns the safe areas, or the native
+  layer does, never both.** `capacitor.config.ts` set `ios.contentInset: 'always'`, which makes
+  WebKit shrink `documentElement.clientHeight` by the top inset while `innerHeight`, `100vh` and
+  `100dvh` all keep reporting the full height. Measured on an iPhone 17 Pro simulator:
+  `innerHeight` **840**, `documentElement.clientHeight` **778**, `safe-area-inset-top` **62** —
+  778 = 840 − 62 exactly. Anything sized to a viewport unit is therefore taller than the document
+  box, and the webview's own **white** background shows through beneath it (~96pt), clipping
+  whatever sits at the bottom of the page. This affects **every** page — `AppShell` is `h-screen`
+  — but it is invisible on the app's white surfaces and only became visible when the landing
+  footer stopped being white. With `'never'` all four numbers agree (874) and `env(safe-area-*)`
+  still reports 62/34, so the existing CSS padding keeps doing the work it already did. **This is
+  not reproducible in any browser or emulator** — it needs the real WKWebView.
 * **App chrome sits BELOW the modal layer — never tie `z-50`** — persistent app chrome (`MobileBottomNav`, `MobileTopNav`, desktop header, `DonnyDesktopPanel`) is **`z-40`**; the Radix modal layer (every `Sheet`/`Dialog`/`AlertDialog`/`Popover`/`Dropdown`/`Tooltip`) is **`z-50`**; `DonnyMobileSheet` is `z-[60]/[61]`; toasts are `z-[100]`. At `z-50` the nav tied the modal layer and (both portal to `<body>`) its opaque bar painted over bottom-sheet action buttons on iOS Safari. A new **non-modal in-page** `fixed`/`sticky` bottom bar that coexists with the nav (e.g. `StickyApplyCTA`) must offset itself above the nav on mobile — `bottom-[calc(6rem+env(safe-area-inset-bottom))] md:bottom-0` (the `6rem` mirrors the content area's `pb-24` nav-clearance) — or live inside a modal. See `docs/wiki/concepts/mobile-viewport-fixed-positioning.md` (§6).

@@ -30,12 +30,15 @@ describe("LandingHero", () => {
     expect(ctas[0]).toHaveTextContent("Get started");
   });
 
-  it("mounts the backdrop", async () => {
-    vi.doMock("./RotatingBackdrop", () => ({
-      RotatingBackdrop: () => <div data-testid="rotating-backdrop" />,
-    }));
+  // The backdrop deliberately does NOT mount here — it moved to the page wrapper so the footage
+  // runs behind the footer too (see LandingPage.test.tsx). Pinned so a future refactor that
+  // quietly moves it back reintroduces the opaque-footer seam loudly instead of silently.
+  it("paints no background of its own, so the page-level footage shows through", async () => {
     const { LandingHero } = await import("./LandingHero");
-    render(<LandingHero />);
-    expect(screen.getByTestId("rotating-backdrop")).toBeInTheDocument();
+    const { container } = render(<LandingHero />);
+    const section = container.querySelector("section");
+    expect(section).not.toBeNull();
+    expect(section!.className).not.toMatch(/\bbg-/);
+    expect(container.querySelector("video")).toBeNull();
   });
 });

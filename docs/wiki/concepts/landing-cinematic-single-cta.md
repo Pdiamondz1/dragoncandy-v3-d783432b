@@ -16,7 +16,7 @@ tags: [landing, frontend, video, design, tailwind]
 The 2026-08-22 rebuild of the public landing (`src/pages/LandingPage.tsx` +
 `src/components/landing/*`) into **one screen**: a fixed logo header, a full-bleed video hero (ten
 real restaurant reels rotating behind an eyebrow, a slogan, and a single "Get started" CTA), and a
-thin footer. **Supersedes** [[Landing "Human-driven. AI-assisted." Redesign]] as the design this
+transparent footer the footage runs behind. **Supersedes** [[Landing "Human-driven. AI-assisted." Redesign]] as the design this
 branch will ship once merged — that page's light, two-door, six-section landing and its contact
 form are deleted outright (~20 files), not hidden. It also **revives** the video-backdrop machinery
 [[Landing Cinematic Video Redesign]] built and PR #293 had demoted to an opt-in flag: that flag
@@ -79,7 +79,14 @@ that page for why "opt-in" and "deleted" are different postures, not the same id
   **spec-vs-plan disagreement that read as a contradiction until scoped correctly** — the spec said
   "thin white footer," the plan said keep `bg-landing-grape,` and both were right because they
   meant different elements (the footer bar vs. the page wrapper behind it). Spec won on the footer
-  itself.
+  itself — **and was overruled the next day by the founder**, who saw the shipped page and said the
+  white band could not stay. The footer is now transparent with the video running behind it; the
+  backdrop moved from `LandingHero` up to the page wrapper so the footage spans the full screen.
+  Worth keeping as a lesson about the ruling, not the pixel: a controller ruling settled a conflict
+  between two documents, and neither document was the authority that mattered. The spec said white
+  because the spec's author (me) proposed white; the founder had approved a mockup, not a
+  rendering. **A design decision inherited from a spec is still only as good as the eyes that have
+  seen it on a screen.**
 - **`generate-anonymous-brief` is orphaned but deliberately left deployed, not undeployed.** Its
   only caller — the landing's brief-preview flow — was deleted with the six sections. It still
   spends real Anthropic tokens per call if reached directly; recorded as a cost-visibility
@@ -110,7 +117,9 @@ that page for why "opt-in" and "deleted" are different postures, not the same id
   refused to move, and the footer's bottom landed exactly at the visible edge. **A container taller
   than its content produces no overflow; "unused space" is not "scrollable space."** The dead region
   between `100dvh` and `100vh` sits *under* Safari's toolbar, where it is not visible, and it is
-  `body`'s white beneath an already-white footer. The probe was controlled — forcing the wrapper to
+  `body`'s white beneath what was, at the time of that measurement, an already-white footer (the
+  footer has since been made transparent, which changes what the band would look like on mobile
+  Safari but not whether it is reachable — it still is not). The probe was controlled — forcing the wrapper to
   2000px produced 1432px of overflow and genuine scrolling on the same instruments — so the zeroes
   are measurements, not a broken check. Headroom before any scroll is possible: natural content
   height is 372px at 390px wide and 465px at 320px wide, against a 568px shell on the smallest
@@ -121,6 +130,24 @@ that page for why "opt-in" and "deleted" are different postures, not the same id
   this project keeps relearning from the other direction ([[Mobile Viewport & Fixed Positioning]]):
   a reviewer's mechanism can be plausible, internally consistent, and still false — and the only
   instrument that settles it is execution, not agreement.
+
+  **Addendum, same day — the finding was wrong about the browser and right about the family.** A
+  cross-surface pass on the real iOS shell (iPhone 17 Pro simulator, not an emulated viewport)
+  found a genuine "viewport unit is taller than the document box" bug — just not the one Codex
+  described, on a surface Codex never mentioned. `capacitor.config.ts` had `ios.contentInset:
+  'always'`, under which WebKit shrinks `documentElement.clientHeight` by the top safe-area inset
+  while `innerHeight` / `100vh` / `100dvh` all keep reporting the full height: measured 840 vs
+  **778**, with `safe-area-inset-top` 62 (778 = 840 − 62). Content sized to `100dvh` therefore
+  overhung the document box and the webview's **white** background showed through beneath it,
+  clipping the footer's legal links. Fixed by `contentInset: 'never'` — the app already pays back
+  `env(safe-area-*)` in CSS everywhere, so insetting natively as well was two mechanisms solving
+  one problem and disagreeing on the answer. Afterwards all four numbers agree at 874.
+  **Two things worth keeping.** First, the bug had been live for every page in the app (`AppShell`
+  is `h-screen`) and was invisible purely because every other surface is white — *a defect hidden
+  by a coincidence of palette is still a defect, and changing the palette is what surfaced it*.
+  Second, and more uncomfortable: I refuted Codex's finding on mobile Safari, correctly and with
+  measurements, and then treated the whole class as closed. It was not. **Refuting a claim on the
+  surface where it was raised does not refute it on the surfaces where it was never tested.**
 
 - **Cosmetic, ≤320px only:** the `Eyebrow` marker (an 8×8 `bg-current` square) orphans to the far
   left when the eyebrow text wraps to two lines. Single-line and correctly inline at 390px and
