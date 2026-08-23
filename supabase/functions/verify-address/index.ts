@@ -118,6 +118,13 @@ const handler = async (req: Request): Promise<Response> => {
   let queryText: string;
   let precision: readonly string[];
   let orgUnitId = "";
+  // Canonical fields this attempt actually geocoded, carried through to the final
+  // update so the write can be conditioned on the stored row still matching what was
+  // submitted (see the forgery/out-of-order-write note below, near the write).
+  let creatorCity = "";
+  let creatorCountry = "";
+  let creatorPostalCode = "";
+  let orgUnitAddress = "";
 
   if (role === "creator") {
     const city = typeof payload.city === "string" ? payload.city.trim() : "";
@@ -126,6 +133,9 @@ const handler = async (req: Request): Promise<Response> => {
     if (!city || !country) {
       return json(req, 400, { error: "city and country are required" });
     }
+    creatorCity = city;
+    creatorCountry = country;
+    creatorPostalCode = postalCode;
     queryText = [city, postalCode, country].filter(Boolean).join(", ");
     precision = CREATOR_PRECISION;
   } else {
@@ -134,6 +144,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (!orgUnitId || !address) {
       return json(req, 400, { error: "orgUnitId and address are required" });
     }
+    orgUnitAddress = address;
 
     const { data: unit, error: unitError } = await supabase
       .from("org_units")
@@ -200,24 +211,62 @@ const handler = async (req: Request): Promise<Response> => {
     address_verified_at: resolved?.verifiedAt ?? null,
   };
 
-  const { error: writeError } =
-    role === "creator"
-      ? await supabase
-          .from("creator_profiles")
-          .update(update)
-          .eq("user_id", user.id)
-          .select("user_id")
-          .maybeSingle()
-      : await supabase
-          .from("org_units")
-          .update(update)
-          .eq("id", orgUnitId)
-          .select("id")
-          .maybeSingle();
+  // Condition the write on the stored row still carrying the SAME canonical address
+  // fields this attempt geocoded. Without this, the update matches on user_id/orgUnitId
+  // alone, so it stamps whatever address is CURRENTLY stored — which may no longer be
+  // the one this request resolved coordinates for:
+  //   - Forgery: a caller submits a different, valid address (one that geocodes
+  //     cleanly) while their STORED address is unverified. The old code stamped the
+  //     stored, unverified address as verified — attesting to an address nobody
+  //     actually checked.
+  //   - Out-of-order writes: two rapid edits can have their verify-address calls
+  //     resolve out of order, so an older geocode overwrites a newer address's
+  //     coordinates and stamp.
+  // Matching on the submitted fields makes the write match ZERO rows if the stored
+  // address has moved on since this request started — the correct outcome, not an
+  // error: the next save re-fires verification against whatever is stored now.
+  //
+  // PostgREST .eq() never matches NULL (NULL = x is NULL, not true in SQL), so a field
+  // the client omitted — which useCreatorProfileSubmit.ts stores as NULL, never '' —
+  // must be matched with .is(col, null) instead. Never silently skip a field: an
+  // omitted predicate would widen the match back toward the unconditioned write this
+  // fix removes.
+  let updatedRows: Array<Record<string, string>> | null;
+  let writeError: { message: string } | null;
+
+  if (role === "creator") {
+    let creatorQuery = supabase
+      .from("creator_profiles")
+      .update(update)
+      .eq("user_id", user.id)
+      .eq("city", creatorCity)
+      .eq("country", creatorCountry);
+    creatorQuery = creatorPostalCode
+      ? creatorQuery.eq("postal_code", creatorPostalCode)
+      : creatorQuery.is("postal_code", null);
+    ({ data: updatedRows, error: writeError } = await creatorQuery.select("user_id"));
+  } else {
+    ({ data: updatedRows, error: writeError } = await supabase
+      .from("org_units")
+      .update(update)
+      .eq("id", orgUnitId)
+      .eq("address", orgUnitAddress)
+      .select("id"));
+  }
 
   if (writeError) {
     console.error("verify-address: failed to write verified address", writeError);
     return json(req, 500, { error: "Could not save. Please try again." });
+  }
+
+  if (!updatedRows || updatedRows.length === 0) {
+    // Zero rows matched: the stored address changed under us between this request
+    // starting and the geocode resolving. Not an error — the row itself is fine, and
+    // whatever save changed the address either already fired its own verification
+    // attempt or will on the next save. Never log the address fields here (see the
+    // header note on GOOGLE_MAPS_SERVER_API_KEY logging).
+    console.warn("verify-address: stored address changed during verification; stamp discarded", { role });
+    return json(req, 200, { verified: false, stale: true });
   }
 
   return json(req, 200, { verified: !!resolved });

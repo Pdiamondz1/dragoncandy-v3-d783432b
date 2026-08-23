@@ -3,9 +3,8 @@ import { corsHeaders } from "../_shared/cors.ts";
 import {
   SEND_LIMIT_PER_WINDOW,
   WINDOW_MS,
+  COOLDOWN_MS,
   isAllowedCountry,
-  exceedsSendLimit,
-  withinCooldown,
 } from "./rateLimit.ts";
 
 // Phone verification via Twilio Verify. Two actions share this function:
@@ -32,10 +31,6 @@ interface VerifyPhoneRequest {
   action?: string;
   phone?: string;
   code?: string;
-}
-
-interface AttemptRow {
-  created_at: string;
 }
 
 const json = (req: Request, status: number, body: Record<string, unknown>) =>
@@ -92,57 +87,64 @@ async function recordAttempt(
   if (error) console.error("verify-phone: failed to record attempt", error);
 }
 
-// Both throttle readers below return `null` to mean "could not read the throttle
-// table" — distinguishable from an empty array / undefined, which mean "read fine,
-// genuinely no prior sends". The caller MUST refuse the send on `null` rather than
-// treating an unreadable table as zero history: exceedsSendLimit([]) and
-// withinCooldown(undefined) are both `false`, so silently coercing a read failure into
-// either of those shapes would remove the send limit entirely on any transient error —
-// a blip, a future RLS change, a connection cap — while still returning 200s. This is
-// the opposite failure mode from the account-completeness engine's `unknown` status:
-// there the risk of degrading toward "allow" is a spurious block shown to a real user,
-// so fail-open is correct; here the risk is our own carrier bill against a hostile
-// party, so fail-open IS the attack. Fail open toward the user, fail closed toward the
+// The daily cap and cooldown used to be a plain READ (recentSentTimestamps /
+// lastSentTimestamp) followed by an application-code decision, followed — only on the
+// 'start' success path — by an INSERT of the 'sent' row. That is a check-then-act race:
+// N concurrent 'start' requests all read the same pre-limit history, all decide "under
+// the limit", and all call Twilio, bypassing both throttle dimensions. The threat model
+// is SMS-pumping fraud (unbounded carrier charges against us), so this is fail-closed
+// territory, not a narrower bug — see reserve_phone_verification_send's migration
+// header (20260824160000) and phone_verification_attempts' own header comment.
+//
+// Fix: `reserveVerificationSend` below calls a SECURITY DEFINER Postgres RPC that makes
+// the count-and-insert ATOMIC — a transaction-scoped advisory lock serializes concurrent
+// callers for the same user/ip key, so only one of them can observe "under the limit"
+// and reserve a slot; the loser sees the winner's row (or the lock's own effect on the
+// count) once it acquires the lock. The RPC INSERTs the 'sent' row itself, BEFORE this
+// function ever calls Twilio — so a slot is reserved first, spent second.
+//
+// A `null` return means the RPC call itself failed (network/DB error), which this
+// function MUST treat as "refuse the send", not "no prior history" — the same
+// fail-closed contract Finding 1 established for the old read helpers: silently
+// coercing a failure into "allow" would remove the send limit on any transient error
+// while still returning 200s. Fail open toward the user, fail closed toward the
 // attacker.
+type ReserveSendResult =
+  | { reserved: true; reason: "ok"; attempt_id: string }
+  | { reserved: false; reason: "limit" | "cooldown" };
 
-async function recentSentTimestamps(
-  supabase: ReturnType<typeof createClient>,
-  column: "user_id" | "ip_hash",
-  value: string,
-): Promise<string[] | null> {
-  const cutoff = new Date(Date.now() - WINDOW_MS).toISOString();
-  const { data, error } = await supabase
-    .from("phone_verification_attempts")
-    .select("created_at")
-    .eq(column, value)
-    .eq("action", "start")
-    .eq("outcome", "sent")
-    .gte("created_at", cutoff);
-  if (error) {
-    console.error("verify-phone: failed to read recent attempts", error);
-    return null;
-  }
-  return ((data ?? []) as AttemptRow[]).map((r) => r.created_at);
-}
-
-async function lastSentTimestamp(
+async function reserveVerificationSend(
   supabase: ReturnType<typeof createClient>,
   userId: string,
-): Promise<string | undefined | null> {
-  const { data, error } = await supabase
-    .from("phone_verification_attempts")
-    .select("created_at")
-    .eq("user_id", userId)
-    .eq("action", "start")
-    .eq("outcome", "sent")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  ipHash: string | null,
+): Promise<ReserveSendResult | null> {
+  const { data, error } = await supabase.rpc("reserve_phone_verification_send", {
+    p_user_id: userId,
+    p_ip_hash: ipHash,
+    p_limit: SEND_LIMIT_PER_WINDOW,
+    p_window_seconds: Math.floor(WINDOW_MS / 1000),
+    p_cooldown_seconds: Math.floor(COOLDOWN_MS / 1000),
+  });
   if (error) {
-    console.error("verify-phone: failed to read last attempt", error);
+    console.error("verify-phone: reserve_phone_verification_send failed", error);
     return null;
   }
-  return (data as AttemptRow | null)?.created_at;
+  return data as ReserveSendResult;
+}
+
+/** Flips a reserved-but-unsent attempt row's outcome — used only when Twilio itself
+ * fails after a slot was already reserved. The row still counts against the caller's
+ * quota (see the RPC's counting predicate, outcome IN ('sent','rejected')) — that is
+ * the fail-closed point of reserving before calling Twilio at all. */
+async function markAttemptRejected(
+  supabase: ReturnType<typeof createClient>,
+  attemptId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("phone_verification_attempts")
+    .update({ outcome: "rejected" })
+    .eq("id", attemptId);
+  if (error) console.error("verify-phone: failed to mark reserved attempt rejected", error);
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -233,31 +235,26 @@ const handler = async (req: Request): Promise<Response> => {
       return json(req, 400, { error: "That phone number cannot be verified" });
     }
 
-    const [userTimestamps, ipTimestamps] = await Promise.all([
-      recentSentTimestamps(supabase, "user_id", user.id),
-      ipHash ? recentSentTimestamps(supabase, "ip_hash", ipHash) : Promise.resolve([] as string[]),
-    ]);
-
-    // Finding 1: a failed READ of the throttle table must refuse the send, not proceed
-    // as if there were no prior history. See the comment above recentSentTimestamps.
-    if (userTimestamps === null || ipTimestamps === null) {
+    // Atomic check-and-reserve — see reserveVerificationSend's header comment. This
+    // REPLACES the old read-then-decide-then-insert sequence (Finding 2 on the
+    // identity-verification branch's Codex second review): the RPC does the count, the
+    // cooldown check, AND the reserving INSERT of the 'sent' row, all inside one
+    // transaction-scoped advisory lock, before Twilio is ever called.
+    const reservation = await reserveVerificationSend(supabase, user.id, ipHash);
+    if (reservation === null) {
+      // Finding 1's fail-closed contract still applies: a failed RPC call must refuse
+      // the send, not proceed as if there were no prior history.
       return json(req, 503, { error: "Could not verify send history. Please try again." });
     }
 
-    if (exceedsSendLimit(userTimestamps) || exceedsSendLimit(ipTimestamps)) {
+    if (!reservation.reserved) {
       await recordAttempt(supabase, { userId: user.id, ipHash, action, outcome: "throttled" });
+      if (reservation.reason === "cooldown") {
+        return json(req, 429, { error: "Please wait a moment before requesting another code" });
+      }
       return json(req, 429, {
         error: `Too many codes sent. You can request up to ${SEND_LIMIT_PER_WINDOW} per day.`,
       });
-    }
-
-    const lastSent = await lastSentTimestamp(supabase, user.id);
-    if (lastSent === null) {
-      return json(req, 503, { error: "Could not verify send history. Please try again." });
-    }
-    if (withinCooldown(lastSent)) {
-      await recordAttempt(supabase, { userId: user.id, ipHash, action, outcome: "throttled" });
-      return json(req, 429, { error: "Please wait a moment before requesting another code" });
     }
 
     try {
@@ -273,16 +270,19 @@ const handler = async (req: Request): Promise<Response> => {
       if (!resp.ok) {
         const body = await resp.text();
         console.error("verify-phone: Twilio start failed", resp.status, body);
+        await markAttemptRejected(supabase, reservation.attempt_id);
         return json(req, 502, { error: "Could not send verification code. Please try again." });
       }
 
-      await recordAttempt(supabase, { userId: user.id, ipHash, action, outcome: "sent" });
-      // Byte-identical response regardless of any facts about this phone number
-      // (including whether it is already attached to another account — a fact this
-      // function never even queries for, precisely so there is nothing to leak).
+      // The 'sent' row was already inserted by the reservation RPC, before this fetch —
+      // no recordAttempt call needed here. Byte-identical response regardless of any
+      // facts about this phone number (including whether it is already attached to
+      // another account — a fact this function never even queries for, precisely so
+      // there is nothing to leak).
       return json(req, 200, { success: true });
     } catch (err) {
       console.error("verify-phone: Twilio start threw", err);
+      await markAttemptRejected(supabase, reservation.attempt_id);
       return json(req, 502, { error: "Could not send verification code. Please try again." });
     }
   }
