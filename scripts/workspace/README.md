@@ -330,6 +330,14 @@ is the signal, so letting the baseline follow it down would erase the evidence
 one run later and reduce a standing regression to one warning nobody was awake
 for. To accept a deliberate removal, clear that user from the property.
 
+**If the property is unreadable, the script leaves it alone.** Malformed JSON,
+or JSON that is not an object, turns regression detection off for that run and
+says so in the log — but the stored value is *not* overwritten. Overwriting it
+with this run's counts would discard every high-water mark, and if identities
+were already missing their expectations would be gone permanently and the next
+run would look healthy. Failing to read costs one run of detection; failing to
+preserve costs it forever.
+
 Two states, and the warnings do not overlap:
 
 - **Someone is degraded** → named per user, **partitioned by cause**. Users whose

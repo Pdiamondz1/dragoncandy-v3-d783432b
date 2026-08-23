@@ -69,7 +69,8 @@ function installAllSignatures() {
   // Read before the loop: the Sheet's written/expected column uses the same
   // expectation as the warning, and both must survive an identity being
   // removed. See sharedExpectation_.
-  var baseline = readSharedBaseline_();
+  var baselineRead = readSharedBaseline_();
+  var baseline = baselineRead.values;
 
   for (var i = 0; i < users.length; i++) {
     var user = users[i];
@@ -81,9 +82,10 @@ function installAllSignatures() {
         email: user.primaryEmail,
         sharedWritten: counts.shared,
         sharedSeen: counts.sharedSeen,
-        // Per user, not domain-wide. A 403 on someone else's account must not
-        // decide the remediation printed for this one. (Codex P2, 2026-08-23.)
-        denied: counts.denied,
+        // Per user AND shared-only. A 403 on someone else's account, or on this
+        // user's non-company sendAs, must not decide the remedy printed for
+        // their shared signatures. (Codex P2 x2, 2026-08-23.)
+        denied: counts.sharedDenied,
       };
       perUser.push(record);
       var sharedExpected = sharedExpectation_(record, baseline);
@@ -213,8 +215,11 @@ function installAllSignatures() {
   }
 
   // After the check, never before: the baseline is what the check compares
-  // against, so updating it first would compare this run to itself.
-  writeSharedBaseline_(nextSharedBaseline_(perUser, baseline));
+  // against, so updating it first would compare this run to itself. And never
+  // at all when the stored value could not be read -- see readSharedBaseline_.
+  if (baselineRead.usable) {
+    writeSharedBaseline_(nextSharedBaseline_(perUser, baseline));
+  }
 
   appendRunLog_(results);
   return results;
@@ -273,6 +278,11 @@ function installForUser_(user) {
   var sharedWritten = 0;
   var sharedSeen = 0;
   var denied = 0;
+  // Denials on SHARED identities only. counts.denied includes any non-primary
+  // sendAs, and a user can hold one that is not a company address -- letting
+  // that decide the remedy would announce "REFUSED FOR LACK OF SCOPE" about
+  // shared signatures that were actually deleted. (Codex P2, 2026-08-23.)
+  var sharedDenied = 0;
   var failures = [];
 
   for (var i = 0; i < identities.length; i++) {
@@ -319,6 +329,7 @@ function installForUser_(user) {
       if (isMissingSharingScope_(err)) {
         // Known, expected, and actionable — not a defect in this script.
         denied++;
+        if (shared) sharedDenied++;
       } else {
         failures.push(identity.sendAsEmail + ': ' + err);
       }
@@ -330,6 +341,7 @@ function installForUser_(user) {
     shared: sharedWritten,
     sharedSeen: sharedSeen,
     denied: denied,
+    sharedDenied: sharedDenied,
     failures: failures,
   };
 }
@@ -418,17 +430,39 @@ function nextSharedBaseline_(perUser, baseline) {
   return out;
 }
 
+/**
+ * Returns { values, usable }.
+ *
+ * `usable` false means the stored property could not be parsed. The caller must
+ * then NOT write a new baseline: overwriting an unreadable one with this run's
+ * counts would silently discard every high-water mark, and if identities are
+ * already missing their expectations would be erased permanently -- the run
+ * after next would go quiet and look healthy. Failing to read costs detection
+ * for one run; failing to preserve costs it forever. (Codex P2, 2026-08-23.)
+ */
 function readSharedBaseline_() {
   var raw = PropertiesService.getScriptProperties().getProperty('SHARED_BASELINE');
-  if (!raw) return {};
+  if (!raw) return { values: {}, usable: true };
   try {
     var parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : {};
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return { values: parsed, usable: true };
+    }
+    console.warn(
+      'SHARED_BASELINE parsed but is not an object (got ' +
+        (Array.isArray(parsed) ? 'an array' : typeof parsed) +
+        '). Leaving it untouched; regression detection is off until it is repaired.',
+    );
+    return { values: {}, usable: false };
   } catch (err) {
-    // Fail open rather than throw: a corrupt baseline must not stop signatures
-    // installing. It costs regression detection for this run, so say so.
-    console.warn('SHARED_BASELINE is not valid JSON, ignoring it this run: ' + err);
-    return {};
+    // Fail open rather than throw -- a corrupt baseline must not stop
+    // signatures installing -- but refuse to overwrite it.
+    console.warn(
+      'SHARED_BASELINE is not valid JSON, so regression detection is off until ' +
+        'it is repaired. It will NOT be overwritten. Error: ' +
+        err,
+    );
+    return { values: {}, usable: false };
   }
 }
 

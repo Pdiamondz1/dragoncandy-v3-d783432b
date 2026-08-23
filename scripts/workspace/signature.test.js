@@ -183,7 +183,7 @@ function loadAppsScript(scriptProperties = {}) {
   };
   return new Function(
     'PropertiesService',
-    `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN, isMissingSharingScope_, requestedScopes_, SCOPE_BASIC, SCOPE_SHARING, sharedRegressions_, formatRegression_, nextSharedBaseline_, sharedExpectation_ };`,
+    `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN, isMissingSharingScope_, requestedScopes_, SCOPE_BASIC, SCOPE_SHARING, sharedRegressions_, formatRegression_, nextSharedBaseline_, sharedExpectation_, readSharedBaseline_ };`,
   )(PropertiesService);
 }
 
@@ -514,5 +514,74 @@ describe('sharedExpectation_', () => {
     const [reported] = sharedRegressions_([record], baseline);
     expect(reported.expected).toBe(sharedExpectation_(record, baseline));
     expect(reported.expected).toBe(3);
+  });
+});
+
+// A corrupt baseline must not be overwritten. Returning {} and then writing the
+// new one would discard every high-water mark; if identities were already
+// missing, their expectations would be erased permanently and the run after
+// next would go quiet and look healthy. Failing to READ costs one run of
+// detection. Failing to PRESERVE costs it forever. Codex, 2026-08-23.
+describe('readSharedBaseline_', () => {
+  it('reads a valid object and marks it usable', () => {
+    const { readSharedBaseline_ } = loadAppsScript({
+      SHARED_BASELINE: '{"dame@dragoncandy.com":3}',
+    });
+    expect(readSharedBaseline_()).toEqual({
+      values: { 'dame@dragoncandy.com': 3 },
+      usable: true,
+    });
+  });
+
+  it('treats an unset property as an empty but usable baseline', () => {
+    const { readSharedBaseline_ } = loadAppsScript();
+    expect(readSharedBaseline_()).toEqual({ values: {}, usable: true });
+  });
+
+  it('marks malformed JSON UNUSABLE so the caller will not overwrite it', () => {
+    const { readSharedBaseline_ } = loadAppsScript({ SHARED_BASELINE: '{not json' });
+    const result = readSharedBaseline_();
+    expect(result.values).toEqual({});
+    expect(
+      result.usable,
+      'usable must be false, or installAllSignatures overwrites the only copy of the high-water marks',
+    ).toBe(false);
+  });
+
+  it('rejects valid JSON that is not an object', () => {
+    for (const raw of ['[1,2,3]', '"three"', '42', 'null']) {
+      const { readSharedBaseline_ } = loadAppsScript({ SHARED_BASELINE: raw });
+      expect(readSharedBaseline_().usable, `${raw} must not be accepted as a baseline`).toBe(false);
+    }
+  });
+});
+
+// counts.denied includes ANY non-primary sendAs. A user can hold a non-primary
+// address that is not a company one, so classifying the whole regression off
+// that number would announce "REFUSED FOR LACK OF SCOPE" about shared
+// signatures that were in fact deleted. Codex, 2026-08-23.
+describe('shared-only denial classification', () => {
+  const { sharedRegressions_ } = loadAppsScript();
+
+  it('reports denied 0 when the shared identities were removed, not refused', () => {
+    const [r] = sharedRegressions_(
+      // denied here is already the SHARED-only count that installForUser_ now
+      // returns; an unrelated non-primary 403 does not reach this field.
+      [{ email: 'dame@dragoncandy.com', sharedWritten: 0, sharedSeen: 0, denied: 0 }],
+      { 'dame@dragoncandy.com': 3 },
+    );
+    expect(r.expected).toBe(3);
+    expect(
+      r.denied,
+      'a removal must not be classified as a scope refusal, or the operator is sent to the wrong fix',
+    ).toBe(0);
+  });
+
+  it('reports the denial when the shared identities really were refused', () => {
+    const [r] = sharedRegressions_(
+      [{ email: 'dame@dragoncandy.com', sharedWritten: 0, sharedSeen: 3, denied: 3 }],
+      {},
+    );
+    expect(r.denied).toBe(3);
   });
 });
