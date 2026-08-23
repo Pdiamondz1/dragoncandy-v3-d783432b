@@ -1,5 +1,35 @@
 # Wiki Log
 
+## [2026-08-23] update | The staging route we did not need to build
+
+Checked, before building it, the requirement that made a demo-video staging route look
+necessary — and it does not exist. `PROJECT_CONTEXT.md` said Google "requires the unverified-app
+screen to appear in [the demo video] and forbids recording against production traffic".
+**Google's demo-video page requires neither**, and its verification-requirements page says
+nothing about the environment. The video is recordable against production today, with nothing
+new built.
+
+**Created** `docs/runbooks/google-oauth-demo-video.md` — the four real requirements with their
+sources, the revoke-first step, and the take itself. The revoke matters: the consent flow's
+second screen is the scope itemisation, it is skipped when the account already holds the scopes,
+and it **is** the consent screen Google requires — so recording from the connected state yields
+a video with no consent screen in it.
+
+**Found while writing it, and connected nowhere before now:** Google requires the homepage and
+privacy policy reachable by an anonymous reviewer, and `gate/decide.ts` allowlists exactly
+`/robots.txt` and `/favicon.ico`. Switching the private preview on 401s both — failing this
+verification, and TikTok's, Meta's and X's, each of which needs a public privacy-policy URL.
+Prod is not gated today (apex 200), so it is a sequencing constraint rather than a live defect,
+and allowlisting `/privacy` is not the fix: it is an SPA route, and the gate's own header records
+that allowlisting a path with no backing file serves the whole bundle.
+
+**Updated** [[YouTube Analytics Connector]] with that section, plus two claims today's own merges
+made stale — publishing status (Testing → In production, including why the recommended build →
+verify → publish order was deliberately inverted) and declared scopes (none → both). **Updated**
+`docs/PROJECT_CONTEXT.md` §5 with the correction and the gate conflict.
+
+Fourth claim about this one console corrected in a single day. None of the four was checkable
+from inside the repository, and each read as verified because it was specific.
 ## [2026-08-23] update | The identity slice went live, and the reviewer's best finding was wrong
 
 **Updated** [[Identity & Address Verification]] and `docs/PROJECT_CONTEXT.md` §5 after slice 2 merged

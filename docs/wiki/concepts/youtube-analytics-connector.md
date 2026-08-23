@@ -283,16 +283,26 @@ request list, at which point every figure shifts one column and the dashboard sh
 confident, wrong numbers with nothing failing. Everything is read by column name, and a test
 proves a shuffled response produces identical output.
 
-## The 7-day trap
+## The 7-day trap (closed 2026-08-23 — the history is the useful part)
 
-The Google Cloud app's publishing status is **Testing**, and Google expires refresh tokens
-**7 days after consent** for External + Testing apps. Every connection will flip to
-`needs_reconnect` a week after it is made. **That is a console setting, not a bug in the
-refresh code** — check publishing status before debugging.
+The Google Cloud app **was** Testing, and Google expires refresh tokens **7 days after
+consent** for External + Testing apps, so every connection would have flipped to
+`needs_reconnect` a week after it was made. **That is a console setting, not a bug in the
+refresh code** — check publishing status before debugging a token that died on schedule.
 
-Publishing to Production early is worse: production-but-unverified carries a hard lifetime
-cap of **100 new users that Google never resets**. Correct order is build → submit for
-verification → publish.
+The app is now **In production** (flipped 2026-08-23 18:20 UTC, reversible via "Back to
+testing"), so the expiry no longer applies to tokens issued from here on. It does **not** apply
+retroactively: the live token had been minted under Testing rules, so it was deliberately
+retired and re-minted (disconnect + reconnect, fresh grant at 18:26:06) rather than assumed to
+have inherited the new policy.
+
+**This section previously recommended the opposite order** — build → submit for verification →
+publish — because production-but-unverified carries a lifetime cap of **100 new users that
+Google never resets**. The cap is real and that order is still the default for an app expecting
+real signups. It was overridden deliberately here: with one connected user, and a verification
+that cannot be submitted until a demo video exists, seven-day token death on the only live
+connection cost more than one of a hundred lifetime slots. **1 of 100 is used.** Treat this as
+the exception, not the pattern, when the next platform reaches the same fork.
 
 ## Console state (verified in the console 2026-08-23)
 
@@ -300,13 +310,41 @@ verification → publish.
   correct the code is.
 - **Redirect URI: `https://dragoncandy.com/youtube/callback`**, replacing the Supabase edge
   function URL. Google warns changes take 5 minutes to a few hours to take effect.
-- **Declared scopes: none.** All three Data Access tables are empty. This is fine in Testing
-  and is **not** the same thing as the scopes we request — those are named at runtime in the
-  authorize URL. The Data Access page is the *declared* list Google reviews at verification
-  time, and the two read scopes must be added there, with justifications, before submitting.
-  A memory note previously claimed the project "currently" had `youtube.upload` +
-  `youtube.readonly` declared; it did not, and a "drop youtube.upload" task sat on the list
-  for something that never existed.
+- **Declared scopes: both, declared 2026-08-23.** This line read "none — all three Data Access
+  tables are empty" until they were added, with a 947-char justification saved. Declaring them
+  is still **not** the same thing as the scopes we *request*: those are named at runtime in the
+  authorize URL, while Data Access is the declared list Google reviews at verification. A memory
+  note previously claimed the project "currently" had `youtube.upload` + `youtube.readonly`
+  declared; it did not, and a "drop youtube.upload" task sat on the list for something that never
+  existed.
+
+## The demo video, and a requirement we invented
+
+Verification needs a demo video, and the sibling entry in `PROJECT_CONTEXT.md` said it was
+"awkward rather than tedious" because Google "requires the unverified-app screen to appear in it
+and forbids recording against production traffic" — and therefore needed a separate test project
+or a hidden staging route.
+
+**Google's demo-video page requires neither**, and its verification-requirements page says
+nothing about the environment. Four things are asked for: the end-to-end flow including the
+OAuth grant, the complete consent screen showing the exact scopes requested, each requested
+scope demonstrably used, and the same app name and branding as submitted. The video is
+recordable against production today, with nothing new built.
+
+The trap that **is** real is documented two sections up and is easy to walk into while
+recording: the consent flow's second screen is the scope itemisation, and it is skipped when the
+account already holds the scopes. That screen **is** requirement 2. Recording from the connected
+state therefore produces a video with no consent screen in it, which Google rejects — so the
+take has to start from a revoked grant. Full procedure, plus the anonymous-reachability conflict
+between Google's homepage/privacy-policy requirement and the site gate's two-path allowlist:
+`docs/runbooks/google-oauth-demo-video.md`.
+
+**Four claims about this one console have now been corrected in a single day**: one consent
+screen taken for the whole flow, "both scopes are sensitive", a `youtube.upload` declaration
+that never existed, and this one. None was checkable from inside the repository, and each read
+as verified because it was specific. The rule that survives all four — **when a claim's only
+evidence lives in someone else's console or on someone else's documentation page, go and read
+it; do not paraphrase it from memory into a document that will be planned against.**
 
 ## Known Issues
 

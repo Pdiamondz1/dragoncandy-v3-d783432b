@@ -438,9 +438,23 @@ holds no Toast credentials. See §6.
   the line that actually matters, since restricted scopes are what pull in the paid CASA security
   assessment. Conclusion unchanged (brand review, not CASA); the reasoning was wrong, and the
   reasoning is what anyone would plan against. A **947-char justification is saved**; the **demo
-  video is not**, and it is awkward rather than tedious — Google requires the unverified-app screen
-  to appear in it and forbids recording against production traffic, so with the app now *in
-  production* it needs a separate test project or a hidden staging route. **A save trap worth
+  video is not — and the reason this entry gave for that was itself wrong.** It said Google
+  "requires the unverified-app screen to appear in it and forbids recording against production
+  traffic", so the video needed "a separate test project or a hidden staging route". **Google's own
+  demo-video page requires neither**, and says nothing about the environment: the requirements are
+  the end-to-end flow including the OAuth grant, the consent screen showing the exact scopes, each
+  scope demonstrably used, and the submitted app's name and branding. It is recordable today against
+  production with no new infrastructure — a fourth Google-console claim corrected in one day, the
+  same shape as the other three. **The one real trap: the consent flow's second screen — the scope
+  itemisation, which IS the requirement — is skipped when the account already holds the scopes**, so
+  the recording must start from a revoked grant or it contains no consent screen at all. Procedure
+  and the full requirement list: `docs/runbooks/google-oauth-demo-video.md`, which also flags a
+  conflict nothing else connected — **the site gate allowlists exactly `/robots.txt` and
+  `/favicon.ico`, so switching the private preview on makes the homepage and `/privacy` answer 401,
+  and Google requires both reachable by an anonymous reviewer (as do TikTok, Meta and X)**. Prod is
+  not gated today (apex 200), so it is a sequencing constraint, not a live defect; allowlisting
+  `/privacy` is not the fix — it is an SPA route, and the gate's own header records that
+  allowlisting a path with no backing file serves the whole bundle. **A save trap worth
   knowing:** the scope panel's "Update" only *stages* the change; the real save is a separate button
   at the page bottom, below the justification and video sections, so the first attempt looked saved,
   reloaded empty, and was only caught by reloading instead of trusting the post-save render.
@@ -626,12 +640,23 @@ holds no Toast credentials. See §6.
   all resolve extensionless specifiers. **Caught by the e2e smoke suite**, which drives a real
   browser against the preview. Fixed with `'./gate/decide.js'`. **Durable rule: a local toolchain
   that resolves imports for you cannot tell you whether the deployment target will.**
-  **Pending (2026-08-23):** merge PR #482; **a green `lighthouse-ci.yml` AND a green e2e smoke on it
-  are hard merge gates** (the Lighthouse 1.00 was measured locally, never by CI); then, in this
-  order, set the four Production-scope variables → deploy → run the runbook's checks → only then
-  disable Supabase signup.
+  **PR #482 is MERGED** (this line read "**Pending:** merge PR #482" until 2026-08-23); the gate
+  code is on `main` and prod is **not** gated — the apex returns 200, because `SITE_GATE_ENABLED`
+  is unset. **Pending (2026-08-23):** in this order, set the four Production-scope variables →
+  deploy → run the runbook's checks → only then disable Supabase signup.
   Note `/promo/:id` now challenges (founder confirmed no QR is live; documented, deliberately not
   allowlisted) and every Supabase invite must travel with the password or as a `?k=` link.
+  **Switching this on breaks every pending platform verification, and nothing else connects the
+  two.** The allowlist is exactly `/robots.txt` and `/favicon.ico`, so the homepage and `/privacy`
+  answer **401** to anyone not signed in — and Google's OAuth verification requires both reachable
+  by an anonymous reviewer ("hosted on a verified domain you own", privacy policy "hosted within
+  the domain that hosts your homepage"), as do TikTok's, Meta's and X's app reviews, each of which
+  needs a public privacy-policy URL. **Allowlisting `/privacy` is not the fix** — it is an SPA
+  route, and this gate's own header records that allowlisting a path with no backing file serves
+  the entire bundle to an anonymous browser. The only shape the gate permits is real static files
+  (`public/legal/privacy.html`, `public/legal/terms.html`) allowlisted by path; the alternative is
+  to sequence the gate around the review windows, which are measured in weeks. A decision, not a
+  task. See `docs/runbooks/google-oauth-demo-video.md`.
   → `docs/wiki/concepts/site-access-lockdown.md` · `docs/runbooks/site-access-lockdown.md`
 - **Identity & verification (slice 2 of 4, onboarding redesign)** — gives `phone_verified`/
   `identity_verified`/`address` real writers, closes a `profiles` email/phone read exposure (4th

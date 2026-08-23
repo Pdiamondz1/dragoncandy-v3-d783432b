@@ -1,0 +1,129 @@
+# Runbook — Google OAuth verification demo video
+
+**Status (2026-08-23): recordable today, against production, with no new infrastructure.**
+This runbook exists because the previous plan for this video was built on a requirement
+Google does not have.
+
+## The claim this corrects
+
+`docs/PROJECT_CONTEXT.md` said the demo video "is awkward rather than tedious — Google
+requires the unverified-app screen to appear in it and forbids recording against production
+traffic, so with the app now *in production* it needs a separate test project or a hidden
+staging route."
+
+**Both halves are false.** Google's demo-video page
+(<https://support.google.com/cloud/answer/13804565>) and its verification-requirements page
+(<https://support.google.com/cloud/answer/13464321>) between them state four requirements,
+and neither the unverified-app screen nor a non-production environment is among them. There
+is no staging route to build, and there was never a blocker here beyond recording a screen
+capture.
+
+This is the fourth claim about Google's console corrected in a single day, and it has the
+same shape as the other three: written from what the console *showed*, never checkable from
+inside this repository, and convincing because it was specific. The durable rule generalises
+the one already in `PROJECT_CONTEXT.md` §5 (*the consent screen is not the record of what was
+granted*): **a claim about a third party's rules is worth exactly what the third party's own
+page says, and that page is one fetch away.**
+
+## What Google actually requires
+
+| # | Requirement | Source |
+|---|---|---|
+| 1 | "The end-to-end flow of your app including the OAuth grant process. Be sure to show all points of integration with the Google API you are requesting." | 13804565 |
+| 2 | The complete OAuth consent screen, showing "the same exact scopes you are requesting (or you have already been approved for)" | 13804565 |
+| 3 | "The app functionalities that utilize the requested OAuth scopes" — each requested scope demonstrably used | 13804565 |
+| 4 | The same application as submitted, "including app name, branding" | 13464321 |
+
+**Not** required — checked explicitly, because we had assumed otherwise: the "Google hasn't
+verified this app" interstitial; a test or staging environment; anything about the URL bar or
+the client ID. That last one is asserted confidently by several third-party guides but appears
+on neither Google page, so treat it as cheap insurance rather than a rule — keep the URL bar
+in frame anyway, it costs nothing.
+
+## The one non-obvious step: revoke first
+
+Requirement 2 is the one this build can silently fail. **Google's consent flow is two screens,
+and the second is skipped when the account already holds the scopes** — recorded in
+`docs/wiki/concepts/youtube-analytics-connector.md`. Screen 1 is identity (pick an account,
+Continue). Screen 2 is the scope itemisation:
+
+- "View your YouTube account"
+- "View YouTube Analytics reports for your YouTube content"
+
+Screen 2 **is** requirement 2. `dame@dragoncandy.com` currently holds both scopes, so starting
+a recording from the connected state produces a video with no consent screen in it — which
+Google rejects.
+
+So the recording has to start from a genuinely revoked grant:
+
+1. Open `/settings` and press **Disconnect** on the YouTube card. `youtube-disconnect` revokes
+   at Google *before* it deletes the row, so the grant is really gone rather than merely
+   forgotten locally.
+2. Confirm at <https://myaccount.google.com/permissions> that DragonCandy no longer appears.
+   Do not skip this. A failed revoke leaves both the row and the grant in place, and the flow
+   will skip screen 2 again — which you will only discover after recording.
+
+## Recording
+
+One take, roughly 60–90 seconds, no cuts. Cuts read as omissions.
+
+1. **Start signed in, on `/settings`**, with the YouTube analytics card visible in its
+   disconnected state. This satisfies requirement 4 — app name and branding on screen — and
+   establishes that the recording is our app.
+2. **Press "Connect YouTube" — the teal one.** The red button beside it is Outstand and it
+   publishes; nothing on the buttons themselves says which is which.
+3. **Screen 1** — account chooser. Pick `dame@dragoncandy.com`.
+4. **Screen 2** — hold here for two or three seconds with both scope lines legible. This is
+   the frame the reviewer is looking for. Then Allow.
+5. **Land back in the app** (`/youtube/callback` → Settings) and let the analytics card finish
+   loading.
+6. **Show the data.** The card renders views, watch time, average view duration and "N days of
+   data". That is requirement 3: `youtube.readonly` resolves the channel identity shown on the
+   card, `yt-analytics.readonly` produces the figures. Say which is which out loud or caption
+   it — do not make the reviewer infer the mapping.
+7. **Optionally press Disconnect** at the end. Not required, but showing that the grant is
+   releasable reads well against a read-only scope request.
+
+Upload to YouTube as **unlisted**, paste the link into the Data Access page's demo-video
+field, then **scroll to the bottom of that page and press the real Save**. The scope panel's
+own "Update" button only stages the change; the justification was lost exactly this way on the
+first attempt and was caught only by reloading rather than trusting the post-save render.
+
+## Before you submit: the site gate will fail verification
+
+Verification is not only about the video. The homepage must be "hosted on a verified domain
+you own" and must "describe your app's functionality to its users", and the privacy policy
+must be "hosted within the domain that hosts your homepage" (13464321). **Both must be
+reachable by a reviewer who is signed in to nothing.**
+
+`gate/decide.ts` allowlists exactly two paths — `/robots.txt` and `/favicon.ico`. Everything
+else answers **401** when `SITE_GATE_ENABLED` is on. So on the day the private preview is
+switched on, `https://dragoncandy.com/` and `https://dragoncandy.com/privacy` both become
+unreachable to Google and this verification fails — as would TikTok's, Meta's and X's, each of
+which requires a publicly reachable privacy-policy URL.
+
+Prod is **not** gated as of 2026-08-23 (the apex returns 200), so this is a sequencing
+constraint rather than a live defect. Two ways out, neither free:
+
+- **Submit before the gate goes on** — but the review window is measured in weeks and will
+  overlap whatever the gate was switched on for.
+- **Serve the legal pages as real static files** (`public/legal/privacy.html`,
+  `public/legal/terms.html`) and allowlist those paths. This is the only shape the gate
+  permits. Its own header records that allowlisting a path with **no backing file** does not
+  serve "nothing": `vercel.json` rewrites unmatched paths to `/index.html`, so it hands an
+  anonymous browser the entire SPA. `/privacy` is an SPA route, so allowlisting it directly is
+  the documented leak, not a fix.
+
+That is a decision rather than a task, and it belongs to whoever owns the lockdown.
+
+## After the video
+
+Submitting for verification is a separate action in the Verification Center. It is what lifts
+the **100-user lifetime cap** — publishing to production did not, and per Google's own console
+text the cap "cannot be reset or changed". 1 of 100 is currently used.
+
+## See also
+
+- `docs/wiki/concepts/youtube-analytics-connector.md` — the connector, its scopes, and the
+  two-screen consent finding
+- `docs/runbooks/site-access-lockdown.md` — the gate this has to be sequenced against
