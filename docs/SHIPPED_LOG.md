@@ -26,6 +26,101 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-23] Every defect was a scoping error, and every buggy version passed the tests
+
+**PR** #461 (`298465ce`) · Codex clean at round 5 · 63 tests, was 30 · deployed and verified live
+
+#460 recorded a latent bug and the founder said fix it now. The "0 shared signatures installed"
+warning fired on `totalSharedInstalled === 0` — a **domain aggregate**. With exactly one account
+holding shared identities that is indistinguishable from a per-user check, which is why nobody
+noticed. With two it is not: `dame@` could lose every shared signature and the run would stay
+silent because somebody else still installed one. **The warning would have gone quiet precisely
+as the feature grew.**
+
+Fixing it took five Codex rounds and seven defects, six of them introduced by my own fixes. The
+striking thing is that **not one was a wrong calculation** — every single one was a question of
+*what the condition was computed over*:
+
+- **P1, and the sharpest:** the first fix derived "expected" from the identities present *right
+  now*. Delete a user's send-as identities and the denominator falls to zero alongside the
+  numerator, so the run reads clean. **An expectation recomputed from current state is blind to
+  exactly the change it exists to catch.** I had written that limitation into a code comment and
+  shipped it anyway.
+- The Sheet ignored the baseline the warning used, so a removal warned as `0/3` and was *logged*
+  as plain `0 shared` — indistinguishable from a user who never had any. Warnings scroll away;
+  the Sheet is what remains, and it was the one telling the smaller truth.
+- Denials were counted across all non-primary addresses, so an unrelated 403 would blame the
+  scope for a signature that had actually been deleted.
+- A corrupt baseline was silently **overwritten**, erasing every high-water mark permanently.
+- Mixed causes reported as pure scope — grant the permission, watch the count improve, stop
+  looking.
+- A baseline-write failure killed the run log for a run whose signatures were already written.
+
+**What shipped:** `sharedExpectation_` = `max(present now, SHARED_BASELINE[user])`, called by
+both the warning and the Sheet so they cannot disagree; a persisted per-user high-water mark that
+never decreases on its own, because the drop *is* the signal; degraded users named as
+`user@ (written/expected)` and partitioned into `scope` / `other` / `mixed`, with a mixed user
+printed in both remediation lines.
+
+**Tests were checked by mutation, not by passing.** Reintroducing the aggregate semantics turns
+three red; reverting the denominator to live-only turns the two removal tests red; making the
+unset-baseline case unusable turns its test red. That step earned its keep here — **every buggy
+version passed the entire suite as it stood when it was written**. One test asserts the two
+callers of `sharedExpectation_` *agree* rather than testing each alone, because the Sheet defect
+was disagreement between two individually correct computations.
+
+**Deployed and verified**, not merely merged: `clasp push`, run clean with no warning, Sheet row
+`ok / 4 identities / 3/3 shared`, `SHARED_BASELINE` populated in script properties.
+
+**Not fixed, and stated as such:** a warning is not a gate. Delivery is still a line in Cloud
+Logging that somebody has to read.
+
+→ `docs/wiki/concepts/workspace-email-signatures.md` · #460, #461
+
+## [2026-08-23] Shared-mailbox signatures install, and the middle run is the one that proves it
+
+**PR** #460 (knowledge-sync, Codex clean at round 4) · no code change — this entry is a deploy
+and two configuration steps, both performed in Google's consoles
+
+Three days of corrections ended in a working system. `clasp push` landed #456, the founder
+approved `gmail.settings.sharing`, and `dame@`'s final run logged **`ok / 4 identities /
+3 shared`** — `info@`, `support@` and `appstore@` now send with the DragonCandy signature. The
+other three users report `ok / 1 identity / 0 shared`, which is correct: nobody else has a
+shared identity.
+
+**The sequence mattered more than any single step.** Grant the scope in the admin console;
+deploy; run and confirm **`PARTIAL / 1 identity, 3 denied / 0 shared`**; *then* set
+`SHARING_SCOPE_ENABLED=true`; run again. Both runs are in the log Sheet, and **the middle one is
+load-bearing.** It is the only observation that separates *the scope fixed it* from *the scope
+masked a loop that was still broken* — had the enabling run been done alone, the success at the
+end would have proven strictly less. Same reasoning as choosing "signatures appear in other
+people's mailboxes" over a success message as the original acceptance signal.
+
+**Order is not optional and the failure is total, not partial.** Requesting a scope the
+delegation does not carry fails the *entire* token exchange with `unauthorized_client` — every
+signature for every user, not just the shared ones. Hence console first, property second, and a
+switch that defaults off. About **seven hours** separated the grant (8/22 19:36 ET) from the
+enabling run (8/23 02:39 ET) with no propagation failure — a gap long enough to say nothing
+about how fast propagation actually is, so it is not evidence that a short wait suffices.
+
+**Merged is not deployed.** #456 was correct in the repo for a full day while production ran the
+broken code, because `clasp push` needed a re-auth. Nothing detected it — Apps Script has no CI
+joining the repo to the live script, and the only thing that surfaced it was going to push. The
+nightly run failed twice in that window on a bug that was already fixed.
+
+**Codex took five rounds on the docs, four real P2s, all one shape.** Granting the scope made a
+dozen present-tense sentences false at once, scattered across the README, the concept page, the
+wiki index and this log — including "0 shared is expected", which had been true two days earlier
+and had become the wrong thing to accept. The wiki page's own status paragraph has now been
+wrong twice in three days by the same mechanism. **A dated status line on a RAG-fed page is a
+liability with a short half-life**; date it, and distrust it past its date.
+
+**Left open:** shared identities exist on no account but `dame@` — extending them is per-person,
+and the granted scope now permits either route. Outlook for Windows remains untested and
+untestable; the rendering matrix is four-of-five.
+
+→ `docs/wiki/concepts/workspace-email-signatures.md` · #453, #454, #455, #456, #458, #460
+
 ## [2026-08-22] The fix I documented wouldn't have worked, and following it broke production
 
 **PRs** #455 (knowledge-sync) and #456 (`b0f4e4de`) · Codex clean after one P1 · 30 tests (was 24)

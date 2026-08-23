@@ -183,7 +183,7 @@ function loadAppsScript(scriptProperties = {}) {
   };
   return new Function(
     'PropertiesService',
-    `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN, isMissingSharingScope_, requestedScopes_, SCOPE_BASIC, SCOPE_SHARING };`,
+    `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN, isMissingSharingScope_, requestedScopes_, SCOPE_BASIC, SCOPE_SHARING, sharedRegressions_, formatRegression_, nextSharedBaseline_, sharedExpectation_, readSharedBaseline_ };`,
   )(PropertiesService);
 }
 
@@ -304,5 +304,330 @@ describe('Code.gs.js shared identities', () => {
         `${email} must stay classified as shared, or it will be signed as personal mail the day it is created`,
       ).toBe(true);
     }
+  });
+});
+
+// The zero-shared warning used to fire on the DOMAIN AGGREGATE. That is
+// equivalent to a per-user check only while exactly one account holds shared
+// identities — which was true on 2026-08-23 and is why it went unnoticed.
+// These tests pin the scoping, because both bugs here were scoping errors
+// rather than computation errors, and the aggregate version passed every test
+// that existed at the time.
+describe('sharedRegressions_', () => {
+  const { sharedRegressions_, formatRegression_ } = loadAppsScript();
+  const fmt = (rs) => rs.map(formatRegression_);
+
+  it('reports nothing when every shared identity was written', () => {
+    expect(
+      sharedRegressions_(
+        [
+          { email: 'dame@dragoncandy.com', sharedWritten: 3, sharedSeen: 3, denied: 0 },
+          { email: 'joe@dragoncandy.com', sharedWritten: 0, sharedSeen: 0, denied: 0 },
+        ],
+        {},
+      ),
+    ).toEqual([]);
+  });
+
+  it('does not report a user who simply has no shared identities', () => {
+    expect(
+      sharedRegressions_([{ email: 'joe@dragoncandy.com', sharedWritten: 0, sharedSeen: 0, denied: 0 }], {}),
+    ).toEqual([]);
+  });
+
+  it('reports a user who lost all of theirs', () => {
+    expect(
+      fmt(sharedRegressions_([{ email: 'dame@dragoncandy.com', sharedWritten: 0, sharedSeen: 3, denied: 3 }], {})),
+    ).toEqual(['dame@dragoncandy.com (0/3)']);
+  });
+
+  it('reports a partial loss, not just a total one', () => {
+    expect(
+      fmt(sharedRegressions_([{ email: 'dame@dragoncandy.com', sharedWritten: 2, sharedSeen: 3, denied: 1 }], {})),
+    ).toEqual(['dame@dragoncandy.com (2/3)']);
+  });
+
+  // Under the old aggregate check the domain total here is 1, which is
+  // non-zero, so nothing warned at all — dame@ losing every shared signature
+  // was invisible because someone else still had one.
+  it('reports a degraded user even when another user installed shared signatures', () => {
+    const degraded = sharedRegressions_(
+      [
+        { email: 'dame@dragoncandy.com', sharedWritten: 0, sharedSeen: 3, denied: 3 },
+        { email: 'joe@dragoncandy.com', sharedWritten: 1, sharedSeen: 1, denied: 0 },
+      ],
+      {},
+    );
+    expect(fmt(degraded)).toEqual(['dame@dragoncandy.com (0/3)']);
+    expect(
+      0 + 1,
+      'the domain aggregate is non-zero here, which is exactly why the aggregate check missed this',
+    ).toBeGreaterThan(0);
+  });
+
+  it('reports every degraded user, not just the first', () => {
+    expect(
+      fmt(
+        sharedRegressions_(
+          [
+            { email: 'a@dragoncandy.com', sharedWritten: 0, sharedSeen: 2, denied: 2 },
+            { email: 'b@dragoncandy.com', sharedWritten: 1, sharedSeen: 1, denied: 0 },
+            { email: 'c@dragoncandy.com', sharedWritten: 1, sharedSeen: 4, denied: 3 },
+          ],
+          {},
+        ),
+      ),
+    ).toEqual(['a@dragoncandy.com (0/2)', 'c@dragoncandy.com (1/4)']);
+  });
+
+  it('handles an empty run without throwing', () => {
+    expect(sharedRegressions_([], {})).toEqual([]);
+  });
+
+  // Codex P1. Deriving the denominator only from identities still present
+  // makes the check blind to the worst case: DELETE a user's shared
+  // identities and sharedSeen falls to 0 alongside sharedWritten, so the run
+  // looks clean. The baseline is what remembers they existed.
+  it('reports identities that were REMOVED, not merely unwritable', () => {
+    const perUser = [{ email: 'dame@dragoncandy.com', sharedWritten: 0, sharedSeen: 0, denied: 0 }];
+    expect(
+      sharedRegressions_(perUser, {}),
+      'without a baseline there is nothing to notice — this is the hole',
+    ).toEqual([]);
+    expect(
+      fmt(sharedRegressions_(perUser, { 'dame@dragoncandy.com': 3 })),
+      'with a baseline the removal is caught',
+    ).toEqual(['dame@dragoncandy.com (0/3)']);
+  });
+
+  it('catches a removal even while another user is still fine', () => {
+    expect(
+      fmt(
+        sharedRegressions_(
+          [
+            { email: 'dame@dragoncandy.com', sharedWritten: 0, sharedSeen: 0, denied: 0 },
+            { email: 'joe@dragoncandy.com', sharedWritten: 1, sharedSeen: 1, denied: 0 },
+          ],
+          { 'dame@dragoncandy.com': 3, 'joe@dragoncandy.com': 1 },
+        ),
+      ),
+    ).toEqual(['dame@dragoncandy.com (0/3)']);
+  });
+
+  it('takes the larger of live count and baseline as the expectation', () => {
+    // Baseline stale-low: a user legitimately gained an identity this run.
+    expect(
+      fmt(sharedRegressions_([{ email: 'a@dragoncandy.com', sharedWritten: 1, sharedSeen: 3, denied: 2 }], { 'a@dragoncandy.com': 1 })),
+    ).toEqual(['a@dragoncandy.com (1/3)']);
+  });
+
+  it('carries the per-user denied count so the caller can pick the right remedy', () => {
+    const [scoped, other] = sharedRegressions_(
+      [
+        { email: 'a@dragoncandy.com', sharedWritten: 0, sharedSeen: 2, denied: 2 },
+        { email: 'b@dragoncandy.com', sharedWritten: 0, sharedSeen: 1, denied: 0 },
+      ],
+      {},
+    );
+    expect(scoped.denied).toBe(2);
+    expect(other.denied, 'b@ failed for some other reason and must not be told to fix the scope').toBe(0);
+  });
+});
+
+describe('nextSharedBaseline_', () => {
+  const { nextSharedBaseline_ } = loadAppsScript();
+
+  it('records the count from a clean run', () => {
+    expect(
+      nextSharedBaseline_([{ email: 'dame@dragoncandy.com', sharedWritten: 3, sharedSeen: 3 }], {}),
+    ).toEqual({ 'dame@dragoncandy.com': 3 });
+  });
+
+  it('never decreases — a drop is the signal, so it must not be erased', () => {
+    expect(
+      nextSharedBaseline_(
+        [{ email: 'dame@dragoncandy.com', sharedWritten: 0, sharedSeen: 0 }],
+        { 'dame@dragoncandy.com': 3 },
+      ),
+    ).toEqual({ 'dame@dragoncandy.com': 3 });
+  });
+
+  it('rises when a user gains an identity', () => {
+    expect(
+      nextSharedBaseline_(
+        [{ email: 'dame@dragoncandy.com', sharedWritten: 4, sharedSeen: 4 }],
+        { 'dame@dragoncandy.com': 3 },
+      ),
+    ).toEqual({ 'dame@dragoncandy.com': 4 });
+  });
+
+  it('keeps users who were absent from this run, so an outage cannot reset expectations', () => {
+    expect(
+      nextSharedBaseline_(
+        [{ email: 'joe@dragoncandy.com', sharedWritten: 1, sharedSeen: 1 }],
+        { 'dame@dragoncandy.com': 3 },
+      ),
+    ).toEqual({ 'dame@dragoncandy.com': 3, 'joe@dragoncandy.com': 1 });
+  });
+
+  it('does not mutate the baseline it was given', () => {
+    const baseline = { 'dame@dragoncandy.com': 3 };
+    nextSharedBaseline_([{ email: 'dame@dragoncandy.com', sharedWritten: 5, sharedSeen: 5 }], baseline);
+    expect(baseline).toEqual({ 'dame@dragoncandy.com': 3 });
+  });
+});
+
+// The warning and the run-log column must never disagree about what "expected"
+// means. They did: the warning used the baseline and the Sheet used only the
+// live count, so a removed identity warned as 0/3 while the durable record said
+// plain "0 shared" — indistinguishable from a user who never had any, and the
+// Sheet is what survives after the warning scrolls away. Codex, 2026-08-23.
+describe('sharedExpectation_', () => {
+  const { sharedExpectation_, sharedRegressions_ } = loadAppsScript();
+
+  it('is the live count when there is no baseline', () => {
+    expect(sharedExpectation_({ email: 'a@x.com', sharedSeen: 3 }, {})).toBe(3);
+  });
+
+  it('is the baseline when the identities are gone', () => {
+    expect(sharedExpectation_({ email: 'a@x.com', sharedSeen: 0 }, { 'a@x.com': 3 })).toBe(3);
+  });
+
+  it('is the larger of the two when they disagree', () => {
+    expect(sharedExpectation_({ email: 'a@x.com', sharedSeen: 4 }, { 'a@x.com': 3 })).toBe(4);
+    expect(sharedExpectation_({ email: 'a@x.com', sharedSeen: 1 }, { 'a@x.com': 3 })).toBe(3);
+  });
+
+  it('is zero for a user who has never had one', () => {
+    expect(sharedExpectation_({ email: 'joe@x.com', sharedSeen: 0 }, {})).toBe(0);
+  });
+
+  it('tolerates a missing baseline argument', () => {
+    expect(sharedExpectation_({ email: 'a@x.com', sharedSeen: 2 })).toBe(2);
+  });
+
+  // The property that actually matters: whatever the Sheet prints as the
+  // denominator is the same number the warning judged against.
+  it('agrees with the denominator sharedRegressions_ reports', () => {
+    const baseline = { 'a@x.com': 3 };
+    const record = { email: 'a@x.com', sharedWritten: 0, sharedSeen: 0, denied: 0 };
+    const [reported] = sharedRegressions_([record], baseline);
+    expect(reported.expected).toBe(sharedExpectation_(record, baseline));
+    expect(reported.expected).toBe(3);
+  });
+});
+
+// A corrupt baseline must not be overwritten. Returning {} and then writing the
+// new one would discard every high-water mark; if identities were already
+// missing, their expectations would be erased permanently and the run after
+// next would go quiet and look healthy. Failing to READ costs one run of
+// detection. Failing to PRESERVE costs it forever. Codex, 2026-08-23.
+describe('readSharedBaseline_', () => {
+  it('reads a valid object and marks it usable', () => {
+    const { readSharedBaseline_ } = loadAppsScript({
+      SHARED_BASELINE: '{"dame@dragoncandy.com":3}',
+    });
+    expect(readSharedBaseline_()).toEqual({
+      values: { 'dame@dragoncandy.com': 3 },
+      usable: true,
+    });
+  });
+
+  it('treats an unset property as an empty but usable baseline', () => {
+    const { readSharedBaseline_ } = loadAppsScript();
+    expect(readSharedBaseline_()).toEqual({ values: {}, usable: true });
+  });
+
+  it('marks malformed JSON UNUSABLE so the caller will not overwrite it', () => {
+    const { readSharedBaseline_ } = loadAppsScript({ SHARED_BASELINE: '{not json' });
+    const result = readSharedBaseline_();
+    expect(result.values).toEqual({});
+    expect(
+      result.usable,
+      'usable must be false, or installAllSignatures overwrites the only copy of the high-water marks',
+    ).toBe(false);
+  });
+
+  it('rejects valid JSON that is not an object', () => {
+    for (const raw of ['[1,2,3]', '"three"', '42', 'null']) {
+      const { readSharedBaseline_ } = loadAppsScript({ SHARED_BASELINE: raw });
+      expect(readSharedBaseline_().usable, `${raw} must not be accepted as a baseline`).toBe(false);
+    }
+  });
+});
+
+// counts.denied includes ANY non-primary sendAs. A user can hold a non-primary
+// address that is not a company one, so classifying the whole regression off
+// that number would announce "REFUSED FOR LACK OF SCOPE" about shared
+// signatures that were in fact deleted. Codex, 2026-08-23.
+describe('shared-only denial classification', () => {
+  const { sharedRegressions_ } = loadAppsScript();
+
+  it('reports denied 0 when the shared identities were removed, not refused', () => {
+    const [r] = sharedRegressions_(
+      // denied here is already the SHARED-only count that installForUser_ now
+      // returns; an unrelated non-primary 403 does not reach this field.
+      [{ email: 'dame@dragoncandy.com', sharedWritten: 0, sharedSeen: 0, denied: 0 }],
+      { 'dame@dragoncandy.com': 3 },
+    );
+    expect(r.expected).toBe(3);
+    expect(
+      r.denied,
+      'a removal must not be classified as a scope refusal, or the operator is sent to the wrong fix',
+    ).toBe(0);
+  });
+
+  it('reports the denial when the shared identities really were refused', () => {
+    const [r] = sharedRegressions_(
+      [{ email: 'dame@dragoncandy.com', sharedWritten: 0, sharedSeen: 3, denied: 3 }],
+      {},
+    );
+    expect(r.denied).toBe(3);
+  });
+});
+
+// A user can be degraded by BOTH causes at once — one identity 403s while
+// another was deleted. Reporting only the scope would have an operator grant a
+// domain-wide permission, watch the count improve, and stop looking while
+// signatures were still missing. Codex, 2026-08-23.
+describe('sharedRegressions_ cause classification', () => {
+  const { sharedRegressions_ } = loadAppsScript();
+  const one = (record, baseline) => sharedRegressions_([record], baseline || {})[0];
+
+  it("calls it 'scope' when denials account for every missing signature", () => {
+    const r = one({ email: 'a@x.com', sharedWritten: 0, sharedSeen: 3, denied: 3 });
+    expect(r.cause).toBe('scope');
+    expect(r.unexplained).toBe(0);
+  });
+
+  it("calls it 'other' when nothing was denied", () => {
+    const r = one({ email: 'a@x.com', sharedWritten: 0, sharedSeen: 0, denied: 0 }, { 'a@x.com': 3 });
+    expect(r.cause).toBe('other');
+    expect(r.unexplained).toBe(3);
+  });
+
+  it("calls it 'mixed' when denials explain only part of the gap", () => {
+    // 3 expected, 0 written, 2 refused for scope — the third is something else.
+    const r = one({ email: 'a@x.com', sharedWritten: 0, sharedSeen: 2, denied: 2 }, { 'a@x.com': 3 });
+    expect(r.cause).toBe('mixed');
+    expect(
+      r.unexplained,
+      'the scope explains 2 of the 3; the remaining 1 needs a different fix',
+    ).toBe(1);
+  });
+
+  it('still counts a partial write correctly', () => {
+    // 4 expected, 1 written, 3 refused — scope explains all of the rest.
+    const r = one({ email: 'a@x.com', sharedWritten: 1, sharedSeen: 4, denied: 3 });
+    expect(r.cause).toBe('scope');
+    expect(r.unexplained).toBe(0);
+  });
+
+  it('never reports a negative unexplained count', () => {
+    // denied larger than the gap (an identity was denied AND later written on
+    // a retry, say) must not produce a nonsense negative.
+    const r = one({ email: 'a@x.com', sharedWritten: 2, sharedSeen: 3, denied: 5 });
+    expect(r.unexplained).toBe(0);
+    expect(r.cause).toBe('scope');
   });
 });

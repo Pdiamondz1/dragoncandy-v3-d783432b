@@ -32,6 +32,56 @@ re-brightened the library, dropping the pink and mint accents to 1.88:1 / 1.90:1
 Two of my own predictions corrected in the runbook: CRF moved only −31% (cutting runtime did more),
 and `du -sh` over-states this directory by 5 MB because it counts allocated blocks.
 
+## [2026-08-23] ingest | Seven scoping errors in one warning, and not one wrong calculation
+
+Ingested `raw/sessions/2026-08-23-per-user-shared-signature-warning.md`.
+**Updated** [[Workspace Email Signatures]] — the "regression warning was scoped to the wrong
+thing" section, plus Known issues.
+
+Closing the latent bug this page recorded hours earlier took five Codex rounds and seven
+defects, six of them introduced by the fixes themselves. Worth the page space because of what
+they had in common: **every one was a question of what a condition was computed over, and not
+one was a wrong calculation.**
+
+The sharpest is now stated as a rule: *an expectation recomputed from current state is blind to
+exactly the change it exists to catch.* Deriving "how many should this user have" from the
+identities present right now means a deletion drops numerator and denominator together and reads
+as healthy. It is fixed with a persisted high-water mark that never decreases on its own, since
+the drop is the signal.
+
+Also recorded: **when two code paths must agree, test the agreement** — the Sheet and the warning
+each computed "expected" correctly and differently, and only a test comparing them catches that;
+and **prefer the failure that loses less**, which decided two designs here (refuse to overwrite
+an unreadable baseline; swallow a baseline-write error so the run log survives).
+
+And the methodological one: **a test that has never failed has not been shown to test anything.**
+Three mutations were run to prove the new tests bite. Every buggy version of this function passed
+the whole suite as it stood when it was written.
+
+## [2026-08-23] ingest | It works — and the run that proves it is the middle one, not the last
+
+Ingested `raw/sessions/2026-08-23-shared-signatures-live.md`.
+**Updated** [[Workspace Email Signatures]] and its `index.md` entry. Three days of successive
+corrections closed: `clasp push` deployed #456, the founder approved `gmail.settings.sharing`,
+the property was set, and `dame@`'s run logged **`ok / 4 identities / 3 shared`**.
+
+**The page now argues for the two-run sequence rather than just recording it.** Push → confirm
+`PARTIAL` with a non-zero denied count → set the property → run again. The intermediate
+`PARTIAL` is the only observation separating *the scope fixed it* from *the scope masked a loop
+that was still broken*; a lone success at the end proves strictly less. Same family as the
+original acceptance signal on this page — writing into mailboxes the script owner cannot
+otherwise touch, rather than trusting `4 × ok`.
+
+**Two additions to Known issues.** `0 shared` is now a *fault* for `dame@` and *correct* for
+everyone else, so the expected report is per-user and the README carries the matrix. And
+**merged is not deployed**: #456 was right in the repo for a day while prod ran the broken code,
+because `clasp push` needed a re-auth and nothing detects that gap.
+
+**The page's own status paragraph has now been wrong twice in three days** — "outstanding" when
+the admin work was done, then "pending deploy and property" when both had landed. It is dated,
+and says in-line that a present-tense status line on a RAG-fed page should be distrusted past
+its date. Recording the mechanism rather than just fixing the instance.
+
 ## [2026-08-22] ingest | The remedy the page prescribed was also wrong, and following it broke production
 
 Ingested `raw/sessions/2026-08-22-sendas-scope-403-and-partial-status.md`.
