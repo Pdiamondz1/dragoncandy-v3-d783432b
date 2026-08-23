@@ -37,11 +37,28 @@ export function deriveProfileBasics(ctx: ReadinessContext): RequirementState {
   return nonEmpty(ctx.displayName) && nonEmpty(ctx.imageUrl) ? MET : UNMET;
 }
 
+/**
+ * `phone_verified` moved to `recommended` this slice (spec §6) — Task 5 gave it a
+ * real writer for the first time, and gating pre-existing accounts on a signal
+ * nobody could satisfy until today would be a permanent false failure. Recommended
+ * means dismissible, so dismissal is checked first, matching every other
+ * recommended derivation in this file.
+ */
 export function derivePhoneVerified(ctx: ReadinessContext): RequirementState {
+  if (dismissed(ctx, 'phone_verified')) return MET;
   if (ctx.phoneVerifiedAt === undefined) return UNKNOWN;
   return ctx.phoneVerifiedAt ? MET : UNMET;
 }
 
+/**
+ * Business/brand address — per-location, on org_units. Keys off
+ * `address_verified_at` alone (not "has an address and coordinates"): a
+ * client can write `address`/`lat`/`lng` directly, but only the server
+ * (verify-address, after a successful geocode) can set the stamp, and a DB
+ * trigger nulls the stamp the instant the underlying address changes. So the
+ * stamp — not the presence of text or coordinates — is the only fact that
+ * means "this address was actually confirmed."
+ */
 export function deriveAddress(ctx: ReadinessContext): RequirementState {
   if (ctx.orgUnits === undefined) return UNKNOWN;
   const primary = ctx.orgUnits.find((u) => u.isPrimary) ?? ctx.orgUnits[0];
@@ -49,8 +66,78 @@ export function deriveAddress(ctx: ReadinessContext): RequirementState {
   // coverage for older accounts is assumed rather than proven — so this is
   // "we cannot tell", not "they have no address".
   if (!primary) return UNKNOWN;
-  const complete = nonEmpty(primary.address) && primary.lat !== null && primary.lng !== null;
-  return complete ? MET : UNMET;
+  return primary.addressVerifiedAt ? MET : UNMET;
+}
+
+/**
+ * Creator's own address — a single account-level stamp on creator_profiles,
+ * unlike business/brand where an org can have several locations. Recommended
+ * tier, so dismissal is checked first (same reasoning as the other
+ * recommended derivations above).
+ */
+export function deriveCreatorAddress(ctx: ReadinessContext): RequirementState {
+  if (dismissed(ctx, 'address')) return MET;
+  if (ctx.addressVerifiedAt === undefined) return UNKNOWN;
+  return ctx.addressVerifiedAt ? MET : UNMET;
+}
+
+/**
+ * Stripe's identity/KYC signal, mirrored (never a stored tax ID or number).
+ * `ctx.identity === undefined` means we have not heard from Stripe at all —
+ * `unknown`. Once Stripe HAS reported, `verifiedAt: null` is a genuine
+ * `unmet`, not an absence: NULL from Stripe is a real answer. `required`
+ * tier for every role, so there is no dismissal check here.
+ */
+export function deriveIdentityVerified(ctx: ReadinessContext): RequirementState {
+  if (ctx.identity === undefined) return UNKNOWN;
+  const { verifiedAt, requirementsDue, disabledReason } = ctx.identity;
+  // Revocation outranks the stamp, and the order of these checks is the whole point.
+  // `stripe-webhook` deliberately never clears `identity_verified_at` once set (it
+  // records when verification was first proven), so if `verifiedAt` were checked first
+  // an account Stripe has since DISABLED — `rejected.fraud`, say — would render
+  // "identity verified" while we mirror the rejection into the column right next to it.
+  // Fraud prevention is the stated reason this whole slice exists, so a live
+  // `disabled_reason` or an outstanding requirement wins over a historical stamp.
+  if (disabledReason) return { status: 'unmet', detail: disabledReason };
+  const identityDue = identityRequirements(requirementsDue);
+  if (identityDue.length > 0) {
+    return { status: 'unmet', detail: `Stripe needs: ${identityDue.join(', ')}` };
+  }
+  if (verifiedAt) return MET;
+  return UNMET;
+}
+
+/**
+ * Stripe requirement keys that are NOT about identity.
+ *
+ * `stripe_requirements_due` mirrors every `currently_due`/`past_due` field Stripe reports,
+ * which includes payment-setup items — a missing bank account (`external_account`) or an
+ * unaccepted ToS. Feeding those into the identity derivation labelled a banking task
+ * "Verify your identity", duplicated `deriveStripe` (which already covers payment setup),
+ * and — because identity is a `required` tier item — would have blocked actions for a
+ * reason that has nothing to do with identity. Found by the Codex second review.
+ *
+ * A DENYLIST, deliberately, not an allowlist of known identity keys. The two fail in
+ * opposite directions when Stripe introduces a key we have never seen:
+ *   - allowlist  -> the new key is ignored -> we render "identity verified" while identity
+ *                   work is genuinely outstanding. A false positive on a fraud signal.
+ *   - denylist   -> the new key counts as identity -> we over-report unmet. Annoying, and
+ *                   visible, and safe.
+ * This slice exists for fraud prevention, so an unknown key must never resolve toward
+ * "verified". Add to this list only keys that are demonstrably about payments or account
+ * settings rather than about who someone is.
+ */
+const NON_IDENTITY_REQUIREMENT_PREFIXES = [
+  'external_account',
+  'tos_acceptance',
+  'business_profile',
+  'settings',
+] as const;
+
+export function identityRequirements(due: readonly string[]): string[] {
+  return due.filter(
+    (key) => !NON_IDENTITY_REQUIREMENT_PREFIXES.some((p) => key === p || key.startsWith(`${p}.`)),
+  );
 }
 
 export function deriveStripe(ctx: ReadinessContext): RequirementState {

@@ -3,6 +3,7 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { flushPendingBalance } from "../_shared/flush-pending-balance.ts";
+import { STRIPE_IDENTITY_RESET } from "../_shared/stripe-identity-reset.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -100,15 +101,20 @@ serve(async (req) => {
     } catch (retrieveErr: any) {
       if (retrieveErr?.statusCode === 404 || retrieveErr?.code === 'account_invalid') {
         logStep("Stripe account no longer exists, clearing stale reference", { stripeAccountId });
+        // Clear the Stripe-derived identity signals alongside the account reference. This
+        // is the AUTOMATIC detach path; the manual one (disconnect-stripe-account) was
+        // fixed first and this one was missed, so a business whose Stripe account had been
+        // deleted kept rendering as identity-verified. See _shared/stripe-identity-reset.ts
+        // for why the eraser has to exist at every detach path, not just the obvious one.
         await supabaseClient
           .from('business_profiles')
-          .update({ stripe_account_id: null, stripe_onboarding_complete: false })
+          .update({ stripe_account_id: null, stripe_onboarding_complete: false, ...STRIPE_IDENTITY_RESET })
           .eq('user_id', user.id)
           .eq('account_type', 'restaurant');
         if (org_unit_id) {
           await supabaseClient
             .from('org_units')
-            .update({ stripe_account_id: null, stripe_onboarding_complete: false })
+            .update({ stripe_account_id: null, stripe_onboarding_complete: false, ...STRIPE_IDENTITY_RESET })
             .eq('id', org_unit_id);
         }
         return new Response(JSON.stringify({

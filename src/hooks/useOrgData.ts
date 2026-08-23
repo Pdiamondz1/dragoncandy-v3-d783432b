@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tansta
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { requestBusinessAddressVerification } from '@/lib/verifyAddress';
 import type { Organization, OrgUnit, OrgMember } from '@/types/org';
 
 // ── Query key constants ──────────────────────────────────────────────────────
@@ -104,7 +105,7 @@ export function useOrgUnits(orgId?: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('org_units')
-        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url')
+        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url, address_verified_at')
         .eq('org_id', orgId!)
         .is('deleted_at', null)
         .order('is_primary', { ascending: false })
@@ -237,8 +238,15 @@ export function useCreateOrgUnit(orgId?: string | null) {
         .single();
 
       if (error) throw error;
-      return data as unknown as OrgUnit;
+      const unit = data as unknown as OrgUnit;
 
+      // Best-effort, fire-and-forget: never block or fail the save on a geocode
+      // outcome. See src/lib/verifyAddress.ts.
+      if (payload.address) {
+        void requestBusinessAddressVerification({ orgUnitId: unit.id, address: payload.address });
+      }
+
+      return unit;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: KEYS.orgUnits(orgId ?? undefined) });
@@ -263,6 +271,42 @@ export function useUpdateOrgUnit() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: UpdateOrgUnitInput) => {
+      // Read the stored address BEFORE the write, so we can tell afterwards whether THIS
+      // call actually changed it. Presence in the payload is not change: AddEditUnitModal
+      // always sends the current `address`, so a rename or a primary-flag toggle arrives
+      // with it too. Re-verifying on those is not merely wasted spend — verify-address
+      // writes `address_verified_at: null` when a geocode comes back unresolved, so one
+      // transient Google blip during an unrelated edit would silently REVOKE a still-true
+      // verification. That is the "a stamp must not outlive the fact" rule running
+      // backwards: the fact is unchanged and the stamp is destroyed anyway.
+      // Mirrors the pre-read guard useCreatorProfileSubmit.ts already does.
+      let previousAddress: string | null = null;
+      let previousAddressKnown = false;
+      let previouslyVerified = false;
+      if (updates.address !== undefined) {
+        const { data: existing, error: existingError } = await supabase
+          .from('org_units')
+          .select('address, address_verified_at')
+          .eq('id', id)
+          .maybeSingle();
+        if (existingError) {
+          // We do NOT know the prior value, so we cannot tell whether the address changed.
+          // Do not re-verify speculatively. An earlier version of this comment argued that
+          // re-verifying "errs toward the conservative direction, since a redundant geocode
+          // only costs a request" — that was wrong, and Codex caught it. The verify path is
+          // DESTRUCTIVE: an unresolved geocode writes address_verified_at/lat/lng = null.
+          // So a failed pre-read plus the modal's routinely-resubmitted unchanged address
+          // would revoke a still-valid stamp during a plain rename. Skipping costs a real
+          // address change going unverified until the next save; proceeding costs a true
+          // fact being erased. Skip.
+          console.error('Error reading existing org_unit address before save:', existingError);
+        } else {
+          previousAddress = existing?.address ?? null;
+          previousAddressKnown = true;
+          previouslyVerified = existing?.address_verified_at != null;
+        }
+      }
+
       const { data, error } = await supabase
         .from('org_units')
         .update({ ...updates, updated_at: new Date().toISOString() })
@@ -271,8 +315,32 @@ export function useUpdateOrgUnit() {
         .single();
 
       if (error) throw error;
-      return data as unknown as OrgUnit;
+      const unit = data as unknown as OrgUnit;
 
+      // Fire only when the address genuinely CHANGED, comparing against the value read
+      // above rather than merely checking that one was submitted. Compared raw (not
+      // trimmed) because that is how both values are stored — normalising one side of an
+      // equality is what made the server-side predicate wrong in the first place.
+      // Best-effort, fire-and-forget: see src/lib/verifyAddress.ts.
+      const addressChanged =
+        previousAddressKnown && (previousAddress ?? '') !== (updates.address ?? '');
+      // ALSO fire when the location has never been verified, even if the address is
+      // unchanged. Without this there is no way for an existing account to satisfy the
+      // `address` requirement, which is `required` tier: the column was added with no
+      // backfill, so every pre-existing location starts at NULL, and the change-guard above
+      // means re-saving the same address does nothing. Codex found that the previous
+      // commit's guard — correct in itself — had removed the only escape hatch.
+      //
+      // Safe precisely BECAUSE there is no stamp: the destructive case the guard exists to
+      // prevent is an unresolved geocode nulling a still-true stamp, and a row with no
+      // stamp has nothing to lose. So this re-opens the path for unverified rows without
+      // re-opening the revocation risk for verified ones.
+      const neverVerified = previousAddressKnown && !previouslyVerified;
+      if ((addressChanged || neverVerified) && updates.address) {
+        void requestBusinessAddressVerification({ orgUnitId: unit.id, address: updates.address });
+      }
+
+      return unit;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: KEYS.orgUnits(data.org_id) });

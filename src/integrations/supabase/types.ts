@@ -718,6 +718,7 @@ export type Database = {
           facebook_url: string | null
           founded_year: number | null
           id: string
+          identity_verified_at: string | null
           industry: Database["public"]["Enums"]["industry_type"] | null
           instagram_url: string | null
           is_completed: boolean | null
@@ -734,7 +735,10 @@ export type Database = {
           sample_content_urls: string[] | null
           sponsorship_budget: number | null
           stripe_account_id: string | null
+          stripe_disabled_reason: string | null
           stripe_onboarding_complete: boolean | null
+          stripe_requirements_due: string[] | null
+          tax_id_provided: boolean | null
           tiktok_url: string | null
           timezone: string | null
           total_reviews: number | null
@@ -763,6 +767,7 @@ export type Database = {
           facebook_url?: string | null
           founded_year?: number | null
           id?: string
+          identity_verified_at?: string | null
           industry?: Database["public"]["Enums"]["industry_type"] | null
           instagram_url?: string | null
           is_completed?: boolean | null
@@ -779,7 +784,10 @@ export type Database = {
           sample_content_urls?: string[] | null
           sponsorship_budget?: number | null
           stripe_account_id?: string | null
+          stripe_disabled_reason?: string | null
           stripe_onboarding_complete?: boolean | null
+          stripe_requirements_due?: string[] | null
+          tax_id_provided?: boolean | null
           tiktok_url?: string | null
           timezone?: string | null
           total_reviews?: number | null
@@ -808,6 +816,7 @@ export type Database = {
           facebook_url?: string | null
           founded_year?: number | null
           id?: string
+          identity_verified_at?: string | null
           industry?: Database["public"]["Enums"]["industry_type"] | null
           instagram_url?: string | null
           is_completed?: boolean | null
@@ -824,7 +833,10 @@ export type Database = {
           sample_content_urls?: string[] | null
           sponsorship_budget?: number | null
           stripe_account_id?: string | null
+          stripe_disabled_reason?: string | null
           stripe_onboarding_complete?: boolean | null
+          stripe_requirements_due?: string[] | null
+          tax_id_provided?: boolean | null
           tiktok_url?: string | null
           timezone?: string | null
           total_reviews?: number | null
@@ -2268,6 +2280,7 @@ export type Database = {
       }
       creator_profiles: {
         Row: {
+          address_verified_at: string | null
           allow_portfolio_in_feed: boolean
           availability: string | null
           avatar_url: string | null
@@ -2282,10 +2295,13 @@ export type Database = {
           disconnected_stripe_account_id: string | null
           facebook_url: string | null
           id: string
+          identity_verified_at: string | null
           instagram_url: string | null
           is_completed: boolean | null
           languages_spoken: string[] | null
+          lat: number | null
           linkedin_url: string | null
+          lng: number | null
           location: string | null
           max_projects_per_month: number | null
           min_project_budget: number | null
@@ -2299,7 +2315,10 @@ export type Database = {
           response_time: string | null
           skills: Database["public"]["Enums"]["creator_skill"][] | null
           stripe_account_id: string | null
+          stripe_disabled_reason: string | null
           stripe_onboarding_complete: boolean | null
+          stripe_requirements_due: string[] | null
+          tax_id_provided: boolean | null
           tiktok_url: string | null
           timezone: string | null
           total_reviews: number | null
@@ -2311,6 +2330,7 @@ export type Database = {
           youtube_url: string | null
         }
         Insert: {
+          address_verified_at?: string | null
           allow_portfolio_in_feed?: boolean
           availability?: string | null
           avatar_url?: string | null
@@ -2325,10 +2345,13 @@ export type Database = {
           disconnected_stripe_account_id?: string | null
           facebook_url?: string | null
           id?: string
+          identity_verified_at?: string | null
           instagram_url?: string | null
           is_completed?: boolean | null
           languages_spoken?: string[] | null
+          lat?: number | null
           linkedin_url?: string | null
+          lng?: number | null
           location?: string | null
           max_projects_per_month?: number | null
           min_project_budget?: number | null
@@ -2342,7 +2365,10 @@ export type Database = {
           response_time?: string | null
           skills?: Database["public"]["Enums"]["creator_skill"][] | null
           stripe_account_id?: string | null
+          stripe_disabled_reason?: string | null
           stripe_onboarding_complete?: boolean | null
+          stripe_requirements_due?: string[] | null
+          tax_id_provided?: boolean | null
           tiktok_url?: string | null
           timezone?: string | null
           total_reviews?: number | null
@@ -2354,6 +2380,7 @@ export type Database = {
           youtube_url?: string | null
         }
         Update: {
+          address_verified_at?: string | null
           allow_portfolio_in_feed?: boolean
           availability?: string | null
           avatar_url?: string | null
@@ -2368,10 +2395,13 @@ export type Database = {
           disconnected_stripe_account_id?: string | null
           facebook_url?: string | null
           id?: string
+          identity_verified_at?: string | null
           instagram_url?: string | null
           is_completed?: boolean | null
           languages_spoken?: string[] | null
+          lat?: number | null
           linkedin_url?: string | null
+          lng?: number | null
           location?: string | null
           max_projects_per_month?: number | null
           min_project_budget?: number | null
@@ -2385,7 +2415,10 @@ export type Database = {
           response_time?: string | null
           skills?: Database["public"]["Enums"]["creator_skill"][] | null
           stripe_account_id?: string | null
+          stripe_disabled_reason?: string | null
           stripe_onboarding_complete?: boolean | null
+          stripe_requirements_due?: string[] | null
+          tax_id_provided?: boolean | null
           tiktok_url?: string | null
           timezone?: string | null
           total_reviews?: number | null
@@ -4838,6 +4871,7 @@ export type Database = {
       org_units: {
         Row: {
           address: string | null
+          address_verified_at: string | null
           brand_category: string | null
           created_at: string
           deleted_at: string | null
@@ -4845,6 +4879,7 @@ export type Database = {
           disconnected_stripe_account_id: string | null
           facebook_url: string | null
           id: string
+          identity_verified_at: string | null
           instagram_url: string | null
           is_primary: boolean
           lat: number | null
@@ -4858,7 +4893,10 @@ export type Database = {
           sample_content_urls: Json | null
           show_parent_brand: boolean | null
           stripe_account_id: string | null
+          stripe_disabled_reason: string | null
           stripe_onboarding_complete: boolean
+          stripe_requirements_due: string[] | null
+          tax_id_provided: boolean | null
           tiktok_url: string | null
           unit_type: string
           updated_at: string
@@ -4868,6 +4906,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          address_verified_at?: string | null
           brand_category?: string | null
           created_at?: string
           deleted_at?: string | null
@@ -4875,6 +4914,7 @@ export type Database = {
           disconnected_stripe_account_id?: string | null
           facebook_url?: string | null
           id?: string
+          identity_verified_at?: string | null
           instagram_url?: string | null
           is_primary?: boolean
           lat?: number | null
@@ -4888,7 +4928,10 @@ export type Database = {
           sample_content_urls?: Json | null
           show_parent_brand?: boolean | null
           stripe_account_id?: string | null
+          stripe_disabled_reason?: string | null
           stripe_onboarding_complete?: boolean
+          stripe_requirements_due?: string[] | null
+          tax_id_provided?: boolean | null
           tiktok_url?: string | null
           unit_type: string
           updated_at?: string
@@ -4898,6 +4941,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          address_verified_at?: string | null
           brand_category?: string | null
           created_at?: string
           deleted_at?: string | null
@@ -4905,6 +4949,7 @@ export type Database = {
           disconnected_stripe_account_id?: string | null
           facebook_url?: string | null
           id?: string
+          identity_verified_at?: string | null
           instagram_url?: string | null
           is_primary?: boolean
           lat?: number | null
@@ -4918,7 +4963,10 @@ export type Database = {
           sample_content_urls?: Json | null
           show_parent_brand?: boolean | null
           stripe_account_id?: string | null
+          stripe_disabled_reason?: string | null
           stripe_onboarding_complete?: boolean
+          stripe_requirements_due?: string[] | null
+          tax_id_provided?: boolean | null
           tiktok_url?: string | null
           unit_type?: string
           updated_at?: string
