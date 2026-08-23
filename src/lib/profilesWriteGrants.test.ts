@@ -110,3 +110,73 @@ describe('profiles client write grants cover every client write', () => {
     expect(ungranted.map(([col]) => col)).toContain('onboarding_completed_at');
   });
 });
+
+/**
+ * Columns read from `profiles` in src/, with the file that reads them.
+ *
+ * The read lockdown (20260824140000) revokes table-wide SELECT and grants back an
+ * enumerated list, so this has exactly the same failure mode as the write grants above —
+ * and it has already produced one: `useProfileNames.ts` selected `first_name, last_name,
+ * username`, three columns that do not exist at all, and silently returned an empty map
+ * because it discarded `error`. A SELECT that is not granted fails the same silent way.
+ */
+function selectedColumns(): Map<string, string> {
+  const found = new Map<string, string>();
+  const chain = /from\(\s*['"]profiles['"]\s*\)[\s\S]{0,160}?\.select\(\s*['"]([^'"]*)['"]/g;
+  for (const file of walk(SRC)) {
+    const text = readFileSync(file, 'utf8');
+    for (const m of text.matchAll(chain)) {
+      for (const raw of m[1].split(',')) {
+        // Drop PostgREST embeds/aliases (`org:organizations(name)`, `count`) — only plain
+        // column names are subject to column-level grants.
+        const col = raw.trim();
+        if (!col || col.includes('(') || col.includes(':') || col === '*') continue;
+        found.set(col, file.replace(process.cwd() + '/', ''));
+      }
+    }
+  }
+  return found;
+}
+
+/** Columns granted SELECT to a role, unioned across all migrations. */
+function grantedSelect(role: 'authenticated' | 'anon'): Set<string> {
+  const granted = new Set<string>();
+  const re = new RegExp(
+    `grant\\s+select\\s*\\(([^)]*)\\)\\s*on\\s+public\\.profiles\\s+to\\s+${role}`,
+    'gis',
+  );
+  for (const file of readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql'))) {
+    const sql = readFileSync(join(MIGRATIONS, file), 'utf8');
+    for (const m of sql.matchAll(re)) {
+      for (const col of m[1].split(',')) {
+        const name = col.trim();
+        if (name) granted.add(name);
+      }
+    }
+  }
+  return granted;
+}
+
+describe('profiles client SELECT grants cover every client read', () => {
+  it('grants SELECT on every column src/ selects', () => {
+    const granted = grantedSelect('authenticated');
+    const selected = selectedColumns();
+    expect(selected.size).toBeGreaterThan(5);
+    const ungranted = [...selected].filter(([col]) => !granted.has(col));
+    expect(
+      ungranted.map(([col, file]) => `${col} (read by ${file})`),
+      'columns read by the client but not in any grant select (...) on public.profiles — ' +
+        'note a column that does not EXIST will also land here, which is how ' +
+        'useProfileNames\' first_name/last_name/username was found',
+    ).toEqual([]);
+  });
+
+  it('never grants email or phone to a client role', () => {
+    // The whole point of the read lockdown. If a future grant-back re-adds either, the
+    // messaging-counterparty RLS policy hands it to any conversation participant again.
+    for (const role of ['authenticated', 'anon'] as const) {
+      expect([...grantedSelect(role)]).not.toContain('email');
+      expect([...grantedSelect(role)]).not.toContain('phone');
+    }
+  });
+});
