@@ -143,6 +143,36 @@ report is not evidence that nothing bounced. And the log search by the fixed mes
 `Message-ID` returned **0 results**, safely read only after the identical query returned 1 for a
 known-good id: **when a probe returns zero, prove it could have returned non-zero.**
 
+## [2026-08-23] update | One screen is not the flow: correcting yesterday's hour-old finding
+
+Published the Google Cloud app to **production** and re-minted the connection. **Updated**
+[[YouTube Analytics Connector]], the index entry and `PROJECT_CONTEXT.md` §5.
+
+**A correction to an entry written an hour earlier.** I recorded that "the consent screen itemised
+only the email address" and filed it as observed-but-unexplained. The flow is **two screens**:
+identity (email / Continue), then scopes (*"View your YouTube account"*, *"View YouTube Analytics
+reports for your YouTube content"* / Allow). Screen 2 is skipped when the account already holds
+those scopes, which is exactly what was happening. Only a **full** revoke surfaces it. The
+observation was accurate about what was on screen and wrong to treat one screen as the whole flow
+— **an incomplete observation reported as a complete one is the same failure as a wrong one**.
+
+Screen 2 is worth knowing about for its own sake: both entries read *View*, which is the
+**user-facing** proof the integration cannot post. Everything else we have is internal.
+
+**The operational rule survives with a better justification.** It was "the consent screen is not
+the record of what was granted, because it might not list everything." It is now "…because a flow
+can legitimately skip a screen." Same rule, sounder reason: read the token response's scope array.
+
+**On publishing.** Production stops the 7-day refresh-token expiry *going forward* and does **not**
+lift the 100-user cap — Google's console states the cap covers unapproved sensitive scopes over the
+project lifetime and cannot be reset. Only verification lifts it. The existing token had been
+minted under Testing rules, so it was disconnected and re-minted rather than assumed to inherit the
+new policy; publishing does not retroactively extend an issued token.
+
+**Still no "Google hasn't verified this app" interstitial** in either status. Recorded as
+not-observed rather than absent — 1 user, unapproved scopes, possible propagation delay. Do not
+promise a creator they will not see it.
+
 ## [2026-08-23] update | Google re-asking is better evidence than our own row being gone
 
 Exercised `youtube-disconnect` and then reconnected, closing both gaps the entry below listed.

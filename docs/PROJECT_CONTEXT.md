@@ -371,13 +371,25 @@ holds no Toast credentials. See §6.
   immediately after disconnect the same button dropped into a full account-chooser-and-consent
   flow — Google does not re-ask for a grant it still holds. Re-consent produced a genuinely new
   grant (`connected_at` 17:31:49, scope array in a different order) and the analytics read ran
-  again against the new token. **Two expectations were wrong:** there was **no** "Google hasn't
-  verified this app" interstitial (test users get the ordinary screen; that warning is unobserved
-  and unobservable until publishing status changes), and the consent screen **itemised only the
-  email address** while granting both YouTube scopes anyway — recorded as observed-and-unexplained,
-  not guessed at. The lesson is operational: **the consent screen is not the record of what was
-  granted**; the token response's scope array is, which is why this build reads it back rather than
-  assuming the request succeeded.
+  again against the new token. **PUBLISHED TO PRODUCTION 2026-08-23 18:20 UTC** — publishing
+  status is now *In production* (reversible via "Back to testing"), which stops the 7-day refresh
+  token expiry for tokens issued from here on. It does **not** lift the 100-user cap: Google's own
+  console says the cap applies to *unapproved* sensitive scopes over the project's lifetime and
+  "cannot be reset or changed" — only verification lifts it. The existing token had been minted
+  under Testing rules, so it was **deliberately retired and re-minted** (disconnect + reconnect,
+  fresh grant at 18:26:06) rather than assuming it silently inherited the new policy.
+  **A claim this entry made an hour earlier was wrong and is corrected here:** the consent flow is
+  **two screens**, not one. Screen 1 is identity (email, Continue); **screen 2 itemises the scopes
+  as "View your YouTube account" and "View YouTube Analytics reports for your YouTube content"** —
+  both *View*, which is the user-facing proof this cannot post. Screen 2 is skipped when the
+  account already holds the scopes, which is why it went unseen until a **full** revoke forced it.
+  The earlier note was not wrong about what was on screen; it was wrong to treat one screen as the
+  whole flow. The operational rule survives with a better reason: **the consent screen is not the
+  record of what was granted** — a flow can legitimately skip a screen — so the token response's
+  scope array is the only reliable source, which is why this build reads it back. **Still no
+  "Google hasn't verified this app" interstitial** in Testing or immediately after publishing;
+  recorded as not-observed rather than absent (1 user, unapproved scopes, possible propagation
+  delay), so do not promise a creator they will not see it.
   **Verified rather than assumed, because the migration's own header says not to trust its exit
   code:** table grants are exactly `postgres` + `service_role` (no `anon`, no `authenticated`, no
   `PUBLIC`), RLS enabled with **zero policies**, and the status function is `SECURITY DEFINER`
@@ -415,16 +427,17 @@ holds no Toast credentials. See §6.
   declared `youtube.upload` was **wrong** — all three Data Access tables are empty, so a "drop
   youtube.upload" task had been sitting on the list for something that did not exist; scopes are
   requested at runtime in the authorize URL, while Data Access is the *declared* list Google reviews
-  at verification. **Console state read back 2026-08-23:** publishing status **Testing**, user type
+  at verification. **Console state read back 2026-08-23:** publishing status **In production** (was Testing until 18:20 UTC), user type
   **External**, **1 of the 100 lifetime user cap** used, `dame@dragoncandy.com` present in Test
   users, redirect URI exactly `https://dragoncandy.com/youtube/callback`, and the deployed
   `YOUTUBE_CLIENT_ID` **proven** to be this console client by hashing the client ID off the page
   and matching the secret's SHA-256 digest — identity confirmed without ever reading a secret
   value. **Pending (2026-08-23), none of it code:** declare the two read scopes on Data Access before submitting for verification; register
   preview origins if the flow should work off the apex; and decide about **Publishing status**,
-  because the 100-user cap is counted over the app's *lifetime* and is not resettable. **Expect
-  this first connection to break around 2026-08-30** — refresh tokens die 7 days after consent
-  while the app is in Testing. **A second "Connect YouTube" button now sits beside the first:** the
+  because the 100-user cap is counted over the app's *lifetime* and is not resettable. **The 7-day expiry no longer applies** to the current connection: it
+  was re-minted at 18:26:06 after the app went to production. Tokens issued *before* that flip were
+  Testing-era and would still have died around 2026-08-30 — publishing does not retroactively
+  extend an already-issued token, which is why the reconnect was done rather than assumed away. **A second "Connect YouTube" button now sits beside the first:** the
   red Outstand one publishes, the teal one measures. Both correct, both doing different jobs, and
   nothing on the buttons themselves says which is which. **Expect every connection to
   drop 7 days after consent** — Google expires refresh tokens for External + Testing apps on that
