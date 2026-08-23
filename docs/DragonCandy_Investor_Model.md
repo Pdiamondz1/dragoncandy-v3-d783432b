@@ -17,14 +17,14 @@
 | Starter tier take rate (`takeRate_starter`) | 0.07 | fraction | MEASURED | `supabase/functions/stripe-webhook/index.ts (TIER_TAKE_RATES)` | 2026-08-23 |
 | Growth tier take rate (`takeRate_growth`) | 0.05 | fraction | MEASURED | `supabase/functions/stripe-webhook/index.ts (TIER_TAKE_RATES)` | 2026-08-23 |
 | Pro tier take rate (`takeRate_pro`) | 0.03 | fraction | MEASURED | `supabase/functions/stripe-webhook/index.ts (TIER_TAKE_RATES)` | 2026-08-23 |
-| Monthly operating cost (`burnMonthly`) | 572 | USD/month | MEASURED | `vendor invoices | Lovable 50 + Anthropic 200 + Outstand 249 + Supabase 45 + OpenAI 25` | 2026-08-23 |
+| Monthly operating cost (`burnMonthly`) | 572 | USD/month | MEASURED | `vendor invoices \| Lovable 50 + Anthropic 200 + Outstand 249 + Supabase 45 + OpenAI 25` | 2026-08-23 |
 | Paying customers (`payingCustomers`) | 0 | accounts | MEASURED | `docs/PROJECT_CONTEXT.md (section 4)` | 2026-08-23 |
 | Registered users (`registeredUsers`) | 30 | accounts | MEASURED | `docs/PROJECT_CONTEXT.md (section 4)` | 2026-08-23 |
-| Page components (`pageComponents`) | 95 | files | MEASURED | `find src/pages -name '*.tsx' | wc -l` | 2026-08-23 |
-| React hooks (`hooks`) | 274 | files | MEASURED | `find src/hooks -name '*.ts' -o -name '*.tsx' | wc -l` | 2026-08-23 |
-| Edge functions (`edgeFunctions`) | 104 | functions | MEASURED | `ls -d supabase/functions/*/ | grep -v _shared | wc -l` | 2026-08-23 |
-| TypeScript source files (`sourceFiles`) | 1182 | files | MEASURED | `find src -type f \( -name '*.ts' -o -name '*.tsx' \) | wc -l` | 2026-08-23 |
-| Database migrations (`migrations`) | 402 | files | MEASURED | `ls supabase/migrations/*.sql | wc -l` | 2026-08-23 |
+| Page components (`pageComponents`) | 95 | files | MEASURED | `find src/pages -name '*.tsx' \| wc -l` | 2026-08-23 |
+| React hooks (`hooks`) | 274 | files | MEASURED | `find src/hooks -name '*.ts' -o -name '*.tsx' \| wc -l` | 2026-08-23 |
+| Edge functions (`edgeFunctions`) | 104 | functions | MEASURED | `ls -d supabase/functions/*/ \| grep -v _shared \| wc -l` | 2026-08-23 |
+| TypeScript source files (`sourceFiles`) | 1182 | files | MEASURED | `find src -type f \( -name '*.ts' -o -name '*.tsx' \) \| wc -l` | 2026-08-23 |
+| Database migrations (`migrations`) | 402 | files | MEASURED | `ls supabase/migrations/*.sql \| wc -l` | 2026-08-23 |
 | Passing tests (`tests`) | 2857 | tests | MEASURED | `npx vitest run` | 2026-08-23 |
 | Test files (`testFiles`) | 262 | files | MEASURED | `npx vitest run` | 2026-08-23 |
 | AI spend cap as share of revenue (`aiCostCapPctOfRevenue`) | 0.15 | fraction | MEASURED | `docs/PROJECT_CONTEXT.md (section 8)` | 2026-08-23 |
@@ -70,6 +70,8 @@ either side alone stops the market working.
 | 25 | 100 | 29.2 | 3.2 | yes |
 | 50 | 200 | 58.3 | 3.2 | yes |
 
+"Applicants per campaign" is constant in this table (3.2 at every row) because every row here holds creators at the fixed 4:1 target ratio to restaurants — it depends on that ratio, not on scale. That is not a spreadsheet bug. The section below is where the ratio varies and the number actually moves.
+
 At the target ratio of 4 creators per restaurant:
 
 - 1 new restaurant(s) and 4 new creators per month: liquid in **month 5**.
@@ -86,6 +88,12 @@ restaurant count — more restaurants make the shortage worse, not better:
 ## Scale — what 100 / 1,000 / 10,000 businesses mean
 
 Average campaign value is $338, derived from the app's own per-deliverable price bands.
+
+This table answers a different question from the Three-year trajectory below: it is
+steady-state economics AT a given business count, computed for one month and annualized —
+not a calendar-time projection of when we reach that count. The Year 3 trajectory band
+($7–12M) and the 10,000-business annual figure here (~$33M) are not in tension; they answer
+"what does the business look like at this size" versus "what do we expect by this date."
 
 | Businesses | Creators | Monthly campaign volume | Monthly revenue | Annual revenue | Gross margin |
 |---:|---:|---:|---:|---:|---:|

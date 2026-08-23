@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   budgetTotal,
   requiredRaise,
-  useOfFunds,
+  buildFundsAllocation,
   PRE_SEED_BUDGET,
   USE_OF_FUNDS_SPLIT,
 } from './confidential';
@@ -39,15 +39,15 @@ describe('requiredRaise', () => {
   });
 });
 
-describe('useOfFunds', () => {
+describe('buildFundsAllocation', () => {
   it('splits the raise into buckets that sum back to it exactly', () => {
-    const buckets = useOfFunds(1_200_000, USE_OF_FUNDS_SPLIT);
+    const buckets = buildFundsAllocation(1_200_000, USE_OF_FUNDS_SPLIT);
     const total = buckets.reduce((sum, b) => sum + b.amount, 0);
     expect(total).toBeCloseTo(1_200_000, 6);
   });
 
   it('rejects a split that does not sum to 1', () => {
-    expect(() => useOfFunds(1_000_000, { engineering: 0.5, gtm: 0.2, gna: 0.2 })).toThrow(/sum to 1/);
+    expect(() => buildFundsAllocation(1_000_000, { engineering: 0.5, gtm: 0.2, gna: 0.2 })).toThrow(/sum to 1/);
   });
 });
 

@@ -86,7 +86,12 @@ const BUCKET_LABELS: Record<keyof UseOfFundsSplit, string> = {
   gna: 'Working capital and general costs',
 };
 
-export function useOfFunds(raise: number, split: UseOfFundsSplit): FundsBucket[] {
+// Not named `useOfFunds`: a top-level call to a function whose name starts with `use`
+// trips ESLint's react-hooks/rules-of-hooks (it assumes any `use*` call is a React hook
+// call site). This is a plain function, called from a Node script (scripts/generate-
+// investor-model.ts) and later a deck-slide builder — neither is a React render, so the
+// rule's premise doesn't apply, but its lint would still fire. Do not rename this back.
+export function buildFundsAllocation(raise: number, split: UseOfFundsSplit): FundsBucket[] {
   const total = split.engineering + split.gtm + split.gna;
   if (Math.abs(total - 1) > 1e-9) throw new Error(`Use-of-funds split must sum to 1, got ${total}`);
   return (Object.keys(BUCKET_LABELS) as (keyof UseOfFundsSplit)[]).map((key) => ({

@@ -29,9 +29,7 @@ import {
   PRE_SEED_HORIZON_MONTHS,
   budgetTotal,
   requiredRaise,
-  // Aliased: a top-level call to a function named `use*` trips
-  // react-hooks/rules-of-hooks, which assumes it's a React hook. It's a plain function.
-  useOfFunds as buildFundsAllocation,
+  buildFundsAllocation,
   USE_OF_FUNDS_SPLIT,
 } from '../src/pitch/model/confidential';
 
@@ -51,6 +49,16 @@ const usd = (n: number) => {
   return rounded < 0 ? `-$${Math.abs(rounded).toLocaleString('en-US')}` : `$${rounded.toLocaleString('en-US')}`;
 };
 const pct = (n: number) => `${n.toFixed(1)}%`;
+/**
+ * Escape a raw `|` as `\|` before it goes into a markdown table cell. A `|` inside
+ * backticks inside a table cell is NOT protected by GFM — it still splits the row into
+ * extra columns, which is exactly what six of the assumption rows' `source` strings did
+ * (they contain literal pipes, e.g. shell pipelines and the burn-cost breakdown).
+ * Applied to every string field emitted into a table cell — label, unit, source,
+ * provenance — not just source, so a future label containing a pipe can't reintroduce
+ * this bug.
+ */
+const cell = (s: string) => s.replace(/\|/g, '\\|');
 
 const lines: string[] = [];
 lines.push('# DragonCandy — Investor Model');
@@ -67,7 +75,7 @@ lines.push('| Input | Value | Unit | Provenance | Source | Read |');
 lines.push('|---|---:|---|---|---|---|');
 for (const [key, a] of Object.entries(REGISTER)) {
   const asOf = a.provenance === 'MEASURED' ? a.asOf : '—';
-  lines.push(`| ${a.label} (\`${key}\`) | ${a.value} | ${a.unit} | ${a.provenance} | \`${a.source}\` | ${asOf} |`);
+  lines.push(`| ${cell(a.label)} (\`${key}\`) | ${a.value} | ${cell(a.unit)} | ${cell(a.provenance)} | \`${cell(a.source)}\` | ${asOf} |`);
 }
 lines.push('');
 
@@ -85,6 +93,8 @@ for (const n of [1, 5, 10, 25, 50]) {
   const s = isLiquid(n, n * RATIO);
   lines.push(`| ${n} | ${s.creators} | ${s.openCampaigns.toFixed(1)} | ${s.applicantsPerCampaign.toFixed(1)} | ${s.liquid ? 'yes' : 'no'} |`);
 }
+lines.push('');
+lines.push(`"Applicants per campaign" is constant in this table (${isLiquid(1, RATIO).applicantsPerCampaign.toFixed(1)} at every row) because every row here holds creators at the fixed ${RATIO}:1 target ratio to restaurants — it depends on that ratio, not on scale. That is not a spreadsheet bug. The section below is where the ratio varies and the number actually moves.`);
 lines.push('');
 lines.push(`At the target ratio of ${RATIO} creators per restaurant:`);
 lines.push('');
@@ -105,6 +115,12 @@ lines.push('');
 lines.push('## Scale — what 100 / 1,000 / 10,000 businesses mean');
 lines.push('');
 lines.push(`Average campaign value is ${usd(avgCampaignValue())}, derived from the app's own per-deliverable price bands.`);
+lines.push('');
+lines.push('This table answers a different question from the Three-year trajectory below: it is');
+lines.push('steady-state economics AT a given business count, computed for one month and annualized —');
+lines.push('not a calendar-time projection of when we reach that count. The Year 3 trajectory band');
+lines.push('($7–12M) and the 10,000-business annual figure here (~$33M) are not in tension; they answer');
+lines.push('"what does the business look like at this size" versus "what do we expect by this date."');
 lines.push('');
 lines.push('| Businesses | Creators | Monthly campaign volume | Monthly revenue | Annual revenue | Gross margin |');
 lines.push('|---:|---:|---:|---:|---:|---:|');
@@ -157,7 +173,7 @@ if (confidential) {
   lines.push('|---|---:|---|---:|');
   for (const l of PRE_SEED_BUDGET) {
     const active = Math.min(PRE_SEED_HORIZON_MONTHS, l.endMonth) - Math.max(1, l.startMonth) + 1;
-    lines.push(`| ${l.label} | ${usd(l.monthlyCost)} | ${l.startMonth}–${Math.min(PRE_SEED_HORIZON_MONTHS, l.endMonth)} | ${usd(l.monthlyCost * Math.max(0, active))} |`);
+    lines.push(`| ${cell(l.label)} | ${usd(l.monthlyCost)} | ${l.startMonth}–${Math.min(PRE_SEED_HORIZON_MONTHS, l.endMonth)} | ${usd(l.monthlyCost * Math.max(0, active))} |`);
   }
   lines.push(`| **Total** | | | **${usd(need)}** |`);
   lines.push('');
@@ -166,7 +182,7 @@ if (confidential) {
   lines.push('| Bucket | Share | Amount |');
   lines.push('|---|---:|---:|');
   for (const b of buildFundsAllocation(raise, USE_OF_FUNDS_SPLIT)) {
-    lines.push(`| ${b.label} | ${pct(b.share * 100)} | ${usd(b.amount)} |`);
+    lines.push(`| ${cell(b.label)} | ${pct(b.share * 100)} | ${usd(b.amount)} |`);
   }
   lines.push('');
 }
