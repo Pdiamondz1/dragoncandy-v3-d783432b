@@ -72,11 +72,20 @@ works for this Vite SPA. It runs before routing, so it fires ahead of the
 
 Behaviour, in order:
 
-1. **Not production, or not enabled → pass.** Gate only when
-   `VERCEL_ENV === 'production'` **and** `SITE_GATE_ENABLED === '1'`.
-   Preview deployments are already covered by Vercel's own SSO protection;
-   double-gating them adds nothing and breaks the E2E smoke suite (below).
-   `SITE_GATE_ENABLED` is the kill switch — see Rollback.
+1. **A non-production deployment, or the switch off → pass.** Preview deployments
+   are already covered by Vercel's own SSO protection; double-gating them adds
+   nothing and breaks the E2E smoke suite (below). `SITE_GATE_ENABLED` is the kill
+   switch — see Rollback.
+
+   The environment test is `VERCEL_ENV` being **present and not `production`**,
+   not simply "not `production`". `VERCEL_ENV` is a system environment variable:
+   it exists only while the project's "Automatically expose System Environment
+   Variables" setting is on, and `vercel deploy --prebuilt` does not inject it at
+   all. Reading absence as "not production" would pass every request the moment
+   that value went missing — a silently reopened site with `SITE_GATE_ENABLED`
+   still reading `1` in the dashboard, which is the failure mode this whole design
+   is built to avoid. Absence is therefore treated as production and falls through
+   to the fail-closed path.
 2. **Static allowlist → pass.** `/robots.txt`, `/favicon.ico`. The rule behind
    the list, not just the list itself: a path may only be allowlisted if a real
    file exists for it under `public/`, because `vercel.json` rewrites every
@@ -104,18 +113,27 @@ Behaviour, in order:
 6. **Otherwise → `401` with `WWW-Authenticate: Basic realm="DragonCandy private
    preview"`**, `Cache-Control: private, no-store`.
 
-**Only the `?k=` branch mints a cookie, and it is the only branch that can.** A
-framework-agnostic middleware signals "continue to the origin" by returning
-`undefined`, and there is no documented way to attach a `Set-Cookie` header to
-that. This costs nothing, because a browser caches Basic credentials per origin
-and realm and resends them automatically on every subsequent request — the cookie
-would be redundant. It is needed only on the bypass-link path, where no
-credentials are ever supplied, and that path already returns a real `302` response
-to hang the header on.
+**Only the `?k=` branch mints a cookie, because it is the only branch that needs
+one.** A browser caches Basic credentials per origin and realm and resends them
+automatically on every subsequent request, so a cookie on the Basic-auth pass
+would be redundant. The bypass link supplies no credentials and is followed once,
+so there the cookie is what carries the visitor forward — and that path already
+returns a real `302` to hang the header on.
+
+This is a choice, not a limit. Framework-agnostic middleware signals "continue to
+the origin" by returning `next()` from `@vercel/functions`, and `next({ headers })`
+can set response headers, so a pass could carry a `Set-Cookie` if we wanted one.
+(An earlier revision of this spec asserted the opposite — that a pass structurally
+could not carry one — and that was simply wrong. The behaviour it justified is
+still right; the reason was not.)
 
 A consequence worth stating: because the browser holds the credentials rather than
 a cookie we control, **there is no server-side logout**. Clearing an admitted
-visitor requires changing `SITE_PASSWORD`.
+visitor means changing `SITE_PASSWORD` — and that clears only password-holders. A
+`?k=` recipient holds a cookie signed over an expiry, with no copy of the password
+in it, so a password change leaves them admitted for the rest of the 30 days. Only
+rotating `SITE_GATE_SECRET` invalidates cookies, and it invalidates all of them at
+once.
 
 Every gate response carries `Cache-Control: private, no-store` so the CDN never
 caches a `401` for an authorised visitor or an authorised body for an anonymous
@@ -203,13 +221,28 @@ it is behind the gate and will be wanted again at launch.
 The existing `noindex` prop on `src/components/SEO.tsx:40` is left alone; it is
 per-page and orthogonal.
 
-**This breaks CI and must be fixed in the same change.** `lighthouserc.cjs:23`
-asserts `categories:seo` at `['error', { minScore: 0.95 }]`, and blocking
-crawlers fails Lighthouse's `is-crawlable` audit, taking the category under that
-bar. Set `is-crawlable` to `off` in `assertions` with a comment naming this spec
-and the condition for restoring it (public launch), rather than lowering the
-category threshold — lowering the threshold would also stop catching the real SEO
-regressions the gate was put there for.
+**This breaks CI and must be fixed in the same change.** `lighthouserc.cjs`
+asserts `categories:seo` at `['error', { minScore: 0.95 }]`, and blocking crawlers
+fails Lighthouse's `is-crawlable` audit, taking the category to **0.69** —
+measured on the real build, not estimated.
+
+**It has to be skipped at collect time.** An earlier revision of this spec said to
+set `is-crawlable` to `off` in `assertions`; that is inert. An LHCI category
+assertion reads the category score Lighthouse computed during collection, so
+turning off an assertion on one audit cannot change it — `categories:seo` would
+still read 0.69 and still fail. `skipAudits` drops the audit from the run itself
+and the category renormalises over what remains: 1.00, measured the same way.
+
+The skip is set as `LHCI_COLLECT__SETTINGS__SKIP_AUDITS: is-crawlable` on **both**
+jobs in `.github/workflows/lighthouse-ci.yml`, because an `LHCI_COLLECT__SETTINGS__*`
+env var **replaces the config file's whole `settings` object** — the desktop job
+already sets the preset that way, which silently drops anything the file put
+there. The matching `collect.settings.skipAudits` in `lighthouserc.cjs` is the
+default for a local `lhci` run only; it does not reach CI on its own, so the two
+must be changed together and both must be removed at public launch.
+
+Lowering the category threshold was rejected: it would also stop catching the real
+SEO regressions the gate was put there for.
 
 ### Layer 5 — delete the old gate
 
@@ -247,6 +280,7 @@ existing RLS.
 | `npm run dev` | Vite, does not execute Vercel middleware | Unaffected. The gate cannot be tested locally without `vercel dev` |
 | `capture-lead` / landing lead form | Behind the gate, so effectively dead | Accepted — no public traffic to capture during a private preview |
 | `internal.dragoncandy.com` | Gated like every other production host | Accepted; stakeholders have the password, and `/internal` keeps its own admin authorization |
+| `/promo/:promotionId` QR codes | `PromotionCard.tsx:58` and `PromotionDetailPage.tsx:292` both render a QR code for `${publicOrigin()}/promo/<id>`, and the deleted client-side gate allowlisted `/promo/` by name. Any code already printed or on a restaurant table now sends a member of the public to a browser password prompt | Accepted for the private preview, and recorded in the runbook's Known limits. **Do not allowlist it** — it is an SPA route with no file under `public/`, so allowlisting would serve the JavaScript bundle to anonymous browsers, the same defect closed for `/.well-known/*`. Share as `/promo/<id>?k=<token>` meanwhile |
 | Apple App Store review | Reviewers use the native app, which is ungated | Org enrollment `5HA89RBHQH` is already approved. A re-check of the website would hit the `401` — the static allowlist only covers `robots.txt`/`favicon.ico`, no Apple verification file exists in `public/` today, and the marketing page isn't allowlisted either |
 
 ## Testing
@@ -271,11 +305,22 @@ existing RLS.
 
 ## Rollback
 
-Set `SITE_GATE_ENABLED` to `0` in the Vercel dashboard. Vercel applies an
-environment-variable change to the running production deployment without a
-rebuild, so this is the fastest lever and needs no git operation. **Do not roll
-back by deleting `SITE_PASSWORD`** — the gate fails closed, so that locks
-everyone out rather than opening the site.
+Set `SITE_GATE_ENABLED` to `0` in the Vercel dashboard, **then redeploy**:
+Deployments → ⋯ → **Redeploy**, reusing the existing build (nothing needs
+rebuilding), or `vercel redeploy --prod`. The variable change on its own reaches
+nothing. Vercel's documentation is explicit that *"changes to environment
+variables are not applied to previous deployments, they only apply to new
+deployments"*, and an earlier revision of this spec claimed the opposite — which
+matters more here than anywhere else, because this is the emergency path out of a
+deliberately fail-closed gate. It still needs no git operation.
+
+The same rule read forwards: **all four variables must be set before the
+deployment that first ships `middleware.ts`.** A deployment that goes out ahead of
+them runs with them unset, and an absent `SITE_GATE_ENABLED` means the gate ships
+inert.
+
+**Do not roll back by deleting `SITE_PASSWORD`** — the gate fails closed, so that
+locks everyone out rather than opening the site.
 
 If the middleware itself is broken rather than misconfigured, revert the commit
 that adds `middleware.ts` and redeploy; with no middleware present, Vercel serves

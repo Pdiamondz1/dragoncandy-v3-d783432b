@@ -16,7 +16,7 @@
 - **No `VITE_` prefix on any gate variable.** A `VITE_`-prefixed variable is compiled into the browser bundle and would publish the password.
 - **The gate is production-only.** It runs only when `VERCEL_ENV === 'production'` **and** `SITE_GATE_ENABLED === '1'`. Preview deployments must stay reachable or `.github/workflows/e2e.yml` breaks.
 - **The gate fails closed.** Enabled in production with a missing `SITE_PASSWORD` or `SITE_GATE_SECRET` challenges every request. Never add a fallback that passes traffic when a variable is absent.
-- **Only the `?k=` branch may set a cookie.** Framework-agnostic middleware continues by returning `undefined`, which cannot carry a `Set-Cookie`.
+- **Only the `?k=` branch sets a cookie**, because it is the only branch that needs one: browsers cache Basic credentials per origin and realm and replay them automatically, so a cookie on a Basic pass would be redundant. This is a choice, not a limit — framework-agnostic middleware continues by returning `next()` from `@vercel/functions`, and `next({ headers })` can set response headers.
 - **Never respond to an unauthenticated request with a redirect to a gate page.** A `401` makes the browser re-request the identical URL, preserving the `#access_token` fragment that password-reset links depend on. A redirect eats it.
 - **Every gate response carries `Cache-Control: private, no-store`** so the CDN cannot serve one visitor's answer to another.
 - **ESLint:** `no-console` allows only `console.error` / `console.warn`.
@@ -32,7 +32,8 @@
 | `middleware.ts` (create) | Thin shim. Reads `process.env`, calls `decide`, turns the decision into a `Response`. Deliberately holds no logic worth testing. |
 | `tsconfig.app.json` (modify) | Add `middleware.ts` and `gate` to `include` so `npm run typecheck` covers them. |
 | `public/robots.txt` (modify) | `Disallow: /`. |
-| `lighthouserc.cjs` (modify) | Turn off the `is-crawlable` audit, which `Disallow: /` fails. |
+| `lighthouserc.cjs` (modify) | Skip the `is-crawlable` audit at COLLECT time, since `Disallow: /` fails it. This copy is the local default only. |
+| `.github/workflows/lighthouse-ci.yml` (modify) | The skip that actually reaches CI: `LHCI_COLLECT__SETTINGS__SKIP_AUDITS: is-crawlable` on **both** jobs, because an `LHCI_COLLECT__SETTINGS__*` env var replaces the config file's whole `settings` object. |
 | `src/lib/signupDisabled.ts` (create) | Shared detection + copy for the `signup_disabled` error, so the two signup call sites cannot drift. |
 | `src/lib/signupDisabled.test.ts` (create) | Unit tests for that detection. |
 | `src/components/auth/AuthForm.tsx` (modify) | Show the invite-only message instead of a raw Supabase error. |
@@ -266,10 +267,12 @@ Create `gate/decide.ts`:
  *  - It fails CLOSED. Missing configuration challenges every request instead of
  *    passing traffic. A silently reopened site is not noticed for weeks; a
  *    locked-out one is noticed immediately, and `SITE_GATE_ENABLED` unlocks it.
- *  - Only the `?k=` branch returns a cookie. Framework-agnostic middleware
- *    continues by returning `undefined`, which has no response to carry a
- *    `Set-Cookie`. Basic credentials do not need one — browsers cache them per
- *    origin and realm and resend them automatically.
+ *  - Only the `?k=` branch returns a cookie, because only that branch needs one.
+ *    A browser caches Basic credentials per origin and realm and replays them
+ *    on every subsequent request, so a cookie there would be redundant. The
+ *    bypass link supplies no credentials, so the cookie is what carries the
+ *    visitor forward. (This is not a technical limit: `next({ headers })` from
+ *    `@vercel/functions` can set response headers on a pass. We choose not to.)
  *  - It never asks for a redirect to a gate page. A `401` makes the browser
  *    re-request the SAME url, preserving the `#access_token` fragment that
  *    Supabase password-reset links carry. A redirect would drop it.
@@ -495,6 +498,7 @@ Create `middleware.ts` at the repo root:
  * See docs/superpowers/specs/2026-08-23-site-access-lockdown-design.md
  */
 import process from 'node:process';
+import { next } from '@vercel/functions';
 import { decide } from './gate/decide';
 
 export const config = {
@@ -510,7 +514,7 @@ export const config = {
 
 const NO_STORE = 'private, no-store';
 
-export default async function middleware(request: Request): Promise<Response | undefined> {
+export default async function middleware(request: Request): Promise<Response> {
   const decision = await decide(request, {
     vercelEnv: process.env.VERCEL_ENV,
     enabled: process.env.SITE_GATE_ENABLED,
@@ -519,9 +523,14 @@ export default async function middleware(request: Request): Promise<Response | u
     secret: process.env.SITE_GATE_SECRET,
   });
 
-  // `undefined` means "continue to the origin". It is also the only way to
-  // continue, which is why a pass can never carry a Set-Cookie header.
-  if (decision.kind === 'pass') return undefined;
+  // `next()` is how framework-agnostic middleware says "continue to the origin".
+  // Returning a bare `undefined` is a Next.js convention, not this contract.
+  //
+  // A pass CAN carry headers (`next({ headers })` sets them on the response), so
+  // nothing here stops us minting a cookie on the Basic-auth branch. We don't,
+  // because browsers cache Basic credentials per origin and realm and replay them
+  // automatically: a cookie would be redundant.
+  if (decision.kind === 'pass') return next();
 
   if (decision.kind === 'redirect') {
     return new Response(null, {
@@ -617,23 +626,21 @@ Expected: FAIL on `categories:seo` — the score falls below the `0.95` bar in `
 
 If `lhci` is not installed locally, skip to Step 3 and note that CI will demonstrate it.
 
-- [ ] **Step 3: Turn off the `is-crawlable` audit**
+- [ ] **Step 3: Skip the `is-crawlable` audit at collect time**
 
-In `lighthouserc.cjs`, inside the `assertions` object, add a fifth entry after `'categories:seo'`:
+**Not at assert time.** An earlier revision of this plan said to add `'is-crawlable': 'off'` to the `assertions` object, and that does nothing: an LHCI category assertion reads the category score Lighthouse computed while collecting, so turning off an assertion on one audit cannot move it. `categories:seo` would still read 0.69 and still fail. `skipAudits` drops the audit from the run and the category renormalises over what remains — 1.00. Both numbers measured against `dist/` on 2026-08-23.
 
-```js
-        'categories:seo': ['error', { minScore: 0.95 }],
-        // The site is in private preview behind an edge password, so
-        // public/robots.txt is `Disallow: /` on purpose. That fails Lighthouse's
-        // is-crawlable audit, which would drag categories:seo under the 0.95 bar
-        // above. Turned off here rather than lowering that threshold — lowering
-        // it would also stop catching the real SEO regressions the gate exists
-        // for (it caught a "Learn more" link-text failure in Aug 2026).
-        // Turn this back ON at public launch, in the same change that restores
-        // public/robots.txt. Not before.
-        // docs/superpowers/specs/2026-08-23-site-access-lockdown-design.md
-        'is-crawlable': 'off',
+The skip has to be set as an environment variable on **both** jobs in `.github/workflows/lighthouse-ci.yml`:
+
+```yaml
+          LHCI_COLLECT__SETTINGS__SKIP_AUDITS: is-crawlable
 ```
+
+An `LHCI_COLLECT__SETTINGS__*` env var **replaces** the config file's whole `settings` object, and the desktop job already sets `LHCI_COLLECT__SETTINGS__PRESET`, which silently drops anything `lighthouserc.cjs` put there. Setting it on both jobs means neither depends on the other's shape.
+
+Add the matching default to `collect.settings` in `lighthouserc.cjs` as well, with a comment naming this spec and the condition for removing it (public launch). That copy is for anyone running `lhci` locally; it does not reach CI on its own, so the two must change together.
+
+Lowering the 0.95 category threshold instead was rejected — it would also stop catching the real SEO regressions the gate exists for (it caught a "Learn more" link-text failure in Aug 2026).
 
 - [ ] **Step 4: Verify the gate passes again**
 
@@ -644,17 +651,18 @@ Expected: PASS. If `lhci` is unavailable locally, rely on the `lighthouse-ci.yml
 - [ ] **Step 5: Commit**
 
 ```bash
-git add public/robots.txt lighthouserc.cjs
+git add public/robots.txt lighthouserc.cjs .github/workflows/lighthouse-ci.yml
 git commit -m "Stop inviting crawlers, and keep the Lighthouse SEO gate honest
 
 robots.txt explicitly allowed Googlebot, Bingbot, Twitterbot and
 facebookexternalhit everything, plus a sitemap, on a site that is not ready for
 the public.
 
-Disallow: / fails Lighthouse's is-crawlable audit and takes categories:seo under
-its 0.95 bar, so CI would have gone red on merge. Turned that one audit off
-rather than lowering the threshold: lowering it would also stop catching real SEO
-regressions, which is what the gate is for.
+Disallow: / fails Lighthouse's is-crawlable audit and takes categories:seo to
+0.69, under its 0.95 bar, so CI would have gone red on merge. Skipped that one
+audit at collect time rather than lowering the threshold: lowering it would also
+stop catching real SEO regressions, which is what the gate is for. It has to be
+a collect-time skip — an assertion cannot change a score already computed.
 
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ```
@@ -1025,8 +1033,18 @@ Dashboard → Settings → Environment Variables. **Production scope only.**
 **Never prefix any of these with `VITE_`.** A `VITE_` variable is compiled into
 the browser bundle, which would publish the password.
 
-Vercel applies an environment-variable change to the running production
-deployment without a rebuild, so these take effect within seconds.
+**An environment-variable change does not reach a deployment that is already
+running.** Vercel's own documentation is explicit: *"Changes to environment
+variables are not applied to previous deployments, they only apply to new
+deployments."* So after setting or changing any of these, redeploy — Deployments
+→ ⋯ → **Redeploy**, reusing the existing build; nothing needs rebuilding. From
+the CLI: `vercel redeploy --prod`.
+
+That cuts both ways, so the sequence matters: set all four variables **first**,
+and only then deploy the change that ships `middleware.ts`. A deployment that
+goes out ahead of them runs with them unset, and with `SITE_GATE_ENABLED` absent
+the gate does nothing — the site ships open while the dashboard looks locked
+down.
 
 ## Supabase
 
@@ -1068,8 +1086,11 @@ deploy.** Run every check below after merging, in a private window.
 
 ## Rollback
 
-Set `SITE_GATE_ENABLED` to `0` in the Vercel dashboard. No redeploy, no git
-operation, effective in seconds.
+Set `SITE_GATE_ENABLED` to `0` in the Vercel dashboard, **then redeploy** —
+Deployments → ⋯ → **Redeploy** (the existing build is fine), or
+`vercel redeploy --prod`. The variable change alone changes nothing: Vercel
+applies environment variables to new deployments only, never to one already
+running. No git operation is involved either way.
 
 **Do not roll back by deleting `SITE_PASSWORD`.** The gate fails closed, so a
 missing password challenges every request — that locks everyone out instead of
@@ -1096,8 +1117,11 @@ site exactly as before.
   them via `httpCredentials`; do not commit the password into
   `playwright.config.ts`. CI is unaffected — `e2e.yml` runs against Preview
   deployments, which the gate deliberately skips.
-- **At public launch**, three things revert together: `SITE_GATE_ENABLED=0`,
-  `public/robots.txt`, and the `is-crawlable` audit in `lighthouserc.cjs`.
+- **At public launch**, three things revert together: `SITE_GATE_ENABLED=0` (plus
+  the redeploy that makes it real), `public/robots.txt`, and the `is-crawlable`
+  skip — which lives in two places, the env var on both jobs in
+  `.github/workflows/lighthouse-ci.yml` and the `collect.settings` default in
+  `lighthouserc.cjs`.
 ````
 
 - [ ] **Step 2: Commit the runbook**
@@ -1171,9 +1195,11 @@ anyone would have seen it is production. Now pinned to `runtime: 'nodejs'`.
 
 **One residual risk, recorded not solved.** `decide` is unit-tested, but the
 middleware's *wiring* — whether Vercel honours the matcher, whether the Node.js
-runtime resolves `node:process`, and whether returning `undefined` really
-continues to the origin — is proven only in production, because the gate is
-production-only by design. Task 6's `curl` checks are that proof. Do not treat a
+runtime resolves `node:process`, and whether the pass branch really continues to
+the origin — is proven only in production, because the gate is production-only by
+design. (The pass branch returns `next()` from `@vercel/functions`, which is the
+documented framework-agnostic no-op; a bare `undefined` is a Next.js convention
+and was the shape this plan originally specified.) Task 6's `curl` checks are that proof. Do not treat a
 green preview deploy as evidence about the gate.
 
 **A cheap way to retire that risk early, if wanted.** Temporarily set
