@@ -85,6 +85,8 @@ Do not install a single signature until this prints `image/png`.
    | `SA_CLIENT_EMAIL` | the service account's client email |
    | `SA_PRIVATE_KEY` | `private_key` from the JSON key, newlines as `\n` |
    | `LOG_SHEET_ID` | id of the run-log Sheet in `06 · Brand` |
+   | `ALERT_EMAIL` | comma-separated addresses to email when a run has a finding. **Unset means nobody is told** — the run logs a warning saying so |
+   | `SHARED_BASELINE` | **written by the script, do not hand-edit casually.** JSON high-water mark of shared signatures installed per user, e.g. `{"dame@dragoncandy.com":3}`. It is how a *removed* send-as identity is still detected as missing. Clear a user's entry to accept a deliberate removal, otherwise it warns nightly |
    | `SHARING_SCOPE_ENABLED` | **`true` since 2026-08-23.** Both steps below are done and shared-mailbox signatures install. Setting it `false` stops *future* shared writes — it does **not** remove signatures already installed; see "Turning it back off" |
 
 5. **Build, then set up clasp, then push.**
@@ -158,13 +160,15 @@ entirely on which code is deployed:
 |---|---|---|
 | pre-#456 | n/a (not read) | `ERROR` — one 403 aborts the whole user, so even his personal signature stops refreshing. Observed 8/21 and 8/22. |
 | #456+ | unset / `false` | `PARTIAL`, 3 denied — personal signatures written, shared ones refused cleanly. Observed 8/23. |
-| #456+ | `true` | `ok`, shared signatures installed. **This is the live state as of 2026-08-23** — `ok / 4 identities / 3 shared`. |
+| #456+ | `true` | `ok`, shared signatures installed. **This is the live state as of 2026-08-23** — logged `ok / 4 identities / 3 shared`. |
 
 All three rows were observed in that order, and they are in the log Sheet.
 
 So `0 shared` is only the expected answer for a user with **no** shared
 identities — which is everyone except `dame@`. For him the expected answer is
-now **`4 identities / 3 shared`**, and anything less means something regressed.
+now **`4 identities`** with **`3/3 shared`**, and anything less means something
+regressed. (The shared column changed format on 2026-08-23, from a bare count to
+`written/expected` — rows logged before that read `3 shared`.)
 
 **To make shared signatures install** for anyone else, the address has to
 become a send-as identity on their account too. There are two routes.
@@ -300,25 +304,134 @@ spec, decision 9), the cost is now concrete rather than hypothetical. A Group is
 not a send-as identity either, and the conversion removes the aliases the three
 working send-as identities were built on. So `info@`, `support@` and `appstore@`
 would stop being send-as identities on `dame@`, their signatures would go with
-them, and the run would drop from `4 identities / 3 shared` back to
-`1 identity / 0 shared`.
+them, and the run would drop from `4 identities` / `3/3 shared` back to
+`1 identity` / `0 shared`.
 
 *An earlier revision of this paragraph said the conversion "would change nothing,
 because it is already installing nothing." That was true on 2026-08-21 and stopped
 being true on 2026-08-23.* Re-cost the conversion against the live state, not
 against this sentence.
 
-**The zero-shared warning is aggregate, not per user** (`Code.gs.js`: `if
-(totalSharedInstalled === 0)`). Today that is equivalent to a per-user check,
-because `dame@` is the only account with shared identities — if he loses all
-three, the domain total hits zero and the warning fires.
+**The zero-shared warning is per user** (`sharedRegressions_` in `Code.gs.js`).
+A user who has shared send-as identities and did not get all their signatures is
+named as `user@ (written/expected)`, and that fires regardless of what the rest
+of the domain installed. The log Sheet's shared column is `written/expected`
+(`3/3 shared`) for the same reason: `0 shared` is correct for a user with none
+and alarming for a user with three, and a bare count cannot tell those apart.
 
-**It stops being equivalent the moment a second user gets a shared identity.**
-After that, `dame@` could lose all three and the run would stay silent as long
-as somebody else still installed one. Whoever adds the second user should either
-add per-user detection or accept that the warning is a domain-level canary only.
-The per-user numbers are always in the log Sheet regardless; it is the automatic
-warning that is coarse.
+**Where "expected" comes from matters, and this is the subtle part.** It is
+`max(identities present now, SHARED_BASELINE[user])` — computed by
+`sharedExpectation_`, which both the warning and the Sheet column call, so the
+two can never disagree about what expected means. Using only the live count
+would make the check blind to the worst case — delete a user's send-as
+identities and the live count falls to zero alongside the written count, so the
+run looks clean. `SHARED_BASELINE` is a per-user high-water mark of shared
+signatures successfully installed, and it **never decreases on its own**: a drop
+is the signal, so letting the baseline follow it down would erase the evidence
+one run later and reduce a standing regression to one warning nobody was awake
+for. To accept a deliberate removal, clear that user from the property.
+
+**If the property is unreadable, the script leaves it alone.** Malformed JSON,
+or JSON that is not an object, turns regression detection off for that run and
+says so in the log — but the stored value is *not* overwritten. Overwriting it
+with this run's counts would discard every high-water mark, and if identities
+were already missing their expectations would be gone permanently and the next
+run would look healthy. Failing to read costs one run of detection; failing to
+preserve costs it forever.
+
+Two states, and the warnings do not overlap:
+
+- **Someone is degraded** → named per user, **partitioned by cause**. Users whose
+  identities returned a missing-scope 403 get the two-step scope fix; users who
+  failed for any other reason get a "this is NOT the known permissions gap"
+  pointer instead. Partitioned per user rather than per run, because a 403 on one
+  account must not decide the remediation printed for another — and the denials
+  counted are shared-identity denials only, since a user may hold an unrelated
+  non-primary address that 403s for the same reason.
+  **A user can appear in both lines.** If part of what is missing was refused for
+  scope and part was not, the cause is `mixed` and both remedies are printed:
+  otherwise an operator grants the scope, sees the count improve, and stops
+  looking while signatures are still missing.
+- **Nobody has any shared identity at all** → the alias-is-not-a-send-as-identity
+  explanation. Correct and non-alarming on a fresh domain.
+
+History, since both errors were scoping errors and the shape recurs: the check
+was domain-aggregate until 2026-08-23 (`if (totalSharedInstalled === 0)`), which
+equals a per-user check only while exactly one account holds shared identities.
+The first attempt at fixing it then derived "expected" from the live sendAs list
+and so could not see a removal at all. Both were caught in review, and both
+passed every test that existed when they were written.
+
+### The alert — because a warning is not a gate
+
+Everything above improves what the warning *says*. None of it makes anyone read
+it, and a line in Cloud Logging is seen only by someone who goes looking. So a
+run with a finding also **emails** `ALERT_EMAIL`.
+
+- **It fires on three things**: users who failed outright (no signature written
+  at all), users where an individual identity write failed, and users who are
+  degraded (shared signatures missing). The subject carries all three counts;
+  the body names every user, the written/expected numbers, and the cause.
+  The middle category exists because per-identity isolation means a failure on
+  someone's **own primary signature** no longer throws — without it, a user
+  whose signature silently stopped updating would produce no alert at all.
+- **It is silent on a clean run, on purpose.** A nightly "all fine" trains its
+  recipient to filter the thread, and then the one that matters is filtered too.
+- **`ALERT_EMAIL` unset means nobody is told**, which is worse than it sounds
+  because everything else still looks normal. The run logs a warning saying the
+  alert had somewhere to go and nowhere to send it.
+- **A standing regression emails every night** until it is fixed or the
+  `SHARED_BASELINE` entry is cleared. That is deliberate: the alternative is
+  alerting on the transition only, and a transition alert missed at 2am is gone.
+- **It cannot fail the run.** The signatures are already written by the time it
+  sends; a mail error is caught and logged. Trading the run log for a
+  notification would be the wrong way round.
+
+**Mail is sent by MailApp as the SCRIPT OWNER**, not by the service account —
+nothing to do with the domain-wide delegation, and it does not touch anyone
+else's mailbox.
+
+#### Proving the alarm rings: `sendTestAlert()`
+
+Run it from the editor's function dropdown. It emails whatever `ALERT_EMAIL`
+currently holds and writes nothing else — no signature, no baseline, no row in
+the log Sheet.
+
+It exists because **a clean run is silent**, so the delivery path is exercised
+only by a run that has a finding — which, if everything works, should be rare.
+That can leave it untested for months, and an alarm nobody has heard ring is
+indistinguishable from one that does not work. Run it after changing
+`ALERT_EMAIL`, after granting a new OAuth scope, and after any `clasp push` that
+touches the manifest.
+
+It goes **through `sendRunAlert_`**, not around it. A test that builds its own
+`MailApp` call would prove MailApp works, which was never in doubt; what is in
+doubt is whether *this* script's authorization, *this* property and *this*
+recipient list deliver. If it ever stops calling `sendRunAlert_`, it stops being
+a test.
+
+It **throws** where a real run only warns — on no usable recipient, and on a
+refused send. `installAllSignatures` must not die over a notification; this
+function's only job *is* the notification, so those are failed tests rather than
+footnotes. That second case matters most: `sendRunAlert_` swallows delivery
+errors by design, so without the check a broken mail path would finish **green**
+and read as a pass.
+
+> **A green execution is not the result — the mail arriving is.** All the
+> function can prove is that the send was *accepted*; mail can still be
+> filtered, spam-foldered or ignored. Go and look in the inbox. Treating the
+> green run as the answer rebuilds the exact "nobody was told" failure this
+> whole section exists to fix.
+
+> ⚠️ **Deploying this re-triggers authorization.** It adds the
+> `script.send_mail` scope to the manifest, and Apps Script invalidates the
+> existing grant when the scope set changes. After `clasp push`, **open the
+> editor and run `installAllSignatures` once by hand** to re-consent. Until you
+> do, the nightly trigger fails with an authorization error — a failure mode
+> that looks nothing like a signature problem.
+
+Still true, and not fixed by any of this: an email is a stronger nudge than a
+log line, but it is still not a gate. Nothing blocks on it.
 
 ## Editing a signature
 

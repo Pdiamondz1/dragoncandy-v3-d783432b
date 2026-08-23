@@ -2,12 +2,50 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, cleanup, fireEvent, act } from "@testing-library/react";
 import { RotatingBackdrop } from "./RotatingBackdrop";
-import type { LandingClip } from "./landingClips";
+import type { LandingReel } from "./landingClips";
 
-const clip = (n: number): LandingClip => ({
+const clip = (n: number): LandingReel => ({
   src: `/landing/c${n}.mp4`,
   poster: `/landing/c${n}.jpg`,
 });
+
+// jsdom implements no IntersectionObserver at all, so without this the component's own
+// `typeof IntersectionObserver === "undefined"` guard skips the pause/resume effect entirely —
+// which is why the suite never exercised off-screen behaviour until now. This mock never fires
+// its callback on its own; tests drive visibility explicitly via `instances.at(-1).callback(...)`.
+class MockIntersectionObserver {
+  static instances: MockIntersectionObserver[] = [];
+  callback: IntersectionObserverCallback;
+  observe = vi.fn();
+  disconnect = vi.fn();
+  unobserve = vi.fn();
+  takeRecords = vi.fn(() => []);
+  root = null;
+  rootMargin = "";
+  thresholds: number[] = [];
+  constructor(callback: IntersectionObserverCallback) {
+    this.callback = callback;
+    MockIntersectionObserver.instances.push(this);
+  }
+}
+
+function installIntersectionObserverMock() {
+  MockIntersectionObserver.instances = [];
+  (globalThis as unknown as { IntersectionObserver: unknown }).IntersectionObserver =
+    MockIntersectionObserver;
+}
+
+function uninstallIntersectionObserverMock() {
+  delete (globalThis as unknown as { IntersectionObserver?: unknown }).IntersectionObserver;
+}
+
+function fireIntersection(isIntersecting: boolean) {
+  const observer = MockIntersectionObserver.instances.at(-1);
+  observer?.callback(
+    [{ isIntersecting } as IntersectionObserverEntry],
+    observer as unknown as IntersectionObserver,
+  );
+}
 
 beforeEach(() => {
   // jsdom implements none of these on HTMLMediaElement; the component drives them imperatively.
@@ -149,6 +187,116 @@ describe("RotatingBackdrop", () => {
     }
   });
 
+  it("re-arms the watchdog from `playing`, giving a slow-starting clip its full dwell window", () => {
+    // A clip whose `playing` fires late (slow mobile buffering) must still get a full
+    // MAX_DWELL_MS measured from when it actually started — not from when the layer became
+    // active — or the watchdog can cut off a clip that is genuinely still buffering/playing.
+    vi.useFakeTimers();
+    try {
+      const { getByTestId } = render(<RotatingBackdrop playlist={[clip(1), clip(2), clip(3)]} />);
+      const l0 = getByTestId("backdrop-layer-0");
+
+      // Playback doesn't actually start until 5s in (slow-start buffering).
+      act(() => {
+        vi.advanceTimersByTime(5000);
+        fireEvent.playing(l0);
+      });
+
+      // 10s more (15s total since becoming active) must NOT advance — real playback only started
+      // 10s ago, well inside its own 15s window.
+      act(() => {
+        vi.advanceTimersByTime(10000);
+      });
+      expect(getByTestId("backdrop-layer-0").getAttribute("data-active")).toBe("true");
+
+      // 15s after the `playing` event (20s total since becoming active) it must have advanced.
+      act(() => {
+        vi.advanceTimersByTime(5100);
+      });
+      expect(getByTestId("backdrop-layer-1").getAttribute("data-active")).toBe("true");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("still force-advances at MAX_DWELL_MS when a clip never fires `playing` at all", () => {
+    // The backstop must survive the `playing` reset: a clip that never starts playing (silent
+    // decode failure, permanent stall) still has to time out on the original from-active
+    // schedule, or the rotation freezes forever.
+    vi.useFakeTimers();
+    try {
+      const { getByTestId } = render(<RotatingBackdrop playlist={[clip(1), clip(2), clip(3)]} />);
+      expect(getByTestId("backdrop-layer-0").getAttribute("data-active")).toBe("true");
+      // No `playing`, `ended`, or `error` ever fires for layer 0.
+      act(() => {
+        vi.advanceTimersByTime(15100);
+      });
+      expect(getByTestId("backdrop-layer-1").getAttribute("data-active")).toBe("true");
+      expect(getByTestId("backdrop-layer-0").getAttribute("data-active")).toBe("false");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("suppresses the max-dwell watchdog while off-screen — no forced advance", () => {
+    // The IntersectionObserver effect pauses both layers off-screen; the watchdog must not keep
+    // force-advancing (and loading new reels) for a backdrop nobody can see.
+    vi.useFakeTimers();
+    installIntersectionObserverMock();
+    try {
+      const { getByTestId } = render(<RotatingBackdrop playlist={[clip(1), clip(2), clip(3)]} />);
+      expect(getByTestId("backdrop-layer-0").getAttribute("data-active")).toBe("true");
+
+      act(() => {
+        fireIntersection(false); // scrolled out of view
+      });
+      act(() => {
+        vi.advanceTimersByTime(15100); // would have force-advanced if still armed
+      });
+
+      expect(getByTestId("backdrop-layer-0").getAttribute("data-active")).toBe("true");
+      expect(getByTestId("backdrop-layer-1").getAttribute("data-active")).toBe("false");
+    } finally {
+      vi.useRealTimers();
+      uninstallIntersectionObserverMock();
+    }
+  });
+
+  it("re-arms the max-dwell watchdog once the backdrop returns on-screen", () => {
+    // Coming back into view must fully restore the stall backstop — including for a clip that
+    // never fires `playing` at all — not merely leave it permanently disarmed.
+    vi.useFakeTimers();
+    installIntersectionObserverMock();
+    try {
+      const { getByTestId } = render(<RotatingBackdrop playlist={[clip(1), clip(2), clip(3)]} />);
+
+      act(() => {
+        fireIntersection(false); // off-screen
+      });
+      act(() => {
+        vi.advanceTimersByTime(10000); // time passes while hidden — must not count toward dwell
+      });
+      act(() => {
+        fireIntersection(true); // back on-screen — full window re-armed from now
+      });
+
+      // Not yet elapsed since returning to view.
+      act(() => {
+        vi.advanceTimersByTime(10000);
+      });
+      expect(getByTestId("backdrop-layer-0").getAttribute("data-active")).toBe("true");
+
+      // Full MAX_DWELL_MS since the return-to-view re-arm: the backstop fires.
+      act(() => {
+        vi.advanceTimersByTime(5100);
+      });
+      expect(getByTestId("backdrop-layer-1").getAttribute("data-active")).toBe("true");
+    } finally {
+      vi.useRealTimers();
+      uninstallIntersectionObserverMock();
+    }
+  });
+
   it("ignores an `ended` fired by the non-active (hidden) layer", () => {
     const { getByTestId } = render(<RotatingBackdrop playlist={[clip(1), clip(2)]} />);
     act(() => {
@@ -164,5 +312,150 @@ describe("RotatingBackdrop", () => {
     const img = container.querySelector("img") as HTMLImageElement;
     expect(img).toBeTruthy();
     expect(img.getAttribute("src")).toBe("/landing/c1.jpg");
+  });
+});
+
+/**
+ * Returns a `flip` control so tests can simulate a LIVE orientation change (not just a different
+ * value at mount): it re-invokes the `change` listener(s) `useIsLandscape` registered on the
+ * orientation media query, exactly as a real `matchMedia` "change" event would.
+ */
+function mockOrientation(isLandscape: boolean) {
+  const listeners: Array<(e: MediaQueryListEvent) => void> = [];
+  let matches = isLandscape;
+  (window as unknown as { matchMedia: (q: string) => MediaQueryList }).matchMedia = (
+    query: string,
+  ) =>
+    ({
+      // reduced-motion must stay false so the video path renders
+      matches: query.includes("orientation") ? matches : false,
+      media: query,
+      addEventListener: (_: string, cb: (e: MediaQueryListEvent) => void) => {
+        if (query.includes("orientation")) listeners.push(cb);
+      },
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      onchange: null,
+      dispatchEvent: () => false,
+    }) as unknown as MediaQueryList;
+  return {
+    flip: (next: boolean) => {
+      matches = next;
+      listeners.forEach((cb) => cb({ matches: next } as MediaQueryListEvent));
+    },
+  };
+}
+
+const wideReel = (n: number): LandingReel => ({
+  src: `/landing/reels/r${n}.mp4`,
+  poster: `/landing/reels/r${n}-poster.jpg`,
+  wide: `/landing/reels/r${n}-wide.mp4`,
+  widePoster: `/landing/reels/r${n}-wide-poster.jpg`,
+});
+
+describe("RotatingBackdrop — orientation", () => {
+  it("loads the wide encode in landscape", () => {
+    mockOrientation(true);
+    render(<RotatingBackdrop playlist={[wideReel(1), wideReel(2)]} />);
+    const active = document.querySelector('[data-testid="backdrop-layer-0"]') as HTMLVideoElement;
+    expect(active.src).toContain("/landing/reels/r1-wide.mp4");
+  });
+
+  it("loads the portrait encode in portrait", () => {
+    mockOrientation(false);
+    render(<RotatingBackdrop playlist={[wideReel(1), wideReel(2)]} />);
+    const active = document.querySelector('[data-testid="backdrop-layer-0"]') as HTMLVideoElement;
+    expect(active.src).toContain("/landing/reels/r1.mp4");
+    expect(active.src).not.toContain("-wide");
+  });
+
+  it("falls back to portrait in landscape when a reel has no wide encode", () => {
+    mockOrientation(true);
+    const { wide: _w, widePoster: _wp, ...noWide } = wideReel(1);
+    render(<RotatingBackdrop playlist={[noWide, wideReel(2)]} />);
+    const active = document.querySelector('[data-testid="backdrop-layer-0"]') as HTMLVideoElement;
+    expect(active.src).toContain("/landing/reels/r1.mp4");
+  });
+
+  it("single-clip path resumes playback after a live orientation flip instead of freezing", () => {
+    const control = mockOrientation(false);
+    const playMock = HTMLMediaElement.prototype.play as unknown as {
+      mock: { calls: unknown[] };
+    };
+    const { getByTestId } = render(<RotatingBackdrop playlist={[wideReel(1)]} />);
+    const video = getByTestId("backdrop-single") as HTMLVideoElement;
+    expect(video.src).toContain("/landing/reels/r1.mp4");
+    const callsBeforeFlip = playMock.mock.calls.length;
+
+    act(() => {
+      control.flip(true);
+    });
+
+    // The resolved source changed (portrait -> wide) — the effect must reload...
+    expect(video.src).toContain("/landing/reels/r1-wide.mp4");
+    // ...and, being in view, resume playback itself rather than sitting paused on the poster.
+    expect(playMock.mock.calls.length).toBeGreaterThan(callsBeforeFlip);
+  });
+
+  it("single-clip path skips the reload when the resolved source is unchanged (no wide encode)", () => {
+    const control = mockOrientation(false);
+    const { wide: _w, widePoster: _wp, ...noWide } = wideReel(1);
+    const { getByTestId } = render(<RotatingBackdrop playlist={[noWide]} />);
+    const video = getByTestId("backdrop-single") as HTMLVideoElement;
+    const loadMock = HTMLMediaElement.prototype.load as unknown as {
+      mock: { calls: unknown[] };
+    };
+    const loadsBeforeFlip = loadMock.mock.calls.length;
+
+    act(() => {
+      control.flip(true); // no wide encode -> resolved source is identical in both orientations
+    });
+
+    expect(video.src).toContain("/landing/reels/r1.mp4");
+    expect(loadMock.mock.calls.length).toBe(loadsBeforeFlip); // no pointless reload
+  });
+
+  it("two-layer path: a live orientation change does not reset the rotation index", () => {
+    // Distinct from the single-clip tests above — this exercises the two-layer effect that
+    // re-points BOTH layers at their CURRENT clip indices on an orientation flip, deliberately
+    // leaving `layerClip`/`visible` untouched. Advance the rotation past the mount-time [0, 1]
+    // indices first, so a bug that reset to clips 0/1 would be distinguishable from "unchanged".
+    vi.useFakeTimers();
+    try {
+      const control = mockOrientation(false); // start portrait
+      const { getByTestId } = render(
+        <RotatingBackdrop playlist={[wideReel(1), wideReel(2), wideReel(3)]} />,
+      );
+
+      // Advance once: layer 0 (c1) ends -> layer 1 (already preloaded with c2) becomes active.
+      act(() => {
+        fireEvent.ended(getByTestId("backdrop-layer-0"));
+      });
+      // Let the deferred post-crossfade queue fire: the now-hidden layer 0 swaps to clip index 2
+      // (r3) for the next cycle, so the layer indices are [2, 1] — no longer the mount-time [0, 1].
+      act(() => {
+        vi.advanceTimersByTime(800);
+      });
+      expect((getByTestId("backdrop-layer-0") as HTMLVideoElement).src).toContain(
+        "/landing/reels/r3.mp4",
+      );
+      expect(getByTestId("backdrop-layer-1").getAttribute("data-active")).toBe("true");
+
+      // Live orientation flip.
+      act(() => {
+        control.flip(true);
+      });
+
+      // Both layers must reload the WIDE encode of their CURRENT clip (r3 / r2) — not reset back
+      // to the mount-time clips (r1 / r2).
+      const l0 = getByTestId("backdrop-layer-0") as HTMLVideoElement;
+      const l1 = getByTestId("backdrop-layer-1") as HTMLVideoElement;
+      expect(l0.src).toContain("/landing/reels/r3-wide.mp4");
+      expect(l1.src).toContain("/landing/reels/r2-wide.mp4");
+      expect(l0.src).not.toContain("r1-wide");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

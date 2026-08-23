@@ -3,7 +3,7 @@ title: Workspace Email Signatures
 type: concept
 created: 2026-08-20
 updated: 2026-08-23
-sources: [2026-08-20-google-workspace-signatures-wave-1.md, 2026-08-21-workspace-wave-1-admin-half-and-sendas-correction.md, 2026-08-22-sendas-scope-403-and-partial-status.md, 2026-08-23-shared-signatures-live.md]
+sources: [2026-08-20-google-workspace-signatures-wave-1.md, 2026-08-21-workspace-wave-1-admin-half-and-sendas-correction.md, 2026-08-22-sendas-scope-403-and-partial-status.md, 2026-08-23-shared-signatures-live.md, 2026-08-23-per-user-shared-signature-warning.md, 2026-08-23-signature-run-alert.md, 2026-08-23-signature-test-alert.md]
 tags: [google-workspace, email, branding, apps-script, automation, security]
 ---
 
@@ -141,8 +141,8 @@ That leaves the original conclusion standing but its reasoning inverted:
   for a user who has them now indicates a fault. See Known issues for the current matrix.
 - **What the conversion would cost is no longer hypothetical.** It removes the aliases, and
   `info@`, `support@` and `appstore@` are now real send-as identities built on them. Converting
-  would strip all three and their signatures, taking `dame@` from `4 identities / 3 shared` back
-  to `1 identity / 0 shared`. Re-cost decision 9 against that, not against the 2026-08-21 state
+  would strip all three and their signatures, taking `dame@` from `4 identities / 3/3 shared`
+  back to `1 identity / 0 shared`. Re-cost decision 9 against that, not against the 2026-08-21 state
   in which the conversion genuinely cost nothing.
 
 ### It is automatable, at a price — the second correction
@@ -229,6 +229,51 @@ all say so.
 whichever value is safe while only one of them is configured.** Here that is off, because the
 half-configured failure is total rather than partial.
 
+### The regression warning was scoped to the wrong thing
+
+Worth recording separately, because the shape recurs and the code passed every test it had.
+
+The "no shared signatures installed" warning fired on `totalSharedInstalled === 0` — a **domain
+aggregate**. With exactly one account holding shared identities that is indistinguishable from a
+per-user check, which is why nobody noticed. With two it is not: `dame@` could lose all three
+signatures and the run would stay silent because somebody else still installed one. The warning
+would have gone quiet at precisely the moment the feature grew.
+
+Fixed by `sharedRegressions_(perUser, baseline)` — pure, so vitest can reach it
+(`installAllSignatures` needs `AdminDirectory` and a live impersonation token, so the decision
+would otherwise be untestable), returning `user@ (written/expected)` for anyone whose shared
+identities did not all get a signature. The log Sheet's shared column became `3/3 shared` rather
+than a bare `3` for the same reason: **`0 shared` is correct for a user with none and alarming
+for a user with three, and a bare count cannot tell those apart.**
+
+**Then the first fix turned out to have the same disease, one level down.** It derived
+"expected" from `sharedSeen` — the shared identities present in the sendAs list *right now*. So
+the worst case stayed invisible: delete a user's send-as identities and the denominator falls to
+zero alongside the numerator, and the run reads clean. **A check whose expectation is recomputed
+from current state cannot detect a change in that state.** Caught by Codex as a P1, on a
+function written specifically to close the previous scoping hole.
+
+The expectation is now `max(identities present now, SHARED_BASELINE[user])`, where
+`SHARED_BASELINE` is a persisted per-user high-water mark that **never decreases on its own** — a
+drop is the signal, so letting the baseline follow it down would erase the evidence one run later
+and reduce a standing regression to a single warning nobody was awake for. Accepting a deliberate
+removal is an explicit act: clear that user from the script property.
+
+A second finding in the same pass: the remediation text was chosen from a **domain-wide** denied
+count, so one user's missing-scope 403 would tell an operator to fix the scope for a different
+user whose failure had nothing to do with it. Degraded users are now partitioned by cause and
+each group gets its own remedy.
+
+Tests were checked by mutation rather than by passing. Reintroducing the aggregate semantics
+turns three red; reverting the denominator to live-only turns the two removal tests red.
+**A test that has never failed has not been shown to test anything** — every buggy version here
+passed the whole suite as it stood at the time.
+
+The general lesson is about *what a check is scoped to*, and it bit twice in one function: a
+condition computed over a population equals a per-member condition only while the population has
+one member, and nothing tells you when it grows; and an expectation derived from current state is
+blind to exactly the change it exists to catch.
+
 **And a grant is not immediately a capability.** Domain-wide delegation changes propagate on
 Google's schedule — minutes, sometimes longer — so "granted in the console" opens a window
 rather than flipping a switch. Inside that window, step 2 produces exactly the same
@@ -248,6 +293,46 @@ been run alone, a success at the end would have proven strictly less — the sam
 using *signatures appearing in other people's mailboxes* rather than a success message as the
 original acceptance signal.
 
+### The last step of building an alarm is hearing it ring
+
+Four rounds went into this alert — what it says, which users it names, which causes it treats as
+non-clean, which address it goes to. Every one of them improved a message **nobody had ever
+received**. The first successful run after the scope grant (2026-08-23, all four users `ok`)
+proved the signatures install and proved *nothing* about whether the alarm reaches anyone, because
+a clean run is silent by design. That is the trap: the delivery path is exercised only by a run
+that has a finding, which — if everything works — should be rare.
+
+`sendTestAlert()` (#466) emails whatever `ALERT_EMAIL` currently holds and writes nothing else.
+Permanent rather than throwaway, because the question returns every time the property changes, a
+scope is granted, or the manifest moves.
+
+Three design points, each load-bearing:
+
+- **It calls `sendRunAlert_`, not `MailApp`.** A test that builds its own send proves MailApp
+  works, which was never in doubt. What is in doubt is whether *this* script's authorization,
+  *this* property and *this* recipient list deliver. If it ever stops calling `sendRunAlert_`, it
+  stops being a test.
+- **It throws where a real run only warns** — on no usable recipient, and on a refused send.
+  `installAllSignatures` must not die over a notification; the signatures are already written by
+  the time it fires. This function's only job *is* the notification. The refused-send case is the
+  one that matters: `sendRunAlert_` swallows delivery errors **by design**, so unchecked, a broken
+  mail path finishes **green and reads as a pass** — the same "nobody was told" failure, rebuilt
+  one level up.
+- **A green execution is not the result — the mail arriving is.** All the function can prove is
+  that the send was *accepted*; mail can still be filtered or spam-foldered. The console line says
+  so and tells you to go and look.
+
+**And the coverage gap it exposed is the more transferable finding.** `sendRunAlert_` had **no
+tests at all**. Every existing test fed `runAlert_` — the pure composer — and stopped there, so the
+half that actually delivers was uncovered while the suite looked healthy. That is the same shape as
+the `runStatus_` mutation that went undetected by all 79 tests the day before: **a well-tested pure
+function sitting next to an untested impure one reads as coverage of both.** Twice now, the
+untested piece has been the one that decides whether anyone is told. The test loader now injects
+`MailApp` and records every send, so a test can assert that **nothing** went out — the half a "did
+it send?" stub cannot check.
+
+96 tests, was 86; four mutations each turn a test red. Codex clean at round 1.
+
 ## Known issues
 
 - **Shared signatures exist only on `dame@`.** `info@`, `support@` and `appstore@` were added
@@ -256,7 +341,9 @@ original acceptance signal.
   the identity on each person's account — either by hand or via `sendAs.create`, both of which
   the granted scope now permits.
 - **`0 shared` for `dame@` would be a fault.** His expected report is
-  **`ok / 4 identities / 3 shared`**; anything less means something regressed. The
+  **`ok / 4 identities / 3/3 shared`** (the shared column became `written/expected` on
+  2026-08-23; the run logged that day predates the change and reads `3 shared`); anything less
+  means something regressed. The
   deployed-code × property matrix in `scripts/workspace/README.md` gives the expected report for
   each configuration — read it before judging a run.
 - **Merged is not deployed, and Apps Script has no CI that closes the gap.** #456 sat merged and
@@ -267,12 +354,22 @@ original acceptance signal.
 - **Outlook for Windows is untested and now untestable** — the account that could have
   checked it is gone. The rendering matrix is four-of-five (Gmail web light, Gmail web dark,
   Gmail iOS dark, images-disabled), not five-of-five. Do not describe it as verified.
-- **A warning is not a gate, and this one is coarser than it looks.** If nobody reads the run
-  log, a zero-shared-signature run still passes unnoticed. Worse, the check is on the **domain
-  aggregate** (`totalSharedInstalled === 0`), not per user. That is currently equivalent —
-  `dame@` is the only account with shared identities — but it silently degrades the moment a
-  second user gets one: after that, `dame@` could lose all three and the run stays quiet while
-  somebody else installs one. Whoever adds the second user inherits this.
+- **A warning is still not a gate, though it now arrives.** As of 2026-08-23 a run with a
+  finding emails `ALERT_EMAIL` (MailApp, as the script owner — unrelated to the delegation),
+  naming each failed or degraded user with written/expected and the cause. It is deliberately
+  silent on a clean run, because a nightly "all fine" trains its reader to filter the thread.
+  **`ALERT_EMAIL` unset means nobody is told** and everything else still looks normal; the run
+  logs that. And nothing *blocks* on the alert — an email is a stronger nudge than a log line,
+  not a gate. `ALERT_EMAIL` is `alerts@dragoncandy.com`, a **new** alias on `dame@` rather than
+  one of the seven that already existed: `admin@` already carries Stripe dispute alerts, and the
+  published inbound addresses (`support@`, `privacy@`, `legal@`, `sales@`, `info@`) are the ones
+  `src/lib/contactAddresses.ts` flags as wanting to become a shared mailbox someone else covers —
+  at which point the alerts would follow them to a person who cannot fix an Apps Script
+  authorization error. The alias buys a **stable indirection point**, not redundancy: it is a
+  delivery label on `dame@`'s inbox, so if that account is suspended the alerts go with it.
+- **The alert has still never actually been received.** `sendTestAlert()` exists to fix that
+  (see below) and, as of 2026-08-23, **has not been run**. Until it has, the delivery path is
+  proven by unit tests against a stubbed `MailApp` and by nothing else.
 - **`dryRun()` does not authenticate**, so it passes cleanly with a missing or revoked
   service-account key. Its comment says so; the limitation stands. This is why the acceptance
   signal was writing into *other people's* mailboxes, which `dryRun()` structurally cannot

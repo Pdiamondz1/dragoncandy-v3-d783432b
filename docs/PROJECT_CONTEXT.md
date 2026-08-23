@@ -96,6 +96,43 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 ### In flight
 
+- **Landing rebuilt as one dark, full-bleed cinematic screen** — logo, eyebrow, slogan, single
+  "Get started" CTA over **eight** real rotating ABB + Uncle Rocco reels (this line said *ten*
+  until 2026-08-23), replacing the six-section light page, the contact form and the video-backdrop
+  feature flag. The footer is **transparent** — it shipped as an opaque white band, the founder
+  overruled that on sight, and removing it exposed an iOS-only white band underneath that had been
+  live for every page in the app: `contentInset: 'always'` shrinks `documentElement.clientHeight`
+  by the top safe-area inset (840 vs 778 measured in a real WKWebView) while viewport units keep
+  reporting the full height, so `AppShell`'s `h-screen` overhung the document box. Closed by
+  `contentInset: 'never'` — the CSS already pays back `env(safe-area-*)` everywhere. Five reels
+  also carried burned-in captions from their original posts; three were trimmed to a clean window
+  and two dropped, which re-brightened the library enough to force the scrim's middle stop 40% →
+  60% to keep the accent words above 3.0:1. Library 36 MB → 16 MB, iOS binary 54 MB → 39 MB.
+  Verified on desktop, mobile (both orientations) and the iOS shell on simulator; Codex clean.
+  `docs/DESIGN_SYSTEM.md` and `docs/runbooks/landing-video-backdrop-kit.md` updated to match.
+  **MERGED 2026-08-23 (#459, `2c87ba99`) and live** — this line read "**UNMERGED** — blocked on
+  written permission from ABB and Uncle Rocco" until the founder confirmed permission.
+  **Adrian Vella's feedback on the shipped page then found a real bug I had refuted in writing.**
+  "The screen jumps if I scroll up or down" on mobile was live on **every page in the app**:
+  `body{height:100%;overflow-x:hidden}` computes `overflow-y` to `auto`, so **body** — not `<html>`,
+  not `<main>` — is the document's scroll container, and `AppShell`'s `h-screen` (`100vh` = the
+  URL-bar-**collapsed** height on iOS Safari) overhung it by ~60–90px; scrolling that gap collapsed
+  the bar, grew `100dvh`, and resized the page mid-gesture. This is the Codex finding on #459 that
+  I tested and talked the founder out of: the probe measured `main` (**not** the scroller) in an
+  emulator (**no URL bar, so `100vh === 100dvh` and the gap is structurally zero there**). Forced
+  control: body 833/753 → `scrollTop` 80, while html/#root/shell/main all read overflow 0 and
+  `window.scrollY` stays 0. **Durable rule: when a probe returns zero, prove it could have returned
+  non-zero.** Closed at `AppShell` with `DashboardLayout` tracking it (the regression I had cited as
+  the reason not to fix it — answered by fixing both, not neither), pinned by a text assertion since
+  jsdom has no layout engine. `DESIGN_SYSTEM.md`, the wiki index and §8's "paired refutation" all
+  asserted the false premise and are corrected in place. Shipped with it: an underlined "Log in"
+  under the CTA in the **pale** mint `#B8ECDA` (small text needs 4.5:1; the slogan's `#7BE3C0`
+  measures 3.91 at p90 there against 4.62 — *the "too pale for video" note is about headlines and
+  inverts for small text*), and a "Learn more" pill pointing at a **new `/how-it-works`**, built
+  because the rebuild had deleted the only page explaining the product. **Pending:** the iOS-Safari
+  half is unverifiable in any browser, emulator or simulator — it needs a real phone, and the
+  residual candidate if it persists is rubber-band overscroll (`overscroll-behavior-y`), left out
+  as an app-wide behavioural change. → `feat/landing-adrian-feedback` · #459
 - **Google Workspace corporate setup (Wave 1)** — the company's own Workspace: two shared drives,
   nine Google Groups replacing personal aliases, brand assets, and email signatures that install
   themselves. **MERGED (#453, `d83fcbe3`, 2026-08-21) and the admin half is largely DONE** — this
@@ -134,7 +171,30 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   **COMPLETE 2026-08-23 — shared-mailbox signatures install** (scope granted, #456 deployed,
   `SHARING_SCOPE_ENABLED=true`, final run `ok / 4 identities / 3 shared`); this line previously
   listed the deploy and the property as pending and both landed within hours.
-  **Pending (2026-08-23):** shared identities exist on **no account but `dame@`**; **Outlook for
+  A latent bug found in review and closed the same day (#461): the regression warning was scoped
+  to the **domain**, not the user, so it would have gone quiet exactly as the feature grew —
+  five Codex rounds, seven defects, all of them scoping errors rather than wrong calculations.
+  The delivery gap is closed too (#463): a run with a finding now **emails** `ALERT_EMAIL`, since
+  three rounds of improving what the warning said never made anyone read it.
+  **Both closed the same day:** `ALERT_EMAIL` is `alerts@dragoncandy.com` (a **new** alias — the
+  seven existing ones are each already spoken for), the re-consent ran clean (4 users `ok`), and
+  #466 added `sendTestAlert()` so the alarm can be *heard* on demand rather than only when it
+  fires — four rounds had gone into an alert nobody had ever received, and a clean run is silent
+  by design. It found the gap underneath: **`sendRunAlert_` had no tests at all**, because every
+  test fed the pure composer beside it — the same shape as the `runStatus_` mutation the day
+  before. 96 tests, was 86; Codex clean at round 1.
+  **Pending (2026-08-23):** `sendTestAlert()` has **never been run**, so delivery is proven
+  against a stubbed `MailApp` and nothing else; **`01 · Product` is populated (2026-08-23)** — this line previously read "stays empty
+  because the candidate docs call Dame a 'solo technical founder' and name neither Joe nor Juwan".
+  #468 fixed exactly that (all three named with roles, Joe's restaurants credited as the origin,
+  "35+ tables" → 70+) and both docs are now Google Docs in the open drive. Staleness is handled by
+  dated banners naming *specifically* what was corrected, plus SUPERSEDED notes on the three
+  sections that are not merely old but actively contradicted: product-vision §5 (a dark-mode
+  Inter/`dragon-*` design system that is not what shipped), PRD §2 (says Lovable deploys prod;
+  Vercel has since 2026-07-15) and PRD §3 (June table names — `gig_assignments`,
+  `creative_briefs`, `payments` — none of which exist). **Stale is a different problem from
+  wrong**: old numbers get a banner, a contradicted section gets a pointer at the authoritative
+  file; shared identities exist on **no account but `dame@`**; **Outlook for
   Windows is untested and now untestable** (no access) — treat the rendering matrix as four-of-five;
   and Waves 2–3 (the People document set, and a *sendable* pitch deck — the current one is a React
   component). Workspace plan confirmed Business Standard, so shared drives were never at risk.
@@ -744,9 +804,11 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `donny-orchestrator`'s `donny_tool_executions` insert (columns that did not exist + a missing
   NOT NULL `message_id`) → deployed v69. → `docs/wiki/concepts/reading-agent-traces.md` · #292, #296
 - **Public landing — "Human-driven. AI-assisted." redesign** — full visual + messaging rebuild
-  to the founder mockup; landing rejoins the light app on its own additive `landing-*` tokens +
-  fonts. The cinematic-video system is preserved but opt-in behind
-  `LANDING_VIDEO_BACKDROP_ENABLED` (default off).
+  to the founder mockup; at the time, landing rejoined the light app on its own additive
+  `landing-*` tokens + fonts, with the cinematic-video system preserved but opt-in behind
+  `LANDING_VIDEO_BACKDROP_ENABLED` (default off). **Superseded 2026-08-22** by the
+  cinematic single-CTA redesign — the landing is dark again (`bg-landing-grape`) and the video
+  backdrop is the default experience, not an opt-in flag; see that entry for the current state.
   → `docs/wiki/concepts/landing-human-driven-redesign.md` · #293
 - **Auth session management** — loading guard, 3-hour inactivity timeout, session-hint
   cleanup. → `docs/SHIPPED_LOG.md`

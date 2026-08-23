@@ -45,8 +45,7 @@ export const MatchCardsSkeleton: React.FC<{ count?: number }> = ({ count = 2 }) 
  * Matching now starts on its own when a campaign has no matches, so this is the
  * FIRST thing an owner sees on a brand-new campaign — it has to read as work in
  * progress, not as a stalled screen. Steps advance on a timer independent of the
- * request (the same approach as `landing/BriefGeneratorPreview`), because the
- * edge function reports no intermediate progress.
+ * request, because the edge function reports no intermediate progress.
  */
 export const MatchingProgress: React.FC = () => {
   const [stepIndex, setStepIndex] = useState(0);

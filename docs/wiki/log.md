@@ -1,5 +1,162 @@
 # Wiki Log
 
+## [2026-08-23] ingest | Stale, contradicted, and wrong-about-people are three different problems
+
+Ingested `raw/sessions/2026-08-23-product-docs-published.md`. No concept page created — the
+durable content is a distinction, recorded here and in `docs/SHIPPED_LOG.md`.
+
+Publishing the two product docs to the open shared drive turned up **three failure modes that look
+alike and need different remedies.** *Stale* — old numbers — is fixed by a date. *Contradicted* — a
+section describing a system that is not the one that shipped — is fixed by a pointer at the
+authoritative file, never by a better summary. *Wrong-about-people* — a founder narrative naming
+one of three co-founders — is fixed only by a rewrite, and is the only one of the three that should
+block publication outright.
+
+The sharpest moment: Codex caught the SUPERSEDED note **committing the error it was written to
+fix**, by asserting a single app-wide theme when the real design system is surface-specific. **A
+summary of a source of truth is a copy, and copies rot** — §5 was itself once an accurate summary.
+The note now points rather than summarises, and says so explicitly.
+
+Also recorded: the main checkout was sitting on `codex/new-UX-flow`, six merges behind, while
+`main` was held by a worktree — so the standing `refresh-main` instruction would have
+fast-forwarded a review branch. And **publish-then-sync is drift**: the notes reached the Google
+Docs before the repo, and closing that gap needed its own commit.
+
+## [2026-08-23] ingest | Three notes from a real phone, and the scroller I measured twice without finding
+
+Ingested `raw/sessions/2026-08-23-adrian-feedback-body-scroller-and-how-it-works.md`.
+**Updated** [[Mobile Viewport & Fixed Positioning]] (new §9 — `body` is the document's scroll
+container; `AppShell` must be `h-[100dvh]`), [[Landing Cinematic Single-CTA Redesign]] (the two
+secondary CTAs and the size-dependent mint), `index.md` (five entries corrected, one added).
+
+**CI then found two more, one of them site-wide.** The Lighthouse gate failed at SEO 0.92: the
+footer pill said "Learn more", which Lighthouse's `link-text` audit rejects outright. Renamed to
+"How it works". Auditing the NEW page — which the gate does not cover — found **two conflicting
+canonical tags on every page of the site**: `index.html` hardcoded one pointing at `/landing` and
+Helmet appends rather than replaces, so the correct per-route value was discarded site-wide.
+`/landing` passed only because it is the one page where the static value is right. **Updated**
+[[Domain Migration .io → .com]], whose claim that `SITE_URL` drives *every* canonical was false.
+
+**Contradictions resolved, not silently overwritten.** Three claims this wiki asserted are now
+recorded as false with the correction beside them:
+1. "The app document never scrolls (h-screen shell + inner overflow-auto main), so iOS Safari
+   toolbars never collapse" — in `DESIGN_SYSTEM.md` and the index. The shell being `h-screen` is
+   exactly what made the document scroll.
+2. The §8 "paired refutation" that the `100vh`/`100dvh` mismatch produces no scroll on mobile
+   Safari. It does; the probe measured `main` (not the scroller) in an emulator (no URL bar, so
+   `100vh === 100dvh`).
+3. That the one-word shell fix would regress every short dashboard page. Real, but fixed by moving
+   `DashboardLayout` too — not a reason to leave the shell broken.
+
+Also corrected as stale: the landing branch described as **UNMERGED** (merged 2026-08-23 as #459),
+and "ten reels / twenty encodes" (eight and sixteen since the caption re-cut).
+
+## [2026-08-23] ingest | The white band, the one iOS was hiding, and five reels talking over the slogan
+
+Ingested `raw/sessions/2026-08-23-landing-footer-ios-inset-and-reel-recut.md`.
+**Updated** [[Landing Cinematic Single-CTA Redesign]] and [[Mobile Viewport & Fixed Positioning]]
+(new §8). No new page — both findings belong on pages that already exist.
+
+The landing footer shipped as an opaque white band and was overruled on sight. Making it
+transparent exposed a **second** white band, on iOS only, that had been live for every page in the
+app: `contentInset: 'always'` shrinks `documentElement.clientHeight` by the top safe-area inset
+(840 vs 778, inset 62, measured inside a real WKWebView) while `innerHeight`/`100vh`/`100dvh` keep
+reporting the full height, so `AppShell`'s `h-screen` overhangs the document box. Invisible for as
+long as every surface above it was also white. **A defect hidden by a coincidence of palette is
+still a defect.**
+
+The paired lesson is sharper than either half. A review had claimed the same `100vh`/`100dvh`
+mismatch caused a scroll on **mobile Safari**; that was measured and refuted (a container taller
+than its content produces no overflow — "unused space" is not "scrollable space"), and the obvious
+one-word shell fix would have regressed every short dashboard page. Having refuted it there, the
+class was treated as closed. It was not. **Refuting a claim on the surface where it was raised does
+not refute it on the surfaces where it was never tested.**
+
+Separately, five of ten reels carried burned-in captions from their original social posts — found
+by sampling every reel into a contact sheet, not by watching, because captions come and go in under
+a second and the eye forgives them in motion in a way it does not when frozen behind a headline.
+Three trimmed to a clean window, two dropped. That re-cut changed which frames exist and
+re-brightened the library, dropping the pink and mint accents to 1.88:1 / 1.90:1 at p90 against a
+3.0:1 bar — **trimming a clip is a contrast change, not just a length change**. Scrim middle stop
+40% → 60%, the lowest clearing 3.0 on both the brightest frame's mean and its p90.
+
+Two of my own predictions corrected in the runbook: CRF moved only −31% (cutting runtime did more),
+and `du -sh` over-states this directory by 5 MB because it counts allocated blocks.
+
+## [2026-08-23] ingest | The last step of building an alarm is hearing it ring
+
+Ingested `raw/sessions/2026-08-23-signature-test-alert.md`.
+**Updated** [[Workspace Email Signatures]] — the alert now has a way to be *heard*, and the
+`ALERT_EMAIL` choice is recorded with its reasoning.
+
+Four rounds went into an alert nobody had ever received. The first clean run after the scope grant
+proved the signatures install and nothing about whether the alarm reaches anyone — because a clean
+run is silent by design, so the delivery path is exercised only by a run that has a finding.
+`sendTestAlert()` (#466) closes it, going **through** `sendRunAlert_` rather than around it, and
+throwing where a real run only warns.
+
+The transferable finding is the coverage gap underneath: **`sendRunAlert_` had no tests at all.**
+Every test fed `runAlert_`, the pure composer, and stopped — so a well-tested pure function sitting
+next to an untested impure one read as coverage of both. Identical in shape to the `runStatus_`
+mutation that slipped past all 79 tests the day before, and twice now the untested piece has been
+the one deciding whether anyone is told.
+
+Two of my own claims were falsified the same session and are recorded on the source: an alias did
+**not** become a fifth send-as identity (a finding already written on that very page — *reading is
+not consulting*), and the Sheet **had** recorded the run while Chrome served a cached render across
+two full reloads (*agreement between two readings from the same cache is not corroboration*).
+
+## [2026-08-23] ingest | Improving what an alarm says is not the same as making it audible
+
+Ingested `raw/sessions/2026-08-23-signature-run-alert.md`.
+**Updated** [[Workspace Email Signatures]] — the "a warning is not a gate" known issue, which had
+been recorded three times without being closed.
+
+Three rounds were spent on the wording and the scoping of a warning **nobody was receiving**. The
+delivery question turns out to be separate from the correctness question and is not solved by
+solving the other one. A run with a finding now emails `ALERT_EMAIL`.
+
+The design note worth carrying: **an alert that fires on everything fires on nothing.** Silence on
+a clean run is the feature, which is precisely why the "not clean" condition has to be exact — and
+Codex found two causes it initially missed, so the condition was replaced with the per-user run
+status itself rather than a list of causes.
+
+And a testing note: mutating the inline collection predicate went undetected by all 79 tests,
+because everything touching that path tested the consumer directly. **A predicate too trivial to
+test is worth testing anyway when it gates who gets told.**
+
+Also recorded, as a finding rather than a change: **the product docs cannot go into the shared
+drive as they stand.** They are stale, which a banner fixes — but `product-vision.md` calls Dame a
+"solo technical founder" and neither doc names Joe or Juwan, who have or will have access. *Stale
+is a different problem from wrong-about-people:* old numbers can be dated and published, a
+document that erases your co-founders cannot.
+
+## [2026-08-23] ingest | Seven scoping errors in one warning, and not one wrong calculation
+
+Ingested `raw/sessions/2026-08-23-per-user-shared-signature-warning.md`.
+**Updated** [[Workspace Email Signatures]] — the "regression warning was scoped to the wrong
+thing" section, plus Known issues.
+
+Closing the latent bug this page recorded hours earlier took five Codex rounds and seven
+defects, six of them introduced by the fixes themselves. Worth the page space because of what
+they had in common: **every one was a question of what a condition was computed over, and not
+one was a wrong calculation.**
+
+The sharpest is now stated as a rule: *an expectation recomputed from current state is blind to
+exactly the change it exists to catch.* Deriving "how many should this user have" from the
+identities present right now means a deletion drops numerator and denominator together and reads
+as healthy. It is fixed with a persisted high-water mark that never decreases on its own, since
+the drop is the signal.
+
+Also recorded: **when two code paths must agree, test the agreement** — the Sheet and the warning
+each computed "expected" correctly and differently, and only a test comparing them catches that;
+and **prefer the failure that loses less**, which decided two designs here (refuse to overwrite
+an unreadable baseline; swallow a baseline-write error so the run log survives).
+
+And the methodological one: **a test that has never failed has not been shown to test anything.**
+Three mutations were run to prove the new tests bite. Every buggy version of this function passed
+the whole suite as it stood when it was written.
+
 ## [2026-08-23] ingest | It works — and the run that proves it is the middle one, not the last
 
 Ingested `raw/sessions/2026-08-23-shared-signatures-live.md`.
@@ -58,6 +215,47 @@ something is free — is itself a claim, and the only instrument that settles it
 Three claims, three refutations; the first two caught by reading and by review, the third only
 by running it, and only the third cost anything. Reviews catch claims that contradict something
 already written down; they cannot catch one that is merely untested and plausible.
+
+## [2026-08-22] ingest | Landing rebuilt as one dark video screen — flag deleted, doors deleted, and a watchdog margin bug Codex caught
+
+Ingested `raw/sessions/2026-08-22-landing-cinematic-single-cta.md`. **New page**
+[[Landing Cinematic Single-CTA Redesign]], plus source [[Landing Cinematic Single-CTA Redesign
+Session]]. Updated (not new) [[Landing "Human-driven. AI-assisted." Redesign]] and
+[[Landing Cinematic Video Redesign]] with supersession notes — both edited in place per
+"flag contradictions explicitly," not silently overwritten.
+
+**Branch is UNMERGED** — `feat/landing-cinematic-single-cta`, blocked on written permission from
+ABB and Uncle Rocco for their footage. Nothing in this ingest describes the live site; dragoncandy.io
+still serves the PR #293 light two-door landing until this merges.
+
+**The transferable finding is a margin bug in a safety mechanism, not a UI change.**
+`RotatingBackdrop`'s 15s stall watchdog exists to force-advance a clip that never fires `ended` or
+`error`. The new 12s-per-clip cap left only ~3s of margin against it, and the watchdog armed on a
+layer becoming *active* rather than on playback actually *starting* — slow-connection startup
+buffering alone could eat that margin and cut a healthy clip. Codex (the mandatory second reviewer)
+caught it as a P2. The fix keeps arming on layer-active (the backstop for a clip that never starts
+at all) and additionally resets on the `playing` event — the tempting one-line alternative (arm only
+on `playing`) would have converted a bounded 15s stall into a permanent freeze for any clip that
+never fires `playing`. Recorded on the new page because the pattern — a mitigation's timing margin
+is a claim about its inputs, and needs re-verifying whenever an input (here, clip length) changes —
+outlives this specific watchdog.
+
+**Two encodes per reel, chosen by viewport orientation and verified live on both surfaces** (desktop
+served `-wide`, a 390×844 emulated device served portrait) — not merely coded and assumed. Crop
+windows were hand-picked per clip by watching the footage (`y` 300–650 across ten clips), not a
+blind centre crop.
+
+**The video-backdrop feature flag was deleted, not left off-by-default** — with the video as the
+whole page, an "off" state ships a blank homepage, which is an outage costumed as a kill switch.
+
+**Not verified, recorded explicitly:** the design spec's brightest-frame contrast check (§7) has not
+been run across the ten clips.
+
+`index.md` (1 Sources line + 1 new Concepts entry + 2 Concepts entries corrected in place, 0
+orphans by path). `SHIPPED_LOG.md` prepended. `PROJECT_CONTEXT.md` §5 already carried an accurate
+one-line In-flight entry from an earlier task in this same branch — verified accurate, left
+untouched. RAG sync deliberately **not run** — branch unmerged; the committed post-merge hook syncs
+on the `main` fast-forward after merge, per the `[rag-sync]` skill lesson.
 
 ## [2026-08-21] ingest | An alias is not a send-as identity either — the claim that did not survive its first run
 

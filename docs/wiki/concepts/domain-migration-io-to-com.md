@@ -3,7 +3,7 @@ title: Domain Migration (.io → .com)
 type: concept
 created: 2026-08-09
 updated: 2026-08-10
-sources: [2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md, 2026-08-09-ios-testflight-first-build.md, 2026-08-10-dotcom-phase2-canonical-switch.md, 2026-08-10-dotcom-phase3-permanent-redirect.md, 2026-08-10-dotcom-phase4-content.md, 2026-08-10-dotcom-phase5-mail-audit.md, 2026-08-10-dotcom-phase5a-mailboxes-shipped.md]
+sources: [2026-08-09-dotcom-phase1-and-esm-sh-bundler-outage.md, 2026-08-09-ios-testflight-first-build.md, 2026-08-10-dotcom-phase2-canonical-switch.md, 2026-08-10-dotcom-phase3-permanent-redirect.md, 2026-08-10-dotcom-phase4-content.md, 2026-08-10-dotcom-phase5-mail-audit.md, 2026-08-10-dotcom-phase5a-mailboxes-shipped.md, 2026-08-23-adrian-feedback-body-scroller-and-how-it-works.md]
 tags: [domain, dns, cors, auth, vercel, migration, seo, content, help-center, email, dmarc, resend]
 ---
 # Domain Migration (.io → .com)
@@ -105,7 +105,17 @@ Dashboard gotchas that cost time:
 path- and query-preserving** (verified) — previously apex 308'd to www, the reverse of the plan.
 
 **Code (shipped).** `src/components/SEO.tsx`'s `SITE_URL` is the single constant every canonical
-link and `og:url` derives from — the highest-leverage line in the change. Plus `index.html`
+link and `og:url` derives from — the highest-leverage line in the change.
+**Correction (2026-08-23): that was not true, and the exception mattered.** `index.html` carried a
+**hardcoded** `<link rel="canonical" href="https://dragoncandy.com/landing">` and a hardcoded
+`og:url` of the bare origin, neither derived from `SITE_URL`. react-helmet-async **appends**; it
+does not replace a static tag it did not create — so every page on the site except `/landing`
+served **two canonicals that disagreed**, and conflicting canonicals are discarded rather than
+resolved, throwing away the correct per-route value site-wide. Both static tags are now removed, so
+the claim above is true going forward. Found by running Lighthouse against `/how-it-works`; the CI
+gate tests only `/landing`, which is the single page where the static value happened to be right —
+**a gate that tests one URL is evidence about one URL**. See
+[[Landing Cinematic Single-CTA Redesign]]. Plus `index.html`
 metadata, sitemap, `robots.txt`, three JSON-LD blocks, redirect/origin fallbacks in eleven edge
 functions, email **bodies** (links and images only, never a `from:`), internal surface copy, and
 `DEFAULT_ORIGIN`. Two pre-existing bugs fixed en route: `send-welcome-email` fell back to

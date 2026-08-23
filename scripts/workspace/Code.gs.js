@@ -63,21 +63,48 @@ function isSharedIdentity_(email) {
 function installAllSignatures() {
   var users = listDomainUsers_();
   var results = [];
-  var totalSharedInstalled = 0;
+  var perUser = [];
+  var totalSharedSeen = 0;
   var totalDenied = 0;
+  // Users whose installForUser_ threw outright. They are not in perUser (we
+  // have no counts for them), but a user getting NO signature is at least as
+  // alarming as a degraded one, so the alert has to know about them.
+  var failedUsers = [];
+  // Every user whose run was not a clean 'ok'.
+  //
+  // Keyed off the SAME status the Sheet records, deliberately, rather than
+  // enumerating causes. Two rounds of review were spent adding a category at a
+  // time -- primary-identity write failures, then scope denials on a
+  // non-company address -- and each new cause was another silent hole. "Not ok"
+  // is the condition that actually matches the claim the alert makes, and it
+  // cannot fall behind the status logic because it IS the status logic.
+  // (Codex, 2026-08-23.)
+  var partialUsers = [];
+  // Read before the loop: the Sheet's written/expected column uses the same
+  // expectation as the warning, and both must survive an identity being
+  // removed. See sharedExpectation_.
+  var baselineRead = readSharedBaseline_();
+  var baseline = baselineRead.values;
 
   for (var i = 0; i < users.length; i++) {
     var user = users[i];
     try {
       var counts = installForUser_(user);
-      totalSharedInstalled += counts.shared;
+      totalSharedSeen += counts.sharedSeen;
       totalDenied += counts.denied;
+      var record = {
+        email: user.primaryEmail,
+        sharedWritten: counts.shared,
+        sharedSeen: counts.sharedSeen,
+        // Per user AND shared-only. A 403 on someone else's account, or on this
+        // user's non-company sendAs, must not decide the remedy printed for
+        // their shared signatures. (Codex P2 x2, 2026-08-23.)
+        denied: counts.sharedDenied,
+      };
+      perUser.push(record);
+      var sharedExpected = sharedExpectation_(record, baseline);
 
-      // PARTIAL is deliberately distinct from both ok and ERROR. A run where
-      // every writable identity was written but some were refused is neither
-      // a clean pass nor a failure, and collapsing it into either one is how
-      // a standing permissions gap becomes invisible.
-      var status = counts.failures.length ? 'PARTIAL' : counts.denied ? 'PARTIAL' : 'ok';
+      var status = runStatus_(counts);
       var detail = counts.total + ' identities';
       if (counts.denied) {
         detail += ', ' + counts.denied + ' denied (needs gmail.settings.sharing)';
@@ -89,13 +116,23 @@ function installAllSignatures() {
         );
       }
 
+      if (status !== 'ok') {
+        partialUsers.push({ email: user.primaryEmail, detail: detail });
+      }
+
       results.push([
         new Date(),
         user.primaryEmail,
         user.title || '(no title)',
         status,
         detail,
-        counts.shared + ' shared',
+        // written/expected, not a bare count, and expected comes from the same
+        // rule the warning uses -- including the baseline. "0 shared" is
+        // correct for a user who never had any and alarming for a user who
+        // had three, and the Sheet is the DURABLE record: if it collapsed
+        // those two into the same string, the warning's 0/3 would be the only
+        // trace, and warnings scroll away. (Codex P2, 2026-08-23.)
+        sharedExpected ? counts.shared + '/' + sharedExpected + ' shared' : '0 shared',
       ]);
     } catch (err) {
       // The Sheet write below (appendRunLog_) silently no-ops when LOG_SHEET_ID
@@ -104,56 +141,119 @@ function installAllSignatures() {
       // left: it lands in Apps Script Executions and Cloud Logging regardless
       // of whether the Sheet exists, so a bad run is never silent.
       console.error('installForUser_ failed for ' + user.primaryEmail + ': ' + err);
+      failedUsers.push(user.primaryEmail);
       results.push([new Date(), user.primaryEmail, user.title || '(no title)', 'ERROR', String(err), '']);
     }
   }
 
-  // 0 shared is the EXPECTED state today, not a regression. SHARED_IDENTITIES
-  // are aliases on dame@, and an alias is not a sendAs identity -- so this
-  // branch matches nothing until someone completes the manual send-as step.
-  // Confirmed on the first real run, 2026-08-21. An earlier version of this
-  // comment blamed a future Google Groups conversion; that was the wrong
-  // diagnosis and would have sent an operator looking in the wrong place.
-  // Warn anyway: the day someone does the send-as step, this going quiet is
-  // how they know it worked, and if it later returns to 0 that is a real
-  // regression worth seeing.
-  if (totalSharedInstalled === 0) {
-    if (totalDenied > 0) {
-      // The identities EXIST and we were refused. One cause, one fix.
-      console.warn(
-        'installAllSignatures: ' +
-          totalDenied +
-          ' send-as identity/identities were refused with 403 across ' +
-          users.length +
-          ' user(s), so 0 shared-mailbox signatures installed. The identities ' +
-          'exist and are verified -- we lack ' +
-          SCOPE_SHARING +
-          ', which Gmail requires to modify any NON-PRIMARY sendAs. FIXING ' +
-          'THIS TAKES TWO STEPS AND THE ORDER MATTERS: (1) add that scope to ' +
-          'the domain-wide delegation in the admin console, alongside ' +
-          'gmail.settings.basic; THEN (2) set the script property ' +
-          'SHARING_SCOPE_ENABLED=true so the impersonation JWT actually asks ' +
-          'for it. Step 1 alone changes nothing -- the token still comes back ' +
-          'without the scope and you get this same 403. Step 2 before step 1 ' +
-          'breaks every signature with unauthorized_client. NOTE the ' +
-          'consequence before doing either: that scope also lets this service ' +
-          'account set who may send as what, for every user in the domain.',
-      );
-    } else {
-      console.warn(
-        'installAllSignatures: 0 shared-mailbox signatures installed across ' +
-          users.length +
-          ' user(s), and nothing was refused -- so no shared address is a ' +
-          'send-as identity on any account. SHARED_IDENTITIES (support@, ' +
-          'sales@, founders@, ...) are ALIASES, and an alias does not appear ' +
-          'in settings/sendAs; it only makes mail arrive. The account holder ' +
-          'adds it in Gmail Settings -> Accounts and Import -> Send mail as ' +
-          '(or the script creates it via settings/sendAs POST). Either route ' +
-          'ALSO needs gmail.settings.sharing to write the signature ' +
-          'afterwards -- proven 2026-08-21, do not assume the manual route is ' +
-          'permission-free. Converting these to Google Groups would NOT help: ' +
-          'a Group is not a send-as identity either.',
-      );
+  // The scope-fix message is the same wherever it is needed, so build it once.
+  var SCOPE_FIX =
+    ' Those identities exist and are verified -- we lack ' +
+    SCOPE_SHARING +
+    ', which Gmail requires to modify any NON-PRIMARY sendAs. FIXING THIS ' +
+    'TAKES TWO STEPS AND THE ORDER MATTERS: (1) add that scope to the ' +
+    'domain-wide delegation in the admin console, alongside ' +
+    'gmail.settings.basic; THEN (2) set the script property ' +
+    'SHARING_SCOPE_ENABLED=true so the impersonation JWT actually asks for ' +
+    'it. Step 1 alone changes nothing -- the token still comes back without ' +
+    'the scope and you get this same 403. Step 2 before step 1 breaks every ' +
+    'signature with unauthorized_client. NOTE the consequence before doing ' +
+    'either: that scope also lets this service account set who may send as ' +
+    'what, for every user in the domain.';
+
+  // Two mutually exclusive states, most alarming first.
+  //
+  // This used to key off the domain aggregate (totalSharedInstalled === 0),
+  // which equals a per-user check only while exactly ONE account holds shared
+  // identities. With two, a user could lose every shared signature and the run
+  // would stay silent because somebody else still installed one -- the warning
+  // would have gone quiet precisely as the feature grew. Codex, 2026-08-23.
+  var degraded = sharedRegressions_(perUser, baseline);
+
+  if (degraded.length) {
+    // Partition by CAUSE, because the two have different fixes and printing
+    // the scope remedy for a user whose failure had nothing to do with the
+    // scope sends the operator to the wrong place.
+    var byScope = [];
+    var byOther = [];
+    for (var d = 0; d < degraded.length; d++) {
+      var g = degraded[d];
+      // 'mixed' lands in both lists on purpose: part of what is missing is the
+      // scope and part is not, and an operator told only about the scope will
+      // grant it, see the count improve, and stop looking.
+      if (g.cause === 'scope' || g.cause === 'mixed') byScope.push(formatRegression_(g));
+      if (g.cause === 'other' || g.cause === 'mixed') byOther.push(formatRegression_(g));
+    }
+
+    var msg =
+      'installAllSignatures: shared-mailbox signatures are MISSING for ' +
+      degraded.length +
+      ' user(s), shown as written/expected. Expected counts come from the ' +
+      'identities present now AND from SHARED_BASELINE, so a removed identity ' +
+      'still counts as missing rather than vanishing from the check.';
+    if (byScope.length) {
+      msg += ' REFUSED FOR LACK OF SCOPE: ' + byScope.join(', ') + '.' + SCOPE_FIX;
+    }
+    if (byOther.length) {
+      msg +=
+        ' NOT explained by the scope (a user listed in both lines is missing ' +
+        'signatures for BOTH reasons -- fixing the scope will not finish the ' +
+        'job): ' +
+        byOther.join(', ') +
+        '. Check the run log for per-identity failures, and check whether the ' +
+        'send-as identities were deleted or reverted to pending verification. ' +
+        'If the removal was deliberate, clear those users from the ' +
+        'SHARED_BASELINE script property or this will warn every night.';
+    }
+    console.warn(msg);
+  } else if (totalSharedSeen === 0) {
+    // Nobody has a shared send-as identity at all. Correct and non-alarming on
+    // a fresh domain, and the state here until 2026-08-21: these addresses are
+    // ALIASES, and an alias is not a send-as identity.
+    console.warn(
+      'installAllSignatures: no shared address is a send-as identity on any ' +
+        'of the ' +
+        users.length +
+        ' user account(s), so 0 shared-mailbox signatures were installed. ' +
+        'SHARED_IDENTITIES (support@, sales@, founders@, ...) are ALIASES, ' +
+        'and an alias does not appear in settings/sendAs; it only makes mail ' +
+        'arrive. The account holder adds it in Gmail Settings -> Accounts ' +
+        'and Import -> Send mail as (or the script creates it via ' +
+        'settings/sendAs POST). Either route ALSO needs ' +
+        'gmail.settings.sharing to write the signature afterwards -- proven ' +
+        '2026-08-21, do not assume the manual route is permission-free. ' +
+        'Converting these to Google Groups would NOT help: a Group is not a ' +
+        'send-as identity either.' +
+        (totalDenied > 0
+          ? ' NOTE: ' +
+            totalDenied +
+            ' non-primary identity/identities WERE refused with a ' +
+            'missing-scope 403 despite none being a recognised shared ' +
+            'address -- somebody has a non-primary sendAs outside ' +
+            'SHARED_IDENTITIES.' +
+            SCOPE_FIX
+          : ''),
+    );
+  }
+
+  // A warning in Cloud Logging is only seen by someone who goes looking. This
+  // is the delivery half: the same finding, pushed. Deliberately silent on a
+  // clean run -- an alert that arrives nightly regardless is one nobody reads.
+  var alert = runAlert_(degraded, failedUsers, users.length, partialUsers);
+  if (alert) sendRunAlert_(alert.subject, alert.body);
+
+  // After the check, never before: the baseline is what the check compares
+  // against, so updating it first would compare this run to itself. And never
+  // at all when the stored value could not be read -- see readSharedBaseline_.
+  if (baselineRead.usable) {
+    try {
+      writeSharedBaseline_(nextSharedBaseline_(perUser, baseline));
+    } catch (err) {
+      // A property-quota or service error here must not cost the durable Sheet
+      // record of a run whose signatures have already been written. Losing the
+      // baseline update degrades the NEXT run's detection; losing the log loses
+      // the evidence of THIS one. (Codex P2, 2026-08-23.)
+      console.error('Could not persist SHARED_BASELINE, continuing: ' + err);
     }
   }
 
@@ -212,7 +312,13 @@ function installForUser_(user) {
   var identities = gmailApi_(token, 'settings/sendAs', 'get').sendAs || [];
   var written = 0;
   var sharedWritten = 0;
+  var sharedSeen = 0;
   var denied = 0;
+  // Denials on SHARED identities only. counts.denied includes any non-primary
+  // sendAs, and a user can hold one that is not a company address -- letting
+  // that decide the remedy would announce "REFUSED FOR LACK OF SCOPE" about
+  // shared signatures that were actually deleted. (Codex P2, 2026-08-23.)
+  var sharedDenied = 0;
   var failures = [];
 
   for (var i = 0; i < identities.length; i++) {
@@ -220,6 +326,13 @@ function installForUser_(user) {
     if (identity.verificationStatus === 'pending') continue;
 
     var shared = isSharedIdentity_(identity.sendAsEmail);
+    // sharedSeen is the DENOMINATOR the regression check needs: how many shared
+    // identities we actually attempted. Counted after the pending skip, because
+    // a pending identity is not writable and its absence is not a regression.
+    // (Consequence worth knowing: if a live identity flips back to pending, both
+    // numerator and denominator drop and no regression is reported. The log
+    // Sheet's identity count still moves, so it is visible, just not warned on.)
+    if (shared) sharedSeen++;
     // Shared mailboxes fold the mailbox's purpose into the name line
     // ("DragonCandy Support") and use a generic second line, with
     // showCompany:false so renderSignature doesn't append "&middot; DragonCandy"
@@ -252,13 +365,291 @@ function installForUser_(user) {
       if (isMissingSharingScope_(err)) {
         // Known, expected, and actionable — not a defect in this script.
         denied++;
+        if (shared) sharedDenied++;
       } else {
         failures.push(identity.sendAsEmail + ': ' + err);
       }
     }
   }
 
-  return { total: written, shared: sharedWritten, denied: denied, failures: failures };
+  return {
+    total: written,
+    shared: sharedWritten,
+    sharedSeen: sharedSeen,
+    denied: denied,
+    sharedDenied: sharedDenied,
+    failures: failures,
+  };
+}
+
+/**
+ * Which users had shared identities that did NOT all get a signature.
+ *
+ * Split out and kept pure for two reasons. It is the only part of the run
+ * that vitest can reach -- installAllSignatures needs AdminDirectory and a
+ * live impersonation token, so the decision logic would otherwise be
+ * untested. And the bug it exists to fix was a scoping error, not a
+ * computation error, which is exactly the kind a unit test pins cheaply.
+ *
+ * The bug: the zero-shared warning used to fire on the DOMAIN AGGREGATE
+ * (totalSharedInstalled === 0). With one shared-identity holder that happens
+ * to be equivalent to a per-user check. With two it is not -- one user could
+ * lose every shared signature and the run would stay silent because the other
+ * still installed one. Found by Codex 2026-08-23.
+ *
+ * @param {Array<{email: string, sharedWritten: number, sharedSeen: number}>} perUser
+ * @return {Array<string>} "user@ (written/seen)" for each degraded user
+ */
+/**
+ * 'ok' or 'PARTIAL' for one user's counts. ('ERROR' is the caller's, for a run
+ * that threw before producing counts at all.)
+ *
+ * PARTIAL is deliberately distinct from both. A run where every writable
+ * identity was written but some were refused is neither a clean pass nor a
+ * failure, and collapsing it into either is how a standing permissions gap
+ * becomes invisible.
+ *
+ * Extracted so it can be tested. It looks trivial enough not to need it, and
+ * that is exactly why: this one predicate decides both the Sheet's status
+ * column AND whether the user reaches the alert, so a cause it fails to treat
+ * as non-clean is a cause nobody is told about. A mutation of the inline
+ * version went undetected by the whole suite, because the only tests that
+ * touched this path fed runAlert_ directly.
+ */
+function runStatus_(counts) {
+  if (counts.failures && counts.failures.length) return 'PARTIAL';
+  if (counts.denied) return 'PARTIAL';
+  return 'ok';
+}
+
+/**
+ * How many shared signatures this user SHOULD have.
+ *
+ * The larger of what is on their account right now and what they have ever
+ * successfully had. Both the warning and the run log call this, so the two can
+ * never disagree about what "expected" means -- they did briefly, and the Sheet
+ * (the durable record) was the one telling the smaller truth.
+ */
+function sharedExpectation_(record, baseline) {
+  return Math.max(record.sharedSeen || 0, (baseline || {})[record.email] || 0);
+}
+
+function sharedRegressions_(perUser, baseline) {
+  baseline = baseline || {};
+  var out = [];
+  for (var i = 0; i < perUser.length; i++) {
+    var r = perUser[i];
+    // The denominator must NOT come only from what we can see right now.
+    // Deriving it from the current sendAs list makes the check blind to the
+    // worst case: delete a user's shared identities and sharedSeen falls to 0
+    // alongside sharedWritten, so nothing looks wrong. The high-water baseline
+    // is what remembers those signatures used to exist. (Codex P1, 2026-08-23
+    // -- the first version of this function shipped with exactly that hole,
+    // and a comment cheerfully describing it.)
+    var expected = sharedExpectation_(r, baseline);
+    if (expected > 0 && r.sharedWritten < expected) {
+      var denied = r.denied || 0;
+      // How many missing signatures the scope does NOT account for. A user can
+      // hit both causes at once -- one identity 403s while another was deleted
+      // -- and reporting only the scope would send the operator to grant a
+      // permission that fixes part of the problem and then declare victory.
+      // (Codex P2, 2026-08-23.)
+      var unexplained = Math.max(0, expected - r.sharedWritten - denied);
+      out.push({
+        email: r.email,
+        written: r.sharedWritten,
+        expected: expected,
+        denied: denied,
+        unexplained: unexplained,
+        cause: denied > 0 ? (unexplained > 0 ? 'mixed' : 'scope') : 'other',
+      });
+    }
+  }
+  return out;
+}
+
+/** "user@ (1/3)" -- the shape the warning and the tests both want. */
+function formatRegression_(r) {
+  return r.email + ' (' + r.written + '/' + r.expected + ')';
+}
+
+/**
+ * High-water mark of shared signatures successfully installed per user.
+ *
+ * Never decreases on its own. A drop IS the signal, so letting the baseline
+ * follow it down would erase the evidence one run later and turn a standing
+ * regression into a single warning nobody was awake for. To accept a
+ * deliberate removal, edit or delete the SHARED_BASELINE script property.
+ *
+ * Users absent from this run (their installForUser_ threw) keep their entry,
+ * so an outage cannot quietly reset expectations either.
+ */
+function nextSharedBaseline_(perUser, baseline) {
+  var out = {};
+  var source = baseline || {};
+  for (var k in source) {
+    if (Object.prototype.hasOwnProperty.call(source, k)) out[k] = source[k];
+  }
+  for (var i = 0; i < perUser.length; i++) {
+    var r = perUser[i];
+    out[r.email] = Math.max(out[r.email] || 0, r.sharedWritten);
+  }
+  return out;
+}
+
+/**
+ * Returns { values, usable }.
+ *
+ * `usable` false means the stored property could not be parsed. The caller must
+ * then NOT write a new baseline: overwriting an unreadable one with this run's
+ * counts would silently discard every high-water mark, and if identities are
+ * already missing their expectations would be erased permanently -- the run
+ * after next would go quiet and look healthy. Failing to read costs detection
+ * for one run; failing to preserve costs it forever. (Codex P2, 2026-08-23.)
+ */
+function readSharedBaseline_() {
+  var raw = PropertiesService.getScriptProperties().getProperty('SHARED_BASELINE');
+  if (!raw) return { values: {}, usable: true };
+  try {
+    var parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return { values: parsed, usable: true };
+    }
+    console.warn(
+      'SHARED_BASELINE parsed but is not an object (got ' +
+        (Array.isArray(parsed) ? 'an array' : typeof parsed) +
+        '). Leaving it untouched; regression detection is off until it is repaired.',
+    );
+    return { values: {}, usable: false };
+  } catch (err) {
+    // Fail open rather than throw -- a corrupt baseline must not stop
+    // signatures installing -- but refuse to overwrite it.
+    console.warn(
+      'SHARED_BASELINE is not valid JSON, so regression detection is off until ' +
+        'it is repaired. It will NOT be overwritten. Error: ' +
+        err,
+    );
+    return { values: {}, usable: false };
+  }
+}
+
+function writeSharedBaseline_(next) {
+  PropertiesService.getScriptProperties().setProperty('SHARED_BASELINE', JSON.stringify(next));
+}
+
+/**
+ * Composes the alert for a run, or null if there is nothing worth sending.
+ *
+ * Pure, so the decision of WHEN to wake somebody up is unit-testable. The
+ * sending itself (MailApp, script properties) is not, and is kept to the thin
+ * sendRunAlert_ below.
+ *
+ * Silent on a clean run on purpose. A nightly "all fine" mail trains its
+ * recipient to filter it, and then the one that matters is filtered too.
+ */
+function runAlert_(degraded, failedUsers, userCount, partialUsers) {
+  degraded = degraded || [];
+  failedUsers = failedUsers || [];
+  partialUsers = partialUsers || [];
+  if (!degraded.length && !failedUsers.length && !partialUsers.length) return null;
+
+  var parts = [];
+  if (failedUsers.length) parts.push(failedUsers.length + ' failed');
+  if (partialUsers.length) parts.push(partialUsers.length + ' not clean');
+  if (degraded.length) parts.push(degraded.length + ' degraded');
+  var subject = '[DragonCandy signatures] ' + parts.join(', ') + ' of ' + userCount + ' users';
+
+  var body = 'The nightly signature run needs attention.\n\n';
+
+  if (failedUsers.length) {
+    body +=
+      'NO SIGNATURE WRITTEN AT ALL (' +
+      failedUsers.length +
+      '):\n  ' +
+      failedUsers.join('\n  ') +
+      '\n\nThese users threw before any identity was written. Their signatures ' +
+      'are whatever they were before this run -- possibly stale, possibly absent.\n\n';
+  }
+
+  if (partialUsers.length) {
+    body += 'RUNS THAT WERE NOT CLEAN (' + partialUsers.length + '):\n';
+    for (var q = 0; q < partialUsers.length; q++) {
+      body += '  ' + partialUsers[q].email + ' -- ' + partialUsers[q].detail + '\n';
+    }
+    body +=
+      '\nThis covers anything short of a clean run, including a failed write on ' +
+      "the user's OWN primary signature and a scope refusal on a non-company " +
+      'address. Neither would show anywhere else in this mail.\n\n';
+  }
+
+  if (degraded.length) {
+    body += 'SHARED SIGNATURES MISSING (' + degraded.length + '), as written/expected:\n';
+    for (var i = 0; i < degraded.length; i++) {
+      var g = degraded[i];
+      body +=
+        '  ' +
+        formatRegression_(g) +
+        '  cause: ' +
+        g.cause +
+        (g.cause === 'scope'
+          ? ' (refused for lack of gmail.settings.sharing)'
+          : g.cause === 'mixed'
+            ? ' (PART scope, PART something else -- fixing the scope will not finish the job)'
+            : ' (nothing was refused; the identities were likely deleted or set back to pending)') +
+        '\n';
+    }
+    body +=
+      '\n"Expected" is the larger of the identities present now and the ' +
+      'SHARED_BASELINE high-water mark, so a DELETED identity still counts as ' +
+      'missing rather than disappearing from the check.\n\n';
+  }
+
+  body +=
+    'Full per-user detail is in the run log Sheet, and the reasoning behind ' +
+    'each cause is in scripts/workspace/README.md.\n';
+
+  return { subject: subject, body: body };
+}
+
+/** Reads ALERT_EMAIL: comma-separated, blanks ignored. */
+function alertRecipients_() {
+  var raw = PropertiesService.getScriptProperties().getProperty('ALERT_EMAIL');
+  if (!raw) return [];
+  return String(raw)
+    .split(',')
+    .map(function (x) {
+      return x.trim();
+    })
+    .filter(function (x) {
+      // Not validation -- just refusing to hand MailApp obvious junk. A bad
+      // address is the recipient's problem to notice; an empty string is ours.
+      return x.length > 0 && x.indexOf('@') !== -1;
+    });
+}
+
+/**
+ * Best-effort. Failing to raise the alarm must never fail the run that raised
+ * it -- the signatures are already written by this point, and losing the run
+ * log to a mail error would trade a notification for the evidence.
+ */
+function sendRunAlert_(subject, body) {
+  var to = alertRecipients_();
+  if (!to.length) {
+    console.warn(
+      'ALERT_EMAIL is not set, so this run has a finding and nobody was told. ' +
+        'Set it to a comma-separated address list in Script Properties. ' +
+        'Subject would have been: ' +
+        subject,
+    );
+    return false;
+  }
+  try {
+    MailApp.sendEmail({ to: to.join(','), subject: subject, body: body });
+    return true;
+  } catch (err) {
+    console.error('Could not send the alert email to ' + to.join(', ') + ': ' + err);
+    return false;
+  }
 }
 
 /**
@@ -440,4 +831,82 @@ function dryRun() {
     );
   });
   return users;
+}
+
+/**
+ * Sends a test alert to whatever ALERT_EMAIL currently holds. Run it from the
+ * editor after changing that property, after granting a new OAuth scope, or any
+ * time you want to know the alarm still rings.
+ *
+ * WHY THIS IS PERMANENT rather than a throwaway. A clean run is silent by
+ * design (see runAlert_), so the delivery path is exercised only by a run that
+ * has a finding -- which, if everything else works, should be rare. That can
+ * leave the path untested for months, and an alarm nobody has heard ring is
+ * indistinguishable from one that does not work. This is how you hear it.
+ *
+ * WHY IT GOES THROUGH sendRunAlert_ instead of calling MailApp itself. A test
+ * that builds its own send proves MailApp works, which was never in doubt. What
+ * is in doubt is whether THIS script's authorization, THIS property and THIS
+ * recipient list deliver -- so it has to be the same code the real alert uses.
+ * If this function ever stops calling sendRunAlert_, it stops being a test.
+ *
+ * WHY IT THROWS where a real run only warns. installAllSignatures must not fail
+ * over a notification -- its job is writing signatures, and they are already
+ * written by the time the alert is attempted. This function's ONLY job is the
+ * notification, so "nobody is configured" and "the send was refused" are failed
+ * tests, not footnotes.
+ *
+ * WHAT A GREEN RUN DOES NOT PROVE, and this is the whole point: it proves the
+ * send was ACCEPTED, not that anything arrived. Mail can still be filtered,
+ * spam-foldered or ignored. The result of this test is the message showing up
+ * somewhere you would notice -- so the console line below tells you to go and
+ * look rather than declaring success. Treating a green execution as a pass
+ * rebuilds the exact failure this alert exists to fix.
+ *
+ * Writes nothing else: no signature, no baseline, no row in the log Sheet.
+ */
+function sendTestAlert() {
+  var to = alertRecipients_();
+  if (!to.length) {
+    throw new Error(
+      'ALERT_EMAIL is unset or holds nothing usable, so there is nobody to ' +
+        'test. Set it to a comma-separated address list in Project Settings > ' +
+        'Script Properties. (Entries without an "@" are dropped -- see ' +
+        'alertRecipients_.)',
+    );
+  }
+
+  var sent = sendRunAlert_(
+    '[TEST] DragonCandy signature alert -- no action needed',
+    'This is a TEST of the signature-installer alert, sent by hand from the ' +
+      'Apps Script editor. Nothing is wrong.\n\n' +
+      'What it means: the alarm can reach this address. What it does NOT ' +
+      'mean: that signatures are currently installing correctly -- the run ' +
+      'log Sheet is the place for that.\n\n' +
+      'A real alert never says TEST in the subject, and always names the ' +
+      'users affected.\n\n' +
+      'Sent to: ' +
+      to.join(', ') +
+      '\n',
+  );
+
+  // sendRunAlert_ swallows failures on purpose, so its false is the only
+  // signal that the send was refused. Left unchecked, a broken mail path would
+  // finish green and read as a pass.
+  if (!sent) {
+    throw new Error(
+      'The test alert was NOT sent to ' +
+        to.join(', ') +
+        '. sendRunAlert_ logged the reason immediately above this error.',
+    );
+  }
+
+  console.log(
+    'Test alert accepted for delivery to ' +
+      to.join(', ') +
+      '. This is NOT the result: go and confirm it arrived somewhere you ' +
+      'would actually notice. If it is not there, check spam before ' +
+      'suspecting the script.',
+  );
+  return to;
 }

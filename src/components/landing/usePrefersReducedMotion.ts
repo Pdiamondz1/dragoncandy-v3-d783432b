@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 /**
  * Local prefers-reduced-motion hook — keeps the landing free of Framer Motion.
- * Shared by VideoSlot (single-clip player) and RotatingBackdrop (crossfade playlist).
+ * Used by RotatingBackdrop (both its single-clip and crossfade-playlist paths).
  */
 export function usePrefersReducedMotion(): boolean {
   // Initialize synchronously so the very first render already honors the preference

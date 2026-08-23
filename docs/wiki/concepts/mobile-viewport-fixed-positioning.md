@@ -2,8 +2,8 @@
 title: Mobile Viewport & Fixed Positioning
 type: concept
 created: 2026-07-14
-updated: 2026-08-14
-sources: [2026-07-14-mobile-screenfit-fixed-position.md, 2026-07-16-donny-desktop-overlay.md, 2026-07-19-mobile-nav-modal-zindex.md, 2026-08-14-ios-first-physical-device-build.md]
+updated: 2026-08-23
+sources: [2026-07-14-mobile-screenfit-fixed-position.md, 2026-07-16-donny-desktop-overlay.md, 2026-07-19-mobile-nav-modal-zindex.md, 2026-08-14-ios-first-physical-device-build.md, 2026-08-23-landing-footer-ios-inset-and-reel-recut.md, 2026-08-23-adrian-feedback-body-scroller-and-how-it-works.md]
 tags: [mobile, ios, css, viewport, fixed-position, framer-motion, page-transition, desktop, flexbox, overscroll, portal, z-index]
 ---
 # Mobile Viewport & Fixed Positioning
@@ -203,6 +203,117 @@ desktop/mobile separation rule in `DESIGN_SYSTEM.md`.
 **Rule:** `fixed top-0`, or a `sticky top-0` that is page chrome, pads with
 `env(safe-area-inset-top)`. In-page section headers do not. The value is `0` on the web, so the
 change is a no-op there.
+
+## 8. In the iOS shell, `contentInset` must be `'never'` — CSS owns the safe areas, or the native layer does, never both (2026-08-23)
+
+`capacitor.config.ts` set `ios.contentInset: 'always'`. Under that setting WebKit shrinks
+**`documentElement.clientHeight` by the top safe-area inset**, while `innerHeight`, `100vh` and
+`100dvh` all keep reporting the full height. Measured inside a real WKWebView on an iPhone 17 Pro
+simulator, by injecting a diagnostic into the installed app bundle:
+
+```
+innerHeight               = 840
+documentElement.clientHeight = 778      <-- 840 - 62
+safe-area-inset-top       = 62
+safe-area-inset-bottom    = 34
+```
+
+So anything sized to a viewport unit is **taller than the document box**, and the webview's own
+**white** background shows through underneath it — about 96pt here. On the landing page that band
+clipped the footer's Terms / Privacy / Help links.
+
+**This was live for every page in the app.** `AppShell` is `flex h-screen` (`100vh`), so the
+overhang existed everywhere; it was invisible purely because every other surface in the app is
+white, and so was the band. It became visible only when the landing footer stopped being white
+([[Landing Cinematic Single-CTA Redesign]]). **A defect hidden by a coincidence of palette is
+still a defect.**
+
+Fixed by `contentInset: 'never'`. The app already pays back `env(safe-area-*)` in CSS on every
+surface that needs it (§7 above), so insetting natively as well was two mechanisms solving one
+problem and disagreeing about the answer. Afterwards `innerHeight`, `clientHeight`, the page
+wrapper and the footer's bottom all agree at 874, `env(safe-area-*)` still reports 62/34 so
+existing CSS padding is untouched, and the light `/terms` page renders unchanged.
+
+**Not reproducible in any browser or emulator** — same class as §7. Emulated viewports have no
+native scroll-view inset, so `clientHeight` and `innerHeight` are always equal there. It needs the
+real WKWebView.
+
+**A related refutation worth keeping, because it is the same numbers pointing the other way.** A
+review had claimed the `AppShell` `100vh` / landing `100dvh` mismatch left "unused scrollable space
+below the footer" on **mobile Safari**. Tested directly — shell pinned to `100vh`, wrapper to
+`100dvh`, at 60/100/140px of browser chrome — and it does not reproduce: `main.scrollHeight ===
+main.clientHeight` in every case and `main.scrollTop` refuses to move, because **a container taller
+than its content produces no overflow**. "Unused space" is not "scrollable space". The probe was
+controlled (forcing the wrapper to 2000px produced 1432px of overflow and real scrolling on the
+same instruments). The one-word fix proposed there — `h-screen` → `h-[100dvh]` — would also have
+been a **regression**: `DashboardLayout` is `min-h-screen` (`100vh`) *inside* that container, so
+shrinking the shell would make every short dashboard page newly scrollable on mobile Safari.
+
+**The lesson is the pair, not either half: refuting a claim on the surface where it was raised does
+not refute it on the surfaces where it was never tested.** The browser claim was false; the same
+family of bug was real one layer down, in the shell nobody had measured.
+
+## 9. `body` is the document's scroll container, and `AppShell` must be `100dvh` (2026-08-23)
+
+Reported from a real phone: *"when going on it on mobile I see the screen jumps if I scroll up or
+down, I think it's a bug."* It was, on **every page in the app**, and it is the finding a review had
+already raised and this page's author had refuted.
+
+**Which element scrolls.** `src/index.css` sets `body { height: 100%; overflow-x: hidden }`. Per
+spec, an `overflow-x` of `hidden` against a visible `overflow-y` computes `overflow-y` to **`auto`**
+— so body is a **fixed-height scroll box**, and anything taller than it makes **body** scroll.
+Not `<html>`, not `#root`, not `<main>`.
+
+`AppShell` was `flex h-screen` = `100vh`, and on iOS Safari `100vh` is the URL-bar-**collapsed**
+height. So the shell stood ~60–90px taller than body's box, body scrolled by exactly that, and
+scrolling collapsed the URL bar, which grew `100dvh`, which resized the page mid-gesture.
+
+Measured, by forcing the shell 80px over and asking every candidate which one moves:
+
+| element | scrollHeight | clientHeight | overflow | scrollTop after scroll |
+|---|---|---|---|---|
+| `html` | 753 | 753 | 0 | 0 |
+| **`body`** | **833** | **753** | **80** | **80** |
+| `#root` | 833 | 833 | 0 | 0 |
+| shell | 833 | 833 | 0 | 0 |
+| `main` | 833 | 833 | 0 | 0 |
+
+`window.scrollY` stayed **0** throughout.
+
+**Fix:** `AppShell` → `h-[100dvh]`. `DashboardLayout`'s two `min-h-screen` track it — they are
+inside `main` so they never scrolled body, but a `100vh` child of a `100dvh` `main` hands short
+pages the same dead scroll one container down. Pinned by `src/layoutViewportHeight.test.ts` as a
+**text** assertion, because jsdom has no layout engine to evaluate a CSS length.
+
+**Two ways the original refutation went wrong, either sufficient on its own:**
+
+1. **Wrong element.** It checked `main.scrollHeight`/`main.scrollTop`. `main` is not the scroller.
+2. **Wrong instrument.** It ran in device emulation, which has no collapsing URL bar, so
+   `100vh === 100dvh` and the gap under test is structurally zero there.
+
+**The lesson is not "test on a real device" — it is: when a probe returns zero, prove the probe
+could have returned non-zero.** The forced-overflow control above costs one line, and it identifies
+the scroller *and* demonstrates the instrument responds. Note this is the second iOS-only defect in
+two days that an emulator confidently reported absent (§8 was the first), and both were found only
+because a human looked at a real screen.
+
+**`docs/DESIGN_SYSTEM.md` carried the false premise in writing** — "the app document never scrolls
+(h-screen shell + inner overflow-auto main), so iOS Safari toolbars never collapse" — and has been
+corrected. A rule whose stated justification is false will be re-derived wrongly by whoever reads
+it next; §2 above states the same `dvh`-not-`vh` rule and is unaffected, because its reasoning was
+about the *unit*, not about the document.
+
+**The steady state is not the whole surface — check the LOADING states too.** The first pass at
+this fix corrected `AppShell` and `DashboardLayout` and left three `min-h-screen` loading fallbacks
+in `App.tsx`. Two of them (`/pitch`'s Suspense fallback and the session-hint splash) **return
+directly from `AppLayout`, bypassing `AppShell`**, so their `100vh` overflows the **document**, not
+merely `main` — and the splash renders on **public** paths while auth resolves for a returning
+visitor, i.e. on the landing during every warm load, the exact scenario reported. The pin is
+therefore "**no `100vh` survives anywhere in `App.tsx`**", not "the shell is `h-[100dvh]`".
+
+**Still open:** if the jump survives on a real phone, the remaining candidate is iOS rubber-band
+overscroll — a different mechanism, wanting `overscroll-behavior-y: none` on `body`, which is an
+app-wide behavioural change and was deliberately not bundled here.
 
 ## Key Decisions
 

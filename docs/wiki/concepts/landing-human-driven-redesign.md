@@ -2,11 +2,22 @@
 title: Landing "Human-driven. AI-assisted." Redesign
 type: concept
 created: 2026-07-18
-updated: 2026-07-19
-sources: [2026-07-18-landing-joe-redesign.md]
+updated: 2026-08-22
+sources: [2026-07-18-landing-joe-redesign.md, 2026-08-22-landing-cinematic-single-cta.md]
 tags: [landing, frontend, design, tailwind, positioning]
 ---
 # Landing "Human-driven. AI-assisted." Redesign
+
+> **Superseded (2026-08-22)** by [[Landing Cinematic Single-CTA Redesign]] —
+> `feat/landing-cinematic-single-cta`, **UNMERGED**, blocked on written permission from the two
+> restaurants (ABB, Uncle Rocco) whose footage the new hero plays. Until that branch merges,
+> dragoncandy.io still serves exactly the design this page describes: light, two-door, six
+> sections, a contact form, video opt-in behind `LANDING_VIDEO_BACKDROP_ENABLED`. Once it merges,
+> every claim below about what a visitor currently sees becomes historical — the two-door hero,
+> the six-section scroll, the contact form and the flag are all deleted outright on that branch,
+> not hidden behind a toggle. The strategic positioning this page describes ("Human-driven.
+> AI-assisted.") is NOT reversed — the new branch keeps the same story, told through video and one
+> CTA instead of six sections and two doors.
 
 The 2026-07-18 redesign of the public landing (`src/pages/LandingPage.tsx` +
 `src/components/landing/*`, PR #293) to a founder-provided mockup ("Joe's design"). It
