@@ -7,7 +7,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrgUnits } from '@/hooks/useOrgData';
 import { toast } from 'sonner';
-import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 import { StripeTestHelper } from '@/components/payments/StripeTestHelper';
 import { isStripeTestMode } from '@/lib/stripeMode';
 import {
@@ -48,7 +47,6 @@ const ROLE_CONFIG = {
   creator: {
     createFn: 'create-creator-connect-account',
     statusFn: 'check-creator-payout-status',
-    mission: 'setup_payouts' as const,
     connectLabel: 'Connect Stripe Account',
     description: 'Connect your Stripe account to receive payments directly from campaigns.',
     connectedLabel: 'Your Stripe account is set up. Payouts are processed automatically after project completion.',
@@ -56,7 +54,6 @@ const ROLE_CONFIG = {
   business: {
     createFn: 'create-restaurant-connect-account',
     statusFn: 'check-restaurant-payout-status',
-    mission: 'setup_payments' as const,
     connectLabel: 'Connect Stripe Account',
     description: 'Connect a Stripe account to pay creators directly through the platform.',
     connectedLabel: 'Your Stripe account is fully set up and ready to process payments.',
@@ -67,7 +64,6 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
   const { user, activeOrgUnit, activeOrg, refreshActiveOrgUnit } = useAuth();
   const { data: orgUnits = [] } = useOrgUnits(activeOrg?.id);
   const hasMultipleLocations = orgUnits.length > 1;
-  const { completeMission } = useFirstRunMissions();
   const [status, setStatus] = useState<PayoutStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
@@ -103,14 +99,13 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
     const params = new URLSearchParams(window.location.search);
     if (params.get('stripe_onboarding') === 'complete') {
       toast.success('Stripe setup updated — checking your account status...');
-      completeMission(config.mission);
       checkStatus().then(() => refreshActiveOrgUnit());
       window.history.replaceState({}, '', window.location.pathname);
     } else if (params.get('stripe_refresh') === 'true') {
       toast.error('Setup incomplete. Please try connecting again.');
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, [checkStatus, completeMission, config.mission, refreshActiveOrgUnit]);
+  }, [checkStatus, refreshActiveOrgUnit]);
 
   const handleConnect = async (action?: 'reconnect' | 'create_new') => {
     setConnecting(true);
@@ -124,7 +119,6 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
         setPreviousAccount(data.previousAccount);
       } else if (data?.alreadyComplete) {
         toast.success('Stripe account is already connected!');
-        completeMission(config.mission);
         checkStatus().then(() => refreshActiveOrgUnit());
       } else if (data?.url) {
         window.location.href = data.url;

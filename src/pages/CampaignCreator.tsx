@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useCampaignCreator } from '@/hooks/useCampaignCreator';
@@ -39,13 +39,7 @@ export default function CampaignCreator() {
 
   const handleLaunchCampaign = async () => {
     await launchCampaign();
-    completeMission('launch_campaign');
   };
-
-  // Trigger create_campaign mission when ideas are generated (screen transitions to launchpad)
-  useEffect(() => {
-    if (screen === 'launchpad') completeMission('create_campaign');
-  }, [screen, completeMission]);
 
   const navRole = userRole || 'business_client';
 
