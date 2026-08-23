@@ -485,6 +485,68 @@ holds no Toast credentials. See §6.
   drop 7 days after consent** — Google expires refresh tokens for External + Testing apps on that
   schedule, and that is a console setting, not a bug in the refresh code.
   → `docs/wiki/concepts/youtube-analytics-connector.md`
+- **Instagram read-only insights connector** — the second direct platform API under the
+  2026-08-23 scope decision (Outstand publishes; direct APIs measure). Per-user OAuth on
+  `instagram_business_basic` + `instagram_business_manage_insights` and nothing that can post.
+  **BUILT, NOT DEPLOYED, and never run against real Meta credentials** — three secrets are
+  unprovisioned (`INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`, a new `INSTAGRAM_OAUTH_STATE_SECRET`
+  kept separate from Google's so one leaked key does not compromise both flows).
+  **Built on the YouTube connector, and the value is the three places where copying it would have
+  been WRONG** — each checked against Meta's own docs rather than inferred from Google's shape.
+  **(1) There is no refresh token**: the 60-day access token IS the credential and
+  `ig_refresh_token` extends that same token, so a refresh replaces it. **(2) Therefore a
+  connection nobody reads DIES** — Meta only extends a token that is *still valid*, so
+  refresh-on-expiry (correct for Google) is guaranteed to fail here, and an expired token is
+  recoverable only by the user re-consenting. Hence proactive refresh at 15 days remaining, plus
+  a daily sweep for dormant accounts. **(3) There is no revoke endpoint** — Meta's access-token
+  reference says Delete is "not supported" on that node, so `youtube-disconnect`'s ordering
+  (revoke first, 502 and keep the row on failure) would make disconnect **permanently
+  impossible**. Disconnect attempts it, reports the outcome, and deletes the row either way,
+  which is safe here for a reason it is not for YouTube: deleting the row destroys our only copy
+  of the token, where YouTube's failure mode is *keeping* a live credential. The UI says exactly
+  that rather than implying the grant is gone.
+  **The console gave back what the docs took away.** Reading Business login settings surfaced a
+  **Deauthorize callback URL** — Meta will not let us revoke a grant, but it will tell us when the
+  *user* does, so a user-side removal now deletes our row instead of stranding a dead token.
+  **Instagram is weaker than YouTube at revoking and stronger at reporting; ask each platform what
+  it tells you, not only what it lets you do.** That callback and the required data-deletion
+  callback are the only two functions here without a JWT — Meta calls them with no session, so the
+  `signed_request` HMAC is their *entire* authorization (own module, 8 tests, every negative a real
+  forgery: wrong secret, payload swapped after signing, truncated signature, algorithm downgrade;
+  the HMAC covers the RAW base64url payload, since re-serialising reorders keys and fails looking
+  like a wrong secret; a missing app secret fails **closed**, or a missing config value becomes an
+  open delete endpoint).
+  **The tests caught a real bug in this build's own first draft** — `summarize` guarded values with
+  `Number.isFinite(Number(x))`, which admits `null` because `Number(null)` is **0** and 0 is
+  finite, so a day Instagram reported nothing for became a day with zero reach. Totals still added
+  up; only the day count betrayed it. **A defensive-looking default is the most likely place to
+  fabricate data** — the same trap sits at the last step in the UI, where
+  `value?.toLocaleString() ?? '0'` would undo the server's care, so the card renders an absent
+  metric as an em dash.
+  Also extracted `_shared/oauth-state.ts`, since this was the **third** copy of the HMAC state
+  logic; `youtube.ts` is deliberately NOT migrated in the same PR (it went live hours earlier, and
+  swapping its state implementation inside a feature PR means a reviewer cannot tell a behaviour
+  change from a feature) — a debt with a name, whose follow-up diff is only the swap.
+  **Codex found two P1s, both real and both deployment rather than logic:** the three anonymous
+  functions relied on a code comment asking the deployer to remember `--no-verify-jwt` (now all
+  seven declared in `supabase/config.toml`, four true and three false — **and my claim that this
+  repo has no `config.toml` was wrong, produced by a stale shell working directory**), and the
+  refresh sweep had **no cron**, i.e. a guard protecting exactly the population it was built for
+  and nobody else (now migration `20260825110000`, daily 04:00 UTC).
+  **Meta console work DONE in the browser 2026-08-23:** redirect URI
+  `https://dragoncandy.com/instagram/callback` saved, and `instagram_business_content_publish`
+  **removed** — verified after a page **reload**, with the control that the other two permissions
+  survived, because the confirm dialog never names the permission it removes.
+  `manage_comments`/`manage_messages` turned out **never to have been added** despite an
+  "Add all required permissions" button that would add both. Corrects a claim made the same hour:
+  the field is **`OAuth redirect URIs`, plural** — a chip list, not the single box the first-run
+  dialog shows, so preview origins can be registered whenever wanted.
+  **Pending:** the three secrets; registering the deauthorize + data-deletion URLs (the endpoints
+  had to exist first); the Vault secret `instagram_refresh_sweep_url` (absent, the cron fails
+  quietly in `cron.job_run_details`); App Review, which needs a demo video — and note the site-gate
+  conflict in `docs/runbooks/google-oauth-demo-video.md` applies to Meta's review too, since it
+  also requires an anonymously reachable privacy policy.
+  → `docs/wiki/concepts/instagram-insights-connector.md`
 - **Content delivery system stabilization** — bug-fixing the creator→business content
   handoff and payment flow; gates production launch. → `docs/SHIPPED_LOG.md`
 - **Outstand social media integration** — IG/TikTok/YouTube linking + delegated posting;

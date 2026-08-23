@@ -1,5 +1,36 @@
 # Wiki Log
 
+## [2026-08-23] ingest | Ask each platform what it tells you, not only what it lets you do
+
+**Created** [[Instagram Insights Connector]] (`concepts/instagram-insights-connector.md`) — the
+second direct platform API under the analytics-not-publishing scope decision, built on
+[[YouTube Analytics Connector]] and worth a page almost entirely for the three places where
+copying that connector would have been **wrong**.
+
+**No refresh token** (the 60-day access token IS the credential), therefore **a connection nobody
+reads dies** — Meta only extends a token that is still valid, so refresh-on-expiry is guaranteed
+to fail and an expired token is recoverable only by re-consent — and **no revoke endpoint**, so
+`youtube-disconnect`'s revoke-first ordering would have made disconnect permanently impossible.
+
+**The console gave back what the docs took away.** Business login settings has a *deauthorize
+callback*: Meta will not let us withdraw a grant, but it will tell us when the user does. Instagram
+is weaker than YouTube at revoking and stronger at reporting, which is the transferable lesson for
+TikTok and X.
+
+**Two failures of my own worth keeping.** The tests caught a fabricated zero in the first draft of
+`summarize`: `Number.isFinite(Number(x))` admits `null`, because `Number(null)` is 0 and 0 is
+finite, so a day Instagram reported nothing for became a day with zero reach — totals still added
+up, and only the day count betrayed it. **A defensive-looking default is the most likely place to
+fabricate data.** And I told the founder this repo has no `supabase/config.toml`; it does, and the
+claim came from a stale shell working directory left by an earlier `cd` — a wrong answer produced
+by a correct-looking command run from the wrong place.
+
+**Codex found two P1s, both deployment rather than logic**: three anonymous functions relying on a
+comment asking the deployer to remember `--no-verify-jwt`, and a refresh sweep with no cron — a
+guard protecting exactly the population it was built for and nobody else. Both closed.
+
+**Updated** `docs/PROJECT_CONTEXT.md` §5 and the index.
+
 ## [2026-08-23] update | The staging route we did not need to build
 
 Checked, before building it, the requirement that made a demo-video staging route look

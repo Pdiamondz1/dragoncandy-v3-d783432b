@@ -5,10 +5,9 @@
 // carrying a status URL and a confirmation code.
 //
 // Same authorization model as `instagram-deauthorize`, and the same warning:
-// this runs with `verify_jwt = false` because Meta calls it with no session, so
-// the signed_request signature IS the authorization. Deploy with:
-//
-//     supabase functions deploy instagram-data-deletion --no-verify-jwt
+// this runs with `verify_jwt = false` (declared in `supabase/config.toml`)
+// because Meta calls it with no session, so the signed_request signature IS the
+// authorization.
 //
 // WHAT IT DELETES, precisely, because over-claiming here is worse than
 // under-claiming: the Instagram CONNECTION rows for that account — the access

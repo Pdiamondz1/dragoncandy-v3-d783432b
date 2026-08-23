@@ -10,11 +10,12 @@
 // AUTHORIZATION IS THE SIGNATURE, AND NOTHING ELSE.
 //
 // This function runs with `verify_jwt = false` — it must, because Meta calls it
-// with no session and no bearer we issued. So deploy it with:
+// with no session and no bearer we issued. That posture is DECLARED in
+// `supabase/config.toml`, not left to a deploy flag: a comment telling the next
+// person to remember `--no-verify-jwt` is a hope, and a normal repository deploy
+// would have the gateway reject Meta before this file ever ran.
 //
-//     supabase functions deploy instagram-deauthorize --no-verify-jwt
-//
-// and understand what that costs: the request is anonymous until
+// Understand what it costs: the request is anonymous until
 // `verifySignedRequest` says otherwise. Everything the body claims — the account
 // id above all — is worthless before that check passes. Get this wrong and any
 // stranger can delete any user's connection by naming their id.

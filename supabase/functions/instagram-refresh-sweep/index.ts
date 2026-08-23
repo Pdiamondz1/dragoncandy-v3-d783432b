@@ -19,10 +19,11 @@
 // a 15-day window before expiry, this job has fifteen daily attempts to succeed
 // before anything is lost, so several days of Meta or cron trouble cost nothing.
 //
-// Runs with `verify_jwt = false` and checks the ingest bearer itself, the same
-// shape as `auto-approve-content` and `reconcile-pending-flushes`. Deploy with:
-//
-//     supabase functions deploy instagram-refresh-sweep --no-verify-jwt
+// Runs with `verify_jwt = false` (declared in `supabase/config.toml`) and checks
+// the ingest bearer itself, the same shape as `auto-approve-content` and
+// `reconcile-pending-flushes`. Scheduled daily at 04:00 UTC by migration
+// 20260825110000 — the schedule is part of the feature, since a sweep that never
+// runs protects exactly the population it was built for and nobody else.
 //
 // ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, AIOS_INGEST_SECRET,
 //      INSTAGRAM_APP_SECRET (unused by the refresh call itself, but present so a
