@@ -16,6 +16,7 @@ const TIERS: TierName[] = ['free', 'starter', 'growth', 'pro'];
 function assertMixSumsToOne(mix: TierMix): void {
   const total = TIERS.reduce((sum, t) => sum + mix[t], 0);
   if (Math.abs(total - 1) > 1e-9) {
+    // Throws rather than normalizing: a silently normalized 0.9 mix would understate revenue by 10%.
     throw new Error(`Tier mix must sum to 1, got ${total}`);
   }
 }

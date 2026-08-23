@@ -60,4 +60,12 @@ describe('projectMonth', () => {
   it('derives creator count from the restaurant count', () => {
     expect(projectMonth(base).creators).toBe(400);
   });
+
+  it('pins cost of revenue to an independently derived figure, not to its own formula', () => {
+    // Stripe 84,375 x 0.029 + 250 campaigns x $0.30 = 2,521.875
+    // Serve   100 x ($1.20 AI + $0.20 infra)         =   140
+    const r = projectMonth(base);
+    expect(r.costOfRevenue).toBeCloseTo(2_661.875, 6);
+    expect(r.grossProfit).toBeCloseTo(46_456.875, 6);
+  });
 });
