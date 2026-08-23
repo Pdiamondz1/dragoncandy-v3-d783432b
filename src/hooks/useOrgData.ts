@@ -282,10 +282,11 @@ export function useUpdateOrgUnit() {
       // Mirrors the pre-read guard useCreatorProfileSubmit.ts already does.
       let previousAddress: string | null = null;
       let previousAddressKnown = false;
+      let previouslyVerified = false;
       if (updates.address !== undefined) {
         const { data: existing, error: existingError } = await supabase
           .from('org_units')
-          .select('address')
+          .select('address, address_verified_at')
           .eq('id', id)
           .maybeSingle();
         if (existingError) {
@@ -302,6 +303,7 @@ export function useUpdateOrgUnit() {
         } else {
           previousAddress = existing?.address ?? null;
           previousAddressKnown = true;
+          previouslyVerified = existing?.address_verified_at != null;
         }
       }
 
@@ -322,7 +324,19 @@ export function useUpdateOrgUnit() {
       // Best-effort, fire-and-forget: see src/lib/verifyAddress.ts.
       const addressChanged =
         previousAddressKnown && (previousAddress ?? '') !== (updates.address ?? '');
-      if (addressChanged && updates.address) {
+      // ALSO fire when the location has never been verified, even if the address is
+      // unchanged. Without this there is no way for an existing account to satisfy the
+      // `address` requirement, which is `required` tier: the column was added with no
+      // backfill, so every pre-existing location starts at NULL, and the change-guard above
+      // means re-saving the same address does nothing. Codex found that the previous
+      // commit's guard — correct in itself — had removed the only escape hatch.
+      //
+      // Safe precisely BECAUSE there is no stamp: the destructive case the guard exists to
+      // prevent is an unresolved geocode nulling a still-true stamp, and a row with no
+      // stamp has nothing to lose. So this re-opens the path for unverified rows without
+      // re-opening the revocation risk for verified ones.
+      const neverVerified = previousAddressKnown && !previouslyVerified;
+      if ((addressChanged || neverVerified) && updates.address) {
         void requestBusinessAddressVerification({ orgUnitId: unit.id, address: updates.address });
       }
 

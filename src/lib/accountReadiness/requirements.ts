@@ -62,8 +62,15 @@ export const ROLE_REQUIREMENTS: Record<AccountRole, readonly RequirementDef[]> =
     identityVerified(BUSINESS_SETTINGS, 'Stripe requires this before it can release payments to creators.'),
     {
       key: 'address', tier: 'required',
-      label: 'Add your address',
-      why: 'We match you with creators near you — without it, nobody local finds you.',
+      // "Confirm", not "Add". This derives from `address_verified_at`, not from whether an
+      // address exists, so a business that has had an address for months still reads unmet
+      // until a geocode confirms it — the column was added with no backfill. Telling those
+      // accounts to "add your address" would be false on its face and would send them
+      // looking for a field they already filled in. Saving the location re-fires
+      // verification (see useUpdateOrgUnit's neverVerified branch), so the resolve route
+      // below is genuinely the way to clear this.
+      label: 'Confirm your address',
+      why: 'We match you with creators near you — until it checks out, nobody local finds you.',
       derive: deriveAddress, resolve: { route: '/dashboard/business/locations' },
     },
     stripe(BUSINESS_SETTINGS, 'So you can pay creators the moment work is approved.'),
@@ -108,7 +115,9 @@ export const ROLE_REQUIREMENTS: Record<AccountRole, readonly RequirementDef[]> =
     socialLinked(CREATOR_SETTINGS),
     {
       key: 'address', tier: 'recommended',
-      label: 'Add your address',
+      // Stamp-derived like the other two, so the same "you already typed it" problem
+      // applies — but this one is `recommended`, so it is dismissible and cannot block.
+      label: 'Confirm your address',
       why: 'So businesses near you can find you — and shoots can be scheduled around where you actually are.',
       derive: deriveCreatorAddress, resolve: { route: CREATOR_SETTINGS },
     },
@@ -132,7 +141,9 @@ export const ROLE_REQUIREMENTS: Record<AccountRole, readonly RequirementDef[]> =
     identityVerified(BRAND_SETTINGS, 'Stripe requires this before it can fund sponsorships.'),
     {
       key: 'address', tier: 'required',
-      label: 'Add your address',
+      // Same reasoning as the business entry above — this derives from a stamp, not from
+      // whether an address exists, and the column has no backfill.
+      label: 'Confirm your address',
       why: 'So restaurants and creators near you can find you.',
       derive: deriveAddress, resolve: { route: '/dashboard/brand/products' },
     },
