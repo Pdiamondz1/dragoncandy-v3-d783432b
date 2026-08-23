@@ -183,7 +183,7 @@ function loadAppsScript(scriptProperties = {}) {
   };
   return new Function(
     'PropertiesService',
-    `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN, isMissingSharingScope_, requestedScopes_, SCOPE_BASIC, SCOPE_SHARING };`,
+    `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN, isMissingSharingScope_, requestedScopes_, SCOPE_BASIC, SCOPE_SHARING, sharedRegressions_ };`,
   )(PropertiesService);
 }
 
@@ -304,5 +304,74 @@ describe('Code.gs.js shared identities', () => {
         `${email} must stay classified as shared, or it will be signed as personal mail the day it is created`,
       ).toBe(true);
     }
+  });
+});
+
+// The zero-shared warning used to fire on the DOMAIN AGGREGATE. That is
+// equivalent to a per-user check only while exactly one account holds shared
+// identities — which was true on 2026-08-23 and is the reason it went
+// unnoticed. sharedRegressions_ exists to make the check per user, and these
+// tests pin the scoping, because the original bug was a scoping error rather
+// than a computation error. Codex found it; the aggregate version passed every
+// test that existed at the time.
+describe('sharedRegressions_', () => {
+  const { sharedRegressions_ } = loadAppsScript();
+
+  it('reports nothing when every shared identity was written', () => {
+    expect(
+      sharedRegressions_([
+        { email: 'dame@dragoncandy.com', sharedWritten: 3, sharedSeen: 3 },
+        { email: 'joe@dragoncandy.com', sharedWritten: 0, sharedSeen: 0 },
+      ]),
+    ).toEqual([]);
+  });
+
+  it('does not report a user who simply has no shared identities', () => {
+    expect(
+      sharedRegressions_([{ email: 'joe@dragoncandy.com', sharedWritten: 0, sharedSeen: 0 }]),
+    ).toEqual([]);
+  });
+
+  it('reports a user who lost all of theirs', () => {
+    expect(
+      sharedRegressions_([{ email: 'dame@dragoncandy.com', sharedWritten: 0, sharedSeen: 3 }]),
+    ).toEqual(['dame@dragoncandy.com (0/3)']);
+  });
+
+  it('reports a partial loss, not just a total one', () => {
+    expect(
+      sharedRegressions_([{ email: 'dame@dragoncandy.com', sharedWritten: 2, sharedSeen: 3 }]),
+    ).toEqual(['dame@dragoncandy.com (2/3)']);
+  });
+
+  // THE REGRESSION TEST. Under the old aggregate check the domain total here is
+  // 1, which is non-zero, so nothing warned at all — dame@ losing every shared
+  // signature was invisible because someone else still had one. This case is
+  // the entire reason the function exists.
+  it('reports a degraded user even when another user installed shared signatures', () => {
+    const degraded = sharedRegressions_([
+      { email: 'dame@dragoncandy.com', sharedWritten: 0, sharedSeen: 3 },
+      { email: 'joe@dragoncandy.com', sharedWritten: 1, sharedSeen: 1 },
+    ]);
+    expect(degraded).toEqual(['dame@dragoncandy.com (0/3)']);
+    const domainTotalWritten = 0 + 1;
+    expect(
+      domainTotalWritten,
+      'the aggregate is non-zero here, which is exactly why the aggregate check missed this',
+    ).toBeGreaterThan(0);
+  });
+
+  it('reports every degraded user, not just the first', () => {
+    expect(
+      sharedRegressions_([
+        { email: 'a@dragoncandy.com', sharedWritten: 0, sharedSeen: 2 },
+        { email: 'b@dragoncandy.com', sharedWritten: 1, sharedSeen: 1 },
+        { email: 'c@dragoncandy.com', sharedWritten: 1, sharedSeen: 4 },
+      ]),
+    ).toEqual(['a@dragoncandy.com (0/2)', 'c@dragoncandy.com (1/4)']);
+  });
+
+  it('handles an empty run without throwing', () => {
+    expect(sharedRegressions_([])).toEqual([]);
   });
 });

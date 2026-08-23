@@ -63,15 +63,21 @@ function isSharedIdentity_(email) {
 function installAllSignatures() {
   var users = listDomainUsers_();
   var results = [];
-  var totalSharedInstalled = 0;
+  var perUser = [];
+  var totalSharedSeen = 0;
   var totalDenied = 0;
 
   for (var i = 0; i < users.length; i++) {
     var user = users[i];
     try {
       var counts = installForUser_(user);
-      totalSharedInstalled += counts.shared;
+      totalSharedSeen += counts.sharedSeen;
       totalDenied += counts.denied;
+      perUser.push({
+        email: user.primaryEmail,
+        sharedWritten: counts.shared,
+        sharedSeen: counts.sharedSeen,
+      });
 
       // PARTIAL is deliberately distinct from both ok and ERROR. A run where
       // every writable identity was written but some were refused is neither
@@ -95,7 +101,11 @@ function installAllSignatures() {
         user.title || '(no title)',
         status,
         detail,
-        counts.shared + ' shared',
+        // written/seen, not a bare count. The denominator is what makes a
+        // regression legible in the Sheet: "0 shared" is correct for a user
+        // with none and alarming for a user with three, and a bare number
+        // cannot tell those apart.
+        counts.sharedSeen ? counts.shared + '/' + counts.sharedSeen + ' shared' : '0 shared',
       ]);
     } catch (err) {
       // The Sheet write below (appendRunLog_) silently no-ops when LOG_SHEET_ID
@@ -108,53 +118,76 @@ function installAllSignatures() {
     }
   }
 
-  // 0 shared is the EXPECTED state today, not a regression. SHARED_IDENTITIES
-  // are aliases on dame@, and an alias is not a sendAs identity -- so this
-  // branch matches nothing until someone completes the manual send-as step.
-  // Confirmed on the first real run, 2026-08-21. An earlier version of this
-  // comment blamed a future Google Groups conversion; that was the wrong
-  // diagnosis and would have sent an operator looking in the wrong place.
-  // Warn anyway: the day someone does the send-as step, this going quiet is
-  // how they know it worked, and if it later returns to 0 that is a real
-  // regression worth seeing.
-  if (totalSharedInstalled === 0) {
-    if (totalDenied > 0) {
-      // The identities EXIST and we were refused. One cause, one fix.
-      console.warn(
-        'installAllSignatures: ' +
-          totalDenied +
-          ' send-as identity/identities were refused with 403 across ' +
-          users.length +
-          ' user(s), so 0 shared-mailbox signatures installed. The identities ' +
-          'exist and are verified -- we lack ' +
-          SCOPE_SHARING +
-          ', which Gmail requires to modify any NON-PRIMARY sendAs. FIXING ' +
-          'THIS TAKES TWO STEPS AND THE ORDER MATTERS: (1) add that scope to ' +
-          'the domain-wide delegation in the admin console, alongside ' +
-          'gmail.settings.basic; THEN (2) set the script property ' +
-          'SHARING_SCOPE_ENABLED=true so the impersonation JWT actually asks ' +
-          'for it. Step 1 alone changes nothing -- the token still comes back ' +
-          'without the scope and you get this same 403. Step 2 before step 1 ' +
-          'breaks every signature with unauthorized_client. NOTE the ' +
-          'consequence before doing either: that scope also lets this service ' +
-          'account set who may send as what, for every user in the domain.',
-      );
-    } else {
-      console.warn(
-        'installAllSignatures: 0 shared-mailbox signatures installed across ' +
-          users.length +
-          ' user(s), and nothing was refused -- so no shared address is a ' +
-          'send-as identity on any account. SHARED_IDENTITIES (support@, ' +
-          'sales@, founders@, ...) are ALIASES, and an alias does not appear ' +
-          'in settings/sendAs; it only makes mail arrive. The account holder ' +
-          'adds it in Gmail Settings -> Accounts and Import -> Send mail as ' +
-          '(or the script creates it via settings/sendAs POST). Either route ' +
-          'ALSO needs gmail.settings.sharing to write the signature ' +
-          'afterwards -- proven 2026-08-21, do not assume the manual route is ' +
-          'permission-free. Converting these to Google Groups would NOT help: ' +
-          'a Group is not a send-as identity either.',
-      );
-    }
+  // The scope-fix message is the same wherever it is needed, so build it once.
+  var SCOPE_FIX =
+    ' The identities exist and are verified -- we lack ' +
+    SCOPE_SHARING +
+    ', which Gmail requires to modify any NON-PRIMARY sendAs. FIXING THIS ' +
+    'TAKES TWO STEPS AND THE ORDER MATTERS: (1) add that scope to the ' +
+    'domain-wide delegation in the admin console, alongside ' +
+    'gmail.settings.basic; THEN (2) set the script property ' +
+    'SHARING_SCOPE_ENABLED=true so the impersonation JWT actually asks for ' +
+    'it. Step 1 alone changes nothing -- the token still comes back without ' +
+    'the scope and you get this same 403. Step 2 before step 1 breaks every ' +
+    'signature with unauthorized_client. NOTE the consequence before doing ' +
+    'either: that scope also lets this service account set who may send as ' +
+    'what, for every user in the domain.';
+
+  // Two mutually exclusive states, checked most-alarming first.
+  //
+  // An earlier version keyed everything off the domain aggregate
+  // (totalSharedInstalled === 0), which is equivalent to a per-user check
+  // only while exactly ONE account holds shared identities. With two, a user
+  // could lose every shared signature and the run would stay silent because
+  // somebody else still installed one. Codex caught that 2026-08-23.
+  var degraded = sharedRegressions_(perUser);
+
+  if (degraded.length) {
+    // A user HAS shared identities and did not get all their signatures.
+    // This is the regression signal, and it is per user by construction --
+    // it fires no matter what the rest of the domain managed to install.
+    console.warn(
+      'installAllSignatures: shared-mailbox signatures are MISSING for ' +
+        degraded.length +
+        ' user(s) -- ' +
+        degraded.join(', ') +
+        ' (written/expected). These accounts have shared send-as identities ' +
+        'that did not receive a signature.' +
+        (totalDenied > 0
+          ? SCOPE_FIX
+          : ' Nothing was refused with a missing-scope 403, so this is NOT ' +
+            'the known permissions gap -- check the run log for per-identity ' +
+            'failures, and check whether the identities were removed or set ' +
+            'back to pending verification.'),
+    );
+  } else if (totalSharedSeen === 0) {
+    // Nobody has a shared send-as identity at all. Correct and non-alarming
+    // for a fresh domain, and the state here until 2026-08-21: these
+    // addresses are ALIASES, and an alias is not a send-as identity.
+    console.warn(
+      'installAllSignatures: no shared address is a send-as identity on any ' +
+        'of the ' +
+        users.length +
+        ' user account(s), so 0 shared-mailbox signatures were installed. ' +
+        'SHARED_IDENTITIES (support@, sales@, founders@, ...) are ALIASES, ' +
+        'and an alias does not appear in settings/sendAs; it only makes mail ' +
+        'arrive. The account holder adds it in Gmail Settings -> Accounts ' +
+        'and Import -> Send mail as (or the script creates it via ' +
+        'settings/sendAs POST). Either route ALSO needs ' +
+        'gmail.settings.sharing to write the signature afterwards -- proven ' +
+        '2026-08-21, do not assume the manual route is permission-free. ' +
+        'Converting these to Google Groups would NOT help: a Group is not a ' +
+        'send-as identity either.' +
+        (totalDenied > 0
+          ? ' NOTE: ' +
+            totalDenied +
+            ' non-primary identity/identities WERE refused with a ' +
+            'missing-scope 403 even though none of them is a recognised ' +
+            'shared address -- somebody has a non-primary sendAs outside ' +
+            'SHARED_IDENTITIES.' +
+            SCOPE_FIX
+          : ''),
+    );
   }
 
   appendRunLog_(results);
@@ -212,6 +245,7 @@ function installForUser_(user) {
   var identities = gmailApi_(token, 'settings/sendAs', 'get').sendAs || [];
   var written = 0;
   var sharedWritten = 0;
+  var sharedSeen = 0;
   var denied = 0;
   var failures = [];
 
@@ -220,6 +254,13 @@ function installForUser_(user) {
     if (identity.verificationStatus === 'pending') continue;
 
     var shared = isSharedIdentity_(identity.sendAsEmail);
+    // sharedSeen is the DENOMINATOR the regression check needs: how many shared
+    // identities we actually attempted. Counted after the pending skip, because
+    // a pending identity is not writable and its absence is not a regression.
+    // (Consequence worth knowing: if a live identity flips back to pending, both
+    // numerator and denominator drop and no regression is reported. The log
+    // Sheet's identity count still moves, so it is visible, just not warned on.)
+    if (shared) sharedSeen++;
     // Shared mailboxes fold the mailbox's purpose into the name line
     // ("DragonCandy Support") and use a generic second line, with
     // showCompany:false so renderSignature doesn't append "&middot; DragonCandy"
@@ -258,7 +299,42 @@ function installForUser_(user) {
     }
   }
 
-  return { total: written, shared: sharedWritten, denied: denied, failures: failures };
+  return {
+    total: written,
+    shared: sharedWritten,
+    sharedSeen: sharedSeen,
+    denied: denied,
+    failures: failures,
+  };
+}
+
+/**
+ * Which users had shared identities that did NOT all get a signature.
+ *
+ * Split out and kept pure for two reasons. It is the only part of the run
+ * that vitest can reach -- installAllSignatures needs AdminDirectory and a
+ * live impersonation token, so the decision logic would otherwise be
+ * untested. And the bug it exists to fix was a scoping error, not a
+ * computation error, which is exactly the kind a unit test pins cheaply.
+ *
+ * The bug: the zero-shared warning used to fire on the DOMAIN AGGREGATE
+ * (totalSharedInstalled === 0). With one shared-identity holder that happens
+ * to be equivalent to a per-user check. With two it is not -- one user could
+ * lose every shared signature and the run would stay silent because the other
+ * still installed one. Found by Codex 2026-08-23.
+ *
+ * @param {Array<{email: string, sharedWritten: number, sharedSeen: number}>} perUser
+ * @return {Array<string>} "user@ (written/seen)" for each degraded user
+ */
+function sharedRegressions_(perUser) {
+  var out = [];
+  for (var i = 0; i < perUser.length; i++) {
+    var r = perUser[i];
+    if (r.sharedSeen > 0 && r.sharedWritten < r.sharedSeen) {
+      out.push(r.email + ' (' + r.sharedWritten + '/' + r.sharedSeen + ')');
+    }
+  }
+  return out;
 }
 
 /**

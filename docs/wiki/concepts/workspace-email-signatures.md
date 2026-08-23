@@ -141,8 +141,8 @@ That leaves the original conclusion standing but its reasoning inverted:
   for a user who has them now indicates a fault. See Known issues for the current matrix.
 - **What the conversion would cost is no longer hypothetical.** It removes the aliases, and
   `info@`, `support@` and `appstore@` are now real send-as identities built on them. Converting
-  would strip all three and their signatures, taking `dame@` from `4 identities / 3 shared` back
-  to `1 identity / 0 shared`. Re-cost decision 9 against that, not against the 2026-08-21 state
+  would strip all three and their signatures, taking `dame@` from `4 identities / 3/3 shared`
+  back to `1 identity / 0 shared`. Re-cost decision 9 against that, not against the 2026-08-21 state
   in which the conversion genuinely cost nothing.
 
 ### It is automatable, at a price — the second correction
@@ -229,6 +229,33 @@ all say so.
 whichever value is safe while only one of them is configured.** Here that is off, because the
 half-configured failure is total rather than partial.
 
+### The regression warning was scoped to the wrong thing
+
+Worth recording separately, because the shape recurs and the code passed every test it had.
+
+The "no shared signatures installed" warning fired on `totalSharedInstalled === 0` — a **domain
+aggregate**. With exactly one account holding shared identities that is indistinguishable from a
+per-user check, which is why nobody noticed. With two it is not: `dame@` could lose all three
+signatures and the run would stay silent because somebody else still installed one. The warning
+would have gone quiet at precisely the moment the feature grew.
+
+Fixed by `sharedRegressions_(perUser)` — pure, so vitest can reach it (`installAllSignatures`
+needs `AdminDirectory` and a live impersonation token, so the decision would otherwise be
+untestable), and returning `user@ (written/expected)` for anyone whose shared identities did not
+all get a signature. `installForUser_` now also reports `sharedSeen`, the denominator, and the
+log Sheet's shared column became `3/3 shared` rather than a bare `3` — **`0 shared` is correct
+for a user with none and alarming for a user with three, and a bare count cannot tell those
+apart.**
+
+The tests were checked by mutation, not just by passing: reintroducing the aggregate semantics
+turns three of them red, including the named case where one user is degraded while another
+installs successfully. **A test that has never failed has not been shown to test anything** —
+the aggregate version passed the entire suite as it stood.
+
+The general lesson is about *scope of a check*, not about signatures: a condition computed over
+a population is only equivalent to a per-member condition while the population has one member,
+and nothing warns you when it grows.
+
 **And a grant is not immediately a capability.** Domain-wide delegation changes propagate on
 Google's schedule — minutes, sometimes longer — so "granted in the console" opens a window
 rather than flipping a switch. Inside that window, step 2 produces exactly the same
@@ -256,7 +283,9 @@ original acceptance signal.
   the identity on each person's account — either by hand or via `sendAs.create`, both of which
   the granted scope now permits.
 - **`0 shared` for `dame@` would be a fault.** His expected report is
-  **`ok / 4 identities / 3 shared`**; anything less means something regressed. The
+  **`ok / 4 identities / 3/3 shared`** (the shared column became `written/expected` on
+  2026-08-23; the run logged that day predates the change and reads `3 shared`); anything less
+  means something regressed. The
   deployed-code × property matrix in `scripts/workspace/README.md` gives the expected report for
   each configuration — read it before judging a run.
 - **Merged is not deployed, and Apps Script has no CI that closes the gap.** #456 sat merged and
@@ -267,12 +296,9 @@ original acceptance signal.
 - **Outlook for Windows is untested and now untestable** — the account that could have
   checked it is gone. The rendering matrix is four-of-five (Gmail web light, Gmail web dark,
   Gmail iOS dark, images-disabled), not five-of-five. Do not describe it as verified.
-- **A warning is not a gate, and this one is coarser than it looks.** If nobody reads the run
-  log, a zero-shared-signature run still passes unnoticed. Worse, the check is on the **domain
-  aggregate** (`totalSharedInstalled === 0`), not per user. That is currently equivalent —
-  `dame@` is the only account with shared identities — but it silently degrades the moment a
-  second user gets one: after that, `dame@` could lose all three and the run stays quiet while
-  somebody else installs one. Whoever adds the second user inherits this.
+- **A warning is not a gate.** If nobody reads the run log, a degraded run still passes
+  unnoticed. The *scoping* of that warning was fixed on 2026-08-23 — see below — but its
+  delivery mechanism is still "a line in Cloud Logging that someone has to look at".
 - **`dryRun()` does not authenticate**, so it passes cleanly with a missing or revoked
   service-account key. Its comment says so; the limitation stands. This is why the acceptance
   signal was writing into *other people's* mailboxes, which `dryRun()` structurally cannot
