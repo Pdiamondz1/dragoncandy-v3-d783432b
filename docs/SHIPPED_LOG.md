@@ -26,6 +26,75 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-23] A warning is not a gate — the signature run now emails
+
+**PR** #463 (`4551483f`) · Codex clean at round 3 · 86 tests, was 63 · deployed
+
+"A warning is not a gate" had been written into the known issues three times without being
+closed. Every round improved what the warning *said*; none of it made anyone read it. A
+`console.warn` lands in Cloud Logging, which is seen only by someone who goes looking.
+
+A run with a finding now emails `ALERT_EMAIL` via `MailApp`, as the **script owner** — unrelated
+to the domain-wide delegation, and it touches nobody else's mailbox.
+
+**Four choices, each load-bearing.** Silent on a clean run, because a nightly "all fine" trains
+its recipient to filter the thread and then the one that matters is filtered too. A standing
+regression emails **every night** until fixed, because the alternative is alerting on the
+transition and a transition alert missed at 2am is gone. It **cannot fail the run** — signatures
+are already written by then, and trading the run log for a notification is backwards. And
+`ALERT_EMAIL` unset means nobody is told while everything else looks normal, so that case logs
+explicitly instead of skipping.
+
+**Codex found two, and the second changed the shape.** A failed **primary** signature raised no
+alert (a consequence of the earlier per-identity isolation: it is caught, not thrown, so the user
+was in no category while their own signature silently stopped updating). Then a scope denial on a
+non-company address raised none either. Two holes in two rounds meant enumerating causes was
+wrong; the alert now takes **every user whose run was not a clean `ok`**, keyed off the same
+status the Sheet records, so it cannot fall behind the status logic because it *is* the status
+logic.
+
+**The test finding is worth more than the feature.** Mutating the previous inline
+`status !== 'ok'` collection went **undetected by all 79 tests** — every test touching that path
+fed `runAlert_` directly, leaving the collection uncovered. The predicate looked too trivial to
+test and it decided both the Sheet column and whether anyone is told. Extracted as `runStatus_`
+and mutation-checked.
+
+**Deploy note:** this adds `script.send_mail`, and Apps Script invalidates the existing grant when
+the scope set changes, so the owner must run the function once by hand to re-consent or the
+nightly trigger fails with an authorization error that looks nothing like a signature problem.
+
+Also that day: `adrian@` demoted to Content manager on the Confidential drive (verified through
+the API, not the UI that made the change); `joe@` deliberately left as Manager, since removing a
+co-founder's ability to manage members is a governance decision rather than housekeeping.
+
+**Left open on purpose:** `01 · Product` stays empty — see the entry below on why the candidate
+documents could not be published as they stand.
+
+→ `docs/wiki/concepts/workspace-email-signatures.md` · #463
+
+## [2026-08-23] The product docs cannot go in the shared drive as they stand
+
+Not a shipped change — a finding, recorded because acting on it later needs the reasoning.
+
+`01 · Product` in the open shared drive is empty and was to be filled from `docs/prd.md` and
+`docs/product-vision.md`. Both are stale, which was expected and manageable with a dated banner:
+the PRD's last substantive edit was 2026-06-01, and the vision's only recent touch was the
+mechanical `.io`→`.com` pass.
+
+**What was not expected:** `product-vision.md` line 15 describes Dame as a **"solo technical
+founder"**, and *neither document mentions Joe Castelo or Juwan Robinson anywhere*, while
+`PROJECT_CONTEXT.md` §1 lists them as CEO and Shareholder. Both documents also state a "35+ table"
+backend against a current 70+.
+
+Joe has access to that drive and Adrian will. Publishing a founder narrative that erases two
+co-founders is not a staleness problem with a banner-shaped fix; it is worse than an empty folder.
+Escalated to the founder rather than uploaded, edited, or quietly skipped.
+
+**The distinction worth keeping: stale is a different problem from wrong-about-people.** Old
+numbers can be dated and published. A document that omits your co-founders cannot.
+
+→ `docs/product-vision.md` · `docs/prd.md`
+
 ## [2026-08-23] Every defect was a scoping error, and every buggy version passed the tests
 
 **PR** #461 (`298465ce`) · Codex clean at round 5 · 63 tests, was 30 · deployed and verified live
