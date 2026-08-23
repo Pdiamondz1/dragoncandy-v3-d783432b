@@ -51,4 +51,48 @@ describe('deriveIdentitySignals', () => {
     const s = deriveIdentitySignals({ ...base, requirements: {} } as never);
     expect(s.tax_id_provided).toBeNull();
   });
+  /**
+   * `company.verification.status` does not exist in the Stripe API — only
+   * `individual.verification` carries a `status` field. A company account (the normal
+   * case for a restaurant onboarding as an LLC/corp) is verified when Stripe has enabled
+   * payouts with no disabled_reason -- that is Stripe's own account-level KYC completion,
+   * standing in for the field companies don't have.
+   */
+  it('stamps identity_verified_at for a fully-verified company account (no individual object)', () => {
+    const s = deriveIdentitySignals({
+      ...base,
+      payouts_enabled: true,
+      requirements: { currently_due: [], past_due: [], disabled_reason: null },
+      company: { tax_id_provided: true },
+    } as never);
+    expect(s.identity_verified_at).not.toBeNull();
+  });
+
+  it('does not stamp identity_verified_at for a company account with payouts disabled', () => {
+    const s = deriveIdentitySignals({
+      ...base,
+      payouts_enabled: false,
+      requirements: { currently_due: ['company.verification.document'], past_due: [], disabled_reason: null },
+      company: { tax_id_provided: true },
+    } as never);
+    expect(s.identity_verified_at).toBeNull();
+  });
+
+  it('does not stamp identity_verified_at for a company account with payouts enabled but a disabled_reason present', () => {
+    const s = deriveIdentitySignals({
+      ...base,
+      payouts_enabled: true,
+      requirements: { currently_due: [], past_due: [], disabled_reason: 'requirements.past_due' },
+      company: { tax_id_provided: true },
+    } as never);
+    expect(s.identity_verified_at).toBeNull();
+  });
+
+  it('returns null, not a guess, when neither individual nor company verification signal is determinable', () => {
+    const s = deriveIdentitySignals({
+      charges_enabled: true,
+      requirements: { currently_due: [], past_due: [], disabled_reason: null },
+    } as never);
+    expect(s.identity_verified_at).toBeNull();
+  });
 });
