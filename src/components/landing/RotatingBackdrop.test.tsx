@@ -149,6 +149,57 @@ describe("RotatingBackdrop", () => {
     }
   });
 
+  it("re-arms the watchdog from `playing`, giving a slow-starting clip its full dwell window", () => {
+    // A clip whose `playing` fires late (slow mobile buffering) must still get a full
+    // MAX_DWELL_MS measured from when it actually started — not from when the layer became
+    // active — or the watchdog can cut off a clip that is genuinely still buffering/playing.
+    vi.useFakeTimers();
+    try {
+      const { getByTestId } = render(<RotatingBackdrop playlist={[clip(1), clip(2), clip(3)]} />);
+      const l0 = getByTestId("backdrop-layer-0");
+
+      // Playback doesn't actually start until 5s in (slow-start buffering).
+      act(() => {
+        vi.advanceTimersByTime(5000);
+        fireEvent.playing(l0);
+      });
+
+      // 10s more (15s total since becoming active) must NOT advance — real playback only started
+      // 10s ago, well inside its own 15s window.
+      act(() => {
+        vi.advanceTimersByTime(10000);
+      });
+      expect(getByTestId("backdrop-layer-0").getAttribute("data-active")).toBe("true");
+
+      // 15s after the `playing` event (20s total since becoming active) it must have advanced.
+      act(() => {
+        vi.advanceTimersByTime(5100);
+      });
+      expect(getByTestId("backdrop-layer-1").getAttribute("data-active")).toBe("true");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("still force-advances at MAX_DWELL_MS when a clip never fires `playing` at all", () => {
+    // The backstop must survive the `playing` reset: a clip that never starts playing (silent
+    // decode failure, permanent stall) still has to time out on the original from-active
+    // schedule, or the rotation freezes forever.
+    vi.useFakeTimers();
+    try {
+      const { getByTestId } = render(<RotatingBackdrop playlist={[clip(1), clip(2), clip(3)]} />);
+      expect(getByTestId("backdrop-layer-0").getAttribute("data-active")).toBe("true");
+      // No `playing`, `ended`, or `error` ever fires for layer 0.
+      act(() => {
+        vi.advanceTimersByTime(15100);
+      });
+      expect(getByTestId("backdrop-layer-1").getAttribute("data-active")).toBe("true");
+      expect(getByTestId("backdrop-layer-0").getAttribute("data-active")).toBe("false");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("ignores an `ended` fired by the non-active (hidden) layer", () => {
     const { getByTestId } = render(<RotatingBackdrop playlist={[clip(1), clip(2)]} />);
     act(() => {

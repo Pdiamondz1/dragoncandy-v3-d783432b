@@ -26,6 +26,16 @@ const CROSSFADE_MS = 700;
  * `docs/runbooks/landing-video-backdrop-kit.md` §"The 12-second cap — and why it exists"). If you
  * are about to add a reel longer than 12s, either trim it or raise this constant first — a longer
  * clip trips the watchdog mid-play and reads as a stutter, not a clean cut.
+ *
+ * The timer is armed the instant a layer becomes ACTIVE (so a clip that never starts at all is
+ * still caught — see the backstop note on the watchdog effect below), and then RESET the instant
+ * that layer's `playing` event actually fires. Those are not the same moment: becoming active
+ * only means the layer was told to play, not that a frame has rendered — on a slow connection the
+ * clip can spend real time buffering first. Against a 12s clip, the margin between "active" and
+ * "12s of playback" is only ~3s, which slow-start buffering can easily exceed; measuring from
+ * `playing` instead gives every clip that DOES start its own full 15s from the moment it's
+ * actually visible, while a clip that never fires `playing` still times out on the original
+ * from-active schedule.
  */
 const MAX_DWELL_MS = 15000;
 
@@ -63,6 +73,9 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
   // Which layer (0|1) is visible/playing, and which clip index each layer currently holds.
   const [visible, setVisible] = useState<0 | 1>(0);
   const [layerClip, setLayerClip] = useState<[number, number]>(() => [0, len > 1 ? 1 : 0]);
+  // Bumped every time the ACTIVE layer's `playing` event fires — a dependency purely so the
+  // watchdog effect below re-arms its timer from that moment. See MAX_DWELL_MS's comment.
+  const [playSignal, setPlaySignal] = useState(0);
 
   // Refs mirror state so the async `ended`/observer handlers never read a stale closure.
   const visibleRef = useRef<0 | 1>(0);
@@ -197,16 +210,36 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
     [rotating, len, setLayerSource],
   );
 
-  // Stall watchdog: arm a max-dwell timer each time a layer becomes active. A normal advance
-  // (`ended`/`error` → handleEnded → setVisible) changes `visible`, which re-runs this effect and
-  // clears the prior timer — so a healthy clip never trips it. If a clip neither ends nor errors
-  // within MAX_DWELL_MS (undecodable-but-silent HEVC, a mid-play stall), the timer force-advances
-  // so the rotation can never permanently freeze. Fires against the *current* visible layer.
+  // Fired on the active layer's `playing` event — i.e. playback has genuinely started, as
+  // opposed to merely having been told to play. Bumps `playSignal` so the watchdog effect below
+  // re-arms its timer from this moment rather than from whenever the layer became active. Guarded
+  // the same way `handleEnded` is: a `playing` event from the hidden/preloading layer (which is
+  // never given `play: true`) is ignored.
+  const handlePlaying = useCallback(
+    (layer: 0 | 1) => {
+      if (!rotating || layer !== visibleRef.current) return;
+      setPlaySignal((n) => n + 1);
+    },
+    [rotating],
+  );
+
+  // Stall watchdog: arm a max-dwell timer each time a layer becomes active, AND re-arm it (full
+  // window, from scratch) the moment that layer's video actually starts playing. Two triggers,
+  // deliberately kept both:
+  //  - `visible` changing is the BACKSTOP — it fires the instant a layer is told to play, so a
+  //    clip that never starts at all (never fires `playing`, `ended`, or `error`) is still force-
+  //    advanced on schedule. Arming only on `playing` would let such a clip freeze the backdrop
+  //    forever — a strictly worse bug than the one this timer resets are fixing.
+  //  - `playSignal` changing means the active clip's `playing` event just fired — playback has
+  //    genuinely started, so the clip is re-measured a full MAX_DWELL_MS from THAT moment instead
+  //    of from whenever it became active. See MAX_DWELL_MS's comment for why that gap matters.
+  // A normal advance (`ended`/`error` → handleEnded → setVisible) changes `visible`, which
+  // re-runs this effect and clears the prior timer either way — so a healthy clip never trips it.
   useEffect(() => {
     if (!rotating) return;
     const t = setTimeout(() => handleEnded(visibleRef.current), MAX_DWELL_MS);
     return () => clearTimeout(t);
-  }, [visible, rotating, handleEnded]);
+  }, [visible, playSignal, rotating, handleEnded]);
 
   // Pause off-screen / resume the active layer on-screen (battery + CPU). Only relevant in
   // rotating mode; the single-clip and reduced-motion paths self-manage (SingleClip / static img).
@@ -286,6 +319,7 @@ export function RotatingBackdrop({ playlist, className = "" }: RotatingBackdropP
             poster={layerPoster}
             onEnded={() => handleEnded(layer as 0 | 1)}
             onError={() => handleEnded(layer as 0 | 1)}
+            onPlaying={() => handlePlaying(layer as 0 | 1)}
             className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ease-in-out ${
               visible === layer ? "opacity-100" : "opacity-0"
             }`}
