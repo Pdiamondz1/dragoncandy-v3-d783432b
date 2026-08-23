@@ -43,18 +43,28 @@ revoke succeeded, *by construction*: the function only reaches the DELETE after 
 token survives for a retry. Row absent therefore means revoke succeeded — there is no path that
 produces an absent row and a live grant.
 
-**Google's own behaviour is the independent confirmation.** The first connect had sailed straight
-through with no consent screen. Immediately after disconnect, the same button dropped into the
-full account-chooser-then-consent flow. Google would not re-ask for a grant it still held, so the
-withdrawal reached Google's side rather than only ours. **A second, independent observer is worth
-more than a second look at your own state.**
+**A second proof was claimed here and is WITHDRAWN (2026-08-23, Codex second review).** This
+paragraph read: *"Google's own behaviour is the independent confirmation. The first connect had
+sailed straight through with no consent screen. Immediately after disconnect, the same button
+dropped into the full account-chooser-then-consent flow. Google would not re-ask for a grant it
+still held."* **It confirms nothing.** `buildAuthUrl` sends `prompt=consent` on every
+authorization, so the full consent flow appears whether or not the grant was revoked — the
+before-and-after look identical, which is exactly the property that would make this evidence.
+The revoke is still proven, by the construction argument in the paragraph above, which was
+always the stronger of the two.
+
+**The lesson is the reason it was believed.** "A second, independent observer is worth more than
+a second look at your own state" is true, and it is what this paragraph claimed to be. But the
+observer was not independent: Google's behaviour here is fully determined by a parameter *we*
+send. **Before calling an observation independent, name what would have to differ for it to come
+out the other way** — here, nothing could have.
 
 **Re-consent produced a genuinely new grant**, not a cached one: `connected_at` moved to
 17:31:49, and the stored `scopes` array came back in a *different order* from the first grant —
 an incidental detail, but one a cache would not produce. The analytics read then ran again against
 the new token (`last_synced_at` 17:33:07, `last_error` null).
 
-### The consent flow is TWO screens, and a partial revoke hides the second
+### The consent flow is TWO screens (and the revoke had nothing to do with it)
 
 **This section previously claimed "the consent screen itemised only the email address" and filed
 it as observed-unexplained. That was an artefact of an incomplete revoke, and the explanation
@@ -368,7 +378,10 @@ it; do not paraphrase it from memory into a document that will be planned agains
 
 ## Known Issues
 
-- Nothing is applied or deployed; the flow has never run end to end.
+- ~~Nothing is applied or deployed; the flow has never run end to end.~~ **Resolved
+  2026-08-23** — migration applied, four functions deployed `v1 ACTIVE`, first channel linked at
+  16:46 UTC, disconnect/revoke/re-consent exercised, app published to production. See the top of
+  this page.
 - **Native return is unsolved.** `capacitor://localhost` is deliberately absent from the
   redirect allow-list — it is a webview-internal origin, not a scheme an external browser can
   be redirected to. A native user completing this flow lands on the website. Listing it would
@@ -379,8 +392,10 @@ it; do not paraphrase it from memory into a document that will be planned agains
 - ~~`deno` is not installed locally~~ — installed 2026-08-23 (Homebrew, deno 2.9.5), and
   `node scripts/check-edge-functions.mjs` now runs here: **70 functions clean**, the four
   YouTube ones among them. They are deliberately **off**
-  `supabase/functions/.typecheck-ignore`, so CI checks them too. A clean type-check is not a
-  clean run: nothing here has executed against Google.
+  `supabase/functions/.typecheck-ignore`, so CI checks them too. The caveat this bullet carried
+  — *"a clean type-check is not a clean run: nothing here has executed against Google"* — was
+  true when written and was **closed the same day**; the flow has since run end to end against
+  real Google credentials. The general point stands for the next connector.
 - `_shared/youtube-connection.ts` types its Supabase client loosely, so a wrong column name
   there fails at runtime rather than at compile time.
 
