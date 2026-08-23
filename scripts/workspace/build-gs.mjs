@@ -59,12 +59,18 @@ const manifest = {
     'https://www.googleapis.com/auth/admin.directory.user.readonly',
     'https://www.googleapis.com/auth/script.external_request',
     'https://www.googleapis.com/auth/spreadsheets',
-    // MailApp, for the degraded-run alert. Sends AS THE SCRIPT OWNER, not as
+    // GmailApp, for the degraded-run alert. Sends AS THE SCRIPT OWNER, not as
     // the service account -- unrelated to the domain-wide delegation.
+    //
+    // This was script.send_mail (MailApp) until 2026-08-23. MailApp's relay
+    // was rejected by every external recipient tested -- 0 of 3, two providers
+    // -- while mail composed in Gmail from the same account delivered 3 of 3.
+    // GmailApp uses the route that works. See sendRunAlert_ for the evidence.
+    //
     // NOTE: adding a scope invalidates the existing authorization, so after the
     // next `clasp push` the owner must open the editor and run the function
     // once by hand to re-consent. Until they do, the time-driven trigger fails.
-    'https://www.googleapis.com/auth/script.send_mail',
+    'https://www.googleapis.com/auth/gmail.send',
   ],
 };
 writeFileSync(join(dist, 'appsscript.json'), JSON.stringify(manifest, null, 2) + '\n');
