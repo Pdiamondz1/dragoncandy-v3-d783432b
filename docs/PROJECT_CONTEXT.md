@@ -504,6 +504,38 @@ holds no Toast credentials. See §6.
 > proof the object exists (see [[Content Delivery State Machine]]) and "recorded ≠ actual" has
 > bitten this project before.
 
+- **Site locked to a private preview — built and reviewed, and NO part of it is switched on** —
+  the code half is done; the go-live half is **entirely founder action and cannot be done by any
+  agent** (approve/merge the PR, set four Vercel variables, flip one Supabase toggle). The premise
+  is the thing to carry: **a password cannot stop a signup** — `VITE_SUPABASE_ANON_KEY` ships in the
+  bundle and `supabase.co` never traverses Vercel, so **turning off Supabase's "Allow new users to
+  sign up" is the load-bearing control** and the edge password is the lesser of the two. That
+  password is HTTP Basic at the edge (Vercel Routing Middleware: `middleware.ts` over a pure,
+  26-test `gate/decide.ts`), answering **401 and never a redirect**, because a 401 re-requests the
+  identical URL so a password-reset link's `#access_token` fragment survives. It **fails closed**,
+  so deleting the variables is the WRONG rollback — `SITE_GATE_ENABLED` is the lever, and it needs a
+  **redeploy** to take effect (an env-var change does not reach a running deployment; four documents
+  claimed otherwise). Rule from a real defect: **only allowlist a path with a real file under
+  `public/`** — `/.well-known/*` had none and `vercel.json` rewrites unmatched paths to
+  `/index.html`, so it served the whole SPA bundle to anonymous browsers. Three more caught in
+  review: the Lighthouse `is-crawlable` exemption was **inert where it was written** (a category
+  assertion reads a score computed at collect time — 0.69 vs 1.00 measured — and the obvious fix
+  ALSO fails because an `LHCI_COLLECT__SETTINGS__*` env var replaces the config file's whole
+  `settings` object); bare `undefined` is a **Next.js** continue convention, not the
+  framework-agnostic one (`next()` from `@vercel/functions`, or every authorised request breaks in
+  production where no preview can show it); and `VERCEL_ENV !== 'production'` was **fail-open on
+  absence**, reopening the site while the dashboard read locked. Also deleted the dead client-side
+  gate, which kept `dragoncandy2026` as a bundled string constant and allowlisted `/auth`.
+  Three Codex passes (last clean), a whole-branch review and a scoped re-review; 2,756 tests.
+  **Pending (2026-08-23):** open and merge the PR; **a green `lighthouse-ci.yml` on it is a hard
+  merge gate** (the 1.00 was measured locally, never by CI); then, in this order, set the four
+  Production-scope variables → deploy → run the runbook's 12 checks → only then disable Supabase
+  signup. **Nothing about the middleware's wiring has ever executed** — it is production-only by
+  design, so Vercel picking up a root `middleware.ts` in a Vite project on this plan, the `nodejs`
+  runtime resolving `node:process`, and the matcher applying as written are all still assumptions.
+  Note `/promo/:id` now challenges (founder confirmed no QR is live; documented, deliberately not
+  allowlisted) and every Supabase invite must travel with the password or as a `?k=` link.
+  → `docs/wiki/concepts/site-access-lockdown.md` · `docs/runbooks/site-access-lockdown.md`
 - **Donny's `social_*` tools repaired (7 calls → 0 successes → 4 working tools)** — Donny told the
   founder he had "no visibility into which Instagram account is connected", sent him to find an
   **"account ID"** on a page that displays none, and promised to post once he had it. The prod audit

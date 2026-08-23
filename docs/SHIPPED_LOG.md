@@ -32,6 +32,120 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-23] A password cannot stop a signup: locking the site to a private preview
+
+**Built and reviewed. NOT live** — the branch is unmerged, no PR is open, and none of the four
+Vercel variables is set. **The gate is production-only by design, so none of its wiring has ever
+executed** — not on a preview, not in CI, not locally. Proven: `gate/decide.ts` and its 26 unit
+tests. Assumed: what Vercel does with them.
+
+dragoncandy.com was public and not ready to be. The obvious framing — "put a password on it so
+nobody can sign up" — is wrong at the premise, and getting that right determined everything else.
+**`VITE_SUPABASE_ANON_KEY` ships in the browser bundle, and requests to `supabase.co` never traverse
+Vercel**, so no front-end guard, edge function, or middleware is even on the path of a signup. The
+only control that stops account creation is Supabase's own "Allow new users to sign up" toggle — a
+dashboard setting, not code. So the work is two independent layers where **the password is the
+lesser one**: Supabase signup off (load-bearing), plus an HTTP Basic password at the edge (stops
+discovery and casual poking, protects nothing in Supabase).
+
+The edge half is Vercel Routing Middleware — `middleware.ts` over a pure, unit-tested
+`gate/decide.ts` — chosen because Vercel's built-in deployment protection cannot cover custom
+domains on Hobby. **It answers `401`, never a redirect to a gate page.** That is the load-bearing
+decision: after the prompt a 401 makes the browser re-request the *identical* URL, so a Supabase
+password-reset link's `#access_token` fragment survives, where a redirect would drop it and break
+resets silently. The same choice removed any need for bypass tokens in email flows and kept every
+secret out of a `VITE_` variable — which would have compiled the password into the bundle. The gate
+**fails closed**, which makes "delete the variables" the *wrong* rollback; `SITE_GATE_ENABLED` is
+the lever instead. Links are shared without handing out the password via signed `?k=` bypass links,
+which mint a 30-day HMAC cookie and strip themselves from the URL.
+
+Also deleted: a dead client-side `SiteGateGuard` that was switched off, kept `dragoncandy2026` as a
+**string constant in the shipped bundle**, and allowlisted `/auth`, so it never gated signup even
+when on. **A gate rendered by the app cannot gate the app** — the bundle is already served by the
+time it runs — and because the iOS shell ships that same bundle, it would have put a password screen
+in front of the native app, which serves from `capacitor://localhost` and never asks Vercel for HTML.
+
+**Nine defects came out of review, and four generalise past this branch.**
+
+**Only allowlist a path that has a real file under `public/`.** `vercel.json` rewrites every
+unmatched path to `/index.html`, so allowlisting a path with no backing file does not serve
+"nothing" — it serves the SPA shell and the whole JS bundle to an anonymous browser. The first
+implementation allowlisted `/.well-known/` and `/apple-app-site-association`; neither exists. Codex
+found it. The allowlist is now exactly `/robots.txt` and `/favicon.ico`, and the spec states the
+*rule*, because a list invites additions and a rule does not. It is also why `/promo/:promotionId`
+is **documented rather than allowlisted** even though both promotion surfaces still generate QR
+codes pointing at it — the founder confirmed no promo QR is live, so it costs nothing today, and it
+is a Known limit with a `/promo/<id>?k=<token>` workaround. Re-open before any QR is printed.
+
+**Silencing an audit does not change a category score.** `robots.txt` is `Disallow: /`, which fails
+Lighthouse's `is-crawlable`. `assert.assertions: {'is-crawlable': 'off'}` is inert against a
+`categories:seo` gate, because an LHCI category assertion reads a score Lighthouse already computed
+at collect time — and Lighthouse weights this audit at `93/23` specifically so failing it fails the
+category. Measured on the real build: **0.69** with the audit, **1.00** with it skipped, and it was
+the only failing audit against a 0.95 bar. CI would have gone red on the PR. **And the obvious fix
+also fails**: an `LHCI_COLLECT__SETTINGS__*` env var **replaces the config file's whole `settings`
+object**, and the desktop job already sets the preset that way — so `collect.settings.skipAudits`
+arrived in the report as `null` and SEO read 0.69 again. It ships as an env var on both jobs, with
+the file keeping a local default that says why it is not enough. (The scalar is coerced: a real run
+reported `configSettings.skipAudits == ["is-crawlable"]`, the audit absent, seo 1.00.)
+
+**Bare `undefined` is a Next.js convention, not the framework-agnostic continue signal.** Vercel's
+Routing Middleware docs carry an explicit no-op for non-Next frameworks: `next()` from
+`@vercel/functions`. The risk was asymmetric and invisible — if `undefined` did not continue,
+**every authorised request would break**, in production only, where no preview could show it. A
+related claim was asserted in **five** places and was false: "a pass structurally cannot carry a
+`Set-Cookie`". `next({ headers })` can. Behaviour did not change; the rationale did — browsers
+cache Basic credentials per origin and realm and replay them, so a cookie is redundant. **It is a
+choice, not a limit**, and recording it as a limit would have had the next person design around a
+constraint that does not exist.
+
+**A fail-open branch sat in front of all the fail-closed logic.** `env.vercelEnv !== 'production'`
+passes every request when `VERCEL_ENV` is *absent*, not merely when it is `'preview'` — and it is a
+*system* variable, present only while "Automatically expose System Environment Variables" is on, and
+not injected at all by `vercel deploy --prebuilt`. The site would have silently reopened while
+`SITE_GATE_ENABLED` still read `1` in the dashboard: *recorded ≠ actual*, the same class as
+[[Updated-At Trigger Drift]]. Now `env.vercelEnv && env.vercelEnv !== 'production'`.
+
+Two smaller ones with teeth: **`atob()` returns Latin-1** while the challenge advertises
+`charset="UTF-8"`, so a non-ASCII `SITE_PASSWORD` would have been rejected — locking everyone out of
+a fail-closed system; and **the manifest link would `401` on every page load**, because a
+`<link rel="manifest">` with no `crossorigin` is fetched with credentials mode "omit" (fixed with
+`crossorigin="use-credentials"`; same-origin fonts and icons are unaffected).
+
+**The rollback lever was documented by a mechanism Vercel does not have.** Four documents said an
+env-var change reaches a running deployment; Vercel's docs say it does not. For a deliberately
+fail-closed system that is the one instruction that must be right — the scenario is the site 401-ing
+for everyone including the founder, who sets `SITE_GATE_ENABLED=0` and sees nothing change. Set the
+variable, **then redeploy**. The same mechanism makes the setup order load-bearing the other way:
+all four variables must exist **before** the deployment that first ships `middleware.ts`, or the
+gate ships inert while the dashboard looks locked down.
+
+**Method notes worth more than the feature.** A stale `vite preview` from the *main checkout* was
+holding port 8080 — the port `lighthouserc.cjs` points at — so a local Lighthouse check would have
+audited a different build and read green; caught only because the served `robots.txt` did not match
+`dist/robots.txt`. **When a probe returns the wrong thing, suspect the instrument.** And the red
+half of a red-green cycle was never observed: `lhci` could not be run locally when the config was
+written, the step was honestly recorded as SKIPPED, and an unobserved "Expected: PASS" travelled all
+the way to the merge gate. **A pipeline will launder a skipped check into an assertion**, and the
+Critical defect lived in exactly that gap. Finally, the plan embedded a full copy of the runbook as
+the heredoc its last task writes; a fix wave updated only part of it, leaving the copy asserting the
+exact revocation claim the correction existed to kill. Replaced with a pointer — **one copy of an
+operational document**.
+
+**What is not proven, and stays that way until the deploy:** that Vercel picks up a file-convention
+`middleware.ts` in a Vite project on this plan, that the `nodejs` runtime resolves `node:process`,
+that the matcher applies as written, and that browsers replay Basic credentials to every same-origin
+subresource for the whole session. The Lighthouse 1.00 was measured locally — **the first green
+`lighthouse-ci.yml` on the PR is the proof, and merging on a skipped Lighthouse job throws it away.**
+
+Review record: six task reviews (0 Critical each), a final whole-branch review (1 Critical, 5
+Important, 4 Minor — all closed), a scoped re-review (all ten closed, 3 residuals, all closed), and
+three Codex passes, the last clean. Verified at each stage by the controller rather than
+self-reported: typecheck clean, **2,756 tests across 255 files**, build clean.
+No migration, no RLS change, no edge-function change. Dependency added: `@vercel/functions@3.9.5`.
+→ `docs/wiki/concepts/site-access-lockdown.md` · `docs/runbooks/site-access-lockdown.md`
+
+
 ## [2026-08-23] Automating the retrieval evaluation — and the shapes of a guard that cannot fire
 
 `npm run eval:rag` had been committed that morning and run exactly twice, both times by hand. The

@@ -76,8 +76,15 @@ ErrorBoundary → ThemeProvider → QueryClientProvider → LazyMotion → AuthP
         └─ BrowserRouter → AppLayout
             ├─ Public paths: AppShell directly
             └─ Authenticated paths: DonnyProviderWithAuth → AuthenticatedShell (3-hr inactivity timeout)
-                → AppShell (SiteGateGuard → AnimatedRoutes + HelpBriefDrawer + DonnyDesktopPanel)
+                → AppShell (AnimatedRoutes + HelpBriefDrawer + DonnyDesktopPanel)
 ```
+
+**There is no site gate in this tree any more.** `SiteGateGuard` used to wrap
+`AnimatedRoutes` here; it was deleted in the private-preview work. A gate rendered by
+the app cannot gate the app — the bundle has already been served by the time it runs,
+and it shipped its own password as a string constant inside that bundle. The site
+password now lives at the edge, in `middleware.ts` + `gate/decide.ts`, which run before
+the SPA is served at all. See `docs/runbooks/site-access-lockdown.md`.
 
 ### Three User Roles
 
