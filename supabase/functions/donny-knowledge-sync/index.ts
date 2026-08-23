@@ -134,16 +134,22 @@ serve(async (req) => {
   // Chunk siblings of `base` are "<base>#1", "<base>#2", … The '#' is what keeps this from
   // matching a DIFFERENT document whose id merely starts with the same text
   // ("internal-doc:prd" must not sweep up "internal-doc:prd-v2").
+  //
+  // Returns the read error rather than swallowing it: an empty list from a FAILED read is
+  // indistinguishable from an empty list from a successful one, and treating the first as the
+  // second is how a purge reports success having deleted nothing.
   const chunkSiblings = async (base: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("donny_knowledge")
       .select("id, metadata")
       .eq("source_type", "wiki")
       .like("metadata->>source_id", `${base}#%`);
-    return (data ?? []).map((r: { id: string; metadata: Record<string, unknown> | null }) => ({
+    if (error) return { error: error.message, siblings: [] };
+    const siblings = (data ?? []).map((r: { id: string; metadata: Record<string, unknown> | null }) => ({
       id: r.id,
       index: Number.parseInt(String(r.metadata?.source_id ?? "").split("#")[1] ?? "", 10),
     }));
+    return { error: null as string | null, siblings };
   };
 
   const results: {
@@ -204,28 +210,44 @@ serve(async (req) => {
     // Both exits below must clear the chunk siblings as well as the base row. Deleting only
     // the exact source_id would leave "<id>#1…#N" retrievable — the doc would read as removed
     // while most of its text was still being served.
-    const purgeRag = async () => {
-      await supabase.from("donny_knowledge").delete()
+    //
+    // Every failure here is REPORTED, never swallowed. A purge that silently fails would leave
+    // the document retrievable while the run printed `errors=0` — the same shape as the
+    // truncation this whole change removes, and the reason the truncation survived for months.
+    const purgeRag = async (): Promise<string | null> => {
+      const { error: baseErr } = await supabase.from("donny_knowledge").delete()
         .eq("source_type", "wiki").eq("metadata->>source_id", page.source_id);
-      const siblings = await chunkSiblings(page.source_id);
+      if (baseErr) return baseErr.message;
+      const { error: readErr, siblings } = await chunkSiblings(page.source_id);
+      if (readErr) return readErr;
       for (const s of siblings) {
-        await supabase.from("donny_knowledge").delete().eq("id", s.id);
+        const { error } = await supabase.from("donny_knowledge").delete().eq("id", s.id);
+        if (error) return error.message;
       }
+      return null;
     };
 
     // Stored for the strategy viewer, deliberately kept out of retrieval. The internal_docs
     // upsert above already ran, so the document is not lost — only unindexed.
     if (!isIndexed(page)) {
-      await purgeRag();
-      results.push({ source_id: page.source_id, action: "skipped-unindexed" });
+      const err = await purgeRag();
+      results.push(
+        err
+          ? { source_id: page.source_id, action: "error", error: `unindex purge failed: ${err}` }
+          : { source_id: page.source_id, action: "skipped-unindexed" },
+      );
       continue;
     }
 
     // KEYSTONE: archived internal docs stay OUT of the RAG. Self-heal any stray
     // row, then skip the embed/upsert so re-sync never resurrects the doc.
     if (archived) {
-      await purgeRag();
-      results.push({ source_id: page.source_id, action: "skipped-archived" });
+      const err = await purgeRag();
+      results.push(
+        err
+          ? { source_id: page.source_id, action: "error", error: `archive purge failed: ${err}` }
+          : { source_id: page.source_id, action: "skipped-archived" },
+      );
       continue;
     }
 
@@ -278,11 +300,20 @@ serve(async (req) => {
     // and nothing else in this system ever deletes a row. Sent only on chunk 0 (the id with no
     // '#'), so this runs once per document rather than once per chunk.
     if (page.chunk_total !== undefined && !page.source_id.includes("#")) {
-      for (const s of await chunkSiblings(page.source_id)) {
-        // A sibling whose index does not parse is not one this sync produced; leave it for the
-        // orphan report rather than guessing.
-        if (Number.isInteger(s.index) && s.index >= page.chunk_total) {
-          await supabase.from("donny_knowledge").delete().eq("id", s.id);
+      const { error: readErr, siblings } = await chunkSiblings(page.source_id);
+      // Reported under a distinct label so it cannot be mistaken for the upsert's own result,
+      // which already succeeded. A stale chunk left behind is served as current text.
+      const fail = (msg: string) =>
+        results.push({ source_id: `${page.source_id} (stale chunks)`, action: "error", error: msg });
+      if (readErr) {
+        fail(readErr);
+      } else {
+        for (const s of siblings) {
+          // A sibling whose index does not parse is not one this sync produced; leave it for
+          // the orphan report rather than guessing.
+          if (!Number.isInteger(s.index) || s.index < page.chunk_total) continue;
+          const { error } = await supabase.from("donny_knowledge").delete().eq("id", s.id);
+          if (error) fail(error.message);
         }
       }
     }
