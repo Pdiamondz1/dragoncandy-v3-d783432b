@@ -77,10 +77,20 @@ Behaviour, in order:
    Preview deployments are already covered by Vercel's own SSO protection;
    double-gating them adds nothing and breaks the E2E smoke suite (below).
    `SITE_GATE_ENABLED` is the kill switch — see Rollback.
-2. **Static allowlist → pass.** `/robots.txt`, `/favicon.ico`, `/.well-known/*`,
-   `/apple-app-site-association`. These are the Apple and crawler verification
-   files. None of them serves the SPA shell or any bundle chunk, so allowlisting
-   them leaks nothing.
+2. **Static allowlist → pass.** `/robots.txt`, `/favicon.ico`. The rule behind
+   the list, not just the list itself: a path may only be allowlisted if a real
+   file exists for it under `public/`, because `vercel.json` rewrites every
+   unmatched path to `/index.html` — allowlisting a path with no backing file
+   does not serve "nothing", it serves the SPA shell to an unauthenticated
+   browser. That is why `/.well-known/*` and `/apple-app-site-association`
+   were removed from this list: neither has a file in `public/` today, so both
+   were quietly serving the shell to anyone who requested them (Codex second
+   review caught `/.well-known/*`; `/apple-app-site-association` had the
+   identical defect). If an `apple-app-site-association` file is ever added
+   for iOS universal links, it must be added to `public/` and to this
+   allowlist in the same change — Apple looks for it at
+   `/apple-app-site-association` and at
+   `/.well-known/apple-app-site-association`, so both paths need it.
 
    `/sitemap.xml` is **not** allowlisted. De-listing the site and simultaneously
    publishing a machine-readable index of every route is self-defeating, and the
@@ -237,7 +247,7 @@ existing RLS.
 | `npm run dev` | Vite, does not execute Vercel middleware | Unaffected. The gate cannot be tested locally without `vercel dev` |
 | `capture-lead` / landing lead form | Behind the gate, so effectively dead | Accepted — no public traffic to capture during a private preview |
 | `internal.dragoncandy.com` | Gated like every other production host | Accepted; stakeholders have the password, and `/internal` keeps its own admin authorization |
-| Apple App Store review | Reviewers use the native app, which is ungated | Org enrollment `5HA89RBHQH` is already approved. A re-check of the website would hit the `401` — verification files are allowlisted, the marketing page is not |
+| Apple App Store review | Reviewers use the native app, which is ungated | Org enrollment `5HA89RBHQH` is already approved. A re-check of the website would hit the `401` — the static allowlist only covers `robots.txt`/`favicon.ico`, no Apple verification file exists in `public/` today, and the marketing page isn't allowlisted either |
 
 ## Testing
 

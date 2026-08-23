@@ -194,7 +194,7 @@ Never commit actual values. Reference `.env.local` locally.
 
 ## Deployment
 
-Push to `main` on GitHub → Vercel auto-deploys to dragoncandy.io (~1–3 min; cut over from Lovable hosting 2026-07-15 — `docs/runbooks/vercel-prod-cutover.md`). Test locally with `npm run dev` before pushing. Vercel env-var scopes are load-bearing: **Production** scope = prod Supabase, **Preview** scope = staging Supabase (the QA-gate previews).
+Push to `main` on GitHub → Vercel auto-deploys to dragoncandy.com (~1–3 min; cut over from Lovable hosting 2026-07-15 — `docs/runbooks/vercel-prod-cutover.md`; dragoncandy.io now 308-redirects to dragoncandy.com). Test locally with `npm run dev` before pushing. Vercel env-var scopes are load-bearing: **Production** scope = prod Supabase, **Preview** scope = staging Supabase (the QA-gate previews).
 
 ### Worktree workflow — refresh local main after every merge
 

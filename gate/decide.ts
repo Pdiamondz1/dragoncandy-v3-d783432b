@@ -26,9 +26,21 @@ export const GATE_COOKIE_NAME = 'dc_gate';
 const COOKIE_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
 
 /**
- * Paths served without the password. Every one is a static file that a crawler
- * or Apple may need to read, and NONE of them serves the SPA shell or a bundle
- * chunk — so allowlisting them leaks nothing.
+ * Paths served without the password.
+ *
+ * The rule: a path may only be listed here if a real file exists for it under
+ * `public/`. `vercel.json` rewrites every unmatched path to `/index.html`, so
+ * allowlisting a path with no backing file does not serve "nothing" — it
+ * serves the SPA shell to an unauthenticated browser, which is exactly what
+ * this gate exists to prevent. (Confirmed 2026-08-23: `public/.well-known/`
+ * and `public/apple-app-site-association` do not exist; only `robots.txt` and
+ * `favicon.ico` do.)
+ *
+ * If an `apple-app-site-association` file is ever added for iOS universal
+ * links, it must be added to `public/` and to this allowlist in the SAME
+ * change — and note Apple looks for it at BOTH `/apple-app-site-association`
+ * and `/.well-known/apple-app-site-association`, so both paths need a file
+ * and an entry.
  *
  * `/sitemap.xml` is deliberately absent: de-listing the site while publishing a
  * machine-readable index of every route defeats the point.
@@ -36,9 +48,7 @@ const COOKIE_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
 const ALLOWED_EXACT = new Set([
   '/robots.txt',
   '/favicon.ico',
-  '/apple-app-site-association',
 ]);
-const ALLOWED_PREFIXES = ['/.well-known/'];
 
 export type GateEnv = {
   vercelEnv?: string;
@@ -118,14 +128,24 @@ function readCookie(header: string | null, name: string): string | null {
   return null;
 }
 
-/** The password half of an `Authorization: Basic` header, or null if absent/unparseable. */
+/**
+ * The password half of an `Authorization: Basic` header, or null if absent/unparseable.
+ *
+ * The `401` challenge advertises `charset="UTF-8"`, so a browser UTF-8-encodes
+ * the credentials before base64-ing them. `atob()` only undoes the base64 step
+ * — it returns a binary/Latin-1 string, one JS character per byte — so a
+ * decode straight off `atob()` mangles any non-ASCII character. Re-decode the
+ * byte string as UTF-8 before splitting on `:`.
+ */
 function readBasicPassword(header: string | null): string | null {
   if (!header) return null;
   const prefix = 'Basic ';
   if (!header.startsWith(prefix)) return null;
   let decoded: string;
   try {
-    decoded = atob(header.slice(prefix.length).trim());
+    const binary = atob(header.slice(prefix.length).trim());
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
   } catch {
     return null;
   }
@@ -135,8 +155,7 @@ function readBasicPassword(header: string | null): string | null {
 }
 
 function isAllowlisted(pathname: string): boolean {
-  if (ALLOWED_EXACT.has(pathname)) return true;
-  return ALLOWED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  return ALLOWED_EXACT.has(pathname);
 }
 
 export async function decide(

@@ -19,6 +19,13 @@ const req = (url: string, headers: Record<string, string> = {}) =>
 const basic = (user: string, pass: string) =>
   `Basic ${btoa(`${user}:${pass}`)}`;
 
+/** Like `basic`, but UTF-8 encodes first — for credentials with non-ASCII characters. */
+const basicUtf8 = (user: string, pass: string) => {
+  const bytes = new TextEncoder().encode(`${user}:${pass}`);
+  const binary = Array.from(bytes, (b) => String.fromCharCode(b)).join('');
+  return `Basic ${btoa(binary)}`;
+};
+
 describe('decide — when the gate is off', () => {
   it('passes on a preview deployment', async () => {
     const d = await decide(req('/'), { ...ON, vercelEnv: 'preview' });
@@ -33,8 +40,8 @@ describe('decide — when the gate is off', () => {
 });
 
 describe('decide — the static allowlist', () => {
-  it('passes the crawler and Apple verification files', async () => {
-    for (const p of ['/robots.txt', '/favicon.ico', '/apple-app-site-association', '/.well-known/anything']) {
+  it('passes only paths with a real file behind them', async () => {
+    for (const p of ['/robots.txt', '/favicon.ico']) {
       expect((await decide(req(p), ON)).kind, p).toBe('pass');
     }
   });
@@ -46,6 +53,12 @@ describe('decide — the static allowlist', () => {
   it('does not let a lookalike path through', async () => {
     expect((await decide(req('/robots.txt.map'), ON)).kind).toBe('challenge');
     expect((await decide(req('/x/robots.txt'), ON)).kind).toBe('challenge');
+  });
+
+  it('does NOT pass paths with no backing file — vercel.json rewrites them to the SPA shell', async () => {
+    for (const p of ['/.well-known/anything', '/.well-known/apple-app-site-association', '/apple-app-site-association']) {
+      expect((await decide(req(p), ON)).kind, p).toBe('challenge');
+    }
   });
 });
 
@@ -79,6 +92,15 @@ describe('decide — Basic credentials', () => {
   it('sets no cookie on a Basic pass — middleware cannot deliver one', async () => {
     const d = await decide(req('/', { authorization: basic('a', PASSWORD) }), ON);
     expect(d).toEqual({ kind: 'pass' });
+  });
+
+  it('passes a non-ASCII password UTF-8 decoded, matching what a browser sends', async () => {
+    const nonAsciiPassword = 'pässwörd-Zürich';
+    const d = await decide(
+      req('/', { authorization: basicUtf8('anyone', nonAsciiPassword) }),
+      { ...ON, password: nonAsciiPassword },
+    );
+    expect(d.kind).toBe('pass');
   });
 });
 
