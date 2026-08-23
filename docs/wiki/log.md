@@ -1,5 +1,22 @@
 # Wiki Log
 
+## [2026-08-23] ingest | The comment was true, and about the wrong reader
+
+Ingested `raw/sessions/2026-08-23-rag-doc-chunking.md`. **Created**
+[[RAG Document Chunking]] (`concepts/rag-document-chunking.md`).
+
+`sync-internal-docs.mjs` sliced every document at 24,000 chars under a comment reading
+"embed input is truncated; full_content is not" — accurate, and describing a store
+(`internal_docs`) that Donny's retrieval never reads. Prod, 2026-08-23: **723,128 of
+2,168,995 chars (33%) reached Donny in no form at all**, 14 rows pinned at exactly 24,000,
+unchanged since 2026-06-11. Found only because [[Knowledge-Sync Automation]] says to verify
+by CONTENT — the run's own report (`updated=142 errors=0`) was clean.
+
+Cross-links added on [[Knowledge-Sync Automation]] and [[Donny RAG Scope Boundary]] — the
+latter's "the internal copy handles the same page gracefully (truncate-embed, full markdown
+preserved in internal_docs)" claim is the defect stated as a mitigation, and is corrected
+there and in the script comment it came from.
+
 ## [2026-08-23] ingest | Stale, contradicted, and wrong-about-people are three different problems
 
 Ingested `raw/sessions/2026-08-23-product-docs-published.md`. No concept page created — the
