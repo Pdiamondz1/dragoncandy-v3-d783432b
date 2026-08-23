@@ -43,18 +43,28 @@ revoke succeeded, *by construction*: the function only reaches the DELETE after 
 token survives for a retry. Row absent therefore means revoke succeeded — there is no path that
 produces an absent row and a live grant.
 
-**Google's own behaviour is the independent confirmation.** The first connect had sailed straight
-through with no consent screen. Immediately after disconnect, the same button dropped into the
-full account-chooser-then-consent flow. Google would not re-ask for a grant it still held, so the
-withdrawal reached Google's side rather than only ours. **A second, independent observer is worth
-more than a second look at your own state.**
+**A second proof was claimed here and is WITHDRAWN (2026-08-23, Codex second review).** This
+paragraph read: *"Google's own behaviour is the independent confirmation. The first connect had
+sailed straight through with no consent screen. Immediately after disconnect, the same button
+dropped into the full account-chooser-then-consent flow. Google would not re-ask for a grant it
+still held."* **It confirms nothing.** `buildAuthUrl` sends `prompt=consent` on every
+authorization, so the full consent flow appears whether or not the grant was revoked — the
+before-and-after look identical, which is exactly the property that would make this evidence.
+The revoke is still proven, by the construction argument in the paragraph above, which was
+always the stronger of the two.
+
+**The lesson is the reason it was believed.** "A second, independent observer is worth more than
+a second look at your own state" is true, and it is what this paragraph claimed to be. But the
+observer was not independent: Google's behaviour here is fully determined by a parameter *we*
+send. **Before calling an observation independent, name what would have to differ for it to come
+out the other way** — here, nothing could have.
 
 **Re-consent produced a genuinely new grant**, not a cached one: `connected_at` moved to
 17:31:49, and the stored `scopes` array came back in a *different order* from the first grant —
 an incidental detail, but one a cache would not produce. The analytics read then ran again against
 the new token (`last_synced_at` 17:33:07, `last_error` null).
 
-### The consent flow is TWO screens, and a partial revoke hides the second
+### The consent flow is TWO screens (and the revoke had nothing to do with it)
 
 **This section previously claimed "the consent screen itemised only the email address" and filed
 it as observed-unexplained. That was an artefact of an incomplete revoke, and the explanation
@@ -66,9 +76,24 @@ arrived within the hour.** Google's consent is two screens:
    **"View your YouTube account"** and **"View YouTube Analytics reports for your YouTube
    content"**, with Cancel / Allow.
 
-Screen 2 is skipped when the account already holds those scopes. Only after a full revoke —
-which is what `youtube-disconnect` performs — do both appear. So the earlier observation was not
-wrong about what was on screen; it was wrong to treat one screen as the whole flow.
+So the earlier observation was not wrong about what was on screen; it was wrong to treat one
+screen as the whole flow.
+
+**This page then asserted a mechanism for that which is false, and the Codex second review caught
+it the same day.** It said: *"Screen 2 is skipped when the account already holds those scopes.
+Only after a full revoke — which is what `youtube-disconnect` performs — do both appear."*
+`buildAuthUrl` sends **`prompt=consent`** on every authorization
+(`supabase/functions/_shared/youtube.ts`), and Google's OAuth documentation is explicit: `consent`
+means *prompt the user for consent*, while *"if you don't specify this parameter, the user will be
+prompted only the first time your project requests access."* The skipping behaviour belongs to
+apps that **omit** `prompt`. This one never does, so **screen 2 appears on every connect** —
+first, second, and reconnect-after-revoke alike. Screen 2 went unseen because nobody looked past
+screen 1; the revoke that appeared to summon it was a coincidence of sequence.
+
+Worth naming the shape, because it is the more expensive half: **a hypothesis invented to explain
+a gap in observation, written down as mechanism, and then carried through a correction pass
+untouched** — because that pass was about *how many* screens there are, not about *why*. A
+correction inherits every claim it does not explicitly re-examine.
 
 **Screen 2 is the user-facing proof the integration cannot post.** Both entries read *View*.
 Nothing about uploading, publishing, or managing videos appears, because no such scope is
@@ -283,16 +308,26 @@ request list, at which point every figure shifts one column and the dashboard sh
 confident, wrong numbers with nothing failing. Everything is read by column name, and a test
 proves a shuffled response produces identical output.
 
-## The 7-day trap
+## The 7-day trap (closed 2026-08-23 — the history is the useful part)
 
-The Google Cloud app's publishing status is **Testing**, and Google expires refresh tokens
-**7 days after consent** for External + Testing apps. Every connection will flip to
-`needs_reconnect` a week after it is made. **That is a console setting, not a bug in the
-refresh code** — check publishing status before debugging.
+The Google Cloud app **was** Testing, and Google expires refresh tokens **7 days after
+consent** for External + Testing apps, so every connection would have flipped to
+`needs_reconnect` a week after it was made. **That is a console setting, not a bug in the
+refresh code** — check publishing status before debugging a token that died on schedule.
 
-Publishing to Production early is worse: production-but-unverified carries a hard lifetime
-cap of **100 new users that Google never resets**. Correct order is build → submit for
-verification → publish.
+The app is now **In production** (flipped 2026-08-23 18:20 UTC, reversible via "Back to
+testing"), so the expiry no longer applies to tokens issued from here on. It does **not** apply
+retroactively: the live token had been minted under Testing rules, so it was deliberately
+retired and re-minted (disconnect + reconnect, fresh grant at 18:26:06) rather than assumed to
+have inherited the new policy.
+
+**This section previously recommended the opposite order** — build → submit for verification →
+publish — because production-but-unverified carries a lifetime cap of **100 new users that
+Google never resets**. The cap is real and that order is still the default for an app expecting
+real signups. It was overridden deliberately here: with one connected user, and a verification
+that cannot be submitted until a demo video exists, seven-day token death on the only live
+connection cost more than one of a hundred lifetime slots. **1 of 100 is used.** Treat this as
+the exception, not the pattern, when the next platform reaches the same fork.
 
 ## Console state (verified in the console 2026-08-23)
 
@@ -300,17 +335,53 @@ verification → publish.
   correct the code is.
 - **Redirect URI: `https://dragoncandy.com/youtube/callback`**, replacing the Supabase edge
   function URL. Google warns changes take 5 minutes to a few hours to take effect.
-- **Declared scopes: none.** All three Data Access tables are empty. This is fine in Testing
-  and is **not** the same thing as the scopes we request — those are named at runtime in the
-  authorize URL. The Data Access page is the *declared* list Google reviews at verification
-  time, and the two read scopes must be added there, with justifications, before submitting.
-  A memory note previously claimed the project "currently" had `youtube.upload` +
-  `youtube.readonly` declared; it did not, and a "drop youtube.upload" task sat on the list
-  for something that never existed.
+- **Declared scopes: both, declared 2026-08-23.** This line read "none — all three Data Access
+  tables are empty" until they were added, with a 947-char justification saved. Declaring them
+  is still **not** the same thing as the scopes we *request*: those are named at runtime in the
+  authorize URL, while Data Access is the declared list Google reviews at verification. A memory
+  note previously claimed the project "currently" had `youtube.upload` + `youtube.readonly`
+  declared; it did not, and a "drop youtube.upload" task sat on the list for something that never
+  existed.
+
+## The demo video, and a requirement we invented
+
+Verification needs a demo video, and the sibling entry in `PROJECT_CONTEXT.md` said it was
+"awkward rather than tedious" because Google "requires the unverified-app screen to appear in it
+and forbids recording against production traffic" — and therefore needed a separate test project
+or a hidden staging route.
+
+**Google's demo-video page requires neither**, and its verification-requirements page says
+nothing about the environment. Four things are asked for: the end-to-end flow including the
+OAuth grant, the complete consent screen showing the exact scopes requested, each requested
+scope demonstrably used, and the same app name and branding as submitted. The video is
+recordable against production today, with nothing new built.
+
+Requirement 2 is the one a build like this could plausibly fail, and the first draft of the
+runbook said the take "has to start from a revoked grant" so that the scope screen would appear.
+**Codex refuted that against the code**, and it is the second section of this page that was wrong,
+not the runbook's reading of it: `prompt=consent` is sent on every authorization, so the scope
+screen always appears, and the card's connect button is always present (labelled "Connect another
+channel" once a channel is linked). **The demo video needs no revoke and no disconnect.** Full
+procedure, plus the anonymous-reachability conflict between Google's homepage/privacy-policy
+requirement and the site gate's two-path allowlist:
+`docs/runbooks/google-oauth-demo-video.md`.
+
+**Five claims about this one console were corrected in a single day**: one consent screen taken
+for the whole flow, "both scopes are sensitive", a `youtube.upload` declaration that never
+existed, the demo-video requirements, and the `prompt=consent` mechanism above. The first four
+were not checkable from inside the repository and each read as verified because it was specific.
+**The fifth was different, and that is the useful part** — it was checkable here all along, in
+sixteen characters of `youtube.ts`, and it took an independent reviewer to look, because by then
+the claim had been through a correction pass and read as settled. The rule that survives all four — **when a claim's only
+evidence lives in someone else's console or on someone else's documentation page, go and read
+it; do not paraphrase it from memory into a document that will be planned against.**
 
 ## Known Issues
 
-- Nothing is applied or deployed; the flow has never run end to end.
+- ~~Nothing is applied or deployed; the flow has never run end to end.~~ **Resolved
+  2026-08-23** — migration applied, four functions deployed `v1 ACTIVE`, first channel linked at
+  16:46 UTC, disconnect/revoke/re-consent exercised, app published to production. See the top of
+  this page.
 - **Native return is unsolved.** `capacitor://localhost` is deliberately absent from the
   redirect allow-list — it is a webview-internal origin, not a scheme an external browser can
   be redirected to. A native user completing this flow lands on the website. Listing it would
@@ -321,8 +392,10 @@ verification → publish.
 - ~~`deno` is not installed locally~~ — installed 2026-08-23 (Homebrew, deno 2.9.5), and
   `node scripts/check-edge-functions.mjs` now runs here: **70 functions clean**, the four
   YouTube ones among them. They are deliberately **off**
-  `supabase/functions/.typecheck-ignore`, so CI checks them too. A clean type-check is not a
-  clean run: nothing here has executed against Google.
+  `supabase/functions/.typecheck-ignore`, so CI checks them too. The caveat this bullet carried
+  — *"a clean type-check is not a clean run: nothing here has executed against Google"* — was
+  true when written and was **closed the same day**; the flow has since run end to end against
+  real Google credentials. The general point stands for the next connector.
 - `_shared/youtube-connection.ts` types its Supabase client loosely, so a wrong column name
   there fails at runtime rather than at compile time.
 

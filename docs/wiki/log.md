@@ -1,5 +1,45 @@
 # Wiki Log
 
+## [2026-08-23] update | The staging route we did not need to build
+
+Checked, before building it, the requirement that made a demo-video staging route look
+necessary — and it does not exist. `PROJECT_CONTEXT.md` said Google "requires the unverified-app
+screen to appear in [the demo video] and forbids recording against production traffic".
+**Google's demo-video page requires neither**, and its verification-requirements page says
+nothing about the environment. The video is recordable against production today, with nothing
+new built.
+
+**Created** `docs/runbooks/google-oauth-demo-video.md` — the four real requirements with their
+sources, and the take itself.
+
+**Its first draft opened with a mandatory revoke, and the Codex second review refuted that against
+the code.** The runbook was faithfully following [[YouTube Analytics Connector]], which claimed
+Google's second consent screen is "skipped when the account already holds those scopes".
+`buildAuthUrl` sends `prompt=consent` unconditionally, and Google's OAuth docs say that value
+prompts for consent regardless of prior grants — the "only the first time" behaviour is what you
+get when `prompt` is **omitted**. So screen 2 appears on every connect; it went unseen because
+nobody looked past screen 1. **The claim had already been through a same-day correction pass and
+read as settled, so nothing internal was going to re-open it** — a correction inherits every claim
+it does not explicitly re-examine. Fixed in the concept page, `PROJECT_CONTEXT.md`, the index and
+the runbook; the withdrawn "Google does not re-ask for a grant it still holds" was also cited as
+independent confirmation that a revoke had succeeded, and is not evidence of anything.
+
+**Found while writing it, and connected nowhere before now:** Google requires the homepage and
+privacy policy reachable by an anonymous reviewer, and `gate/decide.ts` allowlists exactly
+`/robots.txt` and `/favicon.ico`. Switching the private preview on 401s both — failing this
+verification, and TikTok's, Meta's and X's, each of which needs a public privacy-policy URL.
+Prod is not gated today (apex 200), so it is a sequencing constraint rather than a live defect,
+and allowlisting `/privacy` is not the fix: it is an SPA route, and the gate's own header records
+that allowlisting a path with no backing file serves the whole bundle.
+
+**Updated** [[YouTube Analytics Connector]] with that section, plus two claims today's own merges
+made stale — publishing status (Testing → In production, including why the recommended build →
+verify → publish order was deliberately inverted) and declared scopes (none → both). **Updated**
+`docs/PROJECT_CONTEXT.md` §5 with the correction and the gate conflict.
+
+Five claims about this one console corrected in a single day. Four were not checkable from inside
+the repository and each read as verified because it was specific. The fifth was checkable here all
+along — sixteen characters of `youtube.ts` — and needed an outside reviewer anyway.
 ## [2026-08-23] update | The identity slice went live, and the reviewer's best finding was wrong
 
 **Updated** [[Identity & Address Verification]] and `docs/PROJECT_CONTEXT.md` §5 after slice 2 merged
