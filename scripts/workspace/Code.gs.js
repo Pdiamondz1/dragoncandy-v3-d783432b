@@ -66,6 +66,10 @@ function installAllSignatures() {
   var perUser = [];
   var totalSharedSeen = 0;
   var totalDenied = 0;
+  // Read before the loop: the Sheet's written/expected column uses the same
+  // expectation as the warning, and both must survive an identity being
+  // removed. See sharedExpectation_.
+  var baseline = readSharedBaseline_();
 
   for (var i = 0; i < users.length; i++) {
     var user = users[i];
@@ -73,14 +77,16 @@ function installAllSignatures() {
       var counts = installForUser_(user);
       totalSharedSeen += counts.sharedSeen;
       totalDenied += counts.denied;
-      perUser.push({
+      var record = {
         email: user.primaryEmail,
         sharedWritten: counts.shared,
         sharedSeen: counts.sharedSeen,
         // Per user, not domain-wide. A 403 on someone else's account must not
         // decide the remediation printed for this one. (Codex P2, 2026-08-23.)
         denied: counts.denied,
-      });
+      };
+      perUser.push(record);
+      var sharedExpected = sharedExpectation_(record, baseline);
 
       // PARTIAL is deliberately distinct from both ok and ERROR. A run where
       // every writable identity was written but some were refused is neither
@@ -104,11 +110,13 @@ function installAllSignatures() {
         user.title || '(no title)',
         status,
         detail,
-        // written/seen, not a bare count. The denominator is what makes a
-        // regression legible in the Sheet: "0 shared" is correct for a user
-        // with none and alarming for a user with three, and a bare number
-        // cannot tell those apart.
-        counts.sharedSeen ? counts.shared + '/' + counts.sharedSeen + ' shared' : '0 shared',
+        // written/expected, not a bare count, and expected comes from the same
+        // rule the warning uses -- including the baseline. "0 shared" is
+        // correct for a user who never had any and alarming for a user who
+        // had three, and the Sheet is the DURABLE record: if it collapsed
+        // those two into the same string, the warning's 0/3 would be the only
+        // trace, and warnings scroll away. (Codex P2, 2026-08-23.)
+        sharedExpected ? counts.shared + '/' + sharedExpected + ' shared' : '0 shared',
       ]);
     } catch (err) {
       // The Sheet write below (appendRunLog_) silently no-ops when LOG_SHEET_ID
@@ -143,7 +151,6 @@ function installAllSignatures() {
   // identities. With two, a user could lose every shared signature and the run
   // would stay silent because somebody else still installed one -- the warning
   // would have gone quiet precisely as the feature grew. Codex, 2026-08-23.
-  var baseline = readSharedBaseline_();
   var degraded = sharedRegressions_(perUser, baseline);
 
   if (degraded.length) {
@@ -345,6 +352,18 @@ function installForUser_(user) {
  * @param {Array<{email: string, sharedWritten: number, sharedSeen: number}>} perUser
  * @return {Array<string>} "user@ (written/seen)" for each degraded user
  */
+/**
+ * How many shared signatures this user SHOULD have.
+ *
+ * The larger of what is on their account right now and what they have ever
+ * successfully had. Both the warning and the run log call this, so the two can
+ * never disagree about what "expected" means -- they did briefly, and the Sheet
+ * (the durable record) was the one telling the smaller truth.
+ */
+function sharedExpectation_(record, baseline) {
+  return Math.max(record.sharedSeen || 0, (baseline || {})[record.email] || 0);
+}
+
 function sharedRegressions_(perUser, baseline) {
   baseline = baseline || {};
   var out = [];
@@ -357,7 +376,7 @@ function sharedRegressions_(perUser, baseline) {
     // is what remembers those signatures used to exist. (Codex P1, 2026-08-23
     // -- the first version of this function shipped with exactly that hole,
     // and a comment cheerfully describing it.)
-    var expected = Math.max(r.sharedSeen, baseline[r.email] || 0);
+    var expected = sharedExpectation_(r, baseline);
     if (expected > 0 && r.sharedWritten < expected) {
       out.push({
         email: r.email,

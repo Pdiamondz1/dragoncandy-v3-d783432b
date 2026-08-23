@@ -319,7 +319,9 @@ of the domain installed. The log Sheet's shared column is `written/expected`
 and alarming for a user with three, and a bare count cannot tell those apart.
 
 **Where "expected" comes from matters, and this is the subtle part.** It is
-`max(identities present now, SHARED_BASELINE[user])`. Using only the live count
+`max(identities present now, SHARED_BASELINE[user])` — computed by
+`sharedExpectation_`, which both the warning and the Sheet column call, so the
+two can never disagree about what expected means. Using only the live count
 would make the check blind to the worst case — delete a user's send-as
 identities and the live count falls to zero alongside the written count, so the
 run looks clean. `SHARED_BASELINE` is a per-user high-water mark of shared

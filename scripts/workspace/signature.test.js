@@ -183,7 +183,7 @@ function loadAppsScript(scriptProperties = {}) {
   };
   return new Function(
     'PropertiesService',
-    `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN, isMissingSharingScope_, requestedScopes_, SCOPE_BASIC, SCOPE_SHARING, sharedRegressions_, formatRegression_, nextSharedBaseline_ };`,
+    `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN, isMissingSharingScope_, requestedScopes_, SCOPE_BASIC, SCOPE_SHARING, sharedRegressions_, formatRegression_, nextSharedBaseline_, sharedExpectation_ };`,
   )(PropertiesService);
 }
 
@@ -474,5 +474,45 @@ describe('nextSharedBaseline_', () => {
     const baseline = { 'dame@dragoncandy.com': 3 };
     nextSharedBaseline_([{ email: 'dame@dragoncandy.com', sharedWritten: 5, sharedSeen: 5 }], baseline);
     expect(baseline).toEqual({ 'dame@dragoncandy.com': 3 });
+  });
+});
+
+// The warning and the run-log column must never disagree about what "expected"
+// means. They did: the warning used the baseline and the Sheet used only the
+// live count, so a removed identity warned as 0/3 while the durable record said
+// plain "0 shared" — indistinguishable from a user who never had any, and the
+// Sheet is what survives after the warning scrolls away. Codex, 2026-08-23.
+describe('sharedExpectation_', () => {
+  const { sharedExpectation_, sharedRegressions_ } = loadAppsScript();
+
+  it('is the live count when there is no baseline', () => {
+    expect(sharedExpectation_({ email: 'a@x.com', sharedSeen: 3 }, {})).toBe(3);
+  });
+
+  it('is the baseline when the identities are gone', () => {
+    expect(sharedExpectation_({ email: 'a@x.com', sharedSeen: 0 }, { 'a@x.com': 3 })).toBe(3);
+  });
+
+  it('is the larger of the two when they disagree', () => {
+    expect(sharedExpectation_({ email: 'a@x.com', sharedSeen: 4 }, { 'a@x.com': 3 })).toBe(4);
+    expect(sharedExpectation_({ email: 'a@x.com', sharedSeen: 1 }, { 'a@x.com': 3 })).toBe(3);
+  });
+
+  it('is zero for a user who has never had one', () => {
+    expect(sharedExpectation_({ email: 'joe@x.com', sharedSeen: 0 }, {})).toBe(0);
+  });
+
+  it('tolerates a missing baseline argument', () => {
+    expect(sharedExpectation_({ email: 'a@x.com', sharedSeen: 2 })).toBe(2);
+  });
+
+  // The property that actually matters: whatever the Sheet prints as the
+  // denominator is the same number the warning judged against.
+  it('agrees with the denominator sharedRegressions_ reports', () => {
+    const baseline = { 'a@x.com': 3 };
+    const record = { email: 'a@x.com', sharedWritten: 0, sharedSeen: 0, denied: 0 };
+    const [reported] = sharedRegressions_([record], baseline);
+    expect(reported.expected).toBe(sharedExpectation_(record, baseline));
+    expect(reported.expected).toBe(3);
   });
 });
