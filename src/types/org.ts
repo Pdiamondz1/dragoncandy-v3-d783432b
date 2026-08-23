@@ -45,6 +45,9 @@ export interface OrgUnit {
   linkedin_url: string | null;
   x_url: string | null;
   other_social_url: string | null;
+  /** Server-write-only (verify-address). NULL until a geocode succeeds and stays NULL
+   * again the instant `address` changes (see the address-reverification trigger). */
+  address_verified_at: string | null;
 }
 
 export interface OrgMember {

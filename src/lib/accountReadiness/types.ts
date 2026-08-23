@@ -2,6 +2,7 @@ export type RequirementKey =
   | 'email_verified'
   | 'profile_basics'
   | 'phone_verified'
+  | 'identity_verified'
   | 'address'
   | 'stripe'
   | 'social_linked'
@@ -35,6 +36,8 @@ export interface OrgUnitFacts {
   lat: number | null;
   lng: number | null;
   isPrimary: boolean;
+  /** Stamped only by the server (verify-address) once geocoding confirms `address`. */
+  addressVerifiedAt: string | null;
 }
 
 export interface StripeFacts {
@@ -66,6 +69,18 @@ export interface ReadinessContext {
   stripe: StripeFacts | undefined;
   socialActiveCount: number | undefined;
   creator: CreatorFacts | undefined;
+  /**
+   * Mirrored from Stripe (never a stored tax ID). `undefined` = we have not
+   * heard from Stripe yet — `unknown`. `verifiedAt: null` = Stripe HAS
+   * reported and it is not yet verified — a real `unmet`, not an absence.
+   */
+  identity: { verifiedAt: string | null; requirementsDue: readonly string[]; disabledReason: string | null } | undefined;
+  /**
+   * Creator's OWN address stamp (creator_profiles.address_verified_at) — not
+   * used by business/brand, whose address lives per-location on org units
+   * (see OrgUnitFacts.addressVerifiedAt).
+   */
+  addressVerifiedAt: string | null | undefined;
 }
 
 export interface RequirementDef {

@@ -14,6 +14,8 @@ const complete: ReadinessContext = {
   stripe: { hasAccount: true, onboardingComplete: true },
   socialActiveCount: 1,
   creator: { skills: ['photography'], bio: 'I shoot food.', portfolioUrls: ['https://example.test/1'] },
+  identity: { verifiedAt: '2026-08-23T00:00:00Z', requirementsDue: [], disabledReason: null },
+  addressVerifiedAt: '2026-08-23T00:00:00Z',
 };
 
 describe('computeAccountReadiness', () => {

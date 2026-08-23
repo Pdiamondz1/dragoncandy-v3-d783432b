@@ -85,7 +85,8 @@ stale silently; re-read the invoices before quoting this anywhere. Production la
 delivery system stabilization that gated launch landed in late May 2026;
 remaining blockers are final bug resolution and payment-flow hardening.
 
-**Codebase scale** (as of 2026-08-19): 92 pages, 269 hooks, 98 edge functions.
+**Codebase scale** (as of 2026-08-23): 92 pages, 269 hooks, 100 edge functions (`verify-phone` +
+`verify-address` added by the identity-verification slice — both undeployed pending secrets).
 **Repo**: `/Users/dwill/GIT/dragoncandy-v3-d783432b` (moved from Windows to macOS 2026-08-14)
 **Active integrations**: Stripe Connect, Outstand.so (social media —
 Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
@@ -566,6 +567,63 @@ holds no Toast credentials. See §6.
 > proof the object exists (see [[Content Delivery State Machine]]) and "recorded ≠ actual" has
 > bitten this project before.
 
+- **Site locked to a private preview — built and reviewed, and NO part of it is switched on** —
+  the code half is done; the go-live half is **entirely founder action and cannot be done by any
+  agent** (approve/merge the PR, set four Vercel variables, flip one Supabase toggle). The premise
+  is the thing to carry: **a password cannot stop a signup** — `VITE_SUPABASE_ANON_KEY` ships in the
+  bundle and `supabase.co` never traverses Vercel, so **turning off Supabase's "Allow new users to
+  sign up" is the load-bearing control** and the edge password is the lesser of the two. That
+  password is HTTP Basic at the edge (Vercel Routing Middleware: `middleware.ts` over a pure,
+  26-test `gate/decide.ts`), answering **401 and never a redirect**, because a 401 re-requests the
+  identical URL so a password-reset link's `#access_token` fragment survives. It **fails closed**,
+  so deleting the variables is the WRONG rollback — `SITE_GATE_ENABLED` is the lever, and it needs a
+  **redeploy** to take effect (an env-var change does not reach a running deployment; four documents
+  claimed otherwise). Rule from a real defect: **only allowlist a path with a real file under
+  `public/`** — `/.well-known/*` had none and `vercel.json` rewrites unmatched paths to
+  `/index.html`, so it served the whole SPA bundle to anonymous browsers. Three more caught in
+  review: the Lighthouse `is-crawlable` exemption was **inert where it was written** (a category
+  assertion reads a score computed at collect time — 0.69 vs 1.00 measured — and the obvious fix
+  ALSO fails because an `LHCI_COLLECT__SETTINGS__*` env var replaces the config file's whole
+  `settings` object); bare `undefined` is a **Next.js** continue convention, not the
+  framework-agnostic one (`next()` from `@vercel/functions`, or every authorised request breaks in
+  production where no preview can show it); and `VERCEL_ENV !== 'production'` was **fail-open on
+  absence**, reopening the site while the dashboard read locked. Also deleted the dead client-side
+  gate, which kept `dragoncandy2026` as a bundled string constant and allowlisted `/auth`.
+  Three Codex passes (last clean), a whole-branch review and a scoped re-review; 2,756 tests.
+  **The claim that this could not be tested before production was FALSE, and it hid a total
+  outage.** The gate's *behaviour* is production-only (a preview sets `VERCEL_ENV='preview'`, so it
+  passes everyone), but Vercel **imports and runs the middleware on every preview request** — and
+  the first preview deploy returned **500 on every request** (`MIDDLEWARE_INVOCATION_FAILED`).
+  Cause: Vercel transpiles `middleware.ts` to `middleware.js` and runs it as **Node ESM without
+  bundling**, and Node's ESM resolver does not add extensions, so `import … from './gate/decide'`
+  threw `ERR_MODULE_NOT_FOUND` at module load — before any gate logic, so `SITE_GATE_ENABLED` could
+  not have rescued it. Typecheck, 2,756 tests and the build were all green, because Vite/Vitest/tsc
+  all resolve extensionless specifiers. **Caught by the e2e smoke suite**, which drives a real
+  browser against the preview. Fixed with `'./gate/decide.js'`. **Durable rule: a local toolchain
+  that resolves imports for you cannot tell you whether the deployment target will.**
+  **Pending (2026-08-23):** merge PR #482; **a green `lighthouse-ci.yml` AND a green e2e smoke on it
+  are hard merge gates** (the Lighthouse 1.00 was measured locally, never by CI); then, in this
+  order, set the four Production-scope variables → deploy → run the runbook's checks → only then
+  disable Supabase signup.
+  Note `/promo/:id` now challenges (founder confirmed no QR is live; documented, deliberately not
+  allowlisted) and every Supabase invite must travel with the password or as a `?k=` link.
+  → `docs/wiki/concepts/site-access-lockdown.md` · `docs/runbooks/site-access-lockdown.md`
+- **Identity & verification (slice 2 of 4, onboarding redesign)** — gives `phone_verified`/
+  `identity_verified`/`address` real writers, closes a `profiles` email/phone read exposure (4th
+  recorded column-REVOKE-no-op instance), and corrects a slice-1 defect (two `required` checklist rows
+  nothing could ever satisfy). Branch `feat/identity-verification`, 27 commits, 11 migrations, tests
+  green. **Codex second review DONE** — this line said "still owed": seven rounds, nine findings, all
+  real, clean at round 7; two of the nine were defects a previous fix in the same loop introduced.
+  It moved the SMS throttle out of TypeScript into an atomic SQL RPC
+  (`reserve_phone_verification_send`), so that control now has **no automated coverage at all**, only
+  a hand-run rolled-back prod proof. **Pending (2026-08-23):** three secrets unprovisioned
+  (`TWILIO_VERIFY_SERVICE_SID`, `PHONE_VERIFY_IP_SALT`, `GOOGLE_MAPS_SERVER_API_KEY`) so nothing is
+  verifiable end-to-end; merge, then a **four-migration + five-function** merge-time runbook; a
+  `READINESS_GATE_ENABLED` flag-row decision (founder call — and it now needs the Maps key first,
+  since until then no address can be verified and the `required` address item is display-only); and a
+  pre-existing unauthenticated IDOR (`get_user_conversations`) found in scope but left for an owner
+  outside this branch.
+  → `docs/wiki/concepts/identity-verification.md` · `docs/SHIPPED_LOG.md`
 - **Donny's `social_*` tools repaired (7 calls → 0 successes → 4 working tools)** — Donny told the
   founder he had "no visibility into which Instagram account is connected", sent him to find an
   **"account ID"** on a page that displays none, and promised to post once he had it. The prod audit
@@ -682,7 +740,8 @@ holds no Toast credentials. See §6.
   the Codex second review**, at founder direction. **Pending (2026-08-23):** both-viewport prod
   verification — every changed surface is behind auth and **no test-account credentials exist in the
   memory system despite `CLAUDE.md` saying they do**; the Donny RAG sync; and slices 2-4 (identity &
-  verification, entry experience, depth).
+  verification, entry experience, depth). **Slice 2 (identity & verification) built — see "Built —
+  awaiting founder go-live" above**; this line previously named it only as a future slice.
   → `docs/wiki/concepts/account-completeness-engine.md` · #472
 - **Every `href` in our transactional emails was caller-chosen — closed on prod (#442)** — ~30
   templates built every link from caller-supplied `data` with no check, reachable because

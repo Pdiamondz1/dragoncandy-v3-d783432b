@@ -74,6 +74,7 @@
 | `email_verification_tokens` | Email verification flow |
 | `feature_flags` | Per-user or global feature toggles |
 | `user_roles` | RBAC role assignments (`app_role` enum). Queried via the `has_role()` security-definer function so RLS policies stay non-recursive. |
+| `phone_verification_attempts` | Per-user + per-IP `verify-phone` (Twilio Verify) send/check audit log — service-role only, no client access. See the identity-verification note below. |
 
 > **Account completeness columns (`20260823120000`, applied to prod 2026-08-23).** Three nullable
 > `profiles` columns, no default and no backfill — a volatile default would rewrite every row, and
@@ -81,8 +82,8 @@
 >
 > | Column | Type | Meaning |
 > |---|---|---|
-> | `phone` | `text` | Captured number. No OTP, no capture UI, no provider yet — that is slice 2. |
-> | `phone_verified_at` | `timestamptz` | The instant phone ownership was **proven**. `NULL` = not verified. Never a boolean set optimistically. |
+> | `phone` | `text` | Captured number. OTP now has a provider (`verify-phone`, Twilio Verify — slice 2, see below), but its two secrets are unprovisioned so nothing has verified a real number yet. |
+> | `phone_verified_at` | `timestamptz` | The instant phone ownership was **proven**. `NULL` = not verified. Never a boolean set optimistically. Server-write-only since `20260824100000`; cleared on any `phone` change not paired with a new stamp in the same statement (`20260824120000`) — see [[Identity & Address Verification]]. |
 > | `dismissed_requirements` | `text[]` | Requirement keys the user dismissed. **Recommended tier only** — a required item is never dismissible. |
 >
 > **`dismissed_requirements` is deliberately NOT the existing `dismissed_coachmarks` column.** Both are
@@ -102,6 +103,155 @@
 > legacy rows keep reading fine. **Those four keys are load-bearing:** `isFirstRun` never consults the
 > engine, so `completed_at` — and therefore leaving first-run mode — depends entirely on them.
 
+> **Identity, tax and address verification columns (slice 2, [[Identity & Address Verification]]).**
+> Migration `20260824110000` adds 12 nullable columns across three tables (16 counting the four
+> `profiles` columns above), no default, no backfill — `NULL` means "we have not heard from the
+> authority (Stripe/geocoder) yet", which the readiness engine renders as `unknown`, never a failure.
+> **No tax ID number is ever stored** — both Connect accounts are Express, so Stripe collects and
+> verifies the tax ID and never exposes it to the platform; these columns mirror the SIGNAL only.
+>
+> | Column | On | Meaning |
+> |---|---|---|
+> | `identity_verified_at` | `creator_profiles`, `business_profiles`, `org_units` | Stripe reported `verification=verified` (or, for company accounts, `payouts_enabled && !disabled_reason` — see below). Server-write-only. |
+> | `tax_id_provided` | `creator_profiles`, `business_profiles`, `org_units` | Stripe holds a tax ID. Never the number. Server-write-only. |
+> | `stripe_requirements_due` | `creator_profiles`, `business_profiles`, `org_units` | `text[]`, mirrors Stripe's outstanding requirements. Server-write-only. |
+> | `stripe_disabled_reason` | `creator_profiles`, `business_profiles`, `org_units` | Mirrors Stripe's `disabled_reason` (e.g. `rejected.fraud`). Server-write-only; **outranks a surviving `identity_verified_at` stamp** in the readiness derivation — revocation must win over history. |
+> | `address_verified_at` | `creator_profiles`, `org_units` | The instant `verify-address` (Google Geocoding) confirmed the address. **Not** on `business_profiles` — a business's address is per-location and lives on `org_units`; `business_profiles` is the account. Server-write-only; cleared on any address-field change not paired with a new stamp in the same statement (`20260824150000`). |
+> | `lat` / `lng` | `creator_profiles` only (`org_units` already had them) | City/postal **centroid**, never a street address; creator coordinates are rounded to 2 decimal places (~1.1km) at write time. **NOT guarded by the server-write-only trigger below** — a client can PATCH these directly. Bounded because the readiness engine keys off `address_verified_at` alone, but "Find Creators near me" ranks on proximity without consulting the stamp, so planted coordinates can place a creator in a city search they aren't in. Parked, not fixed. |
+>
+> **Server-write-only enforcement is a `BEFORE INSERT OR UPDATE` trigger per table, deliberately NOT
+> the `profiles` grant-based pattern.** `creator_profiles`/`business_profiles`/`org_units` each have at
+> least one write path that is a runtime-computed object (`useOrgData.ts`'s caller-supplied partial via
+> `useUpdateOrgUnit`), so an explicit column-grant list is a silent-`42501`-in-production trap for the
+> next call site nobody enumerated. Instead, `guard_creator_profiles_verification_columns()` /
+> `guard_business_profiles_verification_columns()` / `guard_org_units_verification_columns()`
+> (`20260824110000` UPDATE-only, widened to also cover INSERT by `20260824111000` after a reviewer
+> proved live on prod that delete-then-reinsert forged `identity_verified_at`/`tax_id_provided`) raise
+> `verification columns are server-write-only` unless
+> `current_setting('request.jwt.claims', true)::jsonb->>'role' = 'service_role'`. Plain `INVOKER`
+> (not `SECURITY DEFINER` — the functions only read a session GUC and compare NEW/OLD, no privileged
+> access needed). Trigger firing order is load-bearing: these `guard_*` triggers sort before the
+> `trg_clear_*` re-verification triggers below (alphabetical, same table), so the guard always sees the
+> client's ORIGINAL row before either clearing trigger has touched it — reversed, a legitimate client
+> address/phone edit would hard-fail with the same exception.
+>
+> **Re-verification (clearing) triggers — a stamp must never outlive the fact it attests to.**
+> `trg_clear_phone_verification` (`20260824120000`, on `profiles`) and the `org_units`/
+> `creator_profiles` address triggers (`20260824150000`) share one shape: `NEW.<fact> IS DISTINCT FROM
+> OLD.<fact> AND NEW.<stamp> IS NOT DISTINCT FROM OLD.<stamp>` — clears the stamp when the underlying
+> fact changes UNLESS the stamp is being set in the SAME statement (the real verify-phone/verify-address
+> write shape: `update ... set phone = $1, phone_verified_at = now()`). Without the dual condition, that
+> single-statement composite write would see `phone` changed and null the very stamp it was just handed
+> — verification would appear to succeed and silently never record. **`identity_verified_at` has no
+> trigger equivalent** — there is no single column whose change should invalidate it; instead the
+> detach paths clear all four Stripe-derived columns explicitly (an application action, not a column
+> change), because a reconnected account can be a different legal entity and a stale stamp would vouch
+> for one Stripe never verified. **There are TWO such paths, not one**: the manual
+> `disconnect-stripe-account`, and the automatic `check-restaurant-payout-status`, which clears a stale
+> reference when Stripe answers 404 / `account_invalid`. The second was found by the Codex second review
+> only because the first had been fixed in isolation — so both now spread the shared
+> `STRIPE_IDENTITY_RESET` constant (`supabase/functions/_shared/stripe-identity-reset.ts`) into the same
+> `.update()` that nulls `stripe_account_id`, and detach and reset cannot half-apply. Any future detach
+> path must do the same.
+>
+> **`phone_verification_attempts`** (`20260824130000`) — per-user and per-IP SMS-send throttle audit
+> log for `verify-phone` (`id`, `user_id` FK `auth.users` ON DELETE CASCADE, `ip_hash`, `action` ∈
+> `start`/`check`, `outcome` ∈ `sent`/`approved`/`rejected`/`throttled`/`blocked_country`,
+> `created_at`). No client access at all — RLS enabled, `service_role`-only policy, `revoke all …
+> from public, anon, authenticated`. The throttle **fails CLOSED** (refuses the send) on any error —
+> the opposite default from the readiness engine's "`unknown` never blocks", because here the risk of
+> a false "allow" is our own carrier bill, not a user's blocked action.
+>
+> **`reserve_phone_verification_send(p_user_id uuid, p_ip_hash text, p_limit int, p_window_seconds
+> int, p_cooldown_seconds int) returns jsonb`** (`20260824160000`, SECURITY DEFINER,
+> `search_path=public`, `revoke execute … from public, anon, authenticated` + `grant … to
+> service_role`) — the throttle DECISION, moved out of application code. `verify-phone` originally
+> read this table, decided in TypeScript (`exceedsSendLimit` / `withinCooldown`), then called Twilio
+> and inserted the `'sent'` row afterwards: a check-then-act race in which N concurrent `start`
+> requests all read the same pre-limit history and all sent, bypassing both the daily cap and the
+> cooldown on a function whose threat model is SMS-pumping fraud. Raised by an internal review and
+> parked as non-blocking; raised again independently as a **Codex P1**, which was right. Both helpers
+> are now **deleted** — `rateLimit.ts` keeps only the three constants (passed in as the `p_limit` /
+> `p_window_seconds` / `p_cooldown_seconds` parameters) and `isAllowedCountry`.
+>
+> The RPC counts and inserts **atomically** under two `pg_advisory_xact_lock`s taken in a **fixed
+> order** (user key, then ip key), mirroring `record_crew_activity`'s fix for the same race shape
+> (`20260710120010`); the fixed order makes two callers sharing an IP a queue rather than a deadlock
+> cycle. It reserves the `'sent'` row **before** Twilio is called; if Twilio then fails, the caller
+> flips that same row to `'rejected'` via a plain service-role UPDATE rather than deleting it, so a
+> failed send still consumes quota — hence the count predicate is `outcome IN ('sent','rejected')`,
+> **never `'sent'` alone**. `'throttled'` and `'blocked_country'` are excluded from the count: neither
+> ever reserved a slot, and both are written by the CALLER, not by this function (its decline branches
+> return without writing anything). Returns `{reserved, reason}` plus `attempt_id` on success; a null
+> or errored result refuses the send with a 503.
+>
+> **It has no automated test, and cannot have one under Vitest** — the decision is now SQL and needs a
+> database. Proven only by a hand-run, rolled-back prod script across five scenarios (service-role
+> guard enforced; 3 reservations then a refused 4th with zero extra rows; back-to-back cooldown
+> declines; a 2-minute-old cooldown allows; two users sharing one `ip_hash` throttle on the IP
+> dimension independently of their per-user counts), confirmed absent afterward with zero rows leaked.
+>
+> **`get_org_members_roster(p_org_id uuid)`** (`20260824135000`, SECURITY DEFINER, `search_path=public`,
+> revoked from `public, anon`, granted to `authenticated`) — replaces a direct client SELECT of
+> `profiles.email` for the org-member roster feature, which the read lockdown below makes unreachable
+> from the base table. Identity from `auth.uid()` only (no id parameter to point at someone else);
+> raises `forbidden: not an active member of this organization` unless the caller has an
+> `invitation_status='active'` row in `org_members` for `p_org_id`. Returns the roster INCLUDING invited
+> (not just active) members — who may CALL it and which rows it SHOWS are deliberately different
+> questions.
+>
+> **Two `profiles` PII lockdowns — write and read are separate problems, closed separately.**
+> 1. **Write** (`20260824100000` + `20260824101000` + `20260824170000`): `revoke update, insert on
+>    public.profiles from authenticated, anon`, then `grant update (<cols>)` / `grant insert (<5 cols>)`
+>    — an explicit list enumerated from every client write site in `src/`. Closes `phone_verified_at`
+>    client self-stamping.
+>
+>    **That enumeration then failed TWICE, identically, and both failures were silent.** The grep
+>    assumed single-quoted `from('profiles')` and both missed call sites use double quotes:
+>    `dismissed_coachmarks` (`Coachmark.tsx`), which broke a live UI mutation and was closed by the
+>    follow-up `20260824101000`; and `onboarding_completed_at` (`useTour.ts`), found by the Codex second
+>    review and closed by `20260824170000`. Neither call site checks the error Supabase returns, so each
+>    surfaced as a 42501 that the app discarded — `useTour.completeMutation` reported success, recorded
+>    nothing, and re-armed the tour next session. Each fix is a NEW migration; the applied ones are never
+>    edited.
+>
+>    **A human grep that has failed twice the same way is not a control**, so the durable half lives in
+>    `src/lib/profilesWriteGrants.test.ts`: it re-derives the write surface from `src/`
+>    **quote-agnostically** on every CI run and asserts every written column appears in the granted set
+>    **parsed out of these migrations** — deliberately not a copy of the list, since a copy is a third
+>    enumeration to keep in sync. Extended to cover SELECT (the read lockdown below) after a third
+>    instance of the same class: `useProfileNames` selected `first_name, last_name, username`, columns
+>    that **do not exist on `profiles` and never have** — a 42703 the hook swallowed via `data ?? []`.
+>    Note the corollary for that column list: `onboarding_completed_at` exists (created by
+>    `20260427110000_tour_coachmark_state.sql`) but is **absent from
+>    `src/integrations/supabase/types.ts`**, so a "does this column exist" check against the generated
+>    types alone will get it wrong. Regenerate types before trusting them for that question.
+> 2. **Read** (`20260824140000`, applied AFTER the Vercel deploy of the code that depends on it — see
+>    below): `revoke select on public.profiles from anon, authenticated`, then `grant select (<15
+>    cols>)` omitting `email` and `phone`. RLS has no column granularity — the "View messaging
+>    participants profiles" policy grants the WHOLE ROW to any messaging counterparty, so with
+>    `authenticated` holding table-wide SELECT that included `email` and (the moment `verify-phone`
+>    shipped) `phone`. **This is the 4th recorded instance of a column-level `REVOKE` being a
+>    documented no-op against an outstanding table-wide `GRANT`** — two historical `REVOKE SELECT
+>    (email) …` statements (`20260507130028`, `20260523234847`) ran successfully and changed nothing.
+>    The migration's header explicitly states what it does NOT close: two `SECURITY DEFINER` functions
+>    still reach `profiles.email` by design or as a pre-existing hole — `get_recipient_email` (a
+>    deliberate feature) and `get_user_conversations` (a live, unauthenticated IDOR, verified on prod,
+>    left out of scope for this slice — needs an owner).
+>
+> **Apply-order note, since it inverts this project's usual migration-before-code rule:** `20260824140000`
+> is backward-INCOMPATIBLE with the frontend running on prod at merge time (which still selects `email`
+> directly), so it must apply only after Vercel finishes deploying the new code — the reverse of Tasks
+> 2/3/4's additive migrations, which were safe to apply on the spot. `20260824135000` (the RPC) is
+> backward-COMPATIBLE and applies BEFORE merge, since the new frontend needs it to exist the instant it
+> deploys. See [[Identity & Address Verification]] for the full merge-time runbook.
+>
+> **The slice ships 11 migrations in total** (`20260824100000`, `101000`, `110000`, `111000`, `120000`,
+> `130000`, `135000`, `140000`, `150000`, `160000`, `170000`) — the last two added by the Codex second
+> review. `140000`, `150000` and `160000` are confirmed **not applied**; `170000` has no record either
+> way, so verify before assuming. The merge-time deploy list is five
+> edge functions: `verify-phone`, `verify-address`, `stripe-webhook`, `disconnect-stripe-account` and
+> `check-restaurant-payout-status` (which gained `_shared/stripe-identity-reset.ts` at Codex round 5).
 
 ## Campaigns & Marketplace
 
@@ -479,6 +629,13 @@ clients read their own rows (`auth.uid() = user_id`).
 | `organizations` | Parent organization entities |
 | `org_units` | Organizational units (locations/divisions) |
 | `org_members` | Organization membership records |
+
+> **`org_units` also carries the identity/tax/address verification columns** documented under User &
+> Auth above (`identity_verified_at`, `tax_id_provided`, `stripe_requirements_due`,
+> `stripe_disabled_reason`, `address_verified_at`) — [[Identity & Address Verification]]. The org
+> roster UI reads `profiles.email` via **`get_org_members_roster(p_org_id)`** (SECURITY DEFINER,
+> caller must be an ACTIVE `org_members` row for that org), not a direct client SELECT, since
+> `20260824140000` makes `profiles.email` unreachable from the base table for `authenticated`.
 
 ## Account Management
 

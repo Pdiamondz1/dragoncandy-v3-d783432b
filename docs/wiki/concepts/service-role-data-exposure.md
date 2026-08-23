@@ -2,8 +2,8 @@
 title: Service-Role Data Exposure
 type: concept
 created: 2026-07-19
-updated: 2026-08-08
-sources: [2026-07-19-data-exposure-reviewer.md, 2026-07-19-service-role-remediation.md, 2026-07-20-counter-offer-authz.md, 2026-08-08-dragonshare-score-removal.md]
+updated: 2026-08-23
+sources: [2026-07-19-data-exposure-reviewer.md, 2026-07-19-service-role-remediation.md, 2026-07-20-counter-offer-authz.md, 2026-08-08-dragonshare-score-removal.md, 2026-08-23-identity-verification.md]
 tags: [security, rls, service-role, edge-functions, subagents, review, privacy, gotcha]
 ---
 # Service-Role Data Exposure
@@ -380,8 +380,46 @@ builds `enrichedInput` as `{ ...toolInput, org_id: userContext.org_id }`, so the
 overwrites whatever the model supplies. **Check the call site before believing a tool-argument
 finding** — the fallback is dead code, not a hole.
 
+## Open instance — `get_user_conversations` unauthenticated IDOR (found 2026-08-23, NOT fixed)
+
+Found while enumerating `profiles.email`/`.phone` readers for [[Identity & Address Verification]]'s
+`profiles` SELECT lockdown; out of that slice's scope and left unfixed. `public.get_user_conversations
+(user_uuid uuid, p_org_unit_id uuid)`: `prosecdef = true`, the function body never references
+`auth.uid()` at all, every filter runs on the caller-supplied `user_uuid`, and EXECUTE is held by
+PUBLIC/anon/authenticated with no REVOKE anywhere.
+
+**Proven with controls, not assumed:** impersonating a user whose own conversation list is 1 row and
+passing a different user's id returned **13 rows**; passing a nonexistent uuid returned **0** (rules
+out "the function ignores its parameter and always returns the caller's own"); `set local role anon`
+with **no JWT at all** still returned **13 rows** — the anon key ships in the frontend bundle, so this
+needs no account whatsoever. Exposes conversation ids, campaign ids, unread counts, and
+`other_participant_name` (`COALESCE(creator_name, business_name, p.full_name, p.email, ...)`) — the
+email fallback is currently **latent, not live**: all 45 prod profiles have a non-null `full_name`
+today, so the probe returned real names and never an address. One `NULL full_name` away from also
+leaking raw email addresses.
+
+This is the same shape as `create_counter_offer` above — a `SECURITY DEFINER` function whose
+authorization was never wired to the caller — but older and unreviewed until this slice's enumeration
+walked past it. Needs an owner; not part of any slice's stated scope.
+
+## 4th recorded instance — column-level `REVOKE SELECT (email)` on `profiles` was always a no-op
+
+Two historical migrations (`20260507130028`, `20260523234847`) both ran `REVOKE SELECT (email) ON
+public.profiles FROM anon, authenticated` and both succeeded and changed nothing — a column-level
+REVOKE cannot override an outstanding table-wide GRANT in Postgres; the table-wide privilege subsumes
+the column one. Found and finally closed by [[Identity & Address Verification]]'s
+`20260824140000_profiles_select_column_lockdown.sql`, which revokes at TABLE level first and grants
+back an explicit 15-column list. Same mistake, same shape, as `20260804174854`, `20260805163247`, and
+`outstand_post_ownership`'s lockdown — this codebase's fourth recorded instance of exactly this error.
+**The working pattern, proven again here:** table-level `REVOKE` first, explicit column `GRANT` back
+second, and an `information_schema` assertion block proven capable of failing (rebuild the migration
+with one expected column deliberately stripped and confirm the assertion raises) rather than one that
+merely runs without erroring.
+
 ## See Also
 
+- [[Identity & Address Verification]] — the `profiles` read-lockdown that closed the 4th column-REVOKE
+  no-op and found the `get_user_conversations` IDOR above while scoping it
 - [[Service-Role Remediation Session]] — the PR #308 fix, its review rounds, and the deploy
 - [[Claude Subagents Audit]] — the 7-dimension rubric and the backlog this resolves
 - [[AI Creator Matching]] — the `match-creators`/`donny-chat` instances of this class

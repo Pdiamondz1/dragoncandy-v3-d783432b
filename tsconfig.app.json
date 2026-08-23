@@ -19,5 +19,5 @@
     "types": ["vitest/globals"],
     "useDefineForClassFields": true
   },
-  "include": ["src"]
+  "include": ["src", "gate", "middleware.ts"]
 }

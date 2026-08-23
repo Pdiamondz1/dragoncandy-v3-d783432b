@@ -32,6 +32,428 @@
 >
 > **Adding an entry:** prepend it (newest first). See `knowledge-sync` step 4.
 
+## [2026-08-23] A password cannot stop a signup: locking the site to a private preview
+
+**Built and reviewed. NOT live** — PR #482 open, none of the four Vercel variables set.
+
+**An early draft of this entry said the gate "is production-only by design, so none of its wiring
+has ever executed — not on a preview, not in CI, not locally." That was false, and the belief hid a
+total outage.** Separate two things: the gate's *behaviour* is production-only (a preview sets
+`VERCEL_ENV='preview'`, so `decide()` passes everyone), but Vercel **imports and runs the middleware
+on every preview request**. The first preview deploy returned **500 on every request**. See
+"Node ESM does not add extensions" below — it is the most transferable thing in this entry.
+
+dragoncandy.com was public and not ready to be. The obvious framing — "put a password on it so
+nobody can sign up" — is wrong at the premise, and getting that right determined everything else.
+**`VITE_SUPABASE_ANON_KEY` ships in the browser bundle, and requests to `supabase.co` never traverse
+Vercel**, so no front-end guard, edge function, or middleware is even on the path of a signup. The
+only control that stops account creation is Supabase's own "Allow new users to sign up" toggle — a
+dashboard setting, not code. So the work is two independent layers where **the password is the
+lesser one**: Supabase signup off (load-bearing), plus an HTTP Basic password at the edge (stops
+discovery and casual poking, protects nothing in Supabase).
+
+The edge half is Vercel Routing Middleware — `middleware.ts` over a pure, unit-tested
+`gate/decide.ts` — chosen because Vercel's built-in deployment protection cannot cover custom
+domains on Hobby. **It answers `401`, never a redirect to a gate page.** That is the load-bearing
+decision: after the prompt a 401 makes the browser re-request the *identical* URL, so a Supabase
+password-reset link's `#access_token` fragment survives, where a redirect would drop it and break
+resets silently. The same choice removed any need for bypass tokens in email flows and kept every
+secret out of a `VITE_` variable — which would have compiled the password into the bundle. The gate
+**fails closed**, which makes "delete the variables" the *wrong* rollback; `SITE_GATE_ENABLED` is
+the lever instead. Links are shared without handing out the password via signed `?k=` bypass links,
+which mint a 30-day HMAC cookie and strip themselves from the URL.
+
+Also deleted: a dead client-side `SiteGateGuard` that was switched off, kept `dragoncandy2026` as a
+**string constant in the shipped bundle**, and allowlisted `/auth`, so it never gated signup even
+when on. **A gate rendered by the app cannot gate the app** — the bundle is already served by the
+time it runs — and because the iOS shell ships that same bundle, it would have put a password screen
+in front of the native app, which serves from `capacitor://localhost` and never asks Vercel for HTML.
+
+**Nine defects came out of review, and four generalise past this branch.**
+
+**Only allowlist a path that has a real file under `public/`.** `vercel.json` rewrites every
+unmatched path to `/index.html`, so allowlisting a path with no backing file does not serve
+"nothing" — it serves the SPA shell and the whole JS bundle to an anonymous browser. The first
+implementation allowlisted `/.well-known/` and `/apple-app-site-association`; neither exists. Codex
+found it. The allowlist is now exactly `/robots.txt` and `/favicon.ico`, and the spec states the
+*rule*, because a list invites additions and a rule does not. It is also why `/promo/:promotionId`
+is **documented rather than allowlisted** even though both promotion surfaces still generate QR
+codes pointing at it — the founder confirmed no promo QR is live, so it costs nothing today, and it
+is a Known limit with a `/promo/<id>?k=<token>` workaround. Re-open before any QR is printed.
+
+**Silencing an audit does not change a category score.** `robots.txt` is `Disallow: /`, which fails
+Lighthouse's `is-crawlable`. `assert.assertions: {'is-crawlable': 'off'}` is inert against a
+`categories:seo` gate, because an LHCI category assertion reads a score Lighthouse already computed
+at collect time — and Lighthouse weights this audit at `93/23` specifically so failing it fails the
+category. Measured on the real build: **0.69** with the audit, **1.00** with it skipped, and it was
+the only failing audit against a 0.95 bar. CI would have gone red on the PR. **And the obvious fix
+also fails**: an `LHCI_COLLECT__SETTINGS__*` env var **replaces the config file's whole `settings`
+object**, and the desktop job already sets the preset that way — so `collect.settings.skipAudits`
+arrived in the report as `null` and SEO read 0.69 again. It ships as an env var on both jobs, with
+the file keeping a local default that says why it is not enough. (The scalar is coerced: a real run
+reported `configSettings.skipAudits == ["is-crawlable"]`, the audit absent, seo 1.00.)
+
+**Bare `undefined` is a Next.js convention, not the framework-agnostic continue signal.** Vercel's
+Routing Middleware docs carry an explicit no-op for non-Next frameworks: `next()` from
+`@vercel/functions`. The risk was asymmetric and invisible — if `undefined` did not continue,
+**every authorised request would break**, in production only, where no preview could show it. A
+related claim was asserted in **five** places and was false: "a pass structurally cannot carry a
+`Set-Cookie`". `next({ headers })` can. Behaviour did not change; the rationale did — browsers
+cache Basic credentials per origin and realm and replay them, so a cookie is redundant. **It is a
+choice, not a limit**, and recording it as a limit would have had the next person design around a
+constraint that does not exist.
+
+**A fail-open branch sat in front of all the fail-closed logic.** `env.vercelEnv !== 'production'`
+passes every request when `VERCEL_ENV` is *absent*, not merely when it is `'preview'` — and it is a
+*system* variable, present only while "Automatically expose System Environment Variables" is on, and
+not injected at all by `vercel deploy --prebuilt`. The site would have silently reopened while
+`SITE_GATE_ENABLED` still read `1` in the dashboard: *recorded ≠ actual*, the same class as
+[[Updated-At Trigger Drift]]. Now `env.vercelEnv && env.vercelEnv !== 'production'`.
+
+Two smaller ones with teeth: **`atob()` returns Latin-1** while the challenge advertises
+`charset="UTF-8"`, so a non-ASCII `SITE_PASSWORD` would have been rejected — locking everyone out of
+a fail-closed system; and **the manifest link would `401` on every page load**, because a
+`<link rel="manifest">` with no `crossorigin` is fetched with credentials mode "omit" (fixed with
+`crossorigin="use-credentials"`; same-origin fonts and icons are unaffected).
+
+**The rollback lever was documented by a mechanism Vercel does not have.** Four documents said an
+env-var change reaches a running deployment; Vercel's docs say it does not. For a deliberately
+fail-closed system that is the one instruction that must be right — the scenario is the site 401-ing
+for everyone including the founder, who sets `SITE_GATE_ENABLED=0` and sees nothing change. Set the
+variable, **then redeploy**. The same mechanism makes the setup order load-bearing the other way:
+all four variables must exist **before** the deployment that first ships `middleware.ts`, or the
+gate ships inert while the dashboard looks locked down.
+
+**Method notes worth more than the feature.** A stale `vite preview` from the *main checkout* was
+holding port 8080 — the port `lighthouserc.cjs` points at — so a local Lighthouse check would have
+audited a different build and read green; caught only because the served `robots.txt` did not match
+`dist/robots.txt`. **When a probe returns the wrong thing, suspect the instrument.** And the red
+half of a red-green cycle was never observed: `lhci` could not be run locally when the config was
+written, the step was honestly recorded as SKIPPED, and an unobserved "Expected: PASS" travelled all
+the way to the merge gate. **A pipeline will launder a skipped check into an assertion**, and the
+Critical defect lived in exactly that gap. Finally, the plan embedded a full copy of the runbook as
+the heredoc its last task writes; a fix wave updated only part of it, leaving the copy asserting the
+exact revocation claim the correction existed to kill. Replaced with a pointer — **one copy of an
+operational document**.
+
+**Node ESM does not add extensions, and Vercel does not bundle middleware — the most transferable
+thing here.** `import { decide } from './gate/decide'` type-checks, passes 2,756 tests, builds
+clean, and **crashes the middleware on Vercel**. The platform transpiles `middleware.ts` to
+`middleware.js` and runs it as **Node ESM without bundling**; Node's ESM resolver does not append
+extensions, so the import throws `ERR_MODULE_NOT_FOUND` at module load. That surfaces as
+`MIDDLEWARE_INVOCATION_FAILED` and **500 on every request the matcher covers** — here, everything.
+In production it would have been a total outage arriving the instant the deployment went live, and
+**`SITE_GATE_ENABLED` could not have rescued it**, because the crash happens before any gate logic
+runs. The fix is one character group: `'./gate/decide.js'` (TypeScript maps it back to the `.ts`
+file under `moduleResolution: bundler`, which is precisely why nothing local caught it).
+
+**What caught it was the e2e smoke suite**, driving a real browser against the PR's preview
+deployment. It failed on `waiting for locator('a:has-text("Log in")')`; the page it was waiting on
+said *"This Routing Middleware has crashed."* A job that looks like it only covers login was the
+only thing in the pipeline loading the real deployed middleware. **The rule: a local toolchain that
+resolves imports for you cannot tell you whether the deployment target will.** Vite, Vitest and
+`tsc` all resolve extensionless specifiers; Node ESM does not. Anything the platform runs *without*
+bundling needs explicit extensions, and no amount of local green proves it.
+
+**What is still not proven, and stays that way until the deploy:** that a real browser's prompt
+admits and then replays Basic credentials to every same-origin subresource for the whole session,
+that the `#access_token` fragment survives the challenge in practice, and that the
+`/landing/reels/(.*)` public cache rule behaves across a per-visitor gate. The Lighthouse 1.00 was
+measured locally — **the first green `lighthouse-ci.yml` on the PR is the proof, and merging on a
+skipped Lighthouse job throws it away.**
+
+Review record: six task reviews (0 Critical each), a final whole-branch review (1 Critical, 5
+Important, 4 Minor — all closed), a scoped re-review (all ten closed, 3 residuals, all closed), and
+three Codex passes, the last clean. Verified at each stage by the controller rather than
+self-reported: typecheck clean, **2,756 tests across 255 files**, build clean.
+No migration, no RLS change, no edge-function change. Dependency added: `@vercel/functions@3.9.5`.
+→ `docs/wiki/concepts/site-access-lockdown.md` · `docs/runbooks/site-access-lockdown.md`
+
+## [2026-08-23] Identity & verification (slice 2) — real writers for two impossible checklist rows, five instances of a stamp outliving its fact, and fourteen review findings
+
+**Slice 2 of 4** in the signup/onboarding redesign (slice 1: [[Account Completeness Engine]], #472).
+Gives `phone_verified`, `identity_verified` and `address` — the readiness engine's three verification
+requirement keys — real writers for the first time. Branch `feat/identity-verification`, based on
+`origin/main` at `1ef6a534`; **27 commits, 11 migrations, 2598 → 2721 tests across 247 → 256 files**;
+typecheck / `typecheck:functions` (68 functions) / lint / build clean throughout. Full decision ledger
+(28 rulings, several later judged wrong or half-wrong and recorded as such):
+`.superpowers/sdd/2026-08-23-identity-verification/progress.md`.
+
+**Most of what is durable here came out of the review loop, not the build.** After the branch first
+read as finished it went through a Codex P1 pass (2 findings), an internal re-review of the fix for
+those (3 blocking, one of them a regression the P1 fix had introduced), and then **seven Codex rounds
+producing nine more findings — every one real, clean at round 7**. Fourteen findings in total, across
+eight commits, after the work was "done". Two of the nine were defects introduced by the previous fix
+**inside the same loop**, which is the argument for re-running an independent reviewer after every fix
+round rather than assuming a fix is inert.
+
+**Corrects a claim slice 1's own entry above made.** That entry's "Rollout posture is no-op" line
+reasoned `READINESS_GATE_ENABLED` having no `feature_flags` row meant nothing was blocking anyone. True
+of `ReadinessGate` only. `AccountChecklistRows`/`MissionChecklist` consume `useAccountReadiness`
+**directly, with no flag at all**, and both render unconditionally on `/dashboard/business` and
+`/dashboard/creator`. Slice 1 had in fact shipped two `required`, non-dismissible checklist rows —
+`address` (0 of 30 `org_units` had coordinates; no code path could ever satisfy it) and `phone_verified`
+(wired to a column with no writer) — visible and permanently unmet for every account from the moment it
+deployed. Not a lockout, since nothing consumed the checklist to gate an action, but exactly the
+"UI says one thing, truth says another" failure this whole engine exists to delete — missed by nine
+task reviews and a Codex pass on slice 1, found while investigating slice 2.
+
+**What shipped.** Migration `20260824110000` adds `identity_verified_at`, `tax_id_provided`,
+`stripe_requirements_due`, `stripe_disabled_reason` to `creator_profiles`/`business_profiles`/
+`org_units`, plus `address_verified_at`/`lat`/`lng` to `creator_profiles`/`org_units` (address is
+per-location on `org_units` for a business, not on the account-level `business_profiles`). All
+nullable, no default, no backfill — NULL means "we haven't heard from the authority yet", which the
+engine already renders as `unknown`, never a failure.
+
+**Two different server-write-only mechanisms, chosen by write-surface shape, not habit.**
+`profiles.phone`/`phone_verified_at` use the same table-wide-revoke-then-grant-back pattern as every
+prior `profiles` lockdown (`20260824100000`), because every client write to `profiles` passes a literal
+object — grep-enumerable. The other three tables use a per-table `BEFORE INSERT OR UPDATE` trigger
+instead (`20260824110000`, widened from UPDATE-only to also cover INSERT by `20260824111000` after a
+reviewer proved live on prod that deleting-and-reinserting a `creator_profiles` row forged
+`identity_verified_at`/`tax_id_provided`), because at least one write path per table is a
+runtime-computed object (`useOrgData.ts`'s caller-supplied partial) — an explicit grant list against a
+write surface that can't be enumerated is a silent-42501-in-production trap, which is exactly how a
+grant-based fix on `profiles` itself broke `dismissed_coachmarks` for one fix round mid-slice (a
+single-quote-only grep missed two double-quoted call sites).
+
+**A stamp outliving the fact it attests to, five separate times in one slice — the slice's real
+throughline.** (1) **Phone**: a naive "clear on any `phone` change" trigger would have silently broken
+verification itself, since the real write sets `phone` and `phone_verified_at` together in one
+statement and a `BEFORE UPDATE` trigger sees the composed NEW row — fixed with a dual condition
+(`NEW.phone IS DISTINCT FROM OLD.phone AND NEW.phone_verified_at IS NOT DISTINCT FROM
+OLD.phone_verified_at`, `20260824120000`) so a same-statement composite write survives and every other
+writer still clears it. (2) **Address**: the identical dual-condition trigger shape
+(`20260824150000`) on `creator_profiles`/`org_units`, with a genuine trigger-name-sort-order dependency
+(`guard_...` before `trg_clear_...`) documented rather than denied, after an earlier version of the
+migration comment claimed order "doesn't matter" when reversing it would hard-fail every legitimate
+address edit. (3) **Identity, on Stripe disconnect**: `disconnect-stripe-account` cleared 3 of 7
+Stripe-derived columns and missed `identity_verified_at`/`tax_id_provided`/`stripe_requirements_due`/
+`stripe_disabled_reason` — since disconnect-then-reconnect is a real flow and the reconnected account
+can be a *different legal entity*, the stale stamp would vouch for one Stripe never verified; fixed by
+clearing all four alongside the existing three (`8db1269a`). (4) **Identity, on revocation**: the
+derivation checked the historical `verifiedAt` stamp before `disabledReason`/`requirementsDue`, so an
+account Stripe disabled for `rejected.fraud` still rendered "identity verified" — fixed by re-ordering
+so revocation outranks the stamp (`d85b5874`). (5) **Identity, on AUTOMATIC Stripe detach**:
+`check-restaurant-payout-status` clears a stale Stripe reference when Stripe answers 404 /
+`account_invalid`, and cleared only `stripe_account_id`/`stripe_onboarding_complete` — so a business
+whose Stripe account had been *deleted* kept rendering as identity-verified (`249b409d`, Codex round 5).
+
+**That a fifth instance existed at all is the finding.** Instances 1–4 were each closed in isolation,
+and #5 exists precisely because #3 — the *manual* disconnect — was fixed without anyone asking whether
+there was an automatic detach path too. **Fixing instances one at a time does not close a class.** So
+the reset stopped being a column list written out per site and became
+`supabase/functions/_shared/stripe-identity-reset.ts`: one `STRIPE_IDENTITY_RESET` constant both paths
+spread into the same `.update()` that nulls `stripe_account_id`, so detach and reset cannot half-apply
+and the next detach path inherits it instead of becoming a third copy. Five instances, four mechanisms
+(two DB triggers, one shared application-level clear across two call sites, one derivation reorder),
+because the shape of "what invalidates this" differed each time.
+
+**Fail open toward the user, fail closed toward the attacker — stated precisely, not just repeated.**
+Slice 1's "`unknown` never blocks" is correct for readiness display, where a false block costs a real
+person a real action. `verify-phone`'s SMS-send throttle initially inherited that instinct and was
+wrong to: any read error against the new `phone_verification_attempts` table logged and returned
+`[]`/`undefined`, which resolves as "allow" — so a transient blip would silently disable the only
+defense against SMS pumping while still returning 200s. Fixed to refuse the send on any read error
+instead, and the IP-salt fallback (a literal string committed to the repo — one cheap offline
+precomputation from full recovery) got the same treatment: refuse `start` entirely until the real
+secret exists rather than silently degrade. Same word, opposite correct default, decided by who bears
+the cost of being wrong.
+
+**Then the whole read-then-decide shape turned out to be the bug, and moved into SQL.** Reading
+`phone_verification_attempts`, deciding in TypeScript, calling Twilio, and *then* inserting the `sent`
+row is a check-then-act race: N concurrent `start` requests all read the same pre-limit history and
+all send. An internal review raised it and it was **parked as non-blocking** on the reasoning that the
+bypass is "bounded by concurrency"; Codex flagged it independently as P1, and Codex was right. That is
+not a bound — the attacker chooses the concurrency, and every request is a billed SMS. **The error was
+grading the finding on how hard it is to exploit rather than on what it costs when exploited**; for a
+financial control those are different questions and only the second one decides whether it blocks a
+merge. Closed by `reserve_phone_verification_send` (migration `20260824160000`, SECURITY DEFINER,
+service-role only), which counts and inserts atomically under two `pg_advisory_xact_lock`s in a fixed
+order (user, then ip — a queue rather than a deadlock cycle), mirroring `record_crew_activity`'s fix
+for the same shape. The slot is reserved **before** Twilio is called; a Twilio failure flips the row to
+`rejected` rather than deleting it, so the count predicate is `outcome IN ('sent','rejected')` and a
+failed send still consumes quota. `exceedsSendLimit` and `withinCooldown` were **deleted** with their
+three tests rather than left green against code nothing calls. Two independent reviewers reached this
+finding; the first was overridden, and the second only ran because CLAUDE.md makes the Codex pass
+mandatory rather than discretionary.
+
+**`verify-address` stopped accepting an address from the caller entirely.** The first forgery fix
+conditioned the write on the fields the caller *submitted*, which closed the attack and opened two
+silent, permanent failures — the caller's copy and the stored row come from different code paths that
+normalize differently (`OnboardingWizard` upserts without `postal_code`, leaving a stored `'07030'`
+behind while the client verified with `null`; `useCreatorProfileSubmit`/`useOrgData` store untrimmed
+while the helper sent trimmed). Either disagreement matches zero rows, which the code correctly reads
+as "not an error" — so the account becomes permanently unverifiable with no user-visible signal.
+Fixed not field-by-field but structurally: the server **reads the stored row, geocodes exactly what it
+read, and conditions the write on those exact stored values** — a compare-and-set of the row against
+itself. The body now carries only `{role}` (plus `orgUnitId` for a business, authorized against active
+owner/admin org membership); the address fields were **removed**, not accepted-and-ignored, because a
+parsed-but-unused field invites the next edit to trust it. A caller who cannot name an address cannot
+cause one to be geocoded, which closes the original forgery upstream of any predicate.
+
+**New edge functions, both 503 by design.** `verify-phone` (Twilio Verify — not Programmable
+Messaging, a different product; only Verify's secret was ever going to work), two-client split
+(anon client validates the JWT only, service-role does every table op), per-user and per-IP fail-closed
+throttling, a NANP exclusion set for Caribbean/territory premium overlays (kept as cheap
+defense-in-depth; Twilio Verify's own Geo Permissions is the intended authoritative gate). `verify-address`
+(Google Geocoding), creator coordinates rounded to 2 decimal places (~1.1km) so the privacy guarantee
+is structural rather than dependent on which Google match type comes back, org-membership-checked
+writes (no body-supplied id treated as a grant, unlike the `outstand-proxy` shape this project has hit
+before). Neither has ever made a real call — `TWILIO_VERIFY_SERVICE_SID`, `PHONE_VERIFY_IP_SALT`, and
+`GOOGLE_MAPS_SERVER_API_KEY` are all unprovisioned, a founder-only pending item.
+
+**`stripe-webhook` mirrors Stripe's identity/KYC signal**, in a separate `Promise.all` gated
+`.is('identity_verified_at', null)` per row so a later `account.updated` event that proves nothing
+can't erase an earlier stamp. Caught before merge: the plan's own reference code checked
+`company.verification.status`, which **does not exist in the Stripe API** — only
+`individual.verification.status`, null unless `business_type === 'individual'`. Every restaurant
+onboarding as an LLC or corporation (the normal case) would have permanently failed identity
+verification no matter how fully Stripe verified them. Fixed by deriving company identity from
+`payouts_enabled === true && !disabled_reason` — Stripe does not enable payouts for an entity it hasn't
+verified, which is what this column is defined to record even though Stripe doesn't label it that way
+for companies.
+
+**Two `profiles` PII lockdowns, found to be two separate problems.** The planned one
+(`20260824100000`/`101000`) closes WRITE: `authenticated` held UPDATE on `phone_verified_at`, so any
+signed-in user could self-stamp "verified" with no SMS sent. A second, unplanned one
+(`20260824140000`) closes READ, found mid-slice while auditing `phone`'s exposure: RLS has no column
+granularity, and the "View messaging participants profiles" policy grants the WHOLE ROW to any
+messaging counterparty — with `authenticated` holding table-wide SELECT, that included `email` and,
+the moment `verify-phone` shipped, `phone`. Proven on prod (impersonation returned a real email; an
+unrelated control uuid returned 0 rows). The `phone` half was closed before it ever went live —
+`verify-phone` is `phone`'s first writer, so the same PR that would have created the exposure closed
+it. The `email` half was already live: two historical `REVOKE SELECT (email)` statements
+(`20260507130028`, `20260523234847`) turn out to have always been no-ops — a column-level REVOKE
+cannot override an outstanding table-wide GRANT in Postgres — the **4th recorded instance** of this
+exact mistake in this codebase. Fixed with table-level revoke + a 15-column grant-back (everything
+except `email`/`phone`) + a new `get_org_members_roster` RPC (SECURITY DEFINER, gated on active org
+membership) replacing a direct client read of `email` for the org-roster feature. The revoke migration
+is split from the RPC migration (`20260824135000`, RPC / `20260824140000`, revoke) and deliberately
+applied in two different windows relative to the Vercel deploy — the RPC before merge (the new
+frontend needs it to exist immediately), the revoke after (the OLD frontend, still live until deploy
+finishes, selects `email` directly and would break immediately if the revoke landed first).
+
+**Found and left explicitly out of scope: a live, unauthenticated IDOR.**
+`public.get_user_conversations(user_uuid, p_org_unit_id)` — body never references `auth.uid()`, every
+filter runs on the caller-supplied parameter, EXECUTE held by PUBLIC/anon/authenticated with no
+REVOKE. Verified with controls: impersonating a user whose own list is 1 row and passing a different
+user's id returned 13 rows; a nonexistent uuid returned 0 (rules out "ignores the parameter"); `set
+local role anon` with no JWT still returned 13 rows — needs no account at all. One `NULL full_name`
+away from also leaking raw email addresses (latent, not live — all 45 prod profiles currently have a
+`full_name`). Found while enumerating `profiles.email` readers for the read lockdown above; not this
+slice's to fix. Needs an owner.
+
+**Three defects originated in the plan/spec text itself, not the implementation, and were reproduced
+faithfully by per-task spec-compliance review each time** — `company.verification.status` above; an
+instruction to merge the identity signal into the same bulk Stripe-mirror `.update()` as the other
+columns, which would have spread `identity_verified_at: null` into every `account.updated` event and
+erased any stamp a prior event had legitimately earned (caught by reading the plan's own two
+contradictory sentences four lines apart); and an early "grandfather arm" for `address` that would have
+protected an empty set (0 of 30 `org_units` had coordinates) with dead defensive code.
+
+**The controller's own Ruling 9 was wrong**, and is recorded as such rather than quietly corrected: it
+concluded Task 8's `required` tiers were inert for the same reason given above (no
+`READINESS_GATE_ENABLED` row) — true of `ReadinessGate`, false of the engine's direct consumers, as
+described at the top of this entry. Caught only by the final whole-branch review, closed by extracting
+the identity-signal mapping into a tested `toIdentityContext` seam that previously had zero coverage
+(`d85b5874`). Two more rulings were partially wrong: Ruling 15 (the whole `20260824140000` migration
+needed to wait for the deploy — true for the revoke, wrong to bundle the backward-compatible RPC into
+the same file, since that left no apply order without a broken window); Ruling 5 (recorded that
+`withinCooldown` needed a test, never actually executed — `verify-phone`'s rate-limit guard genuinely
+had zero coverage, reconciled by a coincidental test-count match). **That last one has since been
+overtaken:** `withinCooldown` no longer exists, and the accurate gap is broader and worse — the whole
+send throttle is SQL now, so it cannot be tested under Vitest at all and is proven only by a hand-run,
+rolled-back prod script.
+
+**Process incident, recorded plainly.** A reviewer investigating an unrelated typecheck failure ran
+`git stash` on four `src/lib/accountReadiness/*` files while a different agent was actively editing
+those same files in the same worktree, then dropped the stash — its own "verified byte-identical
+restoration" was true of the moment it stashed and false of the net effect, since the tree kept
+changing underneath it. The implementer detected the loss independently and redid the work with
+per-edit verification. New rule: never run a file-writing agent concurrently with any agent that might
+touch the same paths in the same worktree, and tell every reviewer explicitly the tree may be live.
+
+**The same enumeration failed three times, and every failure was silent.** The `profiles` write
+grant-back list was built by grepping for single-quoted `from('profiles')`. It missed
+`dismissed_coachmarks` (`Coachmark.tsx`), then missed `onboarding_completed_at` (`useTour.ts`) — both
+double-quoted — and the read lockdown's inventory then missed `useProfileNames`. The shared reason
+they were invisible: **none of those call sites checks the error Supabase returns**, so each was a
+42501 or 42703 the app discarded. Completing the product tour reported success, recorded nothing, and
+re-armed next session. A grep that has failed twice identically is not a control, so the durable half
+is `src/lib/profilesWriteGrants.test.ts` — it re-derives the write surface from `src/`
+quote-agnostically on every CI run and asserts each written column appears in the granted set *parsed
+out of the migrations*, never a copy (a copy would be a third enumeration to keep in sync). Round 4
+extended it to SELECT; `20260824170000` grants the missing column back rather than editing the applied
+migration.
+
+**A finding can be right in its conclusion and wrong in its mechanism.** Codex round 4 said the SELECT
+lockdown broke `useProfileNames`. The hook *is* broken and silently so — but it has been since it was
+written, because `first_name`/`last_name`/`username` **do not exist on `profiles` and never have**
+(verified three ways: no migration creates them, absent from the regenerated types, absent from the
+lockdown's own inventory). Codex's proposed remedy — grant SELECT on those columns — **would have
+failed the migration outright**. Fixed to `full_name`, with the error thrown rather than swallowed.
+**Verify the mechanism, because the remedy follows from it.** Extending the grants test to SELECT then
+found a second one immediately: `AuthContext`'s connection probe selected `count`, a PostgREST idiom
+and not a column, on a path that runs before every profile fetch and **throws** — sitting directly in
+front of auth for every user.
+
+**Ask which gate, not whether it is green.** Twice. `check-restaurant-payout-status` is on
+`.typecheck-ignore`, so the "68 functions clean" result said nothing whatsoever about the round-5
+change to it (checked directly with `deno check`: 4 errors, pre-existing and untouched). And
+"typecheck clean" was reported truthfully — of `tsc -p tsconfig.app.json`, which covers `src/` only —
+while `npm run typecheck:functions` was simultaneously **red with 11 errors, all in `verify-phone`**, a
+function this branch introduces. "Pre-existing on the branch that introduced the file" is not
+pre-existing; fixed properly rather than by adding a security-sensitive new function to the ignore
+list.
+
+**Three findings were the same shape: a non-answer treated as an answer, then written on.** Google
+Geocoding signals almost every failure as HTTP 200 with a JSON `status`, so `resp.ok` caught nothing
+and `OVER_QUERY_LIMIT`/`REQUEST_DENIED` fell through as "no result" — which nulls the stamp. A quota
+blip would have revoked still-true verifications for everyone who saved during it; a bad key would
+have revoked them platform-wide. Only `OK` and `ZERO_RESULTS` are answers *about the address*
+(`isGeocodeAnswer`); `ZERO_RESULTS` deliberately stays on the write path, since "does not resolve" is
+a real answer. Second: a comment of ours argued that re-verifying on a failed address pre-read "errs
+toward the conservative direction" — backwards, because the verify path is destructive, so
+speculative re-verification is the *damaging* direction. **Slice 1's "`unknown` never blocks" governs
+display; it does not license a write.** Third: a Supabase query resolves with `{ error }` rather than
+rejecting, so `stripe-webhook`'s `await Promise.all([...])` succeeded even when every mirror write
+inside it failed — and Stripe emits `account.updated` only *on change*, so there may be no later event
+to repair it. Now `assertNoWriteErrors` throws so Stripe's own retry is the repair path, deliberately
+the opposite policy from the pending-balance flush beside it, which has a backstop this mirror lacks.
+
+Related: `stripe_requirements_due` mirrors *every* outstanding Stripe requirement, so a missing bank
+account or unaccepted ToS rendered as "Verify your identity" — and would have blocked actions on a
+`required` tier for a banking issue. Filtered through a **denylist** of non-identity prefixes, not an
+allowlist of known identity keys, because the two fail in opposite directions on a Stripe key nobody
+has seen: an allowlist renders "identity verified" while identity work is outstanding — a false
+positive on a fraud signal — where a denylist over-reports unmet, which is annoying, visible and safe.
+
+**"Unmet for effectively every account" is a finding, not a reassurance — and it appeared twice.**
+Once as Ruling 9 above. Again at Codex round 6: `address` is `required` and derives from a stamp whose
+column has no backfill, so every pre-existing location starts NULL — and the round-1 change-guard,
+correct in itself, removed the only way out by making a re-save of an unchanged address a no-op.
+`useUpdateOrgUnit` now also fires verification when a location has **never** been verified, safe for
+exactly the reason the guard exists (a row with no stamp has nothing to lose). Shipped with it: all
+three address requirements relabelled **"Add your address" → "Confirm your address"**, since they
+derive from a stamp rather than from whether an address exists, and telling an account that typed its
+address months ago to "add" one is false on its face.
+
+**Pending at merge.** Nothing end-to-end verifiable — all three new-function secrets unprovisioned.
+`identity_verified` reads `unmet` (not `unknown`) for effectively every account until each gets a first
+`account.updated` webhook; inert only until `READINESS_GATE_ENABLED` gets a `feature_flags` row, a
+deliberate separate act this PR flags to the founder rather than silently enabling. `lat`/`lng` remain
+client-writable directly (only the stamp is guarded) — bounded, parked, not fixed; a reviewer's dissent
+on record that it deserves a date. **`READINESS_GATE_ENABLED` is now coupled to a secret, not only to
+a founder decision**: until `GOOGLE_MAPS_SERVER_API_KEY` exists no address can be verified at all, so
+the `required` address item is display-only — safe, and it would stop being safe the instant the gate
+is armed. Merge-time runbook: merge → wait for Vercel → apply `20260824140000` (profiles SELECT
+revoke) + `20260824150000` (address trigger) + `20260824160000` (the reserve RPC, explicitly recorded
+as NOT applied) + `20260824170000` (the `onboarding_completed_at` grant — no record of application
+either way, so verify before assuming) → `supabase gen types` → deploy **five**
+functions, `verify-phone`/`verify-address`/`stripe-webhook`/`disconnect-stripe-account`/`check-restaurant-payout-status`
+(the last gained `_shared/stripe-identity-reset.ts` at Codex round 5) → verify org roster still loads.
+→ `docs/wiki/concepts/identity-verification.md` · `docs/wiki/concepts/account-completeness-engine.md` · `docs/wiki/concepts/service-role-data-exposure.md`
 ## 2026-08-23 — The signature alarm rang into a wall: `MailApp` → `GmailApp`
 
 **The alert had never worked.** `sendTestAlert()`, built the same day so the alarm could be heard

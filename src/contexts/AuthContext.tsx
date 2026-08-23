@@ -97,10 +97,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const fetchProfile = async (userId: string) => {
     try {
-      // Test basic Supabase connection first
+      // Test basic Supabase connection first.
+      //
+      // Counts `id`, not the string 'count'. `select('count', ...)` was a PostgREST idiom
+      // rather than a real column — `profiles` has no `count` column — and this probe runs
+      // on EVERY profile fetch and THROWS on error, so it sits directly in front of auth
+      // for every user. Once 20260824140000 revokes table-wide SELECT and grants back an
+      // enumerated column list, whether a non-column select term still resolves is a
+      // question nothing in CI can answer. `id` is a real, granted column, so the probe
+      // now tests exactly what it claims to test and cannot be broken by the lockdown.
       const { data: _testData, error: testError } = await supabase
         .from('profiles')
-        .select('count', { count: 'exact', head: true });
+        .select('id', { count: 'exact', head: true });
       
       if (testError) {
         console.error('❌ AuthProvider: Supabase connection test failed:', testError);

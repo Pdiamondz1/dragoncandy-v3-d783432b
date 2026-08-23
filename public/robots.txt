@@ -1,16 +1,6 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
+# DragonCandy is in private preview behind an edge password.
+# Restore the crawler allowances and the Sitemap line at public launch, in the
+# same change that re-enables the `is-crawlable` Lighthouse audit.
+# docs/superpowers/specs/2026-08-23-site-access-lockdown-design.md
 User-agent: *
-Allow: /
-
-Sitemap: https://dragoncandy.com/sitemap.xml
+Disallow: /

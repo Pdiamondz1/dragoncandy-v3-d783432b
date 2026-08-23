@@ -16,7 +16,7 @@ vi.mock('@tanstack/react-query', () => ({ useQuery: () => ({ data: undefined }),
 const supabaseMock = vi.hoisted(() => ({ from: vi.fn() }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: supabaseMock }));
 
-import { useAccountReadiness, fetchAccountReadinessDetail } from './useAccountReadiness';
+import { useAccountReadiness, fetchAccountReadinessDetail, toIdentityContext } from './useAccountReadiness';
 import { computeAccountReadiness, type ReadinessContext } from '@/lib/accountReadiness';
 
 /**
@@ -48,6 +48,8 @@ const baseCtx: ReadinessContext = {
   stripe: undefined,
   socialActiveCount: undefined,
   creator: undefined,
+  identity: undefined,
+  addressVerifiedAt: undefined,
 };
 
 describe('useAccountReadiness', () => {
@@ -122,5 +124,52 @@ describe('fetchAccountReadinessDetail', () => {
     expect(consoleError).toHaveBeenCalled();
 
     consoleError.mockRestore();
+  });
+});
+
+describe('toIdentityContext', () => {
+  /**
+   * The bug this exists to prevent: coercing the NULL columns into `[]`/`null` made
+   * "Stripe has never reported" indistinguishable from "Stripe reported, nothing
+   * outstanding", so `identity_verified` rendered a REQUIRED, non-dismissible checklist
+   * row on every account on the platform — including fully-onboarded ones that could
+   * never clear it, because Stripe only emits `account.updated` on change.
+   */
+  it('is undefined when Stripe has never reported (all three columns NULL)', () => {
+    expect(toIdentityContext({
+      identity_verified_at: null,
+      stripe_requirements_due: null,
+      stripe_disabled_reason: null,
+    })).toBeUndefined();
+  });
+
+  it('is undefined when the role row is not loaded', () => {
+    expect(toIdentityContext(null)).toBeUndefined();
+    expect(toIdentityContext(undefined)).toBeUndefined();
+  });
+
+  /** An empty ARRAY is Stripe saying "nothing outstanding" — a real answer, not an absence. */
+  it('is present when Stripe reported nothing outstanding (empty array, not NULL)', () => {
+    expect(toIdentityContext({
+      identity_verified_at: null,
+      stripe_requirements_due: [],
+      stripe_disabled_reason: null,
+    })).toEqual({ verifiedAt: null, requirementsDue: [], disabledReason: null });
+  });
+
+  it('is present when only a disabled reason arrived', () => {
+    expect(toIdentityContext({
+      identity_verified_at: null,
+      stripe_requirements_due: null,
+      stripe_disabled_reason: 'rejected.fraud',
+    })).toEqual({ verifiedAt: null, requirementsDue: [], disabledReason: 'rejected.fraud' });
+  });
+
+  it('is present when a stamp exists', () => {
+    expect(toIdentityContext({
+      identity_verified_at: '2026-08-24T00:00:00Z',
+      stripe_requirements_due: null,
+      stripe_disabled_reason: null,
+    })).toEqual({ verifiedAt: '2026-08-24T00:00:00Z', requirementsDue: [], disabledReason: null });
   });
 });
