@@ -1,5 +1,29 @@
 # Wiki Log
 
+## [2026-08-23] update | A guard that cannot fire looks exactly like one that works
+
+Ingested `raw/sessions/2026-08-23-rag-eval-automation.md`. **Updated** [[RAG Retrieval Evaluation]]
+with how it now runs unattended.
+
+Two layers. Per PR and needing no secret, `rag-eval/pinned-constants.test.mjs` ties `k` and
+`TARGET_CHARS` to the evaluation that chose them — `k` became the named constant
+`INTERNAL_RETRIEVAL_K`, and the test asserts the **call site uses it**, because a pin holding a
+correct value that nothing reads is worse than no pin at all. Monthly, `.github/workflows/rag-eval.yml`
+re-runs the evaluation against a committed baseline and files an AIOS finding only when a number
+moves.
+
+The design decisions that outlast the numbers: comparability is checked **before** anything is
+compared and **per metric** (a changed label set costs the recall denominators, not the control
+check); a threshold naming a metric the run does not produce is reported as unchecked rather than
+silently passing; **NOT COMPARABLE is itself a finding**, since silence there reads exactly like a
+clean month; and the job never re-records its own baseline — a guard that follows the observed
+value is a thermometer reporting room temperature no matter what the room is doing.
+
+What automation cannot fix is stated in the findings themselves: recall rests on **7 labelled
+queries of 53**, and every finding carries that line so a precise-looking number never reads as
+more authoritative than it is.
+
+
 ## [2026-08-23] analysis | A judge sees what you show it
 
 **Created** [[RAG Retrieval Evaluation]] (`concepts/rag-retrieval-evaluation.md`) and committed the

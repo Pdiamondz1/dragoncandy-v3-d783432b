@@ -114,7 +114,28 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   receives — with a unit test pinning the error in as many words. Limits are written down rather
   than buried: 7 labelled queries of 53, labels self-produced though blind, and no strict old-vs-new
   A/B because the function now refuses to emit a single 24,000-char embedding.
-  → `docs/wiki/concepts/rag-retrieval-evaluation.md` · `feat/rag-eval-harness`
+  **It now runs itself (2026-08-23).** Two layers, because they catch different failures and only
+  one needs a secret. Per PR and secret-free, a test pins `k` and `TARGET_CHARS` to the values this
+  measured — `k` is the named constant **`INTERNAL_RETRIEVAL_K`**, and the test asserts the *call
+  site uses it*, since a pin holding a value nothing reads is worse than no pin because it looks
+  green. Monthly (1st, 07:00 UTC), `.github/workflows/rag-eval.yml` re-runs the evaluation against
+  a committed `baseline.json` and files an AIOS finding only when a metric passes its tolerance —
+  four guards, fingerprinted per metric so a persistent regression bumps `occurrences` instead of
+  filing monthly duplicates. The measurement itself **never fails on a regression**; the reporting
+  step carries the verdict, so a human can run it without the tool treating curiosity as a build
+  failure. Four decisions about *how a guard fails* are the durable part: comparability is checked
+  **before** anything is compared and **per metric** (a changed label set costs the recall
+  denominators, not the control check); a threshold naming a metric the run does not produce is
+  reported as **unchecked**, since it would otherwise pass forever; **NOT COMPARABLE is itself a
+  finding**, because silence there reads exactly like a clean month; and the job **never re-records
+  its own baseline** — a guard that follows the observed value is a thermometer reporting room
+  temperature. Automation cannot fix the real weakness (7 labelled queries of 53), so every finding
+  prints that line. Verified by **forced controls on all five report branches**, since a run
+  printing "no regression" is not evidence the guard works. **Pending (2026-08-23):** the scheduled
+  run has **never fired** and no finding has ever been filed from one; it needs
+  `RAG_EVAL_SUPABASE_SECRET_KEY` in a `rag-eval` GitHub Environment (until then it fails loudly at
+  boot rather than reporting on nothing).
+  → `docs/wiki/concepts/rag-retrieval-evaluation.md` · `feat/rag-eval-harness`, `feat/rag-eval-automation`
 - **A third of Donny's internal corpus was never embedded** — `sync-internal-docs.mjs` sliced every
   document at 24,000 chars under a comment reading *"embed input is truncated; full_content is not"*,
   which is true and describes the **wrong consumer**: `full_content` goes to `internal_docs`, and
