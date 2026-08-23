@@ -183,7 +183,7 @@ function loadAppsScript(scriptProperties = {}) {
   };
   return new Function(
     'PropertiesService',
-    `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN, isMissingSharingScope_, requestedScopes_, SCOPE_BASIC, SCOPE_SHARING, sharedRegressions_, formatRegression_, nextSharedBaseline_, sharedExpectation_, readSharedBaseline_ };`,
+    `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN, isMissingSharingScope_, requestedScopes_, SCOPE_BASIC, SCOPE_SHARING, sharedRegressions_, formatRegression_, nextSharedBaseline_, sharedExpectation_, readSharedBaseline_, runAlert_, alertRecipients_, runStatus_ };`,
   )(PropertiesService);
 }
 
@@ -629,5 +629,190 @@ describe('sharedRegressions_ cause classification', () => {
     const r = one({ email: 'a@x.com', sharedWritten: 2, sharedSeen: 3, denied: 5 });
     expect(r.unexplained).toBe(0);
     expect(r.cause).toBe('scope');
+  });
+});
+
+// A warning is only read by someone who goes looking. runAlert_ is the
+// decision half of the delivery fix and is kept pure so the question "when do
+// we wake somebody up" is testable; MailApp and script properties are not.
+describe('runAlert_', () => {
+  const { runAlert_ } = loadAppsScript();
+  const degraded = (over) => ({
+    email: 'dame@dragoncandy.com',
+    written: 0,
+    expected: 3,
+    denied: 3,
+    cause: 'scope',
+    unexplained: 0,
+    ...over,
+  });
+
+  it('is silent on a clean run', () => {
+    expect(
+      runAlert_([], [], 4),
+      'a nightly all-fine mail trains its recipient to filter it, and then the real one is filtered too',
+    ).toBeNull();
+  });
+
+  it('tolerates missing arguments', () => {
+    expect(runAlert_(undefined, undefined, 0)).toBeNull();
+  });
+
+  it('fires when a user is degraded', () => {
+    const a = runAlert_([degraded()], [], 4);
+    expect(a).not.toBeNull();
+    expect(a.subject).toContain('1 degraded');
+    expect(a.body).toContain('dame@dragoncandy.com (0/3)');
+  });
+
+  it('fires when a user failed outright, even with nothing degraded', () => {
+    const a = runAlert_([], ['joe@dragoncandy.com'], 4);
+    expect(a.subject).toContain('1 failed');
+    expect(a.body).toContain('NO SIGNATURE WRITTEN AT ALL');
+    expect(a.body).toContain('joe@dragoncandy.com');
+  });
+
+  it('reports both counts when both happen', () => {
+    const a = runAlert_([degraded()], ['joe@dragoncandy.com'], 4);
+    expect(a.subject).toContain('1 failed');
+    expect(a.subject).toContain('1 degraded');
+  });
+
+  it('names the cause so the reader is not sent to the wrong fix', () => {
+    expect(runAlert_([degraded({ cause: 'scope' })], [], 4).body).toContain('gmail.settings.sharing');
+    expect(runAlert_([degraded({ cause: 'other', denied: 0 })], [], 4).body).toContain('deleted');
+    const mixed = runAlert_([degraded({ cause: 'mixed', denied: 2, unexplained: 1 })], [], 4).body;
+    expect(mixed).toContain('will not finish the job');
+  });
+
+  it('says what "expected" means, since a deleted identity is the confusing case', () => {
+    expect(runAlert_([degraded()], [], 4).body).toContain('SHARED_BASELINE');
+  });
+});
+
+describe('alertRecipients_', () => {
+  it('is empty when unset — the caller must warn rather than silently skip', () => {
+    const { alertRecipients_ } = loadAppsScript();
+    expect(alertRecipients_()).toEqual([]);
+  });
+
+  it('splits a comma-separated list and trims', () => {
+    const { alertRecipients_ } = loadAppsScript({
+      ALERT_EMAIL: ' dame@dragoncandy.com , joe@dragoncandy.com ',
+    });
+    expect(alertRecipients_()).toEqual(['dame@dragoncandy.com', 'joe@dragoncandy.com']);
+  });
+
+  it('drops blanks and junk without an @, so MailApp is never handed an empty address', () => {
+    const { alertRecipients_ } = loadAppsScript({
+      ALERT_EMAIL: 'dame@dragoncandy.com,,   ,notanemail',
+    });
+    expect(alertRecipients_()).toEqual(['dame@dragoncandy.com']);
+  });
+
+  it('returns empty for a property that is only separators', () => {
+    const { alertRecipients_ } = loadAppsScript({ ALERT_EMAIL: ' , , ' });
+    expect(alertRecipients_()).toEqual([]);
+  });
+});
+
+// The alert's third input is "every user whose run was not a clean ok",
+// keyed off the same status the Sheet records. Two review rounds were spent
+// adding one cause at a time — primary-identity write failures, then scope
+// denials on a non-company address — and each new cause was another silent
+// hole. These tests pin the general condition, not the individual causes.
+// Codex, 2026-08-23.
+describe('runAlert_ non-clean runs', () => {
+  const { runAlert_ } = loadAppsScript();
+  const writeFailure = [
+    { email: 'joe@dragoncandy.com', detail: '1 identities, 1 failed: joe@dragoncandy.com: Error: Gmail API 500' },
+  ];
+  // The case that motivated the refactor: a verified non-primary address that
+  // is NOT a company address, refused for lack of the sharing scope. Nothing
+  // is degraded (it is not a shared identity) and nothing threw.
+  const nonSharedDenial = [
+    { email: 'jay@dragoncandy.com', detail: '1 identities, 1 denied (needs gmail.settings.sharing)' },
+  ];
+
+  it('fires on a write failure alone — nothing failed outright, nothing degraded', () => {
+    const a = runAlert_([], [], 4, writeFailure);
+    expect(
+      a,
+      'a failure on the primary signature must not be visible only in the log',
+    ).not.toBeNull();
+    expect(a.subject).toContain('1 not clean');
+  });
+
+  it('fires on a scope denial for a NON-shared address, which no other category catches', () => {
+    const a = runAlert_([], [], 4, nonSharedDenial);
+    expect(a).not.toBeNull();
+    expect(a.body).toContain('jay@dragoncandy.com');
+    expect(a.body).toContain('denied');
+  });
+
+  it('passes the per-user detail through verbatim, so the mail matches the Sheet', () => {
+    const body = runAlert_([], [], 4, writeFailure).body;
+    expect(body).toContain('joe@dragoncandy.com');
+    expect(body).toContain('Gmail API 500');
+  });
+
+  it('says the category covers the primary signature, since that is the surprising part', () => {
+    expect(runAlert_([], [], 4, writeFailure).body).toContain('primary signature');
+  });
+
+  it('still silent when every category is empty', () => {
+    expect(runAlert_([], [], 4, [])).toBeNull();
+  });
+
+  it('counts all three categories in the subject', () => {
+    const a = runAlert_(
+      [{ email: 'a@x.com', written: 0, expected: 3, denied: 3, cause: 'scope', unexplained: 0 }],
+      ['b@x.com'],
+      4,
+      writeFailure,
+    );
+    expect(a.subject).toContain('1 failed');
+    expect(a.subject).toContain('1 not clean');
+    expect(a.subject).toContain('1 degraded');
+  });
+
+  it('is backward compatible with callers that omit the argument', () => {
+    expect(runAlert_([], [], 4)).toBeNull();
+  });
+});
+
+// runStatus_ decides BOTH the Sheet's status column and whether a user reaches
+// the alert, so any cause it fails to treat as non-clean is a cause nobody is
+// told about. It was inline until 2026-08-23; a mutation of that inline version
+// went undetected by the entire suite, because every test touching this path
+// fed runAlert_ directly. That is the argument for extracting it.
+describe('runStatus_', () => {
+  const { runStatus_ } = loadAppsScript();
+
+  it('is ok when nothing was refused and nothing failed', () => {
+    expect(runStatus_({ failures: [], denied: 0 })).toBe('ok');
+  });
+
+  it('is PARTIAL on a write failure', () => {
+    expect(runStatus_({ failures: ['a@x.com: boom'], denied: 0 })).toBe('PARTIAL');
+  });
+
+  // The case Codex found: a denial on a non-company address produces no
+  // degraded entry and no throw, so PARTIAL here is the ONLY thing that gets
+  // the user into the alert.
+  it('is PARTIAL on a denial, even with no failures', () => {
+    expect(
+      runStatus_({ failures: [], denied: 1 }),
+      'a denied identity must not read as a clean run, or nobody is told about it',
+    ).toBe('PARTIAL');
+  });
+
+  it('is PARTIAL when both happen', () => {
+    expect(runStatus_({ failures: ['a@x.com: boom'], denied: 2 })).toBe('PARTIAL');
+  });
+
+  it('tolerates a missing failures array', () => {
+    expect(runStatus_({ denied: 0 })).toBe('ok');
+    expect(runStatus_({ denied: 3 })).toBe('PARTIAL');
   });
 });

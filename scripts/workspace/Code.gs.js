@@ -66,6 +66,20 @@ function installAllSignatures() {
   var perUser = [];
   var totalSharedSeen = 0;
   var totalDenied = 0;
+  // Users whose installForUser_ threw outright. They are not in perUser (we
+  // have no counts for them), but a user getting NO signature is at least as
+  // alarming as a degraded one, so the alert has to know about them.
+  var failedUsers = [];
+  // Every user whose run was not a clean 'ok'.
+  //
+  // Keyed off the SAME status the Sheet records, deliberately, rather than
+  // enumerating causes. Two rounds of review were spent adding a category at a
+  // time -- primary-identity write failures, then scope denials on a
+  // non-company address -- and each new cause was another silent hole. "Not ok"
+  // is the condition that actually matches the claim the alert makes, and it
+  // cannot fall behind the status logic because it IS the status logic.
+  // (Codex, 2026-08-23.)
+  var partialUsers = [];
   // Read before the loop: the Sheet's written/expected column uses the same
   // expectation as the warning, and both must survive an identity being
   // removed. See sharedExpectation_.
@@ -90,11 +104,7 @@ function installAllSignatures() {
       perUser.push(record);
       var sharedExpected = sharedExpectation_(record, baseline);
 
-      // PARTIAL is deliberately distinct from both ok and ERROR. A run where
-      // every writable identity was written but some were refused is neither
-      // a clean pass nor a failure, and collapsing it into either one is how
-      // a standing permissions gap becomes invisible.
-      var status = counts.failures.length ? 'PARTIAL' : counts.denied ? 'PARTIAL' : 'ok';
+      var status = runStatus_(counts);
       var detail = counts.total + ' identities';
       if (counts.denied) {
         detail += ', ' + counts.denied + ' denied (needs gmail.settings.sharing)';
@@ -104,6 +114,10 @@ function installAllSignatures() {
         console.error(
           'installForUser_ partial for ' + user.primaryEmail + ': ' + counts.failures.join('; '),
         );
+      }
+
+      if (status !== 'ok') {
+        partialUsers.push({ email: user.primaryEmail, detail: detail });
       }
 
       results.push([
@@ -127,6 +141,7 @@ function installAllSignatures() {
       // left: it lands in Apps Script Executions and Cloud Logging regardless
       // of whether the Sheet exists, so a bad run is never silent.
       console.error('installForUser_ failed for ' + user.primaryEmail + ': ' + err);
+      failedUsers.push(user.primaryEmail);
       results.push([new Date(), user.primaryEmail, user.title || '(no title)', 'ERROR', String(err), '']);
     }
   }
@@ -220,6 +235,12 @@ function installAllSignatures() {
           : ''),
     );
   }
+
+  // A warning in Cloud Logging is only seen by someone who goes looking. This
+  // is the delivery half: the same finding, pushed. Deliberately silent on a
+  // clean run -- an alert that arrives nightly regardless is one nobody reads.
+  var alert = runAlert_(degraded, failedUsers, users.length, partialUsers);
+  if (alert) sendRunAlert_(alert.subject, alert.body);
 
   // After the check, never before: the baseline is what the check compares
   // against, so updating it first would compare this run to itself. And never
@@ -380,6 +401,28 @@ function installForUser_(user) {
  * @return {Array<string>} "user@ (written/seen)" for each degraded user
  */
 /**
+ * 'ok' or 'PARTIAL' for one user's counts. ('ERROR' is the caller's, for a run
+ * that threw before producing counts at all.)
+ *
+ * PARTIAL is deliberately distinct from both. A run where every writable
+ * identity was written but some were refused is neither a clean pass nor a
+ * failure, and collapsing it into either is how a standing permissions gap
+ * becomes invisible.
+ *
+ * Extracted so it can be tested. It looks trivial enough not to need it, and
+ * that is exactly why: this one predicate decides both the Sheet's status
+ * column AND whether the user reaches the alert, so a cause it fails to treat
+ * as non-clean is a cause nobody is told about. A mutation of the inline
+ * version went undetected by the whole suite, because the only tests that
+ * touched this path fed runAlert_ directly.
+ */
+function runStatus_(counts) {
+  if (counts.failures && counts.failures.length) return 'PARTIAL';
+  if (counts.denied) return 'PARTIAL';
+  return 'ok';
+}
+
+/**
  * How many shared signatures this user SHOULD have.
  *
  * The larger of what is on their account right now and what they have ever
@@ -492,6 +535,121 @@ function readSharedBaseline_() {
 
 function writeSharedBaseline_(next) {
   PropertiesService.getScriptProperties().setProperty('SHARED_BASELINE', JSON.stringify(next));
+}
+
+/**
+ * Composes the alert for a run, or null if there is nothing worth sending.
+ *
+ * Pure, so the decision of WHEN to wake somebody up is unit-testable. The
+ * sending itself (MailApp, script properties) is not, and is kept to the thin
+ * sendRunAlert_ below.
+ *
+ * Silent on a clean run on purpose. A nightly "all fine" mail trains its
+ * recipient to filter it, and then the one that matters is filtered too.
+ */
+function runAlert_(degraded, failedUsers, userCount, partialUsers) {
+  degraded = degraded || [];
+  failedUsers = failedUsers || [];
+  partialUsers = partialUsers || [];
+  if (!degraded.length && !failedUsers.length && !partialUsers.length) return null;
+
+  var parts = [];
+  if (failedUsers.length) parts.push(failedUsers.length + ' failed');
+  if (partialUsers.length) parts.push(partialUsers.length + ' not clean');
+  if (degraded.length) parts.push(degraded.length + ' degraded');
+  var subject = '[DragonCandy signatures] ' + parts.join(', ') + ' of ' + userCount + ' users';
+
+  var body = 'The nightly signature run needs attention.\n\n';
+
+  if (failedUsers.length) {
+    body +=
+      'NO SIGNATURE WRITTEN AT ALL (' +
+      failedUsers.length +
+      '):\n  ' +
+      failedUsers.join('\n  ') +
+      '\n\nThese users threw before any identity was written. Their signatures ' +
+      'are whatever they were before this run -- possibly stale, possibly absent.\n\n';
+  }
+
+  if (partialUsers.length) {
+    body += 'RUNS THAT WERE NOT CLEAN (' + partialUsers.length + '):\n';
+    for (var q = 0; q < partialUsers.length; q++) {
+      body += '  ' + partialUsers[q].email + ' -- ' + partialUsers[q].detail + '\n';
+    }
+    body +=
+      '\nThis covers anything short of a clean run, including a failed write on ' +
+      "the user's OWN primary signature and a scope refusal on a non-company " +
+      'address. Neither would show anywhere else in this mail.\n\n';
+  }
+
+  if (degraded.length) {
+    body += 'SHARED SIGNATURES MISSING (' + degraded.length + '), as written/expected:\n';
+    for (var i = 0; i < degraded.length; i++) {
+      var g = degraded[i];
+      body +=
+        '  ' +
+        formatRegression_(g) +
+        '  cause: ' +
+        g.cause +
+        (g.cause === 'scope'
+          ? ' (refused for lack of gmail.settings.sharing)'
+          : g.cause === 'mixed'
+            ? ' (PART scope, PART something else -- fixing the scope will not finish the job)'
+            : ' (nothing was refused; the identities were likely deleted or set back to pending)') +
+        '\n';
+    }
+    body +=
+      '\n"Expected" is the larger of the identities present now and the ' +
+      'SHARED_BASELINE high-water mark, so a DELETED identity still counts as ' +
+      'missing rather than disappearing from the check.\n\n';
+  }
+
+  body +=
+    'Full per-user detail is in the run log Sheet, and the reasoning behind ' +
+    'each cause is in scripts/workspace/README.md.\n';
+
+  return { subject: subject, body: body };
+}
+
+/** Reads ALERT_EMAIL: comma-separated, blanks ignored. */
+function alertRecipients_() {
+  var raw = PropertiesService.getScriptProperties().getProperty('ALERT_EMAIL');
+  if (!raw) return [];
+  return String(raw)
+    .split(',')
+    .map(function (x) {
+      return x.trim();
+    })
+    .filter(function (x) {
+      // Not validation -- just refusing to hand MailApp obvious junk. A bad
+      // address is the recipient's problem to notice; an empty string is ours.
+      return x.length > 0 && x.indexOf('@') !== -1;
+    });
+}
+
+/**
+ * Best-effort. Failing to raise the alarm must never fail the run that raised
+ * it -- the signatures are already written by this point, and losing the run
+ * log to a mail error would trade a notification for the evidence.
+ */
+function sendRunAlert_(subject, body) {
+  var to = alertRecipients_();
+  if (!to.length) {
+    console.warn(
+      'ALERT_EMAIL is not set, so this run has a finding and nobody was told. ' +
+        'Set it to a comma-separated address list in Script Properties. ' +
+        'Subject would have been: ' +
+        subject,
+    );
+    return false;
+  }
+  try {
+    MailApp.sendEmail({ to: to.join(','), subject: subject, body: body });
+    return true;
+  } catch (err) {
+    console.error('Could not send the alert email to ' + to.join(', ') + ': ' + err);
+    return false;
+  }
 }
 
 /**

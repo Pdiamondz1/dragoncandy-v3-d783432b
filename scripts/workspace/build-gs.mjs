@@ -59,6 +59,12 @@ const manifest = {
     'https://www.googleapis.com/auth/admin.directory.user.readonly',
     'https://www.googleapis.com/auth/script.external_request',
     'https://www.googleapis.com/auth/spreadsheets',
+    // MailApp, for the degraded-run alert. Sends AS THE SCRIPT OWNER, not as
+    // the service account -- unrelated to the domain-wide delegation.
+    // NOTE: adding a scope invalidates the existing authorization, so after the
+    // next `clasp push` the owner must open the editor and run the function
+    // once by hand to re-consent. Until they do, the time-driven trigger fails.
+    'https://www.googleapis.com/auth/script.send_mail',
   ],
 };
 writeFileSync(join(dist, 'appsscript.json'), JSON.stringify(manifest, null, 2) + '\n');
