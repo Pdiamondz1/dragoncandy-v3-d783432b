@@ -53,6 +53,7 @@ const CreatorDashboard = lazy(() => import("./pages/CreatorDashboard"));
 const CreatorOverview = lazy(() => import("./pages/CreatorOverview"));
 const BusinessSettings = lazy(() => import("./pages/BusinessSettings"));
 const CreatorSettings = lazy(() => import("./pages/CreatorSettings"));
+const YouTubeCallback = lazy(() => import("./pages/YouTubeCallback"));
 const CampaignsPage = lazy(() => import("./pages/CampaignsPage"));
 const CampaignCreator = lazy(() => import("./pages/CampaignCreator"));
 const CampaignDetailsPage = lazy(() => import("./pages/CampaignDetailsPage"));
@@ -242,6 +243,12 @@ function AnimatedRoutes() {
           <Route path="/dashboard/business/overview" element={<ProtectedRoute><BusinessRoute><BusinessOverview /></BusinessRoute></ProtectedRoute>} />
           <Route path="/dashboard/creator/overview" element={<ProtectedRoute><CreatorOverview /></ProtectedRoute>} />
           <Route path="/dashboard/creator/settings" element={<ProtectedRoute><CreatorSettings /></ProtectedRoute>} />
+          {/* Google's redirect target after YouTube consent. Role-neutral and
+              ProtectedRoute on purpose: the page's whole job is to make the
+              exchange with a real session attached, which is what proves the
+              browser finishing consent is the one that started it. The path is
+              registered verbatim in the Google Cloud console. */}
+          <Route path="/youtube/callback" element={<ProtectedRoute><YouTubeCallback /></ProtectedRoute>} />
 
           {/* Campaign Routes */}
           <Route path="/dashboard/business/campaigns" element={<ProtectedRoute><BusinessRoute><CampaignsPage /></BusinessRoute></ProtectedRoute>} />

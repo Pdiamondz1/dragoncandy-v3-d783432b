@@ -14,6 +14,7 @@ import { StripeConnectSetup } from './StripeConnectSetup';
 import { sanitizeNumericInput } from '@/lib/inputUtils';
 import { SocialMediaLinks } from '@/components/business-profile/SocialMediaLinks';
 import { ConnectedAccountsList } from '@/components/outstand/ConnectedAccountsList';
+import { YouTubeAnalyticsCard } from '@/features/settings/YouTubeAnalyticsCard';
 import { FileUploadSection } from '@/components/business-profile/FileUploadSection';
 import { ToastConnectionCard } from '@/features/settings/ToastConnectionCard';
 import type { BusinessProfileFormData } from '@/hooks/useBusinessProfileForm';
@@ -439,6 +440,8 @@ export function BusinessSettingsSections({
         subtitle="Manage connected accounts & posting"
       >
         <ConnectedAccountsList role="business" />
+
+        <YouTubeAnalyticsCard />
 
         <div className="border-t border-dc-teal/10 pt-4 mt-4">
           <details className="group">
