@@ -190,23 +190,13 @@ async function markAttemptOutcome(
   if (error) console.error("verify-address: failed to record attempt outcome", error);
 }
 
-/** Audit row for a declined attempt. 'throttled' is the one outcome the RPC does not count, so
- *  writing it cannot deepen the caller's own throttle — but the row exists, so a decline is
- *  visible to an operator rather than inferred from a gap. */
-async function recordThrottled(
-  supabase: SupabaseClient,
-  userId: string,
-  ipHash: string | null,
-  role: Role,
-): Promise<void> {
-  const { error } = await supabase.from("address_verification_attempts").insert({
-    user_id: userId,
-    ip_hash: ipHash,
-    role,
-    outcome: "throttled",
-  });
-  if (error) console.error("verify-address: failed to record throttled attempt", error);
-}
+// There is deliberately NO recordThrottled() here. The decline audit row is written by the RPC
+// itself, bounded to at most one per user per daily window under the same advisory lock that
+// makes the count atomic. An earlier revision wrote it from here on every declined request, which
+// Codex correctly flagged P1: once a caller is throttled they can keep calling forever, so the
+// audit path was an unbounded INSERT — a storage and query-degradation DoS inside the very
+// endpoint meant to bound abuse. Do not reintroduce a decline write on this side; a bounded
+// decision and an unbounded recorder cannot live in the same feature.
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -364,7 +354,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   if (!reservation.reserved) {
-    await recordThrottled(supabase, user.id, ipHash, role);
+    // No write here — the RPC already recorded a bounded decline row. See the note above.
     // The reason is returned so the client can say something true rather than generic: a burst
     // decline clears in a minute, a daily one does not, and telling a user "try again shortly"
     // when they must wait until tomorrow is the kind of small lie that generates support load.

@@ -105,6 +105,30 @@ describe('throttle wiring', () => {
     expect(indexSrc).toMatch(/publicReason\s*=\s*reservation\.reason === "user_burst"\s*\?\s*"user_burst"\s*:\s*"user_daily"/);
   });
 
+  it('has no unbounded decline-write path in the caller', () => {
+    // Codex P1 on the first revision: the caller inserted a 'throttled' row on EVERY declined
+    // request, so a throttled attacker could generate unlimited writes — a storage and
+    // query-degradation DoS inside the endpoint meant to bound abuse. The decline audit now
+    // lives in the RPC, capped at one row per user per daily window under the same lock.
+    // Assert the DEFINITION and the CALL are gone, not that the word is absent — the word
+    // legitimately survives in the comment telling the next person not to reintroduce it.
+    // (A bare not.toContain('recordThrottled') failed on exactly that comment.)
+    expect(indexSrc).not.toMatch(/function\s+recordThrottled/);
+    expect(indexSrc).not.toMatch(/await\s+recordThrottled\s*\(/);
+    // The caller must not insert into the attempts table at all; its only write is the
+    // outcome UPDATE on a slot it already reserved.
+    expect(indexSrc).not.toMatch(/from\("address_verification_attempts"\)\s*\.insert/);
+    expect(indexSrc).toMatch(/from\("address_verification_attempts"\)\s*\.update/);
+  });
+
+  it('bounds the decline audit in the RPC', () => {
+    // The bound is an exists-check inside the advisory lock, so check-and-insert cannot race.
+    expect(migrationSrc).toMatch(/if not exists \([\s\S]{0,300}?outcome = 'throttled'[\s\S]{0,200}?\) then[\s\S]{0,300}?insert into address_verification_attempts/);
+    // And it must be scoped to the daily window, not to all time — an all-time bound would
+    // silently stop recording declines after the first one ever.
+    expect(migrationSrc).toMatch(/outcome = 'throttled'\s*\n\s*and created_at >= v_user_window_start/);
+  });
+
   it('keeps the throttle decision out of TypeScript', () => {
     // verify-phone's Codex P1 was a check-then-act race created by exactly this: a decision in
     // application code over a prior read. There must be no local comparison against the caps.

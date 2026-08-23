@@ -99,7 +99,8 @@ declare
   v_burst_window_start timestamptz := now() - make_interval(secs => p_burst_window_seconds);
   v_user_count         int;
   v_burst_count        int;
-  v_ip_count           int;
+  v_ip_count           int := 0;
+  v_decline_reason     text := null;
   v_attempt_id         uuid;
 begin
   if current_setting('request.jwt.claims', true)::jsonb->>'role' is distinct from 'service_role' then
@@ -130,19 +131,11 @@ begin
       and outcome <> 'throttled'
       and created_at >= v_user_window_start;
 
-  if v_user_count >= p_user_limit then
-    return jsonb_build_object('reserved', false, 'reason', 'user_daily');
-  end if;
-
   select count(*) into v_burst_count
     from address_verification_attempts
     where user_id = p_user_id
       and outcome <> 'throttled'
       and created_at >= v_burst_window_start;
-
-  if v_burst_count >= p_burst_limit then
-    return jsonb_build_object('reserved', false, 'reason', 'user_burst');
-  end if;
 
   -- The IP dimension catches one actor spread across several accounts, which the per-user caps
   -- structurally cannot. A null ip_hash skips it rather than counting every null-IP row together
@@ -155,10 +148,45 @@ begin
       where ip_hash = p_ip_hash
         and outcome <> 'throttled'
         and created_at >= v_user_window_start;
+  end if;
 
-    if v_ip_count >= p_ip_limit then
-      return jsonb_build_object('reserved', false, 'reason', 'ip_daily');
+  if v_user_count >= p_user_limit then
+    v_decline_reason := 'user_daily';
+  elsif v_burst_count >= p_burst_limit then
+    v_decline_reason := 'user_burst';
+  elsif p_ip_hash is not null and v_ip_count >= p_ip_limit then
+    v_decline_reason := 'ip_daily';
+  end if;
+
+  if v_decline_reason is not null then
+    -- THE DECLINE AUDIT IS BOUNDED, AND HAS TO BE. Codex P1 on the first revision: the caller
+    -- recorded a 'throttled' row on every declined request, with no cap on that path. Once a
+    -- user hits the limit, an attacker simply keeps calling — unlimited INSERTs, permanent index
+    -- growth, and windowed count queries that scan an ever-larger set of excluded rows. A spend
+    -- control whose own audit trail is an unbounded write is a storage-and-query DoS wearing the
+    -- costume of a rate limiter, which is precisely the shape it exists to prevent.
+    --
+    -- So: at most ONE 'throttled' row per user per daily window, decided HERE — inside the same
+    -- advisory lock that already serializes this user — so the exists-check and the insert cannot
+    -- race. Bounded at 1 row/user/day rather than unbounded.
+    --
+    -- What this deliberately gives up: the intensity signal. An operator can still see THAT a
+    -- user was throttled today; they can no longer see how many times the user kept hammering.
+    -- That is the right trade — the reserved/answered/failed rows already prove the cap was
+    -- reached, "kept trying" is a nice-to-have, and no audit signal is worth an unbounded write
+    -- path on an endpoint whose whole purpose is bounding abuse.
+    if not exists (
+      select 1
+        from address_verification_attempts
+        where user_id = p_user_id
+          and outcome = 'throttled'
+          and created_at >= v_user_window_start
+    ) then
+      insert into address_verification_attempts (user_id, ip_hash, role, outcome)
+      values (p_user_id, p_ip_hash, p_role, 'throttled');
     end if;
+
+    return jsonb_build_object('reserved', false, 'reason', v_decline_reason);
   end if;
 
   -- Reserved BEFORE the caller issues the Google request, so a slot is taken first and spent
