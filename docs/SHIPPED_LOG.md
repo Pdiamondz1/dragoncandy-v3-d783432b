@@ -103,6 +103,35 @@ two restaurants (ABB, Uncle Rocco) whose footage the reels use. This entry recor
 build, not a live change — dragoncandy.io still serves the light, two-door "Human-driven.
 AI-assisted." landing (PR #293) until this merges.
 
+**Amended 2026-08-23 — the footer stopped being white, and that exposed an iOS bug.** The founder
+saw the shipped page and said the white band across the bottom could not stay. The footer is now
+transparent with no top border, and `RotatingBackdrop` moved from `LandingHero` up to the page
+wrapper so the footage runs edge to edge behind it; `LandingHero` paints no background at all.
+Legibility was measured, not assumed: against the brightest frame in the footer's band across all
+twenty encodes, worst case is **7.42:1** for `text-white/70` over the scrim's heaviest stop
+(`to-landing-grape/95`), versus 4.5:1 required for normal-size text — several reels hit literal
+pure white in that band and still clear it.
+
+Removing the white footer then revealed a **second** white band, on iOS only, that had been there
+all along. `capacitor.config.ts` set `ios.contentInset: 'always'`, under which WebKit shrinks
+`documentElement.clientHeight` by the top safe-area inset while `innerHeight`, `100vh` and `100dvh`
+all keep reporting the full height. Measured inside the real WKWebView (iPhone 17 Pro simulator):
+`innerHeight` **840**, `documentElement.clientHeight` **778**, `safe-area-inset-top` **62** — and
+778 = 840 − 62 exactly. Content sized to `100dvh` overhung the document box by ~96pt, the
+webview's own white background showed through beneath it, and it **clipped the footer's
+Terms/Privacy/Help links**. Fixed with `contentInset: 'never'`: the app already pays back
+`env(safe-area-*)` in CSS everywhere it matters, so insetting natively too was two mechanisms
+solving one problem and disagreeing on the answer. Afterwards all four numbers agree at 874, the
+insets still report 62/34, and the light `/terms` page is unchanged. **The bug was live for every
+page in the app** — `AppShell` is `h-screen` — and invisible only because every other surface is
+white. Changing the palette is what surfaced it. Not reproducible in any browser or emulator.
+
+Two findings left for the founder rather than fixed: **five of the ten reels carry burned-in
+captions** from their original social posts ("What I mean by: 'Wanna grab brunch?'", "This and an
+iced latte.", "THE COAL OVEN", "Steak Frites", and a stitched-in meme), and the worst of them sits
+where the slogan sits; the desktop 16:9 crops remove two but keep four. And the reels are **36 MB
+inside a 54 MB iOS binary** — two-thirds of the app is a landing page a signed-in user never sees.
+
 16 commits, 129 files, +2353/−3894. The public landing collapses from six scrollable sections plus
 a contact form to **one screen**: a fixed logo header, a full-bleed video hero (ten real ABB +
 Uncle Rocco reels, rotating, curated only — no user uploads), an eyebrow, a slogan, and a single
