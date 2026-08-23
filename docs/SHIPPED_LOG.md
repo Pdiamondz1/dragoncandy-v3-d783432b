@@ -96,10 +96,16 @@ spends real Anthropic tokens per call if reached directly. Recorded as a cost-vi
 in the spec rather than fixed here, since undeploying is a separate decision from a landing rebuild
 and the function costs nothing while nothing calls it.
 
-**Not verified, and recorded as such rather than implied clean:** the design spec's
-brightest-frame-contrast check (§7) — verify the slogan's contrast against each clip's brightest
-frame, not an average frame — has not been run across the ten clips. And footage permission from
-ABB and Uncle Rocco has not been obtained; that gates the merge, not the build.
+**The design spec's brightest-frame-contrast check (§7) has been run.** Method: all ten reels
+sampled at their brightest sampled frame in the vertical middle band — where the scrim is thinnest
+(40%) and the slogan sits — composited over `landing-grape`, then scored by WCAG contrast ratio.
+Worst case across the whole library: white 6.24:1, pink (`#F9BFD6`) 4.00:1, mint (`#7BE3C0`)
+4.04:1; tightest clip is `abb-montauk-monday` (a bright ocean frame). The slogan is large display
+text (3.0:1 required) — every clip clears it with margin, and white also clears the stricter
+4.5:1 normal-text bar. Caveat: only the PORTRAIT encodes were sampled (the emulated viewport used
+was portrait); the desktop wide crops are a different subset of the same footage and remain
+unsampled. Footage permission from ABB and Uncle Rocco has still **not** been obtained; that gates
+the merge, not the build.
 
 `docs/DESIGN_SYSTEM.md` and `docs/runbooks/landing-video-backdrop-kit.md` were corrected in-branch
 (commit `40d525c3`) to describe the dark, video-led landing; this entry does not duplicate that

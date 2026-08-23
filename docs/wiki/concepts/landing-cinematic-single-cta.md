@@ -86,13 +86,23 @@ that page for why "opt-in" and "deleted" are different postures, not the same id
   follow-up rather than fixed here, since nothing currently links to it and undeploying is a
   separate decision from a landing rebuild.
 
+## Verified
+
+- **The brightest-frame contrast check (design spec §7) has been run.** The spec requires checking
+  the slogan's contrast against each clip's brightest frame, not an average frame, because a
+  genuinely bright moment (a lit dish, a bright kitchen) can wash out text that reads fine on
+  average. Method: all ten reels sampled at their brightest sampled frame in the vertical middle
+  band — where the scrim is thinnest (40%) and the slogan sits — composited over
+  `landing-grape`, then scored by WCAG contrast ratio. Worst case across the whole library: white
+  **6.24:1**, pink (`#F9BFD6`) **4.00:1**, mint (`#7BE3C0`) **4.04:1**; the tightest clip is
+  `abb-montauk-monday` (a bright ocean frame). The slogan is large display text (3.0:1 required) —
+  every clip clears it with margin, and the white text also clears the stricter 4.5:1 normal-text
+  bar. **Caveat: only the PORTRAIT encodes were sampled** (the emulated viewport used for the check
+  was portrait); the desktop wide crops are a different subset of the same footage and have not
+  been sampled.
+
 ## Not Verified
 
-- **The brightest-frame contrast check (design spec §7) has not been run.** The spec requires
-  checking the slogan's contrast against each clip's brightest frame, not an average frame, because
-  a genuinely bright moment (a lit dish, a bright kitchen) can wash out text that reads fine on
-  average. This has not been executed across the ten clips. Treat contrast as unverified, not
-  passed, until someone runs it.
 - **Restaurant footage permission is not obtained** — the reason the branch is unmerged. This is a
   go-live gate, not a build gate.
 
