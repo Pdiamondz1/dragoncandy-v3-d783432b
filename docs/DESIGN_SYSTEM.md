@@ -7,9 +7,9 @@
 **This section used to say the public landing was light and shared one visual identity with
 login/sign-up and onboarding, and that `/internal` was the only surface still dark. Both claims
 are now false.** The landing was rebuilt as one full-bleed cinematic video screen
-(`feat/landing-cinematic-single-cta` — **unmerged**, blocked on written permission from the two
-restaurants whose footage it plays, ABB and Uncle Rocco; see `docs/PROJECT_CONTEXT.md` §5). Once
-merged, the landing joins `/internal` as a dark surface. **Login/sign-up and onboarding are
+(`feat/landing-cinematic-single-cta`, **merged 2026-08-23** as #459 — this said "**unmerged**,
+blocked on written permission" until the founder confirmed permission and it shipped). The landing
+is now a dark surface alongside `/internal`. **Login/sign-up and onboarding are
 unaffected by this — still light, unchanged from before.**
 
 **The landing (`/`, `/home`, `/landing`).** `LandingPage.tsx`'s root is `bg-landing-grape`
@@ -17,9 +17,36 @@ unaffected by this — still light, unchanged from before.**
 so a white page background would flash behind it before the first frame paints. The page is one
 screen (`Header` + `LandingHero` + a transparent footer) and does not scroll: the page wrapper is
 `min-h-[100dvh]` (never `vh` — see the safe-area rule below, still load-bearing here), the header
-is an absolute overlay, `LandingHero` is `flex-1`, and the footer is `shrink-0`.
-`RotatingBackdrop` plays ten real reels (five ABB, five Uncle Rocco, alternating so no restaurant
-reads as a solo showreel) full-bleed behind the whole page (`-z-20`), under a `landing-grape`
+is an absolute overlay, `LandingHero` is `flex-1`, and the footer is `shrink-0`. **The page not
+scrolling depends on `AppShell` being `h-[100dvh]` too** — at `h-screen` the shell overhung `body`
+on iOS Safari and the whole screen scrolled anyway; see the shell rule under Design Rules.
+**One CTA, plus two secondary ways out.** "Get started" is the only pill. Under it sits a plain
+underlined "Already have an account? **Log in**" in `landing-mint-line` (`#B8ECDA`, *not* the
+slogan's `#7BE3C0` — small text needs 4.5:1, and the brighter mint measures 3.91 at p90 in that
+band against the paler one's 4.62), and the footer carries a bordered **"How it works"** pill to
+`/how-it-works`. Neither is filled: a second fill makes the page two calls to action and the
+single-CTA premise is gone. **The pill said "Learn more" and had to be renamed** — Lighthouse's
+`link-text` audit fails that string outright ("learn more", "click here", "read more" are its
+canonical non-descriptive link texts), which took the landing's SEO score to **0.92** against the
+CI gate's **0.95**, on one failing item. Name the destination; do not mask it with an `aria-label`.
+**Pink TEXT on white must be `dc-pink-accent-btn` (`#DB2777`, 4.60:1), not `dc-pink-accent`
+(`#EC4899`, 3.52:1)** — the table below lists the lighter token for "links, secondary button text",
+and it does not clear the 4.5:1 small-text bar as text on a white page. The `-btn` step is not only
+for fills.
+**Filled landing buttons carry `text-landing-grape`, never white — and the brand pink is
+unchanged.** The "Get started" pill was white on `landing-pink` (`#F43F7F`) at **3.58:1** against
+the 4.5:1 its label needs (18px, so the 3.0:1 large-text allowance does not apply); Lighthouse
+scored the landing's accessibility **96** for exactly this, and had since before the rebuild.
+Grape on the same pink is **4.83:1**, so the fix costs nothing but the label colour — **the fill is
+byte-identical**. It also matches the `mint` variant, which has always been grape-on-fill (8.01:1).
+Darkening the fill to `landing-pink-ink` (`#C22760`, 5.60:1 with white) was the alternative and was
+**rejected**: the page behind this button is dark video, and the bright pink is what makes the CTA
+pop off it — `#C22760` sits close to the grape scrim and recedes. Landing accessibility is now
+**100**. Pinned in `LandingButton.test.tsx`; re-measure before putting white back.
+`RotatingBackdrop` plays **eight** real reels — **five ABB, three Uncle Rocco** (this said ten,
+five and five until 2026-08-23; two Uncle Rocco reels were dropped for burned-in captions, so
+perfect alternation is arithmetically impossible and `landingClips.ts` holds a minimum-adjacency
+order that a test pins) — full-bleed behind the whole page (`-z-20`), under a `landing-grape`
 gradient scrim (`-z-10`) that darkens top and bottom so the eyebrow, headline, CTA and footer stay
 legible over a bright frame.
 
@@ -28,7 +55,7 @@ to sit inside `LandingHero` with an opaque `bg-white` footer beneath it, which d
 band across the bottom of a page whose entire premise is one full-bleed cinematic screen. The
 footer now carries no background and no top border — either one re-draws that seam — and its text
 is `text-white/70`, legible off the scrim's heaviest stop (`to-landing-grape/95`). Measured, not
-assumed: against the brightest frame in the footer's band across all twenty encodes, the worst
+assumed: against the brightest frame in the footer's band across all **sixteen** encodes (eight reels × portrait + wide; this said twenty), the worst
 case is **7.42:1**, versus the 4.5:1 WCAG requirement for normal-size text. There is no feature flag gating this anymore: `LANDING_VIDEO_BACKDROP_ENABLED` was
 **deleted**, not flipped — with the video AS the page, an "off" state would ship a blank homepage.
 The real fallback for no-clips / a failed clip / `prefers-reduced-motion` is `RotatingBackdrop`'s
@@ -50,6 +77,11 @@ marketing moment to transactional form — not a continuity bug waiting to be fi
 **`landing-mint-line-bright` (`#7BE3C0`) is the mint that survives as text over moving footage.**
 The brand fill `landing-mint` (`#2FC796`) vanishes against a lit dish or a bright frame; the
 existing `mint-line` (`#B8ECDA`) is brighter but reads too pale against skin/food tones on video.
+**That judgement is about HEADLINES, and it inverts for small text.** Paler means more contrast
+against a bright frame, and small text needs 4.5:1 where large text needs 3.0:1 — so the hero's
+"Log in" link uses `#B8ECDA` (4.62 worst p90) precisely because `#7BE3C0` does not clear the bar
+there (3.91). Pick the mint by the text size and re-measure; do not "correct" one to match the
+other.
 The hero slogan uses it for "Creators" (`landing-pink-line` `#F9BFD6` for "Restaurants") — see
 `tailwind.config.ts`'s `landing.*` group for the full ramp and the inline comment recording why the
 extra step exists.
@@ -266,7 +298,7 @@ same token/font system, unaffected; `/internal` stays dark.
 * **Never use gray backgrounds/banners/badges** — use brand-adjacent colors (teal, pink, warm neutrals)
 * **Opacity variants are permitted** — e.g., `bg-dc-teal/12`, `bg-dc-pink/50` for layering and hover states
 * **Desktop and mobile are separate targets** — desktop changes use `lg:` / `xl:` prefixed classes only; mobile changes use base (unprefixed) classes only. Never apply mobile changes to desktop or vice versa. Test both viewports after any UI change.
-* **Bottom-anchored mobile UI: `dvh` + safe-area, never `vh`** — the app document never scrolls (h-screen shell + inner overflow-auto main), so iOS Safari toolbars never collapse and `vh` exceeds the visible height. Size bottom sheets with `dvh`/`svh` and pad bottom-fixed footers/navs with `env(safe-area-inset-bottom)`. Never put a transform (or `will-change: transform`) on an ancestor of `position:fixed` UI — `PageTransition` is opacity-only by contract; portal hand-rolled overlays to `document.body`. See `docs/wiki/concepts/mobile-viewport-fixed-positioning.md`.
+* **Bottom-anchored mobile UI: `dvh` + safe-area, never `vh`** — `vh` exceeds the visible height on iOS Safari, because `100vh` is the URL-bar-COLLAPSED height. **This line used to justify that with "the app document never scrolls (h-screen shell + inner overflow-auto main)", and that premise was false — it is what hid the bug in the next rule below.** The shell being `h-screen` is precisely what made the document scroll; `main` being `overflow-auto` only means `main` is not the *document's* scroller. The rule survives its reasoning: use `dvh`, and use it on the shell too. Size bottom sheets with `dvh`/`svh` and pad bottom-fixed footers/navs with `env(safe-area-inset-bottom)`. Never put a transform (or `will-change: transform`) on an ancestor of `position:fixed` UI — `PageTransition` is opacity-only by contract; portal hand-rolled overlays to `document.body`. See `docs/wiki/concepts/mobile-viewport-fixed-positioning.md`.
 * **Top-anchored chrome needs `env(safe-area-inset-top)` — and only the NATIVE app can show you** — `index.html` sets `viewport-fit=cover`, so the layout viewport extends **under** the status bar and Dynamic Island. Every element that is genuinely at the top of the viewport (`fixed top-0`, or a `sticky top-0` that is page chrome rather than an in-page section header) must pay that back: `pt-[env(safe-area-inset-top)]` when it has no top padding of its own, or `pt-[calc(<existing>+env(safe-area-inset-top))]` to preserve it. **This is invisible on the web** — mobile Safari's URL bar occupies that space, so the page never sits under the status bar and `viewport-fit=cover` costs nothing. It appears only in a chromeless `WKWebView`, which is why it survived until the first physical-device build (2026-08-14) and why no amount of browser testing would have caught it. Applied to `MobileTopNav`, `landing/Header`, `PublicPageHeader`, `UpdateBanner` and the mobile `ui/toast` viewport. **Do NOT pad in-page `sticky top-0` headers** (`AgendaView`, `CampaignMetricsBar`, `CampaignBrowseContent`, `BrandCreators`, `HelpBriefPage`) — they stick *inside* a scroll container below the real nav, so an inset there inserts a gap mid-page. For a viewport that moves side to side by breakpoint (the toast is `top-0` at base, `sm:top-auto sm:bottom-0`), scope the inset to the breakpoint where it is actually on top and reset it after (`sm:pt-4`). The mirror of the bottom rule above.
 * **Desktop side-panels/drawers overlay, never steal flex width** — a docked panel meant to coexist with full-width page content (e.g. the Donny desktop panel) must be a **`fixed` overlay** (`fixed inset-y-0 right-0 z-40`), not an in-flow `flex-shrink-0` sibling of the `flex-1` `<main>`. An in-flow panel subtracts its width from `<main>`, and because pages use **viewport** breakpoints (not container queries) the grids keep their wide-screen column counts at a too-narrow width and crush their cards ("squish"). A `fixed` panel leaves the flex flow so `<main>` keeps 100% width. See `docs/wiki/concepts/mobile-viewport-fixed-positioning.md` (§4).
 * **In the iOS shell, `contentInset` must be `'never'` — the CSS owns the safe areas, or the native
@@ -281,4 +313,21 @@ same token/font system, unaffected; `/internal` stays dark.
   footer stopped being white. With `'never'` all four numbers agree (874) and `env(safe-area-*)`
   still reports 62/34, so the existing CSS padding keeps doing the work it already did. **This is
   not reproducible in any browser or emulator** — it needs the real WKWebView.
+* **`AppShell` must be `h-[100dvh]`, and `body` — not `<html>`, not `<main>` — is the document's
+  scroll container.** `src/index.css` sets `body { height: 100%; overflow-x: hidden }`, and per spec an
+  `overflow-x` of `hidden` against a visible `overflow-y` computes `overflow-y` to `auto`. So body is a
+  fixed-height scroll box, and anything taller than it makes **body** scroll. At `h-screen` the shell was
+  `100vh` — the URL-bar-collapsed height on iOS Safari — so it stood ~60–90px taller than body's box, body
+  scrolled by exactly that, and scrolling collapsed the URL bar, which grew `100dvh`, which resized the page
+  mid-gesture. Reported from a real phone on 2026-08-23 as "the screen jumps if I scroll up or down".
+  **Measured, with the shell forced 80px over:** `body.scrollHeight` **833** vs `clientHeight` **753**, and
+  `body.scrollTop` moves to **80** — while `html`, `#root`, the shell and `main` all report overflow **0**
+  and refuse to scroll, and `window.scrollY` stays **0** throughout. **Probe the right element**: a
+  `window.scrollY` or `main.scrollTop` check reads this as "no scrolling", and did, twice.
+  **Invisible in every emulator and device-emulation mode** — with no collapsing URL bar `100vh === 100dvh`
+  and the gap is structurally 0, the same reason the `contentInset` band below needed a real WKWebView.
+  Anything *inside* `main` (`DashboardLayout`, page wrappers) cannot scroll body, but a `100vh` child of a
+  `100dvh` `main` hands short pages the same dead scroll one container down — so `DashboardLayout` tracks
+  the shell. Pinned by `src/layoutViewportHeight.test.ts`, as a text assertion, because jsdom has no layout
+  engine to evaluate a CSS length. See `docs/wiki/concepts/mobile-viewport-fixed-positioning.md` (§9).
 * **App chrome sits BELOW the modal layer — never tie `z-50`** — persistent app chrome (`MobileBottomNav`, `MobileTopNav`, desktop header, `DonnyDesktopPanel`) is **`z-40`**; the Radix modal layer (every `Sheet`/`Dialog`/`AlertDialog`/`Popover`/`Dropdown`/`Tooltip`) is **`z-50`**; `DonnyMobileSheet` is `z-[60]/[61]`; toasts are `z-[100]`. At `z-50` the nav tied the modal layer and (both portal to `<body>`) its opaque bar painted over bottom-sheet action buttons on iOS Safari. A new **non-modal in-page** `fixed`/`sticky` bottom bar that coexists with the nav (e.g. `StickyApplyCTA`) must offset itself above the nav on mobile — `bottom-[calc(6rem+env(safe-area-inset-bottom))] md:bottom-0` (the `6rem` mirrors the content area's `pb-24` nav-clearance) — or live inside a modal. See `docs/wiki/concepts/mobile-viewport-fixed-positioning.md` (§6).

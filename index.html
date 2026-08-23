@@ -43,14 +43,20 @@
     <title>DragonCandy - AI-Powered Marketplace for Restaurants & Creators</title>
     <meta name="description" content="DragonCandy connects restaurants and content creators for short-form social media campaigns. Powered by Donny AI." />
     <meta name="author" content="DragonCandy" />
-    <link rel="canonical" href="https://dragoncandy.com/landing" />
+    <!-- No static canonical. `SEO.tsx` (react-helmet-async) emits one per route, and a
+         hardcoded tag here does not get replaced — it gets JOINED, so every page except
+         /landing shipped TWO conflicting canonicals (this one said /landing on all of
+         them). Conflicting canonicals are discarded rather than resolved, so the correct
+         per-route value was being thrown away site-wide, and Lighthouse fails the
+         `canonical` audit outright. Found 2026-08-23 by auditing /how-it-works, which CI
+         does not cover — the gated URL is /landing, the one page where the two agreed. -->
 
     <!-- Open Graph -->
     <meta property="og:site_name" content="DragonCandy" />
     <meta property="og:title" content="DragonCandy - AI-Powered Marketplace for Restaurants & Creators" />
     <meta property="og:description" content="Connect restaurants with content creators for short-form social campaigns. Powered by Donny AI." />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://dragoncandy.com/" />
+    <!-- Likewise og:url — SEO.tsx emits the per-route value; this one was the bare origin. -->
     <meta property="og:image" content="https://dragoncandy.com/icons/icon-512.png" />
     <meta property="og:image:width" content="512" />
     <meta property="og:image:height" content="512" />

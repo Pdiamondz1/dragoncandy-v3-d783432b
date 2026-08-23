@@ -10,7 +10,9 @@ describe("LandingButton variants", () => {
     const { getByRole } = render(<LandingButton variant="pink">Go</LandingButton>);
     const btn = getByRole("button");
     expect(btn.className).toContain("bg-landing-pink");
-    expect(btn.className).toContain("text-white");
+    // Was "text-white" until 2026-08-23 - see the contrast test below for why it moved. The FILL
+    // is unchanged; only the label colour did.
+    expect(btn.className).toContain("text-landing-grape");
     expect(btn.className).toContain("shadow-landing-pink");
     expect(btn.className).toContain("hover:shadow-landing-pink-hover");
   });
@@ -91,6 +93,29 @@ describe("LandingButton forwarding", () => {
     );
     fireEvent.click(container.querySelector("a")!);
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("never labels a filled variant in white - both fills carry grape text", () => {
+    // White on landing-pink (#F43F7F) is 3.58:1, under the 4.5:1 this label needs (18px, so the
+    // 3.0:1 large-text allowance does not apply). Lighthouse failed the landing's accessibility
+    // score on it, and it is the primary CTA on the homepage. Grape on the same pink is 4.83:1 -
+    // which fixes it WITHOUT touching the brand colour, since the fill is byte-identical.
+    //
+    // Darkening the fill to landing-pink-ink (#C22760, 5.60:1 with white) was the alternative and
+    // was rejected: the page behind this button is dark video, and the bright pink is what makes
+    // the CTA pop off it. Do not "restore" white text here; re-measure first.
+    const { getByRole } = render(<LandingButton variant="pink">Get started</LandingButton>);
+    const pink = getByRole("button");
+    expect(pink.className).toContain("bg-landing-pink");
+    expect(pink.className).toContain("text-landing-grape");
+    expect(pink.className).not.toMatch(/\btext-white\b/);
+
+    cleanup();
+
+    const { getByRole: getMint } = render(<LandingButton variant="mint">Go</LandingButton>);
+    const mint = getMint("button");
+    expect(mint.className).toContain("text-landing-grape");
+    expect(mint.className).not.toMatch(/\btext-white\b/);
   });
 
   it("forwards className, type, and aria-label", () => {

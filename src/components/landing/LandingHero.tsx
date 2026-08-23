@@ -32,6 +32,29 @@ export function LandingHero() {
       >
         Get started
       </LandingButton>
+
+      {/* A returning user has no reason to read "Get started" — the header's Log in is small,
+          top-right and easy to miss on a page whose whole design pulls the eye to the centre.
+          Deliberately a link, not a second pill: the page's premise is ONE call to action, and a
+          co-equal mint button beside the pink one makes it two.
+          Underlined, not colour-only — colour is never the sole cue for an affordance, and over
+          moving footage it is the least reliable one.
+          `landing-mint-line` (#B8ECDA), NOT the slogan's `landing-mint-line-bright` (#7BE3C0).
+          This is SMALL text, so it needs 4.5:1 rather than the slogan's 3.0:1, and measured across
+          all sixteen encodes in this line's own band the bright mint reaches only 3.91 at p90
+          (abb-bread-pudding) while the pale one reaches 4.62. DESIGN_SYSTEM.md calls #B8ECDA "too
+          pale against skin/food tones on video" — true of a 60px headline word, and backwards
+          here: paler means more contrast against a bright frame, which is what small text needs.
+          The lead-in is white/90 (worst 5.27 p90). Re-measure if the reel library changes. */}
+      <p className="mt-6 text-base text-white/90">
+        Already have an account?{" "}
+        <a
+          href="/auth?mode=login"
+          className="font-semibold text-landing-mint-line underline underline-offset-4 decoration-landing-mint-line/50 transition-colors hover:decoration-landing-mint-line"
+        >
+          Log in
+        </a>
+      </p>
     </section>
   );
 }

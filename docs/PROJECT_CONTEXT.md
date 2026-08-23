@@ -110,8 +110,29 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   60% to keep the accent words above 3.0:1. Library 36 MB → 16 MB, iOS binary 54 MB → 39 MB.
   Verified on desktop, mobile (both orientations) and the iOS shell on simulator; Codex clean.
   `docs/DESIGN_SYSTEM.md` and `docs/runbooks/landing-video-backdrop-kit.md` updated to match.
-  **UNMERGED** — blocked on written permission from ABB and Uncle Rocco for their footage; merging
-  deploys. → `feat/landing-cinematic-single-cta` · #459
+  **MERGED 2026-08-23 (#459, `2c87ba99`) and live** — this line read "**UNMERGED** — blocked on
+  written permission from ABB and Uncle Rocco" until the founder confirmed permission.
+  **Adrian Vella's feedback on the shipped page then found a real bug I had refuted in writing.**
+  "The screen jumps if I scroll up or down" on mobile was live on **every page in the app**:
+  `body{height:100%;overflow-x:hidden}` computes `overflow-y` to `auto`, so **body** — not `<html>`,
+  not `<main>` — is the document's scroll container, and `AppShell`'s `h-screen` (`100vh` = the
+  URL-bar-**collapsed** height on iOS Safari) overhung it by ~60–90px; scrolling that gap collapsed
+  the bar, grew `100dvh`, and resized the page mid-gesture. This is the Codex finding on #459 that
+  I tested and talked the founder out of: the probe measured `main` (**not** the scroller) in an
+  emulator (**no URL bar, so `100vh === 100dvh` and the gap is structurally zero there**). Forced
+  control: body 833/753 → `scrollTop` 80, while html/#root/shell/main all read overflow 0 and
+  `window.scrollY` stays 0. **Durable rule: when a probe returns zero, prove it could have returned
+  non-zero.** Closed at `AppShell` with `DashboardLayout` tracking it (the regression I had cited as
+  the reason not to fix it — answered by fixing both, not neither), pinned by a text assertion since
+  jsdom has no layout engine. `DESIGN_SYSTEM.md`, the wiki index and §8's "paired refutation" all
+  asserted the false premise and are corrected in place. Shipped with it: an underlined "Log in"
+  under the CTA in the **pale** mint `#B8ECDA` (small text needs 4.5:1; the slogan's `#7BE3C0`
+  measures 3.91 at p90 there against 4.62 — *the "too pale for video" note is about headlines and
+  inverts for small text*), and a "Learn more" pill pointing at a **new `/how-it-works`**, built
+  because the rebuild had deleted the only page explaining the product. **Pending:** the iOS-Safari
+  half is unverifiable in any browser, emulator or simulator — it needs a real phone, and the
+  residual candidate if it persists is rubber-band overscroll (`overscroll-behavior-y`), left out
+  as an app-wide behavioural change. → `feat/landing-adrian-feedback` · #459
 - **Google Workspace corporate setup (Wave 1)** — the company's own Workspace: two shared drives,
   nine Google Groups replacing personal aliases, brand assets, and email signatures that install
   themselves. **MERGED (#453, `d83fcbe3`, 2026-08-21) and the admin half is largely DONE** — this

@@ -82,6 +82,29 @@ describe("LandingPage", () => {
     expect(footer.textContent).toContain("Hoboken, NJ");
 
     const hrefs = [...footer.querySelectorAll("a")].map((a) => a.getAttribute("href"));
-    expect(hrefs).toEqual(["/terms", "/privacy", "/help"]);
+    expect(hrefs).toEqual(["/how-it-works", "/terms", "/privacy", "/help"]);
+  });
+
+  it("offers a way to read about the product before signing up", async () => {
+    const { container } = await setup();
+
+    // The landing sells and asks for a signup; it cannot also explain the product on one screen.
+    // Deleting the old six-section marketing page left nobody a way to read first, which is what
+    // this points at. If /how-it-works is ever removed, this fails rather than shipping a 404 in
+    // the footer.
+    const footer = container.querySelector("footer")!;
+    const link = [...footer.querySelectorAll("a")].find(
+      (a) => a.getAttribute("href") === "/how-it-works",
+    );
+    expect(link).toBeDefined();
+
+    // The label must NAME the destination. It shipped as "Learn more" and failed Lighthouse's
+    // `link-text` audit as the single offending item on the page (SEO 0.92 against a 0.95 gate) —
+    // "learn more", "click here", "read more" are the canonical non-descriptive link texts, and
+    // they read to a screen reader, out of the link list, as links to nowhere in particular.
+    expect(link!.textContent?.trim()).toBe("How it works");
+    expect(link!.textContent?.trim().toLowerCase()).not.toMatch(
+      /^(learn more|click here|read more|more|here|start)$/,
+    );
   });
 });

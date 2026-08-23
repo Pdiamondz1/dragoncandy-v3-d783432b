@@ -1,5 +1,34 @@
 # Wiki Log
 
+## [2026-08-23] ingest | Three notes from a real phone, and the scroller I measured twice without finding
+
+Ingested `raw/sessions/2026-08-23-adrian-feedback-body-scroller-and-how-it-works.md`.
+**Updated** [[Mobile Viewport & Fixed Positioning]] (new §9 — `body` is the document's scroll
+container; `AppShell` must be `h-[100dvh]`), [[Landing Cinematic Single-CTA Redesign]] (the two
+secondary CTAs and the size-dependent mint), `index.md` (five entries corrected, one added).
+
+**CI then found two more, one of them site-wide.** The Lighthouse gate failed at SEO 0.92: the
+footer pill said "Learn more", which Lighthouse's `link-text` audit rejects outright. Renamed to
+"How it works". Auditing the NEW page — which the gate does not cover — found **two conflicting
+canonical tags on every page of the site**: `index.html` hardcoded one pointing at `/landing` and
+Helmet appends rather than replaces, so the correct per-route value was discarded site-wide.
+`/landing` passed only because it is the one page where the static value is right. **Updated**
+[[Domain Migration .io → .com]], whose claim that `SITE_URL` drives *every* canonical was false.
+
+**Contradictions resolved, not silently overwritten.** Three claims this wiki asserted are now
+recorded as false with the correction beside them:
+1. "The app document never scrolls (h-screen shell + inner overflow-auto main), so iOS Safari
+   toolbars never collapse" — in `DESIGN_SYSTEM.md` and the index. The shell being `h-screen` is
+   exactly what made the document scroll.
+2. The §8 "paired refutation" that the `100vh`/`100dvh` mismatch produces no scroll on mobile
+   Safari. It does; the probe measured `main` (not the scroller) in an emulator (no URL bar, so
+   `100vh === 100dvh`).
+3. That the one-word shell fix would regress every short dashboard page. Real, but fixed by moving
+   `DashboardLayout` too — not a reason to leave the shell broken.
+
+Also corrected as stale: the landing branch described as **UNMERGED** (merged 2026-08-23 as #459),
+and "ten reels / twenty encodes" (eight and sixteen since the caption re-cut).
+
 ## [2026-08-23] ingest | The white band, the one iOS was hiding, and five reels talking over the slogan
 
 Ingested `raw/sessions/2026-08-23-landing-footer-ios-inset-and-reel-recut.md`.

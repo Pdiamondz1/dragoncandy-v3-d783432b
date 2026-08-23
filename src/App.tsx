@@ -103,6 +103,7 @@ const HelpBriefPage = lazy(() => import("./pages/help/promotions/HelpBriefPage")
 const HelpCenter = lazy(() => import("./pages/help/HelpCenter"));
 const HelpArticlePage = lazy(() => import("./pages/help/HelpArticlePage"));
 const PricingPage = lazy(() => import("./pages/PricingPage"));
+const HowItWorks = lazy(() => import("./pages/HowItWorks"));
 const PrivacyPolicy = lazy(() => import("./pages/legal/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("./pages/legal/TermsOfService"));
 const ContentCalendar = lazy(() => import("./pages/ContentCalendar"));
@@ -191,16 +192,21 @@ function AnimatedRoutes() {
     return <Navigate to="/internal" replace />;
   }
 
+  // The fallback is min-h-[100dvh], not min-h-screen: it renders INSIDE `main` (100dvh), so a
+  // 100vh child hands `main` up to ~80px of dead scroll on iOS Safari while a route chunk loads —
+  // and scrolling that collapses the URL bar, which resizes the page. Milder than the body-level
+  // cases in AppLayout (it cannot scroll body), but the same defect one container down. Caught by
+  // Codex on the PR that fixed the shell.
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Spinner /></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-[100dvh]"><Spinner /></div>}>
       <PageTransition locationKey={location.pathname}>
         <Routes location={location}>
           {/* Landing is lazy (kept out of the initial bundle); its fallback is dark
               (bg-landing-grape) so it stays seamless with the dark cinematic landing page —
               never a white flash. */}
-          <Route path="/" element={<Suspense fallback={<div className="min-h-screen bg-landing-grape" />}><LandingPage /></Suspense>} />
-          <Route path="/home" element={<Suspense fallback={<div className="min-h-screen bg-landing-grape" />}><LandingPage /></Suspense>} />
-          <Route path="/landing" element={<Suspense fallback={<div className="min-h-screen bg-landing-grape" />}><LandingPage /></Suspense>} />
+          <Route path="/" element={<Suspense fallback={<div className="min-h-[100dvh] bg-landing-grape" />}><LandingPage /></Suspense>} />
+          <Route path="/home" element={<Suspense fallback={<div className="min-h-[100dvh] bg-landing-grape" />}><LandingPage /></Suspense>} />
+          <Route path="/landing" element={<Suspense fallback={<div className="min-h-[100dvh] bg-landing-grape" />}><LandingPage /></Suspense>} />
           {/* Internal host gets the founders-only login (no signup surface) */}
           <Route path="/auth" element={isInternalHost() ? <InternalAuth /> : <AuthPage />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
@@ -215,6 +221,7 @@ function AnimatedRoutes() {
           <Route path="/help" element={<HelpCenter />} />
           <Route path="/help/:slug" element={<HelpArticlePage />} />
           <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
 
@@ -416,6 +423,18 @@ function hasSessionHint(): boolean {
   }
 }
 
+// Only the LANDING routes. Every other public page — /pricing, /terms, /privacy, /help and
+// /how-it-works — deliberately renders through the authenticated shell, and has always done so.
+//
+// A review flagged /how-it-works's absence here as a defect, predicting authenticated chrome on a
+// marketing page and a shrunken desktop layout. Neither reproduces, measured logged-out at 1440px:
+// `main` is 1440 of the shell's 1440 (DonnyDesktopPanel is a `fixed` overlay since PR #236, so it
+// cannot take flex width — DESIGN_SYSTEM.md §4), and the shell's only children are the skip link
+// and <main> (the panel and HelpBriefDrawer both render null with no session).
+//
+// It is also the wrong shape of fix: adding one sibling and not the other four would make the set
+// mean neither "landing" nor "public". For a SIGNED-IN visitor the current behaviour is the
+// intended one — they keep their app chrome while reading /help or /pricing.
 const PUBLIC_PATHS = new Set(['/', '/home', '/landing']);
 
 function AuthenticatedShell({ children }: { children: React.ReactNode }) {
@@ -436,7 +455,17 @@ function AppShell() {
   const showDonny = !PUBLIC_PATHS.has(pathname) && !pathname.startsWith('/internal');
 
   return (
-    <div className="flex h-screen">
+    // h-[100dvh], NOT h-screen (100vh). `body` is height:100% with overflow-x:hidden, which
+    // computes overflow-y to `auto` — so BODY is this document's scroll container, not <html>
+    // and not <main>. On iOS Safari 100vh is the URL-bar-COLLAPSED height, so an h-screen shell
+    // stands ~60-90px taller than body's box and body scrolls by exactly that much. Scrolling it
+    // collapses the URL bar, which grows 100dvh, which resizes the page under the user's finger:
+    // the "screen jumps when I scroll" report of 2026-08-23. Measured, with the shell forced 80px
+    // over: body.scrollHeight 833 vs clientHeight 753, body.scrollTop moves to 80, while html,
+    // #root, this div and main ALL report overflow 0 and refuse to scroll. Probe the right
+    // element — window.scrollY stays 0 throughout and reads as "no scrolling".
+    // Invisible in every emulator: with no collapsing URL bar, 100vh === 100dvh and the gap is 0.
+    <div className="flex h-[100dvh]">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-black focus:underline">Skip to main content</a>
       <main id="main-content" className="flex-1 overflow-auto">
         <UpdateBanner />
@@ -461,7 +490,9 @@ function AppLayout() {
     return (
       <Suspense
         fallback={
-          <div className="flex min-h-screen items-center justify-center bg-dc-dark">
+          // min-h-[100dvh]: /pitch bypasses AppShell, so this is a direct child of the chain to
+          // <body> (height:100%) and 100vh here overflows the DOCUMENT, not just `main`.
+          <div className="flex min-h-[100dvh] items-center justify-center bg-dc-dark">
             <Spinner className="h-10 w-10 border-teal-400" />
           </div>
         }
@@ -473,7 +504,11 @@ function AppLayout() {
 
   if (loading && isPublic && hasSessionHint()) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center">
+      // min-h-[100dvh] — the worst of the three. This also bypasses AppShell, AND it renders on
+      // PUBLIC paths (the landing) while auth resolves for a returning visitor, which is exactly
+      // the scenario the "screen jumps" report came from. At 100vh it overflowed <body> during
+      // every warm load of the landing page.
+      <div className="min-h-[100dvh] bg-white flex flex-col items-center justify-center">
         <img src="/logo.webp" alt="DragonCandy" className="h-16 w-auto mb-6" />
         <Spinner className="h-10 w-10 border-teal-400" />
       </div>

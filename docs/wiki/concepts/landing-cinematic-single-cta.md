@@ -3,25 +3,97 @@ title: Landing Cinematic Single-CTA Redesign
 type: concept
 created: 2026-08-22
 updated: 2026-08-23
-sources: [2026-08-22-landing-cinematic-single-cta.md, 2026-08-23-landing-footer-ios-inset-and-reel-recut.md]
+sources: [2026-08-22-landing-cinematic-single-cta.md, 2026-08-23-landing-footer-ios-inset-and-reel-recut.md, 2026-08-23-adrian-feedback-body-scroller-and-how-it-works.md]
 tags: [landing, frontend, video, design, tailwind]
 ---
 # Landing Cinematic Single-CTA Redesign
 
-> **UNMERGED (`feat/landing-cinematic-single-cta`), blocked on written permission from ABB and
-> Uncle Rocco for their footage.** The build is finished; go-live is not. dragoncandy.io still
-> serves [[Landing "Human-driven. AI-assisted." Redesign]] (PR #293) until this merges. Nothing on
-> this page describes the live site.
+> **MERGED 2026-08-23 as #459 (`2c87ba99`) and LIVE.** This banner read "**UNMERGED**, blocked on
+> written permission from ABB and Uncle Rocco for their footage... Nothing on this page describes
+> the live site" until the founder confirmed permission and it shipped. It is now the live
+> dragoncandy.com landing, and [[Landing "Human-driven. AI-assisted." Redesign]] (PR #293) is the
+> page that no longer describes anything live.
 
 The 2026-08-22 rebuild of the public landing (`src/pages/LandingPage.tsx` +
-`src/components/landing/*`) into **one screen**: a fixed logo header, a full-bleed video hero (ten
-real restaurant reels rotating behind an eyebrow, a slogan, and a single "Get started" CTA), and a
-transparent footer the footage runs behind. **Supersedes** [[Landing "Human-driven. AI-assisted." Redesign]] as the design this
+`src/components/landing/*`) into **one screen**: a fixed logo header, a full-bleed video hero
+(**eight** real restaurant reels — it shipped as ten, and the caption re-cut dropped two — rotating
+behind an eyebrow, a slogan, and a single "Get started" CTA), and a transparent footer the footage
+runs behind. **Supersedes** [[Landing "Human-driven. AI-assisted." Redesign]] as the design this
 branch will ship once merged — that page's light, two-door, six-section landing and its contact
 form are deleted outright (~20 files), not hidden. It also **revives** the video-backdrop machinery
 [[Landing Cinematic Video Redesign]] built and PR #293 had demoted to an opt-in flag: that flag
 (`LANDING_VIDEO_BACKDROP_ENABLED`) is gone, and the video *is* the page again — see Known Issues on
 that page for why "opt-in" and "deleted" are different postures, not the same idea revisited.
+
+## One CTA, and the two secondary ways out (2026-08-23, from Adrian Vella's feedback)
+
+The single-CTA premise survived contact with its first real critique, but it needed two additions
+and neither is a fill — a second filled button would make the page two calls to action.
+
+**"Already have an account? Log in"**, a plain underlined link directly under the pill. The note
+that prompted it was *"as if you are already registered it becomes very relevant"*, and it is
+correct: the header's Log in is small, top-right, and easy to miss on a page whose entire
+composition pulls the eye to the centre. Underlined rather than colour-only — colour is never an
+affordance by itself, and over moving footage it is the least reliable cue there is.
+
+**The mint here is not the slogan's mint, and that is the durable point.**
+`landing-mint-line-bright` (`#7BE3C0`) was chosen for text over video — but chosen for *large*
+text at a 3.0:1 bar. This link is small text at 4.5:1. Measured across all sixteen encodes in the
+link's own band (**0.603–0.635 of viewport**, read off the rendered page; scrim interpolates to
+**0.672** there):
+
+| colour | worst mean | worst p90 | clears 4.5:1? |
+|---|---|---|---|
+| white/90 (lead-in) | 7.26 | 5.27 | yes |
+| `#7BE3C0` | 5.49 | **3.91** | **no** |
+| `#B8ECDA` | 6.49 | **4.62** | yes |
+
+So it uses `landing-mint-line` (`#B8ECDA`) — the token the design system calls "too pale against
+skin/food tones on video". **That judgement is about headlines and inverts for small text**: paler
+means more contrast against a bright frame. Both notes are now in `DESIGN_SYSTEM.md` so neither
+gets "corrected" into the other. Same apparatus as the scrim sweep — brightest frame, mean and p90,
+never the single brightest pixel.
+
+**"How it works"**, a bordered pill in the footer beside the legal links. **It shipped as "Learn
+more" and had to be renamed**: Lighthouse's `link-text` audit fails that string outright — it is
+the canonical non-descriptive link text — which took the landing's SEO score to **0.92** against
+the CI gate's **0.95**, on that one item. Name the destination rather than masking it with an
+`aria-label`. The hard part was not the
+button but the destination: this redesign **deleted** the six-section marketing page, so someone
+who wanted to read before signing up had nowhere to go — `/pricing` answers what it costs, `/help`
+is written as post-signup support. Rather than point at the nearest wrong thing, it points at a new
+**`/how-it-works`**: how a campaign runs, who it is for, and what Donny does and does not do. Light,
+on `PublicPageHeader`, the same shell as `/terms` and `/pricing`; the landing stays the one dark
+public surface, and the register change is the same accepted seam as the signup screen.
+
+**Auditing the new page found a defect on every page of the site.** The Lighthouse gate covers only
+`/landing`. Run against `/how-it-works`, it returned 0.92 there too on a different item: **two
+conflicting `<link rel="canonical">` tags**. `index.html` carried a hardcoded canonical pointing at
+`/landing` and a hardcoded `og:url` of the bare origin; `SEO.tsx` emits the correct per-route
+values, but Helmet **appends** rather than replacing a static tag it did not create. So every page
+except `/landing` served two canonicals that disagreed — and conflicting canonicals are discarded,
+not resolved. `/landing` passed only because it is the one page where the static value is right.
+Both removed; `/how-it-works` now scores **100 accessibility / 100 best practices / 100 SEO** and
+the landing keeps SEO 1.00. See [[Domain Migration .io → .com]], whose claim that `SITE_URL` drives
+*every* canonical is corrected there. **A gate that tests one URL is evidence about one URL.**
+
+Also fixed on the new page: `dc-pink-accent` (`#EC4899`) as text on white is **3.52:1** against the
+4.5:1 small-text bar (four instances) → `dc-pink-accent-btn` (`#DB2777`, **4.60:1**).
+
+**And the "Get started" pill's own contrast, closed on the founder's call.** White on
+`landing-pink` (`#F43F7F`) was **3.58:1** at 18px — the reason Lighthouse had scored the landing 96
+on accessibility since before the rebuild. Fixed by putting the label in `landing-grape`
+(**4.83:1**) rather than darkening the fill to `landing-pink-ink` (`#C22760`, 5.60:1 with white):
+the brand colour stays **byte-identical**, and the bright pink is what makes the CTA pop off dark
+video — `#C22760` recedes into the scrim. It also matches the `mint` variant, grape-on-fill since
+it was written (8.01:1), so the component loses an exception rather than gaining one. Landing now
+**100 accessibility / 100 best practices / 100 SEO**, from 96 / 100 / 92.
+
+**A third note in the same message was a real bug, on every page rather than this one** — "the
+screen jumps if I scroll up or down" on mobile. `AppShell` was `h-screen`, `body` is the document's
+scroll container, and `100vh` overhangs it on iOS Safari. See
+[[Mobile Viewport & Fixed Positioning]] §9, including why the review finding that predicted it was
+wrongly refuted.
 
 ## Key Decisions
 
