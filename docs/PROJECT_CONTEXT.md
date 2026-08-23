@@ -153,7 +153,13 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   A latent bug found in review and closed the same day (#461): the regression warning was scoped
   to the **domain**, not the user, so it would have gone quiet exactly as the feature grew —
   five Codex rounds, seven defects, all of them scoping errors rather than wrong calculations.
-  **Pending (2026-08-23):** shared identities exist on **no account but `dame@`**; **Outlook for
+  The delivery gap is closed too (#463): a run with a finding now **emails** `ALERT_EMAIL`, since
+  three rounds of improving what the warning said never made anyone read it.
+  **Pending (2026-08-23):** set `ALERT_EMAIL` and re-consent to the new mail scope (adding it
+  invalidates the old grant, so the nightly trigger fails until the owner runs the function once
+  by hand); **`01 · Product` stays empty** — the candidate docs call Dame a "solo technical
+  founder" and name neither Joe nor Juwan, so they cannot be published to a drive the co-founders
+  read; shared identities exist on **no account but `dame@`**; **Outlook for
   Windows is untested and now untestable** (no access) — treat the rendering matrix as four-of-five;
   and Waves 2–3 (the People document set, and a *sendable* pitch deck — the current one is a React
   component). Workspace plan confirmed Business Standard, so shared drives were never at risk.

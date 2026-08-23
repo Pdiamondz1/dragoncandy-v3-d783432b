@@ -32,6 +32,31 @@ re-brightened the library, dropping the pink and mint accents to 1.88:1 / 1.90:1
 Two of my own predictions corrected in the runbook: CRF moved only −31% (cutting runtime did more),
 and `du -sh` over-states this directory by 5 MB because it counts allocated blocks.
 
+## [2026-08-23] ingest | Improving what an alarm says is not the same as making it audible
+
+Ingested `raw/sessions/2026-08-23-signature-run-alert.md`.
+**Updated** [[Workspace Email Signatures]] — the "a warning is not a gate" known issue, which had
+been recorded three times without being closed.
+
+Three rounds were spent on the wording and the scoping of a warning **nobody was receiving**. The
+delivery question turns out to be separate from the correctness question and is not solved by
+solving the other one. A run with a finding now emails `ALERT_EMAIL`.
+
+The design note worth carrying: **an alert that fires on everything fires on nothing.** Silence on
+a clean run is the feature, which is precisely why the "not clean" condition has to be exact — and
+Codex found two causes it initially missed, so the condition was replaced with the per-user run
+status itself rather than a list of causes.
+
+And a testing note: mutating the inline collection predicate went undetected by all 79 tests,
+because everything touching that path tested the consumer directly. **A predicate too trivial to
+test is worth testing anyway when it gates who gets told.**
+
+Also recorded, as a finding rather than a change: **the product docs cannot go into the shared
+drive as they stand.** They are stale, which a banner fixes — but `product-vision.md` calls Dame a
+"solo technical founder" and neither doc names Joe or Juwan, who have or will have access. *Stale
+is a different problem from wrong-about-people:* old numbers can be dated and published, a
+document that erases your co-founders cannot.
+
 ## [2026-08-23] ingest | Seven scoping errors in one warning, and not one wrong calculation
 
 Ingested `raw/sessions/2026-08-23-per-user-shared-signature-warning.md`.
