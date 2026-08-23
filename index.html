@@ -3,7 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <link rel="manifest" href="/manifest.json" />
+    <!-- crossorigin="use-credentials" because the site sits behind an HTTP Basic
+         password at the edge. A manifest link with no crossorigin attribute is
+         fetched with credentials mode "omit", so the browser withholds the Basic
+         credentials it already has and the request comes back 401 — losing PWA
+         install and theme-color, and printing a console error on every page load.
+         Same-origin fonts and icons are unaffected: a bare crossorigin means
+         credentials mode "same-origin", which does send them. -->
+    <link rel="manifest" href="/manifest.json" crossorigin="use-credentials" />
     <meta name="theme-color" content="#4DD9C0" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
