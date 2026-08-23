@@ -134,11 +134,15 @@ from the real files, so a baseline drifting away from `queries.json` or `labels.
 time instead of turning every scheduled run into a silent NOT COMPARABLE. Tests 2,621 → **2,642**;
 typecheck and build clean. Codex clean at round 2.
 
-**Open at hand-off:** the scheduled run has **never fired**, and while the delivery path is proven
-for real, a *regression* finding has never been filed by the runner rather than by hand. The
-`rag-eval` GitHub Environment exists; `RAG_EVAL_SUPABASE_SECRET_KEY` has to be set in it by the
-account holder, since entering a credential is not something Claude does. Until it is, the run
-fails loudly at boot rather than reporting on nothing. And `donny-chat/index.ts` is on `.typecheck-ignore` with no local Deno, so its change
+**Open at hand-off — and corrected the same day, because the secret clause went stale within
+minutes of the merge.** `RAG_EVAL_SUPABASE_SECRET_KEY` **is** set in the `rag-eval` Environment, by
+the account holder, since entering a credential is not something Claude does. The first dispatched
+run then read prod, returned all four guards `ok`, filed its finding
+(`{"inserted":0,"updated":1}` — the `updated` is the fingerprint deduplicating against the two
+hand-run filings) and exited 0. So "until it is, the run fails loudly at boot" never described a
+state anyone observed. What is genuinely still open: the **scheduled** trigger has never fired
+(first: 1 Sept, 07:00 UTC), and a *regression* finding has never been filed by the runner rather
+than by hand. And `donny-chat/index.ts` is on `.typecheck-ignore` with no local Deno, so its change
 (a module-level `const` and an identifier swap) is reviewed rather than compiled.
 
 → `docs/wiki/concepts/rag-retrieval-evaluation.md` · `feat/rag-eval-automation`
