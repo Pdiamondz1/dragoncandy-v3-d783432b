@@ -450,21 +450,44 @@ dashboard and rollback is a revert.
 
 ---
 
-## 12. Open questions — must be answered against production before planning
+## 12. Open questions — ANSWERED against production 2026-08-23
 
-None of these can be settled from the repository.
+All four were run against the live `DragonCandy_v3` project (`zocahiffooqdybdhguqv`)
+via `supabase db query --linked`. Results below; none is now open.
 
-1. **Does `READINESS_GATE_ENABLED` exist in `feature_flags` at all?** No
-   migration seeds it. If absent, the gate has never run in production, and
-   every claim about its live behavior is unproven.
-2. **Is `stripe_onboarding_complete` genuinely kept current by the webhook?**
-   `PROJECT_CONTEXT` records that it already has two disagreeing readers. The
-   cheap checklist read in §5.2 depends on it.
-3. **Does every existing business account have an org row?** §10's edge case
-   assumes the backfill was complete; assumption is not verification.
-4. **Is the local test run trustworthy?** `PROJECT_CONTEXT` notes Node 26 shadows
-   jsdom's `localStorage` and breaks 50 tests that CI passes. Until `.nvmrc`
-   pins Node 24, a local green run cannot be honestly claimed.
+1. **Does `READINESS_GATE_ENABLED` exist in `feature_flags`?** **No — zero rows.**
+   Confirmed: the gate has **never run in production**. `useFeatureFlag` returns
+   `false` on a missing row, so every existing `ReadinessGate` call site has been
+   rendering its children unconditionally since it shipped. This makes §6.3's
+   refactor safe by construction — there is no live blocking behavior to regress —
+   and it means the two creator gate call sites have never actually gated anything.
+
+2. **Is `stripe_onboarding_complete` internally consistent?** **Yes —
+   `impossible_rows = 0` on both tables.** No row is marked complete without a
+   `stripe_account_id`. Business: 20 rows, 4 with an account, 2 complete. Creator:
+   16 rows, 4 with an account, 3 complete. The cheap mirrored read in §5.2 is
+   therefore trustworthy for the checklist. Note this proves *internal consistency*,
+   not *webhook freshness* — a row could still lag a Stripe-side change by the
+   webhook delay, which is exactly why the gate keeps the live read.
+
+3. **Does every existing business account have an org row?** **Yes — zero
+   `business_profiles` rows whose `profiles.org_id` is null.** The `20260428100000`
+   backfill is complete. `deriveAddress`'s zero-org `unknown` branch (§10) is
+   therefore defensive rather than load-bearing — it will not fire for any account
+   that exists today, but it still guards the case where a future insert path
+   bypasses `trg_auto_create_org`.
+
+4. **Is the local test run trustworthy?** **It was not, and it now is.** Node 26.7.0
+   was in use and the documented breakage reproduced exactly: 50 failed / 2479 passed
+   across `DonnyHome.test.tsx` (37), `useInactivityTimeout.test.ts` (8) and
+   `pendingBrief.test.ts` (5). Root cause is narrower than "Node 26" — Node 24+ ships
+   a built-in `localStorage` that is `undefined` without `--localstorage-file`, and it
+   **shadows the Storage jsdom provides**. Fixed in a standalone commit
+   (`vitest.setup.ts` + `setupFiles`): the suite is now **250 files / 2550 tests, zero
+   failures**. CI runs Node 24 and passed throughout, so this only ever hurt local
+   runs — which is why it mattered here: it made `DonnyHome.test.tsx` unusable as a
+   verification surface for §6.2's work. The `.nvmrc` pin noted in `PROJECT_CONTEXT`
+   remains open and is a separate concern.
 
 ---
 
