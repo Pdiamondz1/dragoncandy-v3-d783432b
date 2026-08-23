@@ -38,18 +38,11 @@ const BrandDashboard = () => {
   const { data: org } = useOrg();
   const { data: dsBoosts } = useOrgBoostStats(org?.id);
   const { showTour, tourSteps, completeTour, skipTour, triggerTour } = useTour();
-  const { missions, isFirstRun, completeMission, skipMissions } = useFirstRunMissions();
+  const { isFirstRun, skipMissions } = useFirstRunMissions();
   useDashboardLoadTime(!statsLoading && !!stats);
 
-  if (isFirstRun && missions) {
-    return (
-      <FirstRunDashboard
-        role="brand"
-        missions={missions}
-        onCompleteMission={completeMission}
-        onSkip={skipMissions}
-      />
-    );
+  if (isFirstRun) {
+    return <FirstRunDashboard role="brand" onSkip={skipMissions} />;
   }
 
   if (statsError) {

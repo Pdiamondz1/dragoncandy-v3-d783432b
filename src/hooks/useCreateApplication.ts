@@ -3,13 +3,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 import { recordCrewActivity } from '@/lib/crews/recordCrewActivity';
 
 export const useCreateApplication = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { completeMission } = useFirstRunMissions();
 
   return useMutation({
     mutationFn: async ({
@@ -128,7 +126,6 @@ export const useCreateApplication = () => {
       queryClient.invalidateQueries({ queryKey: ['campaign-applications'] });
       queryClient.invalidateQueries({ queryKey: ['creator-applications'] });
       queryClient.invalidateQueries({ queryKey: ['creator-application-status'] });
-      completeMission('apply_campaign');
 
       const isOffer = data.status === 'counter_offered';
       toast({

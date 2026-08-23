@@ -43,6 +43,7 @@ import { useLocationReadiness } from '@/hooks/useLocationReadiness';
 import { LocationBadge } from '@/components/org/LocationBadge';
 import { RatingPromptManager } from '@/components/reviews/RatingPromptManager';
 import { SponsorshipRatingPromptManager } from '@/components/reviews/SponsorshipRatingPromptManager';
+import { AccountChecklistRows } from '@/components/account/AccountChecklistRows';
 import { DonnyHomeShell } from './DonnyHomeShell';
 import { DonnyHomeProposals } from './DonnyHomeProposals';
 import { BUSINESS_SUGGESTIONS } from '@/lib/donny/donnyHomeSuggestions';
@@ -146,6 +147,7 @@ export function DonnyHome() {
         {/* Kept from the replaced body: these have no other home for this role. */}
         <RatingPromptManager variant="row" />
         <SponsorshipRatingPromptManager variant="row" />
+        <AccountChecklistRows role="business_client" />
       </DonnyHomeProposals>
     </DonnyHomeShell>
   );

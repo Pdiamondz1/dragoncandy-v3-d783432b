@@ -19,6 +19,7 @@ import { useCreatorContentTodo } from '@/hooks/useCreatorContentTodo';
 import { useCreatorPendingApplications } from '@/hooks/useCreatorPendingApplications';
 import { useCreatorPayoutState } from '@/hooks/useCreatorPayoutState';
 import { RatingPromptManager } from '@/components/reviews/RatingPromptManager';
+import { AccountChecklistRows } from '@/components/account/AccountChecklistRows';
 import { DonnyHomeShell } from './DonnyHomeShell';
 import { DonnyHomeProposals } from './DonnyHomeProposals';
 import { CREATOR_SUGGESTIONS } from '@/lib/donny/donnyHomeSuggestions';
@@ -102,6 +103,7 @@ export function CreatorDonnyHome() {
           onTap={handleProposalTap}
         >
           <RatingPromptManager variant="row" />
+          <AccountChecklistRows role="content_creator" />
         </DonnyHomeProposals>
       </div>
     </DonnyHomeShell>

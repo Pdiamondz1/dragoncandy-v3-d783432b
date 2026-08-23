@@ -229,7 +229,7 @@ export const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = (
               </div>
             </div>
             <div className="flex gap-2">
-              <ReadinessGate role="creator" require={{ stripe: true }} mode="hard">
+              <ReadinessGate role="creator" action="accept_offer" mode="hard">
                 <Button size="sm" className="flex-1" onClick={handleAcceptOffer} disabled={respondToOffer.isPending}>
                   <Check className="h-4 w-4 mr-1" /> Accept
                 </Button>
