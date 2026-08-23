@@ -52,6 +52,9 @@ export default defineConfig(({ mode }) => ({
   test: {
     globals: true,
     environment: 'node',
+    // Node 24+ ships a built-in `localStorage` that is undefined without
+    // --localstorage-file, and it shadows the one jsdom provides. See vitest.setup.ts.
+    setupFiles: ['./vitest.setup.ts'],
     // Playwright e2e specs live in tests/e2e and run via playwright.config.ts.
     // supabase/ holds Deno edge functions: their Deno-style tests (https:// std
     // imports) can't run under Vitest, so exclude those by path. But pure,
