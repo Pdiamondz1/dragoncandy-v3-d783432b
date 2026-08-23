@@ -37,7 +37,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { chunkDocument, chunkSourceId } from "../_shared/chunk-doc.ts";
+import { chunkDocument, chunkSourceId, embedGroups } from "../_shared/chunk-doc.ts";
 import { logEmbeddingCost } from "../_shared/cost-ledger.ts";
 import { isAuthorizedIngest } from "../_shared/ingest-auth.ts";
 import { sha256Hex } from "./hash.ts";
@@ -120,17 +120,25 @@ serve(async (req) => {
     return chunks.map((content, index) => ({ page, index, total: chunks.length, content }));
   });
 
+  //    The embedding call is SPLIT BY TOTAL SIZE, not sent as one array. The per-input limit
+  //    is 8,192 tokens — which chunking already keeps us far below — but the endpoint also
+  //    caps the TOTAL tokens across the `input` array, and chunking is what makes that reachable:
+  //    long documents used to arrive pre-truncated at 24k, and now arrive whole. One request
+  //    over the aggregate limit fails ALL of it, which is precisely how a single 33 KB page
+  //    stopped 41 unrelated pages reaching the RAG on 2026-07-26.
   const embeddings: number[][] = [];
-  if (chunkPlan.length > 0) {
+  for (const group of embedGroups(chunkPlan.map((c) => c.content))) {
     const embedResp = await fetch("https://api.openai.com/v1/embeddings", {
       method: "POST",
       headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: EMBED_MODEL, input: chunkPlan.map((c) => c.content) }),
+      body: JSON.stringify({ model: EMBED_MODEL, input: group }),
     });
     if (!embedResp.ok) {
       return json({ error: "Embedding API failed", details: await embedResp.text() }, 502);
     }
     const embedData = await embedResp.json();
+    // Order within a group is preserved by the API, and the groups are consumed in order, so
+    // `embeddings[i]` stays aligned with `chunkPlan[i]`.
     embeddings.push(...embedData.data.map((d: { embedding: number[] }) => d.embedding));
   }
   const chunksByPage = new Map<WikiPage, { index: number; total: number; content: string; embedding: number[] }[]>();

@@ -162,3 +162,30 @@ export function chunkDocument(text: string, label: string, target = TARGET_CHARS
 export function chunkSourceId(baseSourceId: string, index: number): string {
   return index === 0 ? baseSourceId : `${baseSourceId}#${index}`;
 }
+
+// Max characters sent in ONE embeddings request, across the whole `input` array. ~4 chars per
+// token puts this near 100k tokens, comfortably inside the endpoint's ~300k aggregate cap, and
+// the margin is deliberate: the char:token ratio moves with how much code, table pipe and
+// symbol a document carries (the same reason sync-wiki-to-donny.mjs calibrated its old limit
+// empirically rather than theoretically). Extra requests cost a round trip; one request over
+// the cap costs every document in the batch.
+const EMBED_REQUEST_CHARS = 400_000;
+
+/** Split inputs into request-sized groups, order preserved. A single oversize input still
+ *  gets its own group — chunking keeps that unreachable, but silently dropping it would not. */
+export function embedGroups(inputs: string[]): string[][] {
+  const groups: string[][] = [];
+  let group: string[] = [];
+  let size = 0;
+  for (const input of inputs) {
+    if (group.length > 0 && size + input.length > EMBED_REQUEST_CHARS) {
+      groups.push(group);
+      group = [];
+      size = 0;
+    }
+    group.push(input);
+    size += input.length;
+  }
+  if (group.length > 0) groups.push(group);
+  return groups;
+}
