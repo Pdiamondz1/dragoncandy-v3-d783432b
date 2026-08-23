@@ -70,12 +70,15 @@ function installAllSignatures() {
   // have no counts for them), but a user getting NO signature is at least as
   // alarming as a degraded one, so the alert has to know about them.
   var failedUsers = [];
-  // Users where SOME identity write failed for a reason that is not the
-  // missing scope. Per-identity isolation (added so one bad identity cannot
-  // cost a user their other signatures) has a side effect: a failure on the
-  // PRIMARY identity no longer throws, so without this it would reach only the
-  // log. Alerting on shared regressions alone would miss a user whose own
-  // signature silently stopped updating. (Codex P1, 2026-08-23.)
+  // Every user whose run was not a clean 'ok'.
+  //
+  // Keyed off the SAME status the Sheet records, deliberately, rather than
+  // enumerating causes. Two rounds of review were spent adding a category at a
+  // time -- primary-identity write failures, then scope denials on a
+  // non-company address -- and each new cause was another silent hole. "Not ok"
+  // is the condition that actually matches the claim the alert makes, and it
+  // cannot fall behind the status logic because it IS the status logic.
+  // (Codex, 2026-08-23.)
   var partialUsers = [];
   // Read before the loop: the Sheet's written/expected column uses the same
   // expectation as the warning, and both must survive an identity being
@@ -101,21 +104,20 @@ function installAllSignatures() {
       perUser.push(record);
       var sharedExpected = sharedExpectation_(record, baseline);
 
-      // PARTIAL is deliberately distinct from both ok and ERROR. A run where
-      // every writable identity was written but some were refused is neither
-      // a clean pass nor a failure, and collapsing it into either one is how
-      // a standing permissions gap becomes invisible.
-      var status = counts.failures.length ? 'PARTIAL' : counts.denied ? 'PARTIAL' : 'ok';
+      var status = runStatus_(counts);
       var detail = counts.total + ' identities';
       if (counts.denied) {
         detail += ', ' + counts.denied + ' denied (needs gmail.settings.sharing)';
       }
       if (counts.failures.length) {
-        partialUsers.push({ email: user.primaryEmail, failures: counts.failures });
         detail += ', ' + counts.failures.length + ' failed: ' + counts.failures.join('; ');
         console.error(
           'installForUser_ partial for ' + user.primaryEmail + ': ' + counts.failures.join('; '),
         );
+      }
+
+      if (status !== 'ok') {
+        partialUsers.push({ email: user.primaryEmail, detail: detail });
       }
 
       results.push([
@@ -399,6 +401,28 @@ function installForUser_(user) {
  * @return {Array<string>} "user@ (written/seen)" for each degraded user
  */
 /**
+ * 'ok' or 'PARTIAL' for one user's counts. ('ERROR' is the caller's, for a run
+ * that threw before producing counts at all.)
+ *
+ * PARTIAL is deliberately distinct from both. A run where every writable
+ * identity was written but some were refused is neither a clean pass nor a
+ * failure, and collapsing it into either is how a standing permissions gap
+ * becomes invisible.
+ *
+ * Extracted so it can be tested. It looks trivial enough not to need it, and
+ * that is exactly why: this one predicate decides both the Sheet's status
+ * column AND whether the user reaches the alert, so a cause it fails to treat
+ * as non-clean is a cause nobody is told about. A mutation of the inline
+ * version went undetected by the whole suite, because the only tests that
+ * touched this path fed runAlert_ directly.
+ */
+function runStatus_(counts) {
+  if (counts.failures && counts.failures.length) return 'PARTIAL';
+  if (counts.denied) return 'PARTIAL';
+  return 'ok';
+}
+
+/**
  * How many shared signatures this user SHOULD have.
  *
  * The larger of what is on their account right now and what they have ever
@@ -531,7 +555,7 @@ function runAlert_(degraded, failedUsers, userCount, partialUsers) {
 
   var parts = [];
   if (failedUsers.length) parts.push(failedUsers.length + ' failed');
-  if (partialUsers.length) parts.push(partialUsers.length + ' with write errors');
+  if (partialUsers.length) parts.push(partialUsers.length + ' not clean');
   if (degraded.length) parts.push(degraded.length + ' degraded');
   var subject = '[DragonCandy signatures] ' + parts.join(', ') + ' of ' + userCount + ' users';
 
@@ -548,20 +572,14 @@ function runAlert_(degraded, failedUsers, userCount, partialUsers) {
   }
 
   if (partialUsers.length) {
-    body +=
-      'IDENTITY WRITES FAILED (' +
-      partialUsers.length +
-      '), not a permissions issue:\n';
+    body += 'RUNS THAT WERE NOT CLEAN (' + partialUsers.length + '):\n';
     for (var q = 0; q < partialUsers.length; q++) {
-      body += '  ' + partialUsers[q].email + ':\n';
-      for (var f = 0; f < partialUsers[q].failures.length; f++) {
-        body += '    ' + partialUsers[q].failures[f] + '\n';
-      }
+      body += '  ' + partialUsers[q].email + ' -- ' + partialUsers[q].detail + '\n';
     }
     body +=
-      '\nThis includes the PRIMARY identity. A user can appear here with their ' +
-      'own signature not updated at all, which no other line in this mail would ' +
-      'show.\n\n';
+      '\nThis covers anything short of a clean run, including a failed write on ' +
+      "the user's OWN primary signature and a scope refusal on a non-company " +
+      'address. Neither would show anywhere else in this mail.\n\n';
   }
 
   if (degraded.length) {

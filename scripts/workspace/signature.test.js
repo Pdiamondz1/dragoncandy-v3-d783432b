@@ -183,7 +183,7 @@ function loadAppsScript(scriptProperties = {}) {
   };
   return new Function(
     'PropertiesService',
-    `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN, isMissingSharingScope_, requestedScopes_, SCOPE_BASIC, SCOPE_SHARING, sharedRegressions_, formatRegression_, nextSharedBaseline_, sharedExpectation_, readSharedBaseline_, runAlert_, alertRecipients_ };`,
+    `${src}\nreturn { SHARED_IDENTITIES, titleForShared_, isSharedIdentity_, DOMAIN, isMissingSharingScope_, requestedScopes_, SCOPE_BASIC, SCOPE_SHARING, sharedRegressions_, formatRegression_, nextSharedBaseline_, sharedExpectation_, readSharedBaseline_, runAlert_, alertRecipients_, runStatus_ };`,
   )(PropertiesService);
 }
 
@@ -716,34 +716,51 @@ describe('alertRecipients_', () => {
   });
 });
 
-// Per-identity isolation means a failed write no longer throws — including a
-// failure on the user's OWN primary signature. Without this category that
-// reaches only the log, so a user whose signature silently stopped updating
-// would generate no alert at all unless they also had a shared regression.
-// Codex P1, 2026-08-23.
-describe('runAlert_ per-identity write failures', () => {
+// The alert's third input is "every user whose run was not a clean ok",
+// keyed off the same status the Sheet records. Two review rounds were spent
+// adding one cause at a time — primary-identity write failures, then scope
+// denials on a non-company address — and each new cause was another silent
+// hole. These tests pin the general condition, not the individual causes.
+// Codex, 2026-08-23.
+describe('runAlert_ non-clean runs', () => {
   const { runAlert_ } = loadAppsScript();
-  const partial = [
-    { email: 'joe@dragoncandy.com', failures: ['joe@dragoncandy.com: Error: Gmail API 500'] },
+  const writeFailure = [
+    { email: 'joe@dragoncandy.com', detail: '1 identities, 1 failed: joe@dragoncandy.com: Error: Gmail API 500' },
+  ];
+  // The case that motivated the refactor: a verified non-primary address that
+  // is NOT a company address, refused for lack of the sharing scope. Nothing
+  // is degraded (it is not a shared identity) and nothing threw.
+  const nonSharedDenial = [
+    { email: 'jay@dragoncandy.com', detail: '1 identities, 1 denied (needs gmail.settings.sharing)' },
   ];
 
-  it('fires on a write failure alone, with nothing failed and nothing degraded', () => {
-    const a = runAlert_([], [], 4, partial);
+  it('fires on a write failure alone — nothing failed outright, nothing degraded', () => {
+    const a = runAlert_([], [], 4, writeFailure);
     expect(
       a,
-      'a primary-signature failure must not be visible only in the log — that is the whole point of the alert',
+      'a failure on the primary signature must not be visible only in the log',
     ).not.toBeNull();
-    expect(a.subject).toContain('1 with write errors');
+    expect(a.subject).toContain('1 not clean');
   });
 
-  it('names the user and quotes the underlying error', () => {
-    const body = runAlert_([], [], 4, partial).body;
+  it('fires on a scope denial for a NON-shared address, which no other category catches', () => {
+    const a = runAlert_([], [], 4, nonSharedDenial);
+    expect(a).not.toBeNull();
+    expect(a.body).toContain('jay@dragoncandy.com');
+    expect(a.body).toContain('denied');
+  });
+
+  it('passes the per-user detail through verbatim, so the mail matches the Sheet', () => {
+    const body = runAlert_([], [], 4, writeFailure).body;
     expect(body).toContain('joe@dragoncandy.com');
     expect(body).toContain('Gmail API 500');
-    expect(body).toContain('PRIMARY');
   });
 
-  it('still silent when all three categories are empty', () => {
+  it('says the category covers the primary signature, since that is the surprising part', () => {
+    expect(runAlert_([], [], 4, writeFailure).body).toContain('primary signature');
+  });
+
+  it('still silent when every category is empty', () => {
     expect(runAlert_([], [], 4, [])).toBeNull();
   });
 
@@ -752,14 +769,50 @@ describe('runAlert_ per-identity write failures', () => {
       [{ email: 'a@x.com', written: 0, expected: 3, denied: 3, cause: 'scope', unexplained: 0 }],
       ['b@x.com'],
       4,
-      partial,
+      writeFailure,
     );
     expect(a.subject).toContain('1 failed');
-    expect(a.subject).toContain('1 with write errors');
+    expect(a.subject).toContain('1 not clean');
     expect(a.subject).toContain('1 degraded');
   });
 
   it('is backward compatible with callers that omit the argument', () => {
     expect(runAlert_([], [], 4)).toBeNull();
+  });
+});
+
+// runStatus_ decides BOTH the Sheet's status column and whether a user reaches
+// the alert, so any cause it fails to treat as non-clean is a cause nobody is
+// told about. It was inline until 2026-08-23; a mutation of that inline version
+// went undetected by the entire suite, because every test touching this path
+// fed runAlert_ directly. That is the argument for extracting it.
+describe('runStatus_', () => {
+  const { runStatus_ } = loadAppsScript();
+
+  it('is ok when nothing was refused and nothing failed', () => {
+    expect(runStatus_({ failures: [], denied: 0 })).toBe('ok');
+  });
+
+  it('is PARTIAL on a write failure', () => {
+    expect(runStatus_({ failures: ['a@x.com: boom'], denied: 0 })).toBe('PARTIAL');
+  });
+
+  // The case Codex found: a denial on a non-company address produces no
+  // degraded entry and no throw, so PARTIAL here is the ONLY thing that gets
+  // the user into the alert.
+  it('is PARTIAL on a denial, even with no failures', () => {
+    expect(
+      runStatus_({ failures: [], denied: 1 }),
+      'a denied identity must not read as a clean run, or nobody is told about it',
+    ).toBe('PARTIAL');
+  });
+
+  it('is PARTIAL when both happen', () => {
+    expect(runStatus_({ failures: ['a@x.com: boom'], denied: 2 })).toBe('PARTIAL');
+  });
+
+  it('tolerates a missing failures array', () => {
+    expect(runStatus_({ denied: 0 })).toBe('ok');
+    expect(runStatus_({ denied: 3 })).toBe('PARTIAL');
   });
 });
