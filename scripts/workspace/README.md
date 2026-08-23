@@ -308,8 +308,17 @@ because it is already installing nothing." That was true on 2026-08-21 and stopp
 being true on 2026-08-23.* Re-cost the conversion against the live state, not
 against this sentence.
 
-The installer warns when it installs zero shared signatures for a user who has
-shared identities, so a regression here stays visible rather than silent.
+**The zero-shared warning is aggregate, not per user** (`Code.gs.js`: `if
+(totalSharedInstalled === 0)`). Today that is equivalent to a per-user check,
+because `dame@` is the only account with shared identities — if he loses all
+three, the domain total hits zero and the warning fires.
+
+**It stops being equivalent the moment a second user gets a shared identity.**
+After that, `dame@` could lose all three and the run would stay silent as long
+as somebody else still installed one. Whoever adds the second user should either
+add per-user detection or accept that the warning is a domain-level canary only.
+The per-user numbers are always in the log Sheet regardless; it is the automatic
+warning that is coarse.
 
 ## Editing a signature
 

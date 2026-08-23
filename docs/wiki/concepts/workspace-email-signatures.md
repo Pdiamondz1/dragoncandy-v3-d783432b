@@ -267,8 +267,12 @@ original acceptance signal.
 - **Outlook for Windows is untested and now untestable** — the account that could have
   checked it is gone. The rendering matrix is four-of-five (Gmail web light, Gmail web dark,
   Gmail iOS dark, images-disabled), not five-of-five. Do not describe it as verified.
-- **A warning is not a gate.** If nobody reads the run log, a zero-shared-signature run still
-  passes unnoticed.
+- **A warning is not a gate, and this one is coarser than it looks.** If nobody reads the run
+  log, a zero-shared-signature run still passes unnoticed. Worse, the check is on the **domain
+  aggregate** (`totalSharedInstalled === 0`), not per user. That is currently equivalent —
+  `dame@` is the only account with shared identities — but it silently degrades the moment a
+  second user gets one: after that, `dame@` could lose all three and the run stays quiet while
+  somebody else installs one. Whoever adds the second user inherits this.
 - **`dryRun()` does not authenticate**, so it passes cleanly with a missing or revoked
   service-account key. Its comment says so; the limitation stands. This is why the acceptance
   signal was writing into *other people's* mailboxes, which `dryRun()` structurally cannot
