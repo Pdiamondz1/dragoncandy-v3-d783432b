@@ -85,7 +85,7 @@ Do not install a single signature until this prints `image/png`.
    | `SA_CLIENT_EMAIL` | the service account's client email |
    | `SA_PRIVATE_KEY` | `private_key` from the JSON key, newlines as `\n` |
    | `LOG_SHEET_ID` | id of the run-log Sheet in `06 · Brand` |
-   | `SHARING_SCOPE_ENABLED` | **`true` since 2026-08-23.** Both steps below are done and shared-mailbox signatures install. Set to `false` to turn them off again without touching the delegation |
+   | `SHARING_SCOPE_ENABLED` | **`true` since 2026-08-23.** Both steps below are done and shared-mailbox signatures install. Setting it `false` stops *future* shared writes — it does **not** remove signatures already installed; see "Turning it back off" |
 
 5. **Build, then set up clasp, then push.**
 
@@ -252,8 +252,30 @@ formality: it is the only observation that separates "the scope fixed it" from
 "the scope hid a still-broken loop". Skip it and a success at the end proves
 strictly less.
 
-To undo the whole thing later: set the property to `false` first, then remove
-the scope from the delegation. Same rule, reversed.
+### Turning it back off — and what that does not do
+
+To undo: set `SHARING_SCOPE_ENABLED` to `false` first, *then* remove the scope
+from the delegation. Same ordering rule, reversed.
+
+**That stops future shared-identity writes. It does not remove the signatures
+already installed.** They live on the sendAs records in Gmail, not in this
+script, so after disabling the flag `info@`, `support@` and `appstore@` keep
+sending the signature they last received, indefinitely, while every subsequent
+run reports `PARTIAL` with a denied count. An operator who reads "disabled" as
+"removed" will be wrong about what is going out.
+
+To actually remove them, do one of these while the scope is still granted and
+the flag still `true`:
+
+- **Per identity, by hand** — Gmail → Settings → Accounts and Import → "Send
+  mail as" → *edit info* on the address → clear the signature. Or delete the
+  send-as identity outright, which also stops it matching.
+- **In bulk** — patch each identity's signature to an empty string via the same
+  `settings/sendAs/{email}` call the installer uses. There is no helper for this
+  in `Code.gs`; it would need writing.
+
+Order matters here too: revoke the scope first and you lose the ability to
+clear them, leaving stale signatures you cannot reach through this tooling.
 
 An earlier version of this file said no API could create a send-as identity.
 That was wrong, and Codex caught it. Then it said the manual route was
